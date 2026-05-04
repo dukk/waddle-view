@@ -1,0 +1,25 @@
+# Agent and contributor briefing — waddle-view
+
+## Scope
+
+1. **Mono-repo**: default application directory is **`apps/waddle_view`**. Do not edit other `apps/*` paths unless the task explicitly names them.
+2. **Tests first**: add or extend a failing test before production code for new behavior.
+3. **Coverage**: maintain **≥ 90% line coverage** on `apps/waddle_view/lib/` per `tool/coverage_check.dart` (excludes **`lib/persistence/tables.dart`** declarative schema-only lines, **`lib/**/*.g.dart` generated Drift**, and **`lib/main.dart`** composition root). Run from the app directory:
+   - `flutter test --coverage` (each test is capped at **60s** via `apps/waddle_view/dart_test.yaml`; CI also sets a **12-minute** job timeout)
+   - `dart run tool/coverage_check.dart --min=90`
+4. **Secrets**: never store provider passwords, API keys, access/refresh tokens, or client secrets in SQLite. Use `SecretStore`. **Deployment REST API keys** must never be committed; only document paths (e.g. `/etc/waddle-view/api.key`).
+5. **Project rules**: read [`.cursor/rules/waddle-view-flutter.mdc`](.cursor/rules/waddle-view-flutter.mdc) before large edits.
+6. **Sub-agents / delegated tasks**: include explicit **paths**, **deliverable**, and **forbidden paths** in the prompt.
+
+## Commands (from repo root)
+
+```bash
+cd apps/waddle_view
+flutter analyze
+flutter test --coverage
+dart run tool/coverage_check.dart --min=90
+```
+
+## Persistence
+
+The app uses **Drift** with **`sqlite3`** / **`sqlite3_flutter_libs`** and a file-backed database from `path_provider` (`createQueryExecutor`) or in-memory SQLite in tests.

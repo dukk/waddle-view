@@ -1,0 +1,4 @@
+# Per-test ceiling so a hung async test cannot stall the whole suite indefinitely.
+# Raise for an individual test: `test('...', () { ... }, timeout: Timeout(Duration(minutes: 3)));`
+defaults:
+  timeout: 60s

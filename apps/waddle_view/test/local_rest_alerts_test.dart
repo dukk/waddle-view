@@ -1,0 +1,42 @@
+import 'dart:convert';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+
+import 'package:waddle_view/alerts/drift_alert_repository.dart';
+import 'package:waddle_view/api/deployment_api_key_source.dart';
+import 'package:waddle_view/api/local_rest_server.dart';
+import 'helpers/memory_database.dart';
+
+void main() {
+  test('POST and DELETE alerts', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final alerts = DriftAlertRepository(db);
+    final keys = FakeDeploymentApiKeySource('k');
+    final handler = buildRootHandler(db: db, alerts: alerts, keys: keys);
+    final server = await LocalRestServer.bind(handler: handler, port: 0);
+    try {
+      final post = await http.post(
+        Uri.parse('${server.baseUrl}/v1/alerts'),
+        headers: {'x-api-key': 'k', 'content-type': 'application/json'},
+        body: '{"title":"a","body":"b","priority":2}',
+      );
+      expect(post.statusCode, 200);
+      final id = (jsonDecode(post.body) as Map<String, dynamic>)['id'] as int;
+      final list = await http.get(
+        Uri.parse('${server.baseUrl}/v1/alerts'),
+        headers: {'x-api-key': 'k'},
+      );
+      expect(list.statusCode, 200);
+      final del = await http.delete(
+        Uri.parse('${server.baseUrl}/v1/alerts/$id'),
+        headers: {'x-api-key': 'k'},
+      );
+      expect(del.statusCode, 200);
+    } finally {
+      await server.close();
+      await db.close();
+    }
+  });
+}

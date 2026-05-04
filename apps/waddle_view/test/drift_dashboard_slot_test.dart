@@ -1,0 +1,20 @@
+import 'package:flutter_test/flutter_test.dart';
+
+import 'package:waddle_view/dashboard/drift_dashboard_data_access.dart';
+import 'package:waddle_view/persistence/database.dart';
+
+import 'helpers/memory_database.dart';
+
+void main() {
+  test('watchSlotSubtitle', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final access = DriftDashboardDataAccess(db);
+    expect(await access.watchSlotSubtitle('x').first, equals(null));
+    await db.into(db.dashboardKv).insert(
+          DashboardKvCompanion.insert(key: 'slot.x.subtitle', value: 'S'),
+        );
+    expect(await access.watchSlotSubtitle('x').first, 'S');
+    await db.close();
+  });
+}
