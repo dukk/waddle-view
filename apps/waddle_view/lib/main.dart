@@ -15,7 +15,7 @@ import 'api/local_rest_server.dart';
 import 'blob/filesystem_blob_store.dart';
 import 'clock.dart';
 import 'config/provider_config_resolver.dart';
-import 'dashboard/dashboard_shell.dart';
+import 'dashboard/dashboard_data_bound_shell.dart';
 import 'dashboard/dashboard_slot_descriptor.dart';
 import 'dashboard/drift_dashboard_data_access.dart';
 import 'data/data_write_context.dart';
@@ -189,20 +189,12 @@ class _WaddleHomeState extends State<WaddleHome> {
       body: AlertOverlayHost(
         repository: widget.alerts,
         clock: SystemClock(),
-        child: DashboardShell(
+        child: DashboardDataBoundShell(
+          data: widget.data,
           overscan: const TvOverscanInsets(),
           slots: const [
             DashboardSlotDescriptor(id: 'main', label: 'Main'),
           ],
-          header: StreamBuilder<String?>(
-            stream: widget.data.watchHeaderTitle(),
-            builder: (context, snap) {
-              return Text(
-                snap.data ?? 'Waddle View',
-                style: Theme.of(context).textTheme.headlineMedium,
-              );
-            },
-          ),
           body: Center(
             child: Text(
               'API ${widget.server.baseUrl}\nUse header X-Api-Key from waddle_api.key',

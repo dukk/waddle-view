@@ -20,5 +20,21 @@ void main() {
       ).shouldMaximize,
       isFalse,
     );
+    expect(
+      const StartupWindowPolicy(
+        isLinux: false,
+        isDebug: false,
+        allowFullscreen: true,
+      ).shouldMaximize,
+      isFalse,
+    );
+    expect(
+      const StartupWindowPolicy(
+        isLinux: true,
+        isDebug: false,
+        allowFullscreen: false,
+      ).shouldMaximize,
+      isFalse,
+    );
   });
 }

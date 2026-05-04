@@ -1,12 +1,16 @@
-# waddle-view (mono-repo)
+# Waddle View
+
+This is a re-imagioned [quackview](https://github.com/dukk/quackview) with the goal of better visual performance on the raspberry pi. It's using a completly different architecture and technology stack.
 
 TV dashboard and related applications for Raspberry Pi and development machines.
 
 ## Applications
 
-| Path | Description |
-|------|-------------|
-| [`apps/waddle_view`](apps/waddle_view) | Flutter **Linux** (and **Windows** for dev) TV dashboard: SQLite persistence, ticker, overlay alerts, local REST API, data collection loop. Architecture: [`apps/waddle_view/ARCHITECTURE.md`](apps/waddle_view/ARCHITECTURE.md). |
+
+| Path                                   | Description                                                                                                                                                                                                                       |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `[apps/waddle_view](apps/waddle_view)` | Flutter **Linux** (and **Windows** for dev) TV dashboard: SQLite persistence, ticker, overlay alerts, local REST API, data collection loop. Architecture: `[apps/waddle_view/ARCHITECTURE.md](apps/waddle_view/ARCHITECTURE.md)`. |
+
 
 ## Quick start (dashboard app)
 
@@ -34,12 +38,12 @@ flutter run -d windows    # or: flutter run -d linux
 
 **Debug** is the default for `flutter run` (hot reload, asserts). **Release** matches production behavior most closely (e.g. Linux window policy). Built artifacts: `flutter build windows --release` / `flutter build linux --release`.
 
-See **[`apps/waddle_view/README.md`](apps/waddle_view/README.md)** for REST bind address, API key file location, local bundle paths, and Pi deployment summary.
+See `**[apps/waddle_view/README.md](apps/waddle_view/README.md)`** for REST bind address, API key file location, local bundle paths, and Pi deployment summary.
 
 ## Raspberry Pi
 
-See [`docs/pi/`](docs/pi/) for using the release artifact, upgrading, development, and HTTP API.
+See `[docs/pi/](docs/pi/)` for using the release artifact, upgrading, development, and HTTP API.
 
 ## Agent / contributor rules
 
-Read [`AGENTS.md`](AGENTS.md) and [`.cursor/rules/`](.cursor/rules/) before large changes.
+Read `[AGENTS.md](AGENTS.md)` and `[.cursor/rules/](.cursor/rules/)` before large changes.
