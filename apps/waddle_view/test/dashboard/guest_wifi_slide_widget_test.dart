@@ -1,4 +1,3 @@
-import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_view/curator/screen_layout_parse.dart';
@@ -45,6 +44,8 @@ void main() {
     expect(find.text('SSID'), findsOneWidget);
     expect(find.text('Security'), findsOneWidget);
     expect(find.text('Password'), findsOneWidget);
+
+    await db.close();
   });
 
   testWidgets('respects custom kvKey and headline', (tester) async {
@@ -80,6 +81,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Lobby WiFi'), findsOneWidget);
     expect(find.text('Zone'), findsOneWidget);
+
+    await db.close();
   });
 
   testWidgets('shows not configured when KV value is invalid', (tester) async {
@@ -111,6 +114,8 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Guest Wi‑Fi not configured'), findsOneWidget);
+
+    await db.close();
   });
 
   testWidgets('shows not configured when KV missing', (tester) async {
@@ -136,5 +141,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Guest Wi‑Fi not configured'), findsOneWidget);
+
+    await db.close();
   });
 }

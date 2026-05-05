@@ -52,6 +52,8 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureWelcomeScreen(db);
   await _ensureJokeScreen(db);
   await _ensureGuestWifiScreen(db);
+  await _ensureClockDigitalScreen(db);
+  await _ensureClockAnalogScreen(db);
 }
 
 Future<void> _ensureCuratorSettings(AppDatabase db) async {
@@ -122,6 +124,46 @@ Future<void> _ensureGuestWifiScreen(AppDatabase db) async {
             '{"v":1,"layout":"single","widgets":[{"type":"guest_wifi","slot":"main","config":{}}]}',
           ),
           dwellMs: const Value(18000),
+        ),
+      );
+}
+
+Future<void> _ensureClockDigitalScreen(AppDatabase db) async {
+  final row = await (db.select(db.screenDefinitions)
+        ..where((t) => t.id.equals('clock_digital')))
+      .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  await db.into(db.screenDefinitions).insert(
+        ScreenDefinitionsCompanion.insert(
+          id: 'clock_digital',
+          name: 'Digital clock',
+          description: const Value('Local time and date'),
+          layoutJson: const Value(
+            '{"v":1,"layout":"single","widgets":[{"type":"digital_clock","slot":"main","config":{}}]}',
+          ),
+          dwellMs: const Value(16000),
+        ),
+      );
+}
+
+Future<void> _ensureClockAnalogScreen(AppDatabase db) async {
+  final row = await (db.select(db.screenDefinitions)
+        ..where((t) => t.id.equals('clock_analog')))
+      .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  await db.into(db.screenDefinitions).insert(
+        ScreenDefinitionsCompanion.insert(
+          id: 'clock_analog',
+          name: 'Analog clock',
+          description: const Value('Analog dial with local date'),
+          layoutJson: const Value(
+            '{"v":1,"layout":"single","widgets":[{"type":"analog_clock","slot":"main","config":{}}]}',
+          ),
+          dwellMs: const Value(16000),
         ),
       );
 }

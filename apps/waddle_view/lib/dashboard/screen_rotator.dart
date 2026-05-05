@@ -8,6 +8,8 @@ import '../curator/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';
 import '../persistence/database.dart';
 import '../persistence/tables.dart';
+import 'analog_clock_slide_widget.dart';
+import 'digital_clock_slide_widget.dart';
 import 'guest_wifi_slide_widget.dart';
 import 'joke_slide_widget.dart';
 
@@ -260,6 +262,16 @@ class _SlideContent extends StatelessWidget {
           case 'guest_wifi':
             return GuestWifiSlideWidget(
               db: db,
+              spec: w,
+              theme: theme,
+            );
+          case 'digital_clock':
+            return DigitalClockSlideWidget(
+              spec: w,
+              theme: theme,
+            );
+          case 'analog_clock':
+            return AnalogClockSlideWidget(
               spec: w,
               theme: theme,
             );

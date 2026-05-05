@@ -73,7 +73,7 @@ Future<void> main() async {
     secrets: secrets,
     resolve: resolver.resolve,
   );
-  final clock = SystemClock();
+  const clock = SystemClock();
   final tickerCurated = MemoryTickerCuratedRepository();
   final marqueeCycleGate = MarqueeCycleGate();
   final dashboardCuratorInner = DefaultDashboardCurator(
@@ -217,7 +217,7 @@ class _WaddleHomeState extends State<WaddleHome> {
     return Scaffold(
       body: AlertOverlayHost(
         repository: widget.alerts,
-        clock: SystemClock(),
+        clock: const SystemClock(),
         child: DashboardDataBoundShell(
           overscan: const TvOverscanInsets(),
           body: Stack(
