@@ -27,6 +27,7 @@ import 'data/data_write_context.dart';
 import 'data/engine/data_collection_engine.dart';
 import 'data/providers/joke_data_provider.dart';
 import 'data/providers/rss_news_data_provider.dart';
+import 'data/providers/trivia_data_provider.dart';
 import 'data/stub_data_provider.dart';
 import 'marquee_cycle_gate.dart';
 import 'persistence/database.dart';
@@ -94,6 +95,7 @@ Future<void> main() async {
       StubDataProvider(),
       RssNewsDataProvider(),
       JokeDataProvider(),
+      TriviaDataProvider(),
     ],
     context: ctx,
     sleeper: SystemSleeper(),
@@ -227,31 +229,10 @@ class _WaddleHomeState extends State<WaddleHome> {
         clock: const SystemClock(),
         child: DashboardDataBoundShell(
           overscan: const TvOverscanInsets(),
-          body: Stack(
-            fit: StackFit.expand,
-            children: [
-              ScreenRotator(db: widget.db, blobs: widget.blobs),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: IgnorePointer(
-                  child: Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(
-                        'API ${widget.server.baseUrl}\nUse header X-Api-Key from waddle_api.key',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: Colors.white54,
-                            ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          body: ScreenRotator(
+            db: widget.db,
+            blobs: widget.blobs,
+            localRestBaseUrl: widget.server.baseUrl,
           ),
           ticker: _KvAwareMarquee(
             db: widget.db,

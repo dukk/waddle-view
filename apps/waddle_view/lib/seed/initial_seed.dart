@@ -4,6 +4,7 @@ import '../persistence/database.dart';
 import '../persistence/tables.dart';
 import 'joke_category_seed.dart';
 import 'rss_news_feed_seed.dart';
+import 'trivia_category_seed.dart';
 
 /// Idempotent demo rows for stub provider + ticker.
 Future<void> ensureInitialSeed(AppDatabase db) async {
@@ -46,16 +47,20 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
     pollSeconds: 3600,
   );
   await _ensureJokesProviderRow(db);
+  await _ensureTriviaProviderRow(db);
   await ensureDefaultJokeCategories(db);
+  await ensureDefaultTriviaCategories(db);
   await ensureDefaultRssNewsFeeds(db);
   await _ensureCuratorSettings(db);
   await _ensureWelcomeScreen(db);
   await _ensureJokeScreen(db);
+  await _ensureTriviaScreen(db);
   await _ensureGuestWifiScreen(db);
   await _ensureNewsScreen(db);
   await _ensureClockDigitalScreen(db);
   await _ensureClockAnalogScreen(db);
   await _ensureCalendarScreen(db);
+  await _ensureLocalApiScreen(db);
 }
 
 Future<void> _ensureCuratorSettings(AppDatabase db) async {
@@ -106,6 +111,26 @@ Future<void> _ensureJokeScreen(AppDatabase db) async {
             '{"v":1,"layout":"single","widgets":[{"type":"joke","slot":"main","config":{}}]}',
           ),
           dwellMs: const Value(12000),
+        ),
+      );
+}
+
+Future<void> _ensureTriviaScreen(AppDatabase db) async {
+  final row = await (db.select(db.screenDefinitions)
+        ..where((t) => t.id.equals('trivia')))
+      .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  await db.into(db.screenDefinitions).insert(
+        ScreenDefinitionsCompanion.insert(
+          id: 'trivia',
+          name: 'Trivia',
+          description: const Value('Multiple-choice trivia with reveal countdown'),
+          layoutJson: const Value(
+            '{"v":1,"layout":"single","widgets":[{"type":"trivia","slot":"main","config":{}}]}',
+          ),
+          dwellMs: const Value(16000),
         ),
       );
 }
@@ -212,6 +237,29 @@ Future<void> _ensureCalendarScreen(AppDatabase db) async {
       );
 }
 
+Future<void> _ensureLocalApiScreen(AppDatabase db) async {
+  final row = await (db.select(db.screenDefinitions)
+        ..where((t) => t.id.equals('dev_local_api')))
+      .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  await db.into(db.screenDefinitions).insert(
+        ScreenDefinitionsCompanion.insert(
+          id: 'dev_local_api',
+          name: 'Developer — Local API',
+          description: const Value(
+            'Loopback REST base URL and API key hint; enable when configuring deployments',
+          ),
+          enabled: const Value(false),
+          layoutJson: const Value(
+            '{"v":1,"layout":"single","widgets":[{"type":"local_api","slot":"main","config":{}}]}',
+          ),
+          dwellMs: const Value(16000),
+        ),
+      );
+}
+
 Future<void> _ensureProviderRow(
   AppDatabase db, {
   required String id,
@@ -252,6 +300,30 @@ Future<void> _ensureJokesProviderRow(AppDatabase db) async {
             '{"jokesPerDay":3,"maxJokesPerTwoHours":20,"twoHourWindowMs":7200000,'
             '"jokeRetentionDays":14,"model":"gpt-4o-mini",'
             '"globalPrompt":"You write original, family-friendly jokes."}',
+          ),
+        ),
+      );
+}
+
+Future<void> _ensureTriviaProviderRow(AppDatabase db) async {
+  final row =
+      await (db.select(db.providerSettings)
+            ..where((t) => t.id.equals('trivia')))
+          .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  await db.into(db.providerSettings).insert(
+        ProviderSettingsCompanion.insert(
+          id: 'trivia',
+          providerType: 'trivia',
+          enabled: const Value(true),
+          pollSeconds: const Value(3600),
+          extraJson: const Value(
+            '{"questionsPerDay":3,"maxQuestionsPerTwoHours":20,'
+            '"twoHourWindowMs":7200000,"questionRetentionDays":14,'
+            '"model":"gpt-4o-mini",'
+            '"globalPrompt":"You write clear, family-friendly multiple-choice trivia."}',
           ),
         ),
       );

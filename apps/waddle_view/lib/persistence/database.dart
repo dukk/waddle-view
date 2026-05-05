@@ -24,6 +24,9 @@ part 'database.g.dart';
     JokeCategories,
     Jokes,
     JokeGenerationBatches,
+    TriviaCategories,
+    TriviaQuestions,
+    TriviaGenerationBatches,
     CalendarEvents,
   ],
 )
@@ -31,7 +34,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -76,6 +79,11 @@ ORDER BY priority DESC, created_at DESC;
       }
       if (from < 9) {
         await m.createTable(calendarEvents);
+      }
+      if (from < 10) {
+        await m.createTable(triviaCategories);
+        await m.createTable(triviaQuestions);
+        await m.createTable(triviaGenerationBatches);
       }
     },
     beforeOpen: (details) async {

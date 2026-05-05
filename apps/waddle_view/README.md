@@ -95,7 +95,7 @@ Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../d
 - **Key file used by the app**: **`waddle_api.key`** in Flutter’s **application support** directory for the user running the process (`getApplicationSupportDirectory()` in `lib/main.dart`). The file is created on first launch if missing. Use that file’s contents for `curl` and automation on the same machine as the app.
 - **`/v1/health`** does not require a key; other `/v1/*` routes return **503** if the key file is missing or empty, **401** if the key is wrong.
 
-The dashboard placeholder text shows the bound **base URL** and reminds you to use **`waddle_api.key`**.
+Startup logs include **`REST listening at …`** with the bound **base URL**. To show the same information on the TV carousel, enable the **`dev_local_api`** row in **`screen_definitions`** (`enabled = 1`); that developer slide shows the URL and an **`X-Api-Key` / `waddle_api.key`** reminder.
 
 ## Raspberry Pi / Linux runtime notes
 

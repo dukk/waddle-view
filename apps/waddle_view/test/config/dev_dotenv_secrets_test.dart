@@ -44,6 +44,10 @@ void main() {
       await secrets.read('provider:access_token:jokes'),
       'sk-from-dotenv',
     );
+    expect(
+      await secrets.read('provider:access_token:trivia'),
+      'sk-from-dotenv',
+    );
   });
 
   test('applyJokesTokenFromDevDotenv prefers WADDLE_JOKES_ACCESS_TOKEN', () async {
@@ -56,6 +60,30 @@ void main() {
     final secrets = InMemorySecretStore();
     await applyJokesTokenFromDevDotenv(secrets);
     expect(await secrets.read('provider:access_token:jokes'), 'sk-waddle');
+    expect(await secrets.read('provider:access_token:trivia'), 'sk-waddle');
+  });
+
+  test('readTriviaTokenFromDotenvMap prefers WADDLE_TRIVIA_ACCESS_TOKEN', () {
+    expect(
+      readTriviaTokenFromDotenvMap({
+        waddleTriviaAccessTokenKey: ' sk-trivia ',
+        waddleJokesAccessTokenKey: 'sk-jokes',
+      }),
+      'sk-trivia',
+    );
+  });
+
+  test('applyJokesTokenFromDevDotenv uses trivia-specific token when set', () async {
+    dotenv.clean();
+    dotenv.loadFromString(
+      envString:
+          'OPENAI_API_KEY=sk-openai\nWADDLE_TRIVIA_ACCESS_TOKEN=sk-trivia-only\n',
+      isOptional: true,
+    );
+    final secrets = InMemorySecretStore();
+    await applyJokesTokenFromDevDotenv(secrets);
+    expect(await secrets.read('provider:access_token:jokes'), 'sk-openai');
+    expect(await secrets.read('provider:access_token:trivia'), 'sk-trivia-only');
   });
 
   test('applyJokesTokenFromDevDotenv no-op when env has no token keys', () async {
@@ -64,5 +92,6 @@ void main() {
     final secrets = InMemorySecretStore();
     await applyJokesTokenFromDevDotenv(secrets);
     expect(await secrets.read('provider:access_token:jokes'), isNull);
+    expect(await secrets.read('provider:access_token:trivia'), isNull);
   });
 }

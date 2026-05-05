@@ -157,6 +157,58 @@ class Jokes extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+class TriviaCategories extends Table {
+  TextColumn get id => text()();
+  TextColumn get label => text()();
+  BoolColumn get isSeasonal => boolean().withDefault(const Constant(false))();
+  IntColumn get startMonth => integer().nullable()();
+  IntColumn get startDay => integer().nullable()();
+  IntColumn get endMonth => integer().nullable()();
+  IntColumn get endDay => integer().nullable()();
+  TextColumn get categoryPrompt => text().nullable()();
+  IntColumn get minQuestions =>
+      integer().withDefault(const Constant(10))();
+  IntColumn get maxQuestions =>
+      integer().withDefault(const Constant(100))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Records each OpenAI trivia-generation request size for rolling-window rate limits.
+@TableIndex(
+  name: 'idx_trivia_gen_batches_by_time',
+  columns: {#requestedAtMs},
+)
+class TriviaGenerationBatches extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get requestedAtMs => integer()();
+  IntColumn get questionsRequested => integer()();
+}
+
+@TableIndex(
+  name: 'idx_trivia_questions_by_created_at',
+  columns: {#createdAtMs},
+)
+@TableIndex(
+  name: 'idx_trivia_questions_by_category',
+  columns: {#categoryId},
+)
+class TriviaQuestions extends Table {
+  TextColumn get id => text()();
+  TextColumn get categoryId => text().references(TriviaCategories, #id)();
+  TextColumn get question => text()();
+  TextColumn get optionA => text()();
+  TextColumn get optionB => text()();
+  TextColumn get optionC => text()();
+  TextColumn get optionD => text()();
+  TextColumn get correctOption => text()();
+  IntColumn get createdAtMs => integer()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 /// Local and synced calendar events (Outlook / Google providers later).
 @TableIndex(
   name: 'idx_calendar_events_start_ms',

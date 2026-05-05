@@ -29,6 +29,18 @@ const String openAiApiKeyEnv = 'OPENAI_API_KEY';
 /// Optional explicit key so a shared `.env` can scope the joke provider token.
 const String waddleJokesAccessTokenKey = 'WADDLE_JOKES_ACCESS_TOKEN';
 
+/// Optional override for the trivia provider; otherwise same resolution as jokes.
+const String waddleTriviaAccessTokenKey = 'WADDLE_TRIVIA_ACCESS_TOKEN';
+
+/// OpenAI-style token for trivia: explicit trivia key, else same as jokes/OpenAI.
+String? readTriviaTokenFromDotenvMap(Map<String, String> map) {
+  final explicit = map[waddleTriviaAccessTokenKey]?.trim();
+  if (explicit != null && explicit.isNotEmpty) {
+    return explicit;
+  }
+  return readJokesTokenFromDotenvMap(map);
+}
+
 /// Loads `.env` from disk in **debug** desktop/server builds only (not web).
 ///
 /// Searches, in order (first hit wins): `.env`, `.env.development`, `assets/.env`,
@@ -75,13 +87,20 @@ Future<void> applyJokesTokenFromDevDotenv(SecretStore secrets) async {
   if (!dotenv.isInitialized) {
     return;
   }
-  final token = readJokesTokenFromDotenvMap(dotenv.env);
-  if (token == null || token.isEmpty) {
-    return;
+  final jokesToken = readJokesTokenFromDotenvMap(dotenv.env);
+  if (jokesToken != null && jokesToken.isNotEmpty) {
+    await secrets.write(
+      '${ProviderConfigResolver.accessTokenKey}:jokes',
+      jokesToken,
+    );
+    AppDebugLog.startup('Dev .env: stored jokes provider token in SecretStore');
   }
-  await secrets.write(
-    '${ProviderConfigResolver.accessTokenKey}:jokes',
-    token,
-  );
-  AppDebugLog.startup('Dev .env: stored jokes provider token in SecretStore');
+  final triviaToken = readTriviaTokenFromDotenvMap(dotenv.env);
+  if (triviaToken != null && triviaToken.isNotEmpty) {
+    await secrets.write(
+      '${ProviderConfigResolver.accessTokenKey}:trivia',
+      triviaToken,
+    );
+    AppDebugLog.startup('Dev .env: stored trivia provider token in SecretStore');
+  }
 }

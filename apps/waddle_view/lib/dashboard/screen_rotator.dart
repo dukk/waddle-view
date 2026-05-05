@@ -14,15 +14,24 @@ import 'calendar_month_slide_widget.dart';
 import 'digital_clock_slide_widget.dart';
 import 'guest_wifi_slide_widget.dart';
 import 'joke_slide_widget.dart';
+import 'local_api_slide_widget.dart';
 import 'rss_article_slide_widget.dart';
+import 'trivia_slide_widget.dart';
 
 /// Full-area carousel above the ticker: slides exit left / enter right between
 /// curated programs loaded from `screen_definitions` and `curator_settings`.
 class ScreenRotator extends StatefulWidget {
-  const ScreenRotator({super.key, required this.db, required this.blobs});
+  const ScreenRotator({
+    super.key,
+    required this.db,
+    required this.blobs,
+    required this.localRestBaseUrl,
+  });
 
   final AppDatabase db;
   final BlobStore blobs;
+  /// Bound loopback base URL for the in-process REST server (e.g. `http://127.0.0.1:8787`).
+  final String localRestBaseUrl;
 
   @override
   State<ScreenRotator> createState() => _ScreenRotatorState();
@@ -198,6 +207,7 @@ class _ScreenRotatorState extends State<ScreenRotator>
               child: _SlideContent(
                 db: widget.db,
                 blobs: widget.blobs,
+                localRestBaseUrl: widget.localRestBaseUrl,
                 slide: outgoing,
                 theme: theme,
                 slideIndex: _index > 0 ? _index - 1 : 0,
@@ -215,6 +225,7 @@ class _ScreenRotatorState extends State<ScreenRotator>
                 ? _SlideContent(
                     db: widget.db,
                     blobs: widget.blobs,
+                    localRestBaseUrl: widget.localRestBaseUrl,
                     slide: incoming,
                     theme: theme,
                     slideIndex: _index,
@@ -232,6 +243,7 @@ class _SlideContent extends StatelessWidget {
   const _SlideContent({
     required this.db,
     required this.blobs,
+    required this.localRestBaseUrl,
     required this.slide,
     required this.theme,
     required this.slideIndex,
@@ -240,6 +252,7 @@ class _SlideContent extends StatelessWidget {
 
   final AppDatabase db;
   final BlobStore blobs;
+  final String localRestBaseUrl;
   final ResolvedSlide slide;
   final ThemeData theme;
   final int slideIndex;
@@ -252,7 +265,12 @@ class _SlideContent extends StatelessWidget {
       color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
       padding: const EdgeInsets.all(24),
       child: Center(
-        child: _buildWidgets(widgets, slide, slideIndex, onReportDesiredDwell),
+        child: _buildWidgets(
+          widgets,
+          slide,
+          slideIndex,
+          onReportDesiredDwell,
+        ),
       ),
     );
   }
@@ -286,6 +304,13 @@ class _SlideContent extends StatelessWidget {
             );
           case 'joke':
             return JokeSlideWidget(
+              db: db,
+              slide: slide,
+              spec: w,
+              theme: theme,
+            );
+          case 'trivia':
+            return TriviaSlideWidget(
               db: db,
               slide: slide,
               spec: w,
@@ -331,6 +356,12 @@ class _SlideContent extends StatelessWidget {
               spec: w,
               theme: theme,
               onReportDesiredDwell: (ms) => onReportDesiredDwell(slideIndex, ms),
+            );
+          case 'local_api':
+            return LocalApiSlideWidget(
+              baseUrl: localRestBaseUrl,
+              spec: w,
+              theme: theme,
             );
           default:
             return Padding(
