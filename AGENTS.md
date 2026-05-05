@@ -10,6 +10,8 @@
 4. **Secrets**: never store provider passwords, API keys, access/refresh tokens, or client secrets in SQLite. Use `SecretStore`. **Deployment REST API keys** must never be committed; only document paths (e.g. `/etc/waddle-view/api.key`).
 5. **Project rules**: read [`.cursor/rules/waddle-view-flutter.mdc`](.cursor/rules/waddle-view-flutter.mdc) before large edits.
 6. **Sub-agents / delegated tasks**: include explicit **paths**, **deliverable**, and **forbidden paths** in the prompt.
+7. **Documentation freshness**: when behavior, configuration, env vars, public endpoints, or operator workflows change, update the corresponding docs in the same task (for example `apps/waddle_view/README.md`, `.env.example`, and runbooks) or explain why no doc change is needed.
+8. **Drift migration discipline**: for any schema/data-shape change in `apps/waddle_view/lib/persistence/`, add/update migration logic and tests in the same task; do not land schema-affecting changes without a migration path and validation coverage.
 
 ## Commands (from repo root)
 

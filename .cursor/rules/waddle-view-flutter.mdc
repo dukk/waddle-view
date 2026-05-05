@@ -11,3 +11,5 @@ alwaysApply: false
 - **Coverage**: keep `apps/waddle_view/lib/` at **≥ 90%** line coverage when practical.
 - **Dependencies**: justify new packages in PR/commit message.
 - **No drive-by refactors** unrelated to the task.
+- **Docs stay current**: if behavior, config/env vars, API surface, or operator workflow changes, update docs in the same change set (for example `apps/waddle_view/README.md`, `.env.example`, and runbooks), or state why docs are unchanged.
+- **Drift migrations required**: any schema/data-shape change under `lib/persistence/` must include migration updates plus tests that validate upgrade/read compatibility.
