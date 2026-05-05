@@ -44,6 +44,28 @@ Future<void> _insertFeedAndArticle(
       );
 }
 
+Future<void> _insertArticle(
+  AppDatabase db, {
+  required String id,
+  required String title,
+  int publishedAt = 1,
+  String? imageBlobKey,
+}) async {
+  await db.into(db.rssArticles).insert(
+        RssArticlesCompanion.insert(
+          id: id,
+          feedId: 'feed_t',
+          guid: 'guid_$id',
+          title: title,
+          link: 'http://test.local/$id',
+          summary: const Value('Summary'),
+          publishedAt: publishedAt,
+          fetchedAt: publishedAt,
+          imageBlobKey: Value(imageBlobKey),
+        ),
+      );
+}
+
 void main() {
   testWidgets('no articles shows placeholder', (tester) async {
     final db = openMemoryDatabase();
@@ -159,6 +181,93 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byType(Image), findsWidgets);
+    await db.close();
+  });
+
+  testWidgets('selects article with higher image quality for rendering', (
+    tester,
+  ) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final blobs = FakeBlobStore();
+
+    await db.into(db.rssFeedSources).insert(
+          RssFeedSourcesCompanion.insert(
+            id: 'feed_t',
+            url: 'http://test.local/feed.xml',
+            category: const Value('test'),
+          ),
+        );
+
+    final lowRef = await blobs.putBytes(_tinyPng, logicalKey: 'rss/low');
+    final highRef = await blobs.putBytes(
+      List<int>.filled(4096, 1),
+      logicalKey: 'rss/high',
+    );
+
+    await db.into(db.blobMetadata).insert(
+          BlobMetadataCompanion.insert(
+            blobKey: 'rss/low',
+            sha256: lowRef.storageKey,
+            relativePath: lowRef.storageKey,
+            bytes: _tinyPng.length,
+            capturedAt: 1,
+          ),
+        );
+    await db.into(db.blobMetadata).insert(
+          BlobMetadataCompanion.insert(
+            blobKey: 'rss/high',
+            sha256: highRef.storageKey,
+            relativePath: highRef.storageKey,
+            bytes: 4096,
+            capturedAt: 1,
+          ),
+        );
+    await _insertArticle(
+      db,
+      id: 'a_low',
+      title: 'Low quality image',
+      publishedAt: 1,
+      imageBlobKey: 'rss/low',
+    );
+    await _insertArticle(
+      db,
+      id: 'a_high',
+      title: 'High quality image',
+      publishedAt: 2,
+      imageBlobKey: 'rss/high',
+    );
+
+    final slide = ResolvedSlide(
+      screenId: 'news',
+      dwellMs: 8000,
+      layoutJson: '{}',
+    );
+    const spec = ParsedWidgetSpec(
+      type: 'rss_article',
+      slot: 'main',
+      config: {'minReadMs': 3000},
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.light(),
+        home: Scaffold(
+          body: RssArticleSlideWidget(
+            db: db,
+            blobs: blobs,
+            slide: slide,
+            spec: spec,
+            theme: ThemeData.light(),
+            onReportDesiredDwell: (_) {},
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    expect(find.text('High quality image'), findsOneWidget);
+    expect(find.text('Low quality image'), findsNothing);
     await db.close();
   });
 

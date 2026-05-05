@@ -62,6 +62,7 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureClockAnalogScreen(db);
   await _ensureCalendarScreen(db);
   await _ensureLocalApiScreen(db);
+  await _ensureAdminSetupScreen(db);
 }
 
 Future<void> _ensureCuratorSettings(AppDatabase db) async {
@@ -73,6 +74,12 @@ Future<void> _ensureCuratorSettings(AppDatabase db) async {
   }
   await db.into(db.curatorSettings).insert(
         CuratorSettingsCompanion.insert(id: kCuratorSettingsId),
+      );
+  await db.into(db.dashboardKv).insertOnConflictUpdate(
+        DashboardKvCompanion.insert(
+          key: 'curator.news.require_photo_for_curation',
+          value: 'true',
+        ),
       );
 }
 
@@ -291,6 +298,31 @@ Future<void> _ensureLocalApiScreen(AppDatabase db) async {
             '{"v":1,"layout":"single","widgets":[{"type":"local_api","slot":"main","config":{}}]}',
           ),
           dwellMs: const Value(16000),
+        ),
+      );
+}
+
+Future<void> _ensureAdminSetupScreen(AppDatabase db) async {
+  final row = await (db.select(db.screenDefinitions)
+        ..where((t) => t.id.equals('admin_setup')))
+      .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  await db.into(db.screenDefinitions).insert(
+        ScreenDefinitionsCompanion.insert(
+          id: 'admin_setup',
+          name: 'Setup Admin Access',
+          description: const Value(
+            'Onboarding URL, QR code, and bootstrap password for first login',
+          ),
+          enabled: const Value(true),
+          layoutJson: const Value(
+            '{"v":1,"layout":"single","widgets":[{"type":"admin_setup","slot":"main","config":{}}]}',
+          ),
+          dwellMs: const Value(18000),
+          frequencyWeight: const Value(200),
+          minGapBetweenShowsMs: const Value(0),
         ),
       );
 }

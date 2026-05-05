@@ -116,4 +116,90 @@ void main() {
 
     await db.close();
   });
+
+  testWidgets('does not overflow on short heights', (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    const spec = ParsedWidgetSpec(
+      type: 'calendar_month',
+      slot: 'main',
+      config: {},
+    );
+    final theme = ThemeData.light();
+    final clock = FakeClock(DateTime(2024, 6, 15, 9, 0));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 320,
+              height: 170,
+              child: CalendarMonthSlideWidget(
+                db: db,
+                spec: spec,
+                theme: theme,
+                clock: clock,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('June 2024'), findsOneWidget);
+
+    await db.close();
+  });
+
+  testWidgets('does not overflow with large text scaling', (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.calendarEvents).insert(
+          CalendarEventsCompanion.insert(
+            id: 'e3',
+            title: 'Very long event title that wraps across lines',
+            startMs: DateTime(2024, 6, 16, 15, 0).millisecondsSinceEpoch,
+            endMs: DateTime(2024, 6, 16, 17, 0).millisecondsSinceEpoch,
+            updatedAtMs: DateTime(2024, 6, 1).millisecondsSinceEpoch,
+          ),
+        );
+    const spec = ParsedWidgetSpec(
+      type: 'calendar_month',
+      slot: 'main',
+      config: {},
+    );
+    final theme = ThemeData.light();
+    final clock = FakeClock(DateTime(2024, 6, 15, 9, 0));
+
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(textScaler: TextScaler.linear(1.8)),
+        child: MaterialApp(
+          theme: theme,
+          home: Scaffold(
+            body: SizedBox(
+              width: 600,
+              height: 220,
+              child: CalendarMonthSlideWidget(
+                db: db,
+                spec: spec,
+                theme: theme,
+                clock: clock,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('June 2024'), findsOneWidget);
+
+    await db.close();
+  });
 }

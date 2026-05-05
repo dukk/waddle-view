@@ -3,6 +3,7 @@
 ## Binding
 
 - Default in development: **`127.0.0.1:8787`** (loopback only).
+- Optional bind override: set **`WADDLE_HTTP_BIND`** (for example `0.0.0.0`) and optional **`WADDLE_HTTP_PORT`**.
 - For LAN access, bind an explicit address and **firewall** the port; prefer a reverse proxy with TLS for untrusted networks.
 
 ## Authentication
@@ -27,6 +28,14 @@ If the key file is **missing or empty**, protected routes return **503** (`api_k
 | GET | `/v1/alerts` | All alerts (no redaction of bodies in MVP; do not store secrets in alerts). |
 | POST | `/v1/alerts` | JSON body: `title`, `body`, optional `qr_payload`, `severity`, `priority`, `expires_at` (epoch ms). |
 | DELETE | `/v1/alerts/{id}` | Dismisses alert (`dismissed_at` set). |
+
+## Admin web UI
+
+- Browser UI is served from **`/admin`** on the same server/port.
+- Login password is the install-time random key from `waddle_api.key` until it is rotated.
+- On first login, users are forced to change password.
+- Rotating the admin password rewrites `waddle_api.key`, so API clients must update their key.
+- After first-time password rotation, setup status is marked complete and the `admin_setup` TV screen is disabled.
 
 ## Examples
 

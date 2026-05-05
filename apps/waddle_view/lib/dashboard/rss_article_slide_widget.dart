@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:drift/drift.dart' show CustomExpression, OrderingTerm;
+import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:flutter/material.dart';
 
 import '../blob/blob_store.dart';
@@ -10,7 +10,7 @@ import '../curator/screen_program_curator.dart';
 import '../persistence/database.dart';
 import 'rss_article_slide_timing.dart';
 
-Future<RssArticle?> _loadRandomArticle(
+Future<RssArticle?> _loadBestArticleForScreen(
   AppDatabase db,
   ParsedWidgetSpec spec,
 ) async {
@@ -19,12 +19,45 @@ Future<RssArticle?> _loadRandomArticle(
   if (feedId != null && feedId.isNotEmpty) {
     q.where((t) => t.feedId.equals(feedId));
   }
-  return (q
+  final articles = await (q
         ..orderBy([
-          (t) => OrderingTerm(expression: const CustomExpression('random()')),
+          (t) => OrderingTerm.desc(t.publishedAt),
+          (t) => OrderingTerm.desc(t.fetchedAt),
         ])
-        ..limit(1))
-      .getSingleOrNull();
+        ..limit(200))
+      .get();
+  if (articles.isEmpty) {
+    return null;
+  }
+
+  final imageKeys = <String>{
+    for (final a in articles)
+      if ((a.imageBlobKey ?? '').trim().isNotEmpty) a.imageBlobKey!.trim(),
+  };
+  final qualityByBlobKey = <String, int>{};
+  if (imageKeys.isNotEmpty) {
+    final blobs = await (db.select(db.blobMetadata)
+          ..where((t) => t.blobKey.isIn(imageKeys.toList())))
+        .get();
+    for (final b in blobs) {
+      qualityByBlobKey[b.blobKey] = b.bytes;
+    }
+  }
+
+  articles.sort((a, b) {
+    final aKey = (a.imageBlobKey ?? '').trim();
+    final bKey = (b.imageBlobKey ?? '').trim();
+    final aScore = aKey.isEmpty ? 0 : (qualityByBlobKey[aKey] ?? 0);
+    final bScore = bKey.isEmpty ? 0 : (qualityByBlobKey[bKey] ?? 0);
+    if (aScore != bScore) {
+      return bScore.compareTo(aScore);
+    }
+    if (a.publishedAt != b.publishedAt) {
+      return b.publishedAt.compareTo(a.publishedAt);
+    }
+    return b.fetchedAt.compareTo(a.fetchedAt);
+  });
+  return articles.first;
 }
 
 Future<Uint8List?> _loadArticleImageBytes(
@@ -127,7 +160,7 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
   }
 
   Future<void> _bootstrap() async {
-    final article = await _loadRandomArticle(widget.db, widget.spec);
+    final article = await _loadBestArticleForScreen(widget.db, widget.spec);
     Uint8List? bytes;
     if (article != null) {
       bytes = await _loadArticleImageBytes(widget.db, widget.blobs, article);

@@ -232,26 +232,21 @@ class _MonthGridPanel extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Expanded(
-          child: Column(
-            children: [
-              for (var r = 0; r < cells.length ~/ 7; r++)
-                Expanded(
-                  child: Row(
-                    children: [
-                      for (var c = 0; c < 7; c++)
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.all(3),
-                            child: _MonthDayCell(
-                              cell: cells[r * 7 + c],
-                              theme: theme,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-            ],
+          child: GridView.builder(
+            physics: const NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 7,
+              crossAxisSpacing: 6,
+              mainAxisSpacing: 6,
+            ),
+            itemCount: cells.length,
+            itemBuilder: (context, index) {
+              return _MonthDayCell(
+                cell: cells[index],
+                theme: theme,
+              );
+            },
           ),
         ),
       ],

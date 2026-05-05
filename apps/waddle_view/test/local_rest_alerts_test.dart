@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -6,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:waddle_view/alerts/drift_alert_repository.dart';
 import 'package:waddle_view/api/deployment_api_key_source.dart';
 import 'package:waddle_view/api/local_rest_server.dart';
+import 'package:waddle_view/secrets/in_memory_secret_store.dart';
 import 'package:waddle_view/ticker/memory_ticker_curated_repository.dart';
 import 'helpers/memory_database.dart';
 
@@ -22,6 +24,10 @@ void main() {
       alerts: alerts,
       keys: keys,
       ticker: ticker,
+      secrets: InMemorySecretStore(),
+      onConfigChanged: () async {},
+      keyFile: await _tempKeyFile('k'),
+      setupScreenId: 'admin_setup',
     );
     final server = await LocalRestServer.bind(handler: handler, port: 0);
     try {
@@ -47,4 +53,11 @@ void main() {
       await db.close();
     }
   });
+}
+
+Future<File> _tempKeyFile(String value) async {
+  final dir = await Directory.systemTemp.createTemp('wv_rest_test_');
+  final file = File('${dir.path}/waddle_api.key');
+  await file.writeAsString('$value\n', flush: true);
+  return file;
 }

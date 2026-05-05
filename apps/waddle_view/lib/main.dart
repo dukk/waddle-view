@@ -12,6 +12,7 @@ import 'alerts/alert_overlay_host.dart';
 import 'alerts/drift_alert_repository.dart';
 import 'api/deployment_api_key_source.dart';
 import 'api/local_rest_server.dart';
+import 'api/network_addressing.dart';
 import 'blob/blob_store.dart';
 import 'blob/filesystem_blob_store.dart';
 import 'clock.dart';
@@ -50,11 +51,13 @@ Future<void> main() async {
   final support = await getApplicationSupportDirectory();
   AppDebugLog.startup('app support directory: ${support.path}');
   final keyFile = File(p.join(support.path, 'waddle_api.key'));
+  var createdDeploymentKey = false;
   if (!await keyFile.exists()) {
     final rnd = Random.secure();
     final bytes = List<int>.generate(32, (_) => rnd.nextInt(256));
     final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
     await keyFile.writeAsString('$hex\n', flush: true);
+    createdDeploymentKey = true;
   }
   final mediaDir = Directory(p.join(support.path, 'media'));
   if (!await mediaDir.exists()) {
@@ -63,6 +66,26 @@ Future<void> main() async {
 
   final db = AppDatabase(createQueryExecutor());
   await ensureInitialSeed(db);
+  if (createdDeploymentKey) {
+    await db.into(db.dashboardKv).insertOnConflictUpdate(
+          DashboardKvCompanion.insert(
+            key: kAdminBootstrapDoneKvKey,
+            value: '0',
+          ),
+        );
+  } else {
+    final existing = await (db.select(db.dashboardKv)
+          ..where((t) => t.key.equals(kAdminBootstrapDoneKvKey)))
+        .getSingleOrNull();
+    if (existing == null) {
+      await db.into(db.dashboardKv).insertOnConflictUpdate(
+            DashboardKvCompanion.insert(
+              key: kAdminBootstrapDoneKvKey,
+              value: '1',
+            ),
+          );
+    }
+  }
   AppDebugLog.startup('SQLite ready (seed applied if first run)');
 
   final secrets = FlutterSecureSecretStore();
@@ -108,16 +131,22 @@ Future<void> main() async {
 
   final alerts = DriftAlertRepository(db);
   final keys = FileDeploymentApiKeySource(keyFile);
+  final httpConfig = await resolveHttpBindConfig();
   final handler = buildRootHandler(
     db: db,
     alerts: alerts,
     keys: keys,
     ticker: tickerCurated,
+    secrets: secrets,
+    onConfigChanged: dashboardCurator.refresh,
+    keyFile: keyFile,
+    setupScreenId: 'admin_setup',
   );
   final server = await LocalRestServer.bind(
     handler: handler,
-    address: InternetAddress.loopbackIPv4,
-    port: 8787,
+    address: httpConfig.address,
+    port: httpConfig.port,
+    displayHost: httpConfig.displayHost,
   );
   AppDebugLog.startup('REST listening at ${server.baseUrl}');
 
@@ -140,6 +169,7 @@ Future<void> main() async {
       blobs: blobs,
       alerts: alerts,
       server: server,
+      setupPasswordFile: keyFile,
       engine: engine,
       tickerCurated: tickerCurated,
       marqueeCycleGate: marqueeCycleGate,
@@ -154,6 +184,7 @@ class WaddleRoot extends StatelessWidget {
     required this.blobs,
     required this.alerts,
     required this.server,
+    required this.setupPasswordFile,
     required this.engine,
     required this.tickerCurated,
     required this.marqueeCycleGate,
@@ -163,6 +194,7 @@ class WaddleRoot extends StatelessWidget {
   final BlobStore blobs;
   final DriftAlertRepository alerts;
   final LocalRestServer server;
+  final File setupPasswordFile;
   final DataCollectionEngine engine;
   final MemoryTickerCuratedRepository tickerCurated;
   final MarqueeCycleGate marqueeCycleGate;
@@ -186,6 +218,7 @@ class WaddleRoot extends StatelessWidget {
         blobs: blobs,
         alerts: alerts,
         server: server,
+        setupPasswordFile: setupPasswordFile,
         engine: engine,
         tickerCurated: tickerCurated,
         marqueeCycleGate: marqueeCycleGate,
@@ -201,6 +234,7 @@ class WaddleHome extends StatefulWidget {
     required this.blobs,
     required this.alerts,
     required this.server,
+    required this.setupPasswordFile,
     required this.engine,
     required this.tickerCurated,
     required this.marqueeCycleGate,
@@ -210,6 +244,7 @@ class WaddleHome extends StatefulWidget {
   final BlobStore blobs;
   final AlertRepository alerts;
   final LocalRestServer server;
+  final File setupPasswordFile;
   final DataCollectionEngine engine;
   final MemoryTickerCuratedRepository tickerCurated;
   final MarqueeCycleGate marqueeCycleGate;
@@ -242,6 +277,8 @@ class _WaddleHomeState extends State<WaddleHome> {
             db: widget.db,
             blobs: widget.blobs,
             localRestBaseUrl: widget.server.baseUrl,
+            adminBaseUrl: widget.server.displayBaseUrl,
+            setupPasswordFile: widget.setupPasswordFile,
           ),
           ticker: _KvAwareMarquee(
             db: widget.db,

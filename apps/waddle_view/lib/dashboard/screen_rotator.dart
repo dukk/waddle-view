@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:drift/drift.dart' show OrderingTerm;
@@ -14,11 +15,54 @@ import '../persistence/tables.dart';
 import 'analog_clock_slide_widget.dart';
 import 'calendar_month_slide_widget.dart';
 import 'digital_clock_slide_widget.dart';
+import 'admin_setup_slide_widget.dart';
 import 'guest_wifi_slide_widget.dart';
 import 'joke_slide_widget.dart';
 import 'local_api_slide_widget.dart';
 import 'rss_article_slide_widget.dart';
 import 'trivia_slide_widget.dart';
+
+const String _requireNewsPhotoForCurationKvKey =
+    'curator.news.require_photo_for_curation';
+
+bool _isTruthyFlag(String? raw, {required bool defaultValue}) {
+  if (raw == null) {
+    return defaultValue;
+  }
+  final normalized = raw.trim().toLowerCase();
+  if (normalized.isEmpty) {
+    return defaultValue;
+  }
+  if (normalized == '1' ||
+      normalized == 'true' ||
+      normalized == 'yes' ||
+      normalized == 'on') {
+    return true;
+  }
+  if (normalized == '0' ||
+      normalized == 'false' ||
+      normalized == 'no' ||
+      normalized == 'off') {
+    return false;
+  }
+  return defaultValue;
+}
+
+bool _isNewsRssLayout(String layoutJson) {
+  final widgets = parseScreenLayoutWidgets(layoutJson);
+  return widgets.any((w) => w.type == 'rss_article');
+}
+
+List<ScreenCandidate> filterNewsCandidatesByPhotoRequirement({
+  required List<ScreenCandidate> candidates,
+  required bool requirePhotoForNewsCuration,
+  required bool hasNewsPhotoData,
+}) {
+  if (!requirePhotoForNewsCuration || hasNewsPhotoData) {
+    return candidates;
+  }
+  return candidates.where((c) => !_isNewsRssLayout(c.layoutJson)).toList();
+}
 
 String screenShownDebugLogLine({
   required String reason,
@@ -42,12 +86,16 @@ class ScreenRotator extends StatefulWidget {
     required this.db,
     required this.blobs,
     required this.localRestBaseUrl,
+    required this.adminBaseUrl,
+    required this.setupPasswordFile,
   });
 
   final AppDatabase db;
   final BlobStore blobs;
   /// Bound loopback base URL for the in-process REST server (e.g. `http://127.0.0.1:8787`).
   final String localRestBaseUrl;
+  final String adminBaseUrl;
+  final File setupPasswordFile;
 
   @override
   State<ScreenRotator> createState() => _ScreenRotatorState();
@@ -101,11 +149,23 @@ class _ScreenRotatorState extends State<ScreenRotator>
             .getSingleOrNull();
     final programMs = set?.programDurationMs ?? 180000;
     final historyDepth = set?.historyDepth ?? 5;
+    final kvRows = await widget.db.select(widget.db.dashboardKv).get();
+    final kvByKey = {for (final row in kvRows) row.key: row.value};
+    final requireNewsPhotoForCuration = _isTruthyFlag(
+      kvByKey[_requireNewsPhotoForCurationKvKey],
+      defaultValue: true,
+    );
 
     final blobs = await widget.db.select(widget.db.blobMetadata).get();
     final pools = <String, List<String>>{
       if (blobs.isNotEmpty) 'blobs': blobs.map((e) => e.blobKey).toList(),
     };
+    final firstArticleWithImageKey = await (widget.db.select(widget.db.rssArticles)
+          ..where((t) => t.imageBlobKey.isNotNull())
+          ..limit(1))
+        .getSingleOrNull();
+    final hasNewsPhotoData =
+        (firstArticleWithImageKey?.imageBlobKey?.trim().isNotEmpty ?? false);
     final dataKeyLimitRows =
         await widget.db.select(widget.db.curatorDataKeyProgramLimits).get();
     final dataKeyLimits = <String, DataKeyProgramLimit>{};
@@ -131,9 +191,14 @@ class _ScreenRotatorState extends State<ScreenRotator>
           ),
         )
         .toList();
+    final filteredCandidates = filterNewsCandidatesByPhotoRequirement(
+      candidates: candidates,
+      requirePhotoForNewsCuration: requireNewsPhotoForCuration,
+      hasNewsPhotoData: hasNewsPhotoData,
+    );
 
     final program = ScreenProgramCurator.buildProgram(
-      screens: candidates,
+      screens: filteredCandidates,
       programDurationMs: programMs,
       recentScreenIdsOldestFirst: List<String>.from(_recentScreenIds),
       historyDepth: historyDepth,
@@ -273,6 +338,8 @@ class _ScreenRotatorState extends State<ScreenRotator>
                 db: widget.db,
                 blobs: widget.blobs,
                 localRestBaseUrl: widget.localRestBaseUrl,
+                adminBaseUrl: widget.adminBaseUrl,
+                setupPasswordFile: widget.setupPasswordFile,
                 slide: outgoing,
                 theme: theme,
                 slideIndex: _index > 0 ? _index - 1 : 0,
@@ -291,6 +358,8 @@ class _ScreenRotatorState extends State<ScreenRotator>
                     db: widget.db,
                     blobs: widget.blobs,
                     localRestBaseUrl: widget.localRestBaseUrl,
+                    adminBaseUrl: widget.adminBaseUrl,
+                    setupPasswordFile: widget.setupPasswordFile,
                     slide: incoming,
                     theme: theme,
                     slideIndex: _index,
@@ -309,6 +378,8 @@ class _SlideContent extends StatelessWidget {
     required this.db,
     required this.blobs,
     required this.localRestBaseUrl,
+    required this.adminBaseUrl,
+    required this.setupPasswordFile,
     required this.slide,
     required this.theme,
     required this.slideIndex,
@@ -318,6 +389,8 @@ class _SlideContent extends StatelessWidget {
   final AppDatabase db;
   final BlobStore blobs;
   final String localRestBaseUrl;
+  final String adminBaseUrl;
+  final File setupPasswordFile;
   final ResolvedSlide slide;
   final ThemeData theme;
   final int slideIndex;
@@ -441,6 +514,14 @@ class _SlideContent extends StatelessWidget {
           case 'local_api':
             return LocalApiSlideWidget(
               baseUrl: localRestBaseUrl,
+              spec: w,
+              theme: theme,
+            );
+          case 'admin_setup':
+            return AdminSetupSlideWidget(
+              db: db,
+              adminBaseUrl: adminBaseUrl,
+              setupPasswordFile: setupPasswordFile,
               spec: w,
               theme: theme,
             );
