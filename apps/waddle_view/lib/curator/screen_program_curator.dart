@@ -58,7 +58,7 @@ class ScreenProgramCurator {
       return const [];
     }
 
-    final window = _historyWindow(recentScreenIdsOldestFirst, historyDepth);
+    final window = historyWindowSlice(recentScreenIdsOldestFirst, historyDepth);
 
     var remaining = programDurationMs;
     final out = <ResolvedSlide>[];
@@ -90,7 +90,8 @@ class ScreenProgramCurator {
     return out;
   }
 
-  static List<String> _historyWindow(List<String> full, int depth) {
+  /// Last [depth] ids from [full] (oldest → newest), used for weighting and logs.
+  static List<String> historyWindowSlice(List<String> full, int depth) {
     if (depth <= 0 || full.isEmpty) {
       return const [];
     }
@@ -98,6 +99,48 @@ class ScreenProgramCurator {
       return List<String>.from(full);
     }
     return full.sublist(full.length - depth);
+  }
+
+  /// Debug-only friendly lines (caller should gate with [kDebugMode]).
+  static List<String> curatedProgramDebugLogLines({
+    required List<ResolvedSlide> program,
+    required int programDurationMs,
+    required int historyDepth,
+    required List<String> recentScreenIdsOldestFirst,
+  }) {
+    final window =
+        historyWindowSlice(recentScreenIdsOldestFirst, historyDepth);
+    if (program.isEmpty) {
+      return [
+        'curated slides: 0 (programDurationMs=$programDurationMs, '
+            'historyDepth=$historyDepth, '
+            'weightWindow(oldest→newest)=$window)',
+      ];
+    }
+    final totalDwellMs = program.fold<int>(0, (a, s) => a + s.dwellMs);
+    final slideParts = <String>[];
+    for (var i = 0; i < program.length; i++) {
+      final s = program[i];
+      final choices = s.randomChoices.entries.map((e) => '${e.key}→${e.value}');
+      final choiceSuffix =
+          s.randomChoices.isEmpty ? '' : ' random={${choices.join(', ')}}';
+      slideParts.add('[$i] ${s.screenId} ${s.dwellMs}ms$choiceSuffix');
+    }
+    final lines = <String>[
+      'curated slides: ${program.length} (totalDwellMs=$totalDwellMs, '
+          'budgetMs=$programDurationMs, historyDepth=$historyDepth, '
+          'weightWindow(oldest→newest)=$window)',
+      slideParts.join('; '),
+    ];
+    for (var i = 1; i < program.length; i++) {
+      if (program[i].screenId == program[i - 1].screenId) {
+        lines.add(
+          'consecutive duplicate screenId="${program[i].screenId}" '
+          'at slide indices ${i - 1}→$i',
+        );
+      }
+    }
+    return lines;
   }
 
   static double _effectiveWeight(ScreenCandidate c, List<String> historyWindow) {

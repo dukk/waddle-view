@@ -25,4 +25,36 @@ void main() {
       expect(formatClockTime24(t), '00:00:00');
     });
   });
+
+  group('formatDigitalClockTime', () {
+    test('12h noon and midnight', () {
+      expect(
+        formatDigitalClockTime(
+          DateTime(2026, 5, 4, 0, 3, 0),
+          hour24: false,
+          showSeconds: false,
+        ),
+        '12:03 AM',
+      );
+      expect(
+        formatDigitalClockTime(
+          DateTime(2026, 5, 4, 12, 0, 0),
+          hour24: false,
+          showSeconds: false,
+        ),
+        '12:00 PM',
+      );
+    });
+
+    test('12h with seconds', () {
+      expect(
+        formatDigitalClockTime(
+          DateTime(2026, 5, 4, 23, 4, 9),
+          hour24: false,
+          showSeconds: true,
+        ),
+        '11:04:09 PM',
+      );
+    });
+  });
 }

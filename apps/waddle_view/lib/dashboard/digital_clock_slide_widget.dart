@@ -27,18 +27,65 @@ class _DigitalClockSlideWidgetState extends State<DigitalClockSlideWidget> {
   Timer? _timer;
   late DateTime _tick;
 
+  bool get _hour24 => widget.spec.config['hour24'] == true;
+
+  bool get _showSeconds => widget.spec.config['showSeconds'] == true;
+
   @override
   void initState() {
     super.initState();
     _tick = widget.clock.now().toLocal();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+    _armTimer();
+  }
+
+  void _armTimer() {
+    _timer?.cancel();
+    if (_showSeconds) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _tick = widget.clock.now().toLocal();
+        });
+      });
+      return;
+    }
+
+    void tick() {
       if (!mounted) {
         return;
       }
       setState(() {
         _tick = widget.clock.now().toLocal();
       });
-    });
+    }
+
+    void scheduleAligned() {
+      if (!mounted) {
+        return;
+      }
+      final local = widget.clock.now().toLocal();
+      final intoMinute = Duration(
+        seconds: local.second,
+        milliseconds: local.millisecond,
+        microseconds: local.microsecond,
+      );
+      final untilNext = const Duration(minutes: 1) - intoMinute;
+      _timer?.cancel();
+      if (untilNext.inMicroseconds <= 0) {
+        tick();
+        _timer = Timer.periodic(const Duration(minutes: 1), (_) => tick());
+      } else {
+        _timer = Timer(untilNext, () {
+          tick();
+          _timer?.cancel();
+          _timer = Timer.periodic(const Duration(minutes: 1), (_) => tick());
+        });
+      }
+    }
+
+    scheduleAligned();
   }
 
   @override
@@ -56,7 +103,11 @@ class _DigitalClockSlideWidgetState extends State<DigitalClockSlideWidget> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            formatClockTime24(local),
+            formatDigitalClockTime(
+              local,
+              hour24: _hour24,
+              showSeconds: _showSeconds,
+            ),
             style: (widget.theme.textTheme.displayLarge ??
                     widget.theme.textTheme.headlineLarge)
                 ?.copyWith(

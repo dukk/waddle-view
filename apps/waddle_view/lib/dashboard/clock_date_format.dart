@@ -28,10 +28,34 @@ String formatClockDate(DateTime local) {
   return '$w, $m ${local.day}, ${local.year}';
 }
 
-/// 24-hour time for digital clock signage.
-String formatClockTime24(DateTime local) {
-  final h = local.hour.toString().padLeft(2, '0');
+/// Local time for the digital clock slide.
+///
+/// [hour24]: 24-hour vs 12-hour with AM/PM.
+/// [showSeconds]: append `:ss` when true.
+String formatDigitalClockTime(
+  DateTime local, {
+  required bool hour24,
+  required bool showSeconds,
+}) {
+  if (hour24) {
+    final h = local.hour.toString().padLeft(2, '0');
+    final min = local.minute.toString().padLeft(2, '0');
+    if (showSeconds) {
+      final s = local.second.toString().padLeft(2, '0');
+      return '$h:$min:$s';
+    }
+    return '$h:$min';
+  }
+  final h12 = local.hour % 12 == 0 ? 12 : local.hour % 12;
+  final period = local.hour < 12 ? 'AM' : 'PM';
   final min = local.minute.toString().padLeft(2, '0');
-  final s = local.second.toString().padLeft(2, '0');
-  return '$h:$min:$s';
+  if (showSeconds) {
+    final s = local.second.toString().padLeft(2, '0');
+    return '$h12:$min:$s $period';
+  }
+  return '$h12:$min $period';
 }
+
+/// 24-hour time with seconds (legacy helper for tests and fixed-format use).
+String formatClockTime24(DateTime local) =>
+    formatDigitalClockTime(local, hour24: true, showSeconds: true);

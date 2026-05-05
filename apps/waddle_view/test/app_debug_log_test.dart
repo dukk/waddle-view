@@ -10,6 +10,7 @@ void main() {
     AppDebugLog.api('test api');
     AppDebugLog.window('test window');
     AppDebugLog.ticker('test ticker');
+    AppDebugLog.screen('test screen');
     AppDebugLog.engineFail('ctx', StateError('x'), StackTrace.current);
     AppDebugLog.curatorFail('ctx', StateError('y'), StackTrace.current);
   });

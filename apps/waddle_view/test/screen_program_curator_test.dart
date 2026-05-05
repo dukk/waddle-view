@@ -114,4 +114,52 @@ void main() {
     expect(w.single.type, 'static_text');
     expect(w.single.slot, 'main');
   });
+
+  test('historyWindowSlice returns oldest→newest tail', () {
+    expect(
+      ScreenProgramCurator.historyWindowSlice(
+        const ['a', 'b', 'c', 'd'],
+        2,
+      ),
+      const ['c', 'd'],
+    );
+    expect(
+      ScreenProgramCurator.historyWindowSlice(const ['a'], 5),
+      const ['a'],
+    );
+    expect(ScreenProgramCurator.historyWindowSlice(const [], 3), isEmpty);
+    expect(ScreenProgramCurator.historyWindowSlice(const ['x'], 0), isEmpty);
+  });
+
+  test('curatedProgramDebugLogLines describes slides and consecutive dupes', () {
+    final slides = ScreenProgramCurator.buildProgram(
+      screens: [
+        _c(id: 'a', dwellMs: 50000),
+      ],
+      programDurationMs: 100000,
+      recentScreenIdsOldestFirst: const ['x', 'y'],
+      historyDepth: 5,
+      random: Random(0),
+    );
+    final lines = ScreenProgramCurator.curatedProgramDebugLogLines(
+      program: slides,
+      programDurationMs: 100000,
+      historyDepth: 5,
+      recentScreenIdsOldestFirst: const ['x', 'y'],
+    );
+    expect(lines.length, greaterThanOrEqualTo(2));
+    expect(lines.first, contains('curated slides: 2'));
+    expect(lines.first, contains('weightWindow(oldest→newest)=[x, y]'));
+    expect(lines[1], contains('[0] a'));
+    expect(lines[1], contains('[1] a'));
+    expect(lines, contains('consecutive duplicate screenId="a" at slide indices 0→1'));
+
+    final emptyLines = ScreenProgramCurator.curatedProgramDebugLogLines(
+      program: const [],
+      programDurationMs: 1000,
+      historyDepth: 3,
+      recentScreenIdsOldestFirst: const [],
+    );
+    expect(emptyLines.single, contains('curated slides: 0'));
+  });
 }

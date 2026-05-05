@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:drift/drift.dart' show OrderingTerm;
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 
 import '../blob/blob_store.dart';
+import '../debug/app_debug_log.dart';
 import '../curator/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';
 import '../persistence/database.dart';
@@ -112,6 +114,17 @@ class _ScreenRotatorState extends State<ScreenRotator>
       random: _random,
       randomPools: pools,
     );
+
+    if (kDebugMode) {
+      for (final line in ScreenProgramCurator.curatedProgramDebugLogLines(
+        program: program,
+        programDurationMs: programMs,
+        historyDepth: historyDepth,
+        recentScreenIdsOldestFirst: List<String>.from(_recentScreenIds),
+      )) {
+        AppDebugLog.screen(line);
+      }
+    }
 
     if (!mounted) {
       return;

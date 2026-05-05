@@ -20,6 +20,9 @@ abstract final class AppDebugLog {
 
   static void ticker(String message) => _line('Ticker', message);
 
+  /// Slide program from [ScreenRotator] / [ScreenProgramCurator].
+  static void screen(String message) => _line('Screen', message);
+
   static void engineFail(String context, Object error, StackTrace stack) {
     if (!kDebugMode) {
       return;
