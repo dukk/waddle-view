@@ -62,6 +62,10 @@ void main() {
       );
       expect(ts.statusCode, 200);
       expect(ts.body, contains('"id":"a"'));
+      expect(ts.body, contains('"dwell_seconds":10'));
+      expect(ts.body, contains('"min_gap_between_shows_seconds":0'));
+      expect(ts.body, isNot(contains('"dwell_ms"')));
+      expect(ts.body, isNot(contains('"min_gap_between_shows_ms"')));
       expect(ts.body, contains('"min_placements_per_program":1'));
       expect(ts.body, contains('"max_placements_per_program":3'));
       expect(ts.body, contains('"data_key":"shared_news"'));

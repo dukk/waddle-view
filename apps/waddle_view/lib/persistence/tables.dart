@@ -53,9 +53,9 @@ class ScreenDefinitions extends Table {
   BoolColumn get enabled => boolean().withDefault(const Constant(true))();
   TextColumn get layoutJson =>
       text().withDefault(const Constant('{"v":1,"layout":"single","widgets":[]}'))();
-  IntColumn get dwellMs => integer().withDefault(const Constant(10000))();
+  IntColumn get dwellSeconds => integer().withDefault(const Constant(10))();
   IntColumn get frequencyWeight => integer().withDefault(const Constant(100))();
-  IntColumn get minGapBetweenShowsMs =>
+  IntColumn get minGapBetweenShowsSeconds =>
       integer().withDefault(const Constant(0))();
   IntColumn get minPlacementsPerProgram =>
       integer().withDefault(const Constant(0))();
@@ -80,8 +80,8 @@ class CuratorDataKeyProgramLimits extends Table {
 /// Single app row (id = [kCuratorSettingsId]) for screen program parameters.
 class CuratorSettings extends Table {
   TextColumn get id => text()();
-  IntColumn get programDurationMs =>
-      integer().withDefault(const Constant(180000))();
+  IntColumn get programDurationSeconds =>
+      integer().withDefault(const Constant(180))();
   IntColumn get historyDepth => integer().withDefault(const Constant(5))();
 
   @override

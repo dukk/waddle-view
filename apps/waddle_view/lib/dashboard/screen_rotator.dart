@@ -148,7 +148,7 @@ class _ScreenRotatorState extends State<ScreenRotator>
         await (widget.db.select(widget.db.curatorSettings)
               ..where((t) => t.id.equals(kCuratorSettingsId)))
             .getSingleOrNull();
-    final programMs = set?.programDurationMs ?? 180000;
+    final programMs = (set?.programDurationSeconds ?? 180) * 1000;
     final historyDepth = set?.historyDepth ?? 5;
     final kvRows = await widget.db.select(widget.db.dashboardKv).get();
     final kvByKey = {for (final row in kvRows) row.key: row.value};
@@ -181,9 +181,9 @@ class _ScreenRotatorState extends State<ScreenRotator>
         .map(
           (r) => ScreenCandidate(
             id: r.id,
-            dwellMs: r.dwellMs,
+            dwellMs: r.dwellSeconds * 1000,
             frequencyWeight: r.frequencyWeight,
-            minGapBetweenShowsMs: r.minGapBetweenShowsMs,
+            minGapBetweenShowsMs: r.minGapBetweenShowsSeconds * 1000,
             minPlacementsPerProgram: r.minPlacementsPerProgram,
             maxPlacementsPerProgram: r.maxPlacementsPerProgram,
             dataKey: r.dataKey,

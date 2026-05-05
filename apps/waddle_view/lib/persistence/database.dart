@@ -37,7 +37,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -134,6 +134,32 @@ CREATE TABLE IF NOT EXISTS category_icons (
         await customStatement(
           'CREATE INDEX IF NOT EXISTS idx_category_icons_blob_key '
           'ON category_icons(blob_key);',
+        );
+      }
+      if (from < 14) {
+        await customStatement(
+          'ALTER TABLE screen_definitions RENAME COLUMN dwell_ms TO dwell_seconds;',
+        );
+        await customStatement(
+          'ALTER TABLE screen_definitions RENAME COLUMN min_gap_between_shows_ms TO min_gap_between_shows_seconds;',
+        );
+        await customStatement(
+          'ALTER TABLE curator_settings RENAME COLUMN program_duration_ms TO program_duration_seconds;',
+        );
+        await customStatement(
+          'UPDATE screen_definitions SET dwell_seconds = CASE '
+          'WHEN dwell_seconds <= 0 THEN 1 '
+          'ELSE CAST((dwell_seconds + 999) / 1000 AS INTEGER) END;',
+        );
+        await customStatement(
+          'UPDATE screen_definitions SET min_gap_between_shows_seconds = CASE '
+          'WHEN min_gap_between_shows_seconds <= 0 THEN 0 '
+          'ELSE CAST((min_gap_between_shows_seconds + 999) / 1000 AS INTEGER) END;',
+        );
+        await customStatement(
+          'UPDATE curator_settings SET program_duration_seconds = CASE '
+          'WHEN program_duration_seconds <= 0 THEN 1 '
+          'ELSE CAST((program_duration_seconds + 999) / 1000 AS INTEGER) END;',
         );
       }
     },

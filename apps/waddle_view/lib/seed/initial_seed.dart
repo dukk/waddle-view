@@ -101,7 +101,7 @@ Future<void> _ensureWelcomeScreen(AppDatabase db) async {
           layoutJson: const Value(
             '{"v":1,"layout":"single","widgets":[{"type":"static_text","slot":"main","config":{"text":"Welcome to Waddle View"}}]}',
           ),
-          dwellMs: const Value(10000),
+          dwellSeconds: const Value(10),
         ),
       );
 }
@@ -121,7 +121,7 @@ Future<void> _ensureJokeScreen(AppDatabase db) async {
           layoutJson: const Value(
             '{"v":1,"layout":"single","widgets":[{"type":"joke","slot":"main","config":{}}]}',
           ),
-          dwellMs: const Value(12000),
+          dwellSeconds: const Value(12),
         ),
       );
 }
@@ -141,7 +141,7 @@ Future<void> _ensureTriviaScreen(AppDatabase db) async {
           layoutJson: const Value(
             '{"v":1,"layout":"single","widgets":[{"type":"trivia","slot":"main","config":{}}]}',
           ),
-          dwellMs: const Value(16000),
+          dwellSeconds: const Value(16),
         ),
       );
 }
@@ -161,7 +161,7 @@ Future<void> _ensureGuestWifiScreen(AppDatabase db) async {
           layoutJson: const Value(
             '{"v":1,"layout":"single","widgets":[{"type":"guest_wifi","slot":"main","config":{}}]}',
           ),
-          dwellMs: const Value(18000),
+          dwellSeconds: const Value(18),
         ),
       );
 }
@@ -181,7 +181,7 @@ Future<void> _ensureNewsScreen(AppDatabase db) async {
           layoutJson: const Value(
             '{"v":1,"layout":"single","widgets":[{"type":"rss_article","slot":"main","config":{"scrollDelayMs":2500,"trailingHoldMs":2000,"scrollPixelsPerSecond":48,"minReadMs":8000}}]}',
           ),
-          dwellMs: const Value(12000),
+          dwellSeconds: const Value(12),
         ),
       );
 }
@@ -220,7 +220,7 @@ Future<void> _ensureClockDigitalScreen(AppDatabase db) async {
           layoutJson: const Value(
             '{"v":1,"layout":"single","widgets":[{"type":"digital_clock","slot":"main","config":{}}]}',
           ),
-          dwellMs: const Value(16000),
+          dwellSeconds: const Value(16),
           dataKey: const Value('clock'),
           minPlacementsPerProgram: const Value(0),
           maxPlacementsPerProgram: const Value(1),
@@ -252,7 +252,7 @@ Future<void> _ensureClockAnalogScreen(AppDatabase db) async {
           layoutJson: const Value(
             '{"v":1,"layout":"single","widgets":[{"type":"analog_clock","slot":"main","config":{}}]}',
           ),
-          dwellMs: const Value(16000),
+          dwellSeconds: const Value(16),
           dataKey: const Value('clock'),
           minPlacementsPerProgram: const Value(0),
           maxPlacementsPerProgram: const Value(1),
@@ -272,12 +272,12 @@ Future<void> _ensureCalendarScreen(AppDatabase db) async {
           id: 'calendar',
           name: 'Calendar',
           description: const Value(
-            'Month view with upcoming events; increase dwell_ms when many events need air time',
+            'Month view with upcoming events; increase dwell_seconds when many events need air time',
           ),
           layoutJson: const Value(
             '{"v":1,"layout":"single","widgets":[{"type":"calendar_month","slot":"main","config":{}}]}',
           ),
-          dwellMs: const Value(22000),
+          dwellSeconds: const Value(22),
         ),
       );
 }
@@ -300,7 +300,7 @@ Future<void> _ensureLocalApiScreen(AppDatabase db) async {
           layoutJson: const Value(
             '{"v":1,"layout":"single","widgets":[{"type":"local_api","slot":"main","config":{}}]}',
           ),
-          dwellMs: const Value(16000),
+          dwellSeconds: const Value(16),
         ),
       );
 }
@@ -323,9 +323,9 @@ Future<void> _ensureAdminSetupScreen(AppDatabase db) async {
           layoutJson: const Value(
             '{"v":1,"layout":"single","widgets":[{"type":"admin_setup","slot":"main","config":{}}]}',
           ),
-          dwellMs: const Value(18000),
+          dwellSeconds: const Value(18),
           frequencyWeight: const Value(200),
-          minGapBetweenShowsMs: const Value(0),
+          minGapBetweenShowsSeconds: const Value(0),
         ),
       );
 }
@@ -345,7 +345,7 @@ Future<void> _ensureWeatherScreen(AppDatabase db) async {
           layoutJson: const Value(
             '{"v":1,"layout":"single","widgets":[{"type":"weather","slot":"main","config":{"locationId":"salt_lake_city_ut"}}]}',
           ),
-          dwellMs: const Value(14000),
+          dwellSeconds: const Value(14),
         ),
       );
 }

@@ -92,9 +92,9 @@ Handler buildProtectedApiRouter({
             'description': e.description,
             'enabled': e.enabled,
             'layout_json': e.layoutJson,
-            'dwell_ms': e.dwellMs,
+            'dwell_seconds': e.dwellSeconds,
             'frequency_weight': e.frequencyWeight,
-            'min_gap_between_shows_ms': e.minGapBetweenShowsMs,
+            'min_gap_between_shows_seconds': e.minGapBetweenShowsSeconds,
             'min_placements_per_program': e.minPlacementsPerProgram,
             'max_placements_per_program': e.maxPlacementsPerProgram,
             'data_key': e.dataKey,
@@ -419,9 +419,9 @@ class _AdminServer {
 <td>${_h(s.id)}<input type="hidden" name="id" value="${_h(s.id)}"/></td>
 <td><input name="name" value="${_h(s.name)}"/></td>
 <td><input name="enabled" type="checkbox" ${s.enabled ? 'checked' : ''}/></td>
-<td><input name="dwell_ms" value="${s.dwellMs}"/></td>
+<td><input name="dwell_seconds" value="${s.dwellSeconds}"/></td>
 <td><input name="frequency_weight" value="${s.frequencyWeight}"/></td>
-<td><input name="min_gap_between_shows_ms" value="${s.minGapBetweenShowsMs}"/></td>
+<td><input name="min_gap_between_shows_seconds" value="${s.minGapBetweenShowsSeconds}"/></td>
 <td><button type="submit">Save</button></td>
 </form>
 </tr>
@@ -457,7 +457,7 @@ class _AdminServer {
 <h2>Curator</h2>
 <form method="post" action="/admin/update-curator">
 <input type="hidden" name="csrf" value="${session.csrfToken}"/>
-Program duration ms: <input name="program_duration_ms" value="${curator?.programDurationMs ?? 180000}"/><br/>
+Program duration seconds: <input name="program_duration_seconds" value="${curator?.programDurationSeconds ?? 180}"/><br/>
 History depth: <input name="history_depth" value="${curator?.historyDepth ?? 5}"/><br/>
 Require photo for news curation:
 <input name="require_news_photo_for_curation" type="checkbox" ${requireNewsPhotoForCuration != 'false' ? 'checked' : ''}/><br/>
@@ -532,19 +532,22 @@ $providerRows
       return Response.forbidden('csrf');
     }
     final id = form['id'] ?? '';
-    final dwellMs = int.tryParse(form['dwell_ms'] ?? '');
+    final dwellSeconds = int.tryParse(form['dwell_seconds'] ?? '');
     final weight = int.tryParse(form['frequency_weight'] ?? '');
-    final gap = int.tryParse(form['min_gap_between_shows_ms'] ?? '');
-    if (id.isEmpty || dwellMs == null || weight == null || gap == null) {
+    final gapSeconds = int.tryParse(form['min_gap_between_shows_seconds'] ?? '');
+    if (id.isEmpty ||
+        dwellSeconds == null ||
+        weight == null ||
+        gapSeconds == null) {
       return Response(400, body: 'invalid');
     }
     await (db.update(db.screenDefinitions)..where((t) => t.id.equals(id))).write(
       ScreenDefinitionsCompanion(
         name: Value(form['name'] ?? ''),
         enabled: Value(form.containsKey('enabled')),
-        dwellMs: Value(dwellMs),
+        dwellSeconds: Value(dwellSeconds),
         frequencyWeight: Value(weight),
-        minGapBetweenShowsMs: Value(gap),
+        minGapBetweenShowsSeconds: Value(gapSeconds),
       ),
     );
     await onConfigChanged();
@@ -556,7 +559,7 @@ $providerRows
     if (!_validCsrf(session, form)) {
       return Response.forbidden('csrf');
     }
-    final duration = int.tryParse(form['program_duration_ms'] ?? '');
+    final duration = int.tryParse(form['program_duration_seconds'] ?? '');
     final depth = int.tryParse(form['history_depth'] ?? '');
     if (duration == null || depth == null) {
       return Response(400, body: 'invalid');
@@ -564,7 +567,7 @@ $providerRows
     await db.into(db.curatorSettings).insertOnConflictUpdate(
           CuratorSettingsCompanion.insert(
             id: 'app',
-            programDurationMs: Value(duration),
+            programDurationSeconds: Value(duration),
             historyDepth: Value(depth),
           ),
         );
