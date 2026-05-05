@@ -28,3 +28,31 @@ See [`AGENTS.md`](../../AGENTS.md) and [`.cursor/rules/waddle-view-flutter.mdc`]
 ## Secret storage on Linux
 
 `flutter_secure_storage` expects **D-Bus** and a compatible **Secret Service** (e.g. gnome-keyring). Minimal images may lack this; document a fallback for your deployment rather than storing secrets in SQLite.
+
+## Joke data provider (OpenAI API key)
+
+The joke collector ([`JokeDataProvider`](../../apps/waddle_view/lib/data/providers/joke_data_provider.dart)) calls the OpenAI HTTP API using a bearer token. Tokens **must not** live in SQLite ([`AGENTS.md`](../../AGENTS.md)); they are merged at runtime by [`ProviderConfigResolver`](../../apps/waddle_view/lib/config/provider_config_resolver.dart) from the app’s [`SecretStore`](../../apps/waddle_view/lib/secrets/secret_store.dart) (in production this is [`FlutterSecureSecretStore`](../../apps/waddle_view/lib/secrets/flutter_secure_secret_store.dart)).
+
+| What | Value |
+|------|--------|
+| Provider id (also `provider_settings.id`) | `jokes` (see [`kJokeProviderId`](../../apps/waddle_view/lib/data/providers/joke_data_provider.dart)) |
+| Secret key string | `provider:access_token:jokes` (prefix [`ProviderConfigResolver.accessTokenKey`](../../apps/waddle_view/lib/config/provider_config_resolver.dart) + `:` + provider id) |
+| Secret value | Your OpenAI API key (for example `sk-…`) |
+| Non-secret config | `provider_settings` row for `jokes`: `base_url` (optional override; default API root is defined on the provider), `extra_json` for model and prompts — see seed and [`JokeProviderExtraConfig`](../../apps/waddle_view/lib/data/providers/joke_provider_extra_config.dart) |
+
+If no token is stored (null or empty), [`collect`](../../apps/waddle_view/lib/data/providers/joke_data_provider.dart) exits early and logs that the API token is missing.
+
+### How to set the key as a developer
+
+The UI does not yet expose a form for provider tokens. Recommended onboarding paths:
+
+1. **`.env` file (recommended)** — In [**debug**](../../apps/waddle_view/lib/config/dev_dotenv_secrets.dart) desktop/server builds only (not web), the app loads a dotenv file from disk and writes the token into [`SecretStore`](../../apps/waddle_view/lib/secrets/secret_store.dart) on startup. Copy [`dotenv.example`](../../apps/waddle_view/dotenv.example) to **`.env`** or **`.env.development`** in `apps/waddle_view/` (or add `assets/.env` / `assets/.env.development` in the same app directory). The first existing file in the [search order](../../apps/waddle_view/lib/config/dev_dotenv_secrets.dart) wins (`.env` before `.env.development`). Set either:
+   - **`OPENAI_API_KEY`** — usual OpenAI key name, or
+   - **`WADDLE_JOKES_ACCESS_TOKEN`** — if you need a different value than any global `OPENAI_API_KEY` in the same file.  
+   The file is [gitignored](../../.gitignore) (do not commit real keys). The app also looks for `apps/waddle_view/.env` when your shell’s current directory is the **monorepo root** (e.g. some IDE / `flutter run` setups). **Release** and **profile** builds do not read `.env` for this path.
+
+2. **One-off code** (fallback): call `SecretStore.write('provider:access_token:jokes', '<your-api-key>')` once using the same storage backend the app uses (for example a **temporary** debug-only call right after the store is created in [`main.dart`](../../apps/waddle_view/lib/main.dart)), run the app so the value is persisted, then **remove** that code so the secret is never committed.
+
+3. **Tests / fakes**: use [`InMemorySecretStore`](../../apps/waddle_view/lib/secrets/in_memory_secret_store.dart) and the same key; see [`provider_config_resolver_test.dart`](../../apps/waddle_view/test/provider_config_resolver_test.dart) and [`joke_data_provider_test.dart`](../../apps/waddle_view/test/data/joke_data_provider_test.dart).
+
+4. **Platform notes**: On Windows and Linux desktop, `flutter_secure_storage` persists secrets using the platform integration for that OS (see package docs). Headless Linux still needs a working Secret Service if you rely on this store; otherwise plan a deployment-specific way to populate secrets without putting them in SQLite.

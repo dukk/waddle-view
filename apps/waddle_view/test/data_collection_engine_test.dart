@@ -49,4 +49,36 @@ void main() {
     expect(p.count, 1);
     await db.close();
   });
+
+  test('onCycleComplete runs once per full provider round before idle', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.providerSettings).insert(
+          ProviderSettingsCompanion.insert(id: 'c', providerType: 'x'),
+        );
+    final secrets = InMemorySecretStore();
+    final resolver = ProviderConfigResolver(db, secrets);
+    final p = CountingProvider();
+    final ctx = DataWriteContextImpl(
+      db: db,
+      blobs: FakeBlobStore(),
+      secrets: secrets,
+      resolve: resolver.resolve,
+    );
+    var cycles = 0;
+    DataCollectionEngine? engineRef;
+    engineRef = DataCollectionEngine(
+      providers: [p],
+      context: ctx,
+      sleeper: CallbackSleeper(() => engineRef?.stop()),
+      idleBetweenCycles: const Duration(days: 1),
+      onCycleComplete: () async {
+        cycles++;
+      },
+    );
+    await engineRef.start();
+    expect(p.count, 1);
+    expect(cycles, 1);
+    await db.close();
+  });
 }

@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 
+import '../debug/app_debug_log.dart';
 import 'tables.dart';
 
 part 'database.g.dart';
@@ -16,17 +17,20 @@ part 'database.g.dart';
     BlobMetadata,
     DashboardAlerts,
     DashboardKv,
-    TickerScreens,
-    TickerConditionGroups,
-    TickerConditions,
-    TickerScreenRuntimes,
+    ScreenDefinitions,
+    CuratorSettings,
+    RssFeedSources,
+    RssArticles,
+    JokeCategories,
+    Jokes,
+    JokeGenerationBatches,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -39,6 +43,36 @@ FROM dashboard_alerts
 WHERE dismissed_at IS NULL
 ORDER BY priority DESC, created_at DESC;
 ''');
+    },
+    onUpgrade: (Migrator m, int from, int to) async {
+      if (from < 6) {
+        await customStatement('DROP TABLE IF EXISTS ticker_conditions;');
+        await customStatement('DROP TABLE IF EXISTS ticker_condition_groups;');
+        await customStatement('DROP TABLE IF EXISTS ticker_screen_runtimes;');
+        await customStatement('DROP TABLE IF EXISTS ticker_screens;');
+        await customStatement('DROP TABLE IF EXISTS ticker_curated_items;');
+      }
+      if (from < 3) {
+        await m.createTable(rssFeedSources);
+        await m.createTable(rssArticles);
+      }
+      if (from < 6) {
+        await m.createTable(screenDefinitions);
+        await m.createTable(curatorSettings);
+      }
+      if (from < 7) {
+        await m.createTable(jokeCategories);
+        await m.createTable(jokes);
+      }
+      if (from < 8) {
+        await customStatement(
+          'ALTER TABLE joke_categories ADD COLUMN min_jokes INTEGER NOT NULL DEFAULT 10',
+        );
+        await customStatement(
+          'ALTER TABLE joke_categories ADD COLUMN max_jokes INTEGER NOT NULL DEFAULT 100',
+        );
+        await m.createTable(jokeGenerationBatches);
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON;');
@@ -54,6 +88,7 @@ QueryExecutor createQueryExecutor() {
     }
     final dir = await getApplicationSupportDirectory();
     final file = File(p.join(dir.path, 'waddle_view.sqlite'));
+    AppDebugLog.startup('SQLite database file: ${file.path}');
     return NativeDatabase.createInBackground(file);
   });
 }

@@ -1,0 +1,14 @@
+# Copy this file to `.env` or `.env.development` in the same directory (or under `assets/`).
+# `.env` is gitignored — do not commit real keys.
+#
+# The joke data provider uses the same SecretStore key as manual setup:
+#   provider:access_token:jokes
+#
+# In debug builds only, values here are written into SecretStore on startup
+# (see `lib/config/dev_dotenv_secrets.dart`).
+
+# Standard name (used if WADDLE_JOKES_ACCESS_TOKEN is unset)
+OPENAI_API_KEY=sk-your-key-here
+
+# Optional: set this to use a different key for Waddle than OPENAI_API_KEY
+# WADDLE_JOKES_ACCESS_TOKEN=sk-your-key-here

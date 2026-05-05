@@ -4,16 +4,18 @@ import 'package:http/http.dart' as http;
 import 'package:waddle_view/alerts/drift_alert_repository.dart';
 import 'package:waddle_view/api/deployment_api_key_source.dart';
 import 'package:waddle_view/api/local_rest_server.dart';
+import 'package:waddle_view/curator/ticker_item.dart';
 import 'package:waddle_view/persistence/database.dart';
+import 'package:waddle_view/ticker/memory_ticker_curated_repository.dart';
 
 import 'helpers/memory_database.dart';
 
 void main() {
-  test('GET ticker screens and alerts list', () async {
+  test('GET screens and alerts list', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.tickerScreens).insert(
-          TickerScreensCompanion.insert(id: 'a'),
+    await db.into(db.screenDefinitions).insert(
+          ScreenDefinitionsCompanion.insert(id: 'a', name: 'Screen A'),
         );
     await db.into(db.dashboardAlerts).insert(
           DashboardAlertsCompanion.insert(
@@ -24,19 +26,61 @@ void main() {
         );
     final alerts = DriftAlertRepository(db);
     final keys = FakeDeploymentApiKeySource('k');
-    final handler = buildRootHandler(db: db, alerts: alerts, keys: keys);
+    final ticker = MemoryTickerCuratedRepository();
+    addTearDown(ticker.dispose);
+    final handler = buildRootHandler(
+      db: db,
+      alerts: alerts,
+      keys: keys,
+      ticker: ticker,
+    );
     final server = await LocalRestServer.bind(handler: handler, port: 0);
     try {
       final ts = await http.get(
-        Uri.parse('${server.baseUrl}/v1/ticker/screens'),
+        Uri.parse('${server.baseUrl}/v1/screens'),
         headers: {'x-api-key': 'k'},
       );
       expect(ts.statusCode, 200);
+      expect(ts.body, contains('"id":"a"'));
       final al = await http.get(
         Uri.parse('${server.baseUrl}/v1/alerts'),
         headers: {'x-api-key': 'k'},
       );
       expect(al.statusCode, 200);
+    } finally {
+      await server.close();
+      await db.close();
+    }
+  });
+
+  test('GET ticker items returns ordered bodies from memory repo', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final ticker = MemoryTickerCuratedRepository();
+    addTearDown(ticker.dispose);
+    await ticker.replaceAll([
+      const TickerItem(kind: 'time', body: '12:00:00'),
+      const TickerItem(kind: 'news', body: 'N'),
+    ]);
+    final alerts = DriftAlertRepository(db);
+    final keys = FakeDeploymentApiKeySource('k');
+    final handler = buildRootHandler(
+      db: db,
+      alerts: alerts,
+      keys: keys,
+      ticker: ticker,
+    );
+    final server = await LocalRestServer.bind(handler: handler, port: 0);
+    try {
+      final res = await http.get(
+        Uri.parse('${server.baseUrl}/v1/ticker/items'),
+        headers: {'x-api-key': 'k'},
+      );
+      expect(res.statusCode, 200);
+      expect(res.body, contains('"body":"12:00:00"'));
+      expect(res.body, contains('"ordinal":0'));
+      expect(res.body, contains('"ordinal":1'));
+      expect(res.body, isNot(contains('source')));
     } finally {
       await server.close();
       await db.close();

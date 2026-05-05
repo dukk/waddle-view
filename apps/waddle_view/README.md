@@ -1,6 +1,6 @@
 # Waddle View
 
-Flutter **Linux** TV dashboard (Windows desktop supported for local development). Features: **Drift** SQLite, filesystem **blob** store, **SecretStore**, sequential **data collection** engine, **ticker** rotation, **overlay alerts** (optional QR), embedded **Shelf** REST API with per-deployment API key.
+Flutter **Linux** TV dashboard (Windows desktop supported for local development). Features: **Drift** SQLite, filesystem **blob** store, **SecretStore**, sequential **data collection** engine, **curated bottom ticker** (RTL marquee), **overlay alerts** (optional QR), embedded **Shelf** REST API with per-deployment API key.
 
 For module boundaries, startup order, and **Mermaid** sequence diagrams (startup, data collection, REST alerts, ticker), see **[`ARCHITECTURE.md`](ARCHITECTURE.md)**.
 
@@ -102,6 +102,12 @@ The dashboard placeholder text shows the bound **base URL** and reminds you to u
 - **GTK / libgtk-3** and typical Flutter Linux build deps (`clang`, `cmake`, `ninja-build`, `pkg-config`).
 - **Secret storage**: `flutter_secure_storage` uses the Secret Service / **libsecret** where available; headless images without D-Bus may need a documented fallback (see repo **`docs/pi/`**).
 - **Data**: SQLite and **`media/`** live under the application support directory (see `path_provider` on device).
+
+## Provider secrets (OpenAI / jokes)
+
+The joke data provider reads the OpenAI API key from **SecretStore**, not from `provider_settings`. Secret key: `provider:access_token:jokes` (provider id `jokes`).
+
+**Local onboarding:** copy **[`dotenv.example`](dotenv.example)** to **`.env`** in this directory and set **`OPENAI_API_KEY`** (or **`WADDLE_JOKES_ACCESS_TOKEN`**). In **debug** builds, the app loads that file and stores the token automatically (see [`lib/config/dev_dotenv_secrets.dart`](lib/config/dev_dotenv_secrets.dart)). Full detail, monorepo paths, and fallbacks: **[`docs/pi/development.md`](../../docs/pi/development.md#joke-data-provider-openai-api-key)**.
 
 ## Drift codegen
 

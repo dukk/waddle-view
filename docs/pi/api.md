@@ -22,7 +22,8 @@ If the key file is **missing or empty**, protected routes return **503** (`api_k
 |--------|------|--------|
 | GET | `/v1/health` | No API key required. |
 | GET | `/v1/providers` | Lists non-secret provider settings. |
-| GET | `/v1/ticker/screens` | Ticker screen rows. |
+| GET | `/v1/screens` | Display screen definitions from SQLite (`layout_json`, `dwell_ms`, scheduling hints). |
+| GET | `/v1/ticker/items` | Current bottom-marquee items (`ordinal`, `kind`, `body`) — in-process snapshot; read-only. |
 | GET | `/v1/alerts` | All alerts (no redaction of bodies in MVP; do not store secrets in alerts). |
 | POST | `/v1/alerts` | JSON body: `title`, `body`, optional `qr_payload`, `severity`, `priority`, `expires_at` (epoch ms). |
 | DELETE | `/v1/alerts/{id}` | Dismisses alert (`dismissed_at` set). |

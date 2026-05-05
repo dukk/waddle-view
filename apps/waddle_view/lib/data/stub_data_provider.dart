@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../debug/app_debug_log.dart';
 import '../persistence/database.dart';
 import 'data_provider.dart';
 import 'data_write_context.dart';
@@ -19,6 +20,24 @@ class StubDataProvider implements IDataProvider {
             value: 'Waddle View',
           ),
         );
+    await ctx.db.into(ctx.db.dashboardKv).insertOnConflictUpdate(
+          DashboardKvCompanion.insert(
+            key: 'ticker.marquee.weather',
+            value: '72°F · Sunny',
+          ),
+        );
+    await ctx.db.into(ctx.db.dashboardKv).insertOnConflictUpdate(
+          DashboardKvCompanion.insert(
+            key: 'ticker.marquee.news',
+            value: 'Local headlines refresh with each collect',
+          ),
+        );
+    await ctx.db.into(ctx.db.dashboardKv).insertOnConflictUpdate(
+          DashboardKvCompanion.insert(
+            key: 'ticker.marquee.quote',
+            value: 'WADDLE +1.2%',
+          ),
+        );
     final ref = await ctx.blobs.putBytes(
       const <int>[0x57, 0x41], // "WA"
       logicalKey: 'stub/ping',
@@ -33,5 +52,6 @@ class StubDataProvider implements IDataProvider {
         capturedAt: DateTime.now().millisecondsSinceEpoch,
       ),
     );
+    AppDebugLog.engine('StubDataProvider.collect finished');
   }
 }

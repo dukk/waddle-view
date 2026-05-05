@@ -1,0 +1,194 @@
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
+import 'package:drift/drift.dart';
+import 'package:http/http.dart' as http;
+
+import '../../blob/blob_store.dart';
+import '../../debug/app_debug_log.dart';
+import '../../persistence/database.dart';
+import '../data_provider.dart';
+import '../data_write_context.dart';
+import 'rss_feed_parsing.dart';
+
+String rssArticleId(String feedId, String stableItemKey) {
+  final h = sha256.convert(utf8.encode('$feedId\x00$stableItemKey'));
+  return h.toString();
+}
+
+class RssNewsDataProvider implements IDataProvider {
+  RssNewsDataProvider({http.Client? httpClient, int Function()? nowMs})
+    : _http = httpClient ?? http.Client(),
+      _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
+
+  final http.Client _http;
+  final int Function() _nowMs;
+
+  @override
+  String get id => 'rss';
+
+  @override
+  Future<void> collect(DataWriteContext ctx) async {
+    final now = _nowMs();
+    final feedRows = await (ctx.db.select(
+      ctx.db.rssFeedSources,
+    )..where((t) => t.enabled.equals(true))).get();
+    for (final feed in feedRows) {
+      final last = feed.lastFetchedAt;
+      final due =
+          last == null || (now - last) >= feed.pollSeconds * 1000;
+      if (!due) {
+        continue;
+      }
+      try {
+        final res = await _http.get(Uri.parse(feed.url));
+        if (res.statusCode != 200) {
+          AppDebugLog.engine(
+            'RssNewsDataProvider: fetch ${feed.url} status ${res.statusCode}',
+          );
+          continue;
+        }
+        // [parseRssOrAtomXml] normalizes item/channel text (entities, tags,
+        // non-printing characters) for display.
+        final parsed = parseRssOrAtomXml(res.body);
+        final title = parsed.channelTitle;
+        if (title != null && title.isNotEmpty) {
+          await (ctx.db.update(
+            ctx.db.rssFeedSources,
+          )..where((t) => t.id.equals(feed.id))).write(
+            RssFeedSourcesCompanion(title: Value(title)),
+          );
+        }
+        for (final e in parsed.entries) {
+          await _upsertArticle(
+            ctx,
+            feedId: feed.id,
+            entry: e,
+            now: now,
+          );
+        }
+        await _pruneFeedArticles(ctx, feed.id, feed.maxArticles);
+        await (ctx.db.update(
+          ctx.db.rssFeedSources,
+        )..where((t) => t.id.equals(feed.id))).write(
+          RssFeedSourcesCompanion(lastFetchedAt: Value(now)),
+        );
+      } on Object catch (e, st) {
+        AppDebugLog.engineFail('RssNewsDataProvider feed ${feed.id}', e, st);
+      }
+    }
+  }
+
+  Future<void> _upsertArticle(
+    DataWriteContext ctx, {
+    required String feedId,
+    required ParsedFeedEntry entry,
+    required int now,
+  }) async {
+    final articleId = rssArticleId(feedId, entry.stableKey);
+    final existing = await (ctx.db.select(
+      ctx.db.rssArticles,
+    )..where((t) => t.id.equals(articleId))).getSingleOrNull();
+    var imageKey = existing?.imageBlobKey;
+    if (entry.imageUrl != null &&
+        entry.imageUrl!.isNotEmpty &&
+        imageKey == null) {
+      imageKey = await _downloadAndStoreImage(
+        ctx,
+        feedId: feedId,
+        articleId: articleId,
+        imageUrl: entry.imageUrl!,
+      );
+    }
+
+    await ctx.db.into(ctx.db.rssArticles).insertOnConflictUpdate(
+          RssArticlesCompanion.insert(
+            id: articleId,
+            feedId: feedId,
+            guid: entry.stableKey,
+            title: entry.title,
+            link: entry.link,
+            summary: Value(entry.summary),
+            publishedAt: entry.publishedAtMs,
+            fetchedAt: now,
+            imageBlobKey: Value(imageKey),
+          ),
+        );
+  }
+
+  Future<String?> _downloadAndStoreImage(
+    DataWriteContext ctx, {
+    required String feedId,
+    required String articleId,
+    required String imageUrl,
+  }) async {
+    try {
+      final res = await _http.get(Uri.parse(imageUrl));
+      if (res.statusCode != 200 || res.bodyBytes.isEmpty) {
+        return null;
+      }
+      final logicalKey = 'rss/$feedId/$articleId/image';
+      final ref = await ctx.blobs.putBytes(
+        res.bodyBytes,
+        logicalKey: logicalKey,
+      );
+      final mime =
+          res.headers['content-type']?.split(';').first.trim() ?? 'image/jpeg';
+      await ctx.db.into(ctx.db.blobMetadata).insertOnConflictUpdate(
+            BlobMetadataCompanion.insert(
+              blobKey: logicalKey,
+              sha256: ref.storageKey.split('/').last,
+              relativePath: ref.storageKey,
+              bytes: res.bodyBytes.length,
+              mimeType: Value(mime),
+              capturedAt: _nowMs(),
+            ),
+          );
+      return logicalKey;
+    } on Object catch (e, st) {
+      AppDebugLog.engineFail('RssNewsDataProvider image download', e, st);
+      return null;
+    }
+  }
+
+  Future<void> _pruneFeedArticles(
+    DataWriteContext ctx,
+    String feedId,
+    int maxArticles,
+  ) async {
+    if (maxArticles < 1) {
+      return;
+    }
+    final rows =
+        await (ctx.db.select(ctx.db.rssArticles)
+              ..where((t) => t.feedId.equals(feedId))
+              ..orderBy([
+                (t) => OrderingTerm.desc(t.publishedAt),
+              ]))
+            .get();
+    if (rows.length <= maxArticles) {
+      return;
+    }
+    for (final a in rows.sublist(maxArticles)) {
+      await _deleteArticle(ctx, a);
+    }
+  }
+
+  Future<void> _deleteArticle(DataWriteContext ctx, RssArticle a) async {
+    final key = a.imageBlobKey;
+    if (key != null && key.isNotEmpty) {
+      final meta = await (ctx.db.select(
+        ctx.db.blobMetadata,
+      )..where((t) => t.blobKey.equals(key))).getSingleOrNull();
+      if (meta != null) {
+        await ctx.blobs.delete(BlobRef(meta.relativePath));
+        await (ctx.db.delete(
+          ctx.db.blobMetadata,
+        )..where((t) => t.blobKey.equals(key))).go();
+      }
+    }
+    await (ctx.db.delete(
+      ctx.db.rssArticles,
+    )..where((t) => t.id.equals(a.id))).go();
+  }
+}

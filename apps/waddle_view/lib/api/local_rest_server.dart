@@ -1,12 +1,16 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_router/shelf_router.dart';
 
 import '../alerts/alert_repository.dart';
+import '../debug/app_debug_log.dart';
 import '../persistence/database.dart';
+import '../ticker/ticker_curated_repository.dart';
 import 'api_key_constant_time.dart';
 import 'deployment_api_key_source.dart';
 
@@ -15,6 +19,9 @@ Middleware apiKeyAuth(DeploymentApiKeySource keys) {
     return (Request request) async {
       final expected = await keys.load();
       if (expected == null || expected.isEmpty) {
+        AppDebugLog.api(
+          '503 ${request.requestedUri.path} api_key_unconfigured',
+        );
         return Response(
           503,
           body: '{"error":"api_key_unconfigured"}',
@@ -28,6 +35,9 @@ Middleware apiKeyAuth(DeploymentApiKeySource keys) {
         presented = bearer.substring(7).trim();
       }
       if (!constantTimeStringEquals(presented, expected)) {
+        AppDebugLog.api(
+          '401 ${request.requestedUri.path} invalid or missing API key',
+        );
         return Response.unauthorized('{"error":"unauthorized"}');
       }
       return inner(request);
@@ -38,6 +48,7 @@ Middleware apiKeyAuth(DeploymentApiKeySource keys) {
 Handler buildProtectedApiRouter({
   required AppDatabase db,
   required AlertRepository alerts,
+  required TickerCuratedRepository ticker,
 }) {
   final r = Router();
 
@@ -59,18 +70,39 @@ Handler buildProtectedApiRouter({
     );
   });
 
-  r.get('/v1/ticker/screens', (Request req) async {
-    final rows = await db.select(db.tickerScreens).get();
+  r.get('/v1/screens', (Request req) async {
+    final rows = await db.select(db.screenDefinitions).get();
     final list = rows
         .map(
-          (e) => {
+          (e) => <String, Object?>{
             'id': e.id,
-            'sort_key': e.sortKey,
+            'name': e.name,
+            'description': e.description,
             'enabled': e.enabled,
+            'layout_json': e.layoutJson,
             'dwell_ms': e.dwellMs,
+            'frequency_weight': e.frequencyWeight,
+            'min_gap_between_shows_ms': e.minGapBetweenShowsMs,
           },
         )
         .toList();
+    return Response.ok(
+      jsonEncode({'items': list}),
+      headers: {'content-type': 'application/json'},
+    );
+  });
+
+  r.get('/v1/ticker/items', (Request req) async {
+    final rows = await ticker.snapshot();
+    final list = <Map<String, Object?>>[];
+    for (var i = 0; i < rows.length; i++) {
+      final e = rows[i];
+      list.add({
+        'ordinal': i,
+        'kind': e.kind,
+        'body': e.body,
+      });
+    }
     return Response.ok(
       jsonEncode({'items': list}),
       headers: {'content-type': 'application/json'},
@@ -123,20 +155,41 @@ Handler buildRootHandler({
   required AppDatabase db,
   required AlertRepository alerts,
   required DeploymentApiKeySource keys,
+  required TickerCuratedRepository ticker,
 }) {
   Response health(Request req) =>
       Response.ok('{"status":"ok"}', headers: {'content-type': 'application/json'});
 
-  Handler protected = Pipeline()
+  final protected = Pipeline()
       .addMiddleware(apiKeyAuth(keys))
-      .addHandler(buildProtectedApiRouter(db: db, alerts: alerts));
+      .addHandler(
+        buildProtectedApiRouter(db: db, alerts: alerts, ticker: ticker),
+      );
 
-  return (Request req) {
+  FutureOr<Response> root(Request req) {
     final path = req.requestedUri.path;
     if (path == '/v1/health' || path == 'v1/health') {
-      return Future<Response>.value(health(req));
+      return health(req);
     }
     return protected(req);
+  }
+
+  return withDebugRequestLogging(root);
+}
+
+/// Logs method, path, and status in debug only (never logs headers or body).
+Handler withDebugRequestLogging(Handler inner) {
+  return (Request req) async {
+    if (kDebugMode) {
+      AppDebugLog.api('${req.method} ${req.requestedUri.path}');
+    }
+    final res = await inner(req);
+    if (kDebugMode) {
+      AppDebugLog.api(
+        '${req.method} ${req.requestedUri.path} -> ${res.statusCode}',
+      );
+    }
+    return res;
   };
 }
 

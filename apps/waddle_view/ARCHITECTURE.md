@@ -5,9 +5,9 @@ This document describes how the TV dashboard is structured at runtime and how ma
 ## Design goals
 
 - **Single process**: Flutter UI, background async loops, and the embedded HTTP server share one isolate unless you add isolates later.
-- **Ports and adapters**: abstract boundaries (`IDataProvider`, `DataWriteContext`, `AlertRepository`, `TickerScheduleRepository`, `BlobStore`, `SecretStore`, `WindowChromeController`) with Drift/filesystem/Linux implementations.
+- **Ports and adapters**: abstract boundaries (`IDataProvider`, `DataWriteContext`, `AlertRepository`, `TickerCuratedRepository`, `DashboardCurator`, `BlobStore`, `SecretStore`, `WindowChromeController`) with Drift/filesystem/Linux implementations.
 - **No secrets in SQLite**: provider tokens and similar values go through [`SecretStore`](lib/secrets/secret_store.dart); SQLite holds non-secret configuration and operational data.
-- **Drift as the hub**: ticker schedule, dashboard key–value fields, alerts, blob metadata, and provider settings all read/write through [`AppDatabase`](lib/persistence/database.dart).
+- **Drift as the hub**: display **screen definitions** (`screen_definitions`), **curator settings** (`curator_settings`), dashboard key–value fields, alerts, blob metadata, RSS tables, and provider settings read/write through [`AppDatabase`](lib/persistence/database.dart). **Ticker marquee text is in-memory only** ([`MemoryTickerCuratedRepository`](lib/ticker/memory_ticker_curated_repository.dart)); REST exposes a read-only snapshot.
 
 ## Module map
 
@@ -22,13 +22,14 @@ flowchart TB
   subgraph ui["Presentation"]
     Shell[DashboardShell]
     Overlay[AlertOverlayHost]
-    Strip[TickerStrip]
+    Strip[TickerMarquee]
+    Rotator[ScreenRotator]
     Chrome[WindowChromeController]
   end
 
   subgraph async_loops["Background-style async loops"]
     Engine[DataCollectionEngine]
-    Ticker[TickerRotationController]
+    Curator[DefaultDashboardCurator]
   end
 
   subgraph api["Embedded HTTP"]
@@ -40,7 +41,7 @@ flowchart TB
     IData[IDataProvider]
     DWC[DataWriteContext]
     AR[AlertRepository]
-    TSR[TickerScheduleRepository]
+    TCR[TickerCuratedRepository]
     DDA[DashboardDataAccess]
     BS[BlobStore]
     SS[SecretStore]
@@ -50,7 +51,7 @@ flowchart TB
   subgraph adapters["Adapters (concrete)"]
     Stub[StubDataProvider]
     DAR[DriftAlertRepository]
-    DTR[DriftTickerScheduleRepository]
+    MTCR[MemoryTickerCuratedRepository]
     DDAD[DriftDashboardDataAccess]
     FSB[FileSystemBlobStore]
     FSS[FlutterSecureSecretStore]
@@ -61,17 +62,19 @@ flowchart TB
   Main --> Shell
   Main --> Overlay
   Main --> Strip
+  Main --> Rotator
   Main --> Chrome
   Main --> Engine
-  Main --> Ticker
+  Main --> Curator
   Main --> Server
 
   Shell --> DDA
   Overlay --> AR
-  Strip --> Ticker
+  Strip --> TCR
 
   Server --> Handlers
   Handlers --> DB
+  Handlers --> TCR
   Handlers --> AR
   Handlers --> Keys
 
@@ -83,25 +86,26 @@ flowchart TB
   DWC --> BS
   DWC --> SS
 
-  Ticker --> TSR
-  DTR -. implements .-> TSR
+  Curator --> TCR
+  MTCR -. implements .-> TCR
   DAR -. implements .-> AR
   DDAD -. implements .-> DDA
   FSB -. implements .-> BS
   FSS -. implements .-> SS
   FKS -. implements .-> Keys
-  DTR --> DB
+  MTCR -. in-memory .-> TCR
   DAR --> DB
   DDAD --> DB
+  Engine --> Curator
 ```
 
 ## Composition and lifecycle
 
-At startup, `main()` wires concrete implementations, starts long-running `Future`s with `unawaited`, then calls `runApp`. On `WaddleHome` dispose, the data engine and ticker stop, the Shelf server closes, and the database closes.
+At startup, `main()` wires concrete implementations, starts long-running `Future`s with `unawaited`, then calls `runApp`. On `WaddleHome` dispose, the data engine stops, the Shelf server closes, and the database closes.
 
 ## Sequence: application startup
 
-From [`lib/main.dart`](lib/main.dart): filesystem prep → database + seed → secrets and data context → collection engine → alerts + REST → dashboard access + ticker → window policy → `runApp`.
+From [`lib/main.dart`](lib/main.dart): filesystem prep → database + seed → secrets and data context → **curator initial `refresh()`** → collection engine (with **`onCycleComplete: curator.refresh`**) → alerts + REST (`MemoryTickerCuratedRepository` for **`GET /v1/ticker/items`**) → dashboard access + **`TickerMarquee`** + **`ScreenRotator`** → window policy → `runApp`.
 
 ```mermaid
 sequenceDiagram
@@ -118,8 +122,8 @@ sequenceDiagram
   participant AR as DriftAlertRepository
   participant HTTP as LocalRestServer
   participant DDA as DriftDashboardDataAccess
-  participant TRep as DriftTickerScheduleRepository
-  participant Tic as TickerRotationController
+  participant MTCR as MemoryTickerCuratedRepository
+  participant Cur as DefaultDashboardCurator
   participant Win as WindowChromeController
   participant UI as runApp WaddleRoot
 
@@ -131,16 +135,16 @@ sequenceDiagram
   M->>Res: ProviderConfigResolver(db, secrets)
   M->>Blob: FileSystemBlobStore(mediaDir)
   M->>Ctx: DataWriteContextImpl(db, blobs, secrets, resolve)
-  M->>Eng: DataCollectionEngine(providers, ctx, ...)
+  M->>MTCR: MemoryTickerCuratedRepository()
+  M->>Cur: DefaultDashboardCurator(read, tickerStore, clock)
+  M->>Cur: await refresh() initial curated rows
+  M->>Eng: DataCollectionEngine(..., onCycleComplete: Cur.refresh)
   M-->>Eng: unawaited start() loop
   M->>AR: DriftAlertRepository(db)
   M->>HTTP: bind Shelf handler (db, alerts, key file)
   M->>DDA: DriftDashboardDataAccess(db)
-  M->>TRep: DriftTickerScheduleRepository(db)
-  M->>Tic: TickerRotationController(repo, evaluator, clock, sleeper)
-  M-->>Tic: unawaited start() loop
   M->>Win: initialize + applyStartupPolicy
-  M->>UI: WaddleRoot(...)
+  M->>UI: WaddleRoot(tickerCurated: MTCR, ...)
 ```
 
 ## Sequence: data collection cycle
@@ -168,6 +172,7 @@ sequenceDiagram
       Ctx-->>P: ProviderRuntimeConfig
     end
     P-->>Eng: complete
+    Eng->>Eng: onCycleComplete() e.g. DefaultDashboardCurator.refresh
     Eng->>Eng: sleeper.sleep(idleBetweenCycles)
   end
 ```
@@ -204,38 +209,32 @@ sequenceDiagram
   Host->>Op: overlay Stack if alert non-null
 ```
 
-`GET` routes for providers, ticker screens, and alerts follow the same auth middleware and read directly from `AppDatabase` via generated Drift APIs in [`local_rest_server.dart`](lib/api/local_rest_server.dart).
+`GET` routes for providers, **screen definitions** (`/v1/screens`), **ticker items** (`/v1/ticker/items`, in-process snapshot from `MemoryTickerCuratedRepository`), and alerts follow the same auth middleware; screen and alert rows are read with Drift in [`local_rest_server.dart`](lib/api/local_rest_server.dart).
 
-## Sequence: ticker rotation and strip
+## Sequence: curated marquee ticker
 
-[`TickerRotationController`](lib/ticker/ticker_rotation_controller.dart) loads eligible screens from the repository, applies [`TickerConditionEvaluator`](lib/ticker/ticker_condition_evaluator.dart), updates `currentLabel`, calls `notifyListeners()`, dwells for `dwellMs`, then persists show telemetry via `onShowStart` / `onShowEnd`. [`TickerStrip`](lib/ticker/ticker_strip.dart) is an `AnimatedBuilder` on that controller.
+Providers persist **domain** rows (for example [`dashboard_kv`](lib/persistence/tables.dart) keys such as `ticker.marquee.*`). [`DefaultDashboardCurator`](lib/curator/default_dashboard_curator.dart) reads them via [`DriftCuratorReadPort`](lib/curator/drift_curator_read_port.dart), maps them through pure [`buildTickerItemsForMarquee`](lib/curator/ticker_curation.dart), and writes the ordered list to [`MemoryTickerCuratedRepository`](lib/ticker/memory_ticker_curated_repository.dart). [`TickerMarquee`](lib/ticker/ticker_marquee.dart) subscribes with `watchOrdered()` and scrolls horizontally at a fixed **pixels per second**. `GET /v1/ticker/items` uses the same repository’s `snapshot()`.
+
+## Sequence: display screen programs
+
+[`ScreenRotator`](lib/dashboard/screen_rotator.dart) loads enabled rows from [`screen_definitions`](lib/persistence/tables.dart) and [`curator_settings`](lib/persistence/tables.dart), runs [`ScreenProgramCurator.buildProgram`](lib/curator/screen_program_curator.dart) (weighted picks biased by recent slide ids, random photo pools without duplicate assets in one program), then advances slides on a dwell timer with **exit left / enter right** transitions. When a program finishes, a new program is curated using the rolling history of shown screen ids.
 
 ```mermaid
 sequenceDiagram
-  participant Tic as TickerRotationController
-  participant Rep as DriftTickerScheduleRepository
+  participant Eng as DataCollectionEngine
+  participant P as IDataProvider
   participant DB as AppDatabase
-  participant Ev as TickerConditionEvaluator
-  participant UI as TickerStrip AnimatedBuilder
+  participant Cur as DefaultDashboardCurator
+  participant Rep as MemoryTickerCuratedRepository
+  participant UI as TickerMarquee
 
-  loop while running
-    Tic->>Rep: loadBundles()
-    Rep->>DB: SELECT ticker screens, groups, conditions, runtimes
-    Rep-->>Tic: sorted bundles
-    Tic->>Ev: isEligible(now, bundle) per screen
-    Ev-->>Tic: filtered list
-    alt no eligible screens
-      Tic->>Tic: sleep 1s
-    else show screen
-      Tic->>Tic: notifyListeners currentLabel
-      UI-->>Tic: rebuild frame
-      Tic->>Rep: onShowStart(screenId, now)
-      Rep->>DB: upsert ticker_screen_runtimes
-      Tic->>Tic: sleep(dwellMs)
-      Tic->>Rep: onShowEnd(screenId, now)
-      Rep->>DB: upsert runtimes + day counters
-    end
-  end
+  Eng->>P: collect(ctx)
+  P->>DB: upsert dashboard_kv / facts
+  Eng->>Cur: refresh() onCycleComplete
+  Cur->>DB: SELECT dashboard_kv / RSS
+  Cur->>Rep: replaceAll(TickerItem list)
+  Rep-->>UI: watchOrdered emits
+  UI->>UI: measure segment width, AnimationController linear scroll
 ```
 
 ## Related reading

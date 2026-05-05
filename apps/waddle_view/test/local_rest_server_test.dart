@@ -5,6 +5,7 @@ import 'package:waddle_view/alerts/drift_alert_repository.dart';
 import 'package:waddle_view/api/deployment_api_key_source.dart';
 import 'package:waddle_view/api/local_rest_server.dart';
 import 'package:waddle_view/persistence/database.dart';
+import 'package:waddle_view/ticker/memory_ticker_curated_repository.dart';
 
 import 'helpers/memory_database.dart';
 
@@ -17,7 +18,14 @@ void main() {
         );
     final alerts = DriftAlertRepository(db);
     final keys = FakeDeploymentApiKeySource('supersecret');
-    final handler = buildRootHandler(db: db, alerts: alerts, keys: keys);
+    final ticker = MemoryTickerCuratedRepository();
+    addTearDown(ticker.dispose);
+    final handler = buildRootHandler(
+      db: db,
+      alerts: alerts,
+      keys: keys,
+      ticker: ticker,
+    );
     final server = await LocalRestServer.bind(handler: handler, port: 0);
     try {
       final health = await http.get(

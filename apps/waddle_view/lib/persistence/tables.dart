@@ -45,40 +45,114 @@ class DashboardKv extends Table {
   Set<Column<Object>> get primaryKey => {key};
 }
 
-class TickerScreens extends Table {
+/// TV display screen definition (layout + scheduling hints). Runtime curation is in memory.
+class ScreenDefinitions extends Table {
   TextColumn get id => text()();
-  IntColumn get sortKey => integer().withDefault(const Constant(0))();
+  TextColumn get name => text()();
+  TextColumn get description => text().withDefault(const Constant(''))();
   BoolColumn get enabled => boolean().withDefault(const Constant(true))();
-  IntColumn get dwellMs => integer().withDefault(const Constant(5000))();
-  IntColumn get minGapBeforeRepeatMs =>
+  TextColumn get layoutJson =>
+      text().withDefault(const Constant('{"v":1,"layout":"single","widgets":[]}'))();
+  IntColumn get dwellMs => integer().withDefault(const Constant(10000))();
+  IntColumn get frequencyWeight => integer().withDefault(const Constant(100))();
+  IntColumn get minGapBetweenShowsMs =>
       integer().withDefault(const Constant(0))();
-  TextColumn get contentKind => text().nullable()();
-  TextColumn get bodyText => text().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
 
-class TickerConditionGroups extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  TextColumn get screenId => text().references(TickerScreens, #id)();
-  TextColumn get matchMode => text().withDefault(const Constant('ALL'))();
-}
-
-class TickerConditions extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  IntColumn get groupId => integer().references(TickerConditionGroups, #id)();
-  TextColumn get kind => text()();
-  TextColumn get paramsJson => text().withDefault(const Constant('{}'))();
-}
-
-class TickerScreenRuntimes extends Table {
-  TextColumn get screenId => text().references(TickerScreens, #id)();
-  IntColumn get lastStartedAt => integer().nullable()();
-  IntColumn get lastEndedAt => integer().nullable()();
-  IntColumn get showsOnLocalDay => integer().withDefault(const Constant(0))();
-  TextColumn get localDayKey => text().nullable()();
+/// Single app row (id = [kCuratorSettingsId]) for screen program parameters.
+class CuratorSettings extends Table {
+  TextColumn get id => text()();
+  IntColumn get programDurationMs =>
+      integer().withDefault(const Constant(180000))();
+  IntColumn get historyDepth => integer().withDefault(const Constant(5))();
 
   @override
-  Set<Column<Object>> get primaryKey => {screenId};
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+const String kCuratorSettingsId = 'app';
+
+class RssFeedSources extends Table {
+  TextColumn get id => text()();
+  TextColumn get url => text()();
+  TextColumn get category => text().withDefault(const Constant('general'))();
+  IntColumn get pollSeconds =>
+      integer().withDefault(const Constant(3600))();
+  IntColumn get maxArticles => integer().withDefault(const Constant(3))();
+  BoolColumn get enabled => boolean().withDefault(const Constant(true))();
+  IntColumn get lastFetchedAt => integer().nullable()();
+  TextColumn get title => text().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+@TableIndex(
+  name: 'idx_rss_articles_by_feed',
+  columns: {#feedId, #publishedAt},
+)
+class RssArticles extends Table {
+  TextColumn get id => text()();
+  TextColumn get feedId => text().references(RssFeedSources, #id)();
+  TextColumn get guid => text()();
+  TextColumn get title => text()();
+  TextColumn get link => text()();
+  TextColumn get summary => text().nullable()();
+  IntColumn get publishedAt => integer()();
+  IntColumn get fetchedAt => integer()();
+  TextColumn get imageBlobKey => text().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+class JokeCategories extends Table {
+  TextColumn get id => text()();
+  TextColumn get label => text()();
+  BoolColumn get isSeasonal => boolean().withDefault(const Constant(false))();
+  IntColumn get startMonth => integer().nullable()();
+  IntColumn get startDay => integer().nullable()();
+  IntColumn get endMonth => integer().nullable()();
+  IntColumn get endDay => integer().nullable()();
+  TextColumn get categoryPrompt => text().nullable()();
+  IntColumn get minJokes =>
+      integer().withDefault(const Constant(10))();
+  IntColumn get maxJokes =>
+      integer().withDefault(const Constant(100))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Records each OpenAI joke-generation request size for rolling-window rate limits.
+@TableIndex(
+  name: 'idx_joke_gen_batches_by_time',
+  columns: {#requestedAtMs},
+)
+class JokeGenerationBatches extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get requestedAtMs => integer()();
+  IntColumn get jokesRequested => integer()();
+}
+
+@TableIndex(
+  name: 'idx_jokes_by_created_at',
+  columns: {#createdAtMs},
+)
+@TableIndex(
+  name: 'idx_jokes_by_category',
+  columns: {#categoryId},
+)
+class Jokes extends Table {
+  TextColumn get id => text()();
+  TextColumn get categoryId => text().references(JokeCategories, #id)();
+  TextColumn get setup => text()();
+  TextColumn get punchline => text()();
+  IntColumn get createdAtMs => integer()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
 }

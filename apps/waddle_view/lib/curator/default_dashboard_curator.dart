@@ -1,0 +1,36 @@
+import '../clock.dart';
+import '../debug/app_debug_log.dart';
+import '../ticker/ticker_curated_repository.dart';
+import 'curator_read_port.dart';
+import 'dashboard_curator.dart';
+import 'ticker_curation.dart';
+
+class DefaultDashboardCurator implements DashboardCurator {
+  DefaultDashboardCurator({
+    required CuratorReadPort read,
+    required TickerCuratedRepository tickerStore,
+    required Clock clock,
+  }) : _read = read,
+       _tickerStore = tickerStore,
+       _clock = clock;
+
+  final CuratorReadPort _read;
+  final TickerCuratedRepository _tickerStore;
+  final Clock _clock;
+
+  @override
+  Future<void> refresh() async {
+    final kv = await _read.loadKeyValuesForCuration();
+    final news = await _read.loadNewsCandidatesForTicker();
+    final items = buildTickerItemsForMarquee(
+      kv: kv,
+      nowLocal: _clock.now().toLocal(),
+      newsCandidates: news,
+    );
+    await _tickerStore.replaceAll(items);
+    final kinds = items.map((e) => e.kind).join(', ');
+    AppDebugLog.curator(
+      'refresh: ${items.length} ticker item(s) kinds=[$kinds]',
+    );
+  }
+}
