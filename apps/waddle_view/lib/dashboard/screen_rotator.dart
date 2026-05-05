@@ -4,21 +4,25 @@ import 'dart:math';
 import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:flutter/material.dart';
 
+import '../blob/blob_store.dart';
 import '../curator/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';
 import '../persistence/database.dart';
 import '../persistence/tables.dart';
 import 'analog_clock_slide_widget.dart';
+import 'calendar_month_slide_widget.dart';
 import 'digital_clock_slide_widget.dart';
 import 'guest_wifi_slide_widget.dart';
 import 'joke_slide_widget.dart';
+import 'rss_article_slide_widget.dart';
 
 /// Full-area carousel above the ticker: slides exit left / enter right between
 /// curated programs loaded from `screen_definitions` and `curator_settings`.
 class ScreenRotator extends StatefulWidget {
-  const ScreenRotator({super.key, required this.db});
+  const ScreenRotator({super.key, required this.db, required this.blobs});
 
   final AppDatabase db;
+  final BlobStore blobs;
 
   @override
   State<ScreenRotator> createState() => _ScreenRotatorState();
@@ -121,6 +125,17 @@ class _ScreenRotatorState extends State<ScreenRotator>
     _dwellTimer = Timer(Duration(milliseconds: slide.dwellMs), _onDwellElapsed);
   }
 
+  void _reportDesiredDwellForSlide(int slideIndex, int ms) {
+    if (!mounted || _program.isEmpty || slideIndex != _index) {
+      return;
+    }
+    if (ms <= 0) {
+      return;
+    }
+    _dwellTimer?.cancel();
+    _dwellTimer = Timer(Duration(milliseconds: ms), _onDwellElapsed);
+  }
+
   Future<void> _onDwellElapsed() async {
     if (!mounted || _program.isEmpty) {
       return;
@@ -182,8 +197,11 @@ class _ScreenRotatorState extends State<ScreenRotator>
               ).animate(_curve),
               child: _SlideContent(
                 db: widget.db,
+                blobs: widget.blobs,
                 slide: outgoing,
                 theme: theme,
+                slideIndex: _index > 0 ? _index - 1 : 0,
+                onReportDesiredDwell: _reportDesiredDwellForSlide,
               ),
             ),
           SlideTransition(
@@ -196,8 +214,11 @@ class _ScreenRotatorState extends State<ScreenRotator>
             child: incoming != null
                 ? _SlideContent(
                     db: widget.db,
+                    blobs: widget.blobs,
                     slide: incoming,
                     theme: theme,
+                    slideIndex: _index,
+                    onReportDesiredDwell: _reportDesiredDwellForSlide,
                   )
                 : const SizedBox.shrink(),
           ),
@@ -210,13 +231,19 @@ class _ScreenRotatorState extends State<ScreenRotator>
 class _SlideContent extends StatelessWidget {
   const _SlideContent({
     required this.db,
+    required this.blobs,
     required this.slide,
     required this.theme,
+    required this.slideIndex,
+    required this.onReportDesiredDwell,
   });
 
   final AppDatabase db;
+  final BlobStore blobs;
   final ResolvedSlide slide;
   final ThemeData theme;
+  final int slideIndex;
+  final void Function(int slideIndex, int ms) onReportDesiredDwell;
 
   @override
   Widget build(BuildContext context) {
@@ -225,12 +252,17 @@ class _SlideContent extends StatelessWidget {
       color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
       padding: const EdgeInsets.all(24),
       child: Center(
-        child: _buildWidgets(widgets, slide),
+        child: _buildWidgets(widgets, slide, slideIndex, onReportDesiredDwell),
       ),
     );
   }
 
-  Widget _buildWidgets(List<ParsedWidgetSpec> widgets, ResolvedSlide slide) {
+  Widget _buildWidgets(
+    List<ParsedWidgetSpec> widgets,
+    ResolvedSlide slide,
+    int slideIndex,
+    void Function(int slideIndex, int ms) onReportDesiredDwell,
+  ) {
     if (widgets.isEmpty) {
       return Text(
         'Empty layout',
@@ -275,6 +307,12 @@ class _SlideContent extends StatelessWidget {
               spec: w,
               theme: theme,
             );
+          case 'calendar_month':
+            return CalendarMonthSlideWidget(
+              db: db,
+              spec: w,
+              theme: theme,
+            );
           case 'photo_random':
             final key = slide.randomChoices[w.choiceKey];
             return Padding(
@@ -284,6 +322,15 @@ class _SlideContent extends StatelessWidget {
                 style: theme.textTheme.titleMedium,
                 textAlign: TextAlign.center,
               ),
+            );
+          case 'rss_article':
+            return RssArticleSlideWidget(
+              db: db,
+              blobs: blobs,
+              slide: slide,
+              spec: w,
+              theme: theme,
+              onReportDesiredDwell: (ms) => onReportDesiredDwell(slideIndex, ms),
             );
           default:
             return Padding(

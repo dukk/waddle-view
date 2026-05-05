@@ -156,3 +156,24 @@ class Jokes extends Table {
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
+
+/// Local and synced calendar events (Outlook / Google providers later).
+@TableIndex(
+  name: 'idx_calendar_events_start_ms',
+  columns: {#startMs},
+)
+class CalendarEvents extends Table {
+  TextColumn get id => text()();
+  TextColumn get title => text()();
+  IntColumn get startMs => integer()();
+  IntColumn get endMs => integer()();
+  BoolColumn get allDay => boolean().withDefault(const Constant(false))();
+  TextColumn get location => text().nullable()();
+  TextColumn get description => text().nullable()();
+  TextColumn get source => text().withDefault(const Constant('local'))();
+  TextColumn get externalId => text().nullable()();
+  IntColumn get updatedAtMs => integer()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}

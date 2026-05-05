@@ -24,13 +24,14 @@ part 'database.g.dart';
     JokeCategories,
     Jokes,
     JokeGenerationBatches,
+    CalendarEvents,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -72,6 +73,9 @@ ORDER BY priority DESC, created_at DESC;
           'ALTER TABLE joke_categories ADD COLUMN max_jokes INTEGER NOT NULL DEFAULT 100',
         );
         await m.createTable(jokeGenerationBatches);
+      }
+      if (from < 9) {
+        await m.createTable(calendarEvents);
       }
     },
     beforeOpen: (details) async {

@@ -52,8 +52,10 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureWelcomeScreen(db);
   await _ensureJokeScreen(db);
   await _ensureGuestWifiScreen(db);
+  await _ensureNewsScreen(db);
   await _ensureClockDigitalScreen(db);
   await _ensureClockAnalogScreen(db);
+  await _ensureCalendarScreen(db);
 }
 
 Future<void> _ensureCuratorSettings(AppDatabase db) async {
@@ -128,6 +130,26 @@ Future<void> _ensureGuestWifiScreen(AppDatabase db) async {
       );
 }
 
+Future<void> _ensureNewsScreen(AppDatabase db) async {
+  final row = await (db.select(db.screenDefinitions)
+        ..where((t) => t.id.equals('news')))
+      .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  await db.into(db.screenDefinitions).insert(
+        ScreenDefinitionsCompanion.insert(
+          id: 'news',
+          name: 'News',
+          description: const Value('RSS story with image and scrolling summary'),
+          layoutJson: const Value(
+            '{"v":1,"layout":"single","widgets":[{"type":"rss_article","slot":"main","config":{"scrollDelayMs":2500,"trailingHoldMs":2000,"scrollPixelsPerSecond":48,"minReadMs":8000}}]}',
+          ),
+          dwellMs: const Value(12000),
+        ),
+      );
+}
+
 Future<void> _ensureClockDigitalScreen(AppDatabase db) async {
   final row = await (db.select(db.screenDefinitions)
         ..where((t) => t.id.equals('clock_digital')))
@@ -164,6 +186,28 @@ Future<void> _ensureClockAnalogScreen(AppDatabase db) async {
             '{"v":1,"layout":"single","widgets":[{"type":"analog_clock","slot":"main","config":{}}]}',
           ),
           dwellMs: const Value(16000),
+        ),
+      );
+}
+
+Future<void> _ensureCalendarScreen(AppDatabase db) async {
+  final row = await (db.select(db.screenDefinitions)
+        ..where((t) => t.id.equals('calendar')))
+      .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  await db.into(db.screenDefinitions).insert(
+        ScreenDefinitionsCompanion.insert(
+          id: 'calendar',
+          name: 'Calendar',
+          description: const Value(
+            'Month view with upcoming events; increase dwell_ms when many events need air time',
+          ),
+          layoutJson: const Value(
+            '{"v":1,"layout":"single","widgets":[{"type":"calendar_month","slot":"main","config":{}}]}',
+          ),
+          dwellMs: const Value(22000),
         ),
       );
 }

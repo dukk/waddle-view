@@ -1,0 +1,119 @@
+import 'package:drift/drift.dart' show Value;
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:waddle_view/clock.dart';
+import 'package:waddle_view/curator/screen_layout_parse.dart';
+import 'package:waddle_view/dashboard/calendar_month_slide_widget.dart';
+import 'package:waddle_view/persistence/database.dart';
+
+import '../helpers/memory_database.dart';
+
+void main() {
+  testWidgets('shows month title and no event list when empty', (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    const spec = ParsedWidgetSpec(
+      type: 'calendar_month',
+      slot: 'main',
+      config: {},
+    );
+    final theme = ThemeData.light();
+    final clock = FakeClock(DateTime(2024, 6, 15, 9, 0));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: CalendarMonthSlideWidget(
+            db: db,
+            spec: spec,
+            theme: theme,
+            clock: clock,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('June 2024'), findsOneWidget);
+    expect(find.text('Birthday party'), findsNothing);
+
+    await db.close();
+  });
+
+  testWidgets('lists upcoming events when present', (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.calendarEvents).insert(
+          CalendarEventsCompanion.insert(
+            id: 'e1',
+            title: 'Birthday party',
+            startMs: DateTime(2024, 6, 16, 15, 0).millisecondsSinceEpoch,
+            endMs: DateTime(2024, 6, 16, 17, 0).millisecondsSinceEpoch,
+            updatedAtMs: DateTime(2024, 6, 1).millisecondsSinceEpoch,
+          ),
+        );
+    const spec = ParsedWidgetSpec(
+      type: 'calendar_month',
+      slot: 'main',
+      config: {},
+    );
+    final theme = ThemeData.light();
+    final clock = FakeClock(DateTime(2024, 6, 15, 9, 0));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: CalendarMonthSlideWidget(
+            db: db,
+            spec: spec,
+            theme: theme,
+            clock: clock,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('June 2024'), findsOneWidget);
+    expect(find.text('Birthday party'), findsOneWidget);
+
+    await db.close();
+  });
+
+  testWidgets('shows location line when set', (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.calendarEvents).insert(
+          CalendarEventsCompanion.insert(
+            id: 'e2',
+            title: 'Meetup',
+            startMs: DateTime(2024, 6, 20, 10, 0).millisecondsSinceEpoch,
+            endMs: DateTime(2024, 6, 20, 11, 0).millisecondsSinceEpoch,
+            location: const Value('Hall A'),
+            updatedAtMs: DateTime(2024, 6, 1).millisecondsSinceEpoch,
+          ),
+        );
+    const spec = ParsedWidgetSpec(
+      type: 'calendar_month',
+      slot: 'main',
+      config: {},
+    );
+    final theme = ThemeData.light();
+    final clock = FakeClock(DateTime(2024, 6, 15));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: CalendarMonthSlideWidget(
+            db: db,
+            spec: spec,
+            theme: theme,
+            clock: clock,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Hall A'), findsOneWidget);
+
+    await db.close();
+  });
+}

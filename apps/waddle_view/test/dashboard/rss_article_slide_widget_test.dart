@@ -1,0 +1,233 @@
+import 'dart:convert';
+
+import 'package:drift/drift.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:waddle_view/curator/screen_layout_parse.dart';
+import 'package:waddle_view/curator/screen_program_curator.dart';
+import 'package:waddle_view/dashboard/rss_article_slide_timing.dart';
+import 'package:waddle_view/dashboard/rss_article_slide_widget.dart';
+import 'package:waddle_view/persistence/database.dart';
+
+import '../helpers/fake_blob_store.dart';
+import '../helpers/memory_database.dart';
+
+/// Minimal valid PNG (1×1).
+final _tinyPng = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+);
+
+Future<void> _insertFeedAndArticle(
+  AppDatabase db, {
+  required String summary,
+  String? imageBlobKey,
+}) async {
+  await db.into(db.rssFeedSources).insert(
+        RssFeedSourcesCompanion.insert(
+          id: 'feed_t',
+          url: 'http://test.local/feed.xml',
+          category: const Value('test'),
+        ),
+      );
+  await db.into(db.rssArticles).insert(
+        RssArticlesCompanion.insert(
+          id: 'article_t_1',
+          feedId: 'feed_t',
+          guid: 'g1',
+          title: 'Breaking: widgets work',
+          link: 'http://test.local/a',
+          summary: Value(summary),
+          publishedAt: 1,
+          fetchedAt: 1,
+          imageBlobKey: Value(imageBlobKey),
+        ),
+      );
+}
+
+void main() {
+  testWidgets('no articles shows placeholder', (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    var reported = 0;
+    final slide = ResolvedSlide(
+      screenId: 'news',
+      dwellMs: 5000,
+      layoutJson: '{}',
+    );
+    const spec = ParsedWidgetSpec(
+      type: 'rss_article',
+      slot: 'main',
+      config: {},
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.light(),
+        home: Scaffold(
+          body: RssArticleSlideWidget(
+            db: db,
+            blobs: FakeBlobStore(),
+            slide: slide,
+            spec: spec,
+            theme: ThemeData.light(),
+            onReportDesiredDwell: (ms) => reported = ms,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('No news articles yet'), findsOneWidget);
+    expect(reported, 0);
+    await db.close();
+  });
+
+  testWidgets('short summary reports max of base dwell and minRead', (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await _insertFeedAndArticle(db, summary: 'Brief update.');
+    var reported = 0;
+    final slide = ResolvedSlide(
+      screenId: 'news',
+      dwellMs: 5000,
+      layoutJson: '{}',
+    );
+    const spec = ParsedWidgetSpec(
+      type: 'rss_article',
+      slot: 'main',
+      config: {'minReadMs': 9000},
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.light(),
+        home: Scaffold(
+          body: RssArticleSlideWidget(
+            db: db,
+            blobs: FakeBlobStore(),
+            slide: slide,
+            spec: spec,
+            theme: ThemeData.light(),
+            onReportDesiredDwell: (ms) => reported = ms,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(reported, 9000);
+    await db.close();
+  });
+
+  testWidgets('article with image loads bytes from blob store', (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final blobs = FakeBlobStore();
+    final ref = await blobs.putBytes(_tinyPng, logicalKey: 'rss/feed_t/a/img');
+    await db.into(db.blobMetadata).insert(
+          BlobMetadataCompanion.insert(
+            blobKey: 'rss/feed_t/a/img',
+            sha256: ref.storageKey,
+            relativePath: ref.storageKey,
+            bytes: _tinyPng.length,
+            mimeType: const Value('image/png'),
+            capturedAt: 1,
+          ),
+        );
+    await _insertFeedAndArticle(db, summary: 'Short.', imageBlobKey: 'rss/feed_t/a/img');
+
+    final slide = ResolvedSlide(
+      screenId: 'news',
+      dwellMs: 8000,
+      layoutJson: '{}',
+    );
+    const spec = ParsedWidgetSpec(
+      type: 'rss_article',
+      slot: 'main',
+      config: {'minReadMs': 3000},
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.light(),
+        home: Scaffold(
+          body: RssArticleSlideWidget(
+            db: db,
+            blobs: blobs,
+            slide: slide,
+            spec: spec,
+            theme: ThemeData.light(),
+            onReportDesiredDwell: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(Image), findsWidgets);
+    await db.close();
+  });
+
+  testWidgets('long summary reports extended dwell and scrolls after delay', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 480));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final longSummary = List.filled(40, 'Line of text for scroll testing. ').join();
+    await _insertFeedAndArticle(db, summary: longSummary);
+
+    var reported = 0;
+    final slide = ResolvedSlide(
+      screenId: 'news',
+      dwellMs: 5000,
+      layoutJson: '{}',
+    );
+    const spec = ParsedWidgetSpec(
+      type: 'rss_article',
+      slot: 'main',
+      config: {
+        'scrollDelayMs': 80,
+        'trailingHoldMs': 40,
+        'scrollPixelsPerSecond': 800.0,
+        'minReadMs': 2000,
+      },
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.light(),
+        home: Scaffold(
+          body: RssArticleSlideWidget(
+            db: db,
+            blobs: FakeBlobStore(),
+            slide: slide,
+            spec: spec,
+            theme: ThemeData.light(),
+            onReportDesiredDwell: (ms) => reported = ms,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final scrollFinder = find.descendant(
+      of: find.byKey(const Key('rss_article_summary_scroll')),
+      matching: find.byType(Scrollable),
+    );
+    final scrollState = tester.state<ScrollableState>(scrollFinder);
+    final position = scrollState.position;
+    expect(position.maxScrollExtent, greaterThan(50));
+
+    final expectedMin = desiredDwellMsForRssArticle(
+      baseDwellMs: slide.dwellMs,
+      minReadMs: 2000,
+      summaryScrollable: true,
+      scrollDelayMs: 80,
+      trailingHoldMs: 40,
+      maxScrollExtent: position.maxScrollExtent,
+      scrollPixelsPerSecond: 800,
+    );
+    expect(reported, expectedMin);
+
+    await tester.pump(const Duration(milliseconds: 80));
+    await tester.pumpAndSettle();
+    expect(position.pixels, closeTo(position.maxScrollExtent, 3.0));
+
+    await db.close();
+  });
+}

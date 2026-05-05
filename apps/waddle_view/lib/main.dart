@@ -12,6 +12,7 @@ import 'alerts/alert_overlay_host.dart';
 import 'alerts/drift_alert_repository.dart';
 import 'api/deployment_api_key_source.dart';
 import 'api/local_rest_server.dart';
+import 'blob/blob_store.dart';
 import 'blob/filesystem_blob_store.dart';
 import 'clock.dart';
 import 'config/dev_dotenv_secrets.dart';
@@ -134,6 +135,7 @@ Future<void> main() async {
   runApp(
     WaddleRoot(
       db: db,
+      blobs: blobs,
       alerts: alerts,
       server: server,
       engine: engine,
@@ -147,6 +149,7 @@ class WaddleRoot extends StatelessWidget {
   const WaddleRoot({
     super.key,
     required this.db,
+    required this.blobs,
     required this.alerts,
     required this.server,
     required this.engine,
@@ -155,6 +158,7 @@ class WaddleRoot extends StatelessWidget {
   });
 
   final AppDatabase db;
+  final BlobStore blobs;
   final DriftAlertRepository alerts;
   final LocalRestServer server;
   final DataCollectionEngine engine;
@@ -168,6 +172,7 @@ class WaddleRoot extends StatelessWidget {
       theme: DisplayTheme.build(),
       home: WaddleHome(
         db: db,
+        blobs: blobs,
         alerts: alerts,
         server: server,
         engine: engine,
@@ -182,6 +187,7 @@ class WaddleHome extends StatefulWidget {
   const WaddleHome({
     super.key,
     required this.db,
+    required this.blobs,
     required this.alerts,
     required this.server,
     required this.engine,
@@ -190,6 +196,7 @@ class WaddleHome extends StatefulWidget {
   });
 
   final AppDatabase db;
+  final BlobStore blobs;
   final AlertRepository alerts;
   final LocalRestServer server;
   final DataCollectionEngine engine;
@@ -223,7 +230,7 @@ class _WaddleHomeState extends State<WaddleHome> {
           body: Stack(
             fit: StackFit.expand,
             children: [
-              ScreenRotator(db: widget.db),
+              ScreenRotator(db: widget.db, blobs: widget.blobs),
               Positioned(
                 left: 0,
                 right: 0,
