@@ -353,6 +353,22 @@ class _SlideContent extends StatelessWidget {
         textAlign: TextAlign.center,
       );
     }
+    // Single full-bleed widgets (like rss_article) need bounded size
+    // constraints; putting them in an intrinsic-height Column can pass
+    // unbounded height and cause them to render empty.
+    if (widgets.length == 1 && widgets.first.type == 'rss_article') {
+      final w = widgets.first;
+      return SizedBox.expand(
+        child: RssArticleSlideWidget(
+          db: db,
+          blobs: blobs,
+          slide: slide,
+          spec: w,
+          theme: theme,
+          onReportDesiredDwell: (ms) => onReportDesiredDwell(slideIndex, ms),
+        ),
+      );
+    }
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: widgets.map((w) {
