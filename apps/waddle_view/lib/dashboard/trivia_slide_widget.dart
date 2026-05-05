@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
 import 'dart:math';
 
 import 'package:drift/drift.dart' show CustomExpression, OrderingTerm;
@@ -214,94 +212,76 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // #region agent log
-        try {
-          File(r'c:\dev\waddle-view\debug-3162c3.log').writeAsStringSync(
-            '${jsonEncode({
-              'sessionId': '3162c3',
-              'hypothesisId': 'H1',
-              'location': 'trivia_slide_widget.dart:LayoutBuilder',
-              'message': 'trivia layout constraints',
-              'data': {
-                'maxWidth': constraints.maxWidth,
-                'maxHeight': constraints.maxHeight,
-                'hasBoundedHeight': constraints.hasBoundedHeight,
-                'minHeight': constraints.minHeight,
-              },
-              'timestamp': DateTime.now().millisecondsSinceEpoch,
-            })}\n',
-            mode: FileMode.append,
-          );
-        } catch (_) {}
-        // #endregion
-        return SizedBox(
-          width: constraints.maxWidth,
-          height: constraints.maxHeight,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Positioned(
-                top: 0,
-                right: 0,
-                child: Text(
-                  '$countdown',
-                  key: const ValueKey<String>('trivia_countdown'),
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+        final stack = Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              top: 0,
+              right: 0,
+              child: Text(
+                '$countdown',
+                key: const ValueKey<String>('trivia_countdown'),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: min(constraints.maxWidth, 720),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        row.question,
-                        style: theme.textTheme.headlineSmall,
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 20),
-                      ...letters.map((letter) {
-                        final hidden = _fadingWrong.contains(letter);
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: AnimatedOpacity(
-                            opacity: hidden ? 0 : 1,
-                            duration: const Duration(
-                              milliseconds: kTriviaWrongAnswerFadeMs,
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                SizedBox(
-                                  width: 28,
-                                  child: Text(
-                                    '$letter.',
-                                    style: theme.textTheme.titleMedium,
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Text(
-                                    _optionText(row, letter),
-                                    style: theme.textTheme.titleMedium,
-                                  ),
-                                ),
-                              ],
-                            ),
+            ),
+            Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: min(constraints.maxWidth, 720),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      row.question,
+                      style: theme.textTheme.headlineSmall,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                    ...letters.map((letter) {
+                      final hidden = _fadingWrong.contains(letter);
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: AnimatedOpacity(
+                          opacity: hidden ? 0 : 1,
+                          duration: const Duration(
+                            milliseconds: kTriviaWrongAnswerFadeMs,
                           ),
-                        );
-                      }),
-                    ],
-                  ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(
+                                width: 28,
+                                child: Text(
+                                  '$letter.',
+                                  style: theme.textTheme.titleMedium,
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  _optionText(row, letter),
+                                  style: theme.textTheme.titleMedium,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         );
+        final maxW = constraints.maxWidth;
+        final maxH = constraints.maxHeight;
+        if (maxH.isFinite) {
+          return SizedBox(width: maxW, height: maxH, child: stack);
+        }
+        return SizedBox(width: maxW, child: stack);
       },
     );
   }

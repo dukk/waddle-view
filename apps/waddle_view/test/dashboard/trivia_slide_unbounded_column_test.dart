@@ -1,0 +1,74 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:waddle_view/curator/screen_layout_parse.dart';
+import 'package:waddle_view/curator/screen_program_curator.dart';
+import 'package:waddle_view/dashboard/trivia_slide_widget.dart';
+import 'package:waddle_view/persistence/database.dart';
+import 'package:waddle_view/seed/trivia_category_seed.dart';
+
+import '../helpers/memory_database.dart';
+
+/// Mirrors [ScreenRotator] slide body: Center → Column(mainAxisSize.min) → trivia.
+void main() {
+  testWidgets('TriviaSlideWidget lays out inside shrink-wrap Column', (
+    tester,
+  ) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureDefaultTriviaCategories(db);
+    await db.into(db.triviaQuestions).insert(
+          TriviaQuestionsCompanion.insert(
+            id: 't1',
+            categoryId: 'science',
+            question: '2 + 2?',
+            optionA: '3',
+            optionB: 'Four',
+            optionC: '5',
+            optionD: '22',
+            correctOption: 'B',
+            createdAtMs: 1,
+          ),
+        );
+
+    final slide = ResolvedSlide(
+      screenId: 'trivia',
+      dwellMs: 5000,
+      layoutJson: '{}',
+    );
+    const spec = ParsedWidgetSpec(
+      type: 'trivia',
+      slot: 'main',
+      config: {},
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.light(),
+        home: Scaffold(
+          body: Container(
+            color: Colors.grey,
+            padding: const EdgeInsets.all(24),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TriviaSlideWidget(
+                    db: db,
+                    slide: slide,
+                    spec: spec,
+                    theme: ThemeData.light(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('2 + 2?'), findsOneWidget);
+
+    await db.close();
+  });
+}
