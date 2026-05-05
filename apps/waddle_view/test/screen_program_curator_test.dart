@@ -82,6 +82,81 @@ void main() {
     expect(ids.contains('fresh'), isTrue);
   });
 
+  test('dedupes joke picks across slides in one program', () {
+    const layout = '{"v":1,"layout":"single","widgets":['
+        '{"type":"joke","slot":"main","config":{}}'
+        ']}';
+    final slides = ScreenProgramCurator.buildProgram(
+      screens: [
+        _c(id: 'j1', dwellMs: 30000, layout: layout),
+        _c(id: 'j2', dwellMs: 30000, layout: layout),
+      ],
+      programDurationMs: 60000,
+      recentScreenIdsOldestFirst: const [],
+      historyDepth: 5,
+      random: Random(2),
+      randomPools: {
+        'joke': ['ja', 'jb', 'jc'],
+      },
+    );
+    expect(slides, hasLength(2));
+    final a = slides[0].randomChoices['main_joke'];
+    final b = slides[1].randomChoices['main_joke'];
+    expect(a, isNotNull);
+    expect(b, isNotNull);
+    expect(a, isNot(equals(b)));
+  });
+
+  test('dedupes rss_article picks across slides in one program', () {
+    const layout = '{"v":1,"layout":"single","widgets":['
+        '{"type":"rss_article","slot":"main","config":{}}'
+        ']}';
+    final slides = ScreenProgramCurator.buildProgram(
+      screens: [
+        _c(id: 'n1', dwellMs: 30000, layout: layout),
+        _c(id: 'n2', dwellMs: 30000, layout: layout),
+      ],
+      programDurationMs: 60000,
+      recentScreenIdsOldestFirst: const [],
+      historyDepth: 5,
+      random: Random(5),
+      randomPools: {
+        'rss': ['r1', 'r2'],
+      },
+    );
+    expect(slides, hasLength(2));
+    final x = slides[0].randomChoices['main_rss_article'];
+    final y = slides[1].randomChoices['main_rss_article'];
+    expect(x, isNotNull);
+    expect(y, isNotNull);
+    expect(x, isNot(equals(y)));
+  });
+
+  test('rss_article_columns assigns one distinct rss id per column', () {
+    const layout = '{"v":1,"layout":"single","widgets":['
+        '{"type":"rss_article_columns","slot":"main","config":{"columnCount":3}}'
+        ']}';
+    final slides = ScreenProgramCurator.buildProgram(
+      screens: [_c(id: 'nc', dwellMs: 30000, layout: layout)],
+      programDurationMs: 30000,
+      recentScreenIdsOldestFirst: const [],
+      historyDepth: 5,
+      random: Random(11),
+      randomPools: {
+        'rss': ['r1', 'r2', 'r3', 'r4'],
+      },
+    );
+    expect(slides, hasLength(1));
+    final m = slides.single.randomChoices;
+    final a = m['main_rss_article_columns_0'];
+    final b = m['main_rss_article_columns_1'];
+    final c = m['main_rss_article_columns_2'];
+    expect(a, isNotNull);
+    expect(b, isNotNull);
+    expect(c, isNotNull);
+    expect({a, b, c}.length, 3);
+  });
+
   test('dedupes random pool picks within one program', () {
     const layout = '''
 {"v":1,"layout":"single","widgets":[

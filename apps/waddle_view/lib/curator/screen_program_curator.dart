@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'screen_layout_parse.dart';
+import 'screen_layout_parse.dart' show ParsedWidgetSpec, parseScreenLayoutWidgets;
 
 class DataKeyProgramLimit {
   const DataKeyProgramLimit({
@@ -50,7 +50,8 @@ class ResolvedSlide {
   final int dwellMs;
   final String layoutJson;
 
-  /// Keys [ParsedWidgetSpec.choiceKey] → chosen asset id (or token).
+  /// Keys [ParsedWidgetSpec.choiceKey] → curated content id (blob key, joke id,
+  /// RSS article id, trivia question id, …) chosen for this slide.
   final Map<String, String> randomChoices;
 }
 
@@ -79,7 +80,7 @@ class ScreenProgramCurator {
 
     var remaining = programDurationMs;
     final out = <ResolvedSlide>[];
-    final usedRandomAssets = <String>{};
+    final usedCuratedIds = <String>{};
     final countByScreenId = <String, int>{};
     final countByDataKey = <String, int>{};
 
@@ -113,11 +114,11 @@ class ScreenProgramCurator {
         break;
       }
       final dwell = min(pick.dwellMs, remaining);
-      final choices = _resolveRandomWidgets(
+      final choices = _resolveCuratedWidgetChoices(
         pick.layoutJson,
         randomPools,
         random,
-        usedRandomAssets,
+        usedCuratedIds,
       );
       out.add(
         ResolvedSlide(
@@ -288,33 +289,94 @@ class ScreenProgramCurator {
     return enabled.last;
   }
 
-  static Map<String, String> _resolveRandomWidgets(
+  /// Picks one unused id from [pool] when possible; skips if pool missing or
+  /// all ids already used (callers/widgets may fall back).
+  static String? _pickUnusedFromPool(
+    List<String>? pool,
+    Random random,
+    Set<String> used,
+  ) {
+    if (pool == null || pool.isEmpty) {
+      return null;
+    }
+    final available = pool.where((id) => !used.contains(id)).toList();
+    if (available.isEmpty) {
+      return null;
+    }
+    final choice = available[random.nextInt(available.length)];
+    used.add(choice);
+    return choice;
+  }
+
+  static String? _poolNameForWidget(ParsedWidgetSpec w) {
+    switch (w.type) {
+      case 'photo_random':
+        return w.config['pool'] as String?;
+      case 'joke':
+        final c = w.config['categoryId'] as String?;
+        return (c != null && c.isNotEmpty) ? 'joke:$c' : 'joke';
+      case 'rss_article':
+      case 'rss_article_columns':
+        final f = w.config['feedId'] as String?;
+        return (f != null && f.isNotEmpty) ? 'rss:$f' : 'rss';
+      case 'trivia':
+        final c = w.config['categoryId'] as String?;
+        return (c != null && c.isNotEmpty) ? 'trivia:$c' : 'trivia';
+      default:
+        return null;
+    }
+  }
+
+  static int _rssArticleColumnCount(Map<String, dynamic> config) {
+    final v = config['columnCount'];
+    if (v is int) {
+      return v.clamp(1, 6);
+    }
+    if (v is double) {
+      return v.round().clamp(1, 6);
+    }
+    return 3;
+  }
+
+  static Map<String, String> _resolveCuratedWidgetChoices(
     String layoutJson,
     Map<String, List<String>> randomPools,
     Random random,
-    Set<String> usedRandomAssets,
+    Set<String> usedCuratedIds,
   ) {
     final specs = parseScreenLayoutWidgets(layoutJson);
     final out = <String, String>{};
     for (final w in specs) {
-      if (w.type != 'photo_random') {
+      if (w.type == 'rss_article_columns') {
+        final poolName = _poolNameForWidget(w);
+        if (poolName == null || poolName.isEmpty) {
+          continue;
+        }
+        final n = _rssArticleColumnCount(w.config);
+        for (var i = 0; i < n; i++) {
+          final choice = _pickUnusedFromPool(
+            randomPools[poolName],
+            random,
+            usedCuratedIds,
+          );
+          if (choice != null) {
+            out['${w.choiceKey}_$i'] = choice;
+          }
+        }
         continue;
       }
-      final poolName = w.config['pool'] as String?;
-      if (poolName == null) {
+      final poolName = _poolNameForWidget(w);
+      if (poolName == null || poolName.isEmpty) {
         continue;
       }
-      final pool = randomPools[poolName];
-      if (pool == null || pool.isEmpty) {
-        continue;
+      final choice = _pickUnusedFromPool(
+        randomPools[poolName],
+        random,
+        usedCuratedIds,
+      );
+      if (choice != null) {
+        out[w.choiceKey] = choice;
       }
-      final available = pool.where((id) => !usedRandomAssets.contains(id)).toList();
-      if (available.isEmpty) {
-        continue;
-      }
-      final choice = available[random.nextInt(available.length)];
-      usedRandomAssets.add(choice);
-      out[w.choiceKey] = choice;
     }
     return out;
   }

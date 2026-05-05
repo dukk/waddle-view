@@ -16,6 +16,7 @@ import 'api/local_rest_server.dart';
 import 'api/network_addressing.dart';
 import 'blob/blob_store.dart';
 import 'blob/filesystem_blob_store.dart';
+import 'bootstrap/app_fatal_error_recovery.dart';
 import 'clock.dart';
 import 'config/dev_dotenv_secrets.dart';
 import 'config/provider_config_resolver.dart';
@@ -49,145 +50,156 @@ import 'window/noop_window_chrome_controller.dart';
 import 'window/startup_window_policy.dart';
 import 'window/window_chrome_controller.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  AppDebugLog.startup('Waddle View bootstrap');
-  await loadDevDotenvFromFilesystem();
-  final support = await getApplicationSupportDirectory();
-  AppDebugLog.startup('app support directory: ${support.path}');
-  final keyFile = File(p.join(support.path, 'waddle_api.key'));
-  var createdDeploymentKey = false;
-  if (!await keyFile.exists()) {
-    final rnd = Random.secure();
-    final bytes = List<int>.generate(32, (_) => rnd.nextInt(256));
-    final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-    await keyFile.writeAsString('$hex\n', flush: true);
-    createdDeploymentKey = true;
-  }
-  final mediaDir = Directory(p.join(support.path, 'media'));
-  if (!await mediaDir.exists()) {
-    await mediaDir.create(recursive: true);
-  }
+  installGlobalFatalErrorHandlers();
+  runZonedGuarded(() {
+    unawaited(_waddleBootstrap());
+  }, onZoneFatalError);
+}
 
-  final db = AppDatabase(createQueryExecutor());
-  await ensureInitialSeed(db);
-  if (createdDeploymentKey) {
-    await db.into(db.dashboardKv).insertOnConflictUpdate(
-          DashboardKvCompanion.insert(
-            key: kAdminBootstrapDoneKvKey,
-            value: '0',
-          ),
-        );
-  } else {
-    final existing = await (db.select(db.dashboardKv)
-          ..where((t) => t.key.equals(kAdminBootstrapDoneKvKey)))
-        .getSingleOrNull();
-    if (existing == null) {
+Future<void> _waddleBootstrap() async {
+  try {
+    AppDebugLog.startup('Waddle View bootstrap');
+    await loadDevDotenvFromFilesystem();
+    final support = await getApplicationSupportDirectory();
+    AppDebugLog.startup('app support directory: ${support.path}');
+    final keyFile = File(p.join(support.path, 'waddle_api.key'));
+    var createdDeploymentKey = false;
+    if (!await keyFile.exists()) {
+      final rnd = Random.secure();
+      final bytes = List<int>.generate(32, (_) => rnd.nextInt(256));
+      final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+      await keyFile.writeAsString('$hex\n', flush: true);
+      createdDeploymentKey = true;
+    }
+    final mediaDir = Directory(p.join(support.path, 'media'));
+    if (!await mediaDir.exists()) {
+      await mediaDir.create(recursive: true);
+    }
+
+    final db = AppDatabase(createQueryExecutor());
+    await ensureInitialSeed(db);
+    if (createdDeploymentKey) {
       await db.into(db.dashboardKv).insertOnConflictUpdate(
             DashboardKvCompanion.insert(
               key: kAdminBootstrapDoneKvKey,
-              value: '1',
+              value: '0',
             ),
           );
+    } else {
+      final existing = await (db.select(db.dashboardKv)
+            ..where((t) => t.key.equals(kAdminBootstrapDoneKvKey)))
+          .getSingleOrNull();
+      if (existing == null) {
+        await db.into(db.dashboardKv).insertOnConflictUpdate(
+              DashboardKvCompanion.insert(
+                key: kAdminBootstrapDoneKvKey,
+                value: '1',
+              ),
+            );
+      }
     }
-  }
-  AppDebugLog.startup('SQLite ready (seed applied if first run)');
+    AppDebugLog.startup('SQLite ready (seed applied if first run)');
 
-  final secrets = FlutterSecureSecretStore();
-  await applyJokesTokenFromDevDotenv(secrets);
-  final resolver = ProviderConfigResolver(db, secrets);
-  final blobs = FileSystemBlobStore(mediaDir);
-  final ctx = DataWriteContextImpl(
-    db: db,
-    blobs: blobs,
-    secrets: secrets,
-    resolve: resolver.resolve,
-  );
-  const clock = SystemClock();
-  final iconPreloadClient = http.Client();
-  await preloadSeedCategoryIcons(
-    ctx: ctx,
-    httpClient: iconPreloadClient,
-    perTypeLimit: 3,
-  );
-  iconPreloadClient.close();
-  final tickerCurated = MemoryTickerCuratedRepository();
-  final marqueeCycleGate = MarqueeCycleGate();
-  final dashboardCuratorInner = DefaultDashboardCurator(
-    read: DriftCuratorReadPort(db),
-    tickerStore: tickerCurated,
-    clock: clock,
-  );
-  await dashboardCuratorInner.refresh();
-  marqueeCycleGate.onCurationWrittenExpectMarqueeLoop();
-  AppDebugLog.startup('initial curator refresh done');
-  final dashboardCurator = GatedDashboardCurator(
-    inner: dashboardCuratorInner,
-    marqueeGate: marqueeCycleGate,
-  );
-  final engine = DataCollectionEngine(
-    providers: [
-      StubDataProvider(),
-      RssNewsDataProvider(),
-      JokeDataProvider(),
-      TriviaDataProvider(),
-      WeatherDataProvider(),
-    ],
-    context: ctx,
-    sleeper: SystemSleeper(),
-    idleBetweenCycles: kDebugMode
-        ? const Duration(seconds: 5)
-        : const Duration(seconds: 30),
-    onCycleComplete: dashboardCurator.refresh,
-  );
-  unawaited(engine.start());
-
-  final alerts = DriftAlertRepository(db);
-  final keys = FileDeploymentApiKeySource(keyFile);
-  final httpConfig = await resolveHttpBindConfig();
-  final handler = buildRootHandler(
-    db: db,
-    alerts: alerts,
-    keys: keys,
-    ticker: tickerCurated,
-    secrets: secrets,
-    onConfigChanged: dashboardCurator.refresh,
-    keyFile: keyFile,
-    setupScreenId: 'admin_setup',
-  );
-  final server = await LocalRestServer.bind(
-    handler: handler,
-    address: httpConfig.address,
-    port: httpConfig.port,
-    displayHost: httpConfig.displayHost,
-  );
-  AppDebugLog.startup('REST listening at ${server.baseUrl}');
-
-  final windowPolicy = StartupWindowPolicy(
-    isLinux: !kIsWeb && Platform.isLinux,
-    isDebug: kDebugMode,
-    allowFullscreen: true,
-  );
-  final WindowChromeController chrome =
-      !kIsWeb && Platform.isLinux
-          ? LinuxWindowChromeController()
-          : NoOpWindowChromeController();
-  await chrome.initialize();
-  await chrome.applyStartupPolicy(windowPolicy);
-
-  AppDebugLog.startup('entering runApp');
-  runApp(
-    WaddleRoot(
+    final secrets = FlutterSecureSecretStore();
+    await applyJokesTokenFromDevDotenv(secrets);
+    final resolver = ProviderConfigResolver(db, secrets);
+    final blobs = FileSystemBlobStore(mediaDir);
+    final ctx = DataWriteContextImpl(
       db: db,
       blobs: blobs,
+      secrets: secrets,
+      resolve: resolver.resolve,
+    );
+    const clock = SystemClock();
+    final iconPreloadClient = http.Client();
+    await preloadSeedCategoryIcons(
+      ctx: ctx,
+      httpClient: iconPreloadClient,
+      perTypeLimit: 3,
+    );
+    iconPreloadClient.close();
+    final tickerCurated = MemoryTickerCuratedRepository();
+    final marqueeCycleGate = MarqueeCycleGate();
+    final dashboardCuratorInner = DefaultDashboardCurator(
+      read: DriftCuratorReadPort(db),
+      tickerStore: tickerCurated,
+      clock: clock,
+    );
+    await dashboardCuratorInner.refresh();
+    marqueeCycleGate.onCurationWrittenExpectMarqueeLoop();
+    AppDebugLog.startup('initial curator refresh done');
+    final dashboardCurator = GatedDashboardCurator(
+      inner: dashboardCuratorInner,
+      marqueeGate: marqueeCycleGate,
+    );
+    final engine = DataCollectionEngine(
+      providers: [
+        StubDataProvider(),
+        RssNewsDataProvider(),
+        JokeDataProvider(),
+        TriviaDataProvider(),
+        WeatherDataProvider(),
+      ],
+      context: ctx,
+      sleeper: SystemSleeper(),
+      idleBetweenCycles: kDebugMode
+          ? const Duration(seconds: 5)
+          : const Duration(seconds: 30),
+      onCycleComplete: dashboardCurator.refresh,
+    );
+    unawaited(engine.start());
+
+    final alerts = DriftAlertRepository(db);
+    final keys = FileDeploymentApiKeySource(keyFile);
+    final httpConfig = await resolveHttpBindConfig();
+    final handler = buildRootHandler(
+      db: db,
       alerts: alerts,
-      server: server,
-      setupPasswordFile: keyFile,
-      engine: engine,
-      tickerCurated: tickerCurated,
-      marqueeCycleGate: marqueeCycleGate,
-    ),
-  );
+      keys: keys,
+      ticker: tickerCurated,
+      secrets: secrets,
+      onConfigChanged: dashboardCurator.refresh,
+      keyFile: keyFile,
+      setupScreenId: 'admin_setup',
+    );
+    final server = await LocalRestServer.bind(
+      handler: handler,
+      address: httpConfig.address,
+      port: httpConfig.port,
+      displayHost: httpConfig.displayHost,
+    );
+    AppDebugLog.startup('REST listening at ${server.baseUrl}');
+
+    final windowPolicy = StartupWindowPolicy(
+      isLinux: !kIsWeb && Platform.isLinux,
+      isDebug: kDebugMode,
+      allowFullscreen: true,
+    );
+    final WindowChromeController chrome =
+        !kIsWeb && Platform.isLinux
+            ? LinuxWindowChromeController()
+            : NoOpWindowChromeController();
+    await chrome.initialize();
+    await chrome.applyStartupPolicy(windowPolicy);
+
+    AppDebugLog.startup('entering runApp');
+    runApp(
+      WaddleRoot(
+        db: db,
+        blobs: blobs,
+        alerts: alerts,
+        server: server,
+        setupPasswordFile: keyFile,
+        engine: engine,
+        tickerCurated: tickerCurated,
+        marqueeCycleGate: marqueeCycleGate,
+      ),
+    );
+  } catch (e, st) {
+    onZoneFatalError(e, st);
+  }
 }
 
 class WaddleRoot extends StatelessWidget {

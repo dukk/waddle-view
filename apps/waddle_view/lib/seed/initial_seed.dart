@@ -63,6 +63,8 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureTriviaScreen(db);
   await _ensureGuestWifiScreen(db);
   await _ensureNewsScreen(db);
+  await _ensureNewsRightImageScreen(db);
+  await _ensureNewsColumnsScreen(db);
   await _ensureClockDataKeyLimit(db);
   await _ensureClockDigitalScreen(db);
   await _ensureClockAnalogScreen(db);
@@ -138,6 +140,7 @@ Future<void> _ensureWelcomeScreen(AppDatabase db) async {
             '{"v":1,"layout":"single","widgets":[{"type":"static_text","slot":"main","config":{"text":"Welcome to Waddle View"}}]}',
           ),
           dwellSeconds: const Value(10),
+          maxPlacementsPerProgram: const Value(1),
         ),
       );
 }
@@ -158,6 +161,7 @@ Future<void> _ensureJokeScreen(AppDatabase db) async {
             '{"v":1,"layout":"single","widgets":[{"type":"joke","slot":"main","config":{}}]}',
           ),
           dwellSeconds: const Value(12),
+          dataKey: const Value('jokes'),
         ),
       );
 }
@@ -178,6 +182,8 @@ Future<void> _ensureTriviaScreen(AppDatabase db) async {
             '{"v":1,"layout":"single","widgets":[{"type":"trivia","slot":"main","config":{}}]}',
           ),
           dwellSeconds: const Value(16),
+          maxPlacementsPerProgram: const Value(1),
+          dataKey: const Value('trivia'),
         ),
       );
 }
@@ -198,6 +204,8 @@ Future<void> _ensureGuestWifiScreen(AppDatabase db) async {
             '{"v":1,"layout":"single","widgets":[{"type":"guest_wifi","slot":"main","config":{}}]}',
           ),
           dwellSeconds: const Value(18),
+          maxPlacementsPerProgram: const Value(1),
+          dataKey: const Value('guest_wifi'),
         ),
       );
 }
@@ -207,6 +215,15 @@ Future<void> _ensureNewsScreen(AppDatabase db) async {
         ..where((t) => t.id.equals('news')))
       .getSingleOrNull();
   if (row != null) {
+    await (db.update(db.screenDefinitions)
+          ..where((t) => t.id.equals('news')))
+        .write(
+          const ScreenDefinitionsCompanion(
+            dataKey: Value('news'),
+            maxPlacementsPerProgram: Value(null),
+            minPlacementsPerProgram: Value(1),
+          ),
+        );
     return;
   }
   await db.into(db.screenDefinitions).insert(
@@ -218,6 +235,67 @@ Future<void> _ensureNewsScreen(AppDatabase db) async {
             '{"v":1,"layout":"single","widgets":[{"type":"rss_article","slot":"main","config":{"scrollDelayMs":2500,"trailingHoldMs":2000,"scrollPixelsPerSecond":48,"minReadMs":8000}}]}',
           ),
           dwellSeconds: const Value(12),
+          dataKey: const Value('news'),
+        ),
+      );
+}
+
+Future<void> _ensureNewsRightImageScreen(AppDatabase db) async {
+  final row = await (db.select(db.screenDefinitions)
+        ..where((t) => t.id.equals('news_right')))
+      .getSingleOrNull();
+  if (row != null) {
+    await (db.update(db.screenDefinitions)
+          ..where((t) => t.id.equals('news_right')))
+        .write(
+          const ScreenDefinitionsCompanion(
+            dataKey: Value('news'),
+          ),
+        );
+    return;
+  }
+  await db.into(db.screenDefinitions).insert(
+        ScreenDefinitionsCompanion.insert(
+          id: 'news_right',
+          name: 'News (image right)',
+          description: const Value(
+            'RSS story with image on the right and scrolling summary',
+          ),
+          layoutJson: const Value(
+            '{"v":1,"layout":"single","widgets":[{"type":"rss_article","slot":"main","config":{"scrollDelayMs":2500,"trailingHoldMs":2000,"scrollPixelsPerSecond":48,"minReadMs":8000,"imageOnRight":true}}]}',
+          ),
+          dwellSeconds: const Value(12),
+          dataKey: const Value('news'),
+        ),
+      );
+}
+
+Future<void> _ensureNewsColumnsScreen(AppDatabase db) async {
+  final row = await (db.select(db.screenDefinitions)
+        ..where((t) => t.id.equals('news_columns')))
+      .getSingleOrNull();
+  if (row != null) {
+    await (db.update(db.screenDefinitions)
+          ..where((t) => t.id.equals('news_columns')))
+        .write(
+          const ScreenDefinitionsCompanion(
+            dataKey: Value('news'),
+          ),
+        );
+    return;
+  }
+  await db.into(db.screenDefinitions).insert(
+        ScreenDefinitionsCompanion.insert(
+          id: 'news_columns',
+          name: 'News (3 columns)',
+          description: const Value(
+            'Three RSS stories: image above title and summary in each column',
+          ),
+          layoutJson: const Value(
+            '{"v":1,"layout":"single","widgets":[{"type":"rss_article_columns","slot":"main","config":{"columnCount":3,"minReadMs":10000}}]}',
+          ),
+          dwellSeconds: const Value(16),
+          dataKey: const Value('news'),
         ),
       );
 }
@@ -314,6 +392,9 @@ Future<void> _ensureCalendarScreen(AppDatabase db) async {
             '{"v":1,"layout":"single","widgets":[{"type":"calendar_month","slot":"main","config":{}}]}',
           ),
           dwellSeconds: const Value(22),
+          dataKey: const Value('calendar'),
+          minPlacementsPerProgram: const Value(1),
+          maxPlacementsPerProgram: const Value(1),
         ),
       );
 }
@@ -337,6 +418,9 @@ Future<void> _ensureLocalApiScreen(AppDatabase db) async {
             '{"v":1,"layout":"single","widgets":[{"type":"local_api","slot":"main","config":{}}]}',
           ),
           dwellSeconds: const Value(16),
+          dataKey: const Value('dev_local_api'),
+          minPlacementsPerProgram: const Value(0),
+          maxPlacementsPerProgram: const Value(1),
         ),
       );
 }
@@ -362,6 +446,9 @@ Future<void> _ensureAdminSetupScreen(AppDatabase db) async {
           dwellSeconds: const Value(18),
           frequencyWeight: const Value(200),
           minGapBetweenShowsSeconds: const Value(0),
+          dataKey: const Value('admin_setup'),
+          minPlacementsPerProgram: const Value(0),
+          maxPlacementsPerProgram: const Value(1),
         ),
       );
 }
@@ -382,6 +469,9 @@ Future<void> _ensureWeatherScreen(AppDatabase db) async {
             '{"v":1,"layout":"single","widgets":[{"type":"weather","slot":"main","config":{"locationId":"salt_lake_city_ut"}}]}',
           ),
           dwellSeconds: const Value(14),
+          dataKey: const Value('weather'),
+          minPlacementsPerProgram: const Value(1),
+          maxPlacementsPerProgram: const Value(1),
         ),
       );
 }
@@ -423,7 +513,7 @@ Future<void> _ensureJokesProviderRow(AppDatabase db) async {
           enabled: const Value(true),
           pollSeconds: const Value(3600),
           extraJson: const Value(
-            '{"jokesPerDay":3,"maxJokesPerTwoHours":20,"twoHourWindowMs":7200000,'
+            '{"jokesPerDay":10,"maxJokesPerTwoHours":20,"twoHourWindowMs":7200000,'
             '"jokeRetentionDays":14,"model":"gpt-4o-mini",'
             '"globalPrompt":"You write original, family-friendly jokes."}',
           ),
@@ -495,6 +585,123 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
           latitude: 33.7490,
           longitude: -84.3880,
           enabled: const Value(true),
+        ),
+      );
+  await db.into(db.weatherLocations).insertOnConflictUpdate(
+        WeatherLocationsCompanion.insert(
+          id: 'sandiego_ca',
+          name: 'San Diego, CA',
+          latitude: 32.7157,
+          longitude: -117.1611,
+          enabled: const Value(false),
+        ),
+      );
+  await db.into(db.weatherLocations).insertOnConflictUpdate(
+        WeatherLocationsCompanion.insert(
+          id: 'miami_fl',
+          name: 'Miami, FL',
+          latitude: 25.7617,
+          longitude: -80.1918,
+          enabled: const Value(false),
+        ),
+      );
+  await db.into(db.weatherLocations).insertOnConflictUpdate(
+        WeatherLocationsCompanion.insert(
+          id: 'denver_co',
+          name: 'Denver, CO',
+          latitude: 39.7392,
+          longitude: -104.9903,
+          enabled: const Value(false),
+        ),
+      );
+  await db.into(db.weatherLocations).insertOnConflictUpdate(
+        WeatherLocationsCompanion.insert(
+          id: 'las_vegas_nv',
+          name: 'Las Vegas, NV',
+          latitude: 36.1699,
+          longitude: -115.1398,
+          enabled: const Value(false),
+        ),
+      );
+  await db.into(db.weatherLocations).insertOnConflictUpdate(
+        WeatherLocationsCompanion.insert(
+          id: 'phoenix_az',
+          name: 'Phoenix, AZ',
+          latitude: 33.4483,
+          longitude: -112.0740,
+          enabled: const Value(false),
+        ),
+      );
+  await db.into(db.weatherLocations).insertOnConflictUpdate(
+        WeatherLocationsCompanion.insert(
+          id: 'seattle_wa',
+          name: 'Seattle, WA',
+          latitude: 47.6062,
+          longitude: -122.3321,
+          enabled: const Value(false),
+        ),
+      );
+  await db.into(db.weatherLocations).insertOnConflictUpdate(
+        WeatherLocationsCompanion.insert(
+          id: 'washington_dc',
+          name: 'Washington, DC',
+          latitude: 38.8951,
+          longitude: -77.0369,
+          enabled: const Value(false),
+        ),
+      );
+  await db.into(db.weatherLocations).insertOnConflictUpdate(
+        WeatherLocationsCompanion.insert(
+          id: 'boston_ma',
+          name: 'Boston, MA',
+          latitude: 42.3601,
+          longitude: -71.0589,
+          enabled: const Value(false),
+        ),
+      );
+  await db.into(db.weatherLocations).insertOnConflictUpdate(
+        WeatherLocationsCompanion.insert(
+          id: 'chicago_il',
+          name: 'Chicago, IL',
+          latitude: 41.8781,
+          longitude: -87.6298,
+          enabled: const Value(false),
+        ),
+      );
+  await db.into(db.weatherLocations).insertOnConflictUpdate(
+        WeatherLocationsCompanion.insert(
+          id: 'houston_tx',
+          name: 'Houston, TX',
+          latitude: 29.7604,
+          longitude: -95.3698,
+          enabled: const Value(false),
+        ),
+      );
+  await db.into(db.weatherLocations).insertOnConflictUpdate(
+        WeatherLocationsCompanion.insert(
+          id: 'austin_tx',
+          name: 'Austin, TX',
+          latitude: 30.2672,
+          longitude: -97.7431,
+          enabled: const Value(false),
+        ),
+      );
+  await db.into(db.weatherLocations).insertOnConflictUpdate(
+        WeatherLocationsCompanion.insert(
+          id: 'san_francisco_ca',
+          name: 'San Francisco, CA',
+          latitude: 37.7749,
+          longitude: -122.4194,
+          enabled: const Value(false),
+        ),
+      );
+  await db.into(db.weatherLocations).insertOnConflictUpdate(
+        WeatherLocationsCompanion.insert(
+          id: 'new_york_ny',
+          name: 'New York, NY',
+          latitude: 40.7128,
+          longitude: -74.0060,
+          enabled: const Value(false),
         ),
       );
 }

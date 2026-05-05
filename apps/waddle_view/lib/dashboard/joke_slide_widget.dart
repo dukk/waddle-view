@@ -12,11 +12,17 @@ import '../persistence/database.dart';
 import 'joke_slide_timing.dart';
 import 'dashboard_viewport_scope.dart';
 
-/// One random joke from [db], optional [categoryId] from [spec] `config`.
-Future<Joke?> _loadRandomJoke(
+/// Curated joke id from [slide], else random from [db] (optional [categoryId]).
+Future<Joke?> _loadJokeForSlide(
   AppDatabase db,
   ParsedWidgetSpec spec,
+  ResolvedSlide slide,
 ) async {
+  final curatedId = slide.randomChoices[spec.choiceKey];
+  if (curatedId != null && curatedId.isNotEmpty) {
+    return (db.select(db.jokes)..where((t) => t.id.equals(curatedId)))
+        .getSingleOrNull();
+  }
   final categoryId = spec.config['categoryId'] as String?;
   final q = db.select(db.jokes);
   if (categoryId != null && categoryId.isNotEmpty) {
@@ -91,7 +97,7 @@ class _JokeSlideWidgetState extends State<JokeSlideWidget> {
   }
 
   Future<void> _bootstrap() async {
-    final joke = await _loadRandomJoke(widget.db, widget.spec);
+    final joke = await _loadJokeForSlide(widget.db, widget.spec, widget.slide);
     final iconBytes = joke == null
         ? null
         : await _loadJokeCategoryIconBytes(widget.db, widget.blobs, joke);

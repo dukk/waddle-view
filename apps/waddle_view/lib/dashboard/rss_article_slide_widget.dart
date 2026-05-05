@@ -1,87 +1,16 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../blob/blob_store.dart';
 import '../curator/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';
 import '../persistence/database.dart';
-import 'rss_article_slide_timing.dart';
 import 'dashboard_viewport_scope.dart';
-
-Future<RssArticle?> _loadBestArticleForScreen(
-  AppDatabase db,
-  ParsedWidgetSpec spec,
-) async {
-  final feedId = spec.config['feedId'] as String?;
-  final q = db.select(db.rssArticles);
-  if (feedId != null && feedId.isNotEmpty) {
-    q.where((t) => t.feedId.equals(feedId));
-  }
-  final articles = await (q
-        ..orderBy([
-          (t) => OrderingTerm.desc(t.publishedAt),
-          (t) => OrderingTerm.desc(t.fetchedAt),
-        ])
-        ..limit(200))
-      .get();
-  if (articles.isEmpty) {
-    return null;
-  }
-
-  final imageKeys = <String>{
-    for (final a in articles)
-      if ((a.imageBlobKey ?? '').trim().isNotEmpty) a.imageBlobKey!.trim(),
-  };
-  final qualityByBlobKey = <String, int>{};
-  if (imageKeys.isNotEmpty) {
-    final blobs = await (db.select(db.blobMetadata)
-          ..where((t) => t.blobKey.isIn(imageKeys.toList())))
-        .get();
-    for (final b in blobs) {
-      qualityByBlobKey[b.blobKey] = b.bytes;
-    }
-  }
-
-  articles.sort((a, b) {
-    final aKey = (a.imageBlobKey ?? '').trim();
-    final bKey = (b.imageBlobKey ?? '').trim();
-    final aScore = aKey.isEmpty ? 0 : (qualityByBlobKey[aKey] ?? 0);
-    final bScore = bKey.isEmpty ? 0 : (qualityByBlobKey[bKey] ?? 0);
-    if (aScore != bScore) {
-      return bScore.compareTo(aScore);
-    }
-    if (a.publishedAt != b.publishedAt) {
-      return b.publishedAt.compareTo(a.publishedAt);
-    }
-    return b.fetchedAt.compareTo(a.fetchedAt);
-  });
-  return articles.first;
-}
-
-Future<Uint8List?> _loadArticleImageBytes(
-  AppDatabase db,
-  BlobStore blobs,
-  RssArticle article,
-) async {
-  final key = article.imageBlobKey;
-  if (key == null || key.isEmpty) {
-    return null;
-  }
-  final meta = await (db.select(db.blobMetadata)
-        ..where((t) => t.blobKey.equals(key)))
-      .getSingleOrNull();
-  if (meta == null) {
-    return null;
-  }
-  final raw = await blobs.readBytes(BlobRef(meta.relativePath));
-  if (raw.isEmpty) {
-    return null;
-  }
-  return Uint8List.fromList(raw);
-}
+import 'rss_article_load.dart';
+import 'rss_article_slide_timing.dart';
 
 int _cfgInt(Map<String, dynamic> c, String key, int def) {
   final v = c[key];
@@ -101,6 +30,26 @@ double _cfgDouble(Map<String, dynamic> c, String key, double def) {
   }
   if (v is int) {
     return v.toDouble();
+  }
+  return def;
+}
+
+bool _cfgBool(Map<String, dynamic> c, String key, bool def) {
+  final v = c[key];
+  if (v is bool) {
+    return v;
+  }
+  if (v is int) {
+    return v != 0;
+  }
+  if (v is String) {
+    final n = v.trim().toLowerCase();
+    if (n == '1' || n == 'true' || n == 'yes' || n == 'on') {
+      return true;
+    }
+    if (n == '0' || n == 'false' || n == 'no' || n == 'off') {
+      return false;
+    }
   }
   return def;
 }
@@ -148,6 +97,7 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
   late final double _scrollPps;
   late final int _minReadMs;
   late final double _imageFraction;
+  late final bool _imageOnRight;
 
   @override
   void initState() {
@@ -158,14 +108,21 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
     _scrollPps = _cfgDouble(c, 'scrollPixelsPerSecond', 48);
     _minReadMs = _cfgInt(c, 'minReadMs', 8000);
     _imageFraction = _cfgDouble(c, 'imagePanelFraction', 0.39).clamp(0.2, 0.55);
+    _imageOnRight = _cfgBool(c, 'imageOnRight', false);
     unawaited(_bootstrap());
   }
 
   Future<void> _bootstrap() async {
-    final article = await _loadBestArticleForScreen(widget.db, widget.spec);
+    final article = await loadRssArticleForSlideChoice(
+      widget.db,
+      widget.spec,
+      widget.slide,
+      widget.spec.choiceKey,
+      const {},
+    );
     Uint8List? bytes;
     if (article != null) {
-      bytes = await _loadArticleImageBytes(widget.db, widget.blobs, article);
+      bytes = await loadRssArticleImageBytes(widget.db, widget.blobs, article);
     }
     if (!mounted) {
       return;
@@ -297,10 +254,16 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
       }
       return Padding(
         padding: EdgeInsets.only(bottom: 12 * s),
-        child: Text(
-          'Article has no title or summary',
-          style: theme.textTheme.titleMedium,
-          textAlign: TextAlign.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Article has no title or summary',
+              style: theme.textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            _articleLinkQr(theme, s, article.link),
+          ],
         ),
       );
     }
@@ -325,6 +288,68 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
         }
         final imageW =
             (w * _imageFraction).clamp(120.0 * s, w * 0.55);
+        final imagePanel = SizedBox(
+          key: const Key('rss_article_image_panel'),
+          width: imageW,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12 * s),
+              border: Border.all(
+                color: theme.colorScheme.outline.withValues(alpha: 0.4),
+              ),
+              color: theme.colorScheme.surfaceContainerHigh,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(11 * s),
+              child: _imageBytes != null
+                  ? Image.memory(
+                      _imageBytes!,
+                      fit: BoxFit.cover,
+                      gaplessPlayback: true,
+                      errorBuilder: (context, error, stackTrace) =>
+                          _imagePlaceholder(theme, s),
+                    )
+                  : _imagePlaceholder(theme, s),
+            ),
+          ),
+        );
+        final gap = SizedBox(width: 20 * s);
+        final textPanel = Expanded(
+          key: const Key('rss_article_text_column'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (title.isNotEmpty)
+                Text(
+                  title,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              if (title.isNotEmpty && summary.isNotEmpty)
+                SizedBox(height: 12 * s),
+              Expanded(
+                child: summary.isEmpty
+                    ? const SizedBox.shrink()
+                    : Scrollbar(
+                        controller: _scroll,
+                        thumbVisibility: true,
+                        child: SingleChildScrollView(
+                          key: const Key('rss_article_summary_scroll'),
+                          controller: _scroll,
+                          child: Text(
+                            summary,
+                            style: theme.textTheme.bodyLarge,
+                          ),
+                        ),
+                      ),
+              ),
+              _articleLinkQr(theme, s, article.link),
+            ],
+          ),
+        );
         return Padding(
           padding: EdgeInsets.only(bottom: 12 * s),
           child: SizedBox(
@@ -332,67 +357,9 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
             height: h,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SizedBox(
-                  width: imageW,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12 * s),
-                      border: Border.all(
-                        color: theme.colorScheme.outline.withValues(alpha: 0.4),
-                      ),
-                      color: theme.colorScheme.surfaceContainerHigh,
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(11 * s),
-                      child: _imageBytes != null
-                          ? Image.memory(
-                              _imageBytes!,
-                              fit: BoxFit.cover,
-                              gaplessPlayback: true,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  _imagePlaceholder(theme, s),
-                            )
-                          : _imagePlaceholder(theme, s),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 20 * s),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (title.isNotEmpty)
-                        Text(
-                          title,
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      if (title.isNotEmpty && summary.isNotEmpty)
-                        SizedBox(height: 12 * s),
-                      Expanded(
-                        child: summary.isEmpty
-                            ? const SizedBox.shrink()
-                            : Scrollbar(
-                                controller: _scroll,
-                                thumbVisibility: true,
-                                child: SingleChildScrollView(
-                                  key: const Key('rss_article_summary_scroll'),
-                                  controller: _scroll,
-                                  child: Text(
-                                    summary,
-                                    style: theme.textTheme.bodyLarge,
-                                  ),
-                                ),
-                              ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              children: _imageOnRight
+                  ? <Widget>[textPanel, gap, imagePanel]
+                  : <Widget>[imagePanel, gap, textPanel],
             ),
           ),
         );
@@ -408,6 +375,39 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
           Icons.image_not_supported_outlined,
           size: 56 * s,
           color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+        ),
+      ),
+    );
+  }
+
+  /// QR encoding the article URL for phone cameras. Omits when [link] is empty.
+  static Widget _articleLinkQr(ThemeData theme, double s, String link) {
+    final url = link.trim();
+    if (url.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Padding(
+        padding: EdgeInsets.only(top: 10 * s),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8 * s),
+            border: Border.all(
+              color: theme.colorScheme.outline.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(6 * s),
+            child: QrImageView(
+              key: const Key('rss_article_link_qr'),
+              data: url,
+              version: QrVersions.auto,
+              size: 88 * s,
+              gapless: true,
+            ),
+          ),
         ),
       ),
     );

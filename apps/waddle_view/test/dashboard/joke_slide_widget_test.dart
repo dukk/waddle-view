@@ -69,6 +69,63 @@ void main() {
     await db.close();
   });
 
+  testWidgets('uses curated joke id from slide.randomChoices', (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureDefaultJokeCategories(db);
+    await db.into(db.jokes).insert(
+          JokesCompanion.insert(
+            id: 't_joke_a',
+            categoryId: 'dad',
+            setup: 'First',
+            punchline: 'P1',
+            createdAtMs: 1,
+          ),
+        );
+    await db.into(db.jokes).insert(
+          JokesCompanion.insert(
+            id: 't_joke_b',
+            categoryId: 'dad',
+            setup: 'Second curated',
+            punchline: 'P2',
+            createdAtMs: 2,
+          ),
+        );
+
+    final slide = ResolvedSlide(
+      screenId: 'jokes',
+      dwellMs: 1000,
+      layoutJson: '{}',
+      randomChoices: const {'main_joke': 't_joke_b'},
+    );
+    const spec = ParsedWidgetSpec(
+      type: 'joke',
+      slot: 'main',
+      config: {},
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.light(),
+        home: Scaffold(
+          body: JokeSlideWidget(
+            db: db,
+            blobs: FakeBlobStore(),
+            slide: slide,
+            spec: spec,
+            theme: ThemeData.light(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Second curated'), findsOneWidget);
+    expect(find.text('First'), findsNothing);
+
+    await db.close();
+  });
+
   testWidgets('empty jokes shows placeholder', (tester) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);

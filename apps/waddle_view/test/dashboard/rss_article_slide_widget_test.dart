@@ -102,6 +102,127 @@ void main() {
     await db.close();
   });
 
+  testWidgets('uses curated article id instead of best-ranked article', (
+    tester,
+  ) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final blobs = FakeBlobStore();
+    final highRef = await blobs.putBytes(
+      List<int>.filled(8000, 1),
+      logicalKey: 'rss/big',
+    );
+    await db.into(db.rssFeedSources).insert(
+          RssFeedSourcesCompanion.insert(
+            id: 'feed_t',
+            url: 'http://test.local/feed.xml',
+            category: const Value('test'),
+          ),
+        );
+    await db.into(db.blobMetadata).insert(
+          BlobMetadataCompanion.insert(
+            blobKey: 'rss/big',
+            sha256: highRef.storageKey,
+            relativePath: highRef.storageKey,
+            bytes: 8000,
+            capturedAt: 1,
+          ),
+        );
+    await _insertArticle(
+      db,
+      id: 'article_best',
+      title: 'Highest quality image wins without curation',
+      publishedAt: 100,
+      imageBlobKey: 'rss/big',
+    );
+    await _insertArticle(
+      db,
+      id: 'article_curated',
+      title: 'Curated lesser headline',
+      publishedAt: 50,
+    );
+
+    final slide = ResolvedSlide(
+      screenId: 'news',
+      dwellMs: 5000,
+      layoutJson: '{}',
+      randomChoices: const {'main_rss_article': 'article_curated'},
+    );
+    const spec = ParsedWidgetSpec(
+      type: 'rss_article',
+      slot: 'main',
+      config: {},
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.light(),
+        home: Scaffold(
+          body: RssArticleSlideWidget(
+            db: db,
+            blobs: blobs,
+            slide: slide,
+            spec: spec,
+            theme: ThemeData.light(),
+            onReportDesiredDwell: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Curated lesser headline'), findsOneWidget);
+    expect(
+      find.text('Highest quality image wins without curation'),
+      findsNothing,
+    );
+    await db.close();
+  });
+
+  testWidgets('imageOnRight places image panel to the right of text', (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await _insertFeedAndArticle(db, summary: 'Body text for layout.');
+    final slide = ResolvedSlide(
+      screenId: 'news_right',
+      dwellMs: 5000,
+      layoutJson: '{}',
+    );
+    const spec = ParsedWidgetSpec(
+      type: 'rss_article',
+      slot: 'main',
+      config: {'imageOnRight': true},
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.light(),
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 800,
+              height: 400,
+              child: RssArticleSlideWidget(
+                db: db,
+                blobs: FakeBlobStore(),
+                slide: slide,
+                spec: spec,
+                theme: ThemeData.light(),
+                onReportDesiredDwell: (_) {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final imageBox = tester.getRect(
+      find.byKey(const Key('rss_article_image_panel')),
+    );
+    final textBox = tester.getRect(
+      find.byKey(const Key('rss_article_text_column')),
+    );
+    expect(imageBox.left, greaterThan(textBox.left));
+    await db.close();
+  });
+
   testWidgets('short summary reports max of base dwell and minRead', (tester) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
@@ -336,6 +457,176 @@ void main() {
     await tester.pump(const Duration(milliseconds: 80));
     await tester.pumpAndSettle();
     expect(position.pixels, closeTo(position.maxScrollExtent, 3.0));
+
+    await db.close();
+  });
+
+  testWidgets('shows QR for article link when URL is present', (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    const articleUrl = 'https://news.example.com/story/42';
+    await db.into(db.rssFeedSources).insert(
+          RssFeedSourcesCompanion.insert(
+            id: 'feed_t',
+            url: 'http://test.local/feed.xml',
+            category: const Value('test'),
+          ),
+        );
+    await db.into(db.rssArticles).insert(
+          RssArticlesCompanion.insert(
+            id: 'article_qr',
+            feedId: 'feed_t',
+            guid: 'gq',
+            title: 'Headline',
+            link: articleUrl,
+            summary: const Value('Body.'),
+            publishedAt: 1,
+            fetchedAt: 1,
+          ),
+        );
+
+    final slide = ResolvedSlide(
+      screenId: 'news',
+      dwellMs: 5000,
+      layoutJson: '{}',
+    );
+    const spec = ParsedWidgetSpec(
+      type: 'rss_article',
+      slot: 'main',
+      config: {},
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.light(),
+        home: Scaffold(
+          body: RssArticleSlideWidget(
+            db: db,
+            blobs: FakeBlobStore(),
+            slide: slide,
+            spec: spec,
+            theme: ThemeData.light(),
+            onReportDesiredDwell: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('rss_article_link_qr')), findsOneWidget);
+
+    await db.close();
+  });
+
+  testWidgets('omits QR when article link is empty', (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.rssFeedSources).insert(
+          RssFeedSourcesCompanion.insert(
+            id: 'feed_t',
+            url: 'http://test.local/feed.xml',
+            category: const Value('test'),
+          ),
+        );
+    await db.into(db.rssArticles).insert(
+          RssArticlesCompanion.insert(
+            id: 'article_no_link',
+            feedId: 'feed_t',
+            guid: 'gnl',
+            title: 'Headline',
+            link: '',
+            summary: const Value('Body.'),
+            publishedAt: 1,
+            fetchedAt: 1,
+          ),
+        );
+
+    final slide = ResolvedSlide(
+      screenId: 'news',
+      dwellMs: 5000,
+      layoutJson: '{}',
+    );
+    const spec = ParsedWidgetSpec(
+      type: 'rss_article',
+      slot: 'main',
+      config: {},
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.light(),
+        home: Scaffold(
+          body: RssArticleSlideWidget(
+            db: db,
+            blobs: FakeBlobStore(),
+            slide: slide,
+            spec: spec,
+            theme: ThemeData.light(),
+            onReportDesiredDwell: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('rss_article_link_qr')), findsNothing);
+
+    await db.close();
+  });
+
+  testWidgets('empty title and summary still shows QR when link present', (
+    tester,
+  ) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    const articleUrl = 'https://news.example.com/only-link';
+    await db.into(db.rssFeedSources).insert(
+          RssFeedSourcesCompanion.insert(
+            id: 'feed_t',
+            url: 'http://test.local/feed.xml',
+            category: const Value('test'),
+          ),
+        );
+    await db.into(db.rssArticles).insert(
+          RssArticlesCompanion.insert(
+            id: 'article_blank',
+            feedId: 'feed_t',
+            guid: 'gb',
+            title: '',
+            link: articleUrl,
+            summary: const Value.absent(),
+            publishedAt: 1,
+            fetchedAt: 1,
+          ),
+        );
+
+    final slide = ResolvedSlide(
+      screenId: 'news',
+      dwellMs: 5000,
+      layoutJson: '{}',
+    );
+    const spec = ParsedWidgetSpec(
+      type: 'rss_article',
+      slot: 'main',
+      config: {},
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.light(),
+        home: Scaffold(
+          body: RssArticleSlideWidget(
+            db: db,
+            blobs: FakeBlobStore(),
+            slide: slide,
+            spec: spec,
+            theme: ThemeData.light(),
+            onReportDesiredDwell: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Article has no title or summary'), findsOneWidget);
+    expect(find.byKey(const Key('rss_article_link_qr')), findsOneWidget);
 
     await db.close();
   });

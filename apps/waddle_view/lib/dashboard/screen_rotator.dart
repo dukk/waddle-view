@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 
 import '../blob/blob_store.dart';
 import '../debug/app_debug_log.dart';
+import '../curator/curator_content_pools.dart';
 import '../curator/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';
 import '../persistence/database.dart';
@@ -20,6 +21,7 @@ import 'admin_setup_slide_widget.dart';
 import 'guest_wifi_slide_widget.dart';
 import 'joke_slide_widget.dart';
 import 'local_api_slide_widget.dart';
+import 'rss_article_columns_slide_widget.dart';
 import 'rss_article_slide_widget.dart';
 import 'trivia_slide_widget.dart';
 import 'weather_slide_widget.dart';
@@ -52,7 +54,9 @@ bool _isTruthyFlag(String? raw, {required bool defaultValue}) {
 
 bool _isNewsRssLayout(String layoutJson) {
   final widgets = parseScreenLayoutWidgets(layoutJson);
-  return widgets.any((w) => w.type == 'rss_article');
+  return widgets.any(
+    (w) => w.type == 'rss_article' || w.type == 'rss_article_columns',
+  );
 }
 
 List<ScreenCandidate> filterNewsCandidatesByPhotoRequirement({
@@ -159,7 +163,9 @@ class _ScreenRotatorState extends State<ScreenRotator>
     );
 
     final blobs = await widget.db.select(widget.db.blobMetadata).get();
+    final contentPools = await loadCuratorContentPools(widget.db);
     final pools = <String, List<String>>{
+      ...contentPools,
       if (blobs.isNotEmpty) 'blobs': blobs.map((e) => e.blobKey).toList(),
     };
     final firstArticleWithImageKey = await (widget.db.select(widget.db.rssArticles)
@@ -451,6 +457,19 @@ class _SlideContent extends StatelessWidget {
         ),
       );
     }
+    if (widgets.length == 1 && widgets.first.type == 'rss_article_columns') {
+      final w = widgets.first;
+      return SizedBox.expand(
+        child: RssArticleColumnsSlideWidget(
+          db: db,
+          blobs: blobs,
+          slide: slide,
+          spec: w,
+          theme: theme,
+          onReportDesiredDwell: (ms) => onReportDesiredDwell(slideIndex, ms),
+        ),
+      );
+    }
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: widgets.map((w) {
@@ -515,6 +534,15 @@ class _SlideContent extends StatelessWidget {
             );
           case 'rss_article':
             return RssArticleSlideWidget(
+              db: db,
+              blobs: blobs,
+              slide: slide,
+              spec: w,
+              theme: theme,
+              onReportDesiredDwell: (ms) => onReportDesiredDwell(slideIndex, ms),
+            );
+          case 'rss_article_columns':
+            return RssArticleColumnsSlideWidget(
               db: db,
               blobs: blobs,
               slide: slide,

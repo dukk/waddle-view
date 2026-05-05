@@ -13,10 +13,17 @@ import '../persistence/database.dart';
 import 'trivia_slide_timing.dart';
 import 'dashboard_viewport_scope.dart';
 
-Future<TriviaQuestion?> _loadRandomTrivia(
+Future<TriviaQuestion?> _loadTriviaForSlide(
   AppDatabase db,
   ParsedWidgetSpec spec,
+  ResolvedSlide slide,
 ) async {
+  final curatedId = slide.randomChoices[spec.choiceKey];
+  if (curatedId != null && curatedId.isNotEmpty) {
+    return (db.select(db.triviaQuestions)
+          ..where((t) => t.id.equals(curatedId)))
+        .getSingleOrNull();
+  }
   final categoryId = spec.config['categoryId'] as String?;
   final q = db.select(db.triviaQuestions);
   if (categoryId != null && categoryId.isNotEmpty) {
@@ -112,7 +119,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
   }
 
   Future<void> _bootstrap() async {
-    final q = await _loadRandomTrivia(widget.db, widget.spec);
+    final q = await _loadTriviaForSlide(widget.db, widget.spec, widget.slide);
     final iconBytes = q == null
         ? null
         : await _loadTriviaCategoryIconBytes(widget.db, widget.blobs, q);

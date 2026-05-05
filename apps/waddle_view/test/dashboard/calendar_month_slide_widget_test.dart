@@ -9,7 +9,8 @@ import 'package:waddle_view/persistence/database.dart';
 import '../helpers/memory_database.dart';
 
 void main() {
-  testWidgets('shows month title and no event list when empty', (tester) async {
+  testWidgets('shows compact month title and empty upcoming panel when no events',
+      (tester) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     const spec = ParsedWidgetSpec(
@@ -33,7 +34,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('June 2024'), findsOneWidget);
+    expect(find.text('Jun 2024'), findsOneWidget);
+    expect(find.text('Upcoming events'), findsOneWidget);
+    expect(find.text('No upcoming events.'), findsOneWidget);
     expect(find.text('Birthday party'), findsNothing);
 
     await db.close();
@@ -72,7 +75,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('June 2024'), findsOneWidget);
+    expect(find.text('Jun 2024'), findsOneWidget);
+    expect(find.text('Upcoming events'), findsOneWidget);
     expect(find.text('Birthday party'), findsOneWidget);
 
     await db.close();
@@ -113,6 +117,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Hall A'), findsOneWidget);
+    expect(find.text('Upcoming events'), findsOneWidget);
 
     await db.close();
   });
@@ -150,7 +155,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('June 2024'), findsOneWidget);
+    expect(find.text('Jun 2024'), findsOneWidget);
 
     await db.close();
   });
@@ -198,7 +203,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('June 2024'), findsOneWidget);
+    expect(find.text('Jun 2024'), findsOneWidget);
 
     await db.close();
   });

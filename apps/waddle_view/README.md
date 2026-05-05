@@ -1,6 +1,6 @@
 # Waddle View
 
-Flutter **Linux** TV dashboard (Windows desktop supported for local development). Features: **Drift** SQLite, filesystem **blob** store, **SecretStore**, sequential **data collection** engine, **curated bottom ticker** (RTL marquee), **overlay alerts** (optional QR), embedded **Shelf** REST API with per-deployment API key.
+Flutter **Linux** TV dashboard (Windows desktop supported for local development). Features: **Drift** SQLite, filesystem **blob** store, **SecretStore**, sequential **data collection** engine, **curated bottom ticker** (RTL marquee), **RSS news slides** with an article-link **QR code** for scanning, **overlay alerts** (optional QR), embedded **Shelf** REST API with per-deployment API key.
 
 For module boundaries, startup order, and **Mermaid** sequence diagrams (startup, data collection, REST alerts, ticker), see **[`ARCHITECTURE.md`](ARCHITECTURE.md)**.
 
@@ -47,6 +47,8 @@ flutter run -d linux      # Linux desktop or Pi with Flutter toolchain
 ```
 
 `flutter run` defaults to **debug**: asserts, tracing, and **hot reload** (`r` in the terminal) / **hot restart** (`R`). In debug, the data collection engine uses a **shorter idle** between cycles than in profile or release (see `lib/main.dart`).
+
+**Unhandled errors (release / kiosk):** framework, async isolate, and root-zone failures are logged to **stderr** and the Dart **developer log** (name `Fatal.*`), then the process **restarts** by spawning the same executable with the same arguments (`lib/bootstrap/app_fatal_error_recovery.dart`). If restart fails, the process exits with a non-zero code so a supervisor (e.g. **systemd**) can start a fresh instance. This does not apply to **flutter test** (tests do not run `main()`).
 
 Useful variants:
 
@@ -103,6 +105,10 @@ Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../d
 - **Values**: `navy_coral` (default), `graphite_amber`
 - **Operator UI**: Admin home → Curator → **Display theme** (saved with other curator settings).
 - **Code**: palettes and builders live under [`lib/theme/config/`](lib/theme/config/); registered ids are listed in [`lib/theme/config/display_theme_registry.dart`](lib/theme/config/display_theme_registry.dart).
+
+### Screen program (main carousel)
+
+When the app assembles a timed program from `screen_definitions`, [`ScreenProgramCurator`](lib/curator/screen_program_curator.dart) pre-assigns **content ids** on each [`ResolvedSlide`](lib/curator/screen_program_curator.dart) for **jokes**, **RSS articles**, **trivia** (and existing **random photo** pools). Slide widgets read those ids from `randomChoices` first, so the same joke or article is not shown twice in one program when SQLite has enough distinct rows. If every candidate is already used, the slide falls back to the previous random / “best article” selection.
 
 ### Text scale — screens vs ticker (`dashboard_kv`)
 

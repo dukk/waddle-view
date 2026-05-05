@@ -5,6 +5,34 @@ import 'package:waddle_view/seed/initial_seed.dart';
 import '../helpers/memory_database.dart';
 
 void main() {
+  test('ensureInitialSeed inserts news screens with data_key news', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+
+    await ensureInitialSeed(db);
+
+    final left = await (db.select(db.screenDefinitions)
+          ..where((t) => t.id.equals('news')))
+        .getSingleOrNull();
+    final right = await (db.select(db.screenDefinitions)
+          ..where((t) => t.id.equals('news_right')))
+        .getSingleOrNull();
+    final columns = await (db.select(db.screenDefinitions)
+          ..where((t) => t.id.equals('news_columns')))
+        .getSingleOrNull();
+    expect(left, isNotNull);
+    expect(right, isNotNull);
+    expect(columns, isNotNull);
+    expect(left!.dataKey, 'news');
+    expect(right!.dataKey, 'news');
+    expect(columns!.dataKey, 'news');
+    expect(left.layoutJson.contains('"imageOnRight":true'), isFalse);
+    expect(right.layoutJson.contains('"imageOnRight":true'), isTrue);
+    expect(columns.layoutJson.contains('"type":"rss_article_columns"'), isTrue);
+    expect(columns.layoutJson.contains('"columnCount":3'), isTrue);
+    await db.close();
+  });
+
   test('ensureInitialSeed inserts weather provider and weather screen', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);

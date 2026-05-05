@@ -11,22 +11,22 @@ import 'dashboard_viewport_scope.dart';
 
 const _weekdayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const _monthNames = [
-  'January',
-  'February',
-  'March',
-  'April',
+const _monthNamesShort = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
   'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
-/// Month grid on the right (today highlighted); upcoming events on the left when present.
+/// Compact month grid on the left; upcoming events on the right (always shown).
 class CalendarMonthSlideWidget extends StatefulWidget {
   const CalendarMonthSlideWidget({
     super.key,
@@ -68,7 +68,8 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
     super.dispose();
   }
 
-  int get _leftFlex {
+  /// Flex for the left column (compact calendar). Config: `leftFlex`.
+  int get _calendarFlex {
     final v = widget.spec.config['leftFlex'];
     if (v is int && v > 0) {
       return v;
@@ -79,7 +80,8 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
     return 2;
   }
 
-  int get _rightFlex {
+  /// Flex for the right column (upcoming events). Config: `rightFlex`.
+  int get _eventsFlex {
     final v = widget.spec.config['rightFlex'];
     if (v is int && v > 0) {
       return v;
@@ -118,25 +120,28 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
               final monthAnchor = DateTime(now.year, now.month, now.day);
               final cells = buildMonthGridCells(monthAnchor, now);
               final monthTitle =
-                  '${_monthNames[monthAnchor.month - 1]} ${monthAnchor.year}';
+                  '${_monthNamesShort[monthAnchor.month - 1]} ${monthAnchor.year}';
 
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (events.isNotEmpty)
-                    Expanded(
-                      flex: _leftFlex,
-                      child: _UpcomingEventsList(
-                        events: events,
+                  Expanded(
+                    flex: _calendarFlex,
+                    child: Align(
+                      alignment: Alignment.topLeft,
+                      child: _MonthGridPanel(
+                        monthTitle: monthTitle,
+                        cells: cells,
                         theme: widget.theme,
                         layoutScale: s,
                       ),
                     ),
+                  ),
                   Expanded(
-                    flex: events.isNotEmpty ? _rightFlex : 1,
-                    child: _MonthGridPanel(
-                      monthTitle: monthTitle,
-                      cells: cells,
+                    flex: _eventsFlex,
+                    child: _UpcomingEventsPanel(
+                      snapshot: snapshot,
+                      events: events,
                       theme: widget.theme,
                       layoutScale: s,
                     ),
@@ -151,13 +156,15 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
   }
 }
 
-class _UpcomingEventsList extends StatelessWidget {
-  const _UpcomingEventsList({
+class _UpcomingEventsPanel extends StatelessWidget {
+  const _UpcomingEventsPanel({
+    required this.snapshot,
     required this.events,
     required this.theme,
     required this.layoutScale,
   });
 
+  final AsyncSnapshot<List<CalendarEvent>> snapshot;
   final List<CalendarEvent> events;
   final ThemeData theme;
   final double layoutScale;
@@ -165,39 +172,65 @@ class _UpcomingEventsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = layoutScale;
-    return ListView.separated(
-      padding: EdgeInsets.only(right: 16 * s),
-      itemCount: events.length,
-      separatorBuilder: (context, index) => SizedBox(height: 10 * s),
-      itemBuilder: (context, i) {
-        final e = events[i];
-        final time =
-            formatCalendarEventListTime(e.startMs, e.allDay);
-        final loc = e.location;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              time,
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.w600,
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
+    );
+    return Padding(
+      padding: EdgeInsets.only(left: 20 * s),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Upcoming events',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          SizedBox(height: 14 * s),
+          if (snapshot.hasError)
+            Text('Error loading events.', style: muted)
+          else if (events.isEmpty)
+            Text('No upcoming events.', style: muted)
+          else
+            Expanded(
+              child: ListView.separated(
+                padding: EdgeInsets.zero,
+                itemCount: events.length,
+                separatorBuilder: (context, index) =>
+                    SizedBox(height: 10 * s),
+                itemBuilder: (context, i) {
+                  final e = events[i];
+                  final time =
+                      formatCalendarEventListTime(e.startMs, e.allDay);
+                  final loc = e.location;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        time,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        e.title,
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      if (loc != null && loc.isNotEmpty)
+                        Text(
+                          loc,
+                          style: theme.textTheme.bodySmall,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                    ],
+                  );
+                },
               ),
             ),
-            Text(
-              e.title,
-              style: theme.textTheme.titleMedium,
-            ),
-            if (loc != null && loc.isNotEmpty)
-              Text(
-                loc,
-                style: theme.textTheme.bodySmall,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-          ],
-        );
-      },
+        ],
+      ),
     );
   }
 }
@@ -218,37 +251,42 @@ class _MonthGridPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = layoutScale;
+    final weekdayStyle = theme.textTheme.labelSmall?.copyWith(
+      color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
           monthTitle,
-          style: theme.textTheme.headlineSmall,
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w500,
+          ),
           textAlign: TextAlign.center,
         ),
-        SizedBox(height: 12 * s),
+        SizedBox(height: 10 * s),
         Row(
           children: _weekdayLabels
               .map(
                 (d) => Expanded(
                   child: Text(
                     d,
-                    style: theme.textTheme.labelSmall,
+                    style: weekdayStyle,
                     textAlign: TextAlign.center,
                   ),
                 ),
               )
               .toList(),
         ),
-        SizedBox(height: 8 * s),
+        SizedBox(height: 6 * s),
         Expanded(
           child: GridView.builder(
             physics: const NeverScrollableScrollPhysics(),
             padding: EdgeInsets.zero,
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 7,
-              crossAxisSpacing: 6 * s,
-              mainAxisSpacing: 6 * s,
+              crossAxisSpacing: 4 * s,
+              mainAxisSpacing: 4 * s,
             ),
             itemCount: cells.length,
             itemBuilder: (context, index) {
@@ -279,28 +317,27 @@ class _MonthDayCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = layoutScale;
-    final fg = cell.isToday
-        ? theme.colorScheme.onPrimaryContainer
-        : theme.colorScheme.onSurface.withValues(
-            alpha: cell.inCurrentMonth ? 1 : 0.38,
-          );
+    final fg = theme.colorScheme.onSurface.withValues(
+      alpha: cell.inCurrentMonth ? 1 : 0.38,
+    );
     final box = DecoratedBox(
       decoration: BoxDecoration(
-        color: cell.isToday
-            ? theme.colorScheme.primaryContainer
-            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(8 * s),
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(2 * s),
         border: cell.isToday
             ? Border.all(
                 color: theme.colorScheme.primary,
-                width: 2 * s,
+                width: 1.5 * s,
               )
             : null,
       ),
       child: Center(
         child: Text(
           '${cell.day}',
-          style: theme.textTheme.titleSmall?.copyWith(color: fg),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: fg,
+            fontWeight: cell.isToday ? FontWeight.w600 : FontWeight.w400,
+          ),
         ),
       ),
     );
