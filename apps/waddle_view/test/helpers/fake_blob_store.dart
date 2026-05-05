@@ -3,6 +3,10 @@ import 'package:waddle_view/blob/blob_store.dart';
 class FakeBlobStore implements BlobStore {
   final Map<String, List<int>> _bytes = {};
 
+  void seed(String key, List<int> bytes) {
+    _bytes[key] = List<int>.from(bytes);
+  }
+
   @override
   Future<BlobRef> putBytes(List<int> bytes, {required String logicalKey}) async {
     final key = '${logicalKey}_${bytes.length}';

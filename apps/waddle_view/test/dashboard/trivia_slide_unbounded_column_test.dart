@@ -7,6 +7,7 @@ import 'package:waddle_view/persistence/database.dart';
 import 'package:waddle_view/seed/trivia_category_seed.dart';
 
 import '../helpers/memory_database.dart';
+import '../helpers/fake_blob_store.dart';
 
 /// Mirrors [ScreenRotator] slide body: Center → Column(mainAxisSize.min) → trivia.
 void main() {
@@ -54,6 +55,7 @@ void main() {
                 children: [
                   TriviaSlideWidget(
                     db: db,
+                    blobs: FakeBlobStore(),
                     slide: slide,
                     spec: spec,
                     theme: ThemeData.light(),

@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:typed_data';
 
+import 'package:drift/drift.dart' show Variable;
 import 'package:drift/drift.dart' show CustomExpression, OrderingTerm;
 import 'package:flutter/material.dart';
 
+import '../blob/blob_store.dart';
 import '../curator/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';
 import '../persistence/database.dart';
@@ -26,17 +29,45 @@ Future<Joke?> _loadRandomJoke(
       .getSingleOrNull();
 }
 
+Future<Uint8List?> _loadJokeCategoryIconBytes(
+  AppDatabase db,
+  BlobStore blobs,
+  Joke joke,
+) async {
+  final rows = await db.customSelect(
+    'SELECT bm.relative_path FROM category_icons ci '
+    'JOIN blob_metadata bm ON bm.blob_key = ci.blob_key '
+    'WHERE ci.category_type = ? AND ci.category_id = ? '
+    'LIMIT 1',
+    variables: [
+      const Variable<String>('joke'),
+      Variable<String>(joke.categoryId),
+    ],
+  ).get();
+  if (rows.isEmpty) {
+    return null;
+  }
+  final relativePath = rows.first.read<String>('relative_path');
+  final bytes = await blobs.readBytes(BlobRef(relativePath));
+  if (bytes.isEmpty) {
+    return null;
+  }
+  return Uint8List.fromList(bytes);
+}
+
 /// Shows joke setup, then punchline after half of [slide.dwellMs].
 class JokeSlideWidget extends StatefulWidget {
   const JokeSlideWidget({
     super.key,
     required this.db,
+    required this.blobs,
     required this.slide,
     required this.spec,
     required this.theme,
   });
 
   final AppDatabase db;
+  final BlobStore blobs;
   final ResolvedSlide slide;
   final ParsedWidgetSpec spec;
   final ThemeData theme;
@@ -47,6 +78,7 @@ class JokeSlideWidget extends StatefulWidget {
 
 class _JokeSlideWidgetState extends State<JokeSlideWidget> {
   Joke? _joke;
+  Uint8List? _categoryIconBytes;
   bool _loading = true;
   bool _showPunchline = false;
   Timer? _punchlineTimer;
@@ -59,11 +91,15 @@ class _JokeSlideWidgetState extends State<JokeSlideWidget> {
 
   Future<void> _bootstrap() async {
     final joke = await _loadRandomJoke(widget.db, widget.spec);
+    final iconBytes = joke == null
+        ? null
+        : await _loadJokeCategoryIconBytes(widget.db, widget.blobs, joke);
     if (!mounted) {
       return;
     }
     setState(() {
       _joke = joke;
+      _categoryIconBytes = iconBytes;
       _loading = false;
     });
     _schedulePunchlineReveal();
@@ -128,6 +164,16 @@ class _JokeSlideWidgetState extends State<JokeSlideWidget> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (_categoryIconBytes != null) ...[
+            Image.memory(
+              _categoryIconBytes!,
+              key: const ValueKey<String>('joke_category_icon'),
+              width: 88,
+              height: 88,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(height: 12),
+          ],
           Text(
             _joke!.setup,
             style: theme.textTheme.headlineSmall,

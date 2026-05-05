@@ -37,12 +37,27 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator m) async {
       await m.createAll();
+      await customStatement('''
+CREATE TABLE IF NOT EXISTS category_icons (
+  category_type TEXT NOT NULL,
+  category_id TEXT NOT NULL,
+  blob_key TEXT NOT NULL,
+  prompt TEXT NULL,
+  generated_by TEXT NOT NULL DEFAULT 'manual',
+  updated_at_ms INTEGER NOT NULL,
+  PRIMARY KEY (category_type, category_id)
+);
+''');
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_category_icons_blob_key '
+        'ON category_icons(blob_key);',
+      );
       await customStatement('''
 CREATE VIEW IF NOT EXISTS v_dashboard_alert_active_candidates AS
 SELECT *
@@ -103,6 +118,23 @@ ORDER BY priority DESC, created_at DESC;
       if (from < 12) {
         await m.createTable(weatherLocations);
         await m.createTable(weatherCurrentData);
+      }
+      if (from < 13) {
+        await customStatement('''
+CREATE TABLE IF NOT EXISTS category_icons (
+  category_type TEXT NOT NULL,
+  category_id TEXT NOT NULL,
+  blob_key TEXT NOT NULL,
+  prompt TEXT NULL,
+  generated_by TEXT NOT NULL DEFAULT 'manual',
+  updated_at_ms INTEGER NOT NULL,
+  PRIMARY KEY (category_type, category_id)
+);
+''');
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_category_icons_blob_key '
+          'ON category_icons(blob_key);',
+        );
       }
     },
     beforeOpen: (details) async {

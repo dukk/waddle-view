@@ -53,6 +53,59 @@ Map<String, dynamic> _triviaRow({
 }
 
 void main() {
+  test('collect generates missing category icon and stores mapping', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.providerSettings).insert(
+          ProviderSettingsCompanion.insert(
+            id: 'trivia',
+            providerType: 'trivia',
+            pollSeconds: const Value(1),
+            extraJson: const Value('{"questionsPerDay":1}'),
+            baseUrl: const Value('http://api.local/v1'),
+          ),
+        );
+    await db.into(db.triviaCategories).insert(
+          TriviaCategoriesCompanion.insert(
+            id: 'science',
+            label: 'Science',
+          ),
+        );
+
+    final secrets = InMemorySecretStore();
+    await secrets.write('${ProviderConfigResolver.accessTokenKey}:trivia', 't');
+    final resolver = ProviderConfigResolver(db, secrets);
+    final ctx = DataWriteContextImpl(
+      db: db,
+      blobs: FakeBlobStore(),
+      secrets: secrets,
+      resolve: resolver.resolve,
+    );
+
+    final apiPayload = _chatJson(
+      jsonEncode([
+        _triviaRow(categoryId: 'science', correct: 'B'),
+      ]),
+    );
+
+    final provider = TriviaDataProvider(
+      httpClient: _ImageAndChatOpenAi(apiPayload),
+      now: () => DateTime(2026, 1, 1),
+    );
+    await provider.collect(ctx);
+
+    final iconRows = await db.customSelect(
+      'SELECT category_type, category_id, blob_key '
+      'FROM category_icons WHERE category_type = ? AND category_id = ?',
+      variables: [
+        const Variable<String>('trivia'),
+        const Variable<String>('science'),
+      ],
+    ).get();
+    expect(iconRows, hasLength(1));
+    expect(iconRows.single.read<String>('blob_key'), isNotEmpty);
+  });
+
   test('collect inserts trivia from API and respects daily cap', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
@@ -335,5 +388,35 @@ class _InterceptClient extends http.BaseClient {
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     onSend();
     return http.StreamedResponse(Stream.value(utf8.encode('')), 500);
+  }
+}
+
+class _ImageAndChatOpenAi extends http.BaseClient {
+  _ImageAndChatOpenAi(this._chatBody);
+  final String _chatBody;
+
+  static const String _tinyPngBase64 =
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2WZ6kAAAAASUVORK5CYII=';
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    final path = request.url.path;
+    if (path.endsWith('/images/generations')) {
+      final body = jsonEncode({
+        'data': [
+          {'b64_json': _tinyPngBase64},
+        ],
+      });
+      return http.StreamedResponse(
+        Stream.value(utf8.encode(body)),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    return http.StreamedResponse(
+      Stream.value(utf8.encode(_chatBody)),
+      200,
+      headers: {'content-type': 'application/json'},
+    );
   }
 }

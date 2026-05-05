@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -30,6 +31,7 @@ import 'data/providers/joke_data_provider.dart';
 import 'data/providers/rss_news_data_provider.dart';
 import 'data/providers/trivia_data_provider.dart';
 import 'data/providers/weather_data_provider.dart';
+import 'data/providers/category_icon_service.dart';
 import 'data/stub_data_provider.dart';
 import 'marquee_cycle_gate.dart';
 import 'persistence/database.dart';
@@ -100,6 +102,13 @@ Future<void> main() async {
     resolve: resolver.resolve,
   );
   const clock = SystemClock();
+  final iconPreloadClient = http.Client();
+  await preloadSeedCategoryIcons(
+    ctx: ctx,
+    httpClient: iconPreloadClient,
+    perTypeLimit: 3,
+  );
+  iconPreloadClient.close();
   final tickerCurated = MemoryTickerCuratedRepository();
   final marqueeCycleGate = MarqueeCycleGate();
   final dashboardCuratorInner = DefaultDashboardCurator(

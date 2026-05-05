@@ -105,11 +105,16 @@ Startup logs include **`REST listening at …`** with the bound **base URL**. To
 - **Secret storage**: `flutter_secure_storage` uses the Secret Service / **libsecret** where available; headless images without D-Bus may need a documented fallback (see repo **`docs/pi/`**).
 - **Data**: SQLite and **`media/`** live under the application support directory (see `path_provider` on device).
 
-## Provider secrets (OpenAI / jokes)
+## Provider secrets (OpenAI / jokes / trivia)
 
-The joke data provider reads the OpenAI API key from **SecretStore**, not from `provider_settings`. Secret key: `provider:access_token:jokes` (provider id `jokes`).
+The joke and trivia data providers read OpenAI API keys from **SecretStore**, not from `provider_settings`.
 
-**Local onboarding:** copy **[`dotenv.example`](dotenv.example)** to **`.env`** in this directory and set **`OPENAI_API_KEY`** (or **`WADDLE_JOKES_ACCESS_TOKEN`**). In **debug** builds, the app loads that file and stores the token automatically (see [`lib/config/dev_dotenv_secrets.dart`](lib/config/dev_dotenv_secrets.dart)). Full detail, monorepo paths, and fallbacks: **[`docs/pi/development.md`](../../docs/pi/development.md#joke-data-provider-openai-api-key)**.
+- Jokes key: `provider:access_token:jokes`
+- Trivia key: `provider:access_token:trivia`
+
+Each category can have an icon mapped in `category_icons`. If a category icon is missing, the app asks OpenAI image generation for a default icon, stores bytes in filesystem blob storage (`media/`), and saves the mapping.
+
+**Local onboarding:** copy **[`.env.example`](.env.example)** to **`.env`** in this directory and set **`OPENAI_API_KEY`** (or **`WADDLE_JOKES_ACCESS_TOKEN`** / **`WADDLE_TRIVIA_ACCESS_TOKEN`**). In **debug** builds, the app loads that file and stores provider tokens automatically (see [`lib/config/dev_dotenv_secrets.dart`](lib/config/dev_dotenv_secrets.dart)). Full detail, monorepo paths, and fallbacks: **[`docs/pi/development.md`](../../docs/pi/development.md#joke-data-provider-openai-api-key)**.
 
 ## Drift codegen
 

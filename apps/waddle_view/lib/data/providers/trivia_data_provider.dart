@@ -15,6 +15,7 @@ import 'trivia_provider_extra_config.dart'
         TriviaProviderExtraConfig,
         kDefaultTriviaTwoHourWindowMs;
 import 'trivia_slot_allocation.dart';
+import 'category_icon_service.dart';
 
 const String kTriviaProviderId = 'trivia';
 
@@ -143,6 +144,15 @@ class TriviaDataProvider implements IDataProvider {
         (config.baseUrl != null && config.baseUrl!.trim().isNotEmpty)
         ? config.baseUrl!.trim()
         : kDefaultOpenAiBaseUrl;
+    await ensureCategoryIcons(
+      ctx: ctx,
+      httpClient: _http,
+      baseUrl: baseUrl,
+      token: token,
+      categoryType: 'trivia',
+      categories: eligible.map((c) => (id: c.id, label: c.label)),
+      limit: 4,
+    );
 
     final userContent = _buildUserPrompt(slots, categoryById);
 

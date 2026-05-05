@@ -15,6 +15,7 @@ import 'joke_provider_extra_config.dart'
         kDefaultTwoHourWindowMs;
 import 'joke_seasonal_eligibility.dart';
 import 'joke_slot_allocation.dart';
+import 'category_icon_service.dart';
 
 const String kJokeProviderId = 'jokes';
 
@@ -142,6 +143,15 @@ class JokeDataProvider implements IDataProvider {
         (config.baseUrl != null && config.baseUrl!.trim().isNotEmpty)
         ? config.baseUrl!.trim()
         : kDefaultOpenAiBaseUrl;
+    await ensureCategoryIcons(
+      ctx: ctx,
+      httpClient: _http,
+      baseUrl: baseUrl,
+      token: token,
+      categoryType: 'joke',
+      categories: eligible.map((c) => (id: c.id, label: c.label)),
+      limit: 4,
+    );
 
     final userContent = _buildUserPrompt(slots, categoryById);
 
