@@ -7,6 +7,7 @@ import '../clock.dart';
 import '../curator/screen_layout_parse.dart';
 import 'clock_date_format.dart';
 import 'clock_hand_angles.dart';
+import 'dashboard_viewport_scope.dart';
 
 /// Full-slide analog clock with date (local time).
 class AnalogClockSlideWidget extends StatefulWidget {
@@ -56,17 +57,20 @@ class _AnalogClockSlideWidgetState extends State<AnalogClockSlideWidget> {
     final local = _tick;
     final angles = ClockHandAngles.fromLocal(local);
     final scheme = widget.theme.colorScheme;
+    final s = DashboardViewportScope.scaleOf(context);
+    final dial = widget.dialSize * s;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: 12 * s),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           CustomPaint(
             key: const ValueKey<String>('analog_clock_dial'),
-            size: Size(widget.dialSize, widget.dialSize),
+            size: Size(dial, dial),
             painter: AnalogClockPainter(
               angles: angles,
+              layoutScale: s,
               dialColor: scheme.onSurface,
               faceColor: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
               handHour: scheme.primary,
@@ -74,7 +78,7 @@ class _AnalogClockSlideWidgetState extends State<AnalogClockSlideWidget> {
               handSecond: scheme.tertiary,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16 * s),
           Text(
             formatClockDate(local),
             style: widget.theme.textTheme.headlineSmall,
@@ -89,6 +93,7 @@ class _AnalogClockSlideWidgetState extends State<AnalogClockSlideWidget> {
 class AnalogClockPainter extends CustomPainter {
   AnalogClockPainter({
     required this.angles,
+    this.layoutScale = 1.0,
     required this.dialColor,
     required this.faceColor,
     required this.handHour,
@@ -97,6 +102,7 @@ class AnalogClockPainter extends CustomPainter {
   });
 
   final ClockHandAngles angles;
+  final double layoutScale;
   final Color dialColor;
   final Color faceColor;
   final Color handHour;
@@ -105,6 +111,7 @@ class AnalogClockPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final s = layoutScale;
     final c = Offset(size.width / 2, size.height / 2);
     final r = math.min(size.width, size.height) / 2 * 0.92;
 
@@ -114,16 +121,16 @@ class AnalogClockPainter extends CustomPainter {
     final rim = Paint()
       ..color = dialColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3;
+      ..strokeWidth = 3 * s;
     canvas.drawCircle(c, r, rim);
 
     final tickMajor = Paint()
       ..color = dialColor
-      ..strokeWidth = 3
+      ..strokeWidth = 3 * s
       ..strokeCap = StrokeCap.round;
     final tickMinor = Paint()
       ..color = dialColor.withValues(alpha: 0.55)
-      ..strokeWidth = 1.5
+      ..strokeWidth = 1.5 * s
       ..strokeCap = StrokeCap.round;
 
     for (var i = 0; i < 60; i++) {
@@ -140,7 +147,7 @@ class AnalogClockPainter extends CustomPainter {
     void drawHand(double angle, double length, double width, Color color) {
       final p = Paint()
         ..color = color
-        ..strokeWidth = width
+        ..strokeWidth = width * s
         ..strokeCap = StrokeCap.round;
       final end = Offset(
         c.dx + r * length * math.sin(angle),
@@ -154,12 +161,13 @@ class AnalogClockPainter extends CustomPainter {
     drawHand(angles.second, 0.78, 2, handSecond);
 
     final hub = Paint()..color = handMinute;
-    canvas.drawCircle(c, 5, hub);
+    canvas.drawCircle(c, 5 * s, hub);
   }
 
   @override
   bool shouldRepaint(covariant AnalogClockPainter oldDelegate) {
     return oldDelegate.angles != angles ||
+        oldDelegate.layoutScale != layoutScale ||
         oldDelegate.dialColor != dialColor ||
         oldDelegate.faceColor != faceColor ||
         oldDelegate.handHour != handHour ||

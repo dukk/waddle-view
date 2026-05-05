@@ -97,6 +97,28 @@ Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../d
 - **`/v1/health`** does not require a key; other `/v1/*` routes return **503** if the key file is missing or empty, **401** if the key is wrong.
 - **Admin UI**: open `/admin/login` on the same base URL. First login requires password change, which rotates `waddle_api.key`.
 
+### Display theme (`dashboard_kv`)
+
+- **Key**: `display.theme.id`
+- **Values**: `navy_coral` (default), `graphite_amber`
+- **Operator UI**: Admin home → Curator → **Display theme** (saved with other curator settings).
+- **Code**: palettes and builders live under [`lib/theme/config/`](lib/theme/config/); registered ids are listed in [`lib/theme/config/display_theme_registry.dart`](lib/theme/config/display_theme_registry.dart).
+
+### Text scale — screens vs ticker (`dashboard_kv`)
+
+Separate semantic sizes for carousel content and the bottom marquee (each multiplied by the app’s TV base text scale and the platform accessibility scaler).
+
+| Key | Purpose |
+|-----|---------|
+| `display.text_scale.screen` | Slides, alerts, admin-facing on-device UI under the main scaffold |
+| `display.text_scale.ticker` | Bottom ticker / marquee strip |
+
+**Values** (hyphenated in the database): `x-small`, `smaller`, `small`, `normal` (default), `large`, `larger`, `x-large`. Underscores and spacing are normalized on read/write.
+
+**Operator UI**: Admin → Curator → **Screen text scale** and **Ticker text scale**.
+
+**Code**: [`lib/theme/display_text_scale_kv.dart`](lib/theme/display_text_scale_kv.dart).
+
 Startup logs include **`REST listening at …`** with the bound **base URL**. To show the same information on the TV carousel, enable the **`dev_local_api`** row in **`screen_definitions`** (`enabled = 1`); that developer slide shows the URL and an **`X-Api-Key` / `waddle_api.key`** reminder.
 
 ## Raspberry Pi / Linux runtime notes

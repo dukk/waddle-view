@@ -13,6 +13,7 @@ import '../alerts/alert_repository.dart';
 import '../debug/app_debug_log.dart';
 import '../persistence/database.dart';
 import '../secrets/secret_store.dart';
+import '../theme/display_theme.dart';
 import '../ticker/ticker_curated_repository.dart';
 import 'api_key_constant_time.dart';
 import 'deployment_api_key_source.dart';
@@ -409,6 +410,37 @@ class _AdminServer {
     final kvTicker = kvMap['curator.ticker.newsPixelsPerSecond'] ?? '80';
     final requireNewsPhotoForCuration =
         kvMap[_requireNewsPhotoForCurationKvKey] ?? 'true';
+    final currentThemeId = normalizeDisplayThemeId(kvMap[kDisplayThemeIdKvKey]);
+    final themeOptionRows = kDisplayThemeOptions
+        .map(
+          (o) =>
+              '<option value="${_h(o.id)}" ${o.id == currentThemeId ? 'selected' : ''}>'
+              '${_h(o.label)}'
+              '</option>',
+        )
+        .join('\n');
+    final screenTextScaleId = normalizeDisplayTextScaleOption(
+      kvMap[kDisplayTextScaleScreenKvKey],
+    );
+    final tickerTextScaleId = normalizeDisplayTextScaleOption(
+      kvMap[kDisplayTextScaleTickerKvKey],
+    );
+    final screenTextScaleRows = kDisplayTextScaleSelectOptions
+        .map(
+          (o) =>
+              '<option value="${_h(o.id)}" ${o.id == screenTextScaleId ? 'selected' : ''}>'
+              '${_h(o.label)}'
+              '</option>',
+        )
+        .join('\n');
+    final tickerTextScaleRows = kDisplayTextScaleSelectOptions
+        .map(
+          (o) =>
+              '<option value="${_h(o.id)}" ${o.id == tickerTextScaleId ? 'selected' : ''}>'
+              '${_h(o.label)}'
+              '</option>',
+        )
+        .join('\n');
 
     final screenRows = screens
         .map(
@@ -462,6 +494,18 @@ History depth: <input name="history_depth" value="${curator?.historyDepth ?? 5}"
 Require photo for news curation:
 <input name="require_news_photo_for_curation" type="checkbox" ${requireNewsPhotoForCuration != 'false' ? 'checked' : ''}/><br/>
 Ticker px/s: <input name="ticker_pixels_per_second" value="${_h(kvTicker)}"/><br/>
+Display theme:
+<select name="display_theme_id">
+$themeOptionRows
+</select><br/>
+Screen text scale:
+<select name="display_text_scale_screen">
+$screenTextScaleRows
+</select><br/>
+Ticker text scale:
+<select name="display_text_scale_ticker">
+$tickerTextScaleRows
+</select><br/>
 <button type="submit">Save curator settings</button>
 </form>
 <h2>Screens</h2>
@@ -586,6 +630,31 @@ $providerRows
             value: form.containsKey('require_news_photo_for_curation')
                 ? 'true'
                 : 'false',
+          ),
+        );
+    final themeId = normalizeDisplayThemeId(form['display_theme_id'] ?? '');
+    await db.into(db.dashboardKv).insertOnConflictUpdate(
+          DashboardKvCompanion.insert(
+            key: kDisplayThemeIdKvKey,
+            value: themeId,
+          ),
+        );
+    final screenTextScale = normalizeDisplayTextScaleOption(
+      form['display_text_scale_screen'] ?? '',
+    );
+    final tickerTextScale = normalizeDisplayTextScaleOption(
+      form['display_text_scale_ticker'] ?? '',
+    );
+    await db.into(db.dashboardKv).insertOnConflictUpdate(
+          DashboardKvCompanion.insert(
+            key: kDisplayTextScaleScreenKvKey,
+            value: screenTextScale,
+          ),
+        );
+    await db.into(db.dashboardKv).insertOnConflictUpdate(
+          DashboardKvCompanion.insert(
+            key: kDisplayTextScaleTickerKvKey,
+            value: tickerTextScale,
           ),
         );
     await onConfigChanged();

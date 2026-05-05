@@ -14,6 +14,7 @@ import '../persistence/database.dart';
 import '../persistence/tables.dart';
 import 'analog_clock_slide_widget.dart';
 import 'calendar_month_slide_widget.dart';
+import 'dashboard_viewport_scope.dart';
 import 'digital_clock_slide_widget.dart';
 import 'admin_setup_slide_widget.dart';
 import 'guest_wifi_slide_widget.dart';
@@ -402,9 +403,10 @@ class _SlideContent extends StatelessWidget {
     final widgets = parseScreenLayoutWidgets(slide.layoutJson);
     return Container(
       color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.zero,
       child: Center(
         child: _buildWidgets(
+          context,
           widgets,
           slide,
           slideIndex,
@@ -415,16 +417,22 @@ class _SlideContent extends StatelessWidget {
   }
 
   Widget _buildWidgets(
+    BuildContext context,
     List<ParsedWidgetSpec> widgets,
     ResolvedSlide slide,
     int slideIndex,
     void Function(int slideIndex, int ms) onReportDesiredDwell,
   ) {
+    final s = DashboardViewportScope.scaleOf(context);
+    final gap = 12.0 * s;
     if (widgets.isEmpty) {
-      return Text(
-        'Empty layout',
-        style: theme.textTheme.bodyLarge,
-        textAlign: TextAlign.center,
+      return Padding(
+        padding: EdgeInsets.only(bottom: gap),
+        child: Text(
+          'Empty layout',
+          style: theme.textTheme.bodyLarge,
+          textAlign: TextAlign.center,
+        ),
       );
     }
     // Single full-bleed widgets (like rss_article) need bounded size
@@ -450,7 +458,7 @@ class _SlideContent extends StatelessWidget {
           case 'static_text':
             final text = w.config['text'] as String? ?? '';
             return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: EdgeInsets.only(bottom: gap),
               child: Text(
                 text,
                 style: theme.textTheme.headlineSmall,
@@ -498,7 +506,7 @@ class _SlideContent extends StatelessWidget {
           case 'photo_random':
             final key = slide.randomChoices[w.choiceKey];
             return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: EdgeInsets.only(bottom: gap),
               child: Text(
                 key != null ? 'Photo: $key' : 'No photo in pool',
                 style: theme.textTheme.titleMedium,
@@ -537,7 +545,7 @@ class _SlideContent extends StatelessWidget {
             );
           default:
             return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: EdgeInsets.only(bottom: gap),
               child: Text(
                 'Unknown widget: ${w.type}',
                 style: theme.textTheme.bodyMedium,

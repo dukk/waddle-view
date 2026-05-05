@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:waddle_view/dashboard/dashboard_data_bound_shell.dart';
+import 'package:waddle_view/dashboard/display_viewport.dart';
 import 'package:waddle_view/theme/tv_overscan.dart';
 
 void main() {
@@ -12,6 +13,10 @@ void main() {
         home: Scaffold(
           body: DashboardDataBoundShell(
             overscan: const TvOverscanInsets(),
+            viewportConfig: const DisplayViewportConfig(
+              aspectRatio: DashboardAspectRatio.ultrawide21x9,
+              orientation: DashboardOrientation.vertical,
+            ),
             body: const Text('body'),
             ticker: const Text('ticker'),
           ),

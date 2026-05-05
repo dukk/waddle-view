@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../curator/ticker_item.dart';
+import '../dashboard/dashboard_viewport_scope.dart';
 import '../debug/app_debug_log.dart';
 import '../theme/ticker_marquee_style.dart';
 import '../marquee_cycle_gate.dart';
@@ -173,8 +174,9 @@ class _TickerMarqueeState extends State<TickerMarquee>
   }
 
   Widget _defaultSeparator(BuildContext context) {
+    final s = DashboardViewportScope.scaleOf(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      padding: EdgeInsets.symmetric(horizontal: 10 * s),
       child: Text(
         '\u00B7',
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -240,76 +242,86 @@ class _TickerMarqueeState extends State<TickerMarquee>
 
   @override
   Widget build(BuildContext context) {
-    if (_items.isEmpty) {
-      return SizedBox(
-        height: widget.height,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Center(
-            child: Text(
-              '\u2014',
-              style: Theme.of(context).textTheme.titleLarge,
+    final s = DashboardViewportScope.scaleOf(context);
+    final radius = BorderRadius.circular(8 * s);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final h = constraints.maxHeight.isFinite && constraints.maxHeight > 0
+            ? constraints.maxHeight
+            : widget.height;
+
+        if (_items.isEmpty) {
+          return SizedBox(
+            height: h,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: radius,
+              ),
+              child: Center(
+                child: Text(
+                  '\u2014',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
             ),
+          );
+        }
+
+        final segment = Row(
+          key: _segmentKey,
+          mainAxisSize: MainAxisSize.min,
+          children: _segmentChildren(context),
+        );
+        final segmentCopy = ExcludeSemantics(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: _segmentChildren(context),
           ),
-        ),
-      );
-    }
+        );
 
-    final segment = Row(
-      key: _segmentKey,
-      mainAxisSize: MainAxisSize.min,
-      children: _segmentChildren(context),
-    );
-    final segmentCopy = ExcludeSemantics(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: _segmentChildren(context),
-      ),
-    );
-
-    return SizedBox(
-      height: widget.height,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const NeverScrollableScrollPhysics(),
-            primary: false,
-            clipBehavior: Clip.hardEdge,
-            child: AnimatedBuilder(
-              animation: _controller,
-              builder: (context, child) {
-                if (_segmentWidth <= 0) {
-                  return child!;
-                }
-                final dx = -(_controller.value * _segmentWidth);
-                return Transform.translate(
-                  offset: Offset(dx, 0),
-                  filterQuality: FilterQuality.low,
-                  child: child,
-                );
-              },
-              child: RepaintBoundary(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    segment,
-                    segmentCopy,
-                  ],
+        return SizedBox(
+          height: h,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            ),
+            child: ClipRRect(
+              borderRadius: radius,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const NeverScrollableScrollPhysics(),
+                primary: false,
+                clipBehavior: Clip.hardEdge,
+                child: AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, child) {
+                    if (_segmentWidth <= 0) {
+                      return child!;
+                    }
+                    final dx = -(_controller.value * _segmentWidth);
+                    return Transform.translate(
+                      offset: Offset(dx, 0),
+                      filterQuality: FilterQuality.low,
+                      child: child,
+                    );
+                  },
+                  child: RepaintBoundary(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        segment,
+                        segmentCopy,
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

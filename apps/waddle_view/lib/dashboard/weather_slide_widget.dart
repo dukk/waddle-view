@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../curator/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';
 import '../persistence/database.dart';
+import 'dashboard_viewport_scope.dart';
 
 String? weatherLocationIdForSpec(ParsedWidgetSpec spec) {
   final raw = (spec.config['locationId'] as String?)?.trim();
@@ -61,25 +62,26 @@ class WeatherSlideWidget extends StatelessWidget {
               return _empty('Weather unavailable');
             }
             final hourly = _parseHourly(weather.hourlyJson);
+            final s = DashboardViewportScope.scaleOf(context);
             return Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(location.name, style: theme.textTheme.headlineSmall),
-                const SizedBox(height: 12),
+                SizedBox(height: 12 * s),
                 Text(
                   '${weather.currentTemp ?? '--'}°',
                   style: theme.textTheme.displaySmall,
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8 * s),
                 Text(
                   weather.currentDescription ?? '',
                   style: theme.textTheme.titleLarge,
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20 * s),
                 Wrap(
-                  spacing: 16,
-                  runSpacing: 10,
+                  spacing: 16 * s,
+                  runSpacing: 10 * s,
                   alignment: WrapAlignment.center,
                   children: hourly.take(6).map((item) {
                     return Column(
@@ -124,13 +126,18 @@ class WeatherSlideWidget extends StatelessWidget {
   }
 
   Widget _empty(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Text(
-        text,
-        style: theme.textTheme.titleMedium,
-        textAlign: TextAlign.center,
-      ),
+    return Builder(
+      builder: (context) {
+        final s = DashboardViewportScope.scaleOf(context);
+        return Padding(
+          padding: EdgeInsets.only(bottom: 12 * s),
+          child: Text(
+            text,
+            style: theme.textTheme.titleMedium,
+            textAlign: TextAlign.center,
+          ),
+        );
+      },
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../curator/screen_layout_parse.dart';
 import '../persistence/database.dart';
 import 'wifi_connection_uri.dart';
+import 'dashboard_viewport_scope.dart';
 
 /// Full-slide widget: QR + SSID / security / password from [dashboard_kv].
 class GuestWifiSlideWidget extends StatelessWidget {
@@ -29,24 +30,25 @@ class GuestWifiSlideWidget extends StatelessWidget {
       builder: (context, snapshot) {
         final raw = snapshot.data?.value;
         final parsed = parseWifiConnectionUri(raw);
+        final s = DashboardViewportScope.scaleOf(context);
 
         return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
+          padding: EdgeInsets.only(bottom: 12 * s),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 Icons.wifi,
-                size: 112,
+                size: 112 * s,
                 color: theme.colorScheme.primary,
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12 * s),
               Text(
                 headline,
                 style: theme.textTheme.headlineSmall,
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20 * s),
               if (!parsed.isValid)
                 Text(
                   'Guest Wi‑Fi not configured',
@@ -57,15 +59,16 @@ class GuestWifiSlideWidget extends StatelessWidget {
                 Center(
                   child: QrImageView(
                     data: parsed.rawForQr!,
-                    size: 220,
+                    size: 220 * s,
                     backgroundColor: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 20),
-                _infoRow(theme, 'SSID', parsed.ssid!),
-                _infoRow(theme, 'Security', parsed.securityType!),
+                SizedBox(height: 20 * s),
+                _infoRow(theme, s, 'SSID', parsed.ssid!),
+                _infoRow(theme, s, 'Security', parsed.securityType!),
                 _infoRow(
                   theme,
+                  s,
                   'Password',
                   parsed.password ?? '—',
                 ),
@@ -77,15 +80,15 @@ class GuestWifiSlideWidget extends StatelessWidget {
     );
   }
 
-  static Widget _infoRow(ThemeData theme, String label, String value) {
+  static Widget _infoRow(ThemeData theme, double s, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.only(bottom: 8 * s),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           SizedBox(
-            width: 120,
+            width: 120 * s,
             child: Text(
               label,
               style: theme.textTheme.bodyLarge?.copyWith(
@@ -94,7 +97,7 @@ class GuestWifiSlideWidget extends StatelessWidget {
               textAlign: TextAlign.end,
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12 * s),
           Flexible(
             child: Text(
               value,

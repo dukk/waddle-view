@@ -136,4 +136,48 @@ const _defaultTriviaCategories = <_TCat>[
     endDay: null,
     categoryPrompt: 'World and U.S. history facts; avoid graphic war detail.',
   ),
+  (
+    id: 'christmas',
+    label: 'Christmas',
+    isSeasonal: true,
+    startMonth: 12,
+    startDay: 1,
+    endMonth: 1,
+    endDay: 6,
+    categoryPrompt:
+        'Family-friendly holiday trivia about traditions, winter, and seasonal customs.',
+  ),
+  (
+    id: 'easter',
+    label: 'Easter',
+    isSeasonal: true,
+    startMonth: 3,
+    startDay: 1,
+    endMonth: 4,
+    endDay: 30,
+    categoryPrompt:
+        'Springtime and Easter-themed trivia with eggs, bunnies, and celebrations.',
+  ),
+  (
+    id: 'halloween',
+    label: 'Halloween',
+    isSeasonal: true,
+    startMonth: 10,
+    startDay: 1,
+    endMonth: 10,
+    endDay: 31,
+    categoryPrompt:
+        'Spooky-but-kid-safe trivia about costumes, autumn traditions, and fun facts.',
+  ),
+  (
+    id: 'thanksgiving',
+    label: 'Thanksgiving',
+    isSeasonal: true,
+    startMonth: 11,
+    startDay: 1,
+    endMonth: 11,
+    endDay: 30,
+    categoryPrompt:
+        'Thanksgiving trivia focused on harvest themes, food traditions, and gratitude.',
+  ),
 ];

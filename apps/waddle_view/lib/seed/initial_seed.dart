@@ -2,6 +2,8 @@ import 'package:drift/drift.dart';
 
 import '../persistence/database.dart';
 import '../persistence/tables.dart';
+import '../theme/display_text_scale_kv.dart';
+import '../theme/display_theme_kv.dart';
 import 'joke_category_seed.dart';
 import 'rss_news_feed_seed.dart';
 import 'trivia_category_seed.dart';
@@ -54,6 +56,8 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await ensureDefaultTriviaCategories(db);
   await ensureDefaultRssNewsFeeds(db);
   await _ensureCuratorSettings(db);
+  await _ensureDisplayThemeKv(db);
+  await _ensureDisplayTextScaleKv(db);
   await _ensureWelcomeScreen(db);
   await _ensureJokeScreen(db);
   await _ensureTriviaScreen(db);
@@ -66,6 +70,38 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureLocalApiScreen(db);
   await _ensureAdminSetupScreen(db);
   await _ensureWeatherScreen(db);
+}
+
+Future<void> _ensureDisplayThemeKv(AppDatabase db) async {
+  final row = await (db.select(db.dashboardKv)
+        ..where((t) => t.key.equals(kDisplayThemeIdKvKey)))
+      .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  await db.into(db.dashboardKv).insert(
+        DashboardKvCompanion.insert(
+          key: kDisplayThemeIdKvKey,
+          value: kDefaultDisplayThemeId,
+        ),
+      );
+}
+
+Future<void> _ensureDisplayTextScaleKv(AppDatabase db) async {
+  Future<void> ensureKey(String key, String value) async {
+    final row = await (db.select(db.dashboardKv)
+          ..where((t) => t.key.equals(key)))
+        .getSingleOrNull();
+    if (row != null) {
+      return;
+    }
+    await db.into(db.dashboardKv).insert(
+          DashboardKvCompanion.insert(key: key, value: value),
+        );
+  }
+
+  await ensureKey(kDisplayTextScaleScreenKvKey, kDisplayTextScaleNormal);
+  await ensureKey(kDisplayTextScaleTickerKvKey, kDisplayTextScaleNormal);
 }
 
 Future<void> _ensureCuratorSettings(AppDatabase db) async {

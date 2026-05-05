@@ -8,13 +8,16 @@ void main() {
   test('DisplayTheme matches calendar-style dark palette', () {
     final t = DisplayTheme.build();
     expect(t.brightness, Brightness.dark);
-    expect(t.scaffoldBackgroundColor, DisplayThemeColors.background);
-    expect(t.colorScheme.surface, DisplayThemeColors.background);
-    expect(t.colorScheme.onSurface, DisplayThemeColors.primaryText);
-    expect(t.colorScheme.surfaceContainerHighest, DisplayThemeColors.footerBar);
-    expect(t.colorScheme.onSurfaceVariant, DisplayThemeColors.mutedText);
-    expect(t.colorScheme.primary, DisplayThemeColors.accent);
-    expect(t.colorScheme.outline, DisplayThemeColors.accent);
+    expect(t.scaffoldBackgroundColor, NavyCoralPalette.background);
+    expect(t.colorScheme.surface, NavyCoralPalette.background);
+    expect(t.colorScheme.onSurface, NavyCoralPalette.primaryText);
+    expect(
+      t.colorScheme.surfaceContainerHighest,
+      NavyCoralPalette.footerBar,
+    );
+    expect(t.colorScheme.onSurfaceVariant, NavyCoralPalette.mutedText);
+    expect(t.colorScheme.primary, NavyCoralPalette.accent);
+    expect(t.colorScheme.outline, NavyCoralPalette.accent);
     expect(t.textTheme.bodyLarge?.fontSize, greaterThanOrEqualTo(18));
     expect(t.extension<TickerMarqueeStyle>(), isA<TickerMarqueeStyle>());
   });

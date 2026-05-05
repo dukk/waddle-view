@@ -7,6 +7,7 @@ import '../clock.dart';
 import '../curator/screen_layout_parse.dart';
 import '../persistence/database.dart';
 import 'calendar_month_grid.dart';
+import 'dashboard_viewport_scope.dart';
 
 const _weekdayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -93,6 +94,7 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final s = DashboardViewportScope.scaleOf(context);
         final mq = MediaQuery.sizeOf(context);
         final h = constraints.maxHeight.isFinite
             ? constraints.maxHeight
@@ -127,6 +129,7 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
                       child: _UpcomingEventsList(
                         events: events,
                         theme: widget.theme,
+                        layoutScale: s,
                       ),
                     ),
                   Expanded(
@@ -135,6 +138,7 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
                       monthTitle: monthTitle,
                       cells: cells,
                       theme: widget.theme,
+                      layoutScale: s,
                     ),
                   ),
                 ],
@@ -151,17 +155,20 @@ class _UpcomingEventsList extends StatelessWidget {
   const _UpcomingEventsList({
     required this.events,
     required this.theme,
+    required this.layoutScale,
   });
 
   final List<CalendarEvent> events;
   final ThemeData theme;
+  final double layoutScale;
 
   @override
   Widget build(BuildContext context) {
+    final s = layoutScale;
     return ListView.separated(
-      padding: const EdgeInsets.only(right: 16),
+      padding: EdgeInsets.only(right: 16 * s),
       itemCount: events.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 10),
+      separatorBuilder: (context, index) => SizedBox(height: 10 * s),
       itemBuilder: (context, i) {
         final e = events[i];
         final time =
@@ -200,14 +207,17 @@ class _MonthGridPanel extends StatelessWidget {
     required this.monthTitle,
     required this.cells,
     required this.theme,
+    required this.layoutScale,
   });
 
   final String monthTitle;
   final List<MonthGridCell> cells;
   final ThemeData theme;
+  final double layoutScale;
 
   @override
   Widget build(BuildContext context) {
+    final s = layoutScale;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -216,7 +226,7 @@ class _MonthGridPanel extends StatelessWidget {
           style: theme.textTheme.headlineSmall,
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12 * s),
         Row(
           children: _weekdayLabels
               .map(
@@ -230,21 +240,22 @@ class _MonthGridPanel extends StatelessWidget {
               )
               .toList(),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8 * s),
         Expanded(
           child: GridView.builder(
             physics: const NeverScrollableScrollPhysics(),
             padding: EdgeInsets.zero,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 7,
-              crossAxisSpacing: 6,
-              mainAxisSpacing: 6,
+              crossAxisSpacing: 6 * s,
+              mainAxisSpacing: 6 * s,
             ),
             itemCount: cells.length,
             itemBuilder: (context, index) {
               return _MonthDayCell(
                 cell: cells[index],
                 theme: theme,
+                layoutScale: s,
               );
             },
           ),
@@ -258,13 +269,16 @@ class _MonthDayCell extends StatelessWidget {
   const _MonthDayCell({
     required this.cell,
     required this.theme,
+    required this.layoutScale,
   });
 
   final MonthGridCell cell;
   final ThemeData theme;
+  final double layoutScale;
 
   @override
   Widget build(BuildContext context) {
+    final s = layoutScale;
     final fg = cell.isToday
         ? theme.colorScheme.onPrimaryContainer
         : theme.colorScheme.onSurface.withValues(
@@ -275,11 +289,11 @@ class _MonthDayCell extends StatelessWidget {
         color: cell.isToday
             ? theme.colorScheme.primaryContainer
             : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(8 * s),
         border: cell.isToday
             ? Border.all(
                 color: theme.colorScheme.primary,
-                width: 2,
+                width: 2 * s,
               )
             : null,
       ),

@@ -24,6 +24,8 @@ import 'curator/drift_curator_read_port.dart';
 import 'curator/gated_dashboard_curator.dart';
 import 'debug/app_debug_log.dart';
 import 'dashboard/dashboard_data_bound_shell.dart';
+import 'dashboard/dashboard_viewport_scope.dart';
+import 'dashboard/display_viewport.dart';
 import 'dashboard/screen_rotator.dart';
 import 'data/data_write_context.dart';
 import 'data/engine/data_collection_engine.dart';
@@ -212,28 +214,30 @@ class WaddleRoot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Waddle View',
-      theme: DisplayTheme.build(),
-      builder: (context, child) {
-        final data = MediaQuery.of(context);
-        return MediaQuery(
-          data: data.copyWith(
-            textScaler: DisplayTheme.wrapTextScaler(data.textScaler),
+    return StreamBuilder<List<DashboardKvData>>(
+      stream: db.select(db.dashboardKv).watch(),
+      builder: (context, snapshot) {
+        final rows = snapshot.data ?? const <DashboardKvData>[];
+        final kv = {for (final r in rows) r.key: r.value};
+        final theme = DisplayTheme.buildFromKvValue(kv[kDisplayThemeIdKvKey]);
+        return MaterialApp(
+          title: 'Waddle View',
+          theme: theme,
+          builder: (context, child) =>
+              child ?? const SizedBox.shrink(),
+          home: WaddleHome(
+            db: db,
+            blobs: blobs,
+            alerts: alerts,
+            server: server,
+            setupPasswordFile: setupPasswordFile,
+            engine: engine,
+            tickerCurated: tickerCurated,
+            marqueeCycleGate: marqueeCycleGate,
+            dashboardKv: kv,
           ),
-          child: child ?? const SizedBox.shrink(),
         );
       },
-      home: WaddleHome(
-        db: db,
-        blobs: blobs,
-        alerts: alerts,
-        server: server,
-        setupPasswordFile: setupPasswordFile,
-        engine: engine,
-        tickerCurated: tickerCurated,
-        marqueeCycleGate: marqueeCycleGate,
-      ),
     );
   }
 }
@@ -249,6 +253,7 @@ class WaddleHome extends StatefulWidget {
     required this.engine,
     required this.tickerCurated,
     required this.marqueeCycleGate,
+    required this.dashboardKv,
   });
 
   final AppDatabase db;
@@ -259,6 +264,7 @@ class WaddleHome extends StatefulWidget {
   final DataCollectionEngine engine;
   final MemoryTickerCuratedRepository tickerCurated;
   final MarqueeCycleGate marqueeCycleGate;
+  final Map<String, String> dashboardKv;
 
   @override
   State<WaddleHome> createState() => _WaddleHomeState();
@@ -278,23 +284,46 @@ class _WaddleHomeState extends State<WaddleHome> {
 
   @override
   Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    final baseScaler = mq.textScaler;
+    final screenKv = linearFactorForDisplayTextScaleKvValue(
+      widget.dashboardKv[kDisplayTextScaleScreenKvKey],
+    );
+    final tickerKv = linearFactorForDisplayTextScaleKvValue(
+      widget.dashboardKv[kDisplayTextScaleTickerKvKey],
+    );
+    final screenScaler = DisplayTextScaler(
+      baseScaler,
+      screenKv * DisplayTheme.textScale,
+    );
+    final tickerScaler = DisplayTextScaler(
+      baseScaler,
+      tickerKv * DisplayTheme.textScale,
+    );
     return Scaffold(
-      body: AlertOverlayHost(
-        repository: widget.alerts,
-        clock: const SystemClock(),
-        child: DashboardDataBoundShell(
-          overscan: const TvOverscanInsets(),
-          body: ScreenRotator(
-            db: widget.db,
-            blobs: widget.blobs,
-            localRestBaseUrl: widget.server.baseUrl,
-            adminBaseUrl: widget.server.displayBaseUrl,
-            setupPasswordFile: widget.setupPasswordFile,
-          ),
-          ticker: _KvAwareMarquee(
-            db: widget.db,
-            repository: widget.tickerCurated,
-            marqueeCycleGate: widget.marqueeCycleGate,
+      body: MediaQuery(
+        data: mq.copyWith(textScaler: screenScaler),
+        child: AlertOverlayHost(
+          repository: widget.alerts,
+          clock: const SystemClock(),
+          child: DashboardDataBoundShell(
+            overscan: const TvOverscanInsets(),
+            viewportConfig: const DisplayViewportConfig(),
+            body: ScreenRotator(
+              db: widget.db,
+              blobs: widget.blobs,
+              localRestBaseUrl: widget.server.baseUrl,
+              adminBaseUrl: widget.server.displayBaseUrl,
+              setupPasswordFile: widget.setupPasswordFile,
+            ),
+            ticker: MediaQuery(
+              data: mq.copyWith(textScaler: tickerScaler),
+              child: _KvAwareMarquee(
+                db: widget.db,
+                repository: widget.tickerCurated,
+                marqueeCycleGate: widget.marqueeCycleGate,
+              ),
+            ),
           ),
         ),
       ),
@@ -326,10 +355,15 @@ class _KvAwareMarquee extends StatelessWidget {
               m['curator.ticker.newsPixelsPerSecond']?.trim() ?? '',
             ) ??
             80;
-        return TickerMarquee(
-          repository: repository,
-          pixelsPerSecond: px,
-          cycleGate: marqueeCycleGate,
+        return Builder(
+          builder: (context) {
+            final s = DashboardViewportScope.scaleOf(context);
+            return TickerMarquee(
+              repository: repository,
+              pixelsPerSecond: px * s,
+              cycleGate: marqueeCycleGate,
+            );
+          },
         );
       },
     );

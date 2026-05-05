@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../clock.dart';
 import '../curator/screen_layout_parse.dart';
 import 'clock_date_format.dart';
+import 'dashboard_viewport_scope.dart';
 
 /// Full-slide digital clock with date (local time).
 class DigitalClockSlideWidget extends StatefulWidget {
@@ -97,8 +98,9 @@ class _DigitalClockSlideWidgetState extends State<DigitalClockSlideWidget> {
   @override
   Widget build(BuildContext context) {
     final local = _tick;
+    final s = DashboardViewportScope.scaleOf(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: 12 * s),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -115,7 +117,7 @@ class _DigitalClockSlideWidgetState extends State<DigitalClockSlideWidget> {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16 * s),
           Text(
             formatClockDate(local),
             style: widget.theme.textTheme.headlineSmall,

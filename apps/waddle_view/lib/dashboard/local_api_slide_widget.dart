@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../curator/screen_layout_parse.dart';
+import 'dashboard_viewport_scope.dart';
 
 /// Developer slide: loopback REST base URL and API key file hint.
 class LocalApiSlideWidget extends StatelessWidget {
@@ -19,30 +20,31 @@ class LocalApiSlideWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final headline =
         spec.config['headline'] as String? ?? 'Local REST API';
+    final s = DashboardViewportScope.scaleOf(context);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: 12 * s),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             Icons.api_outlined,
-            size: 56,
+            size: 56 * s,
             color: theme.colorScheme.primary,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12 * s),
           Text(
             headline,
             style: theme.textTheme.headlineSmall,
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20 * s),
           SelectableText(
             baseUrl,
             style: theme.textTheme.titleMedium,
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16 * s),
           Text(
             'Use header X-Api-Key with the key from waddle_api.key '
             '(application support directory).',

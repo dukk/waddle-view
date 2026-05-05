@@ -11,6 +11,7 @@ import '../curator/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';
 import '../persistence/database.dart';
 import 'trivia_slide_timing.dart';
+import 'dashboard_viewport_scope.dart';
 
 Future<TriviaQuestion?> _loadRandomTrivia(
   AppDatabase db,
@@ -249,21 +250,22 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
   @override
   Widget build(BuildContext context) {
     final theme = widget.theme;
+    final s = DashboardViewportScope.scaleOf(context);
     if (_loading) {
-      return const Padding(
-        padding: EdgeInsets.all(24),
+      return Padding(
+        padding: EdgeInsets.all(24 * s),
         child: Center(
           child: SizedBox(
-            width: 32,
-            height: 32,
-            child: CircularProgressIndicator(),
+            width: 32 * s,
+            height: 32 * s,
+            child: const CircularProgressIndicator(),
           ),
         ),
       );
     }
     if (_question == null) {
       return Padding(
-        padding: const EdgeInsets.only(bottom: 12),
+        padding: EdgeInsets.only(bottom: 12 * s),
         child: Text(
           'No trivia yet',
           style: theme.textTheme.titleMedium,
@@ -283,32 +285,32 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
         final column = Center(
           child: ConstrainedBox(
             constraints: BoxConstraints(
-              maxWidth: min(constraints.maxWidth, 720),
+              maxWidth: min(constraints.maxWidth, 720 * s),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (_categoryIconBytes != null) ...[
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
+                    padding: EdgeInsets.only(bottom: 12 * s),
                     child: Image.memory(
                       _categoryIconBytes!,
                       key: const ValueKey<String>('trivia_category_icon'),
-                      width: 88,
-                      height: 88,
+                      width: 88 * s,
+                      height: 88 * s,
                       fit: BoxFit.contain,
                     ),
                   ),
                 ],
                 if (countdown > 0)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
+                    padding: EdgeInsets.only(bottom: 12 * s),
                     child: Text(
                       '$countdown',
                       key: const ValueKey<String>('trivia_countdown'),
                       textAlign: TextAlign.center,
                       style: theme.textTheme.displayMedium?.copyWith(
-                        fontSize: 72,
+                        fontSize: 72 * s,
                         fontWeight: FontWeight.w700,
                         height: 1,
                       ),
@@ -319,7 +321,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                   style: theme.textTheme.headlineSmall,
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20 * s),
                 ...List.generate(4, (slot) {
                   final displayLetter = String.fromCharCode(
                     'A'.codeUnitAt(0) + slot,
@@ -334,7 +336,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                         )
                       : theme.textTheme.titleMedium;
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
+                    padding: EdgeInsets.only(bottom: 10 * s),
                     child: AnimatedOpacity(
                       opacity: hidden ? 0 : 1,
                       duration: const Duration(
@@ -344,7 +346,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           SizedBox(
-                            width: 28,
+                            width: 28 * s,
                             child: Text(
                               '$displayLetter.',
                               style: optionStyle,

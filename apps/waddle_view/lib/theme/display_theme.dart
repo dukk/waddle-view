@@ -1,26 +1,30 @@
 import 'package:flutter/material.dart';
 
-import 'ticker_marquee_style.dart';
+import 'config/display_theme_registry.dart';
 
-/// Palette derived from the dark calendar-style reference (navy base, coral accent).
-abstract final class DisplayThemeColors {
-  const DisplayThemeColors._();
-
-  /// Main canvas behind content.
-  static const Color background = Color(0xFF0A0C12);
-
-  /// Bottom bar / ticker strip (slightly lighter navy).
-  static const Color footerBar = Color(0xFF2D364E);
-
-  /// Primary labels (month, in-month dates, panel copy).
-  static const Color primaryText = Color(0xFFF0F6FC);
-
-  /// Adjacent-month dates and secondary chrome.
-  static const Color mutedText = Color(0xFF484F58);
-
-  /// Selection outline and primary emphasis (coral).
-  static const Color accent = Color(0xFFE3566A);
-}
+export 'config/display_theme_registry.dart'
+    show
+        DisplayThemeOption,
+        kDisplayThemeGraphiteAmber,
+        kDisplayThemeNavyCoral,
+        kDisplayThemeOptions,
+        normalizeDisplayThemeId,
+        registeredDisplayThemeIds,
+        themeDataForDashboardKvValue,
+        themeDataForNormalizedDisplayThemeId;
+export 'config/palettes/navy_coral_palette.dart' show NavyCoralPalette;
+export 'display_text_scale_kv.dart'
+    show
+        DisplayTextScaleOption,
+        kDisplayTextScaleNormal,
+        kDisplayTextScaleScreenKvKey,
+        kDisplayTextScaleSelectOptions,
+        kDisplayTextScaleTickerKvKey,
+        kDisplayTextScaleXLarge,
+        linearFactorForDisplayTextScaleKvValue,
+        normalizeDisplayTextScaleOption;
+export 'display_theme_kv.dart'
+    show kDefaultDisplayThemeId, kDisplayThemeIdKvKey;
 
 /// Applies [DisplayTheme.textScale] on top of the platform [TextScaler] (accessibility, etc.).
 @immutable
@@ -49,7 +53,7 @@ final class DisplayTextScaler extends TextScaler {
   int get hashCode => Object.hash(wrapped, displayFactor);
 }
 
-/// Builds a TV-readable [ThemeData] using [DisplayThemeColors].
+/// TV display theming: color presets live under `lib/theme/config/`.
 class DisplayTheme {
   const DisplayTheme._();
 
@@ -60,48 +64,18 @@ class DisplayTheme {
   static TextScaler wrapTextScaler(TextScaler platform) =>
       DisplayTextScaler(platform, textScale);
 
-  static ThemeData build() {
-    final baseScheme = ColorScheme.fromSeed(
-      seedColor: DisplayThemeColors.accent,
-      brightness: Brightness.dark,
+  /// Builds the active [ThemeData] for [themeId] (normalized).
+  static ThemeData buildForId(String themeId) {
+    return themeDataForNormalizedDisplayThemeId(
+      normalizeDisplayThemeId(themeId),
     );
-    final colorScheme = baseScheme.copyWith(
-      surface: DisplayThemeColors.background,
-      onSurface: DisplayThemeColors.primaryText,
-      primary: DisplayThemeColors.accent,
-      onPrimary: DisplayThemeColors.primaryText,
-      secondary: DisplayThemeColors.accent,
-      onSecondary: DisplayThemeColors.primaryText,
-      surfaceContainerHighest: DisplayThemeColors.footerBar,
-      onSurfaceVariant: DisplayThemeColors.mutedText,
-      outline: DisplayThemeColors.accent,
-      outlineVariant: DisplayThemeColors.mutedText,
-    );
-
-    final base = ThemeData(
-      useMaterial3: true,
-      colorScheme: colorScheme,
-      scaffoldBackgroundColor: DisplayThemeColors.background,
-    );
-
-    final withText = base.copyWith(
-      textTheme: base.textTheme
-          .apply(
-            bodyColor: DisplayThemeColors.primaryText,
-            displayColor: DisplayThemeColors.primaryText,
-          )
-          .copyWith(
-            headlineMedium: base.textTheme.headlineMedium?.copyWith(
-              fontSize: 32,
-              fontWeight: FontWeight.w600,
-            ),
-            titleLarge: base.textTheme.titleLarge?.copyWith(
-              fontSize: 26,
-              fontWeight: FontWeight.w600,
-            ),
-            bodyLarge: base.textTheme.bodyLarge?.copyWith(fontSize: 20),
-          ),
-    );
-    return applyTickerMarqueeStyle(withText);
   }
+
+  /// Default navy/coral preset (same as [buildForId] with default id).
+  static ThemeData build() =>
+      themeDataForNormalizedDisplayThemeId(kDisplayThemeNavyCoral);
+
+  /// Resolves theme from a raw [dashboard_kv] value.
+  static ThemeData buildFromKvValue(String? value) =>
+      themeDataForDashboardKvValue(value);
 }

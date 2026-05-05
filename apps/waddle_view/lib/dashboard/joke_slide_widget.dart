@@ -10,6 +10,7 @@ import '../curator/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';
 import '../persistence/database.dart';
 import 'joke_slide_timing.dart';
+import 'dashboard_viewport_scope.dart';
 
 /// One random joke from [db], optional [categoryId] from [spec] `config`.
 Future<Joke?> _loadRandomJoke(
@@ -136,21 +137,22 @@ class _JokeSlideWidgetState extends State<JokeSlideWidget> {
   @override
   Widget build(BuildContext context) {
     final theme = widget.theme;
+    final s = DashboardViewportScope.scaleOf(context);
     if (_loading) {
-      return const Padding(
-        padding: EdgeInsets.all(24),
+      return Padding(
+        padding: EdgeInsets.all(24 * s),
         child: Center(
           child: SizedBox(
-            width: 32,
-            height: 32,
-            child: CircularProgressIndicator(),
+            width: 32 * s,
+            height: 32 * s,
+            child: const CircularProgressIndicator(),
           ),
         ),
       );
     }
     if (_joke == null) {
       return Padding(
-        padding: const EdgeInsets.only(bottom: 12),
+        padding: EdgeInsets.only(bottom: 12 * s),
         child: Text(
           'No jokes yet',
           style: theme.textTheme.titleMedium,
@@ -160,7 +162,7 @@ class _JokeSlideWidgetState extends State<JokeSlideWidget> {
     }
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: 12 * s),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -168,18 +170,18 @@ class _JokeSlideWidgetState extends State<JokeSlideWidget> {
             Image.memory(
               _categoryIconBytes!,
               key: const ValueKey<String>('joke_category_icon'),
-              width: 88,
-              height: 88,
+              width: 88 * s,
+              height: 88 * s,
               fit: BoxFit.contain,
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12 * s),
           ],
           Text(
             _joke!.setup,
             style: theme.textTheme.headlineSmall,
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16 * s),
           AnimatedOpacity(
             opacity: _showPunchline ? 1 : 0,
             duration: const Duration(milliseconds: 320),

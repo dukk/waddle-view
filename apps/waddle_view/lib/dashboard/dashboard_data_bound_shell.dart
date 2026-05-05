@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'display_viewport.dart';
 import '../theme/tv_overscan.dart';
 import 'dashboard_shell.dart';
 
@@ -8,11 +9,13 @@ class DashboardDataBoundShell extends StatelessWidget {
   const DashboardDataBoundShell({
     super.key,
     required this.overscan,
+    this.viewportConfig = const DisplayViewportConfig(),
     required this.body,
     required this.ticker,
   });
 
   final TvOverscanInsets overscan;
+  final DisplayViewportConfig viewportConfig;
   final Widget body;
   final Widget ticker;
 
@@ -20,6 +23,7 @@ class DashboardDataBoundShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return DashboardShell(
       overscan: overscan,
+      viewportConfig: viewportConfig,
       body: body,
       ticker: ticker,
     );

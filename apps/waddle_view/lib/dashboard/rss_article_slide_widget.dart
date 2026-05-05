@@ -9,6 +9,7 @@ import '../curator/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';
 import '../persistence/database.dart';
 import 'rss_article_slide_timing.dart';
+import 'dashboard_viewport_scope.dart';
 
 Future<RssArticle?> _loadBestArticleForScreen(
   AppDatabase db,
@@ -140,6 +141,7 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
   bool _scrollScheduled = false;
   bool _scrollMetricsHookStarted = false;
   bool _plainDwellHookStarted = false;
+  double _viewportScale = 1.0;
 
   late final int _scrollDelayMs;
   late final int _trailingHoldMs;
@@ -193,7 +195,7 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
       scrollDelayMs: _scrollDelayMs,
       trailingHoldMs: _trailingHoldMs,
       maxScrollExtent: 0,
-      scrollPixelsPerSecond: _scrollPps,
+      scrollPixelsPerSecond: _scrollPps * _viewportScale,
     );
     _dwellReported = true;
     widget.onReportDesiredDwell(desired);
@@ -223,7 +225,7 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
         scrollDelayMs: _scrollDelayMs,
         trailingHoldMs: _trailingHoldMs,
         maxScrollExtent: summaryScrollable ? extent : 0,
-        scrollPixelsPerSecond: _scrollPps,
+        scrollPixelsPerSecond: _scrollPps * _viewportScale,
       );
 
       _dwellReported = true;
@@ -238,7 +240,7 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
           }
           final ms = scrollAnimationDurationMs(
             maxScrollExtent: _scroll.position.maxScrollExtent,
-            pixelsPerSecond: _scrollPps,
+            pixelsPerSecond: _scrollPps * _viewportScale,
           );
           unawaited(
             _scroll.animateTo(
@@ -257,14 +259,16 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
   @override
   Widget build(BuildContext context) {
     final theme = widget.theme;
+    final s = DashboardViewportScope.scaleOf(context);
+    _viewportScale = s;
     if (_loading) {
-      return const Padding(
-        padding: EdgeInsets.all(24),
+      return Padding(
+        padding: EdgeInsets.all(24 * s),
         child: Center(
           child: SizedBox(
-            width: 32,
-            height: 32,
-            child: CircularProgressIndicator(),
+            width: 32 * s,
+            height: 32 * s,
+            child: const CircularProgressIndicator(),
           ),
         ),
       );
@@ -273,7 +277,7 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
     final article = _article;
     if (article == null) {
       return Padding(
-        padding: const EdgeInsets.only(bottom: 12),
+        padding: EdgeInsets.only(bottom: 12 * s),
         child: Text(
           'No news articles yet',
           style: theme.textTheme.titleMedium,
@@ -292,7 +296,7 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
         });
       }
       return Padding(
-        padding: const EdgeInsets.only(bottom: 12),
+        padding: EdgeInsets.only(bottom: 12 * s),
         child: Text(
           'Article has no title or summary',
           style: theme.textTheme.titleMedium,
@@ -319,9 +323,10 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
         if (!w.isFinite || !h.isFinite || w <= 0 || h <= 0) {
           return const SizedBox.shrink();
         }
-        final imageW = (w * _imageFraction).clamp(120.0, w * 0.55);
+        final imageW =
+            (w * _imageFraction).clamp(120.0 * s, w * 0.55);
         return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
+          padding: EdgeInsets.only(bottom: 12 * s),
           child: SizedBox(
             width: w,
             height: h,
@@ -332,27 +337,27 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
                   width: imageW,
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12 * s),
                       border: Border.all(
                         color: theme.colorScheme.outline.withValues(alpha: 0.4),
                       ),
                       color: theme.colorScheme.surfaceContainerHigh,
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(11),
+                      borderRadius: BorderRadius.circular(11 * s),
                       child: _imageBytes != null
                           ? Image.memory(
                               _imageBytes!,
                               fit: BoxFit.cover,
                               gaplessPlayback: true,
                               errorBuilder: (context, error, stackTrace) =>
-                                  _imagePlaceholder(theme),
+                                  _imagePlaceholder(theme, s),
                             )
-                          : _imagePlaceholder(theme),
+                          : _imagePlaceholder(theme, s),
                     ),
                   ),
                 ),
-                const SizedBox(width: 20),
+                SizedBox(width: 20 * s),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -367,7 +372,7 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       if (title.isNotEmpty && summary.isNotEmpty)
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12 * s),
                       Expanded(
                         child: summary.isEmpty
                             ? const SizedBox.shrink()
@@ -395,13 +400,13 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
     );
   }
 
-  static Widget _imagePlaceholder(ThemeData theme) {
+  static Widget _imagePlaceholder(ThemeData theme, double s) {
     return ColoredBox(
       color: theme.colorScheme.surfaceContainerHighest,
       child: Center(
         child: Icon(
           Icons.image_not_supported_outlined,
-          size: 56,
+          size: 56 * s,
           color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
         ),
       ),
