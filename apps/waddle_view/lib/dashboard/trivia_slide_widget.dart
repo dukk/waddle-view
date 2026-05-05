@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:drift/drift.dart' show CustomExpression, OrderingTerm;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../curator/screen_layout_parse.dart';
@@ -26,21 +27,33 @@ Future<TriviaQuestion?> _loadRandomTrivia(
       .getSingleOrNull();
 }
 
+/// Source letters A–D assigned to on-screen slots A–D (slot index 0 = label "A.").
+@visibleForTesting
+List<String> triviaShuffleOrderForTesting(Random random) {
+  final letters = ['A', 'B', 'C', 'D']..shuffle(random);
+  return List<String>.from(letters);
+}
+
 /// Multiple-choice trivia: wrong answers fade out; countdown until only the
 /// correct answer remains visible.
 class TriviaSlideWidget extends StatefulWidget {
-  const TriviaSlideWidget({
+  TriviaSlideWidget({
     super.key,
     required this.db,
     required this.slide,
     required this.spec,
     required this.theme,
+    this.shuffleRandom,
   });
 
   final AppDatabase db;
   final ResolvedSlide slide;
   final ParsedWidgetSpec spec;
   final ThemeData theme;
+
+  /// When null, a fresh [Random] is used in state. Tests may pass a seeded
+  /// instance for deterministic layout.
+  final Random? shuffleRandom;
 
   @override
   State<TriviaSlideWidget> createState() => _TriviaSlideWidgetState();
@@ -49,6 +62,10 @@ class TriviaSlideWidget extends StatefulWidget {
 class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
   TriviaQuestion? _question;
   bool _loading = true;
+  late final Random _rng = widget.shuffleRandom ?? Random();
+
+  /// Index = on-screen slot (0=A, 1=B, …); value = DB option letter for text.
+  List<String>? _displaySlotToSource;
 
   final Set<String> _fadingWrong = {};
   final Stopwatch _stopwatch = Stopwatch();
@@ -67,8 +84,10 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     if (!mounted) {
       return;
     }
+    final perm = q == null ? null : triviaShuffleOrderForTesting(_rng);
     setState(() {
       _question = q;
+      _displaySlotToSource = perm;
       _loading = false;
     });
     _startRevealSequence();
@@ -84,15 +103,22 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     _stopwatch.reset();
 
     final row = _question;
-    if (row == null) {
+    final perm = _displaySlotToSource;
+    if (row == null || perm == null) {
       return;
     }
 
-    final correct = row.correctOption.trim().toUpperCase();
+    final correctSource = row.correctOption.trim().toUpperCase();
+    final correctIdx = perm.indexOf(correctSource);
+    if (correctIdx < 0) {
+      return;
+    }
+    final displayCorrect =
+        String.fromCharCode('A'.codeUnitAt(0) + correctIdx);
     final wrong = <String>['A', 'B', 'C', 'D']
-        .where((l) => l != correct)
+        .where((l) => l != displayCorrect)
         .toList()
-      ..shuffle(Random());
+      ..shuffle(_rng);
 
     final override = (widget.spec.config['eliminationWindowMs'] as num?)
         ?.toInt();
@@ -207,7 +233,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     }
 
     final row = _question!;
-    final letters = ['A', 'B', 'C', 'D'];
+    final perm = _displaySlotToSource!;
     final countdown = _countdownSeconds();
 
     return LayoutBuilder(
@@ -240,8 +266,13 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 20),
-                    ...letters.map((letter) {
-                      final hidden = _fadingWrong.contains(letter);
+                    ...List.generate(4, (slot) {
+                      final displayLetter = String.fromCharCode(
+                        'A'.codeUnitAt(0) + slot,
+                      );
+                      final sourceLetter = perm[slot];
+                      final hidden =
+                          _fadingWrong.contains(displayLetter);
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 10),
                         child: AnimatedOpacity(
@@ -255,13 +286,13 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                               SizedBox(
                                 width: 28,
                                 child: Text(
-                                  '$letter.',
+                                  '$displayLetter.',
                                   style: theme.textTheme.titleMedium,
                                 ),
                               ),
                               Expanded(
                                 child: Text(
-                                  _optionText(row, letter),
+                                  _optionText(row, sourceLetter),
                                   style: theme.textTheme.titleMedium,
                                 ),
                               ),

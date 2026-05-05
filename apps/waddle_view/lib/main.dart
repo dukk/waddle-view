@@ -172,6 +172,15 @@ class WaddleRoot extends StatelessWidget {
     return MaterialApp(
       title: 'Waddle View',
       theme: DisplayTheme.build(),
+      builder: (context, child) {
+        final data = MediaQuery.of(context);
+        return MediaQuery(
+          data: data.copyWith(
+            textScaler: DisplayTheme.wrapTextScaler(data.textScaler),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       home: WaddleHome(
         db: db,
         blobs: blobs,

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_view/curator/screen_layout_parse.dart';
@@ -10,6 +12,13 @@ import 'package:waddle_view/seed/trivia_category_seed.dart';
 import '../helpers/memory_database.dart';
 
 void main() {
+  test('triviaShuffleOrderForTesting yields A–D permutation', () {
+    expect(
+      triviaShuffleOrderForTesting(Random(1)).toSet(),
+      equals({'A', 'B', 'C', 'D'}),
+    );
+  });
+
   testWidgets('shows question then fades wrong answers', (tester) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
@@ -74,6 +83,62 @@ void main() {
         .toList();
     expect(opacitiesEnd.where((w) => w.opacity == 1).length, 1);
     expect(opacitiesEnd.where((w) => w.opacity == 0).length, 3);
+
+    await db.close();
+  });
+
+  testWidgets('shuffled labels match seeded RNG', (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureDefaultTriviaCategories(db);
+    await db.into(db.triviaQuestions).insert(
+          TriviaQuestionsCompanion.insert(
+            id: 't1',
+            categoryId: 'science',
+            question: '2 + 2?',
+            optionA: '3',
+            optionB: 'Four',
+            optionC: '5',
+            optionD: '22',
+            correctOption: 'B',
+            createdAtMs: 1,
+          ),
+        );
+
+    final slide = ResolvedSlide(
+      screenId: 'trivia',
+      dwellMs: 5000,
+      layoutJson: '{}',
+    );
+    const spec = ParsedWidgetSpec(
+      type: 'trivia',
+      slot: 'main',
+      config: {},
+    );
+
+    final perm = triviaShuffleOrderForTesting(Random(0));
+    final correctLabel = String.fromCharCode(
+      'A'.codeUnitAt(0) + perm.indexOf('B'),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.light(),
+        home: Scaffold(
+          body: TriviaSlideWidget(
+            db: db,
+            slide: slide,
+            spec: spec,
+            theme: ThemeData.light(),
+            shuffleRandom: Random(0),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('$correctLabel.'), findsOneWidget);
+    expect(find.text('Four'), findsOneWidget);
 
     await db.close();
   });

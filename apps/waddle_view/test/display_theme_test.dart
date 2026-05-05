@@ -18,4 +18,13 @@ void main() {
     expect(t.textTheme.bodyLarge?.fontSize, greaterThanOrEqualTo(18));
     expect(t.extension<TickerMarqueeStyle>(), isA<TickerMarqueeStyle>());
   });
+
+  test('DisplayTextScaler composes with platform TextScaler', () {
+    const platform = TextScaler.linear(1.5);
+    final combined = DisplayTheme.wrapTextScaler(platform);
+    expect(
+      combined.scale(10),
+      closeTo(10 * 1.5 * DisplayTheme.textScale, 1e-9),
+    );
+  });
 }
