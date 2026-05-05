@@ -32,6 +32,9 @@ const String waddleJokesAccessTokenKey = 'WADDLE_JOKES_ACCESS_TOKEN';
 /// Optional override for the trivia provider; otherwise same resolution as jokes.
 const String waddleTriviaAccessTokenKey = 'WADDLE_TRIVIA_ACCESS_TOKEN';
 
+/// API key for OpenWeatherMap weather provider.
+const String openWeatherMapApiKeyEnv = 'OPEN_WEATHER_MAP_API_KEY';
+
 /// OpenAI-style token for trivia: explicit trivia key, else same as jokes/OpenAI.
 String? readTriviaTokenFromDotenvMap(Map<String, String> map) {
   final explicit = map[waddleTriviaAccessTokenKey]?.trim();
@@ -39,6 +42,15 @@ String? readTriviaTokenFromDotenvMap(Map<String, String> map) {
     return explicit;
   }
   return readJokesTokenFromDotenvMap(map);
+}
+
+/// Weather provider token from dotenv map.
+String? readWeatherTokenFromDotenvMap(Map<String, String> map) {
+  final weather = map[openWeatherMapApiKeyEnv]?.trim();
+  if (weather != null && weather.isNotEmpty) {
+    return weather;
+  }
+  return null;
 }
 
 /// Loads `.env` from disk in **debug** desktop/server builds only (not web).
@@ -102,5 +114,13 @@ Future<void> applyJokesTokenFromDevDotenv(SecretStore secrets) async {
       triviaToken,
     );
     AppDebugLog.startup('Dev .env: stored trivia provider token in SecretStore');
+  }
+  final weatherToken = readWeatherTokenFromDotenvMap(dotenv.env);
+  if (weatherToken != null && weatherToken.isNotEmpty) {
+    await secrets.write(
+      '${ProviderConfigResolver.accessTokenKey}:weather',
+      weatherToken,
+    );
+    AppDebugLog.startup('Dev .env: stored weather provider token in SecretStore');
   }
 }

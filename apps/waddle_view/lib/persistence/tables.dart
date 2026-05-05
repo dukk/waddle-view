@@ -244,3 +244,30 @@ class CalendarEvents extends Table {
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
+
+class WeatherLocations extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  RealColumn get latitude => real()();
+  RealColumn get longitude => real()();
+  BoolColumn get enabled => boolean().withDefault(const Constant(true))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+@TableIndex(
+  name: 'idx_weather_current_data_observed',
+  columns: {#observedAtMs},
+)
+class WeatherCurrentData extends Table {
+  TextColumn get locationId => text().references(WeatherLocations, #id)();
+  IntColumn get observedAtMs => integer()();
+  RealColumn get currentTemp => real().nullable()();
+  TextColumn get currentDescription => text().nullable()();
+  TextColumn get currentIconBlobKey => text().nullable()();
+  TextColumn get hourlyJson => text().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {locationId};
+}

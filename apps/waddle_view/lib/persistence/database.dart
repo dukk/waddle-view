@@ -29,13 +29,15 @@ part 'database.g.dart';
     TriviaQuestions,
     TriviaGenerationBatches,
     CalendarEvents,
+    WeatherLocations,
+    WeatherCurrentData,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -97,6 +99,10 @@ ORDER BY priority DESC, created_at DESC;
         await customStatement(
           'ALTER TABLE screen_definitions ADD COLUMN data_key TEXT NOT NULL DEFAULT \'\'',
         );
+      }
+      if (from < 12) {
+        await m.createTable(weatherLocations);
+        await m.createTable(weatherCurrentData);
       }
     },
     beforeOpen: (details) async {

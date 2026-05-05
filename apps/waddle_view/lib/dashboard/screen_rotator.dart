@@ -21,6 +21,7 @@ import 'joke_slide_widget.dart';
 import 'local_api_slide_widget.dart';
 import 'rss_article_slide_widget.dart';
 import 'trivia_slide_widget.dart';
+import 'weather_slide_widget.dart';
 
 const String _requireNewsPhotoForCurationKvKey =
     'curator.news.require_photo_for_curation';
@@ -522,6 +523,13 @@ class _SlideContent extends StatelessWidget {
               db: db,
               adminBaseUrl: adminBaseUrl,
               setupPasswordFile: setupPasswordFile,
+              spec: w,
+              theme: theme,
+            );
+          case 'weather':
+            return WeatherSlideWidget(
+              db: db,
+              slide: slide,
               spec: w,
               theme: theme,
             );

@@ -48,6 +48,8 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   );
   await _ensureJokesProviderRow(db);
   await _ensureTriviaProviderRow(db);
+  await _ensureWeatherProviderRow(db);
+  await _ensureDefaultWeatherLocations(db);
   await ensureDefaultJokeCategories(db);
   await ensureDefaultTriviaCategories(db);
   await ensureDefaultRssNewsFeeds(db);
@@ -63,6 +65,7 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureCalendarScreen(db);
   await _ensureLocalApiScreen(db);
   await _ensureAdminSetupScreen(db);
+  await _ensureWeatherScreen(db);
 }
 
 Future<void> _ensureCuratorSettings(AppDatabase db) async {
@@ -327,6 +330,26 @@ Future<void> _ensureAdminSetupScreen(AppDatabase db) async {
       );
 }
 
+Future<void> _ensureWeatherScreen(AppDatabase db) async {
+  final row = await (db.select(db.screenDefinitions)
+        ..where((t) => t.id.equals('weather')))
+      .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  await db.into(db.screenDefinitions).insert(
+        ScreenDefinitionsCompanion.insert(
+          id: 'weather',
+          name: 'Weather',
+          description: const Value('Current weather'),
+          layoutJson: const Value(
+            '{"v":1,"layout":"single","widgets":[{"type":"weather","slot":"main","config":{"locationId":"salt_lake_city_ut"}}]}',
+          ),
+          dwellMs: const Value(14000),
+        ),
+      );
+}
+
 Future<void> _ensureProviderRow(
   AppDatabase db, {
   required String id,
@@ -392,6 +415,50 @@ Future<void> _ensureTriviaProviderRow(AppDatabase db) async {
             '"model":"gpt-4o-mini",'
             '"globalPrompt":"You write clear, family-friendly multiple-choice trivia."}',
           ),
+        ),
+      );
+}
+
+Future<void> _ensureWeatherProviderRow(AppDatabase db) async {
+  final row =
+      await (db.select(db.providerSettings)
+            ..where((t) => t.id.equals('weather')))
+          .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  await db.into(db.providerSettings).insert(
+        ProviderSettingsCompanion.insert(
+          id: 'weather',
+          providerType: 'weather',
+          enabled: const Value(true),
+          pollSeconds: const Value(900),
+          baseUrl: const Value('https://api.openweathermap.org'),
+          extraJson: const Value(
+            '{"units":"imperial","lang":"en","hourlyCount":6,'
+            '"defaultLocation":{"name":"Default","lat":40.7128,"lon":-74.0060}}',
+          ),
+        ),
+      );
+}
+
+Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
+  await db.into(db.weatherLocations).insertOnConflictUpdate(
+        WeatherLocationsCompanion.insert(
+          id: 'salt_lake_city_ut',
+          name: 'Salt Lake City, UT',
+          latitude: 40.7608,
+          longitude: -111.8910,
+          enabled: const Value(true),
+        ),
+      );
+  await db.into(db.weatherLocations).insertOnConflictUpdate(
+        WeatherLocationsCompanion.insert(
+          id: 'atlanta_ga',
+          name: 'Atlanta, GA',
+          latitude: 33.7490,
+          longitude: -84.3880,
+          enabled: const Value(true),
         ),
       );
 }

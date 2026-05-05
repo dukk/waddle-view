@@ -93,5 +93,29 @@ void main() {
     await applyJokesTokenFromDevDotenv(secrets);
     expect(await secrets.read('provider:access_token:jokes'), isNull);
     expect(await secrets.read('provider:access_token:trivia'), isNull);
+    expect(await secrets.read('provider:access_token:weather'), isNull);
+  });
+
+  test('readWeatherTokenFromDotenvMap reads OPEN_WEATHER_MAP_API_KEY', () {
+    expect(
+      readWeatherTokenFromDotenvMap({
+        openWeatherMapApiKeyEnv: ' owm-token ',
+      }),
+      'owm-token',
+    );
+  });
+
+  test('applyJokesTokenFromDevDotenv writes OPEN_WEATHER_MAP_API_KEY', () async {
+    dotenv.clean();
+    dotenv.loadFromString(
+      envString: 'OPEN_WEATHER_MAP_API_KEY=owm-from-dotenv',
+      isOptional: true,
+    );
+    final secrets = InMemorySecretStore();
+    await applyJokesTokenFromDevDotenv(secrets);
+    expect(
+      await secrets.read('provider:access_token:weather'),
+      'owm-from-dotenv',
+    );
   });
 }

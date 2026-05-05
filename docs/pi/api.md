@@ -13,7 +13,12 @@ Send the deployment key in either header:
 - `X-Api-Key: <key>`
 - `Authorization: Bearer <key>`
 
-The key is stored in **`WADDLE_API_KEY_FILE`** (default in dev: app support `waddle_api.key`; install template uses **`/etc/waddle-view/api.key`**).
+The app currently reads the key from its runtime key file:
+
+- local/dev default: app support `waddle_api.key` (created on first launch)
+- packaged install reference copy: `/etc/waddle-view/api.key`
+
+There is no app env var for the admin/install password source in the current Flutter app runtime.
 
 If the key file is **missing or empty**, protected routes return **503** (`api_key_unconfigured`). Invalid keys return **401**.
 

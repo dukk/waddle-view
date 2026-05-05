@@ -56,3 +56,5 @@ The UI does not yet expose a form for provider tokens. Recommended onboarding pa
 3. **Tests / fakes**: use [`InMemorySecretStore`](../../apps/waddle_view/lib/secrets/in_memory_secret_store.dart) and the same key; see [`provider_config_resolver_test.dart`](../../apps/waddle_view/test/provider_config_resolver_test.dart) and [`joke_data_provider_test.dart`](../../apps/waddle_view/test/data/joke_data_provider_test.dart).
 
 4. **Platform notes**: On Windows and Linux desktop, `flutter_secure_storage` persists secrets using the platform integration for that OS (see package docs). Headless Linux still needs a working Secret Service if you rely on this store; otherwise plan a deployment-specific way to populate secrets without putting them in SQLite.
+
+Note: this dotenv flow configures provider API tokens only. Admin/install password authentication uses `waddle_api.key` from the app support directory, not an env variable.

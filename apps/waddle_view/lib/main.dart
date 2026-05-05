@@ -29,6 +29,7 @@ import 'data/engine/data_collection_engine.dart';
 import 'data/providers/joke_data_provider.dart';
 import 'data/providers/rss_news_data_provider.dart';
 import 'data/providers/trivia_data_provider.dart';
+import 'data/providers/weather_data_provider.dart';
 import 'data/stub_data_provider.dart';
 import 'marquee_cycle_gate.dart';
 import 'persistence/database.dart';
@@ -119,6 +120,7 @@ Future<void> main() async {
       RssNewsDataProvider(),
       JokeDataProvider(),
       TriviaDataProvider(),
+      WeatherDataProvider(),
     ],
     context: ctx,
     sleeper: SystemSleeper(),
