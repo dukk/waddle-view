@@ -10,6 +10,9 @@ ScreenCandidate _c({
   required String id,
   int dwellMs = 60000,
   int weight = 100,
+  int minPlacementsPerProgram = 0,
+  int? maxPlacementsPerProgram,
+  String dataKey = '',
   String layout = '{"v":1,"layout":"single","widgets":[]}',
 }) {
   return ScreenCandidate(
@@ -17,6 +20,9 @@ ScreenCandidate _c({
     dwellMs: dwellMs,
     frequencyWeight: weight,
     minGapBetweenShowsMs: 0,
+    minPlacementsPerProgram: minPlacementsPerProgram,
+    maxPlacementsPerProgram: maxPlacementsPerProgram,
+    dataKey: dataKey,
     layoutJson: layout,
     enabled: true,
   );
@@ -161,5 +167,73 @@ void main() {
       recentScreenIdsOldestFirst: const [],
     );
     expect(emptyLines.single, contains('curated slides: 0'));
+  });
+
+  test('screen max placements per program is respected', () {
+    final slides = ScreenProgramCurator.buildProgram(
+      screens: [
+        _c(id: 'limited', dwellMs: 30000, maxPlacementsPerProgram: 1),
+        _c(id: 'fallback', dwellMs: 30000),
+      ],
+      programDurationMs: 180000,
+      recentScreenIdsOldestFirst: const [],
+      historyDepth: 5,
+      random: Random(3),
+    );
+    final limitedCount = slides.where((s) => s.screenId == 'limited').length;
+    expect(limitedCount, lessThanOrEqualTo(1));
+  });
+
+  test('screen min placements per program is prioritized when feasible', () {
+    final slides = ScreenProgramCurator.buildProgram(
+      screens: [
+        _c(id: 'must_show', dwellMs: 30000, minPlacementsPerProgram: 2),
+        _c(id: 'other', dwellMs: 30000),
+      ],
+      programDurationMs: 120000,
+      recentScreenIdsOldestFirst: const [],
+      historyDepth: 5,
+      random: Random(9),
+    );
+    final mustShowCount = slides.where((s) => s.screenId == 'must_show').length;
+    expect(mustShowCount, greaterThanOrEqualTo(2));
+  });
+
+  test('data key max placements applies across multiple screens', () {
+    final slides = ScreenProgramCurator.buildProgram(
+      screens: [
+        _c(id: 'news_a', dwellMs: 30000, dataKey: 'news'),
+        _c(id: 'news_b', dwellMs: 30000, dataKey: 'news'),
+        _c(id: 'other', dwellMs: 30000),
+      ],
+      programDurationMs: 150000,
+      recentScreenIdsOldestFirst: const [],
+      historyDepth: 5,
+      random: Random(4),
+      dataKeyLimits: const {
+        'news': DataKeyProgramLimit(maxPlacementsPerProgram: 1),
+      },
+    );
+    final newsCount = slides.where((s) => s.screenId.startsWith('news_')).length;
+    expect(newsCount, lessThanOrEqualTo(1));
+  });
+
+  test('data key min placements is prioritized across screens', () {
+    final slides = ScreenProgramCurator.buildProgram(
+      screens: [
+        _c(id: 'clock_digital', dwellMs: 30000, dataKey: 'clock'),
+        _c(id: 'clock_analog', dwellMs: 30000, dataKey: 'clock'),
+        _c(id: 'other', dwellMs: 30000),
+      ],
+      programDurationMs: 150000,
+      recentScreenIdsOldestFirst: const [],
+      historyDepth: 5,
+      random: Random(11),
+      dataKeyLimits: const {
+        'clock': DataKeyProgramLimit(minPlacementsPerProgram: 2),
+      },
+    );
+    final clockCount = slides.where((s) => s.screenId.startsWith('clock_')).length;
+    expect(clockCount, greaterThanOrEqualTo(2));
   });
 }

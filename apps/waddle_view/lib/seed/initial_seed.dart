@@ -57,6 +57,7 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureTriviaScreen(db);
   await _ensureGuestWifiScreen(db);
   await _ensureNewsScreen(db);
+  await _ensureClockDataKeyLimit(db);
   await _ensureClockDigitalScreen(db);
   await _ensureClockAnalogScreen(db);
   await _ensureCalendarScreen(db);
@@ -175,11 +176,30 @@ Future<void> _ensureNewsScreen(AppDatabase db) async {
       );
 }
 
+Future<void> _ensureClockDataKeyLimit(AppDatabase db) async {
+  await db.into(db.curatorDataKeyProgramLimits).insertOnConflictUpdate(
+        CuratorDataKeyProgramLimitsCompanion.insert(
+          dataKey: 'clock',
+          minPlacementsPerProgram: const Value(1),
+          maxPlacementsPerProgram: const Value(1),
+        ),
+      );
+}
+
 Future<void> _ensureClockDigitalScreen(AppDatabase db) async {
   final row = await (db.select(db.screenDefinitions)
         ..where((t) => t.id.equals('clock_digital')))
       .getSingleOrNull();
   if (row != null) {
+    await (db.update(db.screenDefinitions)
+          ..where((t) => t.id.equals('clock_digital')))
+        .write(
+          const ScreenDefinitionsCompanion(
+            dataKey: Value('clock'),
+            minPlacementsPerProgram: Value(0),
+            maxPlacementsPerProgram: Value(1),
+          ),
+        );
     return;
   }
   await db.into(db.screenDefinitions).insert(
@@ -191,6 +211,9 @@ Future<void> _ensureClockDigitalScreen(AppDatabase db) async {
             '{"v":1,"layout":"single","widgets":[{"type":"digital_clock","slot":"main","config":{}}]}',
           ),
           dwellMs: const Value(16000),
+          dataKey: const Value('clock'),
+          minPlacementsPerProgram: const Value(0),
+          maxPlacementsPerProgram: const Value(1),
         ),
       );
 }
@@ -200,6 +223,15 @@ Future<void> _ensureClockAnalogScreen(AppDatabase db) async {
         ..where((t) => t.id.equals('clock_analog')))
       .getSingleOrNull();
   if (row != null) {
+    await (db.update(db.screenDefinitions)
+          ..where((t) => t.id.equals('clock_analog')))
+        .write(
+          const ScreenDefinitionsCompanion(
+            dataKey: Value('clock'),
+            minPlacementsPerProgram: Value(0),
+            maxPlacementsPerProgram: Value(1),
+          ),
+        );
     return;
   }
   await db.into(db.screenDefinitions).insert(
@@ -211,6 +243,9 @@ Future<void> _ensureClockAnalogScreen(AppDatabase db) async {
             '{"v":1,"layout":"single","widgets":[{"type":"analog_clock","slot":"main","config":{}}]}',
           ),
           dwellMs: const Value(16000),
+          dataKey: const Value('clock'),
+          minPlacementsPerProgram: const Value(0),
+          maxPlacementsPerProgram: const Value(1),
         ),
       );
 }

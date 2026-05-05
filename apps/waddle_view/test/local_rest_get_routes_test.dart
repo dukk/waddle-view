@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:drift/drift.dart';
 
 import 'package:waddle_view/alerts/drift_alert_repository.dart';
 import 'package:waddle_view/api/deployment_api_key_source.dart';
@@ -15,7 +16,20 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await db.into(db.screenDefinitions).insert(
-          ScreenDefinitionsCompanion.insert(id: 'a', name: 'Screen A'),
+          ScreenDefinitionsCompanion.insert(
+            id: 'a',
+            name: 'Screen A',
+            minPlacementsPerProgram: const Value(1),
+            maxPlacementsPerProgram: const Value(3),
+            dataKey: const Value('shared_news'),
+          ),
+        );
+    await db.into(db.curatorDataKeyProgramLimits).insert(
+          CuratorDataKeyProgramLimitsCompanion.insert(
+            dataKey: 'shared_news',
+            minPlacementsPerProgram: const Value(2),
+            maxPlacementsPerProgram: const Value(4),
+          ),
         );
     await db.into(db.dashboardAlerts).insert(
           DashboardAlertsCompanion.insert(
@@ -42,6 +56,11 @@ void main() {
       );
       expect(ts.statusCode, 200);
       expect(ts.body, contains('"id":"a"'));
+      expect(ts.body, contains('"min_placements_per_program":1'));
+      expect(ts.body, contains('"max_placements_per_program":3'));
+      expect(ts.body, contains('"data_key":"shared_news"'));
+      expect(ts.body, contains('"data_key_min_placements_per_program":2'));
+      expect(ts.body, contains('"data_key_max_placements_per_program":4'));
       final al = await http.get(
         Uri.parse('${server.baseUrl}/v1/alerts'),
         headers: {'x-api-key': 'k'},

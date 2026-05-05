@@ -57,9 +57,24 @@ class ScreenDefinitions extends Table {
   IntColumn get frequencyWeight => integer().withDefault(const Constant(100))();
   IntColumn get minGapBetweenShowsMs =>
       integer().withDefault(const Constant(0))();
+  IntColumn get minPlacementsPerProgram =>
+      integer().withDefault(const Constant(0))();
+  IntColumn get maxPlacementsPerProgram => integer().nullable()();
+  TextColumn get dataKey => text().withDefault(const Constant(''))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Aggregate min/max placements per program for all screens sharing [dataKey].
+class CuratorDataKeyProgramLimits extends Table {
+  TextColumn get dataKey => text()();
+  IntColumn get minPlacementsPerProgram =>
+      integer().withDefault(const Constant(0))();
+  IntColumn get maxPlacementsPerProgram => integer().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {dataKey};
 }
 
 /// Single app row (id = [kCuratorSettingsId]) for screen program parameters.

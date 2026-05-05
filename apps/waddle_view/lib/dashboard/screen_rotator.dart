@@ -20,6 +20,20 @@ import 'local_api_slide_widget.dart';
 import 'rss_article_slide_widget.dart';
 import 'trivia_slide_widget.dart';
 
+String screenShownDebugLogLine({
+  required String reason,
+  required int slideIndex,
+  required int totalSlides,
+  required String screenId,
+  required int dwellMs,
+  required String layoutJson,
+  required Map<String, String> randomChoices,
+}) {
+  return 'screen shown: reason=$reason index=$slideIndex/$totalSlides '
+      'screenId=$screenId dwellMs=$dwellMs '
+      'layout=$layoutJson randomChoices=$randomChoices';
+}
+
 /// Full-area carousel above the ticker: slides exit left / enter right between
 /// curated programs loaded from `screen_definitions` and `curator_settings`.
 class ScreenRotator extends StatefulWidget {
@@ -92,6 +106,15 @@ class _ScreenRotatorState extends State<ScreenRotator>
     final pools = <String, List<String>>{
       if (blobs.isNotEmpty) 'blobs': blobs.map((e) => e.blobKey).toList(),
     };
+    final dataKeyLimitRows =
+        await widget.db.select(widget.db.curatorDataKeyProgramLimits).get();
+    final dataKeyLimits = <String, DataKeyProgramLimit>{};
+    for (final row in dataKeyLimitRows) {
+      dataKeyLimits[row.dataKey] = DataKeyProgramLimit(
+        minPlacementsPerProgram: row.minPlacementsPerProgram,
+        maxPlacementsPerProgram: row.maxPlacementsPerProgram,
+      );
+    }
 
     final candidates = defs
         .map(
@@ -100,6 +123,9 @@ class _ScreenRotatorState extends State<ScreenRotator>
             dwellMs: r.dwellMs,
             frequencyWeight: r.frequencyWeight,
             minGapBetweenShowsMs: r.minGapBetweenShowsMs,
+            minPlacementsPerProgram: r.minPlacementsPerProgram,
+            maxPlacementsPerProgram: r.maxPlacementsPerProgram,
+            dataKey: r.dataKey,
             layoutJson: r.layoutJson,
             enabled: r.enabled,
           ),
@@ -113,6 +139,7 @@ class _ScreenRotatorState extends State<ScreenRotator>
       historyDepth: historyDepth,
       random: _random,
       randomPools: pools,
+      dataKeyLimits: dataKeyLimits,
     );
 
     if (kDebugMode) {
@@ -135,6 +162,20 @@ class _ScreenRotatorState extends State<ScreenRotator>
       _fromSlide = null;
       _toSlide = program.isEmpty ? null : program.first;
     });
+    final firstSlide = program.isEmpty ? null : program.first;
+    if (firstSlide != null) {
+      AppDebugLog.screen(
+        screenShownDebugLogLine(
+          reason: 'program_start',
+          slideIndex: 0,
+          totalSlides: program.length,
+          screenId: firstSlide.screenId,
+          dwellMs: firstSlide.dwellMs,
+          layoutJson: firstSlide.layoutJson,
+          randomChoices: firstSlide.randomChoices,
+        ),
+      );
+    }
     _scheduleDwellForCurrentSlide();
   }
 
@@ -180,6 +221,17 @@ class _ScreenRotatorState extends State<ScreenRotator>
       _toSlide = next;
       _index = nextIndex;
     });
+    AppDebugLog.screen(
+      screenShownDebugLogLine(
+        reason: 'transition',
+        slideIndex: nextIndex,
+        totalSlides: _program.length,
+        screenId: next.screenId,
+        dwellMs: next.dwellMs,
+        layoutJson: next.layoutJson,
+        randomChoices: next.randomChoices,
+      ),
+    );
     _anim.forward(from: 0).then((_) {
       if (!mounted) {
         return;

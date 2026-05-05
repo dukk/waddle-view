@@ -72,6 +72,11 @@ Handler buildProtectedApiRouter({
 
   r.get('/v1/screens', (Request req) async {
     final rows = await db.select(db.screenDefinitions).get();
+    final dataKeyLimitRows =
+        await db.select(db.curatorDataKeyProgramLimits).get();
+    final dataKeyLimits = <String, CuratorDataKeyProgramLimit>{
+      for (final row in dataKeyLimitRows) row.dataKey: row,
+    };
     final list = rows
         .map(
           (e) => <String, Object?>{
@@ -83,6 +88,17 @@ Handler buildProtectedApiRouter({
             'dwell_ms': e.dwellMs,
             'frequency_weight': e.frequencyWeight,
             'min_gap_between_shows_ms': e.minGapBetweenShowsMs,
+            'min_placements_per_program': e.minPlacementsPerProgram,
+            'max_placements_per_program': e.maxPlacementsPerProgram,
+            'data_key': e.dataKey,
+            'data_key_min_placements_per_program':
+                e.dataKey.isEmpty
+                    ? null
+                    : dataKeyLimits[e.dataKey]?.minPlacementsPerProgram,
+            'data_key_max_placements_per_program':
+                e.dataKey.isEmpty
+                    ? null
+                    : dataKeyLimits[e.dataKey]?.maxPlacementsPerProgram,
           },
         )
         .toList();

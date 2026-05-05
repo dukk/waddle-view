@@ -37,7 +37,7 @@ class GuestWifiSlideWidget extends StatelessWidget {
             children: [
               Icon(
                 Icons.wifi,
-                size: 56,
+                size: 112,
                 color: theme.colorScheme.primary,
               ),
               const SizedBox(height: 12),

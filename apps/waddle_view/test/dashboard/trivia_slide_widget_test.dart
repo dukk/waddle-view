@@ -66,6 +66,14 @@ void main() {
     expect(find.text('2 + 2?'), findsOneWidget);
     expect(find.text('Four'), findsOneWidget);
     expect(find.byKey(const ValueKey<String>('trivia_countdown')), findsOneWidget);
+    final countdownText = tester.widget<Text>(
+      find.byKey(const ValueKey<String>('trivia_countdown')),
+    );
+    expect(countdownText.textAlign, TextAlign.center);
+    expect((countdownText.style?.fontSize ?? 0) >= 48, isTrue);
+
+    final answerBefore = tester.widget<Text>(find.text('Four'));
+    expect(answerBefore.style?.fontWeight, isNot(FontWeight.w700));
 
     final opacitiesStart = tester
         .widgetList<AnimatedOpacity>(find.byType(AnimatedOpacity))
@@ -83,6 +91,13 @@ void main() {
         .toList();
     expect(opacitiesEnd.where((w) => w.opacity == 1).length, 1);
     expect(opacitiesEnd.where((w) => w.opacity == 0).length, 3);
+
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey<String>('trivia_countdown')), findsNothing);
+
+    final answerAfter = tester.widget<Text>(find.text('Four'));
+    expect(answerAfter.style?.fontWeight, FontWeight.w700);
 
     await db.close();
   });

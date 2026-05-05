@@ -68,8 +68,8 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
   List<String>? _displaySlotToSource;
 
   final Set<String> _fadingWrong = {};
-  final Stopwatch _stopwatch = Stopwatch();
   int _eliminationEndMs = 0;
+  int _elapsedMs = 0;
   Timer? _tick;
   final List<Timer> _fadeTimers = [];
 
@@ -100,7 +100,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     _fadeTimers.clear();
     _tick?.cancel();
     _fadingWrong.clear();
-    _stopwatch.reset();
+    _elapsedMs = 0;
 
     final row = _question;
     final perm = _displaySlotToSource;
@@ -158,12 +158,13 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
       }
     }
 
-    _stopwatch.start();
     _tick = Timer.periodic(const Duration(milliseconds: 120), (_) {
       if (!mounted) {
         return;
       }
-      if (_stopwatch.elapsedMilliseconds >= _eliminationEndMs) {
+      _elapsedMs += 120;
+      if (_elapsedMs >= _eliminationEndMs) {
+        _elapsedMs = _eliminationEndMs;
         _tick?.cancel();
       }
       setState(() {});
@@ -180,16 +181,20 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
   }
 
   int _countdownSeconds() {
-    if (_question == null || !_stopwatch.isRunning) {
+    if (_question == null || _eliminationEndMs <= 0) {
       return 0;
     }
-    final elapsed = _stopwatch.elapsedMilliseconds;
-    final remaining = _eliminationEndMs - elapsed;
+    final remaining = _eliminationEndMs - _elapsedMs;
     if (remaining <= 0) {
       return 0;
     }
     return (remaining + 999) ~/ 1000;
   }
+
+  bool _isRevealComplete() =>
+      _question != null &&
+      _eliminationEndMs > 0 &&
+      _elapsedMs >= _eliminationEndMs;
 
   String _optionText(TriviaQuestion row, String letter) {
     switch (letter) {
@@ -235,84 +240,90 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     final row = _question!;
     final perm = _displaySlotToSource!;
     final countdown = _countdownSeconds();
+    final revealComplete = _isRevealComplete();
+    final correctSource = row.correctOption.trim().toUpperCase();
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final stack = Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Positioned(
-              top: 0,
-              right: 0,
-              child: Text(
-                '$countdown',
-                key: const ValueKey<String>('trivia_countdown'),
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+        final column = Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: min(constraints.maxWidth, 720),
             ),
-            Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: min(constraints.maxWidth, 720),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      row.question,
-                      style: theme.textTheme.headlineSmall,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (countdown > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      '$countdown',
+                      key: const ValueKey<String>('trivia_countdown'),
                       textAlign: TextAlign.center,
+                      style: theme.textTheme.displayMedium?.copyWith(
+                        fontSize: 72,
+                        fontWeight: FontWeight.w700,
+                        height: 1,
+                      ),
                     ),
-                    const SizedBox(height: 20),
-                    ...List.generate(4, (slot) {
-                      final displayLetter = String.fromCharCode(
-                        'A'.codeUnitAt(0) + slot,
-                      );
-                      final sourceLetter = perm[slot];
-                      final hidden =
-                          _fadingWrong.contains(displayLetter);
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: AnimatedOpacity(
-                          opacity: hidden ? 0 : 1,
-                          duration: const Duration(
-                            milliseconds: kTriviaWrongAnswerFadeMs,
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              SizedBox(
-                                width: 28,
-                                child: Text(
-                                  '$displayLetter.',
-                                  style: theme.textTheme.titleMedium,
-                                ),
-                              ),
-                              Expanded(
-                                child: Text(
-                                  _optionText(row, sourceLetter),
-                                  style: theme.textTheme.titleMedium,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }),
-                  ],
+                  ),
+                Text(
+                  row.question,
+                  style: theme.textTheme.headlineSmall,
+                  textAlign: TextAlign.center,
                 ),
-              ),
+                const SizedBox(height: 20),
+                ...List.generate(4, (slot) {
+                  final displayLetter = String.fromCharCode(
+                    'A'.codeUnitAt(0) + slot,
+                  );
+                  final sourceLetter = perm[slot];
+                  final hidden = _fadingWrong.contains(displayLetter);
+                  final highlight = revealComplete && sourceLetter == correctSource;
+                  final optionStyle = highlight
+                      ? theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: theme.colorScheme.primary,
+                        )
+                      : theme.textTheme.titleMedium;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: AnimatedOpacity(
+                      opacity: hidden ? 0 : 1,
+                      duration: const Duration(
+                        milliseconds: kTriviaWrongAnswerFadeMs,
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 28,
+                            child: Text(
+                              '$displayLetter.',
+                              style: optionStyle,
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              _optionText(row, sourceLetter),
+                              style: optionStyle,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
             ),
-          ],
+          ),
         );
         final maxW = constraints.maxWidth;
         final maxH = constraints.maxHeight;
         if (maxH.isFinite) {
-          return SizedBox(width: maxW, height: maxH, child: stack);
+          return SizedBox(width: maxW, height: maxH, child: column);
         }
-        return SizedBox(width: maxW, child: stack);
+        return SizedBox(width: maxW, child: column);
       },
     );
   }

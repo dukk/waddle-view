@@ -18,6 +18,7 @@ part 'database.g.dart';
     DashboardAlerts,
     DashboardKv,
     ScreenDefinitions,
+    CuratorDataKeyProgramLimits,
     CuratorSettings,
     RssFeedSources,
     RssArticles,
@@ -34,7 +35,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -84,6 +85,18 @@ ORDER BY priority DESC, created_at DESC;
         await m.createTable(triviaCategories);
         await m.createTable(triviaQuestions);
         await m.createTable(triviaGenerationBatches);
+      }
+      if (from < 11) {
+        await m.createTable(curatorDataKeyProgramLimits);
+        await customStatement(
+          'ALTER TABLE screen_definitions ADD COLUMN min_placements_per_program INTEGER NOT NULL DEFAULT 0',
+        );
+        await customStatement(
+          'ALTER TABLE screen_definitions ADD COLUMN max_placements_per_program INTEGER NULL',
+        );
+        await customStatement(
+          'ALTER TABLE screen_definitions ADD COLUMN data_key TEXT NOT NULL DEFAULT \'\'',
+        );
       }
     },
     beforeOpen: (details) async {

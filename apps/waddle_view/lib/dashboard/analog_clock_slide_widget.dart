@@ -15,7 +15,7 @@ class AnalogClockSlideWidget extends StatefulWidget {
     required this.spec,
     required this.theme,
     this.clock = const SystemClock(),
-    this.dialSize = 280,
+    this.dialSize = 480,
   });
 
   final ParsedWidgetSpec spec;

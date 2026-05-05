@@ -2,6 +2,16 @@ import 'dart:math';
 
 import 'screen_layout_parse.dart';
 
+class DataKeyProgramLimit {
+  const DataKeyProgramLimit({
+    this.minPlacementsPerProgram = 0,
+    this.maxPlacementsPerProgram,
+  });
+
+  final int minPlacementsPerProgram;
+  final int? maxPlacementsPerProgram;
+}
+
 /// Row-shaped input for [ScreenProgramCurator] (from DB or tests).
 class ScreenCandidate {
   const ScreenCandidate({
@@ -9,6 +19,9 @@ class ScreenCandidate {
     required this.dwellMs,
     required this.frequencyWeight,
     required this.minGapBetweenShowsMs,
+    this.minPlacementsPerProgram = 0,
+    this.maxPlacementsPerProgram,
+    this.dataKey = '',
     required this.layoutJson,
     required this.enabled,
   });
@@ -17,6 +30,9 @@ class ScreenCandidate {
   final int dwellMs;
   final int frequencyWeight;
   final int minGapBetweenShowsMs;
+  final int minPlacementsPerProgram;
+  final int? maxPlacementsPerProgram;
+  final String dataKey;
   final String layoutJson;
   final bool enabled;
 }
@@ -52,6 +68,7 @@ class ScreenProgramCurator {
     required int historyDepth,
     required Random random,
     Map<String, List<String>> randomPools = const {},
+    Map<String, DataKeyProgramLimit> dataKeyLimits = const {},
   }) {
     final enabled = screens.where((s) => s.enabled && s.dwellMs > 0).toList();
     if (enabled.isEmpty || programDurationMs <= 0) {
@@ -63,9 +80,35 @@ class ScreenProgramCurator {
     var remaining = programDurationMs;
     final out = <ResolvedSlide>[];
     final usedRandomAssets = <String>{};
+    final countByScreenId = <String, int>{};
+    final countByDataKey = <String, int>{};
 
     while (remaining > 0) {
-      final pick = _weightedPick(enabled, window, random);
+      final eligible =
+          enabled
+              .where(
+                (s) => _canPlaceScreen(
+                  s,
+                  countByScreenId,
+                  countByDataKey,
+                  dataKeyLimits,
+                ),
+              )
+              .toList();
+      if (eligible.isEmpty) {
+        break;
+      }
+      final priority = _prioritizedForMins(
+        eligible: eligible,
+        countByScreenId: countByScreenId,
+        countByDataKey: countByDataKey,
+        dataKeyLimits: dataKeyLimits,
+      );
+      final pick = _weightedPick(
+        priority.isNotEmpty ? priority : eligible,
+        window,
+        random,
+      );
       if (pick == null) {
         break;
       }
@@ -84,6 +127,11 @@ class ScreenProgramCurator {
           randomChoices: choices,
         ),
       );
+      countByScreenId[pick.id] = (countByScreenId[pick.id] ?? 0) + 1;
+      final key = pick.dataKey.trim();
+      if (key.isNotEmpty) {
+        countByDataKey[key] = (countByDataKey[key] ?? 0) + 1;
+      }
       remaining -= dwell;
     }
 
@@ -146,6 +194,76 @@ class ScreenProgramCurator {
   static double _effectiveWeight(ScreenCandidate c, List<String> historyWindow) {
     final count = historyWindow.where((id) => id == c.id).length;
     return c.frequencyWeight / (1.0 + count);
+  }
+
+  static bool _canPlaceScreen(
+    ScreenCandidate s,
+    Map<String, int> countByScreenId,
+    Map<String, int> countByDataKey,
+    Map<String, DataKeyProgramLimit> dataKeyLimits,
+  ) {
+    final maxByScreen = _normalizedScreenMax(s);
+    if (maxByScreen != null && (countByScreenId[s.id] ?? 0) >= maxByScreen) {
+      return false;
+    }
+    final key = s.dataKey.trim();
+    if (key.isEmpty) {
+      return true;
+    }
+    final keyLimit = dataKeyLimits[key];
+    final maxByKey = _normalizedMax(keyLimit?.maxPlacementsPerProgram);
+    if (maxByKey != null && (countByDataKey[key] ?? 0) >= maxByKey) {
+      return false;
+    }
+    return true;
+  }
+
+  static List<ScreenCandidate> _prioritizedForMins({
+    required List<ScreenCandidate> eligible,
+    required Map<String, int> countByScreenId,
+    required Map<String, int> countByDataKey,
+    required Map<String, DataKeyProgramLimit> dataKeyLimits,
+  }) {
+    final out = <ScreenCandidate>[];
+    for (final s in eligible) {
+      final minByScreen = _normalizedMin(s.minPlacementsPerProgram);
+      if ((countByScreenId[s.id] ?? 0) < minByScreen) {
+        out.add(s);
+        continue;
+      }
+      final key = s.dataKey.trim();
+      if (key.isEmpty) {
+        continue;
+      }
+      final minByKey = _normalizedMin(dataKeyLimits[key]?.minPlacementsPerProgram);
+      if ((countByDataKey[key] ?? 0) < minByKey) {
+        out.add(s);
+      }
+    }
+    return out;
+  }
+
+  static int _normalizedMin(int? value) {
+    if (value == null || value < 0) {
+      return 0;
+    }
+    return value;
+  }
+
+  static int? _normalizedMax(int? value) {
+    if (value == null || value < 0) {
+      return null;
+    }
+    return value;
+  }
+
+  static int? _normalizedScreenMax(ScreenCandidate s) {
+    final min = _normalizedMin(s.minPlacementsPerProgram);
+    final max = _normalizedMax(s.maxPlacementsPerProgram);
+    if (max == null) {
+      return null;
+    }
+    return max < min ? min : max;
   }
 
   static ScreenCandidate? _weightedPick(
