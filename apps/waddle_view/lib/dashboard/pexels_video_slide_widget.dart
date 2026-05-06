@@ -3,8 +3,9 @@ import 'dart:io';
 
 import 'package:drift/drift.dart' show CustomExpression, OrderingTerm;
 import 'package:flutter/material.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart' as mkv;
 import 'package:path_provider/path_provider.dart';
-import 'package:video_player/video_player.dart';
 
 import '../blob/blob_store.dart';
 import '../curator/screen_layout_parse.dart';
@@ -77,7 +78,8 @@ class PexelsVideoSlideWidget extends StatefulWidget {
 }
 
 class _PexelsVideoSlideWidgetState extends State<PexelsVideoSlideWidget> {
-  VideoPlayerController? _controller;
+  Player? _player;
+  mkv.VideoController? _videoController;
   bool _loading = true;
   String? _error;
 
@@ -89,7 +91,12 @@ class _PexelsVideoSlideWidgetState extends State<PexelsVideoSlideWidget> {
 
   @override
   void dispose() {
-    _controller?.dispose();
+    final p = _player;
+    _player = null;
+    _videoController = null;
+    if (p != null) {
+      unawaited(p.dispose());
+    }
     super.dispose();
   }
 
@@ -137,17 +144,20 @@ class _PexelsVideoSlideWidgetState extends State<PexelsVideoSlideWidget> {
         return;
       }
       final file = await _materializeVideoFile(row);
-      final controller = VideoPlayerController.file(file);
-      await controller.initialize();
-      await controller.setLooping(loop);
-      await controller.setVolume(unmuted ? 1.0 : 0.0);
-      await controller.play();
+      final player = Player();
+      final videoController = mkv.VideoController(player);
+      await player.setPlaylistMode(
+        loop ? PlaylistMode.single : PlaylistMode.none,
+      );
+      await player.setVolume(unmuted ? 100.0 : 0.0);
+      await player.open(Media(Uri.file(file.path).toString()));
       if (!mounted) {
-        await controller.dispose();
+        await player.dispose();
         return;
       }
       setState(() {
-        _controller = controller;
+        _player = player;
+        _videoController = videoController;
         _loading = false;
       });
     } on Object catch (e) {
@@ -184,12 +194,21 @@ class _PexelsVideoSlideWidgetState extends State<PexelsVideoSlideWidget> {
         ),
       );
     }
-    final c = _controller!;
-    return Center(
-      child: AspectRatio(
-        aspectRatio: c.value.aspectRatio == 0 ? 16 / 9 : c.value.aspectRatio,
-        child: VideoPlayer(c),
-      ),
+    final vc = _videoController!;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final h = constraints.maxHeight;
+        return Center(
+          child: mkv.Video(
+            controller: vc,
+            width: w.isFinite ? w : null,
+            height: h.isFinite ? h : null,
+            fit: BoxFit.cover,
+            controls: null,
+          ),
+        );
+      },
     );
   }
 }

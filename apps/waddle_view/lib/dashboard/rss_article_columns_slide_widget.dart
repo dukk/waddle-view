@@ -140,7 +140,7 @@ class _RssArticleColumnsSlideWidgetState
         WidgetsBinding.instance.addPostFrameCallback((_) => _reportDwell());
       }
       return Padding(
-        padding: EdgeInsets.only(bottom: 12 * s),
+        padding: EdgeInsets.fromLTRB(24 * s, 20 * s, 24 * s, 16 * s),
         child: Text(
           'No news articles yet',
           style: theme.textTheme.titleMedium,
@@ -236,26 +236,45 @@ class _ArticleColumnCard extends StatelessWidget {
             ),
           ),
         ),
-        SizedBox(height: 8 * scale),
-        if (title.isNotEmpty)
-          Text(
-            title,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w600,
+        SizedBox(height: 12 * scale),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              14 * scale,
+              4 * scale,
+              14 * scale,
+              10 * scale,
             ),
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-          ),
-        if (title.isNotEmpty && summary.isNotEmpty) SizedBox(height: 6 * scale),
-        if (summary.isNotEmpty)
-          Expanded(
-            child: Text(
-              summary,
-              style: theme.textTheme.bodySmall,
-              maxLines: 6,
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (title.isNotEmpty)
+                  Text(
+                    title,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                if (title.isNotEmpty && summary.isNotEmpty)
+                  SizedBox(height: 10 * scale),
+                if (summary.isNotEmpty)
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(bottom: 4 * scale),
+                      child: Text(
+                        summary,
+                        style: theme.textTheme.bodySmall,
+                        maxLines: 6,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
+        ),
       ],
     );
   }

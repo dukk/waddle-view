@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -53,6 +54,7 @@ import 'window/window_chrome_controller.dart';
 void main() {
   runZonedGuarded(() {
     WidgetsFlutterBinding.ensureInitialized();
+    MediaKit.ensureInitialized();
     installGlobalFatalErrorHandlers();
     unawaited(_waddleBootstrap());
   }, onZoneFatalError);

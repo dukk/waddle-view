@@ -236,7 +236,7 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
     final article = _article;
     if (article == null) {
       return Padding(
-        padding: EdgeInsets.only(bottom: 12 * s),
+        padding: EdgeInsets.fromLTRB(24 * s, 20 * s, 24 * s, 16 * s),
         child: Text(
           'No news articles yet',
           style: theme.textTheme.titleMedium,
@@ -255,7 +255,7 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
         });
       }
       return Padding(
-        padding: EdgeInsets.only(bottom: 12 * s),
+        padding: EdgeInsets.fromLTRB(24 * s, 20 * s, 24 * s, 16 * s),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -321,29 +321,32 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
         final gap = SizedBox(width: 20 * s);
         final textPanel = Expanded(
           key: const Key('rss_article_text_column'),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (title.isNotEmpty)
-                Text(
-                  title,
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(18 * s, 16 * s, 18 * s, 14 * s),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (title.isNotEmpty)
+                  Text(
+                    title,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
+                if (title.isNotEmpty && summary.isNotEmpty)
+                  SizedBox(height: 18 * s),
+                Expanded(
+                  child: _summaryAndOptionalQrRow(
+                    theme: theme,
+                    s: s,
+                    summary: summary,
+                    link: article.link,
+                  ),
                 ),
-              if (title.isNotEmpty && summary.isNotEmpty)
-                SizedBox(height: 12 * s),
-              Expanded(
-                child: _summaryAndOptionalQrRow(
-                  theme: theme,
-                  s: s,
-                  summary: summary,
-                  link: article.link,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
         return Padding(
@@ -380,9 +383,12 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
         child: SingleChildScrollView(
           key: const Key('rss_article_summary_scroll'),
           controller: _scroll,
-          child: Text(
-            summary,
-            style: theme.textTheme.bodyLarge,
+          child: Padding(
+            padding: EdgeInsets.only(bottom: 6 * s),
+            child: Text(
+              summary,
+              style: theme.textTheme.bodyLarge,
+            ),
           ),
         ),
       );
@@ -399,9 +405,12 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
                   child: SingleChildScrollView(
                     key: const Key('rss_article_summary_scroll'),
                     controller: _scroll,
-                    child: Text(
-                      summary,
-                      style: theme.textTheme.bodyLarge,
+                    child: Padding(
+                      padding: EdgeInsets.only(bottom: 6 * s),
+                      child: Text(
+                        summary,
+                        style: theme.textTheme.bodyLarge,
+                      ),
                     ),
                   ),
                 ),

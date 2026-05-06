@@ -25,8 +25,14 @@ dependencies:
   http: ^1.2.2
   webfeed: ^0.7.0
   flutter_dotenv: ^6.0.1
-  video_player: ^2.11.1
+  media_kit: ^1.2.6
+  media_kit_video: ^2.0.1
+  media_kit_libs_video: ^1.0.7
   url_launcher: ^6.3.2
+
+dependency_overrides:
+  # media_kit_video → wakelock_plus → dbus requires xml ^6; webfeed pins xml ^5.
+  xml: ^6.5.0
 
 dev_dependencies:
   flutter_test:
