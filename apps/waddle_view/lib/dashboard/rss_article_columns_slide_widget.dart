@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../blob/blob_store.dart';
 import '../curator/screen_layout_parse.dart';
@@ -16,6 +17,17 @@ int _cfgInt(Map<String, dynamic> c, String key, int def) {
   }
   if (v is double) {
     return v.round();
+  }
+  return def;
+}
+
+double _cfgDouble(Map<String, dynamic> c, String key, double def) {
+  final v = c[key];
+  if (v is double) {
+    return v;
+  }
+  if (v is int) {
+    return v.toDouble();
   }
   return def;
 }
@@ -37,7 +49,9 @@ class _ColumnArticle {
   final RssArticleImageLoad imageLoad;
 }
 
-/// [columnCount] RSS articles in a row: image on top, title and summary below.
+/// [columnCount] RSS articles in a row: image on top, then title with a link
+/// QR placed under it (start-aligned) and the summary beside the QR when
+/// [RssArticle.link] is set.
 /// Curator assigns [ResolvedSlide.randomChoices] keys
 /// `'${slot}_rss_article_columns_0'` … `_2` for three columns.
 class RssArticleColumnsSlideWidget extends StatefulWidget {
@@ -69,6 +83,7 @@ class _RssArticleColumnsSlideWidgetState
   bool _dwellReported = false;
   late final int _nColumns;
   late final int _minReadMs;
+  late final double _qrLogical;
   List<_ColumnArticle> _columns = const [];
 
   @override
@@ -77,6 +92,7 @@ class _RssArticleColumnsSlideWidgetState
     final c = widget.spec.config;
     _nColumns = _columnCountFromConfig(c);
     _minReadMs = _cfgInt(c, 'minReadMs', 8000);
+    _qrLogical = _cfgDouble(c, 'qrLogicalSize', 80).clamp(48, 140);
     unawaited(_bootstrap());
   }
 
@@ -173,7 +189,12 @@ class _RssArticleColumnsSlideWidgetState
                     child: _ArticleColumnCard(
                       theme: theme,
                       scale: s,
+                      columnIndex: i,
+                      qrLogical: _qrLogical,
                       data: _columns[i],
+                      useNewsIcon:
+                          widget.slide.randomChoices['${widget.spec.choiceKey}_${i}_imageMode'] ==
+                          'icon',
                     ),
                   ),
                 ],
@@ -190,12 +211,18 @@ class _ArticleColumnCard extends StatelessWidget {
   const _ArticleColumnCard({
     required this.theme,
     required this.scale,
+    required this.columnIndex,
+    required this.qrLogical,
     required this.data,
+    required this.useNewsIcon,
   });
 
   final ThemeData theme;
   final double scale;
+  final int columnIndex;
+  final double qrLogical;
   final _ColumnArticle data;
+  final bool useNewsIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -226,12 +253,18 @@ class _ArticleColumnCard extends StatelessWidget {
                       fit: BoxFit.cover,
                       gaplessPlayback: true,
                       errorBuilder: (context, error, stackTrace) =>
-                          _placeholder(theme, scale, blobReadFailed: false),
+                          _placeholder(
+                            theme,
+                            scale,
+                            blobReadFailed: false,
+                            useNewsIcon: useNewsIcon,
+                          ),
                     )
                   : _placeholder(
                       theme,
                       scale,
                       blobReadFailed: data.imageLoad.blobReadFailed,
+                      useNewsIcon: useNewsIcon,
                     ),
             ),
           ),
@@ -257,20 +290,39 @@ class _ArticleColumnCard extends StatelessWidget {
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
-                if (title.isNotEmpty && summary.isNotEmpty)
+                if (title.isNotEmpty &&
+                    (summary.isNotEmpty || article.link.trim().isNotEmpty))
                   SizedBox(height: 10 * scale),
-                if (summary.isNotEmpty)
-                  Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(bottom: 4 * scale),
-                      child: Text(
-                        summary,
-                        style: theme.textTheme.bodySmall,
-                        maxLines: 6,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
+                Expanded(
+                  child: article.link.trim().isEmpty
+                      ? _columnSummaryOnly(
+                          title: title,
+                          summary: summary,
+                          theme: theme,
+                          scale: scale,
+                        )
+                      : Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _columnLinkQr(
+                              theme: theme,
+                              scale: scale,
+                              link: article.link,
+                              qrLogical: qrLogical,
+                              columnIndex: columnIndex,
+                            ),
+                            SizedBox(width: 8 * scale),
+                            Expanded(
+                              child: _columnSummaryOnly(
+                                title: title,
+                                summary: summary,
+                                theme: theme,
+                                scale: scale,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
               ],
             ),
           ),
@@ -279,10 +331,74 @@ class _ArticleColumnCard extends StatelessWidget {
     );
   }
 
+  static Widget _columnSummaryOnly({
+    required String title,
+    required String summary,
+    required ThemeData theme,
+    required double scale,
+  }) {
+    if (summary.isNotEmpty) {
+      return Padding(
+        padding: EdgeInsets.only(bottom: 4 * scale),
+        child: Text(
+          summary,
+          style: theme.textTheme.bodySmall,
+          maxLines: 6,
+          overflow: TextOverflow.ellipsis,
+        ),
+      );
+    }
+    if (title.isNotEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Center(
+      child: Text(
+        '—',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+
+  static Widget _columnLinkQr({
+    required ThemeData theme,
+    required double scale,
+    required String link,
+    required double qrLogical,
+    required int columnIndex,
+  }) {
+    final url = link.trim();
+    if (url.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final innerPad = 5 * scale;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8 * scale),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(innerPad),
+        child: QrImageView(
+          key: ValueKey('rss_article_columns_qr_$columnIndex'),
+          data: url,
+          version: QrVersions.auto,
+          size: qrLogical * scale,
+          gapless: true,
+        ),
+      ),
+    );
+  }
+
   static Widget _placeholder(
     ThemeData theme,
     double s, {
     required bool blobReadFailed,
+    bool useNewsIcon = false,
   }) {
     return ColoredBox(
       color: theme.colorScheme.surfaceContainerHighest,
@@ -290,6 +406,8 @@ class _ArticleColumnCard extends StatelessWidget {
         child: Icon(
           blobReadFailed
               ? Icons.no_photography
+              : useNewsIcon
+              ? Icons.newspaper
               : Icons.image_not_supported_outlined,
           size: 36 * s,
           color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.55),

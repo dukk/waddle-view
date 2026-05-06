@@ -178,7 +178,7 @@ void main() {
               providerType: 'jokes',
               pollSeconds: const Value(60),
               baseUrl: const Value('http://openai.test'),
-              extraJson: const Value('{}'),
+              configJson: const Value('{}'),
             ),
           );
 
@@ -207,7 +207,7 @@ void main() {
             'csrf=${Uri.encodeQueryComponent(s.csrf)}'
             '&program_duration_seconds=240'
             '&history_depth=7'
-            '&require_news_photo_for_curation=on'
+            '&require_news_photo_for_screens=on'
             '&ticker_pixels_per_second=92'
             '&display_theme_id=$kDisplayThemeGraphiteAmber'
             '&display_text_scale_screen=$kDisplayTextScaleNormal'
@@ -232,6 +232,10 @@ void main() {
               ..where((t) => t.key.equals(kCuratorHistoryDepthKvKey)))
             .getSingle();
         expect(kvHist.value, '7');
+        final kvNewsPhoto = await (db.select(db.configKeyValues)
+              ..where((t) => t.key.equals(kRequireNewsPhotoForScreensKvKey)))
+            .getSingle();
+        expect(kvNewsPhoto.value, 'true');
         final kvTicker = await (db.select(db.configKeyValues)
               ..where((t) => t.key.equals('curator.ticker.newsPixelsPerSecond')))
             .getSingle();
@@ -274,7 +278,7 @@ void main() {
             '&enabled=on'
             '&poll_seconds=99'
             '&base_url=http%3A%2F%2Fapi.updated'
-            '&extra_json=%7B%22x%22%3A1%7D'
+            '&config_json=%7B%22x%22%3A1%7D'
             '&access_token=tokensecret';
 
         final prov = await http.post(
@@ -291,7 +295,7 @@ void main() {
             .getSingle();
         expect(ps.pollSeconds, 99);
         expect(ps.baseUrl, 'http://api.updated');
-        expect(ps.extraJson, '{"x":1}');
+        expect(ps.configJson, '{"x":1}');
         final stored = await secrets.read(
           '${ProviderConfigResolver.accessTokenKey}:jokes',
         );

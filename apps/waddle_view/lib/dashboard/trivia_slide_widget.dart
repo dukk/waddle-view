@@ -41,8 +41,9 @@ List<String> triviaShuffleOrderForTesting(Random random) {
   return List<String>.from(letters);
 }
 
-/// Multiple-choice trivia: wrong answers fade out; countdown until only the
-/// correct answer remains visible.
+/// Multiple-choice trivia: wrong answers are struck out with an animated X; a
+/// progress bar under the question shows time until only the correct answer
+/// is emphasized.
 class TriviaSlideWidget extends StatefulWidget {
   const TriviaSlideWidget({
     super.key,
@@ -66,6 +67,10 @@ class TriviaSlideWidget extends StatefulWidget {
   State<TriviaSlideWidget> createState() => _TriviaSlideWidgetState();
 }
 
+/// Max characters per option (after shuffle mapping) to prefer a 2×2 grid.
+@visibleForTesting
+const int kTriviaTwoColumnMaxOptionChars = 28;
+
 class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
   TriviaQuestion? _question;
   bool _loading = true;
@@ -74,11 +79,12 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
   /// Index = on-screen slot (0=A, 1=B, …); value = DB option letter for text.
   List<String>? _displaySlotToSource;
 
-  final Set<String> _fadingWrong = {};
+  final Set<String> _struckWrong = {};
+  List<int> _strikeDelaysMs = [];
   int _eliminationEndMs = 0;
   int _elapsedMs = 0;
   Timer? _tick;
-  final List<Timer> _fadeTimers = [];
+  final List<Timer> _strikeTimers = [];
 
   @override
   void initState() {
@@ -101,12 +107,13 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
   }
 
   void _startRevealSequence() {
-    for (final t in _fadeTimers) {
+    for (final t in _strikeTimers) {
       t.cancel();
     }
-    _fadeTimers.clear();
+    _strikeTimers.clear();
     _tick?.cancel();
-    _fadingWrong.clear();
+    _struckWrong.clear();
+    _strikeDelaysMs = [];
     _elapsedMs = 0;
 
     final row = _question;
@@ -135,16 +142,20 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     );
     _eliminationEndMs = triviaEliminationEndMs(windowMs);
     final step = windowMs ~/ 4;
+    final delays = <int>[];
+
     if (step < 1) {
       for (var i = 0; i < wrong.length; i++) {
-        final delayMs = (windowMs * (i + 1) ~/ wrong.length).clamp(1, windowMs);
-        _fadeTimers.add(
+        final delayMs =
+            (windowMs * (i + 1) ~/ wrong.length).clamp(1, windowMs);
+        delays.add(delayMs);
+        _strikeTimers.add(
           Timer(Duration(milliseconds: delayMs), () {
             if (!mounted) {
               return;
             }
             setState(() {
-              _fadingWrong.add(wrong[i]);
+              _struckWrong.add(wrong[i]);
             });
           }),
         );
@@ -152,18 +163,23 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     } else {
       for (var i = 0; i < wrong.length; i++) {
         final delayMs = step * (i + 1);
-        _fadeTimers.add(
+        delays.add(delayMs);
+        _strikeTimers.add(
           Timer(Duration(milliseconds: delayMs), () {
             if (!mounted) {
               return;
             }
             setState(() {
-              _fadingWrong.add(wrong[i]);
+              _struckWrong.add(wrong[i]);
             });
           }),
         );
       }
     }
+
+    setState(() {
+      _strikeDelaysMs = delays;
+    });
 
     _tick = Timer.periodic(const Duration(milliseconds: 120), (_) {
       if (!mounted) {
@@ -181,21 +197,10 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
   @override
   void dispose() {
     _tick?.cancel();
-    for (final t in _fadeTimers) {
+    for (final t in _strikeTimers) {
       t.cancel();
     }
     super.dispose();
-  }
-
-  int _countdownSeconds() {
-    if (_question == null || _eliminationEndMs <= 0) {
-      return 0;
-    }
-    final remaining = _eliminationEndMs - _elapsedMs;
-    if (remaining <= 0) {
-      return 0;
-    }
-    return (remaining + 999) ~/ 1000;
   }
 
   bool _isRevealComplete() =>
@@ -216,6 +221,163 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
       default:
         return '';
     }
+  }
+
+  bool _optionsShortForTwoColumns(TriviaQuestion row, List<String> perm) {
+    for (var slot = 0; slot < 4; slot++) {
+      if (_optionText(row, perm[slot]).length > kTriviaTwoColumnMaxOptionChars) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  Widget _buildRevealProgressBar(ThemeData theme, double s) {
+    if (_isRevealComplete() || _eliminationEndMs <= 0) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: EdgeInsets.only(top: 12 * s, bottom: 16 * s),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final w = constraints.maxWidth;
+          final h = 7 * s;
+          final remaining =
+              (1.0 - _elapsedMs / _eliminationEndMs).clamp(0.0, 1.0);
+          final trackColor = theme.colorScheme.surfaceContainerHighest
+              .withValues(alpha: 0.55);
+          final fillColor =
+              theme.colorScheme.primary.withValues(alpha: 0.5);
+          final markerColor = theme.colorScheme.onSurfaceVariant;
+
+          return SizedBox(
+            key: const ValueKey<String>('trivia_reveal_progress'),
+            height: h,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: trackColor,
+                    borderRadius: BorderRadius.circular(4 * s),
+                  ),
+                ),
+                Positioned.fill(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: FractionallySizedBox(
+                      widthFactor: remaining,
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: fillColor,
+                          borderRadius: BorderRadius.circular(4 * s),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                for (final delayMs in _strikeDelaysMs)
+                  Positioned(
+                    left: (delayMs / _eliminationEndMs) * w - 2 * s,
+                    top: 0,
+                    bottom: 0,
+                    width: 4 * s,
+                    child: Center(
+                      child: Container(
+                        width: 4 * s,
+                        height: h + 4 * s,
+                        decoration: BoxDecoration(
+                          color: markerColor,
+                          borderRadius: BorderRadius.circular(2 * s),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _optionTile({
+    required TriviaQuestion row,
+    required List<String> perm,
+    required int slot,
+    required ThemeData theme,
+    required double s,
+    required bool revealComplete,
+    required bool useTwoColumns,
+  }) {
+    final displayLetter =
+        String.fromCharCode('A'.codeUnitAt(0) + slot);
+    final sourceLetter = perm[slot];
+    final struck = _struckWrong.contains(displayLetter);
+    final correctSource = row.correctOption.trim().toUpperCase();
+    final highlight = revealComplete && sourceLetter == correctSource;
+    final base = theme.textTheme.titleMedium;
+    final TextStyle? optionStyle;
+    if (highlight) {
+      optionStyle = base?.copyWith(
+        fontWeight: FontWeight.w700,
+        color: theme.colorScheme.primary,
+      );
+    } else if (struck) {
+      optionStyle = base?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.62),
+      );
+    } else {
+      optionStyle = base;
+    }
+
+    final text = _optionText(row, sourceLetter);
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: useTwoColumns ? 0 : 10 * s),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 28 * s,
+                child: Text(
+                  '$displayLetter.',
+                  style: optionStyle,
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  text,
+                  style: optionStyle,
+                ),
+              ),
+            ],
+          ),
+          if (struck)
+            Positioned.fill(
+              child: TweenAnimationBuilder<double>(
+                key: ValueKey<String>('trivia_strike_$displayLetter'),
+                duration:
+                    const Duration(milliseconds: kTriviaStrikeAnimationMs),
+                tween: Tween(begin: 0, end: 1),
+                curve: Curves.easeOutCubic,
+                builder: (context, t, _) {
+                  return CustomPaint(
+                    painter: _StrikeXPainter(
+                      progress: t,
+                      color: theme.colorScheme.error.withValues(alpha: 0.88),
+                    ),
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -247,12 +409,95 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
 
     final row = _question!;
     final perm = _displaySlotToSource!;
-    final countdown = _countdownSeconds();
     final revealComplete = _isRevealComplete();
-    final correctSource = row.correctOption.trim().toUpperCase();
+    final useTwoColumns = _optionsShortForTwoColumns(row, perm);
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        final answersSection = useTwoColumns
+            ? KeyedSubtree(
+                key: const ValueKey<String>('trivia_answers_grid'),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _optionTile(
+                            row: row,
+                            perm: perm,
+                            slot: 0,
+                            theme: theme,
+                            s: s,
+                            revealComplete: revealComplete,
+                            useTwoColumns: true,
+                          ),
+                        ),
+                        SizedBox(width: 12 * s),
+                        Expanded(
+                          child: _optionTile(
+                            row: row,
+                            perm: perm,
+                            slot: 1,
+                            theme: theme,
+                            s: s,
+                            revealComplete: revealComplete,
+                            useTwoColumns: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 10 * s),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _optionTile(
+                            row: row,
+                            perm: perm,
+                            slot: 2,
+                            theme: theme,
+                            s: s,
+                            revealComplete: revealComplete,
+                            useTwoColumns: true,
+                          ),
+                        ),
+                        SizedBox(width: 12 * s),
+                        Expanded(
+                          child: _optionTile(
+                            row: row,
+                            perm: perm,
+                            slot: 3,
+                            theme: theme,
+                            s: s,
+                            revealComplete: revealComplete,
+                            useTwoColumns: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              )
+            : KeyedSubtree(
+                key: const ValueKey<String>('trivia_answers_column'),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: List.generate(4, (slot) {
+                    return _optionTile(
+                      row: row,
+                      perm: perm,
+                      slot: slot,
+                      theme: theme,
+                      s: s,
+                      revealComplete: revealComplete,
+                      useTwoColumns: false,
+                    );
+                  }),
+                ),
+              );
+
         final column = Center(
           child: ConstrainedBox(
             constraints: BoxConstraints(
@@ -261,67 +506,13 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (countdown > 0)
-                  Padding(
-                    padding: EdgeInsets.only(bottom: 12 * s),
-                    child: Text(
-                      '$countdown',
-                      key: const ValueKey<String>('trivia_countdown'),
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.displayMedium?.copyWith(
-                        fontSize: 72 * s,
-                        fontWeight: FontWeight.w700,
-                        height: 1,
-                      ),
-                    ),
-                  ),
                 Text(
                   row.question,
                   style: theme.textTheme.headlineSmall,
                   textAlign: TextAlign.center,
                 ),
-                SizedBox(height: 20 * s),
-                ...List.generate(4, (slot) {
-                  final displayLetter = String.fromCharCode(
-                    'A'.codeUnitAt(0) + slot,
-                  );
-                  final sourceLetter = perm[slot];
-                  final hidden = _fadingWrong.contains(displayLetter);
-                  final highlight = revealComplete && sourceLetter == correctSource;
-                  final optionStyle = highlight
-                      ? theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: theme.colorScheme.primary,
-                        )
-                      : theme.textTheme.titleMedium;
-                  return Padding(
-                    padding: EdgeInsets.only(bottom: 10 * s),
-                    child: AnimatedOpacity(
-                      opacity: hidden ? 0 : 1,
-                      duration: const Duration(
-                        milliseconds: kTriviaWrongAnswerFadeMs,
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(
-                            width: 28 * s,
-                            child: Text(
-                              '$displayLetter.',
-                              style: optionStyle,
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              _optionText(row, sourceLetter),
-                              style: optionStyle,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
+                _buildRevealProgressBar(theme, s),
+                answersSection,
               ],
             ),
           ),
@@ -335,4 +526,43 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
       },
     );
   }
+}
+
+class _StrikeXPainter extends CustomPainter {
+  _StrikeXPainter({required this.progress, required this.color});
+
+  final double progress;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0) {
+      return;
+    }
+    final stroke = max(2.0, size.shortestSide * 0.06);
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = stroke
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final pad = stroke;
+    final rect = Rect.fromLTWH(
+      pad,
+      pad,
+      size.width - 2 * pad,
+      size.height - 2 * pad,
+    );
+    final t = progress;
+
+    final end1 = Offset.lerp(rect.topLeft, rect.bottomRight, t)!;
+    canvas.drawLine(rect.topLeft, end1, paint);
+
+    final end2 = Offset.lerp(rect.topRight, rect.bottomLeft, t)!;
+    canvas.drawLine(rect.topRight, end2, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _StrikeXPainter old) =>
+      old.progress != progress || old.color != color;
 }

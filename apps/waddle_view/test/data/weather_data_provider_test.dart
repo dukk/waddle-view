@@ -113,7 +113,7 @@ void main() {
             providerType: 'weather',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.openweathermap.org'),
-            extraJson: const Value(
+            configJson: const Value(
               '{"defaultLocation":{"name":"NYC","lat":40.7128,"lon":-74.0060},"hourlyCount":2}',
             ),
           ),
@@ -173,7 +173,7 @@ void main() {
             providerType: 'weather',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.openweathermap.org'),
-            extraJson: const Value(
+            configJson: const Value(
               '{"defaultLocation":{"name":"NYC","lat":40.7128,"lon":-74.0060},"hourlyCount":2}',
             ),
           ),

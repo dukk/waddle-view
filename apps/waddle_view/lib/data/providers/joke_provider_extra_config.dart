@@ -40,8 +40,8 @@ class JokeProviderExtraConfig {
   /// Drop jokes older than this many days (by creation timestamp); `<= 0` disables.
   final int jokeRetentionDays;
 
-  static JokeProviderExtraConfig parse(String? extraJson) {
-    if (extraJson == null || extraJson.trim().isEmpty) {
+  static JokeProviderExtraConfig parse(String? configJson) {
+    if (configJson == null || configJson.trim().isEmpty) {
       return const JokeProviderExtraConfig(
         jokesPerDay: 3,
         model: kDefaultJokeModel,
@@ -52,7 +52,7 @@ class JokeProviderExtraConfig {
       );
     }
     try {
-      final dynamic decoded = jsonDecode(extraJson);
+      final dynamic decoded = jsonDecode(configJson);
       if (decoded is! Map) {
         return const JokeProviderExtraConfig(
           jokesPerDay: 3,

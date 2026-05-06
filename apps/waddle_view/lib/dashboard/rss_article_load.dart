@@ -9,7 +9,8 @@ import '../persistence/database.dart';
 
 /// Loads an RSS row for [choiceKey] in [slide.randomChoices], or picks the
 /// best-ranked article not in [excludeArticleIds] (same ranking as the single
-/// [rss_article] slide).
+/// [rss_article] slide and multi-article layouts such as [rss_article_columns]
+/// / [rss_article_stack]).
 Future<RssArticle?> loadRssArticleForSlideChoice(
   AppDatabase db,
   ParsedWidgetSpec spec,

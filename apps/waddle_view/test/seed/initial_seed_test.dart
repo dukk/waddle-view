@@ -33,16 +33,24 @@ void main() {
     final columns = await (db.select(db.screenDefinitions)
           ..where((t) => t.id.equals('news_columns')))
         .getSingleOrNull();
+    final stack = await (db.select(db.screenDefinitions)
+          ..where((t) => t.id.equals('news_stack')))
+        .getSingleOrNull();
     expect(left, isNotNull);
     expect(right, isNotNull);
     expect(columns, isNotNull);
+    expect(stack, isNotNull);
     expect(left!.dataKey, 'news');
     expect(right!.dataKey, 'news');
     expect(columns!.dataKey, 'news');
+    expect(stack!.dataKey, 'news');
     expect(left.layoutJson.contains('"imageOnRight":true'), isFalse);
     expect(right.layoutJson.contains('"imageOnRight":true'), isTrue);
     expect(columns.layoutJson.contains('"type":"rss_article_columns"'), isTrue);
     expect(columns.layoutJson.contains('"columnCount":3'), isTrue);
+    expect(columns.layoutJson.contains('"summaryCapacityCharsPerColumn":220'), isTrue);
+    expect(left.layoutJson.contains('"summaryCapacityChars":1200'), isTrue);
+    expect(stack.layoutJson.contains('"type":"rss_article_stack"'), isTrue);
     await db.close();
   });
 
@@ -56,7 +64,8 @@ void main() {
     final byKey = {for (final r in rows) r.key: r.value};
     expect(byKey[kCuratorProgramDurationSecondsKvKey], '180');
     expect(byKey[kCuratorHistoryDepthKvKey], '5');
-    expect(byKey['curator.news.require_photo_for_curation'], 'true');
+    expect(byKey[kRequireNewsPhotoForScreensKvKey], 'true');
+    expect(byKey.containsKey('curator.news.require_photo_for_curation'), isFalse);
     await db.close();
   });
 

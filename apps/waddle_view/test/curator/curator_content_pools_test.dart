@@ -37,6 +37,7 @@ void main() {
             guid: 'g',
             title: 't',
             link: 'http://l',
+            summary: const Value('hello summary'),
             publishedAt: DateTime.fromMillisecondsSinceEpoch(1),
             fetchedAt: DateTime.fromMillisecondsSinceEpoch(1),
           ),
@@ -91,7 +92,10 @@ void main() {
           ),
         );
 
-    final pools = await loadCuratorContentPools(db);
+    final loaded = await loadCuratorContentPools(db);
+    final pools = loaded.pools;
+    expect(loaded.rssArticleMetrics['a1']!.hasImage, isFalse);
+    expect(loaded.rssArticleMetrics['a1']!.summaryLength, 13);
     expect(pools['joke'], contains('j1'));
     expect(pools['joke:dad'], ['j1']);
     expect(pools['rss'], ['a1']);

@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'curator_content_pools.dart' show RssArticleMetric;
 import 'screen_layout_parse.dart' show ParsedWidgetSpec, parseScreenLayoutWidgets;
 
 class DataKeyProgramLimit {
@@ -55,6 +56,10 @@ class ResolvedSlide {
   final Map<String, String> randomChoices;
 }
 
+/// Curator tuning: penalize summary overflow much more than under-use.
+const double _kPenaltyOverCapacity = 10.0;
+const double _kPenaltyUnderCapacity = 1.0;
+
 /// Builds an ordered list of slides that fits [programDurationMs], biased away
 /// from screen ids that appear often in [recentScreenIdsOldestFirst].
 class ScreenProgramCurator {
@@ -62,6 +67,12 @@ class ScreenProgramCurator {
 
   /// [recentScreenIdsOldestFirst]: full trace of shown screens; only the last
   /// [historyDepth] ids influence weighting.
+  ///
+  /// When [rssArticleMetrics] is non-empty and [layoutHasRssNews] for a screen,
+  /// joint best-fit placement prefers screens whose per-slot summary capacity
+  /// matches article lengths. [requirePhotoForRssScreens] restricts pools to
+  /// rows with images unless min-placement fallback forces photo-less articles
+  /// (`*_imageMode` = `icon` in [ResolvedSlide.randomChoices]).
   static List<ResolvedSlide> buildProgram({
     required List<ScreenCandidate> screens,
     required int programDurationMs,
@@ -70,6 +81,8 @@ class ScreenProgramCurator {
     required Random random,
     Map<String, List<String>> randomPools = const {},
     Map<String, DataKeyProgramLimit> dataKeyLimits = const {},
+    Map<String, RssArticleMetric> rssArticleMetrics = const {},
+    bool requirePhotoForRssScreens = true,
   }) {
     final enabled = screens.where((s) => s.enabled && s.dwellMs > 0).toList();
     if (enabled.isEmpty || programDurationMs <= 0) {
@@ -99,43 +112,425 @@ class ScreenProgramCurator {
       if (eligible.isEmpty) {
         break;
       }
+
+      List<ScreenCandidate> feasibleEligible;
+      _NewsAssignment? bestNews;
+
+      if (rssArticleMetrics.isNotEmpty) {
+        feasibleEligible =
+            eligible.where((s) {
+              if (!_layoutHasRssNews(s.layoutJson)) {
+                return true;
+              }
+              final a = _resolveNewsAssignment(
+                screen: s,
+                randomPools: randomPools,
+                usedCuratedIds: usedCuratedIds,
+                rssArticleMetrics: rssArticleMetrics,
+                requirePhotoForRssScreens: requirePhotoForRssScreens,
+                needsMinFallback: _needsMinPlacementFallback(
+                  s,
+                  countByScreenId,
+                  countByDataKey,
+                  dataKeyLimits,
+                ),
+              );
+              return a != null;
+            }).toList();
+
+        bestNews = null;
+        var bestCost = double.infinity;
+        for (final s in eligible) {
+          if (!_layoutHasRssNews(s.layoutJson)) {
+            continue;
+          }
+          final a = _resolveNewsAssignment(
+            screen: s,
+            randomPools: randomPools,
+            usedCuratedIds: usedCuratedIds,
+            rssArticleMetrics: rssArticleMetrics,
+            requirePhotoForRssScreens: requirePhotoForRssScreens,
+            needsMinFallback: _needsMinPlacementFallback(
+              s,
+              countByScreenId,
+              countByDataKey,
+              dataKeyLimits,
+            ),
+          );
+          if (a != null && a.cost < bestCost) {
+            bestCost = a.cost;
+            bestNews = a;
+          }
+        }
+      } else {
+        feasibleEligible =
+            eligible.where((s) {
+              if (!_layoutHasRssNews(s.layoutJson)) {
+                return true;
+              }
+              return _legacyNewsFeasible(
+                layoutJson: s.layoutJson,
+                randomPools: randomPools,
+                usedCuratedIds: usedCuratedIds,
+              );
+            }).toList();
+        bestNews = null;
+      }
+
+      if (feasibleEligible.isEmpty) {
+        break;
+      }
+
       final priority = _prioritizedForMins(
-        eligible: eligible,
+        eligible: feasibleEligible,
         countByScreenId: countByScreenId,
         countByDataKey: countByDataKey,
         dataKeyLimits: dataKeyLimits,
       );
-      final pick = _weightedPick(
-        priority.isNotEmpty ? priority : eligible,
-        window,
-        random,
-      );
-      if (pick == null) {
+      final activePool = priority.isNotEmpty ? priority : feasibleEligible;
+
+      ScreenCandidate? pick;
+      Map<String, String>? resolvedChoices;
+
+      if (rssArticleMetrics.isNotEmpty &&
+          bestNews != null &&
+          activePool.any((s) => _layoutHasRssNews(s.layoutJson))) {
+        final options = <_PickOption>[];
+        for (final s in activePool) {
+          if (_layoutHasRssNews(s.layoutJson)) {
+            continue;
+          }
+          options.add(_PickOptionNonNews(s));
+        }
+        options.add(_PickOptionNewsJoint(bestNews.screen, bestNews.choices));
+
+        final selected = _weightedPickOption(options, window, random);
+        if (selected == null) {
+          break;
+        }
+        if (selected is _PickOptionNonNews) {
+          pick = selected.screen;
+          resolvedChoices = _resolveCuratedWidgetChoices(
+            selected.screen.layoutJson,
+            randomPools,
+            random,
+            usedCuratedIds,
+          );
+        } else if (selected is _PickOptionNewsJoint) {
+          pick = selected.screen;
+          resolvedChoices = Map<String, String>.from(selected.choices);
+          for (final e in selected.choices.entries) {
+            if (!e.key.endsWith('_imageMode')) {
+              usedCuratedIds.add(e.value);
+            }
+          }
+        }
+      } else {
+        final pickScreen = _weightedPick(activePool, window, random);
+        if (pickScreen == null) {
+          break;
+        }
+        pick = pickScreen;
+        if (_layoutHasRssNews(pick.layoutJson) && rssArticleMetrics.isEmpty) {
+          resolvedChoices = _resolveCuratedWidgetChoices(
+            pick.layoutJson,
+            randomPools,
+            random,
+            usedCuratedIds,
+          );
+        } else if (_layoutHasRssNews(pick.layoutJson)) {
+          final a = _resolveNewsAssignment(
+            screen: pick,
+            randomPools: randomPools,
+            usedCuratedIds: usedCuratedIds,
+            rssArticleMetrics: rssArticleMetrics,
+            requirePhotoForRssScreens: requirePhotoForRssScreens,
+            needsMinFallback: _needsMinPlacementFallback(
+              pick,
+              countByScreenId,
+              countByDataKey,
+              dataKeyLimits,
+            ),
+          );
+          if (a == null) {
+            break;
+          }
+          resolvedChoices = Map<String, String>.from(a.choices);
+          for (final e in a.choices.entries) {
+            if (!e.key.endsWith('_imageMode')) {
+              usedCuratedIds.add(e.value);
+            }
+          }
+        } else {
+          resolvedChoices = _resolveCuratedWidgetChoices(
+            pick.layoutJson,
+            randomPools,
+            random,
+            usedCuratedIds,
+          );
+        }
+      }
+
+      if (pick == null || resolvedChoices == null) {
         break;
       }
+
       final dwell = min(pick.dwellMs, remaining);
-      final choices = _resolveCuratedWidgetChoices(
-        pick.layoutJson,
-        randomPools,
-        random,
-        usedCuratedIds,
-      );
       out.add(
         ResolvedSlide(
           screenId: pick.id,
           dwellMs: dwell,
           layoutJson: pick.layoutJson,
-          randomChoices: choices,
+          randomChoices: resolvedChoices,
         ),
       );
       countByScreenId[pick.id] = (countByScreenId[pick.id] ?? 0) + 1;
-      final key = pick.dataKey.trim();
-      if (key.isNotEmpty) {
-        countByDataKey[key] = (countByDataKey[key] ?? 0) + 1;
+      final dk = pick.dataKey.trim();
+      if (dk.isNotEmpty) {
+        countByDataKey[dk] = (countByDataKey[dk] ?? 0) + 1;
       }
       remaining -= dwell;
     }
 
+    return out;
+  }
+
+  static bool _layoutHasRssNews(String layoutJson) {
+    return parseScreenLayoutWidgets(layoutJson).any(
+      (w) => w.rssSummarySlotCapacities.isNotEmpty,
+    );
+  }
+
+  static bool _needsMinPlacementFallback(
+    ScreenCandidate s,
+    Map<String, int> countByScreenId,
+    Map<String, int> countByDataKey,
+    Map<String, DataKeyProgramLimit> dataKeyLimits,
+  ) {
+    final minByScreen = _normalizedMin(s.minPlacementsPerProgram);
+    if ((countByScreenId[s.id] ?? 0) < minByScreen) {
+      return true;
+    }
+    final dk = s.dataKey.trim();
+    if (dk.isEmpty) {
+      return false;
+    }
+    final minByKey = _normalizedMin(dataKeyLimits[dk]?.minPlacementsPerProgram);
+    return (countByDataKey[dk] ?? 0) < minByKey;
+  }
+
+  static bool _legacyNewsFeasible({
+    required String layoutJson,
+    required Map<String, List<String>> randomPools,
+    required Set<String> usedCuratedIds,
+  }) {
+    final used = {...usedCuratedIds};
+    final choices = _resolveCuratedWidgetChoices(
+      layoutJson,
+      randomPools,
+      Random(0),
+      used,
+    );
+    final specs = parseScreenLayoutWidgets(layoutJson);
+    for (final w in specs) {
+      if (w.rssSummarySlotCapacities.isEmpty) {
+        continue;
+      }
+      if (w.type == 'rss_article_columns') {
+        final n = w.rssSummarySlotCapacities.length;
+        for (var i = 0; i < n; i++) {
+          if ((choices['${w.choiceKey}_$i'] ?? '').isEmpty) {
+            return false;
+          }
+        }
+      } else if (w.type == 'rss_article_stack') {
+        for (var i = 0; i < 2; i++) {
+          if ((choices['${w.choiceKey}_$i'] ?? '').isEmpty) {
+            return false;
+          }
+        }
+      } else {
+        if ((choices[w.choiceKey] ?? '').isEmpty) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  static double _slotCost(int summaryLen, int capacity) {
+    final over = max(0, summaryLen - capacity);
+    final under = max(0, capacity - summaryLen);
+    return _kPenaltyOverCapacity * over + _kPenaltyUnderCapacity * under;
+  }
+
+  static _NewsAssignment? _resolveNewsAssignment({
+    required ScreenCandidate screen,
+    required Map<String, List<String>> randomPools,
+    required Set<String> usedCuratedIds,
+    required Map<String, RssArticleMetric> rssArticleMetrics,
+    required bool requirePhotoForRssScreens,
+    required bool needsMinFallback,
+  }) {
+    final specs =
+        parseScreenLayoutWidgets(
+          screen.layoutJson,
+        ).where((w) => w.rssSummarySlotCapacities.isNotEmpty).toList();
+    if (specs.isEmpty) {
+      return null;
+    }
+
+    final choices = <String, String>{};
+    double totalCost = 0;
+    final reservedIds = {...usedCuratedIds};
+
+    for (final w in specs) {
+      final poolName = _poolNameForWidget(w);
+      if (poolName == null || poolName.isEmpty) {
+        return null;
+      }
+      final basePool = randomPools[poolName] ?? [];
+      final slots = w.rssSummarySlotCapacities;
+      final n = slots.length;
+
+      List<String> availablePhotoOk() {
+        return basePool
+            .where(
+              (id) =>
+                  !reservedIds.contains(id) &&
+                  (rssArticleMetrics[id]?.hasImage ?? false),
+            )
+            .toList();
+      }
+
+      List<String> availableAny() {
+        return basePool.where((id) => !reservedIds.contains(id)).toList();
+      }
+
+      late List<String> pool;
+      if (!requirePhotoForRssScreens || needsMinFallback) {
+        pool = availableAny();
+      } else {
+        pool = availablePhotoOk();
+      }
+      if (pool.length < n) {
+        return null;
+      }
+
+      final picked = _bestArticleAssignment(
+        slots,
+        pool,
+        rssArticleMetrics,
+      );
+      if (picked == null) {
+        return null;
+      }
+
+      for (var i = 0; i < n; i++) {
+        final id = picked[i];
+        reservedIds.add(id);
+        final cap = slots[i];
+        final len = rssArticleMetrics[id]?.summaryLength ?? 0;
+        totalCost += _slotCost(len, cap);
+
+        if (w.type == 'rss_article_columns' || w.type == 'rss_article_stack') {
+          choices['${w.choiceKey}_$i'] = id;
+        } else {
+          choices[w.choiceKey] = id;
+        }
+
+        final hasImage = rssArticleMetrics[id]?.hasImage ?? false;
+        if (!hasImage) {
+          final modeKey =
+              (w.type == 'rss_article_columns' || w.type == 'rss_article_stack')
+              ? '${w.choiceKey}_${i}_imageMode'
+              : '${w.choiceKey}_imageMode';
+          choices[modeKey] = 'icon';
+        }
+      }
+    }
+
+    return _NewsAssignment(screen: screen, choices: choices, cost: totalCost);
+  }
+
+  static List<String>? _bestArticleAssignment(
+    List<int> slots,
+    List<String> available,
+    Map<String, RssArticleMetric> rssArticleMetrics,
+  ) {
+    final n = slots.length;
+    if (available.length < n) {
+      return null;
+    }
+    if (n == 0) {
+      return [];
+    }
+
+    if (available.length <= 15 && n <= 4) {
+      return _bestAssignmentBruteForce(slots, available, rssArticleMetrics);
+    }
+    return _bestAssignmentGreedy(slots, available, rssArticleMetrics);
+  }
+
+  static List<String>? _bestAssignmentBruteForce(
+    List<int> slots,
+    List<String> available,
+    Map<String, RssArticleMetric> rssArticleMetrics,
+  ) {
+    final n = slots.length;
+    List<String>? bestPick;
+    var bestCost = double.infinity;
+
+    void enumerate(List<String> prefix, List<String> remaining) {
+      if (prefix.length == n) {
+        var c = 0.0;
+        for (var i = 0; i < n; i++) {
+          final len = rssArticleMetrics[prefix[i]]?.summaryLength ?? 0;
+          c += _slotCost(len, slots[i]);
+        }
+        if (c < bestCost) {
+          bestCost = c;
+          bestPick = List<String>.from(prefix);
+        }
+        return;
+      }
+      for (var i = 0; i < remaining.length; i++) {
+        final id = remaining[i];
+        final rest = List<String>.from(remaining)..removeAt(i);
+        enumerate([...prefix, id], rest);
+      }
+    }
+
+    enumerate([], List<String>.from(available));
+    return bestPick;
+  }
+
+  static List<String>? _bestAssignmentGreedy(
+    List<int> slots,
+    List<String> available,
+    Map<String, RssArticleMetric> rssArticleMetrics,
+  ) {
+    final n = slots.length;
+    final unused = available.toSet();
+    final out = <String>[];
+    for (var si = 0; si < n; si++) {
+      final cap = slots[si];
+      String? bestId;
+      var bestC = double.infinity;
+      for (final id in unused) {
+        final len = rssArticleMetrics[id]?.summaryLength ?? 0;
+        final c = _slotCost(len, cap);
+        if (c < bestC) {
+          bestC = c;
+          bestId = id;
+        }
+      }
+      if (bestId == null) {
+        return null;
+      }
+      out.add(bestId);
+      unused.remove(bestId);
+    }
     return out;
   }
 
@@ -289,6 +684,31 @@ class ScreenProgramCurator {
     return enabled.last;
   }
 
+  static _PickOption? _weightedPickOption(
+    List<_PickOption> options,
+    List<String> historyWindow,
+    Random random,
+  ) {
+    if (options.isEmpty) {
+      return null;
+    }
+    final weights = options
+        .map((o) => _effectiveWeight(o.screen, historyWindow))
+        .toList();
+    final total = weights.fold<double>(0, (a, b) => a + b);
+    if (total <= 0) {
+      return null;
+    }
+    var t = random.nextDouble() * total;
+    for (var i = 0; i < options.length; i++) {
+      t -= weights[i];
+      if (t <= 0) {
+        return options[i];
+      }
+    }
+    return options.last;
+  }
+
   /// Picks one unused id from [pool] when possible; skips if pool missing or
   /// all ids already used (callers/widgets may fall back).
   static String? _pickUnusedFromPool(
@@ -317,6 +737,7 @@ class ScreenProgramCurator {
         return (c != null && c.isNotEmpty) ? 'joke:$c' : 'joke';
       case 'rss_article':
       case 'rss_article_columns':
+      case 'rss_article_stack':
         final f = w.config['feedId'] as String?;
         return (f != null && f.isNotEmpty) ? 'rss:$f' : 'rss';
       case 'trivia':
@@ -371,6 +792,23 @@ class ScreenProgramCurator {
         }
         continue;
       }
+      if (w.type == 'rss_article_stack') {
+        final poolName = _poolNameForWidget(w);
+        if (poolName == null || poolName.isEmpty) {
+          continue;
+        }
+        for (var i = 0; i < 2; i++) {
+          final choice = _pickUnusedFromPool(
+            randomPools[poolName],
+            random,
+            usedCuratedIds,
+          );
+          if (choice != null) {
+            out['${w.choiceKey}_$i'] = choice;
+          }
+        }
+        continue;
+      }
       final poolName = _poolNameForWidget(w);
       if (poolName == null || poolName.isEmpty) {
         continue;
@@ -386,4 +824,32 @@ class ScreenProgramCurator {
     }
     return out;
   }
+}
+
+class _NewsAssignment {
+  _NewsAssignment({
+    required this.screen,
+    required this.choices,
+    required this.cost,
+  });
+
+  final ScreenCandidate screen;
+  final Map<String, String> choices;
+  final double cost;
+}
+
+abstract class _PickOption {
+  const _PickOption(this.screen);
+
+  final ScreenCandidate screen;
+}
+
+final class _PickOptionNonNews extends _PickOption {
+  const _PickOptionNonNews(super.screen);
+}
+
+final class _PickOptionNewsJoint extends _PickOption {
+  const _PickOptionNewsJoint(super.screen, this.choices);
+
+  final Map<String, String> choices;
 }

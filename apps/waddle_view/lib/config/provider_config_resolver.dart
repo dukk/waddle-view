@@ -24,7 +24,7 @@ class ProviderConfigResolver {
       providerType: row.providerType,
       pollSeconds: row.pollSeconds,
       baseUrl: row.baseUrl,
-      extraJson: row.extraJson,
+      configJson: row.configJson,
       accessToken: token,
     );
   }

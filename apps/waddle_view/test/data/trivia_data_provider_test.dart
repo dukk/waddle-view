@@ -61,7 +61,7 @@ void main() {
             id: 'trivia',
             providerType: 'trivia',
             pollSeconds: const Value(1),
-            extraJson: const Value('{"questionsPerDay":2}'),
+            configJson: const Value('{"questionsPerDay":2}'),
             baseUrl: const Value('http://api.local/v1'),
           ),
         );
@@ -121,7 +121,7 @@ void main() {
             id: 'trivia',
             providerType: 'trivia',
             pollSeconds: const Value(1),
-            extraJson: const Value('{"questionsPerDay":5}'),
+            configJson: const Value('{"questionsPerDay":5}'),
             baseUrl: const Value('http://api.local/v1'),
           ),
         );
@@ -165,7 +165,7 @@ void main() {
             id: 'trivia',
             providerType: 'trivia',
             pollSeconds: const Value(1),
-            extraJson: const Value('{"questionsPerDay":5}'),
+            configJson: const Value('{"questionsPerDay":5}'),
             baseUrl: const Value('http://api.local/v1'),
           ),
         );
@@ -208,7 +208,7 @@ void main() {
             id: 'trivia',
             providerType: 'trivia',
             pollSeconds: const Value(1),
-            extraJson: const Value(
+            configJson: const Value(
               '{"questionsPerDay":5,"questionRetentionDays":14}',
             ),
           ),
@@ -279,7 +279,7 @@ void main() {
             id: 'trivia',
             providerType: 'trivia',
             pollSeconds: const Value(1),
-            extraJson: const Value('{"questionsPerDay":1}'),
+            configJson: const Value('{"questionsPerDay":1}'),
             baseUrl: const Value('http://api.local/v1'),
           ),
         );

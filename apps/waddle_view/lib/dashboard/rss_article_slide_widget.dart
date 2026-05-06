@@ -308,12 +308,22 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
                       fit: BoxFit.cover,
                       gaplessPlayback: true,
                       errorBuilder: (context, error, stackTrace) =>
-                          _imagePlaceholder(theme, s, blobReadFailed: false),
+                          _imagePlaceholder(
+                            theme,
+                            s,
+                            blobReadFailed: false,
+                            useNewsIcon:
+                                widget.slide.randomChoices['${widget.spec.choiceKey}_imageMode'] ==
+                                'icon',
+                          ),
                     )
                   : _imagePlaceholder(
                       theme,
                       s,
                       blobReadFailed: _imageLoad.blobReadFailed,
+                      useNewsIcon:
+                          widget.slide.randomChoices['${widget.spec.choiceKey}_imageMode'] ==
+                          'icon',
                     ),
             ),
           ),
@@ -335,7 +345,8 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
-                if (title.isNotEmpty && summary.isNotEmpty)
+                if (title.isNotEmpty &&
+                    (summary.isNotEmpty || article.link.trim().isNotEmpty))
                   SizedBox(height: 18 * s),
                 Expanded(
                   child: _summaryAndOptionalQrRow(
@@ -396,6 +407,8 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _articleLinkQr(theme, s, link),
+        SizedBox(width: 12 * s),
         Expanded(
           child: summary.isEmpty
               ? const SizedBox.shrink()
@@ -415,8 +428,6 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
                   ),
                 ),
         ),
-        if (summary.isNotEmpty) SizedBox(width: 12 * s),
-        _articleLinkQr(theme, s, link),
       ],
     );
   }
@@ -425,6 +436,7 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
     ThemeData theme,
     double s, {
     required bool blobReadFailed,
+    bool useNewsIcon = false,
   }) {
     return ColoredBox(
       color: theme.colorScheme.surfaceContainerHighest,
@@ -432,6 +444,8 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
         child: Icon(
           blobReadFailed
               ? Icons.no_photography
+              : useNewsIcon
+              ? Icons.newspaper
               : Icons.image_not_supported_outlined,
           size: 56 * s,
           color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
@@ -443,8 +457,8 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
   /// QR encoding the article URL for phone cameras. Omits when [link] is empty.
   ///
   /// When [standalone] is true (e.g. no body text), the code is right-aligned
-  /// with top padding. When false, the caller places this in a [Row] beside
-  /// the article summary so text wraps in the remaining width.
+  /// with top padding. When false, the caller places this at the **start** of
+  /// a [Row] under the title so the summary sits to the right and wraps there.
   static Widget _articleLinkQr(
     ThemeData theme,
     double s,

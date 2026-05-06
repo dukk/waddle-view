@@ -46,7 +46,7 @@ void main() {
             id: 'jokes',
             providerType: 'jokes',
             pollSeconds: const Value(1),
-            extraJson: const Value('{"jokesPerDay":2}'),
+            configJson: const Value('{"jokesPerDay":2}'),
             baseUrl: const Value('http://api.local/v1'),
           ),
         );
@@ -118,7 +118,7 @@ void main() {
             id: 'jokes',
             providerType: 'jokes',
             pollSeconds: const Value(1),
-            extraJson: const Value(
+            configJson: const Value(
               '{"jokesPerDay":5,"jokeRetentionDays":14}',
             ),
           ),
@@ -183,7 +183,7 @@ void main() {
             id: 'jokes',
             providerType: 'jokes',
             pollSeconds: const Value(1),
-            extraJson: const Value(
+            configJson: const Value(
               '{"jokesPerDay":2,"maxJokesPerTwoHours":10}',
             ),
           ),
@@ -249,7 +249,7 @@ void main() {
             id: 'jokes',
             providerType: 'jokes',
             pollSeconds: const Value(1),
-            extraJson: const Value('{"jokesPerDay":50}'),
+            configJson: const Value('{"jokesPerDay":50}'),
           ),
         );
     await db.into(db.jokeCategories).insert(
@@ -296,7 +296,7 @@ void main() {
             id: 'jokes',
             providerType: 'jokes',
             pollSeconds: const Value(1),
-            extraJson: const Value(
+            configJson: const Value(
               '{"jokesPerDay":50,"maxJokesPerTwoHours":5}',
             ),
           ),
@@ -342,7 +342,7 @@ void main() {
             id: 'jokes',
             providerType: 'jokes',
             pollSeconds: const Value(1),
-            extraJson: const Value('{"jokesPerDay":5}'),
+            configJson: const Value('{"jokesPerDay":5}'),
           ),
         );
     await db.into(db.jokeCategories).insert(
@@ -416,7 +416,7 @@ void main() {
             id: 'jokes',
             providerType: 'jokes',
             pollSeconds: const Value(1),
-            extraJson: const Value('{"jokesPerDay":1}'),
+            configJson: const Value('{"jokesPerDay":1}'),
           ),
         );
     await db.into(db.jokeCategories).insert(

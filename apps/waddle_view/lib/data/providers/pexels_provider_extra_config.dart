@@ -38,8 +38,8 @@ class PexelsProviderExtraConfig {
   final int maxVideoSeconds;
   final List<PexelsSourceSpec> sources;
 
-  static PexelsProviderExtraConfig parse(String? raw) {
-    if (raw == null || raw.trim().isEmpty) {
+  static PexelsProviderExtraConfig parse(String? configJson) {
+    if (configJson == null || configJson.trim().isEmpty) {
       return const PexelsProviderExtraConfig(
         maxPhotos: 100,
         maxVideos: 100,
@@ -51,7 +51,7 @@ class PexelsProviderExtraConfig {
       );
     }
     try {
-      final m = jsonDecode(raw) as Map<String, dynamic>;
+      final m = jsonDecode(configJson) as Map<String, dynamic>;
       final sourcesRaw = m['sources'];
       final sources = <PexelsSourceSpec>[];
       if (sourcesRaw is List<dynamic>) {

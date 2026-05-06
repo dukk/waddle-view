@@ -151,7 +151,7 @@ Future<void> _ensurePexelsProvider(
           providerType: 'pexels',
           pollSeconds: Value(pollSeconds),
           baseUrl: const Value('http://api.pexels.test'),
-          extraJson: Value(extra),
+          configJson: Value(extra),
         ),
       );
 }
@@ -454,7 +454,7 @@ void main() {
             providerType: 'pexels',
             pollSeconds: const Value(0),
             baseUrl: const Value('http://api.pexels.test/'),
-            extraJson: const Value('{}'),
+            configJson: const Value('{}'),
           ),
         );
     final httpClient = _FakePexelsHttp(

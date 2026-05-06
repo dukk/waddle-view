@@ -36,8 +36,8 @@ class TriviaProviderExtraConfig {
   final int twoHourWindowMs;
   final int questionRetentionDays;
 
-  static TriviaProviderExtraConfig parse(String? extraJson) {
-    if (extraJson == null || extraJson.trim().isEmpty) {
+  static TriviaProviderExtraConfig parse(String? configJson) {
+    if (configJson == null || configJson.trim().isEmpty) {
       return const TriviaProviderExtraConfig(
         questionsPerDay: 3,
         model: kDefaultTriviaModel,
@@ -48,7 +48,7 @@ class TriviaProviderExtraConfig {
       );
     }
     try {
-      final dynamic decoded = jsonDecode(extraJson);
+      final dynamic decoded = jsonDecode(configJson);
       if (decoded is! Map) {
         return const TriviaProviderExtraConfig(
           questionsPerDay: 3,

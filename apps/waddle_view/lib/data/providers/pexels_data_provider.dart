@@ -74,7 +74,7 @@ class PexelsDataProvider implements IDataProvider {
       return;
     }
 
-    final extra = PexelsProviderExtraConfig.parse(config.extraJson);
+    final extra = PexelsProviderExtraConfig.parse(config.configJson);
     final base = _normalizeBaseUrl(config.baseUrl);
 
     try {

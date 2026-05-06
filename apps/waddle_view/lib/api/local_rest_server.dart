@@ -50,9 +50,6 @@ Middleware apiKeyAuth(DeploymentApiKeySource keys) {
   };
 }
 
-const String _requireNewsPhotoForCurationKvKey =
-    'curator.news.require_photo_for_curation';
-
 Handler buildProtectedApiRouter({
   required AppDatabase db,
   required AlertRepository alerts,
@@ -93,6 +90,8 @@ Handler buildProtectedApiRouter({
             'description': e.description,
             'enabled': e.enabled,
             'layout_json': e.layoutJson,
+            'layout_json_schema': e.layoutJsonSchema,
+            'example_layout_json': e.exampleLayoutJson,
             'dwell_seconds': e.dwellSeconds,
             'frequency_weight': e.frequencyWeight,
             'min_gap_between_shows_seconds': e.minGapBetweenShowsSeconds,
@@ -413,8 +412,8 @@ class _AdminServer {
         ) ??
         5;
     final kvTicker = kvMap['curator.ticker.newsPixelsPerSecond'] ?? '80';
-    final requireNewsPhotoForCuration =
-        kvMap[_requireNewsPhotoForCurationKvKey] ?? 'true';
+    final requireNewsPhotoForScreens =
+        kvMap[kRequireNewsPhotoForScreensKvKey] ?? 'true';
     final currentThemeId = normalizeDisplayThemeId(kvMap[kDisplayThemeIdKvKey]);
     final themeOptionRows = kDisplayThemeOptions
         .map(
@@ -477,7 +476,7 @@ class _AdminServer {
 <td><input name="enabled" type="checkbox" ${p.enabled ? 'checked' : ''}/></td>
 <td><input name="poll_seconds" value="${p.pollSeconds}"/></td>
 <td><input name="base_url" value="${_h(p.baseUrl ?? '')}"/></td>
-<td><input name="extra_json" value="${_h(p.extraJson ?? '')}"/></td>
+<td><input name="config_json" value="${_h(p.configJson ?? '')}"/></td>
 <td><input name="access_token" placeholder="leave blank to keep"/></td>
 <td><button type="submit">Save</button></td>
 </form>
@@ -496,8 +495,8 @@ class _AdminServer {
 <input type="hidden" name="csrf" value="${session.csrfToken}"/>
 Program duration seconds: <input name="program_duration_seconds" value="$programDurationSeconds"/><br/>
 History depth: <input name="history_depth" value="$historyDepth"/><br/>
-Require photo for news curation:
-<input name="require_news_photo_for_curation" type="checkbox" ${requireNewsPhotoForCuration != 'false' ? 'checked' : ''}/><br/>
+Require photo for RSS screen slides (ticker unchanged):
+<input name="require_news_photo_for_screens" type="checkbox" ${requireNewsPhotoForScreens != 'false' ? 'checked' : ''}/><br/>
 Ticker px/s: <input name="ticker_pixels_per_second" value="${_h(kvTicker)}"/><br/>
 Display theme:
 <select name="display_theme_id">
@@ -520,7 +519,7 @@ $screenRows
 </table>
 <h2>Providers</h2>
 <table border="1" cellpadding="4" cellspacing="0">
-<tr><th>ID</th><th>Type</th><th>Enabled</th><th>Poll Seconds</th><th>Base URL</th><th>Extra JSON</th><th>Secret Token</th><th>Action</th></tr>
+<tr><th>ID</th><th>Type</th><th>Enabled</th><th>Poll Seconds</th><th>Base URL</th><th>Config JSON</th><th>Secret Token</th><th>Action</th></tr>
 $providerRows
 </table>
 ''',
@@ -636,8 +635,8 @@ $providerRows
     }
     await db.into(db.configKeyValues).insertOnConflictUpdate(
           ConfigKeyValuesCompanion.insert(
-            key: _requireNewsPhotoForCurationKvKey,
-            value: form.containsKey('require_news_photo_for_curation')
+            key: kRequireNewsPhotoForScreensKvKey,
+            value: form.containsKey('require_news_photo_for_screens')
                 ? 'true'
                 : 'false',
           ),
@@ -688,9 +687,9 @@ $providerRows
         baseUrl: Value((form['base_url'] ?? '').trim().isEmpty
             ? null
             : (form['base_url'] ?? '').trim()),
-        extraJson: Value((form['extra_json'] ?? '').trim().isEmpty
+        configJson: Value((form['config_json'] ?? '').trim().isEmpty
             ? null
-            : (form['extra_json'] ?? '').trim()),
+            : (form['config_json'] ?? '').trim()),
       ),
     );
     final token = (form['access_token'] ?? '').trim();

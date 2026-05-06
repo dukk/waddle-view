@@ -8,7 +8,7 @@ class ProviderRuntimeConfig {
     required this.providerType,
     required this.pollSeconds,
     this.baseUrl,
-    this.extraJson,
+    this.configJson,
     this.accessToken,
   });
 
@@ -16,7 +16,7 @@ class ProviderRuntimeConfig {
   final String providerType;
   final int pollSeconds;
   final String? baseUrl;
-  final String? extraJson;
+  final String? configJson;
   final String? accessToken;
 
   /// Safe for logs — excludes tokens.
@@ -24,7 +24,7 @@ class ProviderRuntimeConfig {
     final buf = StringBuffer('ProviderRuntimeConfig(')
       ..write('id=$providerId type=$providerType poll=$pollSeconds')
       ..write(baseUrl == null ? '' : ' baseUrl=$baseUrl')
-      ..write(extraJson == null ? '' : ' extra=<redacted len=${extraJson!.length}>')
+      ..write(configJson == null ? '' : ' config=<redacted len=${configJson!.length}>')
       ..write(' token=${accessToken == null ? 'absent' : '<redacted>'})');
     return buf.toString();
   }

@@ -54,7 +54,7 @@ class WeatherDataProvider implements IDataProvider {
       AppDebugLog.engine('WeatherDataProvider: skip collect (no API token)');
       return;
     }
-    final extra = WeatherProviderExtraConfig.parse(config.extraJson);
+    final extra = WeatherProviderExtraConfig.parse(config.configJson);
     final baseUrl = (config.baseUrl != null && config.baseUrl!.trim().isNotEmpty)
         ? config.baseUrl!.trim()
         : kDefaultOpenWeatherBaseUrl;

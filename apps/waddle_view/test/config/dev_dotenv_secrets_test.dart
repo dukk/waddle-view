@@ -1,6 +1,7 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_view/config/dev_dotenv_secrets.dart';
+import 'package:waddle_view/config/microsoft_graph_kv.dart';
 import 'package:waddle_view/config/provider_config_resolver.dart';
 import 'package:waddle_view/secrets/in_memory_secret_store.dart';
 
@@ -149,5 +150,19 @@ void main() {
       await secrets.read('${ProviderConfigResolver.accessTokenKey}:pexels'),
       'pex-from-dotenv',
     );
+  });
+
+  test('applyMicrosoftGraphTokensFromDevDotenv writes access and refresh', () async {
+    dotenv.clean();
+    dotenv.loadFromString(
+      envString:
+          '${waddleMsGraphAccessTokenPrefix}work=acc123\n'
+          '${waddleMsGraphRefreshTokenPrefix}work=ref456',
+      isOptional: true,
+    );
+    final secrets = InMemorySecretStore();
+    await applyMicrosoftGraphTokensFromDevDotenv(secrets);
+    expect(await secrets.read(microsoftGraphAccessTokenSecret('work')), 'acc123');
+    expect(await secrets.read(microsoftGraphRefreshTokenSecret('work')), 'ref456');
   });
 }

@@ -60,7 +60,7 @@ class JokeDataProvider implements IDataProvider {
       return;
     }
 
-    final extra = JokeProviderExtraConfig.parse(config.extraJson);
+    final extra = JokeProviderExtraConfig.parse(config.configJson);
     if (extra.jokesPerDay < 1) {
       return;
     }

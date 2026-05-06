@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 
 import '../debug/app_debug_log.dart';
+import 'config_json_documentation.dart';
 import 'content_category_defaults.dart';
 import 'tables.dart';
 
@@ -41,7 +42,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 19;
+  int get schemaVersion => 20;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -226,6 +227,79 @@ FROM curator_settings WHERE id = 'app';
                   : Value(d.materialIconName),
             ),
           );
+        }
+      }
+      if (from < 20) {
+        Future<bool> legacyTableExists(String table) async {
+          final rows =
+              await customSelect(
+                    "SELECT name FROM sqlite_master WHERE type = 'table' "
+                    "AND name = '$table';",
+                  )
+                  .get();
+          return rows.isNotEmpty;
+        }
+
+        Future<Set<String>> legacyColumnNames(String table) async {
+          final rows = await customSelect('PRAGMA table_info($table);').get();
+          return rows.map((r) => r.read<String>('name')).toSet();
+        }
+
+        if (await legacyTableExists('provider_settings')) {
+          var cols = await legacyColumnNames('provider_settings');
+          if (cols.contains('extra_json')) {
+            await customStatement(
+              'ALTER TABLE provider_settings RENAME COLUMN extra_json TO config_json;',
+            );
+            cols = await legacyColumnNames('provider_settings');
+          }
+          if (!cols.contains('config_json_schema')) {
+            await customStatement(
+              'ALTER TABLE provider_settings ADD COLUMN config_json_schema TEXT;',
+            );
+          }
+          if (!cols.contains('example_config_json')) {
+            await customStatement(
+              'ALTER TABLE provider_settings ADD COLUMN example_config_json TEXT;',
+            );
+          }
+          final providerRows = await select(providerSettings).get();
+          for (final p in providerRows) {
+            final doc = providerConfigJsonDocForType(p.providerType);
+            await (update(providerSettings)
+                  ..where((t) => t.id.equals(p.id)))
+                .write(
+                  ProviderSettingsCompanion(
+                    configJsonSchema: Value(doc.schema),
+                    exampleConfigJson: Value(doc.example),
+                  ),
+                );
+          }
+        }
+
+        if (await legacyTableExists('screen_definitions')) {
+          var cols = await legacyColumnNames('screen_definitions');
+          if (!cols.contains('layout_json_schema')) {
+            await customStatement(
+              'ALTER TABLE screen_definitions ADD COLUMN layout_json_schema TEXT;',
+            );
+          }
+          if (!cols.contains('example_layout_json')) {
+            await customStatement(
+              'ALTER TABLE screen_definitions ADD COLUMN example_layout_json TEXT;',
+            );
+          }
+          final screenRows = await select(screenDefinitions).get();
+          for (final s in screenRows) {
+            await (update(screenDefinitions)
+                  ..where((t) => t.id.equals(s.id)))
+                .write(
+                  ScreenDefinitionsCompanion(
+                    layoutJsonSchema: Value(kScreenLayoutJsonSchema),
+                    exampleLayoutJson: Value(kExampleScreenLayoutJson),
+                  ),
+                );
+          }
         }
       }
     },

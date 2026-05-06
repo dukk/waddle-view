@@ -60,7 +60,7 @@ class TriviaDataProvider implements IDataProvider {
       return;
     }
 
-    final extra = TriviaProviderExtraConfig.parse(config.extraJson);
+    final extra = TriviaProviderExtraConfig.parse(config.configJson);
     if (extra.questionsPerDay < 1) {
       return;
     }

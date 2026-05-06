@@ -26,29 +26,9 @@ import 'pexels_photo_slide_widget.dart';
 import 'pexels_video_slide_widget.dart';
 import 'rss_article_columns_slide_widget.dart';
 import 'rss_article_slide_widget.dart';
+import 'rss_article_stack_slide_widget.dart';
 import 'trivia_slide_widget.dart';
 import 'weather_slide_widget.dart';
-
-const String _requireNewsPhotoForCurationKvKey =
-    'curator.news.require_photo_for_curation';
-
-bool _isNewsRssLayout(String layoutJson) {
-  final widgets = parseScreenLayoutWidgets(layoutJson);
-  return widgets.any(
-    (w) => w.type == 'rss_article' || w.type == 'rss_article_columns',
-  );
-}
-
-List<ScreenCandidate> filterNewsCandidatesByPhotoRequirement({
-  required List<ScreenCandidate> candidates,
-  required bool requirePhotoForNewsCuration,
-  required bool hasNewsPhotoData,
-}) {
-  if (!requirePhotoForNewsCuration || hasNewsPhotoData) {
-    return candidates;
-  }
-  return candidates.where((c) => !_isNewsRssLayout(c.layoutJson)).toList();
-}
 
 String screenShownDebugLogLine({
   required String reason,
@@ -141,24 +121,17 @@ class _ScreenRotatorState extends State<ScreenRotator>
     final programMs = programSeconds * 1000;
     final historyDepth =
         int.tryParse(kvByKey[kCuratorHistoryDepthKvKey]?.trim() ?? '') ?? 5;
-    final requireNewsPhotoForCuration = isTruthyDashboardKvFlag(
-      kvByKey[_requireNewsPhotoForCurationKvKey],
+    final requireNewsPhotoForScreens = isTruthyDashboardKvFlag(
+      kvByKey[kRequireNewsPhotoForScreensKvKey],
       defaultValue: true,
     );
 
     final blobs = await widget.db.select(widget.db.blobMetadata).get();
-    final contentPools = await loadCuratorContentPools(widget.db);
+    final loadedPools = await loadCuratorContentPools(widget.db);
     final pools = <String, List<String>>{
-      ...contentPools,
+      ...loadedPools.pools,
       if (blobs.isNotEmpty) 'blobs': blobs.map((e) => e.blobKey).toList(),
     };
-    final firstArticleWithImageKey =
-        await (widget.db.select(widget.db.rssArticles)
-              ..where((t) => t.imageBlobKey.isNotNull())
-              ..limit(1))
-            .getSingleOrNull();
-    final hasNewsPhotoData =
-        (firstArticleWithImageKey?.imageBlobKey?.trim().isNotEmpty ?? false);
     final dataKeyLimitRows = await widget.db
         .select(widget.db.curatorDataKeyProgramLimits)
         .get();
@@ -185,20 +158,17 @@ class _ScreenRotatorState extends State<ScreenRotator>
           ),
         )
         .toList();
-    final filteredCandidates = filterNewsCandidatesByPhotoRequirement(
-      candidates: candidates,
-      requirePhotoForNewsCuration: requireNewsPhotoForCuration,
-      hasNewsPhotoData: hasNewsPhotoData,
-    );
 
     final program = ScreenProgramCurator.buildProgram(
-      screens: filteredCandidates,
+      screens: candidates,
       programDurationMs: programMs,
       recentScreenIdsOldestFirst: List<String>.from(_recentScreenIds),
       historyDepth: historyDepth,
       random: _random,
       randomPools: pools,
       dataKeyLimits: dataKeyLimits,
+      rssArticleMetrics: loadedPools.rssArticleMetrics,
+      requirePhotoForRssScreens: requireNewsPhotoForScreens,
     );
 
     if (kDebugMode) {
@@ -456,6 +426,19 @@ class _SlideContent extends StatelessWidget {
         ),
       );
     }
+    if (widgets.length == 1 && widgets.first.type == 'rss_article_stack') {
+      final w = widgets.first;
+      return SizedBox.expand(
+        child: RssArticleStackSlideWidget(
+          db: db,
+          blobs: blobs,
+          slide: slide,
+          spec: w,
+          theme: theme,
+          onReportDesiredDwell: (ms) => onReportDesiredDwell(slideIndex, ms),
+        ),
+      );
+    }
     if (widgets.length == 1 && widgets.first.type == 'pexels_photo') {
       final w = widgets.first;
       return SizedBox.expand(
@@ -542,6 +525,16 @@ class _SlideContent extends StatelessWidget {
               );
             case 'rss_article_columns':
               return RssArticleColumnsSlideWidget(
+                db: db,
+                blobs: blobs,
+                slide: slide,
+                spec: w,
+                theme: theme,
+                onReportDesiredDwell: (ms) =>
+                    onReportDesiredDwell(slideIndex, ms),
+              );
+            case 'rss_article_stack':
+              return RssArticleStackSlideWidget(
                 db: db,
                 blobs: blobs,
                 slide: slide,

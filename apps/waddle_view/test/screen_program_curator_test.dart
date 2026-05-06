@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:waddle_view/curator/curator_content_pools.dart';
 import 'package:waddle_view/curator/screen_layout_parse.dart';
 import 'package:waddle_view/curator/screen_program_curator.dart';
 
@@ -155,6 +156,29 @@ void main() {
     expect(b, isNotNull);
     expect(c, isNotNull);
     expect({a, b, c}.length, 3);
+  });
+
+  test('rss_article_stack assigns two distinct rss ids', () {
+    const layout = '{"v":1,"layout":"single","widgets":['
+        '{"type":"rss_article_stack","slot":"main","config":{}}'
+        ']}';
+    final slides = ScreenProgramCurator.buildProgram(
+      screens: [_c(id: 'ns', dwellMs: 30000, layout: layout)],
+      programDurationMs: 30000,
+      recentScreenIdsOldestFirst: const [],
+      historyDepth: 5,
+      random: Random(19),
+      randomPools: {
+        'rss': ['r1', 'r2', 'r3'],
+      },
+    );
+    expect(slides, hasLength(1));
+    final m = slides.single.randomChoices;
+    final a = m['main_rss_article_stack_0'];
+    final b = m['main_rss_article_stack_1'];
+    expect(a, isNotNull);
+    expect(b, isNotNull);
+    expect(a, isNot(equals(b)));
   });
 
   test('dedupes random pool picks within one program', () {
@@ -350,5 +374,77 @@ void main() {
       randomPools: const {'pexels_video': ['v1']},
     );
     expect(videoSlides.single.randomChoices['main_pexels_video'], 'v1');
+  });
+
+  test('joint best-fit prefers news screen whose capacity fits summary length', () {
+    const layoutBig =
+        '{"v":1,"widgets":[{"type":"rss_article","slot":"main","config":{"summaryCapacityChars":1200}}]}';
+    const layoutSmall =
+        '{"v":1,"widgets":[{"type":"rss_article","slot":"main","config":{"summaryCapacityChars":100}}]}';
+    final slides = ScreenProgramCurator.buildProgram(
+      screens: [
+        _c(id: 'news_big', dwellMs: 60000, layout: layoutBig),
+        _c(id: 'news_small', dwellMs: 60000, layout: layoutSmall),
+      ],
+      programDurationMs: 60000,
+      recentScreenIdsOldestFirst: const [],
+      historyDepth: 5,
+      random: Random(0),
+      randomPools: const {'rss': ['a1']},
+      rssArticleMetrics: const {
+        'a1': RssArticleMetric(hasImage: true, summaryLength: 500),
+      },
+      requirePhotoForRssScreens: true,
+    );
+    expect(slides, hasLength(1));
+    expect(slides.single.screenId, 'news_big');
+    expect(slides.single.randomChoices['main_rss_article'], 'a1');
+  });
+
+  test('requirePhoto skips photoless rss when min placements satisfied', () {
+    const layout =
+        '{"v":1,"widgets":[{"type":"rss_article","slot":"main","config":{}}]}';
+    final slides = ScreenProgramCurator.buildProgram(
+      screens: [
+        _c(id: 'rss_only', dwellMs: 60000, layout: layout),
+      ],
+      programDurationMs: 60000,
+      recentScreenIdsOldestFirst: const [],
+      historyDepth: 5,
+      random: Random(0),
+      randomPools: const {'rss': ['n1']},
+      rssArticleMetrics: const {
+        'n1': RssArticleMetric(hasImage: false, summaryLength: 10),
+      },
+      requirePhotoForRssScreens: true,
+    );
+    expect(slides, isEmpty);
+  });
+
+  test('min-placement fallback uses photoless article and imageMode icon', () {
+    const layout =
+        '{"v":1,"widgets":[{"type":"rss_article","slot":"main","config":{}}]}';
+    final slides = ScreenProgramCurator.buildProgram(
+      screens: [
+        _c(
+          id: 'rss_must',
+          dwellMs: 60000,
+          layout: layout,
+          minPlacementsPerProgram: 1,
+        ),
+      ],
+      programDurationMs: 60000,
+      recentScreenIdsOldestFirst: const [],
+      historyDepth: 5,
+      random: Random(0),
+      randomPools: const {'rss': ['n1']},
+      rssArticleMetrics: const {
+        'n1': RssArticleMetric(hasImage: false, summaryLength: 10),
+      },
+      requirePhotoForRssScreens: true,
+    );
+    expect(slides, hasLength(1));
+    expect(slides.single.randomChoices['main_rss_article'], 'n1');
+    expect(slides.single.randomChoices['main_rss_article_imageMode'], 'icon');
   });
 }

@@ -112,7 +112,12 @@ Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../d
 
 ### Screen program (main carousel)
 
-When the app assembles a timed program from `screen_definitions`, [`ScreenProgramCurator`](lib/curator/screen_program_curator.dart) pre-assigns **content ids** on each [`ResolvedSlide`](lib/curator/screen_program_curator.dart) for **jokes**, **RSS articles**, **trivia** (and existing **random photo** pools). Slide widgets read those ids from `randomChoices` first, so the same joke or article is not shown twice in one program when SQLite has enough distinct rows. If every candidate is already used, the slide falls back to the previous random / “best article” selection.
+When the app assembles a timed program from `screen_definitions`, [`ScreenProgramCurator`](lib/curator/screen_program_curator.dart) pre-assigns **content ids** on each [`ResolvedSlide`](lib/curator/screen_program_curator.dart) for **jokes**, **RSS articles**, **trivia** (and existing **random photo** pools). Slide widgets read those ids from `randomChoices` first, so the same joke or article is not shown twice in one program when SQLite has enough distinct rows. If every candidate is already used, the slide falls back to the previous random / “best article” selection. Multi-article RSS widgets use suffixed keys, for example **`main_rss_article_columns_0`** … **`_2`**, or **`main_rss_article_stack_0`** / **`_1`** for the two-row stack layout ([`rss_article_stack_slide_widget.dart`](lib/dashboard/rss_article_stack_slide_widget.dart)). The **`rss_article_columns`** layout places a **QR code** under each column’s **title** (start-aligned) with the **summary beside it** when that article’s `link` is non-empty; optional widget `config` **`qrLogicalSize`** (default **80**, clamped) scales the code after the viewport multiplier ([`rss_article_columns_slide_widget.dart`](lib/dashboard/rss_article_columns_slide_widget.dart)).
+
+Each **`screen_definitions`** row stores runtime **`layout_json`** plus documentation columns **`layout_json_schema`** (JSON Schema for the layout document) and **`example_layout_json`** (sample payload). `GET /v1/screens` includes the schema and example fields.
+
+- **RSS screen photos** — config key **`curator.news.screens.require_photo`** (default **true** in seed): when true, only RSS rows with a downloaded image are used for **screen** slides; the **ticker** is unchanged. If a news screen must still run (e.g. **min placements** / data-key minimum) and no image-backed article is available, the curator may place a photo-less row and set **`*_imageMode`** = **`icon`** (per slot for columns/stack) so the UI shows a **newspaper** icon instead of a photo.
+- **Summary fit** — optional widget `config` on RSS layouts: **`summaryCapacityChars`** (single `rss_article`), **`summaryCapacityCharsPerColumn`** (`rss_article_columns`), **`summaryCapacityCharsPerSlot`** (`rss_article_stack`). The curator scores screen+article pairs so summary text length is less likely to be wasted or heavily truncated. Seeded default news screens set these in `layoutJson` ([`initial_seed.dart`](lib/seed/initial_seed.dart)).
 
 ### Text scale — screens vs ticker (`config_key_values`)
 
@@ -154,7 +159,9 @@ The **Pexels** provider (`id` / `provider_type`: **`pexels`**) downloads curated
 
 **Debug `.env`:** **`PEXELS_API_KEY`** or **`WADDLE_PEXELS_ACCESS_TOKEN`** (see [`.env.example`](.env.example)).
 
-**`provider_settings.extra_json`** (JSON) supports:
+**`provider_settings.config_json`** (JSON) holds the runtime payload. **`config_json_schema`** and **`example_config_json`** are documentation columns (JSON Schema and sample JSON) populated per row type.
+
+**`config_json`** for Pexels supports:
 
 - **`maxPhotos`** / **`maxVideos`**: retention cap (default 100); oldest rows are removed with their blobs.
 - **`photosPerHour`** / **`videosPerHour`**: rolling 60-minute download caps (default 2 each).
@@ -162,6 +169,31 @@ The **Pexels** provider (`id` / `provider_type`: **`pexels`**) downloads curated
 - **`sources`**: optional list of `{ "query": "…", "category": "…" }` for `/v1/search` (photos) and `/v1/videos/search` (videos); results use that **category** string (the default curated/popular path uses category **`pexels`**).
 
 **Screens:** widget types **`pexels_photo`** and **`pexels_video`** (single-widget layouts). Optional `config.categoryId` selects the curator pool (`pexels_photo` vs `pexels_photo:<category>`). Seed adds **`pexels_photo`** / **`pexels_video`** rows in **`screen_definitions`** disabled by default; enable after configuring the API key. Attribution (photographer name, profile URL, alt text) is shown on the photo slide; videos autoplay **muted** unless `config.unmuted` is true.
+
+## Outlook calendar (Microsoft Graph)
+
+The **Outlook calendar** provider (`id` / `provider_type`: **`outlook_calendar`**) reads delegated calendar data via [Microsoft Graph](https://learn.microsoft.com/en-us/graph/api/resources/calendar) `calendarView` and stores events in **`calendar_events`** (shown on the **`calendar_month`** slide). Seed adds the provider **disabled** by default; set **`provider_settings.enabled`** after configuration.
+
+**App registration (Entra ID):** delegated permissions **`Calendars.Read`**, **`User.Read`**, and **`offline_access`**. The shared public **client id** lives in **`config_key_values`** as **`microsoft.graph.client_id`** (default `27bc410e-75a4-4bdc-9281-921f446aef52` on first seed). Other Graph-based providers should read the same key.
+
+**Authentication platform:** turn on **Allow public client flows** (device code). Under **Authentication**, add a **Mobile and desktop applications** redirect URI **`https://login.microsoftonline.com/common/oauth2/nativeclient`** (same value the app sends as `redirect_uri` on token and device-code requests). Without this, Entra may return errors such as a missing **`redirect_uri`** on the request.
+
+**SecretStore keys (per Microsoft account, not per provider row):**
+
+- Access: **`provider:access_token:microsoft_graph:<graphAccountKey>`**
+- Refresh: **`provider:refresh_token:microsoft_graph:<graphAccountKey>`**
+
+**OAuth:** when access and refresh tokens are missing or expired, the provider starts the **device code** flow. A **`dashboard_alerts`** row shows the **user code** and verification URL on the dashboard, and a **QR code** (when the identity platform returns `verification_uri_complete`, otherwise the base verification URL) so you can open the sign-in page on a phone. Repeated prompts are throttled (per account) after the last device-code attempt.
+
+**`provider_settings.config_json`** (JSON):
+
+- **`accounts`**: list of `{ "graphAccountKey": "<id>", "sources": [ ... ] }`. Each **`graphAccountKey`** must match the suffix used in SecretStore (e.g. `personal`, `work`).
+- **`sources`**: list of `{ "mailbox": "<upn-or-me>", "calendars": ["Calendar", …] }`. **`mailbox`** is the Graph user (`me` or a UPN). **`calendars`**: display names or Graph calendar ids; an **empty** list means the user’s **default** calendar only.
+- **`pastDays`** / **`futureDays`**: inclusive window around **today’s UTC midnight** (defaults **14** / **14**).
+
+**`provider_settings.poll_seconds`:** default **3600** (one sync per hour when enabled).
+
+**Debug `.env`:** optional **`WADDLE_MSGRAPH_ACCESS_TOKEN_<graphAccountKey>`** and **`WADDLE_MSGRAPH_REFRESH_TOKEN_<graphAccountKey>`** (see [`.env.example`](.env.example)).
 
 ## Drift codegen
 

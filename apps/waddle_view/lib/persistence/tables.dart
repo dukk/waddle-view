@@ -6,7 +6,9 @@ class ProviderSettings extends Table {
   BoolColumn get enabled => boolean().withDefault(const Constant(true))();
   IntColumn get pollSeconds => integer().withDefault(const Constant(60))();
   TextColumn get baseUrl => text().nullable()();
-  TextColumn get extraJson => text().nullable()();
+  TextColumn get configJson => text().nullable()();
+  TextColumn get configJsonSchema => text().nullable()();
+  TextColumn get exampleConfigJson => text().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -49,6 +51,10 @@ class ConfigKeyValues extends Table {
 const String kCuratorProgramDurationSecondsKvKey =
     'curator.program.durationSeconds';
 const String kCuratorHistoryDepthKvKey = 'curator.program.historyDepth';
+/// When true, RSS screens only curate articles that have a downloaded image;
+/// photo-less articles remain ticker-only unless min-placement fallback applies.
+const String kRequireNewsPhotoForScreensKvKey =
+    'curator.news.screens.require_photo';
 const String kAdminBootstrapDoneKvKey = 'admin.bootstrap_done';
 
 /// Shared category ids for RSS feeds, Pexels photos/videos, jokes, and trivia
@@ -75,6 +81,8 @@ class ScreenDefinitions extends Table {
   BoolColumn get enabled => boolean().withDefault(const Constant(true))();
   TextColumn get layoutJson =>
       text().withDefault(const Constant('{"v":1,"layout":"single","widgets":[]}'))();
+  TextColumn get layoutJsonSchema => text().nullable()();
+  TextColumn get exampleLayoutJson => text().nullable()();
   IntColumn get dwellSeconds => integer().withDefault(const Constant(10))();
   IntColumn get frequencyWeight => integer().withDefault(const Constant(100))();
   IntColumn get minGapBetweenShowsSeconds =>

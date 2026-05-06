@@ -1,14 +1,42 @@
 import '../persistence/database.dart';
 
-/// IDs grouped for [ScreenProgramCurator.buildProgram] `randomPools`.
+/// Per-article metrics for news capacity-aware curation.
+class RssArticleMetric {
+  const RssArticleMetric({
+    required this.hasImage,
+    required this.summaryLength,
+  });
+
+  /// True when [imageBlobKey] is non-empty on the article row.
+  final bool hasImage;
+
+  /// Character length of [RssArticle.summary] (trimmed); 0 if null/empty.
+  final int summaryLength;
+}
+
+/// IDs grouped for [ScreenProgramCurator.buildProgram] `randomPools`, plus RSS
+/// metrics for joint news placement.
 ///
-/// Keys: `joke`, `joke:<categoryId>`, `rss`, `rss:<feedId>`, `trivia`,
+/// Pool keys: `joke`, `joke:<categoryId>`, `rss`, `rss:<feedId>`, `trivia`,
 /// `trivia:<categoryId>`, `pexels_photo`, `pexels_photo:<category>`,
 /// `pexels_video`, `pexels_video:<category>`.
-Future<Map<String, List<String>>> loadCuratorContentPools(
+class CuratorContentPools {
+  const CuratorContentPools({
+    required this.pools,
+    this.rssArticleMetrics = const {},
+  });
+
+  final Map<String, List<String>> pools;
+
+  /// Article id → metrics for capacity / photo gating (only articles present in DB).
+  final Map<String, RssArticleMetric> rssArticleMetrics;
+}
+
+Future<CuratorContentPools> loadCuratorContentPools(
   AppDatabase db,
 ) async {
   final out = <String, List<String>>{};
+  final rssMetrics = <String, RssArticleMetric>{};
 
   final jokes = await db.select(db.jokes).get();
   if (jokes.isNotEmpty) {
@@ -31,6 +59,12 @@ Future<Map<String, List<String>>> loadCuratorContentPools(
     for (final a in articles) {
       all.add(a.id);
       (byFeed[a.feedId] ??= []).add(a.id);
+      final key = (a.imageBlobKey ?? '').trim();
+      final summary = (a.summary ?? '').trim();
+      rssMetrics[a.id] = RssArticleMetric(
+        hasImage: key.isNotEmpty,
+        summaryLength: summary.length,
+      );
     }
     out['rss'] = all;
     for (final e in byFeed.entries) {
@@ -80,5 +114,5 @@ Future<Map<String, List<String>>> loadCuratorContentPools(
     }
   }
 
-  return out;
+  return CuratorContentPools(pools: out, rssArticleMetrics: rssMetrics);
 }

@@ -10,13 +10,14 @@ int triviaEliminationWindowMs(int dwellMs, {int? configOverride}) {
   return w < 1 ? dwellMs : w;
 }
 
-const int kTriviaWrongAnswerFadeMs = 320;
+const int kTriviaStrikeAnimationMs = 320;
 
-/// Time from reveal start until the last wrong option finishes fading out.
+/// Time from reveal start until the last wrong option finishes its strike-out
+/// animation.
 int triviaEliminationEndMs(int eliminationWindowMs) {
   final step = eliminationWindowMs ~/ 4;
   if (step < 1) {
-    return eliminationWindowMs + kTriviaWrongAnswerFadeMs;
+    return eliminationWindowMs + kTriviaStrikeAnimationMs;
   }
-  return 3 * step + kTriviaWrongAnswerFadeMs;
+  return 3 * step + kTriviaStrikeAnimationMs;
 }

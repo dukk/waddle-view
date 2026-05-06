@@ -202,9 +202,6 @@ class _CalendarSlidePanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(12 * s),
-        border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.28),
-        ),
       ),
       child: Padding(
         padding: EdgeInsets.all(pad),
@@ -288,7 +285,7 @@ class _UpcomingEventsPanel extends StatelessWidget {
                     Text(
                       time,
                       style: theme.textTheme.labelLarge?.copyWith(
-                        color: theme.colorScheme.primary,
+                        color: theme.colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -431,27 +428,18 @@ class _MonthDayCell extends StatelessWidget {
     final muted = theme.colorScheme.onSurface.withValues(
       alpha: cell.inCurrentMonth ? 1 : 0.38,
     );
-    final fg = cell.isToday
-        ? theme.colorScheme.onPrimaryContainer
-        : muted;
     return DecoratedBox(
       decoration: BoxDecoration(
         color: cell.isToday
-            ? theme.colorScheme.primaryContainer
+            ? theme.colorScheme.onSurface.withValues(alpha: 0.1)
             : Colors.transparent,
         borderRadius: BorderRadius.circular(8 * s),
-        border: cell.isToday
-            ? Border.all(
-                color: theme.colorScheme.primary,
-                width: 2 * s,
-              )
-            : null,
       ),
       child: Center(
         child: Text(
           '${cell.day}',
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: fg,
+            color: muted,
             fontWeight: cell.isToday ? FontWeight.w700 : FontWeight.w400,
           ),
         ),

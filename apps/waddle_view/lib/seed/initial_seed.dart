@@ -1,5 +1,7 @@
 import 'package:drift/drift.dart';
 
+import '../config/microsoft_graph_kv.dart';
+import '../persistence/config_json_documentation.dart';
 import '../persistence/database.dart';
 import '../persistence/tables.dart';
 import '../theme/display_text_scale_kv.dart';
@@ -16,12 +18,15 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
             ..where((t) => t.id.equals('stub')))
           .getSingleOrNull();
   if (existing == null) {
+    final stubDoc = providerConfigJsonDocForType('stub');
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
             id: 'stub',
             providerType: 'stub',
             enabled: const Value(true),
             pollSeconds: const Value(60),
+            configJsonSchema: Value(stubDoc.schema),
+            exampleConfigJson: Value(stubDoc.example),
           ),
         );
     await db.into(db.configKeyValues).insertOnConflictUpdate(
@@ -53,6 +58,8 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureTriviaProviderRow(db);
   await _ensureWeatherProviderRow(db);
   await _ensurePexelsProviderRow(db);
+  await _ensureMicrosoftGraphClientIdKv(db);
+  await _ensureOutlookCalendarProviderRow(db);
   await _ensureDefaultWeatherLocations(db);
   await ensureDefaultContentCategories(db);
   await ensureDefaultJokeCategories(db);
@@ -68,6 +75,7 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureNewsScreen(db);
   await _ensureNewsRightImageScreen(db);
   await _ensureNewsColumnsScreen(db);
+  await _ensureNewsStackScreen(db);
   await _ensureClockDataKeyLimit(db);
   await _ensureClockDigitalScreen(db);
   await _ensureClockAnalogScreen(db);
@@ -126,12 +134,10 @@ Future<void> _ensureCuratorSettings(AppDatabase db) async {
 
   await ensureKey(kCuratorProgramDurationSecondsKvKey, '180');
   await ensureKey(kCuratorHistoryDepthKvKey, '5');
-  await db.into(db.configKeyValues).insertOnConflictUpdate(
-        ConfigKeyValuesCompanion.insert(
-          key: 'curator.news.require_photo_for_curation',
-          value: 'true',
-        ),
-      );
+  await ensureKey(kRequireNewsPhotoForScreensKvKey, 'true');
+  await (db.delete(
+    db.configKeyValues,
+  )..where((t) => t.key.equals('curator.news.require_photo_for_curation'))).go();
 }
 
 Future<void> _ensureWelcomeScreen(AppDatabase db) async {
@@ -149,6 +155,8 @@ Future<void> _ensureWelcomeScreen(AppDatabase db) async {
           layoutJson: const Value(
             '{"v":1,"layout":"single","widgets":[{"type":"static_text","slot":"main","config":{"text":"Welcome to Waddle View"}}]}',
           ),
+          layoutJsonSchema: Value(kScreenLayoutJsonSchema),
+          exampleLayoutJson: Value(kExampleScreenLayoutJson),
           dwellSeconds: const Value(10),
           maxPlacementsPerProgram: const Value(1),
         ),
@@ -170,6 +178,8 @@ Future<void> _ensureJokeScreen(AppDatabase db) async {
           layoutJson: const Value(
             '{"v":1,"layout":"single","widgets":[{"type":"joke","slot":"main","config":{}}]}',
           ),
+          layoutJsonSchema: Value(kScreenLayoutJsonSchema),
+          exampleLayoutJson: Value(kExampleScreenLayoutJson),
           dwellSeconds: const Value(12),
           dataKey: const Value('jokes'),
         ),
@@ -187,10 +197,14 @@ Future<void> _ensureTriviaScreen(AppDatabase db) async {
         ScreenDefinitionsCompanion.insert(
           id: 'trivia',
           name: 'Trivia',
-          description: const Value('Multiple-choice trivia with reveal countdown'),
+          description: const Value(
+            'Multiple-choice trivia with progress reveal and strike-out wrong answers',
+          ),
           layoutJson: const Value(
             '{"v":1,"layout":"single","widgets":[{"type":"trivia","slot":"main","config":{}}]}',
           ),
+          layoutJsonSchema: Value(kScreenLayoutJsonSchema),
+          exampleLayoutJson: Value(kExampleScreenLayoutJson),
           dwellSeconds: const Value(16),
           maxPlacementsPerProgram: const Value(1),
           dataKey: const Value('trivia'),
@@ -213,6 +227,8 @@ Future<void> _ensureGuestWifiScreen(AppDatabase db) async {
           layoutJson: const Value(
             '{"v":1,"layout":"single","widgets":[{"type":"guest_wifi","slot":"main","config":{}}]}',
           ),
+          layoutJsonSchema: Value(kScreenLayoutJsonSchema),
+          exampleLayoutJson: Value(kExampleScreenLayoutJson),
           dwellSeconds: const Value(18),
           maxPlacementsPerProgram: const Value(1),
           dataKey: const Value('guest_wifi'),
@@ -228,10 +244,15 @@ Future<void> _ensureNewsScreen(AppDatabase db) async {
     await (db.update(db.screenDefinitions)
           ..where((t) => t.id.equals('news')))
         .write(
-          const ScreenDefinitionsCompanion(
-            dataKey: Value('news'),
-            maxPlacementsPerProgram: Value(null),
-            minPlacementsPerProgram: Value(1),
+          ScreenDefinitionsCompanion(
+            dataKey: const Value('news'),
+            maxPlacementsPerProgram: const Value(null),
+            minPlacementsPerProgram: const Value(1),
+            layoutJson: const Value(
+              '{"v":1,"layout":"single","widgets":[{"type":"rss_article","slot":"main","config":{"scrollDelayMs":2500,"trailingHoldMs":2000,"scrollPixelsPerSecond":48,"minReadMs":8000,"summaryCapacityChars":1200}}]}',
+            ),
+            layoutJsonSchema: Value(kScreenLayoutJsonSchema),
+            exampleLayoutJson: Value(kExampleScreenLayoutJson),
           ),
         );
     return;
@@ -242,8 +263,10 @@ Future<void> _ensureNewsScreen(AppDatabase db) async {
           name: 'News',
           description: const Value('RSS story with image and scrolling summary'),
           layoutJson: const Value(
-            '{"v":1,"layout":"single","widgets":[{"type":"rss_article","slot":"main","config":{"scrollDelayMs":2500,"trailingHoldMs":2000,"scrollPixelsPerSecond":48,"minReadMs":8000}}]}',
+            '{"v":1,"layout":"single","widgets":[{"type":"rss_article","slot":"main","config":{"scrollDelayMs":2500,"trailingHoldMs":2000,"scrollPixelsPerSecond":48,"minReadMs":8000,"summaryCapacityChars":1200}}]}',
           ),
+          layoutJsonSchema: Value(kScreenLayoutJsonSchema),
+          exampleLayoutJson: Value(kExampleScreenLayoutJson),
           dwellSeconds: const Value(12),
           dataKey: const Value('news'),
         ),
@@ -258,8 +281,13 @@ Future<void> _ensureNewsRightImageScreen(AppDatabase db) async {
     await (db.update(db.screenDefinitions)
           ..where((t) => t.id.equals('news_right')))
         .write(
-          const ScreenDefinitionsCompanion(
-            dataKey: Value('news'),
+          ScreenDefinitionsCompanion(
+            dataKey: const Value('news'),
+            layoutJson: const Value(
+              '{"v":1,"layout":"single","widgets":[{"type":"rss_article","slot":"main","config":{"scrollDelayMs":2500,"trailingHoldMs":2000,"scrollPixelsPerSecond":48,"minReadMs":8000,"imageOnRight":true,"summaryCapacityChars":1200}}]}',
+            ),
+            layoutJsonSchema: Value(kScreenLayoutJsonSchema),
+            exampleLayoutJson: Value(kExampleScreenLayoutJson),
           ),
         );
     return;
@@ -272,8 +300,10 @@ Future<void> _ensureNewsRightImageScreen(AppDatabase db) async {
             'RSS story with image on the right and scrolling summary',
           ),
           layoutJson: const Value(
-            '{"v":1,"layout":"single","widgets":[{"type":"rss_article","slot":"main","config":{"scrollDelayMs":2500,"trailingHoldMs":2000,"scrollPixelsPerSecond":48,"minReadMs":8000,"imageOnRight":true}}]}',
+            '{"v":1,"layout":"single","widgets":[{"type":"rss_article","slot":"main","config":{"scrollDelayMs":2500,"trailingHoldMs":2000,"scrollPixelsPerSecond":48,"minReadMs":8000,"imageOnRight":true,"summaryCapacityChars":1200}}]}',
           ),
+          layoutJsonSchema: Value(kScreenLayoutJsonSchema),
+          exampleLayoutJson: Value(kExampleScreenLayoutJson),
           dwellSeconds: const Value(12),
           dataKey: const Value('news'),
         ),
@@ -288,8 +318,13 @@ Future<void> _ensureNewsColumnsScreen(AppDatabase db) async {
     await (db.update(db.screenDefinitions)
           ..where((t) => t.id.equals('news_columns')))
         .write(
-          const ScreenDefinitionsCompanion(
-            dataKey: Value('news'),
+          ScreenDefinitionsCompanion(
+            dataKey: const Value('news'),
+            layoutJson: const Value(
+              '{"v":1,"layout":"single","widgets":[{"type":"rss_article_columns","slot":"main","config":{"columnCount":3,"minReadMs":10000,"summaryCapacityCharsPerColumn":220}}]}',
+            ),
+            layoutJsonSchema: Value(kScreenLayoutJsonSchema),
+            exampleLayoutJson: Value(kExampleScreenLayoutJson),
           ),
         );
     return;
@@ -302,8 +337,48 @@ Future<void> _ensureNewsColumnsScreen(AppDatabase db) async {
             'Three RSS stories: image above title and summary in each column',
           ),
           layoutJson: const Value(
-            '{"v":1,"layout":"single","widgets":[{"type":"rss_article_columns","slot":"main","config":{"columnCount":3,"minReadMs":10000}}]}',
+            '{"v":1,"layout":"single","widgets":[{"type":"rss_article_columns","slot":"main","config":{"columnCount":3,"minReadMs":10000,"summaryCapacityCharsPerColumn":220}}]}',
           ),
+          layoutJsonSchema: Value(kScreenLayoutJsonSchema),
+          exampleLayoutJson: Value(kExampleScreenLayoutJson),
+          dwellSeconds: const Value(16),
+          dataKey: const Value('news'),
+        ),
+      );
+}
+
+Future<void> _ensureNewsStackScreen(AppDatabase db) async {
+  final row = await (db.select(db.screenDefinitions)
+        ..where((t) => t.id.equals('news_stack')))
+      .getSingleOrNull();
+  if (row != null) {
+    await (db.update(db.screenDefinitions)
+          ..where((t) => t.id.equals('news_stack')))
+        .write(
+          ScreenDefinitionsCompanion(
+            dataKey: const Value('news'),
+            layoutJson: const Value(
+              '{"v":1,"layout":"single","widgets":[{"type":"rss_article_stack","slot":"main","config":{"minReadMs":12000,"imagePanelFraction":0.32,"qrLogicalSize":112,"summaryCapacityCharsPerSlot":320}}]}',
+            ),
+            layoutJsonSchema: Value(kScreenLayoutJsonSchema),
+            exampleLayoutJson: Value(kExampleScreenLayoutJson),
+          ),
+        );
+    return;
+  }
+  await db.into(db.screenDefinitions).insert(
+        ScreenDefinitionsCompanion.insert(
+          id: 'news_stack',
+          name: 'News (stack of 2)',
+          description: const Value(
+            'Two RSS stories stacked: top image right + QR left, '
+            'bottom image left + QR right; title and summary between',
+          ),
+          layoutJson: const Value(
+            '{"v":1,"layout":"single","widgets":[{"type":"rss_article_stack","slot":"main","config":{"minReadMs":12000,"imagePanelFraction":0.32,"qrLogicalSize":112,"summaryCapacityCharsPerSlot":320}}]}',
+          ),
+          layoutJsonSchema: Value(kScreenLayoutJsonSchema),
+          exampleLayoutJson: Value(kExampleScreenLayoutJson),
           dwellSeconds: const Value(16),
           dataKey: const Value('news'),
         ),
@@ -328,10 +403,12 @@ Future<void> _ensureClockDigitalScreen(AppDatabase db) async {
     await (db.update(db.screenDefinitions)
           ..where((t) => t.id.equals('clock_digital')))
         .write(
-          const ScreenDefinitionsCompanion(
-            dataKey: Value('clock'),
-            minPlacementsPerProgram: Value(0),
-            maxPlacementsPerProgram: Value(1),
+          ScreenDefinitionsCompanion(
+            dataKey: const Value('clock'),
+            minPlacementsPerProgram: const Value(0),
+            maxPlacementsPerProgram: const Value(1),
+            layoutJsonSchema: Value(kScreenLayoutJsonSchema),
+            exampleLayoutJson: Value(kExampleScreenLayoutJson),
           ),
         );
     return;
@@ -344,6 +421,8 @@ Future<void> _ensureClockDigitalScreen(AppDatabase db) async {
           layoutJson: const Value(
             '{"v":1,"layout":"single","widgets":[{"type":"digital_clock","slot":"main","config":{}}]}',
           ),
+          layoutJsonSchema: Value(kScreenLayoutJsonSchema),
+          exampleLayoutJson: Value(kExampleScreenLayoutJson),
           dwellSeconds: const Value(16),
           dataKey: const Value('clock'),
           minPlacementsPerProgram: const Value(0),
@@ -360,10 +439,12 @@ Future<void> _ensureClockAnalogScreen(AppDatabase db) async {
     await (db.update(db.screenDefinitions)
           ..where((t) => t.id.equals('clock_analog')))
         .write(
-          const ScreenDefinitionsCompanion(
-            dataKey: Value('clock'),
-            minPlacementsPerProgram: Value(0),
-            maxPlacementsPerProgram: Value(1),
+          ScreenDefinitionsCompanion(
+            dataKey: const Value('clock'),
+            minPlacementsPerProgram: const Value(0),
+            maxPlacementsPerProgram: const Value(1),
+            layoutJsonSchema: Value(kScreenLayoutJsonSchema),
+            exampleLayoutJson: Value(kExampleScreenLayoutJson),
           ),
         );
     return;
@@ -376,6 +457,8 @@ Future<void> _ensureClockAnalogScreen(AppDatabase db) async {
           layoutJson: const Value(
             '{"v":1,"layout":"single","widgets":[{"type":"analog_clock","slot":"main","config":{}}]}',
           ),
+          layoutJsonSchema: Value(kScreenLayoutJsonSchema),
+          exampleLayoutJson: Value(kExampleScreenLayoutJson),
           dwellSeconds: const Value(16),
           dataKey: const Value('clock'),
           minPlacementsPerProgram: const Value(0),
@@ -401,6 +484,8 @@ Future<void> _ensureCalendarScreen(AppDatabase db) async {
           layoutJson: const Value(
             '{"v":1,"layout":"single","widgets":[{"type":"calendar_month","slot":"main","config":{}}]}',
           ),
+          layoutJsonSchema: Value(kScreenLayoutJsonSchema),
+          exampleLayoutJson: Value(kExampleScreenLayoutJson),
           dwellSeconds: const Value(22),
           dataKey: const Value('calendar'),
           minPlacementsPerProgram: const Value(1),
@@ -427,6 +512,8 @@ Future<void> _ensureLocalApiScreen(AppDatabase db) async {
           layoutJson: const Value(
             '{"v":1,"layout":"single","widgets":[{"type":"local_api","slot":"main","config":{}}]}',
           ),
+          layoutJsonSchema: Value(kScreenLayoutJsonSchema),
+          exampleLayoutJson: Value(kExampleScreenLayoutJson),
           dwellSeconds: const Value(16),
           dataKey: const Value('dev_local_api'),
           minPlacementsPerProgram: const Value(0),
@@ -453,6 +540,8 @@ Future<void> _ensureAdminSetupScreen(AppDatabase db) async {
           layoutJson: const Value(
             '{"v":1,"layout":"single","widgets":[{"type":"admin_setup","slot":"main","config":{}}]}',
           ),
+          layoutJsonSchema: Value(kScreenLayoutJsonSchema),
+          exampleLayoutJson: Value(kExampleScreenLayoutJson),
           dwellSeconds: const Value(18),
           frequencyWeight: const Value(200),
           minGapBetweenShowsSeconds: const Value(0),
@@ -478,6 +567,8 @@ Future<void> _ensureWeatherScreen(AppDatabase db) async {
           layoutJson: const Value(
             '{"v":1,"layout":"single","widgets":[{"type":"weather","slot":"main","config":{"locationId":"salt_lake_city_ut"}}]}',
           ),
+          layoutJsonSchema: Value(kScreenLayoutJsonSchema),
+          exampleLayoutJson: Value(kExampleScreenLayoutJson),
           dwellSeconds: const Value(14),
           dataKey: const Value('weather'),
           minPlacementsPerProgram: const Value(1),
@@ -498,12 +589,15 @@ Future<void> _ensureProviderRow(
   if (row != null) {
     return;
   }
+  final doc = providerConfigJsonDocForType(providerType);
   await db.into(db.providerSettings).insert(
         ProviderSettingsCompanion.insert(
           id: id,
           providerType: providerType,
           enabled: const Value(true),
           pollSeconds: Value(pollSeconds),
+          configJsonSchema: Value(doc.schema),
+          exampleConfigJson: Value(doc.example),
         ),
       );
 }
@@ -516,17 +610,20 @@ Future<void> _ensureJokesProviderRow(AppDatabase db) async {
   if (row != null) {
     return;
   }
+  final jokesDoc = providerConfigJsonDocForType('jokes');
   await db.into(db.providerSettings).insert(
         ProviderSettingsCompanion.insert(
           id: 'jokes',
           providerType: 'jokes',
           enabled: const Value(true),
           pollSeconds: const Value(3600),
-          extraJson: const Value(
+          configJson: const Value(
             '{"jokesPerDay":10,"maxJokesPerTwoHours":20,"twoHourWindowMs":7200000,'
             '"jokeRetentionDays":14,"model":"gpt-4o-mini",'
             '"globalPrompt":"You write original, family-friendly jokes."}',
           ),
+          configJsonSchema: Value(jokesDoc.schema),
+          exampleConfigJson: Value(jokesDoc.example),
         ),
       );
 }
@@ -539,18 +636,21 @@ Future<void> _ensureTriviaProviderRow(AppDatabase db) async {
   if (row != null) {
     return;
   }
+  final triviaDoc = providerConfigJsonDocForType('trivia');
   await db.into(db.providerSettings).insert(
         ProviderSettingsCompanion.insert(
           id: 'trivia',
           providerType: 'trivia',
           enabled: const Value(true),
           pollSeconds: const Value(3600),
-          extraJson: const Value(
+          configJson: const Value(
             '{"questionsPerDay":3,"maxQuestionsPerTwoHours":20,'
             '"twoHourWindowMs":7200000,"questionRetentionDays":14,'
             '"model":"gpt-4o-mini",'
             '"globalPrompt":"You write clear, family-friendly multiple-choice trivia."}',
           ),
+          configJsonSchema: Value(triviaDoc.schema),
+          exampleConfigJson: Value(triviaDoc.example),
         ),
       );
 }
@@ -563,6 +663,7 @@ Future<void> _ensureWeatherProviderRow(AppDatabase db) async {
   if (row != null) {
     return;
   }
+  final weatherDoc = providerConfigJsonDocForType('weather');
   await db.into(db.providerSettings).insert(
         ProviderSettingsCompanion.insert(
           id: 'weather',
@@ -570,10 +671,52 @@ Future<void> _ensureWeatherProviderRow(AppDatabase db) async {
           enabled: const Value(true),
           pollSeconds: const Value(900),
           baseUrl: const Value('https://api.openweathermap.org'),
-          extraJson: const Value(
+          configJson: const Value(
             '{"units":"imperial","lang":"en","hourlyCount":6,'
             '"defaultLocation":{"name":"Default","lat":40.7128,"lon":-74.0060}}',
           ),
+          configJsonSchema: Value(weatherDoc.schema),
+          exampleConfigJson: Value(weatherDoc.example),
+        ),
+      );
+}
+
+Future<void> _ensureMicrosoftGraphClientIdKv(AppDatabase db) async {
+  final row = await (db.select(db.configKeyValues)
+        ..where((t) => t.key.equals(kMicrosoftGraphClientIdKvKey)))
+      .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  await db.into(db.configKeyValues).insert(
+        ConfigKeyValuesCompanion.insert(
+          key: kMicrosoftGraphClientIdKvKey,
+          value: kDefaultMicrosoftGraphClientId,
+        ),
+      );
+}
+
+Future<void> _ensureOutlookCalendarProviderRow(AppDatabase db) async {
+  final row =
+      await (db.select(db.providerSettings)
+            ..where((t) => t.id.equals('outlook_calendar')))
+          .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  final outlookDoc = providerConfigJsonDocForType('outlook_calendar');
+  await db.into(db.providerSettings).insert(
+        ProviderSettingsCompanion.insert(
+          id: 'outlook_calendar',
+          providerType: 'outlook_calendar',
+          enabled: const Value(false),
+          pollSeconds: const Value(3600),
+          baseUrl: const Value('https://graph.microsoft.com/v1.0'),
+          configJson: const Value(
+            '{"accounts":[],"pastDays":14,"futureDays":14}',
+          ),
+          configJsonSchema: Value(outlookDoc.schema),
+          exampleConfigJson: Value(outlookDoc.example),
         ),
       );
 }
@@ -586,6 +729,7 @@ Future<void> _ensurePexelsProviderRow(AppDatabase db) async {
   if (row != null) {
     return;
   }
+  final pexelsDoc = providerConfigJsonDocForType('pexels');
   await db.into(db.providerSettings).insert(
         ProviderSettingsCompanion.insert(
           id: 'pexels',
@@ -593,10 +737,12 @@ Future<void> _ensurePexelsProviderRow(AppDatabase db) async {
           enabled: const Value(true),
           pollSeconds: const Value(1800),
           baseUrl: const Value('https://api.pexels.com'),
-          extraJson: const Value(
+          configJson: const Value(
             '{"maxPhotos":100,"maxVideos":100,"photosPerHour":2,"videosPerHour":2,'
             '"minVideoSeconds":11,"maxVideoSeconds":29,"sources":[]}',
           ),
+          configJsonSchema: Value(pexelsDoc.schema),
+          exampleConfigJson: Value(pexelsDoc.example),
         ),
       );
 }
@@ -620,6 +766,8 @@ Future<void> _ensurePexelsPhotoScreen(AppDatabase db) async {
             '{"type":"pexels_photo","slot":"main","config":{}}'
             ']}',
           ),
+          layoutJsonSchema: Value(kScreenLayoutJsonSchema),
+          exampleLayoutJson: Value(kExampleScreenLayoutJson),
           dwellSeconds: const Value(12),
           dataKey: const Value('pexels_photo'),
         ),
@@ -645,6 +793,8 @@ Future<void> _ensurePexelsVideoScreen(AppDatabase db) async {
             '{"type":"pexels_video","slot":"main","config":{"loop":true,"unmuted":false}}'
             ']}',
           ),
+          layoutJsonSchema: Value(kScreenLayoutJsonSchema),
+          exampleLayoutJson: Value(kExampleScreenLayoutJson),
           dwellSeconds: const Value(25),
           dataKey: const Value('pexels_video'),
         ),

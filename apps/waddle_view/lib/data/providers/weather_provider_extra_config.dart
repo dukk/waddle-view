@@ -32,8 +32,8 @@ class WeatherProviderExtraConfig {
   final WeatherLocationConfig defaultLocation;
   final int hourlyCount;
 
-  static WeatherProviderExtraConfig parse(String? extraJson) {
-    if (extraJson == null || extraJson.trim().isEmpty) {
+  static WeatherProviderExtraConfig parse(String? configJson) {
+    if (configJson == null || configJson.trim().isEmpty) {
       return const WeatherProviderExtraConfig(
         units: kDefaultWeatherUnits,
         language: kDefaultWeatherLanguage,
@@ -46,7 +46,7 @@ class WeatherProviderExtraConfig {
       );
     }
     try {
-      final decoded = jsonDecode(extraJson);
+      final decoded = jsonDecode(configJson);
       if (decoded is! Map) {
         return parse(null);
       }

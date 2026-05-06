@@ -31,6 +31,7 @@ import 'dashboard/screen_rotator.dart';
 import 'data/data_write_context.dart';
 import 'data/engine/data_collection_engine.dart';
 import 'data/providers/joke_data_provider.dart';
+import 'data/providers/outlook_calendar_data_provider.dart';
 import 'data/providers/pexels_data_provider.dart';
 import 'data/providers/rss_news_data_provider.dart';
 import 'data/providers/trivia_data_provider.dart';
@@ -106,6 +107,7 @@ Future<void> _waddleBootstrap() async {
 
     final secrets = FlutterSecureSecretStore();
     await applyJokesTokenFromDevDotenv(secrets);
+    await applyMicrosoftGraphTokensFromDevDotenv(secrets);
     final resolver = ProviderConfigResolver(db, secrets);
     final blobs = FileSystemBlobStore(mediaDir);
     final ctx = DataWriteContextImpl(
@@ -137,6 +139,7 @@ Future<void> _waddleBootstrap() async {
         TriviaDataProvider(),
         WeatherDataProvider(),
         PexelsDataProvider(),
+        OutlookCalendarDataProvider(),
       ],
       context: ctx,
       sleeper: SystemSleeper(),

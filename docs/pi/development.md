@@ -38,7 +38,7 @@ The joke collector ([`JokeDataProvider`](../../apps/waddle_view/lib/data/provide
 | Provider id (also `provider_settings.id`) | `jokes` (see [`kJokeProviderId`](../../apps/waddle_view/lib/data/providers/joke_data_provider.dart)) |
 | Secret key string | `provider:access_token:jokes` (prefix [`ProviderConfigResolver.accessTokenKey`](../../apps/waddle_view/lib/config/provider_config_resolver.dart) + `:` + provider id) |
 | Secret value | Your OpenAI API key (for example `sk-…`) |
-| Non-secret config | `provider_settings` row for `jokes`: `base_url` (optional override; default API root is defined on the provider), `extra_json` for model and prompts — see seed and [`JokeProviderExtraConfig`](../../apps/waddle_view/lib/data/providers/joke_provider_extra_config.dart) |
+| Non-secret config | `provider_settings` row for `jokes`: `base_url` (optional override; default API root is defined on the provider), `config_json` for model and prompts — see seed and [`JokeProviderExtraConfig`](../../apps/waddle_view/lib/data/providers/joke_provider_extra_config.dart) |
 
 If no token is stored (null or empty), [`collect`](../../apps/waddle_view/lib/data/providers/joke_data_provider.dart) exits early and logs that the API token is missing.
 

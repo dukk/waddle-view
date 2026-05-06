@@ -14,8 +14,8 @@ void main() {
     );
   });
 
-  test('elimination end includes last fade duration', () {
-    expect(triviaEliminationEndMs(8000), 3 * 2000 + kTriviaWrongAnswerFadeMs);
+  test('elimination end includes last strike animation duration', () {
+    expect(triviaEliminationEndMs(8000), 3 * 2000 + kTriviaStrikeAnimationMs);
     expect(triviaEliminationEndMs(3), greaterThan(3));
   });
 }

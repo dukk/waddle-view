@@ -19,7 +19,9 @@ void main() {
     );
   });
 
-  testWidgets('shows question then fades wrong answers', (tester) async {
+  testWidgets('shows question, progress bar, then strikes wrong answers', (
+    tester,
+  ) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await ensureDefaultTriviaCategories(db);
@@ -65,39 +67,150 @@ void main() {
 
     expect(find.text('2 + 2?'), findsOneWidget);
     expect(find.text('Four'), findsOneWidget);
-    expect(find.byKey(const ValueKey<String>('trivia_countdown')), findsOneWidget);
-    final countdownText = tester.widget<Text>(
-      find.byKey(const ValueKey<String>('trivia_countdown')),
+    expect(
+      find.byKey(const ValueKey<String>('trivia_reveal_progress')),
+      findsOneWidget,
     );
-    expect(countdownText.textAlign, TextAlign.center);
-    expect((countdownText.style?.fontSize ?? 0) >= 48, isTrue);
 
     final answerBefore = tester.widget<Text>(find.text('Four'));
     expect(answerBefore.style?.fontWeight, isNot(FontWeight.w700));
-
-    final opacitiesStart = tester
-        .widgetList<AnimatedOpacity>(find.byType(AnimatedOpacity))
-        .map((w) => w.opacity)
-        .toList();
-    expect(opacitiesStart.every((o) => o == 1), isTrue);
 
     final windowMs = triviaEliminationWindowMs(slide.dwellMs);
     final endMs = triviaEliminationEndMs(windowMs);
     await tester.pump(Duration(milliseconds: endMs + 400));
     await tester.pumpAndSettle();
 
-    final opacitiesEnd = tester
-        .widgetList<AnimatedOpacity>(find.byType(AnimatedOpacity))
-        .toList();
-    expect(opacitiesEnd.where((w) => w.opacity == 1).length, 1);
-    expect(opacitiesEnd.where((w) => w.opacity == 0).length, 3);
+    expect(find.text('3'), findsOneWidget);
+    expect(find.text('5'), findsOneWidget);
+    expect(find.text('22'), findsOneWidget);
+    expect(find.text('Four'), findsOneWidget);
+    expect(
+      find.byType(CustomPaint),
+      findsWidgets,
+    );
 
     await tester.pump(const Duration(seconds: 2));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey<String>('trivia_countdown')), findsNothing);
+    expect(
+      find.byKey(const ValueKey<String>('trivia_reveal_progress')),
+      findsNothing,
+    );
 
     final answerAfter = tester.widget<Text>(find.text('Four'));
     expect(answerAfter.style?.fontWeight, FontWeight.w700);
+
+    await db.close();
+  });
+
+  testWidgets('short options use two-column grid key', (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureDefaultTriviaCategories(db);
+    await db.into(db.triviaQuestions).insert(
+          TriviaQuestionsCompanion.insert(
+            id: 't1',
+            categoryId: 'science',
+            question: 'Pick one',
+            optionA: 'aa',
+            optionB: 'bb',
+            optionC: 'cc',
+            optionD: 'dd',
+            correctOption: 'A',
+            createdAtMs: DateTime.fromMillisecondsSinceEpoch(1),
+          ),
+        );
+
+    final slide = ResolvedSlide(
+      screenId: 'trivia',
+      dwellMs: 5000,
+      layoutJson: '{}',
+    );
+    const spec = ParsedWidgetSpec(
+      type: 'trivia',
+      slot: 'main',
+      config: {},
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.light(),
+        home: Scaffold(
+          body: TriviaSlideWidget(
+            db: db,
+            slide: slide,
+            spec: spec,
+            theme: ThemeData.light(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey<String>('trivia_answers_grid')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('trivia_answers_column')),
+      findsNothing,
+    );
+
+    await db.close();
+  });
+
+  testWidgets('long option uses single-column key', (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureDefaultTriviaCategories(db);
+    final long = 'x' * (kTriviaTwoColumnMaxOptionChars + 1);
+    await db.into(db.triviaQuestions).insert(
+          TriviaQuestionsCompanion.insert(
+            id: 't1',
+            categoryId: 'science',
+            question: 'Pick one',
+            optionA: 'short',
+            optionB: long,
+            optionC: 'cc',
+            optionD: 'dd',
+            correctOption: 'A',
+            createdAtMs: DateTime.fromMillisecondsSinceEpoch(1),
+          ),
+        );
+
+    final slide = ResolvedSlide(
+      screenId: 'trivia',
+      dwellMs: 5000,
+      layoutJson: '{}',
+    );
+    const spec = ParsedWidgetSpec(
+      type: 'trivia',
+      slot: 'main',
+      config: {},
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.light(),
+        home: Scaffold(
+          body: TriviaSlideWidget(
+            db: db,
+            slide: slide,
+            spec: spec,
+            theme: ThemeData.light(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey<String>('trivia_answers_column')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('trivia_answers_grid')),
+      findsNothing,
+    );
 
     await db.close();
   });
