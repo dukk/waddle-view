@@ -4,23 +4,16 @@ import 'dart:math' as math;
 import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 
+import '../blob/blob_store.dart';
 import '../clock.dart';
 import '../curator/screen_layout_parse.dart';
 import '../persistence/database.dart';
 import 'calendar_month_grid.dart';
+import 'calendar_upcoming_layout.dart';
+import 'content_category_material_icon.dart';
 import 'dashboard_viewport_scope.dart';
 
 const _weekdayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const _weekdayLabelsLong = [
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-  'Sunday',
-];
-
 const _monthNamesShort = [
   'Jan',
   'Feb',
@@ -36,17 +29,40 @@ const _monthNamesShort = [
   'Dec',
 ];
 
+/// Minimum height for the Sun–Sat row so [Text] is not clipped by a tight [SizedBox].
+///
+/// Kept public for layout tests that compare against [TextPainter] metrics.
+double calendarWeekdayHeaderRowMinHeight(
+  BuildContext context,
+  TextStyle? weekdayStyle,
+  double layoutScale,
+  bool layoutCompact,
+) {
+  final s = layoutScale;
+  final minH = (layoutCompact ? 16.0 : 20.0) * s;
+  if (weekdayStyle == null) {
+    return minH;
+  }
+  final fontSize = weekdayStyle.fontSize ?? 12.0;
+  final lineFactor = weekdayStyle.height ?? 1.2;
+  final scaled = MediaQuery.textScalerOf(context).scale(fontSize);
+  final lineBox = scaled * lineFactor;
+  return math.max(minH, lineBox + 4 * s);
+}
+
 /// Month grid and upcoming events in two surfaced panels with consistent spacing.
 class CalendarMonthSlideWidget extends StatefulWidget {
   const CalendarMonthSlideWidget({
     super.key,
     required this.db,
+    required this.blobs,
     required this.spec,
     required this.theme,
     this.clock = const SystemClock(),
   });
 
   final AppDatabase db;
+  final BlobStore blobs;
   final ParsedWidgetSpec spec;
   final ThemeData theme;
   final Clock clock;
@@ -119,7 +135,7 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
         return SizedBox(
           width: w,
           height: height,
-          child: StreamBuilder<List<CalendarEvent>>(
+          child: StreamBuilder<CalendarMonthStreamBundle>(
             key: ValueKey<int>(_startMsBoundary),
             stream: (widget.db.select(widget.db.calendarEvents)
                   ..where(
@@ -128,19 +144,40 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
                     ),
                   )
                   ..orderBy([(t) => OrderingTerm.asc(t.startMs)]))
-                .watch(),
+                .watch()
+                .asyncMap(
+                  (events) => buildCalendarMonthStreamBundle(
+                    widget.db,
+                    widget.blobs,
+                    events,
+                  ),
+                ),
             builder: (context, snapshot) {
               final now = widget.clock.now().toLocal();
               final startOfToday = DateTime(now.year, now.month, now.day);
               final nextFiveDaysEnd = startOfToday.add(const Duration(days: 5));
-              final allEvents = snapshot.data ?? [];
-              final events = allEvents
+              final bundle = snapshot.data;
+              final allEvents = bundle?.events ?? [];
+              final filtered = allEvents
                   .where(
                     (event) =>
                         !event.startMs.isBefore(startOfToday) &&
                         event.startMs.isBefore(nextFiveDaysEnd),
                   )
                   .toList();
+              final deduped = dedupeCalendarEventsForDisplay(filtered);
+              final rowByEventId = {
+                for (final r in bundle?.rows ?? <CalendarSlideEventRow>[])
+                  r.event.id: r,
+              };
+              final upcomingRows = deduped
+                  .map((e) => rowByEventId[e.id])
+                  .whereType<CalendarSlideEventRow>()
+                  .toList();
+              final listItems = buildCalendarUpcomingListItems(
+                rows: upcomingRows,
+                todayLocal: startOfToday,
+              );
               final monthAnchor = DateTime(now.year, now.month, now.day);
               final eventDaysInMonth = allEvents
                   .where(
@@ -197,8 +234,8 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
                             layoutCompact: layoutCompact,
                             child: _UpcomingEventsPanel(
                               snapshot: snapshot,
-                              events: events,
-                              todayLocal: startOfToday,
+                              listItems: listItems,
+                              hasUpcomingRows: upcomingRows.isNotEmpty,
                               theme: widget.theme,
                               layoutScale: s,
                               layoutCompact: layoutCompact,
@@ -245,16 +282,16 @@ class _CalendarSlidePanel extends StatelessWidget {
 class _UpcomingEventsPanel extends StatelessWidget {
   const _UpcomingEventsPanel({
     required this.snapshot,
-    required this.events,
-    required this.todayLocal,
+    required this.listItems,
+    required this.hasUpcomingRows,
     required this.theme,
     required this.layoutScale,
     required this.layoutCompact,
   });
 
-  final AsyncSnapshot<List<CalendarEvent>> snapshot;
-  final List<CalendarEvent> events;
-  final DateTime todayLocal;
+  final AsyncSnapshot<CalendarMonthStreamBundle> snapshot;
+  final List<CalendarUpcomingListItem> listItems;
+  final bool hasUpcomingRows;
   final ThemeData theme;
   final double layoutScale;
   final bool layoutCompact;
@@ -265,6 +302,7 @@ class _UpcomingEventsPanel extends StatelessWidget {
     final muted = theme.textTheme.bodyMedium?.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
     );
+    final iconColor = theme.colorScheme.onSurfaceVariant;
     final headingStyle = (layoutCompact
             ? theme.textTheme.titleMedium
             : theme.textTheme.titleLarge)
@@ -272,7 +310,8 @@ class _UpcomingEventsPanel extends StatelessWidget {
       fontWeight: FontWeight.w600,
     );
     final headingGap = (layoutCompact ? 6.0 : 12.0) * s;
-    final groupedEvents = _buildGroupedEvents(events, todayLocal);
+    final timeWidth = (layoutCompact ? 64.0 : 76.0) * s;
+    final iconCol = 28.0 * s;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -291,7 +330,7 @@ class _UpcomingEventsPanel extends StatelessWidget {
               ),
             ),
           )
-        else if (events.isEmpty)
+        else if (!hasUpcomingRows)
           Expanded(
             child: Center(
               child: Text(
@@ -305,12 +344,12 @@ class _UpcomingEventsPanel extends StatelessWidget {
           Expanded(
             child: ListView.separated(
               padding: EdgeInsets.zero,
-              itemCount: groupedEvents.length,
+              itemCount: listItems.length,
               separatorBuilder: (context, index) =>
                   SizedBox(height: 12 * s),
               itemBuilder: (context, i) {
-                final item = groupedEvents[i];
-                if (item is _UpcomingEventHeadingItem) {
+                final item = listItems[i];
+                if (item is CalendarUpcomingDayHeading) {
                   return Text(
                     item.label,
                     style: theme.textTheme.titleSmall?.copyWith(
@@ -319,11 +358,13 @@ class _UpcomingEventsPanel extends StatelessWidget {
                     ),
                   );
                 }
-                final row = item as _UpcomingEventRowItem;
-                final e = row.event;
-                final time = formatCalendarEventListTime(e.startMs, e.allDay);
+                final entry = item as CalendarUpcomingEventEntry;
+                final slideRow = entry.row;
+                final e = slideRow.event;
                 final loc = e.location;
-                final timeWidth = (layoutCompact ? 64.0 : 76.0) * s;
+                final cat = slideRow.category;
+                final hasIcon = slideRow.categoryIconBytes != null ||
+                    (cat?.materialIconName?.trim().isNotEmpty ?? false);
                 return Padding(
                   padding: EdgeInsets.only(left: 8 * s),
                   child: Row(
@@ -331,15 +372,38 @@ class _UpcomingEventsPanel extends StatelessWidget {
                     children: [
                       SizedBox(
                         width: timeWidth,
-                        child: Text(
-                          time,
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                        child: entry.showTimeColumn
+                            ? Text(
+                                entry.timeLabel,
+                                style: theme.textTheme.labelLarge?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              )
+                            : const SizedBox.shrink(),
                       ),
                       SizedBox(width: 10 * s),
+                      if (hasIcon) ...[
+                        SizedBox(
+                          width: iconCol,
+                          height: iconCol,
+                          child: slideRow.categoryIconBytes != null
+                              ? Image.memory(
+                                  slideRow.categoryIconBytes!,
+                                  width: iconCol,
+                                  height: iconCol,
+                                  fit: BoxFit.contain,
+                                )
+                              : Icon(
+                                  contentCategoryMaterialIcon(
+                                    slideRow.category?.materialIconName,
+                                  ),
+                                  size: iconCol,
+                                  color: iconColor,
+                                ),
+                        ),
+                        SizedBox(width: 8 * s),
+                      ],
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -421,7 +485,12 @@ class _MonthGridPanel extends StatelessWidget {
               final rows = math.max(1, cells.length ~/ 7);
               final spacing = 6 * s;
               final weekdayGridGap = (layoutCompact ? 4.0 : 8.0) * s;
-              final weekdayRowHeight = (layoutCompact ? 16.0 : 20.0) * s;
+              final weekdayRowHeight = calendarWeekdayHeaderRowMinHeight(
+                context,
+                weekdayStyle,
+                s,
+                layoutCompact,
+              );
               final usableW = gridConstraints.maxWidth;
               final usableH = math.max(
                 1.0,
@@ -550,51 +619,4 @@ class _MonthDayCell extends StatelessWidget {
       ),
     );
   }
-}
-
-List<_UpcomingEventListItem> _buildGroupedEvents(
-  List<CalendarEvent> events,
-  DateTime todayLocal,
-) {
-  final grouped = <DateTime, List<CalendarEvent>>{};
-  for (final event in events) {
-    final local = event.startMs.toLocal();
-    final key = DateTime(local.year, local.month, local.day);
-    grouped.putIfAbsent(key, () => <CalendarEvent>[]).add(event);
-  }
-  final days = grouped.keys.toList()..sort();
-  final out = <_UpcomingEventListItem>[];
-  for (final day in days) {
-    out.add(_UpcomingEventHeadingItem(_dayHeading(day, todayLocal)));
-    final items = grouped[day]!..sort((a, b) => a.startMs.compareTo(b.startMs));
-    for (final event in items) {
-      out.add(_UpcomingEventRowItem(event));
-    }
-  }
-  return out;
-}
-
-String _dayHeading(DateTime day, DateTime firstDay) {
-  final delta = day.difference(firstDay).inDays;
-  if (delta == 0) {
-    return 'Today';
-  }
-  if (delta == 1) {
-    return 'Tomorrow';
-  }
-  return _weekdayLabelsLong[day.weekday - 1];
-}
-
-sealed class _UpcomingEventListItem {}
-
-class _UpcomingEventHeadingItem extends _UpcomingEventListItem {
-  _UpcomingEventHeadingItem(this.label);
-
-  final String label;
-}
-
-class _UpcomingEventRowItem extends _UpcomingEventListItem {
-  _UpcomingEventRowItem(this.event);
-
-  final CalendarEvent event;
 }

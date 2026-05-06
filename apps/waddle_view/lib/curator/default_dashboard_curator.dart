@@ -23,11 +23,13 @@ class DefaultDashboardCurator implements DashboardCurator {
     final kv = await _read.loadKeyValuesForCuration();
     final news = await _read.loadNewsCandidatesForTicker();
     final currentWeather = await _read.loadCurrentWeatherForTicker();
+    final tickerDefs = await _read.loadTickerDefinitionsForCuration();
     final items = buildTickerItemsForMarquee(
       kv: kv,
       nowLocal: _clock.now().toLocal(),
       newsCandidates: news,
       currentWeather: currentWeather,
+      definitions: tickerDefs,
     );
     await _tickerStore.replaceAll(items);
     final kinds = items.map((e) => e.kind).join(', ');

@@ -1,31 +1,35 @@
 import 'dart:convert';
 
+import 'calendar_provider_calendar_entry.dart';
+
 /// One mailbox (UPN or `me`) and optional calendar display names or Graph ids.
 class OutlookMailboxSource {
   const OutlookMailboxSource({
     required this.mailbox,
     required this.calendars,
+    this.defaultCategoryId,
+    this.categoryMap = const {},
   });
 
   final String mailbox;
   /// Display names or calendar `id` strings. Empty means the user's default calendar only.
-  final List<String> calendars;
+  final List<ProviderCalendarEntry> calendars;
+  /// Applied to events from the default calendar when [calendars] is empty.
+  final String? defaultCategoryId;
+  /// Outlook event `categories` labels → [ContentCategories.id].
+  final Map<String, String> categoryMap;
 
   static OutlookMailboxSource? parse(Map<String, dynamic> m) {
     final box = m['mailbox'] ?? m['email'];
     if (box is! String || box.trim().isEmpty) {
       return null;
     }
-    final cals = <String>[];
-    final raw = m['calendars'];
-    if (raw is List<dynamic>) {
-      for (final e in raw) {
-        if (e is String && e.trim().isNotEmpty) {
-          cals.add(e.trim());
-        }
-      }
-    }
-    return OutlookMailboxSource(mailbox: box.trim(), calendars: cals);
+    return OutlookMailboxSource(
+      mailbox: box.trim(),
+      calendars: ProviderCalendarEntry.parseList(m['calendars']),
+      defaultCategoryId: parseOptionalCategoryId(m['defaultCategoryId']),
+      categoryMap: parseCategoryAliasMap(m['categoryMap']),
+    );
   }
 }
 

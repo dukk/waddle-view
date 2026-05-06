@@ -236,8 +236,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
             graphBase: graphBase,
             accessToken: token,
             accountKey: account.graphAccountKey,
-            mailbox: src.mailbox,
-            calendarFilters: src.calendars,
+            src: src,
             windowStart: range.$1,
             windowEndExclusive: range.$2,
           );
@@ -301,11 +300,11 @@ class OutlookCalendarDataProvider implements IDataProvider {
     required String graphBase,
     required String accessToken,
     required String accountKey,
-    required String mailbox,
-    required List<String> calendarFilters,
+    required OutlookMailboxSource src,
     required DateTime windowStart,
     required DateTime windowEndExclusive,
   }) async {
+    final mailbox = src.mailbox;
     final userPath = _userPathSegment(mailbox);
     final qStart = Uri.encodeQueryComponent(
       windowStart.toUtc().toIso8601String(),
@@ -315,7 +314,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
     );
     final query = 'startDateTime=$qStart&endDateTime=$qEnd';
 
-    if (calendarFilters.isEmpty) {
+    if (src.calendars.isEmpty) {
       final url = '$graphBase/$userPath/calendar/calendarView?$query';
       await _pullAndStoreEvents(
         db,
@@ -323,6 +322,8 @@ class OutlookCalendarDataProvider implements IDataProvider {
         accessToken: accessToken,
         accountKey: accountKey,
         mailbox: mailbox,
+        forceCategoryId: src.defaultCategoryId,
+        outlookCategoryMap: src.categoryMap,
       );
       return;
     }
@@ -332,11 +333,11 @@ class OutlookCalendarDataProvider implements IDataProvider {
       userPath: userPath,
       accessToken: accessToken,
     );
-    for (final nameOrId in calendarFilters) {
-      final calId = _resolveCalendarId(calMap, nameOrId);
+    for (final entry in src.calendars) {
+      final calId = _resolveCalendarId(calMap, entry.nameOrId);
       if (calId == null) {
         AppDebugLog.engine(
-          'OutlookCalendarDataProvider: unknown calendar "$nameOrId" '
+          'OutlookCalendarDataProvider: unknown calendar "${entry.nameOrId}" '
           'for $mailbox',
         );
         continue;
@@ -349,6 +350,8 @@ class OutlookCalendarDataProvider implements IDataProvider {
         accessToken: accessToken,
         accountKey: accountKey,
         mailbox: mailbox,
+        forceCategoryId: entry.categoryId ?? src.defaultCategoryId,
+        outlookCategoryMap: src.categoryMap,
       );
     }
   }
@@ -434,6 +437,8 @@ class OutlookCalendarDataProvider implements IDataProvider {
     required String accessToken,
     required String accountKey,
     required String mailbox,
+    String? forceCategoryId,
+    Map<String, String> outlookCategoryMap = const {},
   }) async {
     var nextUrl = url;
     var viewPage = 0;
@@ -469,6 +474,8 @@ class OutlookCalendarDataProvider implements IDataProvider {
               accountKey: accountKey,
               mailbox: mailbox,
               event: e,
+              forceCategoryId: forceCategoryId,
+              outlookCategoryMap: outlookCategoryMap,
             );
           }
         }
@@ -487,6 +494,8 @@ class OutlookCalendarDataProvider implements IDataProvider {
     required String accountKey,
     required String mailbox,
     required Map<String, dynamic> event,
+    String? forceCategoryId,
+    Map<String, String> outlookCategoryMap = const {},
   }) async {
     final graphId = event['id'];
     if (graphId is! String || graphId.isEmpty) {
@@ -519,6 +528,17 @@ class OutlookCalendarDataProvider implements IDataProvider {
     final preview = event['bodyPreview'];
     final description = preview is String && preview.isNotEmpty ? preview : null;
 
+    final icalRaw = event['iCalUId'];
+    final icalUid = icalRaw is String && icalRaw.trim().isNotEmpty
+        ? icalRaw.trim()
+        : null;
+
+    final categoryId = _resolveOutlookStoredCategoryId(
+      forceCategoryId: forceCategoryId,
+      outlookCategoryMap: outlookCategoryMap,
+      categoriesRaw: event['categories'],
+    );
+
     final rowId = _stableEventId(accountKey, mailbox, graphId);
     final updated = _nowMs();
 
@@ -533,9 +553,35 @@ class OutlookCalendarDataProvider implements IDataProvider {
             description: Value(description),
             source: Value(outlookCalendarEventSource(accountKey)),
             externalId: Value(graphId),
+            icalUid: Value(icalUid),
+            categoryId: Value(categoryId),
             updatedAtMs: DateTime.fromMillisecondsSinceEpoch(updated),
           ),
         );
+  }
+
+  String? _resolveOutlookStoredCategoryId({
+    String? forceCategoryId,
+    required Map<String, String> outlookCategoryMap,
+    required Object? categoriesRaw,
+  }) {
+    final forced = forceCategoryId?.trim();
+    if (forced != null && forced.isNotEmpty) {
+      return forced;
+    }
+    if (categoriesRaw is List<dynamic>) {
+      for (final c in categoriesRaw) {
+        if (c is String && c.trim().isNotEmpty) {
+          final label = c.trim();
+          final mapped = outlookCategoryMap[label] ??
+              outlookCategoryMap[label.toLowerCase()];
+          if (mapped != null && mapped.trim().isNotEmpty) {
+            return mapped.trim();
+          }
+        }
+      }
+    }
+    return null;
   }
 
   DateTime? _parseGraphDateTime(

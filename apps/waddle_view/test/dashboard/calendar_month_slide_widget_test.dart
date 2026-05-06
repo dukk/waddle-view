@@ -6,9 +6,62 @@ import 'package:waddle_view/curator/screen_layout_parse.dart';
 import 'package:waddle_view/dashboard/calendar_month_slide_widget.dart';
 import 'package:waddle_view/persistence/database.dart';
 
+import '../helpers/fake_blob_store.dart';
 import '../helpers/memory_database.dart';
 
 void main() {
+  testWidgets('weekday header row height fits longest label at high text scale',
+      (tester) async {
+    const scale = 2.25;
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(textScaler: TextScaler.linear(scale)),
+        child: MaterialApp(
+          theme: ThemeData(),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) {
+                final theme = Theme.of(context);
+                final weekdayStyle = theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                );
+                final compactStyle = theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                );
+                for (final compact in [false, true]) {
+                  final style = compact ? compactStyle : weekdayStyle;
+                  for (final label in ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']) {
+                    final painter = TextPainter(
+                      text: TextSpan(text: label, style: style),
+                      textScaler: MediaQuery.textScalerOf(context),
+                      textDirection: TextDirection.ltr,
+                      maxLines: 1,
+                    )..layout();
+                    final rowMin = calendarWeekdayHeaderRowMinHeight(
+                      context,
+                      style,
+                      1.0,
+                      compact,
+                    );
+                    expect(
+                      rowMin,
+                      greaterThanOrEqualTo(painter.height),
+                      reason:
+                          'header row must not clip $label (compact=$compact)',
+                    );
+                  }
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  });
+
   testWidgets('shows compact month title and empty upcoming panel when no events',
       (tester) async {
     final db = openMemoryDatabase();
@@ -26,6 +79,7 @@ void main() {
         home: Scaffold(
           body: CalendarMonthSlideWidget(
             db: db,
+            blobs: FakeBlobStore(),
             spec: spec,
             theme: theme,
             clock: clock,
@@ -67,6 +121,7 @@ void main() {
         home: Scaffold(
           body: CalendarMonthSlideWidget(
             db: db,
+            blobs: FakeBlobStore(),
             spec: spec,
             theme: theme,
             clock: clock,
@@ -141,6 +196,7 @@ void main() {
         home: Scaffold(
           body: CalendarMonthSlideWidget(
             db: db,
+            blobs: FakeBlobStore(),
             spec: spec,
             theme: theme,
             clock: clock,
@@ -168,8 +224,8 @@ void main() {
           CalendarEventsCompanion.insert(
             id: 'e2',
             title: 'Meetup',
-            startMs: DateTime(2024, 6, 20, 10, 0),
-            endMs: DateTime(2024, 6, 20, 11, 0),
+            startMs: DateTime(2024, 6, 19, 10, 0),
+            endMs: DateTime(2024, 6, 19, 11, 0),
             location: const Value('Hall A'),
             updatedAtMs: DateTime(2024, 6, 1),
           ),
@@ -187,6 +243,7 @@ void main() {
         home: Scaffold(
           body: CalendarMonthSlideWidget(
             db: db,
+            blobs: FakeBlobStore(),
             spec: spec,
             theme: theme,
             clock: clock,
@@ -222,6 +279,7 @@ void main() {
               height: 170,
               child: CalendarMonthSlideWidget(
                 db: db,
+                blobs: FakeBlobStore(),
                 spec: spec,
                 theme: theme,
                 clock: clock,
@@ -270,6 +328,7 @@ void main() {
               height: 220,
               child: CalendarMonthSlideWidget(
                 db: db,
+                blobs: FakeBlobStore(),
                 spec: spec,
                 theme: theme,
                 clock: clock,
@@ -313,6 +372,7 @@ void main() {
         home: Scaffold(
           body: CalendarMonthSlideWidget(
             db: db,
+            blobs: FakeBlobStore(),
             spec: spec,
             theme: theme,
             clock: clock,

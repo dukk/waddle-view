@@ -21,6 +21,7 @@ part 'database.g.dart';
     DashboardAlerts,
     ConfigKeyValues,
     ScreenDefinitions,
+    TickerDefinitions,
     CuratorDataKeyProgramLimits,
     RssFeedSources,
     RssArticles,
@@ -44,7 +45,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 21;
+  int get schemaVersion => 23;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -307,6 +308,22 @@ FROM curator_settings WHERE id = 'app';
       if (from < 21) {
         await m.createTable(stockSymbols);
         await m.createTable(stockQuotes);
+      }
+      if (from < 22) {
+        await customStatement(
+          'ALTER TABLE calendar_events ADD COLUMN ical_uid TEXT;',
+        );
+        await customStatement(
+          'ALTER TABLE calendar_events ADD COLUMN category_id TEXT '
+          'REFERENCES content_categories (id);',
+        );
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_calendar_events_ical_uid '
+          'ON calendar_events (ical_uid);',
+        );
+      }
+      if (from < 23) {
+        await m.createTable(tickerDefinitions);
       }
     },
     beforeOpen: (details) async {

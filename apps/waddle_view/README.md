@@ -125,6 +125,14 @@ Each **`screen_definitions`** row stores runtime **`layout_json`** plus document
 - **RSS screen photos** — config key **`curator.news.screens.require_photo`** (default **true** in seed): when true, only RSS rows with a downloaded image are used for **screen** slides; the **ticker** is unchanged. If a news screen must still run (e.g. **min placements** / data-key minimum) and no image-backed article is available, the curator may place a photo-less row and set **`*_imageMode`** = **`icon`** (per slot for columns/stack) so the UI shows a **newspaper** icon instead of a photo.
 - **Summary fit** — optional widget `config` on RSS layouts: **`summaryCapacityChars`** (single `rss_article`), **`summaryCapacityCharsPerColumn`** (`rss_article_columns`), **`summaryCapacityCharsPerSlot`** (`rss_article_stack`). The curator scores screen+article pairs so summary text length is less likely to be wasted or heavily truncated. Seeded default news screens set these in `layoutJson` ([`initial_seed.dart`](lib/seed/initial_seed.dart)).
 
+### Bottom ticker (`ticker_definitions`)
+
+SQLite table **`ticker_definitions`** configures the bottom marquee: which **types** run (`time`, `weather`, `news`, `quote`, `custom`), **order** (`sort_order`, then id), **`enabled`**, and **`frequency_weight`** (repeat that type’s item bundle that many times when building the curated list; identical bodies are still deduplicated). **`custom`** rows may set **`config_key`** to pin one `ticker.marquee.*` key; when null, every extra `ticker.marquee.*` key outside the standard weather/news/quote keys is included (legacy “extras” bucket).
+
+Content still comes from **`config_key_values`** (`ticker.marquee.*`), live weather, and stored RSS articles for **`news`**. If **`ticker_definitions`** has **no rows** (empty table), curation keeps the legacy fixed order: time, standard keys, sorted extras. If the table has rows but **none are enabled**, curation falls back to **time** only.
+
+Seeded defaults: **`ticker_time`** … **`ticker_quote`** enabled, **`ticker_custom`** disabled ([`initial_seed.dart`](lib/seed/initial_seed.dart)).
+
 ### Text scale — screens vs ticker (`config_key_values`)
 
 Separate semantic sizes for carousel content and the bottom marquee (each multiplied by the app’s TV base text scale and the platform accessibility scaler).
@@ -226,8 +234,10 @@ The **Outlook calendar** provider (`id` / `provider_type`: **`outlook_calendar`*
 **`provider_settings.config_json`** (JSON):
 
 - **`accounts`**: list of `{ "graphAccountKey": "<id>", "sources": [ ... ] }`. Each **`graphAccountKey`** must match the suffix used in SecretStore (e.g. `personal`, `work`).
-- **`sources`**: list of `{ "mailbox": "<upn-or-me>", "calendars": ["Calendar", …] }`. **`mailbox`** is the Graph user (`me` or a UPN). **`calendars`**: display names or Graph calendar ids; an **empty** list means the user’s **default** calendar only.
+- **`sources`**: list of mailbox objects. **`mailbox`** is the Graph user (`me` or a UPN). **`calendars`**: display names or Graph calendar ids, each either a **string** or `{ "calendar": "Name", "categoryId": "<content_categories.id>" }` to force a **content category** for every event from that calendar. An **empty** `calendars` array means the user’s **default** calendar only; optional **`defaultCategoryId`** then applies to those events. Optional **`categoryMap`** maps **Outlook** event category labels (Graph `categories`) to **`content_categories.id`** when no per-calendar override applies.
 - **`pastDays`** / **`futureDays`**: inclusive window around **today’s UTC midnight** (defaults **14** / **14**).
+
+**`calendar_events`** (schema **22+**) also stores **`ical_uid`** (for deduplication across calendars) and optional **`category_id`** (FK to **`content_categories`**). The **`calendar_month`** slide shows a category **icon** when present, **deduplicates** shared meetings, and **reuses** one time label for events at the same clock time or for **all-day** items on the same day.
 
 **`provider_settings.poll_seconds`:** default **3600** (one sync per hour when enabled).
 
@@ -251,7 +261,7 @@ Seed adds the provider **disabled** by default. Configure and enable in `provide
 **`provider_settings.config_json`** (JSON):
 
 - **`accounts`**: list of `{ "googleAccountKey": "<id>", "sources": [ ... ] }`. Each `googleAccountKey` must match SecretStore key suffixes.
-- **`sources`**: list of `{ "calendars": ["primary", ...] }`. Empty `calendars` defaults to Google `primary` calendar for that account.
+- **`sources`**: list of `{ "calendars": [ ... ], "defaultCategoryId": "<optional>" }`. Each calendar entry is a **string** or `{ "calendar": "primary", "categoryId": "<slug>" }`. Empty `calendars` defaults to **`primary`** for that account; **`defaultCategoryId`** applies when using that default or as a fallback for entries without their own **`categoryId`**.
 - **`pastDays`** / **`futureDays`**: sync window around today’s UTC midnight (defaults **14** / **14**).
 
 **`provider_settings.poll_seconds`:** default **3600**.

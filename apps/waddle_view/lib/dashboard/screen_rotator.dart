@@ -815,7 +815,12 @@ class _SlideContent extends StatelessWidget {
             case 'analog_clock':
               return AnalogClockSlideWidget(spec: w, theme: theme);
             case 'calendar_month':
-              return CalendarMonthSlideWidget(db: db, spec: w, theme: theme);
+              return CalendarMonthSlideWidget(
+                db: db,
+                blobs: blobs,
+                spec: w,
+                theme: theme,
+              );
             case 'photo_random':
               final key = slide.randomChoices[w.choiceKey];
               return Padding(

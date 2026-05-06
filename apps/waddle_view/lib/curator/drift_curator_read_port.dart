@@ -43,6 +43,27 @@ class DriftCuratorReadPort implements CuratorReadPort {
   }
 
   @override
+  Future<List<TickerDefinitionForCuration>> loadTickerDefinitionsForCuration() async {
+    final rows = await (_db.select(
+      _db.tickerDefinitions,
+    )..orderBy([
+      (t) => OrderingTerm.asc(t.sortOrder),
+      (t) => OrderingTerm.asc(t.id),
+    ])).get();
+    return [
+      for (final r in rows)
+        TickerDefinitionForCuration(
+          id: r.id,
+          tickerType: r.tickerType,
+          enabled: r.enabled,
+          frequencyWeight: r.frequencyWeight,
+          sortOrder: r.sortOrder,
+          configKey: r.configKey,
+        ),
+    ];
+  }
+
+  @override
   Future<CurrentWeatherTickerData?> loadCurrentWeatherForTicker() async {
     final locations = await (_db.select(
       _db.weatherLocations,

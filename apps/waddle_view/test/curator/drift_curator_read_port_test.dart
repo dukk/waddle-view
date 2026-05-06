@@ -96,6 +96,32 @@ void main() {
     await db.close();
   });
 
+  test('loadTickerDefinitionsForCuration returns rows ordered by sort_order', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.tickerDefinitions).insert(
+          TickerDefinitionsCompanion.insert(
+            id: 'b',
+            name: 'B',
+            tickerType: 'quote',
+            sortOrder: const Value(10),
+          ),
+        );
+    await db.into(db.tickerDefinitions).insert(
+          TickerDefinitionsCompanion.insert(
+            id: 'a',
+            name: 'A',
+            tickerType: 'time',
+            sortOrder: const Value(0),
+          ),
+        );
+    final port = DriftCuratorReadPort(db);
+    final list = await port.loadTickerDefinitionsForCuration();
+    expect(list.map((e) => e.id).toList(), ['a', 'b']);
+    expect(list.first.tickerType, 'time');
+    await db.close();
+  });
+
   test('loadCurrentWeatherForTicker returns enabled location weather', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);

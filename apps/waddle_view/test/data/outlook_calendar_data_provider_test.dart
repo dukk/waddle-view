@@ -42,6 +42,21 @@ void main() {
     expect(raw.futureDays, 5);
   });
 
+  test('OutlookCalendarExtraConfig parses calendar objects and categoryMap', () {
+    final raw = OutlookCalendarExtraConfig.parse(
+      '{"accounts":[{"graphAccountKey":"x","sources":[{"mailbox":"me",'
+      '"calendars":["Work",{"calendar":"Personal","categoryId":"family"}],'
+      '"defaultCategoryId":"general","categoryMap":{"Client":"work"}}]}]}',
+    );
+    final src = raw.accounts.single.sources.single;
+    expect(src.calendars.length, 2);
+    expect(src.calendars[0].nameOrId, 'Work');
+    expect(src.calendars[1].nameOrId, 'Personal');
+    expect(src.calendars[1].categoryId, 'family');
+    expect(src.defaultCategoryId, 'general');
+    expect(src.categoryMap['Client'], 'work');
+  });
+
   test('empty accounts performs no HTTP', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
@@ -123,6 +138,7 @@ void main() {
     expect(rows.length, 1);
     expect(rows.single.externalId, 'evt1');
     expect(rows.single.source, outlookCalendarEventSource('u'));
+    expect(rows.single.icalUid, '040000008200E00074C5B7101A82E008');
     await db.close();
   });
 
@@ -261,6 +277,7 @@ class _RefreshThenGraphClient extends http.BaseClient {
             'id': 'evt1',
             'subject': 'Hello',
             'isAllDay': false,
+            'iCalUId': '040000008200E00074C5B7101A82E008',
             'start': {
               'dateTime': '2026-06-01T10:00:00.0000000',
               'timeZone': 'UTC',
@@ -328,6 +345,7 @@ class _DeviceThenGraphClient extends http.BaseClient {
             'id': 'evt1',
             'subject': 'Hello',
             'isAllDay': false,
+            'iCalUId': '040000008200E00074C5B7101A82E008',
             'start': {
               'dateTime': '2026-06-01T10:00:00.0000000',
               'timeZone': 'UTC',

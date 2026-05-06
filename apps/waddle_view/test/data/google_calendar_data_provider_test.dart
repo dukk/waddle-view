@@ -27,7 +27,10 @@ void main() {
     );
     expect(raw.accounts.length, 1);
     expect(raw.accounts.first.googleAccountKey, 'a');
-    expect(raw.accounts.first.sources.single.calendars.single, 'primary');
+    expect(
+      raw.accounts.first.sources.single.calendars.single.nameOrId,
+      'primary',
+    );
     expect(raw.pastDays, 2);
     expect(raw.futureDays, 6);
   });
@@ -103,6 +106,7 @@ void main() {
     expect(rows.length, 1);
     expect(rows.single.externalId, 'evt1');
     expect(rows.single.source, googleCalendarEventSource('u'));
+    expect(rows.single.icalUid, 'google-ical-1');
     await db.close();
   });
 
@@ -229,6 +233,7 @@ class _RefreshThenGoogleClient extends http.BaseClient {
           {
             'id': 'evt1',
             'summary': 'Hello',
+            'iCalUID': 'google-ical-1',
             'start': {'dateTime': '2026-06-01T10:00:00.0000000Z'},
             'end': {'dateTime': '2026-06-01T11:00:00.0000000Z'},
           },
@@ -287,6 +292,7 @@ class _DeviceThenGoogleClient extends http.BaseClient {
           {
             'id': 'evt1',
             'summary': 'Hello',
+            'iCalUID': 'google-ical-1',
             'start': {'dateTime': '2026-06-01T10:00:00.0000000Z'},
             'end': {'dateTime': '2026-06-01T11:00:00.0000000Z'},
           },

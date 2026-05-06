@@ -10,6 +10,7 @@ import '../../secrets/secret_store.dart';
 import '../data_provider.dart';
 import '../data_write_context.dart';
 import 'google/google_oauth.dart';
+import 'calendar_provider_calendar_entry.dart';
 import 'google_calendar_extra_config.dart';
 
 const String kGoogleCalendarProviderId = 'google_calendar';
@@ -98,9 +99,10 @@ class GoogleCalendarDataProvider implements IDataProvider {
       );
       final calendarMap = await _fetchCalendarIdMap(base, token);
       for (final src in account.sources) {
-        final filters = src.calendars.isEmpty ? const ['primary'] : src.calendars;
-        for (final nameOrId in filters) {
-          final calendarId = _resolveCalendarId(calendarMap, nameOrId) ?? nameOrId;
+        final filters = _resolvedGoogleCalendarEntries(src);
+        for (final entry in filters) {
+          final calendarId =
+              _resolveCalendarId(calendarMap, entry.nameOrId) ?? entry.nameOrId;
           await _pullAndStoreEvents(
             ctx.db,
             baseUrl: base,
@@ -109,6 +111,7 @@ class GoogleCalendarDataProvider implements IDataProvider {
             calendarId: calendarId,
             windowStart: window.$1,
             windowEndExclusive: window.$2,
+            forceCategoryId: entry.categoryId,
           );
           didSync = true;
         }
@@ -237,6 +240,27 @@ class GoogleCalendarDataProvider implements IDataProvider {
     return out;
   }
 
+  List<ProviderCalendarEntry> _resolvedGoogleCalendarEntries(
+    GoogleCalendarSourceConfig src,
+  ) {
+    if (src.calendars.isEmpty) {
+      return [
+        ProviderCalendarEntry(
+          nameOrId: 'primary',
+          categoryId: src.defaultCategoryId,
+        ),
+      ];
+    }
+    return src.calendars
+        .map(
+          (e) => ProviderCalendarEntry(
+            nameOrId: e.nameOrId,
+            categoryId: e.categoryId ?? src.defaultCategoryId,
+          ),
+        )
+        .toList();
+  }
+
   String? _resolveCalendarId(Map<String, String> calMap, String nameOrId) {
     final trimmed = nameOrId.trim();
     if (trimmed.isEmpty) {
@@ -256,6 +280,7 @@ class GoogleCalendarDataProvider implements IDataProvider {
     required String calendarId,
     required DateTime windowStart,
     required DateTime windowEndExclusive,
+    String? forceCategoryId,
   }) async {
     var url =
         '$baseUrl/calendars/${Uri.encodeComponent(calendarId)}/events?singleEvents=true&orderBy=startTime&maxResults=250'
@@ -282,6 +307,7 @@ class GoogleCalendarDataProvider implements IDataProvider {
               googleAccountKey: googleAccountKey,
               calendarId: calendarId,
               event: e,
+              forceCategoryId: forceCategoryId,
             );
           }
         }
@@ -303,6 +329,7 @@ class GoogleCalendarDataProvider implements IDataProvider {
     required String googleAccountKey,
     required String calendarId,
     required Map<String, dynamic> event,
+    String? forceCategoryId,
   }) async {
     final eventId = event['id'];
     if (eventId is! String || eventId.isEmpty) {
@@ -320,6 +347,13 @@ class GoogleCalendarDataProvider implements IDataProvider {
     final locationRaw = event['location'];
     final descriptionRaw = event['description'];
     final allDay = _isAllDay(event['start']);
+    final icalRaw = event['iCalUID'] ?? event['iCalUid'];
+    final icalUid = icalRaw is String && icalRaw.trim().isNotEmpty
+        ? icalRaw.trim()
+        : null;
+    final trimmedForce = forceCategoryId?.trim();
+    final categoryId =
+        trimmedForce != null && trimmedForce.isNotEmpty ? trimmedForce : null;
     await db.into(db.calendarEvents).insertOnConflictUpdate(
           CalendarEventsCompanion.insert(
             id: googleCalendarEventRowId(googleAccountKey, calendarId, eventId),
@@ -337,6 +371,8 @@ class GoogleCalendarDataProvider implements IDataProvider {
             ),
             source: Value(googleCalendarEventSource(googleAccountKey)),
             externalId: Value(eventId),
+            icalUid: Value(icalUid),
+            categoryId: Value(categoryId),
             updatedAtMs: DateTime.fromMillisecondsSinceEpoch(_nowMs()),
           ),
         );

@@ -1,9 +1,22 @@
 import 'dart:convert';
 
-class GoogleCalendarSourceConfig {
-  const GoogleCalendarSourceConfig({required this.calendars});
+import 'calendar_provider_calendar_entry.dart';
 
-  final List<String> calendars;
+class GoogleCalendarSourceConfig {
+  const GoogleCalendarSourceConfig({
+    required this.calendars,
+    this.defaultCategoryId,
+  });
+
+  final List<ProviderCalendarEntry> calendars;
+  final String? defaultCategoryId;
+
+  static GoogleCalendarSourceConfig parse(Map<String, dynamic> s) {
+    return GoogleCalendarSourceConfig(
+      calendars: ProviderCalendarEntry.parseList(s['calendars']),
+      defaultCategoryId: parseOptionalCategoryId(s['defaultCategoryId']),
+    );
+  }
 }
 
 class GoogleCalendarAccountConfig {
@@ -62,16 +75,7 @@ class GoogleCalendarExtraConfig {
               if (s is! Map<String, dynamic>) {
                 continue;
               }
-              final calendarsRaw = s['calendars'];
-              final calendars = <String>[];
-              if (calendarsRaw is List<dynamic>) {
-                for (final c in calendarsRaw) {
-                  if (c is String && c.trim().isNotEmpty) {
-                    calendars.add(c.trim());
-                  }
-                }
-              }
-              sources.add(GoogleCalendarSourceConfig(calendars: calendars));
+              sources.add(GoogleCalendarSourceConfig.parse(s));
             }
           }
           accounts.add(

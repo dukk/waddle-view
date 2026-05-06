@@ -226,9 +226,28 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
                     'properties': {
                       'mailbox': {'type': 'string', 'minLength': 1},
                       'email': {'type': 'string'},
+                      'defaultCategoryId': {'type': 'string'},
+                      'categoryMap': {
+                        'type': 'object',
+                        'additionalProperties': {'type': 'string'},
+                      },
                       'calendars': {
                         'type': 'array',
-                        'items': {'type': 'string'},
+                        'items': {
+                          'oneOf': [
+                            {'type': 'string'},
+                            {
+                              'type': 'object',
+                              'properties': {
+                                'calendar': {'type': 'string'},
+                                'name': {'type': 'string'},
+                                'id': {'type': 'string'},
+                                'categoryId': {'type': 'string'},
+                              },
+                              'additionalProperties': true,
+                            },
+                          ],
+                        },
                       },
                     },
                     'required': ['mailbox'],
@@ -275,9 +294,24 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
                   'items': {
                     'type': 'object',
                     'properties': {
+                      'defaultCategoryId': {'type': 'string'},
                       'calendars': {
                         'type': 'array',
-                        'items': {'type': 'string'},
+                        'items': {
+                          'oneOf': [
+                            {'type': 'string'},
+                            {
+                              'type': 'object',
+                              'properties': {
+                                'calendar': {'type': 'string'},
+                                'name': {'type': 'string'},
+                                'id': {'type': 'string'},
+                                'categoryId': {'type': 'string'},
+                              },
+                              'additionalProperties': true,
+                            },
+                          ],
+                        },
                       },
                     },
                     'additionalProperties': true,

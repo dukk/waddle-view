@@ -41,12 +41,7 @@ List<TickerItem> buildTickerItemsFromKv({
     ),
   );
 
-  const orderedKeys = <String, String>{
-    'ticker.marquee.weather': 'weather',
-    'ticker.marquee.news': 'news',
-    'ticker.marquee.quote': 'quote',
-  };
-  for (final e in orderedKeys.entries) {
+  for (final e in _orderedMarqueeKeysToKind.entries) {
     final raw = kv[e.key];
     if (raw == null || raw.trim().isEmpty) {
       continue;
@@ -56,7 +51,7 @@ List<TickerItem> buildTickerItemsFromKv({
 
   final extraKeys = kv.keys.where((k) {
     return k.startsWith('ticker.marquee.') &&
-        !orderedKeys.containsKey(k);
+        !_orderedMarqueeKeysToKind.containsKey(k);
   }).toList()
     ..sort();
   for (final k in extraKeys) {
@@ -276,43 +271,69 @@ List<TickerItem> pickNewsTickerItemsByWidthBudget({
   return out;
 }
 
-/// KV + clock + optional RSS: ordered marquee items for [TickerCuratedRepository].
-List<TickerItem> buildTickerItemsForMarquee({
+const _orderedMarqueeKeysToKind = <String, String>{
+  'ticker.marquee.weather': 'weather',
+  'ticker.marquee.news': 'news',
+  'ticker.marquee.quote': 'quote',
+};
+
+List<TickerItem> _tickerItemsTimeOnly(DateTime nowLocal) {
+  final item = TickerItem(
+    kind: 'time',
+    body: _formatClock(nowLocal),
+    sourceId: 'clock',
+  );
+  final redacted = redactTickerBody(item.body);
+  if (redacted.isEmpty) {
+    return const [];
+  }
+  return [
+    TickerItem(
+      kind: item.kind,
+      body: redacted,
+      sourceId: item.sourceId,
+      rss: redacted == '[redacted]' ? null : item.rss,
+    ),
+  ];
+}
+
+void _addTickerIfNew(
+  List<TickerItem> out,
+  Set<String> seenBodies,
+  TickerItem item,
+) {
+  final redacted = redactTickerBody(item.body);
+  if (redacted.isEmpty) {
+    return;
+  }
+  if (seenBodies.contains(redacted)) {
+    return;
+  }
+  seenBodies.add(redacted);
+  final rss = redacted == '[redacted]' ? null : item.rss;
+  out.add(
+    TickerItem(
+      kind: item.kind,
+      body: redacted,
+      sourceId: item.sourceId,
+      rss: rss,
+    ),
+  );
+}
+
+/// KV + clock + optional RSS: legacy ordering when [definitions] is empty.
+List<TickerItem> _buildTickerItemsForMarqueeLegacy({
   required Map<String, String> kv,
   required DateTime nowLocal,
-  required List<TickerNewsCandidate> newsCandidates,
+  required List<TickerItem> rssItems,
   CurrentWeatherTickerData? currentWeather,
 }) {
-  final cfg = CuratorTickerConfig.fromKv(kv);
-  final rssItems = pickNewsTickerItemsByWidthBudget(
-    interleaved: interleaveNewsByFeed(newsCandidates),
-    config: cfg,
-  );
-
   final out = <TickerItem>[];
   final seenBodies = <String>{};
 
-  void addIfNew(TickerItem item) {
-    final redacted = redactTickerBody(item.body);
-    if (redacted.isEmpty) {
-      return;
-    }
-    if (seenBodies.contains(redacted)) {
-      return;
-    }
-    seenBodies.add(redacted);
-    final rss = redacted == '[redacted]' ? null : item.rss;
-    out.add(
-      TickerItem(
-        kind: item.kind,
-        body: redacted,
-        sourceId: item.sourceId,
-        rss: rss,
-      ),
-    );
-  }
-
-  addIfNew(
+  _addTickerIfNew(
+    out,
+    seenBodies,
     TickerItem(
       kind: 'time',
       body: _formatClock(nowLocal),
@@ -320,18 +341,14 @@ List<TickerItem> buildTickerItemsForMarquee({
     ),
   );
 
-  const orderedKeys = <String, String>{
-    'ticker.marquee.weather': 'weather',
-    'ticker.marquee.news': 'news',
-    'ticker.marquee.quote': 'quote',
-  };
-
   final liveWeatherBody = currentWeather?.toTickerBody().trim() ?? '';
   final rawWeather = liveWeatherBody.isNotEmpty
       ? liveWeatherBody
       : (kv['ticker.marquee.weather']?.trim() ?? '');
   if (rawWeather.isNotEmpty) {
-    addIfNew(
+    _addTickerIfNew(
+      out,
+      seenBodies,
       TickerItem(
         kind: 'weather',
         body: rawWeather,
@@ -342,12 +359,14 @@ List<TickerItem> buildTickerItemsForMarquee({
 
   if (rssItems.isNotEmpty) {
     for (final it in rssItems) {
-      addIfNew(it);
+      _addTickerIfNew(out, seenBodies, it);
     }
   } else {
     final rawNews = kv['ticker.marquee.news'];
     if (rawNews != null && rawNews.trim().isNotEmpty) {
-      addIfNew(
+      _addTickerIfNew(
+        out,
+        seenBodies,
         TickerItem(
           kind: 'news',
           body: rawNews.trim(),
@@ -359,7 +378,9 @@ List<TickerItem> buildTickerItemsForMarquee({
 
   final rawQuote = kv['ticker.marquee.quote'];
   if (rawQuote != null && rawQuote.trim().isNotEmpty) {
-    addIfNew(
+    _addTickerIfNew(
+      out,
+      seenBodies,
       TickerItem(
         kind: 'quote',
         body: rawQuote.trim(),
@@ -370,7 +391,7 @@ List<TickerItem> buildTickerItemsForMarquee({
 
   final extraKeys = kv.keys.where((k) {
     return k.startsWith('ticker.marquee.') &&
-        !orderedKeys.containsKey(k);
+        !_orderedMarqueeKeysToKind.containsKey(k);
   }).toList()
     ..sort();
   for (final k in extraKeys) {
@@ -378,8 +399,191 @@ List<TickerItem> buildTickerItemsForMarquee({
     if (raw.isEmpty) {
       continue;
     }
-    addIfNew(TickerItem(kind: 'custom', body: raw, sourceId: k));
+    _addTickerIfNew(
+      out,
+      seenBodies,
+      TickerItem(kind: 'custom', body: raw, sourceId: k),
+    );
   }
 
   return out;
+}
+
+List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
+  required Map<String, String> kv,
+  required DateTime nowLocal,
+  required List<TickerItem> rssItems,
+  CurrentWeatherTickerData? currentWeather,
+  required List<TickerDefinitionForCuration> enabledDefinitions,
+}) {
+  final liveWeatherBody = currentWeather?.toTickerBody().trim() ?? '';
+  final rawWeather = liveWeatherBody.isNotEmpty
+      ? liveWeatherBody
+      : (kv['ticker.marquee.weather']?.trim() ?? '');
+
+  List<TickerItem> expandTime() => [
+    TickerItem(
+      kind: 'time',
+      body: _formatClock(nowLocal),
+      sourceId: 'clock',
+    ),
+  ];
+
+  List<TickerItem> expandWeather() {
+    if (rawWeather.isEmpty) {
+      return const [];
+    }
+    return [
+      TickerItem(
+        kind: 'weather',
+        body: rawWeather,
+        sourceId: 'ticker.marquee.weather',
+      ),
+    ];
+  }
+
+  List<TickerItem> expandNews() {
+    if (rssItems.isNotEmpty) {
+      return rssItems;
+    }
+    final rawNews = kv['ticker.marquee.news'];
+    if (rawNews == null || rawNews.trim().isEmpty) {
+      return const [];
+    }
+    return [
+      TickerItem(
+        kind: 'news',
+        body: rawNews.trim(),
+        sourceId: 'ticker.marquee.news',
+      ),
+    ];
+  }
+
+  List<TickerItem> expandQuote() {
+    final rawQuote = kv['ticker.marquee.quote'];
+    if (rawQuote == null || rawQuote.trim().isEmpty) {
+      return const [];
+    }
+    return [
+      TickerItem(
+        kind: 'quote',
+        body: rawQuote.trim(),
+        sourceId: 'ticker.marquee.quote',
+      ),
+    ];
+  }
+
+  List<TickerItem> expandCustom(TickerDefinitionForCuration def) {
+    final specific = def.configKey?.trim();
+    if (specific != null && specific.isNotEmpty) {
+      final raw = kv[specific]?.trim() ?? '';
+      if (raw.isEmpty) {
+        return const [];
+      }
+      return [
+        TickerItem(kind: 'custom', body: raw, sourceId: specific),
+      ];
+    }
+    final extraKeys = kv.keys.where((k) {
+      return k.startsWith('ticker.marquee.') &&
+          !_orderedMarqueeKeysToKind.containsKey(k);
+    }).toList()
+      ..sort();
+    final out = <TickerItem>[];
+    for (final k in extraKeys) {
+      final raw = kv[k]!.trim();
+      if (raw.isEmpty) {
+        continue;
+      }
+      out.add(TickerItem(kind: 'custom', body: raw, sourceId: k));
+    }
+    return out;
+  }
+
+  List<TickerItem> itemsForDef(TickerDefinitionForCuration def) {
+    switch (def.tickerType.trim().toLowerCase()) {
+      case 'time':
+        return expandTime();
+      case 'weather':
+        return expandWeather();
+      case 'news':
+        return expandNews();
+      case 'quote':
+        return expandQuote();
+      case 'custom':
+        return expandCustom(def);
+      default:
+        return const [];
+    }
+  }
+
+  final out = <TickerItem>[];
+  final seenBodies = <String>{};
+
+  for (final def in enabledDefinitions) {
+    final w = def.frequencyWeight < 0 ? 0 : def.frequencyWeight;
+    final chunk = itemsForDef(def);
+    if (chunk.isEmpty || w == 0) {
+      continue;
+    }
+    for (var i = 0; i < w; i++) {
+      for (final item in chunk) {
+        _addTickerIfNew(out, seenBodies, item);
+      }
+    }
+  }
+
+  if (out.isEmpty) {
+    return _tickerItemsTimeOnly(nowLocal);
+  }
+  return out;
+}
+
+/// KV + clock + optional RSS: ordered marquee items for [TickerCuratedRepository].
+///
+/// When [definitions] is empty, uses legacy ordering (KV + RSS). Otherwise uses
+/// enabled rows from [TickerDefinitions] with weighted repeats per
+/// [TickerDefinitionForCuration.frequencyWeight].
+List<TickerItem> buildTickerItemsForMarquee({
+  required Map<String, String> kv,
+  required DateTime nowLocal,
+  required List<TickerNewsCandidate> newsCandidates,
+  CurrentWeatherTickerData? currentWeather,
+  List<TickerDefinitionForCuration> definitions = const [],
+}) {
+  final cfg = CuratorTickerConfig.fromKv(kv);
+  final rssItems = pickNewsTickerItemsByWidthBudget(
+    interleaved: interleaveNewsByFeed(newsCandidates),
+    config: cfg,
+  );
+
+  if (definitions.isEmpty) {
+    return _buildTickerItemsForMarqueeLegacy(
+      kv: kv,
+      nowLocal: nowLocal,
+      rssItems: rssItems,
+      currentWeather: currentWeather,
+    );
+  }
+
+  final enabled = definitions.where((d) => d.enabled).toList()
+    ..sort((a, b) {
+      final c = a.sortOrder.compareTo(b.sortOrder);
+      if (c != 0) {
+        return c;
+      }
+      return a.id.compareTo(b.id);
+    });
+
+  if (enabled.isEmpty) {
+    return _tickerItemsTimeOnly(nowLocal);
+  }
+
+  return _buildTickerItemsForMarqueeFromDefinitions(
+    kv: kv,
+    nowLocal: nowLocal,
+    rssItems: rssItems,
+    currentWeather: currentWeather,
+    enabledDefinitions: enabled,
+  );
 }

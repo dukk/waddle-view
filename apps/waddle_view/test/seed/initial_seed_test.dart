@@ -21,6 +21,27 @@ void main() {
     await db.close();
   });
 
+  test('ensureInitialSeed seeds ticker_definitions defaults', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureInitialSeed(db);
+    final rows = await (db.select(db.tickerDefinitions)
+          ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
+        .get();
+    expect(rows.length, 5);
+    expect(rows.map((r) => r.tickerType).toList(), [
+      'time',
+      'weather',
+      'news',
+      'quote',
+      'custom',
+    ]);
+    final custom =
+        rows.singleWhere((r) => r.id == 'ticker_custom');
+    expect(custom.enabled, isFalse);
+    await db.close();
+  });
+
   test('ensureInitialSeed inserts news screens with data_key news', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);

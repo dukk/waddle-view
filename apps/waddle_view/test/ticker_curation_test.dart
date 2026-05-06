@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:waddle_view/curator/curator_read_port.dart';
 import 'package:waddle_view/curator/ticker_curation.dart';
+import 'package:waddle_view/curator/ticker_news_candidate.dart';
 
 void main() {
   test('orders time then known keys then extra keys', () {
@@ -119,5 +120,139 @@ void main() {
     );
     final weather = items.firstWhere((e) => e.kind == 'weather');
     expect(weather.body, 'Denver, CO: 20° · sunny');
+  });
+
+  test('buildTickerItemsForMarquee omits types not present in definitions', () {
+    final defs = [
+      const TickerDefinitionForCuration(
+        id: 't1',
+        tickerType: 'time',
+        enabled: true,
+        frequencyWeight: 1,
+        sortOrder: 0,
+      ),
+      const TickerDefinitionForCuration(
+        id: 't2',
+        tickerType: 'news',
+        enabled: true,
+        frequencyWeight: 1,
+        sortOrder: 10,
+      ),
+    ];
+    final ms = DateTime.utc(2026, 1, 1).millisecondsSinceEpoch;
+    final items = buildTickerItemsForMarquee(
+      kv: {
+        'ticker.marquee.weather': 'W',
+        'ticker.marquee.news': 'KV',
+        'curator.ticker.newsScrollBudgetSeconds': '10000',
+        'curator.ticker.newsCharWidthPx': '1',
+        'curator.ticker.newsSeparatorPaddingPx': '0',
+      },
+      nowLocal: DateTime(2026, 3, 4, 9, 8, 7),
+      newsCandidates: [
+        TickerNewsCandidate(
+          feedId: 'fx',
+          feedName: 'F',
+          title: 'RSS',
+          publishedAtMs: ms,
+        ),
+      ],
+      definitions: defs,
+    );
+    expect(items.map((e) => e.kind).toList(), ['time', 'news']);
+    expect(items.any((e) => e.kind == 'weather'), isFalse);
+  });
+
+  test('buildTickerItemsForMarquee uses definition sort_order', () {
+    final defs = [
+      const TickerDefinitionForCuration(
+        id: 'n',
+        tickerType: 'news',
+        enabled: true,
+        frequencyWeight: 1,
+        sortOrder: 20,
+      ),
+      const TickerDefinitionForCuration(
+        id: 'q',
+        tickerType: 'quote',
+        enabled: true,
+        frequencyWeight: 1,
+        sortOrder: 10,
+      ),
+      const TickerDefinitionForCuration(
+        id: 't',
+        tickerType: 'time',
+        enabled: true,
+        frequencyWeight: 1,
+        sortOrder: 0,
+      ),
+    ];
+    final items = buildTickerItemsForMarquee(
+      kv: {
+        'ticker.marquee.news': 'N',
+        'ticker.marquee.quote': 'Q',
+      },
+      nowLocal: DateTime(2026, 3, 4, 9, 8, 7),
+      newsCandidates: const [],
+      definitions: defs,
+    );
+    expect(items.map((e) => e.kind).toList(), ['time', 'quote', 'news']);
+  });
+
+  test('buildTickerItemsForMarquee falls back to time when all definitions disabled', () {
+    final defs = [
+      const TickerDefinitionForCuration(
+        id: 'x',
+        tickerType: 'news',
+        enabled: false,
+        frequencyWeight: 1,
+        sortOrder: 0,
+      ),
+    ];
+    final items = buildTickerItemsForMarquee(
+      kv: {'ticker.marquee.news': 'Headline'},
+      nowLocal: DateTime(2026, 3, 4, 9, 8, 7),
+      newsCandidates: const [],
+      definitions: defs,
+    );
+    expect(items.map((e) => e.kind).toList(), ['time']);
+  });
+
+  test('buildTickerItemsForMarquee applies frequency_weight for distinct news bodies', () {
+    final defs = [
+      const TickerDefinitionForCuration(
+        id: 'n',
+        tickerType: 'news',
+        enabled: true,
+        frequencyWeight: 2,
+        sortOrder: 0,
+      ),
+    ];
+    final ms = DateTime.utc(2026, 1, 1).millisecondsSinceEpoch;
+    final items = buildTickerItemsForMarquee(
+      kv: {
+        'curator.ticker.newsScrollBudgetSeconds': '10000',
+        'curator.ticker.newsCharWidthPx': '1',
+        'curator.ticker.newsSeparatorPaddingPx': '0',
+        'curator.ticker.newsPrefixCategory': 'false',
+      },
+      nowLocal: DateTime(2026, 3, 4, 9, 8, 7),
+      newsCandidates: [
+        TickerNewsCandidate(
+          feedId: 'a',
+          feedName: 'A',
+          title: 'One',
+          publishedAtMs: ms + 2,
+        ),
+        TickerNewsCandidate(
+          feedId: 'b',
+          feedName: 'B',
+          title: 'Two',
+          publishedAtMs: ms + 1,
+        ),
+      ],
+      definitions: defs,
+    );
+    expect(items.where((e) => e.kind == 'news').length, 2);
   });
 }

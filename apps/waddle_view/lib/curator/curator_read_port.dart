@@ -1,4 +1,29 @@
+import 'package:meta/meta.dart';
+
 import 'ticker_news_candidate.dart';
+
+/// One row from [TickerDefinitions] for marquee curation.
+@immutable
+class TickerDefinitionForCuration {
+  const TickerDefinitionForCuration({
+    required this.id,
+    required this.tickerType,
+    required this.enabled,
+    required this.frequencyWeight,
+    required this.sortOrder,
+    this.configKey,
+  });
+
+  final String id;
+  /// `time`, `weather`, `news`, `quote`, or `custom`.
+  final String tickerType;
+  final bool enabled;
+  final int frequencyWeight;
+  final int sortOrder;
+  /// When [tickerType] is `custom`, optional `ticker.marquee.*` key; when null,
+  /// all extra marquee keys are included (same as legacy “custom” bucket).
+  final String? configKey;
+}
 
 class CurrentWeatherTickerData {
   const CurrentWeatherTickerData({
@@ -37,4 +62,8 @@ abstract class CuratorReadPort {
 
   /// Current weather snapshot for ticker, null when unavailable.
   Future<CurrentWeatherTickerData?> loadCurrentWeatherForTicker();
+
+  /// All ticker definition rows, ordered by [TickerDefinitionForCuration.sortOrder]
+  /// then id.
+  Future<List<TickerDefinitionForCuration>> loadTickerDefinitionsForCuration();
 }

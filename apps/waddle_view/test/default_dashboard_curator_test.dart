@@ -23,6 +23,10 @@ class _MapRead implements CuratorReadPort {
   @override
   Future<CurrentWeatherTickerData?> loadCurrentWeatherForTicker() async =>
       currentWeather;
+
+  @override
+  Future<List<TickerDefinitionForCuration>> loadTickerDefinitionsForCuration() async =>
+      const [];
 }
 
 class _RecordingTickerStore implements TickerCuratedRepository {

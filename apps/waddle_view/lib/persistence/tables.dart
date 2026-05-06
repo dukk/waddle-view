@@ -96,6 +96,24 @@ class ScreenDefinitions extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// Bottom ticker slot: which [tickerType] runs, how often ([frequencyWeight]),
+/// and display order ([sortOrder]). [configKey] binds `custom` rows to a
+/// `ticker.marquee.*` key; when null, all extra marquee keys are included.
+class TickerDefinitions extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  TextColumn get description => text().withDefault(const Constant(''))();
+  BoolColumn get enabled => boolean().withDefault(const Constant(true))();
+  /// One of: `time`, `weather`, `news`, `quote`, `custom`.
+  TextColumn get tickerType => text()();
+  IntColumn get frequencyWeight => integer().withDefault(const Constant(100))();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+  TextColumn get configKey => text().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 /// Aggregate min/max placements per program for all screens sharing [dataKey].
 class CuratorDataKeyProgramLimits extends Table {
   TextColumn get dataKey => text()();
@@ -259,6 +277,10 @@ class CalendarEvents extends Table {
   TextColumn get description => text().nullable()();
   TextColumn get source => text().withDefault(const Constant('local'))();
   TextColumn get externalId => text().nullable()();
+  /// Shared meeting id across calendars (Graph `iCalUId`, Google `iCalUID`) for deduplication.
+  TextColumn get icalUid => text().nullable()();
+  /// Optional [ContentCategories.id] for dashboard icons / grouping.
+  TextColumn get categoryId => text().nullable().references(ContentCategories, #id)();
   DateTimeColumn get updatedAtMs => dateTime()();
 
   @override
