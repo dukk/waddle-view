@@ -117,10 +117,7 @@ void main() {
         'redirect_uri=${Uri.encodeQueryComponent(kMicrosoftGraphOAuthRedirectUri)}',
       ),
     );
-    expect(
-      http.refreshTokenRequestBody,
-      contains(Uri.encodeQueryComponent(kMicrosoftGraphOAuthScopes)),
-    );
+    expect(http.refreshTokenRequestBody, contains('grant_type=refresh_token'));
     expect(await secrets.read(microsoftGraphAccessTokenSecret('u')), 'access_refreshed');
     final rows = await db.select(db.calendarEvents).get();
     expect(rows.length, 1);
@@ -154,6 +151,7 @@ void main() {
     final alerts = await db.select(db.dashboardAlerts).get();
     expect(alerts.length, 1);
     expect(alerts.single.source, kMicrosoftGraphOAuthAlertSource);
+    expect(alerts.single.severity, 'auth');
     expect(alerts.single.body, contains('ABCD-EFGH'));
     expect(alerts.single.title, contains('u'));
     expect(

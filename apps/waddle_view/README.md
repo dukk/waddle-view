@@ -133,12 +133,17 @@ Separate semantic sizes for carousel content and the bottom marquee (each multip
 |-----|---------|
 | `display.text_scale.screen` | Slides, alerts, admin-facing on-device UI under the main scaffold |
 | `display.text_scale.ticker` | Bottom ticker / marquee strip |
+| `display.alert.severity_icons` | JSON map: severity (`info`, `auth`, `warning`, `error`, `critical`, or custom) → Material icon name (underscore form; many names match [`content_category_material_icon.dart`](lib/dashboard/content_category_material_icon.dart)). Merged with defaults; seeded on first run. |
 
 **Values** (hyphenated in the database): `xxx-small`, `xx-small`, `x-small`, `smaller`, `small`, `normal` (default), `large`, `larger`, `x-large`, `xx-large`, `xxx-large`. Underscores and spacing are normalized on read/write.
 
 **Operator UI**: Admin → Curator → **Screen text scale** and **Ticker text scale**.
 
 **Code**: [`lib/theme/display_text_scale_kv.dart`](lib/theme/display_text_scale_kv.dart).
+
+### Keyboard — overlay alerts
+
+When an alert overlay is visible, **Enter** or **numpad Enter** dismisses the current (highest-priority) alert. If the alert has an expiry time (`expires_at`), a countdown bar at the bottom of the dialog (same visual language as the joke punchline timer) shrinks until the alert is hidden automatically.
 
 ### Keyboard screen history navigation
 

@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../alerts/alert_severity_icons_kv.dart';
 import '../config/google_kv.dart';
 import '../config/microsoft_graph_kv.dart';
 import '../persistence/config_json_documentation.dart';
@@ -74,6 +75,7 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureCuratorSettings(db);
   await _ensureDisplayThemeKv(db);
   await _ensureDisplayTextScaleKv(db);
+  await _ensureAlertSeverityIconsKv(db);
   await _ensureWelcomeScreen(db);
   await _ensureJokeScreen(db);
   await _ensureTriviaScreen(db);
@@ -124,6 +126,21 @@ Future<void> _ensureDisplayTextScaleKv(AppDatabase db) async {
 
   await ensureKey(kDisplayTextScaleScreenKvKey, kDisplayTextScaleNormal);
   await ensureKey(kDisplayTextScaleTickerKvKey, kDisplayTextScaleNormal);
+}
+
+Future<void> _ensureAlertSeverityIconsKv(AppDatabase db) async {
+  final row = await (db.select(db.configKeyValues)
+        ..where((t) => t.key.equals(kAlertSeverityIconsKvKey)))
+      .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  await db.into(db.configKeyValues).insert(
+        ConfigKeyValuesCompanion.insert(
+          key: kAlertSeverityIconsKvKey,
+          value: kDefaultAlertSeverityIconsJson,
+        ),
+      );
 }
 
 Future<void> _ensureCuratorSettings(AppDatabase db) async {

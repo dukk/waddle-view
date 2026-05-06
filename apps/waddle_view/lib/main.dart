@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'alerts/alert_repository.dart';
 import 'alerts/alert_overlay_host.dart';
+import 'alerts/alert_severity_icons_kv.dart';
 import 'alerts/drift_alert_repository.dart';
 import 'api/deployment_api_key_source.dart';
 import 'api/local_rest_server.dart';
@@ -346,6 +347,7 @@ class _WaddleHomeState extends State<WaddleHome> {
           child: AlertOverlayHost(
             repository: widget.alerts,
             clock: const SystemClock(),
+            severityIconsKv: widget.dashboardKv[kAlertSeverityIconsKvKey],
             child: DashboardDataBoundShell(
               overscan: const TvOverscanInsets(),
               viewportConfig: const DisplayViewportConfig(),

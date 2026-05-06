@@ -129,6 +129,7 @@ void main() {
     final alerts = await db.select(db.dashboardAlerts).get();
     expect(alerts.length, 1);
     expect(alerts.single.source, kGoogleOAuthAlertSource);
+    expect(alerts.single.severity, 'auth');
     expect(alerts.single.body, contains('ABCD-EFGH'));
     expect(alerts.single.title, contains('u'));
     expect(http.deviceCodeRequestBody, isNotNull);

@@ -169,7 +169,7 @@ class GoogleOAuth {
                   'Account: $googleAccountKey\nCode: $userCode\nOpen: $verificationUrl\n'
                   'Sign in with your Google account, then approve access.',
               qrPayload: Value(verificationUrl),
-              severity: const Value('info'),
+              severity: const Value('auth'),
               priority: const Value(50),
               createdAt: DateTime.fromMillisecondsSinceEpoch(now),
               expiresAt: Value(

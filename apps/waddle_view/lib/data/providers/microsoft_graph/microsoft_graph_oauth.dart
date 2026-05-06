@@ -26,13 +26,6 @@ const int kMicrosoftGraphAccessTokenSkewMs = 5 * 60 * 1000;
 /// Interval between token polls during device-code flow (server `interval` is ignored).
 const int kMicrosoftGraphDeviceCodePollSeconds = 5;
 
-String _formEncode(Map<String, String> fields) => fields.entries
-    .map(
-      (e) =>
-          '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value)}',
-    )
-    .join('&');
-
 String _responseBodySnippet(String body, [int maxChars = 480]) {
   final t = body.trim().replaceAll(RegExp(r'\s+'), ' ');
   if (t.length <= maxChars) {
@@ -134,23 +127,27 @@ class MicrosoftGraphOAuth {
     required String refreshToken,
   }) async {
     final uri = _loginBase('login.microsoftonline.com').replace(path: _tokenPath);
+    final cid = clientId.trim();
+    if (cid.isEmpty) {
+      AppDebugLog.engine(
+        'MicrosoftGraphOAuth: refresh skipped (empty client_id)',
+      );
+      return null;
+    }
     AppDebugLog.engine(
       'MicrosoftGraphOAuth: POST $_tokenPath grant=refresh_token '
       'account=$graphAccountKey',
     );
-    final body = _formEncode({
-      'client_id': clientId,
+    // Public clients must send redirect_uri (no client_secret). Use Map body so
+    // package:http applies standard x-www-form-urlencoded encoding.
+    final body = <String, String>{
+      'client_id': cid,
       'grant_type': 'refresh_token',
       'refresh_token': refreshToken,
-      'scope': kMicrosoftGraphOAuthScopes,
       'redirect_uri': kMicrosoftGraphOAuthRedirectUri,
-    });
+    };
     try {
-      final res = await _http.post(
-        uri,
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: body,
-      );
+      final res = await _http.post(uri, body: body);
       Map<String, dynamic> m;
       try {
         m = jsonDecode(res.body) as Map<String, dynamic>;
@@ -254,6 +251,13 @@ class MicrosoftGraphOAuth {
     final startUri = _loginBase(
       'login.microsoftonline.com',
     ).replace(path: _deviceAuthPath);
+    final cid = clientId.trim();
+    if (cid.isEmpty) {
+      AppDebugLog.engine(
+        'MicrosoftGraphOAuth: device code skipped (empty client_id)',
+      );
+      return null;
+    }
     try {
       AppDebugLog.engine(
         'MicrosoftGraphOAuth: device code flow start account=$graphAccountKey '
@@ -261,12 +265,11 @@ class MicrosoftGraphOAuth {
       );
       final startRes = await _http.post(
         startUri,
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: _formEncode({
-          'client_id': clientId,
+        body: <String, String>{
+          'client_id': cid,
           'scope': kMicrosoftGraphOAuthScopes,
           'redirect_uri': kMicrosoftGraphOAuthRedirectUri,
-        }),
+        },
       );
       if (startRes.statusCode != 200) {
         AppDebugLog.engine(
@@ -311,7 +314,7 @@ class MicrosoftGraphOAuth {
               title: '$kMicrosoftGraphDeviceSignInTitle ($graphAccountKey)',
               body: bodyText.toString(),
               qrPayload: Value(qrUrl),
-              severity: const Value('info'),
+              severity: const Value('auth'),
               priority: const Value(50),
               createdAt: DateTime.fromMillisecondsSinceEpoch(now),
               expiresAt: Value(expiresAtDt),
@@ -347,13 +350,12 @@ class MicrosoftGraphOAuth {
 
         final tokRes = await _http.post(
           tokenUri,
-          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-          body: _formEncode({
+          body: <String, String>{
             'grant_type': 'urn:ietf:params:oauth:grant-type:device_code',
-            'client_id': clientId,
+            'client_id': cid,
             'device_code': deviceCode,
             'redirect_uri': kMicrosoftGraphOAuthRedirectUri,
-          }),
+          },
         );
         Map<String, dynamic>? tok;
         try {

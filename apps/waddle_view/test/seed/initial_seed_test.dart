@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/drift.dart' show OrderingTerm;
+import 'package:waddle_view/alerts/alert_severity_icons_kv.dart';
 import 'package:waddle_view/config/google_kv.dart';
 import 'package:waddle_view/data/providers/pexels_provider_extra_config.dart';
 import 'package:waddle_view/persistence/content_category_defaults.dart';
@@ -68,6 +69,7 @@ void main() {
     expect(byKey[kCuratorHistoryDepthKvKey], '5');
     expect(byKey[kRequireNewsPhotoForScreensKvKey], 'true');
     expect(byKey.containsKey('curator.news.require_photo_for_curation'), isFalse);
+    expect(byKey[kAlertSeverityIconsKvKey], kDefaultAlertSeverityIconsJson);
     await db.close();
   });
 
