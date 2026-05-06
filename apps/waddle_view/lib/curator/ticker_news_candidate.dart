@@ -8,6 +8,7 @@ class TickerNewsCandidate {
     required this.feedName,
     required this.title,
     this.summary,
+    this.categoryIconName,
     required this.publishedAtMs,
   });
 
@@ -17,6 +18,7 @@ class TickerNewsCandidate {
   final String title;
   /// Plain-text excerpt when stored on the article row (nullable).
   final String? summary;
+  final String? categoryIconName;
   final int publishedAtMs;
 
   DateTime get publishedAt =>

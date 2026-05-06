@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
+
 /// [AppDatabase.configKeyValues] key for the shared Microsoft Entra (Azure AD)
 /// application (client) id used by all Graph-based providers.
 const String kMicrosoftGraphClientIdKvKey = 'microsoft.graph.client_id';
@@ -12,6 +16,21 @@ const String kDefaultMicrosoftGraphClientId =
 /// applications** for the same application (client) id.
 const String kMicrosoftGraphOAuthRedirectUri =
     'https://login.microsoftonline.com/common/oauth2/nativeclient';
+
+/// [DashboardAlerts.source] for shared Microsoft Graph device-code sign-in.
+const String kMicrosoftGraphOAuthAlertSource = 'microsoft_graph';
+
+/// Last successful OneDrive media provider collect (poll gate).
+const String kOneDriveMediaLastCollectKvKey =
+    'provider.onedrive_media.last_collect_ms';
+
+/// Stable [Photos.id] / [Videos.id] for a OneDrive drive item under an account.
+String kOneDriveMediaItemRowId(String graphAccountKey, String driveItemId) {
+  final bytes = utf8.encode(
+    'onedrive_media\x00$graphAccountKey\x00$driveItemId',
+  );
+  return sha256.convert(bytes).toString();
+}
 
 /// Milliseconds since epoch when the Graph access token stops being valid
 /// (used to decide when to refresh). One row per `graphAccountKey`.

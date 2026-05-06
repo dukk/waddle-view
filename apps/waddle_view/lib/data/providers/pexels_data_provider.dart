@@ -95,50 +95,56 @@ class PexelsDataProvider implements IDataProvider {
       }
 
       if (photoBudget > 0) {
-        photoBudget = await _collectCuratedPhotos(
-          ctx,
-          base: base,
-          token: token,
-          nowMs: nowMs,
-          budget: photoBudget,
-        );
-        for (final s in extra.sources) {
-          if (photoBudget <= 0) {
-            break;
-          }
-          photoBudget = await _collectSearchPhotos(
+        if (extra.sources.isEmpty) {
+          photoBudget = await _collectCuratedPhotos(
             ctx,
             base: base,
             token: token,
-            source: s,
             nowMs: nowMs,
             budget: photoBudget,
           );
+        } else {
+          for (final s in extra.sources) {
+            if (photoBudget <= 0) {
+              break;
+            }
+            photoBudget = await _collectSearchPhotos(
+              ctx,
+              base: base,
+              token: token,
+              source: s,
+              nowMs: nowMs,
+              budget: photoBudget,
+            );
+          }
         }
       }
 
       if (videoBudget > 0) {
-        videoBudget = await _collectPopularVideos(
-          ctx,
-          base: base,
-          token: token,
-          extra: extra,
-          nowMs: nowMs,
-          budget: videoBudget,
-        );
-        for (final s in extra.sources) {
-          if (videoBudget <= 0) {
-            break;
-          }
-          videoBudget = await _collectSearchVideos(
+        if (extra.sources.isEmpty) {
+          videoBudget = await _collectPopularVideos(
             ctx,
             base: base,
             token: token,
             extra: extra,
-            source: s,
             nowMs: nowMs,
             budget: videoBudget,
           );
+        } else {
+          for (final s in extra.sources) {
+            if (videoBudget <= 0) {
+              break;
+            }
+            videoBudget = await _collectSearchVideos(
+              ctx,
+              base: base,
+              token: token,
+              extra: extra,
+              source: s,
+              nowMs: nowMs,
+              budget: videoBudget,
+            );
+          }
         }
       }
 

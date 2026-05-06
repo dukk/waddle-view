@@ -21,7 +21,7 @@ void main() {
     );
   });
 
-  testWidgets('shows question, progress bar, then strikes wrong answers', (
+  testWidgets('shows question, progress bar, then marks wrong answers', (
     tester,
   ) async {
     final db = openMemoryDatabase();
@@ -90,15 +90,15 @@ void main() {
     expect(find.text('22'), findsOneWidget);
     expect(find.text('Four'), findsOneWidget);
     expect(
-      find.byType(CustomPaint),
-      findsWidgets,
+      find.byIcon(Icons.close),
+      findsNWidgets(3),
     );
 
     await tester.pump(const Duration(seconds: 2));
     await tester.pumpAndSettle();
     expect(
       find.byKey(const ValueKey<String>('trivia_reveal_progress')),
-      findsNothing,
+      findsOneWidget,
     );
 
     final answerAfter = tester.widget<Text>(find.text('Four'));

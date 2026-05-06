@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:waddle_view/curator/curator_read_port.dart';
 import 'package:waddle_view/curator/ticker_curation.dart';
 
 void main() {
@@ -65,7 +66,7 @@ void main() {
         title: 'T',
         summary: '',
       ),
-      'T',
+      'T:',
     );
     expect(
       composeTickerNewsBody(
@@ -74,7 +75,7 @@ void main() {
         title: 'T',
         summary: ' S ',
       ),
-      'T S',
+      'T: S',
     );
     expect(
       composeTickerNewsBody(
@@ -83,7 +84,7 @@ void main() {
         title: 'T',
         summary: '',
       ),
-      '[F] T',
+      'F T:',
     );
     expect(
       composeTickerNewsBody(
@@ -92,7 +93,7 @@ void main() {
         title: 'T',
         summary: 'S',
       ),
-      '[F] T S',
+      'F T: S',
     );
   });
 
@@ -101,5 +102,22 @@ void main() {
       redactTickerBody('Authorization: Bearer x'),
       '[redacted]',
     );
+  });
+
+  test('buildTickerItemsForMarquee uses current weather when available', () {
+    final items = buildTickerItemsForMarquee(
+      kv: {
+        'ticker.marquee.weather': 'Fallback Weather',
+      },
+      nowLocal: DateTime(2026, 5, 1, 10, 0, 0),
+      newsCandidates: const [],
+      currentWeather: const CurrentWeatherTickerData(
+        locationName: 'Denver, CO',
+        temperatureC: 19.6,
+        description: 'sunny',
+      ),
+    );
+    final weather = items.firstWhere((e) => e.kind == 'weather');
+    expect(weather.body, 'Denver, CO: 20° · sunny');
   });
 }

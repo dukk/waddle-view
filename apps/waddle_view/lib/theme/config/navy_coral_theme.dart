@@ -2,22 +2,25 @@ import 'package:flutter/material.dart';
 
 import '../ticker_marquee_style.dart';
 import 'palettes/navy_coral_palette.dart';
+import '../theme_palette_extension.dart';
 
 ThemeData buildNavyCoralDisplayTheme() {
   final baseScheme = ColorScheme.fromSeed(
-    seedColor: NavyCoralPalette.accent,
+    seedColor: NavyCoralPalette.primary,
     brightness: Brightness.dark,
   );
   final colorScheme = baseScheme.copyWith(
     surface: NavyCoralPalette.background,
     onSurface: NavyCoralPalette.primaryText,
-    primary: NavyCoralPalette.accent,
+    primary: NavyCoralPalette.primary,
     onPrimary: NavyCoralPalette.primaryText,
-    secondary: NavyCoralPalette.accent,
+    secondary: NavyCoralPalette.accents[0],
     onSecondary: NavyCoralPalette.primaryText,
+    tertiary: NavyCoralPalette.accents[1],
+    onTertiary: NavyCoralPalette.inkBlack,
     surfaceContainerHighest: NavyCoralPalette.footerBar,
     onSurfaceVariant: NavyCoralPalette.mutedText,
-    outline: NavyCoralPalette.accent,
+    outline: NavyCoralPalette.accents[2],
     outlineVariant: NavyCoralPalette.mutedText,
   );
 
@@ -25,6 +28,31 @@ ThemeData buildNavyCoralDisplayTheme() {
     useMaterial3: true,
     colorScheme: colorScheme,
     scaffoldBackgroundColor: NavyCoralPalette.background,
+    iconTheme: const IconThemeData(color: NavyCoralPalette.dustyDenim),
+    extensions: [
+      PaletteTertiaryLayers(
+        primary: NavyCoralPalette.primary,
+        iconColor: NavyCoralPalette.dustyDenim,
+        accent1: NavyCoralPalette.accents[0],
+        accent2: NavyCoralPalette.accents[1],
+        accent3: NavyCoralPalette.accents[2],
+        colorOrder: NavyCoralPalette.orderedPalette,
+        tertiaryLayersByColor: {
+          for (final color in NavyCoralPalette.orderedPalette)
+            color: _tertiaryLayersFor(color),
+        },
+        primaryPairGradient: const LinearGradient(
+          colors: [NavyCoralPalette.inkBlack, NavyCoralPalette.prussianBlue],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        secondaryPairGradient: const LinearGradient(
+          colors: [NavyCoralPalette.duskBlue, NavyCoralPalette.dustyDenim],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+    ],
   );
 
   final withText = base.copyWith(
@@ -46,4 +74,13 @@ ThemeData buildNavyCoralDisplayTheme() {
         ),
   );
   return applyTickerMarqueeStyle(withText);
+}
+
+List<Color> _tertiaryLayersFor(Color base) {
+  return [
+    Color.alphaBlend(Colors.white.withValues(alpha: 0.18), base),
+    Color.alphaBlend(Colors.white.withValues(alpha: 0.10), base),
+    Color.alphaBlend(Colors.black.withValues(alpha: 0.10), base),
+    Color.alphaBlend(Colors.black.withValues(alpha: 0.22), base),
+  ];
 }

@@ -3,10 +3,20 @@ import 'dart:convert';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-import 'package:waddle_view/config/microsoft_graph_kv.dart';
+import 'package:waddle_view/config/microsoft_graph_kv.dart'
+    show
+        kDefaultMicrosoftGraphClientId,
+        kMicrosoftGraphAccessTokenExpiresAtKvKey,
+        kMicrosoftGraphClientIdKvKey,
+        kMicrosoftGraphOAuthAlertSource,
+        kMicrosoftGraphOAuthRedirectUri,
+        microsoftGraphAccessTokenSecret,
+        microsoftGraphRefreshTokenSecret,
+        outlookCalendarEventSource;
 import 'package:waddle_view/config/provider_config_resolver.dart';
 import 'package:waddle_view/data/data_write_context.dart';
-import 'package:waddle_view/data/providers/microsoft_graph/microsoft_graph_oauth.dart';
+import 'package:waddle_view/data/providers/microsoft_graph/microsoft_graph_oauth.dart'
+    show kMicrosoftGraphOAuthScopes, MicrosoftGraphOAuth;
 import 'package:waddle_view/data/providers/outlook_calendar_extra_config.dart';
 import 'package:waddle_view/data/providers/outlook_calendar_data_provider.dart';
 import 'package:waddle_view/persistence/database.dart';
@@ -107,6 +117,10 @@ void main() {
         'redirect_uri=${Uri.encodeQueryComponent(kMicrosoftGraphOAuthRedirectUri)}',
       ),
     );
+    expect(
+      http.refreshTokenRequestBody,
+      contains(Uri.encodeQueryComponent(kMicrosoftGraphOAuthScopes)),
+    );
     expect(await secrets.read(microsoftGraphAccessTokenSecret('u')), 'access_refreshed');
     final rows = await db.select(db.calendarEvents).get();
     expect(rows.length, 1);
@@ -139,6 +153,7 @@ void main() {
     await p.collect(ctx);
     final alerts = await db.select(db.dashboardAlerts).get();
     expect(alerts.length, 1);
+    expect(alerts.single.source, kMicrosoftGraphOAuthAlertSource);
     expect(alerts.single.body, contains('ABCD-EFGH'));
     expect(alerts.single.title, contains('u'));
     expect(
@@ -151,6 +166,10 @@ void main() {
       contains(
         'redirect_uri=${Uri.encodeQueryComponent(kMicrosoftGraphOAuthRedirectUri)}',
       ),
+    );
+    expect(
+      http.deviceCodeRequestBody,
+      contains(Uri.encodeQueryComponent(kMicrosoftGraphOAuthScopes)),
     );
     expect(http.deviceCodeTokenBodies.length, greaterThanOrEqualTo(1));
     expect(

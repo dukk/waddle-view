@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../curator/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';
 import '../persistence/database.dart';
+import '../theme/display_theme.dart';
 import 'dashboard_viewport_scope.dart';
 
 String? weatherLocationIdForSpec(ParsedWidgetSpec spec) {
@@ -32,6 +33,12 @@ class WeatherSlideWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = theme.extension<PaletteTertiaryLayers>();
+    final iconColor =
+        palette?.iconColor ??
+        theme.iconTheme.color ??
+        theme.colorScheme.onSurfaceVariant;
+    final primaryAccent = palette?.accent1 ?? theme.colorScheme.secondary;
     final configuredLocationId = weatherLocationIdForSpec(spec);
     final locationQuery = db.select(db.weatherLocations)
       ..where((t) => t.enabled.equals(true))
@@ -63,39 +70,91 @@ class WeatherSlideWidget extends StatelessWidget {
             }
             final hourly = _parseHourly(weather.hourlyJson);
             final s = DashboardViewportScope.scaleOf(context);
+            final hourlyTileWidth = 132 * s;
+            final hourlyTileHeight = _uniformHourlyTileHeight(
+              context: context,
+              items: hourly.take(6).toList(),
+              tileWidth: hourlyTileWidth,
+              scale: s,
+            );
+            final currentDescription = (weather.currentDescription ?? '').trim();
+            final currentIcon = _iconForWeather(
+              description: currentDescription,
+            );
             return Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(location.name, style: theme.textTheme.headlineSmall),
-                SizedBox(height: 12 * s),
+                SizedBox(height: 16 * s),
+                Icon(
+                  currentIcon,
+                  size: 42 * s,
+                  color: primaryAccent,
+                ),
+                SizedBox(height: 10 * s),
                 Text(
-                  '${weather.currentTemp ?? '--'}°',
+                  _formatTemp(weather.currentTemp),
                   style: theme.textTheme.displaySmall,
                 ),
-                SizedBox(height: 8 * s),
+                SizedBox(height: 10 * s),
+                Text(currentDescription, style: theme.textTheme.titleLarge),
+                SizedBox(height: 24 * s),
                 Text(
-                  weather.currentDescription ?? '',
-                  style: theme.textTheme.titleLarge,
+                  'Hourly forecast (3-hour steps)',
+                  style: theme.textTheme.titleMedium,
                 ),
-                SizedBox(height: 20 * s),
+                SizedBox(height: 14 * s),
                 Wrap(
-                  spacing: 16 * s,
-                  runSpacing: 10 * s,
+                  spacing: 24 * s,
+                  runSpacing: 14 * s,
                   alignment: WrapAlignment.center,
                   children: hourly.take(6).map((item) {
-                    return Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '${item['temp'] ?? '--'}°',
-                          style: theme.textTheme.titleMedium,
+                    final dt = (item['dt'] as num?)?.toInt();
+                    final hourText = _hourText(dt);
+                    final description = (item['description'] as String?) ?? '';
+                    return SizedBox(
+                      width: hourlyTileWidth,
+                      height: hourlyTileHeight,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(12 * s),
                         ),
-                        Text(
-                          (item['description'] as String?) ?? '',
-                          style: theme.textTheme.bodySmall,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 10 * s,
+                            vertical: 8 * s,
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              Text(hourText, style: theme.textTheme.bodySmall),
+                              SizedBox(height: 4 * s),
+                              Icon(
+                                _iconForWeather(
+                                  code: item['icon'] as String?,
+                                  description: description,
+                                ),
+                                size: 20 * s,
+                                color: iconColor,
+                              ),
+                              SizedBox(height: 4 * s),
+                              Text(
+                                _formatTemp(item['temp']),
+                                style: theme.textTheme.titleMedium,
+                              ),
+                              SizedBox(height: 2 * s),
+                              Text(
+                                description,
+                                style: theme.textTheme.bodySmall,
+                                softWrap: true,
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
+                      ),
                     );
                   }).toList(),
                 ),
@@ -123,6 +182,134 @@ class WeatherSlideWidget extends StatelessWidget {
     } on Object {
       return const [];
     }
+  }
+
+  String _hourText(int? dtSeconds) {
+    if (dtSeconds == null || dtSeconds <= 0) {
+      return '--';
+    }
+    final local = DateTime.fromMillisecondsSinceEpoch(dtSeconds * 1000).toLocal();
+    final hour = local.hour;
+    final suffix = hour >= 12 ? 'PM' : 'AM';
+    final twelveHour = hour % 12 == 0 ? 12 : hour % 12;
+    return '$twelveHour $suffix';
+  }
+
+  String _formatTemp(dynamic raw) {
+    if (raw is num) {
+      return '${raw.round()}\u00B0';
+    }
+    return '--\u00B0';
+  }
+
+  double _uniformHourlyTileHeight({
+    required BuildContext context,
+    required List<Map<String, dynamic>> items,
+    required double tileWidth,
+    required double scale,
+  }) {
+    const fallback = 144.0;
+    if (items.isEmpty) {
+      return fallback * scale;
+    }
+    final bodyStyle = theme.textTheme.bodySmall ?? const TextStyle(fontSize: 12);
+    final tempStyle = theme.textTheme.titleMedium ?? const TextStyle(fontSize: 16);
+    final textScaler = MediaQuery.textScalerOf(context);
+    final maxDescriptionHeight = items
+        .map((item) => (item['description'] as String?)?.trim() ?? '')
+        .map(
+          (text) => _measureTextHeight(
+            text: text,
+            style: bodyStyle,
+            maxWidth: tileWidth - (20 * scale),
+            textScaler: textScaler,
+          ),
+        )
+        .fold<double>(0, (prev, h) => h > prev ? h : prev);
+    final hourHeight = _measureTextHeight(
+      text: '12 PM',
+      style: bodyStyle,
+      maxWidth: tileWidth - (20 * scale),
+      textScaler: textScaler,
+    );
+    final tempHeight = _measureTextHeight(
+      text: '99°',
+      style: tempStyle,
+      maxWidth: tileWidth - (20 * scale),
+      textScaler: textScaler,
+    );
+    final fixedHeight =
+        (8 * scale) + // top padding
+        hourHeight +
+        (4 * scale) +
+        (20 * scale) + // icon
+        (4 * scale) +
+        tempHeight +
+        (2 * scale) +
+        (8 * scale); // bottom padding
+    final computed = fixedHeight + maxDescriptionHeight;
+    final minimum = fallback * scale;
+    return computed > minimum ? computed : minimum;
+  }
+
+  double _measureTextHeight({
+    required String text,
+    required TextStyle style,
+    required double maxWidth,
+    required TextScaler textScaler,
+  }) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: text.isEmpty ? ' ' : text,
+        style: style,
+      ),
+      textDirection: TextDirection.ltr,
+      textScaler: textScaler,
+    )..layout(maxWidth: maxWidth);
+    return painter.height;
+  }
+
+  IconData _iconForWeather({String? code, String? description}) {
+    final normalizedCode = (code ?? '').trim();
+    if (normalizedCode.isNotEmpty) {
+      if (normalizedCode.contains('01')) {
+        return Icons.wb_sunny;
+      }
+      if (normalizedCode.contains('02') ||
+          normalizedCode.contains('03') ||
+          normalizedCode.contains('04')) {
+        return Icons.cloud;
+      }
+      if (normalizedCode.contains('09') || normalizedCode.contains('10')) {
+        return Icons.umbrella;
+      }
+      if (normalizedCode.contains('11')) {
+        return Icons.thunderstorm;
+      }
+      if (normalizedCode.contains('13')) {
+        return Icons.ac_unit;
+      }
+      if (normalizedCode.contains('50')) {
+        return Icons.foggy;
+      }
+    }
+    final value = (description ?? '').toLowerCase();
+    if (value.contains('snow') || value.contains('sleet') || value.contains('ice')) {
+      return Icons.ac_unit;
+    }
+    if (value.contains('thunder') || value.contains('storm')) {
+      return Icons.thunderstorm;
+    }
+    if (value.contains('rain') || value.contains('drizzle') || value.contains('shower')) {
+      return Icons.umbrella;
+    }
+    if (value.contains('cloud') || value.contains('overcast')) {
+      return Icons.cloud;
+    }
+    if (value.contains('fog') || value.contains('mist') || value.contains('haze')) {
+      return Icons.foggy;
+    }
+    return Icons.wb_sunny;
   }
 
   Widget _empty(String text) {

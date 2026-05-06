@@ -45,9 +45,10 @@ int _columnCountFromConfig(Map<String, dynamic> c) {
 }
 
 class _ColumnArticle {
-  const _ColumnArticle(this.article, this.imageLoad);
+  const _ColumnArticle(this.article, this.imageLoad, this.sourceLabel);
   final RssArticle? article;
   final RssArticleImageLoad imageLoad;
+  final String? sourceLabel;
 }
 
 /// [columnCount] RSS articles in a row: image on top, then title with a link
@@ -120,7 +121,8 @@ class _RssArticleColumnsSlideWidgetState
         exclude.add(article.id);
         load = await loadRssArticleImage(widget.db, widget.blobs, article);
       }
-      out.add(_ColumnArticle(article, load));
+      final sourceLabel = await resolveRssArticleSourceLabel(widget.db, article);
+      out.add(_ColumnArticle(article, load, sourceLabel));
     }
     String? inferred;
     for (final col in out) {
@@ -283,6 +285,7 @@ class _ArticleColumnCard extends StatelessWidget {
     }
     final title = article.title.trim();
     final summary = article.summary?.trim() ?? '';
+    final sourceLabel = data.sourceLabel?.trim() ?? '';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -340,6 +343,19 @@ class _ArticleColumnCard extends StatelessWidget {
                     ),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
+                  ),
+                if (title.isNotEmpty && sourceLabel.isNotEmpty)
+                  Padding(
+                    padding: EdgeInsets.only(top: 4 * scale),
+                    child: Text(
+                      sourceLabel,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 if (title.isNotEmpty &&
                     (summary.isNotEmpty || article.link.trim().isNotEmpty))
@@ -423,23 +439,27 @@ class _ArticleColumnCard extends StatelessWidget {
     if (url.isEmpty) {
       return const SizedBox.shrink();
     }
-    final innerPad = 5 * scale;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8 * scale),
-        border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.3),
+    final innerPad = 10 * scale;
+    return Padding(
+      padding: EdgeInsets.all(6 * scale),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8 * scale),
+          border: Border.all(
+            color: theme.colorScheme.outline.withValues(alpha: 0.3),
+          ),
         ),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(innerPad),
-        child: QrImageView(
-          key: ValueKey('rss_article_columns_qr_$columnIndex'),
-          data: url,
-          version: QrVersions.auto,
-          size: qrLogical * scale,
-          gapless: true,
+        child: Padding(
+          padding: EdgeInsets.all(innerPad),
+          child: QrImageView(
+            key: ValueKey('rss_article_columns_qr_$columnIndex'),
+            data: url,
+            version: QrVersions.auto,
+            size: qrLogical * scale,
+            padding: EdgeInsets.all(4 * scale),
+            gapless: true,
+          ),
         ),
       ),
     );

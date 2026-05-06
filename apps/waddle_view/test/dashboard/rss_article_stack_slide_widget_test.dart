@@ -16,6 +16,7 @@ Future<void> _insertFeed(AppDatabase db) async {
           id: 'feed_t',
           url: 'http://test.local/feed.xml',
           category: const Value('test'),
+          title: const Value('Test Feed'),
         ),
       );
 }
@@ -100,11 +101,27 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Top headline'), findsOneWidget);
     expect(find.text('Bottom headline'), findsOneWidget);
+    expect(find.text('Test Feed'), findsNWidgets(2));
     expect(find.text('Top body.'), findsOneWidget);
     expect(find.text('Bottom body.'), findsOneWidget);
     expect(find.byType(QrImageView), findsNWidgets(2));
+    final qrWidgets = tester.widgetList<QrImageView>(find.byType(QrImageView));
+    for (final qr in qrWidgets) {
+      expect(qr.padding, isA<EdgeInsets>());
+      expect(qr.padding.left, greaterThan(0));
+    }
     expect(find.byKey(const Key('rss_article_stack_row_0')), findsOneWidget);
     expect(find.byKey(const Key('rss_article_stack_row_1')), findsOneWidget);
+    final topImage = tester.getTopLeft(
+      find.byKey(const ValueKey<String>('rss_article_stack_image_0')),
+    );
+    final topTitle = tester.getTopLeft(find.text('Top headline'));
+    final bottomImage = tester.getTopLeft(
+      find.byKey(const ValueKey<String>('rss_article_stack_image_1')),
+    );
+    final bottomTitle = tester.getTopLeft(find.text('Bottom headline'));
+    expect(topImage.dx, lessThan(topTitle.dx));
+    expect(bottomImage.dx, lessThan(bottomTitle.dx));
 
     await db.close();
   });

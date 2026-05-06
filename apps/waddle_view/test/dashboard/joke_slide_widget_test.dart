@@ -55,6 +55,10 @@ void main() {
 
     expect(find.text('Dad jokes'), findsOneWidget);
     expect(find.text('Why did the chicken cross the road?'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('joke_punchline_progress')),
+      findsOneWidget,
+    );
     final punchlineFinder = find.text('To get to the other side.');
     final animFinder = find.ancestor(
       of: punchlineFinder,
@@ -66,6 +70,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.widget<AnimatedOpacity>(animFinder).opacity, 1);
+    expect(
+      find.byKey(const ValueKey<String>('joke_punchline_progress')),
+      findsOneWidget,
+    );
 
     await db.close();
   });

@@ -61,4 +61,66 @@ void main() {
     expect(list.single.feedName, 'world');
     await db.close();
   });
+
+  test('loadNewsCandidatesForTicker includes category icon name when available', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.contentCategories).insert(
+          ContentCategoriesCompanion.insert(
+            id: 'world',
+            label: 'World',
+            materialIconName: const Value('public'),
+          ),
+        );
+    await db.into(db.rssFeedSources).insert(
+          RssFeedSourcesCompanion.insert(
+            id: 'f1',
+            url: 'http://x',
+            category: const Value('world'),
+          ),
+        );
+    await db.into(db.rssArticles).insert(
+          RssArticlesCompanion.insert(
+            id: 'a1',
+            feedId: 'f1',
+            guid: 'g1',
+            title: 'Headline',
+            link: 'http://l',
+            publishedAt: DateTime.fromMillisecondsSinceEpoch(1),
+            fetchedAt: DateTime.fromMillisecondsSinceEpoch(1),
+          ),
+        );
+    final port = DriftCuratorReadPort(db);
+    final list = await port.loadNewsCandidatesForTicker();
+    expect(list.single.categoryIconName, 'public');
+    await db.close();
+  });
+
+  test('loadCurrentWeatherForTicker returns enabled location weather', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.weatherLocations).insert(
+          WeatherLocationsCompanion.insert(
+            id: 'atlanta',
+            name: 'Atlanta, GA',
+            latitude: 33.749,
+            longitude: -84.388,
+          ),
+        );
+    await db.into(db.weatherCurrentData).insert(
+          WeatherCurrentDataCompanion.insert(
+            locationId: 'atlanta',
+            observedAtMs: DateTime.fromMillisecondsSinceEpoch(2),
+            currentTemp: const Value(24.4),
+            currentDescription: const Value('partly cloudy'),
+          ),
+        );
+    final port = DriftCuratorReadPort(db);
+    final weather = await port.loadCurrentWeatherForTicker();
+    expect(weather, isNot(equals(null)));
+    expect(weather!.locationName, 'Atlanta, GA');
+    expect(weather.temperatureC, 24.4);
+    expect(weather.description, 'partly cloudy');
+    await db.close();
+  });
 }

@@ -398,6 +398,11 @@ void main() {
       ),
       isTrue,
     );
+    expect(httpClient.requests.any((r) => r.contains('/v1/curated')), isFalse);
+    expect(
+      httpClient.requests.any((r) => r.contains('/v1/videos/popular')),
+      isFalse,
+    );
 
     final photo = await (db.select(db.photos)
           ..where((t) => t.id.equals('501')))

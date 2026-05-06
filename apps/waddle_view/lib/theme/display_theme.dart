@@ -25,6 +25,7 @@ export 'display_text_scale_kv.dart'
         normalizeDisplayTextScaleOption;
 export 'display_theme_kv.dart'
     show kDefaultDisplayThemeId, kDisplayThemeIdKvKey;
+export 'theme_palette_extension.dart' show PaletteTertiaryLayers;
 
 /// Applies [DisplayTheme.textScale] on top of the platform [TextScaler] (accessibility, etc.).
 @immutable

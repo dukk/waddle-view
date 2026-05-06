@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 
 import '../curator/ticker_item.dart';
 import '../dashboard/dashboard_viewport_scope.dart';
+import '../dashboard/content_category_material_icon.dart';
 import '../debug/app_debug_log.dart';
+import '../theme/display_theme.dart';
 import '../theme/ticker_marquee_style.dart';
 import '../marquee_cycle_gate.dart';
 import 'ticker_curated_repository.dart';
@@ -20,6 +22,7 @@ class TickerMarquee extends StatefulWidget {
     this.separator,
     this.height = 96,
     this.cycleGate,
+    this.navigationController,
   });
 
   final TickerCuratedRepository repository;
@@ -30,13 +33,14 @@ class TickerMarquee extends StatefulWidget {
   /// When set, [MarqueeCycleGate.notifyMarqueeLoopComplete] runs after each
   /// full scroll loop so [GatedDashboardCurator] can serialize curation.
   final MarqueeCycleGate? cycleGate;
+  final TickerMarqueeNavigationController? navigationController;
 
   @override
   State<TickerMarquee> createState() => _TickerMarqueeState();
 }
 
 class _TickerMarqueeState extends State<TickerMarquee>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final GlobalKey _segmentKey = GlobalKey();
   late AnimationController _controller;
   StreamSubscription<List<TickerItem>>? _subscription;
@@ -44,6 +48,23 @@ class _TickerMarqueeState extends State<TickerMarquee>
   double _segmentWidth = 0;
   bool _wrapWasHigh = false;
   bool _wrapListenerAttached = false;
+  final List<List<TickerItem>> _history = <List<TickerItem>>[];
+  int _historyCursor = 0;
+  int _itemCursor = 0;
+  bool _manualNavigationActive = false;
+  String? _navigationNotice;
+  Timer? _manualIdleTimer;
+  late final AnimationController _overlayFadeController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 240),
+    value: 0,
+  );
+  late final Animation<double> _overlayFade = CurvedAnimation(
+    parent: _overlayFadeController,
+    curve: Curves.easeOutCubic,
+    reverseCurve: Curves.easeInCubic,
+  );
+  static const Duration _manualIdleTimeout = Duration(seconds: 3);
 
   late final VoidCallback _onWrapListener = _handleWrapListener;
 
@@ -78,6 +99,7 @@ class _TickerMarqueeState extends State<TickerMarquee>
     super.initState();
     _controller = AnimationController(vsync: this);
     _subscription = widget.repository.watchOrdered().listen(_onItems);
+    widget.navigationController?.addListener(_onNavigationCommand);
   }
 
   void _onItems(List<TickerItem> next) {
@@ -93,6 +115,14 @@ class _TickerMarqueeState extends State<TickerMarquee>
     _detachWrapListener();
     setState(() {
       _items = next;
+      _history.insert(0, List<TickerItem>.unmodifiable(next));
+      while (_history.length > 5) {
+        _history.removeLast();
+      }
+      if (!_manualNavigationActive || _historyCursor == 0) {
+        _historyCursor = 0;
+        _itemCursor = 0;
+      }
       _segmentWidth = 0;
     });
     _controller
@@ -163,14 +193,103 @@ class _TickerMarqueeState extends State<TickerMarquee>
         _attachWrapListener();
       }
     }
+    if (oldWidget.navigationController != widget.navigationController) {
+      oldWidget.navigationController?.removeListener(_onNavigationCommand);
+      widget.navigationController?.addListener(_onNavigationCommand);
+    }
   }
 
   @override
   void dispose() {
+    widget.navigationController?.removeListener(_onNavigationCommand);
+    _manualIdleTimer?.cancel();
+    _overlayFadeController.dispose();
     _detachWrapListener();
     _subscription?.cancel();
     _controller.dispose();
     super.dispose();
+  }
+
+  List<TickerItem> get _visibleProgram =>
+      _history.isEmpty ? const [] : _history[_historyCursor];
+
+  void _onNavigationCommand() {
+    final direction = widget.navigationController?.direction;
+    if (direction == null || direction == 0) {
+      return;
+    }
+    if (direction < 0) {
+      _navigateBackward();
+    } else {
+      _navigateForward();
+    }
+  }
+
+  void _beginManualNavigation() {
+    _controller.stop();
+    _manualNavigationActive = true;
+    _overlayFadeController.forward();
+    _manualIdleTimer?.cancel();
+    _manualIdleTimer = Timer(_manualIdleTimeout, _onManualNavigationIdle);
+  }
+
+  void _onManualNavigationIdle() {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _manualNavigationActive = false;
+      _navigationNotice = null;
+      _historyCursor = 0;
+      _itemCursor = 0;
+    });
+    _overlayFadeController.reverse();
+    if (_items.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _measureAndStart());
+    }
+  }
+
+  void _navigateBackward() {
+    if (_history.isEmpty || _visibleProgram.isEmpty) {
+      return;
+    }
+    setState(() {
+      _beginManualNavigation();
+      if (_itemCursor > 0) {
+        _itemCursor -= 1;
+        _navigationNotice = null;
+        return;
+      }
+      final olderProgramIndex = _historyCursor + 1;
+      if (olderProgramIndex < _history.length) {
+        _historyCursor = olderProgramIndex;
+        _itemCursor = _visibleProgram.length - 1;
+        _navigationNotice = null;
+        return;
+      }
+      _navigationNotice = 'You have reached the end of ticker history.';
+    });
+  }
+
+  void _navigateForward() {
+    if (_history.isEmpty || _visibleProgram.isEmpty) {
+      return;
+    }
+    setState(() {
+      _beginManualNavigation();
+      if (_itemCursor < _visibleProgram.length - 1) {
+        _itemCursor += 1;
+        _navigationNotice = null;
+        return;
+      }
+      if (_historyCursor > 0) {
+        _historyCursor -= 1;
+        _itemCursor = 0;
+        _navigationNotice = null;
+        return;
+      }
+      _navigationNotice = 'End of current ticker program. Waiting for a new program.';
+    });
   }
 
   Widget _defaultSeparator(BuildContext context) {
@@ -189,20 +308,60 @@ class _TickerMarqueeState extends State<TickerMarquee>
   Widget _tickerItemLine(BuildContext context, TickerItem item) {
     final base = Theme.of(context).textTheme.titleLarge;
     final rssTheme = Theme.of(context).extension<TickerMarqueeStyle>();
+    final weatherIcon = _weatherIconForTicker(item);
+    if (weatherIcon != null) {
+      final s = DashboardViewportScope.scaleOf(context);
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            weatherIcon,
+            size: 20 * s,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          SizedBox(width: 8 * s),
+          Text(
+            item.body,
+            maxLines: 1,
+            overflow: TextOverflow.clip,
+            style: base,
+          ),
+        ],
+      );
+    }
     final rss = item.rss;
     if (rss != null && rssTheme != null && base != null) {
       final children = <InlineSpan>[];
       if (rss.showSource && rss.sourceTitle.isNotEmpty) {
+        final iconName = rss.sourceIconName?.trim();
+        if (iconName != null && iconName.isNotEmpty) {
+          final s = DashboardViewportScope.scaleOf(context);
+          children.add(
+            WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: Padding(
+                padding: EdgeInsets.only(right: 6 * s),
+                child: Icon(
+                  contentCategoryMaterialIcon(iconName),
+                  size: 18 * s,
+                  color:
+                      Theme.of(context).iconTheme.color ??
+                      Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          );
+        }
         children.add(
           TextSpan(
-            text: '[${rss.sourceTitle}] ',
+            text: '${rss.sourceTitle} ',
             style: base.merge(rssTheme.rssSourceStyle),
           ),
         );
       }
       children.add(
         TextSpan(
-          text: rss.articleTitle,
+          text: '${rss.articleTitle}:',
           style: base.merge(rssTheme.rssTitleStyle),
         ),
       );
@@ -228,6 +387,29 @@ class _TickerMarqueeState extends State<TickerMarquee>
     );
   }
 
+  IconData? _weatherIconForTicker(TickerItem item) {
+    if (item.kind != 'weather') {
+      return null;
+    }
+    final value = item.body.toLowerCase();
+    if (value.contains('snow') || value.contains('sleet') || value.contains('ice')) {
+      return Icons.ac_unit;
+    }
+    if (value.contains('thunder') || value.contains('storm')) {
+      return Icons.thunderstorm;
+    }
+    if (value.contains('rain') || value.contains('drizzle') || value.contains('shower')) {
+      return Icons.umbrella;
+    }
+    if (value.contains('cloud') || value.contains('overcast')) {
+      return Icons.cloud;
+    }
+    if (value.contains('fog') || value.contains('mist') || value.contains('haze')) {
+      return Icons.foggy;
+    }
+    return Icons.wb_sunny;
+  }
+
   List<Widget> _segmentChildren(BuildContext context) {
     final sep = widget.separator ?? _defaultSeparator(context);
     final out = <Widget>[];
@@ -244,6 +426,14 @@ class _TickerMarqueeState extends State<TickerMarquee>
   Widget build(BuildContext context) {
     final s = DashboardViewportScope.scaleOf(context);
     final radius = BorderRadius.circular(8 * s);
+    final palette = Theme.of(context).extension<PaletteTertiaryLayers>();
+    final tickerBackground = BoxDecoration(
+      gradient: palette?.secondaryPairGradient,
+      color: palette == null
+          ? Theme.of(context).colorScheme.surfaceContainerHighest
+          : null,
+      borderRadius: radius,
+    );
     return LayoutBuilder(
       builder: (context, constraints) {
         final h = constraints.maxHeight.isFinite && constraints.maxHeight > 0
@@ -254,10 +444,7 @@ class _TickerMarqueeState extends State<TickerMarquee>
           return SizedBox(
             height: h,
             child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: radius,
-              ),
+              decoration: tickerBackground,
               child: Center(
                 child: Text(
                   '\u2014',
@@ -265,6 +452,35 @@ class _TickerMarqueeState extends State<TickerMarquee>
                 ),
               ),
             ),
+          );
+        }
+
+        if (_manualNavigationActive && _visibleProgram.isNotEmpty) {
+          final current = _visibleProgram[_itemCursor];
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              SizedBox(
+                height: h,
+                child: DecoratedBox(
+                  decoration: tickerBackground,
+                  child: Center(child: _tickerItemLine(context, current)),
+                ),
+              ),
+              Positioned(
+                left: 8 * s,
+                right: 8 * s,
+                bottom: h + (8 * s),
+                child: FadeTransition(
+                  opacity: _overlayFade,
+                  child: _TickerNavigationOverlay(
+                    items: _visibleProgram,
+                    currentIndex: _itemCursor,
+                    notice: _navigationNotice,
+                  ),
+                ),
+              ),
+            ],
           );
         }
 
@@ -283,9 +499,7 @@ class _TickerMarqueeState extends State<TickerMarquee>
         return SizedBox(
           height: h,
           child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            ),
+            decoration: tickerBackground,
             child: ClipRRect(
               borderRadius: radius,
               child: SingleChildScrollView(
@@ -322,6 +536,87 @@ class _TickerMarqueeState extends State<TickerMarquee>
           ),
         );
       },
+    );
+  }
+}
+
+class TickerMarqueeNavigationController extends ChangeNotifier {
+  int _direction = 0;
+
+  int get direction => _direction;
+
+  void navigateBackward() {
+    _direction = -1;
+    notifyListeners();
+  }
+
+  void navigateForward() {
+    _direction = 1;
+    notifyListeners();
+  }
+}
+
+class _TickerNavigationOverlay extends StatelessWidget {
+  const _TickerNavigationOverlay({
+    required this.items,
+    required this.currentIndex,
+    required this.notice,
+  });
+
+  final List<TickerItem> items;
+  final int currentIndex;
+  final String? notice;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (var i = 0; i < items.length; i++)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: i == currentIndex
+                              ? theme.colorScheme.primaryContainer
+                              : theme.colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 4,
+                          ),
+                          child: Text(
+                            items[i].kind,
+                            style: theme.textTheme.labelMedium,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            if (notice != null) ...[
+              const SizedBox(height: 6),
+              Text(notice!, style: theme.textTheme.bodySmall),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

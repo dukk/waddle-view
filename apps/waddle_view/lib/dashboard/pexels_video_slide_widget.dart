@@ -6,12 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart' as mkv;
 import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../blob/blob_store.dart';
 import '../curator/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';
 import '../persistence/database.dart';
 import 'dashboard_viewport_scope.dart';
+import 'pexels_attribution_overlay.dart';
 
 Future<Video?> loadPexelsVideoForSlide(
   AppDatabase db,
@@ -78,6 +80,7 @@ class PexelsVideoSlideWidget extends StatefulWidget {
 }
 
 class _PexelsVideoSlideWidgetState extends State<PexelsVideoSlideWidget> {
+  Video? _row;
   Player? _player;
   mkv.VideoController? _videoController;
   bool _loading = true;
@@ -156,6 +159,7 @@ class _PexelsVideoSlideWidgetState extends State<PexelsVideoSlideWidget> {
         return;
       }
       setState(() {
+        _row = row;
         _player = player;
         _videoController = videoController;
         _loading = false;
@@ -168,6 +172,14 @@ class _PexelsVideoSlideWidgetState extends State<PexelsVideoSlideWidget> {
         });
       }
     }
+  }
+
+  Future<void> _openUrl(String url) async {
+    final u = Uri.tryParse(url.trim());
+    if (u == null || !(u.hasScheme && (u.isScheme('http') || u.isScheme('https')))) {
+      return;
+    }
+    await launchUrl(u, mode: LaunchMode.externalApplication);
   }
 
   @override
@@ -194,21 +206,40 @@ class _PexelsVideoSlideWidgetState extends State<PexelsVideoSlideWidget> {
         ),
       );
     }
+    final row = _row!;
     final vc = _videoController!;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final w = constraints.maxWidth;
-        final h = constraints.maxHeight;
-        return Center(
-          child: mkv.Video(
-            controller: vc,
-            width: w.isFinite ? w : null,
-            height: h.isFinite ? h : null,
-            fit: BoxFit.cover,
-            controls: null,
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final w = constraints.maxWidth;
+            final h = constraints.maxHeight;
+            return Center(
+              child: mkv.Video(
+                controller: vc,
+                width: w.isFinite ? w : null,
+                height: h.isFinite ? h : null,
+                fit: BoxFit.cover,
+                controls: null,
+              ),
+            );
+          },
+        ),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: PexelsAttributionOverlay(
+            photographerName: row.photographerName,
+            photographerUrl: row.photographerUrl,
+            altText: row.altText,
+            theme: widget.theme,
+            scale: s,
+            onOpenUrl: _openUrl,
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 }

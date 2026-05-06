@@ -8,6 +8,7 @@ import '../blob/blob_store.dart';
 import '../curator/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';
 import '../persistence/database.dart';
+import '../theme/theme_palette_extension.dart';
 import 'content_category_slide_header.dart';
 import 'trivia_slide_timing.dart';
 import 'dashboard_viewport_scope.dart';
@@ -43,7 +44,8 @@ List<String> triviaShuffleOrderForTesting(Random random) {
   return List<String>.from(letters);
 }
 
-/// Multiple-choice trivia: wrong answers are struck out with an animated X; a
+/// Multiple-choice trivia: wrong answers are marked out with an animated close
+/// icon; a
 /// progress bar under the question shows time until only the correct answer
 /// is emphasized.
 class TriviaSlideWidget extends StatefulWidget {
@@ -237,7 +239,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
   }
 
   Widget _buildRevealProgressBar(ThemeData theme, double s) {
-    if (_isRevealComplete() || _eliminationEndMs <= 0) {
+    if (_eliminationEndMs <= 0) {
       return const SizedBox.shrink();
     }
     return Padding(
@@ -248,11 +250,11 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
           final h = 7 * s;
           final remaining =
               (1.0 - _elapsedMs / _eliminationEndMs).clamp(0.0, 1.0);
-          final trackColor = theme.colorScheme.surfaceContainerHighest
+          final trackColor = theme.colorScheme.secondaryContainer
               .withValues(alpha: 0.55);
           final fillColor =
-              theme.colorScheme.primary.withValues(alpha: 0.5);
-          final markerColor = theme.colorScheme.onSurfaceVariant;
+              theme.colorScheme.secondary.withValues(alpha: 0.5);
+          final markerColor = theme.colorScheme.secondary;
 
           return SizedBox(
             key: const ValueKey<String>('trivia_reveal_progress'),
@@ -321,19 +323,24 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     final struck = _struckWrong.contains(displayLetter);
     final correctSource = row.correctOption.trim().toUpperCase();
     final highlight = revealComplete && sourceLetter == correctSource;
+    final palette = theme.extension<PaletteTertiaryLayers>();
+    final accentColors = [
+      palette?.accent1 ?? theme.colorScheme.secondary,
+      palette?.accent2 ?? theme.colorScheme.tertiary,
+      palette?.accent3 ?? theme.colorScheme.primary,
+      palette?.accent1 ?? theme.colorScheme.secondary,
+    ];
+    final accentColor = accentColors[slot % accentColors.length];
+    final normalTextColor = theme.colorScheme.onSurface;
     final base = theme.textTheme.titleMedium;
     final TextStyle? optionStyle;
     if (highlight) {
       optionStyle = base?.copyWith(
         fontWeight: FontWeight.w700,
-        color: theme.colorScheme.primary,
-      );
-    } else if (struck) {
-      optionStyle = base?.copyWith(
-        color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.62),
+        color: normalTextColor,
       );
     } else {
-      optionStyle = base;
+      optionStyle = base?.copyWith(color: normalTextColor);
     }
 
     final text = _optionText(row, sourceLetter);
@@ -343,26 +350,38 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 28 * s,
-                child: Text(
-                  '$displayLetter.',
-                  style: optionStyle,
-                ),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 10 * s, vertical: 10 * s),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: accentColor.withValues(alpha: struck ? 0.6 : 0.9),
+                width: max(1.6, 2 * s),
               ),
-              Expanded(
-                child: Text(
-                  text,
-                  style: optionStyle,
+              borderRadius: BorderRadius.circular(12 * s),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 28 * s,
+                  child: Text(
+                    '$displayLetter.',
+                    style: optionStyle,
+                  ),
                 ),
-              ),
-            ],
+                Expanded(
+                  child: Text(
+                    text,
+                    style: optionStyle,
+                  ),
+                ),
+              ],
+            ),
           ),
           if (struck)
-            Positioned.fill(
+            Positioned(
+              right: 6 * s,
+              top: 6 * s,
               child: TweenAnimationBuilder<double>(
                 key: ValueKey<String>('trivia_strike_$displayLetter'),
                 duration:
@@ -370,10 +389,16 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                 tween: Tween(begin: 0, end: 1),
                 curve: Curves.easeOutCubic,
                 builder: (context, t, _) {
-                  return CustomPaint(
-                    painter: _StrikeXPainter(
-                      progress: t,
-                      color: theme.colorScheme.error.withValues(alpha: 0.88),
+                  return Opacity(
+                    opacity: t,
+                    child: Transform.scale(
+                      scale: 0.75 + (0.25 * t),
+                      child: Icon(
+                        Icons.close,
+                        key: ValueKey<String>('trivia_close_icon_$displayLetter'),
+                        color: accentColor,
+                        size: 34 * s,
+                      ),
                     ),
                   );
                 },
@@ -563,43 +588,4 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
       },
     );
   }
-}
-
-class _StrikeXPainter extends CustomPainter {
-  _StrikeXPainter({required this.progress, required this.color});
-
-  final double progress;
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (progress <= 0) {
-      return;
-    }
-    final stroke = max(2.0, size.shortestSide * 0.06);
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = stroke
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final pad = stroke;
-    final rect = Rect.fromLTWH(
-      pad,
-      pad,
-      size.width - 2 * pad,
-      size.height - 2 * pad,
-    );
-    final t = progress;
-
-    final end1 = Offset.lerp(rect.topLeft, rect.bottomRight, t)!;
-    canvas.drawLine(rect.topLeft, end1, paint);
-
-    final end2 = Offset.lerp(rect.topRight, rect.bottomLeft, t)!;
-    canvas.drawLine(rect.topRight, end2, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _StrikeXPainter old) =>
-      old.progress != progress || old.color != color;
 }

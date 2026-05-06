@@ -137,7 +137,7 @@ void main() {
     );
     expect(items.any((e) => e.body == 'KV headline'), isFalse);
     final news = items.firstWhere((e) => e.body.contains('RSS title'));
-    expect(news.body, '[Reuters] RSS title');
+    expect(news.body, 'Reuters RSS title:');
     expect(news.rss, isNotNull);
     expect(news.rss!.showSource, isTrue);
     expect(news.rss!.sourceTitle, 'Reuters');
@@ -193,7 +193,7 @@ void main() {
       ],
       config: cfg,
     );
-    expect(items.single.body, '[BBC World] Headline The deck.');
+    expect(items.single.body, 'BBC World Headline: The deck.');
     expect(items.single.rss!.summary, 'The deck.');
   });
 
@@ -216,7 +216,31 @@ void main() {
       ],
       config: cfg,
     );
-    expect(items.single.body, '[BBC World] Headline');
+    expect(items.single.body, 'BBC World Headline:');
+    expect(items.single.rss!.sourceIconName, isNull);
+  });
+
+  test('pickNewsTickerItemsByWidthBudget carries category icon into rss segments', () {
+    final cfg = CuratorTickerConfig(
+      newsScrollBudgetSeconds: 10000,
+      newsPixelsPerSecond: 80,
+      newsCharWidthPx: 1,
+      newsSeparatorPaddingPx: 0,
+      newsPrefixCategory: true,
+    );
+    final items = pickNewsTickerItemsByWidthBudget(
+      interleaved: [
+        const TickerNewsCandidate(
+          feedId: 'a',
+          feedName: 'BBC World',
+          title: 'Headline',
+          categoryIconName: 'public',
+          publishedAtMs: 1,
+        ),
+      ],
+      config: cfg,
+    );
+    expect(items.single.rss!.sourceIconName, 'public');
   });
 
   test('CuratorTickerConfig.fromKv parses numeric and bool overrides', () {

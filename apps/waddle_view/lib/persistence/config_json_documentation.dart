@@ -172,6 +172,38 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
           'You write clear, family-friendly multiple-choice trivia.',
     }),
   ),
+  'stocks': ProviderConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'StockQuoteProviderConfig',
+        description:
+            'Finnhub stock quote provider: default symbols (used when '
+            'stock_symbols has no enabled rows) and per-tick fetch ceiling.',
+        properties: {
+          'maxSymbolsPerCollect': {'type': 'integer', 'minimum': 1},
+          'defaultSymbols': {
+            'type': 'array',
+            'items': {
+              'type': 'object',
+              'properties': {
+                'symbol': {'type': 'string', 'minLength': 1},
+                'displayName': {'type': 'string'},
+              },
+              'required': ['symbol'],
+              'additionalProperties': true,
+            },
+          },
+        },
+      ),
+    ),
+    example: jsonEncode({
+      'maxSymbolsPerCollect': 25,
+      'defaultSymbols': [
+        {'symbol': 'AAPL', 'displayName': 'Apple'},
+        {'symbol': 'MSFT', 'displayName': 'Microsoft'},
+      ],
+    }),
+  ),
   'outlook_calendar': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
@@ -224,6 +256,118 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       'futureDays': 14,
     }),
   ),
+  'google_calendar': ProviderConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'GoogleCalendarProviderConfig',
+        description: 'Google Calendar sync: accounts, calendar filters, window.',
+        properties: {
+          'pastDays': {'type': 'integer', 'minimum': 1},
+          'futureDays': {'type': 'integer', 'minimum': 1},
+          'accounts': {
+            'type': 'array',
+            'items': {
+              'type': 'object',
+              'properties': {
+                'googleAccountKey': {'type': 'string', 'minLength': 1},
+                'sources': {
+                  'type': 'array',
+                  'items': {
+                    'type': 'object',
+                    'properties': {
+                      'calendars': {
+                        'type': 'array',
+                        'items': {'type': 'string'},
+                      },
+                    },
+                    'additionalProperties': true,
+                  },
+                },
+              },
+              'required': ['googleAccountKey'],
+              'additionalProperties': true,
+            },
+          },
+        },
+      ),
+    ),
+    example: jsonEncode({
+      'accounts': [
+        {
+          'googleAccountKey': 'primary',
+          'sources': [
+            {'calendars': []},
+          ],
+        },
+      ],
+      'pastDays': 14,
+      'futureDays': 14,
+    }),
+  ),
+  'onedrive_media': ProviderConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'OneDriveMediaProviderConfig',
+        description:
+            'Microsoft Graph OneDrive: map folders to photo/video categories, '
+            'retention and per-poll download caps.',
+        properties: {
+          'globalPerPollLimit': {'type': 'integer', 'minimum': 1},
+          'accounts': {
+            'type': 'array',
+            'items': {
+              'type': 'object',
+              'properties': {
+                'graphAccountKey': {'type': 'string', 'minLength': 1},
+                'sources': {
+                  'type': 'array',
+                  'items': {
+                    'type': 'object',
+                    'properties': {
+                      'path': {'type': 'string', 'minLength': 1},
+                      'folder': {'type': 'string'},
+                      'kind': {'type': 'string', 'enum': ['photo', 'video']},
+                      'category': {'type': 'string', 'minLength': 1},
+                      'maxFiles': {'type': 'integer', 'minimum': 1},
+                      'perPollLimit': {'type': 'integer', 'minimum': 1},
+                    },
+                    'required': ['path', 'kind', 'category'],
+                    'additionalProperties': true,
+                  },
+                },
+              },
+              'required': ['graphAccountKey'],
+              'additionalProperties': true,
+            },
+          },
+        },
+      ),
+    ),
+    example: jsonEncode({
+      'globalPerPollLimit': 50,
+      'accounts': [
+        {
+          'graphAccountKey': 'personal',
+          'sources': [
+            {
+              'path': '/Pictures/Family',
+              'kind': 'photo',
+              'category': 'family_photos',
+              'maxFiles': 30,
+              'perPollLimit': 5,
+            },
+            {
+              'path': '/Videos/Clips',
+              'kind': 'video',
+              'category': 'home_videos',
+              'maxFiles': 20,
+              'perPollLimit': 2,
+            },
+          ],
+        },
+      ],
+    }),
+  ),
 };
 
 ProviderConfigJsonDoc providerConfigJsonDocForType(String providerType) {
@@ -249,6 +393,7 @@ const List<String> kScreenLayoutWidgetTypes = [
   'weather',
   'pexels_photo',
   'pexels_video',
+  'stock_quotes',
 ];
 
 /// JSON Schema for [ScreenDefinitions.layoutJson] (see [parseScreenLayoutWidgets]).

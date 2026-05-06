@@ -36,13 +36,15 @@ part 'database.g.dart';
     Photos,
     Videos,
     PexelsFetchBatches,
+    StockSymbols,
+    StockQuotes,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 20;
+  int get schemaVersion => 21;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -301,6 +303,10 @@ FROM curator_settings WHERE id = 'app';
                 );
           }
         }
+      }
+      if (from < 21) {
+        await m.createTable(stockSymbols);
+        await m.createTable(stockQuotes);
       }
     },
     beforeOpen: (details) async {

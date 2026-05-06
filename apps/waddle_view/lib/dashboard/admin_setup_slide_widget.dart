@@ -68,6 +68,7 @@ class AdminSetupSlideWidget extends StatelessWidget {
                   child: QrImageView(
                     data: loginUrl,
                     size: 220 * s,
+                    padding: EdgeInsets.all(4 * s),
                   ),
                 )
               else

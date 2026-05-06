@@ -11,9 +11,9 @@ import '../../../secrets/secret_store.dart';
 const String _deviceAuthPath = '/common/oauth2/v2.0/devicecode';
 const String _tokenPath = '/common/oauth2/v2.0/token';
 
-/// Delegated scopes for calendar read and refresh tokens.
+/// Delegated scopes: calendar, OneDrive read, refresh tokens.
 const String kMicrosoftGraphOAuthScopes =
-    'offline_access User.Read Calendars.Read';
+    'offline_access User.Read Calendars.Read Files.Read';
 
 const String kMicrosoftGraphDeviceSignInTitle = 'Microsoft sign-in';
 
@@ -315,7 +315,7 @@ class MicrosoftGraphOAuth {
               priority: const Value(50),
               createdAt: DateTime.fromMillisecondsSinceEpoch(now),
               expiresAt: Value(expiresAtDt),
-              source: const Value('outlook_calendar'),
+              source: Value(kMicrosoftGraphOAuthAlertSource),
             ),
           );
 

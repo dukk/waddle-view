@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../blob/blob_store.dart' show BlobRef, BlobStore;
 import '../persistence/database.dart';
+import '../theme/display_theme.dart';
 import 'content_category_material_icon.dart';
 import 'dashboard_viewport_scope.dart';
 
@@ -25,6 +26,11 @@ class ContentCategorySlideHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = theme.extension<PaletteTertiaryLayers>();
+    final iconColor =
+        palette?.iconColor ??
+        theme.iconTheme.color ??
+        theme.colorScheme.onSurfaceVariant;
     final id = categoryId?.trim();
     if (id == null || id.isEmpty) {
       return const SizedBox.shrink();
@@ -57,7 +63,7 @@ class ContentCategorySlideHeader extends StatelessWidget {
                 Icon(
                   contentCategoryMaterialIcon(data.materialIconName),
                   size: 28 * s,
-                  color: theme.colorScheme.primary,
+                  color: iconColor,
                 ),
               SizedBox(width: 10 * s),
               Flexible(

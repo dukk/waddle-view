@@ -1,0 +1,111 @@
+import 'dart:convert';
+
+class GoogleCalendarSourceConfig {
+  const GoogleCalendarSourceConfig({required this.calendars});
+
+  final List<String> calendars;
+}
+
+class GoogleCalendarAccountConfig {
+  const GoogleCalendarAccountConfig({
+    required this.googleAccountKey,
+    required this.sources,
+  });
+
+  final String googleAccountKey;
+  final List<GoogleCalendarSourceConfig> sources;
+}
+
+class GoogleCalendarExtraConfig {
+  const GoogleCalendarExtraConfig({
+    required this.accounts,
+    required this.pastDays,
+    required this.futureDays,
+  });
+
+  final List<GoogleCalendarAccountConfig> accounts;
+  final int pastDays;
+  final int futureDays;
+
+  static GoogleCalendarExtraConfig parse(String? raw) {
+    if (raw == null || raw.trim().isEmpty) {
+      return const GoogleCalendarExtraConfig(
+        accounts: [],
+        pastDays: 14,
+        futureDays: 14,
+      );
+    }
+    try {
+      final root = jsonDecode(raw);
+      if (root is! Map<String, dynamic>) {
+        return const GoogleCalendarExtraConfig(
+          accounts: [],
+          pastDays: 14,
+          futureDays: 14,
+        );
+      }
+      final accountsRaw = root['accounts'];
+      final accounts = <GoogleCalendarAccountConfig>[];
+      if (accountsRaw is List<dynamic>) {
+        for (final a in accountsRaw) {
+          if (a is! Map<String, dynamic>) {
+            continue;
+          }
+          final accountKey = (a['googleAccountKey'] as String?)?.trim() ?? '';
+          if (accountKey.isEmpty) {
+            continue;
+          }
+          final sourcesRaw = a['sources'];
+          final sources = <GoogleCalendarSourceConfig>[];
+          if (sourcesRaw is List<dynamic>) {
+            for (final s in sourcesRaw) {
+              if (s is! Map<String, dynamic>) {
+                continue;
+              }
+              final calendarsRaw = s['calendars'];
+              final calendars = <String>[];
+              if (calendarsRaw is List<dynamic>) {
+                for (final c in calendarsRaw) {
+                  if (c is String && c.trim().isNotEmpty) {
+                    calendars.add(c.trim());
+                  }
+                }
+              }
+              sources.add(GoogleCalendarSourceConfig(calendars: calendars));
+            }
+          }
+          accounts.add(
+            GoogleCalendarAccountConfig(
+              googleAccountKey: accountKey,
+              sources: sources,
+            ),
+          );
+        }
+      }
+      return GoogleCalendarExtraConfig(
+        accounts: accounts,
+        pastDays: _asInt(root['pastDays'], fallback: 14),
+        futureDays: _asInt(root['futureDays'], fallback: 14),
+      );
+    } on Object {
+      return const GoogleCalendarExtraConfig(
+        accounts: [],
+        pastDays: 14,
+        futureDays: 14,
+      );
+    }
+  }
+}
+
+int _asInt(Object? v, {required int fallback}) {
+  if (v is int && v > 0) {
+    return v;
+  }
+  if (v is String) {
+    final parsed = int.tryParse(v);
+    if (parsed != null && parsed > 0) {
+      return parsed;
+    }
+  }
+  return fallback;
+}

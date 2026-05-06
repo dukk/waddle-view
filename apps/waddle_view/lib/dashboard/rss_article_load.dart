@@ -143,3 +143,31 @@ Future<String?> resolveRssDisplayCategoryId(
   }
   return c;
 }
+
+Future<String?> resolveRssArticleSourceLabel(
+  AppDatabase db,
+  RssArticle? article,
+) async {
+  if (article == null) {
+    return null;
+  }
+  final feed = await (db.select(
+    db.rssFeedSources,
+  )..where((t) => t.id.equals(article.feedId))).getSingleOrNull();
+  final feedTitle = feed?.title?.trim();
+  if (feedTitle != null && feedTitle.isNotEmpty) {
+    return feedTitle;
+  }
+  final feedUrl = feed?.url.trim() ?? '';
+  if (feedUrl.isNotEmpty) {
+    final host = Uri.tryParse(feedUrl)?.host.trim() ?? '';
+    if (host.isNotEmpty) {
+      return host;
+    }
+  }
+  final feedId = article.feedId.trim();
+  if (feedId.isNotEmpty) {
+    return feedId;
+  }
+  return null;
+}

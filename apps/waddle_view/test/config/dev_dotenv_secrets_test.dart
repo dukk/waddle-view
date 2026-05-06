@@ -1,6 +1,7 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_view/config/dev_dotenv_secrets.dart';
+import 'package:waddle_view/config/google_kv.dart';
 import 'package:waddle_view/config/microsoft_graph_kv.dart';
 import 'package:waddle_view/config/provider_config_resolver.dart';
 import 'package:waddle_view/secrets/in_memory_secret_store.dart';
@@ -152,6 +153,48 @@ void main() {
     );
   });
 
+  test('readStocksTokenFromDotenvMap reads FINNHUB_API_KEY', () {
+    expect(
+      readStocksTokenFromDotenvMap({finnhubApiKeyEnv: ' fhub-token '}),
+      'fhub-token',
+    );
+  });
+
+  test('readStocksTokenFromDotenvMap prefers WADDLE_STOCKS_ACCESS_TOKEN', () {
+    expect(
+      readStocksTokenFromDotenvMap({
+        waddleStocksAccessTokenKey: ' waddle-stocks ',
+        finnhubApiKeyEnv: 'fhub',
+      }),
+      'waddle-stocks',
+    );
+  });
+
+  test('readStocksTokenFromDotenvMap returns null when empty', () {
+    expect(readStocksTokenFromDotenvMap({}), isNull);
+    expect(
+      readStocksTokenFromDotenvMap({
+        waddleStocksAccessTokenKey: '   ',
+        finnhubApiKeyEnv: '',
+      }),
+      isNull,
+    );
+  });
+
+  test('applyJokesTokenFromDevDotenv writes FINNHUB_API_KEY', () async {
+    dotenv.clean();
+    dotenv.loadFromString(
+      envString: 'FINNHUB_API_KEY=fhub-from-dotenv',
+      isOptional: true,
+    );
+    final secrets = InMemorySecretStore();
+    await applyJokesTokenFromDevDotenv(secrets);
+    expect(
+      await secrets.read('${ProviderConfigResolver.accessTokenKey}:stocks'),
+      'fhub-from-dotenv',
+    );
+  });
+
   test('applyMicrosoftGraphTokensFromDevDotenv writes access and refresh', () async {
     dotenv.clean();
     dotenv.loadFromString(
@@ -164,5 +207,19 @@ void main() {
     await applyMicrosoftGraphTokensFromDevDotenv(secrets);
     expect(await secrets.read(microsoftGraphAccessTokenSecret('work')), 'acc123');
     expect(await secrets.read(microsoftGraphRefreshTokenSecret('work')), 'ref456');
+  });
+
+  test('applyGoogleTokensFromDevDotenv writes access and refresh', () async {
+    dotenv.clean();
+    dotenv.loadFromString(
+      envString:
+          '${waddleGoogleAccessTokenPrefix}home=acc123\n'
+          '${waddleGoogleRefreshTokenPrefix}home=ref456',
+      isOptional: true,
+    );
+    final secrets = InMemorySecretStore();
+    await applyGoogleTokensFromDevDotenv(secrets);
+    expect(await secrets.read(googleAccessTokenSecret('home')), 'acc123');
+    expect(await secrets.read(googleRefreshTokenSecret('home')), 'ref456');
   });
 }

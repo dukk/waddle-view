@@ -25,6 +25,10 @@ class DriftCuratorReadPort implements CuratorReadPort {
     }
     final feeds = await _db.select(_db.rssFeedSources).get();
     final feedById = {for (final f in feeds) f.id: f};
+    final categories = await _db.select(_db.contentCategories).get();
+    final categoryIconById = {
+      for (final c in categories) c.id: c.materialIconName?.trim(),
+    };
     return [
       for (final a in articles)
         TickerNewsCandidate(
@@ -32,9 +36,36 @@ class DriftCuratorReadPort implements CuratorReadPort {
           feedName: _tickerLabelForFeed(feedById[a.feedId]),
           title: a.title,
           summary: a.summary,
+          categoryIconName: categoryIconById[feedById[a.feedId]?.category],
           publishedAtMs: a.publishedAt.millisecondsSinceEpoch,
         ),
     ];
+  }
+
+  @override
+  Future<CurrentWeatherTickerData?> loadCurrentWeatherForTicker() async {
+    final locations = await (_db.select(
+      _db.weatherLocations,
+    )..where((t) => t.enabled.equals(true))).get();
+    if (locations.isEmpty) {
+      return null;
+    }
+    final locationById = {for (final location in locations) location.id: location};
+    final weatherRows = await (_db.select(
+      _db.weatherCurrentData,
+    )..orderBy([(t) => OrderingTerm.desc(t.observedAtMs)])).get();
+    for (final weather in weatherRows) {
+      final location = locationById[weather.locationId];
+      if (location == null) {
+        continue;
+      }
+      return CurrentWeatherTickerData(
+        locationName: location.name,
+        temperatureC: weather.currentTemp,
+        description: weather.currentDescription,
+      );
+    }
+    return null;
   }
 
   String _tickerLabelForFeed(RssFeedSource? feed) {

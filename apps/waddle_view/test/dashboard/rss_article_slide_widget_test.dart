@@ -27,6 +27,7 @@ Future<void> _insertFeedAndArticle(
           id: 'feed_t',
           url: 'http://test.local/feed.xml',
           category: const Value('test'),
+          title: const Value('Test Feed'),
         ),
       );
   await db.into(db.rssArticles).insert(
@@ -170,6 +171,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Curated lesser headline'), findsOneWidget);
+    expect(find.text('Test Feed'), findsOneWidget);
     expect(
       find.text('Highest quality image wins without curation'),
       findsNothing,
@@ -305,7 +307,9 @@ void main() {
     await db.close();
   });
 
-  testWidgets('blob read failure shows no photography icon', (tester) async {
+  testWidgets('blob read failure hides image panel and uses full-width text', (
+    tester,
+  ) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await db.into(db.blobMetadata).insert(
@@ -349,7 +353,12 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.byIcon(Icons.no_photography), findsOneWidget);
+    expect(find.byKey(const Key('rss_article_image_panel')), findsNothing);
+    expect(find.byType(Image), findsNothing);
+    final textColumn = tester.getRect(
+      find.byKey(const Key('rss_article_text_column')),
+    );
+    expect(textColumn.width, greaterThan(500));
     await db.close();
   });
 

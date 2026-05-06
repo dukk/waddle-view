@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/drift.dart' show OrderingTerm;
+import 'package:waddle_view/config/google_kv.dart';
+import 'package:waddle_view/data/providers/pexels_provider_extra_config.dart';
 import 'package:waddle_view/persistence/content_category_defaults.dart';
 import 'package:waddle_view/persistence/tables.dart';
 import 'package:waddle_view/seed/initial_seed.dart';
@@ -110,6 +112,115 @@ void main() {
       'salt_lake_city_ut',
       'atlanta_ga',
     ]));
+    await db.close();
+  });
+
+  test('ensureInitialSeed inserts onedrive_media provider disabled', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+
+    await ensureInitialSeed(db);
+
+    final row = await (db.select(db.providerSettings)
+          ..where((t) => t.id.equals('onedrive_media')))
+        .getSingleOrNull();
+    expect(row, isNotNull);
+    expect(row!.enabled, isFalse);
+    expect(row.providerType, 'onedrive_media');
+    expect(row.configJson, contains('globalPerPollLimit'));
+    await db.close();
+  });
+
+  test('ensureInitialSeed seeds pexels source queries and categories', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+
+    await ensureInitialSeed(db);
+
+    final provider = await (db.select(db.providerSettings)
+          ..where((t) => t.id.equals('pexels')))
+        .getSingleOrNull();
+    expect(provider, isNotNull);
+    final extra = PexelsProviderExtraConfig.parse(provider!.configJson);
+    expect(
+      extra.sources.map((e) => e.query).toList(),
+      [
+        'Nature',
+        'Flowers',
+        'Landscape',
+        'Beach',
+        'Mountains',
+        'Motivational',
+        'Aquarium',
+      ],
+    );
+    expect(
+      extra.sources.map((e) => e.category).toList(),
+      [
+        'nature',
+        'flowers',
+        'landscape',
+        'beach',
+        'mountains',
+        'motivational',
+        'aquarium',
+      ],
+    );
+    await db.close();
+  });
+
+  test('ensureInitialSeed inserts google_calendar provider and client-id key', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureInitialSeed(db);
+
+    final provider = await (db.select(db.providerSettings)
+          ..where((t) => t.id.equals('google_calendar')))
+        .getSingleOrNull();
+    expect(provider, isNotNull);
+    expect(provider!.providerType, 'google_calendar');
+    expect(provider.enabled, isFalse);
+
+    final clientId = await (db.select(db.configKeyValues)
+          ..where((t) => t.key.equals(kGoogleClientIdKvKey)))
+        .getSingleOrNull();
+    expect(clientId, isNotNull);
+    expect(clientId!.value, '');
+
+    await db.close();
+  });
+
+  test('ensureInitialSeed inserts stocks provider, default symbols, screen', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+
+    await ensureInitialSeed(db);
+
+    final provider = await (db.select(db.providerSettings)
+          ..where((t) => t.id.equals('stocks')))
+        .getSingleOrNull();
+    expect(provider, isNotNull);
+    expect(provider!.providerType, 'stocks');
+    expect(provider.enabled, isTrue);
+    expect(provider.baseUrl, 'https://finnhub.io');
+
+    final screen = await (db.select(db.screenDefinitions)
+          ..where((t) => t.id.equals('stock_quotes')))
+        .getSingleOrNull();
+    expect(screen, isNotNull);
+    expect(screen!.enabled, isFalse);
+    expect(screen.layoutJson.contains('"type":"stock_quotes"'), isTrue);
+    expect(screen.dataKey, 'stocks');
+
+    final symbols = await (db.select(db.stockSymbols)
+          ..orderBy([(t) => OrderingTerm.asc(t.id)]))
+        .get();
+    expect(
+      symbols.map((s) => s.symbol).toList(),
+      ['AAPL', 'AMZN', 'GOOG', 'MSFT', 'NVDA'],
+    );
+    final enabled = symbols.where((s) => s.enabled).map((s) => s.symbol).toSet();
+    expect(enabled, {'AAPL', 'MSFT'});
     await db.close();
   });
 }

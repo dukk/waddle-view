@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../blob/blob_store.dart';
 import '../debug/app_debug_log.dart';
@@ -13,6 +14,7 @@ import '../curator/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';
 import '../persistence/database.dart';
 import '../persistence/tables.dart';
+import '../theme/display_theme.dart';
 import 'analog_clock_slide_widget.dart';
 import 'calendar_month_slide_widget.dart';
 import 'dashboard_kv_flags.dart';
@@ -27,6 +29,7 @@ import 'pexels_video_slide_widget.dart';
 import 'rss_article_columns_slide_widget.dart';
 import 'rss_article_slide_widget.dart';
 import 'rss_article_stack_slide_widget.dart';
+import 'stock_quotes_slide_widget.dart';
 import 'trivia_slide_widget.dart';
 import 'weather_slide_widget.dart';
 
@@ -68,8 +71,7 @@ class ScreenRotator extends StatefulWidget {
   State<ScreenRotator> createState() => _ScreenRotatorState();
 }
 
-class _ScreenRotatorState extends State<ScreenRotator>
-    with SingleTickerProviderStateMixin {
+class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateMixin {
   late final AnimationController _anim = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 420),
@@ -81,12 +83,32 @@ class _ScreenRotatorState extends State<ScreenRotator>
 
   final _random = Random();
   final List<String> _recentScreenIds = [];
+  final FocusNode _keyboardFocusNode = FocusNode(debugLabel: 'screen-rotator');
 
-  List<ResolvedSlide> _program = const [];
-  int _index = 0;
+  final List<_ProgramHistoryEntry> _history = <_ProgramHistoryEntry>[];
+  int _historyCursor = 0;
+  int _slideCursor = 0;
+  int _historyDepth = 5;
+  int _slideTransitionDirection = 1;
   ResolvedSlide? _fromSlide;
   ResolvedSlide? _toSlide;
   Timer? _dwellTimer;
+  Timer? _manualIdleTimer;
+  String? _overlayNotice;
+  int _overlayTimelineDirection = 1;
+  bool _manualNavigationActive = false;
+  late final AnimationController _overlayFadeController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 240),
+    value: 0,
+  );
+  late final Animation<double> _overlayFade = CurvedAnimation(
+    parent: _overlayFadeController,
+    curve: Curves.easeOutCubic,
+    reverseCurve: Curves.easeInCubic,
+  );
+
+  static const Duration _manualIdleTimeout = Duration(seconds: 3);
 
   @override
   void initState() {
@@ -97,7 +119,10 @@ class _ScreenRotatorState extends State<ScreenRotator>
   @override
   void dispose() {
     _dwellTimer?.cancel();
+    _manualIdleTimer?.cancel();
     _anim.dispose();
+    _overlayFadeController.dispose();
+    _keyboardFocusNode.dispose();
     super.dispose();
   }
 
@@ -121,6 +146,7 @@ class _ScreenRotatorState extends State<ScreenRotator>
     final programMs = programSeconds * 1000;
     final historyDepth =
         int.tryParse(kvByKey[kCuratorHistoryDepthKvKey]?.trim() ?? '') ?? 5;
+    _historyDepth = historyDepth;
     final requireNewsPhotoForScreens = isTruthyDashboardKvFlag(
       kvByKey[kRequireNewsPhotoForScreensKvKey],
       defaultValue: true,
@@ -186,10 +212,16 @@ class _ScreenRotatorState extends State<ScreenRotator>
       return;
     }
     setState(() {
-      _program = program;
-      _index = 0;
-      _fromSlide = null;
-      _toSlide = program.isEmpty ? null : program.first;
+      _history.insert(0, _ProgramHistoryEntry(slides: program));
+      while (_history.length > _historyDepth) {
+        _history.removeLast();
+      }
+      if (!_manualNavigationActive || _historyCursor == 0) {
+        _historyCursor = 0;
+        _slideCursor = 0;
+        _fromSlide = null;
+        _toSlide = program.isEmpty ? null : program.first;
+      }
     });
     final firstSlide = program.isEmpty ? null : program.first;
     if (firstSlide != null) {
@@ -208,17 +240,23 @@ class _ScreenRotatorState extends State<ScreenRotator>
     _scheduleDwellForCurrentSlide();
   }
 
+  List<ResolvedSlide> get _visibleProgram =>
+      _history.isEmpty ? const [] : _history[_historyCursor].slides;
+
+  bool get _canAutoAdvance =>
+      !_manualNavigationActive && _historyCursor == 0 && _visibleProgram.isNotEmpty;
+
   void _scheduleDwellForCurrentSlide() {
     _dwellTimer?.cancel();
-    if (_program.isEmpty || _toSlide == null) {
+    if (!_canAutoAdvance || _toSlide == null) {
       return;
     }
-    final slide = _program[_index];
+    final slide = _visibleProgram[_slideCursor];
     _dwellTimer = Timer(Duration(milliseconds: slide.dwellMs), _onDwellElapsed);
   }
 
   void _reportDesiredDwellForSlide(int slideIndex, int ms) {
-    if (!mounted || _program.isEmpty || slideIndex != _index) {
+    if (!mounted || !_canAutoAdvance || slideIndex != _slideCursor) {
       return;
     }
     if (ms <= 0) {
@@ -229,38 +267,63 @@ class _ScreenRotatorState extends State<ScreenRotator>
   }
 
   Future<void> _onDwellElapsed() async {
-    if (!mounted || _program.isEmpty) {
+    if (!mounted || !_canAutoAdvance) {
       return;
     }
-    final slide = _program[_index];
+    final slide = _visibleProgram[_slideCursor];
     _recentScreenIds.add(slide.screenId);
     while (_recentScreenIds.length > 200) {
       _recentScreenIds.removeAt(0);
     }
 
-    final nextIndex = _index + 1;
-    if (nextIndex >= _program.length) {
+    final nextIndex = _slideCursor + 1;
+    if (nextIndex >= _visibleProgram.length) {
       await _startNewProgram();
       return;
     }
 
-    final next = _program[nextIndex];
-    setState(() {
-      _fromSlide = slide;
-      _toSlide = next;
-      _index = nextIndex;
-    });
+    final next = _visibleProgram[nextIndex];
+    _setVisibleSlide(nextIndex, animated: true, transitionDirection: 1);
     AppDebugLog.screen(
       screenShownDebugLogLine(
         reason: 'transition',
         slideIndex: nextIndex,
-        totalSlides: _program.length,
+        totalSlides: _visibleProgram.length,
         screenId: next.screenId,
         dwellMs: next.dwellMs,
         layoutJson: next.layoutJson,
         randomChoices: next.randomChoices,
       ),
     );
+  }
+
+  void _setVisibleSlide(
+    int newIndex, {
+    required bool animated,
+    required int transitionDirection,
+  }) {
+    if (_visibleProgram.isEmpty) {
+      return;
+    }
+    final clampedIndex = newIndex.clamp(0, _visibleProgram.length - 1);
+    final current = _toSlide ?? _visibleProgram[_slideCursor];
+    final next = _visibleProgram[clampedIndex];
+    if (!animated) {
+      setState(() {
+        _slideCursor = clampedIndex;
+        _slideTransitionDirection = transitionDirection;
+        _fromSlide = null;
+        _toSlide = next;
+      });
+      _scheduleDwellForCurrentSlide();
+      return;
+    }
+    setState(() {
+      _slideCursor = clampedIndex;
+      _slideTransitionDirection = transitionDirection;
+      _fromSlide = current;
+      _toSlide = next;
+    });
     _anim.forward(from: 0).then((_) {
       if (!mounted) {
         return;
@@ -272,13 +335,115 @@ class _ScreenRotatorState extends State<ScreenRotator>
     });
   }
 
+  void _showOverlay({String? notice}) {
+    _overlayNotice = notice;
+    _overlayFadeController.forward();
+    _manualIdleTimer?.cancel();
+    _manualIdleTimer = Timer(_manualIdleTimeout, _onManualIdleTimeout);
+  }
+
+  void _onManualIdleTimeout() {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _manualNavigationActive = false;
+      _overlayNotice = null;
+    });
+    _overlayFadeController.reverse();
+    _scheduleDwellForCurrentSlide();
+  }
+
+  KeyEventResult _onKeyEvent(FocusNode _, KeyEvent event) {
+    if (event is! KeyDownEvent || _history.isEmpty) {
+      return KeyEventResult.ignored;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+      _handleLeftNavigation();
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+      _handleRightNavigation();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  void _beginManualNavigation() {
+    _dwellTimer?.cancel();
+    _manualNavigationActive = true;
+    _showOverlay();
+  }
+
+  void _handleLeftNavigation() {
+    _beginManualNavigation();
+    if (_slideCursor > 0) {
+      setState(() {
+        _overlayNotice = null;
+      });
+      _setVisibleSlide(
+        _slideCursor - 1,
+        animated: true,
+        transitionDirection: -1,
+      );
+      return;
+    }
+    final olderProgramIndex = _historyCursor + 1;
+    if (olderProgramIndex < _history.length) {
+      setState(() {
+        _overlayNotice = null;
+        _historyCursor = olderProgramIndex;
+        _slideCursor = _history[_historyCursor].slides.length - 1;
+        _slideTransitionDirection = -1;
+        _overlayTimelineDirection = 1;
+        _fromSlide = null;
+        _toSlide = _visibleProgram[_slideCursor];
+      });
+      return;
+    }
+    setState(() {
+      _overlayNotice = 'You have reached the end of history.';
+    });
+  }
+
+  void _handleRightNavigation() {
+    _beginManualNavigation();
+    if (_slideCursor < _visibleProgram.length - 1) {
+      setState(() {
+        _overlayNotice = null;
+      });
+      _setVisibleSlide(
+        _slideCursor + 1,
+        animated: true,
+        transitionDirection: 1,
+      );
+      return;
+    }
+    if (_historyCursor > 0) {
+      final newer = _historyCursor - 1;
+      setState(() {
+        _historyCursor = newer;
+        _slideCursor = 0;
+        _slideTransitionDirection = 1;
+        _overlayNotice = null;
+        _overlayTimelineDirection = -1;
+        _fromSlide = null;
+        _toSlide = _visibleProgram.first;
+      });
+      return;
+    }
+    setState(() {
+      _overlayNotice = 'End of current program. Waiting for a new program.';
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final outgoing = _fromSlide;
     final incoming = _toSlide ?? outgoing;
 
-    if (_program.isEmpty) {
+    if (_history.isEmpty || _visibleProgram.isEmpty) {
       return Center(
         child: Text(
           'No display screens enabled',
@@ -288,51 +453,191 @@ class _ScreenRotatorState extends State<ScreenRotator>
       );
     }
 
-    return ClipRect(
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (outgoing != null && incoming != null && outgoing != incoming)
+    return Focus(
+      autofocus: true,
+      focusNode: _keyboardFocusNode,
+      onKeyEvent: _onKeyEvent,
+      child: ClipRect(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (outgoing != null && incoming != null && outgoing != incoming)
+              SlideTransition(
+                position: Tween<Offset>(
+                  begin: Offset.zero,
+                  end: Offset(-_slideTransitionDirection.toDouble(), 0),
+                ).animate(_curve),
+                child: _SlideContent(
+                  db: widget.db,
+                  blobs: widget.blobs,
+                  localRestBaseUrl: widget.localRestBaseUrl,
+                  adminBaseUrl: widget.adminBaseUrl,
+                  setupPasswordFile: widget.setupPasswordFile,
+                  slide: outgoing,
+                  theme: theme,
+                  slideIndex: _slideCursor > 0 ? _slideCursor - 1 : 0,
+                  onReportDesiredDwell: _reportDesiredDwellForSlide,
+                ),
+              ),
             SlideTransition(
               position: Tween<Offset>(
-                begin: Offset.zero,
-                end: const Offset(-1, 0),
+                begin: outgoing != null && outgoing != incoming
+                    ? Offset(_slideTransitionDirection.toDouble(), 0)
+                    : Offset.zero,
+                end: Offset.zero,
               ).animate(_curve),
-              child: _SlideContent(
-                db: widget.db,
-                blobs: widget.blobs,
-                localRestBaseUrl: widget.localRestBaseUrl,
-                adminBaseUrl: widget.adminBaseUrl,
-                setupPasswordFile: widget.setupPasswordFile,
-                slide: outgoing,
-                theme: theme,
-                slideIndex: _index > 0 ? _index - 1 : 0,
-                onReportDesiredDwell: _reportDesiredDwellForSlide,
+              child: incoming != null
+                  ? _SlideContent(
+                      db: widget.db,
+                      blobs: widget.blobs,
+                      localRestBaseUrl: widget.localRestBaseUrl,
+                      adminBaseUrl: widget.adminBaseUrl,
+                      setupPasswordFile: widget.setupPasswordFile,
+                      slide: incoming,
+                      theme: theme,
+                      slideIndex: _slideCursor,
+                      onReportDesiredDwell: _reportDesiredDwellForSlide,
+                    )
+                  : const SizedBox.shrink(),
+            ),
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 12,
+              child: FadeTransition(
+                opacity: _overlayFade,
+                child: _overlayFadeController.value == 0
+                    ? const SizedBox.shrink()
+                    : _ScreenNavigationOverlay(
+                        key: const Key('screen_nav_overlay_root'),
+                        timelineKey: ValueKey<int>(_historyCursor),
+                        timelineDirection: _overlayTimelineDirection,
+                        slides: _visibleProgram,
+                        currentIndex: _slideCursor,
+                        notice: _overlayNotice,
+                      ),
               ),
             ),
-          SlideTransition(
-            position: Tween<Offset>(
-              begin: outgoing != null && outgoing != incoming
-                  ? const Offset(1, 0)
-                  : Offset.zero,
-              end: Offset.zero,
-            ).animate(_curve),
-            child: incoming != null
-                ? _SlideContent(
-                    db: widget.db,
-                    blobs: widget.blobs,
-                    localRestBaseUrl: widget.localRestBaseUrl,
-                    adminBaseUrl: widget.adminBaseUrl,
-                    setupPasswordFile: widget.setupPasswordFile,
-                    slide: incoming,
-                    theme: theme,
-                    slideIndex: _index,
-                    onReportDesiredDwell: _reportDesiredDwellForSlide,
-                  )
-                : const SizedBox.shrink(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProgramHistoryEntry {
+  const _ProgramHistoryEntry({required this.slides});
+
+  final List<ResolvedSlide> slides;
+}
+
+class _ScreenNavigationOverlay extends StatelessWidget {
+  const _ScreenNavigationOverlay({
+    super.key,
+    required this.timelineKey,
+    required this.timelineDirection,
+    required this.slides,
+    required this.currentIndex,
+    required this.notice,
+  });
+
+  final Key timelineKey;
+  final int timelineDirection;
+  final List<ResolvedSlide> slides;
+  final int currentIndex;
+  final String? notice;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 280),
+          transitionBuilder: (child, animation) {
+            final begin = Offset(0, timelineDirection > 0 ? -0.35 : 0.35);
+            return SlideTransition(
+              position: Tween<Offset>(begin: begin, end: Offset.zero).animate(animation),
+              child: FadeTransition(opacity: animation, child: child),
+            );
+          },
+          child: DecoratedBox(
+            key: timelineKey,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface.withValues(alpha: 0.86),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(
+                    key: Key('screen_nav_overlay_timeline'),
+                    height: 0,
+                  ),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (var i = 0; i < slides.length; i++)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: i == currentIndex
+                                    ? theme.colorScheme.primaryContainer
+                                    : theme.colorScheme.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                child: Text(
+                                  slides[i].screenId,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontWeight:
+                                        i == currentIndex ? FontWeight.w700 : FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Current: ${slides[currentIndex].screenId}',
+                    key: const Key('screen_nav_current_index'),
+                    style: theme.textTheme.labelLarge,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (notice != null) ...[
+          const SizedBox(height: 8),
+          DecoratedBox(
+            key: notice == 'You have reached the end of history.'
+                ? const Key('screen_nav_end_history_message')
+                : null,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Text(
+                notice!,
+                style: theme.textTheme.bodyMedium,
+              ),
+            ),
           ),
         ],
-      ),
+      ],
     );
   }
 }
@@ -363,8 +668,14 @@ class _SlideContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final widgets = parseScreenLayoutWidgets(slide.layoutJson);
+    final palette = theme.extension<PaletteTertiaryLayers>();
     return Container(
-      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+      decoration: BoxDecoration(
+        gradient: palette?.primaryPairGradient,
+        color: palette == null
+            ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35)
+            : null,
+      ),
       padding: EdgeInsets.zero,
       child: Center(
         child: _buildWidgets(
@@ -578,6 +889,13 @@ class _SlideContent extends StatelessWidget {
               return PexelsVideoSlideWidget(
                 db: db,
                 blobs: blobs,
+                slide: slide,
+                spec: w,
+                theme: theme,
+              );
+            case 'stock_quotes':
+              return StockQuotesSlideWidget(
+                db: db,
                 slide: slide,
                 spec: w,
                 theme: theme,

@@ -36,6 +36,41 @@ const kContentCategoryDefaults = <ContentCategoryDef>[
     materialIconName: 'photo_library',
   ),
   ContentCategoryDef(
+    id: 'nature',
+    label: 'Nature',
+    materialIconName: 'forest',
+  ),
+  ContentCategoryDef(
+    id: 'flowers',
+    label: 'Flowers',
+    materialIconName: 'local_florist',
+  ),
+  ContentCategoryDef(
+    id: 'landscape',
+    label: 'Landscape',
+    materialIconName: 'landscape',
+  ),
+  ContentCategoryDef(
+    id: 'beach',
+    label: 'Beach',
+    materialIconName: 'beach_access',
+  ),
+  ContentCategoryDef(
+    id: 'mountains',
+    label: 'Mountains',
+    materialIconName: 'terrain',
+  ),
+  ContentCategoryDef(
+    id: 'motivational',
+    label: 'Motivational',
+    materialIconName: 'self_improvement',
+  ),
+  ContentCategoryDef(
+    id: 'aquarium',
+    label: 'Aquarium',
+    materialIconName: 'water',
+  ),
+  ContentCategoryDef(
     id: 'dad',
     label: 'Dad jokes',
     materialIconName: 'sentiment_satisfied',

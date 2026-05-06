@@ -5,9 +5,118 @@ import 'package:flutter/material.dart';
 
 import '../clock.dart';
 import '../curator/screen_layout_parse.dart';
+import '../theme/display_theme.dart';
 import 'clock_date_format.dart';
 import 'clock_hand_angles.dart';
 import 'dashboard_viewport_scope.dart';
+
+enum AnalogClockDialLabelMode {
+  none,
+  numbers,
+  roman,
+  cardinalNumbers;
+
+  static const Set<int> _cardinalHours = {12, 3, 6, 9};
+  static const Map<int, String> _romanByHour = <int, String>{
+    1: 'I',
+    2: 'II',
+    3: 'III',
+    4: 'IV',
+    5: 'V',
+    6: 'VI',
+    7: 'VII',
+    8: 'VIII',
+    9: 'IX',
+    10: 'X',
+    11: 'XI',
+    12: 'XII',
+  };
+
+  static AnalogClockDialLabelMode fromConfigValue(Object? raw) {
+    if (raw is! String) {
+      return AnalogClockDialLabelMode.none;
+    }
+    switch (raw.trim().toLowerCase()) {
+      case 'numbers':
+      case 'numeric':
+        return AnalogClockDialLabelMode.numbers;
+      case 'roman':
+      case 'roman_numerals':
+        return AnalogClockDialLabelMode.roman;
+      case 'cardinal_numbers':
+      case 'cardinal':
+      case 'crosshair_numbers':
+        return AnalogClockDialLabelMode.cardinalNumbers;
+      case 'none':
+      default:
+        return AnalogClockDialLabelMode.none;
+    }
+  }
+
+  bool includesHour(int hour) {
+    return switch (this) {
+      AnalogClockDialLabelMode.none => false,
+      AnalogClockDialLabelMode.cardinalNumbers => _cardinalHours.contains(hour),
+      _ => true,
+    };
+  }
+
+  String labelForHour(int hour) {
+    return switch (this) {
+      AnalogClockDialLabelMode.roman => _romanByHour[hour] ?? '$hour',
+      _ => '$hour',
+    };
+  }
+}
+
+enum AnalogClockAccentChoice {
+  accent1,
+  accent2,
+  accent3;
+
+  static AnalogClockAccentChoice fromConfigValue(
+    Object? raw, {
+    AnalogClockAccentChoice defaultChoice = AnalogClockAccentChoice.accent1,
+  }) {
+    if (raw is int) {
+      return _fromInt(raw);
+    }
+    if (raw is String) {
+      final normalized = raw.trim().toLowerCase();
+      if (normalized.isEmpty) {
+        return defaultChoice;
+      }
+      switch (normalized) {
+        case 'accent1':
+        case '1':
+          return AnalogClockAccentChoice.accent1;
+        case 'accent2':
+        case '2':
+          return AnalogClockAccentChoice.accent2;
+        case 'accent3':
+        case '3':
+          return AnalogClockAccentChoice.accent3;
+      }
+      final parsed = int.tryParse(normalized);
+      if (parsed != null) {
+        return _fromInt(parsed);
+      }
+    }
+    return defaultChoice;
+  }
+
+  static AnalogClockAccentChoice _fromInt(int value) {
+    switch (value) {
+      case 2:
+        return AnalogClockAccentChoice.accent2;
+      case 3:
+        return AnalogClockAccentChoice.accent3;
+      case 1:
+      default:
+        return AnalogClockAccentChoice.accent1;
+    }
+  }
+}
 
 /// Full-slide analog clock with date (local time).
 class AnalogClockSlideWidget extends StatefulWidget {
@@ -31,6 +140,38 @@ class AnalogClockSlideWidget extends StatefulWidget {
 class _AnalogClockSlideWidgetState extends State<AnalogClockSlideWidget> {
   Timer? _timer;
   late DateTime _tick;
+  AnalogClockDialLabelMode get _dialLabelMode =>
+      AnalogClockDialLabelMode.fromConfigValue(widget.spec.config['dialLabels']);
+  AnalogClockAccentChoice get _hourHandAccentChoice =>
+      AnalogClockAccentChoice.fromConfigValue(
+        widget.spec.config['hourHandAccent'],
+        defaultChoice: AnalogClockAccentChoice.accent1,
+      );
+  AnalogClockAccentChoice get _minuteHandAccentChoice =>
+      AnalogClockAccentChoice.fromConfigValue(
+        widget.spec.config['minuteHandAccent'],
+        defaultChoice: AnalogClockAccentChoice.accent2,
+      );
+  AnalogClockAccentChoice get _secondHandAccentChoice =>
+      AnalogClockAccentChoice.fromConfigValue(
+        widget.spec.config['secondHandAccent'],
+        defaultChoice: AnalogClockAccentChoice.accent3,
+      );
+
+  Color _resolveAccentColor({
+    required PaletteTertiaryLayers? palette,
+    required AnalogClockAccentChoice choice,
+    required Color fallback,
+  }) {
+    if (palette == null) {
+      return fallback;
+    }
+    return switch (choice) {
+      AnalogClockAccentChoice.accent1 => palette.accent1,
+      AnalogClockAccentChoice.accent2 => palette.accent2,
+      AnalogClockAccentChoice.accent3 => palette.accent3,
+    };
+  }
 
   @override
   void initState() {
@@ -57,6 +198,7 @@ class _AnalogClockSlideWidgetState extends State<AnalogClockSlideWidget> {
     final local = _tick;
     final angles = ClockHandAngles.fromLocal(local);
     final scheme = widget.theme.colorScheme;
+    final palette = widget.theme.extension<PaletteTertiaryLayers>();
     final s = DashboardViewportScope.scaleOf(context);
     final dial = widget.dialSize * s;
 
@@ -73,9 +215,22 @@ class _AnalogClockSlideWidgetState extends State<AnalogClockSlideWidget> {
               layoutScale: s,
               dialColor: scheme.onSurface,
               faceColor: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              handHour: scheme.primary,
-              handMinute: scheme.onSurface,
-              handSecond: scheme.tertiary,
+              handHour: _resolveAccentColor(
+                palette: palette,
+                choice: _hourHandAccentChoice,
+                fallback: scheme.secondary,
+              ),
+              handMinute: _resolveAccentColor(
+                palette: palette,
+                choice: _minuteHandAccentChoice,
+                fallback: scheme.tertiary,
+              ),
+              handSecond: _resolveAccentColor(
+                palette: palette,
+                choice: _secondHandAccentChoice,
+                fallback: scheme.outline,
+              ),
+              dialLabelMode: _dialLabelMode,
             ),
           ),
           SizedBox(height: 16 * s),
@@ -99,6 +254,7 @@ class AnalogClockPainter extends CustomPainter {
     required this.handHour,
     required this.handMinute,
     required this.handSecond,
+    this.dialLabelMode = AnalogClockDialLabelMode.none,
   });
 
   final ClockHandAngles angles;
@@ -108,6 +264,7 @@ class AnalogClockPainter extends CustomPainter {
   final Color handHour;
   final Color handMinute;
   final Color handSecond;
+  final AnalogClockDialLabelMode dialLabelMode;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -143,6 +300,7 @@ class AnalogClockPainter extends CustomPainter {
       );
       canvas.drawLine(inner, outer, i % 5 == 0 ? tickMajor : tickMinor);
     }
+    _drawDialLabels(canvas, c, r, s);
 
     void drawHand(double angle, double length, double width, Color color) {
       final p = Paint()
@@ -164,6 +322,37 @@ class AnalogClockPainter extends CustomPainter {
     canvas.drawCircle(c, 5 * s, hub);
   }
 
+  void _drawDialLabels(Canvas canvas, Offset center, double radius, double scale) {
+    if (dialLabelMode == AnalogClockDialLabelMode.none) {
+      return;
+    }
+    final textStyle = TextStyle(
+      color: dialColor,
+      fontSize: 22 * scale,
+      fontWeight: FontWeight.w600,
+    );
+    for (var hour = 1; hour <= 12; hour++) {
+      if (!dialLabelMode.includesHour(hour)) {
+        continue;
+      }
+      final angle = 2 * math.pi * hour / 12.0;
+      final labelCenter = Offset(
+        center.dx + radius * 0.68 * math.sin(angle),
+        center.dy - radius * 0.68 * math.cos(angle),
+      );
+      final textPainter = TextPainter(
+        text: TextSpan(text: dialLabelMode.labelForHour(hour), style: textStyle),
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.ltr,
+      )..layout();
+      final topLeft = Offset(
+        labelCenter.dx - textPainter.width / 2,
+        labelCenter.dy - textPainter.height / 2,
+      );
+      textPainter.paint(canvas, topLeft);
+    }
+  }
+
   @override
   bool shouldRepaint(covariant AnalogClockPainter oldDelegate) {
     return oldDelegate.angles != angles ||
@@ -172,6 +361,7 @@ class AnalogClockPainter extends CustomPainter {
         oldDelegate.faceColor != faceColor ||
         oldDelegate.handHour != handHour ||
         oldDelegate.handMinute != handMinute ||
-        oldDelegate.handSecond != handSecond;
+        oldDelegate.handSecond != handSecond ||
+        oldDelegate.dialLabelMode != dialLabelMode;
   }
 }

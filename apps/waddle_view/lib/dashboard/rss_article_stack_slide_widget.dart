@@ -33,8 +33,8 @@ int _cfgInt(Map<String, dynamic> c, String key, int def) {
   return def;
 }
 
-/// Two RSS articles stacked vertically: top row has **image on the right**,
-/// bottom row **image on the left**. Each row uses a **text column** (title,
+/// Two RSS articles stacked vertically with each row using a left image panel.
+/// Each row uses a **text column** (title,
 /// then QR under the title with the summary beside it) next to the image.
 /// Curator assigns `'${slot}_rss_article_stack_0'` and `'${slot}_rss_article_stack_1'`.
 class RssArticleStackSlideWidget extends StatefulWidget {
@@ -69,6 +69,7 @@ class _RssArticleStackSlideWidgetState extends State<RssArticleStackSlideWidget>
   final ScrollController _scroll0 = ScrollController();
   final ScrollController _scroll1 = ScrollController();
   final List<RssArticle?> _articles = <RssArticle?>[null, null];
+  final List<String?> _sourceLabels = <String?>[null, null];
   final List<RssArticleImageLoad> _imageLoads = <RssArticleImageLoad>[
     const RssArticleImageLoad.absent(),
     const RssArticleImageLoad.absent(),
@@ -101,6 +102,7 @@ class _RssArticleStackSlideWidgetState extends State<RssArticleStackSlideWidget>
     final exclude = <String>{};
     final arts = <RssArticle?>[];
     final loads = <RssArticleImageLoad>[];
+    final sourceLabels = <String?>[];
     for (var i = 0; i < 2; i++) {
       final key = '${widget.spec.choiceKey}_$i';
       final article = await loadRssArticleForSlideChoice(
@@ -119,6 +121,7 @@ class _RssArticleStackSlideWidgetState extends State<RssArticleStackSlideWidget>
       } else {
         loads.add(const RssArticleImageLoad.absent());
       }
+      sourceLabels.add(await resolveRssArticleSourceLabel(widget.db, article));
     }
     String? inferred;
     for (final a in arts) {
@@ -140,6 +143,8 @@ class _RssArticleStackSlideWidgetState extends State<RssArticleStackSlideWidget>
       _articles[1] = arts[1];
       _imageLoads[0] = loads[0];
       _imageLoads[1] = loads[1];
+      _sourceLabels[0] = sourceLabels[0];
+      _sourceLabels[1] = sourceLabels[1];
       _headerCategoryId = inferred ?? _headerCategoryId;
       _loading = false;
     });
@@ -237,8 +242,9 @@ class _RssArticleStackSlideWidgetState extends State<RssArticleStackSlideWidget>
                         key: const Key('rss_article_stack_row_0'),
                         constraints: constraints,
                         article: a0,
+                        sourceLabel: _sourceLabels[0],
                         imageLoad: _imageLoads[0],
-                        imageOnRight: true,
+                        imageOnRight: false,
                         theme: theme,
                         s: s,
                         imageFraction: _imageFraction,
@@ -256,6 +262,7 @@ class _RssArticleStackSlideWidgetState extends State<RssArticleStackSlideWidget>
                         key: const Key('rss_article_stack_row_1'),
                         constraints: constraints,
                         article: a1,
+                        sourceLabel: _sourceLabels[1],
                         imageLoad: _imageLoads[1],
                         imageOnRight: false,
                         theme: theme,
@@ -287,6 +294,7 @@ class _RssStackArticleRow extends StatelessWidget {
     super.key,
     required this.constraints,
     required this.article,
+    required this.sourceLabel,
     required this.imageLoad,
     required this.imageOnRight,
     required this.theme,
@@ -300,6 +308,7 @@ class _RssStackArticleRow extends StatelessWidget {
 
   final BoxConstraints constraints;
   final RssArticle? article;
+  final String? sourceLabel;
   final RssArticleImageLoad imageLoad;
   final bool imageOnRight;
   final ThemeData theme;
@@ -375,6 +384,7 @@ class _RssStackArticleRow extends StatelessWidget {
 
     final a = article!;
     final title = a.title.trim();
+    final source = sourceLabel?.trim() ?? '';
     final summary = a.summary?.trim() ?? '';
     final url = a.link.trim();
     final textBlock = Expanded(
@@ -391,6 +401,19 @@ class _RssStackArticleRow extends StatelessWidget {
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
+              ),
+            if (title.isNotEmpty && source.isNotEmpty)
+              Padding(
+                padding: EdgeInsets.only(top: 4 * s),
+                child: Text(
+                  source,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             if (title.isNotEmpty && (summary.isNotEmpty || url.isNotEmpty))
               SizedBox(height: 8 * s),
@@ -484,23 +507,27 @@ class _RssStackArticleRow extends StatelessWidget {
     if (u.isEmpty) {
       return const SizedBox.shrink();
     }
-    final innerPad = 6 * s;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8 * s),
-        border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.3),
+    final innerPad = 12 * s;
+    return Padding(
+      padding: EdgeInsets.all(6 * s),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8 * s),
+          border: Border.all(
+            color: theme.colorScheme.outline.withValues(alpha: 0.3),
+          ),
         ),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(innerPad),
-        child: QrImageView(
-          key: ValueKey('rss_article_stack_qr_$stackIndex'),
-          data: u,
-          version: QrVersions.auto,
-          size: qrLogical * s,
-          gapless: true,
+        child: Padding(
+          padding: EdgeInsets.all(innerPad),
+          child: QrImageView(
+            key: ValueKey('rss_article_stack_qr_$stackIndex'),
+            data: u,
+            version: QrVersions.auto,
+            size: qrLogical * s,
+            padding: EdgeInsets.all(4 * s),
+            gapless: true,
+          ),
         ),
       ),
     );

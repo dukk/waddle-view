@@ -295,6 +295,9 @@ class WeatherCurrentData extends Table {
 /// Matches [ProviderSettings.id] for media sourced from that provider (e.g. `pexels`).
 const String kMediaDataProviderPexels = 'pexels';
 
+/// Microsoft Graph OneDrive sync into [Photos] / [Videos].
+const String kMediaDataProviderOneDrive = 'onedrive_media';
+
 @TableIndex(
   name: 'idx_photos_fetched',
   columns: {#fetchedAtMs},
@@ -355,4 +358,40 @@ class PexelsFetchBatches extends Table {
   DateTimeColumn get requestedAtMs => dateTime()();
   TextColumn get kind => text()();
   IntColumn get count => integer().withDefault(const Constant(1))();
+}
+
+/// User-configurable list of ticker symbols collected by the `stocks` provider.
+/// Mirrors the [WeatherLocations] pattern: rows can be enabled/disabled per
+/// symbol and the provider falls back to the seeded `defaultSymbols` from
+/// [ProviderSettings.configJson] when no rows are enabled.
+class StockSymbols extends Table {
+  TextColumn get id => text()();
+  TextColumn get symbol => text()();
+  TextColumn get displayName => text().withDefault(const Constant(''))();
+  BoolColumn get enabled => boolean().withDefault(const Constant(true))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Latest current quote per [StockSymbols.id], written by `StockQuoteDataProvider`.
+/// One row per symbol; provider does an `insertOnConflictUpdate` per collect tick.
+@TableIndex(
+  name: 'idx_stock_quotes_observed',
+  columns: {#observedAtMs},
+)
+class StockQuotes extends Table {
+  TextColumn get symbolId => text().references(StockSymbols, #id)();
+  RealColumn get currentPrice => real().nullable()();
+  RealColumn get changeAmount => real().nullable()();
+  RealColumn get percentChange => real().nullable()();
+  RealColumn get highOfDay => real().nullable()();
+  RealColumn get lowOfDay => real().nullable()();
+  RealColumn get openPrice => real().nullable()();
+  RealColumn get previousClose => real().nullable()();
+  DateTimeColumn get quotedAtMs => dateTime().nullable()();
+  DateTimeColumn get observedAtMs => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {symbolId};
 }

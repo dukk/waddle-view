@@ -10,6 +10,7 @@ import '../curator/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';
 import '../persistence/database.dart';
 import 'dashboard_viewport_scope.dart';
+import 'pexels_attribution_overlay.dart';
 
 Future<Photo?> _loadPexelsPhotoForSlide(
   AppDatabase db,
@@ -148,51 +149,13 @@ class _PexelsPhotoSlideWidgetState extends State<PexelsPhotoSlideWidget> {
           left: 0,
           right: 0,
           bottom: 0,
-          child: Material(
-            color: Colors.black.withValues(alpha: 0.45),
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 14 * s, vertical: 10 * s),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (row.photographerName.isNotEmpty)
-                    Text(
-                      row.photographerName,
-                      style: widget.theme.textTheme.titleSmall?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  if (row.photographerUrl.isNotEmpty)
-                    Padding(
-                      padding: EdgeInsets.only(top: 4 * s),
-                      child: InkWell(
-                        onTap: () => unawaited(_openUrl(row.photographerUrl)),
-                        child: Text(
-                          row.photographerUrl,
-                          style: widget.theme.textTheme.bodySmall?.copyWith(
-                            color: Colors.lightBlueAccent,
-                            decoration: TextDecoration.underline,
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (row.altText.isNotEmpty)
-                    Padding(
-                      padding: EdgeInsets.only(top: 6 * s),
-                      child: Text(
-                        row.altText,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: widget.theme.textTheme.bodySmall?.copyWith(
-                          color: Colors.white.withValues(alpha: 0.9),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
+          child: PexelsAttributionOverlay(
+            photographerName: row.photographerName,
+            photographerUrl: row.photographerUrl,
+            altText: row.altText,
+            theme: widget.theme,
+            scale: s,
+            onOpenUrl: _openUrl,
           ),
         ),
       ],

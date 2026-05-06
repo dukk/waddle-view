@@ -7,6 +7,7 @@ import 'package:waddle_view/curator/screen_layout_parse.dart';
 import 'package:waddle_view/curator/screen_program_curator.dart';
 import 'package:waddle_view/dashboard/weather_slide_widget.dart';
 import 'package:waddle_view/persistence/database.dart';
+import 'package:waddle_view/theme/display_theme.dart';
 
 import '../helpers/memory_database.dart';
 
@@ -80,7 +81,7 @@ void main() {
       layoutJson:
           '{"v":1,"layout":"single","widgets":[{"type":"weather","slot":"main","config":{"locationId":"atlanta_ga"}}]}',
     );
-    final theme = ThemeData.light();
+    final theme = DisplayTheme.build();
     await tester.pumpWidget(
       MaterialApp(
         theme: theme,
@@ -97,8 +98,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Atlanta, GA'), findsOneWidget);
-    expect(find.textContaining('65.1'), findsOneWidget);
+    expect(find.text('65°'), findsOneWidget);
     expect(find.textContaining('cloudy'), findsOneWidget);
+    expect(find.text('Hourly forecast (3-hour steps)'), findsOneWidget);
+    expect(find.byIcon(Icons.cloud), findsNWidgets(2));
+    final cloudIcons = tester.widgetList<Icon>(find.byIcon(Icons.cloud)).toList();
+    expect(cloudIcons.first.color, NavyCoralPalette.lobsterPink);
+    expect(cloudIcons.last.color, NavyCoralPalette.dustyDenim);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpAndSettle();
     await db.close();

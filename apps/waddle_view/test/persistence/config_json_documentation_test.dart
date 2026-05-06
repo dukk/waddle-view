@@ -27,7 +27,9 @@ void main() {
       'trivia',
       'weather',
       'pexels',
+      'google_calendar',
       'outlook_calendar',
+      'onedrive_media',
     ];
     for (final t in seededTypes) {
       expect(kProviderConfigJsonMeta.containsKey(t), isTrue);

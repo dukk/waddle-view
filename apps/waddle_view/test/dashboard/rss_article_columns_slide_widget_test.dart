@@ -16,6 +16,7 @@ Future<void> _insertFeed(AppDatabase db) async {
           id: 'feed_t',
           url: 'http://test.local/feed.xml',
           category: const Value('test'),
+          title: const Value('Test Feed'),
         ),
       );
 }
@@ -88,7 +89,13 @@ void main() {
     expect(find.text('First headline'), findsOneWidget);
     expect(find.text('Second headline'), findsOneWidget);
     expect(find.text('Third headline'), findsOneWidget);
+    expect(find.text('Test Feed'), findsNWidgets(3));
     expect(find.byType(QrImageView), findsNWidgets(3));
+    final qrWidgets = tester.widgetList<QrImageView>(find.byType(QrImageView));
+    for (final qr in qrWidgets) {
+      expect(qr.padding, isA<EdgeInsets>());
+      expect(qr.padding.left, greaterThan(0));
+    }
     expect(find.byKey(const ValueKey('rss_article_columns_qr_0')), findsOneWidget);
     expect(find.byKey(const ValueKey('rss_article_columns_qr_2')), findsOneWidget);
     await db.close();

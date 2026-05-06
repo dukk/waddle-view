@@ -19,6 +19,16 @@ IconData contentCategoryMaterialIcon(String? materialIconName) {
       return Icons.science_outlined;
     case 'photo_library':
       return Icons.photo_library_outlined;
+    case 'forest':
+      return Icons.forest_outlined;
+    case 'local_florist':
+      return Icons.local_florist_outlined;
+    case 'landscape':
+      return Icons.landscape_outlined;
+    case 'beach_access':
+      return Icons.beach_access;
+    case 'terrain':
+      return Icons.terrain;
     case 'sentiment_satisfied':
       return Icons.sentiment_satisfied_alt_outlined;
     case 'favorite':
@@ -51,6 +61,10 @@ IconData contentCategoryMaterialIcon(String? materialIconName) {
       return Icons.sports_soccer;
     case 'menu_book':
       return Icons.menu_book_outlined;
+    case 'self_improvement':
+      return Icons.self_improvement;
+    case 'water':
+      return Icons.water_drop_outlined;
     default:
       return Icons.label_outline;
   }

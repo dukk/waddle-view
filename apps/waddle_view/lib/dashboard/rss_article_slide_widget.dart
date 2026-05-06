@@ -92,6 +92,7 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
   bool _plainDwellHookStarted = false;
   double _viewportScale = 1.0;
   String? _headerCategoryId;
+  String? _sourceLabel;
 
   late final int _scrollDelayMs;
   late final int _trailingHoldMs;
@@ -135,6 +136,7 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
       widget.slide,
       article,
     );
+    final sourceLabel = await resolveRssArticleSourceLabel(widget.db, article);
     if (!mounted) {
       return;
     }
@@ -142,6 +144,7 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
       _article = article;
       _imageLoad = load;
       _headerCategoryId = cat ?? _headerCategoryId;
+      _sourceLabel = sourceLabel;
       _loading = false;
     });
   }
@@ -355,6 +358,7 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
                     article: article,
                     summary: summary,
                     title: title,
+                    sourceLabel: _sourceLabel,
                   );
                 },
               ),
@@ -373,23 +377,25 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
     required RssArticle article,
     required String summary,
     required String title,
+    required String? sourceLabel,
   }) {
+    final hasImage = _imageLoad.bytes != null;
     final imageW = (w * _imageFraction).clamp(120.0 * s, w * 0.55);
-    final imagePanel = SizedBox(
-      key: const Key('rss_article_image_panel'),
-      width: imageW,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12 * s),
-          border: Border.all(
-            color: theme.colorScheme.outline.withValues(alpha: 0.4),
-          ),
-          color: theme.colorScheme.surfaceContainerHigh,
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(11 * s),
-          child: _imageLoad.bytes != null
-              ? Image.memory(
+    final imagePanel = hasImage
+        ? SizedBox(
+            key: const Key('rss_article_image_panel'),
+            width: imageW,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12 * s),
+                border: Border.all(
+                  color: theme.colorScheme.outline.withValues(alpha: 0.4),
+                ),
+                color: theme.colorScheme.surfaceContainerHigh,
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(11 * s),
+                child: Image.memory(
                   _imageLoad.bytes!,
                   fit: BoxFit.cover,
                   gaplessPlayback: true,
@@ -402,18 +408,11 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
                             widget.slide.randomChoices['${widget.spec.choiceKey}_imageMode'] ==
                             'icon',
                       ),
-                )
-              : _imagePlaceholder(
-                  theme,
-                  s,
-                  blobReadFailed: _imageLoad.blobReadFailed,
-                  useNewsIcon:
-                      widget.slide.randomChoices['${widget.spec.choiceKey}_imageMode'] ==
-                      'icon',
                 ),
-        ),
-      ),
-    );
+              ),
+            ),
+          )
+        : const SizedBox.shrink();
     final gap = SizedBox(width: 20 * s);
     final textPanel = Expanded(
       key: const Key('rss_article_text_column'),
@@ -430,6 +429,21 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
                 ),
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
+              ),
+            if (title.isNotEmpty &&
+                sourceLabel != null &&
+                sourceLabel.trim().isNotEmpty)
+              Padding(
+                padding: EdgeInsets.only(top: 6 * s),
+                child: Text(
+                  sourceLabel,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             if (title.isNotEmpty &&
                 (summary.isNotEmpty || article.link.trim().isNotEmpty))
@@ -453,9 +467,11 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
         height: h,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: _imageOnRight
-              ? <Widget>[textPanel, gap, imagePanel]
-              : <Widget>[imagePanel, gap, textPanel],
+          children: hasImage
+              ? (_imageOnRight
+                    ? <Widget>[textPanel, gap, imagePanel]
+                    : <Widget>[imagePanel, gap, textPanel])
+              : <Widget>[textPanel],
         ),
       ),
     );
@@ -554,8 +570,10 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
       return const SizedBox.shrink();
     }
     const qrLogical = 176.0;
-    final innerPad = 8 * s;
-    final box = DecoratedBox(
+    final innerPad = 14 * s;
+    final box = Padding(
+      padding: EdgeInsets.all(6 * s),
+      child: DecoratedBox(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8 * s),
@@ -570,8 +588,10 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
           data: url,
           version: QrVersions.auto,
           size: qrLogical * s,
+          padding: EdgeInsets.all(4 * s),
           gapless: true,
         ),
+      ),
       ),
     );
     if (standalone) {

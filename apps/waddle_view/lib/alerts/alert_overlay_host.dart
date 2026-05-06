@@ -58,6 +58,7 @@ class AlertOverlayHost extends StatelessWidget {
                                     data: alert.qrPayload!,
                                     size: 180,
                                     backgroundColor: Colors.white,
+                                    padding: const EdgeInsets.all(4),
                                   ),
                                 ),
                               ],

@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -31,9 +32,12 @@ import 'dashboard/screen_rotator.dart';
 import 'data/data_write_context.dart';
 import 'data/engine/data_collection_engine.dart';
 import 'data/providers/joke_data_provider.dart';
+import 'data/providers/google_calendar_data_provider.dart';
+import 'data/providers/onedrive_media_data_provider.dart';
 import 'data/providers/outlook_calendar_data_provider.dart';
 import 'data/providers/pexels_data_provider.dart';
 import 'data/providers/rss_news_data_provider.dart';
+import 'data/providers/stock_quote_data_provider.dart';
 import 'data/providers/trivia_data_provider.dart';
 import 'data/providers/weather_data_provider.dart';
 import 'data/stub_data_provider.dart';
@@ -107,6 +111,7 @@ Future<void> _waddleBootstrap() async {
 
     final secrets = FlutterSecureSecretStore();
     await applyJokesTokenFromDevDotenv(secrets);
+    await applyGoogleTokensFromDevDotenv(secrets);
     await applyMicrosoftGraphTokensFromDevDotenv(secrets);
     final resolver = ProviderConfigResolver(db, secrets);
     final blobs = FileSystemBlobStore(mediaDir);
@@ -139,7 +144,10 @@ Future<void> _waddleBootstrap() async {
         TriviaDataProvider(),
         WeatherDataProvider(),
         PexelsDataProvider(),
+        GoogleCalendarDataProvider(),
         OutlookCalendarDataProvider(),
+        OneDriveMediaDataProvider(),
+        StockQuoteDataProvider(),
       ],
       context: ctx,
       sleeper: SystemSleeper(),
@@ -282,12 +290,16 @@ class WaddleHome extends StatefulWidget {
 }
 
 class _WaddleHomeState extends State<WaddleHome> {
+  final TickerMarqueeNavigationController _tickerNavigationController =
+      TickerMarqueeNavigationController();
+
   @override
   void dispose() {
     AppDebugLog.startup('dispose: stopping engine, closing REST and DB');
     widget.tickerCurated.dispose();
     widget.marqueeCycleGate.dispose();
     widget.engine.stop();
+    _tickerNavigationController.dispose();
     unawaited(widget.server.close());
     unawaited(widget.db.close());
     super.dispose();
@@ -312,27 +324,46 @@ class _WaddleHomeState extends State<WaddleHome> {
       tickerKv * DisplayTheme.textScale,
     );
     return Scaffold(
-      body: MediaQuery(
-        data: mq.copyWith(textScaler: screenScaler),
-        child: AlertOverlayHost(
-          repository: widget.alerts,
-          clock: const SystemClock(),
-          child: DashboardDataBoundShell(
-            overscan: const TvOverscanInsets(),
-            viewportConfig: const DisplayViewportConfig(),
-            body: ScreenRotator(
-              db: widget.db,
-              blobs: widget.blobs,
-              localRestBaseUrl: widget.server.baseUrl,
-              adminBaseUrl: widget.server.displayBaseUrl,
-              setupPasswordFile: widget.setupPasswordFile,
-            ),
-            ticker: MediaQuery(
-              data: mq.copyWith(textScaler: tickerScaler),
-              child: _KvAwareMarquee(
+      body: Focus(
+        canRequestFocus: false,
+        skipTraversal: true,
+        onKeyEvent: (_, event) {
+          if (event is! KeyDownEvent) {
+            return KeyEventResult.ignored;
+          }
+          if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+            _tickerNavigationController.navigateBackward();
+            return KeyEventResult.handled;
+          }
+          if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+            _tickerNavigationController.navigateForward();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: MediaQuery(
+          data: mq.copyWith(textScaler: screenScaler),
+          child: AlertOverlayHost(
+            repository: widget.alerts,
+            clock: const SystemClock(),
+            child: DashboardDataBoundShell(
+              overscan: const TvOverscanInsets(),
+              viewportConfig: const DisplayViewportConfig(),
+              body: ScreenRotator(
                 db: widget.db,
-                repository: widget.tickerCurated,
-                marqueeCycleGate: widget.marqueeCycleGate,
+                blobs: widget.blobs,
+                localRestBaseUrl: widget.server.baseUrl,
+                adminBaseUrl: widget.server.displayBaseUrl,
+                setupPasswordFile: widget.setupPasswordFile,
+              ),
+              ticker: MediaQuery(
+                data: mq.copyWith(textScaler: tickerScaler),
+                child: _KvAwareMarquee(
+                  db: widget.db,
+                  repository: widget.tickerCurated,
+                  marqueeCycleGate: widget.marqueeCycleGate,
+                  navigationController: _tickerNavigationController,
+                ),
               ),
             ),
           ),
@@ -348,11 +379,13 @@ class _KvAwareMarquee extends StatelessWidget {
     required this.db,
     required this.repository,
     required this.marqueeCycleGate,
+    required this.navigationController,
   });
 
   final AppDatabase db;
   final MemoryTickerCuratedRepository repository;
   final MarqueeCycleGate marqueeCycleGate;
+  final TickerMarqueeNavigationController navigationController;
 
   @override
   Widget build(BuildContext context) {
@@ -373,6 +406,7 @@ class _KvAwareMarquee extends StatelessWidget {
               repository: repository,
               pixelsPerSecond: px * s,
               cycleGate: marqueeCycleGate,
+              navigationController: navigationController,
             );
           },
         );

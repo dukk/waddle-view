@@ -8,10 +8,12 @@ class TickerRssSegments {
     required this.articleTitle,
     required this.summary,
     required this.showSource,
+    this.sourceIconName,
   });
 
   /// Feed label without brackets (shown as `[sourceTitle]` when [showSource]).
   final String sourceTitle;
+  final String? sourceIconName;
   final String articleTitle;
   final String summary;
   final bool showSource;
@@ -20,13 +22,14 @@ class TickerRssSegments {
   bool operator ==(Object other) =>
       other is TickerRssSegments &&
       other.sourceTitle == sourceTitle &&
+      other.sourceIconName == sourceIconName &&
       other.articleTitle == articleTitle &&
       other.summary == summary &&
       other.showSource == showSource;
 
   @override
   int get hashCode =>
-      Object.hash(sourceTitle, articleTitle, summary, showSource);
+      Object.hash(sourceTitle, sourceIconName, articleTitle, summary, showSource);
 }
 
 /// One unit in the bottom marquee (after curation from domain data).

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../curator/screen_layout_parse.dart';
 import 'dashboard_viewport_scope.dart';
+import '../theme/display_theme.dart';
 
 /// Developer slide: loopback REST base URL and API key file hint.
 class LocalApiSlideWidget extends StatelessWidget {
@@ -18,6 +19,11 @@ class LocalApiSlideWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = theme.extension<PaletteTertiaryLayers>();
+    final iconColor =
+        palette?.iconColor ??
+        theme.iconTheme.color ??
+        theme.colorScheme.onSurfaceVariant;
     final headline =
         spec.config['headline'] as String? ?? 'Local REST API';
     final s = DashboardViewportScope.scaleOf(context);
@@ -30,7 +36,7 @@ class LocalApiSlideWidget extends StatelessWidget {
           Icon(
             Icons.api_outlined,
             size: 56 * s,
-            color: theme.colorScheme.primary,
+            color: iconColor,
           ),
           SizedBox(height: 12 * s),
           Text(

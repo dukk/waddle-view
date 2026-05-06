@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../clock.dart';
+import 'curator_read_port.dart';
 import 'ticker_item.dart';
 import 'ticker_news_candidate.dart';
 
@@ -89,14 +90,14 @@ String composeTickerNewsBody({
   final sum = summary.trim();
   if (!prefix) {
     if (sum.isEmpty) {
-      return title;
+      return '$title:';
     }
-    return '$title $sum';
+    return '$title: $sum';
   }
   if (sum.isEmpty) {
-    return '[$feedName] $title';
+    return '$feedName $title:';
   }
-  return '[$feedName] $title $sum';
+  return '$feedName $title: $sum';
 }
 
 String _formatClock(DateTime now) {
@@ -259,6 +260,7 @@ List<TickerItem> pickNewsTickerItemsByWidthBudget({
       sourceId: c.feedId,
       rss: TickerRssSegments(
         sourceTitle: source,
+        sourceIconName: c.categoryIconName,
         articleTitle: title,
         summary: summary,
         showSource: config.newsPrefixCategory,
@@ -279,6 +281,7 @@ List<TickerItem> buildTickerItemsForMarquee({
   required Map<String, String> kv,
   required DateTime nowLocal,
   required List<TickerNewsCandidate> newsCandidates,
+  CurrentWeatherTickerData? currentWeather,
 }) {
   final cfg = CuratorTickerConfig.fromKv(kv);
   final rssItems = pickNewsTickerItemsByWidthBudget(
@@ -323,12 +326,15 @@ List<TickerItem> buildTickerItemsForMarquee({
     'ticker.marquee.quote': 'quote',
   };
 
-  final rawWeather = kv['ticker.marquee.weather'];
-  if (rawWeather != null && rawWeather.trim().isNotEmpty) {
+  final liveWeatherBody = currentWeather?.toTickerBody().trim() ?? '';
+  final rawWeather = liveWeatherBody.isNotEmpty
+      ? liveWeatherBody
+      : (kv['ticker.marquee.weather']?.trim() ?? '');
+  if (rawWeather.isNotEmpty) {
     addIfNew(
       TickerItem(
         kind: 'weather',
-        body: rawWeather.trim(),
+        body: rawWeather,
         sourceId: 'ticker.marquee.weather',
       ),
     );

@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 
 import '../debug/app_debug_log.dart';
 import '../secrets/secret_store.dart';
+import 'google_kv.dart';
 import 'microsoft_graph_kv.dart';
 import 'provider_config_resolver.dart';
 
@@ -42,6 +43,12 @@ const String pexelsApiKeyEnv = 'PEXELS_API_KEY';
 /// Optional explicit Pexels key (otherwise [pexelsApiKeyEnv]).
 const String waddlePexelsAccessTokenKey = 'WADDLE_PEXELS_ACCESS_TOKEN';
 
+/// Finnhub API key (https://finnhub.io/) for the `stocks` provider.
+const String finnhubApiKeyEnv = 'FINNHUB_API_KEY';
+
+/// Optional explicit Finnhub key (otherwise [finnhubApiKeyEnv]).
+const String waddleStocksAccessTokenKey = 'WADDLE_STOCKS_ACCESS_TOKEN';
+
 /// Prefix for Microsoft Graph OAuth tokens in debug `.env` files.
 ///
 /// Pair with [waddleMsGraphRefreshTokenPrefix]: for account key `work`, set
@@ -50,6 +57,12 @@ const String waddleMsGraphAccessTokenPrefix = 'WADDLE_MSGRAPH_ACCESS_TOKEN_';
 
 /// See [waddleMsGraphAccessTokenPrefix].
 const String waddleMsGraphRefreshTokenPrefix = 'WADDLE_MSGRAPH_REFRESH_TOKEN_';
+
+/// Prefix for Google OAuth access tokens in debug `.env` files.
+const String waddleGoogleAccessTokenPrefix = 'WADDLE_GOOGLE_ACCESS_TOKEN_';
+
+/// Prefix for Google OAuth refresh tokens in debug `.env` files.
+const String waddleGoogleRefreshTokenPrefix = 'WADDLE_GOOGLE_REFRESH_TOKEN_';
 
 /// OpenAI-style token for trivia: explicit trivia key, else same as jokes/OpenAI.
 String? readTriviaTokenFromDotenvMap(Map<String, String> map) {
@@ -78,6 +91,20 @@ String? readPexelsTokenFromDotenvMap(Map<String, String> map) {
   final p = map[pexelsApiKeyEnv]?.trim();
   if (p != null && p.isNotEmpty) {
     return p;
+  }
+  return null;
+}
+
+/// Stocks provider token from dotenv map: explicit override, else
+/// [finnhubApiKeyEnv].
+String? readStocksTokenFromDotenvMap(Map<String, String> map) {
+  final explicit = map[waddleStocksAccessTokenKey]?.trim();
+  if (explicit != null && explicit.isNotEmpty) {
+    return explicit;
+  }
+  final f = map[finnhubApiKeyEnv]?.trim();
+  if (f != null && f.isNotEmpty) {
+    return f;
   }
   return null;
 }
@@ -160,6 +187,14 @@ Future<void> applyJokesTokenFromDevDotenv(SecretStore secrets) async {
     );
     AppDebugLog.startup('Dev .env: stored Pexels provider API key in SecretStore');
   }
+  final stocksToken = readStocksTokenFromDotenvMap(dotenv.env);
+  if (stocksToken != null && stocksToken.isNotEmpty) {
+    await secrets.write(
+      '${ProviderConfigResolver.accessTokenKey}:stocks',
+      stocksToken,
+    );
+    AppDebugLog.startup('Dev .env: stored stocks provider API key in SecretStore');
+  }
 }
 
 /// Writes Microsoft Graph OAuth tokens from [dotenv] into [secrets] when
@@ -205,5 +240,48 @@ Future<void> applyMicrosoftGraphTokensFromDevDotenv(SecretStore secrets) async {
     AppDebugLog.startup(
       'Dev .env: stored Microsoft Graph token(s) in SecretStore',
     );
+  }
+}
+
+/// Writes Google OAuth tokens from [dotenv] into [secrets] when running in
+/// **debug** mode. Keys: `WADDLE_GOOGLE_ACCESS_TOKEN_<accountKey>` and optional
+/// `WADDLE_GOOGLE_REFRESH_TOKEN_<accountKey>`.
+Future<void> applyGoogleTokensFromDevDotenv(SecretStore secrets) async {
+  if (!kDebugMode) {
+    return;
+  }
+  if (!dotenv.isInitialized) {
+    return;
+  }
+  var wrote = false;
+  for (final e in dotenv.env.entries) {
+    final k = e.key;
+    if (!k.startsWith(waddleGoogleAccessTokenPrefix)) {
+      continue;
+    }
+    final accountKey = k.substring(waddleGoogleAccessTokenPrefix.length).trim();
+    if (accountKey.isEmpty) {
+      continue;
+    }
+    final access = e.value.trim();
+    if (access.isEmpty) {
+      continue;
+    }
+    await secrets.write(
+      googleAccessTokenSecret(accountKey),
+      access,
+    );
+    wrote = true;
+    final refreshKey = '$waddleGoogleRefreshTokenPrefix$accountKey';
+    final refresh = dotenv.env[refreshKey]?.trim();
+    if (refresh != null && refresh.isNotEmpty) {
+      await secrets.write(
+        googleRefreshTokenSecret(accountKey),
+        refresh,
+      );
+    }
+  }
+  if (wrote) {
+    AppDebugLog.startup('Dev .env: stored Google token(s) in SecretStore');
   }
 }

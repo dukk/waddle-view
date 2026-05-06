@@ -19,7 +19,7 @@ List<String> get registeredDisplayThemeIds =>
 typedef DisplayThemeOption = ({String id, String label});
 
 const List<DisplayThemeOption> kDisplayThemeOptions = [
-  (id: kDisplayThemeNavyCoral, label: 'Navy & coral (default)'),
+  (id: kDisplayThemeNavyCoral, label: 'Ink blue multi-accent (default)'),
   (id: kDisplayThemeGraphiteAmber, label: 'Graphite & amber'),
 ];
 

@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../config/google_kv.dart';
 import '../config/microsoft_graph_kv.dart';
 import '../persistence/config_json_documentation.dart';
 import '../persistence/database.dart';
@@ -58,8 +59,13 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureTriviaProviderRow(db);
   await _ensureWeatherProviderRow(db);
   await _ensurePexelsProviderRow(db);
+  await _ensureStocksProviderRow(db);
+  await _ensureDefaultStockSymbols(db);
   await _ensureMicrosoftGraphClientIdKv(db);
+  await _ensureGoogleClientIdKv(db);
+  await _ensureGoogleCalendarProviderRow(db);
   await _ensureOutlookCalendarProviderRow(db);
+  await _ensureOneDriveMediaProviderRow(db);
   await _ensureDefaultWeatherLocations(db);
   await ensureDefaultContentCategories(db);
   await ensureDefaultJokeCategories(db);
@@ -85,6 +91,7 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureWeatherScreen(db);
   await _ensurePexelsPhotoScreen(db);
   await _ensurePexelsVideoScreen(db);
+  await _ensureStockQuotesScreen(db);
 }
 
 Future<void> _ensureDisplayThemeKv(AppDatabase db) async {
@@ -696,6 +703,45 @@ Future<void> _ensureMicrosoftGraphClientIdKv(AppDatabase db) async {
       );
 }
 
+Future<void> _ensureGoogleClientIdKv(AppDatabase db) async {
+  final row = await (db.select(db.configKeyValues)
+        ..where((t) => t.key.equals(kGoogleClientIdKvKey)))
+      .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  await db.into(db.configKeyValues).insert(
+        ConfigKeyValuesCompanion.insert(
+          key: kGoogleClientIdKvKey,
+          value: '',
+        ),
+      );
+}
+
+Future<void> _ensureGoogleCalendarProviderRow(AppDatabase db) async {
+  final row = await (db.select(db.providerSettings)
+        ..where((t) => t.id.equals('google_calendar')))
+      .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  final doc = providerConfigJsonDocForType('google_calendar');
+  await db.into(db.providerSettings).insert(
+        ProviderSettingsCompanion.insert(
+          id: 'google_calendar',
+          providerType: 'google_calendar',
+          enabled: const Value(false),
+          pollSeconds: const Value(3600),
+          baseUrl: const Value('https://www.googleapis.com/calendar/v3'),
+          configJson: const Value(
+            '{"accounts":[],"pastDays":14,"futureDays":14}',
+          ),
+          configJsonSchema: Value(doc.schema),
+          exampleConfigJson: Value(doc.example),
+        ),
+      );
+}
+
 Future<void> _ensureOutlookCalendarProviderRow(AppDatabase db) async {
   final row =
       await (db.select(db.providerSettings)
@@ -721,6 +767,31 @@ Future<void> _ensureOutlookCalendarProviderRow(AppDatabase db) async {
       );
 }
 
+Future<void> _ensureOneDriveMediaProviderRow(AppDatabase db) async {
+  final row =
+      await (db.select(db.providerSettings)
+            ..where((t) => t.id.equals('onedrive_media')))
+          .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  final doc = providerConfigJsonDocForType('onedrive_media');
+  await db.into(db.providerSettings).insert(
+        ProviderSettingsCompanion.insert(
+          id: 'onedrive_media',
+          providerType: 'onedrive_media',
+          enabled: const Value(false),
+          pollSeconds: const Value(3600),
+          baseUrl: const Value('https://graph.microsoft.com/v1.0'),
+          configJson: const Value(
+            '{"accounts":[],"globalPerPollLimit":50}',
+          ),
+          configJsonSchema: Value(doc.schema),
+          exampleConfigJson: Value(doc.example),
+        ),
+      );
+}
+
 Future<void> _ensurePexelsProviderRow(AppDatabase db) async {
   final row =
       await (db.select(db.providerSettings)
@@ -739,10 +810,107 @@ Future<void> _ensurePexelsProviderRow(AppDatabase db) async {
           baseUrl: const Value('https://api.pexels.com'),
           configJson: const Value(
             '{"maxPhotos":100,"maxVideos":100,"photosPerHour":2,"videosPerHour":2,'
-            '"minVideoSeconds":11,"maxVideoSeconds":29,"sources":[]}',
+            '"minVideoSeconds":5,"maxVideoSeconds":29,"sources":['
+            '{"query":"Nature","category":"nature"},'
+            '{"query":"Flowers","category":"flowers"},'
+            '{"query":"Landscape","category":"landscape"},'
+            '{"query":"Beach","category":"beach"},'
+            '{"query":"Mountains","category":"mountains"},'
+            '{"query":"Motivational","category":"motivational"},'
+            '{"query":"Aquarium","category":"aquarium"}]}',
           ),
           configJsonSchema: Value(pexelsDoc.schema),
           exampleConfigJson: Value(pexelsDoc.example),
+        ),
+      );
+}
+
+Future<void> _ensureStocksProviderRow(AppDatabase db) async {
+  final row =
+      await (db.select(db.providerSettings)
+            ..where((t) => t.id.equals('stocks')))
+          .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  final stocksDoc = providerConfigJsonDocForType('stocks');
+  await db.into(db.providerSettings).insert(
+        ProviderSettingsCompanion.insert(
+          id: 'stocks',
+          providerType: 'stocks',
+          enabled: const Value(true),
+          pollSeconds: const Value(300),
+          baseUrl: const Value('https://finnhub.io'),
+          configJson: const Value(
+            '{"maxSymbolsPerCollect":25,"defaultSymbols":['
+            '{"symbol":"AAPL","displayName":"Apple"},'
+            '{"symbol":"MSFT","displayName":"Microsoft"},'
+            '{"symbol":"GOOG","displayName":"Alphabet"},'
+            '{"symbol":"NVDA","displayName":"NVIDIA"},'
+            '{"symbol":"AMZN","displayName":"Amazon"}'
+            ']}',
+          ),
+          configJsonSchema: Value(stocksDoc.schema),
+          exampleConfigJson: Value(stocksDoc.example),
+        ),
+      );
+}
+
+/// Idempotent default symbol list (AAPL/MSFT enabled, the rest disabled to
+/// limit API hits). Operators can toggle [StockSymbols.enabled] from the admin
+/// surface without touching the provider config.
+Future<void> _ensureDefaultStockSymbols(AppDatabase db) async {
+  Future<void> ensure(
+    String id,
+    String symbol,
+    String displayName, {
+    required bool enabled,
+  }) async {
+    final existing = await (db.select(db.stockSymbols)
+          ..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (existing != null) {
+      return;
+    }
+    await db.into(db.stockSymbols).insert(
+          StockSymbolsCompanion.insert(
+            id: id,
+            symbol: symbol,
+            displayName: Value(displayName),
+            enabled: Value(enabled),
+          ),
+        );
+  }
+
+  await ensure('aapl', 'AAPL', 'Apple', enabled: true);
+  await ensure('msft', 'MSFT', 'Microsoft', enabled: true);
+  await ensure('goog', 'GOOG', 'Alphabet', enabled: false);
+  await ensure('nvda', 'NVDA', 'NVIDIA', enabled: false);
+  await ensure('amzn', 'AMZN', 'Amazon', enabled: false);
+}
+
+Future<void> _ensureStockQuotesScreen(AppDatabase db) async {
+  final row = await (db.select(db.screenDefinitions)
+        ..where((t) => t.id.equals('stock_quotes')))
+      .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  await db.into(db.screenDefinitions).insert(
+        ScreenDefinitionsCompanion.insert(
+          id: 'stock_quotes',
+          name: 'Stock quotes',
+          description: const Value('Latest Finnhub quotes for enabled symbols'),
+          enabled: const Value(false),
+          layoutJson: const Value(
+            '{"v":1,"layout":"single","widgets":['
+            '{"type":"stock_quotes","slot":"main","config":{}}'
+            ']}',
+          ),
+          layoutJsonSchema: Value(kScreenLayoutJsonSchema),
+          exampleLayoutJson: Value(kExampleScreenLayoutJson),
+          dwellSeconds: const Value(14),
+          dataKey: const Value('stocks'),
         ),
       );
 }

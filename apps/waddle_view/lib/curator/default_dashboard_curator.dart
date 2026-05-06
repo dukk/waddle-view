@@ -22,10 +22,12 @@ class DefaultDashboardCurator implements DashboardCurator {
   Future<void> refresh() async {
     final kv = await _read.loadKeyValuesForCuration();
     final news = await _read.loadNewsCandidatesForTicker();
+    final currentWeather = await _read.loadCurrentWeatherForTicker();
     final items = buildTickerItemsForMarquee(
       kv: kv,
       nowLocal: _clock.now().toLocal(),
       newsCandidates: news,
+      currentWeather: currentWeather,
     );
     await _tickerStore.replaceAll(items);
     final kinds = items.map((e) => e.kind).join(', ');

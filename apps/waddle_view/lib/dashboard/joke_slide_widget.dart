@@ -60,7 +60,10 @@ class _JokeSlideWidgetState extends State<JokeSlideWidget> {
   Joke? _joke;
   bool _loading = true;
   bool _showPunchline = false;
+  int _punchlineDelayMs = 0;
+  int _elapsedMs = 0;
   Timer? _punchlineTimer;
+  Timer? _progressTick;
 
   @override
   void initState() {
@@ -82,29 +85,100 @@ class _JokeSlideWidgetState extends State<JokeSlideWidget> {
 
   void _schedulePunchlineReveal() {
     _punchlineTimer?.cancel();
+    _progressTick?.cancel();
     if (_joke == null) {
       return;
     }
     final delayMs = punchlineDelayMs(widget.slide.dwellMs);
+    _punchlineDelayMs = delayMs;
+    _elapsedMs = 0;
     if (delayMs <= 0) {
       setState(() {
         _showPunchline = true;
       });
       return;
     }
+    _progressTick = Timer.periodic(const Duration(milliseconds: 120), (_) {
+      if (!mounted) {
+        return;
+      }
+      _elapsedMs += 120;
+      if (_elapsedMs >= _punchlineDelayMs) {
+        _elapsedMs = _punchlineDelayMs;
+        _progressTick?.cancel();
+      }
+      setState(() {});
+    });
     _punchlineTimer = Timer(Duration(milliseconds: delayMs), () {
       if (!mounted) {
         return;
       }
       setState(() {
+        _elapsedMs = _punchlineDelayMs;
         _showPunchline = true;
       });
     });
   }
 
+  Widget _buildPunchlineProgressBar(ThemeData theme, double s) {
+    if (_punchlineDelayMs <= 0) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: EdgeInsets.only(top: 12 * s, bottom: 16 * s),
+      child: Align(
+        alignment: Alignment.center,
+        child: FractionallySizedBox(
+          widthFactor: 0.5,
+          child: Builder(
+            builder: (context) {
+              final h = 7 * s;
+              final remaining =
+                  (1.0 - _elapsedMs / _punchlineDelayMs).clamp(0.0, 1.0);
+              final trackColor = theme.colorScheme.secondaryContainer
+                  .withValues(alpha: 0.55);
+              final fillColor =
+                  theme.colorScheme.secondary.withValues(alpha: 0.5);
+              return SizedBox(
+                key: const ValueKey<String>('joke_punchline_progress'),
+                height: h,
+                child: Stack(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        color: trackColor,
+                        borderRadius: BorderRadius.circular(4 * s),
+                      ),
+                    ),
+                    Positioned.fill(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: FractionallySizedBox(
+                          widthFactor: remaining,
+                          alignment: Alignment.centerLeft,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: fillColor,
+                              borderRadius: BorderRadius.circular(4 * s),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _punchlineTimer?.cancel();
+    _progressTick?.cancel();
     super.dispose();
   }
 
@@ -178,7 +252,7 @@ class _JokeSlideWidgetState extends State<JokeSlideWidget> {
             style: theme.textTheme.headlineSmall,
             textAlign: TextAlign.center,
           ),
-          SizedBox(height: 16 * s),
+          _buildPunchlineProgressBar(theme, s),
           AnimatedOpacity(
             opacity: _showPunchline ? 1 : 0,
             duration: const Duration(milliseconds: 320),

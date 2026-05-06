@@ -7,6 +7,7 @@ import 'package:waddle_view/theme/ticker_marquee_style.dart';
 void main() {
   test('DisplayTheme matches calendar-style dark palette', () {
     final t = DisplayTheme.build();
+    final palette = t.extension<PaletteTertiaryLayers>();
     expect(t.brightness, Brightness.dark);
     expect(t.scaffoldBackgroundColor, NavyCoralPalette.background);
     expect(t.colorScheme.surface, NavyCoralPalette.background);
@@ -16,8 +17,28 @@ void main() {
       NavyCoralPalette.footerBar,
     );
     expect(t.colorScheme.onSurfaceVariant, NavyCoralPalette.mutedText);
-    expect(t.colorScheme.primary, NavyCoralPalette.accent);
-    expect(t.colorScheme.outline, NavyCoralPalette.accent);
+    expect(t.colorScheme.primary, NavyCoralPalette.primary);
+    expect(t.colorScheme.secondary, NavyCoralPalette.accents[0]);
+    expect(t.colorScheme.tertiary, NavyCoralPalette.accents[1]);
+    expect(t.colorScheme.outline, NavyCoralPalette.accents[2]);
+    expect(palette, isNotNull);
+    expect(palette!.colorOrder, NavyCoralPalette.orderedPalette);
+    expect(palette.iconColor, NavyCoralPalette.dustyDenim);
+    expect(palette.accent1, NavyCoralPalette.accents[0]);
+    expect(palette.accent2, NavyCoralPalette.accents[1]);
+    expect(palette.accent3, NavyCoralPalette.accents[2]);
+    expect(
+      palette.primaryPairGradient.colors,
+      [NavyCoralPalette.inkBlack, NavyCoralPalette.prussianBlue],
+    );
+    expect(
+      palette.secondaryPairGradient.colors,
+      [NavyCoralPalette.duskBlue, NavyCoralPalette.dustyDenim],
+    );
+    expect(t.iconTheme.color, NavyCoralPalette.dustyDenim);
+    for (final color in NavyCoralPalette.orderedPalette) {
+      expect(palette.tertiaryLayersFor(color), hasLength(4));
+    }
     expect(t.textTheme.bodyLarge?.fontSize, greaterThanOrEqualTo(18));
     expect(t.extension<TickerMarqueeStyle>(), isA<TickerMarqueeStyle>());
   });
@@ -33,7 +54,11 @@ void main() {
 
   test('DisplayTheme.buildForId and buildFromKvValue resolve presets', () {
     final graphite = DisplayTheme.buildForId(kDisplayThemeGraphiteAmber);
+    final graphitePalette = graphite.extension<PaletteTertiaryLayers>();
     expect(graphite.brightness, Brightness.dark);
+    expect(graphitePalette, isNotNull);
+    expect(graphitePalette!.primaryPairGradient.colors, hasLength(2));
+    expect(graphitePalette.secondaryPairGradient.colors, hasLength(2));
     expect(
       DisplayTheme.buildFromKvValue(kDisplayThemeNavyCoral).brightness,
       Brightness.dark,

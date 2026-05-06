@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../ticker_marquee_style.dart';
 import 'palettes/graphite_amber_palette.dart';
+import '../theme_palette_extension.dart';
 
 ThemeData buildGraphiteAmberDisplayTheme() {
   final baseScheme = ColorScheme.fromSeed(
@@ -25,6 +26,41 @@ ThemeData buildGraphiteAmberDisplayTheme() {
     useMaterial3: true,
     colorScheme: colorScheme,
     scaffoldBackgroundColor: GraphiteAmberPalette.background,
+    iconTheme: const IconThemeData(color: GraphiteAmberPalette.mutedText),
+    extensions: [
+      PaletteTertiaryLayers(
+        primary: GraphiteAmberPalette.accent,
+        iconColor: GraphiteAmberPalette.mutedText,
+        accent1: GraphiteAmberPalette.accent,
+        accent2: GraphiteAmberPalette.footerBar,
+        accent3: GraphiteAmberPalette.primaryText,
+        colorOrder: [GraphiteAmberPalette.background, GraphiteAmberPalette.accent],
+        tertiaryLayersByColor: {
+          GraphiteAmberPalette.background: [
+            Color(0xFF4A4A4A),
+            Color(0xFF3A3A3A),
+            Color(0xFF1F1F1F),
+            Color(0xFF141414),
+          ],
+          GraphiteAmberPalette.accent: [
+            Color(0xFFFFD37A),
+            Color(0xFFD8A93F),
+            Color(0xFF8B6C25),
+            Color(0xFF5D4718),
+          ],
+        },
+        primaryPairGradient: LinearGradient(
+          colors: [GraphiteAmberPalette.background, Color(0xFF3A3A3A)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        secondaryPairGradient: LinearGradient(
+          colors: [Color(0xFF3A3A3A), GraphiteAmberPalette.footerBar],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+    ],
   );
 
   final withText = base.copyWith(
