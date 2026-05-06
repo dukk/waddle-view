@@ -47,12 +47,13 @@ class WeatherDataProvider implements IDataProvider {
               ..where((t) => t.id.equals(kWeatherProviderId)))
             .getSingleOrNull();
     if (setting == null || !setting.enabled) {
+      AppDebugLog.provider('weather: skip (disabled)');
       return;
     }
     final config = await ctx.resolveConfig(kWeatherProviderId);
     final token = config.accessToken;
     if (token == null || token.isEmpty) {
-      AppDebugLog.engine('WeatherDataProvider: skip collect (no API token)');
+      AppDebugLog.provider('weather: skip (no API token)');
       return;
     }
     final extra = WeatherProviderExtraConfig.parse(config.configJson);
@@ -61,6 +62,9 @@ class WeatherDataProvider implements IDataProvider {
         : kDefaultOpenWeatherBaseUrl;
     final locations = await _resolveLocations(ctx.db, extra);
     final now = _nowMs();
+    AppDebugLog.provider(
+      'weather: collect locations=${locations.length} base=${AppDebugLog.safeHttpUri(Uri.parse(baseUrl))}',
+    );
 
     for (final location in locations) {
       try {
@@ -73,13 +77,17 @@ class WeatherDataProvider implements IDataProvider {
             'appid': token,
           },
         );
+        AppDebugLog.provider(
+          'weather: GET current id=${location.id} lat=${location.lat} lon=${location.lon} '
+          '${AppDebugLog.safeHttpUri(weatherUri)}',
+        );
         final weatherRes = await _safeGet(weatherUri, phase: 'current', locationId: location.id);
         if (weatherRes == null) {
           continue;
         }
         if (weatherRes.statusCode != 200) {
-          AppDebugLog.engine(
-            'WeatherDataProvider: current status=${weatherRes.statusCode} for ${location.id}',
+          AppDebugLog.provider(
+            'weather: current status=${weatherRes.statusCode} id=${location.id}',
           );
           continue;
         }
@@ -96,6 +104,10 @@ class WeatherDataProvider implements IDataProvider {
             'appid': token,
           },
         );
+        AppDebugLog.provider(
+          'weather: GET forecast id=${location.id} '
+          '${AppDebugLog.safeHttpUri(forecastUri)}',
+        );
         final forecastRes = await _safeGet(forecastUri, phase: 'forecast', locationId: location.id);
         if (forecastRes == null) {
           continue;
@@ -104,8 +116,12 @@ class WeatherDataProvider implements IDataProvider {
             ? _normalizeForecastPayload(forecastRes.body, extra.hourlyCount)
             : null;
         if (forecastRes.statusCode != 200) {
-          AppDebugLog.engine(
-            'WeatherDataProvider: forecast status=${forecastRes.statusCode} for ${location.id}',
+          AppDebugLog.provider(
+            'weather: forecast status=${forecastRes.statusCode} id=${location.id}',
+          );
+        } else {
+          AppDebugLog.provider(
+            'weather: forecast ok id=${location.id} hourlyPoints=${hourly?.length ?? 0}',
           );
         }
         final currentIconCode = (current['icon'] as String?) ?? '';
@@ -125,7 +141,7 @@ class WeatherDataProvider implements IDataProvider {
               ),
             );
       } on Object catch (e, st) {
-        AppDebugLog.engineFail('WeatherDataProvider collect', e, st);
+        AppDebugLog.providerFail('weather: collect id=${location.id}', e, st);
       }
     }
   }
@@ -170,17 +186,26 @@ class WeatherDataProvider implements IDataProvider {
       return null;
     }
     final iconUrl = Uri.parse('$baseUrl/img/wn/$code@2x.png');
+    AppDebugLog.provider(
+      'weather: GET icon code=$code ${AppDebugLog.safeHttpUri(iconUrl)}',
+    );
     final res = await _safeGet(iconUrl, phase: 'icon', locationId: code);
     if (res == null) {
       return null;
     }
     if (res.statusCode != 200 || res.bodyBytes.isEmpty) {
+      AppDebugLog.provider(
+        'weather: icon code=$code status=${res.statusCode} bytes=${res.bodyBytes.length}',
+      );
       return null;
     }
     final logicalKey = 'weather/icons/$code@2x.png';
     final ref = await ctx.blobs.putBytes(
       res.bodyBytes,
       logicalKey: logicalKey,
+    );
+    AppDebugLog.provider(
+      'weather: stored icon code=$code bytes=${res.bodyBytes.length} blobKey=$logicalKey',
     );
     await ctx.db.into(ctx.db.blobMetadata).insertOnConflictUpdate(
           BlobMetadataCompanion.insert(
@@ -279,24 +304,29 @@ class WeatherDataProvider implements IDataProvider {
     required String locationId,
   }) async {
     try {
-      return await _http.get(uri);
+      final res = await _http.get(uri);
+      AppDebugLog.provider(
+        'weather: $phase ok location=$locationId status=${res.statusCode} '
+        'bytes=${res.bodyBytes.length}',
+      );
+      return res;
     } on http.ClientException catch (e, st) {
-      AppDebugLog.engineFail(
-        'WeatherDataProvider $phase request failed location=$locationId',
+      AppDebugLog.providerFail(
+        'weather: $phase request failed location=$locationId',
         e,
         st,
       );
       return null;
     } on SocketException catch (e, st) {
-      AppDebugLog.engineFail(
-        'WeatherDataProvider $phase socket failed location=$locationId',
+      AppDebugLog.providerFail(
+        'weather: $phase socket failed location=$locationId',
         e,
         st,
       );
       return null;
     } on Object catch (e, st) {
-      AppDebugLog.engineFail(
-        'WeatherDataProvider $phase unexpected request error location=$locationId',
+      AppDebugLog.providerFail(
+        'weather: $phase unexpected request error location=$locationId',
         e,
         st,
       );

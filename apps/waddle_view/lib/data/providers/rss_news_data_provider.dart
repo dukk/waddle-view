@@ -33,18 +33,27 @@ class RssNewsDataProvider implements IDataProvider {
     final feedRows = await (ctx.db.select(
       ctx.db.rssFeedSources,
     )..where((t) => t.enabled.equals(true))).get();
+    AppDebugLog.provider('rss: collect enabledFeeds=${feedRows.length}');
     for (final feed in feedRows) {
       final last = feed.lastFetchedAt;
       final due = last == null ||
           (now - last.millisecondsSinceEpoch) >= feed.pollSeconds * 1000;
       if (!due) {
+        AppDebugLog.provider(
+          'rss: skip feed id=${feed.id} (poll ${feed.pollSeconds}s not due)',
+        );
         continue;
       }
       try {
-        final res = await _http.get(Uri.parse(feed.url));
+        final feedUri = Uri.parse(feed.url);
+        AppDebugLog.provider(
+          'rss: GET feed id=${feed.id} ${AppDebugLog.safeHttpUri(feedUri)}',
+        );
+        final res = await _http.get(feedUri);
         if (res.statusCode != 200) {
-          AppDebugLog.engine(
-            'RssNewsDataProvider: fetch ${feed.url} status ${res.statusCode}',
+          AppDebugLog.provider(
+            'rss: feed id=${feed.id} status=${res.statusCode} '
+            '${AppDebugLog.safeHttpUri(feedUri)}',
           );
           continue;
         }
@@ -59,6 +68,9 @@ class RssNewsDataProvider implements IDataProvider {
             RssFeedSourcesCompanion(title: Value(title)),
           );
         }
+        AppDebugLog.provider(
+          'rss: feed id=${feed.id} parsed entries=${parsed.entries.length}',
+        );
         for (final e in parsed.entries) {
           await _upsertArticle(
             ctx,
@@ -76,7 +88,7 @@ class RssNewsDataProvider implements IDataProvider {
           ),
         );
       } on Object catch (e, st) {
-        AppDebugLog.engineFail('RssNewsDataProvider feed ${feed.id}', e, st);
+        AppDebugLog.providerFail('rss: feed id=${feed.id}', e, st);
       }
     }
   }
@@ -128,14 +140,26 @@ class RssNewsDataProvider implements IDataProvider {
     required String imageUrl,
   }) async {
     try {
-      final res = await _http.get(Uri.parse(imageUrl));
+      final imageUri = Uri.parse(imageUrl);
+      AppDebugLog.provider(
+        'rss: GET image article=$articleId ${AppDebugLog.safeHttpUri(imageUri)}',
+      );
+      final res = await _http.get(imageUri);
       if (res.statusCode != 200 || res.bodyBytes.isEmpty) {
+        AppDebugLog.provider(
+          'rss: image article=$articleId status=${res.statusCode} '
+          'bytes=${res.bodyBytes.length}',
+        );
         return null;
       }
       final logicalKey = 'rss/$feedId/$articleId/image';
       final ref = await ctx.blobs.putBytes(
         res.bodyBytes,
         logicalKey: logicalKey,
+      );
+      AppDebugLog.provider(
+        'rss: stored image article=$articleId bytes=${res.bodyBytes.length} '
+        'blobKey=$logicalKey',
       );
       final mime =
           res.headers['content-type']?.split(';').first.trim() ?? 'image/jpeg';
@@ -151,7 +175,7 @@ class RssNewsDataProvider implements IDataProvider {
           );
       return logicalKey;
     } on Object catch (e, st) {
-      AppDebugLog.engineFail('RssNewsDataProvider image download', e, st);
+      AppDebugLog.providerFail('rss: image article=$articleId', e, st);
       return null;
     }
   }

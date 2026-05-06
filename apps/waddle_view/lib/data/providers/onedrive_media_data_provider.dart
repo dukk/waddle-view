@@ -24,7 +24,7 @@ void _logGraphJsonError(String context, String body) {
     final j = jsonDecode(body);
     if (j is Map<String, dynamic> && j['error'] is Map<String, dynamic>) {
       final e = j['error'] as Map<String, dynamic>;
-      AppDebugLog.engine(
+      AppDebugLog.provider(
         '$context Graph error code=${e['code']} message=${e['message']}',
       );
       return;
@@ -33,7 +33,7 @@ void _logGraphJsonError(String context, String body) {
     // fall through
   }
   final t = body.trim().replaceAll(RegExp(r'\s+'), ' ');
-  AppDebugLog.engine(
+  AppDebugLog.provider(
     '$context body=${t.length <= 400 ? t : '${t.substring(0, 400)}…'}',
   );
 }
@@ -102,7 +102,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
           access.isNotEmpty &&
           expiresAt > nowMs + kMicrosoftGraphAccessTokenSkewMs;
       if (!fresh) {
-        AppDebugLog.engine(
+        AppDebugLog.provider(
           'OneDriveMediaDataProvider: poll window bypass (auth needed for '
           '${a.graphAccountKey})',
         );
@@ -110,7 +110,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
       }
     }
 
-    AppDebugLog.engine(
+    AppDebugLog.provider(
       'OneDriveMediaDataProvider: skip poll gate lastCollectMs=$last',
     );
     return true;
@@ -124,6 +124,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
             )..where((t) => t.id.equals(kOneDriveMediaProviderId)))
             .getSingleOrNull();
     if (setting == null || !setting.enabled) {
+      AppDebugLog.provider('onedrive_media: skip (disabled)');
       return;
     }
 
@@ -136,7 +137,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
             .getSingleOrNull();
     final clientId = clientIdRow?.value.trim() ?? '';
     if (clientId.isEmpty) {
-      AppDebugLog.engine(
+      AppDebugLog.provider(
         'OneDriveMediaDataProvider: skip (no $kMicrosoftGraphClientIdKvKey)',
       );
       return;
@@ -144,7 +145,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
 
     final extra = OneDriveMediaExtraConfig.parse(setting.configJson);
     if (extra.accounts.isEmpty) {
-      AppDebugLog.engine(
+      AppDebugLog.provider(
         'OneDriveMediaDataProvider: skip (no accounts in config_json)',
       );
       await _markCollectDone(ctx.db, nowMs);
@@ -158,10 +159,17 @@ class OneDriveMediaDataProvider implements IDataProvider {
           nowMs,
           setting.pollSeconds,
         )) {
+      AppDebugLog.provider(
+        'onedrive_media: skip poll gate pollSeconds=${setting.pollSeconds}',
+      );
       return;
     }
 
     final graphBase = _normalizeGraphBase(setting.baseUrl);
+    AppDebugLog.provider(
+      'onedrive_media: collect graphBase=$graphBase accounts=${extra.accounts.length} '
+      'globalLimit=${extra.globalPerPollLimit}',
+    );
     var didSync = false;
     var globalRemaining = extra.globalPerPollLimit;
 
@@ -177,7 +185,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
           graphAccountKey: account.graphAccountKey,
         );
         if (token == null || token.isEmpty) {
-          AppDebugLog.engine(
+          AppDebugLog.provider(
             'OneDriveMediaDataProvider: no token for ${account.graphAccountKey}',
           );
           continue;
@@ -204,10 +212,13 @@ class OneDriveMediaDataProvider implements IDataProvider {
         }
       }
       if (didSync) {
+        AppDebugLog.provider('onedrive_media: collect ok, last_collect updated');
         await _markCollectDone(ctx.db, nowMs);
+      } else {
+        AppDebugLog.provider('onedrive_media: collect finished (no writes)');
       }
     } on Object catch (e, st) {
-      AppDebugLog.engineFail('OneDriveMediaDataProvider collect', e, st);
+      AppDebugLog.providerFail('onedrive_media: collect', e, st);
     }
   }
 
@@ -240,24 +251,34 @@ class OneDriveMediaDataProvider implements IDataProvider {
     final perSourceCap = source.effectivePerPollLimit;
     var downloaded = 0;
     String? url = _childrenListUrl(graphBase, source.path);
+    var childrenPage = 0;
 
     while (url != null && downloaded < perSourceCap && globalRemaining > 0) {
       final pageUrl = url;
-      AppDebugLog.engine('OneDriveMediaDataProvider: GET children');
+      childrenPage++;
+      final pageUri = Uri.parse(pageUrl);
+      AppDebugLog.provider(
+        'onedrive_media: GET children page=$childrenPage kind=${source.kind} '
+        'category=${source.category} path=${source.path} '
+        '${AppDebugLog.safeHttpUri(pageUri)}',
+      );
       final res = await _http.get(
-        Uri.parse(pageUrl),
+        pageUri,
         headers: {'Authorization': 'Bearer $accessToken'},
       );
       if (res.statusCode != 200) {
-        AppDebugLog.engine(
-          'OneDriveMediaDataProvider: children status=${res.statusCode}',
+        AppDebugLog.provider(
+          'onedrive_media: children status=${res.statusCode} page=$childrenPage',
         );
-        _logGraphJsonError('OneDriveMediaDataProvider: children', res.body);
+        _logGraphJsonError('onedrive_media: children', res.body);
         break;
       }
       final m = jsonDecode(res.body) as Map<String, dynamic>;
       final values = m['value'];
       if (values is List<dynamic>) {
+        AppDebugLog.provider(
+          'onedrive_media: children page=$childrenPage items=${values.length}',
+        );
         for (final rawItem in values) {
           if (downloaded >= perSourceCap || globalRemaining <= 0) {
             break;
@@ -466,6 +487,9 @@ class OneDriveMediaDataProvider implements IDataProvider {
             fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(nowMs),
           ),
         );
+    AppDebugLog.provider(
+      'onedrive_media: stored photo row=$rowId category=$category bytes=${bytes.length}',
+    );
     return true;
   }
 
@@ -532,18 +556,29 @@ class OneDriveMediaDataProvider implements IDataProvider {
             fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(nowMs),
           ),
         );
+    AppDebugLog.provider(
+      'onedrive_media: stored video row=$rowId category=$category bytes=${bytes.length} dur=${dur}s',
+    );
     return true;
   }
 
   Future<List<int>?> _downloadBytes(String url) async {
     try {
-      final res = await _http.get(Uri.parse(url));
+      final uri = Uri.parse(url);
+      AppDebugLog.provider(
+        'onedrive_media: GET file binary ${AppDebugLog.safeHttpUri(uri)}',
+      );
+      final res = await _http.get(uri);
       if (res.statusCode != 200 || res.bodyBytes.isEmpty) {
+        AppDebugLog.provider(
+          'onedrive_media: download status=${res.statusCode} bytes=${res.bodyBytes.length}',
+        );
         return null;
       }
+      AppDebugLog.provider('onedrive_media: download ok bytes=${res.bodyBytes.length}');
       return res.bodyBytes;
     } on Object catch (e, st) {
-      AppDebugLog.engineFail('OneDriveMediaDataProvider download', e, st);
+      AppDebugLog.providerFail('onedrive_media: download', e, st);
       return null;
     }
   }

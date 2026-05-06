@@ -11,7 +11,11 @@ void main() {
     AppDebugLog.window('test window');
     AppDebugLog.ticker('test ticker');
     AppDebugLog.screen('test screen');
+    AppDebugLog.provider('test provider');
     AppDebugLog.engineFail('ctx', StateError('x'), StackTrace.current);
     AppDebugLog.curatorFail('ctx', StateError('y'), StackTrace.current);
+    AppDebugLog.providerFail('ctx', StateError('z'), StackTrace.current);
+    expect(AppDebugLog.safeHttpUri(Uri.parse('https://x.example/a?q=secret')),
+        'https://x.example/a');
   });
 }

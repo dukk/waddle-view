@@ -42,14 +42,13 @@ class StockQuoteDataProvider implements IDataProvider {
           ..where((t) => t.id.equals(kStockProviderId)))
         .getSingleOrNull();
     if (setting == null || !setting.enabled) {
+      AppDebugLog.provider('stocks: skip (disabled)');
       return;
     }
     final config = await ctx.resolveConfig(kStockProviderId);
     final token = config.accessToken;
     if (token == null || token.isEmpty) {
-      AppDebugLog.engine(
-        'StockQuoteDataProvider: skip collect (no API token)',
-      );
+      AppDebugLog.provider('stocks: skip (no API token)');
       return;
     }
     final extra = StockQuoteProviderExtraConfig.parse(config.configJson);
@@ -59,6 +58,9 @@ class StockQuoteDataProvider implements IDataProvider {
 
     final symbols = await _resolveSymbols(ctx.db, extra);
     final now = _nowMs();
+    AppDebugLog.provider(
+      'stocks: collect symbols=${symbols.length} base=${AppDebugLog.safeHttpUri(Uri.parse(baseUrl))}',
+    );
     for (final symbol in symbols) {
       try {
         final uri = Uri.parse('$baseUrl/api/v1/quote').replace(
@@ -67,21 +69,29 @@ class StockQuoteDataProvider implements IDataProvider {
             'token': token,
           },
         );
+        AppDebugLog.provider(
+          'stocks: GET quote symbol=${symbol.symbol} ${AppDebugLog.safeHttpUri(uri)}',
+        );
         final res = await _safeGet(uri, symbol: symbol.symbol);
         if (res == null) {
           continue;
         }
         if (res.statusCode != 200) {
-          AppDebugLog.engine(
-            'StockQuoteDataProvider: status=${res.statusCode} '
-            'symbol=${symbol.symbol}',
+          AppDebugLog.provider(
+            'stocks: quote status=${res.statusCode} symbol=${symbol.symbol}',
           );
           continue;
         }
         final parsed = _normalizeQuotePayload(res.body);
         if (parsed == null) {
+          AppDebugLog.provider(
+            'stocks: quote empty/invalid payload symbol=${symbol.symbol}',
+          );
           continue;
         }
+        AppDebugLog.provider(
+          'stocks: upsert quote symbol=${symbol.symbol} price=${parsed.currentPrice}',
+        );
         await ctx.db.into(ctx.db.stockQuotes).insertOnConflictUpdate(
               StockQuotesCompanion.insert(
                 symbolId: symbol.id,
@@ -97,8 +107,8 @@ class StockQuoteDataProvider implements IDataProvider {
               ),
             );
       } on Object catch (e, st) {
-        AppDebugLog.engineFail(
-          'StockQuoteDataProvider collect symbol=${symbol.symbol}',
+        AppDebugLog.providerFail(
+          'stocks: collect symbol=${symbol.symbol}',
           e,
           st,
         );
@@ -172,22 +182,22 @@ class StockQuoteDataProvider implements IDataProvider {
     try {
       return await _http.get(uri);
     } on http.ClientException catch (e, st) {
-      AppDebugLog.engineFail(
-        'StockQuoteDataProvider request failed symbol=$symbol',
+      AppDebugLog.providerFail(
+        'stocks: request failed symbol=$symbol',
         e,
         st,
       );
       return null;
     } on SocketException catch (e, st) {
-      AppDebugLog.engineFail(
-        'StockQuoteDataProvider socket failed symbol=$symbol',
+      AppDebugLog.providerFail(
+        'stocks: socket failed symbol=$symbol',
         e,
         st,
       );
       return null;
     } on Object catch (e, st) {
-      AppDebugLog.engineFail(
-        'StockQuoteDataProvider unexpected error symbol=$symbol',
+      AppDebugLog.providerFail(
+        'stocks: unexpected error symbol=$symbol',
         e,
         st,
       );

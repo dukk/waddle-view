@@ -30,7 +30,7 @@ void _logGraphJsonError(String context, String body) {
     final j = jsonDecode(body);
     if (j is Map<String, dynamic> && j['error'] is Map<String, dynamic>) {
       final e = j['error'] as Map<String, dynamic>;
-      AppDebugLog.engine(
+      AppDebugLog.provider(
         '$context Graph error code=${e['code']} message=${e['message']}',
       );
       return;
@@ -38,13 +38,14 @@ void _logGraphJsonError(String context, String body) {
   } on Object {
     // fall through
   }
-  AppDebugLog.engine('$context body=${_graphBodySnippet(body)}');
+  AppDebugLog.provider('$context body=${_graphBodySnippet(body)}');
 }
 
+/// Path only — Graph `@odata.nextLink` query tokens must not be logged.
 String _graphRequestLabel(String url) {
   try {
     final u = Uri.parse(url);
-    return '${u.path}${u.hasQuery ? '?${u.query}' : ''}';
+    return u.path.isEmpty ? '/' : u.path;
   } on Object {
     return '(invalid url)';
   }
@@ -117,7 +118,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
           access.isNotEmpty &&
           expiresAt > nowMs + kMicrosoftGraphAccessTokenSkewMs;
       if (!fresh) {
-        AppDebugLog.engine(
+        AppDebugLog.provider(
           'OutlookCalendarDataProvider: poll window bypass (auth or token '
           'refresh needed for ${a.graphAccountKey} expiresAtMs=$expiresAt '
           'nowMs=$nowMs)',
@@ -126,7 +127,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
       }
     }
 
-    AppDebugLog.engine(
+    AppDebugLog.provider(
       'OutlookCalendarDataProvider: skip poll gate lastCollectMs=$last '
       'elapsedMs=${nowMs - last} needMs=${pollSeconds * 1000} '
       '(all accounts have fresh access tokens)',
@@ -145,7 +146,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
       return;
     }
 
-    AppDebugLog.engine(
+    AppDebugLog.provider(
       'OutlookCalendarDataProvider: collect start pollSeconds=${setting.pollSeconds}',
     );
 
@@ -158,7 +159,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
             .getSingleOrNull();
     final clientId = clientIdRow?.value.trim() ?? '';
     if (clientId.isEmpty) {
-      AppDebugLog.engine(
+      AppDebugLog.provider(
         'OutlookCalendarDataProvider: skip (no $kMicrosoftGraphClientIdKvKey)',
       );
       return;
@@ -166,7 +167,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
 
     final extra = OutlookCalendarExtraConfig.parse(setting.configJson);
     if (extra.accounts.isEmpty) {
-      AppDebugLog.engine(
+      AppDebugLog.provider(
         'OutlookCalendarDataProvider: skip (no accounts in config_json)',
       );
       await _markCollectDone(ctx.db, nowMs);
@@ -185,7 +186,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
 
     final graphBase = _normalizeGraphBase(setting.baseUrl);
     final range = _syncWindowUtc(extra);
-    AppDebugLog.engine(
+    AppDebugLog.provider(
       'OutlookCalendarDataProvider: graphBase=$graphBase accounts=${extra.accounts.length} '
       'windowUtc=${range.$1.toIso8601String()}..${range.$2.toIso8601String()} '
       '(exclusive end) pastDays=${extra.pastDays} futureDays=${extra.futureDays}',
@@ -195,7 +196,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
     try {
       for (final account in extra.accounts) {
         if (account.sources.isEmpty) {
-          AppDebugLog.engine(
+          AppDebugLog.provider(
             'OutlookCalendarDataProvider: account ${account.graphAccountKey} has no sources',
           );
           continue;
@@ -207,13 +208,13 @@ class OutlookCalendarDataProvider implements IDataProvider {
           graphAccountKey: account.graphAccountKey,
         );
         if (token == null || token.isEmpty) {
-          AppDebugLog.engine(
+          AppDebugLog.provider(
             'OutlookCalendarDataProvider: no token for ${account.graphAccountKey}',
           );
           continue;
         }
 
-        AppDebugLog.engine(
+        AppDebugLog.provider(
           'OutlookCalendarDataProvider: token ok for ${account.graphAccountKey} '
           '(length=${token.length})',
         );
@@ -226,7 +227,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
         );
 
         for (final src in account.sources) {
-          AppDebugLog.engine(
+          AppDebugLog.provider(
             'OutlookCalendarDataProvider: sync mailbox=${src.mailbox} '
             'account=${account.graphAccountKey} '
             'calendarFilters=${src.calendars.length}',
@@ -244,15 +245,15 @@ class OutlookCalendarDataProvider implements IDataProvider {
         didSync = true;
       }
       if (didSync) {
-        AppDebugLog.engine('OutlookCalendarDataProvider: collect finished, marking last_collect');
+        AppDebugLog.provider('OutlookCalendarDataProvider: collect finished, marking last_collect');
         await _markCollectDone(ctx.db, nowMs);
       } else {
-        AppDebugLog.engine(
+        AppDebugLog.provider(
           'OutlookCalendarDataProvider: collect finished with no successful sync',
         );
       }
     } on Object catch (e, st) {
-      AppDebugLog.engineFail('OutlookCalendarDataProvider collect', e, st);
+      AppDebugLog.providerFail('outlook_calendar: collect', e, st);
     }
   }
 
@@ -336,7 +337,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
     for (final entry in src.calendars) {
       final calId = _resolveCalendarId(calMap, entry.nameOrId);
       if (calId == null) {
-        AppDebugLog.engine(
+        AppDebugLog.provider(
           'OutlookCalendarDataProvider: unknown calendar "${entry.nameOrId}" '
           'for $mailbox',
         );
@@ -374,7 +375,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
     var listPage = 0;
     while (true) {
       listPage++;
-      AppDebugLog.engine(
+      AppDebugLog.provider(
         'OutlookCalendarDataProvider: GET calendars page=$listPage '
         '${_graphRequestLabel(url)}',
       );
@@ -383,7 +384,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
         headers: {'Authorization': 'Bearer $accessToken'},
       );
       if (res.statusCode != 200) {
-        AppDebugLog.engine(
+        AppDebugLog.provider(
           'OutlookCalendarDataProvider: list calendars status=${res.statusCode} '
           '${_graphRequestLabel(url)}',
         );
@@ -393,7 +394,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
       final m = jsonDecode(res.body) as Map<String, dynamic>;
       final values = m['value'];
       if (values is List<dynamic>) {
-        AppDebugLog.engine(
+        AppDebugLog.provider(
           'OutlookCalendarDataProvider: list calendars page=$listPage '
           'calendarsInPage=${values.length}',
         );
@@ -444,7 +445,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
     var viewPage = 0;
     while (true) {
       viewPage++;
-      AppDebugLog.engine(
+      AppDebugLog.provider(
         'OutlookCalendarDataProvider: GET calendarView page=$viewPage '
         'mailbox=$mailbox ${_graphRequestLabel(nextUrl)}',
       );
@@ -453,7 +454,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
         headers: {'Authorization': 'Bearer $accessToken'},
       );
       if (res.statusCode != 200) {
-        AppDebugLog.engine(
+        AppDebugLog.provider(
           'OutlookCalendarDataProvider: calendarView status=${res.statusCode} '
           'mailbox=$mailbox',
         );
@@ -463,7 +464,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
       final m = jsonDecode(res.body) as Map<String, dynamic>;
       final values = m['value'];
       if (values is List<dynamic>) {
-        AppDebugLog.engine(
+        AppDebugLog.provider(
           'OutlookCalendarDataProvider: calendarView page=$viewPage '
           'events=${values.length} mailbox=$mailbox',
         );

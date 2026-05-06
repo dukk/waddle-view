@@ -65,12 +65,12 @@ class DataCollectionEngine {
 
   Future<void> _runOne(IDataProvider p) async {
     _collectInFlight = true;
-    AppDebugLog.engine('collect begin id=${p.id}');
+    AppDebugLog.provider('collect begin id=${p.id}');
     try {
       await p.collect(_context);
-      AppDebugLog.engine('collect ok id=${p.id}');
+      AppDebugLog.provider('collect ok id=${p.id}');
     } on Object catch (e, st) {
-      AppDebugLog.engineFail('collect id=${p.id}', e, st);
+      AppDebugLog.providerFail('collect id=${p.id}', e, st);
     } finally {
       _collectInFlight = false;
     }

@@ -41,6 +41,7 @@ class PexelsDataProvider implements IDataProvider {
             )..where((t) => t.id.equals(kPexelsProviderId)))
             .getSingleOrNull();
     if (setting == null || !setting.enabled) {
+      AppDebugLog.provider('pexels: skip (disabled)');
       return;
     }
 
@@ -54,6 +55,9 @@ class PexelsDataProvider implements IDataProvider {
               .getSingleOrNull();
       final last = int.tryParse(lastRow?.value ?? '') ?? 0;
       if (nowMs - last < setting.pollSeconds * 1000) {
+        AppDebugLog.provider(
+          'pexels: skip poll (${setting.pollSeconds}s gate, lastMs=$last)',
+        );
         return;
       }
     }
@@ -62,20 +66,22 @@ class PexelsDataProvider implements IDataProvider {
     try {
       config = await ctx.resolveConfig(kPexelsProviderId);
     } on Object catch (e, st) {
-      AppDebugLog.engineFail('PexelsDataProvider resolveConfig', e, st);
+      AppDebugLog.providerFail('pexels: resolveConfig', e, st);
       return;
     }
 
     final token = config.accessToken;
     if (token == null || token.isEmpty) {
-      AppDebugLog.engine(
-        'PexelsDataProvider: skip collect (no API key for $kPexelsProviderId)',
-      );
+      AppDebugLog.provider('pexels: skip (no API key)');
       return;
     }
 
     final extra = PexelsProviderExtraConfig.parse(config.configJson);
     final base = _normalizeBaseUrl(config.baseUrl);
+    AppDebugLog.provider(
+      'pexels: collect base=${AppDebugLog.safeHttpUri(Uri.parse(base))} '
+      'photoBudget/h=${extra.photosPerHour} videoBudget/h=${extra.videosPerHour}',
+    );
 
     try {
       await _prunePhotos(ctx, extra.maxPhotos);
@@ -154,8 +160,9 @@ class PexelsDataProvider implements IDataProvider {
           value: '$nowMs',
         ),
       );
+      AppDebugLog.provider('pexels: collect finished (last_collect_ms updated)');
     } on Object catch (e, st) {
-      AppDebugLog.engineFail('PexelsDataProvider collect', e, st);
+      AppDebugLog.providerFail('pexels: collect', e, st);
     }
   }
 
@@ -288,35 +295,44 @@ class PexelsDataProvider implements IDataProvider {
     String token,
   ) async {
     try {
+      AppDebugLog.provider('pexels: GET ${AppDebugLog.safeHttpUri(uri)}');
       final res = await _http.get(
         uri,
         headers: {'Authorization': token},
       );
       if (res.statusCode != 200) {
-        AppDebugLog.engine(
-          'PexelsDataProvider: ${uri.path} status ${res.statusCode}',
+        AppDebugLog.provider(
+          'pexels: JSON ${AppDebugLog.safeHttpUri(uri)} status=${res.statusCode}',
         );
         return null;
       }
       final decoded = jsonDecode(res.body);
       if (decoded is Map<String, dynamic>) {
+        AppDebugLog.provider(
+          'pexels: JSON ok ${AppDebugLog.safeHttpUri(uri)} bodyLen=${res.body.length}',
+        );
         return decoded;
       }
     } on Object catch (e, st) {
-      AppDebugLog.engineFail('PexelsDataProvider GET ${uri.path}', e, st);
+      AppDebugLog.providerFail('pexels: GET ${uri.path}', e, st);
     }
     return null;
   }
 
   Future<List<int>?> _downloadBytes(Uri uri) async {
     try {
+      AppDebugLog.provider('pexels: GET binary ${AppDebugLog.safeHttpUri(uri)}');
       final res = await _http.get(uri);
       if (res.statusCode != 200 || res.bodyBytes.isEmpty) {
+        AppDebugLog.provider(
+          'pexels: binary status=${res.statusCode} bytes=${res.bodyBytes.length}',
+        );
         return null;
       }
+      AppDebugLog.provider('pexels: binary ok bytes=${res.bodyBytes.length}');
       return res.bodyBytes;
     } on Object catch (e, st) {
-      AppDebugLog.engineFail('PexelsDataProvider binary ${uri.path}', e, st);
+      AppDebugLog.providerFail('pexels: binary ${uri.path}', e, st);
       return null;
     }
   }
@@ -444,6 +460,9 @@ class PexelsDataProvider implements IDataProvider {
         fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(nowMs),
       ),
     );
+    AppDebugLog.provider(
+      'pexels: stored photo id=$id category=$category bytes=${bytes.length}',
+    );
     return true;
   }
 
@@ -519,6 +538,9 @@ class PexelsDataProvider implements IDataProvider {
         durationSeconds: dur,
         fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(nowMs),
       ),
+    );
+    AppDebugLog.provider(
+      'pexels: stored video id=$id category=$category bytes=${bytes.length} dur=${dur}s',
     );
     return true;
   }

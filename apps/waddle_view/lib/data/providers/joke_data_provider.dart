@@ -41,6 +41,7 @@ class JokeDataProvider implements IDataProvider {
               ..where((t) => t.id.equals(kJokeProviderId)))
             .getSingleOrNull();
     if (setting == null || !setting.enabled) {
+      AppDebugLog.provider('jokes: skip (disabled)');
       return;
     }
 
@@ -48,20 +49,19 @@ class JokeDataProvider implements IDataProvider {
     try {
       config = await ctx.resolveConfig(kJokeProviderId);
     } on Object catch (e, st) {
-      AppDebugLog.engineFail('JokeDataProvider resolveConfig', e, st);
+      AppDebugLog.providerFail('jokes: resolveConfig', e, st);
       return;
     }
 
     final token = config.accessToken;
     if (token == null || token.isEmpty) {
-      AppDebugLog.engine(
-        'JokeDataProvider: skip collect (no API token for $kJokeProviderId)',
-      );
+      AppDebugLog.provider('jokes: skip (no API token)');
       return;
     }
 
     final extra = JokeProviderExtraConfig.parse(config.configJson);
     if (extra.jokesPerDay < 1) {
+      AppDebugLog.provider('jokes: skip (jokesPerDay < 1)');
       return;
     }
 
@@ -74,9 +74,7 @@ class JokeDataProvider implements IDataProvider {
       extra.jokeRetentionDays,
     );
     if (purged > 0) {
-      AppDebugLog.engine(
-        'JokeDataProvider: purged $purged joke(s) older than retention',
-      );
+      AppDebugLog.provider('jokes: purged $purged joke(s) older than retention');
     }
 
     final startLocal = DateTime(now.year, now.month, now.day);
@@ -85,6 +83,7 @@ class JokeDataProvider implements IDataProvider {
     final todayCount = await _countJokesInRange(ctx.db, startLocal, endLocal);
     final remainingDaily = extra.jokesPerDay - todayCount;
     if (remainingDaily <= 0) {
+      AppDebugLog.provider('jokes: skip (daily cap $todayCount/${extra.jokesPerDay})');
       return;
     }
 
@@ -97,9 +96,8 @@ class JokeDataProvider implements IDataProvider {
     final cap2h = extra.maxJokesPerTwoHours < 0 ? 0 : extra.maxJokesPerTwoHours;
     final remaining2h = cap2h - requestedInWindow;
     if (remaining2h <= 0) {
-      AppDebugLog.engine(
-        'JokeDataProvider: 2h window full '
-        '($requestedInWindow/$cap2h in ${windowMs}ms)',
+      AppDebugLog.provider(
+        'jokes: 2h window full ($requestedInWindow/$cap2h in ${windowMs}ms)',
       );
       return;
     }
@@ -114,7 +112,7 @@ class JokeDataProvider implements IDataProvider {
       ..sort((a, b) => a.id.compareTo(b.id));
 
     if (eligible.isEmpty) {
-      AppDebugLog.engine('JokeDataProvider: no eligible categories');
+      AppDebugLog.provider('jokes: no eligible categories');
       return;
     }
 
@@ -126,9 +124,7 @@ class JokeDataProvider implements IDataProvider {
     );
 
     if (slots.isEmpty) {
-      AppDebugLog.engine(
-        'JokeDataProvider: no slots (per-category min/max vs inventory)',
-      );
+      AppDebugLog.provider('jokes: no slots (per-category min/max vs inventory)');
       return;
     }
 
@@ -145,6 +141,10 @@ class JokeDataProvider implements IDataProvider {
 
     try {
       final uri = Uri.parse('$baseUrl/chat/completions');
+      AppDebugLog.provider(
+        'jokes: POST ${AppDebugLog.safeHttpUri(uri)} model=${extra.model} '
+        'slots=${slots.length}',
+      );
       final payload = <String, Object?>{
         'model': extra.model,
         'messages': [
@@ -168,8 +168,8 @@ class JokeDataProvider implements IDataProvider {
         body: jsonEncode(payload),
       );
       if (res.statusCode != 200) {
-        AppDebugLog.engine(
-          'JokeDataProvider: API status ${res.statusCode} body len=${res.body.length}',
+        AppDebugLog.provider(
+          'jokes: API status=${res.statusCode} bodyLen=${res.body.length}',
         );
         return;
       }
@@ -204,6 +204,7 @@ class JokeDataProvider implements IDataProvider {
 
       final parsedList = _parseJokeJsonArray(content);
       final createdAt = _now();
+      var inserted = 0;
 
       for (final item in parsedList) {
         final cid = item['categoryId'] as String?;
@@ -229,9 +230,13 @@ class JokeDataProvider implements IDataProvider {
                 createdAtMs: createdAt,
               ),
             );
+        inserted++;
       }
+      AppDebugLog.provider(
+        'jokes: upserted $inserted joke(s) from ${parsedList.length} parsed object(s)',
+      );
     } on Object catch (e, st) {
-      AppDebugLog.engineFail('JokeDataProvider collect', e, st);
+      AppDebugLog.providerFail('jokes: collect', e, st);
     }
   }
 

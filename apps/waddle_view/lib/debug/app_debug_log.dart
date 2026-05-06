@@ -23,6 +23,9 @@ abstract final class AppDebugLog {
   /// Slide program from [ScreenRotator] / [ScreenProgramCurator].
   static void screen(String message) => _line('Screen', message);
 
+  /// [IDataProvider] collect, HTTP, and blob downloads (debug only).
+  static void provider(String message) => _line('Provider', message);
+
   static void engineFail(String context, Object error, StackTrace stack) {
     if (!kDebugMode) {
       return;
@@ -45,6 +48,27 @@ abstract final class AppDebugLog {
       error: error,
       stackTrace: stack,
     );
+  }
+
+  static void providerFail(String context, Object error, StackTrace stack) {
+    if (!kDebugMode) {
+      return;
+    }
+    developer.log(
+      '$context: ${Error.safeToString(error)}',
+      name: 'Provider',
+      error: error,
+      stackTrace: stack,
+    );
+  }
+
+  /// Scheme, host, and path only — omits query (may contain API keys or tokens).
+  static String safeHttpUri(Uri uri) {
+    if (uri.hasAuthority) {
+      final path = uri.path.isEmpty ? '/' : uri.path;
+      return '${uri.scheme}://${uri.host}$path';
+    }
+    return uri.hasEmptyPath ? '(relative)' : uri.path;
   }
 
   static void _line(String name, String message) {

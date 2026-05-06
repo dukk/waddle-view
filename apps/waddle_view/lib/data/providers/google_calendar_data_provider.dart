@@ -46,6 +46,7 @@ class GoogleCalendarDataProvider implements IDataProvider {
           ..where((t) => t.id.equals(kGoogleCalendarProviderId)))
         .getSingleOrNull();
     if (setting == null || !setting.enabled) {
+      AppDebugLog.provider('google_calendar: skip (disabled)');
       return;
     }
 
@@ -55,11 +56,13 @@ class GoogleCalendarDataProvider implements IDataProvider {
         .getSingleOrNull();
     final clientId = clientIdRow?.value.trim() ?? '';
     if (clientId.isEmpty) {
+      AppDebugLog.provider('google_calendar: skip (no client id KV)');
       return;
     }
 
     final extra = GoogleCalendarExtraConfig.parse(setting.configJson);
     if (extra.accounts.isEmpty) {
+      AppDebugLog.provider('google_calendar: no accounts, mark collect done');
       await _markCollectDone(ctx.db, nowMs);
       return;
     }
@@ -71,14 +74,25 @@ class GoogleCalendarDataProvider implements IDataProvider {
       nowMs,
       setting.pollSeconds,
     )) {
+      AppDebugLog.provider(
+        'google_calendar: skip poll gate pollSeconds=${setting.pollSeconds}',
+      );
       return;
     }
 
     final base = _normalizeBase(setting.baseUrl);
     final window = _syncWindowUtc(extra);
+    AppDebugLog.provider(
+      'google_calendar: collect base=${AppDebugLog.safeHttpUri(Uri.parse(base))} '
+      'accounts=${extra.accounts.length} '
+      'windowUtc=${window.$1.toIso8601String()}..${window.$2.toIso8601String()}',
+    );
     var didSync = false;
     for (final account in extra.accounts) {
       if (account.sources.isEmpty) {
+        AppDebugLog.provider(
+          'google_calendar: account ${account.googleAccountKey} has no sources',
+        );
         continue;
       }
       final token = await _oauth.ensureAccessToken(
@@ -88,8 +102,14 @@ class GoogleCalendarDataProvider implements IDataProvider {
         googleAccountKey: account.googleAccountKey,
       );
       if (token == null || token.isEmpty) {
+        AppDebugLog.provider(
+          'google_calendar: no token for ${account.googleAccountKey}',
+        );
         continue;
       }
+      AppDebugLog.provider(
+        'google_calendar: token ok for ${account.googleAccountKey}',
+      );
 
       await _purgeWindow(
         ctx.db,
@@ -103,6 +123,9 @@ class GoogleCalendarDataProvider implements IDataProvider {
         for (final entry in filters) {
           final calendarId =
               _resolveCalendarId(calendarMap, entry.nameOrId) ?? entry.nameOrId;
+          AppDebugLog.provider(
+            'google_calendar: sync calendar=$calendarId account=${account.googleAccountKey}',
+          );
           await _pullAndStoreEvents(
             ctx.db,
             baseUrl: base,
@@ -118,7 +141,10 @@ class GoogleCalendarDataProvider implements IDataProvider {
       }
     }
     if (didSync) {
+      AppDebugLog.provider('google_calendar: collect ok, last_collect updated');
       await _markCollectDone(ctx.db, nowMs);
+    } else {
+      AppDebugLog.provider('google_calendar: collect finished (no sync writes)');
     }
   }
 
@@ -205,12 +231,21 @@ class GoogleCalendarDataProvider implements IDataProvider {
   ) async {
     final out = <String, String>{'primary': 'primary'};
     var url = '$baseUrl/users/me/calendarList?maxResults=250';
+    var page = 0;
     while (true) {
+      page++;
+      final listUri = Uri.parse(url);
+      AppDebugLog.provider(
+        'google_calendar: GET calendarList page=$page ${AppDebugLog.safeHttpUri(listUri)}',
+      );
       final res = await _http.get(
-        Uri.parse(url),
+        listUri,
         headers: {'Authorization': 'Bearer $accessToken'},
       );
       if (res.statusCode != 200) {
+        AppDebugLog.provider(
+          'google_calendar: calendarList status=${res.statusCode}',
+        );
         break;
       }
       final m = jsonDecode(res.body) as Map<String, dynamic>;
@@ -286,20 +321,30 @@ class GoogleCalendarDataProvider implements IDataProvider {
         '$baseUrl/calendars/${Uri.encodeComponent(calendarId)}/events?singleEvents=true&orderBy=startTime&maxResults=250'
         '&timeMin=${Uri.encodeQueryComponent(windowStart.toUtc().toIso8601String())}'
         '&timeMax=${Uri.encodeQueryComponent(windowEndExclusive.toUtc().toIso8601String())}';
+    var eventPage = 0;
     while (true) {
+      eventPage++;
+      final eventsUri = Uri.parse(url);
+      AppDebugLog.provider(
+        'google_calendar: GET events page=$eventPage calendar=$calendarId '
+        '${AppDebugLog.safeHttpUri(eventsUri)}',
+      );
       final res = await _http.get(
-        Uri.parse(url),
+        eventsUri,
         headers: {'Authorization': 'Bearer $accessToken'},
       );
       if (res.statusCode != 200) {
-        AppDebugLog.engine(
-          'GoogleCalendarDataProvider: events status=${res.statusCode} calendar=$calendarId',
+        AppDebugLog.provider(
+          'google_calendar: events status=${res.statusCode} calendar=$calendarId',
         );
         break;
       }
       final m = jsonDecode(res.body) as Map<String, dynamic>;
       final items = m['items'];
       if (items is List<dynamic>) {
+        AppDebugLog.provider(
+          'google_calendar: events page=$eventPage calendar=$calendarId count=${items.length}',
+        );
         for (final e in items) {
           if (e is Map<String, dynamic>) {
             await _upsertEvent(

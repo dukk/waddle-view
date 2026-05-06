@@ -41,6 +41,7 @@ class TriviaDataProvider implements IDataProvider {
               ..where((t) => t.id.equals(kTriviaProviderId)))
             .getSingleOrNull();
     if (setting == null || !setting.enabled) {
+      AppDebugLog.provider('trivia: skip (disabled)');
       return;
     }
 
@@ -48,20 +49,19 @@ class TriviaDataProvider implements IDataProvider {
     try {
       config = await ctx.resolveConfig(kTriviaProviderId);
     } on Object catch (e, st) {
-      AppDebugLog.engineFail('TriviaDataProvider resolveConfig', e, st);
+      AppDebugLog.providerFail('trivia: resolveConfig', e, st);
       return;
     }
 
     final token = config.accessToken;
     if (token == null || token.isEmpty) {
-      AppDebugLog.engine(
-        'TriviaDataProvider: skip collect (no API token for $kTriviaProviderId)',
-      );
+      AppDebugLog.provider('trivia: skip (no API token)');
       return;
     }
 
     final extra = TriviaProviderExtraConfig.parse(config.configJson);
     if (extra.questionsPerDay < 1) {
+      AppDebugLog.provider('trivia: skip (questionsPerDay < 1)');
       return;
     }
 
@@ -74,8 +74,8 @@ class TriviaDataProvider implements IDataProvider {
       extra.questionRetentionDays,
     );
     if (purged > 0) {
-      AppDebugLog.engine(
-        'TriviaDataProvider: purged $purged question(s) older than retention',
+      AppDebugLog.provider(
+        'trivia: purged $purged question(s) older than retention',
       );
     }
 
@@ -85,6 +85,9 @@ class TriviaDataProvider implements IDataProvider {
     final todayCount = await _countTriviaInRange(ctx.db, startLocal, endLocal);
     final remainingDaily = extra.questionsPerDay - todayCount;
     if (remainingDaily <= 0) {
+      AppDebugLog.provider(
+        'trivia: skip (daily cap $todayCount/${extra.questionsPerDay})',
+      );
       return;
     }
 
@@ -98,9 +101,8 @@ class TriviaDataProvider implements IDataProvider {
         extra.maxQuestionsPerTwoHours < 0 ? 0 : extra.maxQuestionsPerTwoHours;
     final remaining2h = cap2h - requestedInWindow;
     if (remaining2h <= 0) {
-      AppDebugLog.engine(
-        'TriviaDataProvider: 2h window full '
-        '($requestedInWindow/$cap2h in ${windowMs}ms)',
+      AppDebugLog.provider(
+        'trivia: 2h window full ($requestedInWindow/$cap2h in ${windowMs}ms)',
       );
       return;
     }
@@ -115,7 +117,7 @@ class TriviaDataProvider implements IDataProvider {
       ..sort((a, b) => a.id.compareTo(b.id));
 
     if (eligible.isEmpty) {
-      AppDebugLog.engine('TriviaDataProvider: no eligible categories');
+      AppDebugLog.provider('trivia: no eligible categories');
       return;
     }
 
@@ -127,8 +129,8 @@ class TriviaDataProvider implements IDataProvider {
     );
 
     if (slots.isEmpty) {
-      AppDebugLog.engine(
-        'TriviaDataProvider: no slots (per-category min/max vs inventory)',
+      AppDebugLog.provider(
+        'trivia: no slots (per-category min/max vs inventory)',
       );
       return;
     }
@@ -146,6 +148,10 @@ class TriviaDataProvider implements IDataProvider {
 
     try {
       final uri = Uri.parse('$baseUrl/chat/completions');
+      AppDebugLog.provider(
+        'trivia: POST ${AppDebugLog.safeHttpUri(uri)} model=${extra.model} '
+        'slots=${slots.length}',
+      );
       final payload = <String, Object?>{
         'model': extra.model,
         'messages': [
@@ -169,8 +175,8 @@ class TriviaDataProvider implements IDataProvider {
         body: jsonEncode(payload),
       );
       if (res.statusCode != 200) {
-        AppDebugLog.engine(
-          'TriviaDataProvider: API status ${res.statusCode} body len=${res.body.length}',
+        AppDebugLog.provider(
+          'trivia: API status=${res.statusCode} bodyLen=${res.body.length}',
         );
         return;
       }
@@ -205,6 +211,7 @@ class TriviaDataProvider implements IDataProvider {
 
       final parsedList = _parseTriviaJsonArray(content);
       final createdAt = _now();
+      var inserted = 0;
 
       for (final item in parsedList) {
         final cid = item['categoryId'] as String?;
@@ -259,9 +266,14 @@ class TriviaDataProvider implements IDataProvider {
                 createdAtMs: createdAt,
               ),
             );
+        inserted++;
       }
+      AppDebugLog.provider(
+        'trivia: upserted $inserted question(s) from '
+        '${parsedList.length} parsed object(s)',
+      );
     } on Object catch (e, st) {
-      AppDebugLog.engineFail('TriviaDataProvider collect', e, st);
+      AppDebugLog.providerFail('trivia: collect', e, st);
     }
   }
 

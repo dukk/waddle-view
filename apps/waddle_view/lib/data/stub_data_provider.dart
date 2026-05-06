@@ -52,6 +52,6 @@ class StubDataProvider implements IDataProvider {
         capturedAt: DateTime.now(),
       ),
     );
-    AppDebugLog.engine('StubDataProvider.collect finished');
+    AppDebugLog.provider('stub: wrote KV + ping blob (2 bytes)');
   }
 }
