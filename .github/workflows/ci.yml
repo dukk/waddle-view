@@ -24,6 +24,7 @@ jobs:
         with:
           channel: stable
       - run: flutter pub get
+      - run: dart run build_runner build
       - run: flutter analyze
       - run: flutter test --coverage --timeout=60s
       - name: Line coverage (lib/)
