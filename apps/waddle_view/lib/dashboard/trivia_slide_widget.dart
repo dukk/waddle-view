@@ -4,9 +4,11 @@ import 'dart:math';
 import 'package:drift/drift.dart' show CustomExpression, OrderingTerm;
 import 'package:flutter/material.dart';
 
+import '../blob/blob_store.dart';
 import '../curator/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';
 import '../persistence/database.dart';
+import 'content_category_slide_header.dart';
 import 'trivia_slide_timing.dart';
 import 'dashboard_viewport_scope.dart';
 
@@ -48,6 +50,7 @@ class TriviaSlideWidget extends StatefulWidget {
   const TriviaSlideWidget({
     super.key,
     required this.db,
+    required this.blobs,
     required this.slide,
     required this.spec,
     required this.theme,
@@ -55,6 +58,7 @@ class TriviaSlideWidget extends StatefulWidget {
   });
 
   final AppDatabase db;
+  final BlobStore blobs;
   final ResolvedSlide slide;
   final ParsedWidgetSpec spec;
   final ThemeData theme;
@@ -384,26 +388,53 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
   Widget build(BuildContext context) {
     final theme = widget.theme;
     final s = DashboardViewportScope.scaleOf(context);
+    final cfgCat = widget.spec.config['categoryId'] as String?;
+    final headerCat = (cfgCat != null && cfgCat.isNotEmpty)
+        ? cfgCat
+        : _question?.categoryId;
+
     if (_loading) {
-      return Padding(
-        padding: EdgeInsets.all(24 * s),
-        child: Center(
-          child: SizedBox(
-            width: 32 * s,
-            height: 32 * s,
-            child: const CircularProgressIndicator(),
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ContentCategorySlideHeader(
+            db: widget.db,
+            blobs: widget.blobs,
+            theme: theme,
+            categoryId: cfgCat,
           ),
-        ),
+          Padding(
+            padding: EdgeInsets.all(24 * s),
+            child: Center(
+              child: SizedBox(
+                width: 32 * s,
+                height: 32 * s,
+                child: const CircularProgressIndicator(),
+              ),
+            ),
+          ),
+        ],
       );
     }
     if (_question == null) {
-      return Padding(
-        padding: EdgeInsets.only(bottom: 12 * s),
-        child: Text(
-          'No trivia yet',
-          style: theme.textTheme.titleMedium,
-          textAlign: TextAlign.center,
-        ),
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ContentCategorySlideHeader(
+            db: widget.db,
+            blobs: widget.blobs,
+            theme: theme,
+            categoryId: headerCat,
+          ),
+          Padding(
+            padding: EdgeInsets.only(bottom: 12 * s),
+            child: Text(
+              'No trivia yet',
+              style: theme.textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
       );
     }
 
@@ -506,6 +537,12 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                ContentCategorySlideHeader(
+                  db: widget.db,
+                  blobs: widget.blobs,
+                  theme: theme,
+                  categoryId: headerCat,
+                ),
                 Text(
                   row.question,
                   style: theme.textTheme.headlineSmall,

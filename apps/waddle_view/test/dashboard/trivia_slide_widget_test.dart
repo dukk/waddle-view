@@ -7,8 +7,10 @@ import 'package:waddle_view/curator/screen_program_curator.dart';
 import 'package:waddle_view/dashboard/trivia_slide_widget.dart';
 import 'package:waddle_view/dashboard/trivia_slide_timing.dart';
 import 'package:waddle_view/persistence/database.dart';
+import 'package:waddle_view/seed/content_category_seed.dart';
 import 'package:waddle_view/seed/trivia_category_seed.dart';
 
+import '../helpers/fake_blob_store.dart';
 import '../helpers/memory_database.dart';
 
 void main() {
@@ -25,6 +27,7 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await ensureDefaultTriviaCategories(db);
+    await ensureDefaultContentCategories(db);
     await db.into(db.triviaQuestions).insert(
           TriviaQuestionsCompanion.insert(
             id: 't1',
@@ -56,6 +59,7 @@ void main() {
         home: Scaffold(
           body: TriviaSlideWidget(
             db: db,
+            blobs: FakeBlobStore(),
             slide: slide,
             spec: spec,
             theme: ThemeData.light(),
@@ -65,6 +69,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('Science'), findsOneWidget);
     expect(find.text('2 + 2?'), findsOneWidget);
     expect(find.text('Four'), findsOneWidget);
     expect(
@@ -137,6 +142,7 @@ void main() {
         home: Scaffold(
           body: TriviaSlideWidget(
             db: db,
+            blobs: FakeBlobStore(),
             slide: slide,
             spec: spec,
             theme: ThemeData.light(),
@@ -194,6 +200,7 @@ void main() {
         home: Scaffold(
           body: TriviaSlideWidget(
             db: db,
+            blobs: FakeBlobStore(),
             slide: slide,
             spec: spec,
             theme: ThemeData.light(),
@@ -255,6 +262,7 @@ void main() {
         home: Scaffold(
           body: TriviaSlideWidget(
             db: db,
+            blobs: FakeBlobStore(),
             slide: slide,
             spec: spec,
             theme: ThemeData.light(),
@@ -293,6 +301,7 @@ void main() {
         home: Scaffold(
           body: TriviaSlideWidget(
             db: db,
+            blobs: FakeBlobStore(),
             slide: slide,
             spec: spec,
             theme: ThemeData.light(),

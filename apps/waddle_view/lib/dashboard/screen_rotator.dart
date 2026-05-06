@@ -484,6 +484,7 @@ class _SlideContent extends StatelessWidget {
             case 'joke':
               return JokeSlideWidget(
                 db: db,
+                blobs: blobs,
                 slide: slide,
                 spec: w,
                 theme: theme,
@@ -491,6 +492,7 @@ class _SlideContent extends StatelessWidget {
             case 'trivia':
               return TriviaSlideWidget(
                 db: db,
+                blobs: blobs,
                 slide: slide,
                 spec: w,
                 theme: theme,

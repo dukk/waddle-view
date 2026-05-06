@@ -7,6 +7,7 @@ import '../blob/blob_store.dart';
 import '../curator/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';
 import '../persistence/database.dart';
+import 'content_category_slide_header.dart';
 import 'dashboard_viewport_scope.dart';
 import 'rss_article_load.dart';
 
@@ -72,6 +73,7 @@ class _RssArticleStackSlideWidgetState extends State<RssArticleStackSlideWidget>
     const RssArticleImageLoad.absent(),
     const RssArticleImageLoad.absent(),
   ];
+  String? _headerCategoryId;
 
   @override
   void dispose() {
@@ -87,6 +89,11 @@ class _RssArticleStackSlideWidgetState extends State<RssArticleStackSlideWidget>
     _minReadMs = _cfgInt(c, 'minReadMs', 10000);
     _imageFraction = _cfgDouble(c, 'imagePanelFraction', 0.34).clamp(0.2, 0.48);
     _qrLogical = _cfgDouble(c, 'qrLogicalSize', 112).clamp(72, 200);
+    final slideCat =
+        widget.slide.randomChoices[ScreenProgramCurator.rssScreenCategoryChoiceKey];
+    if (slideCat != null && slideCat.isNotEmpty) {
+      _headerCategoryId = slideCat;
+    }
     unawaited(_bootstrap());
   }
 
@@ -113,6 +120,18 @@ class _RssArticleStackSlideWidgetState extends State<RssArticleStackSlideWidget>
         loads.add(const RssArticleImageLoad.absent());
       }
     }
+    String? inferred;
+    for (final a in arts) {
+      if (a == null) {
+        continue;
+      }
+      inferred = await resolveRssDisplayCategoryId(
+        widget.db,
+        widget.slide,
+        a,
+      );
+      break;
+    }
     if (!mounted) {
       return;
     }
@@ -121,8 +140,18 @@ class _RssArticleStackSlideWidgetState extends State<RssArticleStackSlideWidget>
       _articles[1] = arts[1];
       _imageLoads[0] = loads[0];
       _imageLoads[1] = loads[1];
+      _headerCategoryId = inferred ?? _headerCategoryId;
       _loading = false;
     });
+  }
+
+  Widget _categoryHeader(ThemeData theme) {
+    return ContentCategorySlideHeader(
+      db: widget.db,
+      blobs: widget.blobs,
+      theme: theme,
+      categoryId: _headerCategoryId,
+    );
   }
 
   void _reportDwell() {
@@ -139,15 +168,23 @@ class _RssArticleStackSlideWidgetState extends State<RssArticleStackSlideWidget>
     final theme = widget.theme;
     final s = DashboardViewportScope.scaleOf(context);
     if (_loading) {
-      return Padding(
-        padding: EdgeInsets.all(24 * s),
-        child: Center(
-          child: SizedBox(
-            width: 32 * s,
-            height: 32 * s,
-            child: const CircularProgressIndicator(),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _categoryHeader(theme),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.all(24 * s),
+              child: Center(
+                child: SizedBox(
+                  width: 32 * s,
+                  height: 32 * s,
+                  child: const CircularProgressIndicator(),
+                ),
+              ),
+            ),
           ),
-        ),
+        ],
       );
     }
 
@@ -157,13 +194,21 @@ class _RssArticleStackSlideWidgetState extends State<RssArticleStackSlideWidget>
       if (!_dwellReported) {
         WidgetsBinding.instance.addPostFrameCallback((_) => _reportDwell());
       }
-      return Padding(
-        padding: EdgeInsets.fromLTRB(24 * s, 20 * s, 24 * s, 16 * s),
-        child: Text(
-          'No news articles yet',
-          style: theme.textTheme.titleMedium,
-          textAlign: TextAlign.center,
-        ),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _categoryHeader(theme),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(24 * s, 20 * s, 24 * s, 16 * s),
+              child: Text(
+                'No news articles yet',
+                style: theme.textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+        ],
       );
     }
 
@@ -172,57 +217,65 @@ class _RssArticleStackSlideWidgetState extends State<RssArticleStackSlideWidget>
     }
 
     final midGap = 10.0 * s;
-    return Padding(
-      padding: EdgeInsets.only(bottom: 12 * s),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final h = constraints.maxHeight;
-          if (!h.isFinite || h <= 0) {
-            return const SizedBox.shrink();
-          }
-          return Column(
-            children: [
-              Expanded(
-                child: _RssStackArticleRow(
-                  key: const Key('rss_article_stack_row_0'),
-                  constraints: constraints,
-                  article: a0,
-                  imageLoad: _imageLoads[0],
-                  imageOnRight: true,
-                  theme: theme,
-                  s: s,
-                  imageFraction: _imageFraction,
-                  qrLogical: _qrLogical,
-                  stackIndex: 0,
-                  summaryScroll: _scroll0,
-                  useNewsIcon:
-                      widget.slide.randomChoices['${widget.spec.choiceKey}_0_imageMode'] ==
-                      'icon',
-                ),
-              ),
-              SizedBox(height: midGap),
-              Expanded(
-                child: _RssStackArticleRow(
-                  key: const Key('rss_article_stack_row_1'),
-                  constraints: constraints,
-                  article: a1,
-                  imageLoad: _imageLoads[1],
-                  imageOnRight: false,
-                  theme: theme,
-                  s: s,
-                  imageFraction: _imageFraction,
-                  qrLogical: _qrLogical,
-                  stackIndex: 1,
-                  summaryScroll: _scroll1,
-                  useNewsIcon:
-                      widget.slide.randomChoices['${widget.spec.choiceKey}_1_imageMode'] ==
-                      'icon',
-                ),
-              ),
-            ],
-          );
-        },
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _categoryHeader(theme),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(bottom: 12 * s),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final h = constraints.maxHeight;
+                if (!h.isFinite || h <= 0) {
+                  return const SizedBox.shrink();
+                }
+                return Column(
+                  children: [
+                    Expanded(
+                      child: _RssStackArticleRow(
+                        key: const Key('rss_article_stack_row_0'),
+                        constraints: constraints,
+                        article: a0,
+                        imageLoad: _imageLoads[0],
+                        imageOnRight: true,
+                        theme: theme,
+                        s: s,
+                        imageFraction: _imageFraction,
+                        qrLogical: _qrLogical,
+                        stackIndex: 0,
+                        summaryScroll: _scroll0,
+                        useNewsIcon:
+                            widget.slide.randomChoices['${widget.spec.choiceKey}_0_imageMode'] ==
+                            'icon',
+                      ),
+                    ),
+                    SizedBox(height: midGap),
+                    Expanded(
+                      child: _RssStackArticleRow(
+                        key: const Key('rss_article_stack_row_1'),
+                        constraints: constraints,
+                        article: a1,
+                        imageLoad: _imageLoads[1],
+                        imageOnRight: false,
+                        theme: theme,
+                        s: s,
+                        imageFraction: _imageFraction,
+                        qrLogical: _qrLogical,
+                        stackIndex: 1,
+                        summaryScroll: _scroll1,
+                        useNewsIcon:
+                            widget.slide.randomChoices['${widget.spec.choiceKey}_1_imageMode'] ==
+                            'icon',
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

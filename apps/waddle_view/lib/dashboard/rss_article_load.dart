@@ -119,3 +119,27 @@ Future<RssArticleImageLoad> loadRssArticleImage(
     return const RssArticleImageLoad.blobReadFailed();
   }
 }
+
+/// Category id for RSS slide chrome: curated program key, else feed category.
+Future<String?> resolveRssDisplayCategoryId(
+  AppDatabase db,
+  ResolvedSlide slide,
+  RssArticle? article,
+) async {
+  final fromSlide =
+      slide.randomChoices[ScreenProgramCurator.rssScreenCategoryChoiceKey];
+  if (fromSlide != null && fromSlide.isNotEmpty) {
+    return fromSlide;
+  }
+  if (article == null) {
+    return null;
+  }
+  final feed = await (db.select(
+    db.rssFeedSources,
+  )..where((t) => t.id.equals(article.feedId))).getSingleOrNull();
+  final c = feed?.category.trim();
+  if (c == null || c.isEmpty) {
+    return 'general';
+  }
+  return c;
+}

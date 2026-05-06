@@ -5,6 +5,7 @@ class RssArticleMetric {
   const RssArticleMetric({
     required this.hasImage,
     required this.summaryLength,
+    required this.categoryId,
   });
 
   /// True when [imageBlobKey] is non-empty on the article row.
@@ -12,13 +13,17 @@ class RssArticleMetric {
 
   /// Character length of [RssArticle.summary] (trimmed); 0 if null/empty.
   final int summaryLength;
+
+  /// [RssFeedSources.category] for the article’s feed (slug shared with [ContentCategories.id]).
+  final String categoryId;
 }
 
 /// IDs grouped for [ScreenProgramCurator.buildProgram] `randomPools`, plus RSS
 /// metrics for joint news placement.
 ///
-/// Pool keys: `joke`, `joke:<categoryId>`, `rss`, `rss:<feedId>`, `trivia`,
-/// `trivia:<categoryId>`, `pexels_photo`, `pexels_photo:<category>`,
+/// Pool keys: `joke`, `joke:<categoryId>`, `rss`, `rss:<feedId>`,
+/// `rss_category:<categoryId>`, `trivia`, `trivia:<categoryId>`,
+/// `pexels_photo`, `pexels_photo:<category>`,
 /// `pexels_video`, `pexels_video:<category>`.
 class CuratorContentPools {
   const CuratorContentPools({
@@ -52,23 +57,35 @@ Future<CuratorContentPools> loadCuratorContentPools(
     }
   }
 
+  final feeds = await db.select(db.rssFeedSources).get();
+  final feedById = {for (final f in feeds) f.id: f};
+
   final articles = await db.select(db.rssArticles).get();
   if (articles.isNotEmpty) {
     final all = <String>[];
     final byFeed = <String, List<String>>{};
+    final byContentCategory = <String, List<String>>{};
     for (final a in articles) {
       all.add(a.id);
       (byFeed[a.feedId] ??= []).add(a.id);
+      final feed = feedById[a.feedId];
+      final cat = (feed?.category ?? 'general').trim();
+      final categoryKey = cat.isEmpty ? 'general' : cat;
+      (byContentCategory[categoryKey] ??= []).add(a.id);
       final key = (a.imageBlobKey ?? '').trim();
       final summary = (a.summary ?? '').trim();
       rssMetrics[a.id] = RssArticleMetric(
         hasImage: key.isNotEmpty,
         summaryLength: summary.length,
+        categoryId: categoryKey,
       );
     }
     out['rss'] = all;
     for (final e in byFeed.entries) {
       out['rss:${e.key}'] = List<String>.from(e.value);
+    }
+    for (final e in byContentCategory.entries) {
+      out['rss_category:${e.key}'] = List<String>.from(e.value);
     }
   }
 

@@ -37,7 +37,11 @@ void main() {
       random: Random(0),
       randomPools: const {'rss': ['x']},
       rssArticleMetrics: const {
-        'x': RssArticleMetric(hasImage: false, summaryLength: 10),
+        'x': RssArticleMetric(
+          hasImage: false,
+          summaryLength: 10,
+          categoryId: 'general',
+        ),
       },
       requirePhotoForRssScreens: true,
     );
@@ -54,7 +58,11 @@ void main() {
       random: Random(0),
       randomPools: const {'rss': ['x']},
       rssArticleMetrics: const {
-        'x': RssArticleMetric(hasImage: true, summaryLength: 10),
+        'x': RssArticleMetric(
+          hasImage: true,
+          summaryLength: 10,
+          categoryId: 'general',
+        ),
       },
       requirePhotoForRssScreens: true,
     );
@@ -71,7 +79,11 @@ void main() {
       random: Random(0),
       randomPools: const {'rss': ['x']},
       rssArticleMetrics: const {
-        'x': RssArticleMetric(hasImage: false, summaryLength: 10),
+        'x': RssArticleMetric(
+          hasImage: false,
+          summaryLength: 10,
+          categoryId: 'general',
+        ),
       },
       requirePhotoForRssScreens: false,
     );
@@ -99,8 +111,16 @@ void main() {
       random: Random(0),
       randomPools: const {'rss': ['x', 'y']},
       rssArticleMetrics: const {
-        'x': RssArticleMetric(hasImage: false, summaryLength: 10),
-        'y': RssArticleMetric(hasImage: false, summaryLength: 10),
+        'x': RssArticleMetric(
+          hasImage: false,
+          summaryLength: 10,
+          categoryId: 'general',
+        ),
+        'y': RssArticleMetric(
+          hasImage: false,
+          summaryLength: 10,
+          categoryId: 'general',
+        ),
       },
       requirePhotoForRssScreens: true,
     );

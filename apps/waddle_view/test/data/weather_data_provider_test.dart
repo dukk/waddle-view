@@ -30,6 +30,19 @@ class _WeatherClient extends http.BaseClient {
   }
 }
 
+class _ThrowingWeatherClient extends http.BaseClient {
+  _ThrowingWeatherClient(this.error);
+
+  final Object error;
+  int sends = 0;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    sends += 1;
+    throw error;
+  }
+}
+
 /// OpenWeather Current Weather API 2.5 response shape (`/data/2.5/weather`).
 String _payload({required double temp, required String desc}) {
   return jsonEncode({
@@ -273,6 +286,44 @@ void main() {
     expect(weather.currentIconBlobKey, isNotNull);
     final blob = await db.select(db.blobMetadata).getSingle();
     expect(blob.blobKey, startsWith('weather/icons/10d'));
+    await db.close();
+  });
+
+  test('collect swallows client socket failures and continues safely', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.providerSettings).insert(
+          ProviderSettingsCompanion.insert(
+            id: 'weather',
+            providerType: 'weather',
+            pollSeconds: const Value(60),
+            baseUrl: const Value('https://api.openweathermap.org'),
+          ),
+        );
+    await db.into(db.weatherLocations).insert(
+          WeatherLocationsCompanion.insert(
+            id: 'nyc',
+            name: 'NYC',
+            latitude: 40.7128,
+            longitude: -74.0060,
+          ),
+        );
+    final secrets = InMemorySecretStore();
+    await secrets.write('${ProviderConfigResolver.accessTokenKey}:weather', 'owm-key');
+    final ctx = await _ctx(db, secrets);
+    final client = _ThrowingWeatherClient(
+      http.ClientException(
+        'socket failed',
+        Uri.parse('https://api.openweathermap.org/data/2.5/weather'),
+      ),
+    );
+    final provider = WeatherDataProvider(httpClient: client);
+
+    await provider.collect(ctx);
+
+    expect(client.sends, 1);
+    final rows = await db.select(db.weatherCurrentData).get();
+    expect(rows, isEmpty);
     await db.close();
   });
 }

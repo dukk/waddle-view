@@ -27,7 +27,11 @@ void main() {
       random: Random(1),
       randomPools: const {'rss': ['x']},
       rssArticleMetrics: const {
-        'x': RssArticleMetric(hasImage: false, summaryLength: 10),
+        'x': RssArticleMetric(
+          hasImage: false,
+          summaryLength: 10,
+          categoryId: 'general',
+        ),
       },
       requirePhotoForRssScreens: true,
     );
@@ -54,7 +58,11 @@ void main() {
       random: Random(1),
       randomPools: const {'rss': ['x']},
       rssArticleMetrics: const {
-        'x': RssArticleMetric(hasImage: true, summaryLength: 5),
+        'x': RssArticleMetric(
+          hasImage: true,
+          summaryLength: 5,
+          categoryId: 'general',
+        ),
       },
       requirePhotoForRssScreens: true,
     );

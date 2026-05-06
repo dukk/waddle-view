@@ -4,8 +4,10 @@ import 'package:waddle_view/curator/screen_layout_parse.dart';
 import 'package:waddle_view/curator/screen_program_curator.dart';
 import 'package:waddle_view/dashboard/joke_slide_widget.dart';
 import 'package:waddle_view/persistence/database.dart';
+import 'package:waddle_view/seed/content_category_seed.dart';
 import 'package:waddle_view/seed/joke_category_seed.dart';
 
+import '../helpers/fake_blob_store.dart';
 import '../helpers/memory_database.dart';
 
 void main() {
@@ -13,6 +15,7 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await ensureDefaultJokeCategories(db);
+    await ensureDefaultContentCategories(db);
     await db.into(db.jokes).insert(
           JokesCompanion.insert(
             id: 't_joke_1',
@@ -40,6 +43,7 @@ void main() {
         home: Scaffold(
           body: JokeSlideWidget(
             db: db,
+            blobs: FakeBlobStore(),
             slide: slide,
             spec: spec,
             theme: ThemeData.light(),
@@ -49,6 +53,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('Dad jokes'), findsOneWidget);
     expect(find.text('Why did the chicken cross the road?'), findsOneWidget);
     final punchlineFinder = find.text('To get to the other side.');
     final animFinder = find.ancestor(
@@ -69,6 +74,7 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await ensureDefaultJokeCategories(db);
+    await ensureDefaultContentCategories(db);
     await db.into(db.jokes).insert(
           JokesCompanion.insert(
             id: 't_joke_a',
@@ -106,6 +112,7 @@ void main() {
         home: Scaffold(
           body: JokeSlideWidget(
             db: db,
+            blobs: FakeBlobStore(),
             slide: slide,
             spec: spec,
             theme: ThemeData.light(),
@@ -115,6 +122,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('Dad jokes'), findsOneWidget);
     expect(find.text('Second curated'), findsOneWidget);
     expect(find.text('First'), findsNothing);
 
@@ -125,6 +133,7 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await ensureDefaultJokeCategories(db);
+    await ensureDefaultContentCategories(db);
 
     final slide = ResolvedSlide(
       screenId: 'jokes',
@@ -143,6 +152,7 @@ void main() {
         home: Scaffold(
           body: JokeSlideWidget(
             db: db,
+            blobs: FakeBlobStore(),
             slide: slide,
             spec: spec,
             theme: ThemeData.light(),

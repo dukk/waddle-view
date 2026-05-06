@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:drift/drift.dart' show OrderingTerm, Value;
 import 'package:http/http.dart' as http;
@@ -72,7 +73,10 @@ class WeatherDataProvider implements IDataProvider {
             'appid': token,
           },
         );
-        final weatherRes = await _http.get(weatherUri);
+        final weatherRes = await _safeGet(weatherUri, phase: 'current', locationId: location.id);
+        if (weatherRes == null) {
+          continue;
+        }
         if (weatherRes.statusCode != 200) {
           AppDebugLog.engine(
             'WeatherDataProvider: current status=${weatherRes.statusCode} for ${location.id}',
@@ -92,7 +96,10 @@ class WeatherDataProvider implements IDataProvider {
             'appid': token,
           },
         );
-        final forecastRes = await _http.get(forecastUri);
+        final forecastRes = await _safeGet(forecastUri, phase: 'forecast', locationId: location.id);
+        if (forecastRes == null) {
+          continue;
+        }
         final hourly = forecastRes.statusCode == 200
             ? _normalizeForecastPayload(forecastRes.body, extra.hourlyCount)
             : null;
@@ -163,7 +170,10 @@ class WeatherDataProvider implements IDataProvider {
       return null;
     }
     final iconUrl = Uri.parse('$baseUrl/img/wn/$code@2x.png');
-    final res = await _http.get(iconUrl);
+    final res = await _safeGet(iconUrl, phase: 'icon', locationId: code);
+    if (res == null) {
+      return null;
+    }
     if (res.statusCode != 200 || res.bodyBytes.isEmpty) {
       return null;
     }
@@ -261,5 +271,36 @@ class WeatherDataProvider implements IDataProvider {
       }
     }
     return '';
+  }
+
+  Future<http.Response?> _safeGet(
+    Uri uri, {
+    required String phase,
+    required String locationId,
+  }) async {
+    try {
+      return await _http.get(uri);
+    } on http.ClientException catch (e, st) {
+      AppDebugLog.engineFail(
+        'WeatherDataProvider $phase request failed location=$locationId',
+        e,
+        st,
+      );
+      return null;
+    } on SocketException catch (e, st) {
+      AppDebugLog.engineFail(
+        'WeatherDataProvider $phase socket failed location=$locationId',
+        e,
+        st,
+      );
+      return null;
+    } on Object catch (e, st) {
+      AppDebugLog.engineFail(
+        'WeatherDataProvider $phase unexpected request error location=$locationId',
+        e,
+        st,
+      );
+      return null;
+    }
   }
 }

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_view/blob/blob_store.dart';
+import 'package:waddle_view/curator/screen_program_curator.dart';
 import 'package:waddle_view/dashboard/rss_article_load.dart';
 import 'package:waddle_view/persistence/database.dart';
 
@@ -140,6 +141,56 @@ void main() {
     final load = await loadRssArticleImage(db, blobs, article);
     expect(load.blobReadFailed, isFalse);
     expect(load.bytes, Uint8List.fromList([1, 2, 3, 4]));
+    await db.close();
+  });
+
+  test('resolveRssDisplayCategoryId prefers slide key then feed category', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db
+        .into(db.rssFeedSources)
+        .insert(
+          RssFeedSourcesCompanion.insert(
+            id: 'f1',
+            url: 'http://t/feed',
+            category: const Value('usa'),
+          ),
+        );
+    await db
+        .into(db.rssArticles)
+        .insert(
+          RssArticlesCompanion.insert(
+            id: 'a1',
+            feedId: 'f1',
+            guid: 'g',
+            title: 't',
+            link: 'http://t',
+            publishedAt: DateTime.fromMillisecondsSinceEpoch(1),
+            fetchedAt: DateTime.fromMillisecondsSinceEpoch(1),
+          ),
+        );
+    final article = await (db.select(
+      db.rssArticles,
+    )..where((t) => t.id.equals('a1'))).getSingle();
+    final slideCurated = ResolvedSlide(
+      screenId: 'n',
+      dwellMs: 1,
+      layoutJson: '{}',
+      randomChoices: const {
+        ScreenProgramCurator.rssScreenCategoryChoiceKey: 'world',
+      },
+    );
+    expect(
+      await resolveRssDisplayCategoryId(db, slideCurated, article),
+      'world',
+    );
+    const slidePlain = ResolvedSlide(
+      screenId: 'n',
+      dwellMs: 1,
+      layoutJson: '{}',
+    );
+    expect(await resolveRssDisplayCategoryId(db, slidePlain, article), 'usa');
+    expect(await resolveRssDisplayCategoryId(db, slidePlain, null), equals(null));
     await db.close();
   });
 }

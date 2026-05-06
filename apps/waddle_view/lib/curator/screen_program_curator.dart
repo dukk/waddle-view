@@ -60,10 +60,36 @@ class ResolvedSlide {
 const double _kPenaltyOverCapacity = 10.0;
 const double _kPenaltyUnderCapacity = 1.0;
 
+const int _kRssCategoryPoolPrefixLength = 13; // 'rss_category:'.length
+
 /// Builds an ordered list of slides that fits [programDurationMs], biased away
 /// from screen ids that appear often in [recentScreenIdsOldestFirst].
 class ScreenProgramCurator {
   ScreenProgramCurator._();
+
+  /// [ResolvedSlide.randomChoices] key for the unified RSS content category on this slide.
+  static const rssScreenCategoryChoiceKey = 'rss_screen_category_id';
+
+  static bool _countsTowardCuratedIdDedup(String choiceKey) {
+    if (choiceKey == rssScreenCategoryChoiceKey) {
+      return false;
+    }
+    if (choiceKey.endsWith('_imageMode')) {
+      return false;
+    }
+    return true;
+  }
+
+  static void _addResolvedChoicesToUsedCuratedIds(
+    Map<String, String> choices,
+    Set<String> usedCuratedIds,
+  ) {
+    for (final e in choices.entries) {
+      if (_countsTowardCuratedIdDedup(e.key)) {
+        usedCuratedIds.add(e.value);
+      }
+    }
+  }
 
   /// [recentScreenIdsOldestFirst]: full trace of shown screens; only the last
   /// [historyDepth] ids influence weighting.
@@ -134,6 +160,7 @@ class ScreenProgramCurator {
                   countByDataKey,
                   dataKeyLimits,
                 ),
+                random: random,
               );
               return a != null;
             }).toList();
@@ -156,6 +183,7 @@ class ScreenProgramCurator {
               countByDataKey,
               dataKeyLimits,
             ),
+            random: random,
           );
           if (a != null && a.cost < bestCost) {
             bestCost = a.cost;
@@ -219,11 +247,7 @@ class ScreenProgramCurator {
         } else if (selected is _PickOptionNewsJoint) {
           pick = selected.screen;
           resolvedChoices = Map<String, String>.from(selected.choices);
-          for (final e in selected.choices.entries) {
-            if (!e.key.endsWith('_imageMode')) {
-              usedCuratedIds.add(e.value);
-            }
-          }
+          _addResolvedChoicesToUsedCuratedIds(selected.choices, usedCuratedIds);
         }
       } else {
         final pickScreen = _weightedPick(activePool, window, random);
@@ -251,16 +275,13 @@ class ScreenProgramCurator {
               countByDataKey,
               dataKeyLimits,
             ),
+            random: random,
           );
           if (a == null) {
             break;
           }
           resolvedChoices = Map<String, String>.from(a.choices);
-          for (final e in a.choices.entries) {
-            if (!e.key.endsWith('_imageMode')) {
-              usedCuratedIds.add(e.value);
-            }
-          }
+          _addResolvedChoicesToUsedCuratedIds(a.choices, usedCuratedIds);
         } else {
           resolvedChoices = _resolveCuratedWidgetChoices(
             pick.layoutJson,
@@ -371,6 +392,7 @@ class ScreenProgramCurator {
     required Map<String, RssArticleMetric> rssArticleMetrics,
     required bool requirePhotoForRssScreens,
     required bool needsMinFallback,
+    required Random random,
   }) {
     final specs =
         parseScreenLayoutWidgets(
@@ -380,16 +402,96 @@ class ScreenProgramCurator {
       return null;
     }
 
-    final choices = <String, String>{};
-    double totalCost = 0;
+    final requirePhoto =
+        requirePhotoForRssScreens && !needsMinFallback;
     final reservedIds = {...usedCuratedIds};
+    final totalSlots = specs.fold<int>(
+      0,
+      (a, w) => a + w.rssSummarySlotCapacities.length,
+    );
+
+    String? forcedCategory;
+    for (final w in specs) {
+      final poolName = _poolNameForWidget(w);
+      if (poolName == null || poolName.isEmpty) {
+        return null;
+      }
+      if (poolName.startsWith('rss_category:')) {
+        final c = poolName.substring(_kRssCategoryPoolPrefixLength);
+        if (forcedCategory != null && forcedCategory != c) {
+          return null;
+        }
+        forcedCategory = c;
+      } else if (poolName.startsWith('rss:') && poolName.length > 4) {
+        final pool = randomPools[poolName] ?? [];
+        if (pool.isEmpty) {
+          return null;
+        }
+        final c =
+            rssArticleMetrics[pool.first]?.categoryId ?? 'general';
+        if (forcedCategory != null && forcedCategory != c) {
+          return null;
+        }
+        forcedCategory = c;
+      }
+    }
+
+    final hasGlobalRss =
+        specs.any((w) => _poolNameForWidget(w) == 'rss');
+    String? screenCategory = forcedCategory;
+    if (hasGlobalRss) {
+      final rssPool = randomPools['rss'] ?? [];
+      if (screenCategory != null) {
+        if (!_rssPoolHasEnoughForCategory(
+          rssPool: rssPool,
+          categoryId: screenCategory,
+          reservedIds: reservedIds,
+          rssArticleMetrics: rssArticleMetrics,
+          requirePhoto: requirePhoto,
+          need: totalSlots,
+        )) {
+          return null;
+        }
+      } else {
+        screenCategory = _pickGlobalRssCategory(
+          rssPool: rssPool,
+          totalSlots: totalSlots,
+          reservedIds: reservedIds,
+          rssArticleMetrics: rssArticleMetrics,
+          requirePhoto: requirePhoto,
+          random: random,
+        );
+        if (screenCategory == null) {
+          return null;
+        }
+      }
+    } else {
+      screenCategory ??= forcedCategory;
+    }
+
+    final choices = <String, String>{};
+    if (screenCategory != null) {
+      choices[rssScreenCategoryChoiceKey] = screenCategory;
+    }
+
+    double totalCost = 0;
 
     for (final w in specs) {
       final poolName = _poolNameForWidget(w);
       if (poolName == null || poolName.isEmpty) {
         return null;
       }
-      final basePool = randomPools[poolName] ?? [];
+      var basePool = List<String>.from(randomPools[poolName] ?? []);
+      if (poolName == 'rss' && screenCategory != null) {
+        basePool =
+            basePool
+                .where(
+                  (id) =>
+                      (rssArticleMetrics[id]?.categoryId ?? 'general') ==
+                      screenCategory,
+                )
+                .toList();
+      }
       final slots = w.rssSummarySlotCapacities;
       final n = slots.length;
 
@@ -450,7 +552,99 @@ class ScreenProgramCurator {
       }
     }
 
+    if (!_rssAssignmentCategoriesConsistent(
+      specs: specs,
+      choices: choices,
+      rssArticleMetrics: rssArticleMetrics,
+    )) {
+      return null;
+    }
+
     return _NewsAssignment(screen: screen, choices: choices, cost: totalCost);
+  }
+
+  static bool _rssPoolHasEnoughForCategory({
+    required List<String> rssPool,
+    required String categoryId,
+    required Set<String> reservedIds,
+    required Map<String, RssArticleMetric> rssArticleMetrics,
+    required bool requirePhoto,
+    required int need,
+  }) {
+    var n = 0;
+    for (final id in rssPool) {
+      if (reservedIds.contains(id)) {
+        continue;
+      }
+      if ((rssArticleMetrics[id]?.categoryId ?? 'general') != categoryId) {
+        continue;
+      }
+      if (requirePhoto && !(rssArticleMetrics[id]?.hasImage ?? false)) {
+        continue;
+      }
+      n++;
+      if (n >= need) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static String? _pickGlobalRssCategory({
+    required List<String> rssPool,
+    required int totalSlots,
+    required Set<String> reservedIds,
+    required Map<String, RssArticleMetric> rssArticleMetrics,
+    required bool requirePhoto,
+    required Random random,
+  }) {
+    final counts = <String, int>{};
+    for (final id in rssPool) {
+      if (reservedIds.contains(id)) {
+        continue;
+      }
+      if (requirePhoto && !(rssArticleMetrics[id]?.hasImage ?? false)) {
+        continue;
+      }
+      final c = rssArticleMetrics[id]?.categoryId ?? 'general';
+      counts[c] = (counts[c] ?? 0) + 1;
+    }
+    final feasible =
+        counts.entries
+            .where((e) => e.value >= totalSlots)
+            .map((e) => e.key)
+            .toList();
+    if (feasible.isEmpty) {
+      return null;
+    }
+    return feasible[random.nextInt(feasible.length)];
+  }
+
+  static bool _rssAssignmentCategoriesConsistent({
+    required List<ParsedWidgetSpec> specs,
+    required Map<String, String> choices,
+    required Map<String, RssArticleMetric> rssArticleMetrics,
+  }) {
+    String? seen;
+    for (final w in specs) {
+      final n = w.rssSummarySlotCapacities.length;
+      for (var i = 0; i < n; i++) {
+        final key =
+            (w.type == 'rss_article_columns' || w.type == 'rss_article_stack')
+            ? '${w.choiceKey}_$i'
+            : w.choiceKey;
+        final id = choices[key];
+        if (id == null || id.isEmpty) {
+          return false;
+        }
+        final c = rssArticleMetrics[id]?.categoryId ?? 'general';
+        seen ??= c;
+        if (seen != c) {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
   static List<String>? _bestArticleAssignment(
@@ -739,7 +933,14 @@ class ScreenProgramCurator {
       case 'rss_article_columns':
       case 'rss_article_stack':
         final f = w.config['feedId'] as String?;
-        return (f != null && f.isNotEmpty) ? 'rss:$f' : 'rss';
+        if (f != null && f.isNotEmpty) {
+          return 'rss:$f';
+        }
+        final c = w.config['categoryId'] as String?;
+        if (c != null && c.isNotEmpty) {
+          return 'rss_category:$c';
+        }
+        return 'rss';
       case 'trivia':
         final c = w.config['categoryId'] as String?;
         return (c != null && c.isNotEmpty) ? 'trivia:$c' : 'trivia';

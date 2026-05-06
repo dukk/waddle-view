@@ -7,6 +7,7 @@ import '../blob/blob_store.dart';
 import '../curator/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';
 import '../persistence/database.dart';
+import 'content_category_slide_header.dart';
 import 'dashboard_viewport_scope.dart';
 import 'rss_article_load.dart';
 import 'rss_article_slide_timing.dart';
@@ -90,6 +91,7 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
   bool _scrollMetricsHookStarted = false;
   bool _plainDwellHookStarted = false;
   double _viewportScale = 1.0;
+  String? _headerCategoryId;
 
   late final int _scrollDelayMs;
   late final int _trailingHoldMs;
@@ -108,6 +110,11 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
     _minReadMs = _cfgInt(c, 'minReadMs', 8000);
     _imageFraction = _cfgDouble(c, 'imagePanelFraction', 0.39).clamp(0.2, 0.55);
     _imageOnRight = _cfgBool(c, 'imageOnRight', false);
+    final slideCat =
+        widget.slide.randomChoices[ScreenProgramCurator.rssScreenCategoryChoiceKey];
+    if (slideCat != null && slideCat.isNotEmpty) {
+      _headerCategoryId = slideCat;
+    }
     unawaited(_bootstrap());
   }
 
@@ -123,14 +130,29 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
     if (article != null) {
       load = await loadRssArticleImage(widget.db, widget.blobs, article);
     }
+    final cat = await resolveRssDisplayCategoryId(
+      widget.db,
+      widget.slide,
+      article,
+    );
     if (!mounted) {
       return;
     }
     setState(() {
       _article = article;
       _imageLoad = load;
+      _headerCategoryId = cat ?? _headerCategoryId;
       _loading = false;
     });
+  }
+
+  Widget _categoryHeader(ThemeData theme) {
+    return ContentCategorySlideHeader(
+      db: widget.db,
+      blobs: widget.blobs,
+      theme: theme,
+      categoryId: _headerCategoryId,
+    );
   }
 
   @override
@@ -221,27 +243,43 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
     final s = DashboardViewportScope.scaleOf(context);
     _viewportScale = s;
     if (_loading) {
-      return Padding(
-        padding: EdgeInsets.all(24 * s),
-        child: Center(
-          child: SizedBox(
-            width: 32 * s,
-            height: 32 * s,
-            child: const CircularProgressIndicator(),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _categoryHeader(theme),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.all(24 * s),
+              child: Center(
+                child: SizedBox(
+                  width: 32 * s,
+                  height: 32 * s,
+                  child: const CircularProgressIndicator(),
+                ),
+              ),
+            ),
           ),
-        ),
+        ],
       );
     }
 
     final article = _article;
     if (article == null) {
-      return Padding(
-        padding: EdgeInsets.fromLTRB(24 * s, 20 * s, 24 * s, 16 * s),
-        child: Text(
-          'No news articles yet',
-          style: theme.textTheme.titleMedium,
-          textAlign: TextAlign.center,
-        ),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _categoryHeader(theme),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(24 * s, 20 * s, 24 * s, 16 * s),
+              child: Text(
+                'No news articles yet',
+                style: theme.textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+        ],
       );
     }
 
@@ -254,19 +292,28 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
           _reportDwellNoScrollMetrics();
         });
       }
-      return Padding(
-        padding: EdgeInsets.fromLTRB(24 * s, 20 * s, 24 * s, 16 * s),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Article has no title or summary',
-              style: theme.textTheme.titleMedium,
-              textAlign: TextAlign.center,
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _categoryHeader(theme),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(24 * s, 20 * s, 24 * s, 16 * s),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Article has no title or summary',
+                    style: theme.textTheme.titleMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  _articleLinkQr(theme, s, article.link, standalone: true),
+                ],
+              ),
             ),
-            _articleLinkQr(theme, s, article.link, standalone: true),
-          ],
-        ),
+          ),
+        ],
       );
     }
 
@@ -288,92 +335,129 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
         if (!w.isFinite || !h.isFinite || w <= 0 || h <= 0) {
           return const SizedBox.shrink();
         }
-        final imageW = (w * _imageFraction).clamp(120.0 * s, w * 0.55);
-        final imagePanel = SizedBox(
-          key: const Key('rss_article_image_panel'),
-          width: imageW,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12 * s),
-              border: Border.all(
-                color: theme.colorScheme.outline.withValues(alpha: 0.4),
-              ),
-              color: theme.colorScheme.surfaceContainerHigh,
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(11 * s),
-              child: _imageLoad.bytes != null
-                  ? Image.memory(
-                      _imageLoad.bytes!,
-                      fit: BoxFit.cover,
-                      gaplessPlayback: true,
-                      errorBuilder: (context, error, stackTrace) =>
-                          _imagePlaceholder(
-                            theme,
-                            s,
-                            blobReadFailed: false,
-                            useNewsIcon:
-                                widget.slide.randomChoices['${widget.spec.choiceKey}_imageMode'] ==
-                                'icon',
-                          ),
-                    )
-                  : _imagePlaceholder(
-                      theme,
-                      s,
-                      blobReadFailed: _imageLoad.blobReadFailed,
-                      useNewsIcon:
-                          widget.slide.randomChoices['${widget.spec.choiceKey}_imageMode'] ==
-                          'icon',
-                    ),
-            ),
-          ),
-        );
-        final gap = SizedBox(width: 20 * s);
-        final textPanel = Expanded(
-          key: const Key('rss_article_text_column'),
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(18 * s, 16 * s, 18 * s, 14 * s),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (title.isNotEmpty)
-                  Text(
-                    title,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                if (title.isNotEmpty &&
-                    (summary.isNotEmpty || article.link.trim().isNotEmpty))
-                  SizedBox(height: 18 * s),
-                Expanded(
-                  child: _summaryAndOptionalQrRow(
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _categoryHeader(theme),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, inner) {
+                  final iw = inner.maxWidth;
+                  final ih = inner.maxHeight;
+                  if (!iw.isFinite || !ih.isFinite || iw <= 0 || ih <= 0) {
+                    return const SizedBox.shrink();
+                  }
+                  return _rssArticleRowLayout(
                     theme: theme,
                     s: s,
+                    w: iw,
+                    h: ih,
+                    article: article,
                     summary: summary,
-                    link: article.link,
-                  ),
-                ),
-              ],
+                    title: title,
+                  );
+                },
+              ),
             ),
-          ),
-        );
-        return Padding(
-          padding: EdgeInsets.only(bottom: 12 * s),
-          child: SizedBox(
-            width: w,
-            height: h,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: _imageOnRight
-                  ? <Widget>[textPanel, gap, imagePanel]
-                  : <Widget>[imagePanel, gap, textPanel],
-            ),
-          ),
+          ],
         );
       },
+    );
+  }
+
+  Widget _rssArticleRowLayout({
+    required ThemeData theme,
+    required double s,
+    required double w,
+    required double h,
+    required RssArticle article,
+    required String summary,
+    required String title,
+  }) {
+    final imageW = (w * _imageFraction).clamp(120.0 * s, w * 0.55);
+    final imagePanel = SizedBox(
+      key: const Key('rss_article_image_panel'),
+      width: imageW,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12 * s),
+          border: Border.all(
+            color: theme.colorScheme.outline.withValues(alpha: 0.4),
+          ),
+          color: theme.colorScheme.surfaceContainerHigh,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(11 * s),
+          child: _imageLoad.bytes != null
+              ? Image.memory(
+                  _imageLoad.bytes!,
+                  fit: BoxFit.cover,
+                  gaplessPlayback: true,
+                  errorBuilder: (context, error, stackTrace) =>
+                      _imagePlaceholder(
+                        theme,
+                        s,
+                        blobReadFailed: false,
+                        useNewsIcon:
+                            widget.slide.randomChoices['${widget.spec.choiceKey}_imageMode'] ==
+                            'icon',
+                      ),
+                )
+              : _imagePlaceholder(
+                  theme,
+                  s,
+                  blobReadFailed: _imageLoad.blobReadFailed,
+                  useNewsIcon:
+                      widget.slide.randomChoices['${widget.spec.choiceKey}_imageMode'] ==
+                      'icon',
+                ),
+        ),
+      ),
+    );
+    final gap = SizedBox(width: 20 * s);
+    final textPanel = Expanded(
+      key: const Key('rss_article_text_column'),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(18 * s, 16 * s, 18 * s, 14 * s),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (title.isNotEmpty)
+              Text(
+                title,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            if (title.isNotEmpty &&
+                (summary.isNotEmpty || article.link.trim().isNotEmpty))
+              SizedBox(height: 18 * s),
+            Expanded(
+              child: _summaryAndOptionalQrRow(
+                theme: theme,
+                s: s,
+                summary: summary,
+                link: article.link,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    return Padding(
+      padding: EdgeInsets.only(bottom: 12 * s),
+      child: SizedBox(
+        width: w,
+        height: h,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: _imageOnRight
+              ? <Widget>[textPanel, gap, imagePanel]
+              : <Widget>[imagePanel, gap, textPanel],
+        ),
+      ),
     );
   }
 

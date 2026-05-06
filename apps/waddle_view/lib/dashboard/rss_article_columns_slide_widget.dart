@@ -7,6 +7,7 @@ import '../blob/blob_store.dart';
 import '../curator/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';
 import '../persistence/database.dart';
+import 'content_category_slide_header.dart';
 import 'dashboard_viewport_scope.dart';
 import 'rss_article_load.dart';
 
@@ -85,10 +86,16 @@ class _RssArticleColumnsSlideWidgetState
   late final int _minReadMs;
   late final double _qrLogical;
   List<_ColumnArticle> _columns = const [];
+  String? _headerCategoryId;
 
   @override
   void initState() {
     super.initState();
+    final slideCat =
+        widget.slide.randomChoices[ScreenProgramCurator.rssScreenCategoryChoiceKey];
+    if (slideCat != null && slideCat.isNotEmpty) {
+      _headerCategoryId = slideCat;
+    }
     final c = widget.spec.config;
     _nColumns = _columnCountFromConfig(c);
     _minReadMs = _cfgInt(c, 'minReadMs', 8000);
@@ -115,13 +122,36 @@ class _RssArticleColumnsSlideWidgetState
       }
       out.add(_ColumnArticle(article, load));
     }
+    String? inferred;
+    for (final col in out) {
+      final a = col.article;
+      if (a == null) {
+        continue;
+      }
+      inferred = await resolveRssDisplayCategoryId(
+        widget.db,
+        widget.slide,
+        a,
+      );
+      break;
+    }
     if (!mounted) {
       return;
     }
     setState(() {
       _columns = out;
+      _headerCategoryId = inferred ?? _headerCategoryId;
       _loading = false;
     });
+  }
+
+  Widget _categoryHeader(ThemeData theme) {
+    return ContentCategorySlideHeader(
+      db: widget.db,
+      blobs: widget.blobs,
+      theme: theme,
+      categoryId: _headerCategoryId,
+    );
   }
 
   void _reportDwell() {
@@ -138,15 +168,23 @@ class _RssArticleColumnsSlideWidgetState
     final theme = widget.theme;
     final s = DashboardViewportScope.scaleOf(context);
     if (_loading) {
-      return Padding(
-        padding: EdgeInsets.all(24 * s),
-        child: Center(
-          child: SizedBox(
-            width: 32 * s,
-            height: 32 * s,
-            child: const CircularProgressIndicator(),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _categoryHeader(theme),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.all(24 * s),
+              child: Center(
+                child: SizedBox(
+                  width: 32 * s,
+                  height: 32 * s,
+                  child: const CircularProgressIndicator(),
+                ),
+              ),
+            ),
           ),
-        ),
+        ],
       );
     }
 
@@ -155,13 +193,21 @@ class _RssArticleColumnsSlideWidgetState
       if (!_dwellReported) {
         WidgetsBinding.instance.addPostFrameCallback((_) => _reportDwell());
       }
-      return Padding(
-        padding: EdgeInsets.fromLTRB(24 * s, 20 * s, 24 * s, 16 * s),
-        child: Text(
-          'No news articles yet',
-          style: theme.textTheme.titleMedium,
-          textAlign: TextAlign.center,
-        ),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _categoryHeader(theme),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(24 * s, 20 * s, 24 * s, 16 * s),
+              child: Text(
+                'No news articles yet',
+                style: theme.textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+        ],
       );
     }
 
@@ -176,31 +222,36 @@ class _RssArticleColumnsSlideWidgetState
         if (!h.isFinite || h <= 0) {
           return const SizedBox.shrink();
         }
-        return Padding(
-          padding: EdgeInsets.only(bottom: 12 * s),
-          child: SizedBox(
-            height: h,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (var i = 0; i < _columns.length; i++) ...[
-                  if (i > 0) SizedBox(width: gap),
-                  Expanded(
-                    child: _ArticleColumnCard(
-                      theme: theme,
-                      scale: s,
-                      columnIndex: i,
-                      qrLogical: _qrLogical,
-                      data: _columns[i],
-                      useNewsIcon:
-                          widget.slide.randomChoices['${widget.spec.choiceKey}_${i}_imageMode'] ==
-                          'icon',
-                    ),
-                  ),
-                ],
-              ],
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _categoryHeader(theme),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(bottom: 12 * s),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (var i = 0; i < _columns.length; i++) ...[
+                      if (i > 0) SizedBox(width: gap),
+                      Expanded(
+                        child: _ArticleColumnCard(
+                          theme: theme,
+                          scale: s,
+                          columnIndex: i,
+                          qrLogical: _qrLogical,
+                          data: _columns[i],
+                          useNewsIcon:
+                              widget.slide.randomChoices['${widget.spec.choiceKey}_${i}_imageMode'] ==
+                              'icon',
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ),
-          ),
+          ],
         );
       },
     );
