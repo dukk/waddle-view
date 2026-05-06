@@ -110,7 +110,7 @@ class WeatherDataProvider implements IDataProvider {
         await ctx.db.into(ctx.db.weatherCurrentData).insertOnConflictUpdate(
               WeatherCurrentDataCompanion.insert(
                 locationId: location.id,
-                observedAtMs: now,
+                observedAtMs: DateTime.fromMillisecondsSinceEpoch(now),
                 currentTemp: Value((current['temp'] as num?)?.toDouble()),
                 currentDescription: Value((current['description'] as String?)?.trim()),
                 currentIconBlobKey: Value(currentIconBlobKey),
@@ -179,7 +179,7 @@ class WeatherDataProvider implements IDataProvider {
             relativePath: ref.storageKey,
             bytes: res.bodyBytes.length,
             mimeType: Value(res.headers['content-type']?.split(';').first.trim()),
-            capturedAt: _nowMs(),
+            capturedAt: DateTime.fromMillisecondsSinceEpoch(_nowMs()),
           ),
         );
     return logicalKey;

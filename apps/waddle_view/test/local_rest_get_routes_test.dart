@@ -14,6 +14,46 @@ import 'package:waddle_view/ticker/memory_ticker_curated_repository.dart';
 import 'helpers/memory_database.dart';
 
 void main() {
+  test('GET providers lists enabled rows', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.providerSettings).insert(
+          ProviderSettingsCompanion.insert(
+            id: 'jokes',
+            providerType: 'jokes',
+            pollSeconds: const Value(30),
+          ),
+        );
+    final alerts = DriftAlertRepository(db);
+    final keys = FakeDeploymentApiKeySource('k');
+    final ticker = MemoryTickerCuratedRepository();
+    addTearDown(ticker.dispose);
+    final handler = buildRootHandler(
+      db: db,
+      alerts: alerts,
+      keys: keys,
+      ticker: ticker,
+      secrets: InMemorySecretStore(),
+      onConfigChanged: () async {},
+      keyFile: await _tempKeyFile('k'),
+      setupScreenId: 'admin_setup',
+    );
+    final server = await LocalRestServer.bind(handler: handler, port: 0);
+    try {
+      final res = await http.get(
+        Uri.parse('${server.baseUrl}/v1/providers'),
+        headers: {'x-api-key': 'k'},
+      );
+      expect(res.statusCode, 200);
+      expect(res.body, contains('"id":"jokes"'));
+      expect(res.body, contains('"type":"jokes"'));
+      expect(res.body, contains('"enabled":true'));
+    } finally {
+      await server.close();
+      await db.close();
+    }
+  });
+
   test('GET screens and alerts list', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
@@ -37,7 +77,7 @@ void main() {
           DashboardAlertsCompanion.insert(
             title: 't',
             body: 'b',
-            createdAt: 1,
+            createdAt: DateTime.fromMillisecondsSinceEpoch(1),
           ),
         );
     final alerts = DriftAlertRepository(db);

@@ -2,36 +2,59 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/api/local_rest_server.dart';
 import 'package:waddle_view/curator/screen_layout_parse.dart';
 import 'package:waddle_view/dashboard/admin_setup_slide_widget.dart';
 import 'package:waddle_view/persistence/database.dart';
+import 'package:waddle_view/persistence/tables.dart';
 
 import '../helpers/memory_database.dart';
 
 void main() {
-  testWidgets(
-    'shows admin URL and password during bootstrap',
-    (tester) async {
+  test('config key insert and select completes', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.dashboardKv).insert(
-          DashboardKvCompanion.insert(
+    await db.into(db.configKeyValues).insert(
+          ConfigKeyValuesCompanion.insert(
             key: kAdminBootstrapDoneKvKey,
             value: '0',
           ),
         );
-    final keyFile = await _tempKeyFile('first-password');
+    final rows = await db.select(db.configKeyValues).get();
+    expect(rows.single.value, '0');
+    await db.close();
+  });
 
-    const spec = ParsedWidgetSpec(type: 'admin_setup', slot: 'main', config: {});
-    final theme = ThemeData.light();
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: theme,
-        home: Scaffold(
-          body: TickerMode(
-            enabled: false,
-            child: AdminSetupSlideWidget(
+  testWidgets(
+    'shows admin URL and password during bootstrap',
+    (tester) async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
+      await db.into(db.configKeyValues).insert(
+            ConfigKeyValuesCompanion.insert(
+              key: kAdminBootstrapDoneKvKey,
+              value: '0',
+            ),
+          );
+      final keyFile = File(
+        '${Directory.systemTemp.path}/wv_setup_pw_${DateTime.now().microsecondsSinceEpoch}.txt',
+      )..writeAsStringSync('first-password\n', flush: true);
+      addTearDown(() async {
+        try {
+          await keyFile.delete();
+        } catch (_) {}
+      });
+
+      const spec = ParsedWidgetSpec(
+        type: 'admin_setup',
+        slot: 'main',
+        config: {'showLoginQr': false},
+      );
+      final theme = ThemeData.light();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: Scaffold(
+            body: AdminSetupSlideWidget(
               db: db,
               adminBaseUrl: 'http://192.168.1.4:8787',
               setupPasswordFile: keyFile,
@@ -40,39 +63,58 @@ void main() {
             ),
           ),
         ),
-      ),
-    );
-    await tester.pump(const Duration(milliseconds: 200));
-    expect(find.textContaining('/admin/login'), findsOneWidget);
-    expect(find.textContaining('first-password'), findsOneWidget);
-    await tester.pumpWidget(const SizedBox.shrink());
-    await db.close();
+      );
+      await tester.pump();
+      for (var i = 0; i < 8; i++) {
+        await tester.runAsync(() async {
+          await Future<void>.delayed(const Duration(milliseconds: 5));
+        });
+        await tester.pump();
+      }
+      expect(find.text('Complete device setup'), findsOneWidget);
+      expect(find.textContaining('/admin/login'), findsOneWidget);
+      expect(find.textContaining('Install password'), findsOneWidget);
+      final selectables =
+          tester.widgetList<SelectableText>(find.byType(SelectableText));
+      expect(
+        selectables.map((s) => s.data).whereType<String>(),
+        contains(contains('first-password')),
+      );
+      await db.close();
     },
-    skip: true,
   );
 
   testWidgets(
     'hides bootstrap password when setup done',
     (tester) async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
-    await db.into(db.dashboardKv).insert(
-          DashboardKvCompanion.insert(
-            key: kAdminBootstrapDoneKvKey,
-            value: '1',
-          ),
-        );
-    final keyFile = await _tempKeyFile('first-password');
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
+      await db.into(db.configKeyValues).insert(
+            ConfigKeyValuesCompanion.insert(
+              key: kAdminBootstrapDoneKvKey,
+              value: '1',
+            ),
+          );
+      final keyFile = File(
+        '${Directory.systemTemp.path}/wv_setup_pw_${DateTime.now().microsecondsSinceEpoch}.txt',
+      )..writeAsStringSync('first-password\n', flush: true);
+      addTearDown(() async {
+        try {
+          await keyFile.delete();
+        } catch (_) {}
+      });
 
-    const spec = ParsedWidgetSpec(type: 'admin_setup', slot: 'main', config: {});
-    final theme = ThemeData.light();
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: theme,
-        home: Scaffold(
-          body: TickerMode(
-            enabled: false,
-            child: AdminSetupSlideWidget(
+      const spec = ParsedWidgetSpec(
+        type: 'admin_setup',
+        slot: 'main',
+        config: {'showLoginQr': false},
+      );
+      final theme = ThemeData.light();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: Scaffold(
+            body: AdminSetupSlideWidget(
               db: db,
               adminBaseUrl: 'http://192.168.1.4:8787',
               setupPasswordFile: keyFile,
@@ -81,20 +123,12 @@ void main() {
             ),
           ),
         ),
-      ),
-    );
-    await tester.pump(const Duration(milliseconds: 200));
-    expect(find.textContaining('first-password'), findsNothing);
-    await tester.pumpWidget(const SizedBox.shrink());
-    await db.close();
+      );
+      await tester.pump();
+      await tester.runAsync(() async {});
+      await tester.pump();
+      expect(find.textContaining('first-password'), findsNothing);
+      await db.close();
     },
-    skip: true,
   );
-}
-
-Future<File> _tempKeyFile(String value) async {
-  final dir = await Directory.systemTemp.createTemp('wv_setup_widget_');
-  final file = File('${dir.path}/waddle_api.key');
-  await file.writeAsString('$value\n', flush: true);
-  return file;
 }

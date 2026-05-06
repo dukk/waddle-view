@@ -7,7 +7,7 @@ This document describes how the TV dashboard is structured at runtime and how ma
 - **Single process**: Flutter UI, background async loops, and the embedded HTTP server share one isolate unless you add isolates later.
 - **Ports and adapters**: abstract boundaries (`IDataProvider`, `DataWriteContext`, `AlertRepository`, `TickerCuratedRepository`, `DashboardCurator`, `BlobStore`, `SecretStore`, `WindowChromeController`) with Drift/filesystem/Linux implementations.
 - **No secrets in SQLite**: provider tokens and similar values go through [`SecretStore`](lib/secrets/secret_store.dart); SQLite holds non-secret configuration and operational data.
-- **Drift as the hub**: display **screen definitions** (`screen_definitions`), **curator settings** (`curator_settings`), dashboard key–value fields, alerts, blob metadata, RSS tables, and provider settings read/write through [`AppDatabase`](lib/persistence/database.dart). **Ticker marquee text is in-memory only** ([`MemoryTickerCuratedRepository`](lib/ticker/memory_ticker_curated_repository.dart)); REST exposes a read-only snapshot.
+- **Drift as the hub**: display **screen definitions** (`screen_definitions`), **configuration key–values** (`config_key_values`, including curator program settings and theme/ticker keys), alerts, blob metadata, RSS tables, and provider settings read/write through [`AppDatabase`](lib/persistence/database.dart). **Ticker marquee text is in-memory only** ([`MemoryTickerCuratedRepository`](lib/ticker/memory_ticker_curated_repository.dart)); REST exposes a read-only snapshot.
 
 ## Module map
 
@@ -177,7 +177,7 @@ sequenceDiagram
   end
 ```
 
-The stub provider demonstrates the path: it upserts [`dashboard_kv`](lib/data/stub_data_provider.dart) (feeds the header title stream) and registers a small blob plus [`blob_metadata`](lib/data/stub_data_provider.dart).
+The stub provider demonstrates the path: it upserts [`config_key_values`](lib/data/stub_data_provider.dart) (feeds the header title stream) and registers a small blob plus [`blob_metadata`](lib/data/stub_data_provider.dart).
 
 ## Sequence: REST alert to on-screen overlay
 
@@ -213,11 +213,11 @@ sequenceDiagram
 
 ## Sequence: curated marquee ticker
 
-Providers persist **domain** rows (for example [`dashboard_kv`](lib/persistence/tables.dart) keys such as `ticker.marquee.*`). [`DefaultDashboardCurator`](lib/curator/default_dashboard_curator.dart) reads them via [`DriftCuratorReadPort`](lib/curator/drift_curator_read_port.dart), maps them through pure [`buildTickerItemsForMarquee`](lib/curator/ticker_curation.dart), and writes the ordered list to [`MemoryTickerCuratedRepository`](lib/ticker/memory_ticker_curated_repository.dart). [`TickerMarquee`](lib/ticker/ticker_marquee.dart) subscribes with `watchOrdered()` and scrolls horizontally at a fixed **pixels per second**. `GET /v1/ticker/items` uses the same repository’s `snapshot()`.
+Providers persist **domain** rows (for example [`config_key_values`](lib/persistence/tables.dart) keys such as `ticker.marquee.*`). [`DefaultDashboardCurator`](lib/curator/default_dashboard_curator.dart) reads them via [`DriftCuratorReadPort`](lib/curator/drift_curator_read_port.dart), maps them through pure [`buildTickerItemsForMarquee`](lib/curator/ticker_curation.dart), and writes the ordered list to [`MemoryTickerCuratedRepository`](lib/ticker/memory_ticker_curated_repository.dart). [`TickerMarquee`](lib/ticker/ticker_marquee.dart) subscribes with `watchOrdered()` and scrolls horizontally at a fixed **pixels per second**. `GET /v1/ticker/items` uses the same repository’s `snapshot()`.
 
 ## Sequence: display screen programs
 
-[`ScreenRotator`](lib/dashboard/screen_rotator.dart) loads enabled rows from [`screen_definitions`](lib/persistence/tables.dart) and [`curator_settings`](lib/persistence/tables.dart), runs [`ScreenProgramCurator.buildProgram`](lib/curator/screen_program_curator.dart) (weighted picks biased by recent slide ids, random photo pools without duplicate assets in one program), then advances slides on a dwell timer with **exit left / enter right** transitions. When a program finishes, a new program is curated using the rolling history of shown screen ids.
+[`ScreenRotator`](lib/dashboard/screen_rotator.dart) loads enabled rows from [`screen_definitions`](lib/persistence/tables.dart) and curator program keys in [`config_key_values`](lib/persistence/tables.dart) (`curator.program.*`), runs [`ScreenProgramCurator.buildProgram`](lib/curator/screen_program_curator.dart) (weighted picks biased by recent slide ids, random photo pools without duplicate assets in one program), then advances slides on a dwell timer with **exit left / enter right** transitions. When a program finishes, a new program is curated using the rolling history of shown screen ids.
 
 ```mermaid
 sequenceDiagram
@@ -229,9 +229,9 @@ sequenceDiagram
   participant UI as TickerMarquee
 
   Eng->>P: collect(ctx)
-  P->>DB: upsert dashboard_kv / facts
+  P->>DB: upsert config_key_values / facts
   Eng->>Cur: refresh() onCycleComplete
-  Cur->>DB: SELECT dashboard_kv / RSS
+  Cur->>DB: SELECT config_key_values / RSS
   Cur->>Rep: replaceAll(TickerItem list)
   Rep-->>UI: watchOrdered emits
   UI->>UI: measure segment width, AnimationController linear scroll

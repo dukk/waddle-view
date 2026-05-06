@@ -8,7 +8,7 @@ class DriftDashboardDataAccess implements DashboardDataAccess {
 
   @override
   Stream<String?> watchHeaderTitle() {
-    return (_db.select(_db.dashboardKv)
+    return (_db.select(_db.configKeyValues)
           ..where((t) => t.key.equals('header.title')))
         .watchSingleOrNull()
         .map((r) => r?.value);
@@ -17,7 +17,7 @@ class DriftDashboardDataAccess implements DashboardDataAccess {
   @override
   Stream<String?> watchSlotSubtitle(String slotId) {
     final key = 'slot.$slotId.subtitle';
-    return (_db.select(_db.dashboardKv)..where((t) => t.key.equals(key)))
+    return (_db.select(_db.configKeyValues)..where((t) => t.key.equals(key)))
         .watchSingleOrNull()
         .map((r) => r?.value);
   }

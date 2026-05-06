@@ -25,6 +25,8 @@ dependencies:
   http: ^1.2.2
   webfeed: ^0.7.0
   flutter_dotenv: ^6.0.1
+  video_player: ^2.11.1
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

@@ -15,7 +15,6 @@ import 'joke_provider_extra_config.dart'
         kDefaultTwoHourWindowMs;
 import 'joke_seasonal_eligibility.dart';
 import 'joke_slot_allocation.dart';
-import 'category_icon_service.dart';
 
 const String kJokeProviderId = 'jokes';
 
@@ -82,10 +81,8 @@ class JokeDataProvider implements IDataProvider {
 
     final startLocal = DateTime(now.year, now.month, now.day);
     final endLocal = startLocal.add(const Duration(days: 1));
-    final startMs = startLocal.millisecondsSinceEpoch;
-    final endMs = endLocal.millisecondsSinceEpoch;
 
-    final todayCount = await _countJokesInRange(ctx.db, startMs, endMs);
+    final todayCount = await _countJokesInRange(ctx.db, startLocal, endLocal);
     final remainingDaily = extra.jokesPerDay - todayCount;
     if (remainingDaily <= 0) {
       return;
@@ -143,15 +140,6 @@ class JokeDataProvider implements IDataProvider {
         (config.baseUrl != null && config.baseUrl!.trim().isNotEmpty)
         ? config.baseUrl!.trim()
         : kDefaultOpenAiBaseUrl;
-    await ensureCategoryIcons(
-      ctx: ctx,
-      httpClient: _http,
-      baseUrl: baseUrl,
-      token: token,
-      categoryType: 'joke',
-      categories: eligible.map((c) => (id: c.id, label: c.label)),
-      limit: 4,
-    );
 
     final userContent = _buildUserPrompt(slots, categoryById);
 
@@ -188,7 +176,7 @@ class JokeDataProvider implements IDataProvider {
 
       await ctx.db.into(ctx.db.jokeGenerationBatches).insert(
             JokeGenerationBatchesCompanion.insert(
-              requestedAtMs: nowMs,
+              requestedAtMs: now,
               jokesRequested: slots.length,
             ),
           );
@@ -215,7 +203,7 @@ class JokeDataProvider implements IDataProvider {
       }
 
       final parsedList = _parseJokeJsonArray(content);
-      final createdAt = _now().millisecondsSinceEpoch;
+      final createdAt = _now();
 
       for (final item in parsedList) {
         final cid = item['categoryId'] as String?;
@@ -249,14 +237,14 @@ class JokeDataProvider implements IDataProvider {
 
   Future<int> _countJokesInRange(
     AppDatabase db,
-    int startMsInclusive,
-    int endMsExclusive,
+    DateTime startInclusive,
+    DateTime endExclusive,
   ) async {
     final rows = await (db.select(db.jokes)
           ..where(
             (t) =>
-                t.createdAtMs.isBiggerOrEqualValue(startMsInclusive) &
-                t.createdAtMs.isSmallerThanValue(endMsExclusive),
+                t.createdAtMs.isBiggerOrEqualValue(startInclusive) &
+                t.createdAtMs.isSmallerThanValue(endExclusive),
           ))
         .get();
     return rows.length;
@@ -271,8 +259,9 @@ class JokeDataProvider implements IDataProvider {
   }
 
   Future<int> _sumJokesRequestedSince(AppDatabase db, int sinceMsInclusive) async {
+    final since = DateTime.fromMillisecondsSinceEpoch(sinceMsInclusive);
     final rows = await (db.select(db.jokeGenerationBatches)
-          ..where((t) => t.requestedAtMs.isBiggerOrEqualValue(sinceMsInclusive)))
+          ..where((t) => t.requestedAtMs.isBiggerOrEqualValue(since)))
         .get();
     var sum = 0;
     for (final r in rows) {
@@ -282,13 +271,14 @@ class JokeDataProvider implements IDataProvider {
   }
 
   Future<void> _pruneOldGenerationBatches(AppDatabase db, int nowMs) async {
-    final cutoff = nowMs - const Duration(days: 14).inMilliseconds;
+    final cutoffMs = nowMs - const Duration(days: 14).inMilliseconds;
+    final cutoff = DateTime.fromMillisecondsSinceEpoch(cutoffMs);
     await (db.delete(db.jokeGenerationBatches)
           ..where((t) => t.requestedAtMs.isSmallerThanValue(cutoff)))
         .go();
   }
 
-  /// Removes jokes with [Joke.createdAtMs] strictly before `now - retentionDays`.
+  /// Removes jokes with creation time strictly before `now - retentionDays`.
   /// Returns the number of rows deleted. No-op if [retentionDays] `<= 0`.
   Future<int> _purgeJokesPastRetention(
     AppDatabase db,
@@ -298,7 +288,8 @@ class JokeDataProvider implements IDataProvider {
     if (retentionDays <= 0) {
       return 0;
     }
-    final cutoff = nowMs - Duration(days: retentionDays).inMilliseconds;
+    final cutoffMs = nowMs - Duration(days: retentionDays).inMilliseconds;
+    final cutoff = DateTime.fromMillisecondsSinceEpoch(cutoffMs);
     return (db.delete(db.jokes)
           ..where((t) => t.createdAtMs.isSmallerThanValue(cutoff)))
         .go();

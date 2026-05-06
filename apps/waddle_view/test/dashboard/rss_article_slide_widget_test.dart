@@ -37,8 +37,8 @@ Future<void> _insertFeedAndArticle(
           title: 'Breaking: widgets work',
           link: 'http://test.local/a',
           summary: Value(summary),
-          publishedAt: 1,
-          fetchedAt: 1,
+          publishedAt: DateTime.fromMillisecondsSinceEpoch(1),
+          fetchedAt: DateTime.fromMillisecondsSinceEpoch(1),
           imageBlobKey: Value(imageBlobKey),
         ),
       );
@@ -59,8 +59,8 @@ Future<void> _insertArticle(
           title: title,
           link: 'http://test.local/$id',
           summary: const Value('Summary'),
-          publishedAt: publishedAt,
-          fetchedAt: publishedAt,
+          publishedAt: DateTime.fromMillisecondsSinceEpoch(publishedAt),
+          fetchedAt: DateTime.fromMillisecondsSinceEpoch(publishedAt),
           imageBlobKey: Value(imageBlobKey),
         ),
       );
@@ -125,7 +125,7 @@ void main() {
             sha256: highRef.storageKey,
             relativePath: highRef.storageKey,
             bytes: 8000,
-            capturedAt: 1,
+            capturedAt: DateTime.fromMillisecondsSinceEpoch(1),
           ),
         );
     await _insertArticle(
@@ -270,7 +270,7 @@ void main() {
             relativePath: ref.storageKey,
             bytes: _tinyPng.length,
             mimeType: const Value('image/png'),
-            capturedAt: 1,
+            capturedAt: DateTime.fromMillisecondsSinceEpoch(1),
           ),
         );
     await _insertFeedAndArticle(db, summary: 'Short.', imageBlobKey: 'rss/feed_t/a/img');
@@ -305,6 +305,54 @@ void main() {
     await db.close();
   });
 
+  testWidgets('blob read failure shows no photography icon', (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.blobMetadata).insert(
+          BlobMetadataCompanion.insert(
+            blobKey: 'rss/feed_t/a/img',
+            sha256: 'missing',
+            relativePath: 'missing',
+            bytes: 4,
+            capturedAt: DateTime.fromMillisecondsSinceEpoch(1),
+          ),
+        );
+    await _insertFeedAndArticle(
+      db,
+      summary: 'Short.',
+      imageBlobKey: 'rss/feed_t/a/img',
+    );
+
+    final slide = ResolvedSlide(
+      screenId: 'news',
+      dwellMs: 8000,
+      layoutJson: '{}',
+    );
+    const spec = ParsedWidgetSpec(
+      type: 'rss_article',
+      slot: 'main',
+      config: {'minReadMs': 3000},
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.light(),
+        home: Scaffold(
+          body: RssArticleSlideWidget(
+            db: db,
+            blobs: FailingReadBlobStore(),
+            slide: slide,
+            spec: spec,
+            theme: ThemeData.light(),
+            onReportDesiredDwell: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.no_photography), findsOneWidget);
+    await db.close();
+  });
+
   testWidgets('selects article with higher image quality for rendering', (
     tester,
   ) async {
@@ -332,7 +380,7 @@ void main() {
             sha256: lowRef.storageKey,
             relativePath: lowRef.storageKey,
             bytes: _tinyPng.length,
-            capturedAt: 1,
+            capturedAt: DateTime.fromMillisecondsSinceEpoch(1),
           ),
         );
     await db.into(db.blobMetadata).insert(
@@ -341,7 +389,7 @@ void main() {
             sha256: highRef.storageKey,
             relativePath: highRef.storageKey,
             bytes: 4096,
-            capturedAt: 1,
+            capturedAt: DateTime.fromMillisecondsSinceEpoch(1),
           ),
         );
     await _insertArticle(
@@ -480,8 +528,8 @@ void main() {
             title: 'Headline',
             link: articleUrl,
             summary: const Value('Body.'),
-            publishedAt: 1,
-            fetchedAt: 1,
+            publishedAt: DateTime.fromMillisecondsSinceEpoch(1),
+            fetchedAt: DateTime.fromMillisecondsSinceEpoch(1),
           ),
         );
 
@@ -535,8 +583,8 @@ void main() {
             title: 'Headline',
             link: '',
             summary: const Value('Body.'),
-            publishedAt: 1,
-            fetchedAt: 1,
+            publishedAt: DateTime.fromMillisecondsSinceEpoch(1),
+            fetchedAt: DateTime.fromMillisecondsSinceEpoch(1),
           ),
         );
 
@@ -593,8 +641,8 @@ void main() {
             title: '',
             link: articleUrl,
             summary: const Value.absent(),
-            publishedAt: 1,
-            fetchedAt: 1,
+            publishedAt: DateTime.fromMillisecondsSinceEpoch(1),
+            fetchedAt: DateTime.fromMillisecondsSinceEpoch(1),
           ),
         );
 

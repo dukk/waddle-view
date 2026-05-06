@@ -1,12 +1,9 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:drift/drift.dart' show Variable;
 import 'package:drift/drift.dart' show CustomExpression, OrderingTerm;
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../blob/blob_store.dart';
 import '../curator/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';
 import '../persistence/database.dart';
@@ -37,32 +34,6 @@ Future<TriviaQuestion?> _loadTriviaForSlide(
       .getSingleOrNull();
 }
 
-Future<Uint8List?> _loadTriviaCategoryIconBytes(
-  AppDatabase db,
-  BlobStore blobs,
-  TriviaQuestion question,
-) async {
-  final rows = await db.customSelect(
-    'SELECT bm.relative_path FROM category_icons ci '
-    'JOIN blob_metadata bm ON bm.blob_key = ci.blob_key '
-    'WHERE ci.category_type = ? AND ci.category_id = ? '
-    'LIMIT 1',
-    variables: [
-      const Variable<String>('trivia'),
-      Variable<String>(question.categoryId),
-    ],
-  ).get();
-  if (rows.isEmpty) {
-    return null;
-  }
-  final relativePath = rows.first.read<String>('relative_path');
-  final bytes = await blobs.readBytes(BlobRef(relativePath));
-  if (bytes.isEmpty) {
-    return null;
-  }
-  return Uint8List.fromList(bytes);
-}
-
 /// Source letters A–D assigned to on-screen slots A–D (slot index 0 = label "A.").
 @visibleForTesting
 List<String> triviaShuffleOrderForTesting(Random random) {
@@ -76,7 +47,6 @@ class TriviaSlideWidget extends StatefulWidget {
   const TriviaSlideWidget({
     super.key,
     required this.db,
-    required this.blobs,
     required this.slide,
     required this.spec,
     required this.theme,
@@ -84,7 +54,6 @@ class TriviaSlideWidget extends StatefulWidget {
   });
 
   final AppDatabase db;
-  final BlobStore blobs;
   final ResolvedSlide slide;
   final ParsedWidgetSpec spec;
   final ThemeData theme;
@@ -99,7 +68,6 @@ class TriviaSlideWidget extends StatefulWidget {
 
 class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
   TriviaQuestion? _question;
-  Uint8List? _categoryIconBytes;
   bool _loading = true;
   late final Random _rng = widget.shuffleRandom ?? Random();
 
@@ -120,16 +88,12 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
 
   Future<void> _bootstrap() async {
     final q = await _loadTriviaForSlide(widget.db, widget.spec, widget.slide);
-    final iconBytes = q == null
-        ? null
-        : await _loadTriviaCategoryIconBytes(widget.db, widget.blobs, q);
     if (!mounted) {
       return;
     }
     final perm = q == null ? null : triviaShuffleOrderForTesting(_rng);
     setState(() {
       _question = q;
-      _categoryIconBytes = iconBytes;
       _displaySlotToSource = perm;
       _loading = false;
     });
@@ -297,18 +261,6 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (_categoryIconBytes != null) ...[
-                  Padding(
-                    padding: EdgeInsets.only(bottom: 12 * s),
-                    child: Image.memory(
-                      _categoryIconBytes!,
-                      key: const ValueKey<String>('trivia_category_icon'),
-                      width: 88 * s,
-                      height: 88 * s,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ],
                 if (countdown > 0)
                   Padding(
                     padding: EdgeInsets.only(bottom: 12 * s),

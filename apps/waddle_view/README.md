@@ -48,7 +48,7 @@ flutter run -d linux      # Linux desktop or Pi with Flutter toolchain
 
 `flutter run` defaults to **debug**: asserts, tracing, and **hot reload** (`r` in the terminal) / **hot restart** (`R`). In debug, the data collection engine uses a **shorter idle** between cycles than in profile or release (see `lib/main.dart`).
 
-**Unhandled errors (release / kiosk):** framework, async isolate, and root-zone failures are logged to **stderr** and the Dart **developer log** (name `Fatal.*`), then the process **restarts** by spawning the same executable with the same arguments (`lib/bootstrap/app_fatal_error_recovery.dart`). If restart fails, the process exits with a non-zero code so a supervisor (e.g. **systemd**) can start a fresh instance. This does not apply to **flutter test** (tests do not run `main()`).
+**Unhandled errors (release / kiosk):** most framework, async isolate, and root-zone failures are logged to **stderr** and the Dart **developer log** (name `Fatal.*`), then the process **restarts** by spawning the same executable with the same arguments (`lib/bootstrap/app_fatal_error_recovery.dart`). If restart fails, the process exits with a non-zero code so a supervisor (e.g. **systemd**) can start a fresh instance. Common **layout overflow** assertions (for example `RenderFlex overflowed`) are logged under **`Flutter.recoverable`** and **do not** trigger that restart so the dashboard keeps running. This does not apply to **flutter test** (tests do not run `main()`).
 
 Useful variants:
 
@@ -99,7 +99,7 @@ Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../d
 - **`/v1/health`** does not require a key; other `/v1/*` routes return **503** if the key file is missing or empty, **401** if the key is wrong.
 - **Admin UI**: open `/admin/login` on the same base URL. First login requires password change, which rotates `waddle_api.key`.
 
-### Display theme (`dashboard_kv`)
+### Display theme (`config_key_values`)
 
 - **Key**: `display.theme.id`
 - **Values**: `navy_coral` (default), `graphite_amber`
@@ -110,7 +110,7 @@ Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../d
 
 When the app assembles a timed program from `screen_definitions`, [`ScreenProgramCurator`](lib/curator/screen_program_curator.dart) pre-assigns **content ids** on each [`ResolvedSlide`](lib/curator/screen_program_curator.dart) for **jokes**, **RSS articles**, **trivia** (and existing **random photo** pools). Slide widgets read those ids from `randomChoices` first, so the same joke or article is not shown twice in one program when SQLite has enough distinct rows. If every candidate is already used, the slide falls back to the previous random / “best article” selection.
 
-### Text scale — screens vs ticker (`dashboard_kv`)
+### Text scale — screens vs ticker (`config_key_values`)
 
 Separate semantic sizes for carousel content and the bottom marquee (each multiplied by the app’s TV base text scale and the platform accessibility scaler).
 
@@ -133,6 +133,8 @@ Startup logs include **`REST listening at …`** with the bound **base URL**. To
 - **Secret storage**: `flutter_secure_storage` uses the Secret Service / **libsecret** where available; headless images without D-Bus may need a documented fallback (see repo **`docs/pi/`**).
 - **Data**: SQLite and **`media/`** live under the application support directory (see `path_provider` on device).
 
+The **`content_categories`** table holds shared category ids for **RSS** (`rss_feed_sources.category`), **Pexels** (`photos.category` / `videos.category`), **jokes** (`joke_categories.id`), and **trivia** (`trivia_categories.id`). Each row has a display **`label`**, optional **`material_icon_name`** (resolved in the app via [`content_category_material_icon.dart`](lib/dashboard/content_category_material_icon.dart)), and optional **`icon_blob_key`** for a custom image in the blob store. Initial rows are created by migration to schema version **19** and by [`ensureDefaultContentCategories`](lib/seed/content_category_seed.dart) during startup seeding.
+
 ## Provider secrets (OpenAI / jokes / trivia)
 
 The joke and trivia data providers read OpenAI API keys from **SecretStore**, not from `provider_settings`.
@@ -140,9 +142,22 @@ The joke and trivia data providers read OpenAI API keys from **SecretStore**, no
 - Jokes key: `provider:access_token:jokes`
 - Trivia key: `provider:access_token:trivia`
 
-Each category can have an icon mapped in `category_icons`. If a category icon is missing, the app asks OpenAI image generation for a default icon, stores bytes in filesystem blob storage (`media/`), and saves the mapping.
-
 **Local onboarding:** copy **[`.env.example`](.env.example)** to **`.env`** in this directory and set **`OPENAI_API_KEY`** (or **`WADDLE_JOKES_ACCESS_TOKEN`** / **`WADDLE_TRIVIA_ACCESS_TOKEN`**). In **debug** builds, the app loads that file and stores provider tokens automatically (see [`lib/config/dev_dotenv_secrets.dart`](lib/config/dev_dotenv_secrets.dart)). Full detail, monorepo paths, and fallbacks: **[`docs/pi/development.md`](../../docs/pi/development.md#joke-data-provider-openai-api-key)**.
+
+## Pexels photos / videos provider
+
+The **Pexels** provider (`id` / `provider_type`: **`pexels`**) downloads curated photos (`GET /v1/curated`) and popular videos (`GET /v1/videos/popular` with duration bounds), stores binaries in the **blob** store, and keeps metadata in **`photos`** and **`videos`** (with **`data_provider`** set to the provider id, e.g. **`pexels`**). API key: **`provider:access_token:pexels`** in **SecretStore** (never in SQLite).
+
+**Debug `.env`:** **`PEXELS_API_KEY`** or **`WADDLE_PEXELS_ACCESS_TOKEN`** (see [`.env.example`](.env.example)).
+
+**`provider_settings.extra_json`** (JSON) supports:
+
+- **`maxPhotos`** / **`maxVideos`**: retention cap (default 100); oldest rows are removed with their blobs.
+- **`photosPerHour`** / **`videosPerHour`**: rolling 60-minute download caps (default 2 each).
+- **`minVideoSeconds`** / **`maxVideoSeconds`**: inclusive duration window for videos (defaults **11** and **29** seconds).
+- **`sources`**: optional list of `{ "query": "…", "category": "…" }` for `/v1/search` (photos) and `/v1/videos/search` (videos); results use that **category** string (the default curated/popular path uses category **`pexels`**).
+
+**Screens:** widget types **`pexels_photo`** and **`pexels_video`** (single-widget layouts). Optional `config.categoryId` selects the curator pool (`pexels_photo` vs `pexels_photo:<category>`). Seed adds **`pexels_photo`** / **`pexels_video`** rows in **`screen_definitions`** disabled by default; enable after configuring the API key. Attribution (photographer name, profile URL, alt text) is shown on the photo slide; videos autoplay **muted** unless `config.unmuted` is true.
 
 ## Drift codegen
 

@@ -111,7 +111,11 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
           child: StreamBuilder<List<CalendarEvent>>(
             key: ValueKey<int>(_startMsBoundary),
             stream: (widget.db.select(widget.db.calendarEvents)
-                  ..where((t) => t.startMs.isBiggerOrEqualValue(_startMsBoundary))
+                  ..where(
+                    (t) => t.startMs.isBiggerOrEqualValue(
+                      DateTime.fromMillisecondsSinceEpoch(_startMsBoundary),
+                    ),
+                  )
                   ..orderBy([(t) => OrderingTerm.asc(t.startMs)]))
                 .watch(),
             builder: (context, snapshot) {

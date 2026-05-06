@@ -1,3 +1,5 @@
+import 'dart:io';
+
 /// Opaque handle to stored blob bytes.
 class BlobRef {
   const BlobRef(this.storageKey);
@@ -19,4 +21,7 @@ abstract class BlobStore {
   Future<List<int>> readBytes(BlobRef ref);
 
   Future<void> delete(BlobRef ref);
+
+  /// When this store is backed by a local filesystem, the file for [ref]; else null.
+  File? tryLocalFile(BlobRef ref);
 }

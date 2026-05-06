@@ -44,4 +44,10 @@ class FileSystemBlobStore implements BlobStore {
       await f.delete();
     }
   }
+
+  @override
+  File? tryLocalFile(BlobRef ref) {
+    final f = File(p.join(rootDirectory.path, ref.storageKey));
+    return f.existsSync() ? f : null;
+  }
 }

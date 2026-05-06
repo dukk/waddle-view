@@ -4,6 +4,7 @@ import '../persistence/database.dart';
 import '../persistence/tables.dart';
 import '../theme/display_text_scale_kv.dart';
 import '../theme/display_theme_kv.dart';
+import 'content_category_seed.dart';
 import 'joke_category_seed.dart';
 import 'rss_news_feed_seed.dart';
 import 'trivia_category_seed.dart';
@@ -23,20 +24,20 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
             pollSeconds: const Value(60),
           ),
         );
-    await db.into(db.dashboardKv).insertOnConflictUpdate(
-          DashboardKvCompanion.insert(
+    await db.into(db.configKeyValues).insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
             key: 'ticker.marquee.news',
             value: 'Welcome to Waddle View',
           ),
         );
-    await db.into(db.dashboardKv).insertOnConflictUpdate(
-          DashboardKvCompanion.insert(
+    await db.into(db.configKeyValues).insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
             key: 'ticker.marquee.weather',
             value: '— °F · demo',
           ),
         );
-    await db.into(db.dashboardKv).insertOnConflictUpdate(
-          DashboardKvCompanion.insert(
+    await db.into(db.configKeyValues).insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
             key: 'ticker.marquee.quote',
             value: 'Market data updates after each collect',
           ),
@@ -51,7 +52,9 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureJokesProviderRow(db);
   await _ensureTriviaProviderRow(db);
   await _ensureWeatherProviderRow(db);
+  await _ensurePexelsProviderRow(db);
   await _ensureDefaultWeatherLocations(db);
+  await ensureDefaultContentCategories(db);
   await ensureDefaultJokeCategories(db);
   await ensureDefaultTriviaCategories(db);
   await ensureDefaultRssNewsFeeds(db);
@@ -72,17 +75,19 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureLocalApiScreen(db);
   await _ensureAdminSetupScreen(db);
   await _ensureWeatherScreen(db);
+  await _ensurePexelsPhotoScreen(db);
+  await _ensurePexelsVideoScreen(db);
 }
 
 Future<void> _ensureDisplayThemeKv(AppDatabase db) async {
-  final row = await (db.select(db.dashboardKv)
+  final row = await (db.select(db.configKeyValues)
         ..where((t) => t.key.equals(kDisplayThemeIdKvKey)))
       .getSingleOrNull();
   if (row != null) {
     return;
   }
-  await db.into(db.dashboardKv).insert(
-        DashboardKvCompanion.insert(
+  await db.into(db.configKeyValues).insert(
+        ConfigKeyValuesCompanion.insert(
           key: kDisplayThemeIdKvKey,
           value: kDefaultDisplayThemeId,
         ),
@@ -91,14 +96,14 @@ Future<void> _ensureDisplayThemeKv(AppDatabase db) async {
 
 Future<void> _ensureDisplayTextScaleKv(AppDatabase db) async {
   Future<void> ensureKey(String key, String value) async {
-    final row = await (db.select(db.dashboardKv)
+    final row = await (db.select(db.configKeyValues)
           ..where((t) => t.key.equals(key)))
         .getSingleOrNull();
     if (row != null) {
       return;
     }
-    await db.into(db.dashboardKv).insert(
-          DashboardKvCompanion.insert(key: key, value: value),
+    await db.into(db.configKeyValues).insert(
+          ConfigKeyValuesCompanion.insert(key: key, value: value),
         );
   }
 
@@ -107,17 +112,22 @@ Future<void> _ensureDisplayTextScaleKv(AppDatabase db) async {
 }
 
 Future<void> _ensureCuratorSettings(AppDatabase db) async {
-  final row = await (db.select(db.curatorSettings)
-        ..where((t) => t.id.equals(kCuratorSettingsId)))
-      .getSingleOrNull();
-  if (row != null) {
-    return;
+  Future<void> ensureKey(String key, String value) async {
+    final row = await (db.select(db.configKeyValues)
+          ..where((t) => t.key.equals(key)))
+        .getSingleOrNull();
+    if (row != null) {
+      return;
+    }
+    await db.into(db.configKeyValues).insert(
+          ConfigKeyValuesCompanion.insert(key: key, value: value),
+        );
   }
-  await db.into(db.curatorSettings).insert(
-        CuratorSettingsCompanion.insert(id: kCuratorSettingsId),
-      );
-  await db.into(db.dashboardKv).insertOnConflictUpdate(
-        DashboardKvCompanion.insert(
+
+  await ensureKey(kCuratorProgramDurationSecondsKvKey, '180');
+  await ensureKey(kCuratorHistoryDepthKvKey, '5');
+  await db.into(db.configKeyValues).insertOnConflictUpdate(
+        ConfigKeyValuesCompanion.insert(
           key: 'curator.news.require_photo_for_curation',
           value: 'true',
         ),
@@ -564,6 +574,79 @@ Future<void> _ensureWeatherProviderRow(AppDatabase db) async {
             '{"units":"imperial","lang":"en","hourlyCount":6,'
             '"defaultLocation":{"name":"Default","lat":40.7128,"lon":-74.0060}}',
           ),
+        ),
+      );
+}
+
+Future<void> _ensurePexelsProviderRow(AppDatabase db) async {
+  final row =
+      await (db.select(db.providerSettings)
+            ..where((t) => t.id.equals('pexels')))
+          .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  await db.into(db.providerSettings).insert(
+        ProviderSettingsCompanion.insert(
+          id: 'pexels',
+          providerType: 'pexels',
+          enabled: const Value(true),
+          pollSeconds: const Value(1800),
+          baseUrl: const Value('https://api.pexels.com'),
+          extraJson: const Value(
+            '{"maxPhotos":100,"maxVideos":100,"photosPerHour":2,"videosPerHour":2,'
+            '"minVideoSeconds":11,"maxVideoSeconds":29,"sources":[]}',
+          ),
+        ),
+      );
+}
+
+Future<void> _ensurePexelsPhotoScreen(AppDatabase db) async {
+  final row =
+      await (db.select(db.screenDefinitions)
+            ..where((t) => t.id.equals('pexels_photo')))
+          .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  await db.into(db.screenDefinitions).insert(
+        ScreenDefinitionsCompanion.insert(
+          id: 'pexels_photo',
+          name: 'Pexels photo',
+          description: const Value('Curated / search photos from Pexels'),
+          enabled: const Value(false),
+          layoutJson: const Value(
+            '{"v":1,"layout":"single","widgets":['
+            '{"type":"pexels_photo","slot":"main","config":{}}'
+            ']}',
+          ),
+          dwellSeconds: const Value(12),
+          dataKey: const Value('pexels_photo'),
+        ),
+      );
+}
+
+Future<void> _ensurePexelsVideoScreen(AppDatabase db) async {
+  final row =
+      await (db.select(db.screenDefinitions)
+            ..where((t) => t.id.equals('pexels_video')))
+          .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  await db.into(db.screenDefinitions).insert(
+        ScreenDefinitionsCompanion.insert(
+          id: 'pexels_video',
+          name: 'Pexels video',
+          description: const Value('Popular / search videos from Pexels'),
+          enabled: const Value(false),
+          layoutJson: const Value(
+            '{"v":1,"layout":"single","widgets":['
+            '{"type":"pexels_video","slot":"main","config":{"loop":true,"unmuted":false}}'
+            ']}',
+          ),
+          dwellSeconds: const Value(25),
+          dataKey: const Value('pexels_video'),
         ),
       );
 }

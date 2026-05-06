@@ -38,63 +38,6 @@ String _chatJson(String content) {
 }
 
 void main() {
-  test('collect generates missing category icon and stores mapping', () async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
-            id: 'jokes',
-            providerType: 'jokes',
-            pollSeconds: const Value(1),
-            extraJson: const Value('{"jokesPerDay":1}'),
-            baseUrl: const Value('http://api.local/v1'),
-          ),
-        );
-    await db.into(db.jokeCategories).insert(
-          JokeCategoriesCompanion.insert(
-            id: 'dad',
-            label: 'Dad',
-          ),
-        );
-
-    final secrets = InMemorySecretStore();
-    await secrets.write('${ProviderConfigResolver.accessTokenKey}:jokes', 't');
-    final resolver = ProviderConfigResolver(db, secrets);
-    final ctx = DataWriteContextImpl(
-      db: db,
-      blobs: FakeBlobStore(),
-      secrets: secrets,
-      resolve: resolver.resolve,
-    );
-
-    final apiPayload = _chatJson(
-      jsonEncode([
-        {
-          'categoryId': 'dad',
-          'setup': 'Why did the scarecrow win?',
-          'punchline': 'He was outstanding in his field.',
-        },
-      ]),
-    );
-    final provider = JokeDataProvider(
-      httpClient: _ImageAndChatOpenAi(apiPayload),
-      now: () => DateTime(2026, 6, 1, 12),
-    );
-
-    await provider.collect(ctx);
-
-    final iconRows = await db.customSelect(
-      'SELECT category_type, category_id, blob_key '
-      'FROM category_icons WHERE category_type = ? AND category_id = ?',
-      variables: [
-        const Variable<String>('joke'),
-        const Variable<String>('dad'),
-      ],
-    ).get();
-    expect(iconRows, hasLength(1));
-    expect(iconRows.single.read<String>('blob_key'), isNotEmpty);
-  });
-
   test('collect inserts jokes from API and respects daily cap', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
@@ -198,7 +141,7 @@ void main() {
             categoryId: 'dad',
             setup: oldSetup,
             punchline: oldPunch,
-            createdAtMs: oldMs,
+            createdAtMs: DateTime.fromMillisecondsSinceEpoch(oldMs),
           ),
         );
     await db.into(db.jokes).insert(
@@ -207,7 +150,7 @@ void main() {
             categoryId: 'dad',
             setup: newSetup,
             punchline: newPunch,
-            createdAtMs: recentMs,
+            createdAtMs: DateTime.fromMillisecondsSinceEpoch(recentMs),
           ),
         );
 
@@ -259,7 +202,7 @@ void main() {
         now.subtract(const Duration(hours: 3)).millisecondsSinceEpoch;
     await db.into(db.jokeGenerationBatches).insert(
           JokeGenerationBatchesCompanion.insert(
-            requestedAtMs: oldMs,
+            requestedAtMs: DateTime.fromMillisecondsSinceEpoch(oldMs),
             jokesRequested: 10,
           ),
         );
@@ -293,7 +236,7 @@ void main() {
     final provider = JokeDataProvider(httpClient: client, now: () => now);
 
     await provider.collect(ctx);
-    expect(httpCalls, 2);
+    expect(httpCalls, 1);
     expect(await db.select(db.jokes).get(), hasLength(2));
   });
 
@@ -323,7 +266,7 @@ void main() {
             categoryId: 'solo',
             setup: 'x',
             punchline: 'y',
-            createdAtMs: t.millisecondsSinceEpoch,
+            createdAtMs: t,
           ),
         );
 
@@ -365,7 +308,7 @@ void main() {
     final t0 = DateTime(2026, 6, 1, 12).millisecondsSinceEpoch;
     await db.into(db.jokeGenerationBatches).insert(
           JokeGenerationBatchesCompanion.insert(
-            requestedAtMs: t0,
+            requestedAtMs: DateTime.fromMillisecondsSinceEpoch(t0),
             jokesRequested: 5,
           ),
         );
@@ -543,32 +486,3 @@ class _CountingOpenAi extends http.BaseClient {
   }
 }
 
-class _ImageAndChatOpenAi extends http.BaseClient {
-  _ImageAndChatOpenAi(this._chatBody);
-  final String _chatBody;
-
-  static const String _tinyPngBase64 =
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2WZ6kAAAAASUVORK5CYII=';
-
-  @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) async {
-    final path = request.url.path;
-    if (path.endsWith('/images/generations')) {
-      final body = jsonEncode({
-        'data': [
-          {'b64_json': _tinyPngBase64},
-        ],
-      });
-      return http.StreamedResponse(
-        Stream.value(utf8.encode(body)),
-        200,
-        headers: {'content-type': 'application/json'},
-      );
-    }
-    return http.StreamedResponse(
-      Stream.value(utf8.encode(_chatBody)),
-      200,
-      headers: {'content-type': 'application/json'},
-    );
-  }
-}

@@ -11,8 +11,8 @@ void main() {
     await warmDatabase(db);
     final access = DriftDashboardDataAccess(db);
     expect(await access.watchHeaderTitle().first, equals(null));
-    await db.into(db.dashboardKv).insert(
-          DashboardKvCompanion.insert(key: 'header.title', value: 'X'),
+    await db.into(db.configKeyValues).insert(
+          ConfigKeyValuesCompanion.insert(key: 'header.title', value: 'X'),
         );
     expect(await access.watchHeaderTitle().first, 'X');
     await db.close();

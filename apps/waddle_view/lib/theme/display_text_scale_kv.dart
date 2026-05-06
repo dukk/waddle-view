@@ -1,4 +1,4 @@
-/// [AppDatabase.dashboardKv] keys for semantic text scaling (screens vs ticker strip).
+/// [AppDatabase.configKeyValues] keys for semantic text scaling (screens vs ticker strip).
 const String kDisplayTextScaleScreenKvKey = 'display.text_scale.screen';
 const String kDisplayTextScaleTickerKvKey = 'display.text_scale.ticker';
 

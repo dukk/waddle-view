@@ -25,8 +25,8 @@ void main() {
             guid: 'g1',
             title: 'Headline',
             link: 'http://l',
-            publishedAt: 1,
-            fetchedAt: 1,
+            publishedAt: DateTime.fromMillisecondsSinceEpoch(1),
+            fetchedAt: DateTime.fromMillisecondsSinceEpoch(1),
           ),
         );
     final port = DriftCuratorReadPort(db);
@@ -52,8 +52,8 @@ void main() {
             guid: 'g1',
             title: 'Headline',
             link: 'http://l',
-            publishedAt: 1,
-            fetchedAt: 1,
+            publishedAt: DateTime.fromMillisecondsSinceEpoch(1),
+            fetchedAt: DateTime.fromMillisecondsSinceEpoch(1),
           ),
         );
     final port = DriftCuratorReadPort(db);

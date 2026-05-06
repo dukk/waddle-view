@@ -12,6 +12,7 @@ import 'package:shelf_router/shelf_router.dart';
 import '../alerts/alert_repository.dart';
 import '../debug/app_debug_log.dart';
 import '../persistence/database.dart';
+import '../persistence/tables.dart';
 import '../secrets/secret_store.dart';
 import '../theme/display_theme.dart';
 import '../ticker/ticker_curated_repository.dart';
@@ -49,7 +50,6 @@ Middleware apiKeyAuth(DeploymentApiKeySource keys) {
   };
 }
 
-const String kAdminBootstrapDoneKvKey = 'admin.bootstrap_done';
 const String _requireNewsPhotoForCurationKvKey =
     'curator.news.require_photo_for_curation';
 
@@ -400,13 +400,18 @@ class _AdminServer {
     final providers = await (db.select(db.providerSettings)
           ..orderBy([(t) => OrderingTerm.asc(t.id)]))
         .get();
-    final curator = await (db.select(db.curatorSettings)
-          ..where((t) => t.id.equals('app')))
-        .getSingleOrNull();
-    final kvRows = await (db.select(db.dashboardKv)
+    final kvRows = await (db.select(db.configKeyValues)
           ..orderBy([(t) => OrderingTerm.asc(t.key)]))
         .get();
     final kvMap = {for (final row in kvRows) row.key: row.value};
+    final programDurationSeconds = int.tryParse(
+          kvMap[kCuratorProgramDurationSecondsKvKey]?.trim() ?? '',
+        ) ??
+        180;
+    final historyDepth = int.tryParse(
+          kvMap[kCuratorHistoryDepthKvKey]?.trim() ?? '',
+        ) ??
+        5;
     final kvTicker = kvMap['curator.ticker.newsPixelsPerSecond'] ?? '80';
     final requireNewsPhotoForCuration =
         kvMap[_requireNewsPhotoForCurationKvKey] ?? 'true';
@@ -489,8 +494,8 @@ class _AdminServer {
 <h2>Curator</h2>
 <form method="post" action="/admin/update-curator">
 <input type="hidden" name="csrf" value="${session.csrfToken}"/>
-Program duration seconds: <input name="program_duration_seconds" value="${curator?.programDurationSeconds ?? 180}"/><br/>
-History depth: <input name="history_depth" value="${curator?.historyDepth ?? 5}"/><br/>
+Program duration seconds: <input name="program_duration_seconds" value="$programDurationSeconds"/><br/>
+History depth: <input name="history_depth" value="$historyDepth"/><br/>
 Require photo for news curation:
 <input name="require_news_photo_for_curation" type="checkbox" ${requireNewsPhotoForCuration != 'false' ? 'checked' : ''}/><br/>
 Ticker px/s: <input name="ticker_pixels_per_second" value="${_h(kvTicker)}"/><br/>
@@ -557,8 +562,8 @@ $providerRows
       return _html('Change Password', '<p>Passwords must match and be at least 12 chars.</p>', status: 400);
     }
     await keyFile.writeAsString('$password\n', flush: true);
-    await db.into(db.dashboardKv).insertOnConflictUpdate(
-          DashboardKvCompanion.insert(
+    await db.into(db.configKeyValues).insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
             key: kAdminBootstrapDoneKvKey,
             value: '1',
           ),
@@ -608,24 +613,29 @@ $providerRows
     if (duration == null || depth == null) {
       return Response(400, body: 'invalid');
     }
-    await db.into(db.curatorSettings).insertOnConflictUpdate(
-          CuratorSettingsCompanion.insert(
-            id: 'app',
-            programDurationSeconds: Value(duration),
-            historyDepth: Value(depth),
+    await db.into(db.configKeyValues).insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kCuratorProgramDurationSecondsKvKey,
+            value: '$duration',
+          ),
+        );
+    await db.into(db.configKeyValues).insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kCuratorHistoryDepthKvKey,
+            value: '$depth',
           ),
         );
     final tickerPx = (form['ticker_pixels_per_second'] ?? '').trim();
     if (tickerPx.isNotEmpty) {
-      await db.into(db.dashboardKv).insertOnConflictUpdate(
-            DashboardKvCompanion.insert(
+      await db.into(db.configKeyValues).insertOnConflictUpdate(
+            ConfigKeyValuesCompanion.insert(
               key: 'curator.ticker.newsPixelsPerSecond',
               value: tickerPx,
             ),
           );
     }
-    await db.into(db.dashboardKv).insertOnConflictUpdate(
-          DashboardKvCompanion.insert(
+    await db.into(db.configKeyValues).insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
             key: _requireNewsPhotoForCurationKvKey,
             value: form.containsKey('require_news_photo_for_curation')
                 ? 'true'
@@ -633,8 +643,8 @@ $providerRows
           ),
         );
     final themeId = normalizeDisplayThemeId(form['display_theme_id'] ?? '');
-    await db.into(db.dashboardKv).insertOnConflictUpdate(
-          DashboardKvCompanion.insert(
+    await db.into(db.configKeyValues).insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
             key: kDisplayThemeIdKvKey,
             value: themeId,
           ),
@@ -645,14 +655,14 @@ $providerRows
     final tickerTextScale = normalizeDisplayTextScaleOption(
       form['display_text_scale_ticker'] ?? '',
     );
-    await db.into(db.dashboardKv).insertOnConflictUpdate(
-          DashboardKvCompanion.insert(
+    await db.into(db.configKeyValues).insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
             key: kDisplayTextScaleScreenKvKey,
             value: screenTextScale,
           ),
         );
-    await db.into(db.dashboardKv).insertOnConflictUpdate(
-          DashboardKvCompanion.insert(
+    await db.into(db.configKeyValues).insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
             key: kDisplayTextScaleTickerKvKey,
             value: tickerTextScale,
           ),
@@ -702,7 +712,7 @@ $providerRows
   }
 
   Future<bool> _isBootstrapDone() async {
-    final row = await (db.select(db.dashboardKv)
+    final row = await (db.select(db.configKeyValues)
           ..where((t) => t.key.equals(kAdminBootstrapDoneKvKey)))
         .getSingleOrNull();
     return row?.value == '1';

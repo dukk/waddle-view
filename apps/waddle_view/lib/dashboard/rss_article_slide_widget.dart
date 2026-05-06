@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -82,7 +81,7 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
   static const _scrollableEpsilon = 8.0;
 
   RssArticle? _article;
-  Uint8List? _imageBytes;
+  RssArticleImageLoad _imageLoad = const RssArticleImageLoad.absent();
   bool _loading = true;
   final ScrollController _scroll = ScrollController();
   Timer? _scrollDelayTimer;
@@ -120,16 +119,16 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
       widget.spec.choiceKey,
       const {},
     );
-    Uint8List? bytes;
+    RssArticleImageLoad load = const RssArticleImageLoad.absent();
     if (article != null) {
-      bytes = await loadRssArticleImageBytes(widget.db, widget.blobs, article);
+      load = await loadRssArticleImage(widget.db, widget.blobs, article);
     }
     if (!mounted) {
       return;
     }
     setState(() {
       _article = article;
-      _imageBytes = bytes;
+      _imageLoad = load;
       _loading = false;
     });
   }
@@ -159,7 +158,10 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
   }
 
   void _scheduleMetricsHook() {
-    if (!mounted || _article == null || _dwellReported || _scrollMetricsHookStarted) {
+    if (!mounted ||
+        _article == null ||
+        _dwellReported ||
+        _scrollMetricsHookStarted) {
       return;
     }
     _scrollMetricsHookStarted = true;
@@ -262,7 +264,7 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
               style: theme.textTheme.titleMedium,
               textAlign: TextAlign.center,
             ),
-            _articleLinkQr(theme, s, article.link),
+            _articleLinkQr(theme, s, article.link, standalone: true),
           ],
         ),
       );
@@ -286,8 +288,7 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
         if (!w.isFinite || !h.isFinite || w <= 0 || h <= 0) {
           return const SizedBox.shrink();
         }
-        final imageW =
-            (w * _imageFraction).clamp(120.0 * s, w * 0.55);
+        final imageW = (w * _imageFraction).clamp(120.0 * s, w * 0.55);
         final imagePanel = SizedBox(
           key: const Key('rss_article_image_panel'),
           width: imageW,
@@ -301,15 +302,19 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(11 * s),
-              child: _imageBytes != null
+              child: _imageLoad.bytes != null
                   ? Image.memory(
-                      _imageBytes!,
+                      _imageLoad.bytes!,
                       fit: BoxFit.cover,
                       gaplessPlayback: true,
                       errorBuilder: (context, error, stackTrace) =>
-                          _imagePlaceholder(theme, s),
+                          _imagePlaceholder(theme, s, blobReadFailed: false),
                     )
-                  : _imagePlaceholder(theme, s),
+                  : _imagePlaceholder(
+                      theme,
+                      s,
+                      blobReadFailed: _imageLoad.blobReadFailed,
+                    ),
             ),
           ),
         );
@@ -331,22 +336,13 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
               if (title.isNotEmpty && summary.isNotEmpty)
                 SizedBox(height: 12 * s),
               Expanded(
-                child: summary.isEmpty
-                    ? const SizedBox.shrink()
-                    : Scrollbar(
-                        controller: _scroll,
-                        thumbVisibility: true,
-                        child: SingleChildScrollView(
-                          key: const Key('rss_article_summary_scroll'),
-                          controller: _scroll,
-                          child: Text(
-                            summary,
-                            style: theme.textTheme.bodyLarge,
-                          ),
-                        ),
-                      ),
+                child: _summaryAndOptionalQrRow(
+                  theme: theme,
+                  s: s,
+                  summary: summary,
+                  link: article.link,
+                ),
               ),
-              _articleLinkQr(theme, s, article.link),
             ],
           ),
         );
@@ -367,12 +363,67 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
     );
   }
 
-  static Widget _imagePlaceholder(ThemeData theme, double s) {
+  Widget _summaryAndOptionalQrRow({
+    required ThemeData theme,
+    required double s,
+    required String summary,
+    required String link,
+  }) {
+    final url = link.trim();
+    if (url.isEmpty) {
+      if (summary.isEmpty) {
+        return const SizedBox.shrink();
+      }
+      return Scrollbar(
+        controller: _scroll,
+        thumbVisibility: true,
+        child: SingleChildScrollView(
+          key: const Key('rss_article_summary_scroll'),
+          controller: _scroll,
+          child: Text(
+            summary,
+            style: theme.textTheme.bodyLarge,
+          ),
+        ),
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: summary.isEmpty
+              ? const SizedBox.shrink()
+              : Scrollbar(
+                  controller: _scroll,
+                  thumbVisibility: true,
+                  child: SingleChildScrollView(
+                    key: const Key('rss_article_summary_scroll'),
+                    controller: _scroll,
+                    child: Text(
+                      summary,
+                      style: theme.textTheme.bodyLarge,
+                    ),
+                  ),
+                ),
+        ),
+        if (summary.isNotEmpty) SizedBox(width: 12 * s),
+        _articleLinkQr(theme, s, link),
+      ],
+    );
+  }
+
+  static Widget _imagePlaceholder(
+    ThemeData theme,
+    double s, {
+    required bool blobReadFailed,
+  }) {
     return ColoredBox(
       color: theme.colorScheme.surfaceContainerHighest,
       child: Center(
         child: Icon(
-          Icons.image_not_supported_outlined,
+          blobReadFailed
+              ? Icons.no_photography
+              : Icons.image_not_supported_outlined,
           size: 56 * s,
           color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
         ),
@@ -381,35 +432,50 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
   }
 
   /// QR encoding the article URL for phone cameras. Omits when [link] is empty.
-  static Widget _articleLinkQr(ThemeData theme, double s, String link) {
+  ///
+  /// When [standalone] is true (e.g. no body text), the code is right-aligned
+  /// with top padding. When false, the caller places this in a [Row] beside
+  /// the article summary so text wraps in the remaining width.
+  static Widget _articleLinkQr(
+    ThemeData theme,
+    double s,
+    String link, {
+    bool standalone = false,
+  }) {
     final url = link.trim();
     if (url.isEmpty) {
       return const SizedBox.shrink();
     }
-    return Align(
-      alignment: Alignment.centerRight,
+    const qrLogical = 176.0;
+    final innerPad = 8 * s;
+    final box = DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8 * s),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.3),
+        ),
+      ),
       child: Padding(
-        padding: EdgeInsets.only(top: 10 * s),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8 * s),
-            border: Border.all(
-              color: theme.colorScheme.outline.withValues(alpha: 0.3),
-            ),
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(6 * s),
-            child: QrImageView(
-              key: const Key('rss_article_link_qr'),
-              data: url,
-              version: QrVersions.auto,
-              size: 88 * s,
-              gapless: true,
-            ),
-          ),
+        padding: EdgeInsets.all(innerPad),
+        child: QrImageView(
+          key: const Key('rss_article_link_qr'),
+          data: url,
+          version: QrVersions.auto,
+          size: qrLogical * s,
+          gapless: true,
         ),
       ),
     );
+    if (standalone) {
+      return Align(
+        alignment: Alignment.centerRight,
+        child: Padding(
+          padding: EdgeInsets.only(top: 10 * s),
+          child: box,
+        ),
+      );
+    }
+    return box;
   }
 }

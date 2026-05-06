@@ -4,7 +4,6 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -31,13 +30,14 @@ import 'dashboard/screen_rotator.dart';
 import 'data/data_write_context.dart';
 import 'data/engine/data_collection_engine.dart';
 import 'data/providers/joke_data_provider.dart';
+import 'data/providers/pexels_data_provider.dart';
 import 'data/providers/rss_news_data_provider.dart';
 import 'data/providers/trivia_data_provider.dart';
 import 'data/providers/weather_data_provider.dart';
-import 'data/providers/category_icon_service.dart';
 import 'data/stub_data_provider.dart';
 import 'marquee_cycle_gate.dart';
 import 'persistence/database.dart';
+import 'persistence/tables.dart';
 import 'secrets/flutter_secure_secret_store.dart';
 import 'seed/initial_seed.dart';
 import 'sleeper.dart';
@@ -51,9 +51,9 @@ import 'window/startup_window_policy.dart';
 import 'window/window_chrome_controller.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  installGlobalFatalErrorHandlers();
   runZonedGuarded(() {
+    WidgetsFlutterBinding.ensureInitialized();
+    installGlobalFatalErrorHandlers();
     unawaited(_waddleBootstrap());
   }, onZoneFatalError);
 }
@@ -81,19 +81,19 @@ Future<void> _waddleBootstrap() async {
     final db = AppDatabase(createQueryExecutor());
     await ensureInitialSeed(db);
     if (createdDeploymentKey) {
-      await db.into(db.dashboardKv).insertOnConflictUpdate(
-            DashboardKvCompanion.insert(
+      await db.into(db.configKeyValues).insertOnConflictUpdate(
+            ConfigKeyValuesCompanion.insert(
               key: kAdminBootstrapDoneKvKey,
               value: '0',
             ),
           );
     } else {
-      final existing = await (db.select(db.dashboardKv)
+      final existing = await (db.select(db.configKeyValues)
             ..where((t) => t.key.equals(kAdminBootstrapDoneKvKey)))
           .getSingleOrNull();
       if (existing == null) {
-        await db.into(db.dashboardKv).insertOnConflictUpdate(
-              DashboardKvCompanion.insert(
+        await db.into(db.configKeyValues).insertOnConflictUpdate(
+              ConfigKeyValuesCompanion.insert(
                 key: kAdminBootstrapDoneKvKey,
                 value: '1',
               ),
@@ -113,13 +113,6 @@ Future<void> _waddleBootstrap() async {
       resolve: resolver.resolve,
     );
     const clock = SystemClock();
-    final iconPreloadClient = http.Client();
-    await preloadSeedCategoryIcons(
-      ctx: ctx,
-      httpClient: iconPreloadClient,
-      perTypeLimit: 3,
-    );
-    iconPreloadClient.close();
     final tickerCurated = MemoryTickerCuratedRepository();
     final marqueeCycleGate = MarqueeCycleGate();
     final dashboardCuratorInner = DefaultDashboardCurator(
@@ -141,6 +134,7 @@ Future<void> _waddleBootstrap() async {
         JokeDataProvider(),
         TriviaDataProvider(),
         WeatherDataProvider(),
+        PexelsDataProvider(),
       ],
       context: ctx,
       sleeper: SystemSleeper(),
@@ -226,10 +220,10 @@ class WaddleRoot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<DashboardKvData>>(
-      stream: db.select(db.dashboardKv).watch(),
+    return StreamBuilder<List<ConfigKeyValue>>(
+      stream: db.select(db.configKeyValues).watch(),
       builder: (context, snapshot) {
-        final rows = snapshot.data ?? const <DashboardKvData>[];
+        final rows = snapshot.data ?? const <ConfigKeyValue>[];
         final kv = {for (final r in rows) r.key: r.value};
         final theme = DisplayTheme.buildFromKvValue(kv[kDisplayThemeIdKvKey]);
         return MaterialApp(
@@ -343,7 +337,7 @@ class _WaddleHomeState extends State<WaddleHome> {
   }
 }
 
-/// [TickerMarquee] scroll speed from `curator.ticker.newsPixelsPerSecond` in [DashboardKvData].
+/// [TickerMarquee] scroll speed from `curator.ticker.newsPixelsPerSecond` in [ConfigKeyValue].
 class _KvAwareMarquee extends StatelessWidget {
   const _KvAwareMarquee({
     required this.db,
@@ -357,10 +351,10 @@ class _KvAwareMarquee extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<DashboardKvData>>(
-      stream: db.select(db.dashboardKv).watch(),
+    return StreamBuilder<List<ConfigKeyValue>>(
+      stream: db.select(db.configKeyValues).watch(),
       builder: (context, snapshot) {
-        final rows = snapshot.data ?? const <DashboardKvData>[];
+        final rows = snapshot.data ?? const <ConfigKeyValue>[];
         final m = {for (final r in rows) r.key: r.value};
         final px =
             double.tryParse(

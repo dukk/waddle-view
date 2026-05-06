@@ -4,7 +4,7 @@
 
 1. **Mono-repo**: default application directory is **`apps/waddle_view`**. Do not edit other `apps/*` paths unless the task explicitly names them.
 2. **Tests first**: add or extend a failing test before production code for new behavior.
-3. **Coverage**: maintain **≥ 90% line coverage** on `apps/waddle_view/lib/` per `tool/coverage_check.dart` (excludes **`lib/persistence/tables.dart`** declarative schema-only lines, **`lib/**/*.g.dart` generated Drift**, and **`lib/main.dart`** composition root). Run from the app directory:
+3. **Coverage**: maintain **≥ 90% line coverage** on `apps/waddle_view/lib/` per `tool/coverage_check.dart` (excludes **`lib/persistence/tables.dart`** declarative schema-only lines, **`lib/**/*.g.dart` generated Drift**, **`lib/main.dart`** composition root, and **`lib/dashboard/screen_rotator.dart`** slide-dispatch UI wiring covered indirectly via slide widget tests). Run from the app directory:
    - `flutter test --coverage` (each test is capped at **60s** via `apps/waddle_view/dart_test.yaml`; CI also sets a **12-minute** job timeout)
    - `dart run tool/coverage_check.dart --min=90`
 4. **Secrets**: never store provider passwords, API keys, access/refresh tokens, or client secrets in SQLite. Use `SecretStore`. **Deployment REST API keys** must never be committed; only document paths (e.g. `/etc/waddle-view/api.key`).

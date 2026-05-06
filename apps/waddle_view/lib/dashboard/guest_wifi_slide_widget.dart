@@ -6,7 +6,7 @@ import '../persistence/database.dart';
 import 'wifi_connection_uri.dart';
 import 'dashboard_viewport_scope.dart';
 
-/// Full-slide widget: QR + SSID / security / password from [dashboard_kv].
+/// Full-slide widget: QR + SSID / security / password from [config_key_values].
 class GuestWifiSlideWidget extends StatelessWidget {
   const GuestWifiSlideWidget({
     super.key,
@@ -24,8 +24,8 @@ class GuestWifiSlideWidget extends StatelessWidget {
     final kvKey = spec.config['kvKey'] as String? ?? kGuestWifiDashboardKvKey;
     final headline = spec.config['headline'] as String? ?? 'Guest WiFi';
 
-    return StreamBuilder<DashboardKvData?>(
-      stream: (db.select(db.dashboardKv)..where((t) => t.key.equals(kvKey)))
+    return StreamBuilder<ConfigKeyValue?>(
+      stream: (db.select(db.configKeyValues)..where((t) => t.key.equals(kvKey)))
           .watchSingleOrNull(),
       builder: (context, snapshot) {
         final raw = snapshot.data?.value;

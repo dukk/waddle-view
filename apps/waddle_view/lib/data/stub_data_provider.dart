@@ -13,27 +13,27 @@ class StubDataProvider implements IDataProvider {
   @override
   Future<void> collect(DataWriteContext ctx) async {
     await ctx.db
-        .into(ctx.db.dashboardKv)
+        .into(ctx.db.configKeyValues)
         .insertOnConflictUpdate(
-          DashboardKvCompanion.insert(
+          ConfigKeyValuesCompanion.insert(
             key: 'header.title',
             value: 'Waddle View',
           ),
         );
-    await ctx.db.into(ctx.db.dashboardKv).insertOnConflictUpdate(
-          DashboardKvCompanion.insert(
+    await ctx.db.into(ctx.db.configKeyValues).insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
             key: 'ticker.marquee.weather',
             value: '72°F · Sunny',
           ),
         );
-    await ctx.db.into(ctx.db.dashboardKv).insertOnConflictUpdate(
-          DashboardKvCompanion.insert(
+    await ctx.db.into(ctx.db.configKeyValues).insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
             key: 'ticker.marquee.news',
             value: 'Local headlines refresh with each collect',
           ),
         );
-    await ctx.db.into(ctx.db.dashboardKv).insertOnConflictUpdate(
-          DashboardKvCompanion.insert(
+    await ctx.db.into(ctx.db.configKeyValues).insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
             key: 'ticker.marquee.quote',
             value: 'WADDLE +1.2%',
           ),
@@ -49,7 +49,7 @@ class StubDataProvider implements IDataProvider {
         relativePath: ref.storageKey,
         bytes: 2,
         mimeType: const Value('application/octet-stream'),
-        capturedAt: DateTime.now().millisecondsSinceEpoch,
+        capturedAt: DateTime.now(),
       ),
     );
     AppDebugLog.engine('StubDataProvider.collect finished');

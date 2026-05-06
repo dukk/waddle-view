@@ -211,7 +211,7 @@ void main() {
             id: 'f1',
             url: 'http://test.local/feed.xml',
             pollSeconds: const Value(60),
-            lastFetchedAt: const Value(last),
+            lastFetchedAt: Value(DateTime.fromMillisecondsSinceEpoch(last)),
             maxArticles: const Value(5),
           ),
         );

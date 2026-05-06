@@ -30,8 +30,12 @@ class DriftAlertRepository implements AlertRepository {
             qrPayload: Value(qrPayload),
             severity: Value(severity),
             priority: Value(priority),
-            createdAt: DateTime.now().millisecondsSinceEpoch,
-            expiresAt: Value(expiresAtMs),
+            createdAt: DateTime.now(),
+            expiresAt: Value(
+              expiresAtMs == null
+                  ? null
+                  : DateTime.fromMillisecondsSinceEpoch(expiresAtMs),
+            ),
           ),
         );
     return id;
@@ -42,7 +46,7 @@ class DriftAlertRepository implements AlertRepository {
     await (_db.update(_db.dashboardAlerts)..where((t) => t.id.equals(id)))
         .write(
           DashboardAlertsCompanion(
-            dismissedAt: Value(DateTime.now().millisecondsSinceEpoch),
+            dismissedAt: Value(DateTime.now()),
           ),
         );
   }

@@ -7,19 +7,20 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 
 import '../debug/app_debug_log.dart';
+import 'content_category_defaults.dart';
 import 'tables.dart';
 
 part 'database.g.dart';
 
 @DriftDatabase(
   tables: [
+    ContentCategories,
     ProviderSettings,
     BlobMetadata,
     DashboardAlerts,
-    DashboardKv,
+    ConfigKeyValues,
     ScreenDefinitions,
     CuratorDataKeyProgramLimits,
-    CuratorSettings,
     RssFeedSources,
     RssArticles,
     JokeCategories,
@@ -31,33 +32,21 @@ part 'database.g.dart';
     CalendarEvents,
     WeatherLocations,
     WeatherCurrentData,
+    Photos,
+    Videos,
+    PexelsFetchBatches,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 19;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator m) async {
       await m.createAll();
-      await customStatement('''
-CREATE TABLE IF NOT EXISTS category_icons (
-  category_type TEXT NOT NULL,
-  category_id TEXT NOT NULL,
-  blob_key TEXT NOT NULL,
-  prompt TEXT NULL,
-  generated_by TEXT NOT NULL DEFAULT 'manual',
-  updated_at_ms INTEGER NOT NULL,
-  PRIMARY KEY (category_type, category_id)
-);
-''');
-      await customStatement(
-        'CREATE INDEX IF NOT EXISTS idx_category_icons_blob_key '
-        'ON category_icons(blob_key);',
-      );
       await customStatement('''
 CREATE VIEW IF NOT EXISTS v_dashboard_alert_active_candidates AS
 SELECT *
@@ -80,7 +69,13 @@ ORDER BY priority DESC, created_at DESC;
       }
       if (from < 6) {
         await m.createTable(screenDefinitions);
-        await m.createTable(curatorSettings);
+        await customStatement('''
+CREATE TABLE IF NOT EXISTS curator_settings (
+  id TEXT NOT NULL PRIMARY KEY,
+  program_duration_ms INTEGER NOT NULL DEFAULT 180000,
+  history_depth INTEGER NOT NULL DEFAULT 5
+);
+''');
       }
       if (from < 7) {
         await m.createTable(jokeCategories);
@@ -119,23 +114,6 @@ ORDER BY priority DESC, created_at DESC;
         await m.createTable(weatherLocations);
         await m.createTable(weatherCurrentData);
       }
-      if (from < 13) {
-        await customStatement('''
-CREATE TABLE IF NOT EXISTS category_icons (
-  category_type TEXT NOT NULL,
-  category_id TEXT NOT NULL,
-  blob_key TEXT NOT NULL,
-  prompt TEXT NULL,
-  generated_by TEXT NOT NULL DEFAULT 'manual',
-  updated_at_ms INTEGER NOT NULL,
-  PRIMARY KEY (category_type, category_id)
-);
-''');
-        await customStatement(
-          'CREATE INDEX IF NOT EXISTS idx_category_icons_blob_key '
-          'ON category_icons(blob_key);',
-        );
-      }
       if (from < 14) {
         await customStatement(
           'ALTER TABLE screen_definitions RENAME COLUMN dwell_ms TO dwell_seconds;',
@@ -161,6 +139,94 @@ CREATE TABLE IF NOT EXISTS category_icons (
           'WHEN program_duration_seconds <= 0 THEN 1 '
           'ELSE CAST((program_duration_seconds + 999) / 1000 AS INTEGER) END;',
         );
+      }
+      if (from < 15) {
+        await customStatement(
+          'DROP INDEX IF EXISTS idx_category_icons_blob_key;',
+        );
+        await customStatement('DROP TABLE IF EXISTS category_icons;');
+      }
+      if (from < 16) {
+        await customStatement('''
+INSERT OR REPLACE INTO dashboard_kv (key, value)
+SELECT '$kCuratorProgramDurationSecondsKvKey', CAST(program_duration_seconds AS TEXT)
+FROM curator_settings WHERE id = 'app';
+''');
+        await customStatement('''
+INSERT OR REPLACE INTO dashboard_kv (key, value)
+SELECT '$kCuratorHistoryDepthKvKey', CAST(history_depth AS TEXT)
+FROM curator_settings WHERE id = 'app';
+''');
+        await customStatement('DROP TABLE IF EXISTS curator_settings;');
+        await customStatement(
+          'ALTER TABLE dashboard_kv RENAME TO config_key_values;',
+        );
+      }
+      if (from < 17) {
+        await m.createTable(photos);
+        await m.createTable(videos);
+        await m.createTable(pexelsFetchBatches);
+      }
+      if (from < 18) {
+        final legacyTables = await customSelect(
+          "SELECT name FROM sqlite_master WHERE type='table' "
+          "AND name IN ('pexels_photos','pexels_videos')",
+        ).get();
+        final legacy =
+            legacyTables.map((r) => r.read<String>('name')).toSet();
+        if (legacy.contains('pexels_photos')) {
+          await customStatement('ALTER TABLE pexels_photos RENAME TO photos;');
+          await customStatement(
+            "ALTER TABLE photos ADD COLUMN data_provider TEXT NOT NULL DEFAULT '$kMediaDataProviderPexels';",
+          );
+          await customStatement(
+            'DROP INDEX IF EXISTS idx_pexels_photos_fetched;',
+          );
+          await customStatement(
+            'DROP INDEX IF EXISTS idx_pexels_photos_category;',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_photos_fetched ON photos (fetched_at_ms);',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_photos_category ON photos (category);',
+          );
+        }
+        if (legacy.contains('pexels_videos')) {
+          await customStatement('ALTER TABLE pexels_videos RENAME TO videos;');
+          await customStatement(
+            "ALTER TABLE videos ADD COLUMN data_provider TEXT NOT NULL DEFAULT '$kMediaDataProviderPexels';",
+          );
+          await customStatement(
+            'DROP INDEX IF EXISTS idx_pexels_videos_fetched;',
+          );
+          await customStatement(
+            'DROP INDEX IF EXISTS idx_pexels_videos_category;',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_videos_fetched ON videos (fetched_at_ms);',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_videos_category ON videos (category);',
+          );
+        }
+      }
+      if (from < 19) {
+        await m.createTable(contentCategories);
+        for (final d in kContentCategoryDefaults) {
+          await into(contentCategories).insert(
+            ContentCategoriesCompanion.insert(
+              id: d.id,
+              label: d.label,
+              iconBlobKey: d.iconBlobKey == null
+                  ? const Value.absent()
+                  : Value(d.iconBlobKey),
+              materialIconName: d.materialIconName == null
+                  ? const Value.absent()
+                  : Value(d.materialIconName),
+            ),
+          );
+        }
       }
     },
     beforeOpen: (details) async {

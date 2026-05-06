@@ -11,7 +11,7 @@ class DriftCuratorReadPort implements CuratorReadPort {
 
   @override
   Future<Map<String, String>> loadKeyValuesForCuration() async {
-    final rows = await _db.select(_db.dashboardKv).get();
+    final rows = await _db.select(_db.configKeyValues).get();
     return {for (final r in rows) r.key: r.value};
   }
 
@@ -32,7 +32,7 @@ class DriftCuratorReadPort implements CuratorReadPort {
           feedName: _tickerLabelForFeed(feedById[a.feedId]),
           title: a.title,
           summary: a.summary,
-          publishedAtMs: a.publishedAt,
+          publishedAtMs: a.publishedAt.millisecondsSinceEpoch,
         ),
     ];
   }

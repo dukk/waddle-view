@@ -33,8 +33,8 @@ Future<void> _insertArticle(
           title: title,
           link: 'http://test.local/$id',
           summary: Value(summary),
-          publishedAt: 1,
-          fetchedAt: 1,
+          publishedAt: DateTime.fromMillisecondsSinceEpoch(1),
+          fetchedAt: DateTime.fromMillisecondsSinceEpoch(1),
         ),
       );
 }

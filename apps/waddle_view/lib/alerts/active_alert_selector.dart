@@ -6,14 +6,13 @@ class ActiveAlertSelector {
   const ActiveAlertSelector();
 
   DashboardAlert? pick(List<DashboardAlert> rows, DateTime now) {
-    final nowMs = now.millisecondsSinceEpoch;
     DashboardAlert? best;
     for (final r in rows) {
       if (r.dismissedAt != null) {
         continue;
       }
       final exp = r.expiresAt;
-      if (exp != null && exp <= nowMs) {
+      if (exp != null && !exp.isAfter(now)) {
         continue;
       }
       if (best == null) {
@@ -23,7 +22,7 @@ class ActiveAlertSelector {
       if (r.priority > best.priority) {
         best = r;
       } else if (r.priority == best.priority &&
-          r.createdAt > best.createdAt) {
+          r.createdAt.isAfter(best.createdAt)) {
         best = r;
       }
     }

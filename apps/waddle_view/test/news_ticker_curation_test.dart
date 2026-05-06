@@ -145,6 +145,34 @@ void main() {
     expect(news.rss!.summary, '');
   });
 
+  test('buildTickerItemsForMarquee appends sorted custom marquee keys', () {
+    final t = DateTime(2026, 3, 4, 9, 8, 7);
+    final ms = DateTime.utc(2026, 1, 1).millisecondsSinceEpoch;
+    final items = buildTickerItemsForMarquee(
+      kv: {
+        'ticker.marquee.weather': 'W',
+        'ticker.marquee.extra_z': 'Z',
+        'ticker.marquee.extra_a': 'A',
+        'ticker.marquee.extra_blank': '   ',
+        'curator.ticker.newsScrollBudgetSeconds': '10000',
+        'curator.ticker.newsCharWidthPx': '1',
+        'curator.ticker.newsSeparatorPaddingPx': '0',
+      },
+      nowLocal: t,
+      newsCandidates: [
+        TickerNewsCandidate(
+          feedId: 'fx',
+          feedName: 'F',
+          title: 'T',
+          publishedAtMs: ms,
+        ),
+      ],
+    );
+    final customs =
+        items.where((e) => e.kind == 'custom').map((e) => e.body).toList();
+    expect(customs, ['A', 'Z']);
+  });
+
   test('pickNewsTickerItemsByWidthBudget attaches summary to body and rss', () {
     final cfg = CuratorTickerConfig(
       newsScrollBudgetSeconds: 10000,
@@ -189,5 +217,21 @@ void main() {
       config: cfg,
     );
     expect(items.single.body, '[BBC World] Headline');
+  });
+
+  test('CuratorTickerConfig.fromKv parses numeric and bool overrides', () {
+    final c = CuratorTickerConfig.fromKv({
+      'curator.ticker.newsScrollBudgetSeconds': ' 400 ',
+      'curator.ticker.newsPixelsPerSecond': '92',
+      'curator.ticker.newsCharWidthPx': '11.25',
+      'curator.ticker.newsSeparatorPaddingPx': '18',
+      'curator.ticker.newsPrefixCategory': '0',
+    });
+    expect(c.newsScrollBudgetSeconds, 400);
+    expect(c.newsPixelsPerSecond, 92);
+    expect(c.newsCharWidthPx, 11.25);
+    expect(c.newsSeparatorPaddingPx, 18);
+    expect(c.newsPrefixCategory, isFalse);
+    expect(c.newsScrollBudgetPx, 400 * 92.0);
   });
 }

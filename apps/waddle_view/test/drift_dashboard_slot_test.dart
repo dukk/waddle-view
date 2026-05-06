@@ -11,8 +11,8 @@ void main() {
     await warmDatabase(db);
     final access = DriftDashboardDataAccess(db);
     expect(await access.watchSlotSubtitle('x').first, equals(null));
-    await db.into(db.dashboardKv).insert(
-          DashboardKvCompanion.insert(key: 'slot.x.subtitle', value: 'S'),
+    await db.into(db.configKeyValues).insert(
+          ConfigKeyValuesCompanion.insert(key: 'slot.x.subtitle', value: 'S'),
         );
     expect(await access.watchSlotSubtitle('x').first, 'S');
     await db.close();

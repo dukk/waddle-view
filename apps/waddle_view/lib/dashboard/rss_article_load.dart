@@ -21,23 +21,26 @@ Future<RssArticle?> loadRssArticleForSlideChoice(
   if (curatedId != null &&
       curatedId.isNotEmpty &&
       !excludeArticleIds.contains(curatedId)) {
-    return (db.select(db.rssArticles)..where((t) => t.id.equals(curatedId)))
-        .getSingleOrNull();
+    return (db.select(
+      db.rssArticles,
+    )..where((t) => t.id.equals(curatedId))).getSingleOrNull();
   }
   final feedId = spec.config['feedId'] as String?;
   final q = db.select(db.rssArticles);
   if (feedId != null && feedId.isNotEmpty) {
     q.where((t) => t.feedId.equals(feedId));
   }
-  final articles = await (q
-        ..orderBy([
-          (t) => OrderingTerm.desc(t.publishedAt),
-          (t) => OrderingTerm.desc(t.fetchedAt),
-        ])
-        ..limit(200))
-      .get();
-  final filtered =
-      articles.where((a) => !excludeArticleIds.contains(a.id)).toList();
+  final articles =
+      await (q
+            ..orderBy([
+              (t) => OrderingTerm.desc(t.publishedAt),
+              (t) => OrderingTerm.desc(t.fetchedAt),
+            ])
+            ..limit(200))
+          .get();
+  final filtered = articles
+      .where((a) => !excludeArticleIds.contains(a.id))
+      .toList();
   if (filtered.isEmpty) {
     return null;
   }
@@ -48,9 +51,9 @@ Future<RssArticle?> loadRssArticleForSlideChoice(
   };
   final qualityByBlobKey = <String, int>{};
   if (imageKeys.isNotEmpty) {
-    final blobs = await (db.select(db.blobMetadata)
-          ..where((t) => t.blobKey.isIn(imageKeys.toList())))
-        .get();
+    final blobs = await (db.select(
+      db.blobMetadata,
+    )..where((t) => t.blobKey.isIn(imageKeys.toList()))).get();
     for (final b in blobs) {
       qualityByBlobKey[b.blobKey] = b.bytes;
     }
@@ -72,24 +75,46 @@ Future<RssArticle?> loadRssArticleForSlideChoice(
   return filtered.first;
 }
 
-Future<Uint8List?> loadRssArticleImageBytes(
+/// Result of loading an RSS article thumbnail from [BlobStore].
+final class RssArticleImageLoad {
+  /// No image reference, missing metadata, or empty file on disk.
+  const RssArticleImageLoad.absent() : bytes = null, blobReadFailed = false;
+
+  const RssArticleImageLoad.ok(Uint8List data)
+    : bytes = data,
+      blobReadFailed = false;
+
+  /// [BlobStore.readBytes] threw (for example I/O or missing backing file).
+  const RssArticleImageLoad.blobReadFailed()
+    : bytes = null,
+      blobReadFailed = true;
+
+  final Uint8List? bytes;
+  final bool blobReadFailed;
+}
+
+Future<RssArticleImageLoad> loadRssArticleImage(
   AppDatabase db,
   BlobStore blobs,
   RssArticle article,
 ) async {
   final key = article.imageBlobKey;
   if (key == null || key.isEmpty) {
-    return null;
+    return const RssArticleImageLoad.absent();
   }
-  final meta = await (db.select(db.blobMetadata)
-        ..where((t) => t.blobKey.equals(key)))
-      .getSingleOrNull();
+  final meta = await (db.select(
+    db.blobMetadata,
+  )..where((t) => t.blobKey.equals(key))).getSingleOrNull();
   if (meta == null) {
-    return null;
+    return const RssArticleImageLoad.absent();
   }
-  final raw = await blobs.readBytes(BlobRef(meta.relativePath));
-  if (raw.isEmpty) {
-    return null;
+  try {
+    final raw = await blobs.readBytes(BlobRef(meta.relativePath));
+    if (raw.isEmpty) {
+      return const RssArticleImageLoad.absent();
+    }
+    return RssArticleImageLoad.ok(Uint8List.fromList(raw));
+  } catch (_) {
+    return const RssArticleImageLoad.blobReadFailed();
   }
-  return Uint8List.fromList(raw);
 }

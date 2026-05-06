@@ -1,8 +1,14 @@
+import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:waddle_view/persistence/database.dart';
 
 AppDatabase openMemoryDatabase() {
-  return AppDatabase(NativeDatabase.memory());
+  return AppDatabase(
+    DatabaseConnection(
+      NativeDatabase.memory(),
+      closeStreamsSynchronously: true,
+    ),
+  );
 }
 
 Future<void> warmDatabase(AppDatabase db) async {

@@ -18,7 +18,7 @@ class BlobMetadata extends Table {
   TextColumn get relativePath => text()();
   IntColumn get bytes => integer()();
   TextColumn get mimeType => text().nullable()();
-  IntColumn get capturedAt => integer()();
+  DateTimeColumn get capturedAt => dateTime()();
 
   @override
   Set<Column<Object>> get primaryKey => {blobKey};
@@ -31,18 +31,40 @@ class DashboardAlerts extends Table {
   TextColumn get qrPayload => text().nullable()();
   TextColumn get severity => text().withDefault(const Constant('info'))();
   IntColumn get priority => integer().withDefault(const Constant(0))();
-  IntColumn get createdAt => integer()();
-  IntColumn get expiresAt => integer().nullable()();
-  IntColumn get dismissedAt => integer().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get expiresAt => dateTime().nullable()();
+  DateTimeColumn get dismissedAt => dateTime().nullable()();
   TextColumn get source => text().withDefault(const Constant('api'))();
 }
 
-class DashboardKv extends Table {
+/// App configuration and dashboard key–value settings (table `config_key_values`).
+class ConfigKeyValues extends Table {
   TextColumn get key => text()();
   TextColumn get value => text()();
 
   @override
   Set<Column<Object>> get primaryKey => {key};
+}
+
+const String kCuratorProgramDurationSecondsKvKey =
+    'curator.program.durationSeconds';
+const String kCuratorHistoryDepthKvKey = 'curator.program.historyDepth';
+const String kAdminBootstrapDoneKvKey = 'admin.bootstrap_done';
+
+/// Shared category ids for RSS feeds, Pexels photos/videos, jokes, and trivia
+/// ([RssFeedSources.category], [Photos.category], [Videos.category], and category
+/// ids on [JokeCategories] / [TriviaCategories] use the same string keys).
+///
+/// Icon: set [materialIconName] (resolved in app code) and/or [iconBlobKey] for a
+/// custom image in blob storage.
+class ContentCategories extends Table {
+  TextColumn get id => text()();
+  TextColumn get label => text()();
+  TextColumn get iconBlobKey => text().nullable()();
+  TextColumn get materialIconName => text().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
 }
 
 /// TV display screen definition (layout + scheduling hints). Runtime curation is in memory.
@@ -77,28 +99,16 @@ class CuratorDataKeyProgramLimits extends Table {
   Set<Column<Object>> get primaryKey => {dataKey};
 }
 
-/// Single app row (id = [kCuratorSettingsId]) for screen program parameters.
-class CuratorSettings extends Table {
-  TextColumn get id => text()();
-  IntColumn get programDurationSeconds =>
-      integer().withDefault(const Constant(180))();
-  IntColumn get historyDepth => integer().withDefault(const Constant(5))();
-
-  @override
-  Set<Column<Object>> get primaryKey => {id};
-}
-
-const String kCuratorSettingsId = 'app';
-
 class RssFeedSources extends Table {
   TextColumn get id => text()();
   TextColumn get url => text()();
+  /// Slug matching [ContentCategories.id] (seeded in [ContentCategories]).
   TextColumn get category => text().withDefault(const Constant('general'))();
   IntColumn get pollSeconds =>
       integer().withDefault(const Constant(3600))();
   IntColumn get maxArticles => integer().withDefault(const Constant(3))();
   BoolColumn get enabled => boolean().withDefault(const Constant(true))();
-  IntColumn get lastFetchedAt => integer().nullable()();
+  DateTimeColumn get lastFetchedAt => dateTime().nullable()();
   TextColumn get title => text().nullable()();
 
   @override
@@ -116,8 +126,8 @@ class RssArticles extends Table {
   TextColumn get title => text()();
   TextColumn get link => text()();
   TextColumn get summary => text().nullable()();
-  IntColumn get publishedAt => integer()();
-  IntColumn get fetchedAt => integer()();
+  DateTimeColumn get publishedAt => dateTime()();
+  DateTimeColumn get fetchedAt => dateTime()();
   TextColumn get imageBlobKey => text().nullable()();
 
   @override
@@ -125,6 +135,7 @@ class RssArticles extends Table {
 }
 
 class JokeCategories extends Table {
+  /// Same string as [ContentCategories.id] for icon/label sharing.
   TextColumn get id => text()();
   TextColumn get label => text()();
   BoolColumn get isSeasonal => boolean().withDefault(const Constant(false))();
@@ -149,7 +160,7 @@ class JokeCategories extends Table {
 )
 class JokeGenerationBatches extends Table {
   IntColumn get id => integer().autoIncrement()();
-  IntColumn get requestedAtMs => integer()();
+  DateTimeColumn get requestedAtMs => dateTime()();
   IntColumn get jokesRequested => integer()();
 }
 
@@ -166,13 +177,14 @@ class Jokes extends Table {
   TextColumn get categoryId => text().references(JokeCategories, #id)();
   TextColumn get setup => text()();
   TextColumn get punchline => text()();
-  IntColumn get createdAtMs => integer()();
+  DateTimeColumn get createdAtMs => dateTime()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
 
 class TriviaCategories extends Table {
+  /// Same string as [ContentCategories.id] for icon/label sharing.
   TextColumn get id => text()();
   TextColumn get label => text()();
   BoolColumn get isSeasonal => boolean().withDefault(const Constant(false))();
@@ -197,7 +209,7 @@ class TriviaCategories extends Table {
 )
 class TriviaGenerationBatches extends Table {
   IntColumn get id => integer().autoIncrement()();
-  IntColumn get requestedAtMs => integer()();
+  DateTimeColumn get requestedAtMs => dateTime()();
   IntColumn get questionsRequested => integer()();
 }
 
@@ -218,7 +230,7 @@ class TriviaQuestions extends Table {
   TextColumn get optionC => text()();
   TextColumn get optionD => text()();
   TextColumn get correctOption => text()();
-  IntColumn get createdAtMs => integer()();
+  DateTimeColumn get createdAtMs => dateTime()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -232,14 +244,14 @@ class TriviaQuestions extends Table {
 class CalendarEvents extends Table {
   TextColumn get id => text()();
   TextColumn get title => text()();
-  IntColumn get startMs => integer()();
-  IntColumn get endMs => integer()();
+  DateTimeColumn get startMs => dateTime()();
+  DateTimeColumn get endMs => dateTime()();
   BoolColumn get allDay => boolean().withDefault(const Constant(false))();
   TextColumn get location => text().nullable()();
   TextColumn get description => text().nullable()();
   TextColumn get source => text().withDefault(const Constant('local'))();
   TextColumn get externalId => text().nullable()();
-  IntColumn get updatedAtMs => integer()();
+  DateTimeColumn get updatedAtMs => dateTime()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -262,7 +274,7 @@ class WeatherLocations extends Table {
 )
 class WeatherCurrentData extends Table {
   TextColumn get locationId => text().references(WeatherLocations, #id)();
-  IntColumn get observedAtMs => integer()();
+  DateTimeColumn get observedAtMs => dateTime()();
   RealColumn get currentTemp => real().nullable()();
   TextColumn get currentDescription => text().nullable()();
   TextColumn get currentIconBlobKey => text().nullable()();
@@ -270,4 +282,69 @@ class WeatherCurrentData extends Table {
 
   @override
   Set<Column<Object>> get primaryKey => {locationId};
+}
+
+/// Matches [ProviderSettings.id] for media sourced from that provider (e.g. `pexels`).
+const String kMediaDataProviderPexels = 'pexels';
+
+@TableIndex(
+  name: 'idx_photos_fetched',
+  columns: {#fetchedAtMs},
+)
+@TableIndex(
+  name: 'idx_photos_category',
+  columns: {#category},
+)
+class Photos extends Table {
+  TextColumn get id => text()();
+  /// Slug matching [ContentCategories.id] (default `pexels`).
+  TextColumn get category => text().withDefault(const Constant('pexels'))();
+  TextColumn get dataProvider =>
+      text().withDefault(const Constant(kMediaDataProviderPexels))();
+  TextColumn get mediaBlobKey => text()();
+  TextColumn get photographerName => text()();
+  TextColumn get photographerUrl => text()();
+  TextColumn get pexelsPageUrl => text()();
+  TextColumn get altText => text().withDefault(const Constant(''))();
+  DateTimeColumn get fetchedAtMs => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+@TableIndex(
+  name: 'idx_videos_fetched',
+  columns: {#fetchedAtMs},
+)
+@TableIndex(
+  name: 'idx_videos_category',
+  columns: {#category},
+)
+class Videos extends Table {
+  TextColumn get id => text()();
+  /// Slug matching [ContentCategories.id] (default `pexels`).
+  TextColumn get category => text().withDefault(const Constant('pexels'))();
+  TextColumn get dataProvider =>
+      text().withDefault(const Constant(kMediaDataProviderPexels))();
+  TextColumn get mediaBlobKey => text()();
+  TextColumn get photographerName => text()();
+  TextColumn get photographerUrl => text()();
+  TextColumn get pexelsPageUrl => text()();
+  TextColumn get altText => text().withDefault(const Constant(''))();
+  IntColumn get durationSeconds => integer()();
+  DateTimeColumn get fetchedAtMs => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+@TableIndex(
+  name: 'idx_pexels_fetch_batches_time',
+  columns: {#requestedAtMs},
+)
+class PexelsFetchBatches extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  DateTimeColumn get requestedAtMs => dateTime()();
+  TextColumn get kind => text()();
+  IntColumn get count => integer().withDefault(const Constant(1))();
 }

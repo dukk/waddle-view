@@ -35,8 +35,8 @@ class RssNewsDataProvider implements IDataProvider {
     )..where((t) => t.enabled.equals(true))).get();
     for (final feed in feedRows) {
       final last = feed.lastFetchedAt;
-      final due =
-          last == null || (now - last) >= feed.pollSeconds * 1000;
+      final due = last == null ||
+          (now - last.millisecondsSinceEpoch) >= feed.pollSeconds * 1000;
       if (!due) {
         continue;
       }
@@ -71,7 +71,9 @@ class RssNewsDataProvider implements IDataProvider {
         await (ctx.db.update(
           ctx.db.rssFeedSources,
         )..where((t) => t.id.equals(feed.id))).write(
-          RssFeedSourcesCompanion(lastFetchedAt: Value(now)),
+          RssFeedSourcesCompanion(
+            lastFetchedAt: Value(DateTime.fromMillisecondsSinceEpoch(now)),
+          ),
         );
       } on Object catch (e, st) {
         AppDebugLog.engineFail('RssNewsDataProvider feed ${feed.id}', e, st);
@@ -109,8 +111,11 @@ class RssNewsDataProvider implements IDataProvider {
             title: entry.title,
             link: entry.link,
             summary: Value(entry.summary),
-            publishedAt: entry.publishedAtMs,
-            fetchedAt: now,
+            publishedAt: DateTime.fromMillisecondsSinceEpoch(
+              entry.publishedAtMs,
+              isUtc: true,
+            ),
+            fetchedAt: DateTime.fromMillisecondsSinceEpoch(now),
             imageBlobKey: Value(imageKey),
           ),
         );
@@ -141,7 +146,7 @@ class RssNewsDataProvider implements IDataProvider {
               relativePath: ref.storageKey,
               bytes: res.bodyBytes.length,
               mimeType: Value(mime),
-              capturedAt: _nowMs(),
+              capturedAt: DateTime.fromMillisecondsSinceEpoch(_nowMs()),
             ),
           );
       return logicalKey;

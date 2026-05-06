@@ -56,4 +56,50 @@ void main() {
     expect(items.where((e) => e.kind == 'news'), isEmpty);
     expect(items.first.kind, 'time');
   });
+
+  test('composeTickerNewsBody covers prefix and summary branches', () {
+    expect(
+      composeTickerNewsBody(
+        prefix: false,
+        feedName: 'F',
+        title: 'T',
+        summary: '',
+      ),
+      'T',
+    );
+    expect(
+      composeTickerNewsBody(
+        prefix: false,
+        feedName: 'F',
+        title: 'T',
+        summary: ' S ',
+      ),
+      'T S',
+    );
+    expect(
+      composeTickerNewsBody(
+        prefix: true,
+        feedName: 'F',
+        title: 'T',
+        summary: '',
+      ),
+      '[F] T',
+    );
+    expect(
+      composeTickerNewsBody(
+        prefix: true,
+        feedName: 'F',
+        title: 'T',
+        summary: 'S',
+      ),
+      '[F] T S',
+    );
+  });
+
+  test('redactTickerBody catches bearer substring', () {
+    expect(
+      redactTickerBody('Authorization: Bearer x'),
+      '[redacted]',
+    );
+  });
 }

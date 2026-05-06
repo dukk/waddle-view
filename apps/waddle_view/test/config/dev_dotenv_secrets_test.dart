@@ -1,6 +1,7 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_view/config/dev_dotenv_secrets.dart';
+import 'package:waddle_view/config/provider_config_resolver.dart';
 import 'package:waddle_view/secrets/in_memory_secret_store.dart';
 
 void main() {
@@ -116,6 +117,37 @@ void main() {
     expect(
       await secrets.read('provider:access_token:weather'),
       'owm-from-dotenv',
+    );
+  });
+
+  test('readPexelsTokenFromDotenvMap prefers WADDLE_PEXELS_ACCESS_TOKEN', () {
+    expect(
+      readPexelsTokenFromDotenvMap({
+        waddlePexelsAccessTokenKey: ' pex-a ',
+        pexelsApiKeyEnv: 'pex-b',
+      }),
+      'pex-a',
+    );
+  });
+
+  test('readPexelsTokenFromDotenvMap falls back to PEXELS_API_KEY', () {
+    expect(
+      readPexelsTokenFromDotenvMap({pexelsApiKeyEnv: ' pex-only '}),
+      'pex-only',
+    );
+  });
+
+  test('applyJokesTokenFromDevDotenv writes Pexels key', () async {
+    dotenv.clean();
+    dotenv.loadFromString(
+      envString: 'PEXELS_API_KEY=pex-from-dotenv',
+      isOptional: true,
+    );
+    final secrets = InMemorySecretStore();
+    await applyJokesTokenFromDevDotenv(secrets);
+    expect(
+      await secrets.read('${ProviderConfigResolver.accessTokenKey}:pexels'),
+      'pex-from-dotenv',
     );
   });
 }

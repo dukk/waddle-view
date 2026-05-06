@@ -49,9 +49,9 @@ void main() {
           CalendarEventsCompanion.insert(
             id: 'e1',
             title: 'Birthday party',
-            startMs: DateTime(2024, 6, 16, 15, 0).millisecondsSinceEpoch,
-            endMs: DateTime(2024, 6, 16, 17, 0).millisecondsSinceEpoch,
-            updatedAtMs: DateTime(2024, 6, 1).millisecondsSinceEpoch,
+            startMs: DateTime(2024, 6, 16, 15, 0),
+            endMs: DateTime(2024, 6, 16, 17, 0),
+            updatedAtMs: DateTime(2024, 6, 1),
           ),
         );
     const spec = ParsedWidgetSpec(
@@ -89,10 +89,10 @@ void main() {
           CalendarEventsCompanion.insert(
             id: 'e2',
             title: 'Meetup',
-            startMs: DateTime(2024, 6, 20, 10, 0).millisecondsSinceEpoch,
-            endMs: DateTime(2024, 6, 20, 11, 0).millisecondsSinceEpoch,
+            startMs: DateTime(2024, 6, 20, 10, 0),
+            endMs: DateTime(2024, 6, 20, 11, 0),
             location: const Value('Hall A'),
-            updatedAtMs: DateTime(2024, 6, 1).millisecondsSinceEpoch,
+            updatedAtMs: DateTime(2024, 6, 1),
           ),
         );
     const spec = ParsedWidgetSpec(
@@ -167,9 +167,9 @@ void main() {
           CalendarEventsCompanion.insert(
             id: 'e3',
             title: 'Very long event title that wraps across lines',
-            startMs: DateTime(2024, 6, 16, 15, 0).millisecondsSinceEpoch,
-            endMs: DateTime(2024, 6, 16, 17, 0).millisecondsSinceEpoch,
-            updatedAtMs: DateTime(2024, 6, 1).millisecondsSinceEpoch,
+            startMs: DateTime(2024, 6, 16, 15, 0),
+            endMs: DateTime(2024, 6, 16, 17, 0),
+            updatedAtMs: DateTime(2024, 6, 1),
           ),
         );
     const spec = ParsedWidgetSpec(

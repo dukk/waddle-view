@@ -30,4 +30,27 @@ void main() {
       closeTo(10 * 1.5 * DisplayTheme.textScale, 1e-9),
     );
   });
+
+  test('DisplayTheme.buildForId and buildFromKvValue resolve presets', () {
+    final graphite = DisplayTheme.buildForId(kDisplayThemeGraphiteAmber);
+    expect(graphite.brightness, Brightness.dark);
+    expect(
+      DisplayTheme.buildFromKvValue(kDisplayThemeNavyCoral).brightness,
+      Brightness.dark,
+    );
+    expect(
+      DisplayTheme.buildFromKvValue(null).brightness,
+      DisplayTheme.build().brightness,
+    );
+  });
+
+  test('DisplayTextScaler equality and deprecated textScaleFactor', () {
+    const a = DisplayTextScaler(TextScaler.linear(2), 1.5);
+    const b = DisplayTextScaler(TextScaler.linear(2), 1.5);
+    const c = DisplayTextScaler(TextScaler.linear(2), 2.0);
+    expect(a, b);
+    expect(a.hashCode, b.hashCode);
+    expect(a == c, isFalse);
+    expect(a.textScaleFactor, closeTo(3.0, 1e-9));
+  });
 }

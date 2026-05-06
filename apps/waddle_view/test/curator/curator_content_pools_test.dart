@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_view/curator/curator_content_pools.dart';
 import 'package:waddle_view/persistence/database.dart';
@@ -19,7 +20,7 @@ void main() {
             categoryId: 'dad',
             setup: 's',
             punchline: 'p',
-            createdAtMs: 1,
+            createdAtMs: DateTime.fromMillisecondsSinceEpoch(1),
           ),
         );
 
@@ -36,8 +37,8 @@ void main() {
             guid: 'g',
             title: 't',
             link: 'http://l',
-            publishedAt: 1,
-            fetchedAt: 1,
+            publishedAt: DateTime.fromMillisecondsSinceEpoch(1),
+            fetchedAt: DateTime.fromMillisecondsSinceEpoch(1),
           ),
         );
 
@@ -51,7 +52,42 @@ void main() {
             optionC: 'c',
             optionD: 'd',
             correctOption: 'B',
-            createdAtMs: 1,
+            createdAtMs: DateTime.fromMillisecondsSinceEpoch(1),
+          ),
+        );
+
+    await db.into(db.photos).insert(
+          PhotosCompanion.insert(
+            id: 'p1',
+            category: const Value('pexels'),
+            mediaBlobKey: 'k/p1',
+            photographerName: 'a',
+            photographerUrl: 'b',
+            pexelsPageUrl: 'c',
+            fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
+          ),
+        );
+    await db.into(db.photos).insert(
+          PhotosCompanion.insert(
+            id: 'p2',
+            category: const Value('nature'),
+            mediaBlobKey: 'k/p2',
+            photographerName: 'a',
+            photographerUrl: 'b',
+            pexelsPageUrl: 'c',
+            fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(2),
+          ),
+        );
+    await db.into(db.videos).insert(
+          VideosCompanion.insert(
+            id: 'v1',
+            category: const Value('pexels'),
+            mediaBlobKey: 'k/v1',
+            photographerName: 'a',
+            photographerUrl: 'b',
+            pexelsPageUrl: 'c',
+            durationSeconds: 20,
+            fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
           ),
         );
 
@@ -62,6 +98,11 @@ void main() {
     expect(pools['rss:f1'], ['a1']);
     expect(pools['trivia'], contains('q1'));
     expect(pools['trivia:science'], ['q1']);
+    expect(pools['pexels_photo'], unorderedEquals(['p1', 'p2']));
+    expect(pools['pexels_photo:pexels'], ['p1']);
+    expect(pools['pexels_photo:nature'], ['p2']);
+    expect(pools['pexels_video'], ['v1']);
+    expect(pools['pexels_video:pexels'], ['v1']);
 
     await db.close();
   });

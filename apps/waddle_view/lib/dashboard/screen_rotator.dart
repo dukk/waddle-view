@@ -15,12 +15,15 @@ import '../persistence/database.dart';
 import '../persistence/tables.dart';
 import 'analog_clock_slide_widget.dart';
 import 'calendar_month_slide_widget.dart';
+import 'dashboard_kv_flags.dart';
 import 'dashboard_viewport_scope.dart';
 import 'digital_clock_slide_widget.dart';
 import 'admin_setup_slide_widget.dart';
 import 'guest_wifi_slide_widget.dart';
 import 'joke_slide_widget.dart';
 import 'local_api_slide_widget.dart';
+import 'pexels_photo_slide_widget.dart';
+import 'pexels_video_slide_widget.dart';
 import 'rss_article_columns_slide_widget.dart';
 import 'rss_article_slide_widget.dart';
 import 'trivia_slide_widget.dart';
@@ -28,29 +31,6 @@ import 'weather_slide_widget.dart';
 
 const String _requireNewsPhotoForCurationKvKey =
     'curator.news.require_photo_for_curation';
-
-bool _isTruthyFlag(String? raw, {required bool defaultValue}) {
-  if (raw == null) {
-    return defaultValue;
-  }
-  final normalized = raw.trim().toLowerCase();
-  if (normalized.isEmpty) {
-    return defaultValue;
-  }
-  if (normalized == '1' ||
-      normalized == 'true' ||
-      normalized == 'yes' ||
-      normalized == 'on') {
-    return true;
-  }
-  if (normalized == '0' ||
-      normalized == 'false' ||
-      normalized == 'no' ||
-      normalized == 'off') {
-    return false;
-  }
-  return defaultValue;
-}
 
 bool _isNewsRssLayout(String layoutJson) {
   final widgets = parseScreenLayoutWidgets(layoutJson);
@@ -85,7 +65,7 @@ String screenShownDebugLogLine({
 }
 
 /// Full-area carousel above the ticker: slides exit left / enter right between
-/// curated programs loaded from `screen_definitions` and `curator_settings`.
+/// curated programs loaded from `screen_definitions` and [config_key_values].
 class ScreenRotator extends StatefulWidget {
   const ScreenRotator({
     super.key,
@@ -98,6 +78,7 @@ class ScreenRotator extends StatefulWidget {
 
   final AppDatabase db;
   final BlobStore blobs;
+
   /// Bound loopback base URL for the in-process REST server (e.g. `http://127.0.0.1:8787`).
   final String localRestBaseUrl;
   final String adminBaseUrl;
@@ -145,19 +126,22 @@ class _ScreenRotatorState extends State<ScreenRotator>
   }
 
   Future<void> _startNewProgram() async {
-    final defs = await (widget.db.select(widget.db.screenDefinitions)
-          ..where((t) => t.enabled.equals(true))
-          ..orderBy([(t) => OrderingTerm.asc(t.id)]))
-        .get();
-    final set =
-        await (widget.db.select(widget.db.curatorSettings)
-              ..where((t) => t.id.equals(kCuratorSettingsId)))
-            .getSingleOrNull();
-    final programMs = (set?.programDurationSeconds ?? 180) * 1000;
-    final historyDepth = set?.historyDepth ?? 5;
-    final kvRows = await widget.db.select(widget.db.dashboardKv).get();
+    final defs =
+        await (widget.db.select(widget.db.screenDefinitions)
+              ..where((t) => t.enabled.equals(true))
+              ..orderBy([(t) => OrderingTerm.asc(t.id)]))
+            .get();
+    final kvRows = await widget.db.select(widget.db.configKeyValues).get();
     final kvByKey = {for (final row in kvRows) row.key: row.value};
-    final requireNewsPhotoForCuration = _isTruthyFlag(
+    final programSeconds =
+        int.tryParse(
+          kvByKey[kCuratorProgramDurationSecondsKvKey]?.trim() ?? '',
+        ) ??
+        180;
+    final programMs = programSeconds * 1000;
+    final historyDepth =
+        int.tryParse(kvByKey[kCuratorHistoryDepthKvKey]?.trim() ?? '') ?? 5;
+    final requireNewsPhotoForCuration = isTruthyDashboardKvFlag(
       kvByKey[_requireNewsPhotoForCurationKvKey],
       defaultValue: true,
     );
@@ -168,14 +152,16 @@ class _ScreenRotatorState extends State<ScreenRotator>
       ...contentPools,
       if (blobs.isNotEmpty) 'blobs': blobs.map((e) => e.blobKey).toList(),
     };
-    final firstArticleWithImageKey = await (widget.db.select(widget.db.rssArticles)
-          ..where((t) => t.imageBlobKey.isNotNull())
-          ..limit(1))
-        .getSingleOrNull();
+    final firstArticleWithImageKey =
+        await (widget.db.select(widget.db.rssArticles)
+              ..where((t) => t.imageBlobKey.isNotNull())
+              ..limit(1))
+            .getSingleOrNull();
     final hasNewsPhotoData =
         (firstArticleWithImageKey?.imageBlobKey?.trim().isNotEmpty ?? false);
-    final dataKeyLimitRows =
-        await widget.db.select(widget.db.curatorDataKeyProgramLimits).get();
+    final dataKeyLimitRows = await widget.db
+        .select(widget.db.curatorDataKeyProgramLimits)
+        .get();
     final dataKeyLimits = <String, DataKeyProgramLimit>{};
     for (final row in dataKeyLimitRows) {
       dataKeyLimits[row.dataKey] = DataKeyProgramLimit(
@@ -470,117 +456,148 @@ class _SlideContent extends StatelessWidget {
         ),
       );
     }
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: widgets.map((w) {
-        switch (w.type) {
-          case 'static_text':
-            final text = w.config['text'] as String? ?? '';
-            return Padding(
-              padding: EdgeInsets.only(bottom: gap),
-              child: Text(
-                text,
-                style: theme.textTheme.headlineSmall,
-                textAlign: TextAlign.center,
-              ),
-            );
-          case 'joke':
-            return JokeSlideWidget(
-              db: db,
-              blobs: blobs,
-              slide: slide,
-              spec: w,
-              theme: theme,
-            );
-          case 'trivia':
-            return TriviaSlideWidget(
-              db: db,
-              blobs: blobs,
-              slide: slide,
-              spec: w,
-              theme: theme,
-            );
-          case 'guest_wifi':
-            return GuestWifiSlideWidget(
-              db: db,
-              spec: w,
-              theme: theme,
-            );
-          case 'digital_clock':
-            return DigitalClockSlideWidget(
-              spec: w,
-              theme: theme,
-            );
-          case 'analog_clock':
-            return AnalogClockSlideWidget(
-              spec: w,
-              theme: theme,
-            );
-          case 'calendar_month':
-            return CalendarMonthSlideWidget(
-              db: db,
-              spec: w,
-              theme: theme,
-            );
-          case 'photo_random':
-            final key = slide.randomChoices[w.choiceKey];
-            return Padding(
-              padding: EdgeInsets.only(bottom: gap),
-              child: Text(
-                key != null ? 'Photo: $key' : 'No photo in pool',
-                style: theme.textTheme.titleMedium,
-                textAlign: TextAlign.center,
-              ),
-            );
-          case 'rss_article':
-            return RssArticleSlideWidget(
-              db: db,
-              blobs: blobs,
-              slide: slide,
-              spec: w,
-              theme: theme,
-              onReportDesiredDwell: (ms) => onReportDesiredDwell(slideIndex, ms),
-            );
-          case 'rss_article_columns':
-            return RssArticleColumnsSlideWidget(
-              db: db,
-              blobs: blobs,
-              slide: slide,
-              spec: w,
-              theme: theme,
-              onReportDesiredDwell: (ms) => onReportDesiredDwell(slideIndex, ms),
-            );
-          case 'local_api':
-            return LocalApiSlideWidget(
-              baseUrl: localRestBaseUrl,
-              spec: w,
-              theme: theme,
-            );
-          case 'admin_setup':
-            return AdminSetupSlideWidget(
-              db: db,
-              adminBaseUrl: adminBaseUrl,
-              setupPasswordFile: setupPasswordFile,
-              spec: w,
-              theme: theme,
-            );
-          case 'weather':
-            return WeatherSlideWidget(
-              db: db,
-              slide: slide,
-              spec: w,
-              theme: theme,
-            );
-          default:
-            return Padding(
-              padding: EdgeInsets.only(bottom: gap),
-              child: Text(
-                'Unknown widget: ${w.type}',
-                style: theme.textTheme.bodyMedium,
-              ),
-            );
-        }
-      }).toList(),
+    if (widgets.length == 1 && widgets.first.type == 'pexels_photo') {
+      final w = widgets.first;
+      return SizedBox.expand(
+        child: PexelsPhotoSlideWidget(
+          db: db,
+          blobs: blobs,
+          slide: slide,
+          spec: w,
+          theme: theme,
+        ),
+      );
+    }
+    if (widgets.length == 1 && widgets.first.type == 'pexels_video') {
+      final w = widgets.first;
+      return SizedBox.expand(
+        child: PexelsVideoSlideWidget(
+          db: db,
+          blobs: blobs,
+          slide: slide,
+          spec: w,
+          theme: theme,
+        ),
+      );
+    }
+    // Multi-widget stacks can exceed the slide viewport (e.g. two tall tiles).
+    // Scroll instead of overflowing; bounded height comes from the rotator area.
+    return SingleChildScrollView(
+      primary: false,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: widgets.map((w) {
+          switch (w.type) {
+            case 'static_text':
+              final text = w.config['text'] as String? ?? '';
+              return Padding(
+                padding: EdgeInsets.only(bottom: gap),
+                child: Text(
+                  text,
+                  style: theme.textTheme.headlineSmall,
+                  textAlign: TextAlign.center,
+                ),
+              );
+            case 'joke':
+              return JokeSlideWidget(
+                db: db,
+                slide: slide,
+                spec: w,
+                theme: theme,
+              );
+            case 'trivia':
+              return TriviaSlideWidget(
+                db: db,
+                slide: slide,
+                spec: w,
+                theme: theme,
+              );
+            case 'guest_wifi':
+              return GuestWifiSlideWidget(db: db, spec: w, theme: theme);
+            case 'digital_clock':
+              return DigitalClockSlideWidget(spec: w, theme: theme);
+            case 'analog_clock':
+              return AnalogClockSlideWidget(spec: w, theme: theme);
+            case 'calendar_month':
+              return CalendarMonthSlideWidget(db: db, spec: w, theme: theme);
+            case 'photo_random':
+              final key = slide.randomChoices[w.choiceKey];
+              return Padding(
+                padding: EdgeInsets.only(bottom: gap),
+                child: Text(
+                  key != null ? 'Photo: $key' : 'No photo in pool',
+                  style: theme.textTheme.titleMedium,
+                  textAlign: TextAlign.center,
+                ),
+              );
+            case 'rss_article':
+              return RssArticleSlideWidget(
+                db: db,
+                blobs: blobs,
+                slide: slide,
+                spec: w,
+                theme: theme,
+                onReportDesiredDwell: (ms) =>
+                    onReportDesiredDwell(slideIndex, ms),
+              );
+            case 'rss_article_columns':
+              return RssArticleColumnsSlideWidget(
+                db: db,
+                blobs: blobs,
+                slide: slide,
+                spec: w,
+                theme: theme,
+                onReportDesiredDwell: (ms) =>
+                    onReportDesiredDwell(slideIndex, ms),
+              );
+            case 'local_api':
+              return LocalApiSlideWidget(
+                baseUrl: localRestBaseUrl,
+                spec: w,
+                theme: theme,
+              );
+            case 'admin_setup':
+              return AdminSetupSlideWidget(
+                db: db,
+                adminBaseUrl: adminBaseUrl,
+                setupPasswordFile: setupPasswordFile,
+                spec: w,
+                theme: theme,
+              );
+            case 'weather':
+              return WeatherSlideWidget(
+                db: db,
+                slide: slide,
+                spec: w,
+                theme: theme,
+              );
+            case 'pexels_photo':
+              return PexelsPhotoSlideWidget(
+                db: db,
+                blobs: blobs,
+                slide: slide,
+                spec: w,
+                theme: theme,
+              );
+            case 'pexels_video':
+              return PexelsVideoSlideWidget(
+                db: db,
+                blobs: blobs,
+                slide: slide,
+                spec: w,
+                theme: theme,
+              );
+            default:
+              return Padding(
+                padding: EdgeInsets.only(bottom: gap),
+                child: Text(
+                  'Unknown widget: ${w.type}',
+                  style: theme.textTheme.bodyMedium,
+                ),
+              );
+          }
+        }).toList(),
+      ),
     );
   }
 }

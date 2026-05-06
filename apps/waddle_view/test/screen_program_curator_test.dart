@@ -311,4 +311,44 @@ void main() {
     final clockCount = slides.where((s) => s.screenId.startsWith('clock_')).length;
     expect(clockCount, greaterThanOrEqualTo(2));
   });
+
+  test('pexels widgets resolve pool names with optional categoryId', () {
+    final layoutPhoto = jsonEncode({
+      'v': 1,
+      'layout': 'single',
+      'widgets': [
+        {
+          'type': 'pexels_photo',
+          'slot': 'main',
+          'config': {'categoryId': 'nature'},
+        },
+      ],
+    });
+    final layoutVideo = jsonEncode({
+      'v': 1,
+      'layout': 'single',
+      'widgets': [
+        {'type': 'pexels_video', 'slot': 'main', 'config': {}},
+      ],
+    });
+    final photoSlides = ScreenProgramCurator.buildProgram(
+      screens: [_c(id: 'p', dwellMs: 60000, layout: layoutPhoto)],
+      programDurationMs: 60000,
+      recentScreenIdsOldestFirst: const [],
+      historyDepth: 5,
+      random: Random(0),
+      randomPools: const {'pexels_photo:nature': ['a1']},
+    );
+    expect(photoSlides.single.randomChoices['main_pexels_photo'], 'a1');
+
+    final videoSlides = ScreenProgramCurator.buildProgram(
+      screens: [_c(id: 'v', dwellMs: 60000, layout: layoutVideo)],
+      programDurationMs: 60000,
+      recentScreenIdsOldestFirst: const [],
+      historyDepth: 5,
+      random: Random(0),
+      randomPools: const {'pexels_video': ['v1']},
+    );
+    expect(videoSlides.single.randomChoices['main_pexels_video'], 'v1');
+  });
 }

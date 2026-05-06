@@ -75,7 +75,7 @@ class DisplayTheme {
   static ThemeData build() =>
       themeDataForNormalizedDisplayThemeId(kDisplayThemeNavyCoral);
 
-  /// Resolves theme from a raw [dashboard_kv] value.
+  /// Resolves theme from a raw [config_key_values] value.
   static ThemeData buildFromKvValue(String? value) =>
       themeDataForDashboardKvValue(value);
 }

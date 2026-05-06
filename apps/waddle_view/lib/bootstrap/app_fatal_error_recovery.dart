@@ -42,6 +42,30 @@ void _defaultLogFatal(String channel, Object error, StackTrace? stack) {
   }
 }
 
+void _defaultLogRecoverableFlutterLayout(FlutterErrorDetails details) {
+  final message = details.exceptionAsString();
+  developer.log(
+    message,
+    name: 'Flutter.recoverable',
+    error: details.exception,
+    stackTrace: details.stack,
+  );
+  stderr.writeln('[Recoverable][Flutter] $message');
+}
+
+/// Layout-time [FlutterError] messages (overflow, clipping) that should not
+/// tear down the kiosk process; the framework has already reported them via
+/// [FlutterError.presentError].
+@visibleForTesting
+bool isRecoverableLayoutFlutterError(FlutterErrorDetails details) {
+  final ex = details.exception;
+  if (ex is! FlutterError) return false;
+  final m = ex.message;
+  return m.contains('RenderFlex overflowed') ||
+      m.contains('RenderParagraph overflowed') ||
+      (m.contains('overflowed by') && m.contains('pixels'));
+}
+
 Future<void> _defaultRestartProcess() async {
   if (kIsWeb) {
     stderr.writeln('[Fatal] restart skipped on web');
@@ -82,12 +106,19 @@ void reactToFatalAppError(
 void installGlobalFatalErrorHandlers({
   void Function(String channel, Object error, StackTrace? stack)? logFatal,
   Future<void> Function()? restartProcess,
+  void Function(FlutterErrorDetails details)? logRecoverableLayoutFlutter,
 }) {
   final log = logFatal ?? _defaultLogFatal;
   final restart = restartProcess ?? _defaultRestartProcess;
+  final logRecoverable =
+      logRecoverableLayoutFlutter ?? _defaultLogRecoverableFlutterLayout;
 
   FlutterError.onError = (FlutterErrorDetails details) {
     FlutterError.presentError(details);
+    if (isRecoverableLayoutFlutterError(details)) {
+      logRecoverable(details);
+      return;
+    }
     reactToFatalAppError(
       'Flutter',
       details.exception,
@@ -99,14 +130,7 @@ void installGlobalFatalErrorHandlers({
   };
 
   PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
-    reactToFatalAppError(
-      'Platform',
-      error,
-      stack,
-      _fatalGate,
-      log,
-      restart,
-    );
+    reactToFatalAppError('Platform', error, stack, _fatalGate, log, restart);
     return true;
   };
 }

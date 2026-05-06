@@ -26,7 +26,7 @@ void main() {
     );
     await StubDataProvider().collect(ctx);
     final row =
-        await (db.select(db.dashboardKv)
+        await (db.select(db.configKeyValues)
               ..where((t) => t.key.equals('header.title')))
             .getSingle();
     expect(row.value, 'Waddle View');

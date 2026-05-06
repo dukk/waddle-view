@@ -12,8 +12,8 @@ void main() {
   ) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.dashboardKv).insert(
-          DashboardKvCompanion.insert(
+    await db.into(db.configKeyValues).insert(
+          ConfigKeyValuesCompanion.insert(
             key: 'dashboard.guest_wifi.connection',
             value: 'WIFI:T:WPA;S:Lobby;P:guestpass;;',
           ),
@@ -51,8 +51,8 @@ void main() {
   testWidgets('respects custom kvKey and headline', (tester) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.dashboardKv).insert(
-          DashboardKvCompanion.insert(
+    await db.into(db.configKeyValues).insert(
+          ConfigKeyValuesCompanion.insert(
             key: 'wifi.custom',
             value: 'WIFI:T:WPA;S:Zone;P:secret;;',
           ),
@@ -88,8 +88,8 @@ void main() {
   testWidgets('shows not configured when KV value is invalid', (tester) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.dashboardKv).insert(
-          DashboardKvCompanion.insert(
+    await db.into(db.configKeyValues).insert(
+          ConfigKeyValuesCompanion.insert(
             key: 'dashboard.guest_wifi.connection',
             value: 'not-a-wifi-string',
           ),

@@ -15,7 +15,6 @@ import 'trivia_provider_extra_config.dart'
         TriviaProviderExtraConfig,
         kDefaultTriviaTwoHourWindowMs;
 import 'trivia_slot_allocation.dart';
-import 'category_icon_service.dart';
 
 const String kTriviaProviderId = 'trivia';
 
@@ -82,10 +81,8 @@ class TriviaDataProvider implements IDataProvider {
 
     final startLocal = DateTime(now.year, now.month, now.day);
     final endLocal = startLocal.add(const Duration(days: 1));
-    final startMs = startLocal.millisecondsSinceEpoch;
-    final endMs = endLocal.millisecondsSinceEpoch;
 
-    final todayCount = await _countTriviaInRange(ctx.db, startMs, endMs);
+    final todayCount = await _countTriviaInRange(ctx.db, startLocal, endLocal);
     final remainingDaily = extra.questionsPerDay - todayCount;
     if (remainingDaily <= 0) {
       return;
@@ -144,15 +141,6 @@ class TriviaDataProvider implements IDataProvider {
         (config.baseUrl != null && config.baseUrl!.trim().isNotEmpty)
         ? config.baseUrl!.trim()
         : kDefaultOpenAiBaseUrl;
-    await ensureCategoryIcons(
-      ctx: ctx,
-      httpClient: _http,
-      baseUrl: baseUrl,
-      token: token,
-      categoryType: 'trivia',
-      categories: eligible.map((c) => (id: c.id, label: c.label)),
-      limit: 4,
-    );
 
     final userContent = _buildUserPrompt(slots, categoryById);
 
@@ -189,7 +177,7 @@ class TriviaDataProvider implements IDataProvider {
 
       await ctx.db.into(ctx.db.triviaGenerationBatches).insert(
             TriviaGenerationBatchesCompanion.insert(
-              requestedAtMs: nowMs,
+              requestedAtMs: now,
               questionsRequested: slots.length,
             ),
           );
@@ -216,7 +204,7 @@ class TriviaDataProvider implements IDataProvider {
       }
 
       final parsedList = _parseTriviaJsonArray(content);
-      final createdAt = _now().millisecondsSinceEpoch;
+      final createdAt = _now();
 
       for (final item in parsedList) {
         final cid = item['categoryId'] as String?;
@@ -298,14 +286,14 @@ class TriviaDataProvider implements IDataProvider {
 
   Future<int> _countTriviaInRange(
     AppDatabase db,
-    int startMsInclusive,
-    int endMsExclusive,
+    DateTime startInclusive,
+    DateTime endExclusive,
   ) async {
     final rows = await (db.select(db.triviaQuestions)
           ..where(
             (t) =>
-                t.createdAtMs.isBiggerOrEqualValue(startMsInclusive) &
-                t.createdAtMs.isSmallerThanValue(endMsExclusive),
+                t.createdAtMs.isBiggerOrEqualValue(startInclusive) &
+                t.createdAtMs.isSmallerThanValue(endExclusive),
           ))
         .get();
     return rows.length;
@@ -323,8 +311,9 @@ class TriviaDataProvider implements IDataProvider {
     AppDatabase db,
     int sinceMsInclusive,
   ) async {
+    final since = DateTime.fromMillisecondsSinceEpoch(sinceMsInclusive);
     final rows = await (db.select(db.triviaGenerationBatches)
-          ..where((t) => t.requestedAtMs.isBiggerOrEqualValue(sinceMsInclusive)))
+          ..where((t) => t.requestedAtMs.isBiggerOrEqualValue(since)))
         .get();
     var sum = 0;
     for (final r in rows) {
@@ -334,7 +323,8 @@ class TriviaDataProvider implements IDataProvider {
   }
 
   Future<void> _pruneOldGenerationBatches(AppDatabase db, int nowMs) async {
-    final cutoff = nowMs - const Duration(days: 14).inMilliseconds;
+    final cutoffMs = nowMs - const Duration(days: 14).inMilliseconds;
+    final cutoff = DateTime.fromMillisecondsSinceEpoch(cutoffMs);
     await (db.delete(db.triviaGenerationBatches)
           ..where((t) => t.requestedAtMs.isSmallerThanValue(cutoff)))
         .go();
@@ -348,7 +338,8 @@ class TriviaDataProvider implements IDataProvider {
     if (retentionDays <= 0) {
       return 0;
     }
-    final cutoff = nowMs - Duration(days: retentionDays).inMilliseconds;
+    final cutoffMs = nowMs - Duration(days: retentionDays).inMilliseconds;
+    final cutoff = DateTime.fromMillisecondsSinceEpoch(cutoffMs);
     return (db.delete(db.triviaQuestions)
           ..where((t) => t.createdAtMs.isSmallerThanValue(cutoff)))
         .go();

@@ -37,7 +37,7 @@ void main() {
     await db.into(db.weatherCurrentData).insert(
           WeatherCurrentDataCompanion.insert(
             locationId: 'salt_lake_city_ut',
-            observedAtMs: 1234,
+            observedAtMs: DateTime.fromMillisecondsSinceEpoch(1234),
             currentTemp: const Value(72.2),
             currentDescription: const Value('sunny'),
             hourlyJson: Value(
@@ -59,7 +59,7 @@ void main() {
     await db.into(db.weatherCurrentData).insert(
           WeatherCurrentDataCompanion.insert(
             locationId: 'atlanta_ga',
-            observedAtMs: 1235,
+            observedAtMs: DateTime.fromMillisecondsSinceEpoch(1235),
             currentTemp: const Value(65.1),
             currentDescription: const Value('cloudy'),
             hourlyJson: Value(

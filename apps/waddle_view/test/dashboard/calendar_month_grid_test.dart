@@ -52,12 +52,17 @@ void main() {
 
   group('formatCalendarEventListTime', () {
     test('all day label', () {
-      expect(formatCalendarEventListTime(0, true), 'All day');
+      expect(
+        formatCalendarEventListTime(DateTime.fromMillisecondsSinceEpoch(0), true),
+        'All day',
+      );
     });
 
     test('timed event uses HH:MM', () {
-      final ms = DateTime.utc(2024, 6, 15, 14, 7).millisecondsSinceEpoch;
-      final s = formatCalendarEventListTime(ms, false);
+      final s = formatCalendarEventListTime(
+        DateTime.utc(2024, 6, 15, 14, 7),
+        false,
+      );
       expect(s, matches(RegExp(r'^\d{2}:\d{2}$')));
     });
   });

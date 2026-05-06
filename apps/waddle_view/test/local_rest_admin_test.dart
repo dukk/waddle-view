@@ -6,6 +6,7 @@ import 'package:waddle_view/alerts/drift_alert_repository.dart';
 import 'package:waddle_view/api/deployment_api_key_source.dart';
 import 'package:waddle_view/api/local_rest_server.dart';
 import 'package:waddle_view/persistence/database.dart';
+import 'package:waddle_view/persistence/tables.dart';
 import 'package:waddle_view/secrets/in_memory_secret_store.dart';
 import 'package:waddle_view/ticker/memory_ticker_curated_repository.dart';
 
@@ -15,8 +16,8 @@ void main() {
   test('forces password rotation and disables setup screen', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.dashboardKv).insert(
-          DashboardKvCompanion.insert(
+    await db.into(db.configKeyValues).insert(
+          ConfigKeyValuesCompanion.insert(
             key: kAdminBootstrapDoneKvKey,
             value: '0',
           ),
@@ -74,7 +75,7 @@ void main() {
       final keyRaw = await keyFile.readAsString();
       expect(keyRaw.trim(), 'new-password-12345');
 
-      final bootstrap = await (db.select(db.dashboardKv)
+      final bootstrap = await (db.select(db.configKeyValues)
             ..where((t) => t.key.equals(kAdminBootstrapDoneKvKey)))
           .getSingle();
       expect(bootstrap.value, '1');

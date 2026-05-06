@@ -157,7 +157,7 @@ void main() {
     expect(nyc, isNotNull);
     expect(nyc!.currentTemp, closeTo(71.5, 0.001));
     expect(nyc.currentDescription, 'light rain');
-    expect(nyc.observedAtMs, 2000);
+    expect(nyc.observedAtMs, DateTime.fromMillisecondsSinceEpoch(2000));
     final hourly = jsonDecode(nyc.hourlyJson ?? '[]') as List<dynamic>;
     expect(hourly, hasLength(2));
     expect((hourly.first as Map<String, dynamic>)['description'], 'hour1');

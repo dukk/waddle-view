@@ -322,6 +322,12 @@ class ScreenProgramCurator {
       case 'trivia':
         final c = w.config['categoryId'] as String?;
         return (c != null && c.isNotEmpty) ? 'trivia:$c' : 'trivia';
+      case 'pexels_photo':
+        final c = w.config['categoryId'] as String?;
+        return (c != null && c.isNotEmpty) ? 'pexels_photo:$c' : 'pexels_photo';
+      case 'pexels_video':
+        final c = w.config['categoryId'] as String?;
+        return (c != null && c.isNotEmpty) ? 'pexels_video:$c' : 'pexels_video';
       default:
         return null;
     }

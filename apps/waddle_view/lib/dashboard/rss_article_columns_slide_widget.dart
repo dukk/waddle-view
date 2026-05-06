@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
@@ -33,9 +32,9 @@ int _columnCountFromConfig(Map<String, dynamic> c) {
 }
 
 class _ColumnArticle {
-  const _ColumnArticle(this.article, this.imageBytes);
+  const _ColumnArticle(this.article, this.imageLoad);
   final RssArticle? article;
-  final Uint8List? imageBytes;
+  final RssArticleImageLoad imageLoad;
 }
 
 /// [columnCount] RSS articles in a row: image on top, title and summary below.
@@ -93,16 +92,12 @@ class _RssArticleColumnsSlideWidgetState
         key,
         exclude,
       );
-      Uint8List? bytes;
+      RssArticleImageLoad load = const RssArticleImageLoad.absent();
       if (article != null) {
         exclude.add(article.id);
-        bytes = await loadRssArticleImageBytes(
-          widget.db,
-          widget.blobs,
-          article,
-        );
+        load = await loadRssArticleImage(widget.db, widget.blobs, article);
       }
-      out.add(_ColumnArticle(article, bytes));
+      out.add(_ColumnArticle(article, load));
     }
     if (!mounted) {
       return;
@@ -225,15 +220,19 @@ class _ArticleColumnCard extends StatelessWidget {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(9 * scale),
-              child: data.imageBytes != null
+              child: data.imageLoad.bytes != null
                   ? Image.memory(
-                      data.imageBytes!,
+                      data.imageLoad.bytes!,
                       fit: BoxFit.cover,
                       gaplessPlayback: true,
                       errorBuilder: (context, error, stackTrace) =>
-                          _placeholder(theme, scale),
+                          _placeholder(theme, scale, blobReadFailed: false),
                     )
-                  : _placeholder(theme, scale),
+                  : _placeholder(
+                      theme,
+                      scale,
+                      blobReadFailed: data.imageLoad.blobReadFailed,
+                    ),
             ),
           ),
         ),
@@ -247,8 +246,7 @@ class _ArticleColumnCard extends StatelessWidget {
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
           ),
-        if (title.isNotEmpty && summary.isNotEmpty)
-          SizedBox(height: 6 * scale),
+        if (title.isNotEmpty && summary.isNotEmpty) SizedBox(height: 6 * scale),
         if (summary.isNotEmpty)
           Expanded(
             child: Text(
@@ -262,12 +260,18 @@ class _ArticleColumnCard extends StatelessWidget {
     );
   }
 
-  static Widget _placeholder(ThemeData theme, double s) {
+  static Widget _placeholder(
+    ThemeData theme,
+    double s, {
+    required bool blobReadFailed,
+  }) {
     return ColoredBox(
       color: theme.colorScheme.surfaceContainerHighest,
       child: Center(
         child: Icon(
-          Icons.image_not_supported_outlined,
+          blobReadFailed
+              ? Icons.no_photography
+              : Icons.image_not_supported_outlined,
           size: 36 * s,
           color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.55),
         ),

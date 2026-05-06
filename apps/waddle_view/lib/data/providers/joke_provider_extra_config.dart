@@ -10,7 +10,7 @@ const int kDefaultMaxJokesPerTwoHours = 20;
 
 const int kDefaultTwoHourWindowMs = 7200000;
 
-/// Delete jokes whose [Joke.createdAtMs] is older than this many whole days.
+/// Delete jokes whose stored creation time is older than this many whole days.
 const int kDefaultJokeRetentionDays = 14;
 
 class JokeProviderExtraConfig {
@@ -37,7 +37,7 @@ class JokeProviderExtraConfig {
   /// Rolling window length in ms (default 2 hours).
   final int twoHourWindowMs;
 
-  /// Drop jokes older than this many days (by [createdAtMs]); `<= 0` disables.
+  /// Drop jokes older than this many days (by creation timestamp); `<= 0` disables.
   final int jokeRetentionDays;
 
   static JokeProviderExtraConfig parse(String? extraJson) {

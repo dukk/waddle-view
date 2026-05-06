@@ -35,6 +35,12 @@ const String waddleTriviaAccessTokenKey = 'WADDLE_TRIVIA_ACCESS_TOKEN';
 /// API key for OpenWeatherMap weather provider.
 const String openWeatherMapApiKeyEnv = 'OPEN_WEATHER_MAP_API_KEY';
 
+/// Pexels API key (https://www.pexels.com/api/).
+const String pexelsApiKeyEnv = 'PEXELS_API_KEY';
+
+/// Optional explicit Pexels key (otherwise [pexelsApiKeyEnv]).
+const String waddlePexelsAccessTokenKey = 'WADDLE_PEXELS_ACCESS_TOKEN';
+
 /// OpenAI-style token for trivia: explicit trivia key, else same as jokes/OpenAI.
 String? readTriviaTokenFromDotenvMap(Map<String, String> map) {
   final explicit = map[waddleTriviaAccessTokenKey]?.trim();
@@ -49,6 +55,19 @@ String? readWeatherTokenFromDotenvMap(Map<String, String> map) {
   final weather = map[openWeatherMapApiKeyEnv]?.trim();
   if (weather != null && weather.isNotEmpty) {
     return weather;
+  }
+  return null;
+}
+
+/// Pexels provider API key from dotenv map.
+String? readPexelsTokenFromDotenvMap(Map<String, String> map) {
+  final explicit = map[waddlePexelsAccessTokenKey]?.trim();
+  if (explicit != null && explicit.isNotEmpty) {
+    return explicit;
+  }
+  final p = map[pexelsApiKeyEnv]?.trim();
+  if (p != null && p.isNotEmpty) {
+    return p;
   }
   return null;
 }
@@ -122,5 +141,13 @@ Future<void> applyJokesTokenFromDevDotenv(SecretStore secrets) async {
       weatherToken,
     );
     AppDebugLog.startup('Dev .env: stored weather provider token in SecretStore');
+  }
+  final pexelsToken = readPexelsTokenFromDotenvMap(dotenv.env);
+  if (pexelsToken != null && pexelsToken.isNotEmpty) {
+    await secrets.write(
+      '${ProviderConfigResolver.accessTokenKey}:pexels',
+      pexelsToken,
+    );
+    AppDebugLog.startup('Dev .env: stored Pexels provider API key in SecretStore');
   }
 }

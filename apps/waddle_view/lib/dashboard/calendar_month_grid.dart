@@ -77,13 +77,12 @@ List<MonthGridCell> buildMonthGridCells(
   return out;
 }
 
-/// Formats a list-row time label; [startMs] is stored as UTC epoch ms in DB.
-String formatCalendarEventListTime(int startMs, bool allDay) {
+/// Formats a list-row time label for a calendar event start instant from the DB.
+String formatCalendarEventListTime(DateTime start, bool allDay) {
   if (allDay) {
     return 'All day';
   }
-  final dt =
-      DateTime.fromMillisecondsSinceEpoch(startMs, isUtc: true).toLocal();
+  final dt = start.toUtc().toLocal();
   final h = dt.hour.toString().padLeft(2, '0');
   final min = dt.minute.toString().padLeft(2, '0');
   return '$h:$min';
