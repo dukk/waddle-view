@@ -140,33 +140,9 @@ class ScreenProgramCurator {
       }
 
       List<ScreenCandidate> feasibleEligible;
-      _NewsAssignment? bestNews;
+      final Map<String, _NewsAssignment> rssAssignmentByScreenId = {};
 
       if (rssArticleMetrics.isNotEmpty) {
-        feasibleEligible =
-            eligible.where((s) {
-              if (!_layoutHasRssNews(s.layoutJson)) {
-                return true;
-              }
-              final a = _resolveNewsAssignment(
-                screen: s,
-                randomPools: randomPools,
-                usedCuratedIds: usedCuratedIds,
-                rssArticleMetrics: rssArticleMetrics,
-                requirePhotoForRssScreens: requirePhotoForRssScreens,
-                needsMinFallback: _needsMinPlacementFallback(
-                  s,
-                  countByScreenId,
-                  countByDataKey,
-                  dataKeyLimits,
-                ),
-                random: random,
-              );
-              return a != null;
-            }).toList();
-
-        bestNews = null;
-        var bestCost = double.infinity;
         for (final s in eligible) {
           if (!_layoutHasRssNews(s.layoutJson)) {
             continue;
@@ -185,11 +161,17 @@ class ScreenProgramCurator {
             ),
             random: random,
           );
-          if (a != null && a.cost < bestCost) {
-            bestCost = a.cost;
-            bestNews = a;
+          if (a != null) {
+            rssAssignmentByScreenId[s.id] = a;
           }
         }
+        feasibleEligible =
+            eligible.where((s) {
+              if (!_layoutHasRssNews(s.layoutJson)) {
+                return true;
+              }
+              return rssAssignmentByScreenId.containsKey(s.id);
+            }).toList();
       } else {
         feasibleEligible =
             eligible.where((s) {
@@ -202,7 +184,6 @@ class ScreenProgramCurator {
                 usedCuratedIds: usedCuratedIds,
               );
             }).toList();
-        bestNews = null;
       }
 
       if (feasibleEligible.isEmpty) {
@@ -221,7 +202,6 @@ class ScreenProgramCurator {
       Map<String, String>? resolvedChoices;
 
       if (rssArticleMetrics.isNotEmpty &&
-          bestNews != null &&
           activePool.any((s) => _layoutHasRssNews(s.layoutJson))) {
         final options = <_PickOption>[];
         for (final s in activePool) {
@@ -230,7 +210,18 @@ class ScreenProgramCurator {
           }
           options.add(_PickOptionNonNews(s));
         }
-        options.add(_PickOptionNewsJoint(bestNews.screen, bestNews.choices));
+        for (final s in activePool) {
+          if (!_layoutHasRssNews(s.layoutJson)) {
+            continue;
+          }
+          final a = rssAssignmentByScreenId[s.id];
+          if (a != null) {
+            options.add(_PickOptionNewsJoint(s, a));
+          }
+        }
+        if (options.isEmpty) {
+          break;
+        }
 
         final selected = _weightedPickOption(options, window, random);
         if (selected == null) {
@@ -246,8 +237,11 @@ class ScreenProgramCurator {
           );
         } else if (selected is _PickOptionNewsJoint) {
           pick = selected.screen;
-          resolvedChoices = Map<String, String>.from(selected.choices);
-          _addResolvedChoicesToUsedCuratedIds(selected.choices, usedCuratedIds);
+          resolvedChoices = Map<String, String>.from(selected.assignment.choices);
+          _addResolvedChoicesToUsedCuratedIds(
+            selected.assignment.choices,
+            usedCuratedIds,
+          );
         }
       } else {
         final pickScreen = _weightedPick(activePool, window, random);
@@ -263,20 +257,22 @@ class ScreenProgramCurator {
             usedCuratedIds,
           );
         } else if (_layoutHasRssNews(pick.layoutJson)) {
-          final a = _resolveNewsAssignment(
-            screen: pick,
-            randomPools: randomPools,
-            usedCuratedIds: usedCuratedIds,
-            rssArticleMetrics: rssArticleMetrics,
-            requirePhotoForRssScreens: requirePhotoForRssScreens,
-            needsMinFallback: _needsMinPlacementFallback(
-              pick,
-              countByScreenId,
-              countByDataKey,
-              dataKeyLimits,
-            ),
-            random: random,
-          );
+          final a = rssArticleMetrics.isNotEmpty
+              ? rssAssignmentByScreenId[pick.id]
+              : _resolveNewsAssignment(
+                  screen: pick,
+                  randomPools: randomPools,
+                  usedCuratedIds: usedCuratedIds,
+                  rssArticleMetrics: rssArticleMetrics,
+                  requirePhotoForRssScreens: requirePhotoForRssScreens,
+                  needsMinFallback: _needsMinPlacementFallback(
+                    pick,
+                    countByScreenId,
+                    countByDataKey,
+                    dataKeyLimits,
+                  ),
+                  random: random,
+                );
           if (a == null) {
             break;
           }
@@ -886,9 +882,23 @@ class ScreenProgramCurator {
     if (options.isEmpty) {
       return null;
     }
-    final weights = options
-        .map((o) => _effectiveWeight(o.screen, historyWindow))
-        .toList();
+    var minNewsCost = double.infinity;
+    for (final o in options) {
+      if (o is _PickOptionNewsJoint) {
+        final c = o.assignment.cost;
+        if (c < minNewsCost) {
+          minNewsCost = c;
+        }
+      }
+    }
+    final weights = options.map((o) {
+      var w = _effectiveWeight(o.screen, historyWindow);
+      if (o is _PickOptionNewsJoint && minNewsCost.isFinite) {
+        final excess = max(0.0, o.assignment.cost - minNewsCost);
+        w /= 1.0 + excess;
+      }
+      return w;
+    }).toList();
     final total = weights.fold<double>(0, (a, b) => a + b);
     if (total <= 0) {
       return null;
@@ -1050,7 +1060,7 @@ final class _PickOptionNonNews extends _PickOption {
 }
 
 final class _PickOptionNewsJoint extends _PickOption {
-  const _PickOptionNewsJoint(super.screen, this.choices);
+  const _PickOptionNewsJoint(super.screen, this.assignment);
 
-  final Map<String, String> choices;
+  final _NewsAssignment assignment;
 }

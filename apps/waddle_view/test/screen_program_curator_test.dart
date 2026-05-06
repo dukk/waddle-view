@@ -376,6 +376,55 @@ void main() {
     expect(videoSlides.single.randomChoices['main_pexels_video'], 'v1');
   });
 
+  test('joint metrics path can rotate among multiple rss news screen definitions', () {
+    const layout =
+        '{"v":1,"widgets":[{"type":"rss_article","slot":"main","config":{"summaryCapacityChars":500}}]}';
+    final seenIds = <String>{};
+    for (var seed = 0; seed < 40; seed++) {
+      final slides = ScreenProgramCurator.buildProgram(
+        screens: [
+          _c(id: 'news_a', dwellMs: 30000, layout: layout),
+          _c(id: 'news_b', dwellMs: 30000, layout: layout),
+        ],
+        programDurationMs: 60000,
+        recentScreenIdsOldestFirst: const [],
+        historyDepth: 5,
+        random: Random(seed),
+        randomPools: const {
+          'rss': ['a1', 'a2', 'a3', 'a4'],
+        },
+        rssArticleMetrics: const {
+          'a1': RssArticleMetric(
+            hasImage: true,
+            summaryLength: 200,
+            categoryId: 'general',
+          ),
+          'a2': RssArticleMetric(
+            hasImage: true,
+            summaryLength: 200,
+            categoryId: 'general',
+          ),
+          'a3': RssArticleMetric(
+            hasImage: true,
+            summaryLength: 200,
+            categoryId: 'general',
+          ),
+          'a4': RssArticleMetric(
+            hasImage: true,
+            summaryLength: 200,
+            categoryId: 'general',
+          ),
+        },
+        requirePhotoForRssScreens: true,
+      );
+      expect(slides, hasLength(2));
+      seenIds.add(slides[0].screenId);
+      seenIds.add(slides[1].screenId);
+    }
+    expect(seenIds.contains('news_a'), isTrue);
+    expect(seenIds.contains('news_b'), isTrue);
+  });
+
   test('joint best-fit prefers news screen whose capacity fits summary length', () {
     const layoutBig =
         '{"v":1,"widgets":[{"type":"rss_article","slot":"main","config":{"summaryCapacityChars":1200}}]}';

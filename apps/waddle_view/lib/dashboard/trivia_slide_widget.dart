@@ -401,11 +401,6 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     );
 
     final text = _optionText(row, sourceLetter);
-    final borderColor = highlight
-        ? cs.primary
-        : accentColor.withValues(alpha: struck ? 0.45 : 1.0);
-    final borderWidth =
-        highlight ? max(3.0, 3.2 * s) : max(2.0, 2.4 * s);
 
     final tileGradient = struck
         ? LinearGradient(
@@ -419,13 +414,27 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
         : LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              cs.surfaceContainerHigh,
-              cs.surfaceContainerHighest,
-            ],
+            colors: highlight
+                ? [
+                    Color.lerp(cs.surfaceContainerHigh, cs.primary, 0.12) ??
+                        cs.surfaceContainerHigh,
+                    Color.lerp(
+                          cs.surfaceContainerHighest,
+                          cs.primary,
+                          0.08,
+                        ) ??
+                        cs.surfaceContainerHighest,
+                  ]
+                : [
+                    cs.surfaceContainerHigh,
+                    cs.surfaceContainerHighest,
+                  ],
           );
 
     final badgeDiameter = 44 * s;
+    final badgeFill = accentColor.withValues(alpha: struck ? 0.45 : 1.0);
+    final badgeLetterColor =
+        struck ? cs.onSurface.withValues(alpha: 0.65) : cs.onPrimary;
 
     return Padding(
       padding: EdgeInsets.only(bottom: useTwoColumns ? 0 : 12 * s),
@@ -437,22 +446,18 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
             decoration: BoxDecoration(
               gradient: tileGradient,
               borderRadius: BorderRadius.circular(14 * s),
-              border: Border.all(
-                color: borderColor,
-                width: borderWidth,
-              ),
               boxShadow: [
                 if (highlight)
                   BoxShadow(
-                    color: cs.primary.withValues(alpha: 0.5),
-                    blurRadius: 20 * s,
-                    spreadRadius: 0.5 * s,
+                    color: cs.primary.withValues(alpha: 0.45),
+                    blurRadius: 18 * s,
+                    spreadRadius: 1 * s,
                   )
                 else
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.28),
-                    offset: Offset(0, 4 * s),
-                    blurRadius: 10 * s,
+                    color: Colors.black.withValues(alpha: 0.22),
+                    offset: Offset(0, 3 * s),
+                    blurRadius: 8 * s,
                   ),
               ],
             ),
@@ -465,22 +470,10 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color.lerp(accentColor, Colors.white, 0.12) ??
-                            accentColor,
-                        accentColor,
-                      ],
-                    ),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.35),
-                      width: max(1.2, 1.5 * s),
-                    ),
+                    color: badgeFill,
                     boxShadow: [
                       BoxShadow(
-                        color: accentColor.withValues(alpha: 0.55),
+                        color: accentColor.withValues(alpha: struck ? 0.2 : 0.5),
                         blurRadius: 8 * s,
                         offset: Offset(0, 2 * s),
                       ),
@@ -488,7 +481,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                   ),
                   child: Text(
                     '$displayLetter.',
-                    style: badgeStyle,
+                    style: badgeStyle?.copyWith(color: badgeLetterColor),
                   ),
                 ),
                 SizedBox(width: 14 * s),
@@ -496,6 +489,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                   child: Text(
                     text,
                     style: optionStyle,
+                    softWrap: true,
                   ),
                 ),
               ],
@@ -715,81 +709,86 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
             constraints: BoxConstraints(
               maxWidth: min(constraints.maxWidth, 760 * s),
             ),
-            child: Container(
-              margin: EdgeInsets.symmetric(horizontal: 8 * s, vertical: 6 * s),
-              padding: EdgeInsets.fromLTRB(20 * s, 18 * s, 20 * s, 22 * s),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20 * s),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    cs.surface,
-                    cs.surfaceContainerLow,
+            child: SizedBox(
+              width: double.infinity,
+              child: Container(
+                margin: EdgeInsets.symmetric(horizontal: 8 * s, vertical: 6 * s),
+                padding: EdgeInsets.fromLTRB(20 * s, 18 * s, 20 * s, 22 * s),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20 * s),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      cs.surface,
+                      cs.surfaceContainerLow,
+                    ],
+                  ),
+                  border: Border.all(
+                    color: frameAccent.withValues(alpha: 0.75),
+                    width: max(2.0, 2.5 * s),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      offset: Offset(0, 8 * s),
+                      blurRadius: 24 * s,
+                    ),
+                    BoxShadow(
+                      color: frameAccent.withValues(alpha: 0.12),
+                      blurRadius: 32 * s,
+                      spreadRadius: 2 * s,
+                    ),
                   ],
                 ),
-                border: Border.all(
-                  color: frameAccent.withValues(alpha: 0.75),
-                  width: max(2.0, 2.5 * s),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.4),
-                    offset: Offset(0, 8 * s),
-                    blurRadius: 24 * s,
-                  ),
-                  BoxShadow(
-                    color: frameAccent.withValues(alpha: 0.12),
-                    blurRadius: 32 * s,
-                    spreadRadius: 2 * s,
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ContentCategorySlideHeader(
-                    db: widget.db,
-                    blobs: widget.blobs,
-                    theme: theme,
-                    categoryId: headerCat,
-                  ),
-                  SizedBox(height: 6 * s),
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 18 * s,
-                      vertical: 20 * s,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ContentCategorySlideHeader(
+                      db: widget.db,
+                      blobs: widget.blobs,
+                      theme: theme,
+                      categoryId: headerCat,
                     ),
-                    decoration: BoxDecoration(
-                      color: cs.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(16 * s),
-                      border: Border.all(
-                        color: cs.outlineVariant.withValues(alpha: 0.65),
-                        width: max(1.2, 1.5 * s),
+                    SizedBox(height: 6 * s),
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 18 * s,
+                        vertical: 20 * s,
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.18),
-                          offset: Offset(0, 3 * s),
-                          blurRadius: 8 * s,
+                      decoration: BoxDecoration(
+                        color: cs.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(16 * s),
+                        border: Border.all(
+                          color: cs.outlineVariant.withValues(alpha: 0.65),
+                          width: max(1.2, 1.5 * s),
                         ),
-                      ],
-                    ),
-                    child: Text(
-                      row.question,
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        height: 1.22,
-                        letterSpacing: 0.35,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.18),
+                            offset: Offset(0, 3 * s),
+                            blurRadius: 8 * s,
+                          ),
+                        ],
                       ),
-                      textAlign: TextAlign.center,
+                      child: Text(
+                        row.question,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          height: 1.22,
+                          letterSpacing: 0.35,
+                        ),
+                        textAlign: TextAlign.center,
+                        softWrap: true,
+                      ),
                     ),
-                  ),
-                  _buildRevealProgressBar(theme, s),
-                  SizedBox(height: 8 * s),
-                  answersSection,
-                ],
+                    _buildRevealProgressBar(theme, s),
+                    SizedBox(height: 8 * s),
+                    answersSection,
+                  ],
+                ),
               ),
             ),
           ),
