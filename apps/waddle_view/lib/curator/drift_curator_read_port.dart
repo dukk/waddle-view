@@ -43,6 +43,29 @@ class DriftCuratorReadPort implements CuratorReadPort {
   }
 
   @override
+  Future<List<StockTickerRowForMarquee>> loadStockRowsForTicker() async {
+    final symbols = await (_db.select(
+      _db.stockSymbols,
+    )..where((t) => t.enabled.equals(true))
+      ..orderBy([(t) => OrderingTerm.asc(t.symbol)])).get();
+    if (symbols.isEmpty) {
+      return const [];
+    }
+    final quotes = await _db.select(_db.stockQuotes).get();
+    final quoteBySymbolId = {for (final q in quotes) q.symbolId: q};
+    return [
+      for (final sym in symbols)
+        (
+          symbolId: sym.id,
+          symbol: sym.symbol,
+          displayName: sym.displayName,
+          currentPrice: quoteBySymbolId[sym.id]?.currentPrice,
+          percentChange: quoteBySymbolId[sym.id]?.percentChange,
+        ),
+    ];
+  }
+
+  @override
   Future<List<TickerDefinitionForCuration>> loadTickerDefinitionsForCuration() async {
     final rows = await (_db.select(
       _db.tickerDefinitions,

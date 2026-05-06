@@ -7,6 +7,21 @@ import 'package:waddle_view/persistence/database.dart';
 import '../helpers/memory_database.dart';
 
 void main() {
+  test('loadKeyValuesForCuration maps config_key_values rows', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.configKeyValues).insert(
+          ConfigKeyValuesCompanion.insert(
+            key: 'ticker.marquee.news',
+            value: 'Hello',
+          ),
+        );
+    final port = DriftCuratorReadPort(db);
+    final kv = await port.loadKeyValuesForCuration();
+    expect(kv['ticker.marquee.news'], 'Hello');
+    await db.close();
+  });
+
   test('loadNewsCandidatesForTicker uses feed title for feedName', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
@@ -119,6 +134,63 @@ void main() {
     final list = await port.loadTickerDefinitionsForCuration();
     expect(list.map((e) => e.id).toList(), ['a', 'b']);
     expect(list.first.tickerType, 'time');
+    await db.close();
+  });
+
+  test('loadStockRowsForTicker returns empty list when no enabled symbols', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.stockSymbols).insert(
+          StockSymbolsCompanion.insert(
+            id: 'gone',
+            symbol: 'GONE',
+            enabled: const Value(false),
+          ),
+        );
+    final port = DriftCuratorReadPort(db);
+    final rows = await port.loadStockRowsForTicker();
+    expect(rows, isEmpty);
+    await db.close();
+  });
+
+  test('loadStockRowsForTicker returns enabled symbols ordered by symbol with quotes', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.stockSymbols).insert(
+          StockSymbolsCompanion.insert(
+            id: 'msft',
+            symbol: 'MSFT',
+            displayName: const Value('Microsoft'),
+          ),
+        );
+    await db.into(db.stockSymbols).insert(
+          StockSymbolsCompanion.insert(
+            id: 'aapl',
+            symbol: 'AAPL',
+          ),
+        );
+    await db.into(db.stockSymbols).insert(
+          StockSymbolsCompanion.insert(
+            id: 'gone',
+            symbol: 'GONE',
+            enabled: const Value(false),
+          ),
+        );
+    await db.into(db.stockQuotes).insert(
+          StockQuotesCompanion.insert(
+            symbolId: 'aapl',
+            currentPrice: const Value(100),
+            percentChange: const Value(-0.5),
+            observedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
+          ),
+        );
+    final port = DriftCuratorReadPort(db);
+    final rows = await port.loadStockRowsForTicker();
+    expect(rows.map((r) => r.symbol).toList(), ['AAPL', 'MSFT']);
+    expect(rows.first.symbolId, 'aapl');
+    expect(rows.first.currentPrice, 100);
+    expect(rows.first.percentChange, -0.5);
+    expect(rows[1].currentPrice, equals(null));
     await db.close();
   });
 

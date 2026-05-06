@@ -118,6 +118,9 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
     return 1;
   }
 
+  CalendarMonthUpcomingTimeOptions get _upcomingTimeOptions =>
+      CalendarMonthUpcomingTimeOptions.fromConfig(widget.spec.config);
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -174,9 +177,11 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
                   .map((e) => rowByEventId[e.id])
                   .whereType<CalendarSlideEventRow>()
                   .toList();
+              final upcomingTime = _upcomingTimeOptions;
               final listItems = buildCalendarUpcomingListItems(
                 rows: upcomingRows,
                 todayLocal: startOfToday,
+                timeOptions: upcomingTime,
               );
               final monthAnchor = DateTime(now.year, now.month, now.day);
               final eventDaysInMonth = allEvents
@@ -239,6 +244,9 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
                               theme: widget.theme,
                               layoutScale: s,
                               layoutCompact: layoutCompact,
+                              timeColumnWidth: layoutCompact
+                                  ? upcomingTime.timeWidthCompact * s
+                                  : upcomingTime.timeWidth * s,
                             ),
                           ),
                         ),
@@ -287,6 +295,7 @@ class _UpcomingEventsPanel extends StatelessWidget {
     required this.theme,
     required this.layoutScale,
     required this.layoutCompact,
+    required this.timeColumnWidth,
   });
 
   final AsyncSnapshot<CalendarMonthStreamBundle> snapshot;
@@ -295,6 +304,7 @@ class _UpcomingEventsPanel extends StatelessWidget {
   final ThemeData theme;
   final double layoutScale;
   final bool layoutCompact;
+  final double timeColumnWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -310,7 +320,7 @@ class _UpcomingEventsPanel extends StatelessWidget {
       fontWeight: FontWeight.w600,
     );
     final headingGap = (layoutCompact ? 6.0 : 12.0) * s;
-    final timeWidth = (layoutCompact ? 64.0 : 76.0) * s;
+    final timeWidth = timeColumnWidth;
     final iconCol = 28.0 * s;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -379,6 +389,8 @@ class _UpcomingEventsPanel extends StatelessWidget {
                                   color: theme.colorScheme.onSurfaceVariant,
                                   fontWeight: FontWeight.w600,
                                 ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               )
                             : const SizedBox.shrink(),
                       ),

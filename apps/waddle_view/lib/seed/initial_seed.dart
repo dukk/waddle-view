@@ -200,6 +200,13 @@ Future<void> _ensureTickerDefinitions(AppDatabase db) async {
     sortOrder: 30,
   );
   await upsert(
+    id: 'ticker_stocks',
+    name: 'Stocks',
+    description: 'Enabled stock_symbols with latest stock_quotes',
+    tickerType: 'stocks',
+    sortOrder: 35,
+  );
+  await upsert(
     id: 'ticker_custom',
     name: 'Custom marquee',
     description: 'Extra ticker.marquee.* keys (disabled by default)',
@@ -931,6 +938,18 @@ Future<void> _ensureStocksProviderRow(AppDatabase db) async {
             '{"symbol":"GOOG","displayName":"Alphabet"},'
             '{"symbol":"NVDA","displayName":"NVIDIA"},'
             '{"symbol":"AMZN","displayName":"Amazon"}'
+            '{"symbol":"TSLA","displayName":"Tesla"},'
+            '{"symbol":"META","displayName":"Meta"},'
+            '{"symbol":"NFLX","displayName":"Netflix"},'
+            '{"symbol":"DIS","displayName":"Disney"},'
+            '{"symbol":"IBM","displayName":"IBM"},'
+            '{"symbol":"CSCO","displayName":"Cisco"},'
+            '{"symbol":"INTC","displayName":"Intel"},'
+            '{"symbol":"ORCL","displayName":"Oracle"},'
+            '{"symbol":"VOO","displayName":"Vanguard S&P 500 ETF"},'
+            '{"symbol":"SPY","displayName":"SPDR S&P 500 ETF"},'
+            '{"symbol":"QQQ","displayName":"Invesco QQQ Trust"},'
+            '{"symbol":"IWM","displayName":"iShares Russell 2000 ETF"},'
             ']}',
           ),
           configJsonSchema: Value(stocksDoc.schema),
@@ -967,9 +986,21 @@ Future<void> _ensureDefaultStockSymbols(AppDatabase db) async {
 
   await ensure('aapl', 'AAPL', 'Apple', enabled: true);
   await ensure('msft', 'MSFT', 'Microsoft', enabled: true);
-  await ensure('goog', 'GOOG', 'Alphabet', enabled: false);
-  await ensure('nvda', 'NVDA', 'NVIDIA', enabled: false);
+  await ensure('goog', 'GOOG', 'Alphabet', enabled: true);
+  await ensure('nvda', 'NVDA', 'NVIDIA', enabled: true);
   await ensure('amzn', 'AMZN', 'Amazon', enabled: false);
+  await ensure('tsla', 'TSLA', 'Tesla', enabled: false);
+  await ensure('meta', 'META', 'Meta', enabled: false);
+  await ensure('nflx', 'NFLX', 'Netflix', enabled: false);
+  await ensure('dis', 'DIS', 'Disney', enabled: false);
+  await ensure('ibm', 'IBM', 'IBM', enabled: false);
+  await ensure('csco', 'CSCO', 'Cisco', enabled: false);
+  await ensure('intc', 'INTC', 'Intel', enabled: false);
+  await ensure('orcl', 'ORCL', 'Oracle', enabled: false);
+  await ensure('voo', 'VOO', 'Vanguard S&P 500 ETF', enabled: true);
+  await ensure('spy', 'SPY', 'SPDR S&P 500 ETF', enabled: true);
+  await ensure('qqq', 'QQQ', 'Invesco QQQ Trust', enabled: false);
+  await ensure('iwm', 'IWM', 'iShares Russell 2000 ETF', enabled: false);
 }
 
 Future<void> _ensureStockQuotesScreen(AppDatabase db) async {

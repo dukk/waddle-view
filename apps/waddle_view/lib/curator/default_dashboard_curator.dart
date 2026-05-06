@@ -24,12 +24,14 @@ class DefaultDashboardCurator implements DashboardCurator {
     final news = await _read.loadNewsCandidatesForTicker();
     final currentWeather = await _read.loadCurrentWeatherForTicker();
     final tickerDefs = await _read.loadTickerDefinitionsForCuration();
+    final stockRows = await _read.loadStockRowsForTicker();
     final items = buildTickerItemsForMarquee(
       kv: kv,
       nowLocal: _clock.now().toLocal(),
       newsCandidates: news,
       currentWeather: currentWeather,
       definitions: tickerDefs,
+      stockRows: stockRows,
     );
     await _tickerStore.replaceAll(items);
     final kinds = items.map((e) => e.kind).join(', ');

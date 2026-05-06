@@ -415,7 +415,24 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
   required List<TickerItem> rssItems,
   CurrentWeatherTickerData? currentWeather,
   required List<TickerDefinitionForCuration> enabledDefinitions,
+  required List<StockTickerRowForMarquee> stockRows,
 }) {
+  String stockMarqueeBody(StockTickerRowForMarquee row) {
+    final label = row.symbol.trim().isEmpty ? row.symbolId : row.symbol.trim();
+    final price = row.currentPrice;
+    final pct = row.percentChange;
+    final priceText =
+        price != null ? '\$${price.toStringAsFixed(2)}' : '\u2014';
+    final pctText = pct != null
+        ? '${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(2)}%'
+        : '\u2014';
+    final dn = row.displayName.trim();
+    if (dn.isNotEmpty) {
+      return '$label ($dn) $priceText $pctText';
+    }
+    return '$label $priceText $pctText';
+  }
+
   final liveWeatherBody = currentWeather?.toTickerBody().trim() ?? '';
   final rawWeather = liveWeatherBody.isNotEmpty
       ? liveWeatherBody
@@ -473,6 +490,20 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
     ];
   }
 
+  List<TickerItem> expandStocks() {
+    if (stockRows.isEmpty) {
+      return const [];
+    }
+    return [
+      for (final row in stockRows)
+        TickerItem(
+          kind: 'stocks',
+          body: stockMarqueeBody(row),
+          sourceId: row.symbolId,
+        ),
+    ];
+  }
+
   List<TickerItem> expandCustom(TickerDefinitionForCuration def) {
     final specific = def.configKey?.trim();
     if (specific != null && specific.isNotEmpty) {
@@ -510,6 +541,8 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
         return expandNews();
       case 'quote':
         return expandQuote();
+      case 'stocks':
+        return expandStocks();
       case 'custom':
         return expandCustom(def);
       default:
@@ -550,6 +583,7 @@ List<TickerItem> buildTickerItemsForMarquee({
   required List<TickerNewsCandidate> newsCandidates,
   CurrentWeatherTickerData? currentWeather,
   List<TickerDefinitionForCuration> definitions = const [],
+  List<StockTickerRowForMarquee> stockRows = const [],
 }) {
   final cfg = CuratorTickerConfig.fromKv(kv);
   final rssItems = pickNewsTickerItemsByWidthBudget(
@@ -585,5 +619,6 @@ List<TickerItem> buildTickerItemsForMarquee({
     rssItems: rssItems,
     currentWeather: currentWeather,
     enabledDefinitions: enabled,
+    stockRows: stockRows,
   );
 }

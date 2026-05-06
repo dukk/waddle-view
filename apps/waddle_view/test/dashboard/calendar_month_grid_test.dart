@@ -58,12 +58,57 @@ void main() {
       );
     });
 
-    test('timed event uses HH:MM', () {
-      final s = formatCalendarEventListTime(
-        DateTime.utc(2024, 6, 15, 14, 7),
-        false,
+    test('defaults: 12-hour with PM', () {
+      expect(
+        formatCalendarEventListTime(
+          DateTime(2024, 6, 15, 14, 7),
+          false,
+        ),
+        '2:07 PM',
       );
-      expect(s, matches(RegExp(r'^\d{2}:\d{2}$')));
+    });
+
+    test('defaults: noon label', () {
+      expect(
+        formatCalendarEventListTime(
+          DateTime(2024, 6, 15, 12, 0),
+          false,
+        ),
+        'Noon',
+      );
+    });
+
+    test('custom noon label', () {
+      expect(
+        formatCalendarEventListTime(
+          DateTime(2024, 6, 15, 12, 0),
+          false,
+          options: const CalendarMonthUpcomingTimeOptions(noonLabel: 'Midday'),
+        ),
+        'Midday',
+      );
+    });
+
+    test('24-hour when use12Hour false', () {
+      final s = formatCalendarEventListTime(
+        DateTime(2024, 6, 15, 14, 7),
+        false,
+        options: const CalendarMonthUpcomingTimeOptions(use12Hour: false),
+      );
+      expect(s, '14:07');
+    });
+
+    test('fromConfig reads keys', () {
+      final o = CalendarMonthUpcomingTimeOptions.fromConfig({
+        'upcomingTime12Hour': false,
+        'upcomingTimeNoonLabel': ' Lunch ',
+        'upcomingTimeWidthCompact': 72,
+        'upcomingTimeWidth': 90,
+      });
+      expect(o.use12Hour, isFalse);
+      expect(o.noonLabel, 'Lunch');
+      expect(o.timeWidthCompact, 72);
+      expect(o.timeWidth, 90);
     });
   });
 }

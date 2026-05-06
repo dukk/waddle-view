@@ -127,11 +127,11 @@ Each **`screen_definitions`** row stores runtime **`layout_json`** plus document
 
 ### Bottom ticker (`ticker_definitions`)
 
-SQLite table **`ticker_definitions`** configures the bottom marquee: which **types** run (`time`, `weather`, `news`, `quote`, `custom`), **order** (`sort_order`, then id), **`enabled`**, and **`frequency_weight`** (repeat that type’s item bundle that many times when building the curated list; identical bodies are still deduplicated). **`custom`** rows may set **`config_key`** to pin one `ticker.marquee.*` key; when null, every extra `ticker.marquee.*` key outside the standard weather/news/quote keys is included (legacy “extras” bucket).
+SQLite table **`ticker_definitions`** configures the bottom marquee: which **types** run (`time`, `weather`, `news`, `quote`, `stocks`, `custom`), **order** (`sort_order`, then id), **`enabled`**, and **`frequency_weight`** (repeat that type’s item bundle that many times when building the curated list; identical bodies are still deduplicated). **`custom`** rows may set **`config_key`** to pin one `ticker.marquee.*` key; when null, every extra `ticker.marquee.*` key outside the standard weather/news/quote keys is included (legacy “extras” bucket).
 
-Content still comes from **`config_key_values`** (`ticker.marquee.*`), live weather, and stored RSS articles for **`news`**. If **`ticker_definitions`** has **no rows** (empty table), curation keeps the legacy fixed order: time, standard keys, sorted extras. If the table has rows but **none are enabled**, curation falls back to **time** only.
+Content still comes from **`config_key_values`** (`ticker.marquee.*`), live weather, stored RSS articles for **`news`**, and (for definition-based curation) enabled **`stock_symbols`** / **`stock_quotes`** when a **`stocks`** row is enabled. If **`ticker_definitions`** has **no rows** (empty table), curation keeps the legacy fixed order: time, standard keys, sorted extras — **without** stock lines. If the table has rows but **none are enabled**, curation falls back to **time** only.
 
-Seeded defaults: **`ticker_time`** … **`ticker_quote`** enabled, **`ticker_custom`** disabled ([`initial_seed.dart`](lib/seed/initial_seed.dart)).
+Seeded defaults: **`ticker_time`** … **`ticker_stocks`** enabled, **`ticker_custom`** disabled ([`initial_seed.dart`](lib/seed/initial_seed.dart)).
 
 ### Text scale — screens vs ticker (`config_key_values`)
 
@@ -237,7 +237,7 @@ The **Outlook calendar** provider (`id` / `provider_type`: **`outlook_calendar`*
 - **`sources`**: list of mailbox objects. **`mailbox`** is the Graph user (`me` or a UPN). **`calendars`**: display names or Graph calendar ids, each either a **string** or `{ "calendar": "Name", "categoryId": "<content_categories.id>" }` to force a **content category** for every event from that calendar. An **empty** `calendars` array means the user’s **default** calendar only; optional **`defaultCategoryId`** then applies to those events. Optional **`categoryMap`** maps **Outlook** event category labels (Graph `categories`) to **`content_categories.id`** when no per-calendar override applies.
 - **`pastDays`** / **`futureDays`**: inclusive window around **today’s UTC midnight** (defaults **14** / **14**).
 
-**`calendar_events`** (schema **22+**) also stores **`ical_uid`** (for deduplication across calendars) and optional **`category_id`** (FK to **`content_categories`**). The **`calendar_month`** slide shows a category **icon** when present, **deduplicates** shared meetings, and **reuses** one time label for events at the same clock time or for **all-day** items on the same day.
+**`calendar_events`** (schema **22+**) also stores **`ical_uid`** (for deduplication across calendars) and optional **`category_id`** (FK to **`content_categories`**). The **`calendar_month`** slide shows a category **icon** when present, **deduplicates** shared meetings, and **reuses** one time label for events at the same clock time or for **all-day** items on the same day. **Widget `config`** (optional): **`upcomingTime12Hour`** (default **true**) for `h:mm AM/PM` vs 24-hour; **`upcomingTimeNoonLabel`** (default **`Noon`**) for exactly 12:00 PM local; **`upcomingTimeWidthCompact`** / **`upcomingTimeWidth`** (default **88** / **104** logical px before TV scale) for the upcoming-events time column.
 
 **`provider_settings.poll_seconds`:** default **3600** (one sync per hour when enabled).
 

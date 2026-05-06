@@ -28,12 +28,13 @@ void main() {
     final rows = await (db.select(db.tickerDefinitions)
           ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
         .get();
-    expect(rows.length, 5);
+    expect(rows.length, 6);
     expect(rows.map((r) => r.tickerType).toList(), [
       'time',
       'weather',
       'news',
       'quote',
+      'stocks',
       'custom',
     ]);
     final custom =

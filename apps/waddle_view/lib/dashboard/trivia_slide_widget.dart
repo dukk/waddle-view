@@ -242,61 +242,107 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     if (_eliminationEndMs <= 0) {
       return const SizedBox.shrink();
     }
+    final cs = theme.colorScheme;
+    final palette = theme.extension<PaletteTertiaryLayers>();
+    final glow = palette?.accent2 ?? cs.tertiary;
+
     return Padding(
-      padding: EdgeInsets.only(top: 12 * s, bottom: 16 * s),
+      padding: EdgeInsets.only(top: 16 * s, bottom: 4 * s),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final w = constraints.maxWidth;
-          final h = 7 * s;
+          final h = 11 * s;
           final remaining =
               (1.0 - _elapsedMs / _eliminationEndMs).clamp(0.0, 1.0);
-          final trackColor = theme.colorScheme.secondaryContainer
-              .withValues(alpha: 0.55);
-          final fillColor =
-              theme.colorScheme.secondary.withValues(alpha: 0.5);
-          final markerColor = theme.colorScheme.secondary;
+          final trackOuter = cs.surfaceContainerHighest;
+          final trackInner = cs.surfaceContainerHigh;
+          final fillMid = cs.primary;
+          final fillEdge = Color.lerp(fillMid, glow, 0.35) ?? fillMid;
+          final markerColor = cs.onSurface.withValues(alpha: 0.85);
 
           return SizedBox(
             key: const ValueKey<String>('trivia_reveal_progress'),
-            height: h,
+            height: h + 6 * s,
             child: Stack(
               clipBehavior: Clip.none,
+              alignment: Alignment.center,
               children: [
                 Container(
+                  height: h + 4 * s,
                   decoration: BoxDecoration(
-                    color: trackColor,
-                    borderRadius: BorderRadius.circular(4 * s),
-                  ),
-                ),
-                Positioned.fill(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: FractionallySizedBox(
-                      widthFactor: remaining,
-                      alignment: Alignment.centerLeft,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: fillColor,
-                          borderRadius: BorderRadius.circular(4 * s),
-                        ),
+                    color: trackOuter,
+                    borderRadius: BorderRadius.circular((h + 4 * s) / 2),
+                    border: Border.all(
+                      color: cs.outline.withValues(alpha: 0.55),
+                      width: max(1.5, 1.8 * s),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.35),
+                        offset: Offset(0, 3 * s),
+                        blurRadius: 6 * s,
                       ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(2.5 * s),
+                    child: Stack(
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            color: trackInner,
+                            borderRadius: BorderRadius.circular(h / 2),
+                          ),
+                        ),
+                        Positioned.fill(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: FractionallySizedBox(
+                              widthFactor: remaining,
+                              alignment: Alignment.centerLeft,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(h / 2),
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      fillEdge,
+                                      fillMid,
+                                      fillEdge,
+                                    ],
+                                    stops: const [0.0, 0.5, 1.0],
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: fillMid.withValues(alpha: 0.55),
+                                      blurRadius: 10 * s,
+                                      spreadRadius: -1 * s,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
                 for (final delayMs in _strikeDelaysMs)
                   Positioned(
-                    left: (delayMs / _eliminationEndMs) * w - 2 * s,
-                    top: 0,
-                    bottom: 0,
-                    width: 4 * s,
-                    child: Center(
-                      child: Container(
-                        width: 4 * s,
-                        height: h + 4 * s,
-                        decoration: BoxDecoration(
-                          color: markerColor,
-                          borderRadius: BorderRadius.circular(2 * s),
-                        ),
+                    left: (delayMs / _eliminationEndMs) * w - 1.5 * s,
+                    top: -2 * s,
+                    child: Container(
+                      width: 3 * s,
+                      height: h + 8 * s,
+                      decoration: BoxDecoration(
+                        color: markerColor,
+                        borderRadius: BorderRadius.circular(1.5 * s),
+                        boxShadow: [
+                          BoxShadow(
+                            color: markerColor.withValues(alpha: 0.4),
+                            blurRadius: 4 * s,
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -323,52 +369,129 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     final struck = _struckWrong.contains(displayLetter);
     final correctSource = row.correctOption.trim().toUpperCase();
     final highlight = revealComplete && sourceLetter == correctSource;
+    final cs = theme.colorScheme;
     final palette = theme.extension<PaletteTertiaryLayers>();
     final accentColors = [
-      palette?.accent1 ?? theme.colorScheme.secondary,
-      palette?.accent2 ?? theme.colorScheme.tertiary,
-      palette?.accent3 ?? theme.colorScheme.primary,
-      palette?.accent1 ?? theme.colorScheme.secondary,
+      palette?.accent1 ?? cs.secondary,
+      palette?.accent2 ?? cs.tertiary,
+      palette?.accent3 ?? cs.primary,
+      palette?.accent1 ?? cs.secondary,
     ];
     final accentColor = accentColors[slot % accentColors.length];
-    final normalTextColor = theme.colorScheme.onSurface;
+    final normalTextColor = cs.onSurface;
     final base = theme.textTheme.titleMedium;
     final TextStyle? optionStyle;
     if (highlight) {
       optionStyle = base?.copyWith(
         fontWeight: FontWeight.w700,
         color: normalTextColor,
+        height: 1.25,
       );
     } else {
-      optionStyle = base?.copyWith(color: normalTextColor);
+      optionStyle = base?.copyWith(
+        color: normalTextColor,
+        height: 1.25,
+      );
     }
 
+    final badgeStyle = theme.textTheme.titleLarge?.copyWith(
+      fontWeight: FontWeight.w800,
+      color: cs.onPrimary,
+      height: 1.0,
+    );
+
     final text = _optionText(row, sourceLetter);
+    final borderColor = highlight
+        ? cs.primary
+        : accentColor.withValues(alpha: struck ? 0.45 : 1.0);
+    final borderWidth =
+        highlight ? max(3.0, 3.2 * s) : max(2.0, 2.4 * s);
+
+    final tileGradient = struck
+        ? LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              cs.surfaceContainerHighest.withValues(alpha: 0.55),
+              cs.surfaceContainerLow.withValues(alpha: 0.4),
+            ],
+          )
+        : LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              cs.surfaceContainerHigh,
+              cs.surfaceContainerHighest,
+            ],
+          );
+
+    final badgeDiameter = 44 * s;
 
     return Padding(
-      padding: EdgeInsets.only(bottom: useTwoColumns ? 0 : 10 * s),
+      padding: EdgeInsets.only(bottom: useTwoColumns ? 0 : 12 * s),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 10 * s, vertical: 10 * s),
+            padding: EdgeInsets.symmetric(horizontal: 14 * s, vertical: 12 * s),
             decoration: BoxDecoration(
+              gradient: tileGradient,
+              borderRadius: BorderRadius.circular(14 * s),
               border: Border.all(
-                color: accentColor.withValues(alpha: struck ? 0.6 : 0.9),
-                width: max(1.6, 2 * s),
+                color: borderColor,
+                width: borderWidth,
               ),
-              borderRadius: BorderRadius.circular(12 * s),
+              boxShadow: [
+                if (highlight)
+                  BoxShadow(
+                    color: cs.primary.withValues(alpha: 0.5),
+                    blurRadius: 20 * s,
+                    spreadRadius: 0.5 * s,
+                  )
+                else
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.28),
+                    offset: Offset(0, 4 * s),
+                    blurRadius: 10 * s,
+                  ),
+              ],
             ),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                SizedBox(
-                  width: 28 * s,
+                Container(
+                  width: badgeDiameter,
+                  height: badgeDiameter,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color.lerp(accentColor, Colors.white, 0.12) ??
+                            accentColor,
+                        accentColor,
+                      ],
+                    ),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.35),
+                      width: max(1.2, 1.5 * s),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: accentColor.withValues(alpha: 0.55),
+                        blurRadius: 8 * s,
+                        offset: Offset(0, 2 * s),
+                      ),
+                    ],
+                  ),
                   child: Text(
                     '$displayLetter.',
-                    style: optionStyle,
+                    style: badgeStyle,
                   ),
                 ),
+                SizedBox(width: 14 * s),
                 Expanded(
                   child: Text(
                     text,
@@ -379,29 +502,56 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
             ),
           ),
           if (struck)
+            Positioned.fill(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14 * s),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.22),
+                  ),
+                ),
+              ),
+            ),
+          if (struck)
             Positioned(
-              right: 6 * s,
-              top: 6 * s,
-              child: TweenAnimationBuilder<double>(
-                key: ValueKey<String>('trivia_strike_$displayLetter'),
-                duration:
-                    const Duration(milliseconds: kTriviaStrikeAnimationMs),
-                tween: Tween(begin: 0, end: 1),
-                curve: Curves.easeOutCubic,
-                builder: (context, t, _) {
-                  return Opacity(
-                    opacity: t,
-                    child: Transform.scale(
-                      scale: 0.75 + (0.25 * t),
-                      child: Icon(
-                        Icons.close,
-                        key: ValueKey<String>('trivia_close_icon_$displayLetter'),
-                        color: accentColor,
-                        size: 34 * s,
+              right: 10 * s,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: TweenAnimationBuilder<double>(
+                  key: ValueKey<String>('trivia_strike_$displayLetter'),
+                  duration:
+                      const Duration(milliseconds: kTriviaStrikeAnimationMs),
+                  tween: Tween(begin: 0, end: 1),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, t, _) {
+                    return Opacity(
+                      opacity: t,
+                      child: Transform.scale(
+                        scale: 0.82 + (0.18 * t),
+                        child: Container(
+                          padding: EdgeInsets.all(6 * s),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.55),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.35),
+                              width: max(1.0, 1.2 * s),
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.close,
+                            key: ValueKey<String>(
+                              'trivia_close_icon_$displayLetter',
+                            ),
+                            color: const Color(0xFFFF5252),
+                            size: 28 * s,
+                          ),
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
         ],
@@ -490,7 +640,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                             useTwoColumns: true,
                           ),
                         ),
-                        SizedBox(width: 12 * s),
+                        SizedBox(width: 16 * s),
                         Expanded(
                           child: _optionTile(
                             row: row,
@@ -504,7 +654,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                         ),
                       ],
                     ),
-                    SizedBox(height: 10 * s),
+                    SizedBox(height: 14 * s),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -519,7 +669,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                             useTwoColumns: true,
                           ),
                         ),
-                        SizedBox(width: 12 * s),
+                        SizedBox(width: 16 * s),
                         Expanded(
                           child: _optionTile(
                             row: row,
@@ -554,28 +704,93 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                 ),
               );
 
+        final cs = theme.colorScheme;
+        final palette = theme.extension<PaletteTertiaryLayers>();
+        final frameAccent = palette?.accent1 ??
+            Color.lerp(cs.primary, cs.tertiary, 0.5) ??
+            cs.primary;
+
         final column = Center(
           child: ConstrainedBox(
             constraints: BoxConstraints(
-              maxWidth: min(constraints.maxWidth, 720 * s),
+              maxWidth: min(constraints.maxWidth, 760 * s),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ContentCategorySlideHeader(
-                  db: widget.db,
-                  blobs: widget.blobs,
-                  theme: theme,
-                  categoryId: headerCat,
+            child: Container(
+              margin: EdgeInsets.symmetric(horizontal: 8 * s, vertical: 6 * s),
+              padding: EdgeInsets.fromLTRB(20 * s, 18 * s, 20 * s, 22 * s),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20 * s),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    cs.surface,
+                    cs.surfaceContainerLow,
+                  ],
                 ),
-                Text(
-                  row.question,
-                  style: theme.textTheme.headlineSmall,
-                  textAlign: TextAlign.center,
+                border: Border.all(
+                  color: frameAccent.withValues(alpha: 0.75),
+                  width: max(2.0, 2.5 * s),
                 ),
-                _buildRevealProgressBar(theme, s),
-                answersSection,
-              ],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    offset: Offset(0, 8 * s),
+                    blurRadius: 24 * s,
+                  ),
+                  BoxShadow(
+                    color: frameAccent.withValues(alpha: 0.12),
+                    blurRadius: 32 * s,
+                    spreadRadius: 2 * s,
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ContentCategorySlideHeader(
+                    db: widget.db,
+                    blobs: widget.blobs,
+                    theme: theme,
+                    categoryId: headerCat,
+                  ),
+                  SizedBox(height: 6 * s),
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 18 * s,
+                      vertical: 20 * s,
+                    ),
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(16 * s),
+                      border: Border.all(
+                        color: cs.outlineVariant.withValues(alpha: 0.65),
+                        width: max(1.2, 1.5 * s),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.18),
+                          offset: Offset(0, 3 * s),
+                          blurRadius: 8 * s,
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      row.question,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        height: 1.22,
+                        letterSpacing: 0.35,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  _buildRevealProgressBar(theme, s),
+                  SizedBox(height: 8 * s),
+                  answersSection,
+                ],
+              ),
             ),
           ),
         );

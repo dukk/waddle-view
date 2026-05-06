@@ -15,7 +15,7 @@ class TickerDefinitionForCuration {
   });
 
   final String id;
-  /// `time`, `weather`, `news`, `quote`, or `custom`.
+  /// `time`, `weather`, `news`, `quote`, `stocks`, or `custom`.
   final String tickerType;
   final bool enabled;
   final int frequencyWeight;
@@ -53,6 +53,15 @@ class CurrentWeatherTickerData {
   }
 }
 
+/// One enabled symbol and optional latest quote for marquee `stocks` slots.
+typedef StockTickerRowForMarquee = ({
+  String symbolId,
+  String symbol,
+  String displayName,
+  double? currentPrice,
+  double? percentChange,
+});
+
 /// Reads domain facts for [DashboardCurator] (no network).
 abstract class CuratorReadPort {
   Future<Map<String, String>> loadKeyValuesForCuration();
@@ -66,4 +75,7 @@ abstract class CuratorReadPort {
   /// All ticker definition rows, ordered by [TickerDefinitionForCuration.sortOrder]
   /// then id.
   Future<List<TickerDefinitionForCuration>> loadTickerDefinitionsForCuration();
+
+  /// Enabled [StockSymbols] rows with optional [StockQuotes], ordered by symbol.
+  Future<List<StockTickerRowForMarquee>> loadStockRowsForTicker();
 }

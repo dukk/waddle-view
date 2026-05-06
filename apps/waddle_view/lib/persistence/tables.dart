@@ -104,7 +104,7 @@ class TickerDefinitions extends Table {
   TextColumn get name => text()();
   TextColumn get description => text().withDefault(const Constant(''))();
   BoolColumn get enabled => boolean().withDefault(const Constant(true))();
-  /// One of: `time`, `weather`, `news`, `quote`, `custom`.
+  /// One of: `time`, `weather`, `news`, `quote`, `stocks`, `custom`.
   TextColumn get tickerType => text()();
   IntColumn get frequencyWeight => integer().withDefault(const Constant(100))();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();

@@ -1,10 +1,46 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:waddle_view/clock.dart';
 import 'package:waddle_view/curator/curator_read_port.dart';
 import 'package:waddle_view/curator/ticker_curation.dart';
 import 'package:waddle_view/curator/ticker_news_candidate.dart';
 
 void main() {
+  test('formatTickerTime formats clock local time', () {
+    expect(
+      formatTickerTime(FakeClock(DateTime.utc(2026, 6, 1, 14, 5, 9))),
+      '14:05:09',
+    );
+  });
+
+  test('CurrentWeatherTickerData toTickerBody is location when no temp or description', () {
+    expect(
+      const CurrentWeatherTickerData(locationName: 'Paris').toTickerBody(),
+      'Paris',
+    );
+  });
+
+  test('TickerNewsCandidate publishedAt is UTC from epoch ms', () {
+    final c = TickerNewsCandidate(
+      feedId: 'f',
+      feedName: 'F',
+      title: 'T',
+      publishedAtMs: 0,
+    );
+    expect(c.publishedAt.isUtc, isTrue);
+    expect(c.publishedAt.millisecondsSinceEpoch, 0);
+  });
+
+  test('buildTickerItemsForMarquee legacy includes quote from kv', () {
+    final items = buildTickerItemsForMarquee(
+      kv: const {'ticker.marquee.quote': 'Inspiration'},
+      nowLocal: DateTime(2026, 1, 1, 12, 0, 0),
+      newsCandidates: const [],
+    );
+    final q = items.singleWhere((e) => e.kind == 'quote');
+    expect(q.body, 'Inspiration');
+  });
+
   test('orders time then known keys then extra keys', () {
     final t = DateTime(2026, 3, 4, 9, 8, 7);
     final items = buildTickerItemsFromKv(
@@ -216,6 +252,52 @@ void main() {
       definitions: defs,
     );
     expect(items.map((e) => e.kind).toList(), ['time']);
+  });
+
+  test('buildTickerItemsForMarquee includes stocks from stockRows when definition enabled', () {
+    final defs = [
+      const TickerDefinitionForCuration(
+        id: 's',
+        tickerType: 'stocks',
+        enabled: true,
+        frequencyWeight: 1,
+        sortOrder: 0,
+      ),
+    ];
+    final items = buildTickerItemsForMarquee(
+      kv: const {},
+      nowLocal: DateTime(2026, 3, 4, 9, 8, 7),
+      newsCandidates: const [],
+      definitions: defs,
+      stockRows: [
+        (
+          symbolId: 'aapl',
+          symbol: 'AAPL',
+          displayName: 'Apple',
+          currentPrice: 261.74,
+          percentChange: 1.23,
+        ),
+        (
+          symbolId: 'zz',
+          symbol: 'ZZ',
+          displayName: '',
+          currentPrice: null,
+          percentChange: null,
+        ),
+        (
+          symbolId: 'fallback-id',
+          symbol: '   ',
+          displayName: '',
+          currentPrice: 1,
+          percentChange: -2,
+        ),
+      ],
+    );
+    expect(items.map((e) => e.kind).toList(), ['stocks', 'stocks', 'stocks']);
+    expect(items[0].body, r'AAPL (Apple) $261.74 +1.23%');
+    expect(items[0].sourceId, 'aapl');
+    expect(items[1].body, 'ZZ \u2014 \u2014');
+    expect(items[2].body, r'fallback-id $1.00 -2.00%');
   });
 
   test('buildTickerItemsForMarquee applies frequency_weight for distinct news bodies', () {

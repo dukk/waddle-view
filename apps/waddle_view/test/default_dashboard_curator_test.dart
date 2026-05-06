@@ -8,9 +8,16 @@ import 'package:waddle_view/curator/ticker_news_candidate.dart';
 import 'package:waddle_view/ticker/ticker_curated_repository.dart';
 
 class _MapRead implements CuratorReadPort {
-  _MapRead(this.data, {this.currentWeather});
+  _MapRead(
+    this.data, {
+    this.currentWeather,
+    this.tickerDefs,
+    this.stockRows,
+  });
   final Map<String, String> data;
   final CurrentWeatherTickerData? currentWeather;
+  final List<TickerDefinitionForCuration>? tickerDefs;
+  final List<StockTickerRowForMarquee>? stockRows;
 
   @override
   Future<Map<String, String>> loadKeyValuesForCuration() async =>
@@ -26,7 +33,11 @@ class _MapRead implements CuratorReadPort {
 
   @override
   Future<List<TickerDefinitionForCuration>> loadTickerDefinitionsForCuration() async =>
-      const [];
+      tickerDefs ?? const [];
+
+  @override
+  Future<List<StockTickerRowForMarquee>> loadStockRowsForTicker() async =>
+      stockRows ?? const [];
 }
 
 class _RecordingTickerStore implements TickerCuratedRepository {
@@ -67,6 +78,41 @@ void main() {
     expect(store.last![0].body, '15:00:00');
     expect(store.last![1].body, 'Cold');
     expect(store.last![2].body, 'Headline');
+  });
+
+  test('refresh includes stock quotes when ticker_definitions includes stocks', () async {
+    final store = _RecordingTickerStore();
+    final curator = DefaultDashboardCurator(
+      read: _MapRead(
+        const {},
+        tickerDefs: const [
+          TickerDefinitionForCuration(
+            id: 'stocks',
+            tickerType: 'stocks',
+            enabled: true,
+            frequencyWeight: 1,
+            sortOrder: 0,
+          ),
+        ],
+        stockRows: [
+          (
+            symbolId: 'x',
+            symbol: 'XX',
+            displayName: '',
+            currentPrice: 10,
+            percentChange: 0.25,
+          ),
+        ],
+      ),
+      tickerStore: store,
+      clock: FakeClock(DateTime(2026, 1, 2, 15, 0, 0)),
+    );
+    await curator.refresh();
+    expect(store.last, isNotNull);
+    final stock = store.last!.singleWhere((e) => e.kind == 'stocks');
+    expect(stock.sourceId, 'x');
+    expect(stock.body.contains('XX'), isTrue);
+    expect(stock.body.contains(r'$10.00'), isTrue);
   });
 
   test('refresh prefers live current weather for ticker weather item', () async {

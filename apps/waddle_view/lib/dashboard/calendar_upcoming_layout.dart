@@ -163,6 +163,8 @@ int _sameDaySort(CalendarEvent a, CalendarEvent b) {
 List<CalendarUpcomingListItem> buildCalendarUpcomingListItems({
   required List<CalendarSlideEventRow> rows,
   required DateTime todayLocal,
+  CalendarMonthUpcomingTimeOptions timeOptions =
+      CalendarMonthUpcomingTimeOptions.defaults,
 }) {
   final byDay = <DateTime, List<CalendarSlideEventRow>>{};
   for (final r in rows) {
@@ -183,6 +185,7 @@ List<CalendarUpcomingListItem> buildCalendarUpcomingListItems({
       final timeLabel = formatCalendarEventListTime(
         r.event.startMs,
         r.event.allDay,
+        options: timeOptions,
       );
       out.add(
         CalendarUpcomingEventEntry(
