@@ -69,7 +69,8 @@ void main() {
     final cfg = CuratorTickerConfig(
       newsScrollBudgetSeconds: 1,
       newsPixelsPerSecond: 200,
-      newsCharWidthPx: 10,
+      // Bodies are `title:` when summary is empty (see [composeTickerNewsBody]).
+      newsCharWidthPx: 9,
       newsSeparatorPaddingPx: 0,
       newsPrefixCategory: false,
     );

@@ -4,6 +4,8 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:waddle_display/persistence/database.dart';
 import 'package:waddle_display/persistence/tables.dart';
 
+import '../helpers/legacy_migration_schema_stubs.dart';
+
 void main() {
   test('v15 to v16 copies curator row and renames kv table', () async {
     final raw = sqlite.sqlite3.openInMemory();
@@ -28,6 +30,7 @@ CREATE TABLE curator_settings (
       "INSERT INTO dashboard_kv VALUES ('header.title', 'X');",
     );
     raw.execute('PRAGMA user_version = 15;');
+    stubCalendarEventsAndBlobMetadataForMigration(raw);
 
     final db = AppDatabase(NativeDatabase.opened(raw));
     await db.customStatement('SELECT 1');

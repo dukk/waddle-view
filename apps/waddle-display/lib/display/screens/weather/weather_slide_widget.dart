@@ -96,21 +96,8 @@ class WeatherSlideWidget extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(location.name, style: theme.textTheme.headlineSmall),
-                    SizedBox(height: 16 * s),
-                    Icon(
-                      currentIcon,
-                      size: 42 * s,
-                      color: primaryAccent,
-                    ),
-                    SizedBox(height: 10 * s),
-                    Text(
-                      _formatTemp(weather.currentTemp),
-                      style: theme.textTheme.displaySmall,
-                    ),
-                    SizedBox(height: 10 * s),
-                    Text(currentDescription, style: theme.textTheme.titleLarge),
                     if (alerts.isNotEmpty) ...[
-                      SizedBox(height: 20 * s),
+                      SizedBox(height: 12 * s),
                       Text(
                         'Active alerts',
                         style: theme.textTheme.titleMedium,
@@ -128,6 +115,19 @@ class WeatherSlideWidget extends StatelessWidget {
                         ),
                       ),
                     ],
+                    SizedBox(height: 16 * s),
+                    Icon(
+                      currentIcon,
+                      size: 42 * s,
+                      color: primaryAccent,
+                    ),
+                    SizedBox(height: 10 * s),
+                    Text(
+                      _formatTemp(weather.currentTemp),
+                      style: theme.textTheme.displaySmall,
+                    ),
+                    SizedBox(height: 10 * s),
+                    Text(currentDescription, style: theme.textTheme.titleLarge),
                     SizedBox(height: 24 * s),
                     Text(
                       'Hourly forecast (3-hour steps)',

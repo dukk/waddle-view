@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:waddle_display/persistence/database.dart';
 
+import '../helpers/legacy_migration_schema_stubs.dart';
+
 void main() {
   test(
     'v19 to v20 renames extra_json to config_json and backfills documentation columns',
@@ -45,6 +47,8 @@ CREATE TABLE screen_definitions (
         "VALUES ('s', 'Test', '{}');",
       );
       raw.execute('PRAGMA user_version = 19;');
+      stubContentCategoriesForMigration(raw);
+      stubCalendarEventsAndBlobMetadataForMigration(raw);
 
       final db = AppDatabase(NativeDatabase.opened(raw));
       await db.customStatement('SELECT 1');

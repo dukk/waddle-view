@@ -3,11 +3,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:waddle_display/persistence/database.dart';
 
+import '../helpers/legacy_migration_schema_stubs.dart';
+
 void main() {
   test('v20 → v21 creates stock_symbols and stock_quotes tables', () async {
     final raw = sqlite.sqlite3.openInMemory();
     raw.execute('PRAGMA foreign_keys = ON;');
     raw.execute('PRAGMA user_version = 20;');
+    stubContentCategoriesForMigration(raw);
+    stubCalendarEventsAndBlobMetadataForMigration(raw);
 
     final db = AppDatabase(NativeDatabase.opened(raw));
     await db.customStatement('SELECT 1');

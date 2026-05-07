@@ -130,8 +130,9 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
         final h = constraints.maxHeight.isFinite
             ? constraints.maxHeight
             : mq.height;
-        final w =
-            constraints.maxWidth.isFinite ? constraints.maxWidth : mq.width;
+        final w = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : mq.width;
         final height = h.clamp(120.0, 4000.0);
         final layoutCompact = height < 240;
 
@@ -140,21 +141,22 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
           height: height,
           child: StreamBuilder<CalendarMonthStreamBundle>(
             key: ValueKey<int>(_startMsBoundary),
-            stream: (widget.db.select(widget.db.calendarEvents)
-                  ..where(
-                    (t) => t.startMs.isBiggerOrEqualValue(
-                      DateTime.fromMillisecondsSinceEpoch(_startMsBoundary),
+            stream:
+                (widget.db.select(widget.db.calendarEvents)
+                      ..where(
+                        (t) => t.startMs.isBiggerOrEqualValue(
+                          DateTime.fromMillisecondsSinceEpoch(_startMsBoundary),
+                        ),
+                      )
+                      ..orderBy([(t) => OrderingTerm.asc(t.startMs)]))
+                    .watch()
+                    .asyncMap(
+                      (events) => buildCalendarMonthStreamBundle(
+                        widget.db,
+                        widget.blobs,
+                        events,
+                      ),
                     ),
-                  )
-                  ..orderBy([(t) => OrderingTerm.asc(t.startMs)]))
-                .watch()
-                .asyncMap(
-                  (events) => buildCalendarMonthStreamBundle(
-                    widget.db,
-                    widget.blobs,
-                    events,
-                  ),
-                ),
             builder: (context, snapshot) {
               final now = widget.clock.now().toLocal();
               final startOfToday = DateTime(now.year, now.month, now.day);
@@ -278,10 +280,7 @@ class _CalendarSlidePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = layoutScale;
     final pad = (layoutCompact ? 10.0 : 16.0) * s;
-    return Padding(
-      padding: EdgeInsets.all(pad),
-      child: child,
-    );
+    return Padding(padding: EdgeInsets.all(pad), child: child);
   }
 }
 
@@ -311,22 +310,18 @@ class _UpcomingEventsPanel extends StatelessWidget {
       color: theme.colorScheme.onSurfaceVariant,
     );
     final iconColor = theme.colorScheme.onSurfaceVariant;
-    final headingStyle = (layoutCompact
-            ? theme.textTheme.titleMedium
-            : theme.textTheme.titleLarge)
-        ?.copyWith(
-      fontWeight: FontWeight.w600,
-    );
+    final headingStyle =
+        (layoutCompact
+                ? theme.textTheme.titleMedium
+                : theme.textTheme.titleLarge)
+            ?.copyWith(fontWeight: FontWeight.w600);
     final headingGap = (layoutCompact ? 6.0 : 12.0) * s;
     final timeWidth = timeColumnWidth;
     final iconCol = 28.0 * s;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'Upcoming events',
-          style: headingStyle,
-        ),
+        Text('Upcoming events', style: headingStyle),
         SizedBox(height: headingGap),
         if (snapshot.hasError)
           Expanded(
@@ -353,8 +348,7 @@ class _UpcomingEventsPanel extends StatelessWidget {
             child: ListView.separated(
               padding: EdgeInsets.zero,
               itemCount: listItems.length,
-              separatorBuilder: (context, index) =>
-                  SizedBox(height: 12 * s),
+              separatorBuilder: (context, index) => SizedBox(height: 12 * s),
               itemBuilder: (context, i) {
                 final item = listItems[i];
                 if (item is CalendarUpcomingDayHeading) {
@@ -371,7 +365,8 @@ class _UpcomingEventsPanel extends StatelessWidget {
                 final e = slideRow.event;
                 final loc = e.location;
                 final cat = slideRow.category;
-                final hasIcon = slideRow.categoryIconBytes != null ||
+                final hasIcon =
+                    slideRow.categoryIconBytes != null ||
                     (cat?.materialIconName?.trim().isNotEmpty ?? false);
                 return Padding(
                   padding: EdgeInsets.only(left: 8 * s),
@@ -418,10 +413,7 @@ class _UpcomingEventsPanel extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              e.title,
-                              style: theme.textTheme.titleMedium,
-                            ),
+                            Text(e.title, style: theme.textTheme.titleMedium),
                             if (loc != null && loc.isNotEmpty) ...[
                               SizedBox(height: 4 * s),
                               Text(
@@ -465,19 +457,17 @@ class _MonthGridPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = layoutScale;
-    final weekdayStyle = (layoutCompact
-            ? theme.textTheme.bodySmall
-            : theme.textTheme.bodyMedium)
-        ?.copyWith(
-      color: theme.colorScheme.onSurfaceVariant,
-      fontWeight: FontWeight.w500,
-    );
-    final headingStyle = (layoutCompact
-            ? theme.textTheme.titleLarge
-            : theme.textTheme.headlineSmall)
-        ?.copyWith(
-      fontWeight: FontWeight.w600,
-    );
+    final weekdayStyle =
+        (layoutCompact ? theme.textTheme.bodySmall : theme.textTheme.bodyMedium)
+            ?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            );
+    final headingStyle =
+        (layoutCompact
+                ? theme.textTheme.titleLarge
+                : theme.textTheme.headlineSmall)
+            ?.copyWith(fontWeight: FontWeight.w600);
     final titleGap = (layoutCompact ? 6.0 : 12.0) * s;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -506,10 +496,7 @@ class _MonthGridPanel extends StatelessWidget {
                 1.0,
                 gridConstraints.maxHeight - weekdayRowHeight - weekdayGridGap,
               );
-              final cellW = math.max(
-                1.0,
-                (usableW - 6 * spacing) / 7,
-              );
+              final cellW = math.max(1.0, (usableW - 6 * spacing) / 7);
               final cellH = math.max(
                 1.0,
                 (usableH - (rows - 1) * spacing) / rows,
@@ -555,11 +542,11 @@ class _MonthGridPanel extends StatelessWidget {
                           padding: EdgeInsets.zero,
                           gridDelegate:
                               SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 7,
-                            crossAxisSpacing: spacing,
-                            mainAxisSpacing: spacing,
-                            childAspectRatio: 1,
-                          ),
+                                crossAxisCount: 7,
+                                crossAxisSpacing: spacing,
+                                mainAxisSpacing: spacing,
+                                childAspectRatio: 1,
+                              ),
                           itemCount: cells.length,
                           itemBuilder: (context, index) {
                             final cell = cells[index];
@@ -567,7 +554,8 @@ class _MonthGridPanel extends StatelessWidget {
                               cell: cell,
                               theme: theme,
                               layoutScale: s,
-                              hasEvent: cell.inCurrentMonth &&
+                              hasEvent:
+                                  cell.inCurrentMonth &&
                                   eventDaysInMonth.contains(cell.day),
                             );
                           },
@@ -606,12 +594,10 @@ class _MonthDayCell extends StatelessWidget {
     );
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: cell.isToday
-            ? theme.colorScheme.primaryContainer
-            : Colors.transparent,
+        color: cell.isToday ? theme.colorScheme.onPrimary : Colors.transparent,
         border: hasEvent
             ? Border.all(
-                color: theme.colorScheme.primary,
+                color: theme.colorScheme.outline,
                 width: math.max(1.0, 1.5 * s),
               )
             : null,
@@ -622,9 +608,9 @@ class _MonthDayCell extends StatelessWidget {
           '${cell.day}',
           style: (theme.textTheme.titleMedium ?? theme.textTheme.bodyLarge)
               ?.copyWith(
-            color: muted,
-            fontWeight: cell.isToday ? FontWeight.w700 : FontWeight.w400,
-          ),
+                color: muted,
+                fontWeight: cell.isToday ? FontWeight.w700 : FontWeight.w400,
+              ),
         ),
       ),
     );

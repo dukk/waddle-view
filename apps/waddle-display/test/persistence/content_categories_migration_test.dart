@@ -4,6 +4,8 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:waddle_display/persistence/content_category_defaults.dart';
 import 'package:waddle_display/persistence/database.dart';
 
+import '../helpers/legacy_migration_schema_stubs.dart';
+
 void main() {
   test('v18 to v19 creates content_categories with default rows', () async {
     final raw = sqlite.sqlite3.openInMemory();
@@ -48,6 +50,7 @@ CREATE TABLE videos (
       'CREATE INDEX idx_videos_category ON videos (category);',
     );
     raw.execute('PRAGMA user_version = 18;');
+    stubCalendarEventsAndBlobMetadataForMigration(raw);
 
     final db = AppDatabase(NativeDatabase.opened(raw));
     await db.customStatement('SELECT 1');

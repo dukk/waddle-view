@@ -21,6 +21,7 @@ Future<void> _insertFeedAndArticle(
   AppDatabase db, {
   required String summary,
   String? imageBlobKey,
+  String link = 'http://test.local/a',
 }) async {
   await db.into(db.rssFeedSources).insert(
         RssFeedSourcesCompanion.insert(
@@ -36,7 +37,7 @@ Future<void> _insertFeedAndArticle(
           feedId: 'feed_t',
           guid: 'g1',
           title: 'Breaking: widgets work',
-          link: 'http://test.local/a',
+          link: link,
           summary: Value(summary),
           publishedAt: DateTime.fromMillisecondsSinceEpoch(1),
           fetchedAt: DateTime.fromMillisecondsSinceEpoch(1),
@@ -118,6 +119,7 @@ void main() {
             id: 'feed_t',
             url: 'http://test.local/feed.xml',
             category: const Value('test'),
+            title: const Value('Test Feed'),
           ),
         );
     await db.into(db.blobMetadata).insert(
@@ -182,7 +184,23 @@ void main() {
   testWidgets('imageOnRight places image panel to the right of text', (tester) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await _insertFeedAndArticle(db, summary: 'Body text for layout.');
+    final blobs = FakeBlobStore();
+    final ref = await blobs.putBytes(_tinyPng, logicalKey: 'rss/feed_t/layout');
+    await db.into(db.blobMetadata).insert(
+          BlobMetadataCompanion.insert(
+            blobKey: 'rss/feed_t/layout',
+            sha256: ref.storageKey,
+            relativePath: ref.storageKey,
+            bytes: _tinyPng.length,
+            mimeType: const Value('image/png'),
+            capturedAt: DateTime.fromMillisecondsSinceEpoch(1),
+          ),
+        );
+    await _insertFeedAndArticle(
+      db,
+      summary: 'Body text for layout.',
+      imageBlobKey: 'rss/feed_t/layout',
+    );
     final slide = ResolvedSlide(
       screenId: 'news_right',
       dwellMs: 5000,
@@ -203,7 +221,7 @@ void main() {
               height: 400,
               child: RssArticleSlideWidget(
                 db: db,
-                blobs: FakeBlobStore(),
+                blobs: blobs,
                 slide: slide,
                 spec: spec,
                 theme: ThemeData.light(),
@@ -455,7 +473,10 @@ void main() {
 
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    final longSummary = List.filled(40, 'Line of text for scroll testing. ').join();
+    // Newlines guarantee multiple visual lines even when test fonts pack many
+    // characters into one soft-wrapped row at typical slide widths.
+    final longSummary =
+        List.filled(30, 'Line of text for scroll testing.').join('\n');
     await _insertFeedAndArticle(db, summary: longSummary);
 
     var reported = 0;

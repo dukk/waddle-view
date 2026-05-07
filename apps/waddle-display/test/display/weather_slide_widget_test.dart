@@ -176,4 +176,66 @@ void main() {
     await tester.pumpAndSettle();
     await db.close();
   });
+
+  testWidgets('uses theme fallbacks when PaletteTertiaryLayers is absent', (
+    tester,
+  ) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.weatherLocations).insert(
+          WeatherLocationsCompanion.insert(
+            id: 'only',
+            name: 'Only City',
+            latitude: 1,
+            longitude: 2,
+          ),
+        );
+    await db.into(db.weatherCurrentData).insert(
+          WeatherCurrentDataCompanion.insert(
+            locationId: 'only',
+            observedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
+            currentTemp: const Value(55),
+            currentDescription: const Value('fog'),
+            hourlyJson: Value(
+              jsonEncode([
+                {'temp': 56.0, 'description': 'fog'},
+              ]),
+            ),
+          ),
+        );
+    const spec = ParsedWidgetSpec(
+      type: 'weather',
+      slot: 'main',
+      config: {},
+    );
+    const slide = ResolvedSlide(
+      screenId: 'weather',
+      dwellMs: 10000,
+      layoutJson: '{}',
+    );
+    final theme = ThemeData.light().copyWith(
+      iconTheme: const IconThemeData(),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: WeatherSlideWidget(
+            db: db,
+            slide: slide,
+            spec: spec,
+            theme: theme,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final fogIcons = tester.widgetList<Icon>(find.byIcon(Icons.foggy));
+    final mainIcon = fogIcons.firstWhere((i) => i.size == 42);
+    expect(mainIcon.color, theme.colorScheme.secondary);
+    final hourlyIcon = fogIcons.firstWhere((i) => i.size == 20);
+    expect(hourlyIcon.color, theme.colorScheme.onSurfaceVariant);
+    await db.close();
+  });
 }

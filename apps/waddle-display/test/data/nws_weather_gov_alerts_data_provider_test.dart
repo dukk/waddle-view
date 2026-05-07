@@ -38,6 +38,7 @@ String _geoJson({
   required String alertId,
   required String event,
   String headline = 'Headline text',
+  String? description,
 }) {
   return jsonEncode({
     'type': 'FeatureCollection',
@@ -51,7 +52,7 @@ String _geoJson({
           'severity': 'Severe',
           'effective': '2026-05-01T12:00:00+00:00',
           'expires': '2026-05-02T12:00:00+00:00',
-          'description': 'Line one.\n\nLine two.',
+          'description': description ?? 'Line one.\n\nLine two.',
         },
       },
     ],
@@ -230,6 +231,48 @@ void main() {
     await db.close();
   });
 
+  test('collect clears stored alerts when API returns empty features', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.providerSettings).insert(
+          ProviderSettingsCompanion.insert(
+            id: kNwsWeatherAlertsProviderId,
+            providerType: 'nws_weather_alerts',
+            pollSeconds: const Value(60),
+            baseUrl: const Value('https://api.weather.gov'),
+            configJson: const Value('{}'),
+          ),
+        );
+    await db.into(db.weatherLocations).insert(
+          WeatherLocationsCompanion.insert(
+            id: 'nyc',
+            name: 'NYC',
+            latitude: 40.7128,
+            longitude: -74.0060,
+          ),
+        );
+    await db.into(db.weatherGovActiveAlerts).insert(
+          WeatherGovActiveAlertsCompanion.insert(
+            locationId: 'nyc',
+            nwsAlertId: 'urn:old',
+            event: 'Old',
+          ),
+        );
+    final ctx = await _ctx(db, InMemorySecretStore());
+    final client = _NwsClient(
+      (uri, headers) => http.Response(
+        jsonEncode({'type': 'FeatureCollection', 'features': []}),
+        200,
+      ),
+    );
+    final provider = NwsWeatherGovAlertsDataProvider(httpClient: client);
+
+    await provider.collect(ctx);
+
+    expect(await db.select(db.weatherGovActiveAlerts).get(), isEmpty);
+    await db.close();
+  });
+
   test('collect does not clear alerts on HTTP error', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
@@ -272,6 +315,81 @@ void main() {
     final rows = await db.select(db.weatherGovActiveAlerts).get();
     expect(rows, hasLength(1));
     expect(rows.single.event, 'Old');
+    await db.close();
+  });
+
+  test('collect catches per-location errors without rethrowing', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.providerSettings).insert(
+          ProviderSettingsCompanion.insert(
+            id: kNwsWeatherAlertsProviderId,
+            providerType: 'nws_weather_alerts',
+            pollSeconds: const Value(60),
+            baseUrl: const Value('https://api.weather.gov'),
+            configJson: const Value('{}'),
+          ),
+        );
+    await db.into(db.weatherLocations).insert(
+          WeatherLocationsCompanion.insert(
+            id: 'nyc',
+            name: 'NYC',
+            latitude: 40.7128,
+            longitude: -74.0060,
+          ),
+        );
+    final ctx = await _ctx(db, InMemorySecretStore());
+    final client = _NwsClient(
+      (uri, headers) => throw StateError('network down'),
+    );
+    final provider = NwsWeatherGovAlertsDataProvider(httpClient: client);
+
+    await provider.collect(ctx);
+
+    expect(client.sends, 1);
+    await db.close();
+  });
+
+  test('collect stores truncated description excerpt for long text', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.providerSettings).insert(
+          ProviderSettingsCompanion.insert(
+            id: kNwsWeatherAlertsProviderId,
+            providerType: 'nws_weather_alerts',
+            pollSeconds: const Value(60),
+            baseUrl: const Value('https://api.weather.gov'),
+            configJson: const Value('{}'),
+          ),
+        );
+    await db.into(db.weatherLocations).insert(
+          WeatherLocationsCompanion.insert(
+            id: 'nyc',
+            name: 'NYC',
+            latitude: 40.7128,
+            longitude: -74.0060,
+          ),
+        );
+    final longDesc = List.filled(500, 'x').join();
+    final ctx = await _ctx(db, InMemorySecretStore());
+    final client = _NwsClient(
+      (uri, headers) => http.Response(
+        _geoJson(
+          alertId: 'urn:long',
+          event: 'Wall of text',
+          description: longDesc,
+        ),
+        200,
+      ),
+    );
+    final provider = NwsWeatherGovAlertsDataProvider(httpClient: client);
+
+    await provider.collect(ctx);
+
+    final row = (await db.select(db.weatherGovActiveAlerts).get()).single;
+    expect(row.descriptionExcerpt, isNotNull);
+    expect(row.descriptionExcerpt!.length, lessThanOrEqualTo(401));
+    expect(row.descriptionExcerpt!.endsWith('\u2026'), isTrue);
     await db.close();
   });
 }

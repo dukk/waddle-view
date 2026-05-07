@@ -38,7 +38,11 @@ void main() {
       ),
     );
     await tester.pump();
-    final decorated = tester.widget<DecoratedBox>(find.byType(DecoratedBox).first);
+    final decoratedFinder = find.descendant(
+      of: find.byType(TickerMarquee),
+      matching: find.byType(DecoratedBox),
+    );
+    final decorated = tester.widget<DecoratedBox>(decoratedFinder.first);
     final decoration = decorated.decoration as BoxDecoration;
     expect(decoration.gradient, equals(expected.secondaryPairGradient));
   });

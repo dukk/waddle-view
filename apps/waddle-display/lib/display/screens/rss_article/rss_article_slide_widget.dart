@@ -90,6 +90,7 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
   bool _scrollScheduled = false;
   bool _scrollMetricsHookStarted = false;
   bool _plainDwellHookStarted = false;
+  int _scrollMetricsAttempts = 0;
   double _viewportScale = 1.0;
   String? _headerCategoryId;
   String? _sourceLabel;
@@ -190,6 +191,7 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
       return;
     }
     _scrollMetricsHookStarted = true;
+    _scrollMetricsAttempts = 0;
 
     void tick() {
       if (!mounted || _article == null || _dwellReported) {
@@ -200,8 +202,18 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
         return;
       }
 
-      final extent = _scroll.position.maxScrollExtent;
-      final summaryScrollable = extent > _scrollableEpsilon;
+      final summaryText = _article!.summary?.trim() ?? '';
+      var extent = _scroll.position.maxScrollExtent;
+      var summaryScrollable = extent > _scrollableEpsilon;
+      // First frame(s) can report zero extent before the summary [Text] finishes
+      // layout; retry briefly when the copy is long enough that scroll is likely.
+      if (!summaryScrollable &&
+          summaryText.length > 200 &&
+          _scrollMetricsAttempts < 24) {
+        _scrollMetricsAttempts++;
+        WidgetsBinding.instance.addPostFrameCallback((_) => tick());
+        return;
+      }
       final desired = desiredDwellMsForRssArticle(
         baseDwellMs: widget.slide.dwellMs,
         minReadMs: _minReadMs,

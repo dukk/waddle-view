@@ -41,9 +41,9 @@ void main() {
     expect(find.text('Lobby'), findsOneWidget);
     expect(find.text('WPA'), findsOneWidget);
     expect(find.text('guestpass'), findsOneWidget);
-    expect(find.text('SSID'), findsOneWidget);
-    expect(find.text('Security'), findsOneWidget);
-    expect(find.text('Password'), findsOneWidget);
+    expect(find.text('SSID:'), findsOneWidget);
+    expect(find.text('Security:'), findsOneWidget);
+    expect(find.text('Password:'), findsOneWidget);
 
     await db.close();
   });

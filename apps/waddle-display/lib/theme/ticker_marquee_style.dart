@@ -102,10 +102,18 @@ class TickerMarqueeStyle extends ThemeExtension<TickerMarqueeStyle> {
 }
 
 /// Registers [TickerMarqueeStyle] on [ThemeData].
+///
+/// Merges with existing [ThemeData.extensions] instead of replacing them.
+/// Uses a loosely-typed list before [Iterable.cast] because `ThemeExtension<T>`
+/// is F-bounded (`T extends ThemeExtension<T>`), so `List<ThemeExtension<dynamic>>`
+/// does not accept arbitrary extensions in sound Dart.
 ThemeData applyTickerMarqueeStyle(ThemeData theme) {
+  final merged = <Object?>[
+    for (final e in theme.extensions.values)
+      if (e is! TickerMarqueeStyle) e,
+    TickerMarqueeStyle.fromTvTheme(theme.textTheme, theme.colorScheme),
+  ];
   return theme.copyWith(
-    extensions: <ThemeExtension<dynamic>>[
-      TickerMarqueeStyle.fromTvTheme(theme.textTheme, theme.colorScheme),
-    ],
+    extensions: merged.cast<ThemeExtension<dynamic>>(),
   );
 }
