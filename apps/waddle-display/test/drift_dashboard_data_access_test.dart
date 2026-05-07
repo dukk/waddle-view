@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/dashboard/drift_dashboard_data_access.dart';
-import 'package:waddle_view/persistence/database.dart';
+import 'package:waddle_display/display/drift_dashboard_data_access.dart';
+import 'package:waddle_display/persistence/database.dart';
 
 import 'helpers/memory_database.dart';
 

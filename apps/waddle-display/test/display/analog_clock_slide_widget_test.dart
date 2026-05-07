@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/clock.dart';
-import 'package:waddle_view/curator/screen_layout_parse.dart';
-import 'package:waddle_view/dashboard/analog_clock_slide_widget.dart';
-import 'package:waddle_view/dashboard/clock_hand_angles.dart';
-import 'package:waddle_view/theme/theme_palette_extension.dart';
+import 'package:waddle_display/clock.dart';
+import 'package:waddle_display/curator/screen_layout_parse.dart';
+import 'package:waddle_display/display/screens/clock/analog_clock_slide_widget.dart';
+import 'package:waddle_display/display/screens/clock/clock_hand_angles.dart';
+import 'package:waddle_display/theme/theme_palette_extension.dart';
 
 void main() {
   testWidgets('shows date and CustomPaint dial', (tester) async {

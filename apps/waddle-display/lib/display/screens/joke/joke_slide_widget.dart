@@ -3,13 +3,13 @@ import 'dart:async';
 import 'package:drift/drift.dart' show CustomExpression, OrderingTerm;
 import 'package:flutter/material.dart';
 
-import '../blob/blob_store.dart';
-import '../curator/screen_layout_parse.dart';
-import '../curator/screen_program_curator.dart';
-import '../persistence/database.dart';
-import 'content_category_slide_header.dart';
+import '../../../blob/blob_store.dart';
+import '../../../curator/screen_layout_parse.dart';
+import '../../../curator/screen_program_curator.dart';
+import '../../../persistence/database.dart';
+import '../../content_category_slide_header.dart';
 import 'joke_slide_timing.dart';
-import 'dashboard_viewport_scope.dart';
+import '../../dashboard_viewport_scope.dart';
 
 /// Curated joke id from [slide], else random from [db] (optional [categoryId]).
 Future<Joke?> _loadJokeForSlide(

@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
-import '../blob/blob_store.dart';
-import '../persistence/database.dart';
+import '../../../blob/blob_store.dart';
+import '../../../persistence/database.dart';
 import 'calendar_month_grid.dart';
 
 /// One calendar row with optional [ContentCategories] metadata for icons.

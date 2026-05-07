@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/alerts/drift_alert_repository.dart';
-import 'package:waddle_view/clock.dart';
+import 'package:waddle_display/alerts/drift_alert_repository.dart';
+import 'package:waddle_display/clock.dart';
 
 import 'helpers/memory_database.dart';
 

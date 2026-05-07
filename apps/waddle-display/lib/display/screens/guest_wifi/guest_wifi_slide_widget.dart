@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-import '../curator/screen_layout_parse.dart';
-import '../persistence/database.dart';
-import '../theme/display_theme.dart';
+import '../../../curator/screen_layout_parse.dart';
+import '../../../persistence/database.dart';
+import '../../../theme/display_theme.dart';
 import 'wifi_connection_uri.dart';
-import 'dashboard_viewport_scope.dart';
+import '../../dashboard_viewport_scope.dart';
 
 /// Full-slide widget: QR + SSID / security / password from [config_key_values].
 class GuestWifiSlideWidget extends StatelessWidget {

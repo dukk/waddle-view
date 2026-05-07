@@ -112,7 +112,7 @@ String? readStocksTokenFromDotenvMap(Map<String, String> map) {
 /// Loads `.env` from disk in **debug** desktop/server builds only (not web).
 ///
 /// Searches, in order (first hit wins): `.env`, `.env.development`, `assets/.env`,
-/// `assets/.env.development`, then monorepo `apps/waddle_view/` variants of those paths.
+/// `assets/.env.development`, then monorepo `apps/waddle-display/` variants of those paths.
 /// If none exist, initializes an empty [dotenv] so callers can query safely.
 Future<void> loadDevDotenvFromFilesystem() async {
   if (!kDebugMode || kIsWeb) {
@@ -124,10 +124,10 @@ Future<void> loadDevDotenvFromFilesystem() async {
     p.join('assets', '.env'),
     p.join('assets', '.env.development'),
     // Monorepo: `flutter run` from repo root with `--project` / cwd at workspace root
-    p.join('apps', 'waddle_view', '.env'),
-    p.join('apps', 'waddle_view', '.env.development'),
-    p.join('apps', 'waddle_view', 'assets', '.env'),
-    p.join('apps', 'waddle_view', 'assets', '.env.development'),
+    p.join('apps', 'waddle-display', '.env'),
+    p.join('apps', 'waddle-display', '.env.development'),
+    p.join('apps', 'waddle-display', 'assets', '.env'),
+    p.join('apps', 'waddle-display', 'assets', '.env.development'),
   ];
   for (final rel in candidates) {
     final file = File(rel);

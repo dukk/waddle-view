@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/marquee_cycle_gate.dart';
+import 'package:waddle_display/marquee_cycle_gate.dart';
 
 void main() {
   test('awaitPrior is no-op when nothing armed', () async {

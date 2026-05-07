@@ -3,9 +3,10 @@ import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/curator/curator_content_pools.dart';
-import 'package:waddle_view/curator/screen_layout_parse.dart';
-import 'package:waddle_view/curator/screen_program_curator.dart';
+import 'package:waddle_display/curator/curator_content_pools.dart';
+import 'package:waddle_display/curator/photo_collage_curation.dart';
+import 'package:waddle_display/curator/screen_layout_parse.dart';
+import 'package:waddle_display/curator/screen_program_curator.dart';
 
 ScreenCandidate _c({
   required String id,
@@ -334,6 +335,55 @@ void main() {
     );
     final clockCount = slides.where((s) => s.screenId.startsWith('clock_')).length;
     expect(clockCount, greaterThanOrEqualTo(2));
+  });
+
+  test('pexels_photo_collage assigns wide image to center hub slot', () {
+    final layout = jsonEncode({
+      'v': 1,
+      'widgets': [
+        {
+          'type': 'pexels_photo_collage',
+          'slot': 'main',
+          'config': {'template': kCollageTemplateElevenSymmetricHub},
+        },
+      ],
+    });
+    final slides = ScreenProgramCurator.buildProgram(
+      screens: [_c(id: 'col', dwellMs: 60000, layout: layout)],
+      programDurationMs: 60000,
+      recentScreenIdsOldestFirst: const [],
+      historyDepth: 5,
+      random: Random(0),
+      randomPools: {
+        'pexels_photo': [
+          'wide',
+          'tall',
+          'a',
+          'b',
+          'c',
+          'd',
+          'e',
+          'f',
+          'g',
+          'h',
+          'i',
+        ],
+      },
+      photoMetrics: {
+        'wide': const PhotoCuratorMetric(pixelWidth: 1920, pixelHeight: 1080),
+        'tall': const PhotoCuratorMetric(pixelWidth: 800, pixelHeight: 1600),
+        'a': const PhotoCuratorMetric(pixelWidth: 1200, pixelHeight: 900),
+        'b': const PhotoCuratorMetric(pixelWidth: 1200, pixelHeight: 900),
+        'c': const PhotoCuratorMetric(pixelWidth: 1200, pixelHeight: 900),
+        'd': const PhotoCuratorMetric(pixelWidth: 1200, pixelHeight: 900),
+        'e': const PhotoCuratorMetric(pixelWidth: 1200, pixelHeight: 900),
+        'f': const PhotoCuratorMetric(pixelWidth: 1200, pixelHeight: 900),
+        'g': const PhotoCuratorMetric(pixelWidth: 1200, pixelHeight: 900),
+        'h': const PhotoCuratorMetric(pixelWidth: 1200, pixelHeight: 900),
+        'i': const PhotoCuratorMetric(pixelWidth: 1200, pixelHeight: 900),
+      },
+    );
+    expect(slides.single.randomChoices['main_pexels_photo_collage_5'], 'wide');
   });
 
   test('pexels widgets resolve pool names with optional categoryId', () {

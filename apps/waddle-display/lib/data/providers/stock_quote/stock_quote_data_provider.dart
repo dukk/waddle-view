@@ -4,10 +4,10 @@ import 'dart:io';
 import 'package:drift/drift.dart' show OrderingTerm, Value;
 import 'package:http/http.dart' as http;
 
-import '../../debug/app_debug_log.dart';
-import '../../persistence/database.dart';
-import '../data_provider.dart';
-import '../data_write_context.dart';
+import '../../../debug/app_debug_log.dart';
+import '../../../persistence/database.dart';
+import '../../data_provider.dart';
+import '../../data_write_context.dart';
 import 'stock_quote_provider_extra_config.dart';
 
 const String kStockProviderId = 'stocks';

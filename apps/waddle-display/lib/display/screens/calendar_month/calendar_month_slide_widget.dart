@@ -4,14 +4,14 @@ import 'dart:math' as math;
 import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 
-import '../blob/blob_store.dart';
-import '../clock.dart';
-import '../curator/screen_layout_parse.dart';
-import '../persistence/database.dart';
+import '../../../blob/blob_store.dart';
+import '../../../clock.dart';
+import '../../../curator/screen_layout_parse.dart';
+import '../../../persistence/database.dart';
 import 'calendar_month_grid.dart';
 import 'calendar_upcoming_layout.dart';
-import 'content_category_material_icon.dart';
-import 'dashboard_viewport_scope.dart';
+import '../../content_category_material_icon.dart';
+import '../../dashboard_viewport_scope.dart';
 
 const _weekdayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const _monthNamesShort = [

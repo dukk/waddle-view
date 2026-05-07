@@ -1,8 +1,8 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/curator/curator_content_pools.dart';
-import 'package:waddle_view/curator/screen_program_curator.dart';
+import 'package:waddle_display/curator/curator_content_pools.dart';
+import 'package:waddle_display/curator/screen_program_curator.dart';
 
 /// Photo gating for RSS screen slides is enforced by [ScreenProgramCurator]
 /// ([rssArticleMetrics], [requirePhotoForRssScreens]); the ticker is unchanged.

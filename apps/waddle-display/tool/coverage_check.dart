@@ -19,7 +19,7 @@ bool _includeSourceFile(String sf) {
   }
   // Large slide-dispatch widget: logic is split across many child slide widgets
   // that have dedicated tests; covering every switch branch here duplicates work.
-  if (norm.endsWith('dashboard/screen_rotator.dart')) {
+  if (norm.endsWith('display/screen_rotator.dart')) {
     return false;
   }
   return true;
@@ -70,7 +70,7 @@ void main(List<String> args) {
   final pct = 100.0 * totalLh / totalLf;
   stdout.writeln(
     'Coverage (lib/, excluding *.g.dart, tables.dart, main.dart, '
-    'dashboard/screen_rotator.dart): '
+    'display/screen_rotator.dart): '
     '${pct.toStringAsFixed(2)}% ($totalLh / $totalLf lines)',
   );
   if (pct + 1e-9 < minPct) {

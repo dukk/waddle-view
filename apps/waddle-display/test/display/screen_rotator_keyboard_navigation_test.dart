@@ -4,9 +4,9 @@ import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/dashboard/screen_rotator.dart';
-import 'package:waddle_view/persistence/database.dart';
-import 'package:waddle_view/persistence/tables.dart';
+import 'package:waddle_display/display/screen_rotator.dart';
+import 'package:waddle_display/persistence/database.dart';
+import 'package:waddle_display/persistence/tables.dart';
 
 import '../helpers/fake_blob_store.dart';
 import '../helpers/memory_database.dart';

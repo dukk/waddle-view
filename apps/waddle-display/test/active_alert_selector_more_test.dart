@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/alerts/active_alert_selector.dart';
-import 'package:waddle_view/persistence/database.dart';
+import 'package:waddle_display/alerts/active_alert_selector.dart';
+import 'package:waddle_display/persistence/database.dart';
 
 void main() {
   test('same priority picks newer createdAt', () {

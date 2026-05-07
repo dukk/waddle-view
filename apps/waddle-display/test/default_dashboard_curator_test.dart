@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/clock.dart';
-import 'package:waddle_view/curator/curator_read_port.dart';
-import 'package:waddle_view/curator/default_dashboard_curator.dart';
-import 'package:waddle_view/curator/ticker_item.dart';
-import 'package:waddle_view/curator/ticker_news_candidate.dart';
-import 'package:waddle_view/ticker/ticker_curated_repository.dart';
+import 'package:waddle_display/clock.dart';
+import 'package:waddle_display/curator/curator_read_port.dart';
+import 'package:waddle_display/curator/default_dashboard_curator.dart';
+import 'package:waddle_display/curator/ticker_item.dart';
+import 'package:waddle_display/curator/ticker_news_candidate.dart';
+import 'package:waddle_display/ticker/ticker_curated_repository.dart';
 
 class _MapRead implements CuratorReadPort {
   _MapRead(

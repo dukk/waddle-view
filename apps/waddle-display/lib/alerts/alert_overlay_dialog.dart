@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../clock.dart';
-import '../dashboard/dashboard_viewport_scope.dart';
+import '../display/dashboard_viewport_scope.dart';
 import '../persistence/database.dart';
 import 'alert_material_icon.dart';
 

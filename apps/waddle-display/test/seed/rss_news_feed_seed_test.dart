@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/seed/rss_news_feed_seed.dart';
+import 'package:waddle_display/seed/tables/rss_feed_sources_seed.dart';
 
 import '../helpers/memory_database.dart';
 

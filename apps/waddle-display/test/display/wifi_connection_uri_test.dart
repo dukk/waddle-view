@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/dashboard/wifi_connection_uri.dart';
+import 'package:waddle_display/display/screens/guest_wifi/wifi_connection_uri.dart';
 
 void main() {
   group('parseWifiConnectionUri', () {

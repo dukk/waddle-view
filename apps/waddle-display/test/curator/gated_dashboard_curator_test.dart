@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/curator/dashboard_curator.dart';
-import 'package:waddle_view/curator/gated_dashboard_curator.dart';
-import 'package:waddle_view/marquee_cycle_gate.dart';
+import 'package:waddle_display/curator/dashboard_curator.dart';
+import 'package:waddle_display/curator/gated_dashboard_curator.dart';
+import 'package:waddle_display/marquee_cycle_gate.dart';
 
 class _RecordingCurator implements DashboardCurator {
   _RecordingCurator();

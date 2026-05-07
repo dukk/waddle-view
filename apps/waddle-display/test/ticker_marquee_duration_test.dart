@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/ticker/ticker_marquee_duration.dart';
+import 'package:waddle_display/ticker/ticker_marquee_duration.dart';
 
 void main() {
   test('marqueeScrollDuration scales width by pixels per second', () {

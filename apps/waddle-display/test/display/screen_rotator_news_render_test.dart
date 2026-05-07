@@ -1,8 +1,8 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/curator/curator_content_pools.dart';
-import 'package:waddle_view/curator/screen_program_curator.dart';
+import 'package:waddle_display/curator/curator_content_pools.dart';
+import 'package:waddle_display/curator/screen_program_curator.dart';
 
 /// Mirrors former candidate-filter tests: without usable RSS photos, non-news
 /// screens still receive placements when eligible.

@@ -21,6 +21,9 @@ class BlobMetadata extends Table {
   IntColumn get bytes => integer()();
   TextColumn get mimeType => text().nullable()();
   DateTimeColumn get capturedAt => dateTime()();
+  /// Native pixel dimensions when known (e.g. Pexels API, OneDrive `image` facet).
+  IntColumn get pixelWidth => integer().nullable()();
+  IntColumn get pixelHeight => integer().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {blobKey};

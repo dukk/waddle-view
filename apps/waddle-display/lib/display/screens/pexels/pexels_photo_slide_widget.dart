@@ -1,55 +1,16 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:drift/drift.dart' show CustomExpression, OrderingTerm;
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../blob/blob_store.dart';
-import '../curator/screen_layout_parse.dart';
-import '../curator/screen_program_curator.dart';
-import '../persistence/database.dart';
-import 'dashboard_viewport_scope.dart';
+import '../../../blob/blob_store.dart';
+import '../../../curator/screen_layout_parse.dart';
+import '../../../curator/screen_program_curator.dart';
+import '../../../persistence/database.dart';
+import '../../dashboard_viewport_scope.dart';
 import 'pexels_attribution_overlay.dart';
-
-Future<Photo?> _loadPexelsPhotoForSlide(
-  AppDatabase db,
-  ParsedWidgetSpec spec,
-  ResolvedSlide slide,
-) async {
-  final curatedId = slide.randomChoices[spec.choiceKey];
-  if (curatedId != null && curatedId.isNotEmpty) {
-    return (db.select(db.photos)..where((t) => t.id.equals(curatedId)))
-        .getSingleOrNull();
-  }
-  final categoryId = spec.config['categoryId'] as String?;
-  final q = db.select(db.photos);
-  if (categoryId != null && categoryId.isNotEmpty) {
-    q.where((t) => t.category.equals(categoryId));
-  }
-  return (q
-        ..orderBy([
-          (t) => OrderingTerm(expression: const CustomExpression('random()')),
-        ])
-        ..limit(1))
-      .getSingleOrNull();
-}
-
-Future<Uint8List?> _loadPhotoBytes(
-  AppDatabase db,
-  BlobStore blobs,
-  Photo row,
-) async {
-  final meta =
-      await (db.select(db.blobMetadata)
-            ..where((t) => t.blobKey.equals(row.mediaBlobKey)))
-          .getSingleOrNull();
-  if (meta == null) {
-    return null;
-  }
-  final bytes = await blobs.readBytes(BlobRef(meta.relativePath));
-  return bytes.isEmpty ? null : Uint8List.fromList(bytes);
-}
+import 'pexels_slide_media.dart';
 
 /// Full-bleed Pexels still with attribution bar at the bottom.
 class PexelsPhotoSlideWidget extends StatefulWidget {
@@ -84,14 +45,14 @@ class _PexelsPhotoSlideWidgetState extends State<PexelsPhotoSlideWidget> {
   }
 
   Future<void> _bootstrap() async {
-    final row = await _loadPexelsPhotoForSlide(
+    final row = await loadPexelsPhotoForSlide(
       widget.db,
       widget.spec,
       widget.slide,
     );
     Uint8List? bytes;
     if (row != null) {
-      bytes = await _loadPhotoBytes(widget.db, widget.blobs, row);
+      bytes = await loadPhotoBlobBytes(widget.db, widget.blobs, row);
     }
     if (!mounted) {
       return;

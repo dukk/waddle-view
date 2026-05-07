@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/dashboard/pexels_attribution_overlay.dart';
+import 'package:waddle_display/display/screens/pexels/pexels_attribution_overlay.dart';
 
 void main() {
   testWidgets('renders attribution details and opens photographer url', (

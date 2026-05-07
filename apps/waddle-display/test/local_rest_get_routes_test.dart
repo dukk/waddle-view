@@ -3,13 +3,13 @@ import 'package:http/http.dart' as http;
 import 'package:drift/drift.dart';
 import 'dart:io';
 
-import 'package:waddle_view/alerts/drift_alert_repository.dart';
-import 'package:waddle_view/api/deployment_api_key_source.dart';
-import 'package:waddle_view/api/local_rest_server.dart';
-import 'package:waddle_view/curator/ticker_item.dart';
-import 'package:waddle_view/persistence/database.dart';
-import 'package:waddle_view/secrets/in_memory_secret_store.dart';
-import 'package:waddle_view/ticker/memory_ticker_curated_repository.dart';
+import 'package:waddle_display/alerts/drift_alert_repository.dart';
+import 'package:waddle_display/api/deployment_api_key_source.dart';
+import 'package:waddle_display/api/local_rest_server.dart';
+import 'package:waddle_display/curator/ticker_item.dart';
+import 'package:waddle_display/persistence/database.dart';
+import 'package:waddle_display/secrets/in_memory_secret_store.dart';
+import 'package:waddle_display/ticker/memory_ticker_curated_repository.dart';
 
 import 'helpers/memory_database.dart';
 

@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/api/network_addressing.dart';
+import 'package:waddle_display/api/network_addressing.dart';
 
 void main() {
   test('defaults to loopback and port 8787', () async {

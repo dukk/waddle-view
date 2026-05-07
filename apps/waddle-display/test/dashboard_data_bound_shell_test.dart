@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/dashboard/dashboard_data_bound_shell.dart';
-import 'package:waddle_view/dashboard/display_viewport.dart';
-import 'package:waddle_view/theme/tv_overscan.dart';
+import 'package:waddle_display/display/dashboard_data_bound_shell.dart';
+import 'package:waddle_display/display/display_viewport.dart';
+import 'package:waddle_display/theme/tv_overscan.dart';
 
 void main() {
   testWidgets('DashboardDataBoundShell lays out body and ticker', (tester) async {

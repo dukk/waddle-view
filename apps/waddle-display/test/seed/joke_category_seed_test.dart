@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/seed/joke_category_seed.dart';
+import 'package:waddle_display/seed/tables/joke_categories_seed.dart';
 
 import '../helpers/memory_database.dart';
 

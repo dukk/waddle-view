@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/dashboard/joke_slide_timing.dart';
+import 'package:waddle_display/display/screens/joke/joke_slide_timing.dart';
 
 void main() {
   test('punchlineDelayMs is half of dwell time', () {

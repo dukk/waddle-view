@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/curator/ticker_item.dart';
-import 'package:waddle_view/marquee_cycle_gate.dart';
-import 'package:waddle_view/theme/display_theme.dart';
-import 'package:waddle_view/ticker/memory_ticker_curated_repository.dart';
-import 'package:waddle_view/ticker/ticker_marquee.dart';
+import 'package:waddle_display/curator/ticker_item.dart';
+import 'package:waddle_display/marquee_cycle_gate.dart';
+import 'package:waddle_display/theme/display_theme.dart';
+import 'package:waddle_display/ticker/memory_ticker_curated_repository.dart';
+import 'package:waddle_display/ticker/ticker_marquee.dart';
 
 void main() {
   testWidgets('shows em dash when repository has no items', (tester) async {

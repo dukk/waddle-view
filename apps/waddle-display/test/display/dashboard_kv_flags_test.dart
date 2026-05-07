@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/dashboard/dashboard_kv_flags.dart';
+import 'package:waddle_display/display/dashboard_kv_flags.dart';
 
 void main() {
   test('null and blank use default', () {

@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/data/providers/trivia_category_eligibility.dart';
-import 'package:waddle_view/persistence/database.dart';
+import 'package:waddle_display/data/providers/trivia/trivia_category_eligibility.dart';
+import 'package:waddle_display/persistence/database.dart';
 
 import '../helpers/memory_database.dart';
 

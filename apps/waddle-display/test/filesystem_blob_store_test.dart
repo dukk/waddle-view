@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/blob/filesystem_blob_store.dart';
+import 'package:waddle_display/blob/filesystem_blob_store.dart';
 
 void main() {
   test('put read delete roundtrip', () async {

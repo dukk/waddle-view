@@ -1,5 +1,5 @@
-import '../../persistence/database.dart';
-import 'joke_seasonal_eligibility.dart';
+import '../../../persistence/database.dart';
+import '../joke/joke_seasonal_eligibility.dart';
 
 /// Whether a trivia category may be used for generation on [now] (local time).
 bool isTriviaCategoryEligibleOn(TriviaCategory row, DateTime now) {

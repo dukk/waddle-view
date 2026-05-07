@@ -15,23 +15,24 @@ import '../curator/screen_program_curator.dart';
 import '../persistence/database.dart';
 import '../persistence/tables.dart';
 import '../theme/display_theme.dart';
-import 'analog_clock_slide_widget.dart';
-import 'calendar_month_slide_widget.dart';
 import 'dashboard_kv_flags.dart';
 import 'dashboard_viewport_scope.dart';
-import 'digital_clock_slide_widget.dart';
-import 'admin_setup_slide_widget.dart';
-import 'guest_wifi_slide_widget.dart';
-import 'joke_slide_widget.dart';
-import 'local_api_slide_widget.dart';
-import 'pexels_photo_slide_widget.dart';
-import 'pexels_video_slide_widget.dart';
-import 'rss_article_columns_slide_widget.dart';
-import 'rss_article_slide_widget.dart';
-import 'rss_article_stack_slide_widget.dart';
-import 'stock_quotes_slide_widget.dart';
-import 'trivia_slide_widget.dart';
-import 'weather_slide_widget.dart';
+import 'screens/admin_setup/admin_setup_slide_widget.dart';
+import 'screens/calendar_month/calendar_month_slide_widget.dart';
+import 'screens/clock/analog_clock_slide_widget.dart';
+import 'screens/clock/digital_clock_slide_widget.dart';
+import 'screens/guest_wifi/guest_wifi_slide_widget.dart';
+import 'screens/joke/joke_slide_widget.dart';
+import 'screens/local_api/local_api_slide_widget.dart';
+import 'screens/pexels/pexels_photo_collage_slide_widget.dart';
+import 'screens/pexels/pexels_photo_slide_widget.dart';
+import 'screens/pexels/pexels_video_slide_widget.dart';
+import 'screens/rss_article/rss_article_columns_slide_widget.dart';
+import 'screens/rss_article/rss_article_slide_widget.dart';
+import 'screens/rss_article/rss_article_stack_slide_widget.dart';
+import 'screens/stock_quotes/stock_quotes_slide_widget.dart';
+import 'screens/trivia/trivia_slide_widget.dart';
+import 'screens/weather/weather_slide_widget.dart';
 
 String screenShownDebugLogLine({
   required String reason,
@@ -194,6 +195,7 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
       randomPools: pools,
       dataKeyLimits: dataKeyLimits,
       rssArticleMetrics: loadedPools.rssArticleMetrics,
+      photoMetrics: loadedPools.photoMetrics,
       requirePhotoForRssScreens: requireNewsPhotoForScreens,
     );
 
@@ -762,6 +764,18 @@ class _SlideContent extends StatelessWidget {
         ),
       );
     }
+    if (widgets.length == 1 && widgets.first.type == 'pexels_photo_collage') {
+      final w = widgets.first;
+      return SizedBox.expand(
+        child: PexelsPhotoCollageSlideWidget(
+          db: db,
+          blobs: blobs,
+          slide: slide,
+          spec: w,
+          theme: theme,
+        ),
+      );
+    }
     if (widgets.length == 1 && widgets.first.type == 'pexels_video') {
       final w = widgets.first;
       return SizedBox.expand(
@@ -884,6 +898,14 @@ class _SlideContent extends StatelessWidget {
               );
             case 'pexels_photo':
               return PexelsPhotoSlideWidget(
+                db: db,
+                blobs: blobs,
+                slide: slide,
+                spec: w,
+                theme: theme,
+              );
+            case 'pexels_photo_collage':
+              return PexelsPhotoCollageSlideWidget(
                 db: db,
                 blobs: blobs,
                 slide: slide,

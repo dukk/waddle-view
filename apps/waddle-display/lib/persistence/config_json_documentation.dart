@@ -426,6 +426,7 @@ const List<String> kScreenLayoutWidgetTypes = [
   'admin_setup',
   'weather',
   'pexels_photo',
+  'pexels_photo_collage',
   'pexels_video',
   'stock_quotes',
 ];

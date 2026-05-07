@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/data/providers/joke_provider_extra_config.dart';
+import 'package:waddle_display/data/providers/joke/joke_provider_extra_config.dart';
 
 void main() {
   test('parse reads rolling window and 2h cap', () {

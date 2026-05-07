@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:waddle_view/blob/blob_store.dart';
+import 'package:waddle_display/blob/blob_store.dart';
 
 class FakeBlobStore implements BlobStore {
   final Map<String, List<int>> _bytes = {};

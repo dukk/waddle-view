@@ -1,7 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/dashboard/display_viewport.dart';
+import 'package:waddle_display/display/display_viewport.dart';
 
 void main() {
   test('DisplayViewportConfig defaults to 16:9 horizontal', () {

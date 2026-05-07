@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/config/provider_config_resolver.dart';
-import 'package:waddle_view/data/data_provider.dart';
-import 'package:waddle_view/data/data_write_context.dart';
-import 'package:waddle_view/data/engine/data_collection_engine.dart';
-import 'package:waddle_view/persistence/database.dart';
-import 'package:waddle_view/secrets/in_memory_secret_store.dart';
+import 'package:waddle_display/config/provider_config_resolver.dart';
+import 'package:waddle_display/data/data_provider.dart';
+import 'package:waddle_display/data/data_write_context.dart';
+import 'package:waddle_display/data/engine/data_collection_engine.dart';
+import 'package:waddle_display/persistence/database.dart';
+import 'package:waddle_display/secrets/in_memory_secret_store.dart';
 
 import 'helpers/callback_sleeper.dart';
 import 'helpers/fake_blob_store.dart';

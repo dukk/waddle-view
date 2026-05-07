@@ -1,9 +1,9 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/curator/curator_content_pools.dart';
-import 'package:waddle_view/persistence/database.dart';
-import 'package:waddle_view/seed/joke_category_seed.dart';
-import 'package:waddle_view/seed/trivia_category_seed.dart';
+import 'package:waddle_display/curator/curator_content_pools.dart';
+import 'package:waddle_display/persistence/database.dart';
+import 'package:waddle_display/seed/tables/joke_categories_seed.dart';
+import 'package:waddle_display/seed/tables/trivia_categories_seed.dart';
 
 import '../helpers/memory_database.dart';
 
@@ -57,6 +57,17 @@ void main() {
           ),
         );
 
+    await db.into(db.blobMetadata).insert(
+          BlobMetadataCompanion.insert(
+            blobKey: 'k/p1',
+            sha256: 's1',
+            relativePath: 'p1.bin',
+            bytes: 10,
+            capturedAt: DateTime.fromMillisecondsSinceEpoch(1),
+            pixelWidth: const Value(800),
+            pixelHeight: const Value(600),
+          ),
+        );
     await db.into(db.photos).insert(
           PhotosCompanion.insert(
             id: 'p1',
@@ -94,6 +105,8 @@ void main() {
 
     final loaded = await loadCuratorContentPools(db);
     final pools = loaded.pools;
+    expect(loaded.photoMetrics['p1']!.pixelWidth, 800);
+    expect(loaded.photoMetrics['p1']!.pixelHeight, 600);
     expect(loaded.rssArticleMetrics['a1']!.hasImage, isFalse);
     expect(loaded.rssArticleMetrics['a1']!.summaryLength, 13);
     expect(pools['joke'], contains('j1'));

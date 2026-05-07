@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import '../../persistence/database.dart';
+import '../../../persistence/database.dart';
 
 /// Builds the ordered list of category slots for one OpenAI request.
 ///

@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../clock.dart';
-import '../curator/screen_layout_parse.dart';
+import '../../../clock.dart';
+import '../../../curator/screen_layout_parse.dart';
 import 'clock_date_format.dart';
-import 'dashboard_viewport_scope.dart';
+import '../../dashboard_viewport_scope.dart';
 
 /// Full-slide digital clock with date (local time).
 class DigitalClockSlideWidget extends StatefulWidget {

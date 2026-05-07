@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../curator/screen_layout_parse.dart';
-import 'dashboard_viewport_scope.dart';
-import '../theme/display_theme.dart';
+import '../../../curator/screen_layout_parse.dart';
+import '../../dashboard_viewport_scope.dart';
+import '../../../theme/display_theme.dart';
 
 /// Developer slide: loopback REST base URL and API key file hint.
 class LocalApiSlideWidget extends StatelessWidget {

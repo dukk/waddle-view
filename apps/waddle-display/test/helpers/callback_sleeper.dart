@@ -1,4 +1,4 @@
-import 'package:waddle_view/sleeper.dart';
+import 'package:waddle_display/sleeper.dart';
 
 class CallbackSleeper implements Sleeper {
   CallbackSleeper(this.onSleep);

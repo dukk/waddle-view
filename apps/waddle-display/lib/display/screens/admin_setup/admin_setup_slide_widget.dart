@@ -3,10 +3,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-import '../curator/screen_layout_parse.dart';
-import '../persistence/database.dart';
-import '../persistence/tables.dart';
-import 'dashboard_viewport_scope.dart';
+import '../../../curator/screen_layout_parse.dart';
+import '../../../persistence/database.dart';
+import '../../../persistence/tables.dart';
+import '../../dashboard_viewport_scope.dart';
 
 class AdminSetupSlideWidget extends StatelessWidget {
   const AdminSetupSlideWidget({

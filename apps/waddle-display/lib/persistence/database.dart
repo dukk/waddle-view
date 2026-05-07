@@ -45,7 +45,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 23;
+  int get schemaVersion => 24;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -324,6 +324,14 @@ FROM curator_settings WHERE id = 'app';
       }
       if (from < 23) {
         await m.createTable(tickerDefinitions);
+      }
+      if (from < 24) {
+        await customStatement(
+          'ALTER TABLE blob_metadata ADD COLUMN pixel_width INTEGER;',
+        );
+        await customStatement(
+          'ALTER TABLE blob_metadata ADD COLUMN pixel_height INTEGER;',
+        );
       }
     },
     beforeOpen: (details) async {

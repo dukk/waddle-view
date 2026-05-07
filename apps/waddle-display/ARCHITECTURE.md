@@ -1,4 +1,4 @@
-# waddle_view architecture
+# waddle_display architecture
 
 This document describes how the TV dashboard is structured at runtime and how major subsystems interact. The **composition root** is [`lib/main.dart`](lib/main.dart); feature code is grouped by responsibility under [`lib/`](lib/).
 
@@ -217,7 +217,7 @@ Providers persist **domain** rows (for example [`config_key_values`](lib/persist
 
 ## Sequence: display screen programs
 
-[`ScreenRotator`](lib/dashboard/screen_rotator.dart) loads enabled rows from [`screen_definitions`](lib/persistence/tables.dart) and curator program keys in [`config_key_values`](lib/persistence/tables.dart) (`curator.program.*`), runs [`ScreenProgramCurator.buildProgram`](lib/curator/screen_program_curator.dart) (weighted picks biased by recent slide ids, random photo pools without duplicate assets in one program), then advances slides on a dwell timer with **exit left / enter right** transitions. When a program finishes, a new program is curated using the rolling history of shown screen ids.
+[`ScreenRotator`](lib/display/screen_rotator.dart) loads enabled rows from [`screen_definitions`](lib/persistence/tables.dart) and curator program keys in [`config_key_values`](lib/persistence/tables.dart) (`curator.program.*`), runs [`ScreenProgramCurator.buildProgram`](lib/curator/screen_program_curator.dart) (weighted picks biased by recent slide ids, random photo pools without duplicate assets in one program), then advances slides on a dwell timer with **exit left / enter right** transitions. When a program finishes, a new program is curated using the rolling history of shown screen ids.
 
 ```mermaid
 sequenceDiagram

@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/alerts/alert_overlay_host.dart';
-import 'package:waddle_view/alerts/drift_alert_repository.dart';
-import 'package:waddle_view/clock.dart';
-import 'package:waddle_view/persistence/database.dart';
+import 'package:waddle_display/alerts/alert_overlay_host.dart';
+import 'package:waddle_display/alerts/drift_alert_repository.dart';
+import 'package:waddle_display/clock.dart';
+import 'package:waddle_display/persistence/database.dart';
 
 import 'helpers/memory_database.dart';
 

@@ -2,13 +2,13 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/curator/screen_layout_parse.dart';
-import 'package:waddle_view/curator/screen_program_curator.dart';
-import 'package:waddle_view/dashboard/trivia_slide_widget.dart';
-import 'package:waddle_view/dashboard/trivia_slide_timing.dart';
-import 'package:waddle_view/persistence/database.dart';
-import 'package:waddle_view/seed/content_category_seed.dart';
-import 'package:waddle_view/seed/trivia_category_seed.dart';
+import 'package:waddle_display/curator/screen_layout_parse.dart';
+import 'package:waddle_display/curator/screen_program_curator.dart';
+import 'package:waddle_display/display/screens/trivia/trivia_slide_timing.dart';
+import 'package:waddle_display/display/screens/trivia/trivia_slide_widget.dart';
+import 'package:waddle_display/persistence/database.dart';
+import 'package:waddle_display/seed/tables/content_categories_seed.dart';
+import 'package:waddle_display/seed/tables/trivia_categories_seed.dart';
 
 import '../helpers/fake_blob_store.dart';
 import '../helpers/memory_database.dart';
@@ -273,7 +273,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('$correctLabel.'), findsOneWidget);
+    expect(find.text(correctLabel), findsOneWidget);
     expect(find.text('Four'), findsOneWidget);
 
     await db.close();

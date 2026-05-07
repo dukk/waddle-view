@@ -1,10 +1,10 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/config/dev_dotenv_secrets.dart';
-import 'package:waddle_view/config/google_kv.dart';
-import 'package:waddle_view/config/microsoft_graph_kv.dart';
-import 'package:waddle_view/config/provider_config_resolver.dart';
-import 'package:waddle_view/secrets/in_memory_secret_store.dart';
+import 'package:waddle_display/config/dev_dotenv_secrets.dart';
+import 'package:waddle_display/config/google_kv.dart';
+import 'package:waddle_display/config/microsoft_graph_kv.dart';
+import 'package:waddle_display/config/provider_config_resolver.dart';
+import 'package:waddle_display/secrets/in_memory_secret_store.dart';
 
 void main() {
   test('readJokesTokenFromDotenvMap prefers WADDLE_JOKES_ACCESS_TOKEN', () {

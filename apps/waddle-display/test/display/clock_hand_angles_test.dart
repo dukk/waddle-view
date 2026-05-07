@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/dashboard/clock_hand_angles.dart';
+import 'package:waddle_display/display/screens/clock/clock_hand_angles.dart';
 
 void main() {
   group('ClockHandAngles.fromLocal', () {

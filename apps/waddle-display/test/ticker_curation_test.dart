@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/clock.dart';
-import 'package:waddle_view/curator/curator_read_port.dart';
-import 'package:waddle_view/curator/ticker_curation.dart';
-import 'package:waddle_view/curator/ticker_news_candidate.dart';
+import 'package:waddle_display/clock.dart';
+import 'package:waddle_display/curator/curator_read_port.dart';
+import 'package:waddle_display/curator/ticker_curation.dart';
+import 'package:waddle_display/curator/ticker_news_candidate.dart';
 
 void main() {
   test('formatTickerTime formats clock local time', () {

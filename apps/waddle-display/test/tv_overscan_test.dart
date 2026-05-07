@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/theme/tv_overscan.dart';
+import 'package:waddle_display/theme/tv_overscan.dart';
 
 void main() {
   test('uses minimum inset when surface is tiny', () {

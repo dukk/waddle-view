@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/theme/ticker_marquee_style.dart';
+import 'package:waddle_display/theme/ticker_marquee_style.dart';
 
 void main() {
   test('TickerMarqueeStyle lerp returns dark or other at ends', () {

@@ -3,15 +3,15 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 
-import '../../config/google_kv.dart';
-import '../../debug/app_debug_log.dart';
-import '../../persistence/database.dart';
-import '../../secrets/secret_store.dart';
-import '../data_provider.dart';
-import '../data_write_context.dart';
-import 'google/google_oauth.dart';
-import 'calendar_provider_calendar_entry.dart';
+import '../../../config/google_kv.dart';
+import '../../../debug/app_debug_log.dart';
+import '../../../persistence/database.dart';
+import '../../../secrets/secret_store.dart';
+import '../../data_provider.dart';
+import '../../data_write_context.dart';
+import '../shared/calendar_provider_calendar_entry.dart';
 import 'google_calendar_extra_config.dart';
+import 'google_oauth.dart';
 
 const String kGoogleCalendarProviderId = 'google_calendar';
 const String kDefaultGoogleCalendarBaseUrl = 'https://www.googleapis.com/calendar/v3';

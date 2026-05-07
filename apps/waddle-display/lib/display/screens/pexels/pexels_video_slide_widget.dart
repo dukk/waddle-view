@@ -8,11 +8,11 @@ import 'package:media_kit_video/media_kit_video.dart' as mkv;
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../blob/blob_store.dart';
-import '../curator/screen_layout_parse.dart';
-import '../curator/screen_program_curator.dart';
-import '../persistence/database.dart';
-import 'dashboard_viewport_scope.dart';
+import '../../../blob/blob_store.dart';
+import '../../../curator/screen_layout_parse.dart';
+import '../../../curator/screen_program_curator.dart';
+import '../../../persistence/database.dart';
+import '../../dashboard_viewport_scope.dart';
 import 'pexels_attribution_overlay.dart';
 
 Future<Video?> loadPexelsVideoForSlide(

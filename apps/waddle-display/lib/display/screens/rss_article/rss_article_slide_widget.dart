@@ -3,12 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-import '../blob/blob_store.dart';
-import '../curator/screen_layout_parse.dart';
-import '../curator/screen_program_curator.dart';
-import '../persistence/database.dart';
-import 'content_category_slide_header.dart';
-import 'dashboard_viewport_scope.dart';
+import '../../../blob/blob_store.dart';
+import '../../../curator/screen_layout_parse.dart';
+import '../../../curator/screen_program_curator.dart';
+import '../../../persistence/database.dart';
+import '../../content_category_slide_header.dart';
+import '../../dashboard_viewport_scope.dart';
 import 'rss_article_load.dart';
 import 'rss_article_slide_timing.dart';
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/theme/config/display_theme_registry.dart';
-import 'package:waddle_view/theme/display_theme_kv.dart';
+import 'package:waddle_display/theme/config/display_theme_registry.dart';
+import 'package:waddle_display/theme/display_theme_kv.dart';
 
 void main() {
   test('normalizeDisplayThemeId trims and maps unknown to default', () {

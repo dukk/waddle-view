@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
-import 'package:waddle_view/persistence/database.dart';
+import 'package:waddle_display/persistence/database.dart';
 
 void main() {
   test(

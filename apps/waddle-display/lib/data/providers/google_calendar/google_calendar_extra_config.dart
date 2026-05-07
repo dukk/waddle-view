@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'calendar_provider_calendar_entry.dart';
+import '../shared/calendar_provider_calendar_entry.dart';
 
 class GoogleCalendarSourceConfig {
   const GoogleCalendarSourceConfig({

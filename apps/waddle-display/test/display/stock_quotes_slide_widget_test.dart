@@ -1,11 +1,11 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/curator/screen_layout_parse.dart';
-import 'package:waddle_view/curator/screen_program_curator.dart';
-import 'package:waddle_view/dashboard/stock_quotes_slide_widget.dart';
-import 'package:waddle_view/persistence/database.dart';
-import 'package:waddle_view/theme/display_theme.dart';
+import 'package:waddle_display/curator/screen_layout_parse.dart';
+import 'package:waddle_display/curator/screen_program_curator.dart';
+import 'package:waddle_display/display/screens/stock_quotes/stock_quotes_slide_widget.dart';
+import 'package:waddle_display/persistence/database.dart';
+import 'package:waddle_display/theme/display_theme.dart';
 
 import '../helpers/memory_database.dart';
 

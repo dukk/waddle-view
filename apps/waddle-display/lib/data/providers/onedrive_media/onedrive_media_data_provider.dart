@@ -3,21 +3,32 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 
-import '../../blob/blob_store.dart';
-import '../../config/microsoft_graph_kv.dart';
-import '../../debug/app_debug_log.dart';
-import '../../persistence/database.dart';
-import '../../persistence/tables.dart';
-import '../../secrets/secret_store.dart';
-import '../data_provider.dart';
-import '../data_write_context.dart';
-import 'microsoft_graph/microsoft_graph_oauth.dart'
+import '../../../blob/blob_store.dart';
+import '../../../config/microsoft_graph_kv.dart';
+import '../../../debug/app_debug_log.dart';
+import '../../../persistence/database.dart';
+import '../../../persistence/tables.dart';
+import '../../../secrets/secret_store.dart';
+import '../../data_provider.dart';
+import '../../data_write_context.dart';
+import '../microsoft_graph/microsoft_graph_oauth.dart'
     show MicrosoftGraphOAuth, kMicrosoftGraphAccessTokenSkewMs;
 import 'onedrive_media_extra_config.dart';
 
 const String kOneDriveMediaProviderId = 'onedrive_media';
 
 const String kDefaultGraphBaseUrl = 'https://graph.microsoft.com/v1.0';
+
+int? _positivePixelDimension(Object? raw) {
+  if (raw is int) {
+    return raw > 0 ? raw : null;
+  }
+  if (raw is num) {
+    final i = raw.toInt();
+    return i > 0 ? i : null;
+  }
+  return null;
+}
 
 void _logGraphJsonError(String context, String body) {
   try {
@@ -463,6 +474,14 @@ class OneDriveMediaDataProvider implements IDataProvider {
       }
     }
 
+    int? pixelW;
+    int? pixelH;
+    final image = item['image'];
+    if (image is Map<String, dynamic>) {
+      pixelW = _positivePixelDimension(image['width']);
+      pixelH = _positivePixelDimension(image['height']);
+    }
+
     await ctx.db.into(ctx.db.blobMetadata).insertOnConflictUpdate(
           BlobMetadataCompanion.insert(
             blobKey: logicalKey,
@@ -471,6 +490,8 @@ class OneDriveMediaDataProvider implements IDataProvider {
             bytes: bytes.length,
             mimeType: Value(mime),
             capturedAt: DateTime.fromMillisecondsSinceEpoch(nowMs),
+            pixelWidth: pixelW != null ? Value(pixelW) : const Value.absent(),
+            pixelHeight: pixelH != null ? Value(pixelH) : const Value.absent(),
           ),
         );
 

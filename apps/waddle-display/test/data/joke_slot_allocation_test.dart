@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/data/providers/joke_slot_allocation.dart';
-import 'package:waddle_view/persistence/database.dart';
+import 'package:waddle_display/data/providers/joke/joke_slot_allocation.dart';
+import 'package:waddle_display/persistence/database.dart';
 
 void main() {
   test('returns empty when budget is zero or no categories', () {

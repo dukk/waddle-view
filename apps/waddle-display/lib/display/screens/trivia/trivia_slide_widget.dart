@@ -4,14 +4,14 @@ import 'dart:math';
 import 'package:drift/drift.dart' show CustomExpression, OrderingTerm;
 import 'package:flutter/material.dart';
 
-import '../blob/blob_store.dart';
-import '../curator/screen_layout_parse.dart';
-import '../curator/screen_program_curator.dart';
-import '../persistence/database.dart';
-import '../theme/theme_palette_extension.dart';
-import 'content_category_slide_header.dart';
+import '../../../blob/blob_store.dart';
+import '../../../curator/screen_layout_parse.dart';
+import '../../../curator/screen_program_curator.dart';
+import '../../../persistence/database.dart';
+import '../../../theme/theme_palette_extension.dart';
+import '../../content_category_slide_header.dart';
 import 'trivia_slide_timing.dart';
-import 'dashboard_viewport_scope.dart';
+import '../../dashboard_viewport_scope.dart';
 
 Future<TriviaQuestion?> _loadTriviaForSlide(
   AppDatabase db,
@@ -37,7 +37,7 @@ Future<TriviaQuestion?> _loadTriviaForSlide(
       .getSingleOrNull();
 }
 
-/// Source letters A–D assigned to on-screen slots A–D (slot index 0 = label "A.").
+/// Source letters A–D assigned to on-screen slots A–D (slot index 0 = on-screen "A").
 @visibleForTesting
 List<String> triviaShuffleOrderForTesting(Random random) {
   final letters = ['A', 'B', 'C', 'D']..shuffle(random);
@@ -262,7 +262,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
 
           return SizedBox(
             key: const ValueKey<String>('trivia_reveal_progress'),
-            height: h + 6 * s,
+            height: h + 9 * s,
             child: Stack(
               clipBehavior: Clip.none,
               alignment: Alignment.center,
@@ -272,10 +272,6 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                   decoration: BoxDecoration(
                     color: trackOuter,
                     borderRadius: BorderRadius.circular((h + 4 * s) / 2),
-                    border: Border.all(
-                      color: cs.outline.withValues(alpha: 0.55),
-                      width: max(1.5, 1.8 * s),
-                    ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.35),
@@ -398,6 +394,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
       fontWeight: FontWeight.w800,
       color: cs.onPrimary,
       height: 1.0,
+      leadingDistribution: TextLeadingDistribution.even,
     );
 
     final text = _optionText(row, sourceLetter);
@@ -480,8 +477,13 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                     ],
                   ),
                   child: Text(
-                    '$displayLetter.',
+                    displayLetter,
+                    textAlign: TextAlign.center,
                     style: badgeStyle?.copyWith(color: badgeLetterColor),
+                    textHeightBehavior: const TextHeightBehavior(
+                      applyHeightToFirstAscent: false,
+                      applyHeightToLastDescent: false,
+                    ),
                   ),
                 ),
                 SizedBox(width: 14 * s),
@@ -528,10 +530,6 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                           decoration: BoxDecoration(
                             color: Colors.black.withValues(alpha: 0.55),
                             shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.35),
-                              width: max(1.0, 1.2 * s),
-                            ),
                           ),
                           child: Icon(
                             Icons.close,
@@ -724,10 +722,6 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                       cs.surfaceContainerLow,
                     ],
                   ),
-                  border: Border.all(
-                    color: frameAccent.withValues(alpha: 0.75),
-                    width: max(2.0, 2.5 * s),
-                  ),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.4),
@@ -761,10 +755,6 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                       decoration: BoxDecoration(
                         color: cs.surfaceContainerLow,
                         borderRadius: BorderRadius.circular(16 * s),
-                        border: Border.all(
-                          color: cs.outlineVariant.withValues(alpha: 0.65),
-                          width: max(1.2, 1.5 * s),
-                        ),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.18),

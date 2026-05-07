@@ -3,12 +3,12 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 
-import '../../blob/blob_store.dart';
-import '../../config/provider_runtime_config.dart';
-import '../../debug/app_debug_log.dart';
-import '../../persistence/database.dart';
-import '../data_provider.dart';
-import '../data_write_context.dart';
+import '../../../blob/blob_store.dart';
+import '../../../config/provider_runtime_config.dart';
+import '../../../debug/app_debug_log.dart';
+import '../../../persistence/database.dart';
+import '../../data_provider.dart';
+import '../../data_write_context.dart';
 import 'pexels_provider_extra_config.dart';
 
 const String kPexelsProviderId = 'pexels';
@@ -390,6 +390,17 @@ class PexelsDataProvider implements IDataProvider {
     return null;
   }
 
+  int? _positivePixelDimension(Object? raw) {
+    if (raw is int) {
+      return raw > 0 ? raw : null;
+    }
+    if (raw is num) {
+      final i = raw.toInt();
+      return i > 0 ? i : null;
+    }
+    return null;
+  }
+
   int _videoDurationSeconds(Map<String, dynamic> video) {
     final d = video['duration'];
     if (d is int) {
@@ -435,6 +446,8 @@ class PexelsDataProvider implements IDataProvider {
     final ref = await ctx.blobs.putBytes(bytes, logicalKey: logicalKey);
     final mime =
         'image/jpeg'; // Pexels JPEG/PNG; display code tolerates Image.memory
+    final pw = _positivePixelDimension(photo['width']);
+    final ph = _positivePixelDimension(photo['height']);
 
     await ctx.db.into(ctx.db.blobMetadata).insertOnConflictUpdate(
       BlobMetadataCompanion.insert(
@@ -444,6 +457,8 @@ class PexelsDataProvider implements IDataProvider {
         bytes: bytes.length,
         mimeType: Value(mime),
         capturedAt: DateTime.fromMillisecondsSinceEpoch(nowMs),
+        pixelWidth: pw != null ? Value(pw) : const Value.absent(),
+        pixelHeight: ph != null ? Value(ph) : const Value.absent(),
       ),
     );
 

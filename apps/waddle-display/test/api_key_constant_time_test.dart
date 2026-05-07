@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/api/api_key_constant_time.dart';
+import 'package:waddle_display/api/api_key_constant_time.dart';
 
 void main() {
   test('equal strings match', () {

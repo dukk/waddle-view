@@ -1,10 +1,10 @@
 import 'dart:typed_data';
 
 import 'package:drift/drift.dart' show CustomExpression, OrderingTerm;
-import 'package:waddle_view/blob/blob_store.dart';
-import 'package:waddle_view/curator/screen_layout_parse.dart';
-import 'package:waddle_view/curator/screen_program_curator.dart';
-import 'package:waddle_view/persistence/database.dart';
+import 'package:waddle_display/blob/blob_store.dart';
+import 'package:waddle_display/curator/screen_layout_parse.dart';
+import 'package:waddle_display/curator/screen_program_curator.dart';
+import 'package:waddle_display/persistence/database.dart';
 
 /// Loads a [Photo] row chosen for this slide ([spec.choiceKey] in [slide.randomChoices]).
 Future<Photo?> loadPexelsPhotoForSlide(

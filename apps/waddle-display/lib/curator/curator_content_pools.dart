@@ -1,5 +1,31 @@
 import '../persistence/database.dart';
 
+/// Optional pixel dimensions for a curated photo (from [BlobMetadata]).
+class PhotoCuratorMetric {
+  const PhotoCuratorMetric({this.pixelWidth, this.pixelHeight});
+
+  final int? pixelWidth;
+  final int? pixelHeight;
+
+  double? get aspectRatio {
+    final w = pixelWidth;
+    final h = pixelHeight;
+    if (w == null || h == null || w <= 0 || h <= 0) {
+      return null;
+    }
+    return w / h;
+  }
+
+  int get pixelArea {
+    final w = pixelWidth;
+    final h = pixelHeight;
+    if (w == null || h == null || w <= 0 || h <= 0) {
+      return 0;
+    }
+    return w * h;
+  }
+}
+
 /// Per-article metrics for news capacity-aware curation.
 class RssArticleMetric {
   const RssArticleMetric({
@@ -29,12 +55,16 @@ class CuratorContentPools {
   const CuratorContentPools({
     required this.pools,
     this.rssArticleMetrics = const {},
+    this.photoMetrics = const {},
   });
 
   final Map<String, List<String>> pools;
 
   /// Article id → metrics for capacity / photo gating (only articles present in DB).
   final Map<String, RssArticleMetric> rssArticleMetrics;
+
+  /// Photo id → optional native dimensions for collage / aspect-aware picks.
+  final Map<String, PhotoCuratorMetric> photoMetrics;
 }
 
 Future<CuratorContentPools> loadCuratorContentPools(
@@ -104,12 +134,26 @@ Future<CuratorContentPools> loadCuratorContentPools(
   }
 
   final pexelsPhotos = await db.select(db.photos).get();
+  final photoMetrics = <String, PhotoCuratorMetric>{};
   if (pexelsPhotos.isNotEmpty) {
     final all = <String>[];
     final byCat = <String, List<String>>{};
+    final blobKeys = pexelsPhotos.map((p) => p.mediaBlobKey).toSet().toList();
+    final metaByKey = <String, BlobMetadataData>{};
+    if (blobKeys.isNotEmpty) {
+      final metaRows = await (db.select(db.blobMetadata)
+            ..where((t) => t.blobKey.isIn(blobKeys)))
+          .get();
+      metaByKey.addAll({for (final m in metaRows) m.blobKey: m});
+    }
     for (final p in pexelsPhotos) {
       all.add(p.id);
       (byCat[p.category] ??= []).add(p.id);
+      final meta = metaByKey[p.mediaBlobKey];
+      photoMetrics[p.id] = PhotoCuratorMetric(
+        pixelWidth: meta?.pixelWidth,
+        pixelHeight: meta?.pixelHeight,
+      );
     }
     out['pexels_photo'] = all;
     for (final e in byCat.entries) {
@@ -131,5 +175,9 @@ Future<CuratorContentPools> loadCuratorContentPools(
     }
   }
 
-  return CuratorContentPools(pools: out, rssArticleMetrics: rssMetrics);
+  return CuratorContentPools(
+    pools: out,
+    rssArticleMetrics: rssMetrics,
+    photoMetrics: photoMetrics,
+  );
 }

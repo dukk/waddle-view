@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../dashboard/content_category_material_icon.dart';
+import '../display/content_category_material_icon.dart';
 import 'alert_severity_icons_kv.dart';
 
 /// Resolves Material icon names (e.g. from [kAlertSeverityIconsKvKey]) to [IconData].

@@ -4,8 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../curator/ticker_item.dart';
-import '../dashboard/dashboard_viewport_scope.dart';
-import '../dashboard/content_category_material_icon.dart';
+import '../display/dashboard_viewport_scope.dart';
+import '../display/content_category_material_icon.dart';
 import '../debug/app_debug_log.dart';
 import '../theme/display_theme.dart';
 import '../theme/ticker_marquee_style.dart';

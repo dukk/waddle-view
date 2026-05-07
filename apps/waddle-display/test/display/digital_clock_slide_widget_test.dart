@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/clock.dart';
-import 'package:waddle_view/curator/screen_layout_parse.dart';
-import 'package:waddle_view/dashboard/digital_clock_slide_widget.dart';
+import 'package:waddle_display/clock.dart';
+import 'package:waddle_display/curator/screen_layout_parse.dart';
+import 'package:waddle_display/display/screens/clock/digital_clock_slide_widget.dart';
 
 void main() {
   testWidgets('default: 12h with AM/PM, no seconds, and formatted date', (tester) async {

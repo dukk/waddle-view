@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/alerts/alert_material_icon.dart';
-import 'package:waddle_view/alerts/alert_severity_icons_kv.dart';
+import 'package:waddle_display/alerts/alert_material_icon.dart';
+import 'package:waddle_display/alerts/alert_severity_icons_kv.dart';
 
 void main() {
   test('parse merges JSON over defaults', () {

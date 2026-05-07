@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/dashboard/screen_rotator.dart';
+import 'package:waddle_display/display/screen_rotator.dart';
 
 void main() {
   test('screenShownDebugLogLine includes definition and context', () {

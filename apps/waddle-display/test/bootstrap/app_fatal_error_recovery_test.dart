@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/bootstrap/app_fatal_error_recovery.dart';
+import 'package:waddle_display/bootstrap/app_fatal_error_recovery.dart';
 
 FlutterErrorDetails _flutterDetails(Object exception, {String library = 'test'}) {
   return FlutterErrorDetails(

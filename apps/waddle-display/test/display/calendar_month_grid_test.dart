@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/dashboard/calendar_month_grid.dart';
+import 'package:waddle_display/display/screens/calendar_month/calendar_month_grid.dart';
 
 void main() {
   group('startOfTodayLocalMs', () {

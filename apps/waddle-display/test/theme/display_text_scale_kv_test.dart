@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/theme/display_text_scale_kv.dart';
+import 'package:waddle_display/theme/display_text_scale_kv.dart';
 
 void main() {
   test('normalizeDisplayTextScaleOption defaults and aliases', () {

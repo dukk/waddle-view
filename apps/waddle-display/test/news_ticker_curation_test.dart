@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/curator/ticker_curation.dart';
-import 'package:waddle_view/curator/ticker_news_candidate.dart';
+import 'package:waddle_display/curator/ticker_curation.dart';
+import 'package:waddle_display/curator/ticker_news_candidate.dart';
 
 void main() {
   test('interleaveNewsByFeed returns empty for empty input', () {

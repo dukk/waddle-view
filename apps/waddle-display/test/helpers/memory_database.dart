@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
-import 'package:waddle_view/persistence/database.dart';
+import 'package:waddle_display/persistence/database.dart';
 
 AppDatabase openMemoryDatabase() {
   return AppDatabase(

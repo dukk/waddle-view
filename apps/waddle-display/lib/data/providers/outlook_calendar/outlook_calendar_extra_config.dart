@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'calendar_provider_calendar_entry.dart';
+import '../shared/calendar_provider_calendar_entry.dart';
 
 /// One mailbox (UPN or `me`) and optional calendar display names or Graph ids.
 class OutlookMailboxSource {

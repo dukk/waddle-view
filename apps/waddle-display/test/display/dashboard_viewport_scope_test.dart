@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/dashboard/dashboard_viewport_scope.dart';
+import 'package:waddle_display/display/dashboard_viewport_scope.dart';
 
 void main() {
   testWidgets('scaleOf defaults to 1 without scope', (tester) async {

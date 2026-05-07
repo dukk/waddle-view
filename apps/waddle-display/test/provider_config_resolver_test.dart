@@ -1,9 +1,9 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/config/provider_config_resolver.dart';
-import 'package:waddle_view/persistence/database.dart';
-import 'package:waddle_view/secrets/in_memory_secret_store.dart';
+import 'package:waddle_display/config/provider_config_resolver.dart';
+import 'package:waddle_display/persistence/database.dart';
+import 'package:waddle_display/secrets/in_memory_secret_store.dart';
 
 import 'helpers/memory_database.dart';
 

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/sleeper.dart';
+import 'package:waddle_display/sleeper.dart';
 
 void main() {
   test('SystemSleeper yields', () async {

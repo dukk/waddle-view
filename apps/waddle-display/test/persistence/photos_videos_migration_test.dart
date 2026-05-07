@@ -1,8 +1,8 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
-import 'package:waddle_view/persistence/database.dart';
-import 'package:waddle_view/persistence/tables.dart';
+import 'package:waddle_display/persistence/database.dart';
+import 'package:waddle_display/persistence/tables.dart';
 
 void main() {
   test('v17 to v18 renames media tables and adds data_provider', () async {

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/curator/screen_layout_parse.dart';
-import 'package:waddle_view/dashboard/local_api_slide_widget.dart';
-import 'package:waddle_view/theme/display_theme.dart';
+import 'package:waddle_display/curator/screen_layout_parse.dart';
+import 'package:waddle_display/display/screens/local_api/local_api_slide_widget.dart';
+import 'package:waddle_display/theme/display_theme.dart';
 
 void main() {
   testWidgets('shows base URL, headline, and API key hint', (tester) async {

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/clock.dart';
+import 'package:waddle_display/clock.dart';
 
 void main() {
   test('SystemClock returns plausible now', () {

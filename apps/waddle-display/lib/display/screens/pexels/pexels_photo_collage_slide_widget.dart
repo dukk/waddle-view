@@ -4,16 +4,23 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../blob/blob_store.dart';
-import '../../curator/photo_collage_curation.dart';
-import '../../curator/screen_layout_parse.dart';
-import '../../curator/screen_program_curator.dart';
-import '../../persistence/database.dart';
+import '../../../blob/blob_store.dart';
+import '../../../curator/photo_collage_curation.dart';
+import '../../../curator/screen_layout_parse.dart';
+import '../../../curator/screen_program_curator.dart';
 import '../../dashboard_viewport_scope.dart';
-import 'pexels_attribution_overlay.dart';
+import '../../../persistence/database.dart';
 import 'pexels_slide_media.dart';
 
-/// Multi-photo collage driven by [kKnownCollageTemplateIds] (`config.template`).
+class _CollageCell {
+  const _CollageCell({this.row, this.bytes});
+
+  final Photo? row;
+  final Uint8List? bytes;
+}
+
+/// Multi-tile Pexels collage; slot images come from
+/// `slide.randomChoices['${spec.choiceKey}_$index']`.
 class PexelsPhotoCollageSlideWidget extends StatefulWidget {
   const PexelsPhotoCollageSlideWidget({
     super.key,
@@ -37,32 +44,8 @@ class PexelsPhotoCollageSlideWidget extends StatefulWidget {
 
 class _PexelsPhotoCollageSlideWidgetState
     extends State<PexelsPhotoCollageSlideWidget> {
-  static const _nineMixedRects = <Rect>[
-    Rect.fromLTWH(0, 0, 0.19, 0.30),
-    Rect.fromLTWH(0.19, 0, 0.19, 0.30),
-    Rect.fromLTWH(0.38, 0, 0.30, 0.30),
-    Rect.fromLTWH(0.70, 0, 0.30, 0.62),
-    Rect.fromLTWH(0, 0.30, 0.38, 0.70),
-    Rect.fromLTWH(0.38, 0.30, 0.30, 0.34),
-    Rect.fromLTWH(0.38, 0.66, 0.30, 0.34),
-    Rect.fromLTWH(0.70, 0.64, 0.145, 0.36),
-    Rect.fromLTWH(0.855, 0.64, 0.145, 0.36),
-  ];
-
-  static const _nineDynamicRects = <Rect>[
-    Rect.fromLTWH(0, 0, 0.22, 0.45),
-    Rect.fromLTWH(0, 0.48, 0.22, 0.52),
-    Rect.fromLTWH(0.78, 0, 0.22, 0.45),
-    Rect.fromLTWH(0.78, 0.48, 0.22, 0.52),
-    Rect.fromLTWH(0.24, 0.18, 0.52, 0.52),
-    Rect.fromLTWH(0.24, 0, 0.25, 0.16),
-    Rect.fromLTWH(0.51, 0, 0.25, 0.16),
-    Rect.fromLTWH(0.24, 0.72, 0.25, 0.28),
-    Rect.fromLTWH(0.51, 0.72, 0.25, 0.28),
-  ];
-
-  List<Uint8List?> _bytes = [];
-  Photo? _attribRow;
+  String _templateId = kCollageTemplateNineSquareAsymmetric;
+  List<_CollageCell> _cells = const [];
   bool _loading = true;
 
   @override
@@ -71,48 +54,32 @@ class _PexelsPhotoCollageSlideWidgetState
     unawaited(_bootstrap());
   }
 
-  String get _template =>
-      (widget.spec.config['template'] as String?)?.trim() ??
-      kCollageTemplateNineSquareAsymmetric;
-
-  int get _n => collageSlotCount(_template);
-
   Future<void> _bootstrap() async {
-    final n = _n;
-    final keys = widget.spec.choiceKey;
-    final rows = <Photo?>[];
-    final bytes = <Uint8List?>[];
-    for (var i = 0; i < n; i++) {
-      final id = widget.slide.randomChoices['${keys}_$i'];
-      final row = await loadPhotoByCuratedId(widget.db, id);
-      rows.add(row);
-      if (row != null) {
-        bytes.add(await loadPhotoBlobBytes(widget.db, widget.blobs, row));
-      } else {
-        bytes.add(null);
-      }
-    }
+    final raw =
+        (widget.spec.config['template'] as String?)?.trim() ??
+        kCollageTemplateNineSquareAsymmetric;
+    final templateId = kKnownCollageTemplateIds.contains(raw)
+        ? raw
+        : kCollageTemplateNineSquareAsymmetric;
+    final n = collageSlotCount(templateId);
+    final choiceKey = widget.spec.choiceKey;
+    final loaded = await Future.wait(
+      List.generate(n, (i) async {
+        final id = widget.slide.randomChoices['${choiceKey}_$i'];
+        final row = await loadPhotoByCuratedId(widget.db, id);
+        Uint8List? bytes;
+        if (row != null) {
+          bytes = await loadPhotoBlobBytes(widget.db, widget.blobs, row);
+        }
+        return _CollageCell(row: row, bytes: bytes);
+      }),
+    );
     if (!mounted) {
       return;
     }
-    Photo? attrib;
-    switch (_template) {
-      case kCollageTemplateElevenSymmetricHub:
-      case kCollageTemplateNineDynamicHub:
-        attrib = rows.length > 5 ? rows[5] : null;
-        break;
-      case kCollageTemplateTwelveCircleBand:
-        attrib = rows.length > 6 ? rows[6] : null;
-        break;
-      default:
-        attrib = rows.cast<Photo?>().firstWhere(
-          (e) => e != null,
-          orElse: () => null,
-        );
-    }
     setState(() {
-      _bytes = bytes;
-      _attribRow = attrib;
+      _templateId = templateId;
+      _cells = loaded;
       _loading = false;
     });
   }
@@ -123,247 +90,6 @@ class _PexelsPhotoCollageSlideWidgetState
       return;
     }
     await launchUrl(u, mode: LaunchMode.externalApplication);
-  }
-
-  double _gapPx(BuildContext context) => 3 * DashboardViewportScope.scaleOf(context);
-
-  Widget _tile(Uint8List? b) {
-    final Widget img;
-    if (b == null) {
-      img = ColoredBox(color: Colors.grey.shade900);
-    } else {
-      img = Image.memory(
-        b,
-        fit: BoxFit.cover,
-        gaplessPlayback: true,
-      );
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(2),
-      child: img,
-    );
-  }
-
-  List<Widget> _cells(BuildContext context) {
-    final g = _gapPx(context);
-    return List<Widget>.generate(_bytes.length, (i) {
-      return Padding(
-        padding: EdgeInsets.all(g * 0.5),
-        child: _tile(_bytes[i]),
-      );
-    });
-  }
-
-  Widget _nineSquare(List<Widget> c) {
-    assert(c.length == 9);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          flex: 5,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                flex: 2,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(child: c[0]),
-                    Expanded(child: c[1]),
-                  ],
-                ),
-              ),
-              Expanded(flex: 5, child: c[6]),
-            ],
-          ),
-        ),
-        Expanded(
-          flex: 2,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(child: c[2]),
-              Expanded(child: c[3]),
-              Expanded(child: c[4]),
-            ],
-          ),
-        ),
-        Expanded(
-          flex: 5,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(flex: 5, child: c[5]),
-              Expanded(
-                flex: 2,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(child: c[7]),
-                    Expanded(child: c[8]),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _elevenHub(List<Widget> c) {
-    assert(c.length == 11);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          flex: 2,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(child: c[0]),
-              Expanded(child: c[1]),
-            ],
-          ),
-        ),
-        Expanded(
-          flex: 9,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                flex: 2,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(child: c[2]),
-                    Expanded(child: c[3]),
-                    Expanded(child: c[4]),
-                  ],
-                ),
-              ),
-              Expanded(flex: 5, child: c[5]),
-              Expanded(
-                flex: 2,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(child: c[6]),
-                    Expanded(child: c[7]),
-                    Expanded(child: c[8]),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          flex: 2,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(child: c[9]),
-              Expanded(child: c[10]),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _stackRects(List<Widget> c, List<Rect> rects) {
-    assert(c.length == rects.length);
-    return LayoutBuilder(
-      builder: (context, bc) {
-        final w = bc.maxWidth;
-        final h = bc.maxHeight;
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            ColoredBox(color: Colors.grey.shade300),
-            for (var i = 0; i < c.length; i++)
-              Positioned(
-                left: rects[i].left * w,
-                top: rects[i].top * h,
-                width: rects[i].width * w,
-                height: rects[i].height * h,
-                child: c[i],
-              ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _twelveBand(List<Widget> c, BuildContext context) {
-    assert(c.length == 12);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          flex: 2,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (var i = 0; i < 5; i++) Expanded(child: c[i]),
-            ],
-          ),
-        ),
-        Expanded(
-          flex: 5,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(flex: 5, child: c[5]),
-              Expanded(
-                flex: 4,
-                child: Center(
-                  child: AspectRatio(
-                    aspectRatio: 1,
-                    child: ClipOval(child: c[6]),
-                  ),
-                ),
-              ),
-              Expanded(flex: 5, child: c[7]),
-            ],
-          ),
-        ),
-        Expanded(
-          flex: 2,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (var i = 0; i < 4; i++) Expanded(child: c[8 + i]),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _body(BuildContext context) {
-    final c = _cells(context);
-    switch (_template) {
-      case kCollageTemplateNineSquareAsymmetric:
-        return _nineSquare(c);
-      case kCollageTemplateElevenSymmetricHub:
-        return _elevenHub(c);
-      case kCollageTemplateNineMixedGrid:
-        return _stackRects(c, _nineMixedRects);
-      case kCollageTemplateNineDynamicHub:
-        return _stackRects(c, _nineDynamicRects);
-      case kCollageTemplateTwelveCircleBand:
-        return _twelveBand(c, context);
-      default:
-        return Center(
-          child: Text(
-            'Unknown collage template: $_template',
-            style: widget.theme.textTheme.titleMedium,
-            textAlign: TextAlign.center,
-          ),
-        );
-    }
   }
 
   @override
@@ -381,40 +107,362 @@ class _PexelsPhotoCollageSlideWidgetState
         ),
       );
     }
-    if (_n <= 0) {
+    if (_cells.isEmpty) {
       return Center(
         child: Text(
-          'Invalid collage template',
+          'No collage template',
           style: widget.theme.textTheme.titleLarge,
+          textAlign: TextAlign.center,
         ),
       );
     }
-    final attrib = _attribRow;
-    return ColoredBox(
-      color: Colors.white,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Padding(
-            padding: EdgeInsets.all(_gapPx(context)),
-            child: _body(context),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return _buildLayoutForTemplate(
+          templateId: _templateId,
+          cells: _cells,
+          scale: s,
+          maxWidth: constraints.maxWidth,
+          maxHeight: constraints.maxHeight,
+        );
+      },
+    );
+  }
+
+  Widget _buildLayoutForTemplate({
+    required String templateId,
+    required List<_CollageCell> cells,
+    required double scale,
+    required double maxWidth,
+    required double maxHeight,
+  }) {
+    switch (templateId) {
+      case kCollageTemplateNineSquareAsymmetric:
+        return _nineSquareGrid(cells, scale);
+      case kCollageTemplateElevenSymmetricHub:
+        return _elevenHubLayout(cells, scale);
+      case kCollageTemplateNineMixedGrid:
+        return _nineMixedLayout(cells, scale);
+      case kCollageTemplateNineDynamicHub:
+        return _nineDynamicHubLayout(cells, scale, maxWidth, maxHeight);
+      case kCollageTemplateTwelveCircleBand:
+        return _twelveBandLayout(cells, scale);
+      default:
+        return _nineSquareGrid(cells, scale);
+    }
+  }
+
+  Widget _cellTile(_CollageCell cell, double scale, {BoxFit fit = BoxFit.cover}) {
+    final row = cell.row;
+    final bytes = cell.bytes;
+    if (row == null || bytes == null) {
+      return ColoredBox(
+        color: widget.theme.colorScheme.surfaceContainerHighest,
+        child: Center(
+          child: Icon(
+            Icons.image_not_supported_outlined,
+            color: widget.theme.colorScheme.onSurfaceVariant,
+            size: 28 * scale,
           ),
-          if (attrib != null)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: PexelsAttributionOverlay(
-                photographerName: attrib.photographerName,
-                photographerUrl: attrib.photographerUrl,
-                altText: attrib.altText,
-                theme: widget.theme,
-                scale: s,
-                onOpenUrl: _openUrl,
+        ),
+      );
+    }
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.memory(bytes, fit: fit, gaplessPlayback: true),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: Material(
+            color: Colors.black.withValues(alpha: 0.45),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 6 * scale, vertical: 4 * scale),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (row.photographerName.isNotEmpty)
+                    Text(
+                      row.photographerName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: widget.theme.textTheme.labelSmall?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  if (row.photographerUrl.isNotEmpty)
+                    InkWell(
+                      onTap: () => _openUrl(row.photographerUrl),
+                      child: Text(
+                        row.photographerUrl,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: widget.theme.textTheme.labelSmall?.copyWith(
+                          color: Colors.lightBlueAccent,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
-        ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _bordered(Widget child) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.black, width: 0.5),
       ),
+      child: child,
+    );
+  }
+
+  Widget _nineSquareGrid(List<_CollageCell> cells, double scale) {
+    return Column(
+      children: List.generate(3, (r) {
+        return Expanded(
+          child: Row(
+            children: List.generate(3, (c) {
+              final i = r * 3 + c;
+              final cell = i < cells.length ? cells[i] : const _CollageCell();
+              return Expanded(child: _bordered(_cellTile(cell, scale)));
+            }),
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _elevenHubLayout(List<_CollageCell> cells, double scale) {
+    Widget cellAt(int i) {
+      final cell = i < cells.length ? cells[i] : const _CollageCell();
+      return _bordered(_cellTile(cell, scale));
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          flex: 2,
+          child: Column(
+            children: [
+              Expanded(child: cellAt(0)),
+              Expanded(child: cellAt(1)),
+            ],
+          ),
+        ),
+        Expanded(
+          flex: 6,
+          child: Column(
+            children: [
+              Expanded(
+                flex: 2,
+                child: Row(
+                  children: [
+                    Expanded(child: cellAt(2)),
+                    Expanded(child: cellAt(3)),
+                    Expanded(child: cellAt(4)),
+                  ],
+                ),
+              ),
+              Expanded(flex: 5, child: cellAt(5)),
+              Expanded(
+                flex: 3,
+                child: Row(
+                  children: [
+                    Expanded(child: cellAt(6)),
+                    Expanded(child: cellAt(7)),
+                    Expanded(child: cellAt(8)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          flex: 2,
+          child: Column(
+            children: [
+              Expanded(child: cellAt(9)),
+              Expanded(child: cellAt(10)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _nineMixedLayout(List<_CollageCell> cells, double scale) {
+    Widget cellAt(int i) {
+      final cell = i < cells.length ? cells[i] : const _CollageCell();
+      return _bordered(_cellTile(cell, scale));
+    }
+
+    return Column(
+      children: [
+        Expanded(
+          child: Row(
+            children: [
+              Expanded(child: cellAt(0)),
+              Expanded(child: cellAt(1)),
+              Expanded(flex: 2, child: cellAt(2)),
+            ],
+          ),
+        ),
+        Expanded(
+          child: Row(
+            children: [
+              Expanded(child: cellAt(3)),
+              Expanded(child: cellAt(4)),
+              Expanded(child: cellAt(5)),
+            ],
+          ),
+        ),
+        Expanded(
+          child: Row(
+            children: [
+              Expanded(child: cellAt(6)),
+              Expanded(child: cellAt(7)),
+              Expanded(child: cellAt(8)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _nineDynamicHubLayout(
+    List<_CollageCell> cells,
+    double scale,
+    double w,
+    double h,
+  ) {
+    Widget cellAt(int i) {
+      final cell = i < cells.length ? cells[i] : const _CollageCell();
+      return _bordered(_cellTile(cell, scale));
+    }
+
+    final side = w * 0.14;
+    final edgeH = h * 0.12;
+    return Stack(
+      fit: StackFit.expand,
+      clipBehavior: Clip.hardEdge,
+      children: [
+        Positioned(
+          left: side,
+          top: edgeH,
+          right: side,
+          bottom: edgeH,
+          child: cellAt(4),
+        ),
+        Positioned(
+          left: 0,
+          top: h * 0.22,
+          width: side,
+          height: h * 0.4,
+          child: cellAt(0),
+        ),
+        Positioned(
+          right: 0,
+          top: h * 0.22,
+          width: side,
+          height: h * 0.4,
+          child: cellAt(1),
+        ),
+        Positioned(
+          left: w * 0.18,
+          top: 0,
+          right: w * 0.18,
+          height: edgeH,
+          child: cellAt(2),
+        ),
+        Positioned(
+          left: w * 0.18,
+          bottom: 0,
+          right: w * 0.18,
+          height: edgeH,
+          child: cellAt(3),
+        ),
+        Positioned(
+          left: 0,
+          top: 0,
+          width: w * 0.2,
+          height: h * 0.2,
+          child: cellAt(5),
+        ),
+        Positioned(
+          right: 0,
+          top: 0,
+          width: w * 0.2,
+          height: h * 0.2,
+          child: cellAt(6),
+        ),
+        Positioned(
+          left: 0,
+          bottom: 0,
+          width: w * 0.2,
+          height: h * 0.2,
+          child: cellAt(7),
+        ),
+        Positioned(
+          right: 0,
+          bottom: 0,
+          width: w * 0.2,
+          height: h * 0.2,
+          child: cellAt(8),
+        ),
+      ],
+    );
+  }
+
+  Widget _twelveBandLayout(List<_CollageCell> cells, double scale) {
+    Widget cellAt(int i) {
+      final cell = i < cells.length ? cells[i] : const _CollageCell();
+      return _bordered(_cellTile(cell, scale));
+    }
+
+    return Column(
+      children: [
+        Expanded(
+          flex: 3,
+          child: Row(
+            children: [
+              Expanded(child: cellAt(0)),
+              Expanded(child: cellAt(1)),
+              Expanded(child: cellAt(2)),
+              Expanded(child: cellAt(3)),
+              Expanded(child: cellAt(4)),
+            ],
+          ),
+        ),
+        Expanded(
+          flex: 4,
+          child: Row(
+            children: [
+              Expanded(flex: 2, child: cellAt(5)),
+              Expanded(flex: 3, child: cellAt(6)),
+              Expanded(flex: 2, child: cellAt(7)),
+            ],
+          ),
+        ),
+        Expanded(
+          flex: 3,
+          child: Row(
+            children: [
+              Expanded(child: cellAt(8)),
+              Expanded(child: cellAt(9)),
+              Expanded(child: cellAt(10)),
+              Expanded(child: cellAt(11)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

@@ -2,10 +2,10 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/blob/blob_store.dart';
-import 'package:waddle_view/curator/screen_program_curator.dart';
-import 'package:waddle_view/dashboard/rss_article_load.dart';
-import 'package:waddle_view/persistence/database.dart';
+import 'package:waddle_display/blob/blob_store.dart';
+import 'package:waddle_display/curator/screen_program_curator.dart';
+import 'package:waddle_display/display/screens/rss_article/rss_article_load.dart';
+import 'package:waddle_display/persistence/database.dart';
 
 import '../helpers/fake_blob_store.dart';
 import '../helpers/memory_database.dart';

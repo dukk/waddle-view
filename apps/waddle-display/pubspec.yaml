@@ -1,5 +1,5 @@
-name: waddle_view
-description: "Pi TV home dashboard"
+name: waddle_display
+description: "Pi TV home display"
 publish_to: "none"
 version: 1.0.0+1
 

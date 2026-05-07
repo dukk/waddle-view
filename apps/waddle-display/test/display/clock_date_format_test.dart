@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_view/dashboard/clock_date_format.dart';
+import 'package:waddle_display/display/screens/clock/clock_date_format.dart';
 
 void main() {
   group('formatClockDate', () {

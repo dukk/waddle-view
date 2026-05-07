@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/curator/ticker_item.dart';
-import 'package:waddle_view/ticker/memory_ticker_curated_repository.dart';
+import 'package:waddle_display/curator/ticker_item.dart';
+import 'package:waddle_display/ticker/memory_ticker_curated_repository.dart';
 
 void main() {
   test('replaceAll updates order; watchOrdered emits', () async {

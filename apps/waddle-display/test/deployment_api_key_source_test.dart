@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/api/deployment_api_key_source.dart';
+import 'package:waddle_display/api/deployment_api_key_source.dart';
 
 void main() {
   test('file source trims line', () async {

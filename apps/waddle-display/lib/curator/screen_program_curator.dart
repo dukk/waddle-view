@@ -1,6 +1,7 @@
 import 'dart:math';
 
-import 'curator_content_pools.dart' show RssArticleMetric;
+import 'curator_content_pools.dart' show PhotoCuratorMetric, RssArticleMetric;
+import 'photo_collage_curation.dart';
 import 'screen_layout_parse.dart' show ParsedWidgetSpec, parseScreenLayoutWidgets;
 
 class DataKeyProgramLimit {
@@ -108,6 +109,7 @@ class ScreenProgramCurator {
     Map<String, List<String>> randomPools = const {},
     Map<String, DataKeyProgramLimit> dataKeyLimits = const {},
     Map<String, RssArticleMetric> rssArticleMetrics = const {},
+    Map<String, PhotoCuratorMetric> photoMetrics = const {},
     bool requirePhotoForRssScreens = true,
   }) {
     final enabled = screens.where((s) => s.enabled && s.dwellMs > 0).toList();
@@ -234,6 +236,7 @@ class ScreenProgramCurator {
             randomPools,
             random,
             usedCuratedIds,
+            photoMetrics: photoMetrics,
           );
         } else if (selected is _PickOptionNewsJoint) {
           pick = selected.screen;
@@ -255,6 +258,7 @@ class ScreenProgramCurator {
             randomPools,
             random,
             usedCuratedIds,
+            photoMetrics: photoMetrics,
           );
         } else if (_layoutHasRssNews(pick.layoutJson)) {
           final a = rssArticleMetrics.isNotEmpty
@@ -284,6 +288,7 @@ class ScreenProgramCurator {
             randomPools,
             random,
             usedCuratedIds,
+            photoMetrics: photoMetrics,
           );
         }
       }
@@ -347,6 +352,7 @@ class ScreenProgramCurator {
       randomPools,
       Random(0),
       used,
+      photoMetrics: const {},
     );
     final specs = parseScreenLayoutWidgets(layoutJson);
     for (final w in specs) {
@@ -957,6 +963,9 @@ class ScreenProgramCurator {
       case 'pexels_photo':
         final c = w.config['categoryId'] as String?;
         return (c != null && c.isNotEmpty) ? 'pexels_photo:$c' : 'pexels_photo';
+      case 'pexels_photo_collage':
+        final c2 = w.config['categoryId'] as String?;
+        return (c2 != null && c2.isNotEmpty) ? 'pexels_photo:$c2' : 'pexels_photo';
       case 'pexels_video':
         final c = w.config['categoryId'] as String?;
         return (c != null && c.isNotEmpty) ? 'pexels_video:$c' : 'pexels_video';
@@ -980,11 +989,54 @@ class ScreenProgramCurator {
     String layoutJson,
     Map<String, List<String>> randomPools,
     Random random,
-    Set<String> usedCuratedIds,
-  ) {
+    Set<String> usedCuratedIds, {
+    Map<String, PhotoCuratorMetric> photoMetrics = const {},
+  }) {
     final specs = parseScreenLayoutWidgets(layoutJson);
     final out = <String, String>{};
     for (final w in specs) {
+      if (w.type == 'pexels_photo_collage') {
+        final template =
+            (w.config['template'] as String?)?.trim() ??
+            kCollageTemplateNineSquareAsymmetric;
+        final poolName = _poolNameForWidget(w);
+        if (poolName == null || poolName.isEmpty) {
+          continue;
+        }
+        final pool = randomPools[poolName];
+        if (pool == null || pool.isEmpty) {
+          continue;
+        }
+        final n = collageSlotCount(template);
+        if (n <= 0) {
+          continue;
+        }
+        final aspectPick = assignPhotosToCollageSlots(
+          templateId: template,
+          choiceKey: w.choiceKey,
+          pool: pool,
+          reserved: usedCuratedIds,
+          photoMetrics: photoMetrics,
+          random: random,
+        );
+        if (aspectPick != null) {
+          for (final e in aspectPick.entries) {
+            out[e.key] = e.value;
+            usedCuratedIds.add(e.value);
+          }
+        }
+        for (var i = 0; i < n; i++) {
+          final k = '${w.choiceKey}_$i';
+          if ((out[k] ?? '').isNotEmpty) {
+            continue;
+          }
+          final choice = _pickUnusedFromPool(pool, random, usedCuratedIds);
+          if (choice != null) {
+            out[k] = choice;
+          }
+        }
+        continue;
+      }
       if (w.type == 'rss_article_columns') {
         final poolName = _poolNameForWidget(w);
         if (poolName == null || poolName.isEmpty) {

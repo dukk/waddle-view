@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/debug/app_debug_log.dart';
+import 'package:waddle_display/debug/app_debug_log.dart';
 
 void main() {
   test('AppDebugLog methods are safe to call from tests', () {

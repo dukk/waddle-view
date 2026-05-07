@@ -2,10 +2,10 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:waddle_view/curator/screen_layout_parse.dart';
-import 'package:waddle_view/curator/screen_program_curator.dart';
-import 'package:waddle_view/dashboard/rss_article_columns_slide_widget.dart';
-import 'package:waddle_view/persistence/database.dart';
+import 'package:waddle_display/curator/screen_layout_parse.dart';
+import 'package:waddle_display/curator/screen_program_curator.dart';
+import 'package:waddle_display/display/screens/rss_article/rss_article_columns_slide_widget.dart';
+import 'package:waddle_display/persistence/database.dart';
 
 import '../helpers/fake_blob_store.dart';
 import '../helpers/memory_database.dart';

@@ -3,15 +3,16 @@ import 'package:drift/drift.dart';
 import '../alerts/alert_severity_icons_kv.dart';
 import '../config/google_kv.dart';
 import '../config/microsoft_graph_kv.dart';
+import '../curator/photo_collage_curation.dart';
 import '../persistence/config_json_documentation.dart';
 import '../persistence/database.dart';
 import '../persistence/tables.dart';
 import '../theme/display_text_scale_kv.dart';
 import '../theme/display_theme_kv.dart';
-import 'content_category_seed.dart';
-import 'joke_category_seed.dart';
-import 'rss_news_feed_seed.dart';
-import 'trivia_category_seed.dart';
+import 'tables/content_categories_seed.dart';
+import 'tables/joke_categories_seed.dart';
+import 'tables/rss_feed_sources_seed.dart';
+import 'tables/trivia_categories_seed.dart';
 
 /// Idempotent demo rows for stub provider + ticker.
 Future<void> ensureInitialSeed(AppDatabase db) async {
@@ -94,6 +95,7 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureWeatherScreen(db);
   await _ensurePexelsPhotoScreen(db);
   await _ensurePexelsVideoScreen(db);
+  await _ensurePhotoCollageScreens(db);
   await _ensureStockQuotesScreen(db);
 }
 
@@ -277,7 +279,7 @@ Future<void> _ensureJokeScreen(AppDatabase db) async {
           ),
           layoutJsonSchema: Value(kScreenLayoutJsonSchema),
           exampleLayoutJson: Value(kExampleScreenLayoutJson),
-          dwellSeconds: const Value(12),
+          dwellSeconds: const Value(20),
           dataKey: const Value('jokes'),
         ),
       );
@@ -1081,6 +1083,68 @@ Future<void> _ensurePexelsVideoScreen(AppDatabase db) async {
           dataKey: const Value('pexels_video'),
         ),
       );
+}
+
+Future<void> _ensurePhotoCollageScreens(AppDatabase db) async {
+  Future<void> ensureOne({
+    required String id,
+    required String name,
+    required String template,
+    int dwellSeconds = 18,
+  }) async {
+    final row =
+        await (db.select(db.screenDefinitions)
+              ..where((t) => t.id.equals(id)))
+            .getSingleOrNull();
+    if (row != null) {
+      return;
+    }
+    final layout =
+        '{"v":1,"layout":"single","widgets":['
+        '{"type":"pexels_photo_collage","slot":"main","config":{"template":"$template"}}'
+        ']}';
+    await db.into(db.screenDefinitions).insert(
+          ScreenDefinitionsCompanion.insert(
+            id: id,
+            name: name,
+            description: const Value(
+              'Multi-photo collage; curator matches aspect ratio to each tile when dimensions are known',
+            ),
+            enabled: const Value(false),
+            layoutJson: Value(layout),
+            layoutJsonSchema: Value(kScreenLayoutJsonSchema),
+            exampleLayoutJson: Value(kExampleScreenLayoutJson),
+            dwellSeconds: Value(dwellSeconds),
+            dataKey: const Value('pexels_photo'),
+          ),
+        );
+  }
+
+  await ensureOne(
+    id: 'photo_collage_nine_square',
+    name: 'Photo collage — nine squares',
+    template: kCollageTemplateNineSquareAsymmetric,
+  );
+  await ensureOne(
+    id: 'photo_collage_eleven_hub',
+    name: 'Photo collage — eleven symmetric hub',
+    template: kCollageTemplateElevenSymmetricHub,
+  );
+  await ensureOne(
+    id: 'photo_collage_nine_mixed',
+    name: 'Photo collage — nine mixed',
+    template: kCollageTemplateNineMixedGrid,
+  );
+  await ensureOne(
+    id: 'photo_collage_nine_dynamic',
+    name: 'Photo collage — nine dynamic hub',
+    template: kCollageTemplateNineDynamicHub,
+  );
+  await ensureOne(
+    id: 'photo_collage_twelve_circle',
+    name: 'Photo collage — twelve + circle',
+    template: kCollageTemplateTwelveCircleBand,
+  );
 }
 
 Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {

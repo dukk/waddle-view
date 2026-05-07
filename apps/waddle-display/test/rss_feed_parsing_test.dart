@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_view/data/providers/rss_feed_parsing.dart';
+import 'package:waddle_display/data/providers/rss_news/rss_feed_parsing.dart';
 
 const _miniRss = '''
 <?xml version="1.0"?>
