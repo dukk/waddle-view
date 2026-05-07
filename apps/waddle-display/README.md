@@ -129,7 +129,7 @@ Each **`screen_definitions`** row stores runtime **`layout_json`** plus document
 
 SQLite table **`ticker_definitions`** configures the bottom marquee: which **types** run (`time`, `weather`, `news`, `quote`, `stocks`, `custom`), **order** (`sort_order`, then id), **`enabled`**, and **`frequency_weight`** (repeat that type’s item bundle that many times when building the curated list; identical bodies are still deduplicated). **`custom`** rows may set **`config_key`** to pin one `ticker.marquee.*` key; when null, every extra `ticker.marquee.*` key outside the standard weather/news/quote keys is included (legacy “extras” bucket).
 
-Content still comes from **`config_key_values`** (`ticker.marquee.*`), live weather, stored RSS articles for **`news`**, and (for definition-based curation) enabled **`stock_symbols`** / **`stock_quotes`** when a **`stocks`** row is enabled. If **`ticker_definitions`** has **no rows** (empty table), curation keeps the legacy fixed order: time, standard keys, sorted extras — **without** stock lines. If the table has rows but **none are enabled**, curation falls back to **time** only.
+Content still comes from **`config_key_values`** (`ticker.marquee.*`), live weather plus **active NWS alerts** (same `weather` ticker kind), stored RSS articles for **`news`**, and (for definition-based curation) enabled **`stock_symbols`** / **`stock_quotes`** when a **`stocks`** row is enabled. If **`ticker_definitions`** has **no rows** (empty table), curation keeps the legacy fixed order: time, standard keys, sorted extras — **without** stock lines. If the table has rows but **none are enabled**, curation falls back to **time** only.
 
 Seeded defaults: **`ticker_time`** … **`ticker_stocks`** enabled, **`ticker_custom`** disabled ([`initial_seed.dart`](lib/seed/initial_seed.dart)).
 
@@ -216,6 +216,18 @@ The **stocks** provider (`id` / `provider_type`: **`stocks`**) calls [Finnhub](h
 
 **Screen:** widget type **`stock_quotes`**. Seed adds a **`stock_quotes`** row in **`screen_definitions`** disabled by default; enable after configuring the API key. The slide renders symbol, price, and percent change with up/down trend coloring per enabled symbol.
 
+## NWS weather alerts (api.weather.gov)
+
+The **`nws_weather_alerts`** data provider (`id` / `provider_type`: **`nws_weather_alerts`**) calls the National Weather Service [JSON API](https://www.weather.gov/documentation/services-web-api) **`GET /alerts/active?point=<lat>,<lon>`** for each enabled row in **`weather_locations`** (or a **`defaultLocation`** in **`config_json`** when that table is empty, same shape as the OpenWeather provider). Responses are stored in **`weather_gov_active_alerts`** (schema version **25**). **No API key** is required.
+
+**User-Agent (required by NWS):** every request sends an identifying **`User-Agent`** header. Set **`userAgent`** in **`provider_settings.config_json`** to a string that includes contact information (website or email), for example `(https://example.org, ops@example.org)`, as described in the [API overview](https://www.weather.gov/documentation/services-web-api). Until you configure this, the app uses a generic placeholder string that points to this README.
+
+**Coverage:** alerts are **US-only** (NWS). **`provider_settings.base_url`** defaults to **`https://api.weather.gov`**.
+
+**UI:** the **`weather`** slide shows an **Active alerts** section when rows exist for the slide’s location. When the marquee includes a **`weather`** ticker definition (or legacy ordering), each active alert adds an extra **`weather`-kind** ticker line after the temperature summary (deduped by NWS alert id across locations).
+
+**`provider_settings.poll_seconds`:** default **900** when seeded (aligned with the OpenWeather provider).
+
 ## Outlook calendar (Microsoft Graph)
 
 The **Outlook calendar** provider (`id` / `provider_type`: **`outlook_calendar`**) reads delegated calendar data via [Microsoft Graph](https://learn.microsoft.com/en-us/graph/api/resources/calendar) `calendarView` and stores events in **`calendar_events`** (shown on the **`calendar_month`** slide). Seed adds the provider **disabled** by default; set **`provider_settings.enabled`** after configuration.
@@ -237,7 +249,7 @@ The **Outlook calendar** provider (`id` / `provider_type`: **`outlook_calendar`*
 - **`sources`**: list of mailbox objects. **`mailbox`** is the Graph user (`me` or a UPN). **`calendars`**: display names or Graph calendar ids, each either a **string** or `{ "calendar": "Name", "categoryId": "<content_categories.id>" }` to force a **content category** for every event from that calendar. An **empty** `calendars` array means the user’s **default** calendar only; optional **`defaultCategoryId`** then applies to those events. Optional **`categoryMap`** maps **Outlook** event category labels (Graph `categories`) to **`content_categories.id`** when no per-calendar override applies.
 - **`pastDays`** / **`futureDays`**: inclusive window around **today’s UTC midnight** (defaults **14** / **14**).
 
-**`calendar_events`** (schema **22+**) also stores **`ical_uid`** (for deduplication across calendars) and optional **`category_id`** (FK to **`content_categories`**). The **`calendar_month`** slide shows a category **icon** when present, **deduplicates** shared meetings, and **reuses** one time label for events at the same clock time or for **all-day** items on the same day. **Widget `config`** (optional): **`upcomingTime12Hour`** (default **true**) for `h:mm AM/PM` vs 24-hour; **`upcomingTimeNoonLabel`** (default **`Noon`**) for exactly 12:00 PM local; **`upcomingTimeWidthCompact`** / **`upcomingTimeWidth`** (default **88** / **104** logical px before TV scale) for the upcoming-events time column.
+**`calendar_events`** (schema **22+**) also stores **`ical_uid`** (for deduplication across calendars) and optional **`category_id`** (FK to **`content_categories`**). The **`calendar_month`** slide shows a category **icon** when present, **deduplicates** shared meetings, and **reuses** one time label for events at the same clock time or for **all-day** items on the same day. **Widget `config`** (optional): **`upcomingTime12Hour`** (default **true**) for `h:mm AM/PM` vs 24-hour; **`upcomingTimeNoonLabel`** (default **`Noon`**) for exactly 12:00 PM local; **`upcomingTimeWidthCompact`** / **`upcomingTimeWidth`** (default **132** / **156** logical px before TV scale) for the upcoming-events time column.
 
 **`provider_settings.poll_seconds`:** default **3600** (one sync per hour when enabled).
 

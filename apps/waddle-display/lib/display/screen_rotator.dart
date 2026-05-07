@@ -17,6 +17,7 @@ import '../persistence/tables.dart';
 import '../theme/display_theme.dart';
 import 'dashboard_kv_flags.dart';
 import 'dashboard_viewport_scope.dart';
+import 'slide_content_preload.dart';
 import 'screens/admin_setup/admin_setup_slide_widget.dart';
 import 'screens/calendar_month/calendar_month_slide_widget.dart';
 import 'screens/clock/analog_clock_slide_widget.dart';
@@ -109,7 +110,55 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
     reverseCurve: Curves.easeInCubic,
   );
 
+  /// Prepared slide loads keyed by `'${_historyCursor}_$slideIndex'`.
+  final Map<String, Future<void>> _slidePrepareFutures = {};
+
   static const Duration _manualIdleTimeout = Duration(seconds: 3);
+
+  String _slidePrepareKey(int slideIndex) => '${_historyCursor}_$slideIndex';
+
+  void _invalidateSlidePrepareCache() {
+    _slidePrepareFutures.clear();
+  }
+
+  Future<void> _prepareSlide(int index) async {
+    if (_visibleProgram.isEmpty ||
+        index < 0 ||
+        index >= _visibleProgram.length) {
+      return;
+    }
+    final key = _slidePrepareKey(index);
+    final existing = _slidePrepareFutures[key];
+    if (existing != null) {
+      await existing;
+      return;
+    }
+    final slide = _visibleProgram[index];
+    final f = preloadResolvedSlideContent(
+      db: widget.db,
+      blobs: widget.blobs,
+      slide: slide,
+    );
+    _slidePrepareFutures[key] = f;
+    await f;
+  }
+
+  void _kickPrefetchNext() {
+    final next = _slideCursor + 1;
+    if (_visibleProgram.isEmpty || next >= _visibleProgram.length) {
+      return;
+    }
+    final key = _slidePrepareKey(next);
+    if (_slidePrepareFutures.containsKey(key)) {
+      return;
+    }
+    final slide = _visibleProgram[next];
+    _slidePrepareFutures[key] = preloadResolvedSlideContent(
+      db: widget.db,
+      blobs: widget.blobs,
+      slide: slide,
+    );
+  }
 
   @override
   void initState() {
@@ -213,6 +262,18 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
     if (!mounted) {
       return;
     }
+    _invalidateSlidePrepareCache();
+    final shouldResetView = !_manualNavigationActive || _historyCursor == 0;
+    if (program.isNotEmpty && shouldResetView) {
+      await preloadResolvedSlideContent(
+        db: widget.db,
+        blobs: widget.blobs,
+        slide: program.first,
+      );
+    }
+    if (!mounted) {
+      return;
+    }
     setState(() {
       _history.insert(0, _ProgramHistoryEntry(slides: program));
       while (_history.length > _historyDepth) {
@@ -225,6 +286,9 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
         _toSlide = program.isEmpty ? null : program.first;
       }
     });
+    if (shouldResetView && program.isNotEmpty) {
+      _slidePrepareFutures[_slidePrepareKey(0)] = Future.value();
+    }
     final firstSlide = program.isEmpty ? null : program.first;
     if (firstSlide != null) {
       AppDebugLog.screen(
@@ -251,10 +315,12 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
   void _scheduleDwellForCurrentSlide() {
     _dwellTimer?.cancel();
     if (!_canAutoAdvance || _toSlide == null) {
+      _kickPrefetchNext();
       return;
     }
     final slide = _visibleProgram[_slideCursor];
     _dwellTimer = Timer(Duration(milliseconds: slide.dwellMs), _onDwellElapsed);
+    _kickPrefetchNext();
   }
 
   void _reportDesiredDwellForSlide(int slideIndex, int ms) {
@@ -285,7 +351,10 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
     }
 
     final next = _visibleProgram[nextIndex];
-    _setVisibleSlide(nextIndex, animated: true, transitionDirection: 1);
+    await _setVisibleSlide(nextIndex, animated: true, transitionDirection: 1);
+    if (!mounted) {
+      return;
+    }
     AppDebugLog.screen(
       screenShownDebugLogLine(
         reason: 'transition',
@@ -299,15 +368,19 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
     );
   }
 
-  void _setVisibleSlide(
+  Future<void> _setVisibleSlide(
     int newIndex, {
     required bool animated,
     required int transitionDirection,
-  }) {
+  }) async {
     if (_visibleProgram.isEmpty) {
       return;
     }
     final clampedIndex = newIndex.clamp(0, _visibleProgram.length - 1);
+    await _prepareSlide(clampedIndex);
+    if (!mounted) {
+      return;
+    }
     final current = _toSlide ?? _visibleProgram[_slideCursor];
     final next = _visibleProgram[clampedIndex];
     if (!animated) {
@@ -326,15 +399,14 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
       _fromSlide = current;
       _toSlide = next;
     });
-    _anim.forward(from: 0).then((_) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _fromSlide = null;
-      });
-      _scheduleDwellForCurrentSlide();
+    await _anim.forward(from: 0);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _fromSlide = null;
     });
+    _scheduleDwellForCurrentSlide();
   }
 
   void _showOverlay({String? notice}) {
@@ -361,11 +433,11 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
       return KeyEventResult.ignored;
     }
     if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-      _handleLeftNavigation();
+      unawaited(_handleLeftNavigation());
       return KeyEventResult.handled;
     }
     if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
-      _handleRightNavigation();
+      unawaited(_handleRightNavigation());
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
@@ -377,13 +449,13 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
     _showOverlay();
   }
 
-  void _handleLeftNavigation() {
+  Future<void> _handleLeftNavigation() async {
     _beginManualNavigation();
     if (_slideCursor > 0) {
       setState(() {
         _overlayNotice = null;
       });
-      _setVisibleSlide(
+      await _setVisibleSlide(
         _slideCursor - 1,
         animated: true,
         transitionDirection: -1,
@@ -392,15 +464,31 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
     }
     final olderProgramIndex = _historyCursor + 1;
     if (olderProgramIndex < _history.length) {
+      final slides = _history[olderProgramIndex].slides;
+      if (slides.isEmpty) {
+        return;
+      }
+      final targetIdx = slides.length - 1;
+      _invalidateSlidePrepareCache();
+      await preloadResolvedSlideContent(
+        db: widget.db,
+        blobs: widget.blobs,
+        slide: slides[targetIdx],
+      );
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _overlayNotice = null;
         _historyCursor = olderProgramIndex;
-        _slideCursor = _history[_historyCursor].slides.length - 1;
+        _slideCursor = targetIdx;
         _slideTransitionDirection = -1;
         _overlayTimelineDirection = 1;
         _fromSlide = null;
         _toSlide = _visibleProgram[_slideCursor];
       });
+      _slidePrepareFutures[_slidePrepareKey(targetIdx)] = Future.value();
+      _kickPrefetchNext();
       return;
     }
     setState(() {
@@ -408,13 +496,13 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
     });
   }
 
-  void _handleRightNavigation() {
+  Future<void> _handleRightNavigation() async {
     _beginManualNavigation();
     if (_slideCursor < _visibleProgram.length - 1) {
       setState(() {
         _overlayNotice = null;
       });
-      _setVisibleSlide(
+      await _setVisibleSlide(
         _slideCursor + 1,
         animated: true,
         transitionDirection: 1,
@@ -423,6 +511,19 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
     }
     if (_historyCursor > 0) {
       final newer = _historyCursor - 1;
+      final slides = _history[newer].slides;
+      if (slides.isEmpty) {
+        return;
+      }
+      _invalidateSlidePrepareCache();
+      await preloadResolvedSlideContent(
+        db: widget.db,
+        blobs: widget.blobs,
+        slide: slides.first,
+      );
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _historyCursor = newer;
         _slideCursor = 0;
@@ -432,6 +533,8 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
         _fromSlide = null;
         _toSlide = _visibleProgram.first;
       });
+      _slidePrepareFutures[_slidePrepareKey(0)] = Future.value();
+      _kickPrefetchNext();
       return;
     }
     setState(() {

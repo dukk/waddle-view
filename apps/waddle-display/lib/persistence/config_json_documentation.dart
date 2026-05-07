@@ -117,6 +117,37 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       },
     }),
   ),
+  'nws_weather_alerts': ProviderConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'NwsWeatherGovAlertsConfig',
+        description:
+            'api.weather.gov active alerts. Set userAgent with contact info per NWS API rules. '
+            'Optional defaultLocation when no rows exist in weather_locations.',
+        properties: {
+          'userAgent': {'type': 'string'},
+          'defaultLocation': {
+            'type': 'object',
+            'properties': {
+              'name': {'type': 'string'},
+              'lat': {'type': 'number'},
+              'lon': {'type': 'number'},
+            },
+            'required': ['lat', 'lon'],
+            'additionalProperties': true,
+          },
+        },
+      ),
+    ),
+    example: jsonEncode({
+      'userAgent': '(example.org, ops@example.org)',
+      'defaultLocation': {
+        'name': 'Default',
+        'lat': 40.7128,
+        'lon': -74.006,
+      },
+    }),
+  ),
   'jokes': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(

@@ -321,12 +321,27 @@ void _addTickerIfNew(
   );
 }
 
+void _appendWeatherGovAlertTickerItems(
+  List<TickerItem> out,
+  Set<String> seenBodies,
+  List<WeatherGovAlertTickerItem> alerts,
+) {
+  for (final a in alerts) {
+    _addTickerIfNew(
+      out,
+      seenBodies,
+      TickerItem(kind: 'weather', body: a.body, sourceId: a.sourceId),
+    );
+  }
+}
+
 /// KV + clock + optional RSS: legacy ordering when [definitions] is empty.
 List<TickerItem> _buildTickerItemsForMarqueeLegacy({
   required Map<String, String> kv,
   required DateTime nowLocal,
   required List<TickerItem> rssItems,
   CurrentWeatherTickerData? currentWeather,
+  List<WeatherGovAlertTickerItem> weatherGovAlerts = const [],
 }) {
   final out = <TickerItem>[];
   final seenBodies = <String>{};
@@ -356,6 +371,7 @@ List<TickerItem> _buildTickerItemsForMarqueeLegacy({
       ),
     );
   }
+  _appendWeatherGovAlertTickerItems(out, seenBodies, weatherGovAlerts);
 
   if (rssItems.isNotEmpty) {
     for (final it in rssItems) {
@@ -416,6 +432,7 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
   CurrentWeatherTickerData? currentWeather,
   required List<TickerDefinitionForCuration> enabledDefinitions,
   required List<StockTickerRowForMarquee> stockRows,
+  List<WeatherGovAlertTickerItem> weatherGovAlerts = const [],
 }) {
   String stockMarqueeBody(StockTickerRowForMarquee row) {
     final label = row.symbol.trim().isEmpty ? row.symbolId : row.symbol.trim();
@@ -447,16 +464,22 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
   ];
 
   List<TickerItem> expandWeather() {
-    if (rawWeather.isEmpty) {
-      return const [];
+    final out = <TickerItem>[];
+    if (rawWeather.isNotEmpty) {
+      out.add(
+        TickerItem(
+          kind: 'weather',
+          body: rawWeather,
+          sourceId: 'ticker.marquee.weather',
+        ),
+      );
     }
-    return [
-      TickerItem(
-        kind: 'weather',
-        body: rawWeather,
-        sourceId: 'ticker.marquee.weather',
-      ),
-    ];
+    for (final a in weatherGovAlerts) {
+      out.add(
+        TickerItem(kind: 'weather', body: a.body, sourceId: a.sourceId),
+      );
+    }
+    return out;
   }
 
   List<TickerItem> expandNews() {
@@ -584,6 +607,7 @@ List<TickerItem> buildTickerItemsForMarquee({
   CurrentWeatherTickerData? currentWeather,
   List<TickerDefinitionForCuration> definitions = const [],
   List<StockTickerRowForMarquee> stockRows = const [],
+  List<WeatherGovAlertTickerItem> weatherGovAlerts = const [],
 }) {
   final cfg = CuratorTickerConfig.fromKv(kv);
   final rssItems = pickNewsTickerItemsByWidthBudget(
@@ -597,6 +621,7 @@ List<TickerItem> buildTickerItemsForMarquee({
       nowLocal: nowLocal,
       rssItems: rssItems,
       currentWeather: currentWeather,
+      weatherGovAlerts: weatherGovAlerts,
     );
   }
 
@@ -620,5 +645,6 @@ List<TickerItem> buildTickerItemsForMarquee({
     currentWeather: currentWeather,
     enabledDefinitions: enabled,
     stockRows: stockRows,
+    weatherGovAlerts: weatherGovAlerts,
   );
 }

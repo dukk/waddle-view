@@ -40,6 +40,7 @@ import 'data/providers/pexels/pexels_data_provider.dart';
 import 'data/providers/rss_news/rss_news_data_provider.dart';
 import 'data/providers/stock_quote/stock_quote_data_provider.dart';
 import 'data/providers/trivia/trivia_data_provider.dart';
+import 'data/providers/nws_weather_gov/nws_weather_gov_alerts_data_provider.dart';
 import 'data/providers/weather/weather_data_provider.dart';
 import 'data/stub_data_provider.dart';
 import 'marquee_cycle_gate.dart';
@@ -144,6 +145,7 @@ Future<void> _waddleBootstrap() async {
         JokeDataProvider(),
         TriviaDataProvider(),
         WeatherDataProvider(),
+        NwsWeatherGovAlertsDataProvider(),
         PexelsDataProvider(),
         GoogleCalendarDataProvider(),
         OutlookCalendarDataProvider(),

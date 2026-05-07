@@ -81,89 +81,197 @@ class WeatherSlideWidget extends StatelessWidget {
             final currentIcon = _iconForWeather(
               description: currentDescription,
             );
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(location.name, style: theme.textTheme.headlineSmall),
-                SizedBox(height: 16 * s),
-                Icon(
-                  currentIcon,
-                  size: 42 * s,
-                  color: primaryAccent,
-                ),
-                SizedBox(height: 10 * s),
-                Text(
-                  _formatTemp(weather.currentTemp),
-                  style: theme.textTheme.displaySmall,
-                ),
-                SizedBox(height: 10 * s),
-                Text(currentDescription, style: theme.textTheme.titleLarge),
-                SizedBox(height: 24 * s),
-                Text(
-                  'Hourly forecast (3-hour steps)',
-                  style: theme.textTheme.titleMedium,
-                ),
-                SizedBox(height: 14 * s),
-                Wrap(
-                  spacing: 24 * s,
-                  runSpacing: 14 * s,
-                  alignment: WrapAlignment.center,
-                  children: hourly.take(6).map((item) {
-                    final dt = (item['dt'] as num?)?.toInt();
-                    final hourText = _hourText(dt);
-                    final description = (item['description'] as String?) ?? '';
-                    return SizedBox(
-                      width: hourlyTileWidth,
-                      height: hourlyTileHeight,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12 * s),
-                        ),
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 10 * s,
-                            vertical: 8 * s,
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              Text(hourText, style: theme.textTheme.bodySmall),
-                              SizedBox(height: 4 * s),
-                              Icon(
-                                _iconForWeather(
-                                  code: item['icon'] as String?,
-                                  description: description,
-                                ),
-                                size: 20 * s,
-                                color: iconColor,
-                              ),
-                              SizedBox(height: 4 * s),
-                              Text(
-                                _formatTemp(item['temp']),
-                                style: theme.textTheme.titleMedium,
-                              ),
-                              SizedBox(height: 2 * s),
-                              Text(
-                                description,
-                                style: theme.textTheme.bodySmall,
-                                softWrap: true,
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
+            return StreamBuilder<List<WeatherGovActiveAlert>>(
+              stream: (db.select(db.weatherGovActiveAlerts)
+                    ..where((t) => t.locationId.equals(location.id))
+                    ..orderBy([
+                      (t) => OrderingTerm.asc(t.severity),
+                      (t) => OrderingTerm.asc(t.event),
+                    ]))
+                  .watch(),
+              builder: (context, alertSnapshot) {
+                final alerts = alertSnapshot.data ?? const <WeatherGovActiveAlert>[];
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(location.name, style: theme.textTheme.headlineSmall),
+                    SizedBox(height: 16 * s),
+                    Icon(
+                      currentIcon,
+                      size: 42 * s,
+                      color: primaryAccent,
+                    ),
+                    SizedBox(height: 10 * s),
+                    Text(
+                      _formatTemp(weather.currentTemp),
+                      style: theme.textTheme.displaySmall,
+                    ),
+                    SizedBox(height: 10 * s),
+                    Text(currentDescription, style: theme.textTheme.titleLarge),
+                    if (alerts.isNotEmpty) ...[
+                      SizedBox(height: 20 * s),
+                      Text(
+                        'Active alerts',
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      SizedBox(height: 10 * s),
+                      ...alerts.map(
+                        (a) => Padding(
+                          padding: EdgeInsets.only(bottom: 10 * s),
+                          child: _weatherGovAlertCard(
+                            context: context,
+                            alert: a,
+                            scale: s,
+                            theme: theme,
                           ),
                         ),
                       ),
-                    );
-                  }).toList(),
-                ),
-              ],
+                    ],
+                    SizedBox(height: 24 * s),
+                    Text(
+                      'Hourly forecast (3-hour steps)',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    SizedBox(height: 14 * s),
+                    Wrap(
+                      spacing: 24 * s,
+                      runSpacing: 14 * s,
+                      alignment: WrapAlignment.center,
+                      children: hourly.take(6).map((item) {
+                        final dt = (item['dt'] as num?)?.toInt();
+                        final hourText = _hourText(dt);
+                        final description = (item['description'] as String?) ?? '';
+                        return SizedBox(
+                          width: hourlyTileWidth,
+                          height: hourlyTileHeight,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(12 * s),
+                            ),
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 10 * s,
+                                vertical: 8 * s,
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                children: [
+                                  Text(hourText, style: theme.textTheme.bodySmall),
+                                  SizedBox(height: 4 * s),
+                                  Icon(
+                                    _iconForWeather(
+                                      code: item['icon'] as String?,
+                                      description: description,
+                                    ),
+                                    size: 20 * s,
+                                    color: iconColor,
+                                  ),
+                                  SizedBox(height: 4 * s),
+                                  Text(
+                                    _formatTemp(item['temp']),
+                                    style: theme.textTheme.titleMedium,
+                                  ),
+                                  SizedBox(height: 2 * s),
+                                  Text(
+                                    description,
+                                    style: theme.textTheme.bodySmall,
+                                    softWrap: true,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                );
+              },
             );
           },
         );
       },
     );
+  }
+
+  Widget _weatherGovAlertCard({
+    required BuildContext context,
+    required WeatherGovActiveAlert alert,
+    required double scale,
+    required ThemeData theme,
+  }) {
+    final accent = _severityColor(theme, alert.severity);
+    final headline = (alert.headline ?? '').trim();
+    final expiry = alert.expiresAt;
+    return Material(
+      color: theme.colorScheme.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(12 * scale),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: 14 * scale,
+          vertical: 10 * scale,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.warning_amber_rounded,
+              color: accent,
+              size: 26 * scale,
+            ),
+            SizedBox(width: 10 * scale),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    alert.event,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: accent,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if (headline.isNotEmpty) ...[
+                    SizedBox(height: 4 * scale),
+                    Text(headline, style: theme.textTheme.bodyMedium),
+                  ],
+                  if (expiry != null) ...[
+                    SizedBox(height: 4 * scale),
+                    Text(
+                      'Until ${_formatAlertExpiryLocal(expiry)}',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _severityColor(ThemeData theme, String? severity) {
+    switch ((severity ?? '').toLowerCase().trim()) {
+      case 'extreme':
+        return theme.colorScheme.error;
+      case 'severe':
+        return theme.colorScheme.tertiary;
+      default:
+        return theme.colorScheme.secondary;
+    }
+  }
+
+  String _formatAlertExpiryLocal(DateTime t) {
+    final local = t.toLocal();
+    final m = local.month.toString().padLeft(2, '0');
+    final d = local.day.toString().padLeft(2, '0');
+    final h = local.hour.toString().padLeft(2, '0');
+    final min = local.minute.toString().padLeft(2, '0');
+    return '$m/$d $h:$min';
   }
 
   List<Map<String, dynamic>> _parseHourly(String? raw) {

@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:drift/drift.dart' show CustomExpression, OrderingTerm;
 import 'package:flutter/material.dart';
 
 import '../../../blob/blob_store.dart';
@@ -8,32 +7,9 @@ import '../../../curator/screen_layout_parse.dart';
 import '../../../curator/screen_program_curator.dart';
 import '../../../persistence/database.dart';
 import '../../content_category_slide_header.dart';
+import '../../slide_content_joke_trivia.dart';
 import 'joke_slide_timing.dart';
 import '../../dashboard_viewport_scope.dart';
-
-/// Curated joke id from [slide], else random from [db] (optional [categoryId]).
-Future<Joke?> _loadJokeForSlide(
-  AppDatabase db,
-  ParsedWidgetSpec spec,
-  ResolvedSlide slide,
-) async {
-  final curatedId = slide.randomChoices[spec.choiceKey];
-  if (curatedId != null && curatedId.isNotEmpty) {
-    return (db.select(db.jokes)..where((t) => t.id.equals(curatedId)))
-        .getSingleOrNull();
-  }
-  final categoryId = spec.config['categoryId'] as String?;
-  final q = db.select(db.jokes);
-  if (categoryId != null && categoryId.isNotEmpty) {
-    q.where((t) => t.categoryId.equals(categoryId));
-  }
-  return (q
-        ..orderBy([
-          (t) => OrderingTerm(expression: const CustomExpression('random()')),
-        ])
-        ..limit(1))
-      .getSingleOrNull();
-}
 
 /// Shows joke setup, then punchline after half of [slide.dwellMs].
 class JokeSlideWidget extends StatefulWidget {
@@ -72,7 +48,7 @@ class _JokeSlideWidgetState extends State<JokeSlideWidget> {
   }
 
   Future<void> _bootstrap() async {
-    final joke = await _loadJokeForSlide(widget.db, widget.spec, widget.slide);
+    final joke = await loadJokeForSlide(widget.db, widget.spec, widget.slide);
     if (!mounted) {
       return;
     }

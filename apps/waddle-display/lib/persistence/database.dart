@@ -34,6 +34,7 @@ part 'database.g.dart';
     CalendarEvents,
     WeatherLocations,
     WeatherCurrentData,
+    WeatherGovActiveAlerts,
     Photos,
     Videos,
     PexelsFetchBatches,
@@ -45,7 +46,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 24;
+  int get schemaVersion => 25;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -332,6 +333,9 @@ FROM curator_settings WHERE id = 'app';
         await customStatement(
           'ALTER TABLE blob_metadata ADD COLUMN pixel_height INTEGER;',
         );
+      }
+      if (from < 25) {
+        await m.createTable(weatherGovActiveAlerts);
       }
     },
     beforeOpen: (details) async {

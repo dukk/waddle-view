@@ -219,6 +219,8 @@ Providers persist **domain** rows (for example [`config_key_values`](lib/persist
 
 [`ScreenRotator`](lib/display/screen_rotator.dart) loads enabled rows from [`screen_definitions`](lib/persistence/tables.dart) and curator program keys in [`config_key_values`](lib/persistence/tables.dart) (`curator.program.*`), runs [`ScreenProgramCurator.buildProgram`](lib/curator/screen_program_curator.dart) (weighted picks biased by recent slide ids, random photo pools without duplicate assets in one program), then advances slides on a dwell timer with **exit left / enter right** transitions. When a program finishes, a new program is curated using the rolling history of shown screen ids.
 
+Before each transition (and before showing the first slide of a newly curated program), the rotator awaits [`preloadResolvedSlideContent`](lib/display/slide_content_preload.dart), which warms the same DB/blob/video file paths the async slide widgets would load, so incoming slides avoid loading spinners and flicker. While the current slide is showing, it **prefetches** the next slide in the background; if a transition is requested before prefetch finishes, the rotator waits for preparation anyway. A very slow asset can therefore **extend** the visible time of the current slide slightly (the next slide appears only after its resources are ready).
+
 ```mermaid
 sequenceDiagram
   participant Eng as DataCollectionEngine

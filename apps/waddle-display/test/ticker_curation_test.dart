@@ -8,7 +8,7 @@ import 'package:waddle_display/curator/ticker_news_candidate.dart';
 void main() {
   test('formatTickerTime formats clock local time', () {
     expect(
-      formatTickerTime(FakeClock(DateTime.utc(2026, 6, 1, 14, 5, 9))),
+      formatTickerTime(FakeClock(DateTime(2026, 6, 1, 14, 5, 9))),
       '14:05:09',
     );
   });
@@ -156,6 +156,30 @@ void main() {
     );
     final weather = items.firstWhere((e) => e.kind == 'weather');
     expect(weather.body, 'Denver, CO: 20° · sunny');
+  });
+
+  test('buildTickerItemsForMarquee appends NWS alert lines after live weather', () {
+    final items = buildTickerItemsForMarquee(
+      kv: const {},
+      nowLocal: DateTime(2026, 5, 1, 10, 0, 0),
+      newsCandidates: const [],
+      currentWeather: const CurrentWeatherTickerData(
+        locationName: 'Denver, CO',
+        temperatureC: 20,
+        description: 'sunny',
+      ),
+      weatherGovAlerts: const [
+        WeatherGovAlertTickerItem(
+          body: 'Denver, CO — Heat Advisory — Hot',
+          sourceId: 'nws.alert.urn:test',
+        ),
+      ],
+    );
+    final weatherItems = items.where((e) => e.kind == 'weather').toList();
+    expect(weatherItems, hasLength(2));
+    expect(weatherItems[0].body, 'Denver, CO: 20° · sunny');
+    expect(weatherItems[1].body, contains('Heat Advisory'));
+    expect(weatherItems[1].sourceId, 'nws.alert.urn:test');
   });
 
   test('buildTickerItemsForMarquee omits types not present in definitions', () {

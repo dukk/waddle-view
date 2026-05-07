@@ -25,6 +25,17 @@ class TickerDefinitionForCuration {
   final String? configKey;
 }
 
+@immutable
+class WeatherGovAlertTickerItem {
+  const WeatherGovAlertTickerItem({
+    required this.body,
+    required this.sourceId,
+  });
+
+  final String body;
+  final String sourceId;
+}
+
 class CurrentWeatherTickerData {
   const CurrentWeatherTickerData({
     required this.locationName,
@@ -71,6 +82,9 @@ abstract class CuratorReadPort {
 
   /// Current weather snapshot for ticker, null when unavailable.
   Future<CurrentWeatherTickerData?> loadCurrentWeatherForTicker();
+
+  /// Active NWS alerts for enabled weather locations (deduped by NWS id).
+  Future<List<WeatherGovAlertTickerItem>> loadWeatherGovAlertsForTicker();
 
   /// All ticker definition rows, ordered by [TickerDefinitionForCuration.sortOrder]
   /// then id.

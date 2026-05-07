@@ -1,7 +1,15 @@
 name: waddle_display
-description: "Pi TV home display"
+description: Waddle Display TV dashboard
 publish_to: "none"
 version: 1.0.0+1
+repository: https://github.com/dukk/waddle-view
+homepage: https://github.com/dukk/waddle-view
+documentation: https://github.com/dukk/waddle-view/README.md
+company: dukk
+author_email: dukk@dukk.org
+author_url: https://dukk.org
+license: ONC
+license_url: https://github.com/dukk/waddle-view/LICENSE
 
 environment:
   sdk: ^3.11.5

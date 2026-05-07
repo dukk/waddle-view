@@ -51,8 +51,11 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
-
+    await tester.pump();
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pump();
     expect(find.text('Dad jokes'), findsOneWidget);
     expect(find.text('Why did the chicken cross the road?'), findsOneWidget);
     expect(

@@ -221,4 +221,50 @@ void main() {
     expect(weather.description, 'partly cloudy');
     await db.close();
   });
+
+  test('loadWeatherGovAlertsForTicker maps enabled locations and dedupes NWS ids', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.weatherLocations).insert(
+          WeatherLocationsCompanion.insert(
+            id: 'atlanta',
+            name: 'Atlanta, GA',
+            latitude: 33.749,
+            longitude: -84.388,
+          ),
+        );
+    await db.into(db.weatherLocations).insert(
+          WeatherLocationsCompanion.insert(
+            id: 'denver',
+            name: 'Denver, CO',
+            latitude: 39.7392,
+            longitude: -104.9903,
+          ),
+        );
+    await db.into(db.weatherGovActiveAlerts).insert(
+          WeatherGovActiveAlertsCompanion.insert(
+            locationId: 'atlanta',
+            nwsAlertId: 'urn:dup:1',
+            event: 'Heat Advisory',
+            headline: const Value('Hot'),
+            severity: const Value('Moderate'),
+          ),
+        );
+    await db.into(db.weatherGovActiveAlerts).insert(
+          WeatherGovActiveAlertsCompanion.insert(
+            locationId: 'denver',
+            nwsAlertId: 'urn:dup:1',
+            event: 'Duplicate id',
+            headline: const Value('Later'),
+            severity: const Value('Moderate'),
+          ),
+        );
+    final port = DriftCuratorReadPort(db);
+    final list = await port.loadWeatherGovAlertsForTicker();
+    expect(list, hasLength(1));
+    expect(list.single.sourceId, 'nws.alert.urn:dup:1');
+    expect(list.single.body, contains('Atlanta'));
+    expect(list.single.body, contains('Heat Advisory'));
+    await db.close();
+  });
 }

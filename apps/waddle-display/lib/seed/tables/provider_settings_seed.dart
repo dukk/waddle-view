@@ -129,6 +129,32 @@ Future<void> _ensureWeatherProviderRow(AppDatabase db) async {
       );
 }
 
+Future<void> _ensureNwsWeatherAlertsProviderRow(AppDatabase db) async {
+  final row =
+      await (db.select(db.providerSettings)
+            ..where((t) => t.id.equals('nws_weather_alerts')))
+          .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  final doc = providerConfigJsonDocForType('nws_weather_alerts');
+  await db.into(db.providerSettings).insert(
+        ProviderSettingsCompanion.insert(
+          id: 'nws_weather_alerts',
+          providerType: 'nws_weather_alerts',
+          enabled: const Value(true),
+          pollSeconds: const Value(900),
+          baseUrl: const Value('https://api.weather.gov'),
+          configJson: const Value(
+            '{"userAgent":"(waddle-display, operator@example.com)",'
+            '"defaultLocation":{"name":"Default","lat":40.7128,"lon":-74.0060}}',
+          ),
+          configJsonSchema: Value(doc.schema),
+          exampleConfigJson: Value(doc.example),
+        ),
+      );
+}
+
 Future<void> _ensureGoogleCalendarProviderRow(AppDatabase db) async {
   final row = await (db.select(db.providerSettings)
         ..where((t) => t.id.equals('google_calendar')))
@@ -290,6 +316,7 @@ Future<void> ensureProviderSettingsDefaults(AppDatabase db) async {
   await _ensureJokesProviderRow(db);
   await _ensureTriviaProviderRow(db);
   await _ensureWeatherProviderRow(db);
+  await _ensureNwsWeatherAlertsProviderRow(db);
   await _ensurePexelsProviderRow(db);
   await _ensureStocksProviderRow(db);
   await _ensureGoogleCalendarProviderRow(db);

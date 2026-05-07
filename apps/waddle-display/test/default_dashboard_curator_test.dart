@@ -11,11 +11,13 @@ class _MapRead implements CuratorReadPort {
   _MapRead(
     this.data, {
     this.currentWeather,
+    this.weatherGovAlerts,
     this.tickerDefs,
     this.stockRows,
   });
   final Map<String, String> data;
   final CurrentWeatherTickerData? currentWeather;
+  final List<WeatherGovAlertTickerItem>? weatherGovAlerts;
   final List<TickerDefinitionForCuration>? tickerDefs;
   final List<StockTickerRowForMarquee>? stockRows;
 
@@ -30,6 +32,10 @@ class _MapRead implements CuratorReadPort {
   @override
   Future<CurrentWeatherTickerData?> loadCurrentWeatherForTicker() async =>
       currentWeather;
+
+  @override
+  Future<List<WeatherGovAlertTickerItem>> loadWeatherGovAlertsForTicker() async =>
+      weatherGovAlerts ?? const [];
 
   @override
   Future<List<TickerDefinitionForCuration>> loadTickerDefinitionsForCuration() async =>
@@ -136,5 +142,41 @@ void main() {
     expect(store.last, isNotNull);
     expect(store.last![1].kind, 'weather');
     expect(store.last![1].body, 'Atlanta, GA: 23° · cloudy');
+  });
+
+  test('refresh includes NWS alert lines in weather ticker bundle', () async {
+    final store = _RecordingTickerStore();
+    final curator = DefaultDashboardCurator(
+      read: _MapRead(
+        const {},
+        currentWeather: const CurrentWeatherTickerData(
+          locationName: 'Atlanta, GA',
+          temperatureC: 25,
+          description: 'fair',
+        ),
+        weatherGovAlerts: const [
+          WeatherGovAlertTickerItem(
+            body: 'Atlanta, GA — Advisory — Wind',
+            sourceId: 'nws.alert.urn:x',
+          ),
+        ],
+        tickerDefs: const [
+          TickerDefinitionForCuration(
+            id: 'w',
+            tickerType: 'weather',
+            enabled: true,
+            frequencyWeight: 1,
+            sortOrder: 0,
+          ),
+        ],
+      ),
+      tickerStore: store,
+      clock: FakeClock(DateTime(2026, 1, 2, 15, 0, 0)),
+    );
+    await curator.refresh();
+    final weatherItems = store.last!.where((e) => e.kind == 'weather').toList();
+    expect(weatherItems, hasLength(2));
+    expect(weatherItems[0].body, 'Atlanta, GA: 25° · fair');
+    expect(weatherItems[1].sourceId, 'nws.alert.urn:x');
   });
 }

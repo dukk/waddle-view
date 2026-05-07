@@ -82,8 +82,8 @@ class CalendarMonthUpcomingTimeOptions {
   const CalendarMonthUpcomingTimeOptions({
     this.use12Hour = true,
     this.noonLabel = 'Noon',
-    this.timeWidthCompact = 88,
-    this.timeWidth = 104,
+    this.timeWidthCompact = 132,
+    this.timeWidth = 156,
   });
 
   /// When true, times use `h:mm AM/PM` and [noonLabel] replaces 12:00 PM.
@@ -109,8 +109,8 @@ class CalendarMonthUpcomingTimeOptions {
     final noon = noonRaw is String && noonRaw.trim().isNotEmpty
         ? noonRaw.trim()
         : 'Noon';
-    var cw = 88.0;
-    var nw = 104.0;
+    var cw = 132.0;
+    var nw = 156.0;
     final wc = config['upcomingTimeWidthCompact'];
     final w = config['upcomingTimeWidth'];
     if (wc is num && wc.toDouble() > 0) {

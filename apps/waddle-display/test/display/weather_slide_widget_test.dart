@@ -65,7 +65,7 @@ void main() {
             currentDescription: const Value('cloudy'),
             hourlyJson: Value(
               jsonEncode([
-                {'temp': 66.0, 'description': 'hour1'},
+                {'temp': 66.0, 'description': 'light rain'},
               ]),
             ),
           ),
@@ -99,12 +99,79 @@ void main() {
 
     expect(find.textContaining('Atlanta, GA'), findsOneWidget);
     expect(find.text('65°'), findsOneWidget);
-    expect(find.textContaining('cloudy'), findsOneWidget);
+    expect(find.text('cloudy'), findsOneWidget);
     expect(find.text('Hourly forecast (3-hour steps)'), findsOneWidget);
-    expect(find.byIcon(Icons.cloud), findsNWidgets(2));
-    final cloudIcons = tester.widgetList<Icon>(find.byIcon(Icons.cloud)).toList();
-    expect(cloudIcons.first.color, NavyCoralPalette.lobsterPink);
-    expect(cloudIcons.last.color, NavyCoralPalette.dustyDenim);
+    expect(find.byIcon(Icons.cloud), findsOneWidget);
+    expect(find.byIcon(Icons.umbrella), findsOneWidget);
+    final cloudIcon = tester.widget<Icon>(find.byIcon(Icons.cloud));
+    expect(cloudIcon.color, NavyCoralPalette.lobsterPink);
+    final rainIcon = tester.widget<Icon>(find.byIcon(Icons.umbrella));
+    expect(rainIcon.color, NavyCoralPalette.dustyDenim);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+    await db.close();
+  });
+
+  testWidgets('shows NWS active alerts for slide location', (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.weatherLocations).insert(
+          WeatherLocationsCompanion.insert(
+            id: 'atlanta_ga',
+            name: 'Atlanta, GA',
+            latitude: 33.7490,
+            longitude: -84.3880,
+          ),
+        );
+    await db.into(db.weatherCurrentData).insert(
+          WeatherCurrentDataCompanion.insert(
+            locationId: 'atlanta_ga',
+            observedAtMs: DateTime.fromMillisecondsSinceEpoch(1235),
+            currentTemp: const Value(65.1),
+            currentDescription: const Value('cloudy'),
+            hourlyJson: const Value('[]'),
+          ),
+        );
+    await db.into(db.weatherGovActiveAlerts).insert(
+          WeatherGovActiveAlertsCompanion.insert(
+            locationId: 'atlanta_ga',
+            nwsAlertId: 'urn:test:1',
+            event: 'Heat Advisory',
+            headline: const Value('Heat index values up to 105'),
+            severity: const Value('Moderate'),
+            expiresAt: Value(DateTime.utc(2026, 7, 15, 20, 0)),
+          ),
+        );
+    const spec = ParsedWidgetSpec(
+      type: 'weather',
+      slot: 'main',
+      config: {'locationId': 'atlanta_ga'},
+    );
+    const slide = ResolvedSlide(
+      screenId: 'weather',
+      dwellMs: 10000,
+      layoutJson:
+          '{"v":1,"layout":"single","widgets":[{"type":"weather","slot":"main","config":{"locationId":"atlanta_ga"}}]}',
+    );
+    final theme = DisplayTheme.build();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: WeatherSlideWidget(
+            db: db,
+            slide: slide,
+            spec: spec,
+            theme: theme,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Active alerts'), findsOneWidget);
+    expect(find.textContaining('Heat Advisory'), findsOneWidget);
+    expect(find.textContaining('Heat index values'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpAndSettle();
     await db.close();

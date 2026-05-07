@@ -202,15 +202,13 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
                 vertical: (layoutCompact ? 8.0 : 16.0) * s,
               );
               final usableHeight = math.max(120.0, height - outerPad.vertical);
-              final targetContentHeight = layoutCompact
-                  ? usableHeight
-                  : (usableHeight * 0.9).clamp(420.0, usableHeight);
 
               return Padding(
                 padding: outerPad,
-                child: Center(
+                child: Align(
+                  alignment: Alignment.topCenter,
                   child: SizedBox(
-                    height: targetContentHeight,
+                    height: usableHeight,
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [

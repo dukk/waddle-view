@@ -317,6 +317,26 @@ class WeatherCurrentData extends Table {
   Set<Column<Object>> get primaryKey => {locationId};
 }
 
+/// Active NWS (api.weather.gov) alerts for a [WeatherLocations] row, keyed by CAP id.
+@TableIndex(
+  name: 'idx_weather_gov_active_alerts_location',
+  columns: {#locationId},
+)
+class WeatherGovActiveAlerts extends Table {
+  TextColumn get locationId => text().references(WeatherLocations, #id)();
+  TextColumn get nwsAlertId => text()();
+  TextColumn get event => text()();
+  TextColumn get headline => text().nullable()();
+  TextColumn get severity => text().nullable()();
+  DateTimeColumn get effectiveAt => dateTime().nullable()();
+  DateTimeColumn get expiresAt => dateTime().nullable()();
+  /// Truncated product text for the weather slide (not full CAP description).
+  TextColumn get descriptionExcerpt => text().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {locationId, nwsAlertId};
+}
+
 /// Matches [ProviderSettings.id] for media sourced from that provider (e.g. `pexels`).
 const String kMediaDataProviderPexels = 'pexels';
 

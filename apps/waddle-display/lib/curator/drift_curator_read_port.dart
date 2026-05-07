@@ -4,6 +4,32 @@ import '../persistence/database.dart';
 import 'curator_read_port.dart';
 import 'ticker_news_candidate.dart';
 
+int _severityRank(String? severity) {
+  switch ((severity ?? '').toLowerCase().trim()) {
+    case 'extreme':
+      return 0;
+    case 'severe':
+      return 1;
+    case 'moderate':
+      return 2;
+    case 'minor':
+      return 3;
+    default:
+      return 4;
+  }
+}
+
+String _capTickerAlertBody(String body, int maxLen) {
+  final t = body.trim();
+  if (t.length <= maxLen) {
+    return t;
+  }
+  if (maxLen <= 1) {
+    return '';
+  }
+  return '${t.substring(0, maxLen - 1)}\u2026';
+}
+
 class DriftCuratorReadPort implements CuratorReadPort {
   DriftCuratorReadPort(this._db);
 
@@ -110,6 +136,57 @@ class DriftCuratorReadPort implements CuratorReadPort {
       );
     }
     return null;
+  }
+
+  @override
+  Future<List<WeatherGovAlertTickerItem>> loadWeatherGovAlertsForTicker() async {
+    final locations = await (_db.select(
+      _db.weatherLocations,
+    )..where((t) => t.enabled.equals(true))).get();
+    if (locations.isEmpty) {
+      return const [];
+    }
+    final locationById = {for (final l in locations) l.id: l};
+    final rows = await _db.select(_db.weatherGovActiveAlerts).get();
+    final filtered = [
+      for (final a in rows)
+        if (locationById.containsKey(a.locationId)) a,
+    ]..sort((a, b) {
+      final s = _severityRank(a.severity).compareTo(_severityRank(b.severity));
+      if (s != 0) {
+        return s;
+      }
+      final loc = a.locationId.compareTo(b.locationId);
+      if (loc != 0) {
+        return loc;
+      }
+      return a.event.compareTo(b.event);
+    });
+    final seenNwsIds = <String>{};
+    final out = <WeatherGovAlertTickerItem>[];
+    for (final a in filtered) {
+      if (!seenNwsIds.add(a.nwsAlertId)) {
+        continue;
+      }
+      final loc = locationById[a.locationId]!;
+      final headline = (a.headline ?? '').trim();
+      final event = a.event.trim();
+      final parts = <String>[loc.name, if (event.isNotEmpty) event];
+      if (headline.isNotEmpty) {
+        parts.add(headline);
+      }
+      final body = _capTickerAlertBody(parts.join(' — '), 160);
+      if (body.isEmpty) {
+        continue;
+      }
+      out.add(
+        WeatherGovAlertTickerItem(
+          body: body,
+          sourceId: 'nws.alert.${a.nwsAlertId}',
+        ),
+      );
+    }
+    return out;
   }
 
   String _tickerLabelForFeed(RssFeedSource? feed) {

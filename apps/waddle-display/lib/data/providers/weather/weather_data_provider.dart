@@ -1,31 +1,18 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:drift/drift.dart' show OrderingTerm, Value;
+import 'package:drift/drift.dart' show Value;
 import 'package:http/http.dart' as http;
 
 import '../../../debug/app_debug_log.dart';
 import '../../../persistence/database.dart';
 import '../../data_provider.dart';
 import '../../data_write_context.dart';
+import 'weather_locations_for_collect.dart';
 import 'weather_provider_extra_config.dart';
 
 const String kWeatherProviderId = 'weather';
 const String kDefaultOpenWeatherBaseUrl = 'https://api.openweathermap.org';
-
-class _WeatherLocation {
-  const _WeatherLocation({
-    required this.id,
-    required this.name,
-    required this.lat,
-    required this.lon,
-  });
-
-  final String id;
-  final String name;
-  final double lat;
-  final double lon;
-}
 
 class WeatherDataProvider implements IDataProvider {
   WeatherDataProvider({
@@ -60,7 +47,10 @@ class WeatherDataProvider implements IDataProvider {
     final baseUrl = (config.baseUrl != null && config.baseUrl!.trim().isNotEmpty)
         ? config.baseUrl!.trim()
         : kDefaultOpenWeatherBaseUrl;
-    final locations = await _resolveLocations(ctx.db, extra);
+    final locations = await resolveWeatherLocationsForCollect(
+      ctx.db,
+      extra.defaultLocation,
+    );
     final now = _nowMs();
     AppDebugLog.provider(
       'weather: collect locations=${locations.length} base=${AppDebugLog.safeHttpUri(Uri.parse(baseUrl))}',
@@ -144,36 +134,6 @@ class WeatherDataProvider implements IDataProvider {
         AppDebugLog.providerFail('weather: collect id=${location.id}', e, st);
       }
     }
-  }
-
-  Future<List<_WeatherLocation>> _resolveLocations(
-    AppDatabase db,
-    WeatherProviderExtraConfig extra,
-  ) async {
-    final rows = await (db.select(db.weatherLocations)
-          ..where((t) => t.enabled.equals(true))
-          ..orderBy([(t) => OrderingTerm.asc(t.id)]))
-        .get();
-    if (rows.isNotEmpty) {
-      return rows
-          .map(
-            (r) => _WeatherLocation(
-              id: r.id,
-              name: r.name,
-              lat: r.latitude,
-              lon: r.longitude,
-            ),
-          )
-          .toList();
-    }
-    return [
-      _WeatherLocation(
-        id: 'default',
-        name: extra.defaultLocation.name,
-        lat: extra.defaultLocation.latitude,
-        lon: extra.defaultLocation.longitude,
-      ),
-    ];
   }
 
   Future<String?> _storeIconIfPresent(

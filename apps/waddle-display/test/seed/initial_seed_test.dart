@@ -123,6 +123,14 @@ void main() {
     expect(provider, isNotNull);
     expect(provider!.providerType, 'weather');
 
+    final nws = await (db.select(db.providerSettings)
+          ..where((t) => t.id.equals('nws_weather_alerts')))
+        .getSingleOrNull();
+    expect(nws, isNotNull);
+    expect(nws!.providerType, 'nws_weather_alerts');
+    expect(nws.enabled, isTrue);
+    expect(nws.baseUrl, 'https://api.weather.gov');
+
     final screen = await (db.select(db.screenDefinitions)
           ..where((t) => t.id.equals('weather')))
         .getSingleOrNull();
@@ -241,10 +249,28 @@ void main() {
         .get();
     expect(
       symbols.map((s) => s.symbol).toList(),
-      ['AAPL', 'AMZN', 'GOOG', 'MSFT', 'NVDA'],
+      [
+        'AAPL',
+        'AMZN',
+        'CSCO',
+        'DIS',
+        'GOOG',
+        'IBM',
+        'INTC',
+        'IWM',
+        'META',
+        'MSFT',
+        'NFLX',
+        'NVDA',
+        'ORCL',
+        'QQQ',
+        'SPY',
+        'TSLA',
+        'VOO',
+      ],
     );
     final enabled = symbols.where((s) => s.enabled).map((s) => s.symbol).toSet();
-    expect(enabled, {'AAPL', 'MSFT'});
+    expect(enabled, {'AAPL', 'GOOG', 'MSFT', 'NVDA', 'SPY', 'VOO'});
     await db.close();
   });
 }
