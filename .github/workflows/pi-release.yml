@@ -13,7 +13,7 @@ jobs:
   build-linux-arm64:
     runs-on: ubuntu-24.04-arm
     env:
-      LINUX_BUILD_DEPS_FILE: ../../deploy/linux-arm64/build-deps.txt
+      LINUX_BUILD_DEPS_FILE: ${{ github.workspace }}/deploy/linux-arm64/build-deps.txt
     steps:
       - uses: actions/checkout@v4
       - name: Install Flutter SDK (arm64)
@@ -34,6 +34,8 @@ jobs:
           xargs -a "$LINUX_BUILD_DEPS_FILE" sudo apt-get install -y
       - run: flutter config --enable-linux-desktop
       - run: flutter pub get
+      - name: Generate code
+        run: dart run build_runner build --delete-conflicting-outputs
       - run: flutter build linux --release
       - name: Audit Linux runtime dependencies
         run: |

@@ -205,6 +205,9 @@ class _PexelsVideoSlideWidgetState extends State<PexelsVideoSlideWidget> {
           builder: (context, constraints) {
             final w = constraints.maxWidth;
             final h = constraints.maxHeight;
+            if ((w.isFinite && w <= 0) || (h.isFinite && h <= 0)) {
+              return const SizedBox.shrink();
+            }
             return Center(
               child: mkv.Video(
                 controller: vc,
