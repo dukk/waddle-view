@@ -256,12 +256,11 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
               return Container(
                 key: const ValueKey<String>('trivia_reveal_progress'),
                 height: h,
-                clipBehavior: Clip.none,
+                clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(4 * s),
                   border: Border.all(color: borderColor, width: 1 * s),
                 ),
-                clipBehavior: Clip.antiAlias,
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
