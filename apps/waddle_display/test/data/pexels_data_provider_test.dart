@@ -411,6 +411,66 @@ void main() {
     await db.close();
   });
 
+  test('search sources are fetched in round-robin under shared budgets', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await _ensurePexelsProvider(
+      db,
+      extra: '{"photosPerHour":2,"videosPerHour":2,'
+          '"sources":['
+          '{"query":"q1","category":"cat1"},'
+          '{"query":"q2","category":"cat2"}'
+          ']}',
+    );
+
+    final secrets = await _secretsWithKey();
+    final ctx = _ctx(db, secrets);
+    final httpClient = _FakePexelsHttp(
+      curatedPhotos: [],
+      popularVideos: [],
+      searchPhotosByQuery: {
+        'q1': [_photoJson(9001)],
+        'q2': [_photoJson(9002)],
+      },
+      searchVideosByQuery: {
+        'q1': [_videoJson(9101, 15)],
+        'q2': [_videoJson(9102, 16)],
+      },
+    );
+
+    await PexelsDataProvider(
+      httpClient: httpClient,
+      nowMs: () => 9_000_000,
+    ).collect(ctx);
+
+    final photos = await db.select(db.photos).get();
+    final videos = await db.select(db.videos).get();
+    expect(photos.map((p) => p.category).toSet(), {'cat1', 'cat2'});
+    expect(videos.map((v) => v.category).toSet(), {'cat1', 'cat2'});
+
+    expect(
+      httpClient.requests.any((r) => r.contains('/v1/search') && r.contains('q1')),
+      isTrue,
+    );
+    expect(
+      httpClient.requests.any((r) => r.contains('/v1/search') && r.contains('q2')),
+      isTrue,
+    );
+    expect(
+      httpClient.requests.any(
+        (r) => r.contains('/v1/videos/search') && r.contains('q1'),
+      ),
+      isTrue,
+    );
+    expect(
+      httpClient.requests.any(
+        (r) => r.contains('/v1/videos/search') && r.contains('q2'),
+      ),
+      isTrue,
+    );
+    await db.close();
+  });
+
   test('prune removes oldest videos above maxVideos', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);

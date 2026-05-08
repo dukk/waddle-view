@@ -110,19 +110,14 @@ class PexelsDataProvider implements IDataProvider {
             budget: photoBudget,
           );
         } else {
-          for (final s in extra.sources) {
-            if (photoBudget <= 0) {
-              break;
-            }
-            photoBudget = await _collectSearchPhotos(
-              ctx,
-              base: base,
-              token: token,
-              source: s,
-              nowMs: nowMs,
-              budget: photoBudget,
-            );
-          }
+          photoBudget = await _collectSearchPhotosRoundRobin(
+            ctx,
+            base: base,
+            token: token,
+            sources: extra.sources,
+            nowMs: nowMs,
+            budget: photoBudget,
+          );
         }
       }
 
@@ -137,20 +132,15 @@ class PexelsDataProvider implements IDataProvider {
             budget: videoBudget,
           );
         } else {
-          for (final s in extra.sources) {
-            if (videoBudget <= 0) {
-              break;
-            }
-            videoBudget = await _collectSearchVideos(
-              ctx,
-              base: base,
-              token: token,
-              extra: extra,
-              source: s,
-              nowMs: nowMs,
-              budget: videoBudget,
-            );
-          }
+          videoBudget = await _collectSearchVideosRoundRobin(
+            ctx,
+            base: base,
+            token: token,
+            extra: extra,
+            sources: extra.sources,
+            nowMs: nowMs,
+            budget: videoBudget,
+          );
         }
       }
 
@@ -656,6 +646,79 @@ class PexelsDataProvider implements IDataProvider {
     return left;
   }
 
+  Future<int> _collectSearchPhotosRoundRobin(
+    DataWriteContext ctx, {
+    required String base,
+    required String token,
+    required List<PexelsSourceSpec> sources,
+    required int nowMs,
+    required int budget,
+  }) async {
+    var left = budget;
+    if (left <= 0 || sources.isEmpty) {
+      return left;
+    }
+    final sourcePage = <int>[for (var i = 0; i < sources.length; i++) 1];
+    final sourceDone = <bool>[for (var i = 0; i < sources.length; i++) false];
+    while (left > 0) {
+      var progressed = false;
+      for (var i = 0; i < sources.length && left > 0; i++) {
+        if (sourceDone[i]) {
+          continue;
+        }
+        final source = sources[i];
+        final page = sourcePage[i];
+        if (page > 15) {
+          sourceDone[i] = true;
+          continue;
+        }
+        final uri = Uri.parse(
+          '$base/v1/search?query=${Uri.encodeComponent(source.query)}'
+          '&per_page=15&page=$page',
+        );
+        final map = await _getJson(uri, token);
+        sourcePage[i] = page + 1;
+        if (map == null) {
+          sourceDone[i] = true;
+          continue;
+        }
+        final photos = map['photos'] as List<dynamic>?;
+        if (photos == null || photos.isEmpty) {
+          sourceDone[i] = true;
+          continue;
+        }
+        if (map['next_page'] == null) {
+          sourceDone[i] = true;
+        }
+        for (final raw in photos) {
+          if (left <= 0) {
+            break;
+          }
+          if (raw is! Map) {
+            continue;
+          }
+          final photo = Map<String, dynamic>.from(raw);
+          final inserted = await _tryInsertPhoto(
+            ctx,
+            photo: photo,
+            category: source.category,
+            nowMs: nowMs,
+          );
+          if (inserted) {
+            left--;
+            progressed = true;
+            await _recordFetch(ctx.db, nowMs, 'photo');
+            break;
+          }
+        }
+      }
+      if (!progressed || sourceDone.every((e) => e)) {
+        break;
+      }
+    }
+    return left;
+  }
+
   Future<int> _collectPopularVideos(
     DataWriteContext ctx, {
     required String base,
@@ -756,6 +819,81 @@ class PexelsDataProvider implements IDataProvider {
         break;
       }
       page++;
+    }
+    return left;
+  }
+
+  Future<int> _collectSearchVideosRoundRobin(
+    DataWriteContext ctx, {
+    required String base,
+    required String token,
+    required PexelsProviderExtraConfig extra,
+    required List<PexelsSourceSpec> sources,
+    required int nowMs,
+    required int budget,
+  }) async {
+    var left = budget;
+    if (left <= 0 || sources.isEmpty) {
+      return left;
+    }
+    final sourcePage = <int>[for (var i = 0; i < sources.length; i++) 1];
+    final sourceDone = <bool>[for (var i = 0; i < sources.length; i++) false];
+    while (left > 0) {
+      var progressed = false;
+      for (var i = 0; i < sources.length && left > 0; i++) {
+        if (sourceDone[i]) {
+          continue;
+        }
+        final source = sources[i];
+        final page = sourcePage[i];
+        if (page > 15) {
+          sourceDone[i] = true;
+          continue;
+        }
+        final uri = Uri.parse(
+          '$base/v1/videos/search?query=${Uri.encodeComponent(source.query)}'
+          '&per_page=15&page=$page',
+        );
+        final map = await _getJson(uri, token);
+        sourcePage[i] = page + 1;
+        if (map == null) {
+          sourceDone[i] = true;
+          continue;
+        }
+        final videos = map['videos'] as List<dynamic>?;
+        if (videos == null || videos.isEmpty) {
+          sourceDone[i] = true;
+          continue;
+        }
+        if (map['next_page'] == null) {
+          sourceDone[i] = true;
+        }
+        for (final raw in videos) {
+          if (left <= 0) {
+            break;
+          }
+          if (raw is! Map) {
+            continue;
+          }
+          final video = Map<String, dynamic>.from(raw);
+          final inserted = await _tryInsertVideo(
+            ctx,
+            video: video,
+            category: source.category,
+            extra: extra,
+            nowMs: nowMs,
+          );
+          if (inserted) {
+            left--;
+            progressed = true;
+            await _recordFetch(ctx.db, nowMs, 'video');
+            break;
+          }
+        }
+      }
+      if (!progressed || sourceDone.every((e) => e)) {
+        break;
+      }
     }
     return left;
   }
