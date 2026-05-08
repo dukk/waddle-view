@@ -18,7 +18,7 @@ class ProviderCalendarEntry {
       if (cal is! String || cal.trim().isEmpty) {
         return null;
       }
-      final cat = raw['categoryId'];
+      final cat = raw['categoryId'] ?? raw['category'];
       return ProviderCalendarEntry(
         nameOrId: cal.trim(),
         categoryId: cat is String && cat.trim().isNotEmpty ? cat.trim() : null,

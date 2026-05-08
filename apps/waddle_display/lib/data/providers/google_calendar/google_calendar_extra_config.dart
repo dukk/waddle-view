@@ -14,7 +14,9 @@ class GoogleCalendarSourceConfig {
   static GoogleCalendarSourceConfig parse(Map<String, dynamic> s) {
     return GoogleCalendarSourceConfig(
       calendars: ProviderCalendarEntry.parseList(s['calendars']),
-      defaultCategoryId: parseOptionalCategoryId(s['defaultCategoryId']),
+      defaultCategoryId: parseOptionalCategoryId(
+        s['defaultCategoryId'] ?? s['defaultCategory'],
+      ),
     );
   }
 }

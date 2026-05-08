@@ -35,6 +35,16 @@ void main() {
     expect(raw.futureDays, 6);
   });
 
+  test('GoogleCalendarExtraConfig parses calendar category aliases', () {
+    final raw = GoogleCalendarExtraConfig.parse(
+      '{"accounts":[{"googleAccountKey":"u","sources":[{"defaultCategory":"general","calendars":[{"calendar":"primary","category":"family"}]}]}]}',
+    );
+    final source = raw.accounts.single.sources.single;
+    expect(source.defaultCategoryId, 'general');
+    expect(source.calendars.single.nameOrId, 'primary');
+    expect(source.calendars.single.categoryId, 'family');
+  });
+
   test('empty accounts performs no HTTP', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
@@ -84,7 +94,7 @@ void main() {
     await _seedKvAndProvider(
       db,
       extraAccountsJson:
-          '[{"googleAccountKey":"u","sources":[{"calendars":["primary"]}]}]',
+          '[{"googleAccountKey":"u","sources":[{"calendars":[{"calendar":"primary","category":"family"}]}]}]',
     );
     final secrets = InMemorySecretStore();
     await secrets.write(googleRefreshTokenSecret('u'), 'my_refresh');
@@ -107,6 +117,7 @@ void main() {
     expect(rows.single.externalId, 'evt1');
     expect(rows.single.source, googleCalendarEventSource('u'));
     expect(rows.single.icalUid, 'google-ical-1');
+    expect(rows.single.categoryId, 'family');
     await db.close();
   });
 

@@ -258,6 +258,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
                       'mailbox': {'type': 'string', 'minLength': 1},
                       'email': {'type': 'string'},
                       'defaultCategoryId': {'type': 'string'},
+                      'defaultCategory': {'type': 'string'},
                       'categoryMap': {
                         'type': 'object',
                         'additionalProperties': {'type': 'string'},
@@ -274,6 +275,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
                                 'name': {'type': 'string'},
                                 'id': {'type': 'string'},
                                 'categoryId': {'type': 'string'},
+                                'category': {'type': 'string'},
                               },
                               'additionalProperties': true,
                             },
@@ -326,6 +328,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
                     'type': 'object',
                     'properties': {
                       'defaultCategoryId': {'type': 'string'},
+                      'defaultCategory': {'type': 'string'},
                       'calendars': {
                         'type': 'array',
                         'items': {
@@ -338,6 +341,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
                                 'name': {'type': 'string'},
                                 'id': {'type': 'string'},
                                 'categoryId': {'type': 'string'},
+                                'category': {'type': 'string'},
                               },
                               'additionalProperties': true,
                             },

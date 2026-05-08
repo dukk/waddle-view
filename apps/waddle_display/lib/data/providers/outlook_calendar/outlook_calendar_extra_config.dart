@@ -27,7 +27,9 @@ class OutlookMailboxSource {
     return OutlookMailboxSource(
       mailbox: box.trim(),
       calendars: ProviderCalendarEntry.parseList(m['calendars']),
-      defaultCategoryId: parseOptionalCategoryId(m['defaultCategoryId']),
+      defaultCategoryId: parseOptionalCategoryId(
+        m['defaultCategoryId'] ?? m['defaultCategory'],
+      ),
       categoryMap: parseCategoryAliasMap(m['categoryMap']),
     );
   }

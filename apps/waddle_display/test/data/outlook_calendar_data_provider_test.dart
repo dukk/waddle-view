@@ -45,8 +45,8 @@ void main() {
   test('OutlookCalendarExtraConfig parses calendar objects and categoryMap', () {
     final raw = OutlookCalendarExtraConfig.parse(
       '{"accounts":[{"graphAccountKey":"x","sources":[{"mailbox":"me",'
-      '"calendars":["Work",{"calendar":"Personal","categoryId":"family"}],'
-      '"defaultCategoryId":"general","categoryMap":{"Client":"work"}}]}]}',
+      '"calendars":["Work",{"calendar":"Personal","category":"family"}],'
+      '"defaultCategory":"general","categoryMap":{"Client":"work"}}]}]}',
     );
     final src = raw.accounts.single.sources.single;
     expect(src.calendars.length, 2);
@@ -109,7 +109,7 @@ void main() {
       db,
       pollSeconds: 0,
       extraAccountsJson:
-          '[{"graphAccountKey":"u","sources":[{"mailbox":"me","calendars":[]}]}]',
+          '[{"graphAccountKey":"u","sources":[{"mailbox":"me","calendars":[],"defaultCategory":"work"}]}]',
     );
     final secrets = InMemorySecretStore();
     await secrets.write(microsoftGraphRefreshTokenSecret('u'), 'my_refresh');
@@ -139,6 +139,7 @@ void main() {
     expect(rows.single.externalId, 'evt1');
     expect(rows.single.source, outlookCalendarEventSource('u'));
     expect(rows.single.icalUid, '040000008200E00074C5B7101A82E008');
+    expect(rows.single.categoryId, 'work');
     await db.close();
   });
 
