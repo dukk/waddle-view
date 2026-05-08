@@ -596,56 +596,6 @@ class PexelsDataProvider implements IDataProvider {
     return left;
   }
 
-  Future<int> _collectSearchPhotos(
-    DataWriteContext ctx, {
-    required String base,
-    required String token,
-    required PexelsSourceSpec source,
-    required int nowMs,
-    required int budget,
-  }) async {
-    var left = budget;
-    var page = 1;
-    while (left > 0 && page <= 15) {
-      final uri = Uri.parse(
-        '$base/v1/search?query=${Uri.encodeComponent(source.query)}'
-        '&per_page=15&page=$page',
-      );
-      final map = await _getJson(uri, token);
-      if (map == null) {
-        break;
-      }
-      final photos = map['photos'] as List<dynamic>?;
-      if (photos == null || photos.isEmpty) {
-        break;
-      }
-      for (final raw in photos) {
-        if (left <= 0) {
-          break;
-        }
-        if (raw is! Map) {
-          continue;
-        }
-        final photo = Map<String, dynamic>.from(raw);
-        final inserted = await _tryInsertPhoto(
-          ctx,
-          photo: photo,
-          category: source.category,
-          nowMs: nowMs,
-        );
-        if (inserted) {
-          left--;
-          await _recordFetch(ctx.db, nowMs, 'photo');
-        }
-      }
-      if (map['next_page'] == null) {
-        break;
-      }
-      page++;
-    }
-    return left;
-  }
-
   Future<int> _collectSearchPhotosRoundRobin(
     DataWriteContext ctx, {
     required String base,
@@ -755,58 +705,6 @@ class PexelsDataProvider implements IDataProvider {
           ctx,
           video: video,
           category: 'pexels',
-          extra: extra,
-          nowMs: nowMs,
-        );
-        if (inserted) {
-          left--;
-          await _recordFetch(ctx.db, nowMs, 'video');
-        }
-      }
-      if (map['next_page'] == null) {
-        break;
-      }
-      page++;
-    }
-    return left;
-  }
-
-  Future<int> _collectSearchVideos(
-    DataWriteContext ctx, {
-    required String base,
-    required String token,
-    required PexelsProviderExtraConfig extra,
-    required PexelsSourceSpec source,
-    required int nowMs,
-    required int budget,
-  }) async {
-    var left = budget;
-    var page = 1;
-    while (left > 0 && page <= 15) {
-      final uri = Uri.parse(
-        '$base/v1/videos/search?query=${Uri.encodeComponent(source.query)}'
-        '&per_page=15&page=$page',
-      );
-      final map = await _getJson(uri, token);
-      if (map == null) {
-        break;
-      }
-      final videos = map['videos'] as List<dynamic>?;
-      if (videos == null || videos.isEmpty) {
-        break;
-      }
-      for (final raw in videos) {
-        if (left <= 0) {
-          break;
-        }
-        if (raw is! Map) {
-          continue;
-        }
-        final video = Map<String, dynamic>.from(raw);
-        final inserted = await _tryInsertVideo(
-          ctx,
-          video: video,
-          category: source.category,
           extra: extra,
           nowMs: nowMs,
         );
