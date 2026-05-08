@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
 
-import '../../persistence/content_category_defaults.dart';
-import '../../persistence/database.dart';
+import '../../../persistence/content_category_defaults.dart';
+import '../../../persistence/database.dart';
 
 /// Idempotent inserts for [ContentCategories] (icons: material name and/or blob key).
 Future<void> ensureDefaultContentCategories(AppDatabase db) async {

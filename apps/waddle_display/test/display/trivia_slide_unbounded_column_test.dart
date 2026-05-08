@@ -4,7 +4,7 @@ import 'package:waddle_display/curator/screen_layout_parse.dart';
 import 'package:waddle_display/curator/screen_program_curator.dart';
 import 'package:waddle_display/display/screens/trivia/trivia_slide_widget.dart';
 import 'package:waddle_display/persistence/database.dart';
-import 'package:waddle_display/seed/tables/trivia_categories_seed.dart';
+import 'package:waddle_display/data/seed/tables/trivia_categories_seed.dart';
 
 import '../helpers/fake_blob_store.dart';
 import '../helpers/memory_database.dart';

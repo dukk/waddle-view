@@ -5,6 +5,8 @@ import 'package:crypto/crypto.dart';
 /// [AppDatabase.configKeyValues] key for shared Google OAuth client id.
 const String kGoogleClientIdKvKey = 'google.client_id';
 
+const String kDefaultGoogleClientId = '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';
+
 /// [DashboardAlerts.source] for Google device-code sign-in prompts.
 const String kGoogleOAuthAlertSource = 'google_calendar';
 

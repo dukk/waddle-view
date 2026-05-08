@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 
-import '../../persistence/database.dart';
+import '../../../persistence/database.dart';
 
 /// Default feeds from repo `data/news-data-sources.md` (idempotent inserts).
 Future<void> ensureDefaultRssNewsFeeds(AppDatabase db) async {

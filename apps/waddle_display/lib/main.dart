@@ -47,7 +47,7 @@ import 'marquee_cycle_gate.dart';
 import 'persistence/database.dart';
 import 'persistence/tables.dart';
 import 'secrets/flutter_secure_secret_store.dart';
-import 'seed/initial_seed.dart';
+import 'data/seed/initial_seed.dart';
 import 'sleeper.dart';
 import 'theme/display_theme.dart';
 import 'theme/tv_overscan.dart';

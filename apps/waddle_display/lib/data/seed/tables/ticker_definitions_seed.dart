@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 
-import '../../persistence/database.dart';
+import '../../../persistence/database.dart';
 
 Future<void> ensureTickerDefinitionsSeed(AppDatabase db) async {
   Future<void> upsert({

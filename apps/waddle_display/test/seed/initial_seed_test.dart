@@ -5,7 +5,7 @@ import 'package:waddle_display/config/google_kv.dart';
 import 'package:waddle_display/data/providers/pexels/pexels_provider_extra_config.dart';
 import 'package:waddle_display/persistence/content_category_defaults.dart';
 import 'package:waddle_display/persistence/tables.dart';
-import 'package:waddle_display/seed/initial_seed.dart';
+import 'package:waddle_display/data/seed/initial_seed.dart';
 
 import '../helpers/memory_database.dart';
 

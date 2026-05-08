@@ -594,10 +594,12 @@ class _MonthDayCell extends StatelessWidget {
     );
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: cell.isToday ? theme.colorScheme.onPrimary : Colors.transparent,
+        color: cell.isToday
+            ? theme.colorScheme.secondaryContainer
+            : Colors.transparent,
         border: hasEvent
             ? Border.all(
-                color: theme.colorScheme.outline,
+                color: theme.colorScheme.secondaryContainer,
                 width: math.max(1.0, 1.5 * s),
               )
             : null,

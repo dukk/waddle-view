@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 
-import '../../persistence/database.dart';
+import '../../../persistence/database.dart';
 
 /// Idempotent default symbol list (AAPL/MSFT enabled, the rest disabled to
 /// limit API hits). Operators can toggle [StockSymbols.enabled] from the admin

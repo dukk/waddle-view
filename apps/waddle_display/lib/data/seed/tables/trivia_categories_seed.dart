@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 
-import '../../persistence/database.dart';
+import '../../../persistence/database.dart';
 
 /// Idempotent default trivia categories (edit rows in DB to tune seasons).
 Future<void> ensureDefaultTriviaCategories(AppDatabase db) async {

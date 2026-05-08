@@ -3,9 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_display/curator/screen_program_curator.dart';
 import 'package:waddle_display/display/slide_content_preload.dart';
 import 'package:waddle_display/persistence/database.dart';
-import 'package:waddle_display/seed/tables/content_categories_seed.dart';
-import 'package:waddle_display/seed/tables/joke_categories_seed.dart';
-import 'package:waddle_display/seed/tables/trivia_categories_seed.dart';
+import 'package:waddle_display/data/seed/tables/content_categories_seed.dart';
+import 'package:waddle_display/data/seed/tables/joke_categories_seed.dart';
+import 'package:waddle_display/data/seed/tables/trivia_categories_seed.dart';
 
 import '../helpers/fake_blob_store.dart';
 import '../helpers/memory_database.dart';

@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 
-import '../../persistence/database.dart';
+import '../../../persistence/database.dart';
 
 Future<void> ensureCuratorDataKeyProgramLimitsSeed(AppDatabase db) async {
   await db.into(db.curatorDataKeyProgramLimits).insertOnConflictUpdate(

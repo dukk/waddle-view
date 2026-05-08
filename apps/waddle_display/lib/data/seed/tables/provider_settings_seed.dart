@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
 
-import '../../persistence/config_json_documentation.dart';
-import '../../persistence/database.dart';
+import '../../../persistence/config_json_documentation.dart';
+import '../../../persistence/database.dart';
 
 /// Inserts the stub provider when missing. Returns `true` if a row was added.
 Future<bool> ensureStubProviderRow(AppDatabase db) async {

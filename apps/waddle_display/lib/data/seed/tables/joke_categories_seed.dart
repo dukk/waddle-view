@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 
-import '../../persistence/database.dart';
+import '../../../persistence/database.dart';
 
 /// Idempotent default joke categories (edit rows in DB to tune seasons).
 Future<void> ensureDefaultJokeCategories(AppDatabase db) async {
