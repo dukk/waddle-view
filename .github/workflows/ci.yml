@@ -28,7 +28,7 @@ jobs:
           done
       - name: Ensure release workflow installs from shared list
         run: |
-          rg -n "LINUX_BUILD_DEPS_FILE|xargs -a \"\\$LINUX_BUILD_DEPS_FILE\"" "$GITHUB_WORKSPACE/.github/workflows/pi-release.yml"
+          grep -nE 'LINUX_BUILD_DEPS_FILE|xargs -a "\$LINUX_BUILD_DEPS_FILE"' "$GITHUB_WORKSPACE/.github/workflows/pi-release.yml"
 
   analyze-test:
     runs-on: ubuntu-latest
