@@ -13,12 +13,18 @@ import 'trivia_id.dart';
 import 'trivia_provider_extra_config.dart'
     show
         TriviaProviderExtraConfig,
-        kDefaultTriviaTwoHourWindowMs;
+        kDefaultTriviaRateWindowMs;
 import 'trivia_slot_allocation.dart';
 
 const String kTriviaProviderId = 'trivia';
 
 const String kDefaultOpenAiBaseUrl = 'https://api.openai.com/v1';
+
+const int _kMaxTriviaQuestionChars = 90;
+const int _kMaxTriviaOptionChars = 45;
+
+const int _kRecentStemsForPromptLimit = 40;
+const int _kRecentStemMaxChars = 120;
 
 /// Fetches trivia via OpenAI Chat Completions and stores them in SQLite.
 class TriviaDataProvider implements IDataProvider {
@@ -60,8 +66,8 @@ class TriviaDataProvider implements IDataProvider {
     }
 
     final extra = TriviaProviderExtraConfig.parse(config.configJson);
-    if (extra.questionsPerDay < 1) {
-      AppDebugLog.provider('trivia: skip (questionsPerDay < 1)');
+    if (extra.maxQuestionPerDay < 1) {
+      AppDebugLog.provider('trivia: skip (maxQuestionPerDay < 1)');
       return;
     }
 
@@ -83,31 +89,32 @@ class TriviaDataProvider implements IDataProvider {
     final endLocal = startLocal.add(const Duration(days: 1));
 
     final todayCount = await _countTriviaInRange(ctx.db, startLocal, endLocal);
-    final remainingDaily = extra.questionsPerDay - todayCount;
+    final remainingDaily = extra.maxQuestionPerDay - todayCount;
     if (remainingDaily <= 0) {
       AppDebugLog.provider(
-        'trivia: skip (daily cap $todayCount/${extra.questionsPerDay})',
+        'trivia: skip (daily cap $todayCount/${extra.maxQuestionPerDay})',
       );
       return;
     }
 
     final windowMs = extra.twoHourWindowMs > 0
         ? extra.twoHourWindowMs
-        : kDefaultTriviaTwoHourWindowMs;
+        : kDefaultTriviaRateWindowMs;
     final sinceMs = nowMs - windowMs;
     final requestedInWindow =
         await _sumTriviaRequestedSince(ctx.db, sinceMs);
-    final cap2h =
-        extra.maxQuestionsPerTwoHours < 0 ? 0 : extra.maxQuestionsPerTwoHours;
-    final remaining2h = cap2h - requestedInWindow;
-    if (remaining2h <= 0) {
+    final capWindow =
+        extra.maxQuestionPerHour < 0 ? 0 : extra.maxQuestionPerHour;
+    final remainingWindow = capWindow - requestedInWindow;
+    if (remainingWindow <= 0) {
       AppDebugLog.provider(
-        'trivia: 2h window full ($requestedInWindow/$cap2h in ${windowMs}ms)',
+        'trivia: rate window full '
+        '($requestedInWindow/$capWindow in ${windowMs}ms)',
       );
       return;
     }
 
-    final budget = remainingDaily < remaining2h ? remainingDaily : remaining2h;
+    final budget = remainingDaily < remainingWindow ? remainingDaily : remainingWindow;
 
     final allCategories =
         await ctx.db.select(ctx.db.triviaCategories).get();
@@ -121,16 +128,20 @@ class TriviaDataProvider implements IDataProvider {
       return;
     }
 
+    final roundRobinStart =
+        (nowMs ~/ Duration.millisecondsPerHour) % eligible.length;
+
     final storedByCategory = await _triviaCountsByCategory(ctx.db);
     final slots = buildTriviaRequestSlots(
       eligibleSorted: eligible,
       storedByCategoryId: storedByCategory,
       budget: budget,
+      roundRobinStartIndex: roundRobinStart,
     );
 
     if (slots.isEmpty) {
       AppDebugLog.provider(
-        'trivia: no slots (per-category min/max vs inventory)',
+        'trivia: no slots (per-category max inventory)',
       );
       return;
     }
@@ -139,12 +150,18 @@ class TriviaDataProvider implements IDataProvider {
 
     final categoryById = {for (final c in eligible) c.id: c};
 
+    final recentStems = await _recentTriviaQuestionStems(ctx.db);
+    final userContent = _buildUserPrompt(
+      slots,
+      categoryById,
+      recentStems,
+      nowMs,
+    );
+
     final baseUrl =
         (config.baseUrl != null && config.baseUrl!.trim().isNotEmpty)
         ? config.baseUrl!.trim()
         : kDefaultOpenAiBaseUrl;
-
-    final userContent = _buildUserPrompt(slots, categoryById);
 
     try {
       final uri = Uri.parse('$baseUrl/chat/completions');
@@ -213,6 +230,11 @@ class TriviaDataProvider implements IDataProvider {
       final createdAt = _now();
       var inserted = 0;
 
+      final normalizedByCategory = await _normalizedQuestionsByCategory(
+        ctx.db,
+        categoryById.keys,
+      );
+
       for (final item in parsedList) {
         final cid = item['categoryId'] as String?;
         final q = item['question'] as String?;
@@ -234,50 +256,68 @@ class TriviaDataProvider implements IDataProvider {
         if (correctNorm == null) {
           continue;
         }
-        if (q.trim().isEmpty ||
-            a.trim().isEmpty ||
-            b.trim().isEmpty ||
-            c.trim().isEmpty ||
-            d.trim().isEmpty) {
+        final qt = q.trim();
+        final at = a.trim();
+        final bt = b.trim();
+        final ct = c.trim();
+        final dt = d.trim();
+        if (qt.isEmpty ||
+            at.isEmpty ||
+            bt.isEmpty ||
+            ct.isEmpty ||
+            dt.isEmpty) {
+          continue;
+        }
+        if (qt.length > _kMaxTriviaQuestionChars ||
+            at.length > _kMaxTriviaOptionChars ||
+            bt.length > _kMaxTriviaOptionChars ||
+            ct.length > _kMaxTriviaOptionChars ||
+            dt.length > _kMaxTriviaOptionChars) {
           continue;
         }
         if (!categoryById.containsKey(cid)) {
           continue;
         }
+        final normQ = qt.toLowerCase();
+        final existing = normalizedByCategory.putIfAbsent(cid, () => <String>{});
+        if (existing.contains(normQ)) {
+          continue;
+        }
         final tid = triviaStableId(
           cid,
-          q.trim(),
-          a.trim(),
-          b.trim(),
-          c.trim(),
-          d.trim(),
+          qt,
+          at,
+          bt,
+          ct,
+          dt,
           correctNorm,
         );
         await ctx.db.into(ctx.db.triviaQuestions).insert(
               TriviaQuestionsCompanion.insert(
                 id: tid,
                 categoryId: cid,
-                question: q.trim(),
-                optionA: a.trim(),
-                optionB: b.trim(),
-                optionC: c.trim(),
-                optionD: d.trim(),
+                question: qt,
+                optionA: at,
+                optionB: bt,
+                optionC: ct,
+                optionD: dt,
                 correctOption: correctNorm,
                 createdAtMs: createdAt,
               ),
               onConflict: DoUpdate(
                 (old) => TriviaQuestionsCompanion(
                   categoryId: Value(cid),
-                  question: Value(q.trim()),
-                  optionA: Value(a.trim()),
-                  optionB: Value(b.trim()),
-                  optionC: Value(c.trim()),
-                  optionD: Value(d.trim()),
+                  question: Value(qt),
+                  optionA: Value(at),
+                  optionB: Value(bt),
+                  optionC: Value(ct),
+                  optionD: Value(dt),
                   correctOption: Value(correctNorm),
                   createdAtMs: Value(createdAt),
                 ),
               ),
             );
+        existing.add(normQ);
         inserted++;
       }
       AppDebugLog.provider(
@@ -306,6 +346,49 @@ class TriviaDataProvider implements IDataProvider {
       return u;
     }
     return null;
+  }
+
+  Future<List<String>> _recentTriviaQuestionStems(AppDatabase db) async {
+    final rows = await (db.select(db.triviaQuestions)
+          ..orderBy([(t) => OrderingTerm.desc(t.createdAtMs)])
+          ..limit(_kRecentStemsForPromptLimit))
+        .get();
+    final seen = <String>{};
+    final out = <String>[];
+    for (final r in rows) {
+      var t = r.question.trim();
+      if (t.isEmpty || seen.contains(t)) {
+        continue;
+      }
+      seen.add(t);
+      if (t.length > _kRecentStemMaxChars) {
+        t = '${t.substring(0, _kRecentStemMaxChars - 3)}...';
+      }
+      out.add(t);
+    }
+    return out;
+  }
+
+  Future<Map<String, Set<String>>> _normalizedQuestionsByCategory(
+    AppDatabase db,
+    Iterable<String> categoryIds,
+  ) async {
+    final ids = categoryIds.toList();
+    if (ids.isEmpty) {
+      return {};
+    }
+    final rows = await (db.select(db.triviaQuestions)
+          ..where((t) => t.categoryId.isIn(ids)))
+        .get();
+    final out = <String, Set<String>>{};
+    for (final r in rows) {
+      final norm = r.question.trim().toLowerCase();
+      if (norm.isEmpty) {
+        continue;
+      }
+      out.putIfAbsent(r.categoryId, () => <String>{}).add(norm);
+    }
+    return out;
   }
 
   Future<int> _countTriviaInRange(
@@ -347,7 +430,7 @@ class TriviaDataProvider implements IDataProvider {
   }
 
   Future<void> _pruneOldGenerationBatches(AppDatabase db, int nowMs) async {
-    final cutoffMs = nowMs - const Duration(days: 14).inMilliseconds;
+    final cutoffMs = nowMs - const Duration(days: 7).inMilliseconds;
     final cutoff = DateTime.fromMillisecondsSinceEpoch(cutoffMs);
     await (db.delete(db.triviaGenerationBatches)
           ..where((t) => t.requestedAtMs.isSmallerThanValue(cutoff)))
@@ -372,6 +455,8 @@ class TriviaDataProvider implements IDataProvider {
   static String _buildUserPrompt(
     List<TriviaCategory> slots,
     Map<String, TriviaCategory> categoryById,
+    List<String> recentQuestionsToAvoid,
+    int requestNonceMs,
   ) {
     final buf = StringBuffer()
       ..writeln(
@@ -385,7 +470,18 @@ class TriviaDataProvider implements IDataProvider {
         '"A": "<choice>", "B": "<choice>", "C": "<choice>", "D": "<choice>", '
         '"correct": "A"|"B"|"C"|"D"}',
       )
-      ..writeln('Slots:');
+      ..writeln(
+        'Keep question at most $_kMaxTriviaQuestionChars characters and each '
+        'choice at most $_kMaxTriviaOptionChars characters.',
+      )
+      ..writeln('Request nonce (for variety): $requestNonceMs');
+    if (recentQuestionsToAvoid.isNotEmpty) {
+      buf.writeln('Recent questions to avoid repeating or paraphrasing:');
+      for (final q in recentQuestionsToAvoid) {
+        buf.writeln('- $q');
+      }
+    }
+    buf.writeln('Slots:');
     for (var i = 0; i < slots.length; i++) {
       final c = slots[i];
       buf.write('$i: categoryId=${c.id} (${c.label})');

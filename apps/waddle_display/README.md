@@ -193,6 +193,20 @@ The joke and trivia data providers read OpenAI API keys from **SecretStore**, no
 
 **Local onboarding:** copy **[`.env.example`](.env.example)** to **`.env`** in this directory and set **`OPENAI_API_KEY`** (or **`WADDLE_JOKES_ACCESS_TOKEN`** / **`WADDLE_TRIVIA_ACCESS_TOKEN`**). In **debug** builds, the app loads that file and stores provider tokens automatically (see [`lib/config/dev_dotenv_secrets.dart`](lib/config/dev_dotenv_secrets.dart)). Full detail, monorepo paths, and fallbacks: **[`docs/pi/development.md`](../../docs/pi/development.md#joke-data-provider-openai-api-key)**.
 
+### Trivia provider (`provider_type`: **`trivia`**)
+
+The trivia data provider calls OpenAI Chat Completions, then upserts rows into **`trivia_questions`**. Eligible **`trivia_categories`** are cycled in **round-robin** order (starting offset rotates each hour). Each request’s user prompt includes **recent question stems** so the model avoids obvious repeats.
+
+**`provider_settings.config_json`** (canonical keys):
+
+- **`maxQuestionPerDay`**: cap on new questions created per local calendar day (default **200**). Legacy **`questionsPerDay`** is still read if **`maxQuestionPerDay`** is omitted.
+- **`maxQuestionPerHour`**: cap on questions **requested** in a rolling window (default **20** per **`twoHourWindowMs`**). Legacy **`maxQuestionsPerTwoHours`** is still read if **`maxQuestionPerHour`** is omitted.
+- **`twoHourWindowMs`**: rolling window length in milliseconds (default **3600000**, one hour).
+- **`questionRetentionDays`**: trivia older than this many days is deleted on collect (default **15**; **`≤ 0`** disables purge).
+- **`model`**, **`globalPrompt`** / **`systemPrompt`**, optional **`temperature`**, **`maxOutputTokens`**.
+
+Generated text must stay short (enforced in prompts and validation): question **≤ 90** characters, each option **≤ 45** characters. Duplicate **normalized** question text in the same category is skipped.
+
 ## Pexels photos / videos provider
 
 The **Pexels** provider (`id` / `provider_type`: **`pexels`**) downloads curated photos (`GET /v1/curated`) and popular videos (`GET /v1/videos/popular` with duration bounds), stores binaries in the **blob** store, and keeps metadata in **`photos`** and **`videos`** (with **`data_provider`** set to the provider id, e.g. **`pexels`**). API key: **`provider:access_token:pexels`** in **SecretStore** (never in SQLite).

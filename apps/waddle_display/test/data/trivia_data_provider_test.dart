@@ -27,6 +27,24 @@ class _FakeOpenAi extends http.BaseClient {
   }
 }
 
+class _CapturingFakeOpenAi extends http.BaseClient {
+  _CapturingFakeOpenAi(this._body);
+  final String _body;
+  final List<String> requestBodies = [];
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    if (request is http.Request) {
+      requestBodies.add(request.body);
+    }
+    return http.StreamedResponse(
+      Stream.value(utf8.encode(_body)),
+      200,
+      headers: {'content-type': 'application/json'},
+    );
+  }
+}
+
 String _chatJson(String content) {
   return jsonEncode({
     'choices': [
@@ -324,6 +342,162 @@ void main() {
         'C',
       ),
     );
+  });
+
+  test('collect skips item when question or option exceeds length cap', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.providerSettings).insert(
+          ProviderSettingsCompanion.insert(
+            id: 'trivia',
+            providerType: 'trivia',
+            pollSeconds: const Value(1),
+            configJson: const Value(
+              '{"maxQuestionPerDay":5,"maxQuestionPerHour":20,'
+              '"twoHourWindowMs":3600000}',
+            ),
+            baseUrl: const Value('http://api.local/v1'),
+          ),
+        );
+    await db.into(db.triviaCategories).insert(
+          TriviaCategoriesCompanion.insert(id: 'ok', label: 'Ok'),
+        );
+
+    final secrets = InMemorySecretStore();
+    await secrets.write('${ProviderConfigResolver.accessTokenKey}:trivia', 't');
+    final resolver = ProviderConfigResolver(db, secrets);
+    final ctx = DataWriteContextImpl(
+      db: db,
+      blobs: FakeBlobStore(),
+      secrets: secrets,
+      resolve: resolver.resolve,
+    );
+
+    final longQ = Map<String, dynamic>.from(
+      _triviaRow(categoryId: 'ok', correct: 'B'),
+    )..['question'] = List.filled(91, 'x').join();
+
+    final apiPayload = _chatJson(jsonEncode([longQ]));
+
+    final provider = TriviaDataProvider(
+      httpClient: _FakeOpenAi(apiPayload),
+      now: () => DateTime(2026, 1, 1),
+    );
+    await provider.collect(ctx);
+
+    expect(await db.select(db.triviaQuestions).get(), isEmpty);
+  });
+
+  test('collect skips second item with duplicate normalized question text', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.providerSettings).insert(
+          ProviderSettingsCompanion.insert(
+            id: 'trivia',
+            providerType: 'trivia',
+            pollSeconds: const Value(1),
+            configJson: const Value(
+              '{"maxQuestionPerDay":5,"maxQuestionPerHour":20,'
+              '"twoHourWindowMs":3600000}',
+            ),
+            baseUrl: const Value('http://api.local/v1'),
+          ),
+        );
+    await db.into(db.triviaCategories).insert(
+          TriviaCategoriesCompanion.insert(id: 'ok', label: 'Ok'),
+        );
+
+    final secrets = InMemorySecretStore();
+    await secrets.write('${ProviderConfigResolver.accessTokenKey}:trivia', 't');
+    final resolver = ProviderConfigResolver(db, secrets);
+    final ctx = DataWriteContextImpl(
+      db: db,
+      blobs: FakeBlobStore(),
+      secrets: secrets,
+      resolve: resolver.resolve,
+    );
+
+    final row1 = _triviaRow(categoryId: 'ok', correct: 'B');
+    final row2 = Map<String, dynamic>.from(_triviaRow(categoryId: 'ok', correct: 'C'));
+    final apiPayload = _chatJson(jsonEncode([row1, row2]));
+
+    final provider = TriviaDataProvider(
+      httpClient: _FakeOpenAi(apiPayload),
+      now: () => DateTime(2026, 1, 1),
+    );
+    await provider.collect(ctx);
+
+    final rows = await db.select(db.triviaQuestions).get();
+    expect(rows, hasLength(1));
+  });
+
+  test('user prompt lists recent questions to avoid', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.providerSettings).insert(
+          ProviderSettingsCompanion.insert(
+            id: 'trivia',
+            providerType: 'trivia',
+            pollSeconds: const Value(1),
+            configJson: const Value(
+              '{"maxQuestionPerDay":5,"maxQuestionPerHour":20,'
+              '"twoHourWindowMs":3600000}',
+            ),
+            baseUrl: const Value('http://api.local/v1'),
+          ),
+        );
+    await db.into(db.triviaCategories).insert(
+          TriviaCategoriesCompanion.insert(id: 'ok', label: 'Ok'),
+        );
+    await db.into(db.triviaQuestions).insert(
+          TriviaQuestionsCompanion.insert(
+            id: triviaStableId(
+              'ok',
+              'Stem to avoid?',
+              'a',
+              'b',
+              'c',
+              'd',
+              'A',
+            ),
+            categoryId: 'ok',
+            question: 'Stem to avoid?',
+            optionA: 'a',
+            optionB: 'b',
+            optionC: 'c',
+            optionD: 'd',
+            correctOption: 'A',
+            createdAtMs: DateTime(2026, 1, 1),
+          ),
+        );
+
+    final secrets = InMemorySecretStore();
+    await secrets.write('${ProviderConfigResolver.accessTokenKey}:trivia', 't');
+    final resolver = ProviderConfigResolver(db, secrets);
+    final ctx = DataWriteContextImpl(
+      db: db,
+      blobs: FakeBlobStore(),
+      secrets: secrets,
+      resolve: resolver.resolve,
+    );
+
+    final capture = _CapturingFakeOpenAi(
+      _chatJson(jsonEncode([_triviaRow(categoryId: 'ok', correct: 'B')])),
+    );
+
+    final provider = TriviaDataProvider(
+      httpClient: capture,
+      now: () => DateTime(2026, 1, 1),
+    );
+    await provider.collect(ctx);
+
+    expect(capture.requestBodies, isNotEmpty);
+    final decoded = jsonDecode(capture.requestBodies.single) as Map<String, dynamic>;
+    final messages = decoded['messages'] as List<dynamic>;
+    final user = messages.last as Map<String, dynamic>;
+    final content = user['content'] as String;
+    expect(content, contains('Recent questions to avoid'));
+    expect(content, contains('Stem to avoid?'));
   });
 }
 

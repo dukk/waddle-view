@@ -179,28 +179,41 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
     schema: jsonEncode(
       _baseSchema(
         title: 'TriviaProviderConfig',
-        description: 'OpenAI trivia generation limits and prompts.',
+        description:
+            'OpenAI trivia generation limits and prompts. Rolling window: '
+            'at most maxQuestionPerHour requests per twoHourWindowMs (default '
+            '1 hour). Legacy JSON keys questionsPerDay and '
+            'maxQuestionsPerTwoHours are still parsed if the new keys are '
+            'absent.',
         properties: {
-          'questionsPerDay': {'type': 'integer', 'minimum': 0},
+          'maxQuestionPerDay': {'type': 'integer', 'minimum': 1},
+          'questionsPerDay': {
+            'type': 'integer',
+            'minimum': 0,
+            'description': 'Deprecated; use maxQuestionPerDay.',
+          },
+          'maxQuestionPerHour': {'type': 'integer', 'minimum': 1},
+          'maxQuestionsPerTwoHours': {
+            'type': 'integer',
+            'minimum': 1,
+            'description': 'Deprecated; use maxQuestionPerHour.',
+          },
           'model': {'type': 'string'},
           'globalPrompt': {'type': 'string'},
           'systemPrompt': {'type': 'string'},
           'temperature': {'type': 'number'},
           'maxOutputTokens': {'type': 'integer', 'minimum': 1},
-          'maxQuestionsPerTwoHours': {'type': 'integer', 'minimum': 1},
           'twoHourWindowMs': {'type': 'integer', 'minimum': 1},
           'questionRetentionDays': {'type': 'integer'},
         },
       ),
     ),
     example: jsonEncode({
-      'questionsPerDay': 3,
-      'maxQuestionsPerTwoHours': 20,
-      'twoHourWindowMs': 7200000,
-      'questionRetentionDays': 14,
+      'maxQuestionPerDay': 200,
+      'maxQuestionPerHour': 20,
+      'twoHourWindowMs': 3600000,
+      'questionRetentionDays': 15,
       'model': 'gpt-4o-mini',
-      'globalPrompt':
-          'You write clear, family-friendly multiple-choice trivia.',
     }),
   ),
   'stocks': ProviderConfigJsonDoc(

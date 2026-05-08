@@ -793,10 +793,9 @@ Future<void> _ensureTriviaProviderRow(AppDatabase db) async {
           enabled: const Value(true),
           pollSeconds: const Value(3600),
           configJson: const Value(
-            '{"questionsPerDay":3,"maxQuestionsPerTwoHours":20,'
-            '"twoHourWindowMs":7200000,"questionRetentionDays":14,'
-            '"model":"gpt-4o-mini",'
-            '"globalPrompt":"You write clear, family-friendly multiple-choice trivia."}',
+            '{"maxQuestionPerDay":200,"maxQuestionPerHour":20,'
+            '"twoHourWindowMs":3600000,"questionRetentionDays":15,'
+            '"model":"gpt-4o-mini"}',
           ),
           configJsonSchema: Value(triviaDoc.schema),
           exampleConfigJson: Value(triviaDoc.example),

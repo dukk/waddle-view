@@ -2,15 +2,20 @@ import 'dart:math' as math;
 
 import '../../../persistence/database.dart';
 
-/// Builds the ordered list of category slots for one OpenAI request.
+/// Builds the ordered list of category slots for one OpenAI request using
+/// round-robin over [eligibleSorted], starting at [roundRobinStartIndex].
 List<TriviaCategory> buildTriviaRequestSlots({
   required List<TriviaCategory> eligibleSorted,
   required Map<String, int> storedByCategoryId,
   required int budget,
+  required int roundRobinStartIndex,
 }) {
   if (budget <= 0 || eligibleSorted.isEmpty) {
     return [];
   }
+
+  final n = eligibleSorted.length;
+  final start = roundRobinStartIndex % n;
 
   int stored(String id) => storedByCategoryId[id] ?? 0;
 
@@ -22,45 +27,17 @@ List<TriviaCategory> buildTriviaRequestSlots({
 
   final slots = <TriviaCategory>[];
 
-  bool addOne(TriviaCategory c) {
-    if (slots.length >= budget) {
-      return false;
-    }
-    final h = headroom[c.id] ?? 0;
-    if (h <= 0) {
-      return false;
-    }
-    headroom[c.id] = h - 1;
-    slots.add(c);
-    return true;
-  }
-
   while (slots.length < budget) {
     var progressed = false;
-    for (final c in eligibleSorted) {
-      final lo = math.min(c.minQuestions, c.maxQuestions);
-      final assigned = slots.where((s) => s.id == c.id).length;
-      if (stored(c.id) + assigned >= lo) {
+    for (var j = 0; j < n; j++) {
+      final c = eligibleSorted[(start + j) % n];
+      final h = headroom[c.id] ?? 0;
+      if (h <= 0) {
         continue;
       }
-      if (addOne(c)) {
-        progressed = true;
-      }
-      if (slots.length >= budget) {
-        break;
-      }
-    }
-    if (!progressed) {
-      break;
-    }
-  }
-
-  while (slots.length < budget) {
-    var progressed = false;
-    for (final c in eligibleSorted) {
-      if (addOne(c)) {
-        progressed = true;
-      }
+      headroom[c.id] = h - 1;
+      slots.add(c);
+      progressed = true;
       if (slots.length >= budget) {
         break;
       }
