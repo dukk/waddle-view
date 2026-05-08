@@ -31,6 +31,21 @@ const kContentCategoryDefaults = <ContentCategoryDef>[
     materialIconName: 'science',
   ),
   ContentCategoryDef(
+    id: 'travel',
+    label: 'Travel & lifestyle',
+    materialIconName: 'map',
+  ),
+  ContentCategoryDef(
+    id: 'wellness',
+    label: 'Health & wellness',
+    materialIconName: 'self_improvement',
+  ),
+  ContentCategoryDef(
+    id: 'entertainment',
+    label: 'Entertainment & pop culture',
+    materialIconName: 'stars',
+  ),
+  ContentCategoryDef(
     id: 'pexels',
     label: 'Pexels',
     materialIconName: 'photo_library',

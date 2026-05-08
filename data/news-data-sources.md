@@ -59,4 +59,56 @@
 - [SciShow](https://www.youtube.com/feeds/videos.xml?channel_id=UCZYTClx2T1of7BRZ86-8fow) (YouTube channel RSS)
 - [WIRED — Science](https://www.wired.com/feed/category/science/latest/rss)
 
+## Travel & Lifestyle
+
+- [Conde Nast Traveler](https://www.cntraveler.com/feed/rss)
+- [Adventure Journal](https://www.adventure-journal.com/feed/)
+- [Two Monkeys Travel Group](https://twomonkeystravelgroup.com/feed/)
+- [Adventures with Nie Nie](https://adventureswithnienie.com/feed/)
+- [Flight Mate](https://flightmateza.co.za/feed/)
+- [Nomad Experiment](https://www.thenomadexperiment.com/feed/)
+- [Nomadic Matt](https://www.nomadicmatt.com/feed/)
+- [Travel to Blank](https://traveltoblank.com/feed/)
+- [Via Travelers](https://feeds.feedburner.com/viatravelers/xgwz)
+- [Rogue Trippers](https://roguetrippers.com/feed/)
+
+## Health & Wellness
+
+- [Running on Real Food](https://runningonrealfood.com/feed/)
+- [Wellness Impact](https://www.wellnessimpact.org/feed/)
+- [NHS News](https://www.england.nhs.uk/feed/)
+- [MyFitnessPal Blog](https://blog.myfitnesspal.com/feed/)
+- [NPR Health News](https://feeds.npr.org/1128/rss.xml)
+- [Mindful Momma](https://mindfulmomma.com/feed/)
+- [Love Sweat Fitness](https://lovesweatfitness.com/blogs/news.atom)
+- [Mark's Daily Apple](https://feeds2.feedburner.com/MarksDailyApple/)
+- [Yoga with Adriene](https://yogawithadriene.com/blog/feed/)
+- [Mellowed](https://mellowed.com/category/health-wellness/feed/)
+
+## Entertainment & Pop Culture
+
+- [Celebrity Insider](https://celebrityinsider.org/feed/)
+- [Variety](https://variety.com/feed/)
+- [Rolling Stone - Music News](https://www.rollingstone.com/music/music-news/feed/)
+- [Billboard](https://www.billboard.com/feed/)
+- [The Shade Room](https://theshaderoom.com/feed/)
+- [E! Online - Top Stories](https://www.eonline.com/syndication/feeds/rssfeeds/topstories)
+- [IndieWire](https://www.indiewire.com/feed/)
+- [Hollywood Life](https://hollywoodlife.com/feed/)
+- [Deadline](https://deadline.com/feed/)
+- [Cirrkus](https://cirrkus.com/feed/)
+
+## Sports
+
+- [BBC Sport](https://feeds.bbci.co.uk/sport/rss.xml)
+- [LA Times - Sports](https://www.latimes.com/sports.rss)
+- [Boxing News](https://boxingnewsonline.net/feed/)
+- [Sydney Morning Herald - Sport](https://www.smh.com.au/rss/sport.xml)
+- [Washington Times - Sports](https://www.washingtontimes.com/rss/headlines/sports/)
+- [Boston.com - Sports](https://www.boston.com/category/sports/feed/)
+- [ESPN News](https://www.espn.com/espn/rss/news)
+- [CBS Sports](https://www.cbssports.com/rss/headlines/)
+- [Essentially Sports](https://www.essentiallysports.com/feed/)
+- [Fox Sports](https://api.foxsports.com/v2/content/optimized-rss?partnerKey=MB0Wehpmuj2lUhuRhQaafhBjAJqaPU244mlTDK1i&size=30)
+
 Each seeded feed retains the **three most recent articles** per source (`max_articles` / `maxArticles`).

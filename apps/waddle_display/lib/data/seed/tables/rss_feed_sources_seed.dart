@@ -252,4 +252,209 @@ const _defaultRssFeeds = <({String id, String url, String category})>[
     url: 'https://www.wired.com/feed/category/science/latest/rss',
     category: 'science',
   ),
+  // Travel & Lifestyle
+  (
+    id: 'cn_traveler',
+    url: 'https://www.cntraveler.com/feed/rss',
+    category: 'travel',
+  ),
+  (
+    id: 'adventure_journal',
+    url: 'https://www.adventure-journal.com/feed/',
+    category: 'travel',
+  ),
+  (
+    id: 'two_monkeys_travel',
+    url: 'https://twomonkeystravelgroup.com/feed/',
+    category: 'travel',
+  ),
+  (
+    id: 'adventures_with_nie_nie',
+    url: 'https://adventureswithnienie.com/feed/',
+    category: 'travel',
+  ),
+  (
+    id: 'flight_mate',
+    url: 'https://flightmateza.co.za/feed/',
+    category: 'travel',
+  ),
+  (
+    id: 'nomad_experiment',
+    url: 'https://www.thenomadexperiment.com/feed/',
+    category: 'travel',
+  ),
+  (
+    id: 'nomadic_matt',
+    url: 'https://www.nomadicmatt.com/feed/',
+    category: 'travel',
+  ),
+  (
+    id: 'travel_to_blank',
+    url: 'https://traveltoblank.com/feed/',
+    category: 'travel',
+  ),
+  (
+    id: 'via_travelers',
+    url: 'https://feeds.feedburner.com/viatravelers/xgwz',
+    category: 'travel',
+  ),
+  (
+    id: 'rogue_trippers',
+    url: 'https://roguetrippers.com/feed/',
+    category: 'travel',
+  ),
+  // Health & Wellness
+  (
+    id: 'running_on_real_food',
+    url: 'https://runningonrealfood.com/feed/',
+    category: 'wellness',
+  ),
+  (
+    id: 'wellness_impact',
+    url: 'https://www.wellnessimpact.org/feed/',
+    category: 'wellness',
+  ),
+  (
+    id: 'nhs_news',
+    url: 'https://www.england.nhs.uk/feed/',
+    category: 'wellness',
+  ),
+  (
+    id: 'myfitnesspal_blog',
+    url: 'https://blog.myfitnesspal.com/feed/',
+    category: 'wellness',
+  ),
+  (
+    id: 'npr_health',
+    url: 'https://feeds.npr.org/1128/rss.xml',
+    category: 'wellness',
+  ),
+  (
+    id: 'mindful_momma',
+    url: 'https://mindfulmomma.com/feed/',
+    category: 'wellness',
+  ),
+  (
+    id: 'love_sweat_fitness',
+    url: 'https://lovesweatfitness.com/blogs/news.atom',
+    category: 'wellness',
+  ),
+  (
+    id: 'marks_daily_apple',
+    url: 'https://feeds2.feedburner.com/MarksDailyApple/',
+    category: 'wellness',
+  ),
+  (
+    id: 'yoga_with_adriene',
+    url: 'https://yogawithadriene.com/blog/feed/',
+    category: 'wellness',
+  ),
+  (
+    id: 'mellowed_wellness',
+    url: 'https://mellowed.com/category/health-wellness/feed/',
+    category: 'wellness',
+  ),
+  // Entertainment & Pop Culture
+  (
+    id: 'celebrity_insider',
+    url: 'https://celebrityinsider.org/feed/',
+    category: 'entertainment',
+  ),
+  (
+    id: 'variety',
+    url: 'https://variety.com/feed/',
+    category: 'entertainment',
+  ),
+  (
+    id: 'rolling_stone_music_news',
+    url: 'https://www.rollingstone.com/music/music-news/feed/',
+    category: 'entertainment',
+  ),
+  (
+    id: 'billboard',
+    url: 'https://www.billboard.com/feed/',
+    category: 'entertainment',
+  ),
+  (
+    id: 'the_shade_room',
+    url: 'https://theshaderoom.com/feed/',
+    category: 'entertainment',
+  ),
+  (
+    id: 'e_online_topstories',
+    url: 'https://www.eonline.com/syndication/feeds/rssfeeds/topstories',
+    category: 'entertainment',
+  ),
+  (
+    id: 'indiewire',
+    url: 'https://www.indiewire.com/feed/',
+    category: 'entertainment',
+  ),
+  (
+    id: 'hollywood_life',
+    url: 'https://hollywoodlife.com/feed/',
+    category: 'entertainment',
+  ),
+  (
+    id: 'deadline',
+    url: 'https://deadline.com/feed/',
+    category: 'entertainment',
+  ),
+  (
+    id: 'cirrkus',
+    url: 'https://cirrkus.com/feed/',
+    category: 'entertainment',
+  ),
+  // Sports
+  (
+    id: 'bbc_sport',
+    url: 'https://feeds.bbci.co.uk/sport/rss.xml',
+    category: 'sports',
+  ),
+  (
+    id: 'la_times_sports',
+    url: 'https://www.latimes.com/sports.rss',
+    category: 'sports',
+  ),
+  (
+    id: 'boxing_news_online',
+    url: 'https://boxingnewsonline.net/feed/',
+    category: 'sports',
+  ),
+  (
+    id: 'smh_sport',
+    url: 'https://www.smh.com.au/rss/sport.xml',
+    category: 'sports',
+  ),
+  (
+    id: 'washington_times_sports',
+    url: 'https://www.washingtontimes.com/rss/headlines/sports/',
+    category: 'sports',
+  ),
+  (
+    id: 'boston_sports',
+    url: 'https://www.boston.com/category/sports/feed/',
+    category: 'sports',
+  ),
+  (
+    id: 'espn_news',
+    url: 'https://www.espn.com/espn/rss/news',
+    category: 'sports',
+  ),
+  (
+    id: 'cbs_sports_headlines',
+    url: 'https://www.cbssports.com/rss/headlines/',
+    category: 'sports',
+  ),
+  (
+    id: 'essentially_sports',
+    url: 'https://www.essentiallysports.com/feed/',
+    category: 'sports',
+  ),
+  (
+    id: 'fox_sports',
+    url:
+        'https://api.foxsports.com/v2/content/optimized-rss?partnerKey=MB0Wehpmuj2lUhuRhQaafhBjAJqaPU244mlTDK1i&size=30',
+    category: 'sports',
+  ),
 ];
