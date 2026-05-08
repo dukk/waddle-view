@@ -51,6 +51,11 @@ const kContentCategoryDefaults = <ContentCategoryDef>[
     materialIconName: 'photo_library',
   ),
   ContentCategoryDef(
+    id: 'bing',
+    label: 'Bing image of the day',
+    materialIconName: 'wallpaper',
+  ),
+  ContentCategoryDef(
     id: 'nature',
     label: 'Nature',
     materialIconName: 'forest',

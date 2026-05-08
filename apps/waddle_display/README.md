@@ -190,8 +190,11 @@ The joke and trivia data providers read OpenAI API keys from **SecretStore**, no
 
 - Jokes key: `provider:access_token:jokes`
 - Trivia key: `provider:access_token:trivia`
+- Flickr key: `provider:access_token:flickr_media`
 
 **Local onboarding:** copy **[`.env.example`](.env.example)** to **`.env`** in this directory and set **`OPENAI_API_KEY`** (or **`WADDLE_JOKES_ACCESS_TOKEN`** / **`WADDLE_TRIVIA_ACCESS_TOKEN`**). In **debug** builds, the app loads that file and stores provider tokens automatically (see [`lib/config/dev_dotenv_secrets.dart`](lib/config/dev_dotenv_secrets.dart)). Full detail, monorepo paths, and fallbacks: **[`docs/pi/development.md`](../../docs/pi/development.md#joke-data-provider-openai-api-key)**.
+
+OpenTDB trivia does **not** require a token.
 
 ### Trivia provider (`provider_type`: **`trivia`**)
 
@@ -204,6 +207,22 @@ The trivia data provider calls OpenAI Chat Completions, then upserts rows into *
 - **`twoHourWindowMs`**: rolling window length in milliseconds (default **3600000**, one hour).
 - **`questionRetentionDays`**: trivia older than this many days is deleted on collect (default **15**; **`≤ 0`** disables purge).
 - **`model`**, **`globalPrompt`** / **`systemPrompt`**, optional **`temperature`**, **`maxOutputTokens`**.
+- Optional **`questionType`** hint in generated payload supports `multiple_choice` and `true_false`.
+
+True/false rows store options in A/B and leave C/D blank; the slide renders and reveals two choices accordingly.
+
+### OpenTDB trivia provider (`provider_type`: **`opentdb_trivia`**)
+
+The OpenTDB provider fetches questions from [Open Trivia DB](https://opentdb.com/api_config.php) and writes them into the same **`trivia_questions`** table as the OpenAI trivia provider.
+
+**`provider_settings.config_json`** keys:
+
+- **`amount`**: number of questions per request (1-50, default 10).
+- **`difficulty`**: optional `easy`, `medium`, or `hard`.
+- **`questionType`**: optional `multiple` or `boolean`.
+- **`categoryMap`**: maps local `trivia_categories.id` to OpenTDB numeric category ids.
+- **`questionRetentionDays`**: retention window (same behavior as `trivia` provider).
+- **`maxQuestionChars`**, **`maxOptionChars`**: reject oversized questions/answers.
 
 Generated text must stay short (enforced in prompts and validation): question **≤ 90** characters, each option **≤ 45** characters. Duplicate **normalized** question text in the same category is skipped.
 
@@ -321,6 +340,42 @@ The **OneDrive media** provider (`id` / `provider_type`: **`onedrive_media`**) k
 **Screens:** use existing **`pexels_photo`** / **`pexels_video`** widgets; set **`config.categoryId`** to the same slug as the folder’s **`category`** so the curator pool includes OneDrive items alongside Pexels (or use a dedicated category for OneDrive-only folders).
 
 **`provider_settings.poll_seconds`:** default **3600** when seeded.
+
+## Flickr group photos
+
+The **Flickr media** provider (`id` / `provider_type`: **`flickr_media`**) pulls **public** photos from one or more Flickr groups using `flickr.groups.pools.getPhotos`, downloads image bytes, and stores rows in **`photos`** with **`data_provider`** = **`flickr_media`**.
+
+**API key:** `provider:access_token:flickr_media` in **SecretStore** (never in SQLite).
+
+**`provider_settings.config_json`** (JSON):
+
+- **`groupIds`**: array of Flickr group NSIDs to sync (for example `34427469792@N01`).
+- **`category`**: one category id for all synced photos (must match `content_categories.id`; default `flickr`).
+- **`perPollLimit`**: maximum new photos downloaded per collect cycle (default `20`).
+- **`sort`**: Flickr pool sort mode passed through to the API (default `date-posted-desc`).
+
+**Image URL fallback:** provider prefers `url_o`, then `url_l`, `url_c`, `url_z`, `url_m`.
+
+**`provider_settings.poll_seconds`:** default **3600** when seeded.
+
+## Bing image of the day
+
+The **Bing image of the day** provider (`id` / `provider_type`: **`bing_iotd`**) calls Bing’s **`HPImageArchive.aspx`** (`format=js`, `idx=0`, `n=1`, `mkt` from config), then downloads the wallpaper at **`{baseUrl}{urlbase}_{resolution}.jpg`** (same URL pattern as [TimothyYe/bing-wallpaper](https://github.com/TimothyYe/bing-wallpaper)). Image bytes go to the blob store; **`photos`** rows use **`data_provider`** = **`bing_iotd`**. **No API key** or SecretStore entry.
+
+**`provider_settings.base_url`:** default **`https://www.bing.com`**.
+
+**`provider_settings.config_json`** (JSON):
+
+- **`retentionDays`**: drop **`photos`** (and blobs) older than this many **24h periods** (default **1**). **`<= 0`** disables age-based pruning.
+- **`market`**: Bing **`mkt`** parameter (default **`en-US`**).
+- **`resolution`**: suffix before `.jpg` — **`UHD`**, **`1920x1200`**, **`1920x1080`**, **`1366x768`**, **`1080x1920`**, **`768x1280`** (default **`UHD`**).
+- **`category`**: **`content_categories.id`** for new rows (default **`bing`**).
+
+**Screens:** use **`pexels_photo`** or **`photo_random`** with **`config.categoryId`**: **`bing`**.
+
+Requests send a desktop **`User-Agent`** and **`Referer`** matching the Bing origin (Bing may throttle anonymous clients otherwise). Each HTTP call uses a **5s** timeout.
+
+**`provider_settings.poll_seconds`:** default **3600** when seeded; provider is **enabled** by default.
 
 ## Drift codegen
 

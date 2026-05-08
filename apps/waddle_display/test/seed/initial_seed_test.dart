@@ -163,6 +163,57 @@ void main() {
     await db.close();
   });
 
+  test('ensureInitialSeed inserts opentdb_trivia provider disabled', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+
+    await ensureInitialSeed(db);
+
+    final row = await (db.select(db.providerSettings)
+          ..where((t) => t.id.equals('opentdb_trivia')))
+        .getSingleOrNull();
+    expect(row, isNotNull);
+    expect(row!.enabled, isFalse);
+    expect(row.providerType, 'opentdb_trivia');
+    expect(row.baseUrl, 'https://opentdb.com/api.php');
+    expect(row.configJson, contains('"amount"'));
+    await db.close();
+  });
+
+  test('ensureInitialSeed inserts flickr_media provider disabled', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+
+    await ensureInitialSeed(db);
+
+    final row = await (db.select(db.providerSettings)
+          ..where((t) => t.id.equals('flickr_media')))
+        .getSingleOrNull();
+    expect(row, isNotNull);
+    expect(row!.enabled, isFalse);
+    expect(row.providerType, 'flickr_media');
+    expect(row.configJson, contains('"groupIds"'));
+    await db.close();
+  });
+
+  test('ensureInitialSeed inserts bing_iotd provider enabled', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+
+    await ensureInitialSeed(db);
+
+    final row = await (db.select(db.providerSettings)
+          ..where((t) => t.id.equals('bing_iotd')))
+        .getSingleOrNull();
+    expect(row, isNotNull);
+    expect(row!.enabled, isTrue);
+    expect(row.providerType, 'bing_iotd');
+    expect(row.baseUrl, 'https://www.bing.com');
+    expect(row.configJson, contains('"resolution":"UHD"'));
+    expect(row.configJson, contains('"category":"bing"'));
+    await db.close();
+  });
+
   test('ensureInitialSeed seeds pexels source queries and categories', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);

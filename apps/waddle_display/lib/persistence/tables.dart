@@ -355,6 +355,9 @@ const String kMediaDataProviderOneDrive = 'onedrive_media';
 /// Flickr group photo sync into [Photos].
 const String kMediaDataProviderFlickr = 'flickr_media';
 
+/// Bing homepage image of the day into [Photos].
+const String kMediaDataProviderBing = 'bing_iotd';
+
 @TableIndex(
   name: 'idx_photos_fetched',
   columns: {#fetchedAtMs},

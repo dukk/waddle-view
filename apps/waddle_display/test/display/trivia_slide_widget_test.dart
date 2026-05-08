@@ -315,4 +315,70 @@ void main() {
 
     await db.close();
   });
+
+  testWidgets('true_false trivia renders two choices and one strike', (
+    tester,
+  ) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureDefaultTriviaCategories(db);
+    await db.into(db.triviaQuestions).insert(
+          TriviaQuestionsCompanion.insert(
+            id: 'tf1',
+            categoryId: 'science',
+            question: 'The Earth is round.',
+            optionA: 'True',
+            optionB: 'False',
+            optionC: '',
+            optionD: '',
+            correctOption: 'A',
+            createdAtMs: DateTime.fromMillisecondsSinceEpoch(1),
+          ),
+        );
+
+    final slide = ResolvedSlide(
+      screenId: 'trivia',
+      dwellMs: 5000,
+      layoutJson: '{}',
+    );
+    const spec = ParsedWidgetSpec(
+      type: 'trivia',
+      slot: 'main',
+      config: {},
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.light(),
+        home: Scaffold(
+          body: TriviaSlideWidget(
+            db: db,
+            blobs: FakeBlobStore(),
+            slide: slide,
+            spec: spec,
+            theme: ThemeData.light(),
+            shuffleRandom: Random(0),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey<String>('trivia_answers_true_false')),
+      findsOneWidget,
+    );
+    expect(find.text('True'), findsOneWidget);
+    expect(find.text('False'), findsOneWidget);
+    expect(find.byIcon(Icons.close), findsNothing);
+
+    final windowMs = triviaEliminationWindowMs(slide.dwellMs);
+    final endMs = triviaEliminationEndMs(windowMs);
+    await tester.pump(Duration(milliseconds: endMs + 400));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.close), findsOneWidget);
+
+    await db.close();
+  });
 }

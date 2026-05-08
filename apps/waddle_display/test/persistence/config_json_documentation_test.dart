@@ -38,11 +38,16 @@ void main() {
       'rss',
       'jokes',
       'trivia',
+      'opentdb_trivia',
       'weather',
+      'nws_weather_alerts',
       'pexels',
+      'stocks',
       'google_calendar',
       'outlook_calendar',
       'onedrive_media',
+      'flickr_media',
+      'bing_iotd',
     ];
     for (final t in seededTypes) {
       expect(kProviderConfigJsonMeta.containsKey(t), isTrue);

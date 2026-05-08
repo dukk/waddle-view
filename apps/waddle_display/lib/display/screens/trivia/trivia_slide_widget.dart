@@ -15,8 +15,8 @@ import 'trivia_slide_timing.dart';
 
 /// Source letters A–D assigned to on-screen slots A–D (slot index 0 = on-screen "A").
 @visibleForTesting
-List<String> triviaShuffleOrderForTesting(Random random) {
-  final letters = ['A', 'B', 'C', 'D']..shuffle(random);
+List<String> triviaShuffleOrderForTesting(Random random, {int optionCount = 4}) {
+  final letters = ['A', 'B', 'C', 'D'].take(optionCount).toList()..shuffle(random);
   return List<String>.from(letters);
 }
 
@@ -89,7 +89,12 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     if (!mounted) {
       return;
     }
-    final perm = q == null ? null : triviaShuffleOrderForTesting(_rng);
+    final count = (q != null && q.optionC.trim().isEmpty && q.optionD.trim().isEmpty)
+        ? 2
+        : 4;
+    final perm = q == null
+        ? null
+        : triviaShuffleOrderForTesting(_rng, optionCount: count);
     setState(() {
       _question = q;
       _displaySlotToSource = perm;
@@ -121,7 +126,10 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     }
     final displayCorrect =
         String.fromCharCode('A'.codeUnitAt(0) + correctIdx);
-    final wrong = <String>['A', 'B', 'C', 'D']
+    final wrong = List<String>.generate(
+      perm.length,
+      (i) => String.fromCharCode('A'.codeUnitAt(0) + i),
+    )
         .where((l) => l != displayCorrect)
         .toList()
       ..shuffle(_rng);
@@ -133,7 +141,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
       configOverride: override,
     );
     _eliminationEndMs = triviaEliminationEndMs(windowMs);
-    final step = windowMs ~/ 4;
+    final step = wrong.isEmpty ? windowMs : (windowMs ~/ (wrong.length + 1));
     final delays = <int>[];
 
     if (step < 1) {
@@ -216,7 +224,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
   }
 
   bool _optionsShortForTwoColumns(TriviaQuestion row, List<String> perm) {
-    for (var slot = 0; slot < 4; slot++) {
+    for (var slot = 0; slot < perm.length; slot++) {
       if (_optionText(row, perm[slot]).length > kTriviaTwoColumnMaxOptionChars) {
         return false;
       }
@@ -550,11 +558,48 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     }
 
     final row = _question!;
-    final perm = _displaySlotToSource!;
+    final optionCount =
+        row.optionC.trim().isEmpty && row.optionD.trim().isEmpty ? 2 : 4;
+    final perm = (_displaySlotToSource ?? const <String>[]).take(optionCount).toList();
+    if (perm.length != optionCount) {
+      return const SizedBox.shrink();
+    }
     final revealComplete = _isRevealComplete();
-    final useTwoColumns = _optionsShortForTwoColumns(row, perm);
+    final useTwoColumns = optionCount == 4 && _optionsShortForTwoColumns(row, perm);
 
-    final answersSection = useTwoColumns
+    final answersSection = optionCount == 2
+        ? KeyedSubtree(
+            key: const ValueKey<String>('trivia_answers_true_false'),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _optionTile(
+                    row: row,
+                    perm: perm,
+                    slot: 0,
+                    theme: theme,
+                    s: s,
+                    revealComplete: revealComplete,
+                    useTwoColumns: true,
+                  ),
+                ),
+                SizedBox(width: 10 * s),
+                Expanded(
+                  child: _optionTile(
+                    row: row,
+                    perm: perm,
+                    slot: 1,
+                    theme: theme,
+                    s: s,
+                    revealComplete: revealComplete,
+                    useTwoColumns: true,
+                  ),
+                ),
+              ],
+            ),
+          )
+        : useTwoColumns
         ? KeyedSubtree(
             key: const ValueKey<String>('trivia_answers_grid'),
             child: Column(
@@ -626,7 +671,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: List.generate(4, (slot) {
+              children: List.generate(optionCount, (slot) {
                 return _optionTile(
                   row: row,
                   perm: perm,

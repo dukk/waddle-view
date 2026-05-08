@@ -33,6 +33,8 @@ import 'display/screen_rotator.dart';
 import 'data/data_write_context.dart';
 import 'data/engine/data_collection_engine.dart';
 import 'data/providers/google_calendar/google_calendar_data_provider.dart';
+import 'data/providers/bing_image_of_day/bing_image_of_day_data_provider.dart';
+import 'data/providers/flickr_media/flickr_media_data_provider.dart';
 import 'data/providers/joke/joke_data_provider.dart';
 import 'data/providers/onedrive_media/onedrive_media_data_provider.dart';
 import 'data/providers/outlook_calendar/outlook_calendar_data_provider.dart';
@@ -41,6 +43,7 @@ import 'data/providers/rss_news/rss_news_data_provider.dart';
 import 'data/providers/stock_quote/stock_quote_data_provider.dart';
 import 'data/providers/trivia/trivia_data_provider.dart';
 import 'data/providers/nws_weather_gov/nws_weather_gov_alerts_data_provider.dart';
+import 'data/providers/opentdb_trivia/opentdb_trivia_data_provider.dart';
 import 'data/providers/weather/weather_data_provider.dart';
 import 'data/stub_data_provider.dart';
 import 'marquee_cycle_gate.dart';
@@ -144,12 +147,15 @@ Future<void> _waddleBootstrap() async {
         RssNewsDataProvider(),
         JokeDataProvider(),
         TriviaDataProvider(),
+        OpenTdbTriviaDataProvider(),
         WeatherDataProvider(),
         NwsWeatherGovAlertsDataProvider(),
         PexelsDataProvider(),
         GoogleCalendarDataProvider(),
         OutlookCalendarDataProvider(),
         OneDriveMediaDataProvider(),
+        FlickrMediaDataProvider(),
+        BingImageOfDayDataProvider(),
         StockQuoteDataProvider(),
       ],
       context: ctx,

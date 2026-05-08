@@ -216,6 +216,46 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       'model': 'gpt-4o-mini',
     }),
   ),
+  'opentdb_trivia': ProviderConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'OpenTdbTriviaProviderConfig',
+        description:
+            'Open Trivia DB fetch settings. categoryMap maps local trivia category ids '
+            'to OpenTDB numeric category ids.',
+        properties: {
+          'amount': {'type': 'integer', 'minimum': 1, 'maximum': 50},
+          'difficulty': {
+            'type': 'string',
+            'enum': ['easy', 'medium', 'hard'],
+          },
+          'questionType': {
+            'type': 'string',
+            'enum': ['multiple', 'boolean'],
+          },
+          'categoryMap': {
+            'type': 'object',
+            'additionalProperties': {'type': 'integer', 'minimum': 1},
+          },
+          'questionRetentionDays': {'type': 'integer'},
+          'maxQuestionChars': {'type': 'integer', 'minimum': 20},
+          'maxOptionChars': {'type': 'integer', 'minimum': 10},
+        },
+      ),
+    ),
+    example: jsonEncode({
+      'amount': 10,
+      'difficulty': 'easy',
+      'questionType': 'multiple',
+      'categoryMap': {
+        'science': 17,
+        'history': 23,
+      },
+      'questionRetentionDays': 15,
+      'maxQuestionChars': 90,
+      'maxOptionChars': 45,
+    }),
+  ),
   'stocks': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
@@ -473,6 +513,45 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       'category': 'flickr',
       'perPollLimit': 20,
       'sort': 'date-posted-desc',
+    }),
+  ),
+  'bing_iotd': ProviderConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'BingImageOfDayProviderConfig',
+        description:
+            'Bing homepage image of the day. Fetches HPImageArchive JSON then '
+            'downloads {baseUrl}{urlbase}_{resolution}.jpg. No API key.',
+        properties: {
+          'retentionDays': {
+            'type': 'integer',
+            'description': 'Age-based prune; <=0 disables pruning.',
+          },
+          'market': {'type': 'string', 'minLength': 1},
+          'resolution': {
+            'type': 'string',
+            'enum': [
+              'UHD',
+              '1920x1200',
+              '1920x1080',
+              '1366x768',
+              '1080x1920',
+              '768x1280',
+            ],
+          },
+          'category': {
+            'type': 'string',
+            'minLength': 1,
+            'description': 'ContentCategories id for Photos.category',
+          },
+        },
+      ),
+    ),
+    example: jsonEncode({
+      'retentionDays': 1,
+      'market': 'en-US',
+      'resolution': 'UHD',
+      'category': 'bing',
     }),
   ),
 };

@@ -66,6 +66,7 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   );
   await _ensureJokesProviderRow(db);
   await _ensureTriviaProviderRow(db);
+  await _ensureOpenTdbTriviaProviderRow(db);
   await _ensureWeatherProviderRow(db);
   await _ensureNwsWeatherAlertsProviderRow(db);
   await _ensurePexelsProviderRow(db);
@@ -77,6 +78,7 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureOutlookCalendarProviderRow(db);
   await _ensureOneDriveMediaProviderRow(db);
   await _ensureFlickrMediaProviderRow(db);
+  await _ensureBingImageOfDayProviderRow(db);
   await _ensureDefaultWeatherLocations(db);
   await ensureDefaultContentCategories(db);
   await ensureDefaultJokeCategories(db);
@@ -326,7 +328,7 @@ Future<void> _ensureTriviaScreen(AppDatabase db) async {
           id: 'trivia',
           name: 'Trivia',
           description: const Value(
-            'Multiple-choice trivia with progress reveal and strike-out wrong answers',
+            'Trivia with progress reveal and strike-out wrong answers (multiple-choice + true/false)',
           ),
           screenType: 'trivia',
           configJson: const Value('{}'),
@@ -884,6 +886,32 @@ Future<void> _ensureTriviaProviderRow(AppDatabase db) async {
       );
 }
 
+Future<void> _ensureOpenTdbTriviaProviderRow(AppDatabase db) async {
+  final row = await (db.select(
+    db.providerSettings,
+  )..where((t) => t.id.equals('opentdb_trivia'))).getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  final doc = providerConfigJsonDocForType('opentdb_trivia');
+  await db
+      .into(db.providerSettings)
+      .insert(
+        ProviderSettingsCompanion.insert(
+          id: 'opentdb_trivia',
+          providerType: 'opentdb_trivia',
+          enabled: const Value(false),
+          pollSeconds: const Value(3600),
+          baseUrl: const Value('https://opentdb.com/api.php'),
+          configJson: const Value(
+            '{"amount":10,"questionType":"multiple","categoryMap":{"science":17,"history":23}}',
+          ),
+          configJsonSchema: Value(doc.schema),
+          exampleConfigJson: Value(doc.example),
+        ),
+      );
+}
+
 Future<void> _ensureWeatherProviderRow(AppDatabase db) async {
   final row = await (db.select(
     db.providerSettings,
@@ -1068,6 +1096,32 @@ Future<void> _ensureFlickrMediaProviderRow(AppDatabase db) async {
           baseUrl: const Value('https://api.flickr.com/services/rest'),
           configJson: const Value(
             '{"groupIds":[],"category":"flickr","perPollLimit":20,"sort":"date-posted-desc"}',
+          ),
+          configJsonSchema: Value(doc.schema),
+          exampleConfigJson: Value(doc.example),
+        ),
+      );
+}
+
+Future<void> _ensureBingImageOfDayProviderRow(AppDatabase db) async {
+  final row = await (db.select(
+    db.providerSettings,
+  )..where((t) => t.id.equals('bing_iotd'))).getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  final doc = providerConfigJsonDocForType('bing_iotd');
+  await db
+      .into(db.providerSettings)
+      .insert(
+        ProviderSettingsCompanion.insert(
+          id: 'bing_iotd',
+          providerType: 'bing_iotd',
+          enabled: const Value(true),
+          pollSeconds: const Value(3600),
+          baseUrl: const Value('https://www.bing.com'),
+          configJson: const Value(
+            '{"retentionDays":1,"market":"en-US","resolution":"UHD","category":"bing"}',
           ),
           configJsonSchema: Value(doc.schema),
           exampleConfigJson: Value(doc.example),

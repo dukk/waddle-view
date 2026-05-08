@@ -431,6 +431,55 @@ void main() {
     expect(rows, hasLength(1));
   });
 
+  test('collect accepts true_false rows with A/B options only', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.providerSettings).insert(
+          ProviderSettingsCompanion.insert(
+            id: 'trivia',
+            providerType: 'trivia',
+            pollSeconds: const Value(1),
+            configJson: const Value('{"maxQuestionPerDay":5}'),
+            baseUrl: const Value('http://api.local/v1'),
+          ),
+        );
+    await db.into(db.triviaCategories).insert(
+          TriviaCategoriesCompanion.insert(id: 'ok', label: 'Ok'),
+        );
+
+    final secrets = InMemorySecretStore();
+    await secrets.write('${ProviderConfigResolver.accessTokenKey}:trivia', 't');
+    final resolver = ProviderConfigResolver(db, secrets);
+    final ctx = DataWriteContextImpl(
+      db: db,
+      blobs: FakeBlobStore(),
+      secrets: secrets,
+      resolve: resolver.resolve,
+    );
+
+    final row = {
+      'categoryId': 'ok',
+      'question': 'The sky is blue.',
+      'A': 'True',
+      'B': 'False',
+      'correct': 'A',
+    };
+    final apiPayload = _chatJson(jsonEncode([row]));
+    final provider = TriviaDataProvider(
+      httpClient: _FakeOpenAi(apiPayload),
+      now: () => DateTime(2026, 1, 1),
+    );
+    await provider.collect(ctx);
+
+    final rows = await db.select(db.triviaQuestions).get();
+    expect(rows, hasLength(1));
+    expect(rows.single.optionA, 'True');
+    expect(rows.single.optionB, 'False');
+    expect(rows.single.optionC, '');
+    expect(rows.single.optionD, '');
+    expect(rows.single.correctOption, 'A');
+  });
+
   test('user prompt lists recent questions to avoid', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);

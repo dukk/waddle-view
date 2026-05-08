@@ -247,32 +247,33 @@ class TriviaDataProvider implements IDataProvider {
             q == null ||
             a == null ||
             b == null ||
-            c == null ||
-            d == null ||
             correctRaw == null) {
           continue;
         }
-        final correctNorm = _normalizeCorrectOption(correctRaw);
+        final isTrueFalse = c == null || d == null;
+        if (!isTrueFalse && (c == null || d == null)) {
+          continue;
+        }
+        final correctNorm = _normalizeCorrectOption(correctRaw, isTrueFalse);
         if (correctNorm == null) {
           continue;
         }
         final qt = q.trim();
         final at = a.trim();
         final bt = b.trim();
-        final ct = c.trim();
-        final dt = d.trim();
+        final ct = c?.trim() ?? '';
+        final dt = d?.trim() ?? '';
         if (qt.isEmpty ||
             at.isEmpty ||
             bt.isEmpty ||
-            ct.isEmpty ||
-            dt.isEmpty) {
+            (isTrueFalse ? false : (ct.isEmpty || dt.isEmpty))) {
           continue;
         }
         if (qt.length > _kMaxTriviaQuestionChars ||
             at.length > _kMaxTriviaOptionChars ||
             bt.length > _kMaxTriviaOptionChars ||
-            ct.length > _kMaxTriviaOptionChars ||
-            dt.length > _kMaxTriviaOptionChars) {
+            (ct.length > _kMaxTriviaOptionChars) ||
+            (dt.length > _kMaxTriviaOptionChars)) {
           continue;
         }
         if (!categoryById.containsKey(cid)) {
@@ -337,11 +338,17 @@ class TriviaDataProvider implements IDataProvider {
     return null;
   }
 
-  static String? _normalizeCorrectOption(Object raw) {
+  static String? _normalizeCorrectOption(Object raw, bool isTrueFalse) {
     if (raw is! String) {
       return null;
     }
     final u = raw.trim().toUpperCase();
+    if (isTrueFalse) {
+      if (u == 'A' || u == 'B') {
+        return u;
+      }
+      return null;
+    }
     if (u == 'A' || u == 'B' || u == 'C' || u == 'D') {
       return u;
     }
@@ -467,7 +474,9 @@ class TriviaDataProvider implements IDataProvider {
       ..writeln(
         'Each object must be: '
         '{"categoryId": "<id>", "question": "<text>", '
-        '"A": "<choice>", "B": "<choice>", "C": "<choice>", "D": "<choice>", '
+        '"questionType":"multiple_choice"|"true_false", '
+        '"A": "<choice>", "B": "<choice>", '
+        '"C": "<choice|null>", "D": "<choice|null>", '
         '"correct": "A"|"B"|"C"|"D"}',
       )
       ..writeln(
