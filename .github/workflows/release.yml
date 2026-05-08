@@ -1,0 +1,42 @@
+# Builds Windows + Linux x64 bundles and publishes a GitHub Release on v* tags.
+# Reusable jobs: release-windows.yml, release-linux-x64.yml. Pi ARM64: release-pi.yml.
+name: Release (all desktop bundles)
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    uses: ./.github/workflows/release-windows.yml
+
+  linux:
+    uses: ./.github/workflows/release-linux-x64.yml
+
+  publish:
+    needs: [windows, linux]
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-x64-bundle
+          path: release-assets
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-x64-bundle
+          path: release-assets
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            release-assets/*.zip
+            release-assets/*.tar.gz

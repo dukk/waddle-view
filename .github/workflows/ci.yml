@@ -26,9 +26,14 @@ jobs:
           for dep in clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libsecret-1-dev libjsoncpp-dev libmpv-dev; do
             grep -qx "$dep" "$DEPS_FILE"
           done
-      - name: Ensure release workflow installs from shared list
+      - name: Ensure release workflows install Linux deps from shared list
         run: |
-          grep -nE 'LINUX_BUILD_DEPS_FILE|xargs -a "\$LINUX_BUILD_DEPS_FILE"' "$GITHUB_WORKSPACE/.github/workflows/pi-release.yml"
+          for wf in release-pi release-linux-x64; do
+            f="$GITHUB_WORKSPACE/.github/workflows/${wf}.yml"
+            test -f "$f"
+            grep -q 'LINUX_BUILD_DEPS_FILE' "$f"
+            grep -q 'xargs -a "$LINUX_BUILD_DEPS_FILE"' "$f"
+          done
 
   analyze-test:
     runs-on: ubuntu-latest

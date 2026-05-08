@@ -56,6 +56,11 @@ const kContentCategoryDefaults = <ContentCategoryDef>[
     materialIconName: 'wallpaper',
   ),
   ContentCategoryDef(
+    id: 'flickr',
+    label: 'Flickr',
+    materialIconName: 'photo_camera',
+  ),
+  ContentCategoryDef(
     id: 'nature',
     label: 'Nature',
     materialIconName: 'forest',

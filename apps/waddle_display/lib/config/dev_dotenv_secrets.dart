@@ -43,6 +43,12 @@ const String pexelsApiKeyEnv = 'PEXELS_API_KEY';
 /// Optional explicit Pexels key (otherwise [pexelsApiKeyEnv]).
 const String waddlePexelsAccessTokenKey = 'WADDLE_PEXELS_ACCESS_TOKEN';
 
+/// Flickr REST API key (https://www.flickr.com/services/api/).
+const String flickrApiKeyEnv = 'FLICKR_API_KEY';
+
+/// Optional explicit Flickr key (otherwise [flickrApiKeyEnv]).
+const String waddleFlickrAccessTokenKey = 'WADDLE_FLICKR_ACCESS_TOKEN';
+
 /// Finnhub API key (https://finnhub.io/) for the `stocks` provider.
 const String finnhubApiKeyEnv = 'FINNHUB_API_KEY';
 
@@ -91,6 +97,19 @@ String? readPexelsTokenFromDotenvMap(Map<String, String> map) {
   final p = map[pexelsApiKeyEnv]?.trim();
   if (p != null && p.isNotEmpty) {
     return p;
+  }
+  return null;
+}
+
+/// Flickr provider API key from dotenv map.
+String? readFlickrTokenFromDotenvMap(Map<String, String> map) {
+  final explicit = map[waddleFlickrAccessTokenKey]?.trim();
+  if (explicit != null && explicit.isNotEmpty) {
+    return explicit;
+  }
+  final f = map[flickrApiKeyEnv]?.trim();
+  if (f != null && f.isNotEmpty) {
+    return f;
   }
   return null;
 }
@@ -186,6 +205,14 @@ Future<void> applyJokesTokenFromDevDotenv(SecretStore secrets) async {
       pexelsToken,
     );
     AppDebugLog.startup('Dev .env: stored Pexels provider API key in SecretStore');
+  }
+  final flickrToken = readFlickrTokenFromDotenvMap(dotenv.env);
+  if (flickrToken != null && flickrToken.isNotEmpty) {
+    await secrets.write(
+      '${ProviderConfigResolver.accessTokenKey}:flickr_media',
+      flickrToken,
+    );
+    AppDebugLog.startup('Dev .env: stored Flickr provider API key in SecretStore');
   }
   final stocksToken = readStocksTokenFromDotenvMap(dotenv.env);
   if (stocksToken != null && stocksToken.isNotEmpty) {

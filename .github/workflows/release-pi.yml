@@ -1,0 +1,75 @@
+name: Release build — Pi Linux arm64
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: apps/waddle_display
+
+jobs:
+  # ubuntu-22.04-arm ships glibc 2.35; Raspberry Pi OS Bookworm ships 2.36. Building on
+  # ubuntu-24.04-arm produced binaries requiring GLIBC_2.38+ and broke Pi images.
+  build-linux-arm64:
+    runs-on: ubuntu-22.04-arm
+    env:
+      LINUX_BUILD_DEPS_FILE: ${{ github.workspace }}/deploy/linux-arm64/build-deps.txt
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Flutter SDK (arm64)
+        run: |
+          git clone --depth 1 --branch 3.41.9 https://github.com/flutter/flutter.git "$HOME/flutter"
+          echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
+      - name: Show Flutter version
+        run: flutter --version
+      - name: Validate Linux dependency baseline
+        run: |
+          test -f "$LINUX_BUILD_DEPS_FILE"
+          for dep in clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libsecret-1-dev libjsoncpp-dev libmpv-dev; do
+            grep -qx "$dep" "$LINUX_BUILD_DEPS_FILE"
+          done
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          xargs -a "$LINUX_BUILD_DEPS_FILE" sudo apt-get install -y
+      - run: flutter config --enable-linux-desktop
+      - run: flutter pub get
+      - name: Generate code
+        run: dart run build_runner build --delete-conflicting-outputs
+      - run: flutter build linux --release
+      - name: Audit Linux runtime dependencies
+        run: |
+          APP_BIN="build/linux/arm64/release/bundle/waddle_display"
+          test -x "$APP_BIN"
+          ldd "$APP_BIN" | tee /tmp/waddle-ldd.txt
+          if grep -q "not found" /tmp/waddle-ldd.txt; then
+            echo "Missing runtime shared libraries detected."
+            exit 1
+          fi
+      - name: Assert Raspberry Pi OS Bookworm glibc baseline (libc6 2.36)
+        run: |
+          APP_BIN="build/linux/arm64/release/bundle/waddle_display"
+          MAX="$(objdump -T "$APP_BIN" | grep -oE 'GLIBC_[0-9.]+' | sed 's/^GLIBC_//' | sort -Vu | tail -1)"
+          if [[ -z "$MAX" ]]; then
+            echo "Could not parse GLIBC_* symbol versions from $APP_BIN"
+            exit 1
+          fi
+          echo "Highest GLIBC symbol version referenced: $MAX"
+          if [[ "$(printf '%s\n%s\n' "$MAX" "2.36" | sort -V | tail -1)" != "2.36" ]]; then
+            echo "Binary requires glibc newer than Raspberry Pi OS Bookworm (2.36). Use ubuntu-22.04-arm or build on Bookworm."
+            exit 1
+          fi
+      - name: Package dist
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          DIST="waddle-view-linux-arm64-${VERSION}"
+          mkdir -p "../../dist/${DIST}"
+          cp -r build/linux/arm64/release/bundle "../../dist/${DIST}/"
+          cp -r ../../deploy/linux-arm64/* "../../dist/${DIST}/" 2>/dev/null || true
+          cd ../../dist && tar czf "${DIST}.tar.gz" "${DIST}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-arm64-bundle
+          path: dist/*.tar.gz

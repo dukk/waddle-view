@@ -1,0 +1,41 @@
+# Windows x64 release bundle. Callable from release.yml or run alone (workflow_dispatch).
+name: Release build — Windows x64
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: apps/waddle_display
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.9'
+          channel: stable
+      - run: flutter pub get
+      - name: Generate code
+        run: dart run build_runner build --delete-conflicting-outputs
+      - run: flutter build windows --release
+      - name: Package dist
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}"
+          $distName = "waddle-view-windows-x64-$version"
+          $releaseDir = "build/windows/x64/runner/Release"
+          if (-not (Test-Path "$releaseDir/waddle_display.exe")) { throw "Missing $releaseDir/waddle_display.exe" }
+          New-Item -ItemType Directory -Force "../../dist" | Out-Null
+          $zip = "../../dist/$distName.zip"
+          Compress-Archive -Path "$releaseDir/*" -DestinationPath $zip -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64-bundle
+          path: dist/*.zip

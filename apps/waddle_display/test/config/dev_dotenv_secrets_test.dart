@@ -153,6 +153,37 @@ void main() {
     );
   });
 
+  test('readFlickrTokenFromDotenvMap prefers WADDLE_FLICKR_ACCESS_TOKEN', () {
+    expect(
+      readFlickrTokenFromDotenvMap({
+        waddleFlickrAccessTokenKey: ' fl-a ',
+        flickrApiKeyEnv: 'fl-b',
+      }),
+      'fl-a',
+    );
+  });
+
+  test('readFlickrTokenFromDotenvMap falls back to FLICKR_API_KEY', () {
+    expect(
+      readFlickrTokenFromDotenvMap({flickrApiKeyEnv: ' fl-only '}),
+      'fl-only',
+    );
+  });
+
+  test('applyJokesTokenFromDevDotenv writes Flickr key', () async {
+    dotenv.clean();
+    dotenv.loadFromString(
+      envString: 'FLICKR_API_KEY=fl-from-dotenv',
+      isOptional: true,
+    );
+    final secrets = InMemorySecretStore();
+    await applyJokesTokenFromDevDotenv(secrets);
+    expect(
+      await secrets.read('${ProviderConfigResolver.accessTokenKey}:flickr_media'),
+      'fl-from-dotenv',
+    );
+  });
+
   test('readStocksTokenFromDotenvMap reads FINNHUB_API_KEY', () {
     expect(
       readStocksTokenFromDotenvMap({finnhubApiKeyEnv: ' fhub-token '}),

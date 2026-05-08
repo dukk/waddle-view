@@ -84,6 +84,8 @@ flutter build linux --release
 - **Windows**: runnable under `build/windows/x64/runner/Release/` (launch `waddle_display.exe` from Explorer or a terminal).
 - **Linux**: bundle under `build/linux/<arch>/release/bundle/` (e.g. `arm64` on an ARM64 host). Run the `waddle_display` executable from that **bundle** directory so assets resolve correctly.
 
+**GitHub Releases:** pushing a **`v*`** tag runs **[`release.yml`](../../.github/workflows/release.yml)**, which builds Windows (**[`release-windows.yml`](../../.github/workflows/release-windows.yml)** → **`.zip`**) and Linux x64 (**[`release-linux-x64.yml`](../../.github/workflows/release-linux-x64.yml)** → **`.tar.gz`**) and attaches both to the GitHub Release. **[`release-pi.yml`](../../.github/workflows/release-pi.yml)** produces the ARM64 Pi tarball artifact separately. You can also run **`release-windows.yml`** or **`release-linux-x64.yml`** alone via **workflow_dispatch**. Publishing to a GitHub Release only happens from **`release.yml`** on tag pushes.
+
 Tagged **Pi** tarballs and `install.sh` are produced in CI and documented under [`../../docs/pi/`](../../docs/pi/); templates live in [`../../deploy/linux-arm64/`](../../deploy/linux-arm64/).
 
 ## Deployed / Raspberry Pi (summary)
@@ -356,7 +358,11 @@ The **Flickr media** provider (`id` / `provider_type`: **`flickr_media`**) pulls
 
 **Image URL fallback:** provider prefers `url_o`, then `url_l`, `url_c`, `url_z`, `url_m`.
 
+**Screens:** use **`pexels_photo`** (or collage widgets); set **`config.categoryId`** to the same slug as **`category`** (default **`flickr`**) so the curator pool includes downloaded Flickr rows.
+
 **`provider_settings.poll_seconds`:** default **3600** when seeded.
+
+**Debug `.env`:** **`FLICKR_API_KEY`** or **`WADDLE_FLICKR_ACCESS_TOKEN`** (see [`.env.example`](.env.example)).
 
 ## Bing image of the day
 

@@ -6,6 +6,10 @@
 - Pi / ops docs: **`docs/pi/`**
 - Install templates: **`deploy/linux-arm64/`**
 
+## Pi / Linux ARM64 release (CI)
+
+The **[`release-pi.yml`](../../.github/workflows/release-pi.yml)** job runs on **`ubuntu-22.04-arm`** so the Linux ARM64 binary stays compatible with **Raspberry Pi OS Bookworm** (glibc **2.36**). Do not switch that runner to Ubuntu 24.04 without also moving the supported Pi base image to a newer distro.
+
 ## Local development
 
 - **Windows**: `flutter run -d windows` (GTK not required).
