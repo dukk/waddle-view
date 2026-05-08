@@ -1,0 +1,16 @@
+---
+description: Validate project SKILL.md files and AGENTS.md — frontmatter, paths, links
+globs:
+  - AGENTS.md
+  - .cursor/skills/**
+alwaysApply: false
+---
+
+# Cursor skills and AGENTS briefing (edit checklist)
+
+- **Layout**: Each project skill is **`.cursor/skills/<name>/SKILL.md`** (optional extras beside `SKILL.md` are fine). Use YAML frontmatter with **`name`**, **`description`**, and optional **`disable-model-invocation`**, matching other skills in this repo.
+- **Repo paths**: Every `cd`, backtick path, and **relative markdown link** must resolve on a **case-sensitive** checkout. The Flutter app in Git is **`apps/waddle_display/`** (underscore). Replace stale **`apps/waddle-display`** / **`apps/waddle_view`** segments when you touch the file—confirm with **`git ls-files apps/`** or **[`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)** `working-directory`.
+- **Link depth**: From **`.cursor/skills/.../SKILL.md`**, repo-root files use **`../../../`** (e.g. **`[AGENTS.md](../../../AGENTS.md)`**, **`[lib/foo.dart](../../../apps/waddle_display/lib/foo.dart)`**). Fix broken relatives when moving a skill folder.
+- **`AGENTS.md`**: Keep commands, coverage paths, and doc examples consistent with the **current** app directory name; mention **[`waddle-view-flutter.mdc`](waddle-view-flutter.mdc)** / **[`github-actions-workflows.mdc`](github-actions-workflows.mdc)** when automation or CI paths change.
+- **Prose vs path**: Hyphenated **waddle-display** is fine as a **product label** in descriptions; **filesystem** segments must use **`waddle_display`** or paths under **`apps/waddle_display/`**.
+- **Cross-check**: After edits, grep the file and siblings under **`.cursor/skills/`** for `waddle-display`, `waddle_view`, and wrong `../../../apps/` segments.

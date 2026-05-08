@@ -1,0 +1,13 @@
+---
+description: Keep GitHub Actions workflows valid — paths, triggers, and Linux runners
+globs: .github/workflows/**
+alwaysApply: false
+---
+
+# GitHub Actions (don’t break CI)
+
+- **Real app directory**: The Flutter package checked into Git lives under **`apps/waddle_display/`** (underscore). **`apps/waddle-display`** and **`apps/waddle_view`** are not the tracked path—`defaults.run.working-directory`, `run: cd …`, artifact paths, and **`on.*.paths`** must match **`apps/waddle_display`** (Linux runners are case-sensitive).
+- **Verify before commit**: After editing a workflow, grep it for `apps/waddle` and confirm every reference is **`waddle_display`**. If the app is ever renamed in Git, update **all** workflows and **`pull_request` / `push` path filters** in the same change.
+- **Path filters**: `on.pull_request.paths` entries that don’t match real folders mean CI **never runs** for those PRs—keep them aligned with the tree (e.g. `'apps/waddle_display/**'`).
+- **Cross-check**: Docker/deploy docs that mount build output (e.g. Pi image) should use the same **`apps/waddle_display/...`** segment as local **`git ls-files apps/`**.
+- **Optional sanity check**: Run a quick YAML parse locally if you use a schema validator; workflow logic errors still need **`gh workflow run`** / a test branch or PR to fully exercise.

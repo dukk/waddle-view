@@ -7,7 +7,7 @@ on:
 
 defaults:
   run:
-    working-directory: apps/waddle_view
+    working-directory: apps/waddle_display
 
 jobs:
   build-linux-arm64:

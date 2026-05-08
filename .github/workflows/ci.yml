@@ -5,14 +5,14 @@ on:
     branches: [main, master]
   pull_request:
     paths:
-      - 'apps/waddle-display/**'
+      - 'apps/waddle_display/**'
       - 'deploy/**'
       - 'docs/pi/**'
       - '.github/workflows/**'
 
 defaults:
   run:
-    working-directory: apps/waddle-display
+    working-directory: apps/waddle_display
 
 jobs:
   analyze-test:

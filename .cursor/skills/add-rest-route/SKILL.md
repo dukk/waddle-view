@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 # Add REST route (Shelf)
 
-Repo constraints: [AGENTS.md](../../../AGENTS.md) (default app **`apps/waddle-display/`**; tests-first; coverage; deployment API keys must not be committed—document paths only).
+Repo constraints: [AGENTS.md](../../../AGENTS.md) (default app **`apps/waddle_display/`**; tests-first; coverage; deployment API keys must not be committed—document paths only).
 
 ## Forbidden
 
@@ -21,8 +21,8 @@ Repo constraints: [AGENTS.md](../../../AGENTS.md) (default app **`apps/waddle-di
 
 ## Steps
 
-1. Add handler under `apps/waddle-display/lib/api/` wired through `shelf_router` (see existing handlers in that directory).
-2. Add integration test under `apps/waddle-display/test/api/` using `HttpClient` and a temp API key file (match existing tests).
+1. Add handler under `apps/waddle_display/lib/api/` wired through `shelf_router` (see existing handlers in that directory).
+2. Add integration test under `apps/waddle_display/test/api/` using `HttpClient` and a temp API key file (match existing tests).
 3. Update [`docs/pi/api.md`](../../../docs/pi/api.md) with a `curl` example.
 
 ## Done criteria
@@ -31,4 +31,4 @@ Repo constraints: [AGENTS.md](../../../AGENTS.md) (default app **`apps/waddle-di
 
 ## Verification
 
-From `apps/waddle-display`: `flutter analyze`, `flutter test test/api/`.
+From `apps/waddle_display`: `flutter analyze`, `flutter test test/api/`.

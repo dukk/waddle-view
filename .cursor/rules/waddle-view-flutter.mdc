@@ -1,15 +1,15 @@
 ---
 description: Waddle View Flutter app — SOLID, TDD, coverage, security
-globs: apps/waddle-display/**
+globs: apps/waddle_display/**
 alwaysApply: false
 ---
 
-# waddle_display (`apps/waddle-display`)
+# waddle_display (`apps/waddle_display`)
 
 - **SOLID**: ports under `lib/blob/`, `lib/secrets/`, `lib/data/`, `lib/api/`, `lib/window/`, etc.; composition in `lib/main.dart`. Repositories own Drift access; HTTP handlers delegate to repositories; no secrets in SQLite.
 - **TDD**: tests first for new behavior; `test/` mirrors `lib/`. **`dart_test.yaml`** caps each test at **60s** so hangs fail fast; use `test(..., timeout: ...)` only when a test truly needs more wall time.
-- **Coverage**: keep `apps/waddle-display/lib/` at **≥ 90%** line coverage when practical.
+- **Coverage**: keep `apps/waddle_display/lib/` at **≥ 90%** line coverage when practical.
 - **Dependencies**: justify new packages in PR/commit message.
 - **No drive-by refactors** unrelated to the task.
-- **Docs stay current**: if behavior, config/env vars, API surface, or operator workflow changes, update docs in the same change set (for example `apps/waddle-display/README.md`, `.env.example`, and runbooks), or state why docs are unchanged.
+- **Docs stay current**: if behavior, config/env vars, API surface, or operator workflow changes, update docs in the same change set (for example `apps/waddle_display/README.md`, `.env.example`, and runbooks), or state why docs are unchanged.
 - **Drift migrations required**: any schema/data-shape change under `lib/persistence/` must include migration updates plus tests that validate upgrade/read compatibility.

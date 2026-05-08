@@ -1,0 +1,14 @@
+---
+description: Validate and maintain .cursor/rules/*.mdc — frontmatter, globs, paths
+globs: .cursor/rules/**
+alwaysApply: false
+---
+
+# Cursor rules (edit checklist)
+
+- **Frontmatter**: Each file starts with `---` YAML containing **`description`** (short, specific). Set **`alwaysApply: true`** only for repo-wide norms; otherwise use **`globs: …`** as a single path pattern from the repo root.
+- **Globs must exist**: Patterns should match **real** directories on disk/Git (Linux CI is case-sensitive). For this repo, the Flutter app path is **`apps/waddle_display/**`**—not `apps/waddle-display` or `apps/waddle_view`. After changing a glob, confirm with `git ls-files` or the tree under `apps/`.
+- **Body vs glob**: Path examples inside the rule (e.g. `cd apps/waddle_display`) must agree with **`globs`** and with **[`AGENTS.md`](../../AGENTS.md)** where it describes the same tree.
+- **Scope**: One concern per file; keep each rule **concise** (on the order of **50 lines** of guidance or less). Prefer linking to `AGENTS.md` or a workflow rule instead of duplicating long command lists.
+- **Cross-rules pass**: When you add or rename paths/workflows, grep **all** of `.cursor/rules/` for old segments (`waddle-display`, `waddle_view`) and update in the same change when still inaccurate.
+- **Skills & `AGENTS.md`**: When editing **[`.cursor/skills/`](../../.cursor/skills/)** or **[`AGENTS.md`](../../AGENTS.md)**, follow **[`cursor-skills-and-agents.mdc`](cursor-skills-and-agents.mdc)**.

@@ -16,7 +16,7 @@
 # Env
 .env
 .env.*
-!apps/waddle-display/.env.example
+!apps/waddle_display/.env.example
 
 # OS
 .DS_Store
