@@ -74,11 +74,21 @@ CREATE TABLE screen_definitions (
           await (db.select(db.screenDefinitions)
                 ..where((t) => t.id.equals('s')))
               .getSingle();
-      expect(scr.layoutJson, '{}');
-      expect(scr.layoutJsonSchema, isNotNull);
-      expect(scr.exampleLayoutJson, isNotNull);
-      jsonDecode(scr.layoutJsonSchema!);
-      jsonDecode(scr.exampleLayoutJson!);
+      expect(scr.screenType, 'static_text');
+      expect(scr.configJson, '{}');
+      expect(scr.configJsonSchema, isNotNull);
+      expect(scr.exampleConfigJson, isNotNull);
+      jsonDecode(scr.configJsonSchema!);
+      jsonDecode(scr.exampleConfigJson!);
+
+      final screenCols = await db
+          .customSelect('PRAGMA table_info(screen_definitions);')
+          .get();
+      final screenColNames =
+          screenCols.map((r) => r.read<String>('name')).toSet();
+      expect(screenColNames.contains('layout_json'), isFalse);
+      expect(screenColNames.contains('screen_type'), isTrue);
+      expect(screenColNames.contains('config_json'), isTrue);
 
       await db.close();
     },

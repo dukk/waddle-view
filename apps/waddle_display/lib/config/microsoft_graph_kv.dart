@@ -28,6 +28,18 @@ const String kMicrosoftGraphOAuthAlertSource = 'microsoft_graph';
 const String kOneDriveMediaLastCollectKvKey =
     'provider.onedrive_media.last_collect_ms';
 
+/// [AppDatabase.configKeyValues] key for persisted Graph `@odata.deltaLink` per
+/// account and normalized folder path (empty path = whole default drive).
+String kOneDriveMediaDeltaLinkKvKey(
+  String graphAccountKey,
+  String normalizedPath,
+) {
+  final pathTag = normalizedPath.isEmpty
+      ? '_root_'
+      : sha256.convert(utf8.encode(normalizedPath)).toString();
+  return 'provider.onedrive_media.delta_link.$graphAccountKey.$pathTag';
+}
+
 /// Stable [Photos.id] / [Videos.id] for a OneDrive drive item under an account.
 String kOneDriveMediaItemRowId(String graphAccountKey, String driveItemId) {
   final bytes = utf8.encode(

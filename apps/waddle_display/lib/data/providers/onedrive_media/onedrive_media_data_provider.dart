@@ -49,6 +49,27 @@ void _logGraphJsonError(String context, String body) {
   );
 }
 
+const String _onedriveDeltaSelect =
+    'id,name,size,file,image,video,webUrl,lastModifiedDateTime,createdBy,@microsoft.graph.downloadUrl,folder';
+
+Map<String, String> _onedriveDeltaQueryParams() => {
+      r'$top': '200',
+      r'$select': _onedriveDeltaSelect,
+    };
+
+Map<String, Map<String, dynamic>> _deltaItemsLastWins(List<dynamic> values) {
+  final byId = <String, Map<String, dynamic>>{};
+  for (final raw in values) {
+    if (raw is Map<String, dynamic>) {
+      final id = raw['id'];
+      if (id is String && id.isNotEmpty) {
+        byId[id] = Map<String, dynamic>.from(raw);
+      }
+    }
+  }
+  return byId;
+}
+
 /// Syncs photos/videos from OneDrive folders into [Photos] / [Videos] via Graph.
 class OneDriveMediaDataProvider implements IDataProvider {
   factory OneDriveMediaDataProvider({
@@ -185,6 +206,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
     var globalRemaining = extra.globalPerPollLimit;
 
     try {
+      final groups = _sourcesGroupedByAccountPath(extra);
       for (final account in extra.accounts) {
         if (account.sources.isEmpty) {
           continue;
@@ -202,20 +224,25 @@ class OneDriveMediaDataProvider implements IDataProvider {
           continue;
         }
 
-        for (final source in account.sources) {
+        final byPath = groups[account.graphAccountKey];
+        if (byPath == null || byPath.isEmpty) {
+          continue;
+        }
+        for (final entry in byPath.entries) {
           if (globalRemaining <= 0) {
             break;
           }
-          final n = await _syncSource(
+          final outcome = await _syncPathGroup(
             ctx,
             graphBase: graphBase,
             accessToken: token,
             graphAccountKey: account.graphAccountKey,
-            source: source,
+            normalizedPath: entry.key,
+            specs: entry.value,
             nowMs: nowMs,
             globalRemaining: globalRemaining,
           );
-          globalRemaining -= n;
+          globalRemaining = outcome.globalRemaining;
           didSync = true;
         }
         if (globalRemaining <= 0) {
@@ -249,57 +276,243 @@ class OneDriveMediaDataProvider implements IDataProvider {
     return raw.trim().replaceAll(RegExp(r'/$'), '');
   }
 
-  /// Returns number of files downloaded this source.
-  Future<int> _syncSource(
+  Map<String, Map<String, List<OneDriveMediaSourceSpec>>>
+      _sourcesGroupedByAccountPath(OneDriveMediaExtraConfig extra) {
+    final out = <String, Map<String, List<OneDriveMediaSourceSpec>>>{};
+    for (final account in extra.accounts) {
+      final byPath = out.putIfAbsent(account.graphAccountKey, () => {});
+      for (final source in account.sources) {
+        final key = _normalizePathKey(source.path);
+        byPath.putIfAbsent(key, () => []).add(source);
+      }
+    }
+    return out;
+  }
+
+  String _normalizePathKey(String raw) {
+    return raw.trim().replaceFirst(RegExp(r'^/+'), '');
+  }
+
+  String _rootDeltaUrl(String graphBase) {
+    return Uri.parse('$graphBase/me/drive/root/delta')
+        .replace(queryParameters: _onedriveDeltaQueryParams())
+        .toString();
+  }
+
+  String _folderDeltaUrl(String graphBase, String folderId) {
+    return Uri.parse('$graphBase/me/drive/items/$folderId/delta')
+        .replace(queryParameters: _onedriveDeltaQueryParams())
+        .toString();
+  }
+
+  Future<void> _clearDeltaKv(AppDatabase db, String deltaKey) async {
+    await (db.delete(
+      db.configKeyValues,
+    )..where((t) => t.key.equals(deltaKey))).go();
+  }
+
+  Future<void> _persistDeltaLink(
+    AppDatabase db,
+    String deltaKey,
+    String deltaLink,
+  ) async {
+    await db.into(db.configKeyValues).insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: deltaKey,
+            value: deltaLink,
+          ),
+        );
+  }
+
+  Future<String?> _resolveFolderId(
+    DataWriteContext ctx, {
+    required String graphBase,
+    required String accessToken,
+    required String normalizedPath,
+  }) async {
+    final encodedPath = _encodeDrivePath(normalizedPath);
+    final itemUrl = encodedPath.isEmpty
+        ? '$graphBase/me/drive/root'
+        : '$graphBase/me/drive/root:$encodedPath:';
+    final uri = Uri.parse(itemUrl).replace(
+      queryParameters: const {
+        r'$select': 'id,folder',
+      },
+    );
+    AppDebugLog.provider(
+      'onedrive_media: GET folder item ${AppDebugLog.safeHttpUri(uri)}',
+    );
+    final res = await _http.get(
+      uri,
+      headers: {'Authorization': 'Bearer $accessToken'},
+    );
+    if (res.statusCode != 200) {
+      AppDebugLog.provider(
+        'onedrive_media: folder item status=${res.statusCode}',
+      );
+      _logGraphJsonError('onedrive_media: folder item', res.body);
+      return null;
+    }
+    final m = jsonDecode(res.body) as Map<String, dynamic>;
+    if (m['folder'] is! Map<String, dynamic>) {
+      AppDebugLog.provider(
+        'onedrive_media: path is not a folder (missing folder facet)',
+      );
+      return null;
+    }
+    final id = m['id'];
+    if (id is! String || id.isEmpty) {
+      return null;
+    }
+    return id;
+  }
+
+  bool _specMatchesMime(OneDriveMediaSourceSpec spec, String mime) {
+    switch (spec.kind) {
+      case 'photo':
+        return _isPhotoMime(mime);
+      case 'video':
+        return _isVideoMime(mime);
+      case 'both':
+        return _isPhotoMime(mime) || _isVideoMime(mime);
+      default:
+        return false;
+    }
+  }
+
+  Future<void> _deleteLocalDriveItem(
+    DataWriteContext ctx,
+    String graphAccountKey,
+    String driveItemId,
+  ) async {
+    final rowId = kOneDriveMediaItemRowId(graphAccountKey, driveItemId);
+    final photo =
+        await (ctx.db.select(
+              ctx.db.photos,
+            )..where((t) => t.id.equals(rowId)))
+            .getSingleOrNull();
+    if (photo != null) {
+      await _deletePhoto(ctx, photo);
+    }
+    final video =
+        await (ctx.db.select(
+              ctx.db.videos,
+            )..where((t) => t.id.equals(rowId)))
+            .getSingleOrNull();
+    if (video != null) {
+      await _deleteVideo(ctx, video);
+    }
+  }
+
+  /// Pull-only delta sync for one account path (recursive subtree). Returns
+  /// updated [globalRemaining] after downloads.
+  Future<({int downloads, int globalRemaining})> _syncPathGroup(
     DataWriteContext ctx, {
     required String graphBase,
     required String accessToken,
     required String graphAccountKey,
-    required OneDriveMediaSourceSpec source,
+    required String normalizedPath,
+    required List<OneDriveMediaSourceSpec> specs,
     required int nowMs,
     required int globalRemaining,
   }) async {
-    final perSourceCap = source.effectivePerPollLimit;
+    final deltaKey = kOneDriveMediaDeltaLinkKvKey(
+      graphAccountKey,
+      normalizedPath,
+    );
+    final storedRow =
+        await (ctx.db.select(
+              ctx.db.configKeyValues,
+            )..where((t) => t.key.equals(deltaKey)))
+            .getSingleOrNull();
+    var url = storedRow?.value.trim();
     var downloaded = 0;
-    String? url = _childrenListUrl(graphBase, source.path);
-    var childrenPage = 0;
+    var globalR = globalRemaining;
+    final perSpecLeft = specs.map((s) => s.effectivePerPollLimit).toList();
 
-    while (url != null && downloaded < perSourceCap && globalRemaining > 0) {
-      final pageUrl = url;
-      childrenPage++;
-      final pageUri = Uri.parse(pageUrl);
+    if (url == null || url.isEmpty) {
+      if (normalizedPath.isEmpty) {
+        url = _rootDeltaUrl(graphBase);
+      } else {
+        final folderId = await _resolveFolderId(
+          ctx,
+          graphBase: graphBase,
+          accessToken: accessToken,
+          normalizedPath: normalizedPath,
+        );
+        if (folderId == null) {
+          return (downloads: 0, globalRemaining: globalR);
+        }
+        url = _folderDeltaUrl(graphBase, folderId);
+      }
+    }
+
+    var deltaPage = 0;
+    var goneRetries = 0;
+    String? deltaLinkToPersist;
+
+    while (url != null && url.isNotEmpty) {
+      deltaPage++;
+      final pageUri = Uri.parse(url);
       AppDebugLog.provider(
-        'onedrive_media: GET children page=$childrenPage kind=${source.kind} '
-        'category=${source.category} path=${source.path} '
+        'onedrive_media: GET delta page=$deltaPage '
         '${AppDebugLog.safeHttpUri(pageUri)}',
       );
       final res = await _http.get(
         pageUri,
         headers: {'Authorization': 'Bearer $accessToken'},
       );
+
+      if (res.statusCode == 410) {
+        goneRetries++;
+        if (goneRetries > 2) {
+          AppDebugLog.provider('onedrive_media: delta 410 repeated, abort');
+          break;
+        }
+        await _clearDeltaKv(ctx.db, deltaKey);
+        final loc = res.headers['location']?.trim();
+        if (loc != null && loc.isNotEmpty) {
+          url = loc;
+        } else if (normalizedPath.isEmpty) {
+          url = _rootDeltaUrl(graphBase);
+        } else {
+          final folderId = await _resolveFolderId(
+            ctx,
+            graphBase: graphBase,
+            accessToken: accessToken,
+            normalizedPath: normalizedPath,
+          );
+          if (folderId == null) {
+            break;
+          }
+          url = _folderDeltaUrl(graphBase, folderId);
+        }
+        continue;
+      }
+      goneRetries = 0;
+
       if (res.statusCode != 200) {
         AppDebugLog.provider(
-          'onedrive_media: children status=${res.statusCode} page=$childrenPage',
+          'onedrive_media: delta status=${res.statusCode} page=$deltaPage',
         );
-        _logGraphJsonError('onedrive_media: children', res.body);
+        _logGraphJsonError('onedrive_media: delta', res.body);
         break;
       }
+
       final m = jsonDecode(res.body) as Map<String, dynamic>;
       final values = m['value'];
       if (values is List<dynamic>) {
+        final merged = _deltaItemsLastWins(values);
         AppDebugLog.provider(
-          'onedrive_media: children page=$childrenPage items=${values.length}',
+          'onedrive_media: delta page=$deltaPage uniqueItems=${merged.length}',
         );
-        for (final rawItem in values) {
-          if (downloaded >= perSourceCap || globalRemaining <= 0) {
-            break;
-          }
-          if (rawItem is! Map<String, dynamic>) {
-            continue;
-          }
-          final item = Map<String, dynamic>.from(rawItem);
+        for (final item in merged.values) {
           final id = item['id'];
           if (id is! String || id.isEmpty) {
+            continue;
+          }
+          if (item['deleted'] is Map<String, dynamic>) {
+            await _deleteLocalDriveItem(ctx, graphAccountKey, id);
             continue;
           }
           final file = item['file'];
@@ -310,75 +523,82 @@ class OneDriveMediaDataProvider implements IDataProvider {
           if (mime is! String) {
             continue;
           }
-          if (source.kind == 'photo' && !_isPhotoMime(mime)) {
-            continue;
-          }
-          if (source.kind == 'video' && !_isVideoMime(mime)) {
-            continue;
-          }
-
-          final rowId = kOneDriveMediaItemRowId(graphAccountKey, id);
           final dl = item['@microsoft.graph.downloadUrl'];
           if (dl is! String || dl.isEmpty) {
             continue;
           }
+          final rowId = kOneDriveMediaItemRowId(graphAccountKey, id);
 
-          if (source.kind == 'photo') {
-            final ok = await _tryIngestPhoto(
-              ctx,
-              rowId: rowId,
-              category: source.category,
-              downloadUrl: dl,
-              item: item,
-              nowMs: nowMs,
-            );
-            if (ok) {
-              downloaded++;
-              globalRemaining--;
+          for (var i = 0; i < specs.length; i++) {
+            if (globalR <= 0) {
+              break;
             }
-          } else {
-            final ok = await _tryIngestVideo(
-              ctx,
-              rowId: rowId,
-              category: source.category,
-              downloadUrl: dl,
-              item: item,
-              nowMs: nowMs,
-            );
+            if (perSpecLeft[i] <= 0) {
+              continue;
+            }
+            final spec = specs[i];
+            if (!_specMatchesMime(spec, mime)) {
+              continue;
+            }
+            var ok = false;
+            if (_isPhotoMime(mime)) {
+              ok = await _tryIngestPhoto(
+                ctx,
+                rowId: rowId,
+                category: spec.category,
+                downloadUrl: dl,
+                item: item,
+                nowMs: nowMs,
+              );
+            } else if (_isVideoMime(mime)) {
+              ok = await _tryIngestVideo(
+                ctx,
+                rowId: rowId,
+                category: spec.category,
+                downloadUrl: dl,
+                item: item,
+                nowMs: nowMs,
+              );
+            }
             if (ok) {
               downloaded++;
-              globalRemaining--;
+              globalR--;
+              perSpecLeft[i]--;
             }
           }
         }
       }
-      final next = m['@odata.nextLink'];
-      url = next is String && next.isNotEmpty ? next : null;
+
+      final nextLink = m['@odata.nextLink'];
+      final dLink = m['@odata.deltaLink'];
+      if (dLink is String && dLink.isNotEmpty) {
+        deltaLinkToPersist = dLink;
+        break;
+      }
+      if (nextLink is String && nextLink.isNotEmpty) {
+        url = nextLink;
+      } else {
+        AppDebugLog.provider(
+          'onedrive_media: delta page=$deltaPage missing next and delta link',
+        );
+        break;
+      }
     }
 
-    if (source.kind == 'photo') {
-      await _prunePhotos(ctx, source.category, source.maxFiles);
-    } else {
-      await _pruneVideos(ctx, source.category, source.maxFiles);
+    if (deltaLinkToPersist != null && deltaLinkToPersist.isNotEmpty) {
+      await _persistDeltaLink(ctx.db, deltaKey, deltaLinkToPersist);
     }
 
-    return downloaded;
-  }
+    for (final s in specs) {
+      if (s.kind == 'photo' || s.kind == 'both') {
+        await _prunePhotos(ctx, s.category, s.maxFiles);
+      }
+      if (s.kind == 'video' || s.kind == 'both') {
+        await _pruneVideos(ctx, s.category, s.maxFiles);
+      }
+    }
 
-  String _childrenListUrl(String graphBase, String path) {
-    final encodedPath = _encodeDrivePath(path);
-    final base = encodedPath.isEmpty
-        ? '$graphBase/me/drive/root/children'
-        : '$graphBase/me/drive/root:$encodedPath:/children';
-    final uri = Uri.parse(base).replace(
-      queryParameters: {
-        r'$top': '200',
-        r'$orderby': 'lastModifiedDateTime desc',
-        r'$select':
-            'id,name,size,file,image,video,webUrl,lastModifiedDateTime,createdBy,@microsoft.graph.downloadUrl',
-      },
-    );
-    return uri.toString();
+    return (downloads: downloaded, globalRemaining: globalR);
   }
 
   String _encodeDrivePath(String raw) {

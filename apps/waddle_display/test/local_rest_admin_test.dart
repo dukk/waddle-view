@@ -26,6 +26,7 @@ void main() {
           ScreenDefinitionsCompanion.insert(
             id: 'admin_setup',
             name: 'Setup',
+            screenType: 'admin_setup',
           ),
         );
     final keyFile = await _tempKeyFile('install-password');

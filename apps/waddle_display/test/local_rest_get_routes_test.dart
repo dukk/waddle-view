@@ -61,6 +61,7 @@ void main() {
           ScreenDefinitionsCompanion.insert(
             id: 'a',
             name: 'Screen A',
+            screenType: 'static_text',
             minPlacementsPerProgram: const Value(1),
             maxPlacementsPerProgram: const Value(3),
             dataKey: const Value('shared_news'),
@@ -102,6 +103,7 @@ void main() {
       );
       expect(ts.statusCode, 200);
       expect(ts.body, contains('"id":"a"'));
+      expect(ts.body, contains('"screen_type":"static_text"'));
       expect(ts.body, contains('"dwell_seconds":10'));
       expect(ts.body, contains('"min_gap_between_shows_seconds":0'));
       expect(ts.body, isNot(contains('"dwell_ms"')));

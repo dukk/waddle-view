@@ -8,6 +8,7 @@ import 'package:waddle_display/config/microsoft_graph_kv.dart'
         kDefaultMicrosoftGraphClientId,
         kMicrosoftGraphAccessTokenExpiresAtKvKey,
         kMicrosoftGraphClientIdKvKey,
+        kOneDriveMediaDeltaLinkKvKey,
         kOneDriveMediaItemRowId,
         kOneDriveMediaLastCollectKvKey,
         microsoftGraphAccessTokenSecret;
@@ -22,6 +23,13 @@ import 'package:waddle_display/secrets/secret_store.dart';
 
 import '../helpers/fake_blob_store.dart';
 import '../helpers/memory_database.dart';
+
+const String _testDeltaLink = 'https://graph.microsoft.com/v1.0/delta?token=test';
+
+Map<String, Object?> _deltaPage(List<Object?> items) => {
+      'value': items,
+      '@odata.deltaLink': _testDeltaLink,
+    };
 
 void main() {
   test('skip when provider disabled', () async {
@@ -112,9 +120,9 @@ void main() {
           ),
         );
     final http = _GraphAndDownloadClient(
-      children: {
-        'value': [_drivePhoto('x', 'https://dl.example.com/x')],
-      },
+      deltaPages: [
+        _deltaPage([_drivePhoto('x', 'https://dl.example.com/x')]),
+      ],
     );
     final ctx = _ctx(db, secrets);
     final oauth = _FixedTokenOAuth(httpClient: http, nowMs: () => 0);
@@ -123,7 +131,7 @@ void main() {
     await db.close();
   });
 
-  test('graph children error JSON triggers error log path', () async {
+  test('graph folder resolve error JSON triggers error log path', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedProvider(
@@ -166,7 +174,7 @@ void main() {
     final http = _PagingGraphClient();
     final ctx = _ctx(db, secrets);
     await OneDriveMediaDataProvider(httpClient: http).collect(ctx);
-    expect(http.graphGets, 2);
+    expect(http.graphGets, 3);
     expect((await db.select(db.photos).get()).length, 2);
     await db.close();
   });
@@ -188,8 +196,8 @@ void main() {
           ),
         );
     final http = _GraphAndDownloadClient(
-      children: {
-        'value': [
+      deltaPages: [
+        _deltaPage([
           {
             'id': 'vid1',
             'name': 'clip.mp4',
@@ -201,8 +209,8 @@ void main() {
               'user': {'displayName': 'Alex'},
             },
           },
-        ],
-      },
+        ]),
+      ],
     );
     final ctx = _ctx(db, secrets);
     await OneDriveMediaDataProvider(httpClient: http).collect(ctx);
@@ -237,7 +245,7 @@ void main() {
     final http = _TwoFolderGraphClient();
     final ctx = _ctx(db, secrets);
     await OneDriveMediaDataProvider(httpClient: http).collect(ctx);
-    expect(http.graphGets, 1);
+    expect(http.graphGets, 2);
     expect((await db.select(db.photos).get()).length, 1);
     await db.close();
   });
@@ -304,12 +312,12 @@ void main() {
           ),
         );
     final httpClient = _GraphAndDownloadClient(
-      children: {
-        'value': [
+      deltaPages: [
+        _deltaPage([
           _drivePhoto('id1', 'https://dl.example.com/1'),
           _drivePhoto('id2', 'https://dl.example.com/2'),
-        ],
-      },
+        ]),
+      ],
     );
     final ctx = _ctx(db, secrets);
     final p = OneDriveMediaDataProvider(httpClient: httpClient);
@@ -340,12 +348,12 @@ void main() {
           ),
         );
     final httpClient = _GraphAndDownloadClient(
-      children: {
-        'value': [
+      deltaPages: [
+        _deltaPage([
           _drivePhoto('a', 'https://dl.example.com/a'),
           _drivePhoto('b', 'https://dl.example.com/b'),
-        ],
-      },
+        ]),
+      ],
     );
     final ctx = _ctx(db, secrets);
     final p = OneDriveMediaDataProvider(httpClient: httpClient);
@@ -393,7 +401,9 @@ void main() {
     await insertPhoto('mid', DateTime.utc(2021));
     await insertPhoto('new', DateTime.utc(2022));
 
-    final httpClient = _GraphAndDownloadClient(children: const {'value': []});
+    final httpClient = _GraphAndDownloadClient(
+      deltaPages: [_deltaPage([])],
+    );
     final ctx = _ctx(db, secrets);
     final p = OneDriveMediaDataProvider(httpClient: httpClient);
     await p.collect(ctx);
@@ -424,15 +434,135 @@ void main() {
           ),
         );
     final httpClient = _GraphAndDownloadClient(
-      children: {
-        'value': [_drivePhoto('x', 'https://dl.example.com/x')],
-      },
+      deltaPages: [
+        _deltaPage([_drivePhoto('x', 'https://dl.example.com/x')]),
+      ],
     );
     final ctx = _ctx(db, secrets);
     final p = OneDriveMediaDataProvider(httpClient: httpClient);
     await p.collect(ctx);
     expect(httpClient.downloadGets, 0);
     expect(await db.select(db.videos).get(), isEmpty);
+    await db.close();
+  });
+
+  test('kind both downloads photo and video', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await _seedProvider(
+      db,
+      accountsJson:
+          '[{"graphAccountKey":"u","sources":[{"path":"/m","kind":"both","category":"mix","maxFiles":10}]}]',
+    );
+    final secrets = InMemorySecretStore();
+    await secrets.write(microsoftGraphAccessTokenSecret('u'), 'tok');
+    await db.into(db.configKeyValues).insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kMicrosoftGraphAccessTokenExpiresAtKvKey('u'),
+            value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
+          ),
+        );
+    final httpClient = _GraphAndDownloadClient(
+      deltaPages: [
+        _deltaPage([
+          _drivePhoto('p1', 'https://dl.example.com/p'),
+          {
+            'id': 'v1',
+            'name': 'c.mp4',
+            'file': {'mimeType': 'video/mp4'},
+            '@microsoft.graph.downloadUrl': 'https://dl.example.com/v',
+            'webUrl': 'https://w/v',
+            'video': {'duration': 5000},
+            'createdBy': {
+              'user': {'displayName': 'Sam'},
+            },
+          },
+        ]),
+      ],
+    );
+    final ctx = _ctx(db, secrets);
+    await OneDriveMediaDataProvider(httpClient: httpClient).collect(ctx);
+    expect(httpClient.downloadGets, 2);
+    expect((await db.select(db.photos).get()).length, 1);
+    expect((await db.select(db.videos).get()).length, 1);
+    await db.close();
+  });
+
+  test('delta deleted facet removes local photo', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await _seedProvider(
+      db,
+      accountsJson:
+          '[{"graphAccountKey":"u","sources":[{"path":"/a","kind":"photo","category":"c","maxFiles":10}]}]',
+    );
+    final secrets = InMemorySecretStore();
+    await secrets.write(microsoftGraphAccessTokenSecret('u'), 'tok');
+    await db.into(db.configKeyValues).insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kMicrosoftGraphAccessTokenExpiresAtKvKey('u'),
+            value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
+          ),
+        );
+    final goneId = kOneDriveMediaItemRowId('u', 'gone');
+    await db.into(db.photos).insert(
+          PhotosCompanion.insert(
+            id: goneId,
+            category: const Value('c'),
+            dataProvider: const Value(kMediaDataProviderOneDrive),
+            mediaBlobKey: 'onedrive/photo/$goneId/media',
+            photographerName: '',
+            photographerUrl: '',
+            pexelsPageUrl: '',
+            fetchedAtMs: DateTime.utc(2022),
+          ),
+        );
+
+    final httpClient = _GraphAndDownloadClient(
+      deltaPages: [
+        _deltaPage([
+          {'id': 'gone', 'deleted': <String, dynamic>{}},
+        ]),
+      ],
+    );
+    final ctx = _ctx(db, secrets);
+    await OneDriveMediaDataProvider(httpClient: httpClient).collect(ctx);
+    expect(await db.select(db.photos).get(), isEmpty);
+    await db.close();
+  });
+
+  test('persists deltaLink to config KV after sync', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await _seedProvider(
+      db,
+      accountsJson:
+          '[{"graphAccountKey":"u","sources":[{"path":"/z","kind":"photo","category":"c","maxFiles":10}]}]',
+    );
+    final secrets = InMemorySecretStore();
+    await secrets.write(microsoftGraphAccessTokenSecret('u'), 'tok');
+    await db.into(db.configKeyValues).insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kMicrosoftGraphAccessTokenExpiresAtKvKey('u'),
+            value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
+          ),
+        );
+    const persistedLink = 'https://graph.microsoft.com/v1.0/delta?token=persisted';
+    final httpClient = _GraphAndDownloadClient(
+      deltaPages: [
+        {
+          'value': <Object?>[],
+          '@odata.deltaLink': persistedLink,
+        },
+      ],
+    );
+    final ctx = _ctx(db, secrets);
+    await OneDriveMediaDataProvider(httpClient: httpClient).collect(ctx);
+    final key = kOneDriveMediaDeltaLinkKvKey('u', 'z');
+    final row =
+        await (db.select(db.configKeyValues)..where((t) => t.key.equals(key)))
+            .getSingleOrNull();
+    expect(row?.value, persistedLink);
     await db.close();
   });
 }
@@ -554,17 +684,26 @@ class _PagingGraphClient extends http.BaseClient {
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final u = request.url;
     if (u.host == 'graph.microsoft.com') {
+      if (u.queryParameters[r'$select'] == 'id,folder') {
+        graphGets++;
+        return http.StreamedResponse(
+          Stream.value(
+            utf8.encode(jsonEncode({'id': 'pf', 'folder': <String, dynamic>{}})),
+          ),
+          200,
+          headers: {'Content-Type': 'application/json'},
+        );
+      }
       graphGets++;
-      if (graphGets == 1) {
+      if (u.toString().contains('next-page-delta')) {
         return http.StreamedResponse(
           Stream.value(
             utf8.encode(
               jsonEncode({
                 'value': [
-                  _drivePhoto('p1', 'https://dl.example.com/1'),
+                  _drivePhoto('p2', 'https://dl.example.com/2'),
                 ],
-                '@odata.nextLink':
-                    'https://graph.microsoft.com/v1.0/next-page-children',
+                '@odata.deltaLink': _testDeltaLink,
               }),
             ),
           ),
@@ -577,8 +716,10 @@ class _PagingGraphClient extends http.BaseClient {
           utf8.encode(
             jsonEncode({
               'value': [
-                _drivePhoto('p2', 'https://dl.example.com/2'),
+                _drivePhoto('p1', 'https://dl.example.com/1'),
               ],
+              '@odata.nextLink':
+                  'https://graph.microsoft.com/v1.0/next-page-delta',
             }),
           ),
         ),
@@ -599,21 +740,36 @@ class _TwoFolderGraphClient extends http.BaseClient {
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final u = request.url;
-    if (u.host == 'graph.microsoft.com' && u.path.contains('children')) {
-      graphGets++;
-      return http.StreamedResponse(
-        Stream.value(
-          utf8.encode(
-            jsonEncode({
-              'value': [
-                _drivePhoto('only', 'https://dl.example.com/o'),
-              ],
-            }),
+    if (u.host == 'graph.microsoft.com') {
+      if (u.queryParameters[r'$select'] == 'id,folder') {
+        graphGets++;
+        return http.StreamedResponse(
+          Stream.value(
+            utf8.encode(
+              jsonEncode({'id': 'folderA', 'folder': <String, dynamic>{}}),
+            ),
           ),
-        ),
-        200,
-        headers: {'Content-Type': 'application/json'},
-      );
+          200,
+          headers: {'Content-Type': 'application/json'},
+        );
+      }
+      if (u.path.contains('/delta')) {
+        graphGets++;
+        return http.StreamedResponse(
+          Stream.value(
+            utf8.encode(
+              jsonEncode({
+                'value': [
+                  _drivePhoto('only', 'https://dl.example.com/o'),
+                ],
+                '@odata.deltaLink': _testDeltaLink,
+              }),
+            ),
+          ),
+          200,
+          headers: {'Content-Type': 'application/json'},
+        );
+      }
     }
     if (u.host == 'dl.example.com') {
       return http.StreamedResponse(Stream.value([1]), 200);
@@ -637,18 +793,38 @@ class _CountingClient extends http.BaseClient {
 }
 
 class _GraphAndDownloadClient extends http.BaseClient {
-  _GraphAndDownloadClient({required this.children});
+  _GraphAndDownloadClient({
+    this.folderId = 'folder1',
+    required List<Map<String, Object?>> deltaPages,
+  }) : _deltaPages = deltaPages;
 
-  final Map<String, Object?> children;
+  final String folderId;
+  final List<Map<String, Object?>> _deltaPages;
+  int resolveGets = 0;
+  int deltaGets = 0;
   int downloadGets = 0;
-  int graphGets = 0;
+
+  int get graphGets => resolveGets + deltaGets;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final u = request.url;
-    if (u.host == 'graph.microsoft.com' && u.path.contains('children')) {
-      graphGets++;
-      return _json(children);
+    if (u.host == 'graph.microsoft.com') {
+      if (u.queryParameters[r'$select'] == 'id,folder') {
+        resolveGets++;
+        return _json({'id': folderId, 'folder': <String, dynamic>{}});
+      }
+      if (u.path.contains('/delta')) {
+        final idx = deltaGets;
+        deltaGets++;
+        if (idx >= _deltaPages.length) {
+          return _json({
+            'value': <Object?>[],
+            '@odata.deltaLink': _testDeltaLink,
+          });
+        }
+        return _json(_deltaPages[idx]);
+      }
     }
     if (u.host == 'dl.example.com') {
       downloadGets++;

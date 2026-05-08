@@ -13,7 +13,7 @@ class OneDriveMediaSourceSpec {
   /// Root-relative path, e.g. `/Pictures/Family` or `Pictures/Family`.
   final String path;
 
-  /// `photo` or `video` (filters by MIME type).
+  /// `photo`, `video`, or `both` (supported image + video MIME types).
   final String kind;
 
   /// Slug matching [ContentCategories.id] for curator / slide `categoryId`.
@@ -29,15 +29,16 @@ class OneDriveMediaSourceSpec {
 
   static OneDriveMediaSourceSpec? parse(Map<String, dynamic> m) {
     final pathRaw = m['path'] ?? m['folder'];
-    if (pathRaw is! String || pathRaw.trim().isEmpty) {
+    if (pathRaw != null && pathRaw is! String) {
       return null;
     }
+    final path = pathRaw is String ? pathRaw.trim() : '';
     final kindRaw = m['kind'] ?? m['type'];
     if (kindRaw is! String || kindRaw.trim().isEmpty) {
       return null;
     }
     final kind = kindRaw.trim().toLowerCase();
-    if (kind != 'photo' && kind != 'video') {
+    if (kind != 'photo' && kind != 'video' && kind != 'both') {
       return null;
     }
     final cat = m['category'];
@@ -47,7 +48,7 @@ class OneDriveMediaSourceSpec {
     final maxFiles = _positiveInt(m['maxFiles'], 50);
     final perPoll = _optionalPositiveInt(m['perPollLimit']);
     return OneDriveMediaSourceSpec(
-      path: pathRaw.trim(),
+      path: path,
       kind: kind,
       category: cat.trim(),
       maxFiles: maxFiles,

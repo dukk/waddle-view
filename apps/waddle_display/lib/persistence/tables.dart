@@ -76,16 +76,19 @@ class ContentCategories extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-/// TV display screen definition (layout + scheduling hints). Runtime curation is in memory.
+/// TV display screen definition (single widget type + config + scheduling hints).
+/// Runtime layout JSON for the curator is synthesized when mapping rows to slides.
 class ScreenDefinitions extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
   TextColumn get description => text().withDefault(const Constant(''))();
   BoolColumn get enabled => boolean().withDefault(const Constant(true))();
-  TextColumn get layoutJson =>
-      text().withDefault(const Constant('{"v":1,"layout":"single","widgets":[]}'))();
-  TextColumn get layoutJsonSchema => text().nullable()();
-  TextColumn get exampleLayoutJson => text().nullable()();
+  /// Widget `type` string (e.g. `weather`, `rss_article`); see `kScreenLayoutWidgetTypes`.
+  TextColumn get screenType => text()();
+  /// JSON object: former `widgets[0].config` in legacy `layout_json`.
+  TextColumn get configJson => text().withDefault(const Constant('{}'))();
+  TextColumn get configJsonSchema => text().nullable()();
+  TextColumn get exampleConfigJson => text().nullable()();
   IntColumn get dwellSeconds => integer().withDefault(const Constant(10))();
   IntColumn get frequencyWeight => integer().withDefault(const Constant(100))();
   IntColumn get minGapBetweenShowsSeconds =>
@@ -348,6 +351,9 @@ const String kMediaDataProviderPexels = 'pexels';
 
 /// Microsoft Graph OneDrive sync into [Photos] / [Videos].
 const String kMediaDataProviderOneDrive = 'onedrive_media';
+
+/// Flickr group photo sync into [Photos].
+const String kMediaDataProviderFlickr = 'flickr_media';
 
 @TableIndex(
   name: 'idx_photos_fetched',

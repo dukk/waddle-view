@@ -38,6 +38,24 @@ void main() {
     expect(c.accounts.single.sources, isEmpty);
   });
 
+  test('kind both parses', () {
+    final c = OneDriveMediaExtraConfig.parse(
+      '{"accounts":[{"graphAccountKey":"a","sources":['
+      '{"path":"/mix","kind":"both","category":"c","maxFiles":5}'
+      ']}]}',
+    );
+    expect(c.accounts.single.sources.single.kind, 'both');
+  });
+
+  test('empty path is allowed (drive root)', () {
+    final c = OneDriveMediaExtraConfig.parse(
+      '{"accounts":[{"graphAccountKey":"a","sources":['
+      '{"path":"","kind":"photo","category":"c","maxFiles":5}'
+      ']}]}',
+    );
+    expect(c.accounts.single.sources.single.path, '');
+  });
+
   test('missing category drops source', () {
     final c = OneDriveMediaExtraConfig.parse(
       '{"accounts":[{"graphAccountKey":"a","sources":['

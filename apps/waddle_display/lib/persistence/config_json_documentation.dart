@@ -391,8 +391,9 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       _baseSchema(
         title: 'OneDriveMediaProviderConfig',
         description:
-            'Microsoft Graph OneDrive: map folders to photo/video categories, '
-            'retention and per-poll download caps.',
+            'Microsoft Graph OneDrive (read-only): delta sync of each path '
+            'subtree into photo/video categories; retention and per-poll '
+            'download caps. Remote deletes remove local rows.',
         properties: {
           'globalPerPollLimit': {'type': 'integer', 'minimum': 1},
           'accounts': {
@@ -413,7 +414,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
                       'maxFiles': {'type': 'integer', 'minimum': 1},
                       'perPollLimit': {'type': 'integer', 'minimum': 1},
                     },
-                    'required': ['path', 'kind', 'category'],
+                    'required': ['kind', 'category'],
                     'additionalProperties': true,
                   },
                 },
@@ -433,8 +434,8 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
           'sources': [
             {
               'path': '/Pictures/Family',
-              'kind': 'photo',
-              'category': 'family_photos',
+              'kind': 'both',
+              'category': 'family_media',
               'maxFiles': 30,
               'perPollLimit': 5,
             },
@@ -450,12 +451,56 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       ],
     }),
   ),
+  'flickr_media': ProviderConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'FlickrMediaProviderConfig',
+        description:
+            'Public Flickr group photo sync. API key comes from SecretStore.',
+        properties: {
+          'groupIds': {
+            'type': 'array',
+            'items': {'type': 'string', 'minLength': 1},
+          },
+          'category': {'type': 'string', 'minLength': 1},
+          'perPollLimit': {'type': 'integer', 'minimum': 1},
+          'sort': {'type': 'string'},
+        },
+      ),
+    ),
+    example: jsonEncode({
+      'groupIds': ['34427469792@N01'],
+      'category': 'flickr',
+      'perPollLimit': 20,
+      'sort': 'date-posted-desc',
+    }),
+  ),
 };
 
 ProviderConfigJsonDoc providerConfigJsonDocForType(String providerType) {
   return kProviderConfigJsonMeta[providerType] ??
       kGenericProviderConfigJsonDoc;
 }
+
+/// JSON Schema and example for [ScreenDefinitions.configJson] (widget `config` object).
+class ScreenConfigJsonDoc {
+  const ScreenConfigJsonDoc({required this.schema, required this.example});
+
+  final String schema;
+  final String example;
+}
+
+/// Permissive schema for unknown or empty widget configs.
+final ScreenConfigJsonDoc kGenericScreenConfigJsonDoc = ScreenConfigJsonDoc(
+  schema: jsonEncode(
+    _baseSchema(
+      title: 'ScreenWidgetConfig',
+      description: 'Widget-specific options for this screen type.',
+      properties: {},
+    ),
+  ),
+  example: '{}',
+);
 
 /// Widget `type` values handled by [ScreenRotator].
 const List<String> kScreenLayoutWidgetTypes = [
@@ -479,8 +524,8 @@ const List<String> kScreenLayoutWidgetTypes = [
   'stock_quotes',
 ];
 
-/// JSON Schema for [ScreenDefinitions.layoutJson] (see [parseScreenLayoutWidgets]).
-final String kScreenLayoutJsonSchema = jsonEncode({
+/// Frozen layout-level docs for migration 20 (`layout_json_schema` / `example_layout_json`).
+final String kMigration20ScreenLayoutJsonSchema = jsonEncode({
   r'$schema': _kJsonSchemaDraft,
   'title': 'ScreenLayout',
   'description': 'Dashboard slide layout: version, optional layout hint, widgets.',
@@ -506,8 +551,7 @@ final String kScreenLayoutJsonSchema = jsonEncode({
   'additionalProperties': true,
 });
 
-/// Example layout aligned with seed weather screen.
-final String kExampleScreenLayoutJson = jsonEncode({
+final String kMigration20ExampleScreenLayoutJson = jsonEncode({
   'v': 1,
   'layout': 'single',
   'widgets': [
@@ -518,3 +562,123 @@ final String kExampleScreenLayoutJson = jsonEncode({
     },
   ],
 });
+
+final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
+  'static_text': ScreenConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'StaticTextScreenConfig',
+        description: 'Fixed headline / body text for the slide.',
+        properties: {
+          'text': {'type': 'string'},
+        },
+        requiredKeys: ['text'],
+      ),
+    ),
+    example: jsonEncode({'text': 'Welcome to Waddle View'}),
+  ),
+  'weather': ScreenConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'WeatherScreenConfig',
+        description: 'Selects a row from weather_locations.',
+        properties: {
+          'locationId': {'type': 'string', 'minLength': 1},
+        },
+        requiredKeys: ['locationId'],
+      ),
+    ),
+    example: jsonEncode({'locationId': 'salt_lake_city_ut'}),
+  ),
+  'rss_article': ScreenConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'RssArticleScreenConfig',
+        description: 'Scroll timing, image side, summary capacity.',
+        properties: {
+          'scrollDelayMs': {'type': 'integer', 'minimum': 0},
+          'trailingHoldMs': {'type': 'integer', 'minimum': 0},
+          'scrollPixelsPerSecond': {'type': 'number', 'minimum': 0},
+          'minReadMs': {'type': 'integer', 'minimum': 0},
+          'imageOnRight': {'type': 'boolean'},
+          'summaryCapacityChars': {'type': 'integer', 'minimum': 1},
+        },
+      ),
+    ),
+    example: jsonEncode({
+      'scrollDelayMs': 2500,
+      'trailingHoldMs': 2000,
+      'scrollPixelsPerSecond': 48,
+      'minReadMs': 8000,
+      'summaryCapacityChars': 1200,
+    }),
+  ),
+  'rss_article_columns': ScreenConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'RssArticleColumnsScreenConfig',
+        description: 'Multi-column RSS layout.',
+        properties: {
+          'columnCount': {'type': 'integer', 'minimum': 1, 'maximum': 6},
+          'minReadMs': {'type': 'integer', 'minimum': 0},
+          'summaryCapacityCharsPerColumn': {'type': 'integer', 'minimum': 1},
+        },
+      ),
+    ),
+    example: jsonEncode({
+      'columnCount': 3,
+      'minReadMs': 10000,
+      'summaryCapacityCharsPerColumn': 220,
+    }),
+  ),
+  'rss_article_stack': ScreenConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'RssArticleStackScreenConfig',
+        description: 'Two-row stacked RSS layout.',
+        properties: {
+          'minReadMs': {'type': 'integer', 'minimum': 0},
+          'imagePanelFraction': {'type': 'number', 'minimum': 0, 'maximum': 1},
+          'qrLogicalSize': {'type': 'number', 'minimum': 0},
+          'summaryCapacityCharsPerSlot': {'type': 'integer', 'minimum': 1},
+        },
+      ),
+    ),
+    example: jsonEncode({
+      'minReadMs': 12000,
+      'imagePanelFraction': 0.32,
+      'qrLogicalSize': 112,
+      'summaryCapacityCharsPerSlot': 320,
+    }),
+  ),
+  'pexels_video': ScreenConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'PexelsVideoScreenConfig',
+        description: 'Playback options for Pexels video slides.',
+        properties: {
+          'loop': {'type': 'boolean'},
+          'unmuted': {'type': 'boolean'},
+        },
+      ),
+    ),
+    example: jsonEncode({'loop': true, 'unmuted': false}),
+  ),
+  'pexels_photo_collage': ScreenConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'PexelsPhotoCollageScreenConfig',
+        description: 'Collage template id for tile layout.',
+        properties: {
+          'template': {'type': 'string', 'minLength': 1},
+        },
+        requiredKeys: ['template'],
+      ),
+    ),
+    example: jsonEncode({'template': 'nine_square_asymmetric'}),
+  ),
+};
+
+ScreenConfigJsonDoc screenConfigJsonDocForType(String screenType) {
+  return kScreenConfigJsonMeta[screenType] ?? kGenericScreenConfigJsonDoc;
+}

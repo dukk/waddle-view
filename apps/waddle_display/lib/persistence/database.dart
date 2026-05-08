@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../curator/screen_layout_parse.dart';
 import '../debug/app_debug_log.dart';
 import 'config_json_documentation.dart';
 import 'content_category_defaults.dart';
@@ -45,7 +46,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 26;
+  int get schemaVersion => 27;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -292,16 +293,19 @@ FROM curator_settings WHERE id = 'app';
               'ALTER TABLE screen_definitions ADD COLUMN example_layout_json TEXT;',
             );
           }
-          final screenRows = await select(screenDefinitions).get();
+          final screenRows =
+              await customSelect('SELECT id FROM screen_definitions').get();
           for (final s in screenRows) {
-            await (update(screenDefinitions)
-                  ..where((t) => t.id.equals(s.id)))
-                .write(
-                  ScreenDefinitionsCompanion(
-                    layoutJsonSchema: Value(kScreenLayoutJsonSchema),
-                    exampleLayoutJson: Value(kExampleScreenLayoutJson),
-                  ),
-                );
+            final id = s.read<String>('id');
+            await customStatement(
+              'UPDATE screen_definitions SET layout_json_schema = ?, '
+              'example_layout_json = ? WHERE id = ?',
+              variables: [
+                Variable<String>(kMigration20ScreenLayoutJsonSchema),
+                Variable<String>(kMigration20ExampleScreenLayoutJson),
+                Variable<String>(id),
+              ],
+            );
           }
         }
       }
@@ -372,6 +376,55 @@ FROM curator_settings WHERE id = 'app';
         await ensureSuppressedColumn('trivia_questions');
         await ensureSuppressedColumn('photos');
         await ensureSuppressedColumn('videos');
+      }
+      if (from < 27) {
+        await transaction(() async {
+          final rows = await customSelect(
+            'SELECT id, name, description, enabled, layout_json, dwell_seconds, '
+            'frequency_weight, min_gap_between_shows_seconds, '
+            'min_placements_per_program, max_placements_per_program, data_key '
+            'FROM screen_definitions',
+          ).get();
+          await customStatement(
+            'ALTER TABLE screen_definitions RENAME TO screen_definitions_pre_v27;',
+          );
+          await m.createTable(screenDefinitions);
+          for (final r in rows) {
+            final layoutJson = r.read<String>('layout_json');
+            final extracted = extractLegacyScreenFields(layoutJson);
+            final doc = screenConfigJsonDocForType(extracted.screenType);
+            final enabledRaw = r.data['enabled'];
+            final enabled = enabledRaw is bool
+                ? enabledRaw
+                : ((enabledRaw as int) != 0);
+            final maxRaw = r.data['max_placements_per_program'];
+            await into(screenDefinitions).insert(
+              ScreenDefinitionsCompanion.insert(
+                id: r.read<String>('id'),
+                name: r.read<String>('name'),
+                description: Value(r.read<String>('description')),
+                enabled: Value(enabled),
+                screenType: extracted.screenType,
+                configJson: extracted.configJson,
+                configJsonSchema: Value(doc.schema),
+                exampleConfigJson: Value(doc.example),
+                dwellSeconds: Value(r.read<int>('dwell_seconds')),
+                frequencyWeight: Value(r.read<int>('frequency_weight')),
+                minGapBetweenShowsSeconds: Value(
+                  r.read<int>('min_gap_between_shows_seconds'),
+                ),
+                minPlacementsPerProgram: Value(
+                  r.read<int>('min_placements_per_program'),
+                ),
+                maxPlacementsPerProgram: maxRaw == null
+                    ? const Value.absent()
+                    : Value(r.read<int>('max_placements_per_program')),
+                dataKey: Value(r.read<String>('data_key')),
+              ),
+            );
+          }
+          await customStatement('DROP TABLE screen_definitions_pre_v27;');
+        });
       }
     },
     beforeOpen: (details) async {

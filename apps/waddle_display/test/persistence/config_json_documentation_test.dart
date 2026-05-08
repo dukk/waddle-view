@@ -14,9 +14,22 @@ void main() {
     expect(jsonDecode(generic.example), isA<Object>());
   });
 
-  test('layout schema and example decode', () {
-    expect(jsonDecode(kScreenLayoutJsonSchema), isA<Map<String, dynamic>>());
-    expect(jsonDecode(kExampleScreenLayoutJson), isA<Map<String, dynamic>>());
+  test('screen config meta schemas and examples decode', () {
+    for (final entry in kScreenConfigJsonMeta.entries) {
+      expect(jsonDecode(entry.value.schema), isA<Map<String, dynamic>>());
+      expect(jsonDecode(entry.value.example), isA<Object>());
+    }
+    final generic = screenConfigJsonDocForType('unknown_screen_xyz');
+    expect(jsonDecode(generic.schema), isA<Map<String, dynamic>>());
+    expect(jsonDecode(generic.example), isA<Object>());
+    expect(
+      jsonDecode(kMigration20ScreenLayoutJsonSchema),
+      isA<Map<String, dynamic>>(),
+    );
+    expect(
+      jsonDecode(kMigration20ExampleScreenLayoutJson),
+      isA<Map<String, dynamic>>(),
+    );
   });
 
   test('seeded provider types have explicit meta entries', () {

@@ -53,7 +53,7 @@ List<int> computeRssSummarySlotCapacities(String type, Map<String, dynamic> conf
   }
 }
 
-/// One widget entry from [ScreenDefinitions.layoutJson].
+/// One widget entry from synthesized layout JSON (see [synthesizeLayoutJson]).
 class ParsedWidgetSpec {
   const ParsedWidgetSpec({
     required this.type,
@@ -71,6 +71,45 @@ class ParsedWidgetSpec {
   final List<int> rssSummarySlotCapacities;
 
   String get choiceKey => '${slot}_$type';
+}
+
+/// First widget's type and [config] as JSON text; empty/malformed → `static_text` / `{}`.
+///
+/// Used when migrating legacy [ScreenDefinitions.layout_json] (v26 and earlier).
+/// If multiple widgets were present, only the first is preserved.
+({String screenType, String configJson}) extractLegacyScreenFields(
+  String layoutJson,
+) {
+  final specs = parseScreenLayoutWidgets(layoutJson);
+  if (specs.isEmpty) {
+    return (screenType: 'static_text', configJson: '{}');
+  }
+  final w = specs.first;
+  return (screenType: w.type, configJson: jsonEncode(w.config));
+}
+
+/// Builds the layout document expected by [parseScreenLayoutWidgets] from DB columns.
+String synthesizeLayoutJson({
+  required String screenType,
+  required String configJson,
+  String slot = 'main',
+}) {
+  Object? decoded;
+  try {
+    decoded = jsonDecode(configJson);
+  } catch (_) {
+    decoded = <String, dynamic>{};
+  }
+  if (decoded is! Map<String, dynamic>) {
+    decoded = <String, dynamic>{};
+  }
+  return jsonEncode({
+    'v': 1,
+    'layout': 'single',
+    'widgets': [
+      {'type': screenType, 'slot': slot, 'config': decoded},
+    ],
+  });
 }
 
 /// Parses `widgets` array from layout JSON; ignores malformed entries.

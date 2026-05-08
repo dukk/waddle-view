@@ -116,31 +116,29 @@ Future<void> _seedTwoSlideProgram(AppDatabase db) async {
       );
 
   await db.into(db.screenDefinitions).insert(
-        const ScreenDefinitionsCompanion(
-          id: Value('alpha_screen'),
-          name: Value('Alpha'),
-          layoutJson: Value(
-            '{"v":1,"widgets":[{"type":"static_text","slot":"main","config":{"text":"Alpha"}}]}',
-          ),
-          dwellSeconds: Value(1),
-          frequencyWeight: Value(100),
-          minGapBetweenShowsSeconds: Value(0),
-          minPlacementsPerProgram: Value(1),
-          maxPlacementsPerProgram: Value(1),
+        ScreenDefinitionsCompanion.insert(
+          id: 'alpha_screen',
+          name: 'Alpha',
+          screenType: 'static_text',
+          configJson: const Value('{"text":"Alpha"}'),
+          dwellSeconds: const Value(1),
+          frequencyWeight: const Value(100),
+          minGapBetweenShowsSeconds: const Value(0),
+          minPlacementsPerProgram: const Value(1),
+          maxPlacementsPerProgram: const Value(1),
         ),
       );
   await db.into(db.screenDefinitions).insert(
-        const ScreenDefinitionsCompanion(
-          id: Value('beta_screen'),
-          name: Value('Beta'),
-          layoutJson: Value(
-            '{"v":1,"widgets":[{"type":"static_text","slot":"main","config":{"text":"Beta"}}]}',
-          ),
-          dwellSeconds: Value(1),
-          frequencyWeight: Value(100),
-          minGapBetweenShowsSeconds: Value(0),
-          minPlacementsPerProgram: Value(1),
-          maxPlacementsPerProgram: Value(1),
+        ScreenDefinitionsCompanion.insert(
+          id: 'beta_screen',
+          name: 'Beta',
+          screenType: 'static_text',
+          configJson: const Value('{"text":"Beta"}'),
+          dwellSeconds: const Value(1),
+          frequencyWeight: const Value(100),
+          minGapBetweenShowsSeconds: const Value(0),
+          minPlacementsPerProgram: const Value(1),
+          maxPlacementsPerProgram: const Value(1),
         ),
       );
 }

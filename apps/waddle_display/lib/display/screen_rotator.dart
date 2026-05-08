@@ -229,7 +229,10 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
             minPlacementsPerProgram: r.minPlacementsPerProgram,
             maxPlacementsPerProgram: r.maxPlacementsPerProgram,
             dataKey: r.dataKey,
-            layoutJson: r.layoutJson,
+            layoutJson: synthesizeLayoutJson(
+              screenType: r.screenType,
+              configJson: r.configJson,
+            ),
             enabled: r.enabled,
           ),
         )

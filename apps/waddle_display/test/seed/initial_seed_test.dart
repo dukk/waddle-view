@@ -69,13 +69,13 @@ void main() {
     expect(right!.dataKey, 'news');
     expect(columns!.dataKey, 'news');
     expect(stack!.dataKey, 'news');
-    expect(left.layoutJson.contains('"imageOnRight":true'), isFalse);
-    expect(right.layoutJson.contains('"imageOnRight":true'), isTrue);
-    expect(columns.layoutJson.contains('"type":"rss_article_columns"'), isTrue);
-    expect(columns.layoutJson.contains('"columnCount":3'), isTrue);
-    expect(columns.layoutJson.contains('"summaryCapacityCharsPerColumn":220'), isTrue);
-    expect(left.layoutJson.contains('"summaryCapacityChars":1200'), isTrue);
-    expect(stack.layoutJson.contains('"type":"rss_article_stack"'), isTrue);
+    expect(left!.configJson.contains('"imageOnRight":true'), isFalse);
+    expect(right!.configJson.contains('"imageOnRight":true'), isTrue);
+    expect(columns!.screenType, 'rss_article_columns');
+    expect(columns!.configJson.contains('"columnCount":3'), isTrue);
+    expect(columns!.configJson.contains('"summaryCapacityCharsPerColumn":220'), isTrue);
+    expect(left!.configJson.contains('"summaryCapacityChars":1200'), isTrue);
+    expect(stack!.screenType, 'rss_article_stack');
     await db.close();
   });
 
@@ -135,7 +135,7 @@ void main() {
           ..where((t) => t.id.equals('weather')))
         .getSingleOrNull();
     expect(screen, isNotNull);
-    expect(screen!.layoutJson.contains('"type":"weather"'), isTrue);
+    expect(screen!.screenType, 'weather');
 
     final locations = await (db.select(db.weatherLocations)
           ..orderBy([(t) => OrderingTerm.asc(t.id)]))
@@ -241,8 +241,8 @@ void main() {
         .getSingleOrNull();
     expect(screen, isNotNull);
     expect(screen!.enabled, isFalse);
-    expect(screen.layoutJson.contains('"type":"stock_quotes"'), isTrue);
-    expect(screen.dataKey, 'stocks');
+    expect(screen!.screenType, 'stock_quotes');
+    expect(screen!.dataKey, 'stocks');
 
     final symbols = await (db.select(db.stockSymbols)
           ..orderBy([(t) => OrderingTerm.asc(t.id)]))

@@ -168,6 +168,7 @@ void main() {
             ScreenDefinitionsCompanion.insert(
               id: 'screen_a',
               name: 'Alpha',
+              screenType: 'static_text',
               dwellSeconds: const Value(10),
               frequencyWeight: const Value(100),
             ),
