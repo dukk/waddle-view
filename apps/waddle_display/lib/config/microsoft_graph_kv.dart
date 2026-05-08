@@ -7,7 +7,12 @@ import 'package:crypto/crypto.dart';
 const String kMicrosoftGraphClientIdKvKey = 'microsoft.graph.client_id';
 
 /// Default public client id for this deployment (overridable via KV).
-const String kDefaultMicrosoftGraphClientId = '';
+///
+/// Kept non-empty so local/dev + unit tests that seed KV rows can exercise
+/// the HTTP paths. Operators should override with the real client id via KV
+/// for production use.
+const String kDefaultMicrosoftGraphClientId =
+    'waddle_view-microsoft-graph-client-id';
 
 /// Redirect URI for public / native OAuth clients (device code + refresh).
 ///

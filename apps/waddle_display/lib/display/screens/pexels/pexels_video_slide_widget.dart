@@ -21,13 +21,20 @@ Future<Video?> loadPexelsVideoForSlide(
 ) async {
   final curatedId = slide.randomChoices[spec.choiceKey];
   if (curatedId != null && curatedId.isNotEmpty) {
-    return (db.select(db.videos)..where((t) => t.id.equals(curatedId)))
+    return (db.select(db.videos)
+          ..where(
+            (t) => t.id.equals(curatedId) & t.suppressed.equals(false),
+          ))
         .getSingleOrNull();
   }
   final categoryId = spec.config['categoryId'] as String?;
   final q = db.select(db.videos);
   if (categoryId != null && categoryId.isNotEmpty) {
-    q.where((t) => t.category.equals(categoryId));
+    q.where(
+      (t) => t.category.equals(categoryId) & t.suppressed.equals(false),
+    );
+  } else {
+    q.where((t) => t.suppressed.equals(false));
   }
   return (q
         ..orderBy([

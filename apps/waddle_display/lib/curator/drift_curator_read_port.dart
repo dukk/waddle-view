@@ -43,9 +43,10 @@ class DriftCuratorReadPort implements CuratorReadPort {
 
   @override
   Future<List<TickerNewsCandidate>> loadNewsCandidatesForTicker() async {
-    final articles = await (_db.select(
-      _db.rssArticles,
-    )..orderBy([(t) => OrderingTerm.desc(t.publishedAt)])).get();
+    final articles = await (_db.select(_db.rssArticles)
+          ..where((t) => t.suppressed.equals(false))
+          ..orderBy([(t) => OrderingTerm.desc(t.publishedAt)]))
+        .get();
     if (articles.isEmpty) {
       return const [];
     }

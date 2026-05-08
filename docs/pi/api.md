@@ -33,6 +33,11 @@ If the key file is **missing or empty**, protected routes return **503** (`api_k
 | GET | `/v1/alerts` | All alerts (no redaction of bodies in MVP; do not store secrets in alerts). |
 | POST | `/v1/alerts` | JSON body: `title`, `body`, optional `qr_payload`, `severity`, `priority`, `expires_at` (epoch ms). |
 | DELETE | `/v1/alerts/{id}` | Dismisses alert (`dismissed_at` set). |
+| PATCH | `/v1/content/jokes/{id}` | JSON body: `{"suppressed": true}` or `false`. Row kept; hidden from slides/ticker. Returns **404** if id missing. |
+| PATCH | `/v1/content/rss-articles/{id}` | Same as jokes. |
+| PATCH | `/v1/content/photos/{id}` | Same as jokes. |
+| PATCH | `/v1/content/videos/{id}` | Same as jokes. |
+| PATCH | `/v1/content/trivia/{id}` | Same as jokes. |
 
 ## Admin web UI
 
@@ -50,6 +55,12 @@ curl -sS -H "X-Api-Key: $KEY" http://127.0.0.1:8787/v1/health
 curl -sS -H "X-Api-Key: $KEY" -H 'Content-Type: application/json' \
   -d '{"title":"Door","body":"Open","qr_payload":"https://example.com/ack"}' \
   http://127.0.0.1:8787/v1/alerts
+
+# Hide a curated item without deleting it (use the SQLite row id):
+curl -sS -H "X-Api-Key: $KEY" -H 'Content-Type: application/json' \
+  -X PATCH \
+  -d '{"suppressed": true}' \
+  http://127.0.0.1:8787/v1/content/videos/<video-row-id>
 ```
 
 Never log or commit the API key.

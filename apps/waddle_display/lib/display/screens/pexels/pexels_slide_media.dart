@@ -14,13 +14,20 @@ Future<Photo?> loadPexelsPhotoForSlide(
 ) async {
   final curatedId = slide.randomChoices[spec.choiceKey];
   if (curatedId != null && curatedId.isNotEmpty) {
-    return (db.select(db.photos)..where((t) => t.id.equals(curatedId)))
+    return (db.select(db.photos)
+          ..where(
+            (t) => t.id.equals(curatedId) & t.suppressed.equals(false),
+          ))
         .getSingleOrNull();
   }
   final categoryId = spec.config['categoryId'] as String?;
   final q = db.select(db.photos);
   if (categoryId != null && categoryId.isNotEmpty) {
-    q.where((t) => t.category.equals(categoryId));
+    q.where(
+      (t) => t.category.equals(categoryId) & t.suppressed.equals(false),
+    );
+  } else {
+    q.where((t) => t.suppressed.equals(false));
   }
   return (q
         ..orderBy([
@@ -34,7 +41,10 @@ Future<Photo?> loadPhotoByCuratedId(AppDatabase db, String? curatedId) async {
   if (curatedId == null || curatedId.isEmpty) {
     return null;
   }
-  return (db.select(db.photos)..where((t) => t.id.equals(curatedId)))
+  return (db.select(db.photos)
+        ..where(
+          (t) => t.id.equals(curatedId) & t.suppressed.equals(false),
+        ))
       .getSingleOrNull();
 }
 

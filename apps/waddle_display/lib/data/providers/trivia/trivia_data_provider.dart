@@ -253,7 +253,7 @@ class TriviaDataProvider implements IDataProvider {
           d.trim(),
           correctNorm,
         );
-        await ctx.db.into(ctx.db.triviaQuestions).insertOnConflictUpdate(
+        await ctx.db.into(ctx.db.triviaQuestions).insert(
               TriviaQuestionsCompanion.insert(
                 id: tid,
                 categoryId: cid,
@@ -264,6 +264,18 @@ class TriviaDataProvider implements IDataProvider {
                 optionD: d.trim(),
                 correctOption: correctNorm,
                 createdAtMs: createdAt,
+              ),
+              onConflict: DoUpdate(
+                (old) => TriviaQuestionsCompanion(
+                  categoryId: Value(cid),
+                  question: Value(q.trim()),
+                  optionA: Value(a.trim()),
+                  optionB: Value(b.trim()),
+                  optionC: Value(c.trim()),
+                  optionD: Value(d.trim()),
+                  correctOption: Value(correctNorm),
+                  createdAtMs: Value(createdAt),
+                ),
               ),
             );
         inserted++;

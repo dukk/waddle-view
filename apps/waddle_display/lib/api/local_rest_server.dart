@@ -11,6 +11,7 @@ import 'package:shelf_router/shelf_router.dart';
 
 import '../alerts/alert_repository.dart';
 import '../debug/app_debug_log.dart';
+import '../persistence/content_suppression_repository.dart';
 import '../persistence/database.dart';
 import '../persistence/tables.dart';
 import '../secrets/secret_store.dart';
@@ -56,6 +57,29 @@ Handler buildProtectedApiRouter({
   required TickerCuratedRepository ticker,
 }) {
   final r = Router();
+  final suppression = ContentSuppressionRepository(db);
+
+  r.patch('/v1/content/jokes/<id>', (Request req, String id) async {
+    return _patchContentSuppressed(req, (b) => suppression.setJokeSuppressed(id, b));
+  });
+  r.patch('/v1/content/rss-articles/<id>', (Request req, String id) async {
+    return _patchContentSuppressed(
+      req,
+      (b) => suppression.setRssArticleSuppressed(id, b),
+    );
+  });
+  r.patch('/v1/content/photos/<id>', (Request req, String id) async {
+    return _patchContentSuppressed(req, (b) => suppression.setPhotoSuppressed(id, b));
+  });
+  r.patch('/v1/content/videos/<id>', (Request req, String id) async {
+    return _patchContentSuppressed(req, (b) => suppression.setVideoSuppressed(id, b));
+  });
+  r.patch('/v1/content/trivia/<id>', (Request req, String id) async {
+    return _patchContentSuppressed(
+      req,
+      (b) => suppression.setTriviaQuestionSuppressed(id, b),
+    );
+  });
 
   r.get('/v1/providers', (Request req) async {
     final rows = await db.select(db.providerSettings).get();
@@ -173,6 +197,47 @@ Map<String, Object?> _alertJson(DashboardAlert a) => {
   'priority': a.priority,
   'qr_payload': a.qrPayload,
 };
+
+Future<Response> _patchContentSuppressed(
+  Request req,
+  Future<int> Function(bool suppressed) apply,
+) async {
+  Map<String, dynamic> map;
+  try {
+    final decoded = jsonDecode(await req.readAsString());
+    if (decoded is! Map<String, dynamic>) {
+      return Response(
+        400,
+        body: '{"error":"expected_json_object"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    map = decoded;
+  } on Object {
+    return Response(
+      400,
+      body: '{"error":"invalid_json"}',
+      headers: {'content-type': 'application/json'},
+    );
+  }
+  final suppressed = map['suppressed'];
+  if (suppressed is! bool) {
+    return Response(
+      400,
+      body: '{"error":"suppressed_must_be_bool"}',
+      headers: {'content-type': 'application/json'},
+    );
+  }
+  final n = await apply(suppressed);
+  if (n == 0) {
+    return Response(
+      404,
+      body: '{"error":"not_found"}',
+      headers: {'content-type': 'application/json'},
+    );
+  }
+  return Response.ok('{}', headers: {'content-type': 'application/json'});
+}
 
 Handler buildRootHandler({
   required AppDatabase db,

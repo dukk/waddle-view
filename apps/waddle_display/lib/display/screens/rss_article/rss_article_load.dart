@@ -24,12 +24,19 @@ Future<RssArticle?> loadRssArticleForSlideChoice(
       !excludeArticleIds.contains(curatedId)) {
     return (db.select(
       db.rssArticles,
-    )..where((t) => t.id.equals(curatedId))).getSingleOrNull();
+    )..where(
+          (t) => t.id.equals(curatedId) & t.suppressed.equals(false),
+        ))
+        .getSingleOrNull();
   }
   final feedId = spec.config['feedId'] as String?;
   final q = db.select(db.rssArticles);
   if (feedId != null && feedId.isNotEmpty) {
-    q.where((t) => t.feedId.equals(feedId));
+    q.where(
+      (t) => t.feedId.equals(feedId) & t.suppressed.equals(false),
+    );
+  } else {
+    q.where((t) => t.suppressed.equals(false));
   }
   final articles =
       await (q

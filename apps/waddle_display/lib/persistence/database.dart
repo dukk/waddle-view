@@ -338,21 +338,41 @@ FROM curator_settings WHERE id = 'app';
         await m.createTable(weatherGovActiveAlerts);
       }
       if (from < 26) {
-        await customStatement(
-          'ALTER TABLE jokes ADD COLUMN suppressed INTEGER NOT NULL DEFAULT 0',
-        );
-        await customStatement(
-          'ALTER TABLE rss_articles ADD COLUMN suppressed INTEGER NOT NULL DEFAULT 0',
-        );
-        await customStatement(
-          'ALTER TABLE trivia_questions ADD COLUMN suppressed INTEGER NOT NULL DEFAULT 0',
-        );
-        await customStatement(
-          'ALTER TABLE photos ADD COLUMN suppressed INTEGER NOT NULL DEFAULT 0',
-        );
-        await customStatement(
-          'ALTER TABLE videos ADD COLUMN suppressed INTEGER NOT NULL DEFAULT 0',
-        );
+        Future<bool> legacyTableExists(String table) async {
+          // Table name inputs here come from hard-coded strings in this
+          // migration, so string interpolation is safe.
+          final rows = await customSelect(
+            "SELECT name FROM sqlite_master WHERE type = 'table' "
+            "AND name = '$table';",
+          ).get();
+          return rows.isNotEmpty;
+        }
+
+        Future<Set<String>> legacyColumnNames(String table) async {
+          final rows =
+              await customSelect('PRAGMA table_info($table);').get();
+          return rows.map((r) => r.read<String>('name')).toSet();
+        }
+
+        Future<void> ensureSuppressedColumn(String table) async {
+          if (!await legacyTableExists(table)) {
+            return;
+          }
+          final cols = await legacyColumnNames(table);
+          if (cols.contains('suppressed')) {
+            return;
+          }
+          await customStatement(
+            'ALTER TABLE $table ADD COLUMN suppressed INTEGER '
+            'NOT NULL DEFAULT 0',
+          );
+        }
+
+        await ensureSuppressedColumn('jokes');
+        await ensureSuppressedColumn('rss_articles');
+        await ensureSuppressedColumn('trivia_questions');
+        await ensureSuppressedColumn('photos');
+        await ensureSuppressedColumn('videos');
       }
     },
     beforeOpen: (details) async {

@@ -73,7 +73,9 @@ Future<CuratorContentPools> loadCuratorContentPools(
   final out = <String, List<String>>{};
   final rssMetrics = <String, RssArticleMetric>{};
 
-  final jokes = await db.select(db.jokes).get();
+  final jokes = await (db.select(db.jokes)
+        ..where((t) => t.suppressed.equals(false)))
+      .get();
   if (jokes.isNotEmpty) {
     final all = <String>[];
     final byCat = <String, List<String>>{};
@@ -90,7 +92,9 @@ Future<CuratorContentPools> loadCuratorContentPools(
   final feeds = await db.select(db.rssFeedSources).get();
   final feedById = {for (final f in feeds) f.id: f};
 
-  final articles = await db.select(db.rssArticles).get();
+  final articles = await (db.select(db.rssArticles)
+        ..where((t) => t.suppressed.equals(false)))
+      .get();
   if (articles.isNotEmpty) {
     final all = <String>[];
     final byFeed = <String, List<String>>{};
@@ -119,7 +123,9 @@ Future<CuratorContentPools> loadCuratorContentPools(
     }
   }
 
-  final trivia = await db.select(db.triviaQuestions).get();
+  final trivia = await (db.select(db.triviaQuestions)
+        ..where((t) => t.suppressed.equals(false)))
+      .get();
   if (trivia.isNotEmpty) {
     final all = <String>[];
     final byCat = <String, List<String>>{};
@@ -133,7 +139,9 @@ Future<CuratorContentPools> loadCuratorContentPools(
     }
   }
 
-  final pexelsPhotos = await db.select(db.photos).get();
+  final pexelsPhotos = await (db.select(db.photos)
+        ..where((t) => t.suppressed.equals(false)))
+      .get();
   final photoMetrics = <String, PhotoCuratorMetric>{};
   if (pexelsPhotos.isNotEmpty) {
     final all = <String>[];
@@ -161,7 +169,9 @@ Future<CuratorContentPools> loadCuratorContentPools(
     }
   }
 
-  final pexelsVideos = await db.select(db.videos).get();
+  final pexelsVideos = await (db.select(db.videos)
+        ..where((t) => t.suppressed.equals(false)))
+      .get();
   if (pexelsVideos.isNotEmpty) {
     final all = <String>[];
     final byCat = <String, List<String>>{};

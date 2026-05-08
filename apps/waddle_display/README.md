@@ -94,6 +94,17 @@ Tagged **Pi** tarballs and `install.sh` are produced in CI and documented under 
 
 Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../docs/pi/using-the-image.md)**, **[`docs/pi/upgrade.md`](../../docs/pi/upgrade.md)**, **[`docs/pi/api.md`](../../docs/pi/api.md)**.
 
+### Content suppression (operator)
+
+- Jokes, RSS articles, photos, videos, and trivia questions support a **`suppressed`** flag in SQLite (default false). When true, rows stay in the database (stable ids for providers that re-fetch the same item) but are **excluded** from the main carousel pools, slide fallbacks, RSS **ticker** candidates, and RSS feed **pruning deletes** (non-suppressed rows are still trimmed per `max_articles`).
+- **REST** (authenticated like other `/v1/*` routes): `PATCH` with JSON `{"suppressed": true|false}` to:
+  - `/v1/content/jokes/<id>`
+  - `/v1/content/rss-articles/<id>`
+  - `/v1/content/photos/<id>`
+  - `/v1/content/videos/<id>`
+  - `/v1/content/trivia/<id>`
+- **`404`** when the id does not exist. Full table and examples: **[`docs/pi/api.md`](../../docs/pi/api.md)**.
+
 ## Local REST API and admin UI (debug, profile, release)
 
 - Defaults to **`127.0.0.1:8787`**. Set `WADDLE_HTTP_BIND` (and optional `WADDLE_HTTP_PORT`) to expose on LAN.
@@ -219,6 +230,8 @@ The **stocks** provider (`id` / `provider_type`: **`stocks`**) calls [Finnhub](h
 ## NWS weather alerts (api.weather.gov)
 
 The **`nws_weather_alerts`** data provider (`id` / `provider_type`: **`nws_weather_alerts`**) calls the National Weather Service [JSON API](https://www.weather.gov/documentation/services-web-api) **`GET /alerts/active?point=<lat>,<lon>`** for each enabled row in **`weather_locations`** (or a **`defaultLocation`** in **`config_json`** when that table is empty, same shape as the OpenWeather provider). Responses are stored in **`weather_gov_active_alerts`** (schema version **25**). **No API key** is required.
+
+**Schema 26** adds boolean **`suppressed`** on **`jokes`**, **`rss_articles`**, **`trivia_questions`**, **`photos`**, and **`videos`** (hide from display without deleting rows; see *Content suppression* above).
 
 **User-Agent (required by NWS):** every request sends an identifying **`User-Agent`** header. Set **`userAgent`** in **`provider_settings.config_json`** to a string that includes contact information (website or email), for example `(https://example.org, ops@example.org)`, as described in the [API overview](https://www.weather.gov/documentation/services-web-api). Until you configure this, the app uses a generic placeholder string that points to this README.
 

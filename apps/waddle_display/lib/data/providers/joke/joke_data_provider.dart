@@ -221,13 +221,21 @@ class JokeDataProvider implements IDataProvider {
           continue;
         }
         final jokeId = jokeStableId(cid, setup.trim(), punchline.trim());
-        await ctx.db.into(ctx.db.jokes).insertOnConflictUpdate(
+        await ctx.db.into(ctx.db.jokes).insert(
               JokesCompanion.insert(
                 id: jokeId,
                 categoryId: cid,
                 setup: setup.trim(),
                 punchline: punchline.trim(),
                 createdAtMs: createdAt,
+              ),
+              onConflict: DoUpdate(
+                (old) => JokesCompanion(
+                  categoryId: Value(cid),
+                  setup: Value(setup.trim()),
+                  punchline: Value(punchline.trim()),
+                  createdAtMs: Value(createdAt),
+                ),
               ),
             );
         inserted++;

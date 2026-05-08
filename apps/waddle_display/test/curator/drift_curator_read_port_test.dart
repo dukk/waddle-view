@@ -111,6 +111,46 @@ void main() {
     await db.close();
   });
 
+  test('loadNewsCandidatesForTicker omits suppressed articles', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.rssFeedSources).insert(
+          RssFeedSourcesCompanion.insert(
+            id: 'f1',
+            url: 'http://x',
+            title: const Value('Feed'),
+          ),
+        );
+    await db.into(db.rssArticles).insert(
+          RssArticlesCompanion.insert(
+            id: 'hid',
+            feedId: 'f1',
+            guid: 'g0',
+            title: 'Bad',
+            link: 'http://a',
+            publishedAt: DateTime.fromMillisecondsSinceEpoch(3),
+            fetchedAt: DateTime.fromMillisecondsSinceEpoch(3),
+            suppressed: const Value(true),
+          ),
+        );
+    await db.into(db.rssArticles).insert(
+          RssArticlesCompanion.insert(
+            id: 'vis',
+            feedId: 'f1',
+            guid: 'g1',
+            title: 'Ok',
+            link: 'http://b',
+            publishedAt: DateTime.fromMillisecondsSinceEpoch(2),
+            fetchedAt: DateTime.fromMillisecondsSinceEpoch(2),
+          ),
+        );
+    final port = DriftCuratorReadPort(db);
+    final list = await port.loadNewsCandidatesForTicker();
+    expect(list, hasLength(1));
+    expect(list.single.title, 'Ok');
+    await db.close();
+  });
+
   test('loadTickerDefinitionsForCuration returns rows ordered by sort_order', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);

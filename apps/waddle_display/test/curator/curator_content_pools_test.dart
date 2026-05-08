@@ -123,4 +123,168 @@ void main() {
 
     await db.close();
   });
+
+  test('loadCuratorContentPools omits suppressed rows', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureDefaultJokeCategories(db);
+    await ensureDefaultTriviaCategories(db);
+
+    await db.into(db.jokes).insert(
+          JokesCompanion.insert(
+            id: 'jv',
+            categoryId: 'dad',
+            setup: 'a',
+            punchline: 'b',
+            createdAtMs: DateTime.fromMillisecondsSinceEpoch(1),
+            suppressed: const Value(true),
+          ),
+        );
+    await db.into(db.jokes).insert(
+          JokesCompanion.insert(
+            id: 'jvis',
+            categoryId: 'dad',
+            setup: 'c',
+            punchline: 'd',
+            createdAtMs: DateTime.fromMillisecondsSinceEpoch(2),
+          ),
+        );
+
+    await db.into(db.rssFeedSources).insert(
+          RssFeedSourcesCompanion.insert(id: 'f2', url: 'http://b'),
+        );
+    await db.into(db.rssArticles).insert(
+          RssArticlesCompanion.insert(
+            id: 'ah',
+            feedId: 'f2',
+            guid: 'h',
+            title: 'hid',
+            link: 'http://x',
+            publishedAt: DateTime.fromMillisecondsSinceEpoch(2),
+            fetchedAt: DateTime.fromMillisecondsSinceEpoch(2),
+            suppressed: const Value(true),
+          ),
+        );
+    await db.into(db.rssArticles).insert(
+          RssArticlesCompanion.insert(
+            id: 'ash',
+            feedId: 'f2',
+            guid: 's',
+            title: 'shown',
+            link: 'http://y',
+            publishedAt: DateTime.fromMillisecondsSinceEpoch(3),
+            fetchedAt: DateTime.fromMillisecondsSinceEpoch(3),
+          ),
+        );
+
+    await db.into(db.triviaQuestions).insert(
+          TriviaQuestionsCompanion.insert(
+            id: 'qh',
+            categoryId: 'science',
+            question: '?',
+            optionA: 'a',
+            optionB: 'b',
+            optionC: 'c',
+            optionD: 'd',
+            correctOption: 'A',
+            createdAtMs: DateTime.fromMillisecondsSinceEpoch(2),
+            suppressed: const Value(true),
+          ),
+        );
+    await db.into(db.triviaQuestions).insert(
+          TriviaQuestionsCompanion.insert(
+            id: 'qs',
+            categoryId: 'science',
+            question: '??',
+            optionA: 'a',
+            optionB: 'b',
+            optionC: 'c',
+            optionD: 'd',
+            correctOption: 'B',
+            createdAtMs: DateTime.fromMillisecondsSinceEpoch(3),
+          ),
+        );
+
+    await db.into(db.blobMetadata).insert(
+          BlobMetadataCompanion.insert(
+            blobKey: 'k/ph',
+            sha256: 'x',
+            relativePath: 'ph.bin',
+            bytes: 1,
+            capturedAt: DateTime.fromMillisecondsSinceEpoch(1),
+          ),
+        );
+    await db.into(db.photos).insert(
+          PhotosCompanion.insert(
+            id: 'phhid',
+            category: const Value('pexels'),
+            mediaBlobKey: 'k/ph',
+            photographerName: 'a',
+            photographerUrl: 'b',
+            pexelsPageUrl: 'c',
+            fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
+            suppressed: const Value(true),
+          ),
+        );
+    await db.into(db.blobMetadata).insert(
+          BlobMetadataCompanion.insert(
+            blobKey: 'k/pvis',
+            sha256: 'y',
+            relativePath: 'pvis.bin',
+            bytes: 1,
+            capturedAt: DateTime.fromMillisecondsSinceEpoch(1),
+          ),
+        );
+    await db.into(db.photos).insert(
+          PhotosCompanion.insert(
+            id: 'phvis',
+            category: const Value('pexels'),
+            mediaBlobKey: 'k/pvis',
+            photographerName: 'a',
+            photographerUrl: 'b',
+            pexelsPageUrl: 'c',
+            fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(2),
+          ),
+        );
+
+    await db.into(db.videos).insert(
+          VideosCompanion.insert(
+            id: 'vhid',
+            category: const Value('pexels'),
+            mediaBlobKey: 'k/vhid',
+            photographerName: 'a',
+            photographerUrl: 'b',
+            pexelsPageUrl: 'c',
+            durationSeconds: 5,
+            fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
+            suppressed: const Value(true),
+          ),
+        );
+    await db.into(db.videos).insert(
+          VideosCompanion.insert(
+            id: 'vvis',
+            category: const Value('pexels'),
+            mediaBlobKey: 'k/vvis',
+            photographerName: 'a',
+            photographerUrl: 'b',
+            pexelsPageUrl: 'c',
+            durationSeconds: 10,
+            fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(2),
+          ),
+        );
+
+    final loaded = await loadCuratorContentPools(db);
+    final pools = loaded.pools;
+    expect(pools['joke'], unorderedEquals(['jvis']));
+    expect(pools['joke:dad'], ['jvis']);
+    expect(pools['rss'], ['ash']);
+    expect(loaded.rssArticleMetrics.containsKey('ah'), isFalse);
+    expect(loaded.rssArticleMetrics['ash'], isNotNull);
+    expect(pools['trivia'], unorderedEquals(['qs']));
+    expect(pools['pexels_photo'], unorderedEquals(['phvis']));
+    expect(loaded.photoMetrics.containsKey('phhid'), isFalse);
+    expect(pools['pexels_video'], unorderedEquals(['vvis']));
+
+    await db.close();
+  });
 }

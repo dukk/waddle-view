@@ -115,7 +115,7 @@ class RssNewsDataProvider implements IDataProvider {
       );
     }
 
-    await ctx.db.into(ctx.db.rssArticles).insertOnConflictUpdate(
+    await ctx.db.into(ctx.db.rssArticles).insert(
           RssArticlesCompanion.insert(
             id: articleId,
             feedId: feedId,
@@ -129,6 +129,23 @@ class RssNewsDataProvider implements IDataProvider {
             ),
             fetchedAt: DateTime.fromMillisecondsSinceEpoch(now),
             imageBlobKey: Value(imageKey),
+          ),
+          onConflict: DoUpdate(
+            (old) => RssArticlesCompanion(
+              feedId: Value(feedId),
+              guid: Value(entry.stableKey),
+              title: Value(entry.title),
+              link: Value(entry.link),
+              summary: Value(entry.summary),
+              publishedAt: Value(
+                DateTime.fromMillisecondsSinceEpoch(
+                  entry.publishedAtMs,
+                  isUtc: true,
+                ),
+              ),
+              fetchedAt: Value(DateTime.fromMillisecondsSinceEpoch(now)),
+              imageBlobKey: Value(imageKey),
+            ),
           ),
         );
   }
@@ -195,10 +212,11 @@ class RssNewsDataProvider implements IDataProvider {
                 (t) => OrderingTerm.desc(t.publishedAt),
               ]))
             .get();
-    if (rows.length <= maxArticles) {
+    final nonsuppressed = rows.where((r) => !r.suppressed).toList();
+    if (nonsuppressed.length <= maxArticles) {
       return;
     }
-    for (final a in rows.sublist(maxArticles)) {
+    for (final a in nonsuppressed.sublist(maxArticles)) {
       await _deleteArticle(ctx, a);
     }
   }

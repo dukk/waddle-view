@@ -12,13 +12,19 @@ Future<Joke?> loadJokeForSlide(
 ) async {
   final curatedId = slide.randomChoices[spec.choiceKey];
   if (curatedId != null && curatedId.isNotEmpty) {
-    return (db.select(db.jokes)..where((t) => t.id.equals(curatedId)))
+    return (db.select(db.jokes)..where(
+          (t) => t.id.equals(curatedId) & t.suppressed.equals(false),
+        ))
         .getSingleOrNull();
   }
   final categoryId = spec.config['categoryId'] as String?;
   final q = db.select(db.jokes);
   if (categoryId != null && categoryId.isNotEmpty) {
-    q.where((t) => t.categoryId.equals(categoryId));
+    q.where(
+      (t) => t.categoryId.equals(categoryId) & t.suppressed.equals(false),
+    );
+  } else {
+    q.where((t) => t.suppressed.equals(false));
   }
   return (q
         ..orderBy([
@@ -37,13 +43,19 @@ Future<TriviaQuestion?> loadTriviaForSlide(
   final curatedId = slide.randomChoices[spec.choiceKey];
   if (curatedId != null && curatedId.isNotEmpty) {
     return (db.select(db.triviaQuestions)
-          ..where((t) => t.id.equals(curatedId)))
+          ..where(
+            (t) => t.id.equals(curatedId) & t.suppressed.equals(false),
+          ))
         .getSingleOrNull();
   }
   final categoryId = spec.config['categoryId'] as String?;
   final q = db.select(db.triviaQuestions);
   if (categoryId != null && categoryId.isNotEmpty) {
-    q.where((t) => t.categoryId.equals(categoryId));
+    q.where(
+      (t) => t.categoryId.equals(categoryId) & t.suppressed.equals(false),
+    );
+  } else {
+    q.where((t) => t.suppressed.equals(false));
   }
   return (q
         ..orderBy([
