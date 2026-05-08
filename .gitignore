@@ -25,3 +25,4 @@ Thumbs.db
 # Generated (when drift/build_runner added later)
 *.g.dart
 *.freezed.dart
+dist/

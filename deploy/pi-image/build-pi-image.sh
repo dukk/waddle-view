@@ -65,6 +65,7 @@ OUTPUT_BASENAME="${OUTPUT_BASENAME:-waddle-display-pi-$(date -u +%Y%m%d).img}"
 ROOT_MOUNT="${WORK_DIR}/rootfs"
 IMG_CUSTOM="${WORK_DIR}/raspios-custom.img"
 LOOPDEV=""
+USED_KPARTX=0
 HOST_ARCH="$(uname -m)"
 
 log() {
@@ -93,6 +94,9 @@ cleanup() {
     log "Cleaning up mounts…"
     rm -f "${ROOT_MOUNT}/usr/bin/qemu-aarch64-static" 2>/dev/null || true
     umount -R "${ROOT_MOUNT}" 2>/dev/null || true
+    if [[ "${USED_KPARTX:-0}" -eq 1 && -n "${LOOPDEV:-}" ]]; then
+      kpartx -d "${LOOPDEV}" 2>/dev/null || true
+    fi
     losetup -d "${LOOPDEV}" 2>/dev/null || true
   fi
   rm -f "${WORK_DIR}/qemu-aarch64-static.copied" 2>/dev/null || true
@@ -145,6 +149,11 @@ pick_loop_root_partition() {
   local loop_base="$1"
   local best="" best_bytes=0
   local part sz fst
+
+  # Encourage kernel partition table re-read before scanning /dev/loopXpN nodes.
+  partprobe "$loop_base" 2>/dev/null || true
+  partx -u "$loop_base" 2>/dev/null || true
+
   shopt -s nullglob
   for part in "${loop_base}"p*; do
     [[ -b "$part" ]] || continue
@@ -156,6 +165,26 @@ pick_loop_root_partition() {
       best="$part"
     fi
   done
+
+  # Docker Desktop setups sometimes do not expose /dev/loopXpN directly.
+  # Fall back to mapper devices via kpartx when needed.
+  if [[ -z "$best" ]]; then
+    kpartx -a "$loop_base" >/dev/null 2>&1 || true
+    for part in /dev/mapper/"$(basename "$loop_base")"p*; do
+      [[ -b "$part" ]] || continue
+      fst="$(blkid -o value -s TYPE "$part" 2>/dev/null || true)"
+      [[ "$fst" == "ext4" ]] || continue
+      sz="$(blockdev --getsize64 "$part" 2>/dev/null || echo 0)"
+      if (( sz > best_bytes )); then
+        best_bytes="$sz"
+        best="$part"
+      fi
+    done
+    if [[ -n "$best" ]]; then
+      USED_KPARTX=1
+    fi
+  fi
+
   shopt -u nullglob
   [[ -n "$best" ]] || die "Could not find an ext4 root partition on $loop_base"
   printf '%s\n' "$best"
