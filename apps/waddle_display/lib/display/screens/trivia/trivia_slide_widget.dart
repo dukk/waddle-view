@@ -20,6 +20,18 @@ List<String> triviaShuffleOrderForTesting(Random random) {
   return List<String>.from(letters);
 }
 
+Color _readableOnPastel(Color background) {
+  return background.computeLuminance() > 0.52
+      ? const Color(0xFF0D1B2A)
+      : const Color(0xFFE0E1DD);
+}
+
+Color _readableOnStripe(Color background) {
+  return background.computeLuminance() > 0.42
+      ? const Color(0xFF0D1B2A)
+      : const Color(0xFFE0E1DD);
+}
+
 /// Multiple-choice trivia: wrong answers strike out; a progress bar (like [JokeSlideWidget])
 /// counts down until the correct answer is emphasized.
 class TriviaSlideWidget extends StatefulWidget {
@@ -212,32 +224,44 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     return true;
   }
 
-  /// Same layout pattern as [JokeSlideWidget._buildPunchlineProgressBar], plus strike tick marks.
+  /// Countdown bar for elimination — coral/pink track to match trivia mockups, plus strike ticks.
   Widget _buildRevealProgressBar(ThemeData theme, double s) {
     if (_eliminationEndMs <= 0) {
       return const SizedBox.shrink();
     }
+    final palette = theme.extension<PaletteTertiaryLayers>();
+    final coral =
+        palette?.accent2 ?? theme.colorScheme.tertiary;
     return Padding(
       padding: EdgeInsets.only(top: 12 * s, bottom: 16 * s),
       child: Align(
         alignment: Alignment.center,
         child: FractionallySizedBox(
-          widthFactor: 0.55,
+          widthFactor: 0.72,
           child: LayoutBuilder(
             builder: (context, constraints) {
               final w = constraints.maxWidth;
-              final h = 7 * s;
+              final h = 8 * s;
               final remaining =
                   (1.0 - _elapsedMs / _eliminationEndMs).clamp(0.0, 1.0);
-              final trackColor = theme.colorScheme.secondaryContainer
-                  .withValues(alpha: 0.55);
+              final borderColor =
+                  Color.alphaBlend(Colors.black.withValues(alpha: 0.38), coral);
+              final trackColor =
+                  Color.alphaBlend(Colors.white.withValues(alpha: 0.75), coral);
               final fillColor =
-                  theme.colorScheme.secondary.withValues(alpha: 0.5);
-              final markerColor = theme.colorScheme.secondary;
+                  Color.alphaBlend(Colors.white.withValues(alpha: 0.45), coral);
+              final markerColor =
+                  Color.alphaBlend(Colors.black.withValues(alpha: 0.25), coral);
 
-              return SizedBox(
+              return Container(
                 key: const ValueKey<String>('trivia_reveal_progress'),
                 height: h,
+                clipBehavior: Clip.none,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4 * s),
+                  border: Border.all(color: borderColor, width: 1 * s),
+                ),
+                clipBehavior: Clip.antiAlias,
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
@@ -246,7 +270,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                         Container(
                           decoration: BoxDecoration(
                             color: trackColor,
-                            borderRadius: BorderRadius.circular(4 * s),
+                            borderRadius: BorderRadius.circular(3 * s),
                           ),
                         ),
                         Positioned.fill(
@@ -258,7 +282,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                               child: Container(
                                 decoration: BoxDecoration(
                                   color: fillColor,
-                                  borderRadius: BorderRadius.circular(4 * s),
+                                  borderRadius: BorderRadius.circular(3 * s),
                                 ),
                               ),
                             ),
@@ -314,86 +338,118 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
       palette?.accent1 ?? cs.secondary,
       palette?.accent2 ?? cs.tertiary,
       palette?.accent3 ?? cs.primary,
-      palette?.accent1 ?? cs.secondary,
+      palette?.accent4 ?? cs.outline,
     ];
     final accentColor = accentColors[slot % accentColors.length];
-    final normalTextColor = cs.onSurface;
+    final text = _optionText(row, sourceLetter);
+
+    final borderColor =
+        Color.alphaBlend(Colors.black.withValues(alpha: 0.28), accentColor);
+    final leftStripe = Color.alphaBlend(
+      Colors.black.withValues(alpha: struck ? 0.4 : 0.22),
+      accentColor,
+    );
+    final answerPanel = Color.alphaBlend(
+      Colors.white.withValues(alpha: struck ? 0.22 : 0.48),
+      accentColor,
+    );
+
+    final optionInk = _readableOnPastel(answerPanel);
     final base = theme.textTheme.titleLarge?.copyWith(
       fontWeight: FontWeight.w600,
+      height: 1.2,
     );
-    final TextStyle? optionStyle;
-    if (highlight) {
-      optionStyle = base?.copyWith(
-        fontWeight: FontWeight.w700,
-        color: normalTextColor,
-        height: 1.25,
-      );
-    } else {
-      optionStyle = base?.copyWith(
-        color: normalTextColor,
-        height: 1.25,
-      );
-    }
-
-    final badgeStyle = theme.textTheme.titleMedium?.copyWith(
-      fontWeight: FontWeight.w800,
-      color: cs.onPrimary,
-      height: 1.0,
-      leadingDistribution: TextLeadingDistribution.even,
+    final optionStyle = base?.copyWith(
+      color: optionInk.withValues(alpha: struck ? 0.45 : 1.0),
+      fontWeight: highlight ? FontWeight.w800 : FontWeight.w600,
     );
 
-    final text = _optionText(row, sourceLetter);
-    final badgeDiameter = 36 * s;
-    final badgeFill = accentColor.withValues(alpha: struck ? 0.45 : 1.0);
-    final badgeLetterColor =
-        struck ? cs.onSurface.withValues(alpha: 0.65) : cs.onPrimary;
+    final dividerColor =
+        Color.alphaBlend(Colors.black.withValues(alpha: 0.22), accentColor);
 
     return Padding(
-      padding: EdgeInsets.only(bottom: useTwoColumns ? 0 : 10 * s),
+      padding: EdgeInsets.only(bottom: useTwoColumns ? 0 : 12 * s),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           Padding(
-            padding: EdgeInsets.symmetric(vertical: 6 * s, horizontal: 4 * s),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Container(
-                  width: badgeDiameter,
-                  height: badgeDiameter,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: badgeFill,
-                  ),
-                  child: Text(
-                    displayLetter,
-                    textAlign: TextAlign.center,
-                    style: badgeStyle?.copyWith(color: badgeLetterColor),
-                    textHeightBehavior: const TextHeightBehavior(
-                      applyHeightToFirstAscent: false,
-                      applyHeightToLastDescent: false,
-                    ),
+            padding: EdgeInsets.symmetric(vertical: 5 * s, horizontal: 3 * s),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(5 * s),
+                border: Border.all(color: borderColor, width: 1 * s),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4 * s),
+                child: IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(
+                        width: 52 * s,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: leftStripe,
+                          border: Border(
+                            right: BorderSide(color: dividerColor, width: 1),
+                          ),
+                        ),
+                        child: Text(
+                          displayLetter,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            height: 1.0,
+                            color: _readableOnStripe(leftStripe).withValues(
+                              alpha: struck ? 0.55 : 1.0,
+                            ),
+                          ),
+                          textHeightBehavior: const TextHeightBehavior(
+                            applyHeightToFirstAscent: false,
+                            applyHeightToLastDescent: false,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(minHeight: 52 * s),
+                          child: ColoredBox(
+                            color: answerPanel,
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 10 * s,
+                                vertical: 12 * s,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  text,
+                                  style: optionStyle,
+                                  softWrap: true,
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                SizedBox(width: 12 * s),
-                Expanded(
-                  child: Text(
-                    text,
-                    style: optionStyle,
-                    softWrap: true,
-                    textAlign: TextAlign.start,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
           if (struck)
             Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8 * s),
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 5 * s, horizontal: 3 * s),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(5 * s),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.12),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -520,7 +576,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                         useTwoColumns: true,
                       ),
                     ),
-                    SizedBox(width: 12 * s),
+                    SizedBox(width: 10 * s),
                     Expanded(
                       child: _optionTile(
                         row: row,
@@ -534,7 +590,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                     ),
                   ],
                 ),
-                SizedBox(height: 8 * s),
+                SizedBox(height: 10 * s),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -549,7 +605,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                         useTwoColumns: true,
                       ),
                     ),
-                    SizedBox(width: 12 * s),
+                    SizedBox(width: 10 * s),
                     Expanded(
                       child: _optionTile(
                         row: row,

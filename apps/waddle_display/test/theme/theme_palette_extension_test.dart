@@ -19,6 +19,7 @@ PaletteTertiaryLayers _sample({
     accent1: const Color(0xFF333333),
     accent2: const Color(0xFF444444),
     accent3: const Color(0xFF555555),
+    accent4: const Color(0xFF666666),
     colorOrder: const [Color(0xFF666666)],
     tertiaryLayersByColor: tertiary,
     primaryPairGradient: _g(_c1, _c2),

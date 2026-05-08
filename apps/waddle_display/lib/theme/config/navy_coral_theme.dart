@@ -15,9 +15,11 @@ ThemeData buildNavyCoralDisplayTheme() {
     primary: NavyCoralPalette.primary,
     onPrimary: NavyCoralPalette.primaryText,
     secondary: NavyCoralPalette.accents[0],
-    onSecondary: NavyCoralPalette.primaryText,
+    onSecondary: NavyCoralPalette.inkBlack,
     tertiary: NavyCoralPalette.accents[1],
-    onTertiary: NavyCoralPalette.inkBlack,
+    onTertiary: NavyCoralPalette.primaryText,
+    tertiaryContainer: NavyCoralPalette.accents[3],
+    onTertiaryContainer: NavyCoralPalette.primaryText,
     surfaceContainerHighest: NavyCoralPalette.footerBar,
     onSurfaceVariant: NavyCoralPalette.mutedText,
     outline: NavyCoralPalette.accents[2],
@@ -36,6 +38,7 @@ ThemeData buildNavyCoralDisplayTheme() {
         accent1: NavyCoralPalette.accents[0],
         accent2: NavyCoralPalette.accents[1],
         accent3: NavyCoralPalette.accents[2],
+        accent4: NavyCoralPalette.accents[3],
         colorOrder: NavyCoralPalette.orderedPalette,
         tertiaryLayersByColor: {
           for (final color in NavyCoralPalette.orderedPalette)

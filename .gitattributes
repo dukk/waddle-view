@@ -1,0 +1,2 @@
+# Shell entrypoints must stay LF (Docker/Linux); Windows checkouts often use CRLF otherwise.
+deploy/pi-image/*.sh text eol=lf

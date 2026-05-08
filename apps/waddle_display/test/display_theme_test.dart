@@ -21,12 +21,14 @@ void main() {
     expect(t.colorScheme.secondary, NavyCoralPalette.accents[0]);
     expect(t.colorScheme.tertiary, NavyCoralPalette.accents[1]);
     expect(t.colorScheme.outline, NavyCoralPalette.accents[2]);
+    expect(t.colorScheme.tertiaryContainer, NavyCoralPalette.accents[3]);
     expect(palette, isNotNull);
     expect(palette!.colorOrder, NavyCoralPalette.orderedPalette);
     expect(palette.iconColor, NavyCoralPalette.dustyDenim);
     expect(palette.accent1, NavyCoralPalette.accents[0]);
     expect(palette.accent2, NavyCoralPalette.accents[1]);
     expect(palette.accent3, NavyCoralPalette.accents[2]);
+    expect(palette.accent4, NavyCoralPalette.accents[3]);
     expect(
       palette.primaryPairGradient.colors,
       [NavyCoralPalette.inkBlack, NavyCoralPalette.prussianBlue],

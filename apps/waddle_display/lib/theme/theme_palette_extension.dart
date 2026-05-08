@@ -8,6 +8,7 @@ class PaletteTertiaryLayers extends ThemeExtension<PaletteTertiaryLayers> {
     required this.accent1,
     required this.accent2,
     required this.accent3,
+    required this.accent4,
     required this.colorOrder,
     required this.tertiaryLayersByColor,
     required this.primaryPairGradient,
@@ -19,6 +20,7 @@ class PaletteTertiaryLayers extends ThemeExtension<PaletteTertiaryLayers> {
   final Color accent1;
   final Color accent2;
   final Color accent3;
+  final Color accent4;
   final List<Color> colorOrder;
   final Map<Color, List<Color>> tertiaryLayersByColor;
   final LinearGradient primaryPairGradient;
@@ -39,6 +41,7 @@ class PaletteTertiaryLayers extends ThemeExtension<PaletteTertiaryLayers> {
     Color? accent1,
     Color? accent2,
     Color? accent3,
+    Color? accent4,
     List<Color>? colorOrder,
     Map<Color, List<Color>>? tertiaryLayersByColor,
     LinearGradient? primaryPairGradient,
@@ -50,6 +53,7 @@ class PaletteTertiaryLayers extends ThemeExtension<PaletteTertiaryLayers> {
       accent1: accent1 ?? this.accent1,
       accent2: accent2 ?? this.accent2,
       accent3: accent3 ?? this.accent3,
+      accent4: accent4 ?? this.accent4,
       colorOrder: colorOrder ?? this.colorOrder,
       tertiaryLayersByColor: tertiaryLayersByColor ?? this.tertiaryLayersByColor,
       primaryPairGradient: primaryPairGradient ?? this.primaryPairGradient,
@@ -71,6 +75,7 @@ class PaletteTertiaryLayers extends ThemeExtension<PaletteTertiaryLayers> {
       accent1: Color.lerp(accent1, other.accent1, t) ?? accent1,
       accent2: Color.lerp(accent2, other.accent2, t) ?? accent2,
       accent3: Color.lerp(accent3, other.accent3, t) ?? accent3,
+      accent4: Color.lerp(accent4, other.accent4, t) ?? accent4,
       colorOrder: t < 0.5 ? colorOrder : other.colorOrder,
       tertiaryLayersByColor: t < 0.5 ? tertiaryLayersByColor : other.tertiaryLayersByColor,
       primaryPairGradient: t < 0.5

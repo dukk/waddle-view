@@ -7,7 +7,7 @@ Type=simple
 Environment=WADDLE_API_KEY_FILE=/etc/waddle-view/api.key
 Environment=DISPLAY=:0
 WorkingDirectory=/opt/waddle-view/bundle
-ExecStart=/opt/waddle-view/bundle/waddle_view
+ExecStart=/opt/waddle-view/bundle/waddle_display
 Restart=on-failure
 
 [Install]

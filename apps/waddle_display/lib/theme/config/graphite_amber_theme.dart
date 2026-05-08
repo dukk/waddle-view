@@ -34,6 +34,7 @@ ThemeData buildGraphiteAmberDisplayTheme() {
         accent1: GraphiteAmberPalette.accent,
         accent2: GraphiteAmberPalette.footerBar,
         accent3: GraphiteAmberPalette.primaryText,
+        accent4: GraphiteAmberPalette.primaryText,
         colorOrder: [GraphiteAmberPalette.background, GraphiteAmberPalette.accent],
         tertiaryLayersByColor: {
           GraphiteAmberPalette.background: [

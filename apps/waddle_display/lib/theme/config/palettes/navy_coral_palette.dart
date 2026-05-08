@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// 8-color TV palette with 3 accent colors at the tail end.
+/// 9-color TV palette: five base neutrals plus four accent colors at the tail.
 abstract final class NavyCoralPalette {
   const NavyCoralPalette._();
 
@@ -11,7 +11,8 @@ abstract final class NavyCoralPalette {
   static const Color dustyDenim = Color(0xFF778DA9);
   static const Color alabasterGrey = Color(0xFFE0E1DD);
 
-  // Accent trio (last three palette colors).
+  // Accent quartet (last four palette colors).
+  static const Color mutedTeal = Color(0xFF83AF84);
   static const Color lobsterPink = Color(0xFFE05C6C);
   static const Color royalGold = Color(0xFFFFE356);
   static const Color lavenderPurple = Color(0xFF966CB3);
@@ -29,10 +30,16 @@ abstract final class NavyCoralPalette {
     duskBlue,
     dustyDenim,
     alabasterGrey,
+    mutedTeal,
     lobsterPink,
     royalGold,
     lavenderPurple,
   ];
 
-  static const List<Color> accents = [lobsterPink, royalGold, lavenderPurple];
+  static const List<Color> accents = [
+    mutedTeal,
+    lobsterPink,
+    royalGold,
+    lavenderPurple,
+  ];
 }

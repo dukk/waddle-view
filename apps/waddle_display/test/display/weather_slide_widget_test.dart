@@ -104,7 +104,7 @@ void main() {
     expect(find.byIcon(Icons.cloud), findsOneWidget);
     expect(find.byIcon(Icons.umbrella), findsOneWidget);
     final cloudIcon = tester.widget<Icon>(find.byIcon(Icons.cloud));
-    expect(cloudIcon.color, NavyCoralPalette.lobsterPink);
+    expect(cloudIcon.color, NavyCoralPalette.mutedTeal);
     final rainIcon = tester.widget<Icon>(find.byIcon(Icons.umbrella));
     expect(rainIcon.color, NavyCoralPalette.dustyDenim);
     await tester.pumpWidget(const SizedBox.shrink());
