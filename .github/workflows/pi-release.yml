@@ -12,6 +12,8 @@ defaults:
 jobs:
   build-linux-arm64:
     runs-on: ubuntu-24.04-arm
+    env:
+      LINUX_BUILD_DEPS_FILE: ../../deploy/linux-arm64/build-deps.txt
     steps:
       - uses: actions/checkout@v4
       - name: Install Flutter SDK (arm64)
@@ -20,10 +22,28 @@ jobs:
           echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
       - name: Show Flutter version
         run: flutter --version
-      - run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+      - name: Validate Linux dependency baseline
+        run: |
+          test -f "$LINUX_BUILD_DEPS_FILE"
+          for dep in clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libsecret-1-dev libjsoncpp-dev; do
+            grep -qx "$dep" "$LINUX_BUILD_DEPS_FILE"
+          done
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          xargs -a "$LINUX_BUILD_DEPS_FILE" sudo apt-get install -y
       - run: flutter config --enable-linux-desktop
       - run: flutter pub get
       - run: flutter build linux --release
+      - name: Audit Linux runtime dependencies
+        run: |
+          APP_BIN="build/linux/arm64/release/bundle/waddle_display"
+          test -x "$APP_BIN"
+          ldd "$APP_BIN" | tee /tmp/waddle-ldd.txt
+          if grep -q "not found" /tmp/waddle-ldd.txt; then
+            echo "Missing runtime shared libraries detected."
+            exit 1
+          fi
       - name: Package dist
         run: |
           VERSION="${GITHUB_REF_NAME}"
