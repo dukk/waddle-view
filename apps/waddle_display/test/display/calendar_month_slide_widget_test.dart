@@ -393,7 +393,7 @@ void main() {
         .whereType<BoxDecoration>()
         .firstWhere((decoration) => decoration.border != null);
     final border = day16Decoration.border as Border;
-    expect(border.top.color, theme.colorScheme.outline);
+    expect(border.top.color, theme.colorScheme.secondaryContainer);
 
     final day15Decorations = tester
         .widgetList<DecoratedBox>(
@@ -407,7 +407,7 @@ void main() {
         .toList();
     final todayDecoration =
         day15Decorations.firstWhere((decoration) => decoration.color != null);
-    expect(todayDecoration.color, theme.colorScheme.onPrimary);
+    expect(todayDecoration.color, theme.colorScheme.secondaryContainer);
 
     await db.close();
   });

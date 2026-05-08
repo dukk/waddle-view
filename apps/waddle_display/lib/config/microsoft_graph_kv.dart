@@ -7,8 +7,7 @@ import 'package:crypto/crypto.dart';
 const String kMicrosoftGraphClientIdKvKey = 'microsoft.graph.client_id';
 
 /// Default public client id for this deployment (overridable via KV).
-const String kDefaultMicrosoftGraphClientId =
-    '27bc410e-75a4-4bdc-9281-921f446aef52';
+const String kDefaultMicrosoftGraphClientId = '';
 
 /// Redirect URI for public / native OAuth clients (device code + refresh).
 ///

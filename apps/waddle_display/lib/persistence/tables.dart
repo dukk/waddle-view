@@ -158,6 +158,8 @@ class RssArticles extends Table {
   DateTimeColumn get publishedAt => dateTime()();
   DateTimeColumn get fetchedAt => dateTime()();
   TextColumn get imageBlobKey => text().nullable()();
+  /// When true, excluded from slides and news ticker; row kept for stable ids.
+  BoolColumn get suppressed => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -207,6 +209,8 @@ class Jokes extends Table {
   TextColumn get setup => text()();
   TextColumn get punchline => text()();
   DateTimeColumn get createdAtMs => dateTime()();
+  /// When true, excluded from slides; row kept for stable ids.
+  BoolColumn get suppressed => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -260,6 +264,8 @@ class TriviaQuestions extends Table {
   TextColumn get optionD => text()();
   TextColumn get correctOption => text()();
   DateTimeColumn get createdAtMs => dateTime()();
+  /// When true, excluded from slides; row kept for stable ids.
+  BoolColumn get suppressed => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -363,6 +369,8 @@ class Photos extends Table {
   TextColumn get pexelsPageUrl => text()();
   TextColumn get altText => text().withDefault(const Constant(''))();
   DateTimeColumn get fetchedAtMs => dateTime()();
+  /// When true, excluded from slides; row kept for stable ids.
+  BoolColumn get suppressed => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -389,6 +397,8 @@ class Videos extends Table {
   TextColumn get altText => text().withDefault(const Constant(''))();
   IntColumn get durationSeconds => integer()();
   DateTimeColumn get fetchedAtMs => dateTime()();
+  /// When true, excluded from slides; row kept for stable ids.
+  BoolColumn get suppressed => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};

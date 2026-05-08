@@ -102,7 +102,7 @@ void main() {
     );
 
     final answerAfter = tester.widget<Text>(find.text('Four'));
-    expect(answerAfter.style?.fontWeight, FontWeight.w700);
+    expect(answerAfter.style?.fontWeight, FontWeight.w800);
 
     await db.close();
   });

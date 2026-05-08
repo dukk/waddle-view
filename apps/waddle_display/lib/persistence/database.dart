@@ -46,7 +46,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 25;
+  int get schemaVersion => 26;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -336,6 +336,23 @@ FROM curator_settings WHERE id = 'app';
       }
       if (from < 25) {
         await m.createTable(weatherGovActiveAlerts);
+      }
+      if (from < 26) {
+        await customStatement(
+          'ALTER TABLE jokes ADD COLUMN suppressed INTEGER NOT NULL DEFAULT 0',
+        );
+        await customStatement(
+          'ALTER TABLE rss_articles ADD COLUMN suppressed INTEGER NOT NULL DEFAULT 0',
+        );
+        await customStatement(
+          'ALTER TABLE trivia_questions ADD COLUMN suppressed INTEGER NOT NULL DEFAULT 0',
+        );
+        await customStatement(
+          'ALTER TABLE photos ADD COLUMN suppressed INTEGER NOT NULL DEFAULT 0',
+        );
+        await customStatement(
+          'ALTER TABLE videos ADD COLUMN suppressed INTEGER NOT NULL DEFAULT 0',
+        );
       }
     },
     beforeOpen: (details) async {
