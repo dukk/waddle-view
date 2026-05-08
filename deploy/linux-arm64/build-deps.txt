@@ -7,3 +7,4 @@ liblzma-dev
 libstdc++-12-dev
 libsecret-1-dev
 libjsoncpp-dev
+libmpv-dev
