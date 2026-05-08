@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import 'package:drift/drift.dart' show CustomExpression, OrderingTerm;
+import 'package:drift/drift.dart'
+    show CustomExpression, Expression, OrderingTerm;
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart' as mkv;
@@ -23,7 +24,10 @@ Future<Video?> loadPexelsVideoForSlide(
   if (curatedId != null && curatedId.isNotEmpty) {
     return (db.select(db.videos)
           ..where(
-            (t) => t.id.equals(curatedId) & t.suppressed.equals(false),
+            (t) => Expression.and([
+              t.id.equals(curatedId),
+              t.suppressed.equals(false),
+            ]),
           ))
         .getSingleOrNull();
   }
@@ -31,7 +35,10 @@ Future<Video?> loadPexelsVideoForSlide(
   final q = db.select(db.videos);
   if (categoryId != null && categoryId.isNotEmpty) {
     q.where(
-      (t) => t.category.equals(categoryId) & t.suppressed.equals(false),
+      (t) => Expression.and([
+        t.category.equals(categoryId),
+        t.suppressed.equals(false),
+      ]),
     );
   } else {
     q.where((t) => t.suppressed.equals(false));

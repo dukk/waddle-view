@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:drift/drift.dart' show OrderingTerm;
+import 'package:drift/drift.dart' show Expression, OrderingTerm;
 
 import '../../../blob/blob_store.dart';
 import '../../../curator/screen_layout_parse.dart';
@@ -25,7 +25,10 @@ Future<RssArticle?> loadRssArticleForSlideChoice(
     return (db.select(
       db.rssArticles,
     )..where(
-          (t) => t.id.equals(curatedId) & t.suppressed.equals(false),
+          (t) => Expression.and([
+            t.id.equals(curatedId),
+            t.suppressed.equals(false),
+          ]),
         ))
         .getSingleOrNull();
   }
@@ -33,7 +36,10 @@ Future<RssArticle?> loadRssArticleForSlideChoice(
   final q = db.select(db.rssArticles);
   if (feedId != null && feedId.isNotEmpty) {
     q.where(
-      (t) => t.feedId.equals(feedId) & t.suppressed.equals(false),
+      (t) => Expression.and([
+        t.feedId.equals(feedId),
+        t.suppressed.equals(false),
+      ]),
     );
   } else {
     q.where((t) => t.suppressed.equals(false));

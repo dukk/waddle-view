@@ -1,4 +1,5 @@
-import 'package:drift/drift.dart' show CustomExpression, OrderingTerm;
+import 'package:drift/drift.dart'
+    show CustomExpression, Expression, OrderingTerm;
 
 import '../curator/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';
@@ -13,7 +14,10 @@ Future<Joke?> loadJokeForSlide(
   final curatedId = slide.randomChoices[spec.choiceKey];
   if (curatedId != null && curatedId.isNotEmpty) {
     return (db.select(db.jokes)..where(
-          (t) => t.id.equals(curatedId) & t.suppressed.equals(false),
+          (t) => Expression.and([
+            t.id.equals(curatedId),
+            t.suppressed.equals(false),
+          ]),
         ))
         .getSingleOrNull();
   }
@@ -21,7 +25,10 @@ Future<Joke?> loadJokeForSlide(
   final q = db.select(db.jokes);
   if (categoryId != null && categoryId.isNotEmpty) {
     q.where(
-      (t) => t.categoryId.equals(categoryId) & t.suppressed.equals(false),
+      (t) => Expression.and([
+        t.categoryId.equals(categoryId),
+        t.suppressed.equals(false),
+      ]),
     );
   } else {
     q.where((t) => t.suppressed.equals(false));
@@ -44,7 +51,10 @@ Future<TriviaQuestion?> loadTriviaForSlide(
   if (curatedId != null && curatedId.isNotEmpty) {
     return (db.select(db.triviaQuestions)
           ..where(
-            (t) => t.id.equals(curatedId) & t.suppressed.equals(false),
+            (t) => Expression.and([
+              t.id.equals(curatedId),
+              t.suppressed.equals(false),
+            ]),
           ))
         .getSingleOrNull();
   }
@@ -52,7 +62,10 @@ Future<TriviaQuestion?> loadTriviaForSlide(
   final q = db.select(db.triviaQuestions);
   if (categoryId != null && categoryId.isNotEmpty) {
     q.where(
-      (t) => t.categoryId.equals(categoryId) & t.suppressed.equals(false),
+      (t) => Expression.and([
+        t.categoryId.equals(categoryId),
+        t.suppressed.equals(false),
+      ]),
     );
   } else {
     q.where((t) => t.suppressed.equals(false));

@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
-import 'package:drift/drift.dart' show CustomExpression, OrderingTerm;
+import 'package:drift/drift.dart'
+    show CustomExpression, Expression, OrderingTerm;
 import 'package:waddle_display/blob/blob_store.dart';
 import 'package:waddle_display/curator/screen_layout_parse.dart';
 import 'package:waddle_display/curator/screen_program_curator.dart';
@@ -16,7 +17,10 @@ Future<Photo?> loadPexelsPhotoForSlide(
   if (curatedId != null && curatedId.isNotEmpty) {
     return (db.select(db.photos)
           ..where(
-            (t) => t.id.equals(curatedId) & t.suppressed.equals(false),
+            (t) => Expression.and([
+              t.id.equals(curatedId),
+              t.suppressed.equals(false),
+            ]),
           ))
         .getSingleOrNull();
   }
@@ -24,7 +28,10 @@ Future<Photo?> loadPexelsPhotoForSlide(
   final q = db.select(db.photos);
   if (categoryId != null && categoryId.isNotEmpty) {
     q.where(
-      (t) => t.category.equals(categoryId) & t.suppressed.equals(false),
+      (t) => Expression.and([
+        t.category.equals(categoryId),
+        t.suppressed.equals(false),
+      ]),
     );
   } else {
     q.where((t) => t.suppressed.equals(false));
@@ -43,7 +50,10 @@ Future<Photo?> loadPhotoByCuratedId(AppDatabase db, String? curatedId) async {
   }
   return (db.select(db.photos)
         ..where(
-          (t) => t.id.equals(curatedId) & t.suppressed.equals(false),
+          (t) => Expression.and([
+            t.id.equals(curatedId),
+            t.suppressed.equals(false),
+          ]),
         ))
       .getSingleOrNull();
 }
