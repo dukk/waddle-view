@@ -12,9 +12,9 @@ String triviaStableId(
   String optionB,
   String? optionC,
   String? optionD,
-  String correctOption,
+  String correctOption, [
   String questionType = kTriviaQuestionTypeMultipleChoice,
-) {
+]) {
   // Keep the legacy hash payload for multiple-choice rows so existing IDs stay stable.
   if (questionType == kTriviaQuestionTypeMultipleChoice) {
     final c = optionC ?? '';

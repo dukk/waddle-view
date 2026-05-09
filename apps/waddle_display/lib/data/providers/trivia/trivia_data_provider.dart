@@ -251,7 +251,7 @@ class TriviaDataProvider implements IDataProvider {
           continue;
         }
         final isTrueFalse = c == null || d == null;
-        if (!isTrueFalse && (c == null || d == null)) {
+        if (!isTrueFalse && (d == null)) {
           continue;
         }
         final correctNorm = _normalizeCorrectOption(correctRaw, isTrueFalse);

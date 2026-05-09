@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../debug/app_debug_log.dart';
+import '../../../persistence/database.dart';
 import '../../data_provider.dart';
 import '../../data_write_context.dart';
 import '../trivia/trivia_category_eligibility.dart';

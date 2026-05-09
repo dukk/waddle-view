@@ -300,7 +300,7 @@ FROM curator_settings WHERE id = 'app';
             await customStatement(
               'UPDATE screen_definitions SET layout_json_schema = ?, '
               'example_layout_json = ? WHERE id = ?',
-              variables: [
+              [
                 Variable<String>(kMigration20ScreenLayoutJsonSchema),
                 Variable<String>(kMigration20ExampleScreenLayoutJson),
                 Variable<String>(id),
@@ -405,7 +405,7 @@ FROM curator_settings WHERE id = 'app';
                 description: Value(r.read<String>('description')),
                 enabled: Value(enabled),
                 screenType: extracted.screenType,
-                configJson: extracted.configJson,
+                configJson: Value(extracted.configJson),
                 configJsonSchema: Value(doc.schema),
                 exampleConfigJson: Value(doc.example),
                 dwellSeconds: Value(r.read<int>('dwell_seconds')),
