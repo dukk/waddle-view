@@ -402,13 +402,12 @@ class _RoutingBingClient extends http.BaseClient {
     this.archiveStatus = 200,
     required this.archiveJson,
     required this.imageBytes,
-    this.imageStatus = 200,
   });
 
   final int archiveStatus;
   final String archiveJson;
   final List<int> imageBytes;
-  final int imageStatus;
+  final int imageStatus = 200;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {

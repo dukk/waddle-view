@@ -18,7 +18,11 @@ CI runs `flutter analyze` and fails on **any** issue (warning or error). Three p
 
 ## 2. Constructor / field pairing in test fakes
 
-When pruning unused parameters from test helper classes (`_RoutingBingClient`, `_GraphAndDownloadClient`, etc.), remove the matching `final ... x;` field at the same time. Removing only the constructor parameter leaves an uninitialized `final` field and trips `final_not_initialized_constructor`. The reverse (orphaning a parameter) breaks all call sites.
+When pruning unused parameters from test helper classes (`_RoutingBingClient`, `_GraphAndDownloadClient`, etc.), keep the constructor and the field in sync:
+
+- Removing **only** the constructor parameter leaves an uninitialized `final` field and trips `final_not_initialized_constructor`.
+- Adding a default-valued optional parameter (`this.x = 'foo'`) on a **private/test-only** class that no caller overrides trips `unused_element_parameter`.
+- For test fakes, prefer initializing the field inline (`final String folderId = 'folder1';`) and leaving it off the constructor entirely until a test actually needs to override it. Add the constructor parameter back the moment you have a real caller passing a non-default value.
 
 ## 3. Dart 3 null-assertion promotion
 
