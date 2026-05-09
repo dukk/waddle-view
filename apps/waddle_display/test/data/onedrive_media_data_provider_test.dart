@@ -794,6 +794,7 @@ class _CountingClient extends http.BaseClient {
 
 class _GraphAndDownloadClient extends http.BaseClient {
   _GraphAndDownloadClient({
+    this.folderId = 'folder1',
     required List<Map<String, Object?>> deltaPages,
   }) : _deltaPages = deltaPages;
 

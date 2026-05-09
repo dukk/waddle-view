@@ -69,13 +69,13 @@ void main() {
     expect(right!.dataKey, 'news');
     expect(columns!.dataKey, 'news');
     expect(stack!.dataKey, 'news');
-    expect(left!.configJson.contains('"imageOnRight":true'), isFalse);
-    expect(right!.configJson.contains('"imageOnRight":true'), isTrue);
-    expect(columns!.screenType, 'rss_article_columns');
-    expect(columns!.configJson.contains('"columnCount":3'), isTrue);
-    expect(columns!.configJson.contains('"summaryCapacityCharsPerColumn":220'), isTrue);
-    expect(left!.configJson.contains('"summaryCapacityChars":1200'), isTrue);
-    expect(stack!.screenType, 'rss_article_stack');
+    expect(left.configJson.contains('"imageOnRight":true'), isFalse);
+    expect(right.configJson.contains('"imageOnRight":true'), isTrue);
+    expect(columns.screenType, 'rss_article_columns');
+    expect(columns.configJson.contains('"columnCount":3'), isTrue);
+    expect(columns.configJson.contains('"summaryCapacityCharsPerColumn":220'), isTrue);
+    expect(left.configJson.contains('"summaryCapacityChars":1200'), isTrue);
+    expect(stack.screenType, 'rss_article_stack');
     await db.close();
   });
 
@@ -292,8 +292,8 @@ void main() {
         .getSingleOrNull();
     expect(screen, isNotNull);
     expect(screen!.enabled, isFalse);
-    expect(screen!.screenType, 'stock_quotes');
-    expect(screen!.dataKey, 'stocks');
+    expect(screen.screenType, 'stock_quotes');
+    expect(screen.dataKey, 'stocks');
 
     final symbols = await (db.select(db.stockSymbols)
           ..orderBy([(t) => OrderingTerm.asc(t.id)]))

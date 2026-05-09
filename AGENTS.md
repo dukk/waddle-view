@@ -22,6 +22,15 @@ flutter test --coverage
 dart run tool/coverage_check.dart --min=90
 ```
 
+## Before committing
+
+Run the [`run-waddle-checks`](.cursor/skills/run-waddle-checks/SKILL.md) skill (or the commands above). CI's `flutter analyze` step fails on **any** issue — **warnings count**. Two regressions have recurred here recently; check for both before pushing test changes:
+
+1. **`drift` + `flutter_test` import ambiguity**: both libraries export `isNull`/`isNotNull`. Tests that import `package:drift/drift.dart` unqualified alongside `flutter_test` produce `ambiguous_import` errors. Use `show Value` (or whatever drift symbols the test needs) or `hide isNull, isNotNull`.
+2. **Orphaned `final` field on a test fake**: when removing an unused constructor parameter (`this.x`), also remove the matching `final ... x;` field — leaving one without the other trips `final_not_initialized_constructor`.
+
+See [`.cursor/rules/waddle-view-tests.mdc`](.cursor/rules/waddle-view-tests.mdc) for the full list including Dart 3 null-promotion rules.
+
 ## Persistence
 
 The app uses **Drift** with **`sqlite3`** / **`sqlite3_flutter_libs`** and a file-backed database from `path_provider` (`createQueryExecutor`) or in-memory SQLite in tests.

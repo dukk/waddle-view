@@ -1,0 +1,30 @@
+---
+name: run-waddle-checks
+description: >-
+  Runs the full local CI-equivalent check sequence for waddle_display
+  (pub get, codegen, analyze, test+coverage, coverage gate). Use before
+  committing changes under apps/waddle_display/ or when diagnosing CI failures.
+disable-model-invocation: true
+---
+
+# Run waddle_display CI checks locally
+
+Mirror of [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) `analyze-test` job. CI fails on **any** `flutter analyze` issue (warnings included) and on coverage below 90%, so run the same commands locally before pushing.
+
+## Commands (from repo root)
+
+```bash
+cd apps/waddle_display
+flutter pub get
+dart run build_runner build --delete-conflicting-outputs
+flutter analyze
+flutter test --coverage --timeout=60s
+dart run tool/coverage_check.dart --min=90 coverage/lcov.info
+```
+
+## Notes
+
+- `flutter analyze` must report **zero** issues; warnings are fatal in CI.
+- Each test is capped at 60s by [`dart_test.yaml`](../../../apps/waddle_display/dart_test.yaml); the CI job has a 12-minute wall budget.
+- For the recurring test-file pitfalls (drift/`flutter_test` import ambiguity, orphaned `final` fields, redundant `!` after promotion), see [`waddle-view-tests.mdc`](../../../.cursor/rules/waddle-view-tests.mdc).
+- Coverage exclusions and broader contributor guidance live in [`AGENTS.md`](../../../AGENTS.md) and [`waddle-view-flutter.mdc`](../../../.cursor/rules/waddle-view-flutter.mdc).

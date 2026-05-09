@@ -1,0 +1,36 @@
+---
+description: Waddle View test conventions — drift/flutter_test imports, fakes, null promotion
+globs: apps/waddle_display/test/**
+alwaysApply: false
+---
+
+# waddle_display tests (analyzer-clean conventions)
+
+CI runs `flutter analyze` and fails on **any** issue (warning or error). Three patterns recur in this repo and have caused green-locally / red-on-CI regressions; keep them in mind on every test edit.
+
+## 1. `drift` + `flutter_test` import collision
+
+`package:drift/drift.dart` and `package:flutter_test/flutter_test.dart` both export `isNull` and `isNotNull` (drift's column predicates vs. matcher's value matchers). Importing both unqualified produces `ambiguous_import` errors at every call site.
+
+- **Preferred**: import drift with `show <Symbol>` listing only what the test uses, e.g. `import 'package:drift/drift.dart' show Value;` (see [`onedrive_media_data_provider_test.dart`](../../apps/waddle_display/test/data/onedrive_media_data_provider_test.dart)).
+- If the test needs more drift surface, hide the matcher names: `import 'package:drift/drift.dart' hide isNull, isNotNull;` (see [`trivia_data_provider_test.dart`](../../apps/waddle_display/test/data/trivia_data_provider_test.dart)).
+- Never leave a bare `import 'package:drift/drift.dart';` in a file that also imports `flutter_test`.
+
+## 2. Constructor / field pairing in test fakes
+
+When pruning unused parameters from test helper classes (`_RoutingBingClient`, `_GraphAndDownloadClient`, etc.), remove the matching `final ... x;` field at the same time. Removing only the constructor parameter leaves an uninitialized `final` field and trips `final_not_initialized_constructor`. The reverse (orphaning a parameter) breaks all call sites.
+
+## 3. Dart 3 null-assertion promotion
+
+After `final x = ...; expect(x, isNotNull);`, the local is **not** promoted — the matcher is opaque to flow analysis. Use `x!` **once** on the first dereference; subsequent uses of the same local should be plain `x.field`. Repeated `x!.field` triggers `unnecessary_non_null_assertion`.
+
+```dart
+final row = await query.getSingleOrNull();
+expect(row, isNotNull);
+expect(row!.dataKey, 'news');         // first ! promotes
+expect(row.configJson.contains(...));  // no ! after that
+```
+
+## Verification
+
+Before pushing test changes, run `flutter analyze` from `apps/waddle_display/` and confirm zero issues — see [`waddle-view-flutter.mdc`](waddle-view-flutter.mdc) and the [`run-waddle-checks`](../../.cursor/skills/run-waddle-checks/SKILL.md) skill.
