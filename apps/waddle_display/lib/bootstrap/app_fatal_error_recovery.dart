@@ -66,6 +66,21 @@ bool isRecoverableLayoutFlutterError(FlutterErrorDetails details) {
       (m.contains('overflowed by') && m.contains('pixels'));
 }
 
+/// `HardwareKeyboard._assertEventIsRegular` fires when the OS delivers a
+/// `KeyUpEvent` for a key Flutter never observed pressed (focus-loss /
+/// Alt-Tab on Windows, modifier held during launch, IME, remote-desktop).
+/// Restarting the kiosk on every such event is hostile to UX; the framework
+/// recovers cleanly on the next event, so we treat it as recoverable.
+@visibleForTesting
+bool isRecoverableHardwareKeyboardError(FlutterErrorDetails details) {
+  if (details.exception is! AssertionError) return false;
+  final stack = details.stack?.toString();
+  if (stack == null) return false;
+  return stack.contains(
+    'package:flutter/src/services/hardware_keyboard.dart',
+  );
+}
+
 Future<void> _defaultRestartProcess() async {
   if (kIsWeb) {
     stderr.writeln('[Fatal] restart skipped on web');
@@ -115,7 +130,8 @@ void installGlobalFatalErrorHandlers({
 
   FlutterError.onError = (FlutterErrorDetails details) {
     FlutterError.presentError(details);
-    if (isRecoverableLayoutFlutterError(details)) {
+    if (isRecoverableLayoutFlutterError(details) ||
+        isRecoverableHardwareKeyboardError(details)) {
       logRecoverable(details);
       return;
     }
@@ -130,6 +146,18 @@ void installGlobalFatalErrorHandlers({
   };
 
   PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+    if (isRecoverableHardwareKeyboardError(
+      FlutterErrorDetails(exception: error, stack: stack),
+    )) {
+      logRecoverable(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stack,
+          library: 'services',
+        ),
+      );
+      return true;
+    }
     reactToFatalAppError('Platform', error, stack, _fatalGate, log, restart);
     return true;
   };

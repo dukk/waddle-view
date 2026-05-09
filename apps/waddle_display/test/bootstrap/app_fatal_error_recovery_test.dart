@@ -2,10 +2,28 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_display/bootstrap/app_fatal_error_recovery.dart';
 
-FlutterErrorDetails _flutterDetails(Object exception, {String library = 'test'}) {
+FlutterErrorDetails _flutterDetails(
+  Object exception, {
+  String library = 'test',
+  StackTrace? stack,
+}) {
   return FlutterErrorDetails(
     exception: exception,
     library: library,
+    stack: stack,
+  );
+}
+
+StackTrace _hardwareKeyboardStack() {
+  return StackTrace.fromString(
+    '#0      _AssertionError._doThrowNew (dart:core-patch/errors_patch.dart:67:4)\n'
+    '#1      _AssertionError._throwNew (dart:core-patch/errors_patch.dart:49:5)\n'
+    '#2      HardwareKeyboard._assertEventIsRegular.<anonymous closure> '
+    '(package:flutter/src/services/hardware_keyboard.dart:516:11)\n'
+    '#3      HardwareKeyboard._assertEventIsRegular '
+    '(package:flutter/src/services/hardware_keyboard.dart:536:6)\n'
+    '#4      HardwareKeyboard.handleKeyEvent '
+    '(package:flutter/src/services/hardware_keyboard.dart:660:5)\n',
   );
 }
 
@@ -116,6 +134,81 @@ void main() {
     );
   });
 
+  test('isRecoverableHardwareKeyboardError matches HardwareKeyboard assertions',
+      () {
+    expect(
+      isRecoverableHardwareKeyboardError(
+        _flutterDetails(
+          AssertionError('A KeyUpEvent is dispatched, but the state shows that '
+              'the physical key is not pressed.'),
+          stack: _hardwareKeyboardStack(),
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      isRecoverableHardwareKeyboardError(
+        _flutterDetails(
+          Exception('not an assertion'),
+          stack: _hardwareKeyboardStack(),
+        ),
+      ),
+      isFalse,
+    );
+    expect(
+      isRecoverableHardwareKeyboardError(
+        _flutterDetails(
+          AssertionError('unrelated assertion'),
+          stack: StackTrace.fromString('#0 someOther (package:foo/bar.dart)'),
+        ),
+      ),
+      isFalse,
+    );
+    expect(
+      isRecoverableHardwareKeyboardError(
+        _flutterDetails(AssertionError('no stack')),
+      ),
+      isFalse,
+    );
+  });
+
+  test('installGlobalFatalErrorHandlers does not restart on hardware keyboard '
+      'assertion', () async {
+    final previousFlutter = FlutterError.onError;
+    final previousPlatform = PlatformDispatcher.instance.onError;
+    final previousPresent = FlutterError.presentError;
+    addTearDown(() {
+      FlutterError.onError = previousFlutter;
+      PlatformDispatcher.instance.onError = previousPlatform;
+      FlutterError.presentError = previousPresent;
+      resetFatalHandlingGateForTest();
+    });
+    FlutterError.presentError = (_) {};
+    final channels = <String>[];
+    var restartCount = 0;
+    var recoverableCount = 0;
+    installGlobalFatalErrorHandlers(
+      logFatal: (channel, error, stack) => channels.add(channel),
+      restartProcess: () async {
+        restartCount++;
+      },
+      logRecoverableLayoutFlutter: (_) {
+        recoverableCount++;
+      },
+    );
+    FlutterError.onError!(
+      _flutterDetails(
+        AssertionError('A KeyUpEvent is dispatched, but the state shows that '
+            'the physical key is not pressed.'),
+        stack: _hardwareKeyboardStack(),
+      ),
+    );
+    expect(channels, isEmpty);
+    expect(recoverableCount, 1);
+    await Future<void>.delayed(Duration.zero);
+    expect(restartCount, 0);
+  });
+
   test('installGlobalFatalErrorHandlers does not restart on layout overflow',
       () async {
     final previousFlutter = FlutterError.onError;
@@ -180,6 +273,39 @@ void main() {
     expect(channels, ['Flutter']);
     await Future<void>.delayed(Duration.zero);
     expect(restartCount, 1);
+  });
+
+  test('installGlobalFatalErrorHandlers does not restart on hardware keyboard '
+      'assertion via platform onError', () async {
+    final previousFlutter = FlutterError.onError;
+    final previousPlatform = PlatformDispatcher.instance.onError;
+    addTearDown(() {
+      FlutterError.onError = previousFlutter;
+      PlatformDispatcher.instance.onError = previousPlatform;
+      resetFatalHandlingGateForTest();
+    });
+    final channels = <String>[];
+    var restartCount = 0;
+    var recoverableCount = 0;
+    installGlobalFatalErrorHandlers(
+      logFatal: (channel, error, stack) => channels.add(channel),
+      restartProcess: () async {
+        restartCount++;
+      },
+      logRecoverableLayoutFlutter: (_) {
+        recoverableCount++;
+      },
+    );
+    final handled = PlatformDispatcher.instance.onError!(
+      AssertionError('A KeyUpEvent is dispatched, but the state shows that '
+          'the physical key is not pressed.'),
+      _hardwareKeyboardStack(),
+    );
+    expect(handled, isTrue);
+    expect(channels, isEmpty);
+    expect(recoverableCount, 1);
+    await Future<void>.delayed(Duration.zero);
+    expect(restartCount, 0);
   });
 
   test('installGlobalFatalErrorHandlers wires platform onError', () async {
