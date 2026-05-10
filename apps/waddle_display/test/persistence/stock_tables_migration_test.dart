@@ -12,6 +12,7 @@ void main() {
     raw.execute('PRAGMA user_version = 20;');
     stubContentCategoriesForMigration(raw);
     stubCalendarEventsAndBlobMetadataForMigration(raw);
+    stubLegacyScreenDefinitionsForMigration(raw);
 
     final db = AppDatabase(NativeDatabase.opened(raw));
     await db.customStatement('SELECT 1');

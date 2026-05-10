@@ -300,10 +300,10 @@ FROM curator_settings WHERE id = 'app';
             await customStatement(
               'UPDATE screen_definitions SET layout_json_schema = ?, '
               'example_layout_json = ? WHERE id = ?',
-              [
-                Variable<String>(kMigration20ScreenLayoutJsonSchema),
-                Variable<String>(kMigration20ExampleScreenLayoutJson),
-                Variable<String>(id),
+              <Object?>[
+                kMigration20ScreenLayoutJsonSchema,
+                kMigration20ExampleScreenLayoutJson,
+                id,
               ],
             );
           }

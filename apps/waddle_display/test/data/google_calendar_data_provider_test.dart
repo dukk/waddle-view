@@ -91,6 +91,7 @@ void main() {
   test('refresh path updates access token without device code', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
+    await seedContentCategoriesForTest(db, const ['family']);
     await _seedKvAndProvider(
       db,
       extraAccountsJson:

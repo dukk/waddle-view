@@ -24,10 +24,14 @@ dart run tool/coverage_check.dart --min=90
 
 ## Before committing
 
-Run the [`run-waddle-checks`](.cursor/skills/run-waddle-checks/SKILL.md) skill (or the commands above). CI's `flutter analyze` step fails on **any** issue — **warnings count**. Two regressions have recurred here recently; check for both before pushing test changes:
+Run the [`run-waddle-checks`](.cursor/skills/run-waddle-checks/SKILL.md) skill (or the commands above). CI's `flutter analyze` step fails on **any** issue — **warnings count** — and `flutter test` runs the full suite, including drift migration tests. Recurring regressions to check for before pushing:
 
-1. **`drift` + `flutter_test` import ambiguity**: both libraries export `isNull`/`isNotNull`. Tests that import `package:drift/drift.dart` unqualified alongside `flutter_test` produce `ambiguous_import` errors. Use `show Value` (or whatever drift symbols the test needs) or `hide isNull, isNotNull`.
-2. **Test-fake constructor/field sync**: keep test helper constructors and fields aligned. Removing only the parameter leaves an uninitialized `final` field (`final_not_initialized_constructor`); adding a default-valued optional parameter to a private class that no caller overrides trips `unused_element_parameter`. For test-only defaults, prefer initializing the field inline (`final String folderId = 'folder1';`) and only add a constructor parameter when a test actually overrides it.
+1. **`drift` + `flutter_test` import ambiguity**: both libraries export `isNull`/`isNotNull`. Use `show Value` or `hide isNull, isNotNull` on the drift import.
+2. **Test-fake constructor/field sync**: keep test helper constructors and fields aligned. For test-only defaults, prefer initializing the field inline (`final String folderId = 'folder1';`) over default-valued optional parameters that no caller overrides (avoids `final_not_initialized_constructor` and `unused_element_parameter`).
+3. **Drift migration tests must seed legacy tables that any later migration reads** — the v27 `screen_definitions` rewrite reads the legacy `layout_json` shape, so every snapshot test below v27 needs `stubLegacyScreenDefinitionsForMigration` (alongside the existing content-categories / calendar-events stubs).
+4. **`db.customStatement(sql, args)` only accepts raw values** (`null`, `bool`, `int`, `num`, `String`, `List<int>`); never pass `Variable<T>` — that's typed-builder territory.
+5. **`calendar_events.category_id` is a foreign key to `content_categories.id`** with FKs on. Tests that drive calendar providers with `category` / `defaultCategory` must seed those ids first via `seedContentCategoriesForTest(db, [...])`.
+6. **Every new `materialIconName` in `kContentCategoryDefaults` needs a matching `case` in `contentCategoryMaterialIcon`** — the dedicated test enforces this and is easy to miss when adding categories.
 
 See [`.cursor/rules/waddle-view-tests.mdc`](.cursor/rules/waddle-view-tests.mdc) for the full list including Dart 3 null-promotion rules.
 

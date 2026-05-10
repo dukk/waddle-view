@@ -14,3 +14,21 @@ AppDatabase openMemoryDatabase() {
 Future<void> warmDatabase(AppDatabase db) async {
   await db.customStatement('select 1');
 }
+
+/// Seed ad-hoc `content_categories` rows so tests can reference category ids
+/// (FK target of e.g. `calendar_events.category_id`) without depending on
+/// `ensureInitialSeed`. Pass each id you intend to use; label defaults to id.
+Future<void> seedContentCategoriesForTest(
+  AppDatabase db,
+  Iterable<String> ids, {
+  String? label,
+}) async {
+  for (final id in ids) {
+    await db.into(db.contentCategories).insertOnConflictUpdate(
+          ContentCategoriesCompanion.insert(
+            id: id,
+            label: label ?? id,
+          ),
+        );
+  }
+}

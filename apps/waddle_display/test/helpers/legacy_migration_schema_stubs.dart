@@ -44,3 +44,26 @@ CREATE TABLE IF NOT EXISTS content_categories (
 );
 ''');
 }
+
+/// Migration `from < 27` unconditionally reads the legacy `screen_definitions`
+/// table (with `layout_json`/`data_key` columns) to rewrite it into the modern
+/// `screen_type`/`config_json` shape. Tests that bootstrap a snapshot DB at any
+/// `user_version` < 27 must seed this table or the migration will fail with
+/// `no such table: screen_definitions`.
+void stubLegacyScreenDefinitionsForMigration(sqlite.Database raw) {
+  raw.execute('''
+CREATE TABLE IF NOT EXISTS screen_definitions (
+  id TEXT NOT NULL PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  enabled INTEGER NOT NULL DEFAULT 1,
+  layout_json TEXT NOT NULL DEFAULT '{"v":1,"layout":"single","widgets":[]}',
+  dwell_seconds INTEGER NOT NULL DEFAULT 10,
+  frequency_weight INTEGER NOT NULL DEFAULT 100,
+  min_gap_between_shows_seconds INTEGER NOT NULL DEFAULT 0,
+  min_placements_per_program INTEGER NOT NULL DEFAULT 0,
+  max_placements_per_program INTEGER,
+  data_key TEXT NOT NULL DEFAULT ''
+);
+''');
+}

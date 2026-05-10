@@ -105,6 +105,7 @@ void main() {
   test('refresh path updates access token without device code', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
+    await seedContentCategoriesForTest(db, const ['work']);
     await _seedKvAndProvider(
       db,
       pollSeconds: 0,

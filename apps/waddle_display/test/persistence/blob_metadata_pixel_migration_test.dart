@@ -3,6 +3,8 @@ import 'package:drift/native.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:waddle_display/persistence/database.dart';
 
+import '../helpers/legacy_migration_schema_stubs.dart';
+
 void main() {
   test('v23 to v24 adds pixel_width and pixel_height to blob_metadata', () async {
     final raw = sqlite.sqlite3.openInMemory();
@@ -18,6 +20,9 @@ CREATE TABLE blob_metadata (
 );
 ''');
     raw.execute('PRAGMA user_version = 23;');
+    stubContentCategoriesForMigration(raw);
+    stubCalendarEventsAndBlobMetadataForMigration(raw);
+    stubLegacyScreenDefinitionsForMigration(raw);
 
     final db = AppDatabase(NativeDatabase.opened(raw));
     await db.customStatement('SELECT 1');

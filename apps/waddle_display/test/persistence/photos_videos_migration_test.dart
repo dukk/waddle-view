@@ -57,6 +57,7 @@ CREATE TABLE pexels_videos (
     );
     raw.execute('PRAGMA user_version = 17;');
     stubCalendarEventsAndBlobMetadataForMigration(raw);
+    stubLegacyScreenDefinitionsForMigration(raw);
 
     final db = AppDatabase(NativeDatabase.opened(raw));
     await db.customStatement('SELECT 1');

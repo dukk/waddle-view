@@ -19,6 +19,10 @@ IconData contentCategoryMaterialIcon(String? materialIconName) {
       return Icons.science_outlined;
     case 'photo_library':
       return Icons.photo_library_outlined;
+    case 'wallpaper':
+      return Icons.wallpaper_outlined;
+    case 'photo_camera':
+      return Icons.photo_camera_outlined;
     case 'forest':
       return Icons.forest_outlined;
     case 'local_florist':

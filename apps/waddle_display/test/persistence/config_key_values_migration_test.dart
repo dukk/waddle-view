@@ -31,6 +31,7 @@ CREATE TABLE curator_settings (
     );
     raw.execute('PRAGMA user_version = 15;');
     stubCalendarEventsAndBlobMetadataForMigration(raw);
+    stubLegacyScreenDefinitionsForMigration(raw);
 
     final db = AppDatabase(NativeDatabase.opened(raw));
     await db.customStatement('SELECT 1');
