@@ -1,6 +1,6 @@
 # Waddle View
 
-Flutter **Linux** TV dashboard (Windows desktop supported for local development). Features: **Drift** SQLite, filesystem **blob** store, **SecretStore**, sequential **data collection** engine, **curated bottom ticker** (RTL marquee), **RSS news slides** with an article-link **QR code** for scanning, **overlay alerts** (optional QR), embedded **Shelf** REST API with per-deployment API key.
+Flutter **Linux** TV dashboard (Windows desktop supported for local development). Features: **Drift** SQLite, filesystem **blob** store, **SecretStore**, sequential **data collection** engine, curated **bottom ticker** (RTL marquee), **RSS news slides** with an article-link **QR code** for scanning, **overlay alerts** (optional QR), configurable **festive display overlays** (hearts + short phrases driven from SQLite and theme accent colors), embedded **Shelf** REST API with per-deployment API key.
 
 For module boundaries, startup order, and **Mermaid** sequence diagrams (startup, data collection, REST alerts, ticker), see **[`ARCHITECTURE.md`](ARCHITECTURE.md)**.
 
@@ -124,6 +124,20 @@ Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../d
 - **Code**: palettes and builders live under [`lib/theme/config/`](lib/theme/config/); registered ids are listed in [`lib/theme/config/display_theme_registry.dart`](lib/theme/config/display_theme_registry.dart).
 - **Default palette details** (`navy_coral`): primary starts at `#0D1B2A` and follows a 9-color sequence: five neutrals, then four accents (`#83AF84`, `#E05C6C`, `#FFE356`, `#966CB3`). The theme also exposes a `PaletteTertiaryLayers` extension (including `accent1`–`accent4`) with 4 tertiary layers for each palette color, plus gradients for the first pair (`#0D1B2A` → `#1B263B`) and next pair (`#415A77` → `#778DA9`).
 - **Icon color**: the default icon color is `dustyDenim` (`#778DA9`) via theme `IconThemeData` and `PaletteTertiaryLayers.iconColor`. Multi-icon screens may use accent colors for emphasis (for example, current weather icon) while secondary icons keep the standard icon color.
+
+### Festive display overlays (`display_overlay_schedules` + REST)
+
+- **Effect**: on matching calendar days, an **unobtrusive** translucent layer (floating **hearts** ♥ and occasional **short phrases**) tints from the current theme’s **accent** palette (`PaletteTertiaryLayers` / `ColorScheme` fallback). It sits **above** slides and ticker but **below** priority **alert** overlays, and it does **not** capture pointer or keyboard input.
+- **Global switch**: `config_key_values` key **`display.overlay.enabled`**. **Omit** or any value other than **`false`**, **`0`**, **`no`**, **`off`** means **on**. Set to `false` to disable all overlays without deleting rows.
+- **Storage**: SQLite **`display_overlay_schedules`** (installed at schema **28**). Rows support **fixed** calendar ranges (`start_month`/`start_day`, optional inclusive `end_*`) or **`nth_week_of_month` + `nth_weekday`** using Dart **`DateTime.weekday`** (Monday=1 … Sunday=7) with `start_month` holding the anchor month (`start_day` is ignored in that mode).
+- **Kinds**: today only **`hearts_rain`** is accepted (REST returns **400** for other `overlay_kind` values).
+- **Default seed**: id **`default_mothers_day_us`** — US **Mother’s Day** (2nd Sunday in May) with message **`Happy Mother's Day!`**. Disable or replace via REST; other countries may use a different fixed or nth-weekday row.
+- **REST** (authenticated like other `/v1/*` routes):
+  - `GET /v1/display/overlays` — list schedules (JSON `messages_json` decoded as an array in the response).
+  - `POST /v1/display/overlays` — upsert (requires `id`; include `start_month` / `start_day` for fixed mode, or `nth_week_of_month` / `nth_weekday` for floating holidays).
+  - `PATCH /v1/display/overlays/{id}` — partial update (merge with existing row).
+  - `DELETE /v1/display/overlays/{id}` — remove a schedule.
+- **Details and curl examples**: [`docs/pi/api.md`](../../docs/pi/api.md).
 
 ### Screen program (main carousel)
 

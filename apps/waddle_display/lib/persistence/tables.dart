@@ -60,6 +60,15 @@ const String kRequireNewsPhotoForScreensKvKey =
     'curator.news.screens.require_photo';
 const String kAdminBootstrapDoneKvKey = 'admin.bootstrap_done';
 
+/// Global kill-switch for festive display overlays (`'true'` / `'false'`). Absent = enabled.
+const String kDisplayOverlayEnabledKvKey = 'display.overlay.enabled';
+
+/// Overlay kind stored in `display_overlay_schedules.overlay_kind`.
+const String kOverlayKindHeartsRain = 'hearts_rain';
+
+/// Seed row id for the US Mother's Day `[display_overlay_schedules]` preset.
+const String kDefaultMothersDayOverlayId = 'default_mothers_day_us';
+
 /// Shared category ids for RSS feeds, Pexels photos/videos, jokes, and trivia
 /// ([RssFeedSources.category], [Photos.category], [Videos.category], and category
 /// ids on [JokeCategories] / [TriviaCategories] use the same string keys).

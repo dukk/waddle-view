@@ -29,6 +29,7 @@ import 'debug/app_debug_log.dart';
 import 'display/dashboard_data_bound_shell.dart';
 import 'display/dashboard_viewport_scope.dart';
 import 'display/display_viewport.dart';
+import 'display/overlay/celebration_overlay_host.dart';
 import 'display/screen_rotator.dart';
 import 'data/data_write_context.dart';
 import 'data/engine/data_collection_engine.dart';
@@ -352,31 +353,36 @@ class _WaddleHomeState extends State<WaddleHome> {
         },
         child: MediaQuery(
           data: mq.copyWith(textScaler: screenScaler),
-          child: AlertOverlayHost(
-            repository: widget.alerts,
-            clock: const SystemClock(),
-            severityIconsKv: widget.dashboardKv[kAlertSeverityIconsKvKey],
-            child: DashboardDataBoundShell(
-              overscan: const TvOverscanInsets(),
-              viewportConfig: const DisplayViewportConfig(),
-              body: ScreenRotator(
+            child: AlertOverlayHost(
+              repository: widget.alerts,
+              clock: const SystemClock(),
+              severityIconsKv: widget.dashboardKv[kAlertSeverityIconsKvKey],
+              child: CelebrationOverlayHost(
                 db: widget.db,
-                blobs: widget.blobs,
-                localRestBaseUrl: widget.server.baseUrl,
-                adminBaseUrl: widget.server.displayBaseUrl,
-                setupPasswordFile: widget.setupPasswordFile,
-              ),
-              ticker: MediaQuery(
-                data: mq.copyWith(textScaler: tickerScaler),
-                child: _KvAwareMarquee(
-                  db: widget.db,
-                  repository: widget.tickerCurated,
-                  marqueeCycleGate: widget.marqueeCycleGate,
-                  navigationController: _tickerNavigationController,
+                clock: const SystemClock(),
+                dashboardKv: widget.dashboardKv,
+                child: DashboardDataBoundShell(
+                  overscan: const TvOverscanInsets(),
+                  viewportConfig: const DisplayViewportConfig(),
+                  body: ScreenRotator(
+                    db: widget.db,
+                    blobs: widget.blobs,
+                    localRestBaseUrl: widget.server.baseUrl,
+                    adminBaseUrl: widget.server.displayBaseUrl,
+                    setupPasswordFile: widget.setupPasswordFile,
+                  ),
+                  ticker: MediaQuery(
+                    data: mq.copyWith(textScaler: tickerScaler),
+                    child: _KvAwareMarquee(
+                      db: widget.db,
+                      repository: widget.tickerCurated,
+                      marqueeCycleGate: widget.marqueeCycleGate,
+                      navigationController: _tickerNavigationController,
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
         ),
       ),
     );

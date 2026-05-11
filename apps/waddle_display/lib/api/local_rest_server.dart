@@ -13,6 +13,7 @@ import '../alerts/alert_repository.dart';
 import '../debug/app_debug_log.dart';
 import '../persistence/content_suppression_repository.dart';
 import '../persistence/database.dart';
+import '../persistence/display_overlay_repository.dart';
 import '../persistence/tables.dart';
 import '../secrets/secret_store.dart';
 import '../theme/display_theme.dart';
@@ -187,6 +188,149 @@ Handler buildProtectedApiRouter({
     return Response.ok('{}', headers: {'content-type': 'application/json'});
   });
 
+  r.get('/v1/display/overlays', (Request req) async {
+    await ensureDisplayOverlayTableExists(db);
+    final rows = await fetchDisplayOverlaySchedules(db);
+    return Response.ok(
+      jsonEncode({'items': rows.map(overlayScheduleToJson).toList()}),
+      headers: {'content-type': 'application/json'},
+    );
+  });
+
+  r.post('/v1/display/overlays', (Request req) async {
+    final map = await _readOverlayJson(req);
+    if (map == null) {
+      return Response(
+        400,
+        body: '{"error":"invalid_json_body"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    final id = map['id'] as String?;
+    if (id == null || id.trim().isEmpty) {
+      return Response(
+        400,
+        body: '{"error":"id_required"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    try {
+      await upsertOverlaySchedule(
+        db,
+        id: id,
+        enabled: _readBoolOverlay(map['enabled'], defaultIfAbsent: true),
+        overlayKind: map['overlay_kind'] as String? ?? '',
+        label: map['label'] as String? ?? '',
+        messagesJson: _messagesJsonArg(map),
+        repeatAnnually: _readBoolOverlay(map['repeat_annually'], defaultIfAbsent: true),
+        yearExact: _readNullableIntOverlay(map['year_exact']),
+        startMonth: _readIntOverlay(map['start_month']),
+        startDay: _readIntOverlay(map['start_day']),
+        endMonth: _readNullableIntOverlay(map['end_month']),
+        endDay: _readNullableIntOverlay(map['end_day']),
+        nthWeekOfMonth: _readNullableIntOverlay(map['nth_week_of_month']),
+        nthWeekday: _readNullableIntOverlay(map['nth_weekday']),
+      );
+    } on FormatException catch (e) {
+      return Response(
+        400,
+        body: jsonEncode({'error': e.message}),
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    return Response.ok('{}', headers: {'content-type': 'application/json'});
+  });
+
+  r.patch('/v1/display/overlays/<id>', (Request req, String pathId) async {
+    await ensureDisplayOverlayTableExists(db);
+    final existing = await overlayScheduleById(db, pathId);
+    if (existing == null) {
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    final map = await _readOverlayJson(req);
+    if (map == null) {
+      return Response(
+        400,
+        body: '{"error":"invalid_json_body"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    try {
+      await upsertOverlaySchedule(
+        db,
+        id: pathId,
+        enabled: map.containsKey('enabled')
+            ? _readBoolOverlay(map['enabled'], defaultIfAbsent: true)
+            : existing.enabled,
+        overlayKind: map.containsKey('overlay_kind')
+            ? map['overlay_kind'] as String? ?? ''
+            : existing.overlayKind,
+        label: map.containsKey('label')
+            ? map['label'] as String? ?? ''
+            : existing.label,
+        messagesJson: map.containsKey('messages_json')
+            ? _messagesJsonArg(map)
+            : existing.messagesJson,
+        repeatAnnually: map.containsKey('repeat_annually')
+            ? _readBoolOverlay(map['repeat_annually'], defaultIfAbsent: true)
+            : existing.repeatAnnually,
+        yearExact:
+            map.containsKey('year_exact')
+                ? _readNullableIntOverlay(map['year_exact'])
+                : existing.yearExact,
+        startMonth:
+            map.containsKey('start_month')
+                ? _readIntOverlay(map['start_month'])
+                : existing.startMonth,
+        startDay:
+            map.containsKey('start_day')
+                ? _readIntOverlay(map['start_day'])
+                : existing.startDay,
+        endMonth:
+            map.containsKey('end_month')
+                ? _readNullableIntOverlay(map['end_month'])
+                : existing.endMonth,
+        endDay:
+            map.containsKey('end_day')
+                ? _readNullableIntOverlay(map['end_day'])
+                : existing.endDay,
+        nthWeekOfMonth:
+            map.containsKey('nth_week_of_month')
+                ? _readNullableIntOverlay(map['nth_week_of_month'])
+                : existing.nthWeekOfMonth,
+        nthWeekday:
+            map.containsKey('nth_weekday')
+                ? _readNullableIntOverlay(map['nth_weekday'])
+                : existing.nthWeekday,
+      );
+    } on FormatException catch (e) {
+      return Response(
+        400,
+        body: jsonEncode({'error': e.message}),
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    return Response.ok('{}', headers: {'content-type': 'application/json'});
+  });
+
+  r.delete('/v1/display/overlays/<id>', (Request req, String id) async {
+    await ensureDisplayOverlayTableExists(db);
+    final row = await overlayScheduleById(db, id);
+    if (row == null) {
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    await deleteOverlaySchedule(db, id);
+    return Response.ok('{}', headers: {'content-type': 'application/json'});
+  });
+
   return r.call;
 }
 
@@ -198,6 +342,79 @@ Map<String, Object?> _alertJson(DashboardAlert a) => {
   'priority': a.priority,
   'qr_payload': a.qrPayload,
 };
+
+Future<Map<String, dynamic>?> _readOverlayJson(Request req) async {
+  try {
+    final decoded = jsonDecode(await req.readAsString());
+    return decoded is Map<String, dynamic> ? decoded : null;
+  } on Object {
+    return null;
+  }
+}
+
+String _messagesJsonArg(Map<String, dynamic> map) {
+  final v = map['messages_json'];
+  if (v == null) {
+    return '[]';
+  }
+  if (v is String) {
+    return v;
+  }
+  if (v is List) {
+    return jsonEncode([
+      for (final e in v) e is String ? e : e.toString(),
+    ]);
+  }
+  return '[]';
+}
+
+bool _readBoolOverlay(Object? v, {required bool defaultIfAbsent}) {
+  if (v == null) {
+    return defaultIfAbsent;
+  }
+  if (v is bool) {
+    return v;
+  }
+  if (v is String) {
+    switch (v.trim().toLowerCase()) {
+      case '1':
+      case 'true':
+      case 'yes':
+        return true;
+      case '0':
+      case 'false':
+      case 'no':
+        return false;
+      default:
+        return defaultIfAbsent;
+    }
+  }
+  if (v is num) {
+    return v != 0;
+  }
+  return defaultIfAbsent;
+}
+
+int? _readNullableIntOverlay(Object? v) {
+  if (v == null) {
+    return null;
+  }
+  if (v is int) {
+    return v;
+  }
+  if (v is num) {
+    return v.toInt();
+  }
+  return null;
+}
+
+int _readIntOverlay(Object? v, {String missingError = 'numeric_field_required'}) {
+  final n = _readNullableIntOverlay(v);
+  if (n == null) {
+    throw FormatException(missingError);
+  }
+  return n;
+}
 
 Future<Response> _patchContentSuppressed(
   Request req,

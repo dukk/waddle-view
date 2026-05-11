@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 
 import '../../alerts/alert_severity_icons_kv.dart';
@@ -6,6 +8,7 @@ import '../../config/microsoft_graph_kv.dart';
 import '../../curator/photo_collage_curation.dart';
 import '../../persistence/config_json_documentation.dart';
 import '../../persistence/database.dart';
+import '../../persistence/display_overlay_sql.dart';
 import '../../persistence/tables.dart';
 import '../../theme/display_text_scale_kv.dart';
 import '../../theme/display_theme_kv.dart';
@@ -89,6 +92,7 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureDisplayThemeKv(db);
   await _ensureDisplayTextScaleKv(db);
   await _ensureAlertSeverityIconsKv(db);
+  await _ensureDefaultMothersDayOverlay(db);
   await _ensureWelcomeScreen(db);
   await _ensureJokeScreen(db);
   await _ensureTriviaScreen(db);
@@ -108,6 +112,40 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensurePexelsVideoScreen(db);
   await _ensurePhotoCollageScreens(db);
   await _ensureStockQuotesScreen(db);
+}
+
+Future<void> _ensureDefaultMothersDayOverlay(AppDatabase db) async {
+  await db.customStatement(kEnsureDisplayOverlaySchedulesTableSql);
+  final messagesJson = jsonEncode(<String>[
+    "Happy Mother's Day!",
+  ]);
+  await db.customStatement(
+    '''INSERT OR IGNORE INTO display_overlay_schedules (
+      id,
+      enabled,
+      overlay_kind,
+      label,
+      messages_json,
+      repeat_annually,
+      year_exact,
+      start_month,
+      start_day,
+      end_month,
+      end_day,
+      nth_week_of_month,
+      nth_weekday
+    )
+    VALUES (?, 1, ?, ?, ?, 1,
+      NULL, 5, 1, NULL, NULL,
+      2, ?)''',
+    <Object?>[
+      kDefaultMothersDayOverlayId,
+      kOverlayKindHeartsRain,
+      "Mother's Day (US: 2nd Sunday in May)",
+      messagesJson,
+      DateTime.sunday,
+    ],
+  );
 }
 
 Future<void> _ensureDisplayThemeKv(AppDatabase db) async {

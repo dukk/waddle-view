@@ -33,6 +33,10 @@ If the key file is **missing or empty**, protected routes return **503** (`api_k
 | GET | `/v1/alerts` | All alerts (no redaction of bodies in MVP; do not store secrets in alerts). |
 | POST | `/v1/alerts` | JSON body: `title`, `body`, optional `qr_payload`, `severity`, `priority`, `expires_at` (epoch ms). |
 | DELETE | `/v1/alerts/{id}` | Dismisses alert (`dismissed_at` set). |
+| GET | `/v1/display/overlays` | Schedules for festive full-screen overlays (`hearts_rain`, …). |
+| POST | `/v1/display/overlays` | Upsert a row: `id`, `overlay_kind` (`hearts_rain`), `label`, `messages_json` (JSON array of strings or a JSON string), `repeat_annually`, optional `year_exact`, `start_month`/`start_day`, optional `end_month`/`end_day`, optional `nth_week_of_month`/`nth_weekday` (both required together). |
+| PATCH | `/v1/display/overlays/{id}` | Partial update; merges with the existing row. **404** if missing. |
+| DELETE | `/v1/display/overlays/{id}` | Deletes the schedule. **404** if missing. |
 | PATCH | `/v1/content/jokes/{id}` | JSON body: `{"suppressed": true}` or `false`. Row kept; hidden from slides/ticker. Returns **404** if id missing. |
 | PATCH | `/v1/content/rss-articles/{id}` | Same as jokes. |
 | PATCH | `/v1/content/photos/{id}` | Same as jokes. |
@@ -56,7 +60,23 @@ curl -sS -H "X-Api-Key: $KEY" -H 'Content-Type: application/json' \
   -d '{"title":"Door","body":"Open","qr_payload":"https://example.com/ack"}' \
   http://127.0.0.1:8787/v1/alerts
 
-# Hide a curated item without deleting it (use the SQLite row id):
+# Example: add a single-day birthday overlay (fixed date, repeats every year)
+curl -sS -H "X-Api-Key: $KEY" -H 'Content-Type: application/json' \
+  -d '{
+    "id":"birthday_alex",
+    "enabled":true,
+    "overlay_kind":"hearts_rain",
+    "label":"Alex birthday",
+    "messages_json":["Happy birthday, Alex!"],
+    "repeat_annually":true,
+    "start_month":6,
+    "start_day":12
+  }' \
+  http://127.0.0.1:8787/v1/display/overlays
+
+# Global overlay kill-switch: SQLite `config_key_values` key `display.overlay.enabled`
+# = `false` (no dedicated REST for arbitrary KV rows in MVP).
+
 curl -sS -H "X-Api-Key: $KEY" -H 'Content-Type: application/json' \
   -X PATCH \
   -d '{"suppressed": true}' \

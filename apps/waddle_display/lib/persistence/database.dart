@@ -9,6 +9,7 @@ import '../curator/screen_layout_parse.dart';
 import '../debug/app_debug_log.dart';
 import 'config_json_documentation.dart';
 import 'content_category_defaults.dart';
+import 'display_overlay_sql.dart';
 import 'tables.dart';
 
 part 'database.g.dart';
@@ -46,7 +47,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 27;
+  int get schemaVersion => 28;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -59,6 +60,7 @@ FROM dashboard_alerts
 WHERE dismissed_at IS NULL
 ORDER BY priority DESC, created_at DESC;
 ''');
+      await customStatement(kEnsureDisplayOverlaySchedulesTableSql);
     },
     onUpgrade: (Migrator m, int from, int to) async {
       if (from < 6) {
@@ -425,6 +427,9 @@ FROM curator_settings WHERE id = 'app';
           }
           await customStatement('DROP TABLE screen_definitions_pre_v27;');
         });
+      }
+      if (from < 28) {
+        await customStatement(kEnsureDisplayOverlaySchedulesTableSql);
       }
     },
     beforeOpen: (details) async {
