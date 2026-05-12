@@ -17,6 +17,7 @@
 .env
 .env.*
 !apps/waddle_display/.env.example
+apps/waddle_display/env.development
 
 # OS
 .DS_Store
@@ -26,3 +27,8 @@ Thumbs.db
 *.g.dart
 *.freezed.dart
 dist/
+
+apps/waddle_display/windows/**
+apps/waddle_display/linux/**
+apps/waddle_display/macos/**
+apps/waddle_display/web/**
