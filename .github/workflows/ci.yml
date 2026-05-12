@@ -34,6 +34,9 @@ jobs:
             grep -q 'LINUX_BUILD_DEPS_FILE' "$f"
             grep -q 'xargs -a "$LINUX_BUILD_DEPS_FILE"' "$f"
           done
+      - name: Run deploy helper unit tests (pi-remote-upgrade)
+        working-directory: ${{ github.workspace }}
+        run: python3 -m unittest discover -s deploy -p 'test_*.py' -v
 
   analyze-test:
     runs-on: ubuntu-latest

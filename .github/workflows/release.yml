@@ -17,8 +17,11 @@ jobs:
   linux:
     uses: ./.github/workflows/release-linux-x64.yml
 
+  pi:
+    uses: ./.github/workflows/release-pi.yml
+
   publish:
-    needs: [windows, linux]
+    needs: [windows, linux, pi]
     runs-on: ubuntu-latest
     if: github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/v')
     permissions:
@@ -31,6 +34,10 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: linux-x64-bundle
+          path: release-assets
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-arm64-bundle
           path: release-assets
       - uses: softprops/action-gh-release@v2
         with:

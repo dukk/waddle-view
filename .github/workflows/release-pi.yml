@@ -1,8 +1,7 @@
 name: Release build — Pi Linux arm64
 
 on:
-  push:
-    tags: ['v*']
+  workflow_call:
   workflow_dispatch:
 
 defaults:
