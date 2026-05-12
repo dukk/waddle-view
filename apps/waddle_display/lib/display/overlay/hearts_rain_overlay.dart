@@ -52,7 +52,7 @@ class _HeartsRainOverlayState extends State<HeartsRainOverlay>
       builder: (context, c) {
         return AnimatedBuilder(
           animation: _ctrl,
-          builder: (_, __) {
+          builder: (_, _) {
             return CustomPaint(
               size: Size(c.maxWidth, c.maxHeight),
               painter: _HeartsRainPainter(
