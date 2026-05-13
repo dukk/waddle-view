@@ -23,7 +23,9 @@ jobs:
     env:
       LINUX_BUILD_DEPS_FILE: ${{ github.workspace }}/deploy/linux-arm64/build-deps.txt
     steps:
+      # Before checkout, apps/waddle_display does not exist — override workflow default cwd.
       - name: Install tools for checkout and Flutter (container has no git by default)
+        working-directory: ${{ github.workspace }}
         run: |
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
