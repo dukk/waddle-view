@@ -13,7 +13,7 @@ import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 import '../helpers/fake_blob_store.dart';
 import '../helpers/memory_database.dart';
 
-const _fourItemRss = r'''
+const _fourItemRss = '''
 <?xml version="1.0"?>
 <rss version="2.0">
 <channel>
@@ -40,7 +40,7 @@ const _fourItemRss = r'''
   <pubDate>Wed, 03 Jan 2024 00:00:00 GMT</pubDate>
 </item>
 <item>
-  <title>Newest</title>
+  <title>It\u2019s Newest</title>
   <link>http://n</link>
   <guid>4</guid>
   <pubDate>Thu, 04 Jan 2024 00:00:00 GMT</pubDate>
@@ -117,7 +117,7 @@ void main() {
           ..orderBy([(t) => OrderingTerm.desc(t.publishedAt)]))
         .get();
     expect(rows.length, 3);
-    expect(rows.first.title, 'Newest');
+    expect(rows.first.title, 'It\u2019s Newest');
     final blobs = await db.select(db.blobMetadata).get();
     expect(
       blobs.length,

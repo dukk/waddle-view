@@ -10,6 +10,7 @@ import 'package:waddle_shared/persistence/database.dart';
 import '../../data_provider.dart';
 import '../../data_write_context.dart';
 import 'rss_feed_parsing.dart';
+import 'rss_http_response_body_decode.dart';
 
 String rssArticleId(String feedId, String stableItemKey) {
   final h = sha256.convert(utf8.encode('$feedId\x00$stableItemKey'));
@@ -59,7 +60,7 @@ class RssNewsDataProvider implements IDataProvider {
         }
         // [parseRssOrAtomXml] normalizes item/channel text (entities, tags,
         // non-printing characters) for display.
-        final parsed = parseRssOrAtomXml(res.body);
+        final parsed = parseRssOrAtomXml(decodeRssHttpResponseBody(res));
         final title = parsed.channelTitle;
         if (title != null && title.isNotEmpty) {
           await (ctx.db.update(
