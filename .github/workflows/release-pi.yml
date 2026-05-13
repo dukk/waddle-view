@@ -42,7 +42,7 @@ jobs:
       - name: Validate Linux dependency baseline
         run: |
           test -f "$LINUX_BUILD_DEPS_FILE"
-          for dep in clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libsecret-1-dev libjsoncpp-dev libmpv-dev; do
+          for dep in clang lld-14 cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libsecret-1-dev libjsoncpp-dev libmpv-dev; do
             grep -qx "$dep" "$LINUX_BUILD_DEPS_FILE"
           done
       - name: Install Linux build dependencies

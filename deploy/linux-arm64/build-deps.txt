@@ -1,4 +1,5 @@
 clang
+lld-14
 cmake
 ninja-build
 pkg-config
