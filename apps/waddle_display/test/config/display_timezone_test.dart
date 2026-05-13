@@ -24,17 +24,6 @@ void main() {
     expect(loc.name, 'Europe/London');
   });
 
-  test('trimmedDisplayTimezoneIanaOrNull', () {
-    expect(trimmedDisplayTimezoneIanaOrNull(null), isNull);
-    expect(trimmedDisplayTimezoneIanaOrNull('  '), isNull);
-    expect(trimmedDisplayTimezoneIanaOrNull(' Europe/Paris '), 'Europe/Paris');
-  });
-
-  test('hasNonEmptyDisplayTimezoneRaw', () {
-    expect(hasNonEmptyDisplayTimezoneRaw(null), isFalse);
-    expect(hasNonEmptyDisplayTimezoneRaw('x'), isTrue);
-  });
-
   test('watchDisplayTimezoneKv first yield when row present', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);

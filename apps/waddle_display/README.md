@@ -318,6 +318,8 @@ The **`nws_weather_alerts`** data provider (`id` / `provider_type`: **`nws_weath
 
 **Schema 26** adds boolean **`suppressed`** on **`jokes`**, **`rss_articles`**, **`trivia_questions`**, **`photos`**, and **`videos`** (hide from display without deleting rows; see *Content suppression* above).
 
+**Schema 30** adds **`consecutive_failures`** (int, default 0) and **`next_retry_at`** (nullable) on **`rss_feed_sources`**. The RSS provider increments **`consecutive_failures`** on any non-200 response, network throw, or parse error, and schedules the next attempt at `now + pollSeconds * 2^(failures-1)` (capped at 24h). A successful collect resets the counter and clears **`next_retry_at`**. After **5** consecutive failures the feed is force-disabled (**`enabled = false`**) so the engine stops trying — re-enable via the database / REST when the source is healthy again.
+
 **User-Agent (required by NWS):** every request sends an identifying **`User-Agent`** header. Set **`userAgent`** in **`provider_settings.config_json`** to a string that includes contact information (website or email), for example `(https://example.org, ops@example.org)`, as described in the [API overview](https://www.weather.gov/documentation/services-web-api). Until you configure this, the app uses a generic placeholder string that points to this README.
 
 **Coverage:** alerts are **US-only** (NWS). **`provider_settings.base_url`** defaults to **`https://api.weather.gov`**.

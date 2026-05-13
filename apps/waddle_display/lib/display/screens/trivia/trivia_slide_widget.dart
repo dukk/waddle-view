@@ -62,6 +62,107 @@ class TriviaSlideWidget extends StatefulWidget {
 @visibleForTesting
 const int kTriviaTwoColumnMaxOptionChars = 28;
 
+/// Smallest row height for the letter stripe and text stack (matches tile layout).
+double _triviaOptionRowMinHeight(double s) => 52.0 * s;
+
+/// Uniform option row height so every tile matches the largest text need, for a
+/// given inner Row width (tile width minus horizontal [tile] padding).
+@visibleForTesting
+double triviaUniformOptionRowHeightForTesting({
+  required double innerRowWidth,
+  required List<String> optionTexts,
+  required TextStyle? optionStyle,
+  required TextScaler textScaler,
+  required double s,
+}) {
+  final underlineH = (3 * s).clamp(2.0, 6.0);
+  final textPadH = 20.0 * s;
+  final textPadV = 24.0 * s;
+  final minR = _triviaOptionRowMinHeight(s);
+  if (innerRowWidth <= textPadH + minR + 1) {
+    return minR;
+  }
+  var r = minR;
+  for (var iter = 0; iter < 48; iter++) {
+    final textMaxW = (innerRowWidth - r - textPadH).clamp(1.0, innerRowWidth);
+    var maxNeed = minR;
+    for (final t in optionTexts) {
+      final painter = TextPainter(
+        text: TextSpan(text: t, style: optionStyle),
+        textDirection: TextDirection.ltr,
+        maxLines: null,
+        textScaler: textScaler,
+      )..layout(maxWidth: textMaxW);
+      final need = painter.height + textPadV + underlineH;
+      if (need > maxNeed) {
+        maxNeed = need;
+      }
+    }
+    if (maxNeed <= r + 0.5) {
+      return r;
+    }
+    if (maxNeed >= innerRowWidth - textPadH - 1) {
+      return (innerRowWidth - textPadH - 1).clamp(minR, innerRowWidth);
+    }
+    r = maxNeed;
+  }
+  return r;
+}
+
+/// Inner Row width (letter square + text) and row height: width is shrunk from
+/// [maxInnerRowWidth] while all options stay legible, matching the same padding
+/// and typography as the tile.
+@visibleForTesting
+({double innerRowWidth, double rowHeight}) triviaUniformOptionGeometryForTesting({
+  required double maxInnerRowWidth,
+  required List<String> optionTexts,
+  required TextStyle? optionStyle,
+  required TextScaler textScaler,
+  required double s,
+}) {
+  final textPadH = 20.0 * s;
+  final minR = _triviaOptionRowMinHeight(s);
+  final minInner = minR + textPadH + 8;
+  var innerW = maxInnerRowWidth.clamp(minInner, double.infinity);
+  for (var iter = 0; iter < 40; iter++) {
+    final h = triviaUniformOptionRowHeightForTesting(
+      innerRowWidth: innerW,
+      optionTexts: optionTexts,
+      optionStyle: optionStyle,
+      textScaler: textScaler,
+      s: s,
+    );
+    final wText = innerW - h - textPadH;
+    if (wText < 1) {
+      innerW = maxInnerRowWidth;
+      break;
+    }
+    var maxUsed = 1.0;
+    for (final t in optionTexts) {
+      final painter = TextPainter(
+        text: TextSpan(text: t, style: optionStyle),
+        textDirection: TextDirection.ltr,
+        maxLines: null,
+        textScaler: textScaler,
+      )..layout(maxWidth: wText);
+      maxUsed = max(maxUsed, painter.width);
+    }
+    final needInner = h + textPadH + maxUsed;
+    if ((needInner - innerW).abs() < 0.5) {
+      return (innerRowWidth: innerW, rowHeight: h);
+    }
+    innerW = needInner.clamp(minInner, maxInnerRowWidth);
+  }
+  final hFinal = triviaUniformOptionRowHeightForTesting(
+    innerRowWidth: innerW,
+    optionTexts: optionTexts,
+    optionStyle: optionStyle,
+    textScaler: textScaler,
+    s: s,
+  );
+  return (innerRowWidth: innerW, rowHeight: hFinal);
+}
+
 class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
   TriviaQuestion? _question;
   bool _loading = true;
@@ -347,6 +448,8 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     required double s,
     required bool revealComplete,
     required bool useTwoColumns,
+    required double uniformRowHeight,
+    required double uniformInnerRowWidth,
   }) {
     final displayLetter = String.fromCharCode('A'.codeUnitAt(0) + slot);
     final sourceLetter = perm[slot];
@@ -390,7 +493,6 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     final tileClipRadius = BorderRadius.horizontal(
       right: Radius.circular(4 * s),
     );
-    final letterSize = 52.0 * s;
     final underlineThickness = (3 * s).clamp(2.0, 6.0);
 
     final optionCard = Padding(
@@ -400,12 +502,14 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
         clipBehavior: Clip.antiAlias,
         child: ClipRRect(
           borderRadius: tileClipRadius,
-          child: IntrinsicHeight(
+          child: SizedBox(
+            height: uniformRowHeight,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                AspectRatio(
-                  aspectRatio: 1,
+                SizedBox(
+                  width: uniformRowHeight,
+                  height: uniformRowHeight,
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: leftStripe,
@@ -430,34 +534,35 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                     ),
                   ),
                 ),
-                Expanded(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: letterSize),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 10 * s,
-                            vertical: 12 * s,
-                          ),
-                          child: Center(
+                SizedBox(
+                  width: max(1.0, uniformInnerRowWidth - uniformRowHeight),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                              left: 10 * s,
+                              right: 10 * s,
+                              top: 12 * s,
+                              bottom: 12 * s,
+                            ),
                             child: Text(
                               text,
                               style: optionStyle,
                               softWrap: true,
-                              textAlign: TextAlign.center,
+                              textAlign: TextAlign.start,
                             ),
                           ),
                         ),
-                        Container(
-                          height: underlineThickness,
-                          color: answerPanel,
-                        ),
-                      ],
-                    ),
+                      ),
+                      Container(
+                        height: underlineThickness,
+                        color: answerPanel,
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -649,123 +754,187 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     final useTwoColumns =
         optionCount == 4 && _optionsShortForTwoColumns(row, perm);
 
-    final answersSection = optionCount == 2
-        ? KeyedSubtree(
-            key: const ValueKey<String>('trivia_answers_true_false'),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _optionTile(
-                    row: row,
-                    perm: perm,
-                    slot: 0,
-                    theme: theme,
-                    s: s,
-                    revealComplete: revealComplete,
-                    useTwoColumns: true,
-                  ),
-                ),
-                SizedBox(width: 22 * s),
-                Expanded(
-                  child: _optionTile(
-                    row: row,
-                    perm: perm,
-                    slot: 1,
-                    theme: theme,
-                    s: s,
-                    revealComplete: revealComplete,
-                    useTwoColumns: true,
-                  ),
-                ),
-              ],
-            ),
-          )
-        : useTwoColumns
-        ? KeyedSubtree(
-            key: const ValueKey<String>('trivia_answers_grid'),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: _optionTile(
-                        row: row,
-                        perm: perm,
-                        slot: 0,
-                        theme: theme,
-                        s: s,
-                        revealComplete: revealComplete,
-                        useTwoColumns: true,
-                      ),
-                    ),
-                    SizedBox(width: 22 * s),
-                    Expanded(
-                      child: _optionTile(
-                        row: row,
-                        perm: perm,
-                        slot: 1,
-                        theme: theme,
-                        s: s,
-                        revealComplete: revealComplete,
-                        useTwoColumns: true,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 22 * s),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: _optionTile(
-                        row: row,
-                        perm: perm,
-                        slot: 2,
-                        theme: theme,
-                        s: s,
-                        revealComplete: revealComplete,
-                        useTwoColumns: true,
-                      ),
-                    ),
-                    SizedBox(width: 22 * s),
-                    Expanded(
-                      child: _optionTile(
-                        row: row,
-                        perm: perm,
-                        slot: 3,
-                        theme: theme,
-                        s: s,
-                        revealComplete: revealComplete,
-                        useTwoColumns: true,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          )
-        : KeyedSubtree(
-            key: const ValueKey<String>('trivia_answers_column'),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: List.generate(optionCount, (slot) {
-                return _optionTile(
-                  row: row,
-                  perm: perm,
-                  slot: slot,
-                  theme: theme,
-                  s: s,
-                  revealComplete: revealComplete,
-                  useTwoColumns: false,
-                );
-              }),
-            ),
+    final paddedAnswers = Padding(
+      padding: EdgeInsets.symmetric(vertical: 24 * s, horizontal: 24 * s),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final w = constraints.maxWidth;
+          final texts = List.generate(
+            optionCount,
+            (i) => _optionText(row, perm[i]),
           );
+          final maxCellOuterW = (optionCount == 2 || useTwoColumns)
+              ? (w - 22 * s) / 2
+              : w;
+          final maxInner = max(0.0, maxCellOuterW - 6 * s);
+          final optionStyleMeasure = theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+          );
+          final geom = triviaUniformOptionGeometryForTesting(
+            maxInnerRowWidth: maxInner > 0 ? maxInner : 1.0,
+            optionTexts: texts,
+            optionStyle: optionStyleMeasure,
+            textScaler: MediaQuery.textScalerOf(context),
+            s: s,
+          );
+          final uniformInnerRowWidth = geom.innerRowWidth;
+          final uniformRowHeight = geom.rowHeight;
+          final tileOuterW = uniformInnerRowWidth + 6 * s;
+
+          final answersSection = Align(
+            alignment: Alignment.topCenter,
+            child: optionCount == 2
+                ? KeyedSubtree(
+                    key: const ValueKey<String>('trivia_answers_true_false'),
+                    child: SizedBox(
+                      width: tileOuterW * 2 + 22 * s,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: tileOuterW,
+                            child: _optionTile(
+                              row: row,
+                              perm: perm,
+                              slot: 0,
+                              theme: theme,
+                              s: s,
+                              revealComplete: revealComplete,
+                              useTwoColumns: true,
+                              uniformRowHeight: uniformRowHeight,
+                              uniformInnerRowWidth: uniformInnerRowWidth,
+                            ),
+                          ),
+                          SizedBox(width: 22 * s),
+                          SizedBox(
+                            width: tileOuterW,
+                            child: _optionTile(
+                              row: row,
+                              perm: perm,
+                              slot: 1,
+                              theme: theme,
+                              s: s,
+                              revealComplete: revealComplete,
+                              useTwoColumns: true,
+                              uniformRowHeight: uniformRowHeight,
+                              uniformInnerRowWidth: uniformInnerRowWidth,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : useTwoColumns
+                ? KeyedSubtree(
+                    key: const ValueKey<String>('trivia_answers_grid'),
+                    child: SizedBox(
+                      width: tileOuterW * 2 + 22 * s,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(
+                                width: tileOuterW,
+                                child: _optionTile(
+                                  row: row,
+                                  perm: perm,
+                                  slot: 0,
+                                  theme: theme,
+                                  s: s,
+                                  revealComplete: revealComplete,
+                                  useTwoColumns: true,
+                                  uniformRowHeight: uniformRowHeight,
+                                  uniformInnerRowWidth: uniformInnerRowWidth,
+                                ),
+                              ),
+                              SizedBox(width: 22 * s),
+                              SizedBox(
+                                width: tileOuterW,
+                                child: _optionTile(
+                                  row: row,
+                                  perm: perm,
+                                  slot: 1,
+                                  theme: theme,
+                                  s: s,
+                                  revealComplete: revealComplete,
+                                  useTwoColumns: true,
+                                  uniformRowHeight: uniformRowHeight,
+                                  uniformInnerRowWidth: uniformInnerRowWidth,
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 22 * s),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(
+                                width: tileOuterW,
+                                child: _optionTile(
+                                  row: row,
+                                  perm: perm,
+                                  slot: 2,
+                                  theme: theme,
+                                  s: s,
+                                  revealComplete: revealComplete,
+                                  useTwoColumns: true,
+                                  uniformRowHeight: uniformRowHeight,
+                                  uniformInnerRowWidth: uniformInnerRowWidth,
+                                ),
+                              ),
+                              SizedBox(width: 22 * s),
+                              SizedBox(
+                                width: tileOuterW,
+                                child: _optionTile(
+                                  row: row,
+                                  perm: perm,
+                                  slot: 3,
+                                  theme: theme,
+                                  s: s,
+                                  revealComplete: revealComplete,
+                                  useTwoColumns: true,
+                                  uniformRowHeight: uniformRowHeight,
+                                  uniformInnerRowWidth: uniformInnerRowWidth,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : KeyedSubtree(
+                    key: const ValueKey<String>('trivia_answers_column'),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: List.generate(optionCount, (slot) {
+                        return SizedBox(
+                          width: tileOuterW,
+                          child: _optionTile(
+                            row: row,
+                            perm: perm,
+                            slot: slot,
+                            theme: theme,
+                            s: s,
+                            revealComplete: revealComplete,
+                            useTwoColumns: false,
+                            uniformRowHeight: uniformRowHeight,
+                            uniformInnerRowWidth: uniformInnerRowWidth,
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+          );
+
+          return answersSection;
+        },
+      ),
+    );
 
     return Padding(
       padding: EdgeInsets.only(bottom: 12 * s),
@@ -786,10 +955,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
             softWrap: true,
           ),
           _buildRevealProgressBar(theme, s),
-          Padding(
-            padding: EdgeInsets.symmetric(vertical: 24 * s, horizontal: 24 * s),
-            child: answersSection,
-          ),
+          paddedAnswers,
         ],
       ),
     );

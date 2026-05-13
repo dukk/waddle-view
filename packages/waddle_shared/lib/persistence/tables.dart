@@ -147,6 +147,15 @@ class CuratorDataKeyProgramLimits extends Table {
   Set<Column<Object>> get primaryKey => {dataKey};
 }
 
+/// Max consecutive download failures before [RssFeedSources.enabled] is forced
+/// to `false`. Reset to 0 on any successful collect.
+const int kRssMaxConsecutiveFailures = 5;
+
+/// Upper bound on the exponential per-feed retry backoff (24h). Prevents
+/// arbitrarily large `[RssFeedSources.pollSeconds] * 2^(n-1)` values from
+/// pushing `nextRetryAt` past sensible operator-visible windows.
+const int kRssMaxRetryBackoffSeconds = 86400;
+
 class RssFeedSources extends Table {
   TextColumn get id => text()();
   TextColumn get url => text()();
@@ -158,6 +167,14 @@ class RssFeedSources extends Table {
   BoolColumn get enabled => boolean().withDefault(const Constant(true))();
   DateTimeColumn get lastFetchedAt => dateTime().nullable()();
   TextColumn get title => text().nullable()();
+  /// Number of back-to-back failed downloads (HTTP non-200, network throw, or
+  /// parse error). Reset to 0 on each successful collect. The RSS provider
+  /// forces [enabled] to `false` once this reaches [kRssMaxConsecutiveFailures].
+  IntColumn get consecutiveFailures =>
+      integer().withDefault(const Constant(0))();
+  /// Earliest wall-clock time the RSS provider may retry this feed after a
+  /// failure. `null` means no active backoff (use [pollSeconds] instead).
+  DateTimeColumn get nextRetryAt => dateTime().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};

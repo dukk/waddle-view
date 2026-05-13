@@ -45,7 +45,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 29;
+  int get schemaVersion => 30;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -442,6 +442,30 @@ FROM curator_settings WHERE id = 'app';
             await customStatement(
               'ALTER TABLE weather_locations ADD COLUMN include_active_weather_alerts '
               'INTEGER NOT NULL DEFAULT 1',
+            );
+          }
+        }
+      }
+      if (from < 30) {
+        final rssTables = await customSelect(
+          "SELECT name FROM sqlite_master WHERE type = 'table' "
+          "AND name = 'rss_feed_sources';",
+        ).get();
+        if (rssTables.isNotEmpty) {
+          final rssCols = await customSelect(
+            'PRAGMA table_info(rss_feed_sources);',
+          ).get();
+          final rssNames =
+              rssCols.map((r) => r.read<String>('name')).toSet();
+          if (!rssNames.contains('consecutive_failures')) {
+            await customStatement(
+              'ALTER TABLE rss_feed_sources ADD COLUMN consecutive_failures '
+              'INTEGER NOT NULL DEFAULT 0',
+            );
+          }
+          if (!rssNames.contains('next_retry_at')) {
+            await customStatement(
+              'ALTER TABLE rss_feed_sources ADD COLUMN next_retry_at INTEGER',
             );
           }
         }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_display/clock.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
+import 'package:waddle_display/display/content_category_material_icon.dart';
 import 'package:waddle_display/display/screens/calendar_month/calendar_month_slide_widget.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
@@ -134,6 +135,54 @@ void main() {
     expect(find.text('Upcoming events'), findsOneWidget);
     expect(find.text('Birthday party'), findsOneWidget);
 
+    await db.close();
+  });
+
+  testWidgets('shows category material icon when category_id is set',
+      (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db, displayTimeZoneIana: 'Etc/UTC');
+    await seedContentCategoriesForTest(db, ['cal_test_cat']);
+    await (db.update(db.contentCategories)
+          ..where((t) => t.id.equals('cal_test_cat')))
+        .write(
+      const ContentCategoriesCompanion(
+        materialIconName: Value('event'),
+      ),
+    );
+    await db.into(db.calendarEvents).insert(
+          CalendarEventsCompanion.insert(
+            id: 'ic1',
+            title: 'Categorized',
+            startMs: DateTime.utc(2024, 6, 16, 15, 0),
+            endMs: DateTime.utc(2024, 6, 16, 16, 0),
+            categoryId: const Value('cal_test_cat'),
+            updatedAtMs: DateTime.utc(2024, 6, 1),
+          ),
+        );
+    const spec = ParsedWidgetSpec(
+      type: 'calendar_month',
+      slot: 'main',
+      config: {},
+    );
+    final theme = ThemeData.light();
+    final clock = FakeClock(DateTime.utc(2024, 6, 15, 9, 0));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: CalendarMonthSlideWidget(
+            db: db,
+            blobs: FakeBlobStore(),
+            spec: spec,
+            theme: theme,
+            clock: clock,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byIcon(contentCategoryMaterialIcon('event')), findsOneWidget);
     await db.close();
   });
 

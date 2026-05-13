@@ -22,6 +22,47 @@ void main() {
     );
   });
 
+  test('triviaUniformOptionRowHeight matches longest wrapping option', () {
+    const style = TextStyle(fontSize: 20);
+    final long = 'x' * 60;
+    final hUniform = triviaUniformOptionRowHeightForTesting(
+      innerRowWidth: 180,
+      optionTexts: ['ok', long],
+      optionStyle: style,
+      textScaler: TextScaler.noScaling,
+      s: 1.0,
+    );
+    final hLongOnly = triviaUniformOptionRowHeightForTesting(
+      innerRowWidth: 180,
+      optionTexts: [long],
+      optionStyle: style,
+      textScaler: TextScaler.noScaling,
+      s: 1.0,
+    );
+    expect(hUniform, hLongOnly);
+    final hShortOnly = triviaUniformOptionRowHeightForTesting(
+      innerRowWidth: 180,
+      optionTexts: const ['ok', 'no'],
+      optionStyle: style,
+      textScaler: TextScaler.noScaling,
+      s: 1.0,
+    );
+    expect(hUniform, greaterThan(hShortOnly));
+  });
+
+  test('triviaUniformOptionGeometry shrinks inner width for short options', () {
+    const style = TextStyle(fontSize: 20);
+    final g = triviaUniformOptionGeometryForTesting(
+      maxInnerRowWidth: 400,
+      optionTexts: const ['2', '3', '4', '5'],
+      optionStyle: style,
+      textScaler: TextScaler.noScaling,
+      s: 1.0,
+    );
+    expect(g.innerRowWidth, lessThan(400));
+    expect(g.rowHeight, greaterThan(0));
+  });
+
   test('triviaStrikeDet01 is in [0, 1) and stable for same inputs', () {
     expect(triviaStrikeDet01(99, 3), triviaStrikeDet01(99, 3));
     expect(triviaStrikeDet01(99, 3), greaterThanOrEqualTo(0.0));

@@ -28,17 +28,6 @@ tz.Location resolveDisplayTimeZoneLocation(String? kvValue) {
   }
 }
 
-/// Returns a trimmed IANA id or null when [raw] is null/blank.
-String? trimmedDisplayTimezoneIanaOrNull(String? raw) {
-  final t = (raw ?? '').trim();
-  return t.isEmpty ? null : t;
-}
-
-/// True when [raw] trims to a non-empty string (before IANA validation).
-bool hasNonEmptyDisplayTimezoneRaw(String? raw) {
-  return trimmedDisplayTimezoneIanaOrNull(raw) != null;
-}
-
 /// Yields the current `display.timezone` value once, then follows the table
 /// [watch] so the first emission matches SQLite.
 Stream<String?> watchDisplayTimezoneKv(AppDatabase db) async* {
