@@ -2,7 +2,10 @@ name: Release build — Pi Linux arm64
 
 on:
   workflow_call:
-  workflow_dispatch:
+    inputs:
+      build_number:
+        type: string
+        required: true
 
 defaults:
   run:
@@ -37,7 +40,7 @@ jobs:
       - run: flutter pub get
       - name: Generate code
         run: dart run build_runner build --delete-conflicting-outputs
-      - run: flutter build linux --release
+      - run: flutter build linux --release --build-number "${{ inputs.build_number }}"
       - name: Audit Linux runtime dependencies
         run: |
           APP_BIN="build/linux/arm64/release/bundle/waddle_display"

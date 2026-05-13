@@ -1,6 +1,6 @@
-# Builds Windows + Linux x64 bundles and publishes a GitHub Release on v* tags.
-# Reusable jobs: release-windows.yml, release-linux-x64.yml. Pi ARM64: release-pi.yml.
-name: Release (all desktop bundles)
+# Builds Windows, Linux x64, and Pi (Linux arm64) bundles; publishes a GitHub Release on v* tags.
+# Reusable jobs: release-windows.yml, release-linux-x64.yml, release-pi.yml.
+name: Release
 
 on:
   push:
@@ -13,12 +13,18 @@ permissions:
 jobs:
   windows:
     uses: ./.github/workflows/release-windows.yml
+    with:
+      build_number: ${{ github.run_number }}
 
   linux:
     uses: ./.github/workflows/release-linux-x64.yml
+    with:
+      build_number: ${{ github.run_number }}
 
   pi:
     uses: ./.github/workflows/release-pi.yml
+    with:
+      build_number: ${{ github.run_number }}
 
   publish:
     needs: [windows, linux, pi]
