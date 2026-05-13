@@ -45,5 +45,6 @@ For a single **`.img`** you can write with **Raspberry Pi Imager** or **balenaEt
 
 ## Troubleshooting
 
+- **`libmpv.so.1: cannot open shared object file`**: older ARM64 GitHub bundles were linked against **`libmpv.so.1`** (Ubuntu 22.04 build roots), while Raspberry Pi OS Bookworm only ships **`libmpv.so.2`** via **`libmpv2`**. Ensure **`sudo apt install libmpv2 mpv`** is installed; if the error persists, upgrade to a **newer release tarball** built with the Bookworm-aligned **`release-pi.yml`** job container (`debian:bookworm-slim`).
 - **Black window**: confirm a graphical session is active and `DISPLAY` is set for systemd.
 - **Secret storage errors**: ensure a Secret Service provider is available, or follow fallback guidance in `development.md`.

@@ -5,7 +5,7 @@ Build a customized **64-bit Raspberry Pi OS** disk image that includes the **Wad
 ## Prerequisites
 
 1. **Docker Desktop** (Windows, macOS, or Linux) with enough free disk space (**about 15–25 GB** recommended while the image is being decompressed and customized).
-2. A **release ARM64 Linux bundle** from `flutter build linux --release` (layout includes `waddle_display` next to `lib/` and `data/`). Build this on **ARM64 Linux** with a **glibc compatible with Raspberry Pi OS Bookworm** (for example GitHub `ubuntu-22.04-arm`, Debian Bookworm, the Pi itself, or another older glibc environment). **`ubuntu-24.04-arm` produces GLIBC_2.38+ binaries that will not run on Bookworm.** Stock Flutter on Windows does **not** produce an ARM64 Linux binary.
+2. A **release ARM64 Linux bundle** from `flutter build linux --release` (layout includes `waddle_display` next to `lib/` and `data/`). Build on **ARM64 Linux** with **glibc and system libraries compatible with Raspberry Pi OS Bookworm** (for example the Pi itself, Debian Bookworm, or CI matching **[`release-pi.yml`](../../.github/workflows/release-pi.yml)**: **`ubuntu-22.04-arm`** host with **`debian:bookworm-slim`** container). **`ubuntu-24.04-arm` produces GLIBC_2.38+ binaries that will not run on Bookworm.** Stock Flutter on Windows does **not** produce an ARM64 Linux binary.
 3. Run the container `**--privileged`** so the builder can use **loop devices**, `**mount`**, and `**chroot**`.
 
 ## Security

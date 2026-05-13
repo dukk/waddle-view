@@ -8,7 +8,7 @@
 
 ## Pi / Linux ARM64 release (CI)
 
-The **[`release-pi.yml`](../../.github/workflows/release-pi.yml)** job runs on **`ubuntu-22.04-arm`** so the Linux ARM64 binary stays compatible with **Raspberry Pi OS Bookworm** (glibc **2.36**). Do not switch that runner to Ubuntu 24.04 without also moving the supported Pi base image to a newer distro.
+The **[`release-pi.yml`](../../.github/workflows/release-pi.yml)** job runs on **`ubuntu-22.04-arm`** inside a **`debian:bookworm-slim`** container so the Linux ARM64 binary matches **Raspberry Pi OS Bookworm** for **glibc** (≤ **2.36** symbol versions) and **shared-library SONAMEs** (for example **`libmpv.so.2`**). Do not switch the host runner to Ubuntu 24.04 without revisiting the glibc check in that workflow, and keep the container aligned with Bookworm (or bump the supported Pi OS) if you change the toolchain.
 
 ## Local development
 
