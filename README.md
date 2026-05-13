@@ -1,5 +1,7 @@
 # Waddle View
 
+![Waddle View](docs/images/waddle-view.png)
+
 This is a re-imagioned [quackview](https://github.com/dukk/quackview) with the goal of better visual performance on the raspberry pi. It's using a completly different architecture and technology stack.
 
 TV dashboard and related applications for Raspberry Pi and development machines.

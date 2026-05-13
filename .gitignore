@@ -27,5 +27,5 @@ Thumbs.db
 *.g.dart
 *.freezed.dart
 dist/
-deploy/__pycache__/pi-remote-upgrade.cpython-314.pyc
-deploy/__pycache__/test_pi_remote_upgrade.cpython-314.pyc
+
+**/__pycache__/*
