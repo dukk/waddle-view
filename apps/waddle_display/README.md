@@ -86,6 +86,8 @@ flutter build linux --release
 
 **GitHub Releases:** pushing a **`v*`** tag runs **[`release.yml`](../../.github/workflows/release.yml)**, which calls **[`release-windows.yml`](../../.github/workflows/release-windows.yml)** (Windows **`.zip`**), **[`release-linux-x64.yml`](../../.github/workflows/release-linux-x64.yml)** (Linux x64 **`.tar.gz`**), and **[`release-pi.yml`](../../.github/workflows/release-pi.yml)** (Linux arm64 **`.tar.gz`**) and attaches all three to the GitHub Release. CI passes **`flutter build … --build-number`** using GitHub Actions **`github.run_number`**, so each workflow run gets a monotonic integer build id; **`pubspec.yaml`** `version: …+N` is **not** auto-synced to that number. The reusable release workflows are only invoked from **`release.yml`**; use **`workflow_dispatch`** on **`release.yml`** if you want CI builds without creating a GitHub Release (the publish step still runs only on **`v*`** tag pushes).
 
+**PR / branch CI:** **[`ci.yml`](../../.github/workflows/ci.yml)** also compiles **Linux x64** and **Windows x64** release binaries (`flutter build linux|windows --release`) so desktop release breakages are caught before a tag.
+
 Tagged **Pi** tarballs and `install.sh` are produced in CI and documented under [`../../docs/pi/`](../../docs/pi/); templates live in [`../../deploy/linux-arm64/`](../../deploy/linux-arm64/).
 
 ## Deployed / Raspberry Pi (summary)

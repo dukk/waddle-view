@@ -1,5 +1,22 @@
 # Using the Waddle View Linux bundle
 
+## Tier 0: one-line install (Linux x86_64 or arm64)
+
+From a machine that matches a published release asset (**`waddle-view-linux-x64-<tag>.tar.gz`** or **`waddle-view-linux-arm64-<tag>.tar.gz`** from [GitHub Releases](https://github.com/dukk/waddle-view/releases)), you can download and run the installer maintained in this repo:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dukk/waddle-view/main/deploy/install-latest-release.sh | bash
+```
+
+Non-interactive upgrades (skip the confirmation prompt when replacing an existing `/opt/waddle-view/bundle`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dukk/waddle-view/main/deploy/install-latest-release.sh | bash -s -- --yes
+# or: WADDLE_INSTALL_YES=1 curl -fsSL ... | bash
+```
+
+The script resolves the newest **non-draft** release that ships the tarball for your CPU, prompts before moving an existing bundle aside, then runs the bundled `install.sh` (same layout as Tier 1). Pin the script to a tag or commit SHA in the URL if you do not want `main` to move.
+
 ## Tier 1: tarball from CI
 
 1. Download the **`waddle-view-linux-arm64-<tag>.tar.gz`** artifact from GitHub Releases (or CI artifacts).
