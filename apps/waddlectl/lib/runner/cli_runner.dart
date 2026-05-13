@@ -87,7 +87,7 @@ class WaddlectlRootRunner extends CommandRunner<void> {
       ..writeln(
         '  ${'curator'.padRight(14)} Curator program settings and data-key limits',
       )
-      ..writeln('  ${'secrets'.padRight(14)} Raw secret store keys (advanced)')
+      ..writeln('  ${'secrets'.padRight(14)} Secret store keys + encrypted backup (advanced)')
       ..writeln('  ${'help'.padRight(14)} Print help for a command path (see below)')
       ..writeln('  ${'options'.padRight(14)} List global flags only')
       ..writeln('  ${'version'.padRight(14)} Print tool version')

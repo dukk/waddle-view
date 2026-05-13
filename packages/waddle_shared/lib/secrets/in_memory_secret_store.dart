@@ -18,4 +18,8 @@ class InMemorySecretStore implements SecretStore {
   Future<void> delete(String key) async {
     _data.remove(key);
   }
+
+  @override
+  Future<Map<String, String>> readAll() async =>
+      Map<String, String>.from(_data);
 }

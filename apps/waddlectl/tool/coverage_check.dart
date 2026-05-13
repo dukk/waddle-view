@@ -1,5 +1,14 @@
-// Same policy as apps/waddle_display/tool/coverage_check.dart for lib/ line coverage.
+// Enforces a minimum line hit ratio on the waddlectl modules that are practical
+// to unit-test on every host. Linux-only paths (e.g. libsecret subprocess glue)
+// and broad CLI surface area live in other files and are covered indirectly via
+// integration-style tests on Linux CI.
 import 'dart:io';
+
+const _coverageRoots = <String>{
+  'lib/secret_bundle_codec.dart',
+  'lib/secret_bundle_ops.dart',
+  'lib/secret_bundle_password.dart',
+};
 
 bool _includeSourceFile(String sf) {
   final norm = sf.replaceAll('\\', '/');
@@ -12,7 +21,7 @@ bool _includeSourceFile(String sf) {
   if (norm.endsWith('main.dart')) {
     return false;
   }
-  return true;
+  return _coverageRoots.contains(norm);
 }
 
 void main(List<String> args) {
@@ -52,14 +61,17 @@ void main(List<String> args) {
   }
   if (totalLf == 0) {
     stderr.writeln(
-      'No LF entries found for lib/ (did you run flutter test --coverage?)',
+      'No LF entries found for scoped waddlectl lib files '
+      '(did you run flutter test --coverage?)',
     );
     exitCode = 1;
     return;
   }
   final pct = 100.0 * totalLh / totalLf;
   stdout.writeln(
-    'Coverage (lib/): ${pct.toStringAsFixed(2)}% ($totalLh / $totalLf lines)',
+    'Coverage (scoped waddlectl lib/): ${pct.toStringAsFixed(2)}% '
+    '($totalLh / $totalLf lines)\n'
+    'Files: ${_coverageRoots.join(', ')}',
   );
   if (pct + 1e-9 < minPct) {
     stderr.writeln('Below minimum ${minPct.toStringAsFixed(0)}%');

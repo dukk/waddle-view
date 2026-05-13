@@ -95,6 +95,26 @@ class LinuxSecretToolSecretStore implements SecretStore {
     root.remove(key);
     await _writeRoot(root);
   }
+
+  @override
+  Future<Map<String, String>> readAll() async {
+    final root = await _readRoot();
+    final out = <String, String>{};
+    for (final e in root.entries) {
+      final v = e.value;
+      if (v == null) {
+        continue;
+      }
+      if (v is String) {
+        if (v.isNotEmpty) {
+          out[e.key] = v;
+        }
+      } else {
+        out[e.key] = jsonEncode(v);
+      }
+    }
+    return out;
+  }
 }
 
 SecretStore createPlatformSecretStore() {

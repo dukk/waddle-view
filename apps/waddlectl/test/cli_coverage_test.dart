@@ -40,14 +40,25 @@ void main() {
     expect(await runWaddlectl(w(['providers', 'describe', 'missing'])), 0);
     expect(await runWaddlectl(w(['curator', 'describe-program'])), 0);
     expect(
-      await runWaddlectl(w(['curator', 'update-program', '--program-duration-seconds=120'])),
+      await runWaddlectl(
+        w(['curator', 'update-program', '--program-duration-seconds=120']),
+      ),
       0,
     );
     expect(await runWaddlectl(w(['curator', 'limits', 'list'])), 0);
-    expect(await runWaddlectl(w(['curator', 'limits', 'describe', 'missing'])), 0);
+    expect(
+      await runWaddlectl(w(['curator', 'limits', 'describe', 'missing'])),
+      0,
+    );
     expect(
       await runWaddlectl(
-        w(['curator', 'limits', 'update', 'news', '--min-placements-per-program=0']),
+        w([
+          'curator',
+          'limits',
+          'update',
+          'news',
+          '--min-placements-per-program=0',
+        ]),
       ),
       0,
     );
@@ -56,5 +67,22 @@ void main() {
 
   test('invalid usage returns 64', () async {
     expect(await runWaddlectl(w(['config', 'get'])), 64);
+  });
+
+  test('secrets export/import usage errors return 64', () async {
+    expect(await runWaddlectl(w(['secrets', 'export'])), 64);
+    expect(
+      await runWaddlectl(
+        w(['secrets', 'export', '--file', p.join(dbPath, 'x.bin'), 'extra']),
+      ),
+      64,
+    );
+    expect(await runWaddlectl(w(['secrets', 'import'])), 64);
+    expect(
+      await runWaddlectl(
+        w(['secrets', 'import', '--file', '/no/such/waddle_bundle.bin']),
+      ),
+      64,
+    );
   });
 }

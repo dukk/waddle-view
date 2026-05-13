@@ -74,6 +74,31 @@ dart run tool/coverage_check.dart --min=90
 
 Per-test wall time is capped at **60s** by `dart_test.yaml` (and CI uses the same `--timeout=60s`) so a stuck async test fails instead of blocking the suite. Override in code only when a test is genuinely slow: `test('...', () { ... }, timeout: Timeout(Duration(minutes: 2)));`
 
+## Operator CLI (`waddlectl`)
+
+The **`apps/waddlectl`** package is a shell tool against the same **SQLite** database as the display app and, on **Linux**, the same **libsecret**-backed `SecretStore` as `flutter_secure_storage` (via `secret-tool`). It is **not** a substitute for backing up the whole machine; it only helps move **secret keys** between hosts or after reinstall.
+
+### Encrypted secret bundles
+
+- **Export** (writes an opaque encrypted file, **not** a SQLite dump):
+
+  `dart run waddlectl --database=/path/to/waddle_view.sqlite secrets export --file=/path/to/backup.waddle-secrets`
+
+  You are prompted for an encryption password twice (export). The file contains **PBKDF2-HMAC-SHA256** (310k iterations) + **AES-256-GCM** over a JSON map of all keys currently in `SecretStore`.
+
+- **Import** (merge only: keys in the bundle are **added or updated**; existing keys not listed in the bundle are left unchanged):
+
+  `dart run waddlectl --database=/path/to/waddle_view.sqlite secrets import --file=/path/to/backup.waddle-secrets`
+
+- **Non-interactive passwords** (sensitive: avoid shell history and process listings where possible):
+
+  - `--password-file=PATH` — first line of the file is the password (precedence over env).
+  - `--password-env=NAME` — read password from that environment variable.
+
+- If **stdin is not a TTY** (e.g. cron, CI), you must supply one of the flags above; otherwise the tool refuses to prompt.
+
+- **Wrong password** or a **corrupted/tampered** file fails decryption with a clear error (no partial import).
+
 ## Build installable bundles (local)
 
 Release binaries are what you ship or copy to a device (no hot reload).
