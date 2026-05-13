@@ -59,7 +59,7 @@ void main() {
           'category': 'Science',
           'type': 'multiple',
           'difficulty': 'easy',
-          'question': '2 &amp; 2 equals?',
+          'question': '2 &amp; 2 equals? Caf&eacute; &copy;',
           'correct_answer': '4',
           'incorrect_answers': ['3', '5', '6'],
         },
@@ -86,7 +86,7 @@ void main() {
     expect(tf.optionC, isEmpty);
     expect(tf.optionD, isEmpty);
     final mc = rows.firstWhere((r) => r.optionC.isNotEmpty && r.optionD.isNotEmpty);
-    expect(mc.question, '2 & 2 equals?');
+    expect(mc.question, '2 & 2 equals? Caf\u00E9 \u00A9');
     expect(mc.optionC, isNotNull);
     expect(mc.optionD, isNotNull);
   });

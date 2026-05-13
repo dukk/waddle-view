@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import 'package:waddle_shared/config/provider_runtime_config.dart';
 import '../../../debug/app_debug_log.dart';
+import '../../../util/html_entity_decode.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import '../../data_provider.dart';
 import '../../data_write_context.dart';
@@ -208,32 +209,34 @@ class JokeDataProvider implements IDataProvider {
 
       for (final item in parsedList) {
         final cid = item['categoryId'] as String?;
-        final setup = item['setup'] as String?;
-        final punchline = item['punchline'] as String?;
+        final setupRaw = item['setup'] as String?;
+        final punchlineRaw = item['punchline'] as String?;
+        final setup = decodeHtmlEntitiesFromField(setupRaw);
+        final punchline = decodeHtmlEntitiesFromField(punchlineRaw);
         if (cid == null ||
-            setup == null ||
-            punchline == null ||
-            setup.trim().isEmpty ||
-            punchline.trim().isEmpty) {
+            setupRaw == null ||
+            punchlineRaw == null ||
+            setup.isEmpty ||
+            punchline.isEmpty) {
           continue;
         }
         if (!categoryById.containsKey(cid)) {
           continue;
         }
-        final jokeId = jokeStableId(cid, setup.trim(), punchline.trim());
+        final jokeId = jokeStableId(cid, setup, punchline);
         await ctx.db.into(ctx.db.jokes).insert(
               JokesCompanion.insert(
                 id: jokeId,
                 categoryId: cid,
-                setup: setup.trim(),
-                punchline: punchline.trim(),
+                setup: setup,
+                punchline: punchline,
                 createdAtMs: createdAt,
               ),
               onConflict: DoUpdate(
                 (old) => JokesCompanion(
                   categoryId: Value(cid),
-                  setup: Value(setup.trim()),
-                  punchline: Value(punchline.trim()),
+                  setup: Value(setup),
+                  punchline: Value(punchline),
                   createdAtMs: Value(createdAt),
                 ),
               ),

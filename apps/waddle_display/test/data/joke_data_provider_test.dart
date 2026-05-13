@@ -457,6 +457,54 @@ void main() {
       jokeStableId('dad', 'A', 'B'),
     );
   });
+
+  test('collect decodes HTML entities in setup and punchline', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.providerSettings).insert(
+          ProviderSettingsCompanion.insert(
+            id: 'jokes',
+            providerType: 'jokes',
+            pollSeconds: const Value(1),
+            configJson: const Value('{"jokesPerDay":5}'),
+            baseUrl: const Value('http://api.local/v1'),
+          ),
+        );
+    await db.into(db.jokeCategories).insert(
+          JokeCategoriesCompanion.insert(id: 'dad', label: 'Dad'),
+        );
+
+    final secrets = InMemorySecretStore();
+    await secrets.write('${ProviderConfigResolver.accessTokenKey}:jokes', 't');
+    final resolver = ProviderConfigResolver(db, secrets);
+    final ctx = DataWriteContextImpl(
+      db: db,
+      blobs: FakeBlobStore(),
+      secrets: secrets,
+      resolve: resolver.resolve,
+    );
+
+    final apiPayload = _chatJson(
+      jsonEncode([
+        {
+          'categoryId': 'dad',
+          'setup': 'Why visit caf&eacute; &copy; 2026?',
+          'punchline': 'It&rsquo;s always brewing ideas.',
+        },
+      ]),
+    );
+
+    final provider = JokeDataProvider(
+      httpClient: _FakeOpenAi(apiPayload),
+      now: () => DateTime(2026, 5, 4, 12),
+    );
+    await provider.collect(ctx);
+
+    final rows = await db.select(db.jokes).get();
+    expect(rows, hasLength(1));
+    expect(rows.single.setup, 'Why visit caf\u00E9 \u00A9 2026?');
+    expect(rows.single.punchline, 'It\u2019s always brewing ideas.');
+  });
 }
 
 class _InterceptClient extends http.BaseClient {

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import 'package:waddle_shared/config/provider_runtime_config.dart';
 import '../../../debug/app_debug_log.dart';
+import '../../../util/html_entity_decode.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import '../../data_provider.dart';
 import '../../data_write_context.dart';
@@ -255,11 +256,11 @@ class TriviaDataProvider implements IDataProvider {
         if (correctNorm == null) {
           continue;
         }
-        final qt = q.trim();
-        final at = a.trim();
-        final bt = b.trim();
-        final ct = c?.trim() ?? '';
-        final dt = d?.trim() ?? '';
+        final qt = decodeHtmlEntitiesFromField(q);
+        final at = decodeHtmlEntitiesFromField(a);
+        final bt = decodeHtmlEntitiesFromField(b);
+        final ct = c != null ? decodeHtmlEntitiesFromField(c) : '';
+        final dt = d != null ? decodeHtmlEntitiesFromField(d) : '';
         if (qt.isEmpty ||
             at.isEmpty ||
             bt.isEmpty ||

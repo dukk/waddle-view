@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../debug/app_debug_log.dart';
+import '../../../util/html_entity_decode.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import '../../data_provider.dart';
 import '../../data_write_context.dart';
@@ -244,8 +245,8 @@ _MappedQuestion? _mapQuestion(
   required int maxQuestionChars,
   required int maxOptionChars,
 }) {
-  final question = _decodeHtml(raw['question']);
-  final correctAnswer = _decodeHtml(raw['correct_answer']);
+  final question = decodeHtmlEntitiesFromField(raw['question']);
+  final correctAnswer = decodeHtmlEntitiesFromField(raw['correct_answer']);
   final incorrectRaw = raw['incorrect_answers'];
   if (question.isEmpty ||
       question.length > maxQuestionChars ||
@@ -257,7 +258,7 @@ _MappedQuestion? _mapQuestion(
   }
   final incorrect = <String>[];
   for (final answer in incorrectRaw) {
-    final decoded = _decodeHtml(answer);
+    final decoded = decodeHtmlEntitiesFromField(answer);
     if (decoded.isEmpty) {
       continue;
     }
@@ -310,33 +311,4 @@ _MappedQuestion? _mapQuestion(
     optionD: unique[3],
     correctOption: letters[correctIdx],
   );
-}
-
-String _decodeHtml(Object? raw) {
-  if (raw is! String) {
-    return '';
-  }
-  var s = raw;
-  s = s.replaceAll('&quot;', '"');
-  s = s.replaceAll('&#039;', "'");
-  s = s.replaceAll('&apos;', "'");
-  s = s.replaceAll('&amp;', '&');
-  s = s.replaceAll('&lt;', '<');
-  s = s.replaceAll('&gt;', '>');
-  s = s.replaceAll('&eacute;', 'e');
-  final numericEntityPattern = RegExp(r'&#(x?[0-9a-fA-F]+);');
-  s = s.replaceAllMapped(numericEntityPattern, (match) {
-    final token = match.group(1);
-    if (token == null || token.isEmpty) {
-      return '';
-    }
-    final code = token.startsWith('x') || token.startsWith('X')
-        ? int.tryParse(token.substring(1), radix: 16)
-        : int.tryParse(token);
-    if (code == null) {
-      return '';
-    }
-    return String.fromCharCode(code);
-  });
-  return s.trim();
 }

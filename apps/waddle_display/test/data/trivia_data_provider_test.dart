@@ -131,6 +131,58 @@ void main() {
     expect(rows2.length, 2);
   });
 
+  test('collect decodes HTML entities in questions and choices', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.providerSettings).insert(
+          ProviderSettingsCompanion.insert(
+            id: 'trivia',
+            providerType: 'trivia',
+            pollSeconds: const Value(1),
+            configJson: const Value('{"questionsPerDay":5}'),
+            baseUrl: const Value('http://api.local/v1'),
+          ),
+        );
+    await db.into(db.triviaCategories).insert(
+          TriviaCategoriesCompanion.insert(id: 'science', label: 'Science'),
+        );
+
+    final secrets = InMemorySecretStore();
+    await secrets.write('${ProviderConfigResolver.accessTokenKey}:trivia', 't');
+    final resolver = ProviderConfigResolver(db, secrets);
+    final ctx = DataWriteContextImpl(
+      db: db,
+      blobs: FakeBlobStore(),
+      secrets: secrets,
+      resolve: resolver.resolve,
+    );
+
+    final apiPayload = _chatJson(
+      jsonEncode([
+        {
+          'categoryId': 'science',
+          'question': 'Caf&eacute; &copy; in Paris?',
+          'A': 'Oui &amp; non',
+          'B': 'Maybe &rsquo;yes&rsquo;',
+          'C': 'Berlin',
+          'D': 'Madrid',
+          'correct': 'B',
+        },
+      ]),
+    );
+
+    final provider = TriviaDataProvider(
+      httpClient: _FakeOpenAi(apiPayload),
+      now: () => DateTime(2026, 5, 4, 12),
+    );
+    await provider.collect(ctx);
+
+    final row = (await db.select(db.triviaQuestions).get()).single;
+    expect(row.question, 'Caf\u00E9 \u00A9 in Paris?');
+    expect(row.optionA, 'Oui & non');
+    expect(row.optionB, 'Maybe \u2019yes\u2019');
+  });
+
   test('collect skips unknown categoryId in response', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);

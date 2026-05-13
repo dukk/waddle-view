@@ -7,6 +7,8 @@ void main() {
     expect(sanitizeRssDisplayText('A &amp; B'), 'A & B');
     expect(sanitizeRssDisplayText('2 &lt; 4'), '2 < 4');
     expect(sanitizeRssDisplayText('&quot;x&quot;'), '"x"');
+    expect(sanitizeRssDisplayText('Foo &copy; bar'), 'Foo \u00A9 bar');
+    expect(sanitizeRssDisplayText('&amp;rsquo;Hi'), '\u2019Hi');
   });
 
   test('sanitizeRssDisplayText decodes numeric entities', () {
