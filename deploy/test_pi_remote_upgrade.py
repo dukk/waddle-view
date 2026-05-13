@@ -143,6 +143,40 @@ class TestPiRemoteUpgradeHelpers(unittest.TestCase):
             "https://api.github.com/a/zip",
         )
 
+    def test_pick_linux_arm64_artifact_with_build_number(self):
+        pru = self.pru
+        data = {
+            "artifacts": [
+                {
+                    "name": "linux-arm64-bundle-99",
+                    "archive_download_url": "https://api.github.com/b/zip",
+                },
+            ],
+        }
+        art = pru.pick_linux_arm64_artifact(data)
+        self.assertIsNotNone(art)
+        assert art is not None
+        self.assertEqual(art["name"], "linux-arm64-bundle-99")
+
+    def test_pick_linux_arm64_artifact_prefers_suffixed_when_both(self):
+        pru = self.pru
+        data = {
+            "artifacts": [
+                {
+                    "name": "linux-arm64-bundle",
+                    "archive_download_url": "https://api.github.com/legacy.zip",
+                },
+                {
+                    "name": "linux-arm64-bundle-7",
+                    "archive_download_url": "https://api.github.com/new.zip",
+                },
+            ],
+        }
+        art = pru.pick_linux_arm64_artifact(data)
+        self.assertIsNotNone(art)
+        assert art is not None
+        self.assertEqual(art["name"], "linux-arm64-bundle-7")
+
     def test_resolve_auto_falls_back_to_actions(self):
         pru = self.pru
         created: list[Path] = []

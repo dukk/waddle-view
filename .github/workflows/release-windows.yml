@@ -40,5 +40,5 @@ jobs:
           Compress-Archive -Path "$releaseDir/*" -DestinationPath $zip -Force
       - uses: actions/upload-artifact@v4
         with:
-          name: windows-x64-bundle
+          name: windows-x64-bundle-${{ inputs.build_number }}
           path: dist/*.zip

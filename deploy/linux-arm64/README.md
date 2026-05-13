@@ -2,8 +2,8 @@
 
 Templates copied into release tarballs by CI (`release-pi.yml`) or manually after `flutter build linux --release`.
 
-- **`install.sh`** — installs bundle under `/opt/waddle-view`, creates `/etc/waddle-view/api.key` on first install, optional systemd user unit.
-- **`waddle-view.service`** — example systemd unit; adjust `User`, `DISPLAY`, and paths for your session.
+- **`install.sh`** — installs bundle under `/opt/waddle-view`, creates `/etc/waddle-view/api.key` on first install, optional systemd user unit. After install it runs **`ldd`** on **`waddle_display`**; if libraries are missing it prints **`apt install`** hints, or with **`WADDLE_INSTALL_RUNTIME_PACKAGES=1`** installs packages listed in **`runtime-apt-packages.txt`** (Debian/apt hosts only).
+- **`waddle-view.service`** — example systemd unit; adjust `User`, `DISPLAY`, and paths for your session. If you run under **SSH** without a full login session, you may need the graphical user’s **`DBUS_SESSION_BUS_ADDRESS`** / **`XDG_RUNTIME_DIR`** (see **`loginctl show-session`** for the `seat0` session); on the local console **`DISPLAY=:0`** is usually enough once **`at-spi2-core`** is installed.
 
 Release CI runs on **`ubuntu-22.04-arm`** inside a **`debian:bookworm-slim`** job container so the binary matches **Raspberry Pi OS Bookworm** for both **glibc** (see **`release-pi.yml`** assert) and **runtime SONAMEs** (for example **`libmpv.so.2`** from **`libmpv2`**). Building only on Ubuntu 22.04 linked **`libmpv.so.1`**, which Bookworm does not ship. If the **`ubuntu-22.04-arm`** label is unavailable on your plan, use a self-hosted ARM64 runner on Bookworm or build on the Pi.
 

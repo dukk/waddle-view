@@ -7,7 +7,7 @@ The repo includes [`deploy/pi-remote-upgrade.py`](../../deploy/pi-remote-upgrade
 **Authentication**
 
 - **SSH**: key-based auth is recommended; the script passes **`BatchMode=yes`** by default (non-interactive). Use **`--no-batch`** if you rely on keyboard-interactive SSH login.
-- **GitHub**: set **`GITHUB_TOKEN`** or **`GH_TOKEN`**. Downloading the **`linux-arm64-bundle`** workflow artifact **requires** a token with **`actions:read`**. Downloading a tarball attached to the **latest GitHub Release** works without a token on public repos (a token still helps with rate limits).
+- **GitHub**: set **`GITHUB_TOKEN`** or **`GH_TOKEN`**. Downloading the **`linux-arm64-bundle-<build_number>`** workflow artifact (or legacy **`linux-arm64-bundle`**) **requires** a token with **`actions:read`**. Downloading a tarball attached to the **latest GitHub Release** works without a token on public repos (a token still helps with rate limits).
 
 **Examples**
 

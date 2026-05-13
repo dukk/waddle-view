@@ -16,7 +16,7 @@ Examples::
 
 ``--sync-local-dev`` copies your desktop **SQLite** file (``waddle_view.sqlite``), the
 **``media/``** tree used by ``FileSystemBlobStore`` (same parent directory as the DB), to the Pi
-under ``/home/<ssh-user>/.local/share/com.waddleview.waddle_display/`` (same layout as Flutter Linux
+under ``/home/<ssh-user>/.local/share/waddle_display/`` (same layout as Flutter Linux
 ``path_provider``) and copies ``apps/waddle_display/.env.development`` to
 ``/opt/waddle-view/bundle/.env.development`` so a **debug** build with systemd
 ``WorkingDirectory=/opt/waddle-view/bundle`` can load provider keys via ``loadDevDotenvFromFilesystem``.
@@ -26,12 +26,17 @@ the SQLite file is used in all modes.
 Remote paths use ``/home/<ssh-user>/.local/...`` (and ``/root`` for ``root@``), with no
 ``~`` or ``$HOME`` in the ``ssh`` command string — Windows OpenSSH can drop those and leave
 ``mkdir`` with no operand.
+
+``ssh`` forwards the remote command as one line; the server ``sh -c`` splits on spaces unless
+the script for ``bash -lc`` is a single quoted word. Passing ``bash``, ``-lc``, and
+``mkdir -p /path`` as separate argv tokens becomes ``bash -lc mkdir -p /path`` with no inner
+quotes, so ``-c`` only sees ``mkdir`` and the path is dropped (``mkdir: missing operand``).
+Use :func:`_ssh_remote_bash_lc` so the whole script is one ``-c`` argument.
 """
 from __future__ import annotations
 
 import argparse
 import os
-import shlex
 import subprocess
 import sys
 from pathlib import Path, PurePosixPath
@@ -44,7 +49,7 @@ DEFAULT_TARBALL = DEV_PI_DIR / "waddle-view-linux-arm64-main.tar.gz"
 UPGRADE_SCRIPT = DEV_PI_DIR.parent / "pi-remote-upgrade.py"
 DEFAULT_SSH = "dukk@10.2.0.10"
 
-REMOTE_APP_SUPPORT_REL = Path(".local/share/com.waddleview.waddle_display")
+REMOTE_APP_SUPPORT_REL = Path(".local/share/waddle_display")
 REMOTE_SQLITE_NAME = "waddle_view.sqlite"
 REMOTE_BUNDLE_ENV = "/opt/waddle-view/bundle/.env.development"
 
@@ -74,7 +79,7 @@ def default_local_sqlite_candidates(
     candidates: list[Path] = []
     if is_windows and appdata_roaming is not None:
         candidates.append(
-            appdata_roaming / "com.waddleview" / "waddle_display" / REMOTE_SQLITE_NAME
+            appdata_roaming / "waddle_display" / REMOTE_SQLITE_NAME
         )
     if is_darwin:
         candidates.append(
@@ -178,6 +183,16 @@ def _ssh_base_args(
     return args
 
 
+def _posix_sh_single_quote(s: str) -> str:
+    """Return *s* as a POSIX ``sh`` single-quoted literal (including the outer quotes)."""
+    return "'" + s.replace("'", "'\"'\"'") + "'"
+
+
+def _ssh_remote_bash_lc(script: str) -> str:
+    """One ``ssh`` argv after ``user@host``: ``bash -lc '<script>'`` for the remote shell."""
+    return "bash -lc " + _posix_sh_single_quote(script)
+
+
 def _scp_push(
     local: Path,
     remote_path: str,
@@ -262,14 +277,18 @@ def sync_local_dev_to_pi(
     maybe_run(
         ssh_cmd
         + [
-            "bash",
-            "-lc",
-            f"mkdir -p {shlex.quote(remote_support)}",
+            _ssh_remote_bash_lc(
+                "mkdir -p " + _posix_sh_single_quote(remote_support),
+            ),
         ]
     )
     maybe_run(
         ssh_cmd
-        + ["bash", "-lc", "systemctl --user stop waddle-view 2>/dev/null || true"]
+        + [
+            _ssh_remote_bash_lc(
+                "systemctl --user stop waddle-view 2>/dev/null || true",
+            ),
+        ]
     )
 
     for f in _sqlite_sidecar_paths(local_sqlite):
@@ -285,20 +304,22 @@ def sync_local_dev_to_pi(
                 batch_mode=batch_mode,
             )
         )
-        dest_q = shlex.quote(dest)
-        dest_remote = shlex.quote(f"{remote_support}/{remote_name}")
-        maybe_run(ssh_cmd + ["bash", "-lc", f"mv -f {dest_q} {dest_remote}"])
+        dest_q = _posix_sh_single_quote(dest)
+        dest_remote = _posix_sh_single_quote(f"{remote_support}/{remote_name}")
+        maybe_run(
+            ssh_cmd
+            + [_ssh_remote_bash_lc(f"mv -f {dest_q} {dest_remote}")],
+        )
 
     media_dir = local_blob_media_dir(local_sqlite)
     if media_dir.is_dir():
         media_root = str(PurePosixPath(remote_support) / "media")
+        media_q = _posix_sh_single_quote(media_root)
         maybe_run(
             ssh_cmd
             + [
-                "bash",
-                "-lc",
-                f"rm -rf {shlex.quote(media_root)} && mkdir -p {shlex.quote(media_root)}",
-            ]
+                _ssh_remote_bash_lc(f"rm -rf {media_q} && mkdir -p {media_q}"),
+            ],
         )
         remote_media = media_root + "/"
         maybe_run(
@@ -336,19 +357,24 @@ def sync_local_dev_to_pi(
         )
     )
     # Bundle CWD (systemd WorkingDirectory) so loadDevDotenvFromFilesystem finds it in kDebugMode.
-    tmp_q = shlex.quote(tmp_env)
-    bundle_q = shlex.quote(REMOTE_BUNDLE_ENV)
+    tmp_q = _posix_sh_single_quote(tmp_env)
+    bundle_q = _posix_sh_single_quote(REMOTE_BUNDLE_ENV)
+    owner_q = _posix_sh_single_quote(f"{ssh_u}:{ssh_u}")
     remote_install = (
         f"sudo cp {tmp_q} {bundle_q} && "
-        f"sudo chown {shlex.quote(ssh_u + ':' + ssh_u)} {bundle_q} && "
+        f"sudo chown {owner_q} {bundle_q} && "
         f"sudo chmod 600 {bundle_q} && "
         f"rm -f {tmp_q}"
     )
-    maybe_run(ssh_cmd + ["bash", "-lc", remote_install])
+    maybe_run(ssh_cmd + [_ssh_remote_bash_lc(remote_install)])
 
     maybe_run(
         ssh_cmd
-        + ["bash", "-lc", "systemctl --user start waddle-view 2>/dev/null || true"]
+        + [
+            _ssh_remote_bash_lc(
+                "systemctl --user start waddle-view 2>/dev/null || true",
+            ),
+        ]
     )
 
 

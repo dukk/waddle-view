@@ -29,3 +29,5 @@ Thumbs.db
 dist/
 
 **/__pycache__/*
+
+deploy/dev-pi/*.tar.gz

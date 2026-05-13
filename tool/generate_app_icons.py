@@ -3,6 +3,11 @@
 Extract portrait / full-body preview cards from the composite icon sheet PNG,
 then emit Flutter platform launcher assets (Windows .ico, iOS/macOS PNG sets).
 
+Near-white pixels that connect to the image edge (card background and padding)
+are made transparent; opaque platform outputs are preserved under
+``<app-root>/branding/generated_icons_backup_white_opaque/`` the first time each
+file would be overwritten (use ``--no-backup`` to skip).
+
 Requires Pillow: pip install pillow
 
 Example (from repo root):
@@ -16,10 +21,71 @@ from __future__ import annotations
 
 import argparse
 from collections import deque
+import shutil
 import sys
 from pathlib import Path
 
 from PIL import Image
+
+_BACKUP_DIR = Path("branding") / "generated_icons_backup_white_opaque"
+
+
+def _maybe_backup(app: Path, dest: Path, *, enable: bool) -> None:
+    """If ``dest`` exists and no backup exists yet, copy it under ``_BACKUP_DIR``."""
+    if not enable or not dest.is_file():
+        return
+    rel = dest.relative_to(app)
+    backup = app / _BACKUP_DIR / rel
+    backup.parent.mkdir(parents=True, exist_ok=True)
+    if not backup.is_file():
+        shutil.copy2(dest, backup)
+
+
+def _transparent_edge_connected_white(im: Image.Image, threshold: int = 245) -> Image.Image:
+    """
+    Set alpha to 0 for near-white pixels (RGB >= threshold) that are 4-connected
+    to the image border. Interior whites (e.g. highlights) stay opaque.
+    """
+    rgba = im.convert("RGBA")
+    w, h = rgba.size
+    px = rgba.load()
+    white: list[list[bool]] = [[False for _ in range(w)] for _ in range(h)]
+    for y in range(h):
+        for x in range(w):
+            r, g, b, _a = px[x, y]
+            white[y][x] = r >= threshold and g >= threshold and b >= threshold
+
+    seen: list[list[bool]] = [[False for _ in range(w)] for _ in range(h)]
+    q: deque[tuple[int, int]] = deque()
+    for x in range(w):
+        for y in (0, h - 1):
+            if white[y][x] and not seen[y][x]:
+                seen[y][x] = True
+                q.append((x, y))
+    for y in range(h):
+        for x in (0, w - 1):
+            if white[y][x] and not seen[y][x]:
+                seen[y][x] = True
+                q.append((x, y))
+
+    while q:
+        x, y = q.popleft()
+        for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+            if nx < 0 or nx >= w or ny < 0 or ny >= h:
+                continue
+            if seen[ny][nx] or not white[ny][nx]:
+                continue
+            seen[ny][nx] = True
+            q.append((nx, ny))
+
+    out = rgba.copy()
+    opx = out.load()
+    for y in range(h):
+        for x in range(w):
+            if seen[y][x]:
+                r, g, b, _ = opx[x, y]
+                opx[x, y] = (r, g, b, 0)
+    return out
 
 
 def _white_mask(im: Image.Image, threshold: int = 245) -> tuple[int, int, list[list[bool]]]:
@@ -180,34 +246,25 @@ def _square_paste(src: Image.Image, side: int, fill: tuple[int, int, int, int]) 
 
 
 def extract_square_card(im: Image.Image, bbox: tuple[int, int, int, int]) -> Image.Image:
-    """Crop white rounded-rect card in `bbox` (x0,y0,x1,y1) and return a square RGBA."""
+    """Crop rounded-rect card in `bbox` (x0,y0,x1,y1) and return a square RGBA with transparent surround."""
     card = im.crop(bbox).convert("RGBA")
     cw, ch = card.size
     side = max(cw, ch)
-    return _square_paste(card, side, (255, 255, 255, 255))
+    sq = _square_paste(card, side, (0, 0, 0, 0))
+    return _transparent_edge_connected_white(sq)
 
 
-def _rgb_white(im: Image.Image) -> Image.Image:
-    if im.mode != "RGBA":
-        return im.convert("RGB")
-    bg = Image.new("RGB", im.size, (255, 255, 255))
-    bg.paste(im, mask=im.split()[3])
-    return bg
-
-
-def resize_png(src: Image.Image, path: Path, size: int, *, flatten: bool = False) -> None:
+def resize_png(src: Image.Image, path: Path, size: int) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     out = src.resize((size, size), Image.Resampling.LANCZOS)
-    if flatten:
-        out = _rgb_white(out)
-    elif out.mode not in ("RGB", "RGBA"):
+    if out.mode not in ("RGB", "RGBA"):
         out = out.convert("RGBA")
     out.save(path, format="PNG")
 
 
 def write_windows_ico(src1024: Image.Image, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    base = _rgb_white(src1024)
+    base = src1024.convert("RGBA")
     # Pillow resizes from `base` for each entry in `sizes` (see ICO format docs).
     base.save(
         path,
@@ -224,6 +281,11 @@ def main() -> int:
         type=Path,
         default=Path("apps/waddle_display"),
         help="Path to the Flutter app package root.",
+    )
+    p.add_argument(
+        "--no-backup",
+        action="store_true",
+        help="Do not copy existing outputs to branding/generated_icons_backup_white_opaque/.",
     )
     args = p.parse_args()
 
@@ -247,8 +309,20 @@ def main() -> int:
     portrait_master = portrait_sq.resize((master_side, master_side), Image.Resampling.LANCZOS)
     fullbody_master = fullbody_sq.resize((master_side, master_side), Image.Resampling.LANCZOS)
 
+    do_backup = not args.no_backup
     icons_dir = app / "assets" / "icons"
     icons_dir.mkdir(parents=True, exist_ok=True)
+    for out in (
+        icons_dir / "master_portrait.png",
+        icons_dir / "master_full_body.png",
+        icons_dir / "icon_256x256.png",
+        icons_dir / "icon_128x128.png",
+        icons_dir / "icon_64x64.png",
+        icons_dir / "icon_48x48.png",
+        icons_dir / "icon_32x32.png",
+        icons_dir / "icon_16x16.png",
+    ):
+        _maybe_backup(app, out, enable=do_backup)
     portrait_master.save(icons_dir / "master_portrait.png", format="PNG")
     fullbody_master.save(icons_dir / "master_full_body.png", format="PNG")
     for name, side in [
@@ -264,7 +338,9 @@ def main() -> int:
     src1024 = portrait_master.resize((1024, 1024), Image.Resampling.LANCZOS)
 
     # Windows
-    write_windows_ico(src1024, app / "windows" / "runner" / "resources" / "app_icon.ico")
+    win_ico = app / "windows" / "runner" / "resources" / "app_icon.ico"
+    _maybe_backup(app, win_ico, enable=do_backup)
+    write_windows_ico(src1024, win_ico)
 
     # macOS (see AppIcon.appiconset/Contents.json)
     mac = app / "macos" / "Runner" / "Assets.xcassets" / "AppIcon.appiconset"
@@ -277,7 +353,9 @@ def main() -> int:
         (512, "app_icon_512.png"),
         (1024, "app_icon_1024.png"),
     ]:
-        resize_png(src1024, mac / name, side, flatten=True)
+        mac_path = mac / name
+        _maybe_backup(app, mac_path, enable=do_backup)
+        resize_png(src1024, mac_path, side)
 
     # iOS (see AppIcon.appiconset/Contents.json; shared filenames between idiom entries).
     ios = app / "ios" / "Runner" / "Assets.xcassets" / "AppIcon.appiconset"
@@ -299,9 +377,13 @@ def main() -> int:
         "Icon-App-1024x1024@1x.png": 1024,
     }
     for fname, side in ios_side_by_file.items():
-        resize_png(src1024, ios / fname, side, flatten=True)
+        ios_path = ios / fname
+        _maybe_backup(app, ios_path, enable=do_backup)
+        resize_png(src1024, ios_path, side)
 
     print(f"Wrote icons under {app} (assets/icons, windows/.../app_icon.ico, macOS, iOS).")
+    if do_backup:
+        print(f"Prior opaque outputs (if any) copied once to {app / _BACKUP_DIR}.")
     return 0
 
 

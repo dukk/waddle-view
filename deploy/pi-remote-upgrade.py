@@ -32,7 +32,7 @@ API_HEADERS_BASE: dict[str, str] = {
 
 TARBALL_NAME_RE = re.compile(r"^waddle-view-linux-arm64-.+\.tar\.gz$")
 TARBALL_LABEL_RE = re.compile(r"^waddle-view-linux-arm64-(.+)\.tar\.gz$")
-ARTIFACT_NAME = "linux-arm64-bundle"
+ARTIFACT_NAME_PREFIX = "linux-arm64-bundle"
 WORKFLOW_FILE = "release-pi.yml"
 REMOTE_VERSION_FILE = "/opt/waddle-view/bundle/data/flutter_assets/version.json"
 REMOTE_INSTALL_ROOT = "/opt/waddle-view"
@@ -180,7 +180,7 @@ def peek_new_version_label(
             raise SystemExit(
                 f"No successful runs found for {WORKFLOW_FILE} on branch {branch!r}."
             )
-        return f"linux-arm64-bundle (workflow run {run_id}, branch {branch})"
+        return f"{ARTIFACT_NAME_PREFIX} (workflow run {run_id}, branch {branch})"
 
     # auto
     data = fetch_latest_release_json(repo, token)
@@ -198,7 +198,7 @@ def peek_new_version_label(
         raise SystemExit(
             f"No successful runs found for {WORKFLOW_FILE} on branch {branch!r}."
         )
-    return f"linux-arm64-bundle (workflow run {run_id}, branch {branch})"
+    return f"{ARTIFACT_NAME_PREFIX} (workflow run {run_id}, branch {branch})"
 
 
 def ssh_run(
@@ -295,10 +295,35 @@ def newest_successful_run_id(runs_json: Mapping[str, Any]) -> Optional[int]:
 
 
 def pick_linux_arm64_artifact(artifacts_json: Mapping[str, Any]) -> Optional[dict[str, Any]]:
+    """Pick the Pi arm64 workflow artifact (``linux-arm64-bundle`` or ``linux-arm64-bundle-<build>``)."""
+    prefix = ARTIFACT_NAME_PREFIX
+    candidates: list[dict[str, Any]] = []
     for art in artifacts_json.get("artifacts") or []:
-        if art.get("name") == ARTIFACT_NAME:
-            return dict(art) if isinstance(art, dict) else None
-    return None
+        if not isinstance(art, dict):
+            continue
+        n = art.get("name")
+        if not isinstance(n, str):
+            continue
+        if n == prefix or n.startswith(prefix + "-"):
+            candidates.append(art)
+    if not candidates:
+        return None
+    if len(candidates) == 1:
+        return dict(candidates[0])
+
+    def rank(art: dict[str, Any]) -> tuple[int, str]:
+        n = str(art.get("name") or "")
+        tail = n[len(prefix) :]
+        if tail == "":
+            return (0, n)
+        if tail.startswith("-") and tail[1:].isdigit():
+            return (2, n)
+        if tail.startswith("-"):
+            return (1, n)
+        return (0, n)
+
+    candidates.sort(key=rank, reverse=True)
+    return dict(candidates[0])
 
 
 def download_release_tarball(repo: str, token: Optional[str]) -> Path:
@@ -325,7 +350,7 @@ def download_actions_tarball(
     branch: str,
     opener: Optional[Callable[..., Any]] = None,
 ) -> Path:
-    """Download ``linux-arm64-bundle`` zip from latest successful workflow run, extract tarball."""
+    """Download Pi arm64 bundle zip from latest successful workflow run, extract tarball."""
     owner, name = repo.split("/", 1)
     runs_data = fetch_workflow_runs_json(repo, token, branch)
     run_id = newest_successful_run_id(runs_data)
@@ -341,7 +366,8 @@ def download_actions_tarball(
     art = pick_linux_arm64_artifact(json.loads(body.decode()))
     if not art:
         raise SystemExit(
-            f"No artifact named {ARTIFACT_NAME!r} on run {run_id}."
+            f"No workflow artifact matching {ARTIFACT_NAME_PREFIX!r} or "
+            f"{ARTIFACT_NAME_PREFIX!r}-<build_number> on run {run_id}."
         )
     archive_url = art.get("archive_download_url")
     if not isinstance(archive_url, str):

@@ -1,3 +1,5 @@
 # Shell entrypoints must stay LF (Docker/Linux); Windows checkouts often use CRLF otherwise.
 deploy/pi-image/*.sh text eol=lf
 deploy/install-latest-release.sh text eol=lf
+deploy/linux-arm64/*.sh text eol=lf
+deploy/linux-arm64/runtime-apt-packages.txt text eol=lf

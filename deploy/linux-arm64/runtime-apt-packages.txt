@@ -1,0 +1,7 @@
+# Used when install.sh is run with WADDLE_INSTALL_RUNTIME_PACKAGES=1 on apt-based
+# systems (e.g. Raspberry Pi OS Bookworm). One package name per line; # starts a comment.
+at-spi2-core
+libmpv2
+mpv
+libgtk-3-0
+libsecret-1-0

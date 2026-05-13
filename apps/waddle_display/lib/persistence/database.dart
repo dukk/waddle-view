@@ -438,6 +438,14 @@ FROM curator_settings WHERE id = 'app';
   );
 }
 
+/// Opens a file-backed SQLite at [sqliteFile] (e.g. for `waddlectl --database`).
+QueryExecutor createQueryExecutorForFile(File sqliteFile) {
+  return LazyDatabase(() async {
+    AppDebugLog.startup('SQLite database file: ${sqliteFile.path}');
+    return NativeDatabase.createInBackground(sqliteFile);
+  });
+}
+
 /// Opens a file-backed SQLite database under application support.
 QueryExecutor createQueryExecutor() {
   return LazyDatabase(() async {

@@ -87,6 +87,24 @@ class TestInstallMainToPiHelpers(unittest.TestCase):
             Path("/tmp/media"),
         )
 
+    def test_posix_sh_single_quote(self):
+        im = self.im
+        self.assertEqual(im._posix_sh_single_quote("a"), "'a'")
+        q = im._posix_sh_single_quote("a'b")
+        self.assertTrue(q.startswith("'") and q.endswith("'"))
+        self.assertIn("a", q)
+        self.assertIn("b", q)
+
+    def test_ssh_remote_bash_lc_quotes_full_script(self):
+        im = self.im
+        script = "mkdir -p " + im._posix_sh_single_quote("/home/u/.local/share/x")
+        remote = im._ssh_remote_bash_lc(script)
+        self.assertTrue(remote.startswith("bash -lc "))
+        self.assertIn("mkdir -p ", remote)
+        self.assertIn("/home/u/.local/share/x", remote)
+        # Inner script must be one -c word: path quoted, whole script outer-quoted.
+        self.assertTrue(remote.endswith("'"))
+
     def test_resolve_local_sqlite_path_explicit(self):
         im = self.im
         with tempfile.NamedTemporaryFile(suffix=".sqlite", delete=False) as tf:

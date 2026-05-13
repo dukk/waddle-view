@@ -91,5 +91,5 @@ jobs:
           cd ../../dist && tar czf "${DIST}.tar.gz" "${DIST}"
       - uses: actions/upload-artifact@v4
         with:
-          name: linux-arm64-bundle
+          name: linux-arm64-bundle-${{ inputs.build_number }}
           path: dist/*.tar.gz

@@ -6,6 +6,7 @@
 # Environment:
 #   WADDLE_INSTALL_ROOT   install root (default /opt/waddle-view; install.sh honors this)
 #   WADDLE_INSTALL_YES=1  skip the upgrade confirmation prompt (non-interactive)
+#   WADDLE_INSTALL_RUNTIME_PACKAGES=1  forward to install.sh: apt-install listed runtime libs on Debian/apt hosts
 #
 # Usage:
 #   bash install-latest-release.sh
@@ -176,7 +177,7 @@ fi
 echo "Running bundled install.sh (sudo required)..."
 (
   cd "$src"
-  sudo env WADDLE_INSTALL_ROOT="$ROOT" bash ./install.sh
+  sudo env WADDLE_INSTALL_ROOT="$ROOT" WADDLE_INSTALL_RUNTIME_PACKAGES="${WADDLE_INSTALL_RUNTIME_PACKAGES:-}" bash ./install.sh
 )
 
 echo "Installed $tag under $ROOT. See deploy/linux-arm64/waddle-view.service for systemd hints."

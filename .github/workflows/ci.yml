@@ -39,6 +39,8 @@ jobs:
         run: python3 -m unittest discover -s deploy -p 'test_*.py' -v
       - name: Validate install-latest-release.sh (bash syntax)
         run: bash -n "$GITHUB_WORKSPACE/deploy/install-latest-release.sh"
+      - name: Validate linux-arm64 install.sh (bash syntax)
+        run: bash -n "$GITHUB_WORKSPACE/deploy/linux-arm64/install.sh"
 
   analyze-test:
     runs-on: ubuntu-latest

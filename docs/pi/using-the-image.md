@@ -15,7 +15,7 @@ curl -fsSL https://raw.githubusercontent.com/dukk/waddle-view/main/deploy/instal
 # or: WADDLE_INSTALL_YES=1 curl -fsSL ... | bash
 ```
 
-The script resolves the newest **non-draft** release that ships the tarball for your CPU, prompts before moving an existing bundle aside, then runs the bundled `install.sh` (same layout as Tier 1). Pin the script to a tag or commit SHA in the URL if you do not want `main` to move.
+The script resolves the newest **non-draft** release that ships the tarball for your CPU, prompts before moving an existing bundle aside, then runs the bundled `install.sh` (same layout as Tier 1). Pin the script to a tag or commit SHA in the URL if you do not want `main` to move. To **apt-install** common runtime libraries on Debian/Raspberry Pi OS when the bundle’s **`ldd`** check fails, set **`WADDLE_INSTALL_RUNTIME_PACKAGES=1`** (forwarded through **`sudo`** to **`install.sh`**), for example: **`WADDLE_INSTALL_RUNTIME_PACKAGES=1 curl -fsSL … | bash`**.
 
 ## Tier 1: tarball from CI
 
@@ -30,8 +30,9 @@ sudo bash install.sh
 ```
 
 4. The installer creates **`/etc/waddle-view/api.key`** on first install (random hex, mode `0600`). Do not commit this file.
-5. Configure **autostart** (`~/.config/autostart/*.desktop`) or install the sample **`waddle-view.service`** (edit `User`, `DISPLAY`, and paths).
-6. **Disable screen blanking** for kiosk use (`xset s off`, `xset -dpms`, or Wayland equivalents).
+5. **System libraries (mpv, GTK, Secret Service, AT-SPI):** the bundle does not ship Debian `.deb` dependencies. If **`./waddle_display`** fails with **`libmpv.so.2`** (or other `not found` from **`ldd`**), run **`sudo apt update && sudo apt install -y --no-install-recommends at-spi2-core libmpv2 mpv libgtk-3-0 libsecret-1-0`**, or re-run **`install.sh`** with **`WADDLE_INSTALL_RUNTIME_PACKAGES=1`** so it installs the list in **`runtime-apt-packages.txt`** (same directory as **`install.sh`**). One-liner install: **`WADDLE_INSTALL_RUNTIME_PACKAGES=1 curl -fsSL … | bash`** (see Tier 0).
+6. Configure **autostart** (`~/.config/autostart/*.desktop`) or install the sample **`waddle-view.service`** (edit `User`, `DISPLAY`, and paths).
+7. **Disable screen blanking** for kiosk use (`xset s off`, `xset -dpms`, or Wayland equivalents).
 
 ## Tier 2: flashable SD card image (Docker builder)
 
@@ -45,6 +46,9 @@ For a single **`.img`** you can write with **Raspberry Pi Imager** or **balenaEt
 
 ## Troubleshooting
 
+- **`libmpv.so.2: cannot open shared object file`**: the app needs the **system** **`libmpv2`** package (the tarball does not include it). Install with **`sudo apt update && sudo apt install -y --no-install-recommends libmpv2 mpv`**, or use **`WADDLE_INSTALL_RUNTIME_PACKAGES=1`** with **`install.sh`** / the Tier 0 curl installer so **`runtime-apt-packages.txt`** is applied. Run **`ldd /opt/waddle-view/bundle/waddle_display`** to see any other missing `*.so`.
+- **`Atk-CRITICAL` / `atk_socket_embed` / `org.a11y.Bus`**: install **`at-spi2-core`** (included in **`runtime-apt-packages.txt`**). Minimal images often omit it even though GTK expects the accessibility D-Bus service.
+- **`Gdk-Message: Unable to load  from the cursor theme`**: usually a **harmless GTK quirk** (empty cursor name) with Flutter on Linux; the app can still run. If it bothers you, try another cursor theme (**`gsettings set org.gnome.desktop.interface cursor-theme Adwaita`**) or ignore when **`media_kit_libs_linux registered.`** appears right after.
 - **`libmpv.so.1: cannot open shared object file`**: older ARM64 GitHub bundles were linked against **`libmpv.so.1`** (Ubuntu 22.04 build roots), while Raspberry Pi OS Bookworm only ships **`libmpv.so.2`** via **`libmpv2`**. Ensure **`sudo apt install libmpv2 mpv`** is installed; if the error persists, upgrade to a **newer release tarball** built with the Bookworm-aligned **`release-pi.yml`** job container (`debian:bookworm-slim`).
 - **Black window**: confirm a graphical session is active and `DISPLAY` is set for systemd.
 - **Secret storage errors**: ensure a Secret Service provider is available, or follow fallback guidance in `development.md`.
