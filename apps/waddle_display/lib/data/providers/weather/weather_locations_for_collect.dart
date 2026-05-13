@@ -47,3 +47,41 @@ Future<List<WeatherCollectLocation>> resolveWeatherLocationsForCollect(
     ),
   ];
 }
+
+/// Enabled [WeatherLocations] rows that should receive NWS active-alert
+/// collection, or a single synthetic `default` when no rows are enabled (same
+/// fallback as [resolveWeatherLocationsForCollect]).
+///
+/// When at least one row is enabled, only rows with
+/// [WeatherLocations.includeActiveWeatherAlerts] true are included (the list
+/// may be empty if every enabled row opts out).
+Future<List<WeatherCollectLocation>> resolveWeatherLocationsForActiveAlertsCollect(
+  AppDatabase db,
+  WeatherLocationConfig defaultLocation,
+) async {
+  final enabledRows = await (db.select(db.weatherLocations)
+        ..where((t) => t.enabled.equals(true))
+        ..orderBy([(t) => OrderingTerm.asc(t.id)]))
+      .get();
+  if (enabledRows.isEmpty) {
+    return [
+      WeatherCollectLocation(
+        id: 'default',
+        name: defaultLocation.name,
+        lat: defaultLocation.latitude,
+        lon: defaultLocation.longitude,
+      ),
+    ];
+  }
+  return enabledRows
+      .where((r) => r.includeActiveWeatherAlerts)
+      .map(
+        (r) => WeatherCollectLocation(
+          id: r.id,
+          name: r.name,
+          lat: r.latitude,
+          lon: r.longitude,
+        ),
+      )
+      .toList();
+}

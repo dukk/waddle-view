@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:drift/drift.dart' show Value;
+import 'package:drift/drift.dart' show Expression, Value;
 import 'package:http/http.dart' as http;
 
 import '../../../debug/app_debug_log.dart';
@@ -44,7 +44,21 @@ class NwsWeatherGovAlertsDataProvider implements IDataProvider {
         : kDefaultNwsWeatherGovBaseUrl;
     final extra = WeatherProviderExtraConfig.parse(config.configJson);
     final userAgent = _parseUserAgent(config.configJson);
-    final locations = await resolveWeatherLocationsForCollect(
+    final optedOut = await (ctx.db.select(ctx.db.weatherLocations)
+          ..where(
+            (t) => Expression.and([
+              t.enabled.equals(true),
+              t.includeActiveWeatherAlerts.equals(false),
+            ]),
+          ))
+        .get();
+    for (final row in optedOut) {
+      await (ctx.db.delete(ctx.db.weatherGovActiveAlerts)
+            ..where((t) => t.locationId.equals(row.id)))
+          .go();
+    }
+
+    final locations = await resolveWeatherLocationsForActiveAlertsCollect(
       ctx.db,
       extra.defaultLocation,
     );
@@ -52,6 +66,15 @@ class NwsWeatherGovAlertsDataProvider implements IDataProvider {
       'nws_alerts: collect locations=${locations.length} '
       'base=${AppDebugLog.safeHttpUri(Uri.parse(baseUrl))}',
     );
+
+    if (locations.isEmpty) {
+      AppDebugLog.provider(
+        'nws_alerts: no locations with include_active_weather_alerts; '
+        'cleared stored alerts',
+      );
+      await ctx.db.delete(ctx.db.weatherGovActiveAlerts).go();
+      return;
+    }
 
     for (final location in locations) {
       try {

@@ -65,4 +65,77 @@ void main() {
     expect(list.first.name, 'Alpha');
     await db.close();
   });
+
+  test(
+    'resolveWeatherLocationsForActiveAlertsCollect uses default when no enabled rows',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
+      const def = WeatherLocationConfig(
+        name: 'Fallback City',
+        latitude: 12.5,
+        longitude: -34.25,
+      );
+      final list = await resolveWeatherLocationsForActiveAlertsCollect(db, def);
+      expect(list, hasLength(1));
+      expect(list.single.id, 'default');
+      await db.close();
+    },
+  );
+
+  test(
+    'resolveWeatherLocationsForActiveAlertsCollect omits rows with '
+    'include_active_weather_alerts false',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
+      await db.into(db.weatherLocations).insert(
+            WeatherLocationsCompanion.insert(
+              id: 'alerts_on',
+              name: 'A',
+              latitude: 1,
+              longitude: 1,
+              enabled: const Value(true),
+              includeActiveWeatherAlerts: const Value(true),
+            ),
+          );
+      await db.into(db.weatherLocations).insert(
+            WeatherLocationsCompanion.insert(
+              id: 'alerts_off',
+              name: 'B',
+              latitude: 2,
+              longitude: 2,
+              enabled: const Value(true),
+              includeActiveWeatherAlerts: const Value(false),
+            ),
+          );
+      const def = WeatherLocationConfig(name: 'X', latitude: 0, longitude: 0);
+      final list = await resolveWeatherLocationsForActiveAlertsCollect(db, def);
+      expect(list.map((e) => e.id).toList(), ['alerts_on']);
+      await db.close();
+    },
+  );
+
+  test(
+    'resolveWeatherLocationsForActiveAlertsCollect returns empty when every '
+    'enabled row opts out',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
+      await db.into(db.weatherLocations).insert(
+            WeatherLocationsCompanion.insert(
+              id: 'only',
+              name: 'Only',
+              latitude: 2,
+              longitude: 2,
+              enabled: const Value(true),
+              includeActiveWeatherAlerts: const Value(false),
+            ),
+          );
+      const def = WeatherLocationConfig(name: 'X', latitude: 0, longitude: 0);
+      final list = await resolveWeatherLocationsForActiveAlertsCollect(db, def);
+      expect(list, isEmpty);
+      await db.close();
+    },
+  );
 }

@@ -314,6 +314,10 @@ class WeatherLocations extends Table {
   RealColumn get latitude => real()();
   RealColumn get longitude => real()();
   BoolColumn get enabled => boolean().withDefault(const Constant(true))();
+  /// When true, the NWS active-alerts provider may fetch and store alerts for
+  /// this row (must also be [enabled]).
+  BoolColumn get includeActiveWeatherAlerts =>
+      boolean().withDefault(const Constant(true))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};

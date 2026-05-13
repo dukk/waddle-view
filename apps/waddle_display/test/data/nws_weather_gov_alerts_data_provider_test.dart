@@ -392,4 +392,100 @@ void main() {
     expect(row.descriptionExcerpt!.endsWith('\u2026'), isTrue);
     await db.close();
   });
+
+  test('collect skips HTTP and clears alerts when include_active_weather_alerts is false',
+      () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.providerSettings).insert(
+          ProviderSettingsCompanion.insert(
+            id: kNwsWeatherAlertsProviderId,
+            providerType: 'nws_weather_alerts',
+            pollSeconds: const Value(60),
+            baseUrl: const Value('https://api.weather.gov'),
+            configJson: const Value('{}'),
+          ),
+        );
+    await db.into(db.weatherLocations).insert(
+          WeatherLocationsCompanion.insert(
+            id: 'nyc',
+            name: 'NYC',
+            latitude: 40.7128,
+            longitude: -74.0060,
+            enabled: const Value(true),
+            includeActiveWeatherAlerts: const Value(false),
+          ),
+        );
+    await db.into(db.weatherGovActiveAlerts).insert(
+          WeatherGovActiveAlertsCompanion.insert(
+            locationId: 'nyc',
+            nwsAlertId: 'urn:old',
+            event: 'Old',
+          ),
+        );
+    final ctx = await _ctx(db, InMemorySecretStore());
+    final client = _NwsClient(
+      (uri, headers) {
+        throw StateError('unexpected HTTP $uri');
+      },
+    );
+    final provider = NwsWeatherGovAlertsDataProvider(httpClient: client);
+
+    await provider.collect(ctx);
+
+    expect(client.sends, 0);
+    expect(await db.select(db.weatherGovActiveAlerts).get(), isEmpty);
+    await db.close();
+  });
+
+  test('collect requests only locations with include_active_weather_alerts true',
+      () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.providerSettings).insert(
+          ProviderSettingsCompanion.insert(
+            id: kNwsWeatherAlertsProviderId,
+            providerType: 'nws_weather_alerts',
+            pollSeconds: const Value(60),
+            baseUrl: const Value('https://api.weather.gov'),
+            configJson: const Value('{}'),
+          ),
+        );
+    await db.into(db.weatherLocations).insert(
+          WeatherLocationsCompanion.insert(
+            id: 'nyc',
+            name: 'NYC',
+            latitude: 40.7128,
+            longitude: -74.0060,
+            enabled: const Value(true),
+            includeActiveWeatherAlerts: const Value(false),
+          ),
+        );
+    await db.into(db.weatherLocations).insert(
+          WeatherLocationsCompanion.insert(
+            id: 'bos',
+            name: 'Boston',
+            latitude: 42.3601,
+            longitude: -71.0589,
+            enabled: const Value(true),
+            includeActiveWeatherAlerts: const Value(true),
+          ),
+        );
+    final ctx = await _ctx(db, InMemorySecretStore());
+    final requested = <String>[];
+    final client = _NwsClient((uri, headers) {
+      requested.add(uri.queryParameters['point']!);
+      return http.Response(
+        jsonEncode({'type': 'FeatureCollection', 'features': []}),
+        200,
+      );
+    });
+    final provider = NwsWeatherGovAlertsDataProvider(httpClient: client);
+
+    await provider.collect(ctx);
+
+    expect(client.sends, 1);
+    expect(requested, ['42.3601,-71.0589']);
+    await db.close();
+  });
 }

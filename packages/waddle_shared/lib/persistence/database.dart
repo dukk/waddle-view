@@ -45,7 +45,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 28;
+  int get schemaVersion => 29;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -428,6 +428,23 @@ FROM curator_settings WHERE id = 'app';
       }
       if (from < 28) {
         await customStatement(kEnsureDisplayOverlaySchedulesTableSql);
+      }
+      if (from < 29) {
+        final wlTables = await customSelect(
+          "SELECT name FROM sqlite_master WHERE type = 'table' "
+          "AND name = 'weather_locations';",
+        ).get();
+        if (wlTables.isNotEmpty) {
+          final wlCols =
+              await customSelect('PRAGMA table_info(weather_locations);').get();
+          final wlNames = wlCols.map((r) => r.read<String>('name')).toSet();
+          if (!wlNames.contains('include_active_weather_alerts')) {
+            await customStatement(
+              'ALTER TABLE weather_locations ADD COLUMN include_active_weather_alerts '
+              'INTEGER NOT NULL DEFAULT 1',
+            );
+          }
+        }
       }
     },
     beforeOpen: (details) async {

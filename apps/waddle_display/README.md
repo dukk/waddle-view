@@ -307,7 +307,7 @@ The **stocks** provider (`id` / `provider_type`: **`stocks`**) calls [Finnhub](h
 
 ## NWS weather alerts (api.weather.gov)
 
-The **`nws_weather_alerts`** data provider (`id` / `provider_type`: **`nws_weather_alerts`**) calls the National Weather Service [JSON API](https://www.weather.gov/documentation/services-web-api) **`GET /alerts/active?point=<lat>,<lon>`** for each enabled row in **`weather_locations`** (or a **`defaultLocation`** in **`config_json`** when that table is empty, same shape as the OpenWeather provider). Responses are stored in **`weather_gov_active_alerts`** (schema version **25**). **No API key** is required.
+The **`nws_weather_alerts`** data provider (`id` / `provider_type`: **`nws_weather_alerts`**) calls the National Weather Service [JSON API](https://www.weather.gov/documentation/services-web-api) **`GET /alerts/active?point=<lat>,<lon>`** for each enabled **`weather_locations`** row with **`include_active_weather_alerts`** true (schema version **29**; default **true**). When no rows are enabled for weather, it uses **`defaultLocation`** from **`config_json`** (same shape as the OpenWeather provider), like the OpenWeather collector. If every enabled location opts out of active alerts, stored **`weather_gov_active_alerts`** rows are cleared and no NWS requests are made. Responses are stored in **`weather_gov_active_alerts`** (schema version **25**). **No API key** is required.
 
 **Schema 26** adds boolean **`suppressed`** on **`jokes`**, **`rss_articles`**, **`trivia_questions`**, **`photos`**, and **`videos`** (hide from display without deleting rows; see *Content suppression* above).
 
