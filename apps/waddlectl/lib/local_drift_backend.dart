@@ -112,7 +112,9 @@ class LocalDriftBackend implements WaddleAdminBackend {
 
   @override
   Future<void> setConfig(String key, String value) async {
-    await _db.into(_db.configKeyValues).insertOnConflictUpdate(
+    await _db
+        .into(_db.configKeyValues)
+        .insertOnConflictUpdate(
           ConfigKeyValuesCompanion.insert(key: key, value: value),
         );
   }
@@ -169,25 +171,26 @@ class LocalDriftBackend implements WaddleAdminBackend {
     if (existing == null) {
       throw StateError('Unknown screen id: $id');
     }
-    await (_db.update(_db.screenDefinitions)..where((t) => t.id.equals(id)))
-        .write(
-          ScreenDefinitionsCompanion(
-            name: name == null ? const Value.absent() : Value(name),
-            enabled: enabled == null ? const Value.absent() : Value(enabled),
-            dwellSeconds: dwellSeconds == null
-                ? const Value.absent()
-                : Value(dwellSeconds),
-            frequencyWeight: frequencyWeight == null
-                ? const Value.absent()
-                : Value(frequencyWeight),
-            minGapBetweenShowsSeconds: minGapBetweenShowsSeconds == null
-                ? const Value.absent()
-                : Value(minGapBetweenShowsSeconds),
-            configJson: configJson == null
-                ? const Value.absent()
-                : Value(configJson),
-          ),
-        );
+    await (_db.update(
+      _db.screenDefinitions,
+    )..where((t) => t.id.equals(id))).write(
+      ScreenDefinitionsCompanion(
+        name: name == null ? const Value.absent() : Value(name),
+        enabled: enabled == null ? const Value.absent() : Value(enabled),
+        dwellSeconds: dwellSeconds == null
+            ? const Value.absent()
+            : Value(dwellSeconds),
+        frequencyWeight: frequencyWeight == null
+            ? const Value.absent()
+            : Value(frequencyWeight),
+        minGapBetweenShowsSeconds: minGapBetweenShowsSeconds == null
+            ? const Value.absent()
+            : Value(minGapBetweenShowsSeconds),
+        configJson: configJson == null
+            ? const Value.absent()
+            : Value(configJson),
+      ),
+    );
   }
 
   @override
@@ -227,21 +230,22 @@ class LocalDriftBackend implements WaddleAdminBackend {
     if (existing == null) {
       throw StateError('Unknown provider id: $id');
     }
-    await (_db.update(_db.providerSettings)..where((t) => t.id.equals(id)))
-        .write(
-          ProviderSettingsCompanion(
-            enabled: enabled == null ? const Value.absent() : Value(enabled),
-            pollSeconds: pollSeconds == null
-                ? const Value.absent()
-                : Value(pollSeconds),
-            baseUrl: baseUrl == null
-                ? const Value.absent()
-                : Value(baseUrl.isEmpty ? null : baseUrl),
-            configJson: configJson == null
-                ? const Value.absent()
-                : Value(configJson.isEmpty ? null : configJson),
-          ),
-        );
+    await (_db.update(
+      _db.providerSettings,
+    )..where((t) => t.id.equals(id))).write(
+      ProviderSettingsCompanion(
+        enabled: enabled == null ? const Value.absent() : Value(enabled),
+        pollSeconds: pollSeconds == null
+            ? const Value.absent()
+            : Value(pollSeconds),
+        baseUrl: baseUrl == null
+            ? const Value.absent()
+            : Value(baseUrl.isEmpty ? null : baseUrl),
+        configJson: configJson == null
+            ? const Value.absent()
+            : Value(configJson.isEmpty ? null : configJson),
+      ),
+    );
   }
 
   @override
@@ -293,29 +297,29 @@ class LocalDriftBackend implements WaddleAdminBackend {
     if (existing == null) {
       throw StateError('Unknown ticker id: $id');
     }
-    await (_db.update(_db.tickerDefinitions)..where((t) => t.id.equals(id)))
-        .write(
-          TickerDefinitionsCompanion(
-            name: name == null ? const Value.absent() : Value(name),
-            enabled: enabled == null ? const Value.absent() : Value(enabled),
-            tickerType: tickerType == null
-                ? const Value.absent()
-                : Value(tickerType),
-            frequencyWeight: frequencyWeight == null
-                ? const Value.absent()
-                : Value(frequencyWeight),
-            sortOrder: sortOrder == null ? const Value.absent() : Value(sortOrder),
-            configKey: configKey == null
-                ? const Value.absent()
-                : Value(configKey.isEmpty ? null : configKey),
-          ),
-        );
+    await (_db.update(
+      _db.tickerDefinitions,
+    )..where((t) => t.id.equals(id))).write(
+      TickerDefinitionsCompanion(
+        name: name == null ? const Value.absent() : Value(name),
+        enabled: enabled == null ? const Value.absent() : Value(enabled),
+        tickerType: tickerType == null
+            ? const Value.absent()
+            : Value(tickerType),
+        frequencyWeight: frequencyWeight == null
+            ? const Value.absent()
+            : Value(frequencyWeight),
+        sortOrder: sortOrder == null ? const Value.absent() : Value(sortOrder),
+        configKey: configKey == null
+            ? const Value.absent()
+            : Value(configKey.isEmpty ? null : configKey),
+      ),
+    );
   }
 
   @override
   Future<Map<String, Object?>> describeCuratorProgram() async {
-    Future<String> gv(String k, String d) async =>
-        (await getConfig(k)) ?? d;
+    Future<String> gv(String k, String d) async => (await getConfig(k)) ?? d;
     return {
       'program_duration_seconds': await gv(
         kCuratorProgramDurationSecondsKvKey,
@@ -330,7 +334,10 @@ class LocalDriftBackend implements WaddleAdminBackend {
         kRequireNewsPhotoForScreensKvKey,
         'false',
       ),
-      'display_theme_id': await gv(kDisplayThemeIdKvKey, kDefaultDisplayThemeId),
+      'display_theme_id': await gv(
+        kDisplayThemeIdKvKey,
+        kDefaultDisplayThemeId,
+      ),
       'display_text_scale_screen': await gv(
         kDisplayTextScaleScreenKvKey,
         kDisplayTextScaleNormal,
@@ -428,7 +435,9 @@ class LocalDriftBackend implements WaddleAdminBackend {
     int? minPlacementsPerProgram,
     int? maxPlacementsPerProgram,
   }) async {
-    await _db.into(_db.curatorDataKeyProgramLimits).insertOnConflictUpdate(
+    await _db
+        .into(_db.curatorDataKeyProgramLimits)
+        .insertOnConflictUpdate(
           CuratorDataKeyProgramLimitsCompanion(
             dataKey: Value(dataKey),
             minPlacementsPerProgram: minPlacementsPerProgram == null

@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:timezone/data/latest.dart' as tz_data;
+import 'package:timezone/timezone.dart';
 import 'package:waddle_display/display/screens/calendar_month/calendar_upcoming_layout.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
@@ -23,8 +25,14 @@ CalendarEvent _ev({
 }
 
 void main() {
+  late final Location utc;
+  setUpAll(() {
+    tz_data.initializeTimeZones();
+    utc = getLocation('Etc/UTC');
+  });
+
   test('dedupeCalendarEventsForDisplay keeps one per icalUid', () {
-    final t = DateTime(2024, 6, 15, 10);
+    final t = DateTime.utc(2024, 6, 15, 10);
     final d = dedupeCalendarEventsForDisplay([
       _ev(id: 'a', title: 'Meet', start: t, end: t.add(const Duration(hours: 1)), icalUid: 'UID1'),
       _ev(id: 'b', title: 'Meet', start: t, end: t.add(const Duration(hours: 1)), icalUid: 'UID1'),
@@ -34,7 +42,7 @@ void main() {
   });
 
   test('dedupe falls back to title/start fingerprint', () {
-    final t = DateTime(2024, 6, 15, 10);
+    final t = DateTime.utc(2024, 6, 15, 10);
     final d = dedupeCalendarEventsForDisplay([
       _ev(id: 'a', title: 'X', start: t, end: t.add(const Duration(hours: 1))),
       _ev(id: 'b', title: 'X', start: t, end: t.add(const Duration(hours: 1))),
@@ -44,9 +52,9 @@ void main() {
   });
 
   test('buildCalendarUpcomingListItems shares time for same slot', () {
-    final day0 = DateTime(2024, 6, 15);
-    final t1 = DateTime(2024, 6, 15, 9);
-    final t2 = DateTime(2024, 6, 15, 9);
+    final day0 = DateTime.utc(2024, 6, 15);
+    final t1 = DateTime.utc(2024, 6, 15, 9);
+    final t2 = DateTime.utc(2024, 6, 15, 9);
     final rows = [
       CalendarSlideEventRow(
         event: _ev(id: 'a', title: 'One', start: t1, end: t1.add(const Duration(hours: 1))),
@@ -58,6 +66,7 @@ void main() {
     final items = buildCalendarUpcomingListItems(
       rows: rows,
       todayLocal: day0,
+      displayZone: utc,
     );
     final entries = items.whereType<CalendarUpcomingEventEntry>().toList();
     expect(entries.length, 2);
@@ -66,8 +75,8 @@ void main() {
   });
 
   test('all-day cluster shares one time label', () {
-    final day0 = DateTime(2024, 6, 15);
-    final sameDay = DateTime(2024, 6, 16);
+    final day0 = DateTime.utc(2024, 6, 15);
+    final sameDay = DateTime.utc(2024, 6, 16);
     final rows = [
       CalendarSlideEventRow(
         event: _ev(
@@ -91,6 +100,7 @@ void main() {
     final items = buildCalendarUpcomingListItems(
       rows: rows,
       todayLocal: day0,
+      displayZone: utc,
     );
     final entries = items.whereType<CalendarUpcomingEventEntry>().toList();
     expect(entries.length, 2);

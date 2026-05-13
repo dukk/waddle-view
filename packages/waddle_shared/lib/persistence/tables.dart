@@ -63,6 +63,13 @@ const String kAdminBootstrapDoneKvKey = 'admin.bootstrap_done';
 /// Global kill-switch for festive display overlays (`'true'` / `'false'`). Absent = enabled.
 const String kDisplayOverlayEnabledKvKey = 'display.overlay.enabled';
 
+/// IANA time zone id for calendar wall-clock display (e.g. `America/Chicago`).
+/// [ConfigKeyValues] value; invalid or empty values fall back to [kDefaultDisplayTimezoneIana].
+const String kDisplayTimezoneKvKey = 'display.timezone';
+
+/// Default [kDisplayTimezoneKvKey] on first seed (US Eastern, observes DST).
+const String kDefaultDisplayTimezoneIana = 'America/New_York';
+
 /// Overlay kind stored in `display_overlay_schedules.overlay_kind`.
 const String kOverlayKindHeartsRain = 'hearts_rain';
 

@@ -14,7 +14,5 @@ File defaultLinuxWaddleSqliteFile() {
       : (home.isEmpty
             ? p.join('.local', 'share')
             : p.join(home, '.local', 'share'));
-  return File(
-    p.join(xdgData, kWaddleLinuxApplicationId, 'waddle_view.sqlite'),
-  );
+  return File(p.join(xdgData, kWaddleLinuxApplicationId, 'waddle_view.sqlite'));
 }

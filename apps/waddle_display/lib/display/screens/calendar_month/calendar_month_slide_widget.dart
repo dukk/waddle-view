@@ -6,8 +6,11 @@ import 'package:flutter/material.dart';
 
 import '../../../blob/blob_store.dart';
 import '../../../clock.dart';
+import '../../../config/display_timezone.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/tables.dart';
+import 'package:timezone/timezone.dart';
 import 'calendar_month_grid.dart';
 import 'calendar_upcoming_layout.dart';
 import '../../content_category_material_icon.dart';
@@ -74,17 +77,29 @@ class CalendarMonthSlideWidget extends StatefulWidget {
 
 class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
   Timer? _boundaryTimer;
-  late int _startMsBoundary;
+  late int _todayMsBoundary;
+
+  Future<void> _refreshDayBoundaryFromDb() async {
+    final row = await (widget.db.select(widget.db.configKeyValues)
+          ..where((t) => t.key.equals(kDisplayTimezoneKvKey)))
+        .getSingleOrNull();
+    final zone = resolveDisplayTimeZoneLocation(row?.value);
+    final next = startOfTodayInZoneMs(zone, widget.clock.now());
+    if (next != _todayMsBoundary && mounted) {
+      setState(() => _todayMsBoundary = next);
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    _startMsBoundary = startOfTodayLocalMs(widget.clock.now());
+    _todayMsBoundary = startOfTodayInZoneMs(
+      resolveDisplayTimeZoneLocation(''),
+      widget.clock.now(),
+    );
+    unawaited(_refreshDayBoundaryFromDb());
     _boundaryTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-      final next = startOfTodayLocalMs(widget.clock.now());
-      if (next != _startMsBoundary && mounted) {
-        setState(() => _startMsBoundary = next);
-      }
+      unawaited(_refreshDayBoundaryFromDb());
     });
   }
 
@@ -139,121 +154,160 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
         return SizedBox(
           width: w,
           height: height,
-          child: StreamBuilder<CalendarMonthStreamBundle>(
-            key: ValueKey<int>(_startMsBoundary),
-            stream:
-                (widget.db.select(widget.db.calendarEvents)
-                      ..where(
-                        (t) => t.startMs.isBiggerOrEqualValue(
-                          DateTime.fromMillisecondsSinceEpoch(_startMsBoundary),
+          child: StreamBuilder<String?>(
+            stream: watchDisplayTimezoneKv(widget.db),
+            builder: (context, tzSnap) {
+              final displayZone =
+                  resolveDisplayTimeZoneLocation(tzSnap.data);
+              final eventStreamStartMs = startOfMonthInZoneMs(
+                displayZone,
+                widget.clock.now(),
+              );
+
+              return StreamBuilder<CalendarMonthStreamBundle>(
+                key: ValueKey<String>(
+                  '${_todayMsBoundary}_${displayZone.name}',
+                ),
+                stream:
+                    (widget.db.select(widget.db.calendarEvents)
+                          ..where(
+                            (t) => t.startMs.isBiggerOrEqualValue(
+                              DateTime.fromMillisecondsSinceEpoch(
+                                eventStreamStartMs,
+                                isUtc: true,
+                              ),
+                            ),
+                          )
+                          ..orderBy([(t) => OrderingTerm.asc(t.startMs)]))
+                        .watch()
+                        .asyncMap(
+                          (events) => buildCalendarMonthStreamBundle(
+                            widget.db,
+                            widget.blobs,
+                            events,
+                          ),
                         ),
+                builder: (context, snapshot) {
+                  final nowWall =
+                      calendarInstantInZone(widget.clock.now(), displayZone);
+                  final startOfToday =
+                      DateTime(nowWall.year, nowWall.month, nowWall.day);
+                  final todayStartZ = TZDateTime(
+                    displayZone,
+                    startOfToday.year,
+                    startOfToday.month,
+                    startOfToday.day,
+                  );
+                  final nextFiveDaysEndZ =
+                      todayStartZ.add(const Duration(days: 5));
+                  final fromMs = todayStartZ.millisecondsSinceEpoch;
+                  final toMs = nextFiveDaysEndZ.millisecondsSinceEpoch;
+                  final bundle = snapshot.data;
+                  final allEvents = bundle?.events ?? [];
+                  final filtered = allEvents
+                      .where(
+                        (event) {
+                          final ms = event.startMs.millisecondsSinceEpoch;
+                          return ms >= fromMs && ms < toMs;
+                        },
                       )
-                      ..orderBy([(t) => OrderingTerm.asc(t.startMs)]))
-                    .watch()
-                    .asyncMap(
-                      (events) => buildCalendarMonthStreamBundle(
-                        widget.db,
-                        widget.blobs,
-                        events,
+                      .toList();
+                  final deduped = dedupeCalendarEventsForDisplay(filtered);
+                  final rowByEventId = {
+                    for (final r in bundle?.rows ?? <CalendarSlideEventRow>[])
+                      r.event.id: r,
+                  };
+                  final upcomingRows = deduped
+                      .map((e) => rowByEventId[e.id])
+                      .whereType<CalendarSlideEventRow>()
+                      .toList();
+                  final upcomingTime = _upcomingTimeOptions;
+                  final listItems = buildCalendarUpcomingListItems(
+                    rows: upcomingRows,
+                    todayLocal: startOfToday,
+                    displayZone: displayZone,
+                    timeOptions: upcomingTime,
+                  );
+                  final monthAnchor =
+                      DateTime(nowWall.year, nowWall.month, nowWall.day);
+                  final eventDaysInMonth = allEvents
+                      .where(
+                        (event) {
+                          final z =
+                              calendarInstantInZone(event.startMs, displayZone);
+                          return z.year == monthAnchor.year &&
+                              z.month == monthAnchor.month;
+                        },
+                      )
+                      .map(
+                        (event) =>
+                            calendarInstantInZone(event.startMs, displayZone)
+                                .day,
+                      )
+                      .toSet();
+                  final cells = buildMonthGridCells(monthAnchor, startOfToday);
+                  final monthTitle =
+                      '${_monthNamesShort[monthAnchor.month - 1]} ${monthAnchor.year}';
+
+                  final gap = (layoutCompact ? 12.0 : 20.0) * s;
+                  final outerPad = EdgeInsets.symmetric(
+                    horizontal: 24.0 * s,
+                    vertical: (layoutCompact ? 8.0 : 16.0) * s,
+                  );
+                  final usableHeight =
+                      math.max(120.0, height - outerPad.vertical);
+
+                  return Padding(
+                    padding: outerPad,
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: SizedBox(
+                        height: usableHeight,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              flex: _calendarFlex,
+                              child: _CalendarSlidePanel(
+                                theme: widget.theme,
+                                layoutScale: s,
+                                layoutCompact: layoutCompact,
+                                child: _MonthGridPanel(
+                                  monthTitle: monthTitle,
+                                  cells: cells,
+                                  eventDaysInMonth: eventDaysInMonth,
+                                  theme: widget.theme,
+                                  layoutScale: s,
+                                  layoutCompact: layoutCompact,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: gap),
+                            Expanded(
+                              flex: _eventsFlex,
+                              child: _CalendarSlidePanel(
+                                theme: widget.theme,
+                                layoutScale: s,
+                                layoutCompact: layoutCompact,
+                                child: _UpcomingEventsPanel(
+                                  snapshot: snapshot,
+                                  listItems: listItems,
+                                  hasUpcomingRows: upcomingRows.isNotEmpty,
+                                  theme: widget.theme,
+                                  layoutScale: s,
+                                  layoutCompact: layoutCompact,
+                                  timeColumnWidth: layoutCompact
+                                      ? upcomingTime.timeWidthCompact * s
+                                      : upcomingTime.timeWidth * s,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-            builder: (context, snapshot) {
-              final now = widget.clock.now().toLocal();
-              final startOfToday = DateTime(now.year, now.month, now.day);
-              final nextFiveDaysEnd = startOfToday.add(const Duration(days: 5));
-              final bundle = snapshot.data;
-              final allEvents = bundle?.events ?? [];
-              final filtered = allEvents
-                  .where(
-                    (event) =>
-                        !event.startMs.isBefore(startOfToday) &&
-                        event.startMs.isBefore(nextFiveDaysEnd),
-                  )
-                  .toList();
-              final deduped = dedupeCalendarEventsForDisplay(filtered);
-              final rowByEventId = {
-                for (final r in bundle?.rows ?? <CalendarSlideEventRow>[])
-                  r.event.id: r,
-              };
-              final upcomingRows = deduped
-                  .map((e) => rowByEventId[e.id])
-                  .whereType<CalendarSlideEventRow>()
-                  .toList();
-              final upcomingTime = _upcomingTimeOptions;
-              final listItems = buildCalendarUpcomingListItems(
-                rows: upcomingRows,
-                todayLocal: startOfToday,
-                timeOptions: upcomingTime,
-              );
-              final monthAnchor = DateTime(now.year, now.month, now.day);
-              final eventDaysInMonth = allEvents
-                  .where(
-                    (event) =>
-                        event.startMs.year == monthAnchor.year &&
-                        event.startMs.month == monthAnchor.month,
-                  )
-                  .map((event) => event.startMs.day)
-                  .toSet();
-              final cells = buildMonthGridCells(monthAnchor, now);
-              final monthTitle =
-                  '${_monthNamesShort[monthAnchor.month - 1]} ${monthAnchor.year}';
-
-              final gap = (layoutCompact ? 12.0 : 20.0) * s;
-              final outerPad = EdgeInsets.symmetric(
-                horizontal: 24.0 * s,
-                vertical: (layoutCompact ? 8.0 : 16.0) * s,
-              );
-              final usableHeight = math.max(120.0, height - outerPad.vertical);
-
-              return Padding(
-                padding: outerPad,
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: SizedBox(
-                    height: usableHeight,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          flex: _calendarFlex,
-                          child: _CalendarSlidePanel(
-                            theme: widget.theme,
-                            layoutScale: s,
-                            layoutCompact: layoutCompact,
-                            child: _MonthGridPanel(
-                              monthTitle: monthTitle,
-                              cells: cells,
-                              eventDaysInMonth: eventDaysInMonth,
-                              theme: widget.theme,
-                              layoutScale: s,
-                              layoutCompact: layoutCompact,
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: gap),
-                        Expanded(
-                          flex: _eventsFlex,
-                          child: _CalendarSlidePanel(
-                            theme: widget.theme,
-                            layoutScale: s,
-                            layoutCompact: layoutCompact,
-                            child: _UpcomingEventsPanel(
-                              snapshot: snapshot,
-                              listItems: listItems,
-                              hasUpcomingRows: upcomingRows.isNotEmpty,
-                              theme: widget.theme,
-                              layoutScale: s,
-                              layoutCompact: layoutCompact,
-                              timeColumnWidth: layoutCompact
-                                  ? upcomingTime.timeWidthCompact * s
-                                  : upcomingTime.timeWidth * s,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                  );
+                },
               );
             },
           ),

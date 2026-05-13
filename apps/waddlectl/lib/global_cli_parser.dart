@@ -1,23 +1,22 @@
 import 'package:args/args.dart';
 
 /// Global flags parsed before the subcommand name.
-ArgParser buildGlobalArgParser() =>
-    ArgParser(allowTrailingOptions: true)
-      ..addOption(
-        'database',
-        help: 'Path to waddle_view.sqlite (overrides default / --support-dir).',
-      )
-      ..addOption(
-        'support-dir',
-        help: 'Application support directory containing waddle_view.sqlite.',
-      )
-      ..addOption(
-        'output',
-        abbr: 'o',
-        allowed: ['text', 'json'],
-        defaultsTo: 'text',
-        help: 'Output format (text | json).',
-      );
+ArgParser buildGlobalArgParser() => ArgParser(allowTrailingOptions: true)
+  ..addOption(
+    'database',
+    help: 'Path to waddle_view.sqlite (overrides default / --support-dir).',
+  )
+  ..addOption(
+    'support-dir',
+    help: 'Application support directory containing waddle_view.sqlite.',
+  )
+  ..addOption(
+    'output',
+    abbr: 'o',
+    allowed: ['text', 'json'],
+    defaultsTo: 'text',
+    help: 'Output format (text | json).',
+  );
 
 /// Peels only [buildGlobalArgParser] options from the start of [args]. Everything
 /// else (including subcommand-specific flags like `--program-duration-seconds`)
@@ -27,7 +26,8 @@ ArgParser buildGlobalArgParser() =>
   String? supportDirPath,
   String output,
   List<String> commandArgs,
-}) parseLeadingGlobalFlags(List<String> args) {
+})
+parseLeadingGlobalFlags(List<String> args) {
   String? databasePath;
   String? supportDirPath;
   var output = 'text';

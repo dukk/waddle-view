@@ -14,10 +14,13 @@ const int kTriviaStrikeAnimationMs = 320;
 
 /// Time from reveal start until the last wrong option finishes its strike-out
 /// animation.
-int triviaEliminationEndMs(int eliminationWindowMs) {
+int triviaEliminationEndMs(
+  int eliminationWindowMs, {
+  int strikeAnimationMs = kTriviaStrikeAnimationMs,
+}) {
   final step = eliminationWindowMs ~/ 4;
   if (step < 1) {
-    return eliminationWindowMs + kTriviaStrikeAnimationMs;
+    return eliminationWindowMs + strikeAnimationMs;
   }
-  return 3 * step + kTriviaStrikeAnimationMs;
+  return 3 * step + strikeAnimationMs;
 }

@@ -65,14 +65,14 @@ void main() {
   testWidgets('shows compact month title and empty upcoming panel when no events',
       (tester) async {
     final db = openMemoryDatabase();
-    await warmDatabase(db);
+    await warmDatabase(db, displayTimeZoneIana: 'Etc/UTC');
     const spec = ParsedWidgetSpec(
       type: 'calendar_month',
       slot: 'main',
       config: {},
     );
     final theme = ThemeData.light();
-    final clock = FakeClock(DateTime(2024, 6, 15, 9, 0));
+    final clock = FakeClock(DateTime.utc(2024, 6, 15, 9, 0));
     await tester.pumpWidget(
       MaterialApp(
         theme: theme,
@@ -98,14 +98,14 @@ void main() {
 
   testWidgets('lists upcoming events when present', (tester) async {
     final db = openMemoryDatabase();
-    await warmDatabase(db);
+    await warmDatabase(db, displayTimeZoneIana: 'Etc/UTC');
     await db.into(db.calendarEvents).insert(
           CalendarEventsCompanion.insert(
             id: 'e1',
             title: 'Birthday party',
-            startMs: DateTime(2024, 6, 16, 15, 0),
-            endMs: DateTime(2024, 6, 16, 17, 0),
-            updatedAtMs: DateTime(2024, 6, 1),
+            startMs: DateTime.utc(2024, 6, 16, 15, 0),
+            endMs: DateTime.utc(2024, 6, 16, 17, 0),
+            updatedAtMs: DateTime.utc(2024, 6, 1),
           ),
         );
     const spec = ParsedWidgetSpec(
@@ -114,7 +114,7 @@ void main() {
       config: {},
     );
     final theme = ThemeData.light();
-    final clock = FakeClock(DateTime(2024, 6, 15, 9, 0));
+    final clock = FakeClock(DateTime.utc(2024, 6, 15, 9, 0));
     await tester.pumpWidget(
       MaterialApp(
         theme: theme,
@@ -140,16 +140,16 @@ void main() {
   testWidgets('groups only next 5 days of events by relative day labels',
       (tester) async {
     final db = openMemoryDatabase();
-    await warmDatabase(db);
+    await warmDatabase(db, displayTimeZoneIana: 'Etc/UTC');
     await db.batch((batch) {
       batch.insert(
         db.calendarEvents,
         CalendarEventsCompanion.insert(
           id: 'g1',
           title: 'Today standup',
-          startMs: DateTime(2024, 6, 15, 9, 0),
-          endMs: DateTime(2024, 6, 15, 9, 30),
-          updatedAtMs: DateTime(2024, 6, 1),
+          startMs: DateTime.utc(2024, 6, 15, 9, 0),
+          endMs: DateTime.utc(2024, 6, 15, 9, 30),
+          updatedAtMs: DateTime.utc(2024, 6, 1),
         ),
       );
       batch.insert(
@@ -157,9 +157,9 @@ void main() {
         CalendarEventsCompanion.insert(
           id: 'g2',
           title: 'Tomorrow planning',
-          startMs: DateTime(2024, 6, 16, 10, 0),
-          endMs: DateTime(2024, 6, 16, 11, 0),
-          updatedAtMs: DateTime(2024, 6, 1),
+          startMs: DateTime.utc(2024, 6, 16, 10, 0),
+          endMs: DateTime.utc(2024, 6, 16, 11, 0),
+          updatedAtMs: DateTime.utc(2024, 6, 1),
         ),
       );
       batch.insert(
@@ -167,9 +167,9 @@ void main() {
         CalendarEventsCompanion.insert(
           id: 'g3',
           title: 'Tuesday retro',
-          startMs: DateTime(2024, 6, 18, 15, 0),
-          endMs: DateTime(2024, 6, 18, 16, 0),
-          updatedAtMs: DateTime(2024, 6, 1),
+          startMs: DateTime.utc(2024, 6, 18, 15, 0),
+          endMs: DateTime.utc(2024, 6, 18, 16, 0),
+          updatedAtMs: DateTime.utc(2024, 6, 1),
         ),
       );
       batch.insert(
@@ -177,9 +177,9 @@ void main() {
         CalendarEventsCompanion.insert(
           id: 'g4',
           title: 'Outside range',
-          startMs: DateTime(2024, 6, 21, 12, 0),
-          endMs: DateTime(2024, 6, 21, 13, 0),
-          updatedAtMs: DateTime(2024, 6, 1),
+          startMs: DateTime.utc(2024, 6, 21, 12, 0),
+          endMs: DateTime.utc(2024, 6, 21, 13, 0),
+          updatedAtMs: DateTime.utc(2024, 6, 1),
         ),
       );
     });
@@ -189,7 +189,7 @@ void main() {
       config: {},
     );
     final theme = ThemeData.light();
-    final clock = FakeClock(DateTime(2024, 6, 15, 8, 0));
+    final clock = FakeClock(DateTime.utc(2024, 6, 15, 8, 0));
     await tester.pumpWidget(
       MaterialApp(
         theme: theme,
@@ -219,15 +219,15 @@ void main() {
 
   testWidgets('shows location line when set', (tester) async {
     final db = openMemoryDatabase();
-    await warmDatabase(db);
+    await warmDatabase(db, displayTimeZoneIana: 'Etc/UTC');
     await db.into(db.calendarEvents).insert(
           CalendarEventsCompanion.insert(
             id: 'e2',
             title: 'Meetup',
-            startMs: DateTime(2024, 6, 19, 10, 0),
-            endMs: DateTime(2024, 6, 19, 11, 0),
+            startMs: DateTime.utc(2024, 6, 16, 15, 0),
+            endMs: DateTime.utc(2024, 6, 16, 17, 0),
             location: const Value('Hall A'),
-            updatedAtMs: DateTime(2024, 6, 1),
+            updatedAtMs: DateTime.utc(2024, 6, 1),
           ),
         );
     const spec = ParsedWidgetSpec(
@@ -236,7 +236,7 @@ void main() {
       config: {},
     );
     final theme = ThemeData.light();
-    final clock = FakeClock(DateTime(2024, 6, 15));
+    final clock = FakeClock(DateTime.utc(2024, 6, 15));
     await tester.pumpWidget(
       MaterialApp(
         theme: theme,
@@ -260,14 +260,14 @@ void main() {
 
   testWidgets('does not overflow on short heights', (tester) async {
     final db = openMemoryDatabase();
-    await warmDatabase(db);
+    await warmDatabase(db, displayTimeZoneIana: 'Etc/UTC');
     const spec = ParsedWidgetSpec(
       type: 'calendar_month',
       slot: 'main',
       config: {},
     );
     final theme = ThemeData.light();
-    final clock = FakeClock(DateTime(2024, 6, 15, 9, 0));
+    final clock = FakeClock(DateTime.utc(2024, 6, 15, 9, 0));
 
     await tester.pumpWidget(
       MaterialApp(
@@ -299,14 +299,14 @@ void main() {
 
   testWidgets('does not overflow with large text scaling', (tester) async {
     final db = openMemoryDatabase();
-    await warmDatabase(db);
+    await warmDatabase(db, displayTimeZoneIana: 'Etc/UTC');
     await db.into(db.calendarEvents).insert(
           CalendarEventsCompanion.insert(
             id: 'e3',
             title: 'Very long event title that wraps across lines',
-            startMs: DateTime(2024, 6, 16, 15, 0),
-            endMs: DateTime(2024, 6, 16, 17, 0),
-            updatedAtMs: DateTime(2024, 6, 1),
+            startMs: DateTime.utc(2024, 6, 16, 15, 0),
+            endMs: DateTime.utc(2024, 6, 16, 17, 0),
+            updatedAtMs: DateTime.utc(2024, 6, 1),
           ),
         );
     const spec = ParsedWidgetSpec(
@@ -315,7 +315,7 @@ void main() {
       config: {},
     );
     final theme = ThemeData.light();
-    final clock = FakeClock(DateTime(2024, 6, 15, 9, 0));
+    final clock = FakeClock(DateTime.utc(2024, 6, 15, 9, 0));
 
     await tester.pumpWidget(
       MediaQuery(
@@ -349,23 +349,36 @@ void main() {
   testWidgets('uses accent day styling for today and days with events',
       (tester) async {
     final db = openMemoryDatabase();
-    await warmDatabase(db);
-    await db.into(db.calendarEvents).insert(
-          CalendarEventsCompanion.insert(
-            id: 'accent-1',
-            title: 'Accent day event',
-            startMs: DateTime(2024, 6, 16, 15, 0),
-            endMs: DateTime(2024, 6, 16, 17, 0),
-            updatedAtMs: DateTime(2024, 6, 1),
-          ),
-        );
+    await warmDatabase(db, displayTimeZoneIana: 'Etc/UTC');
+    await db.batch((batch) {
+      batch.insert(
+        db.calendarEvents,
+        CalendarEventsCompanion.insert(
+          id: 'accent-past',
+          title: 'Past accent day event',
+          startMs: DateTime.utc(2024, 6, 14, 15, 0),
+          endMs: DateTime.utc(2024, 6, 14, 17, 0),
+          updatedAtMs: DateTime.utc(2024, 6, 1),
+        ),
+      );
+      batch.insert(
+        db.calendarEvents,
+        CalendarEventsCompanion.insert(
+          id: 'accent-1',
+          title: 'Accent day event',
+          startMs: DateTime.utc(2024, 6, 16, 15, 0),
+          endMs: DateTime.utc(2024, 6, 16, 17, 0),
+          updatedAtMs: DateTime.utc(2024, 6, 1),
+        ),
+      );
+    });
     const spec = ParsedWidgetSpec(
       type: 'calendar_month',
       slot: 'main',
       config: {},
     );
     final theme = ThemeData.light();
-    final clock = FakeClock(DateTime(2024, 6, 15, 9, 0));
+    final clock = FakeClock(DateTime.utc(2024, 6, 15, 9, 0));
     await tester.pumpWidget(
       MaterialApp(
         theme: theme,
@@ -395,6 +408,19 @@ void main() {
     final border = day16Decoration.border as Border;
     expect(border.top.color, theme.colorScheme.secondaryContainer);
 
+    final day14Decoration = tester
+        .widgetList<DecoratedBox>(
+          find.ancestor(
+            of: find.text('14'),
+            matching: find.byType(DecoratedBox),
+          ),
+        )
+        .map((widget) => widget.decoration)
+        .whereType<BoxDecoration>()
+        .firstWhere((decoration) => decoration.border != null);
+    final pastBorder = day14Decoration.border as Border;
+    expect(pastBorder.top.color, theme.colorScheme.secondaryContainer);
+
     final day15Decorations = tester
         .widgetList<DecoratedBox>(
           find.ancestor(
@@ -409,6 +435,164 @@ void main() {
         day15Decorations.firstWhere((decoration) => decoration.color != null);
     expect(todayDecoration.color, theme.colorScheme.secondaryContainer);
 
+    await db.close();
+  });
+
+  testWidgets('uses MediaQuery height when vertical max is unbounded',
+      (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db, displayTimeZoneIana: 'Etc/UTC');
+    const spec = ParsedWidgetSpec(
+      type: 'calendar_month',
+      slot: 'main',
+      config: {},
+    );
+    final theme = ThemeData.light();
+    final clock = FakeClock(DateTime.utc(2024, 6, 15, 9, 0));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: MediaQuery(
+          data: const MediaQueryData(size: Size(400, 800)),
+          child: SingleChildScrollView(
+            child: CalendarMonthSlideWidget(
+              db: db,
+              blobs: FakeBlobStore(),
+              spec: spec,
+              theme: theme,
+              clock: clock,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Jun 2024'), findsOneWidget);
+    await db.close();
+  });
+
+  testWidgets('accepts numeric leftFlex and rightFlex from config',
+      (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db, displayTimeZoneIana: 'Etc/UTC');
+    const spec = ParsedWidgetSpec(
+      type: 'calendar_month',
+      slot: 'main',
+      config: {'leftFlex': 2.0, 'rightFlex': 3.0},
+    );
+    final theme = ThemeData.light();
+    final clock = FakeClock(DateTime.utc(2024, 6, 15, 9, 0));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: CalendarMonthSlideWidget(
+            db: db,
+            blobs: FakeBlobStore(),
+            spec: spec,
+            theme: theme,
+            clock: clock,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Jun 2024'), findsOneWidget);
+    await db.close();
+  });
+
+  testWidgets('replacing widget disposes timer', (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db, displayTimeZoneIana: 'Etc/UTC');
+    const spec = ParsedWidgetSpec(
+      type: 'calendar_month',
+      slot: 'main',
+      config: {},
+    );
+    final theme = ThemeData.light();
+    final clock = FakeClock(DateTime.utc(2024, 6, 15, 9, 0));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: CalendarMonthSlideWidget(
+            db: db,
+            blobs: FakeBlobStore(),
+            spec: spec,
+            theme: theme,
+            clock: clock,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const MaterialApp(home: Scaffold(body: SizedBox.shrink())));
+    await tester.pump();
+    await db.close();
+  });
+
+  testWidgets('periodic timer elapses without throwing', (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db, displayTimeZoneIana: 'Etc/UTC');
+    const spec = ParsedWidgetSpec(
+      type: 'calendar_month',
+      slot: 'main',
+      config: {},
+    );
+    final theme = ThemeData.light();
+    final clock = FakeClock(DateTime.utc(2024, 6, 15, 9, 0));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: CalendarMonthSlideWidget(
+            db: db,
+            blobs: FakeBlobStore(),
+            spec: spec,
+            theme: theme,
+            clock: clock,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(minutes: 1));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    await db.close();
+  });
+
+  testWidgets('uses MediaQuery width when horizontal max is unbounded',
+      (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db, displayTimeZoneIana: 'Etc/UTC');
+    const spec = ParsedWidgetSpec(
+      type: 'calendar_month',
+      slot: 'main',
+      config: {},
+    );
+    final theme = ThemeData.light();
+    final clock = FakeClock(DateTime.utc(2024, 6, 15, 9, 0));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: MediaQuery(
+          data: const MediaQueryData(size: Size(500, 600)),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: CalendarMonthSlideWidget(
+              db: db,
+              blobs: FakeBlobStore(),
+              spec: spec,
+              theme: theme,
+              clock: clock,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Jun 2024'), findsOneWidget);
     await db.close();
   });
 }

@@ -6,6 +6,7 @@ import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_display/curator/screen_program_curator.dart';
 import 'package:waddle_display/display/screens/trivia/trivia_slide_timing.dart';
 import 'package:waddle_display/display/screens/trivia/trivia_slide_widget.dart';
+import 'package:waddle_display/display/screens/trivia/trivia_strike_animation.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_display/data/seed/tables/content_categories_seed.dart';
 import 'package:waddle_display/data/seed/tables/trivia_categories_seed.dart';
@@ -19,6 +20,12 @@ void main() {
       triviaShuffleOrderForTesting(Random(1)).toSet(),
       equals({'A', 'B', 'C', 'D'}),
     );
+  });
+
+  test('triviaStrikeDet01 is in [0, 1) and stable for same inputs', () {
+    expect(triviaStrikeDet01(99, 3), triviaStrikeDet01(99, 3));
+    expect(triviaStrikeDet01(99, 3), greaterThanOrEqualTo(0.0));
+    expect(triviaStrikeDet01(99, 3), lessThan(1.0));
   });
 
   testWidgets('shows question, progress bar, then marks wrong answers', (
@@ -90,8 +97,24 @@ void main() {
     expect(find.text('22'), findsOneWidget);
     expect(find.text('Four'), findsOneWidget);
     expect(
-      find.byIcon(Icons.close),
+      find.byWidgetPredicate((w) {
+        final k = w.key;
+        return k is ValueKey<String> &&
+            k.value.startsWith('trivia_strike_cross_');
+      }),
       findsNWidgets(3),
+    );
+    final crossPaint = tester.widget<CustomPaint>(
+      find.byWidgetPredicate((w) {
+        final k = w.key;
+        return k is ValueKey<String> &&
+            k.value.startsWith('trivia_strike_cross_');
+      }).first,
+    );
+    expect(crossPaint.painter, isA<TriviaStrikeOverlayPainter>());
+    expect(
+      (crossPaint.painter! as TriviaStrikeOverlayPainter).kind,
+      TriviaStrikeAnimationKind.scribbleOut,
     );
 
     await tester.pump(const Duration(seconds: 2));
@@ -377,7 +400,158 @@ void main() {
     await tester.pump(Duration(milliseconds: endMs + 400));
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.close), findsOneWidget);
+    expect(
+      find.byWidgetPredicate((w) {
+        final k = w.key;
+        return k is ValueKey<String> &&
+            k.value.startsWith('trivia_strike_cross_');
+      }),
+      findsOneWidget,
+    );
+    final tfPaint = tester.widget<CustomPaint>(
+      find.byWidgetPredicate((w) {
+        final k = w.key;
+        return k is ValueKey<String> &&
+            k.value.startsWith('trivia_strike_cross_');
+      }).first,
+    );
+    expect(
+      (tfPaint.painter! as TriviaStrikeOverlayPainter).kind,
+      TriviaStrikeAnimationKind.scribbleOut,
+    );
+
+    await db.close();
+  });
+
+  testWidgets('strikeOutX uses circle close badge not canvas cross', (
+    tester,
+  ) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureDefaultTriviaCategories(db);
+    await ensureDefaultContentCategories(db);
+    await db.into(db.triviaQuestions).insert(
+          TriviaQuestionsCompanion.insert(
+            id: 't1',
+            categoryId: 'science',
+            question: '2 + 2?',
+            optionA: '3',
+            optionB: 'Four',
+            optionC: '5',
+            optionD: '22',
+            correctOption: 'B',
+            createdAtMs: DateTime.fromMillisecondsSinceEpoch(1),
+          ),
+        );
+
+    final slide = ResolvedSlide(
+      screenId: 'trivia',
+      dwellMs: 5000,
+      layoutJson: '{}',
+    );
+    final spec = ParsedWidgetSpec(
+      type: 'trivia',
+      slot: 'main',
+      config: <String, dynamic>{'strikeAnimation': 'strikeOutX'},
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.light(),
+        home: Scaffold(
+          body: TriviaSlideWidget(
+            db: db,
+            blobs: FakeBlobStore(),
+            slide: slide,
+            spec: spec,
+            theme: ThemeData.light(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final windowMs = triviaEliminationWindowMs(slide.dwellMs);
+    final endMs = triviaEliminationEndMs(windowMs);
+    await tester.pump(Duration(milliseconds: endMs + 400));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.close), findsNWidgets(3));
+    expect(
+      find.byWidgetPredicate((w) {
+        final k = w.key;
+        return k is ValueKey<String> &&
+            k.value.startsWith('trivia_strike_cross_');
+      }),
+      findsNothing,
+    );
+
+    await db.close();
+  });
+
+  testWidgets('scribbleOut paints scribble strike overlay', (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureDefaultTriviaCategories(db);
+    await ensureDefaultContentCategories(db);
+    await db.into(db.triviaQuestions).insert(
+          TriviaQuestionsCompanion.insert(
+            id: 't1',
+            categoryId: 'science',
+            question: '2 + 2?',
+            optionA: '3',
+            optionB: 'Four',
+            optionC: '5',
+            optionD: '22',
+            correctOption: 'B',
+            createdAtMs: DateTime.fromMillisecondsSinceEpoch(1),
+          ),
+        );
+
+    final slide = ResolvedSlide(
+      screenId: 'trivia',
+      dwellMs: 5000,
+      layoutJson: '{}',
+    );
+    final spec = ParsedWidgetSpec(
+      type: 'trivia',
+      slot: 'main',
+      config: <String, dynamic>{'strikeAnimation': 'scribbleOut'},
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.light(),
+        home: Scaffold(
+          body: TriviaSlideWidget(
+            db: db,
+            blobs: FakeBlobStore(),
+            slide: slide,
+            spec: spec,
+            theme: ThemeData.light(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final windowMs = triviaEliminationWindowMs(slide.dwellMs);
+    final endMs = triviaEliminationEndMs(windowMs);
+    await tester.pump(Duration(milliseconds: endMs + 400));
+    await tester.pumpAndSettle();
+
+    final crossFinder = find.byWidgetPredicate((w) {
+      final k = w.key;
+      return k is ValueKey<String> &&
+          k.value.startsWith('trivia_strike_cross_');
+    });
+    expect(crossFinder, findsNWidgets(3));
+    final cp = tester.widget<CustomPaint>(crossFinder.first);
+    expect(cp.painter, isA<TriviaStrikeOverlayPainter>());
+    expect(
+      (cp.painter! as TriviaStrikeOverlayPainter).kind,
+      TriviaStrikeAnimationKind.scribbleOut,
+    );
 
     await db.close();
   });

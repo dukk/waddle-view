@@ -106,7 +106,9 @@ class _ScreensUpdate extends Command<void> {
     }
     final dwell = int.tryParse(o['dwell-seconds'] as String? ?? '');
     final weight = int.tryParse(o['frequency-weight'] as String? ?? '');
-    final gap = int.tryParse(o['min-gap-between-shows-seconds'] as String? ?? '');
+    final gap = int.tryParse(
+      o['min-gap-between-shows-seconds'] as String? ?? '',
+    );
     String? configJson;
     final cjf = o['config-json-file'] as String?;
     if (cjf != null && cjf.isNotEmpty) {

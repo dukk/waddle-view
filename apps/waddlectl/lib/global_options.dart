@@ -6,10 +6,7 @@ import 'app_paths.dart';
 
 /// Parsed global CLI flags (before subcommands).
 class GlobalCliOptions {
-  GlobalCliOptions({
-    required this.databaseFile,
-    required this.outputJson,
-  });
+  GlobalCliOptions({required this.databaseFile, required this.outputJson});
 
   /// Used for `version`, `options`, and `help` on hosts where no DB path is set.
   factory GlobalCliOptions.forMetaCommands({required bool outputJson}) {

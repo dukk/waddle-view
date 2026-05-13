@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import '../../../blob/blob_store.dart';
+import 'package:timezone/timezone.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'calendar_month_grid.dart';
 
@@ -140,11 +141,12 @@ class CalendarUpcomingEventEntry extends CalendarUpcomingListItem {
   final String timeLabel;
 }
 
-String _timeClusterKey(CalendarEvent e) {
+String _timeClusterKey(CalendarEvent e, Location displayZone) {
   if (e.allDay) {
     return '__allday__';
   }
-  return '${e.startMs.millisecondsSinceEpoch}';
+  final z = calendarInstantInZone(e.startMs, displayZone);
+  return '${z.year}-${z.month}-${z.day}-${z.hour}-${z.minute}';
 }
 
 int _sameDaySort(CalendarEvent a, CalendarEvent b) {
@@ -163,13 +165,14 @@ int _sameDaySort(CalendarEvent a, CalendarEvent b) {
 List<CalendarUpcomingListItem> buildCalendarUpcomingListItems({
   required List<CalendarSlideEventRow> rows,
   required DateTime todayLocal,
+  required Location displayZone,
   CalendarMonthUpcomingTimeOptions timeOptions =
       CalendarMonthUpcomingTimeOptions.defaults,
 }) {
   final byDay = <DateTime, List<CalendarSlideEventRow>>{};
   for (final r in rows) {
-    final local = r.event.startMs.toLocal();
-    final key = DateTime(local.year, local.month, local.day);
+    final z = calendarInstantInZone(r.event.startMs, displayZone);
+    final key = DateTime(z.year, z.month, z.day);
     byDay.putIfAbsent(key, () => []).add(r);
   }
   final days = byDay.keys.toList()..sort();
@@ -179,12 +182,13 @@ List<CalendarUpcomingListItem> buildCalendarUpcomingListItems({
     final dayRows = byDay[day]!..sort((a, b) => _sameDaySort(a.event, b.event));
     String? lastKey;
     for (final r in dayRows) {
-      final key = _timeClusterKey(r.event);
+      final key = _timeClusterKey(r.event, displayZone);
       final newCluster = lastKey != key;
       lastKey = key;
       final timeLabel = formatCalendarEventListTime(
         r.event.startMs,
         r.event.allDay,
+        displayZone: displayZone,
         options: timeOptions,
       );
       out.add(

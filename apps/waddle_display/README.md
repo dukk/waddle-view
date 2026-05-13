@@ -154,6 +154,13 @@ Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../d
 - **Default palette details** (`navy_coral`): primary starts at `#0D1B2A` and follows a 9-color sequence: five neutrals, then four accents (`#83AF84`, `#E05C6C`, `#FFE356`, `#966CB3`). The theme also exposes a `PaletteTertiaryLayers` extension (including `accent1`–`accent4`) with 4 tertiary layers for each palette color, plus gradients for the first pair (`#0D1B2A` → `#1B263B`) and next pair (`#415A77` → `#778DA9`).
 - **Icon color**: the default icon color is `dustyDenim` (`#778DA9`) via theme `IconThemeData` and `PaletteTertiaryLayers.iconColor`. Multi-icon screens may use accent colors for emphasis (for example, current weather icon) while secondary icons keep the standard icon color.
 
+### Display time zone (`config_key_values`)
+
+- **Key**: `display.timezone`
+- **Values**: any valid **IANA** time zone id (for example `America/New_York`, `America/Chicago`, `Europe/London`). Calendar event **times** and **day boundaries** on the **`calendar_month`** slide use this zone; instants in **`calendar_events`** remain stored as absolute times (milliseconds); the app does not reinterpret stored UTC instants when you change this key.
+- **Default**: first seed inserts **`America/New_York`**. Empty or unknown values fall back to that default.
+- **Code**: [`lib/config/display_timezone.dart`](lib/config/display_timezone.dart) and [`packages/waddle_shared/lib/persistence/tables.dart`](../../packages/waddle_shared/lib/persistence/tables.dart) (`kDisplayTimezoneKvKey`).
+
 ### Festive display overlays (`display_overlay_schedules` + REST)
 
 - **Effect**: on matching calendar days, an **unobtrusive** translucent layer (floating **hearts** ♥ and occasional **short phrases**) tints from the current theme’s **accent** palette (`PaletteTertiaryLayers` / `ColorScheme` fallback). It sits **above** slides and ticker but **below** priority **alert** overlays, and it does **not** capture pointer or keyboard input.

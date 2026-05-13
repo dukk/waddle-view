@@ -19,8 +19,7 @@ class CuratorCommand extends Command<void> {
   String get name => 'curator';
 
   @override
-  String get description =>
-      'Curator program settings and per-data-key limits.';
+  String get description => 'Curator program settings and per-data-key limits.';
 }
 
 class _CuratorDescribeProgram extends Command<void> {
@@ -60,8 +59,7 @@ class _CuratorUpdateProgram extends Command<void> {
   String get name => 'update-program';
 
   @override
-  String get description =>
-      'Update curator program / theme / text scale keys.';
+  String get description => 'Update curator program / theme / text scale keys.';
 
   @override
   Future<void> run() async {

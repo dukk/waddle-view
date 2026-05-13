@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/tables.dart';
 
 AppDatabase openMemoryDatabase() {
   return AppDatabase(
@@ -11,8 +12,16 @@ AppDatabase openMemoryDatabase() {
   );
 }
 
-Future<void> warmDatabase(AppDatabase db) async {
+Future<void> warmDatabase(AppDatabase db, {String? displayTimeZoneIana}) async {
   await db.customStatement('select 1');
+  if (displayTimeZoneIana != null) {
+    await db.into(db.configKeyValues).insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kDisplayTimezoneKvKey,
+            value: displayTimeZoneIana,
+          ),
+        );
+  }
 }
 
 /// Seed ad-hoc `content_categories` rows so tests can reference category ids

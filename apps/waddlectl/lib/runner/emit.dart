@@ -24,16 +24,17 @@ class CliEmit {
     }
   }
 
-  void emitRows(List<Map<String, Object?>> rows, {String wrapperKey = 'items'}) {
+  void emitRows(
+    List<Map<String, Object?>> rows, {
+    String wrapperKey = 'items',
+  }) {
     if (options.outputJson) {
       stdout.writeln(
         const JsonEncoder.withIndent(' ').convert({wrapperKey: rows}),
       );
     } else {
       for (final r in rows) {
-        stdout.writeln(
-          r.entries.map((e) => '${e.key}=${e.value}').join('\t'),
-        );
+        stdout.writeln(r.entries.map((e) => '${e.key}=${e.value}').join('\t'));
       }
     }
   }

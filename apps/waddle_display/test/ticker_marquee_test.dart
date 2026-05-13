@@ -205,6 +205,72 @@ void main() {
     expect(find.byIcon(Icons.cloud), findsNWidgets(2));
   });
 
+  testWidgets(
+    'renders weather alert with warning icons before/after and accent top/bottom borders',
+    (tester) async {
+      final repo = MemoryTickerCuratedRepository();
+      addTearDown(repo.dispose);
+      await repo.replaceAll([
+        const TickerItem(
+          kind: 'weather',
+          body: 'Denver, CO — Heat Advisory — Stay hydrated',
+          sourceId: 'nws.alert.urn:test-1',
+        ),
+      ]);
+      final theme = DisplayTheme.build();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: Scaffold(
+            body: TickerMarquee(repository: repo, pixelsPerSecond: 200),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      // Two warning icons (one before, one after the alert text) per segment,
+      // and the marquee duplicates the segment for seamless wrap → 4 total.
+      expect(find.byIcon(Icons.warning_amber_rounded), findsNWidgets(4));
+      // Forecast-only icons should not appear for alert items.
+      expect(find.byIcon(Icons.wb_sunny), findsNothing);
+
+      final expectedAccent = theme.colorScheme.error;
+
+      // Warning icons use the accent color.
+      final warningIcons = tester
+          .widgetList<Icon>(find.byIcon(Icons.warning_amber_rounded))
+          .toList();
+      expect(warningIcons, hasLength(4));
+      for (final icon in warningIcons) {
+        expect(icon.color, equals(expectedAccent));
+      }
+
+      // The alert line is wrapped in matching top + bottom accent borders.
+      final accentBordered = tester
+          .widgetList<Container>(
+            find.byWidgetPredicate((w) {
+              if (w is! Container) {
+                return false;
+              }
+              final decoration = w.decoration;
+              if (decoration is! BoxDecoration) {
+                return false;
+              }
+              final border = decoration.border;
+              if (border is! Border) {
+                return false;
+              }
+              return border.top.color == expectedAccent &&
+                  border.top.width > 0 &&
+                  border.bottom.color == expectedAccent &&
+                  border.bottom.width == border.top.width;
+            }),
+          )
+          .toList();
+      expect(accentBordered, hasLength(2));
+    },
+  );
+
   testWidgets('repeats for several cycles without exceptions', (tester) async {
     final repo = MemoryTickerCuratedRepository();
     addTearDown(repo.dispose);

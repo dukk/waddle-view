@@ -21,6 +21,7 @@ import 'blob/filesystem_blob_store.dart';
 import 'bootstrap/app_fatal_error_recovery.dart';
 import 'clock.dart';
 import 'config/dev_dotenv_secrets.dart';
+import 'config/display_timezone.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
@@ -66,6 +67,7 @@ import 'window/window_chrome_controller.dart';
 void main() {
   runZonedGuarded(() {
     WidgetsFlutterBinding.ensureInitialized();
+    ensureDisplayTimeZonesInitialized();
     MediaKit.ensureInitialized();
     installGlobalFatalErrorHandlers();
     unawaited(_waddleBootstrap());

@@ -308,6 +308,9 @@ class _TickerMarqueeState extends State<TickerMarquee>
   Widget _tickerItemLine(BuildContext context, TickerItem item) {
     final base = Theme.of(context).textTheme.titleLarge;
     final rssTheme = Theme.of(context).extension<TickerMarqueeStyle>();
+    if (_isWeatherAlertTickerItem(item)) {
+      return _weatherAlertLine(context, item, base);
+    }
     final weatherIcon = _weatherIconForTicker(item);
     if (weatherIcon != null) {
       final s = DashboardViewportScope.scaleOf(context);
@@ -316,7 +319,7 @@ class _TickerMarqueeState extends State<TickerMarquee>
         children: [
           Icon(
             weatherIcon,
-            size: 20 * s,
+            size: 26 * s,
             color: Theme.of(context).colorScheme.primary,
           ),
           SizedBox(width: 8 * s),
@@ -343,7 +346,7 @@ class _TickerMarqueeState extends State<TickerMarquee>
                 padding: EdgeInsets.only(right: 6 * s),
                 child: Icon(
                   contentCategoryMaterialIcon(iconName),
-                  size: 18 * s,
+                  size: 22 * s,
                   color:
                       Theme.of(context).iconTheme.color ??
                       Theme.of(context).colorScheme.onSurfaceVariant,
@@ -384,6 +387,57 @@ class _TickerMarqueeState extends State<TickerMarquee>
       maxLines: 1,
       overflow: TextOverflow.clip,
       style: base,
+    );
+  }
+
+  /// Weather alerts arrive with [TickerItem.kind] `weather` and a
+  /// `nws.alert.*` [TickerItem.sourceId]; see
+  /// `drift_curator_read_port.loadWeatherGovAlertsForTicker`.
+  bool _isWeatherAlertTickerItem(TickerItem item) {
+    if (item.kind != 'weather') {
+      return false;
+    }
+    final id = item.sourceId;
+    return id != null && id.startsWith('nws.alert.');
+  }
+
+  Widget _weatherAlertLine(
+    BuildContext context,
+    TickerItem item,
+    TextStyle? base,
+  ) {
+    final s = DashboardViewportScope.scaleOf(context);
+    final accent = Theme.of(context).colorScheme.error;
+    final iconSize = 28 * s;
+    Widget warningIcon() => Icon(
+      Icons.warning_amber_rounded,
+      size: iconSize,
+      color: accent,
+    );
+    final accentBorderSide = BorderSide(color: accent, width: 2 * s);
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          top: accentBorderSide,
+          bottom: accentBorderSide,
+        ),
+      ),
+      padding: EdgeInsets.symmetric(vertical: 2 * s),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          warningIcon(),
+          SizedBox(width: 8 * s),
+          Text(
+            item.body,
+            maxLines: 1,
+            overflow: TextOverflow.clip,
+            style: base?.copyWith(color: accent, fontWeight: FontWeight.w700),
+          ),
+          SizedBox(width: 8 * s),
+          warningIcon(),
+        ],
+      ),
     );
   }
 

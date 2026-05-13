@@ -1,12 +1,29 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:timezone/data/latest.dart' as tz_data;
+import 'package:timezone/timezone.dart';
 import 'package:waddle_display/display/screens/calendar_month/calendar_month_grid.dart';
 
 void main() {
-  group('startOfTodayLocalMs', () {
-    test('returns local midnight for same calendar day', () {
-      final noon = DateTime(2026, 5, 4, 12, 30);
-      final boundary = startOfTodayLocalMs(noon);
-      final start = DateTime(2026, 5, 4);
+  late final Location utc;
+  setUpAll(() {
+    tz_data.initializeTimeZones();
+    utc = getLocation('Etc/UTC');
+  });
+
+  group('startOfTodayInZoneMs', () {
+    test('returns UTC midnight for same calendar day', () {
+      final noon = DateTime.utc(2026, 5, 4, 12, 30);
+      final boundary = startOfTodayInZoneMs(utc, noon);
+      final start = DateTime.utc(2026, 5, 4);
+      expect(boundary, start.millisecondsSinceEpoch);
+    });
+  });
+
+  group('startOfMonthInZoneMs', () {
+    test('returns UTC midnight for first day of same calendar month', () {
+      final noon = DateTime.utc(2026, 5, 4, 12, 30);
+      final boundary = startOfMonthInZoneMs(utc, noon);
+      final start = DateTime.utc(2026, 5, 1);
       expect(boundary, start.millisecondsSinceEpoch);
     });
   });
@@ -53,7 +70,11 @@ void main() {
   group('formatCalendarEventListTime', () {
     test('all day label', () {
       expect(
-        formatCalendarEventListTime(DateTime.fromMillisecondsSinceEpoch(0), true),
+        formatCalendarEventListTime(
+          DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+          true,
+          displayZone: utc,
+        ),
         'All day',
       );
     });
@@ -61,8 +82,9 @@ void main() {
     test('defaults: 12-hour with PM', () {
       expect(
         formatCalendarEventListTime(
-          DateTime(2024, 6, 15, 14, 7),
+          DateTime.utc(2024, 6, 15, 14, 7),
           false,
+          displayZone: utc,
         ),
         '2:07 PM',
       );
@@ -71,8 +93,9 @@ void main() {
     test('defaults: noon label', () {
       expect(
         formatCalendarEventListTime(
-          DateTime(2024, 6, 15, 12, 0),
+          DateTime.utc(2024, 6, 15, 12, 0),
           false,
+          displayZone: utc,
         ),
         'Noon',
       );
@@ -81,8 +104,9 @@ void main() {
     test('custom noon label', () {
       expect(
         formatCalendarEventListTime(
-          DateTime(2024, 6, 15, 12, 0),
+          DateTime.utc(2024, 6, 15, 12, 0),
           false,
+          displayZone: utc,
           options: const CalendarMonthUpcomingTimeOptions(noonLabel: 'Midday'),
         ),
         'Midday',
@@ -91,11 +115,24 @@ void main() {
 
     test('24-hour when use12Hour false', () {
       final s = formatCalendarEventListTime(
-        DateTime(2024, 6, 15, 14, 7),
+        DateTime.utc(2024, 6, 15, 14, 7),
         false,
+        displayZone: utc,
         options: const CalendarMonthUpcomingTimeOptions(use12Hour: false),
       );
       expect(s, '14:07');
+    });
+
+    test('America/New_York wall clock in summer (EDT)', () {
+      final ny = getLocation('America/New_York');
+      expect(
+        formatCalendarEventListTime(
+          DateTime.utc(2024, 6, 15, 17, 7),
+          false,
+          displayZone: ny,
+        ),
+        '1:07 PM',
+      );
     });
 
     test('fromConfig reads keys', () {

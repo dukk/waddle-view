@@ -90,6 +90,7 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureCuratorSettings(db);
   await _ensureTickerDefinitions(db);
   await _ensureDisplayThemeKv(db);
+  await _ensureDisplayTimezoneKv(db);
   await _ensureDisplayTextScaleKv(db);
   await _ensureAlertSeverityIconsKv(db);
   await _ensureDefaultMothersDayOverlay(db);
@@ -146,6 +147,23 @@ Future<void> _ensureDefaultMothersDayOverlay(AppDatabase db) async {
       DateTime.sunday,
     ],
   );
+}
+
+Future<void> _ensureDisplayTimezoneKv(AppDatabase db) async {
+  final row = await (db.select(
+    db.configKeyValues,
+  )..where((t) => t.key.equals(kDisplayTimezoneKvKey))).getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  await db
+      .into(db.configKeyValues)
+      .insert(
+        ConfigKeyValuesCompanion.insert(
+          key: kDisplayTimezoneKvKey,
+          value: kDefaultDisplayTimezoneIana,
+        ),
+      );
 }
 
 Future<void> _ensureDisplayThemeKv(AppDatabase db) async {

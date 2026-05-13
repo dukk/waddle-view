@@ -81,7 +81,6 @@
 - [NPR Health News](https://feeds.npr.org/1128/rss.xml)
 - [Mindful Momma](https://mindfulmomma.com/feed/)
 - [Love Sweat Fitness](https://lovesweatfitness.com/blogs/news.atom)
-- [Mark's Daily Apple](https://feeds2.feedburner.com/MarksDailyApple/)
 - [Yoga with Adriene](https://yogawithadriene.com/blog/feed/)
 - [Mellowed](https://mellowed.com/category/health-wellness/feed/)
 

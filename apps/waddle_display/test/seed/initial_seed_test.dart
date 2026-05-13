@@ -90,6 +90,7 @@ void main() {
     expect(byKey[kCuratorProgramDurationSecondsKvKey], '180');
     expect(byKey[kCuratorHistoryDepthKvKey], '5');
     expect(byKey[kRequireNewsPhotoForScreensKvKey], 'true');
+    expect(byKey[kDisplayTimezoneKvKey], kDefaultDisplayTimezoneIana);
     expect(byKey.containsKey('curator.news.require_photo_for_curation'), isFalse);
     expect(byKey[kAlertSeverityIconsKvKey], kDefaultAlertSeverityIconsJson);
     await db.close();

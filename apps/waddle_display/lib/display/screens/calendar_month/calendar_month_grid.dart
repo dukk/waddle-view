@@ -1,9 +1,24 @@
 // Month grid helpers (Sunday-first columns; see [buildMonthGridCells]).
 
-/// UTC epoch ms for local midnight at the start of [now]'s calendar day.
-int startOfTodayLocalMs(DateTime now) {
-  final local = now.toLocal();
-  final start = DateTime(local.year, local.month, local.day);
+import 'package:timezone/timezone.dart';
+
+/// Interprets [stored] as an absolute instant and returns its wall clock in [zone].
+TZDateTime calendarInstantInZone(DateTime stored, Location zone) {
+  final utc = stored.toUtc();
+  return TZDateTime.from(utc, zone);
+}
+
+/// UTC epoch ms for midnight at the start of [now]'s calendar day in [zone].
+int startOfTodayInZoneMs(Location zone, DateTime now) {
+  final wall = calendarInstantInZone(now, zone);
+  final start = TZDateTime(zone, wall.year, wall.month, wall.day);
+  return start.millisecondsSinceEpoch;
+}
+
+/// UTC epoch ms for midnight on the first day of [now]'s calendar month in [zone].
+int startOfMonthInZoneMs(Location zone, DateTime now) {
+  final wall = calendarInstantInZone(now, zone);
+  final start = TZDateTime(zone, wall.year, wall.month, 1);
   return start.millisecondsSinceEpoch;
 }
 
@@ -143,17 +158,20 @@ String _formatListTime12h(DateTime local, String noonLabel) {
   return '$displayHour:$minStr $period';
 }
 
-/// Formats a list-row time label for a calendar event start instant from the DB.
+/// Formats a list-row time label for a calendar event start instant from the DB
+/// (stored as a UTC instant) using [displayZone] wall clock.
 String formatCalendarEventListTime(
   DateTime start,
   bool allDay, {
+  required Location displayZone,
   CalendarMonthUpcomingTimeOptions options =
       CalendarMonthUpcomingTimeOptions.defaults,
 }) {
   if (allDay) {
     return 'All day';
   }
-  final local = start.toLocal();
+  final z = calendarInstantInZone(start, displayZone);
+  final local = DateTime(z.year, z.month, z.day, z.hour, z.minute);
   if (options.use12Hour) {
     return _formatListTime12h(local, options.noonLabel);
   }

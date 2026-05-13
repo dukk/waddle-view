@@ -16,6 +16,10 @@ void main() {
 
   test('elimination end includes last strike animation duration', () {
     expect(triviaEliminationEndMs(8000), 3 * 2000 + kTriviaStrikeAnimationMs);
+    expect(
+      triviaEliminationEndMs(8000, strikeAnimationMs: 600),
+      3 * 2000 + 600,
+    );
     expect(triviaEliminationEndMs(3), greaterThan(3));
   });
 }

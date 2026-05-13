@@ -14,7 +14,8 @@ Future<int> runWaddlectl(List<String> args) async {
     String? supportDirPath,
     String output,
     List<String> commandArgs,
-  }) peeled;
+  })
+  peeled;
   try {
     peeled = parseLeadingGlobalFlags(args);
   } on FormatException catch (e) {

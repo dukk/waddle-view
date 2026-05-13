@@ -10,10 +10,10 @@ void main() {
     await warmDatabase(db);
     await ensureDefaultRssNewsFeeds(db);
     final first = await db.select(db.rssFeedSources).get();
-    expect(first.length, 84);
+    expect(first.length, 83);
     await ensureDefaultRssNewsFeeds(db);
     final second = await db.select(db.rssFeedSources).get();
-    expect(second.length, 84);
+    expect(second.length, 83);
     final world = second.where((r) => r.category == 'world').length;
     final usa = second.where((r) => r.category == 'usa').length;
     final technology = second.where((r) => r.category == 'technology').length;
@@ -30,7 +30,7 @@ void main() {
     expect(finance, 9);
     expect(science, 9);
     expect(travel, 10);
-    expect(wellness, 10);
+    expect(wellness, 9);
     expect(entertainment, 10);
     expect(sports, 10);
     final hn = await (db.select(db.rssFeedSources)
