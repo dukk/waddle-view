@@ -20,7 +20,9 @@ void main() {
     addTearDown(() {
       try {
         tmp.deleteSync(recursive: true);
-      } on Object {}
+      } on Object {
+        // Best-effort; temp dir may be locked or already removed.
+      }
     });
     final dbPath = p.join(tmp.path, 'waddle_view.sqlite');
     File(dbPath).writeAsStringSync('');

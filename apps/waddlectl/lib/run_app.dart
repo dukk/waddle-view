@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 
 import 'global_cli_parser.dart';
@@ -10,11 +9,14 @@ import 'runner/cli_runner.dart';
 
 /// Entry for `dart run waddlectl` / compiled `waddlectl` binary.
 Future<int> runWaddlectl(List<String> args) async {
-  final globals = buildGlobalArgParser();
-
-  late final ArgResults top;
+  late final ({
+    String? databasePath,
+    String? supportDirPath,
+    String output,
+    List<String> commandArgs,
+  }) peeled;
   try {
-    top = globals.parse(args);
+    peeled = parseLeadingGlobalFlags(args);
   } on FormatException catch (e) {
     stderr.writeln(e.message);
     stderr.writeln(
@@ -23,7 +25,7 @@ Future<int> runWaddlectl(List<String> args) async {
     return 64;
   }
 
-  final rest = top.rest;
+  final rest = peeled.commandArgs;
   if (rest.isEmpty) {
     stdout.writeln(WaddlectlRootRunner.rootUsage());
     return 0;
@@ -33,14 +35,14 @@ Future<int> runWaddlectl(List<String> args) async {
   late final GlobalCliOptions options;
   if (metaFirst) {
     options = GlobalCliOptions.forMetaCommands(
-      outputJson: (top['output'] as String?) == 'json',
+      outputJson: peeled.output == 'json',
     );
   } else {
     try {
       options = GlobalCliOptions.fromArgResults(
-        databasePath: top['database'] as String?,
-        supportDirPath: top['support-dir'] as String?,
-        output: top['output'] as String?,
+        databasePath: peeled.databasePath,
+        supportDirPath: peeled.supportDirPath,
+        output: peeled.output,
       );
     } on StateError catch (e) {
       stderr.writeln(e.message);

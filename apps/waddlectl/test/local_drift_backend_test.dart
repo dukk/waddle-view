@@ -13,7 +13,7 @@ void main() {
       try {
         tmp.deleteSync(recursive: true);
       } on Object {
-        // ignore
+        // Best-effort; temp dir may be locked or already removed.
       }
     });
     final dbFile = File(p.join(tmp.path, 'waddle_view.sqlite'));
@@ -37,7 +37,9 @@ void main() {
     addTearDown(() {
       try {
         tmp.deleteSync(recursive: true);
-      } on Object {}
+      } on Object {
+        // Best-effort; temp dir may be locked or already removed.
+      }
     });
     final dbFile = File(p.join(tmp.path, 'waddle_view.sqlite'));
     final db = AppDatabase(createQueryExecutorForFile(dbFile));
