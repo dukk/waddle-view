@@ -2,7 +2,8 @@ import 'dart:math';
 
 import 'curator_content_pools.dart' show PhotoCuratorMetric, RssArticleMetric;
 import 'photo_collage_curation.dart';
-import 'screen_layout_parse.dart' show ParsedWidgetSpec, parseScreenLayoutWidgets;
+import 'package:waddle_shared/layout/screen_layout_parse.dart'
+    show ParsedWidgetSpec, parseScreenLayoutWidgets;
 
 class DataKeyProgramLimit {
   const DataKeyProgramLimit({

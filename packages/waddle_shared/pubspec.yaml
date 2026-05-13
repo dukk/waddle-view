@@ -1,0 +1,20 @@
+name: waddle_shared
+description: Shared Drift persistence, config keys, and operator-facing Dart types for Waddle View.
+publish_to: none
+version: 1.0.0
+resolution: workspace
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  drift: ^2.33.0
+  meta: ^1.17.0
+  path: ^1.9.1
+  sqlite3: ^3.3.1
+
+dev_dependencies:
+  build_runner: ^2.4.13
+  drift_dev: ^2.33.0
+  lints: ^6.0.0
+  test: ^1.25.0

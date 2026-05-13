@@ -57,7 +57,7 @@ The UI does not yet expose a form for provider tokens. Recommended onboarding pa
 
 2. **One-off code** (fallback): call `SecretStore.write('provider:access_token:jokes', '<your-api-key>')` once using the same storage backend the app uses (for example a **temporary** debug-only call right after the store is created in [`main.dart`](../../apps/waddle-display/lib/main.dart)), run the app so the value is persisted, then **remove** that code so the secret is never committed.
 
-3. **Tests / fakes**: use [`InMemorySecretStore`](../../apps/waddle-display/lib/secrets/in_memory_secret_store.dart) and the same key; see [`provider_config_resolver_test.dart`](../../apps/waddle-display/test/provider_config_resolver_test.dart) and [`joke_data_provider_test.dart`](../../apps/waddle-display/test/data/joke_data_provider_test.dart).
+3. **Tests / fakes**: use [`InMemorySecretStore`](../../packages/waddle_shared/lib/secrets/in_memory_secret_store.dart) and the same key; see [`provider_config_resolver_test.dart`](../../packages/waddle_shared/test/config/provider_config_resolver_test.dart) and [`joke_data_provider_test.dart`](../../apps/waddle_display/test/data/joke_data_provider_test.dart).
 
 4. **Platform notes**: On Windows and Linux desktop, `flutter_secure_storage` persists secrets using the platform integration for that OS (see package docs). Headless Linux still needs a working Secret Service if you rely on this store; otherwise plan a deployment-specific way to populate secrets without putting them in SQLite.
 

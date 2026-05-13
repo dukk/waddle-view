@@ -5,7 +5,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../clock.dart';
 import '../display/dashboard_viewport_scope.dart';
-import '../persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 import 'alert_material_icon.dart';
 
 /// Semi-transparent “window” card for a single active alert (title bar, body, optional QR).

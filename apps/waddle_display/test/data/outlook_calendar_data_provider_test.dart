@@ -13,14 +13,14 @@ import 'package:waddle_display/config/microsoft_graph_kv.dart'
         microsoftGraphAccessTokenSecret,
         microsoftGraphRefreshTokenSecret,
         outlookCalendarEventSource;
-import 'package:waddle_display/config/provider_config_resolver.dart';
+import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_display/data/data_write_context.dart';
 import 'package:waddle_display/data/providers/microsoft_graph/microsoft_graph_oauth.dart'
     show kMicrosoftGraphOAuthScopes, MicrosoftGraphOAuth;
 import 'package:waddle_display/data/providers/outlook_calendar/outlook_calendar_data_provider.dart';
 import 'package:waddle_display/data/providers/outlook_calendar/outlook_calendar_extra_config.dart';
-import 'package:waddle_display/persistence/database.dart';
-import 'package:waddle_display/secrets/in_memory_secret_store.dart';
+import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 
 import '../helpers/fake_blob_store.dart';
 import '../helpers/memory_database.dart';

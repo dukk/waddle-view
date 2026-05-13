@@ -51,8 +51,10 @@ jobs:
           xargs -a "$LINUX_BUILD_DEPS_FILE" sudo apt-get install -y
       - run: flutter config --enable-linux-desktop
       - run: flutter pub get
+        working-directory: ${{ github.workspace }}
       - name: Generate code
         run: dart run build_runner build --delete-conflicting-outputs
+        working-directory: ${{ github.workspace }}/packages/waddle_shared
       - run: flutter build linux --release --build-number "${{ inputs.build_number }}"
       - name: Audit Linux runtime dependencies
         run: |

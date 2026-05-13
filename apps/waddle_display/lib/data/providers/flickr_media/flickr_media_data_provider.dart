@@ -4,8 +4,8 @@ import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../debug/app_debug_log.dart';
-import '../../../persistence/database.dart';
-import '../../../persistence/tables.dart';
+import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/tables.dart';
 import '../../data_provider.dart';
 import '../../data_write_context.dart';
 import 'flickr_media_extra_config.dart';

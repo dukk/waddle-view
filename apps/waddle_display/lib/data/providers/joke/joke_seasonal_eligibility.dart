@@ -1,6 +1,6 @@
 import 'package:meta/meta.dart';
 
-import '../../../persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 
 /// Month/day as a single comparable int (e.g. March 5 => 305).
 @visibleForTesting

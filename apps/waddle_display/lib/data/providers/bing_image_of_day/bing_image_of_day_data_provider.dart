@@ -4,10 +4,10 @@ import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../blob/blob_store.dart';
-import '../../../config/provider_runtime_config.dart';
+import 'package:waddle_shared/config/provider_runtime_config.dart';
 import '../../../debug/app_debug_log.dart';
-import '../../../persistence/database.dart';
-import '../../../persistence/tables.dart';
+import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/tables.dart';
 import '../../data_provider.dart';
 import '../../data_write_context.dart';
 import 'bing_image_of_day_extra_config.dart';

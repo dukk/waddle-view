@@ -5,8 +5,8 @@ import 'package:http/http.dart' as http;
 
 import '../../../config/google_kv.dart';
 import '../../../debug/app_debug_log.dart';
-import '../../../persistence/database.dart';
-import '../../../secrets/secret_store.dart';
+import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/secrets/secret_store.dart';
 
 const String kGoogleDeviceSignInTitle = 'Google sign-in';
 const int kGoogleDevicePromptCooldownMs = 15 * 60 * 1000;

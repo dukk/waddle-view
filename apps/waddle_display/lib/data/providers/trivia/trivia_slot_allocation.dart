@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import '../../../persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 
 /// Builds the ordered list of category slots for one OpenAI request using
 /// round-robin over [eligibleSorted], starting at [roundRobinStartIndex].

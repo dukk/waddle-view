@@ -1,5 +1,5 @@
 import '../clock.dart';
-import '../persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 
 /// Picks the top active alert using [Clock] for expiry.
 class ActiveAlertSelector {

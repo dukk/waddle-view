@@ -5,10 +5,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:path/path.dart' as p;
 
 import '../debug/app_debug_log.dart';
-import '../secrets/secret_store.dart';
+import 'package:waddle_shared/secrets/secret_store.dart';
 import 'google_kv.dart';
 import 'microsoft_graph_kv.dart';
-import 'provider_config_resolver.dart';
+import 'package:waddle_shared/config/provider_config_resolver.dart';
 
 /// Reads the jokes/OpenAI token from a merged env map.
 ///

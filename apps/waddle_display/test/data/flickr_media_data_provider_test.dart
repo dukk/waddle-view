@@ -3,12 +3,12 @@ import 'dart:convert';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-import 'package:waddle_display/config/provider_config_resolver.dart';
+import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_display/data/data_write_context.dart';
 import 'package:waddle_display/data/providers/flickr_media/flickr_media_data_provider.dart';
-import 'package:waddle_display/persistence/database.dart';
-import 'package:waddle_display/persistence/tables.dart';
-import 'package:waddle_display/secrets/in_memory_secret_store.dart';
+import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/tables.dart';
+import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 
 import '../helpers/fake_blob_store.dart';
 import '../helpers/memory_database.dart';

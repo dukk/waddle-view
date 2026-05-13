@@ -1,10 +1,10 @@
 import '../../../alerts/alert_severity_icons_kv.dart';
 import '../../../config/google_kv.dart';
 import '../../../config/microsoft_graph_kv.dart';
-import '../../../persistence/database.dart';
-import '../../../persistence/tables.dart';
-import '../../../theme/display_text_scale_kv.dart';
-import '../../../theme/display_theme_kv.dart';
+import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/tables.dart';
+import 'package:waddle_shared/theme/display_text_scale_kv.dart';
+import 'package:waddle_shared/theme/display_theme_kv.dart';
 
 /// Demo ticker marquee lines inserted once alongside the stub provider row.
 Future<void> ensureStubTickerMarqueeKvs(AppDatabase db) async {

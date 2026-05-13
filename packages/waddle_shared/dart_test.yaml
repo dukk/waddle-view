@@ -1,0 +1,3 @@
+# Per-test ceiling so a hung async test cannot stall the whole suite indefinitely.
+defaults:
+  timeout: 60s

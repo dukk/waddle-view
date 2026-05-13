@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:waddle_shared/theme/display_theme_ids.dart';
 
-import '../display_theme_kv.dart';
 import 'graphite_amber_theme.dart';
 import 'navy_coral_theme.dart';
 
-const String kDisplayThemeNavyCoral = 'navy_coral';
-const String kDisplayThemeGraphiteAmber = 'graphite_amber';
+export 'package:waddle_shared/theme/display_theme_ids.dart'
+    show
+        kDisplayThemeGraphiteAmber,
+        kDisplayThemeNavyCoral,
+        normalizeDisplayThemeId;
 
 final Map<String, ThemeData Function()> _displayThemeBuilders = {
   kDisplayThemeNavyCoral: buildNavyCoralDisplayTheme,
   kDisplayThemeGraphiteAmber: buildGraphiteAmberDisplayTheme,
 };
 
-/// Stable ids accepted for [kDisplayThemeIdKvKey].
+/// Stable theme ids persisted under the `display.theme.id` config key.
 List<String> get registeredDisplayThemeIds =>
     List<String>.unmodifiable(_displayThemeBuilders.keys);
 
@@ -22,21 +25,6 @@ const List<DisplayThemeOption> kDisplayThemeOptions = [
   (id: kDisplayThemeNavyCoral, label: 'Ink blue multi-accent (default)'),
   (id: kDisplayThemeGraphiteAmber, label: 'Graphite & amber'),
 ];
-
-String normalizeDisplayThemeId(String? raw) {
-  if (raw == null) {
-    return kDefaultDisplayThemeId;
-  }
-  final trimmed = raw.trim();
-  if (trimmed.isEmpty) {
-    return kDefaultDisplayThemeId;
-  }
-  final id = trimmed.toLowerCase().replaceAll(RegExp(r'[\s-]+'), '_');
-  if (_displayThemeBuilders.containsKey(id)) {
-    return id;
-  }
-  return kDefaultDisplayThemeId;
-}
 
 ThemeData themeDataForNormalizedDisplayThemeId(String id) {
   final builder = _displayThemeBuilders[id];

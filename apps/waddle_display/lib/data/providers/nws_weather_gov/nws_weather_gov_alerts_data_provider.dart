@@ -4,7 +4,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:http/http.dart' as http;
 
 import '../../../debug/app_debug_log.dart';
-import '../../../persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 import '../../data_provider.dart';
 import '../../data_write_context.dart';
 import '../weather/weather_locations_for_collect.dart';

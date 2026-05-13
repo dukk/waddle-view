@@ -1,8 +1,8 @@
 import '../blob/blob_store.dart';
 import '../curator/photo_collage_curation.dart';
-import '../curator/screen_layout_parse.dart';
+import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';
-import '../persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 import 'screens/pexels/pexels_slide_media.dart';
 import 'screens/pexels/pexels_video_slide_widget.dart';
 import 'screens/pexels/pexels_video_materialize.dart';

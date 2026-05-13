@@ -5,8 +5,8 @@ import 'package:http/http.dart' as http;
 
 import '../../../config/google_kv.dart';
 import '../../../debug/app_debug_log.dart';
-import '../../../persistence/database.dart';
-import '../../../secrets/secret_store.dart';
+import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/secrets/secret_store.dart';
 import '../../data_provider.dart';
 import '../../data_write_context.dart';
 import '../shared/calendar_provider_calendar_entry.dart';

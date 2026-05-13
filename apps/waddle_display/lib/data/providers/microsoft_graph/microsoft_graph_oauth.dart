@@ -5,8 +5,8 @@ import 'package:http/http.dart' as http;
 
 import '../../../config/microsoft_graph_kv.dart';
 import '../../../debug/app_debug_log.dart';
-import '../../../persistence/database.dart';
-import '../../../secrets/secret_store.dart';
+import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/secrets/secret_store.dart';
 
 const String _deviceAuthPath = '/common/oauth2/v2.0/devicecode';
 const String _tokenPath = '/common/oauth2/v2.0/token';

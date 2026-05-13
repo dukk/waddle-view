@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_display/persistence/config_json_documentation.dart';
+import 'package:test/test.dart';
+import 'package:waddle_shared/persistence/config_json_documentation.dart';
 
 void main() {
   test('provider meta schemas and examples are valid JSON', () {

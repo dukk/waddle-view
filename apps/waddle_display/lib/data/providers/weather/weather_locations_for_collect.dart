@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart' show OrderingTerm;
 
-import '../../../persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 import 'weather_provider_extra_config.dart';
 
 /// Enabled [WeatherLocations] rows, or a single synthetic `default` when none.

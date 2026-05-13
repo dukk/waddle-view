@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_display/curator/screen_layout_parse.dart';
+import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_display/display/screens/guest_wifi/guest_wifi_slide_widget.dart';
-import 'package:waddle_display/persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 
 import '../helpers/memory_database.dart';
 

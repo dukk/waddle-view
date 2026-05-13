@@ -1,5 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_display/persistence/database.dart';
+import 'package:test/test.dart';
+import 'package:waddle_shared/persistence/database.dart';
 
 import '../helpers/memory_database.dart';
 

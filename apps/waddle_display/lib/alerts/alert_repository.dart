@@ -1,5 +1,5 @@
 import '../clock.dart';
-import '../persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 
 abstract class AlertRepository {
   Future<int> insertAlert({

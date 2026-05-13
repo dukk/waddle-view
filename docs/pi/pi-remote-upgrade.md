@@ -34,7 +34,7 @@ Optional flags: **`-i` / `--identity`** (private key), **`-p` / `--port`**, **`-
 1. Stop the app (`systemctl --user stop waddle-view` or close the session).
 2. Replace the **`bundle/`** tree under `/opt/waddle-view` with the new release (preserve **`/etc/waddle-view/api.key`** unless rotating).
 3. Start the app again.
-4. **Drift** runs migrations on startup (`schemaVersion` in `lib/persistence/database.dart`); back up the SQLite file before major upgrades.
+4. **Drift** runs migrations on startup (`schemaVersion` in `packages/waddle_shared/lib/persistence/database.dart`); back up the SQLite file before major upgrades.
 
 ## API key rotation
 

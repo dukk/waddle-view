@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_display/display/screens/calendar_month/calendar_upcoming_layout.dart';
-import 'package:waddle_display/persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 
 CalendarEvent _ev({
   required String id,

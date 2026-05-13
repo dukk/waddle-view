@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../clock.dart';
-import '../../persistence/database.dart';
-import '../../persistence/display_overlay_repository.dart';
-import '../../persistence/display_overlay_schedule_row.dart';
-import '../../persistence/tables.dart';
+import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/display_overlay_repository.dart';
+import 'package:waddle_shared/persistence/display_overlay_schedule_row.dart';
+import 'package:waddle_shared/persistence/tables.dart';
 import 'celebration_overlay_schedule.dart';
 import 'hearts_rain_overlay.dart';
 

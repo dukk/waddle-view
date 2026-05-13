@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-import '../../../curator/screen_layout_parse.dart';
-import '../../../persistence/database.dart';
+import 'package:waddle_shared/layout/screen_layout_parse.dart';
+import 'package:waddle_shared/persistence/database.dart';
 import '../../../theme/display_theme.dart';
 import 'wifi_connection_uri.dart';
 import '../../dashboard_viewport_scope.dart';

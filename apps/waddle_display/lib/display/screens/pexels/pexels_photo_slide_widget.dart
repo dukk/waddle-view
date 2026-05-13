@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../blob/blob_store.dart';
-import '../../../curator/screen_layout_parse.dart';
+import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import '../../../curator/screen_program_curator.dart';
-import '../../../persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 import '../../dashboard_viewport_scope.dart';
 import 'pexels_attribution_overlay.dart';
 import 'pexels_slide_media.dart';

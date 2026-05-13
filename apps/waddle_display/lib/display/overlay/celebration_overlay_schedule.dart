@@ -1,4 +1,4 @@
-import '../../persistence/display_overlay_schedule_row.dart';
+import 'package:waddle_shared/persistence/display_overlay_schedule_row.dart';
 
 /// Computes the calendar date for the [nthWeekInMonth] occurrence of [weekday]
 /// (Dart [DateTime.weekday], Monday=1 … Sunday=7) in [month]/[year], or null

@@ -1,11 +1,11 @@
-import 'package:drift/drift.dart';
-import 'package:flutter_test/flutter_test.dart';
+import 'package:drift/drift.dart' show Value;
+import 'package:test/test.dart';
 
-import 'package:waddle_display/config/provider_config_resolver.dart';
-import 'package:waddle_display/persistence/database.dart';
-import 'package:waddle_display/secrets/in_memory_secret_store.dart';
+import 'package:waddle_shared/config/provider_config_resolver.dart';
+import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 
-import 'helpers/memory_database.dart';
+import '../helpers/memory_database.dart';
 
 void main() {
   test('merges drift row with secret token', () async {

@@ -14,9 +14,10 @@ Mirror of [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) `analy
 ## Commands (from repo root)
 
 ```bash
-cd apps/waddle_display
 flutter pub get
-dart run build_runner build --delete-conflicting-outputs
+dart run build_runner build --delete-conflicting-outputs -C packages/waddle_shared
+dart test -C packages/waddle_shared
+cd apps/waddle_display
 flutter analyze
 flutter test --coverage --timeout=60s
 dart run tool/coverage_check.dart --min=90 coverage/lcov.info

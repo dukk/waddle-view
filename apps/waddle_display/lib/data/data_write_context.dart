@@ -1,7 +1,7 @@
 import '../blob/blob_store.dart';
-import '../config/provider_runtime_config.dart';
-import '../persistence/database.dart';
-import '../secrets/secret_store.dart';
+import 'package:waddle_shared/config/provider_runtime_config.dart';
+import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/secrets/secret_store.dart';
 
 /// What [IDataProvider.collect] may touch during a tick.
 abstract class DataWriteContext {

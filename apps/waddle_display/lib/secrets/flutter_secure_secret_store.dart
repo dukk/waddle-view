@@ -1,6 +1,6 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import 'secret_store.dart';
+import 'package:waddle_shared/secrets/secret_store.dart';
 
 /// Linux: libsecret / Secret Service when available.
 class FlutterSecureSecretStore implements SecretStore {

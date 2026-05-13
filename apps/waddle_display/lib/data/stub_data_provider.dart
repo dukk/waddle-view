@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../debug/app_debug_log.dart';
-import '../persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 import 'data_provider.dart';
 import 'data_write_context.dart';
 

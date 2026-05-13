@@ -1,4 +1,4 @@
-import '../../../persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 import '../joke/joke_seasonal_eligibility.dart';
 
 /// Whether a trivia category may be used for generation on [now] (local time).

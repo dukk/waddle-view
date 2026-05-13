@@ -1,0 +1,14 @@
+name: waddle_view_workspace
+publish_to: none
+description: Monorepo workspace for waddle_display, waddlectl, and waddle_shared.
+
+environment:
+  sdk: ^3.11.5
+
+workspace:
+  - apps/waddle_display
+  - apps/waddlectl
+  - packages/waddle_shared
+
+dependency_overrides:
+  xml: ^6.5.0

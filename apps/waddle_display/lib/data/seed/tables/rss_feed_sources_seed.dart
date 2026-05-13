@@ -1,17 +1,19 @@
 import 'package:drift/drift.dart';
 
-import '../../../persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 
 /// Default feeds from repo `data/news-data-sources.md` (idempotent inserts).
 Future<void> ensureDefaultRssNewsFeeds(AppDatabase db) async {
   for (final f in _defaultRssFeeds) {
-    final existing =
-        await (db.select(db.rssFeedSources)..where((t) => t.id.equals(f.id)))
-            .getSingleOrNull();
+    final existing = await (db.select(
+      db.rssFeedSources,
+    )..where((t) => t.id.equals(f.id))).getSingleOrNull();
     if (existing != null) {
       continue;
     }
-    await db.into(db.rssFeedSources).insert(
+    await db
+        .into(db.rssFeedSources)
+        .insert(
           RssFeedSourcesCompanion.insert(
             id: f.id,
             url: f.url,
@@ -76,27 +78,15 @@ const _defaultRssFeeds = <({String id, String url, String category})>[
     url: 'https://www.washingtontimes.com/rss/headlines/news',
     category: 'usa',
   ),
-  (
-    id: 'vox',
-    url: 'https://www.vox.com/rss/index.xml',
-    category: 'usa',
-  ),
-  (
-    id: 'observer',
-    url: 'https://observer.com/feed/',
-    category: 'usa',
-  ),
+  (id: 'vox', url: 'https://www.vox.com/rss/index.xml', category: 'usa'),
+  (id: 'observer', url: 'https://observer.com/feed/', category: 'usa'),
   // Technology
   (
     id: 'hacker_news',
     url: 'https://news.ycombinator.com/rss',
     category: 'technology',
   ),
-  (
-    id: 'wired',
-    url: 'https://www.wired.com/feed/rss',
-    category: 'technology',
-  ),
+  (id: 'wired', url: 'https://www.wired.com/feed/rss', category: 'technology'),
   (
     id: 'slashdot',
     url: 'https://rss.slashdot.org/Slashdot/slashdotMain',
@@ -117,21 +107,13 @@ const _defaultRssFeeds = <({String id, String url, String category})>[
     url: 'https://techcrunch.com/feed/',
     category: 'technology',
   ),
-  (
-    id: 'mashable',
-    url: 'https://mashable.com/feed/',
-    category: 'technology',
-  ),
+  (id: 'mashable', url: 'https://mashable.com/feed/', category: 'technology'),
   (
     id: 'engadget',
     url: 'https://www.engadget.com/rss.xml',
     category: 'technology',
   ),
-  (
-    id: 'readwrite',
-    url: 'https://readwrite.com/feed/',
-    category: 'technology',
-  ),
+  (id: 'readwrite', url: 'https://readwrite.com/feed/', category: 'technology'),
   (
     id: 'the_next_web',
     url: 'https://thenextweb.com/feed/',
@@ -152,11 +134,7 @@ const _defaultRssFeeds = <({String id, String url, String category})>[
     url: 'https://www.techradar.com/rss',
     category: 'technology',
   ),
-  (
-    id: 'cnet',
-    url: 'https://www.cnet.com/rss/news/',
-    category: 'technology',
-  ),
+  (id: 'cnet', url: 'https://www.cnet.com/rss/news/', category: 'technology'),
   // Finance
   (
     id: 'wired_business',
@@ -204,11 +182,7 @@ const _defaultRssFeeds = <({String id, String url, String category})>[
     category: 'finance',
   ),
   // Science
-  (
-    id: 'nature',
-    url: 'https://www.nature.com/nature.rss',
-    category: 'science',
-  ),
+  (id: 'nature', url: 'https://www.nature.com/nature.rss', category: 'science'),
   (
     id: 'medium_science',
     url: 'https://medium.com/feed/tag/science',
@@ -219,11 +193,7 @@ const _defaultRssFeeds = <({String id, String url, String category})>[
     url: 'https://feeds.feedburner.com/ScientificAmerican-Global',
     category: 'science',
   ),
-  (
-    id: 'phys_org',
-    url: 'https://phys.org/rss-feed/',
-    category: 'science',
-  ),
+  (id: 'phys_org', url: 'https://phys.org/rss-feed/', category: 'science'),
   (
     id: 'quanta_magazine',
     url: 'https://www.quantamagazine.org/feed/',
@@ -340,11 +310,6 @@ const _defaultRssFeeds = <({String id, String url, String category})>[
     category: 'wellness',
   ),
   (
-    id: 'marks_daily_apple',
-    url: 'https://feeds2.feedburner.com/MarksDailyApple/',
-    category: 'wellness',
-  ),
-  (
     id: 'yoga_with_adriene',
     url: 'https://yogawithadriene.com/blog/feed/',
     category: 'wellness',
@@ -360,11 +325,7 @@ const _defaultRssFeeds = <({String id, String url, String category})>[
     url: 'https://celebrityinsider.org/feed/',
     category: 'entertainment',
   ),
-  (
-    id: 'variety',
-    url: 'https://variety.com/feed/',
-    category: 'entertainment',
-  ),
+  (id: 'variety', url: 'https://variety.com/feed/', category: 'entertainment'),
   (
     id: 'rolling_stone_music_news',
     url: 'https://www.rollingstone.com/music/music-news/feed/',
@@ -400,11 +361,7 @@ const _defaultRssFeeds = <({String id, String url, String category})>[
     url: 'https://deadline.com/feed/',
     category: 'entertainment',
   ),
-  (
-    id: 'cirrkus',
-    url: 'https://cirrkus.com/feed/',
-    category: 'entertainment',
-  ),
+  (id: 'cirrkus', url: 'https://cirrkus.com/feed/', category: 'entertainment'),
   // Sports
   (
     id: 'bbc_sport',

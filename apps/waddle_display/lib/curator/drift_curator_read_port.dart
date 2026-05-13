@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 
-import '../persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 import 'curator_read_port.dart';
 import 'ticker_news_candidate.dart';
 

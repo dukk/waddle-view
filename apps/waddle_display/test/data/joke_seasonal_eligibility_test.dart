@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_display/data/providers/joke/joke_seasonal_eligibility.dart';
-import 'package:waddle_display/persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 
 void main() {
   test('monthDayKey orders dates within a year', () {

@@ -6,6 +6,9 @@ on:
   pull_request:
     paths:
       - 'apps/waddle_display/**'
+      - 'apps/waddlectl/**'
+      - 'packages/waddle_shared/**'
+      - 'pubspec.yaml'
       - 'deploy/**'
       - 'docs/pi/**'
       - '.github/workflows/**'
@@ -52,11 +55,17 @@ jobs:
         with:
           channel: stable
       - run: flutter pub get
+        working-directory: ${{ github.workspace }}
       - run: dart run build_runner build --delete-conflicting-outputs
+        working-directory: ${{ github.workspace }}/packages/waddle_shared
+      - run: dart test
+        working-directory: ${{ github.workspace }}/packages/waddle_shared
       - run: flutter analyze
       - run: flutter test --coverage --timeout=60s
       - name: Line coverage (lib/)
         run: dart run tool/coverage_check.dart --min=90 coverage/lcov.info
+      - run: flutter test
+        working-directory: ${{ github.workspace }}/apps/waddlectl
 
   # Release-mode compile check (x86-64 / x64); mirrors tag-time release-linux-x64 / release-windows.
   build-linux-release:
@@ -79,7 +88,9 @@ jobs:
           xargs -a "$LINUX_BUILD_DEPS_FILE" sudo apt-get install -y
       - run: flutter config --enable-linux-desktop
       - run: flutter pub get
+        working-directory: ${{ github.workspace }}
       - run: dart run build_runner build --delete-conflicting-outputs
+        working-directory: ${{ github.workspace }}/packages/waddle_shared
       - run: flutter build linux --release --build-number "${{ github.run_number }}"
       - name: Audit Linux runtime dependencies
         run: |
@@ -104,7 +115,9 @@ jobs:
         with:
           channel: stable
       - run: flutter pub get
+        working-directory: ${{ github.workspace }}
       - run: dart run build_runner build --delete-conflicting-outputs
+        working-directory: ${{ github.workspace }}/packages/waddle_shared
       - run: flutter build windows --release --build-number "${{ github.run_number }}"
       - name: Verify Release output
         shell: pwsh

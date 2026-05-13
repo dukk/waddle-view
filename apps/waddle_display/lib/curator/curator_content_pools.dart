@@ -1,4 +1,4 @@
-import '../persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 
 /// Optional pixel dimensions for a curated photo (from [BlobMetadata]).
 class PhotoCuratorMetric {

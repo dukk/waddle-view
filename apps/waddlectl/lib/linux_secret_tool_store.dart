@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:waddle_display/secrets/secret_store.dart';
+import 'package:waddle_shared/secrets/secret_store.dart';
 
 /// Matches [flutter_secure_storage_linux] C++ plugin: one keyring item whose
 /// password body is a JSON object of all keys, with attributes

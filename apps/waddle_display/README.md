@@ -15,7 +15,7 @@ For module boundaries, startup order, and **Mermaid** sequence diagrams (startup
 
 **Pexels video slides** use [`media_kit`](https://pub.dev/packages/media_kit) with bundled native libraries (`media_kit_libs_video`) so playback works on **Windows and Linux** desktop (the stock `video_player` plugin does not). Startup calls `MediaKit.ensureInitialized()` in `lib/main.dart`.
 
-**Dependency note:** `webfeed` pins `xml` 5.x while `media_kit_video` pulls `xml` 6.x transitively. `pubspec.yaml` includes a **`dependency_overrides`** entry for `xml` so versions resolve; RSS parsing remains covered by tests.
+**Dependency note:** `webfeed` pins `xml` 5.x while `media_kit_video` pulls `xml` 6.x transitively. The **workspace root** `pubspec.yaml` includes a **`dependency_overrides`** entry for `xml` so versions resolve; RSS parsing remains covered by tests.
 
 ### Troubleshooting (Windows)
 
@@ -27,17 +27,19 @@ For module boundaries, startup order, and **Mermaid** sequence diagrams (startup
 
 ## First-time setup
 
-From this directory (`apps/waddle-display`):
+From the **repository root** (monorepo Pub workspace):
 
 ```bash
 flutter pub get
-dart run build_runner build
+dart run build_runner build --delete-conflicting-outputs -C packages/waddle_shared
+dart test -C packages/waddle_shared
 ```
 
-After editing `lib/persistence/tables.dart` or `database.dart` schema:
+After editing `packages/waddle_shared/lib/persistence/tables.dart` or `database.dart` schema:
 
 ```bash
-dart run build_runner build
+dart run build_runner build --delete-conflicting-outputs -C packages/waddle_shared
+dart test -C packages/waddle_shared
 ```
 
 ## Run locally (debug and other modes)
@@ -267,7 +269,7 @@ The **stocks** provider (`id` / `provider_type`: **`stocks`**) calls [Finnhub](h
 
 **Debug `.env`:** **`FINNHUB_API_KEY`** or **`WADDLE_STOCKS_ACCESS_TOKEN`** (see [`.env.example`](.env.example)).
 
-**Symbol management:** seed inserts AAPL / MSFT / GOOG / NVDA / AMZN with **AAPL** and **MSFT** enabled by default; toggle [`StockSymbols.enabled`](lib/persistence/tables.dart) to add or remove symbols at runtime. When `stock_symbols` has no enabled rows the provider falls back to **`config_json.defaultSymbols`** and writes those entries into the table on first collect so the slide widget can display them.
+**Symbol management:** seed inserts AAPL / MSFT / GOOG / NVDA / AMZN with **AAPL** and **MSFT** enabled by default; toggle [`StockSymbols.enabled`](../../packages/waddle_shared/lib/persistence/tables.dart) to add or remove symbols at runtime. When `stock_symbols` has no enabled rows the provider falls back to **`config_json.defaultSymbols`** and writes those entries into the table on first collect so the slide widget can display them.
 
 **`config_json`** for stocks supports:
 
@@ -401,8 +403,9 @@ Requests send a desktop **`User-Agent`** and **`Referer`** matching the Bing ori
 
 ## Drift codegen
 
-After editing `lib/persistence/tables.dart` or `database.dart` schema:
+After editing `packages/waddle_shared/lib/persistence/tables.dart` or `database.dart` schema:
 
 ```bash
-dart run build_runner build
+dart run build_runner build --delete-conflicting-outputs -C packages/waddle_shared
+dart test -C packages/waddle_shared
 ```

@@ -4,9 +4,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../../../blob/blob_store.dart';
-import '../../../curator/screen_layout_parse.dart';
+import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import '../../../curator/screen_program_curator.dart';
-import '../../../persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 import '../../../theme/theme_palette_extension.dart';
 import '../../content_category_slide_header.dart';
 import '../../dashboard_viewport_scope.dart';

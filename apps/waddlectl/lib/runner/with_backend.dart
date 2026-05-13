@@ -1,9 +1,9 @@
 import '../global_options.dart';
 import '../local_drift_backend.dart';
 import '../linux_secret_tool_store.dart';
-import 'package:waddle_display/persistence/database.dart';
-import 'package:waddle_display/secrets/in_memory_secret_store.dart';
-import 'package:waddle_display/secrets/secret_store.dart';
+import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
+import 'package:waddle_shared/secrets/secret_store.dart';
 
 Future<T> withLocalBackend<T>(
   GlobalCliOptions g,

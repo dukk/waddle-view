@@ -4,7 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../clock.dart';
-import '../../../curator/screen_layout_parse.dart';
+import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import '../../../theme/display_theme.dart';
 import 'clock_date_format.dart';
 import 'clock_hand_angles.dart';

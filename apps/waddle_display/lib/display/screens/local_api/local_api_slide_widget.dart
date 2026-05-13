@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../curator/screen_layout_parse.dart';
+import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import '../../dashboard_viewport_scope.dart';
 import '../../../theme/display_theme.dart';
 

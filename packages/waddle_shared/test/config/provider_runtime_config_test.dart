@@ -1,6 +1,6 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 
-import 'package:waddle_display/config/provider_runtime_config.dart';
+import 'package:waddle_shared/config/provider_runtime_config.dart';
 
 void main() {
   test('describeForLogs redacts token', () {

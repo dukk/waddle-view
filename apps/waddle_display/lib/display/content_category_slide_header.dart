@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../blob/blob_store.dart' show BlobRef, BlobStore;
-import '../persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 import '../theme/display_theme.dart';
 import 'content_category_material_icon.dart';
 import 'dashboard_viewport_scope.dart';

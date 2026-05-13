@@ -3,10 +3,10 @@ import 'dart:convert';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_display/curator/screen_layout_parse.dart';
+import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_display/curator/screen_program_curator.dart';
 import 'package:waddle_display/display/screens/weather/weather_slide_widget.dart';
-import 'package:waddle_display/persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_display/theme/display_theme.dart';
 
 import '../helpers/memory_database.dart';

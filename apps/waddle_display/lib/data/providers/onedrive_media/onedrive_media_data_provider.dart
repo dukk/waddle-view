@@ -6,9 +6,9 @@ import 'package:http/http.dart' as http;
 import '../../../blob/blob_store.dart';
 import '../../../config/microsoft_graph_kv.dart';
 import '../../../debug/app_debug_log.dart';
-import '../../../persistence/database.dart';
-import '../../../persistence/tables.dart';
-import '../../../secrets/secret_store.dart';
+import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/tables.dart';
+import 'package:waddle_shared/secrets/secret_store.dart';
 import '../../data_provider.dart';
 import '../../data_write_context.dart';
 import '../microsoft_graph/microsoft_graph_oauth.dart'

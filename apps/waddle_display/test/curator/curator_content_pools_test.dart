@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_display/curator/curator_content_pools.dart';
-import 'package:waddle_display/persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_display/data/seed/tables/joke_categories_seed.dart';
 import 'package:waddle_display/data/seed/tables/trivia_categories_seed.dart';
 

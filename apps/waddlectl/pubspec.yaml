@@ -2,6 +2,7 @@ name: waddlectl
 description: Operator CLI for Waddle View (SQLite + secrets).
 publish_to: "none"
 version: 1.0.0+1
+resolution: workspace
 
 environment:
   sdk: ^3.11.5
@@ -9,16 +10,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  waddle_display:
-    path: ../waddle_display
+  waddle_shared:
+    path: ../../packages/waddle_shared
   drift: ^2.33.0
   args: ^2.5.0
   path: ^1.9.1
   meta: ^1.17.0
-
-dependency_overrides:
-  # Same as waddle_display: media_kit_video → wakelock_plus → dbus → xml ^6 vs webfeed.
-  xml: ^6.5.0
 
 dev_dependencies:
   flutter_test:

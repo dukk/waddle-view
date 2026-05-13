@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../clock.dart';
-import '../persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 import 'active_alert_selector.dart';
 import 'alert_repository.dart';
 

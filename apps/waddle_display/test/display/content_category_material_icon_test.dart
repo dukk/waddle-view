@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_display/display/content_category_material_icon.dart';
-import 'package:waddle_display/persistence/content_category_defaults.dart';
+import 'package:waddle_shared/persistence/content_category_defaults.dart';
 
 void main() {
   test('every default materialIconName resolves to a non-fallback icon', () {

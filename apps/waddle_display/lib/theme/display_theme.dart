@@ -13,7 +13,7 @@ export 'config/display_theme_registry.dart'
         themeDataForDashboardKvValue,
         themeDataForNormalizedDisplayThemeId;
 export 'config/palettes/navy_coral_palette.dart' show NavyCoralPalette;
-export 'display_text_scale_kv.dart'
+export 'package:waddle_shared/theme/display_text_scale_kv.dart'
     show
         DisplayTextScaleOption,
         kDisplayTextScaleNormal,
@@ -23,7 +23,7 @@ export 'display_text_scale_kv.dart'
         kDisplayTextScaleXLarge,
         linearFactorForDisplayTextScaleKvValue,
         normalizeDisplayTextScaleOption;
-export 'display_theme_kv.dart'
+export 'package:waddle_shared/theme/display_theme_kv.dart'
     show kDefaultDisplayThemeId, kDisplayThemeIdKvKey;
 export 'theme_palette_extension.dart' show PaletteTertiaryLayers;
 

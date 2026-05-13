@@ -11,11 +11,11 @@ import 'package:shelf_router/shelf_router.dart';
 
 import '../alerts/alert_repository.dart';
 import '../debug/app_debug_log.dart';
-import '../persistence/content_suppression_repository.dart';
-import '../persistence/database.dart';
-import '../persistence/display_overlay_repository.dart';
-import '../persistence/tables.dart';
-import '../secrets/secret_store.dart';
+import 'package:waddle_shared/persistence/content_suppression_repository.dart';
+import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/display_overlay_repository.dart';
+import 'package:waddle_shared/persistence/tables.dart';
+import 'package:waddle_shared/secrets/secret_store.dart';
 import '../theme/display_theme.dart';
 import '../ticker/ticker_curated_repository.dart';
 import 'api_key_constant_time.dart';

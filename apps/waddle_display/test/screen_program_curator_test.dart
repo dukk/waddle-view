@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:waddle_display/curator/curator_content_pools.dart';
 import 'package:waddle_display/curator/photo_collage_curation.dart';
-import 'package:waddle_display/curator/screen_layout_parse.dart';
+import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_display/curator/screen_program_curator.dart';
 
 ScreenCandidate _c({

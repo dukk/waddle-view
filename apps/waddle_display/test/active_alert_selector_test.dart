@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:waddle_display/alerts/active_alert_selector.dart';
 import 'package:waddle_display/clock.dart';
-import 'package:waddle_display/persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 
 void main() {
   test('picks highest priority non-expired non-dismissed', () {

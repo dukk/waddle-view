@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_display/display/overlay/celebration_overlay_schedule.dart';
-import 'package:waddle_display/persistence/display_overlay_schedule_row.dart';
-import 'package:waddle_display/persistence/tables.dart';
+import 'package:waddle_shared/persistence/display_overlay_schedule_row.dart';
+import 'package:waddle_shared/persistence/tables.dart';
 
 DisplayOverlayScheduleRow _rowNth({
   required int sm,

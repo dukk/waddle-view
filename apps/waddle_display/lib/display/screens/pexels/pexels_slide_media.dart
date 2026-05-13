@@ -3,9 +3,9 @@ import 'dart:typed_data';
 import 'package:drift/drift.dart'
     show CustomExpression, Expression, OrderingTerm;
 import 'package:waddle_display/blob/blob_store.dart';
-import 'package:waddle_display/curator/screen_layout_parse.dart';
+import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_display/curator/screen_program_curator.dart';
-import 'package:waddle_display/persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 
 /// Loads a [Photo] row chosen for this slide ([spec.choiceKey] in [slide.randomChoices]).
 Future<Photo?> loadPexelsPhotoForSlide(

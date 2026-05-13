@@ -1,4 +1,4 @@
-import '../persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 import 'dashboard_data_access.dart';
 
 class DriftDashboardDataAccess implements DashboardDataAccess {

@@ -1,8 +1,8 @@
 import 'package:drift/native.dart';
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
-import 'package:waddle_display/persistence/content_category_defaults.dart';
-import 'package:waddle_display/persistence/database.dart';
+import 'package:waddle_shared/persistence/content_category_defaults.dart';
+import 'package:waddle_shared/persistence/database.dart';
 
 import '../helpers/legacy_migration_schema_stubs.dart';
 

@@ -1,9 +1,9 @@
 import 'package:drift/drift.dart'
     show CustomExpression, Expression, OrderingTerm;
 
-import '../curator/screen_layout_parse.dart';
+import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';
-import '../persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 
 /// Curated joke id from [slide], else random from [db] (optional [categoryId]).
 Future<Joke?> loadJokeForSlide(

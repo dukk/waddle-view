@@ -1,11 +1,11 @@
 import 'package:drift/drift.dart' show Value;
-import 'package:waddle_display/config/provider_config_resolver.dart';
-import 'package:waddle_display/persistence/database.dart';
-import 'package:waddle_display/persistence/tables.dart';
-import 'package:waddle_display/secrets/secret_store.dart';
-import 'package:waddle_display/theme/config/display_theme_registry.dart';
-import 'package:waddle_display/theme/display_text_scale_kv.dart';
-import 'package:waddle_display/theme/display_theme_kv.dart';
+import 'package:waddle_shared/config/provider_config_resolver.dart';
+import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/tables.dart';
+import 'package:waddle_shared/secrets/secret_store.dart';
+import 'package:waddle_shared/theme/display_text_scale_kv.dart';
+import 'package:waddle_shared/theme/display_theme_ids.dart';
+import 'package:waddle_shared/theme/display_theme_kv.dart';
 
 /// Local admin port (Drift + [SecretStore]). A future REST client can implement
 /// the same surface for remote operations.

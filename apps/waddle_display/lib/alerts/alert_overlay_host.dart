@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../clock.dart';
-import '../persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 import 'alert_overlay_dialog.dart';
 import 'alert_repository.dart';
 import 'alert_severity_icons_kv.dart';

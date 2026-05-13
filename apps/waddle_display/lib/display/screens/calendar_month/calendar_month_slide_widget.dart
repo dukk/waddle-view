@@ -6,8 +6,8 @@ import 'package:flutter/material.dart';
 
 import '../../../blob/blob_store.dart';
 import '../../../clock.dart';
-import '../../../curator/screen_layout_parse.dart';
-import '../../../persistence/database.dart';
+import 'package:waddle_shared/layout/screen_layout_parse.dart';
+import 'package:waddle_shared/persistence/database.dart';
 import 'calendar_month_grid.dart';
 import 'calendar_upcoming_layout.dart';
 import '../../content_category_material_icon.dart';

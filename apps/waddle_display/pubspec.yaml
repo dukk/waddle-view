@@ -2,6 +2,7 @@ name: waddle_display
 description: Waddle Display TV dashboard
 publish_to: "none"
 version: 1.0.0+1
+resolution: workspace
 repository: https://github.com/dukk/waddle-view
 homepage: https://github.com/dukk/waddle-view
 documentation: https://github.com/dukk/waddle-view/README.md
@@ -17,6 +18,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  waddle_shared:
+    path: ../../packages/waddle_shared
   meta: ^1.17.0
   cupertino_icons: ^1.0.8
   drift: ^2.33.0
@@ -38,16 +41,10 @@ dependencies:
   media_kit_libs_video: ^1.0.7
   url_launcher: ^6.3.2
 
-dependency_overrides:
-  # media_kit_video → wakelock_plus → dbus requires xml ^6; webfeed pins xml ^5.
-  xml: ^6.5.0
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
-  drift_dev: ^2.33.0
-  build_runner: ^2.4.13
   mocktail: ^1.0.4
   fake_async: ^1.3.1
 

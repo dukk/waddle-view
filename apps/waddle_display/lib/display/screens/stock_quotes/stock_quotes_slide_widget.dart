@@ -1,9 +1,9 @@
 import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:flutter/material.dart';
 
-import '../../../curator/screen_layout_parse.dart';
+import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import '../../../curator/screen_program_curator.dart';
-import '../../../persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart';
 import '../../dashboard_viewport_scope.dart';
 
 /// Renders the latest [StockQuotes] for every enabled [StockSymbols] row.
