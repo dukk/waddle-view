@@ -7,6 +7,22 @@ import '../../../theme/display_theme.dart';
 import 'wifi_connection_uri.dart';
 import '../../dashboard_viewport_scope.dart';
 
+/// Primary monospaced font used for the guest Wi‑Fi value cells. The kiosk
+/// runs on Windows where Consolas is always present; other platforms fall
+/// through [kGuestWifiValueMonospaceFontFamilyFallback].
+const String kGuestWifiValueMonospaceFontFamily = 'Consolas';
+
+/// Monospaced fall-throughs for the guest Wi‑Fi value cells when the primary
+/// [kGuestWifiValueMonospaceFontFamily] isn't installed: Menlo on macOS/iOS,
+/// Courier New as the universal Windows/macOS backup, Roboto Mono / generic
+/// `monospace` on Android and Linux.
+const List<String> kGuestWifiValueMonospaceFontFamilyFallback = <String>[
+  'Menlo',
+  'Courier New',
+  'RobotoMono',
+  'monospace',
+];
+
 /// Full-slide widget: QR + SSID / security / password from [config_key_values].
 class GuestWifiSlideWidget extends StatelessWidget {
   const GuestWifiSlideWidget({
@@ -125,7 +141,7 @@ class GuestWifiSlideWidget extends StatelessWidget {
             child: Text(
               label,
               style: theme.textTheme.bodyLarge?.copyWith(
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.end,
               maxLines: 1,
@@ -137,7 +153,10 @@ class GuestWifiSlideWidget extends StatelessWidget {
           Expanded(
             child: Text(
               value,
-              style: theme.textTheme.bodyLarge,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontFamily: kGuestWifiValueMonospaceFontFamily,
+                fontFamilyFallback: kGuestWifiValueMonospaceFontFamilyFallback,
+              ),
               textAlign: TextAlign.start,
               maxLines: 1,
               softWrap: false,
