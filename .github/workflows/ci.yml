@@ -35,7 +35,8 @@ jobs:
             f="$GITHUB_WORKSPACE/.github/workflows/${wf}.yml"
             test -f "$f"
             grep -q 'LINUX_BUILD_DEPS_FILE' "$f"
-            grep -q 'xargs -a "$LINUX_BUILD_DEPS_FILE"' "$f"
+            # release-linux-x64: plain env path; release-pi (container): workspace-prefixed path
+            grep -qE 'xargs -a "(\$GITHUB_WORKSPACE/)?\$LINUX_BUILD_DEPS_FILE"' "$f"
           done
       - name: Run deploy helper unit tests (pi-remote-upgrade)
         working-directory: ${{ github.workspace }}
