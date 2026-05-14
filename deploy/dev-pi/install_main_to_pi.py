@@ -16,8 +16,8 @@ Examples::
 
 ``--sync-local-dev`` copies your desktop **SQLite** file (``waddle_view.sqlite``), the
 **``media/``** tree used by ``FileSystemBlobStore`` (same parent directory as the DB), to the Pi
-under ``/home/<ssh-user>/.local/share/waddle_display/`` (same layout as Flutter Linux
-``path_provider``) and copies ``apps/waddle_display/.env.development`` to
+under ``/home/<ssh-user>/.local/share/com.waddleview.waddle_display/`` (same layout as Flutter Linux
+``path_provider`` / ``APPLICATION_ID``) and copies ``apps/waddle_display/.env.development`` to
 ``/opt/waddle-view/bundle/.env.development`` so a **debug** build with systemd
 ``WorkingDirectory=/opt/waddle-view/bundle`` can load provider keys via ``loadDevDotenvFromFilesystem``.
 Release/profile binaries do **not** read that file (Dart only merges dev dotenv in ``kDebugMode``);
@@ -49,7 +49,7 @@ DEFAULT_TARBALL = DEV_PI_DIR / "waddle-view-linux-arm64-main.tar.gz"
 UPGRADE_SCRIPT = DEV_PI_DIR.parent / "pi-remote-upgrade.py"
 DEFAULT_SSH = "dukk@10.2.0.10"
 
-REMOTE_APP_SUPPORT_REL = Path(".local/share/waddle_display")
+REMOTE_APP_SUPPORT_REL = Path(".local/share/com.waddleview.waddle_display")
 REMOTE_SQLITE_NAME = "waddle_view.sqlite"
 REMOTE_BUNDLE_ENV = "/opt/waddle-view/bundle/.env.development"
 
@@ -79,7 +79,10 @@ def default_local_sqlite_candidates(
     candidates: list[Path] = []
     if is_windows and appdata_roaming is not None:
         candidates.append(
-            appdata_roaming / "waddle_display" / REMOTE_SQLITE_NAME
+            appdata_roaming
+            / "com.waddleview"
+            / "waddle_display"
+            / REMOTE_SQLITE_NAME
         )
     if is_darwin:
         candidates.append(
