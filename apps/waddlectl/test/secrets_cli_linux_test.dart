@@ -9,6 +9,17 @@ void main() {
     if (!Platform.isLinux) {
       return;
     }
+    // Secrets commands use LinuxSecretToolSecretStore, which shells out to
+    // `secret-tool` from the `libsecret-tools` package; if it is missing,
+    // Process.run throws and the CLI exits with a generic error.
+    final secretToolProbe = await Process.run(
+      'sh',
+      ['-c', 'command -v secret-tool'],
+      environment: Platform.environment,
+    );
+    if (secretToolProbe.exitCode != 0) {
+      return;
+    }
     final tmp = Directory.systemTemp.createTempSync('waddlectl_cli_linux');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
