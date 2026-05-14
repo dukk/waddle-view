@@ -5,6 +5,11 @@
 import 'dart:io';
 
 const _coverageRoots = <String>{
+  'lib/backup_archive_codec.dart',
+  'lib/backup_fs_sync.dart',
+  'lib/backup_manifest.dart',
+  'lib/backup_schedule.dart',
+  'lib/backup_sqlite_checkpoint.dart',
   'lib/secret_bundle_codec.dart',
   'lib/secret_bundle_ops.dart',
   'lib/secret_bundle_password.dart',

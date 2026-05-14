@@ -119,7 +119,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
           expiresAt > nowMs + kMicrosoftGraphAccessTokenSkewMs;
       if (!fresh) {
         AppDebugLog.provider(
-          'OutlookCalendarDataProvider: poll window bypass (auth or token '
+          'outlook_calendar: poll window bypass (auth or token '
           'refresh needed for ${a.graphAccountKey} expiresAtMs=$expiresAt '
           'nowMs=$nowMs)',
         );
@@ -128,7 +128,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
     }
 
     AppDebugLog.provider(
-      'OutlookCalendarDataProvider: skip poll gate lastCollectMs=$last '
+      'outlook_calendar: skip poll gate lastCollectMs=$last '
       'elapsedMs=${nowMs - last} needMs=${pollSeconds * 1000} '
       '(all accounts have fresh access tokens)',
     );
@@ -143,11 +143,12 @@ class OutlookCalendarDataProvider implements IDataProvider {
             )..where((t) => t.id.equals(kOutlookCalendarProviderId)))
             .getSingleOrNull();
     if (setting == null || !setting.enabled) {
+      AppDebugLog.provider('outlook_calendar: skip (disabled)');
       return;
     }
 
     AppDebugLog.provider(
-      'OutlookCalendarDataProvider: collect start pollSeconds=${setting.pollSeconds}',
+      'outlook_calendar: collect start pollSeconds=${setting.pollSeconds}',
     );
 
     final nowMs = _nowMs();
@@ -160,7 +161,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
     final clientId = clientIdRow?.value.trim() ?? '';
     if (clientId.isEmpty) {
       AppDebugLog.provider(
-        'OutlookCalendarDataProvider: skip (no $kMicrosoftGraphClientIdKvKey)',
+        'outlook_calendar: skip (no $kMicrosoftGraphClientIdKvKey)',
       );
       return;
     }
@@ -168,7 +169,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
     final extra = OutlookCalendarExtraConfig.parse(setting.configJson);
     if (extra.accounts.isEmpty) {
       AppDebugLog.provider(
-        'OutlookCalendarDataProvider: skip (no accounts in config_json)',
+        'outlook_calendar: skip (no accounts in config_json)',
       );
       await _markCollectDone(ctx.db, nowMs);
       return;
@@ -187,7 +188,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
     final graphBase = _normalizeGraphBase(setting.baseUrl);
     final range = _syncWindowUtc(extra);
     AppDebugLog.provider(
-      'OutlookCalendarDataProvider: graphBase=$graphBase accounts=${extra.accounts.length} '
+      'outlook_calendar: graphBase=$graphBase accounts=${extra.accounts.length} '
       'windowUtc=${range.$1.toIso8601String()}..${range.$2.toIso8601String()} '
       '(exclusive end) pastDays=${extra.pastDays} futureDays=${extra.futureDays}',
     );
@@ -197,7 +198,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
       for (final account in extra.accounts) {
         if (account.sources.isEmpty) {
           AppDebugLog.provider(
-            'OutlookCalendarDataProvider: account ${account.graphAccountKey} has no sources',
+            'outlook_calendar: account ${account.graphAccountKey} has no sources',
           );
           continue;
         }
@@ -209,13 +210,13 @@ class OutlookCalendarDataProvider implements IDataProvider {
         );
         if (token == null || token.isEmpty) {
           AppDebugLog.provider(
-            'OutlookCalendarDataProvider: no token for ${account.graphAccountKey}',
+            'outlook_calendar: no token for ${account.graphAccountKey}',
           );
           continue;
         }
 
         AppDebugLog.provider(
-          'OutlookCalendarDataProvider: token ok for ${account.graphAccountKey} '
+          'outlook_calendar: token ok for ${account.graphAccountKey} '
           '(length=${token.length})',
         );
 
@@ -228,7 +229,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
 
         for (final src in account.sources) {
           AppDebugLog.provider(
-            'OutlookCalendarDataProvider: sync mailbox=${src.mailbox} '
+            'outlook_calendar: sync mailbox=${src.mailbox} '
             'account=${account.graphAccountKey} '
             'calendarFilters=${src.calendars.length}',
           );
@@ -245,11 +246,11 @@ class OutlookCalendarDataProvider implements IDataProvider {
         didSync = true;
       }
       if (didSync) {
-        AppDebugLog.provider('OutlookCalendarDataProvider: collect finished, marking last_collect');
+        AppDebugLog.provider('outlook_calendar: collect finished, marking last_collect');
         await _markCollectDone(ctx.db, nowMs);
       } else {
         AppDebugLog.provider(
-          'OutlookCalendarDataProvider: collect finished with no successful sync',
+          'outlook_calendar: collect finished with no successful sync',
         );
       }
     } on Object catch (e, st) {
@@ -338,7 +339,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
       final calId = _resolveCalendarId(calMap, entry.nameOrId);
       if (calId == null) {
         AppDebugLog.provider(
-          'OutlookCalendarDataProvider: unknown calendar "${entry.nameOrId}" '
+          'outlook_calendar: unknown calendar "${entry.nameOrId}" '
           'for $mailbox',
         );
         continue;
@@ -376,7 +377,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
     while (true) {
       listPage++;
       AppDebugLog.provider(
-        'OutlookCalendarDataProvider: GET calendars page=$listPage '
+        'outlook_calendar: GET calendars page=$listPage '
         '${_graphRequestLabel(url)}',
       );
       final res = await _http.get(
@@ -385,17 +386,17 @@ class OutlookCalendarDataProvider implements IDataProvider {
       );
       if (res.statusCode != 200) {
         AppDebugLog.provider(
-          'OutlookCalendarDataProvider: list calendars status=${res.statusCode} '
+          'outlook_calendar: list calendars status=${res.statusCode} '
           '${_graphRequestLabel(url)}',
         );
-        _logGraphJsonError('OutlookCalendarDataProvider: list calendars', res.body);
+        _logGraphJsonError('outlook_calendar: list calendars', res.body);
         break;
       }
       final m = jsonDecode(res.body) as Map<String, dynamic>;
       final values = m['value'];
       if (values is List<dynamic>) {
         AppDebugLog.provider(
-          'OutlookCalendarDataProvider: list calendars page=$listPage '
+          'outlook_calendar: list calendars page=$listPage '
           'calendarsInPage=${values.length}',
         );
         for (final e in values) {
@@ -446,7 +447,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
     while (true) {
       viewPage++;
       AppDebugLog.provider(
-        'OutlookCalendarDataProvider: GET calendarView page=$viewPage '
+        'outlook_calendar: GET calendarView page=$viewPage '
         'mailbox=$mailbox ${_graphRequestLabel(nextUrl)}',
       );
       final res = await _http.get(
@@ -455,17 +456,17 @@ class OutlookCalendarDataProvider implements IDataProvider {
       );
       if (res.statusCode != 200) {
         AppDebugLog.provider(
-          'OutlookCalendarDataProvider: calendarView status=${res.statusCode} '
+          'outlook_calendar: calendarView status=${res.statusCode} '
           'mailbox=$mailbox',
         );
-        _logGraphJsonError('OutlookCalendarDataProvider: calendarView', res.body);
+        _logGraphJsonError('outlook_calendar: calendarView', res.body);
         break;
       }
       final m = jsonDecode(res.body) as Map<String, dynamic>;
       final values = m['value'];
       if (values is List<dynamic>) {
         AppDebugLog.provider(
-          'OutlookCalendarDataProvider: calendarView page=$viewPage '
+          'outlook_calendar: calendarView page=$viewPage '
           'events=${values.length} mailbox=$mailbox',
         );
         for (final e in values) {

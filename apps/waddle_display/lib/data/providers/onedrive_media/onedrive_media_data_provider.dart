@@ -72,6 +72,44 @@ Map<String, Map<String, dynamic>> _deltaItemsLastWins(List<dynamic> values) {
   return byId;
 }
 
+/// Per delta page: skip/delete tallies for operator troubleshooting (debug only).
+final class _OneDriveDeltaPageStats {
+  int badItemId = 0;
+  int cloudTombstones = 0;
+  int localRowsRemovedForTombstone = 0;
+  int notFileFacet = 0;
+  int noMime = 0;
+  int noDownloadUrl = 0;
+  int unsupportedMime = 0;
+  int noSpecForMime = 0;
+  int skippedExistingPhoto = 0;
+  int skippedExistingVideo = 0;
+  int downloadFailed = 0;
+}
+
+void _logOneDriveDeltaPageStats(int page, _OneDriveDeltaPageStats s) {
+  final parts = <String>[
+    if (s.badItemId > 0) 'badId=${s.badItemId}',
+    if (s.cloudTombstones > 0) 'tombstones=${s.cloudTombstones}',
+    if (s.localRowsRemovedForTombstone > 0)
+      'removedLocal=${s.localRowsRemovedForTombstone}',
+    if (s.notFileFacet > 0) 'foldersOrNonFiles=${s.notFileFacet}',
+    if (s.noMime > 0) 'noMime=${s.noMime}',
+    if (s.noDownloadUrl > 0) 'noDownloadUrl=${s.noDownloadUrl}',
+    if (s.unsupportedMime > 0) 'unsupportedMime=${s.unsupportedMime}',
+    if (s.noSpecForMime > 0) 'noMatchingSourceKind=${s.noSpecForMime}',
+    if (s.skippedExistingPhoto > 0) 'skipDupPhoto=${s.skippedExistingPhoto}',
+    if (s.skippedExistingVideo > 0) 'skipDupVideo=${s.skippedExistingVideo}',
+    if (s.downloadFailed > 0) 'downloadFail=${s.downloadFailed}',
+  ];
+  if (parts.isEmpty) {
+    return;
+  }
+  AppDebugLog.provider(
+    'onedrive_media: delta page=$page tallies ${parts.join(' ')}',
+  );
+}
+
 /// Syncs photos/videos from OneDrive folders into [Photos] / [Videos] via Graph.
 class OneDriveMediaDataProvider implements IDataProvider {
   factory OneDriveMediaDataProvider({
@@ -137,7 +175,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
           expiresAt > nowMs + kMicrosoftGraphAccessTokenSkewMs;
       if (!fresh) {
         AppDebugLog.provider(
-          'OneDriveMediaDataProvider: poll window bypass (auth needed for '
+          'onedrive_media: poll window bypass (auth needed for '
           '${a.graphAccountKey})',
         );
         return false;
@@ -145,7 +183,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
     }
 
     AppDebugLog.provider(
-      'OneDriveMediaDataProvider: skip poll gate lastCollectMs=$last',
+      'onedrive_media: skip poll gate lastCollectMs=$last',
     );
     return true;
   }
@@ -172,7 +210,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
     final clientId = clientIdRow?.value.trim() ?? '';
     if (clientId.isEmpty) {
       AppDebugLog.provider(
-        'OneDriveMediaDataProvider: skip (no $kMicrosoftGraphClientIdKvKey)',
+        'onedrive_media: skip (no $kMicrosoftGraphClientIdKvKey)',
       );
       return;
     }
@@ -180,7 +218,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
     final extra = OneDriveMediaExtraConfig.parse(setting.configJson);
     if (extra.accounts.isEmpty) {
       AppDebugLog.provider(
-        'OneDriveMediaDataProvider: skip (no accounts in config_json)',
+        'onedrive_media: skip (no accounts in config_json)',
       );
       await _markCollectDone(ctx.db, nowMs);
       return;
@@ -204,6 +242,14 @@ class OneDriveMediaDataProvider implements IDataProvider {
       'onedrive_media: collect graphBase=$graphBase accounts=${extra.accounts.length} '
       'globalLimit=${extra.globalPerPollLimit}',
     );
+    for (final a in extra.accounts) {
+      final n = a.sources.length;
+      if (n > 0) {
+        AppDebugLog.provider(
+          'onedrive_media: config account=${a.graphAccountKey} sources=$n',
+        );
+      }
+    }
     var didSync = false;
     var globalRemaining = extra.globalPerPollLimit;
 
@@ -212,6 +258,9 @@ class OneDriveMediaDataProvider implements IDataProvider {
       final rejectCtx = await RejectFilterContext.loadFromDb(ctx.db);
       for (final account in extra.accounts) {
         if (account.sources.isEmpty) {
+          AppDebugLog.provider(
+            'onedrive_media: skip account=${account.graphAccountKey} (no sources)',
+          );
           continue;
         }
         final token = await _oauth.ensureAccessToken(
@@ -222,15 +271,23 @@ class OneDriveMediaDataProvider implements IDataProvider {
         );
         if (token == null || token.isEmpty) {
           AppDebugLog.provider(
-            'OneDriveMediaDataProvider: no token for ${account.graphAccountKey}',
+            'onedrive_media: no token for ${account.graphAccountKey}',
           );
           continue;
         }
 
         final byPath = groups[account.graphAccountKey];
         if (byPath == null || byPath.isEmpty) {
+          AppDebugLog.provider(
+            'onedrive_media: skip account=${account.graphAccountKey} '
+            '(no paths after grouping)',
+          );
           continue;
         }
+        AppDebugLog.provider(
+          'onedrive_media: token ok account=${account.graphAccountKey} '
+          'pathGroups=${byPath.length}',
+        );
         for (final entry in byPath.entries) {
           if (globalRemaining <= 0) {
             break;
@@ -257,7 +314,10 @@ class OneDriveMediaDataProvider implements IDataProvider {
         AppDebugLog.provider('onedrive_media: collect ok, last_collect updated');
         await _markCollectDone(ctx.db, nowMs);
       } else {
-        AppDebugLog.provider('onedrive_media: collect finished (no writes)');
+        AppDebugLog.provider(
+          'onedrive_media: collect finished (no path synced; check tokens, '
+          'sources, paths, and Graph errors above)',
+        );
       }
     } on Object catch (e, st) {
       AppDebugLog.providerFail('onedrive_media: collect', e, st);
@@ -366,6 +426,10 @@ class OneDriveMediaDataProvider implements IDataProvider {
     }
     final id = m['id'];
     if (id is! String || id.isEmpty) {
+      AppDebugLog.provider(
+        'onedrive_media: folder item JSON missing id '
+        '(path="${normalizedPath.isEmpty ? "(drive root)" : normalizedPath}")',
+      );
       return null;
     }
     return id;
@@ -384,12 +448,13 @@ class OneDriveMediaDataProvider implements IDataProvider {
     }
   }
 
-  Future<void> _deleteLocalDriveItem(
+  Future<int> _deleteLocalDriveItem(
     DataWriteContext ctx,
     String graphAccountKey,
     String driveItemId,
   ) async {
     final rowId = kOneDriveMediaItemRowId(graphAccountKey, driveItemId);
+    var removed = 0;
     final photo =
         await (ctx.db.select(
               ctx.db.photos,
@@ -397,6 +462,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
             .getSingleOrNull();
     if (photo != null) {
       await _deletePhoto(ctx, photo);
+      removed++;
     }
     final video =
         await (ctx.db.select(
@@ -405,7 +471,9 @@ class OneDriveMediaDataProvider implements IDataProvider {
             .getSingleOrNull();
     if (video != null) {
       await _deleteVideo(ctx, video);
+      removed++;
     }
+    return removed;
   }
 
   /// Pull-only delta sync for one account path (recursive subtree). Returns
@@ -446,11 +514,23 @@ class OneDriveMediaDataProvider implements IDataProvider {
           normalizedPath: normalizedPath,
         );
         if (folderId == null) {
+          AppDebugLog.provider(
+            'onedrive_media: sync aborted account=$graphAccountKey '
+            'path="${normalizedPath.isEmpty ? '(drive root)' : normalizedPath}" '
+            '(folder resolve failed)',
+          );
           return (downloads: 0, globalRemaining: globalR);
         }
         url = _folderDeltaUrl(graphBase, folderId);
       }
     }
+
+    final hadStoredDelta = storedRow?.value.trim().isNotEmpty == true;
+    AppDebugLog.provider(
+      'onedrive_media: sync begin account=$graphAccountKey '
+      'path="${normalizedPath.isEmpty ? '(drive root)' : normalizedPath}" '
+      'specs=${specs.length} resumeDelta=$hadStoredDelta',
+    );
 
     var deltaPage = 0;
     var goneRetries = 0;
@@ -470,12 +550,16 @@ class OneDriveMediaDataProvider implements IDataProvider {
 
       if (res.statusCode == 410) {
         goneRetries++;
+        await _clearDeltaKv(ctx.db, deltaKey);
+        final loc = res.headers['location']?.trim();
+        AppDebugLog.provider(
+          'onedrive_media: delta 410 Gone page=$deltaPage retry=$goneRetries '
+          'locationHeader=${loc != null && loc.isNotEmpty}',
+        );
         if (goneRetries > 2) {
           AppDebugLog.provider('onedrive_media: delta 410 repeated, abort');
           break;
         }
-        await _clearDeltaKv(ctx.db, deltaKey);
-        final loc = res.headers['location']?.trim();
         if (loc != null && loc.isNotEmpty) {
           url = loc;
         } else if (normalizedPath.isEmpty) {
@@ -488,6 +572,10 @@ class OneDriveMediaDataProvider implements IDataProvider {
             normalizedPath: normalizedPath,
           );
           if (folderId == null) {
+            AppDebugLog.provider(
+              'onedrive_media: delta 410 folder re-resolve failed for '
+              'path="${normalizedPath.isEmpty ? '(drive root)' : normalizedPath}"',
+            );
             break;
           }
           url = _folderDeltaUrl(graphBase, folderId);
@@ -507,6 +595,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
       final m = jsonDecode(res.body) as Map<String, dynamic>;
       final values = m['value'];
       if (values is List<dynamic>) {
+        final pageStats = _OneDriveDeltaPageStats();
         final merged = _deltaItemsLastWins(values);
         AppDebugLog.provider(
           'onedrive_media: delta page=$deltaPage uniqueItems=${merged.length}',
@@ -514,24 +603,44 @@ class OneDriveMediaDataProvider implements IDataProvider {
         for (final item in merged.values) {
           final id = item['id'];
           if (id is! String || id.isEmpty) {
+            pageStats.badItemId++;
             continue;
           }
           if (item['deleted'] is Map<String, dynamic>) {
-            await _deleteLocalDriveItem(ctx, graphAccountKey, id);
+            pageStats.cloudTombstones++;
+            pageStats.localRowsRemovedForTombstone += await _deleteLocalDriveItem(
+              ctx,
+              graphAccountKey,
+              id,
+            );
             continue;
           }
           final file = item['file'];
           if (file is! Map<String, dynamic>) {
+            pageStats.notFileFacet++;
             continue;
           }
           final mime = file['mimeType'];
           if (mime is! String) {
+            pageStats.noMime++;
             continue;
           }
           final dl = item['@microsoft.graph.downloadUrl'];
           if (dl is! String || dl.isEmpty) {
+            pageStats.noDownloadUrl++;
             continue;
           }
+          final mimeLower = mime.toLowerCase();
+          if (!_isPhotoMime(mimeLower) && !_isVideoMime(mimeLower)) {
+            pageStats.unsupportedMime++;
+            continue;
+          }
+          final anySpecWantsMime = specs.any((s) => _specMatchesMime(s, mimeLower));
+          if (!anySpecWantsMime) {
+            pageStats.noSpecForMime++;
+            continue;
+          }
+
           final rowId = kOneDriveMediaItemRowId(graphAccountKey, id);
 
           for (var i = 0; i < specs.length; i++) {
@@ -542,11 +651,11 @@ class OneDriveMediaDataProvider implements IDataProvider {
               continue;
             }
             final spec = specs[i];
-            if (!_specMatchesMime(spec, mime)) {
+            if (!_specMatchesMime(spec, mimeLower)) {
               continue;
             }
             var ok = false;
-            if (_isPhotoMime(mime)) {
+            if (_isPhotoMime(mimeLower)) {
               ok = await _tryIngestPhoto(
                 ctx,
                 rowId: rowId,
@@ -555,8 +664,9 @@ class OneDriveMediaDataProvider implements IDataProvider {
                 item: item,
                 nowMs: nowMs,
                 rejectCtx: rejectCtx,
+                pageStats: pageStats,
               );
-            } else if (_isVideoMime(mime)) {
+            } else if (_isVideoMime(mimeLower)) {
               ok = await _tryIngestVideo(
                 ctx,
                 rowId: rowId,
@@ -565,6 +675,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
                 item: item,
                 nowMs: nowMs,
                 rejectCtx: rejectCtx,
+                pageStats: pageStats,
               );
             }
             if (ok) {
@@ -574,6 +685,11 @@ class OneDriveMediaDataProvider implements IDataProvider {
             }
           }
         }
+        _logOneDriveDeltaPageStats(deltaPage, pageStats);
+      } else {
+        AppDebugLog.provider(
+          'onedrive_media: delta page=$deltaPage missing or invalid value[]',
+        );
       }
 
       final nextLink = m['@odata.nextLink'];
@@ -594,6 +710,10 @@ class OneDriveMediaDataProvider implements IDataProvider {
 
     if (deltaLinkToPersist != null && deltaLinkToPersist.isNotEmpty) {
       await _persistDeltaLink(ctx.db, deltaKey, deltaLinkToPersist);
+      AppDebugLog.provider(
+        'onedrive_media: delta checkpoint saved account=$graphAccountKey '
+        'path="${normalizedPath.isEmpty ? '(drive root)' : normalizedPath}"',
+      );
     }
 
     for (final s in specs) {
@@ -604,6 +724,12 @@ class OneDriveMediaDataProvider implements IDataProvider {
         await _pruneVideos(ctx, s.category, s.maxFiles);
       }
     }
+
+    AppDebugLog.provider(
+      'onedrive_media: sync end account=$graphAccountKey '
+      'path="${normalizedPath.isEmpty ? '(drive root)' : normalizedPath}" '
+      'newDownloads=$downloaded globalRemaining=$globalR',
+    );
 
     return (downloads: downloaded, globalRemaining: globalR);
   }
@@ -673,6 +799,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
     required Map<String, dynamic> item,
     required int nowMs,
     required RejectFilterContext rejectCtx,
+    required _OneDriveDeltaPageStats pageStats,
   }) async {
     final exists =
         await (ctx.db.select(
@@ -680,11 +807,13 @@ class OneDriveMediaDataProvider implements IDataProvider {
             )..where((t) => t.id.equals(rowId)))
             .getSingleOrNull();
     if (exists != null) {
+      pageStats.skippedExistingPhoto++;
       return false;
     }
 
     final bytes = await _downloadBytes(downloadUrl);
     if (bytes == null || bytes.isEmpty) {
+      pageStats.downloadFailed++;
       return false;
     }
 
@@ -761,6 +890,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
     required Map<String, dynamic> item,
     required int nowMs,
     required RejectFilterContext rejectCtx,
+    required _OneDriveDeltaPageStats pageStats,
   }) async {
     final exists =
         await (ctx.db.select(
@@ -768,11 +898,13 @@ class OneDriveMediaDataProvider implements IDataProvider {
             )..where((t) => t.id.equals(rowId)))
             .getSingleOrNull();
     if (exists != null) {
+      pageStats.skippedExistingVideo++;
       return false;
     }
 
     final bytes = await _downloadBytes(downloadUrl);
     if (bytes == null || bytes.isEmpty) {
+      pageStats.downloadFailed++;
       return false;
     }
 
@@ -877,6 +1009,10 @@ class OneDriveMediaDataProvider implements IDataProvider {
       return;
     }
     final removeCount = rows.length - max;
+    AppDebugLog.provider(
+      'onedrive_media: prune photos category=$category '
+      'removed=$removeCount cap=$max (had ${rows.length})',
+    );
     for (var i = 0; i < removeCount; i++) {
       await _deletePhoto(ctx, rows[i]);
     }
@@ -904,6 +1040,10 @@ class OneDriveMediaDataProvider implements IDataProvider {
       return;
     }
     final removeCount = rows.length - max;
+    AppDebugLog.provider(
+      'onedrive_media: prune videos category=$category '
+      'removed=$removeCount cap=$max (had ${rows.length})',
+    );
     for (var i = 0; i < removeCount; i++) {
       await _deleteVideo(ctx, rows[i]);
     }

@@ -85,4 +85,44 @@ void main() {
       64,
     );
   });
+
+  test('backup create schedule restore without secrets', () async {
+    expect(await runWaddlectl(w(['config', 'list'])), 0);
+    final tmp = Directory.systemTemp.createTempSync('waddle_cli_bu');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final outDir = p.join(tmp.path, 'out');
+    Directory(outDir).createSync();
+    expect(
+      await runWaddlectl(w([
+        'backup',
+        'create',
+        '--no-include-secrets',
+        '--format=zip',
+        '--output=$outDir',
+      ])),
+      0,
+    );
+    final zips = Directory(outDir)
+        .listSync()
+        .whereType<File>()
+        .where((f) => f.path.toLowerCase().endsWith('.zip'))
+        .toList();
+    expect(zips.length, 1);
+    expect(await runWaddlectl(w(['backup', 'schedule'])), 0);
+    await File(dbPath).writeAsBytes([0, 1, 2, 3], flush: true);
+    expect(
+      await runWaddlectl(w([
+        'backup',
+        'restore',
+        '--file=${zips.first.path}',
+        '--yes',
+      ])),
+      0,
+    );
+    expect(await runWaddlectl(w(['config', 'list'])), 0);
+  });
+
+  test('backup restore usage without file returns 64', () async {
+    expect(await runWaddlectl(w(['backup', 'restore'])), 64);
+  });
 }

@@ -76,7 +76,23 @@ Per-test wall time is capped at **60s** by `dart_test.yaml` (and CI uses the sam
 
 ## Operator CLI (`waddlectl`)
 
-The **`apps/waddlectl`** package is a shell tool against the same **SQLite** database as the display app and, on **Linux**, the same **libsecret**-backed `SecretStore` as `flutter_secure_storage` (via `secret-tool`). It is **not** a substitute for backing up the whole machine; it only helps move **secret keys** between hosts or after reinstall.
+The **`apps/waddlectl`** package is a shell tool against the same **SQLite** database as the display app and, on **Linux**, the same **libsecret**-backed `SecretStore` as `flutter_secure_storage` (via `secret-tool`). Use **`backup create`** for a single-file archive of the database, **`media/`** blobs, and optionally an encrypted secrets bundle; it is **not** a substitute for backing up the whole machine.
+
+### Full backups (`backup create` / `backup restore` / `backup schedule`)
+
+- **Create** (timestamped **`.zip`** or **`.tar.gz`** in the current directory, or under `--output`):
+
+  `dart run waddlectl --database=/path/to/waddle_view.sqlite backup create`
+
+  Defaults include **database**, **`media/`** next to the SQLite file, and **secrets** (Linux only). Toggle with `--no-include-database`, `--no-include-blobs`, `--no-include-secrets`. Use `--format=zip` or `--format=tgz`. The SQLite file is checkpointed (**WAL** merged) before copy so the archive holds a single main DB file.
+
+- **Secrets in the archive** use the same **PBKDF2 + AES-GCM** bundle format as `secrets export`; you are prompted for the encryption password **twice** on create (unless `--password-file` / `--password-env`).
+
+- **Restore** replaces the local **SQLite** file and **`media/`** tree for components that were included in the backup, after an interactive warning (type `yes`). Use **`--yes`** for automation (e.g. cron). If the backup includes secrets, you are prompted for the bundle password again; keys are **merged** into `SecretStore` like `secrets import` (add/update only).
+
+- **Schedule** prints a ready-to-paste **crontab** line and **systemd user** unit sketches (`backup schedule`); it does not install anything. When secrets are included in scheduled runs, use **`--password-file`** or **`--password-env`** (stdin is not a TTY under cron).
+
+- **Archive layout**: `manifest.json`, `db/<sqlite basename>`, optional `media/...`, optional `secrets/secret_bundle.bin`.
 
 ### Encrypted secret bundles
 

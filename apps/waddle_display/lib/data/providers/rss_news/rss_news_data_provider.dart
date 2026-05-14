@@ -36,6 +36,10 @@ class RssNewsDataProvider implements IDataProvider {
     final feedRows = await (ctx.db.select(
       ctx.db.rssFeedSources,
     )..where((t) => t.enabled.equals(true))).get();
+    if (feedRows.isEmpty) {
+      AppDebugLog.provider('rss: collect skip (no enabled feeds)');
+      return;
+    }
     AppDebugLog.provider('rss: collect enabledFeeds=${feedRows.length}');
     for (final feed in feedRows) {
       final last = feed.lastFetchedAt;

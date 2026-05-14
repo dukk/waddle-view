@@ -94,6 +94,7 @@ class OpenTdbTriviaDataProvider implements IDataProvider {
       }
       final decoded = jsonDecode(res.body);
       if (decoded is! Map<String, dynamic>) {
+        AppDebugLog.provider('opentdb_trivia: JSON top-level not an object');
         return;
       }
       final responseCode = (decoded['response_code'] as num?)?.toInt() ?? -1;

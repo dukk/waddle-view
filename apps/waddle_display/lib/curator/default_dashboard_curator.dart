@@ -20,6 +20,7 @@ class DefaultDashboardCurator implements DashboardCurator {
 
   @override
   Future<void> refresh() async {
+    AppDebugLog.curator('ticker refresh: begin');
     final kv = await _read.loadKeyValuesForCuration();
     final news = await _read.loadNewsCandidatesForTicker();
     final currentWeather = await _read.loadCurrentWeatherForTicker();
@@ -27,6 +28,12 @@ class DefaultDashboardCurator implements DashboardCurator {
     final tickerDefs = await _read.loadTickerDefinitionsForCuration();
     final stockRows = await _read.loadStockRowsForTicker();
     final rejectCtx = await _read.loadRejectFilterContext();
+    AppDebugLog.curator(
+      'ticker refresh: loaded inputs kvKeys=${kv.length} newsCandidates=${news.length} '
+      'tickerDefinitions=${tickerDefs.length} stockRows=${stockRows.length} '
+      'govAlerts=${weatherGovAlerts.length} liveWeather=${currentWeather != null} '
+      'rejectFilter=${rejectCtx.isEmpty ? "off" : "on"}',
+    );
     final items = buildTickerItemsForMarquee(
       kv: kv,
       nowLocal: _clock.now().toLocal(),
@@ -40,7 +47,7 @@ class DefaultDashboardCurator implements DashboardCurator {
     await _tickerStore.replaceAll(items);
     final kinds = items.map((e) => e.kind).join(', ');
     AppDebugLog.curator(
-      'refresh: ${items.length} ticker item(s) kinds=[$kinds]',
+      'ticker refresh: wrote ${items.length} item(s) kinds=[$kinds]',
     );
   }
 }

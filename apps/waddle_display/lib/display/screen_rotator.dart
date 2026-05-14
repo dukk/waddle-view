@@ -252,6 +252,13 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
     );
 
     if (kDebugMode) {
+      final dwellOk = candidates.where((c) => c.dwellMs > 0).length;
+      AppDebugLog.screen(
+        'screen program: build context screenRows=${defs.length} dwellMs>0=$dwellOk '
+        'budgetMs=$programMs historyDepth=$historyDepth dataKeyLimits=${dataKeyLimits.length} '
+        'randomPoolKeys=${pools.length} rssArticleMetrics=${loadedPools.rssArticleMetrics.length} '
+        'photoMetrics=${loadedPools.photoMetrics.length} requireNewsPhoto=$requireNewsPhotoForScreens',
+      );
       for (final line in ScreenProgramCurator.curatedProgramDebugLogLines(
         program: program,
         programDurationMs: programMs,

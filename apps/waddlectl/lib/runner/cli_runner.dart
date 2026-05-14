@@ -5,6 +5,7 @@ import 'package:args/command_runner.dart';
 import '../global_cli_parser.dart';
 import '../global_options.dart';
 import '../version.dart';
+import 'backup_commands.dart';
 import 'config_commands.dart';
 import 'curator_commands.dart';
 import 'emit.dart';
@@ -56,6 +57,7 @@ class WaddlectlRootRunner extends CommandRunner<void> {
     addCommand(TickersCommand(globalOptions));
     addCommand(CuratorCommand(globalOptions));
     addCommand(SecretsCommand(globalOptions));
+    addCommand(BackupCommand(globalOptions));
     addCommand(RejectCommand(globalOptions));
   }
 
@@ -90,6 +92,7 @@ class WaddlectlRootRunner extends CommandRunner<void> {
         '  ${'curator'.padRight(14)} Curator program settings and data-key limits',
       )
       ..writeln('  ${'secrets'.padRight(14)} Secret store keys + encrypted backup (advanced)')
+      ..writeln('  ${'backup'.padRight(14)} Full backup / restore / schedule (SQLite + media + secrets)')
       ..writeln('  ${'reject'.padRight(14)} Curse-word reject list (block + censor) & rescan')
       ..writeln('  ${'help'.padRight(14)} Print help for a command path (see below)')
       ..writeln('  ${'options'.padRight(14)} List global flags only')

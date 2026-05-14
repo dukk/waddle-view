@@ -1,3 +1,4 @@
+import '../debug/app_debug_log.dart';
 import '../marquee_cycle_gate.dart';
 import 'dashboard_curator.dart';
 
@@ -15,8 +16,12 @@ class GatedDashboardCurator implements DashboardCurator {
 
   @override
   Future<void> refresh() async {
+    AppDebugLog.curator('ticker refresh (gated): await prior marquee if any');
     await _marqueeGate.awaitPriorMarqueePresentationIfAny();
     await _inner.refresh();
+    AppDebugLog.curator(
+      'ticker refresh (gated): inner done, expect next marquee loop for gate',
+    );
     _marqueeGate.onCurationWrittenExpectMarqueeLoop();
   }
 }

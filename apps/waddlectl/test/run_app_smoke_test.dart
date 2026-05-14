@@ -121,8 +121,8 @@ void main() {
     );
   });
 
-  test('help reject lists subcommands', () async {
-    final code = await runWaddlectl(['help', 'reject']);
+  test('help backup lists subcommands', () async {
+    final code = await runWaddlectl(['help', 'backup']);
     expect(code, 0);
   });
 }

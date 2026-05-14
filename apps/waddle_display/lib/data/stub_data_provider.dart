@@ -12,6 +12,7 @@ class StubDataProvider implements IDataProvider {
 
   @override
   Future<void> collect(DataWriteContext ctx) async {
+    AppDebugLog.provider('stub: collect begin');
     await ctx.db
         .into(ctx.db.configKeyValues)
         .insertOnConflictUpdate(

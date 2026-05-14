@@ -68,6 +68,12 @@ class FlickrMediaDataProvider implements IDataProvider {
     final base = _normalizeBase(config.baseUrl);
     final rejectCtx = await RejectFilterContext.loadFromDb(ctx.db);
     var remaining = extra.perPollLimit;
+    AppDebugLog.provider(
+      'flickr_media: collect begin groups=${extra.groupIds.length} '
+      'perPollLimit=$remaining category=${extra.category} base='
+      '${AppDebugLog.safeHttpUri(Uri.parse(base))}',
+    );
+    var inserted = 0;
     for (final groupId in extra.groupIds) {
       if (remaining <= 0) {
         break;
@@ -92,9 +98,13 @@ class FlickrMediaDataProvider implements IDataProvider {
         );
         if (ok) {
           remaining--;
+          inserted++;
         }
       }
     }
+    AppDebugLog.provider(
+      'flickr_media: collect done inserted=$inserted remainingSlots=$remaining',
+    );
     await _markCollected(ctx, nowMs);
   }
 
@@ -144,17 +154,27 @@ class FlickrMediaDataProvider implements IDataProvider {
       }
       final decoded = jsonDecode(res.body);
       if (decoded is! Map<String, dynamic>) {
+        AppDebugLog.provider('flickr_media: list JSON not an object');
         return const [];
       }
       if (decoded['stat'] != 'ok') {
+        final msg = decoded['message'];
+        AppDebugLog.provider(
+          'flickr_media: Flickr stat=${decoded['stat']} '
+          'code=${decoded['code']} message=${msg is String ? msg : msg}',
+        );
         return const [];
       }
       final photosMap = decoded['photos'];
       if (photosMap is! Map<String, dynamic>) {
+        AppDebugLog.provider('flickr_media: list missing photos map');
         return const [];
       }
       final raw = photosMap['photo'];
       if (raw is! List<dynamic>) {
+        AppDebugLog.provider(
+          'flickr_media: list photos.photo not a list (page ${photosMap['page']})',
+        );
         return const [];
       }
       final out = <Map<String, dynamic>>[];
@@ -227,6 +247,10 @@ class FlickrMediaDataProvider implements IDataProvider {
     }
     final mediaRes = await _http.get(Uri.parse(mediaUrl));
     if (mediaRes.statusCode != 200 || mediaRes.bodyBytes.isEmpty) {
+      AppDebugLog.provider(
+        'flickr_media: photo binary GET status=${mediaRes.statusCode} '
+        'bytes=${mediaRes.bodyBytes.length} id=$id',
+      );
       return false;
     }
     final owner = (photo['ownername'] ?? '').toString();

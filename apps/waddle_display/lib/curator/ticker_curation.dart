@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:waddle_shared/curation/reject_filter_context.dart';
 
 import '../clock.dart';
+import '../debug/app_debug_log.dart';
 import 'curator_read_port.dart';
 import 'ticker_item.dart';
 import 'ticker_news_candidate.dart';
@@ -621,6 +622,10 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
   }
 
   if (out.isEmpty) {
+    AppDebugLog.curator(
+      'ticker build definitions: expanded to 0 items (empty defs, dedupe, or '
+      'zero-weight); using time-only fallback',
+    );
     return _tickerItemsTimeOnly(nowLocal);
   }
   return out;
@@ -647,6 +652,12 @@ List<TickerItem> buildTickerItemsForMarquee({
   List<WeatherGovAlertTickerItem> weatherGovAlerts = const [],
   RejectFilterContext? rejectCtx,
 }) {
+  AppDebugLog.curator(
+    'ticker build: inputs definitions=${definitions.length} '
+    'newsCandidates=${newsCandidates.length} stocks=${stockRows.length} '
+    'govAlerts=${weatherGovAlerts.length} liveWeather=${currentWeather != null} '
+    'rejectFilter=${rejectCtx == null || rejectCtx.isEmpty ? "off" : "on"}',
+  );
   final cfg = CuratorTickerConfig.fromKv(kv);
   final rssItems = pickNewsTickerItemsByWidthBudget(
     interleaved: interleaveNewsByFeed(newsCandidates),
@@ -655,7 +666,7 @@ List<TickerItem> buildTickerItemsForMarquee({
   );
 
   if (definitions.isEmpty) {
-    return _buildTickerItemsForMarqueeLegacy(
+    final legacy = _buildTickerItemsForMarqueeLegacy(
       kv: kv,
       nowLocal: nowLocal,
       rssItems: rssItems,
@@ -663,6 +674,11 @@ List<TickerItem> buildTickerItemsForMarquee({
       weatherGovAlerts: weatherGovAlerts,
       rejectCtx: rejectCtx,
     );
+    AppDebugLog.curator(
+      'ticker build: path=legacy (no ticker_definitions rows) items=${legacy.length} '
+      'rssMarqueeSlots=${rssItems.length}',
+    );
+    return legacy;
   }
 
   final enabled = definitions.where((d) => d.enabled).toList()
@@ -675,10 +691,13 @@ List<TickerItem> buildTickerItemsForMarquee({
     });
 
   if (enabled.isEmpty) {
+    AppDebugLog.curator(
+      'ticker build: path=time_only (all ticker_definitions disabled)',
+    );
     return _tickerItemsTimeOnly(nowLocal);
   }
 
-  return _buildTickerItemsForMarqueeFromDefinitions(
+  final fromDefs = _buildTickerItemsForMarqueeFromDefinitions(
     kv: kv,
     nowLocal: nowLocal,
     rssItems: rssItems,
@@ -688,4 +707,8 @@ List<TickerItem> buildTickerItemsForMarquee({
     weatherGovAlerts: weatherGovAlerts,
     rejectCtx: rejectCtx,
   );
+  AppDebugLog.curator(
+    'ticker build: path=definitions enabledRows=${enabled.length} items=${fromDefs.length}',
+  );
+  return fromDefs;
 }

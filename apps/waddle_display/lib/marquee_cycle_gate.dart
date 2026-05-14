@@ -21,8 +21,13 @@ class MarqueeCycleGate {
     if (c == null || c.isCompleted) {
       return;
     }
+    AppDebugLog.curator(
+      'marquee cycle gate: await marquee loop (timeout '
+      '${_presentationWaitTimeout.inSeconds}s)',
+    );
     try {
       await c.future.timeout(_presentationWaitTimeout);
+      AppDebugLog.curator('marquee cycle gate: loop completed');
     } on TimeoutException catch (_) {
       AppDebugLog.curator(
         'marquee cycle gate: timeout waiting for loop, continuing',

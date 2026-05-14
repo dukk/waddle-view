@@ -149,6 +149,9 @@ class _TickerMarqueeState extends State<TickerMarquee>
     }
     final w = box.size.width;
     if (w <= 0) {
+      AppDebugLog.ticker(
+        'marquee: skip animate (segment width ${w.toStringAsFixed(1)}px); notifying cycle gate',
+      );
       widget.cycleGate?.notifyMarqueeLoopComplete();
       return;
     }
