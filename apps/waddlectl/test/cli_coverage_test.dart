@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:path/path.dart' as p;
 import 'package:waddlectl/run_app.dart';
 
@@ -69,21 +69,8 @@ void main() {
     expect(await runWaddlectl(w(['config', 'get'])), 64);
   });
 
-  test('secrets export/import usage errors return 64', () async {
-    expect(await runWaddlectl(w(['secrets', 'export'])), 64);
-    expect(
-      await runWaddlectl(
-        w(['secrets', 'export', '--file', p.join(dbPath, 'x.bin'), 'extra']),
-      ),
-      64,
-    );
-    expect(await runWaddlectl(w(['secrets', 'import'])), 64);
-    expect(
-      await runWaddlectl(
-        w(['secrets', 'import', '--file', '/no/such/waddle_bundle.bin']),
-      ),
-      64,
-    );
+  test('unknown command returns 64', () async {
+    expect(await runWaddlectl(w(['secrets', 'list'])), 64);
   });
 
   test('backup create schedule restore without secrets', () async {
@@ -96,7 +83,6 @@ void main() {
       await runWaddlectl(w([
         'backup',
         'create',
-        '--no-include-secrets',
         '--format=zip',
         '--output=$outDir',
       ])),

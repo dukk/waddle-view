@@ -9,7 +9,6 @@ String backupCreateArgLine({
   required String? output,
   required bool includeDatabase,
   required bool includeBlobs,
-  required bool includeSecrets,
 }) {
   final buf = StringBuffer(
     'backup create --format=${format == WaddleBackupArchiveFormat.zip ? 'zip' : 'tgz'}',
@@ -22,9 +21,6 @@ String backupCreateArgLine({
   }
   if (!includeBlobs) {
     buf.write(' --no-include-blobs');
-  }
-  if (!includeSecrets) {
-    buf.write(' --no-include-secrets');
   }
   return buf.toString();
 }

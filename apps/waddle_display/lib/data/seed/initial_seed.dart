@@ -109,6 +109,7 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureClockAnalogScreen(db);
   await _ensureCalendarScreen(db);
   await _ensureLocalApiScreen(db);
+  await _ensureDataHealthScreen(db);
   await _ensureAdminSetupScreen(db);
   await _ensureWeatherScreen(db);
   await _ensurePexelsPhotoScreen(db);
@@ -885,6 +886,42 @@ Future<void> _ensureLocalApiScreen(AppDatabase db) async {
           ),
           dwellSeconds: const Value(16),
           dataKey: const Value('dev_local_api'),
+          minPlacementsPerProgram: const Value(0),
+          maxPlacementsPerProgram: const Value(1),
+        ),
+      );
+}
+
+Future<void> _ensureDataHealthScreen(AppDatabase db) async {
+  final row = await (db.select(
+    db.screenDefinitions,
+  )..where((t) => t.id.equals('dev_data_health'))).getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  await db
+      .into(db.screenDefinitions)
+      .insert(
+        ScreenDefinitionsCompanion.insert(
+          id: 'dev_data_health',
+          name: 'Developer — Data health',
+          description: const Value(
+            'SQLite content totals, category breakdowns, and charts; '
+            'enable for operator visibility',
+          ),
+          enabled: const Value(false),
+          screenType: 'data_health',
+          configJson: const Value(
+            '{"headline":"Data health","refreshIntervalSeconds":45}',
+          ),
+          configJsonSchema: Value(
+            screenConfigJsonDocForType('data_health').schema,
+          ),
+          exampleConfigJson: Value(
+            screenConfigJsonDocForType('data_health').example,
+          ),
+          dwellSeconds: const Value(18),
+          dataKey: const Value('dev_data_health'),
           minPlacementsPerProgram: const Value(0),
           maxPlacementsPerProgram: const Value(1),
         ),

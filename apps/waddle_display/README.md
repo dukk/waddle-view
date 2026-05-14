@@ -1,6 +1,6 @@
 # Waddle View
 
-Flutter **Linux** TV dashboard (Windows desktop supported for local development). Features: **Drift** SQLite, filesystem **blob** store, **SecretStore**, sequential **data collection** engine, curated **bottom ticker** (RTL marquee), **RSS news slides** with an article-link **QR code** for scanning, **overlay alerts** (optional QR), configurable **festive display overlays** (hearts + short phrases driven from SQLite and theme accent colors), embedded **Shelf** REST API with per-deployment API key.
+Flutter **Linux** TV dashboard (Windows desktop supported for local development). Features: **Drift** SQLite, filesystem **blob** store, **environment-backed API keys** plus **`SecretStore`** for Google/Microsoft OAuth tokens only, sequential **data collection** engine, curated **bottom ticker** (RTL marquee), **RSS news slides** with an article-link **QR code** for scanning, **overlay alerts** (optional QR), configurable **festive display overlays** (hearts + short phrases driven from SQLite and theme accent colors), embedded **Shelf** REST API with per-deployment API key.
 
 For module boundaries, startup order, and **Mermaid** sequence diagrams (startup, data collection, REST alerts, ticker), see **[`ARCHITECTURE.md`](ARCHITECTURE.md)**.
 
@@ -76,7 +76,7 @@ Per-test wall time is capped at **60s** by `dart_test.yaml` (and CI uses the sam
 
 ## Operator CLI (`waddlectl`)
 
-The **`apps/waddlectl`** package is a shell tool against the same **SQLite** database as the display app and, on **Linux**, the same **libsecret**-backed `SecretStore` as `flutter_secure_storage` (via `secret-tool`). Use **`backup create`** for a single-file archive of the database, **`media/`** blobs, and optionally an encrypted secrets bundle; it is **not** a substitute for backing up the whole machine.
+The **`apps/waddlectl`** package is a shell tool against the same **SQLite** database as the display app. Use **`backup create`** for a single-file archive of the database and **`media/`** blobs; it is **not** a substitute for backing up the whole machine.
 
 **Prebuilt `waddlectl`** is included in **GitHub Release** artifacts next to the display app: **Windows** (`…/waddlectl/bin/waddlectl.exe` inside the `.zip` Release tree), **Linux** (`…/bundle/waddlectl/bin/waddlectl` next to `waddle_display` in the tarball’s `bundle/`). From a dev checkout you can build the same layout with **`dart build cli`** (see *Build installable bundles* below).
 
@@ -86,36 +86,13 @@ The **`apps/waddlectl`** package is a shell tool against the same **SQLite** dat
 
   `dart run waddlectl --database=/path/to/waddle_view.sqlite backup create`
 
-  Defaults include **database**, **`media/`** next to the SQLite file, and **secrets** (Linux only). Toggle with `--no-include-database`, `--no-include-blobs`, `--no-include-secrets`. Use `--format=zip` or `--format=tgz`. The SQLite file is checkpointed (**WAL** merged) before copy so the archive holds a single main DB file.
+  Defaults include **database** and **`media/`** next to the SQLite file. Toggle with `--no-include-database` or `--no-include-blobs`. Use `--format=zip` or `--format=tgz`. The SQLite file is checkpointed (**WAL** merged) before copy so the archive holds a single main DB file.
 
-- **Secrets in the archive** use the same **PBKDF2 + AES-GCM** bundle format as `secrets export`; you are prompted for the encryption password **twice** on create (unless `--password-file` / `--password-env`).
+- **Restore** replaces the local **SQLite** file and **`media/`** tree for components that were included in the backup, after an interactive warning (type `yes`). Use **`--yes`** for automation (e.g. cron). Older archives whose manifest lists encrypted secrets are still restored for **database/media**; the legacy secret bundle is **not** merged (a warning is printed).
 
-- **Restore** replaces the local **SQLite** file and **`media/`** tree for components that were included in the backup, after an interactive warning (type `yes`). Use **`--yes`** for automation (e.g. cron). If the backup includes secrets, you are prompted for the bundle password again; keys are **merged** into `SecretStore` like `secrets import` (add/update only).
+- **Schedule** prints a ready-to-paste **crontab** line and **systemd user** unit sketches (`backup schedule`); it does not install anything.
 
-- **Schedule** prints a ready-to-paste **crontab** line and **systemd user** unit sketches (`backup schedule`); it does not install anything. When secrets are included in scheduled runs, use **`--password-file`** or **`--password-env`** (stdin is not a TTY under cron).
-
-- **Archive layout**: `manifest.json`, `db/<sqlite basename>`, optional `media/...`, optional `secrets/secret_bundle.bin`.
-
-### Encrypted secret bundles
-
-- **Export** (writes an opaque encrypted file, **not** a SQLite dump):
-
-  `dart run waddlectl --database=/path/to/waddle_view.sqlite secrets export --file=/path/to/backup.waddle-secrets`
-
-  You are prompted for an encryption password twice (export). The file contains **PBKDF2-HMAC-SHA256** (310k iterations) + **AES-256-GCM** over a JSON map of all keys currently in `SecretStore`.
-
-- **Import** (merge only: keys in the bundle are **added or updated**; existing keys not listed in the bundle are left unchanged):
-
-  `dart run waddlectl --database=/path/to/waddle_view.sqlite secrets import --file=/path/to/backup.waddle-secrets`
-
-- **Non-interactive passwords** (sensitive: avoid shell history and process listings where possible):
-
-  - `--password-file=PATH` — first line of the file is the password (precedence over env).
-  - `--password-env=NAME` — read password from that environment variable.
-
-- If **stdin is not a TTY** (e.g. cron, CI), you must supply one of the flags above; otherwise the tool refuses to prompt.
-
-- **Wrong password** or a **corrupted/tampered** file fails decryption with a clear error (no partial import).
+- **Archive layout**: `manifest.json`, `db/<sqlite basename>`, optional `media/...`. Legacy archives may also contain `secrets/secret_bundle.bin` (ignored on restore).
 
 ## Build installable bundles (local)
 
@@ -274,6 +251,8 @@ While the dashboard is focused, keyboard arrows can be used to browse curated pr
 
 Startup logs include **`REST listening at …`** with the bound **base URL**. To show the same information on the TV carousel, enable the **`dev_local_api`** row in **`screen_definitions`** (`enabled = 1`); that developer slide shows the URL and an **`X-Api-Key` / `waddle_api.key`** reminder.
 
+The **`dev_data_health`** screen (`screen_type` **`data_health`**, installed **disabled**) shows a **data health** dashboard: active content counts by type (RSS, photos, videos, jokes, trivia), photos vs videos by category, RSS image coverage, feed enable/retry hints, calendar row count, and blob-store size. Optional `config_json`: **`headline`** (string) and **`refreshIntervalSeconds`** (15–300, default 45) for how often aggregates refresh while the slide is visible. Enable the row like any other screen (REST **`GET`/`PATCH `/v1/screens`**, Admin UI, or SQLite).
+
 ## Raspberry Pi / Linux runtime notes
 
 - **GTK / libgtk-3** and typical Flutter Linux build deps (`clang`, `cmake`, `ninja-build`, `pkg-config`).
@@ -284,13 +263,11 @@ The **`content_categories`** table holds shared category ids for **RSS** (`rss_f
 
 ## Provider secrets (OpenAI / jokes / trivia)
 
-The joke and trivia data providers read OpenAI API keys from **SecretStore**, not from `provider_settings`.
+The joke and trivia data providers read OpenAI-style API keys from **environment variables** (merged with debug `.env`), not from `provider_settings` or SQLite.
 
-- Jokes key: `provider:access_token:jokes`
-- Trivia key: `provider:access_token:trivia`
-- Flickr key: `provider:access_token:flickr_media`
+Supported names include **`OPENAI_API_KEY`**, **`WADDLE_JOKES_ACCESS_TOKEN`**, and **`WADDLE_TRIVIA_ACCESS_TOKEN`** (see [`packages/waddle_shared/lib/config/provider_access_token_env.dart`](../../packages/waddle_shared/lib/config/provider_access_token_env.dart)).
 
-**Local onboarding:** copy **[`.env.example`](.env.example)** to **`.env`** in this directory and set **`OPENAI_API_KEY`** (or **`WADDLE_JOKES_ACCESS_TOKEN`** / **`WADDLE_TRIVIA_ACCESS_TOKEN`**). In **debug** builds, the app loads that file and stores provider tokens automatically (see [`lib/config/dev_dotenv_secrets.dart`](lib/config/dev_dotenv_secrets.dart)). Full detail, monorepo paths, and fallbacks: **[`docs/pi/development.md`](../../docs/pi/development.md#joke-data-provider-openai-api-key)**.
+**Local onboarding:** copy **[`.env.example`](.env.example)** to **`.env`** in this directory and set the variables above. In **debug** builds, the app loads that file into the merged env map (see [`lib/config/dev_dotenv_secrets.dart`](lib/config/dev_dotenv_secrets.dart)). **Google / Microsoft Graph** OAuth tokens in debug can still be copied from `.env` into **`SecretStore`** via `applyGoogleTokensFromDevDotenv` / `applyMicrosoftGraphTokensFromDevDotenv`. Full detail: **[`docs/pi/development.md`](../../docs/pi/development.md#joke-data-provider-openai-api-key)**.
 
 OpenTDB trivia does **not** require a token.
 
@@ -326,7 +303,7 @@ Generated text must stay short (enforced in prompts and validation): question **
 
 ## Pexels photos / videos provider
 
-The **Pexels** provider (`id` / `provider_type`: **`pexels`**) downloads curated photos (`GET /v1/curated`) and popular videos (`GET /v1/videos/popular` with duration bounds), stores binaries in the **blob** store, and keeps metadata in **`photos`** and **`videos`** (with **`data_provider`** set to the provider id, e.g. **`pexels`**). API key: **`provider:access_token:pexels`** in **SecretStore** (never in SQLite).
+The **Pexels** provider (`id` / `provider_type`: **`pexels`**) downloads curated photos (`GET /v1/curated`) and popular videos (`GET /v1/videos/popular` with duration bounds), stores binaries in the **blob** store, and keeps metadata in **`photos`** and **`videos`** (with **`data_provider`** set to the provider id, e.g. **`pexels`**). API key: **`PEXELS_API_KEY`** or **`WADDLE_PEXELS_ACCESS_TOKEN`** environment variables (never in SQLite).
 
 **Debug `.env`:** **`PEXELS_API_KEY`** or **`WADDLE_PEXELS_ACCESS_TOKEN`** (see [`.env.example`](.env.example)).
 
@@ -343,7 +320,7 @@ The **Pexels** provider (`id` / `provider_type`: **`pexels`**) downloads curated
 
 ## Stock quote provider (Finnhub)
 
-The **stocks** provider (`id` / `provider_type`: **`stocks`**) calls [Finnhub](https://finnhub.io/docs/api/quote) **`GET /api/v1/quote?symbol=...&token=...`** for every enabled row in **`stock_symbols`** and upserts the latest quote into **`stock_quotes`** (one row per symbol). API key: **`provider:access_token:stocks`** in **SecretStore** (never in SQLite).
+The **stocks** provider (`id` / `provider_type`: **`stocks`**) calls [Finnhub](https://finnhub.io/docs/api/quote) **`GET /api/v1/quote?symbol=...&token=...`** for every enabled row in **`stock_symbols`** and upserts the latest quote into **`stock_quotes`** (one row per symbol). API key: **`FINNHUB_API_KEY`** or **`WADDLE_STOCKS_ACCESS_TOKEN`** (never in SQLite).
 
 **Debug `.env`:** **`FINNHUB_API_KEY`** or **`WADDLE_STOCKS_ACCESS_TOKEN`** (see [`.env.example`](.env.example)).
 
@@ -447,7 +424,7 @@ The **OneDrive media** provider (`id` / `provider_type`: **`onedrive_media`**) k
 
 The **Flickr media** provider (`id` / `provider_type`: **`flickr_media`**) pulls **public** photos from one or more Flickr groups using `flickr.groups.pools.getPhotos`, downloads image bytes, and stores rows in **`photos`** with **`data_provider`** = **`flickr_media`**.
 
-**API key:** `provider:access_token:flickr_media` in **SecretStore** (never in SQLite).
+The **Flickr** provider … **API key:** **`FLICKR_API_KEY`** / **`WADDLE_FLICKR_ACCESS_TOKEN`** (never in SQLite).
 
 **`provider_settings.config_json`** (JSON):
 

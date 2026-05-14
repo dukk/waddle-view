@@ -17,7 +17,7 @@ void main() {
           ProviderSettingsCompanion.insert(id: 'stub', providerType: 'stub'),
         );
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, secrets);
+    final resolver = ProviderConfigResolver(db, {});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),

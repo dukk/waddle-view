@@ -45,7 +45,7 @@ class _RejectList extends Command<void> {
         'items': rows,
         'censor_format': fmt,
       });
-    }, productionSecrets: false);
+    });
   }
 }
 
@@ -100,7 +100,7 @@ class _RejectAdd extends Command<void> {
         'action': action,
         'rescan': res,
       });
-    }, productionSecrets: false);
+    });
   }
 }
 
@@ -137,7 +137,7 @@ class _RejectRemove extends Command<void> {
         if (byId) 'id': rest.first else 'term': rest.first.trim().toLowerCase(),
         'removed': removed,
       });
-    }, productionSecrets: false);
+    });
   }
 }
 
@@ -172,7 +172,7 @@ class _RejectFormatGet extends Command<void> {
     await withLocalBackend(globalOptions, (b) async {
       final fmt = await b.getRejectCensorFormat() ?? kRejectCensorFormatAsterisksFull;
       CliEmit(globalOptions).emitJsonOrText({'format': fmt});
-    }, productionSecrets: false);
+    });
   }
 }
 
@@ -199,7 +199,7 @@ class _RejectFormatSet extends Command<void> {
     await withLocalBackend(globalOptions, (b) async {
       await b.setRejectCensorFormat(rest.first);
       CliEmit(globalOptions).emitJsonOrText({'format': rest.first});
-    }, productionSecrets: false);
+    });
   }
 }
 
@@ -220,6 +220,6 @@ class _RejectRescan extends Command<void> {
     await withLocalBackend(globalOptions, (b) async {
       final res = await b.rescanRejectContent();
       CliEmit(globalOptions).emitJsonOrText(res);
-    }, productionSecrets: false);
+    });
   }
 }

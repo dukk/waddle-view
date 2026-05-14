@@ -12,7 +12,6 @@ import 'emit.dart';
 import 'providers_commands.dart';
 import 'reject_commands.dart';
 import 'screens_commands.dart';
-import 'secrets_commands.dart';
 import 'tickers_commands.dart';
 
 /// Handles `waddlectl help ...` without registering a second `help` command on
@@ -48,7 +47,7 @@ class HelpPrinter {
 /// Top-level `waddlectl` command runner (after global flags are parsed).
 class WaddlectlRootRunner extends CommandRunner<void> {
   WaddlectlRootRunner(this.globalOptions)
-    : super('waddlectl', 'Waddle View operator CLI (local SQLite + secrets).') {
+    : super('waddlectl', 'Waddle View operator CLI (local SQLite).') {
     addCommand(OptionsCommand());
     addCommand(VersionCommand(globalOptions));
     addCommand(ConfigCommand(globalOptions));
@@ -56,7 +55,6 @@ class WaddlectlRootRunner extends CommandRunner<void> {
     addCommand(ProvidersCommand(globalOptions));
     addCommand(TickersCommand(globalOptions));
     addCommand(CuratorCommand(globalOptions));
-    addCommand(SecretsCommand(globalOptions));
     addCommand(BackupCommand(globalOptions));
     addCommand(RejectCommand(globalOptions));
   }
@@ -71,9 +69,7 @@ class WaddlectlRootRunner extends CommandRunner<void> {
       ..writeln(
         '  Configure the Waddle View dashboard from the shell using the same',
       )
-      ..writeln(
-        '  SQLite database and (on Linux) libsecret keyring as the display app.',
-      )
+      ..writeln('  SQLite database file as the display app.')
       ..writeln()
       ..writeln('Command groups:')
       ..writeln(
@@ -83,7 +79,7 @@ class WaddlectlRootRunner extends CommandRunner<void> {
         '  ${'screens'.padRight(14)} Screen definitions (screen_definitions)',
       )
       ..writeln(
-        '  ${'providers'.padRight(14)} Provider settings and access tokens',
+        '  ${'providers'.padRight(14)} Provider settings (provider_settings)',
       )
       ..writeln(
         '  ${'tickers'.padRight(14)} Ticker definition slots (ticker_definitions)',
@@ -91,8 +87,7 @@ class WaddlectlRootRunner extends CommandRunner<void> {
       ..writeln(
         '  ${'curator'.padRight(14)} Curator program settings and data-key limits',
       )
-      ..writeln('  ${'secrets'.padRight(14)} Secret store keys + encrypted backup (advanced)')
-      ..writeln('  ${'backup'.padRight(14)} Full backup / restore / schedule (SQLite + media + secrets)')
+      ..writeln('  ${'backup'.padRight(14)} Full backup / restore / schedule (SQLite + media)')
       ..writeln('  ${'reject'.padRight(14)} Curse-word reject list (block + censor) & rescan')
       ..writeln('  ${'help'.padRight(14)} Print help for a command path (see below)')
       ..writeln('  ${'options'.padRight(14)} List global flags only')

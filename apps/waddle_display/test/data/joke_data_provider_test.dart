@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart' hide isNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:waddle_shared/config/provider_access_token_env.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_display/data/data_write_context.dart';
 import 'package:waddle_display/data/providers/joke/joke_data_provider.dart';
@@ -64,8 +65,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    await secrets.write('${ProviderConfigResolver.accessTokenKey}:jokes', 't');
-    final resolver = ProviderConfigResolver(db, secrets);
+    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -155,8 +155,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    await secrets.write('${ProviderConfigResolver.accessTokenKey}:jokes', 't');
-    final resolver = ProviderConfigResolver(db, secrets);
+    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -208,8 +207,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    await secrets.write('${ProviderConfigResolver.accessTokenKey}:jokes', 't');
-    final resolver = ProviderConfigResolver(db, secrets);
+    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -271,8 +269,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    await secrets.write('${ProviderConfigResolver.accessTokenKey}:jokes', 't');
-    final resolver = ProviderConfigResolver(db, secrets);
+    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -314,8 +311,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    await secrets.write('${ProviderConfigResolver.accessTokenKey}:jokes', 't');
-    final resolver = ProviderConfigResolver(db, secrets);
+    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -358,8 +354,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    await secrets.write('${ProviderConfigResolver.accessTokenKey}:jokes', 't');
-    final resolver = ProviderConfigResolver(db, secrets);
+    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -392,7 +387,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, secrets);
+    final resolver = ProviderConfigResolver(db, {});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -424,8 +419,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    await secrets.write('${ProviderConfigResolver.accessTokenKey}:jokes', 't');
-    final resolver = ProviderConfigResolver(db, secrets);
+    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -475,8 +469,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    await secrets.write('${ProviderConfigResolver.accessTokenKey}:jokes', 't');
-    final resolver = ProviderConfigResolver(db, secrets);
+    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),

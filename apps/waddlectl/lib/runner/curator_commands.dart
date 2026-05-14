@@ -37,7 +37,7 @@ class _CuratorDescribeProgram extends Command<void> {
   Future<void> run() async {
     await withLocalBackend(globalOptions, (b) async {
       CliEmit(globalOptions).emitJsonOrText(await b.describeCuratorProgram());
-    }, productionSecrets: false);
+    });
   }
 }
 
@@ -82,7 +82,7 @@ class _CuratorUpdateProgram extends Command<void> {
         displayTextScaleScreen: o['display-text-scale-screen'] as String?,
         displayTextScaleTicker: o['display-text-scale-ticker'] as String?,
       );
-    }, productionSecrets: false);
+    });
   }
 }
 
@@ -118,7 +118,7 @@ class _LimitsList extends Command<void> {
   Future<void> run() async {
     await withLocalBackend(globalOptions, (b) async {
       CliEmit(globalOptions).emitRows(await b.listCuratorLimits());
-    }, productionSecrets: false);
+    });
   }
 }
 
@@ -146,7 +146,7 @@ class _LimitsDescribe extends Command<void> {
         return;
       }
       CliEmit(globalOptions).emitJsonOrText(row);
-    }, productionSecrets: false);
+    });
   }
 }
 
@@ -185,6 +185,6 @@ class _LimitsUpdate extends Command<void> {
           o['max-placements-per-program'] as String? ?? '',
         ),
       );
-    }, productionSecrets: false);
+    });
   }
 }

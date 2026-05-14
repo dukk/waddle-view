@@ -38,7 +38,7 @@ class _TickersList extends Command<void> {
   Future<void> run() async {
     await withLocalBackend(globalOptions, (b) async {
       CliEmit(globalOptions).emitRows(await b.listTickers());
-    }, productionSecrets: false);
+    });
   }
 }
 
@@ -66,7 +66,7 @@ class _TickersDescribe extends Command<void> {
         return;
       }
       CliEmit(globalOptions).emitJsonOrText(row);
-    }, productionSecrets: false);
+    });
   }
 }
 
@@ -112,6 +112,6 @@ class _TickersUpdate extends Command<void> {
         sortOrder: int.tryParse(o['sort-order'] as String? ?? ''),
         configKey: o['config-key'] as String?,
       );
-    }, productionSecrets: false);
+    });
   }
 }

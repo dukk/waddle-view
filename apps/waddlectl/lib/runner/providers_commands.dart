@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
@@ -12,7 +11,6 @@ class ProvidersCommand extends Command<void> {
     addSubcommand(_ProvidersList(globalOptions));
     addSubcommand(_ProvidersDescribe(globalOptions));
     addSubcommand(_ProvidersUpdate(globalOptions));
-    addSubcommand(_ProvidersSetToken(globalOptions));
   }
 
   final GlobalCliOptions globalOptions;
@@ -21,7 +19,7 @@ class ProvidersCommand extends Command<void> {
   String get name => 'providers';
 
   @override
-  String get description => 'Manage provider_settings and tokens.';
+  String get description => 'Manage provider_settings rows.';
 }
 
 class _ProvidersList extends Command<void> {
@@ -39,7 +37,7 @@ class _ProvidersList extends Command<void> {
   Future<void> run() async {
     await withLocalBackend(globalOptions, (b) async {
       CliEmit(globalOptions).emitRows(await b.listProviders());
-    }, productionSecrets: false);
+    });
   }
 }
 
@@ -67,7 +65,7 @@ class _ProvidersDescribe extends Command<void> {
         return;
       }
       CliEmit(globalOptions).emitJsonOrText(row);
-    }, productionSecrets: false);
+    });
   }
 }
 
@@ -115,50 +113,6 @@ class _ProvidersUpdate extends Command<void> {
         baseUrl: o['base-url'] as String?,
         configJson: configJson,
       );
-    }, productionSecrets: false);
-  }
-}
-
-class _ProvidersSetToken extends Command<void> {
-  _ProvidersSetToken(this.globalOptions) : super() {
-    argParser.addOption(
-      'from-file',
-      help: 'Read token from this file (default: stdin).',
-    );
-  }
-
-  final GlobalCliOptions globalOptions;
-
-  @override
-  String get name => 'set-access-token';
-
-  @override
-  String get description =>
-      'Store provider OAuth/API token in the secret keyring.';
-
-  @override
-  Future<void> run() async {
-    final rest = argResults!.rest;
-    if (rest.length != 1) {
-      usageException(
-        'Usage: waddlectl providers set-access-token <id> [--from-file=PATH]',
-      );
-    }
-    final id = rest.first;
-    final path = argResults!['from-file'] as String?;
-    final String token;
-    if (path != null && path.isNotEmpty) {
-      token = await File(path).readAsString();
-    } else {
-      token = await utf8.decodeStream(stdin);
-    }
-    final trimmed = token.trim();
-    if (trimmed.isEmpty) {
-      stderr.writeln('Refusing empty token.');
-      return;
-    }
-    await withLocalBackend(globalOptions, (b) async {
-      await b.setProviderAccessToken(id, trimmed);
-    }, productionSecrets: true);
+    });
   }
 }

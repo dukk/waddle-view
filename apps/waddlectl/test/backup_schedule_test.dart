@@ -26,7 +26,6 @@ void main() {
         output: '/data/bu',
         includeDatabase: true,
         includeBlobs: false,
-        includeSecrets: false,
       ),
       contains('--no-include-blobs'),
     );

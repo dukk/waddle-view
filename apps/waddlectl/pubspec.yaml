@@ -1,5 +1,5 @@
 name: waddlectl
-description: Operator CLI for Waddle View (SQLite + secrets).
+description: Operator CLI for Waddle View (SQLite).
 publish_to: "none"
 version: 1.0.0+1
 resolution: workspace
@@ -18,11 +18,8 @@ dependencies:
   args: ^2.5.0
   path: ^1.9.1
   meta: ^1.17.0
-  cryptography: ^2.9.0
 
 dev_dependencies:
-  flutter_test:
-    sdk: flutter
   flutter_lints: ^6.0.0
   test: ^1.26.0
 

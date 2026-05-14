@@ -6,10 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:waddle_display/alerts/drift_alert_repository.dart';
 import 'package:waddle_display/api/deployment_api_key_source.dart';
 import 'package:waddle_display/api/local_rest_server.dart';
-import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
-import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 import 'package:waddle_display/theme/config/display_theme_registry.dart';
 import 'package:waddle_shared/theme/display_text_scale_kv.dart';
 import 'package:waddle_shared/theme/display_theme_kv.dart';
@@ -79,7 +77,6 @@ void main() {
       alerts: DriftAlertRepository(db),
       keys: FakeDeploymentApiKeySource(_adminPw),
       ticker: ticker,
-      secrets: InMemorySecretStore(),
       onConfigChanged: () async {},
       keyFile: keyFile,
       setupScreenId: 'admin_setup',
@@ -107,7 +104,6 @@ void main() {
       alerts: DriftAlertRepository(db),
       keys: FakeDeploymentApiKeySource(_adminPw),
       ticker: ticker,
-      secrets: InMemorySecretStore(),
       onConfigChanged: () async {},
       keyFile: keyFile,
       setupScreenId: 'admin_setup',
@@ -138,7 +134,6 @@ void main() {
       alerts: DriftAlertRepository(db),
       keys: FakeDeploymentApiKeySource(_adminPw),
       ticker: ticker,
-      secrets: InMemorySecretStore(),
       onConfigChanged: () async {},
       keyFile: keyFile,
       setupScreenId: 'admin_setup',
@@ -183,17 +178,15 @@ void main() {
             ),
           );
 
-      final secrets = InMemorySecretStore();
-      var configCallbacks = 0;
       final keyFile = await _tempKeyFile(_adminPw);
       final ticker = MemoryTickerCuratedRepository();
       addTearDown(ticker.dispose);
+      var configCallbacks = 0;
       final handler = buildRootHandler(
         db: db,
         alerts: DriftAlertRepository(db),
         keys: FakeDeploymentApiKeySource(_adminPw),
         ticker: ticker,
-        secrets: secrets,
         onConfigChanged: () async {
           configCallbacks++;
         },
@@ -279,8 +272,7 @@ void main() {
             '&enabled=on'
             '&poll_seconds=99'
             '&base_url=http%3A%2F%2Fapi.updated'
-            '&config_json=%7B%22x%22%3A1%7D'
-            '&access_token=tokensecret';
+            '&config_json=%7B%22x%22%3A1%7D';
 
         final prov = await http.post(
           Uri.parse('${server.baseUrl}/admin/update-provider'),
@@ -297,10 +289,6 @@ void main() {
         expect(ps.pollSeconds, 99);
         expect(ps.baseUrl, 'http://api.updated');
         expect(ps.configJson, '{"x":1}');
-        final stored = await secrets.read(
-          '${ProviderConfigResolver.accessTokenKey}:jokes',
-        );
-        expect(stored, 'tokensecret');
 
         expect(configCallbacks >= 3, isTrue);
 
@@ -340,7 +328,6 @@ void main() {
       alerts: DriftAlertRepository(db),
       keys: FakeDeploymentApiKeySource(_adminPw),
       ticker: ticker,
-      secrets: InMemorySecretStore(),
       onConfigChanged: () async {},
       keyFile: keyFile,
       setupScreenId: 'admin_setup',
@@ -381,7 +368,6 @@ void main() {
       alerts: DriftAlertRepository(db),
       keys: FakeDeploymentApiKeySource(_adminPw),
       ticker: ticker,
-      secrets: InMemorySecretStore(),
       onConfigChanged: () async {},
       keyFile: keyFile,
       setupScreenId: 'admin_setup',
@@ -417,7 +403,6 @@ void main() {
       alerts: DriftAlertRepository(db),
       keys: FakeDeploymentApiKeySource(_adminPw),
       ticker: ticker,
-      secrets: InMemorySecretStore(),
       onConfigChanged: () async {},
       keyFile: keyFile,
       setupScreenId: 'admin_setup',
@@ -458,7 +443,6 @@ void main() {
       alerts: DriftAlertRepository(db),
       keys: FileDeploymentApiKeySource(keyFile),
       ticker: ticker,
-      secrets: InMemorySecretStore(),
       onConfigChanged: () async {},
       keyFile: keyFile,
       setupScreenId: 'admin_setup',
@@ -534,7 +518,6 @@ void main() {
       alerts: DriftAlertRepository(db),
       keys: FileDeploymentApiKeySource(keyFile),
       ticker: ticker,
-      secrets: InMemorySecretStore(),
       onConfigChanged: () async {},
       keyFile: keyFile,
       setupScreenId: 'admin_setup',
@@ -587,7 +570,6 @@ void main() {
       alerts: DriftAlertRepository(db),
       keys: FakeDeploymentApiKeySource(_adminPw),
       ticker: ticker,
-      secrets: InMemorySecretStore(),
       onConfigChanged: () async {},
       keyFile: keyFile,
       setupScreenId: 'admin_setup',

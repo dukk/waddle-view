@@ -3,13 +3,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_display/config/dev_dotenv_secrets.dart';
 import 'package:waddle_display/config/google_kv.dart';
 import 'package:waddle_display/config/microsoft_graph_kv.dart';
-import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 
 void main() {
-  test('readJokesTokenFromDotenvMap prefers WADDLE_JOKES_ACCESS_TOKEN', () {
+  test('readJokesTokenFromEnvMap prefers WADDLE_JOKES_ACCESS_TOKEN', () {
     expect(
-      readJokesTokenFromDotenvMap({
+      readJokesTokenFromEnvMap({
         waddleJokesAccessTokenKey: '  sk-waddle  ',
         openAiApiKeyEnv: 'sk-openai',
       }),
@@ -17,17 +16,17 @@ void main() {
     );
   });
 
-  test('readJokesTokenFromDotenvMap falls back to OPENAI_API_KEY', () {
+  test('readJokesTokenFromEnvMap falls back to OPENAI_API_KEY', () {
     expect(
-      readJokesTokenFromDotenvMap({openAiApiKeyEnv: 'sk-fallback'}),
+      readJokesTokenFromEnvMap({openAiApiKeyEnv: 'sk-fallback'}),
       'sk-fallback',
     );
   });
 
-  test('readJokesTokenFromDotenvMap returns null when empty or missing', () {
-    expect(readJokesTokenFromDotenvMap({}), isNull);
+  test('readJokesTokenFromEnvMap returns null when empty or missing', () {
+    expect(readJokesTokenFromEnvMap({}), isNull);
     expect(
-      readJokesTokenFromDotenvMap({
+      readJokesTokenFromEnvMap({
         waddleJokesAccessTokenKey: '  ',
         openAiApiKeyEnv: '',
       }),
@@ -35,40 +34,9 @@ void main() {
     );
   });
 
-  test('applyJokesTokenFromDevDotenv writes OPENAI_API_KEY to SecretStore', () async {
-    dotenv.clean();
-    dotenv.loadFromString(
-      envString: 'OPENAI_API_KEY=sk-from-dotenv',
-      isOptional: true,
-    );
-    final secrets = InMemorySecretStore();
-    await applyJokesTokenFromDevDotenv(secrets);
+  test('readTriviaTokenFromEnvMap prefers WADDLE_TRIVIA_ACCESS_TOKEN', () {
     expect(
-      await secrets.read('provider:access_token:jokes'),
-      'sk-from-dotenv',
-    );
-    expect(
-      await secrets.read('provider:access_token:trivia'),
-      'sk-from-dotenv',
-    );
-  });
-
-  test('applyJokesTokenFromDevDotenv prefers WADDLE_JOKES_ACCESS_TOKEN', () async {
-    dotenv.clean();
-    dotenv.loadFromString(
-      envString:
-          'OPENAI_API_KEY=sk-openai\nWADDLE_JOKES_ACCESS_TOKEN=sk-waddle\n',
-      isOptional: true,
-    );
-    final secrets = InMemorySecretStore();
-    await applyJokesTokenFromDevDotenv(secrets);
-    expect(await secrets.read('provider:access_token:jokes'), 'sk-waddle');
-    expect(await secrets.read('provider:access_token:trivia'), 'sk-waddle');
-  });
-
-  test('readTriviaTokenFromDotenvMap prefers WADDLE_TRIVIA_ACCESS_TOKEN', () {
-    expect(
-      readTriviaTokenFromDotenvMap({
+      readTriviaTokenFromEnvMap({
         waddleTriviaAccessTokenKey: ' sk-trivia ',
         waddleJokesAccessTokenKey: 'sk-jokes',
       }),
@@ -76,55 +44,18 @@ void main() {
     );
   });
 
-  test('applyJokesTokenFromDevDotenv uses trivia-specific token when set', () async {
-    dotenv.clean();
-    dotenv.loadFromString(
-      envString:
-          'OPENAI_API_KEY=sk-openai\nWADDLE_TRIVIA_ACCESS_TOKEN=sk-trivia-only\n',
-      isOptional: true,
-    );
-    final secrets = InMemorySecretStore();
-    await applyJokesTokenFromDevDotenv(secrets);
-    expect(await secrets.read('provider:access_token:jokes'), 'sk-openai');
-    expect(await secrets.read('provider:access_token:trivia'), 'sk-trivia-only');
-  });
-
-  test('applyJokesTokenFromDevDotenv no-op when env has no token keys', () async {
-    dotenv.clean();
-    dotenv.loadFromString(envString: 'FOO=bar', isOptional: true);
-    final secrets = InMemorySecretStore();
-    await applyJokesTokenFromDevDotenv(secrets);
-    expect(await secrets.read('provider:access_token:jokes'), isNull);
-    expect(await secrets.read('provider:access_token:trivia'), isNull);
-    expect(await secrets.read('provider:access_token:weather'), isNull);
-  });
-
-  test('readWeatherTokenFromDotenvMap reads OPEN_WEATHER_MAP_API_KEY', () {
+  test('readWeatherTokenFromEnvMap reads OPEN_WEATHER_MAP_API_KEY', () {
     expect(
-      readWeatherTokenFromDotenvMap({
+      readWeatherTokenFromEnvMap({
         openWeatherMapApiKeyEnv: ' owm-token ',
       }),
       'owm-token',
     );
   });
 
-  test('applyJokesTokenFromDevDotenv writes OPEN_WEATHER_MAP_API_KEY', () async {
-    dotenv.clean();
-    dotenv.loadFromString(
-      envString: 'OPEN_WEATHER_MAP_API_KEY=owm-from-dotenv',
-      isOptional: true,
-    );
-    final secrets = InMemorySecretStore();
-    await applyJokesTokenFromDevDotenv(secrets);
+  test('readPexelsTokenFromEnvMap prefers WADDLE_PEXELS_ACCESS_TOKEN', () {
     expect(
-      await secrets.read('provider:access_token:weather'),
-      'owm-from-dotenv',
-    );
-  });
-
-  test('readPexelsTokenFromDotenvMap prefers WADDLE_PEXELS_ACCESS_TOKEN', () {
-    expect(
-      readPexelsTokenFromDotenvMap({
+      readPexelsTokenFromEnvMap({
         waddlePexelsAccessTokenKey: ' pex-a ',
         pexelsApiKeyEnv: 'pex-b',
       }),
@@ -132,30 +63,16 @@ void main() {
     );
   });
 
-  test('readPexelsTokenFromDotenvMap falls back to PEXELS_API_KEY', () {
+  test('readPexelsTokenFromEnvMap falls back to PEXELS_API_KEY', () {
     expect(
-      readPexelsTokenFromDotenvMap({pexelsApiKeyEnv: ' pex-only '}),
+      readPexelsTokenFromEnvMap({pexelsApiKeyEnv: ' pex-only '}),
       'pex-only',
     );
   });
 
-  test('applyJokesTokenFromDevDotenv writes Pexels key', () async {
-    dotenv.clean();
-    dotenv.loadFromString(
-      envString: 'PEXELS_API_KEY=pex-from-dotenv',
-      isOptional: true,
-    );
-    final secrets = InMemorySecretStore();
-    await applyJokesTokenFromDevDotenv(secrets);
+  test('readFlickrTokenFromEnvMap prefers WADDLE_FLICKR_ACCESS_TOKEN', () {
     expect(
-      await secrets.read('${ProviderConfigResolver.accessTokenKey}:pexels'),
-      'pex-from-dotenv',
-    );
-  });
-
-  test('readFlickrTokenFromDotenvMap prefers WADDLE_FLICKR_ACCESS_TOKEN', () {
-    expect(
-      readFlickrTokenFromDotenvMap({
+      readFlickrTokenFromEnvMap({
         waddleFlickrAccessTokenKey: ' fl-a ',
         flickrApiKeyEnv: 'fl-b',
       }),
@@ -163,37 +80,23 @@ void main() {
     );
   });
 
-  test('readFlickrTokenFromDotenvMap falls back to FLICKR_API_KEY', () {
+  test('readFlickrTokenFromEnvMap falls back to FLICKR_API_KEY', () {
     expect(
-      readFlickrTokenFromDotenvMap({flickrApiKeyEnv: ' fl-only '}),
+      readFlickrTokenFromEnvMap({flickrApiKeyEnv: ' fl-only '}),
       'fl-only',
     );
   });
 
-  test('applyJokesTokenFromDevDotenv writes Flickr key', () async {
-    dotenv.clean();
-    dotenv.loadFromString(
-      envString: 'FLICKR_API_KEY=fl-from-dotenv',
-      isOptional: true,
-    );
-    final secrets = InMemorySecretStore();
-    await applyJokesTokenFromDevDotenv(secrets);
+  test('readStocksTokenFromEnvMap reads FINNHUB_API_KEY', () {
     expect(
-      await secrets.read('${ProviderConfigResolver.accessTokenKey}:flickr_media'),
-      'fl-from-dotenv',
-    );
-  });
-
-  test('readStocksTokenFromDotenvMap reads FINNHUB_API_KEY', () {
-    expect(
-      readStocksTokenFromDotenvMap({finnhubApiKeyEnv: ' fhub-token '}),
+      readStocksTokenFromEnvMap({finnhubApiKeyEnv: ' fhub-token '}),
       'fhub-token',
     );
   });
 
-  test('readStocksTokenFromDotenvMap prefers WADDLE_STOCKS_ACCESS_TOKEN', () {
+  test('readStocksTokenFromEnvMap prefers WADDLE_STOCKS_ACCESS_TOKEN', () {
     expect(
-      readStocksTokenFromDotenvMap({
+      readStocksTokenFromEnvMap({
         waddleStocksAccessTokenKey: ' waddle-stocks ',
         finnhubApiKeyEnv: 'fhub',
       }),
@@ -201,28 +104,14 @@ void main() {
     );
   });
 
-  test('readStocksTokenFromDotenvMap returns null when empty', () {
-    expect(readStocksTokenFromDotenvMap({}), isNull);
+  test('readStocksTokenFromEnvMap returns null when empty', () {
+    expect(readStocksTokenFromEnvMap({}), isNull);
     expect(
-      readStocksTokenFromDotenvMap({
+      readStocksTokenFromEnvMap({
         waddleStocksAccessTokenKey: '   ',
         finnhubApiKeyEnv: '',
       }),
       isNull,
-    );
-  });
-
-  test('applyJokesTokenFromDevDotenv writes FINNHUB_API_KEY', () async {
-    dotenv.clean();
-    dotenv.loadFromString(
-      envString: 'FINNHUB_API_KEY=fhub-from-dotenv',
-      isOptional: true,
-    );
-    final secrets = InMemorySecretStore();
-    await applyJokesTokenFromDevDotenv(secrets);
-    expect(
-      await secrets.read('${ProviderConfigResolver.accessTokenKey}:stocks'),
-      'fhub-from-dotenv',
     );
   });
 

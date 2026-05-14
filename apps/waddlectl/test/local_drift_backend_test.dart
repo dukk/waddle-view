@@ -1,9 +1,8 @@
 import 'dart:io';
 
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:path/path.dart' as p;
 import 'package:waddle_shared/persistence/database.dart';
-import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 import 'package:waddlectl/local_drift_backend.dart';
 
 void main() {
@@ -18,8 +17,7 @@ void main() {
     });
     final dbFile = File(p.join(tmp.path, 'waddle_view.sqlite'));
     final db = AppDatabase(createQueryExecutorForFile(dbFile));
-    final secrets = InMemorySecretStore();
-    final backend = LocalDriftBackend(db, secrets);
+    final backend = LocalDriftBackend(db);
     addTearDown(() async {
       await backend.close();
     });
@@ -43,7 +41,7 @@ void main() {
     });
     final dbFile = File(p.join(tmp.path, 'waddle_view.sqlite'));
     final db = AppDatabase(createQueryExecutorForFile(dbFile));
-    final backend = LocalDriftBackend(db, InMemorySecretStore());
+    final backend = LocalDriftBackend(db);
     addTearDown(() async {
       await backend.close();
     });
@@ -125,7 +123,7 @@ void main() {
     });
     final dbFile = File(p.join(tmp.path, 'waddle_view.sqlite'));
     final db = AppDatabase(createQueryExecutorForFile(dbFile));
-    final backend = LocalDriftBackend(db, InMemorySecretStore());
+    final backend = LocalDriftBackend(db);
     addTearDown(() async {
       await backend.close();
     });

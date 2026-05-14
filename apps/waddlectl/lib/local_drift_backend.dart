@@ -1,19 +1,16 @@
 import 'package:drift/drift.dart' show Value;
-import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/curation/reject_rescan.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/reject_term_repository.dart';
 import 'package:waddle_shared/persistence/tables.dart';
-import 'package:waddle_shared/secrets/secret_store.dart';
 import 'package:waddle_shared/theme/display_text_scale_kv.dart';
 import 'package:waddle_shared/theme/display_theme_ids.dart';
 import 'package:waddle_shared/theme/display_theme_kv.dart';
 
-/// Local admin port (Drift + [SecretStore]). A future REST client can implement
-/// the same surface for remote operations.
+/// Local admin port (Drift). A future REST client can implement the same
+/// surface for remote operations.
 abstract class WaddleAdminBackend {
   AppDatabase get db;
-  SecretStore get secrets;
 
   Future<void> close();
 
@@ -43,7 +40,6 @@ abstract class WaddleAdminBackend {
     String? baseUrl,
     String? configJson,
   });
-  Future<void> setProviderAccessToken(String providerId, String token);
 
   Future<List<Map<String, Object?>>> listTickers();
   Future<Map<String, Object?>?> describeTicker(String id);
@@ -76,10 +72,6 @@ abstract class WaddleAdminBackend {
     int? maxPlacementsPerProgram,
   });
 
-  Future<String?> describeSecret(String key);
-  Future<void> setSecret(String key, String value);
-  Future<void> deleteSecret(String key);
-
   Future<List<Map<String, Object?>>> listRejectTerms();
   Future<String?> getRejectCensorFormat();
 
@@ -101,16 +93,12 @@ abstract class WaddleAdminBackend {
 }
 
 class LocalDriftBackend implements WaddleAdminBackend {
-  LocalDriftBackend(this._db, this._secrets);
+  LocalDriftBackend(this._db);
 
   final AppDatabase _db;
-  final SecretStore _secrets;
 
   @override
   AppDatabase get db => _db;
-
-  @override
-  SecretStore get secrets => _secrets;
 
   @override
   Future<void> close() => _db.close();
@@ -266,14 +254,6 @@ class LocalDriftBackend implements WaddleAdminBackend {
             ? const Value.absent()
             : Value(configJson.isEmpty ? null : configJson),
       ),
-    );
-  }
-
-  @override
-  Future<void> setProviderAccessToken(String providerId, String token) async {
-    await secrets.write(
-      '${ProviderConfigResolver.accessTokenKey}:$providerId',
-      token,
     );
   }
 
@@ -472,16 +452,6 @@ class LocalDriftBackend implements WaddleAdminBackend {
           ),
         );
   }
-
-  @override
-  Future<String?> describeSecret(String key) => _secrets.read(key);
-
-  @override
-  Future<void> setSecret(String key, String value) =>
-      _secrets.write(key, value);
-
-  @override
-  Future<void> deleteSecret(String key) => _secrets.delete(key);
 
   @override
   Future<List<Map<String, Object?>>> listRejectTerms() async {

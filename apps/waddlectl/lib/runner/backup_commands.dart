@@ -12,12 +12,8 @@ import '../backup_manifest.dart';
 import '../backup_schedule.dart';
 import '../backup_sqlite_checkpoint.dart';
 import '../global_options.dart';
-import '../secret_bundle_codec.dart';
-import '../secret_bundle_ops.dart';
-import '../secret_bundle_password.dart';
 import '../version.dart';
 import 'emit.dart';
-import 'with_backend.dart';
 
 Future<bool> confirmDestructiveRestore({
   required WaddleBackupManifest manifest,
@@ -40,9 +36,6 @@ Future<bool> confirmDestructiveRestore({
   }
   if (manifest.includeBlobs) {
     stdout.writeln('  - media/ blob directory next to the database');
-  }
-  if (manifest.includeSecrets) {
-    stdout.writeln('  - SecretStore keys listed in the backup will be merged (add/update).');
   }
   stdout.writeln();
   stdout.writeln('Type the word yes (lowercase) to continue:');
@@ -97,7 +90,7 @@ class BackupCommand extends Command<void> {
   String get name => 'backup';
 
   @override
-  String get description => 'Create, restore, or schedule full backups (SQLite + media + secrets).';
+  String get description => 'Create, restore, or schedule full backups (SQLite + media).';
 }
 
 class _BackupCreate extends Command<void> {
@@ -124,20 +117,6 @@ class _BackupCreate extends Command<void> {
         'include-blobs',
         defaultsTo: true,
         help: 'Include the media/ directory next to the database.',
-      )
-      ..addFlag(
-        'include-secrets',
-        defaultsTo: true,
-        help: 'Include an encrypted SecretStore bundle (Linux + secret-tool only).',
-      )
-      ..addOption(
-        'password-file',
-        help:
-            'When including secrets: read encryption password from the first line of this file.',
-      )
-      ..addOption(
-        'password-env',
-        help: 'When including secrets: read password from this environment variable.',
       );
   }
 
@@ -165,17 +144,10 @@ class _BackupCreate extends Command<void> {
     }
     final includeDatabase = argResults!['include-database'] as bool;
     final includeBlobs = argResults!['include-blobs'] as bool;
-    final includeSecrets = argResults!['include-secrets'] as bool;
 
-    if (!includeDatabase && !includeBlobs && !includeSecrets) {
-      usageException('Nothing to backup: enable at least one of '
-          '--include-database, --include-blobs, --include-secrets.');
-    }
-
-    if (includeSecrets && !Platform.isLinux) {
+    if (!includeDatabase && !includeBlobs) {
       usageException(
-        'Including secrets requires Linux and secret-tool. '
-        'Pass --no-include-secrets on this host.',
+        'Nothing to backup: enable at least one of --include-database, --include-blobs.',
       );
     }
 
@@ -192,21 +164,6 @@ class _BackupCreate extends Command<void> {
     );
     await outFile.parent.create(recursive: true);
 
-    late final String? password;
-    if (includeSecrets) {
-      try {
-        password = await resolveSecretBundlePassword(
-          passwordFile: argResults!['password-file'] as String?,
-          passwordEnv: argResults!['password-env'] as String?,
-          confirm: true,
-        );
-      } on StateError catch (e) {
-        usageException(e.message);
-      }
-    } else {
-      password = null;
-    }
-
     Uint8List? sqliteBytes;
     if (includeDatabase) {
       await walCheckpointFull(globalOptions.databaseFile);
@@ -217,19 +174,10 @@ class _BackupCreate extends Command<void> {
     final mediaMap = includeBlobs ? await readMediaTreeForArchive(mediaRoot) : <String, Uint8List>{};
     final includeEmptyMediaDir = includeBlobs && mediaMap.isEmpty;
 
-    Uint8List? secretBytes;
-    if (includeSecrets) {
-      final pw = password!;
-      await withLocalBackend(globalOptions, (b) async {
-        final map = await b.secrets.readAll();
-        secretBytes = await encodeSecretBundle(map, pw);
-      }, productionSecrets: true);
-    }
-
     final manifest = WaddleBackupManifest(
       includeDatabase: includeDatabase,
       includeBlobs: includeBlobs,
-      includeSecrets: includeSecrets,
+      includeSecrets: false,
       waddlectlVersion: kWaddlectlPackageVersion,
       createdAtUtcIso: createdAt.toIso8601String(),
       sqliteBasename: p.basename(globalOptions.databaseFile.path),
@@ -238,7 +186,7 @@ class _BackupCreate extends Command<void> {
     final archive = buildWaddleBackupArchive(
       manifest: manifest,
       sqliteBytes: sqliteBytes,
-      secretBundleBytes: secretBytes,
+      secretBundleBytes: null,
       mediaRelativePosixPaths: mediaMap,
       includeEmptyMediaDirectory: includeEmptyMediaDir,
     );
@@ -250,7 +198,7 @@ class _BackupCreate extends Command<void> {
       'format': format == WaddleBackupArchiveFormat.zip ? 'zip' : 'tgz',
       'include_database': includeDatabase,
       'include_blobs': includeBlobs,
-      'include_secrets': includeSecrets,
+      'include_secrets': false,
       'bytes': encoded.length,
     });
     if (!globalOptions.outputJson) {
@@ -266,16 +214,6 @@ class _BackupRestore extends Command<void> {
       ..addFlag(
         'yes',
         help: 'Skip the interactive destructive-restore confirmation.',
-      )
-      ..addOption(
-        'password-file',
-        help:
-            'When the backup includes secrets: read decryption password from the first line of this file.',
-      )
-      ..addOption(
-        'password-env',
-        help:
-            'When the backup includes secrets: read decryption password from this environment variable.',
       );
   }
 
@@ -285,7 +223,7 @@ class _BackupRestore extends Command<void> {
   String get name => 'restore';
 
   @override
-  String get description => 'Restore database / media / secrets from a backup archive.';
+  String get description => 'Restore database / media from a backup archive.';
 
   @override
   Future<void> run() async {
@@ -346,29 +284,10 @@ class _BackupRestore extends Command<void> {
       }
 
       if (manifest.includeSecrets) {
-        if (!Platform.isLinux) {
-          usageException('This backup includes secrets; restore them on Linux with secret-tool.');
-        }
-        late final String pw;
-        try {
-          pw = await resolveSecretBundlePassword(
-            passwordFile: argResults!['password-file'] as String?,
-            passwordEnv: argResults!['password-env'] as String?,
-            confirm: false,
-          );
-        } on StateError catch (e) {
-          usageException(e.message);
-        }
-        final bundleFile = File(p.join(staging.path, 'secrets', 'secret_bundle.bin'));
-        late final Map<String, String> entries;
-        try {
-          entries = await decodeSecretBundleFile(bundleFile, pw);
-        } on FormatException catch (e) {
-          usageException(e.message);
-        }
-        await withLocalBackend(globalOptions, (b) async {
-          await mergeSecretsImport(b.secrets, entries);
-        }, productionSecrets: true);
+        stderr.writeln(
+          'Warning: backup manifest lists encrypted secrets; secret bundles '
+          'are no longer restored. Database/media (if present) were restored.',
+        );
       }
 
       CliEmit(globalOptions).emitJsonOrText({
@@ -412,7 +331,6 @@ class _BackupSchedule extends Command<void> {
       )
       ..addFlag('include-database', defaultsTo: true)
       ..addFlag('include-blobs', defaultsTo: true)
-      ..addFlag('include-secrets', defaultsTo: true)
       ..addOption(
         'lock-file',
         help:
@@ -449,7 +367,6 @@ class _BackupSchedule extends Command<void> {
     }
     final includeDatabase = argResults!['include-database'] as bool;
     final includeBlobs = argResults!['include-blobs'] as bool;
-    final includeSecrets = argResults!['include-secrets'] as bool;
     final cron = (argResults!['cron'] as String?) ?? '0 2 * * *';
     final output = argResults!['output'] as String?;
     final lockFile = (argResults!['lock-file'] as String?) ?? '';
@@ -465,7 +382,6 @@ class _BackupSchedule extends Command<void> {
       output: output,
       includeDatabase: includeDatabase,
       includeBlobs: includeBlobs,
-      includeSecrets: includeSecrets,
     );
     final inner = '$wPrefix $dbFlag $createArgs';
     final cronBody = wrapWithFlock(lockFile, inner);
@@ -474,7 +390,6 @@ class _BackupSchedule extends Command<void> {
     final onCal = systemdOnCalendarFromCronOrNull(cron);
 
     stdout.writeln('# Example: add ONE of the blocks below to your system.');
-    stdout.writeln('# Non-interactive runs need --password-file or --password-env when secrets are included.');
     stdout.writeln();
     stdout.writeln('# --- crontab line (crontab -e) ---');
     stdout.writeln(cronLine);

@@ -38,7 +38,7 @@ class _ConfigList extends Command<void> {
     await withLocalBackend(globalOptions, (b) async {
       final rows = await b.listConfig();
       CliEmit(globalOptions).emitRows(rows);
-    }, productionSecrets: false);
+    });
   }
 }
 
@@ -63,7 +63,7 @@ class _ConfigGet extends Command<void> {
     await withLocalBackend(globalOptions, (b) async {
       final v = await b.getConfig(key);
       CliEmit(globalOptions).emitJsonOrText({'key': key, 'value': v});
-    }, productionSecrets: false);
+    });
   }
 }
 
@@ -89,7 +89,7 @@ class _ConfigSet extends Command<void> {
     final value = rest.sublist(1).join(' ');
     await withLocalBackend(globalOptions, (b) async {
       await b.setConfig(key, value);
-    }, productionSecrets: false);
+    });
   }
 }
 
@@ -112,6 +112,6 @@ class _ConfigUnset extends Command<void> {
     }
     await withLocalBackend(globalOptions, (b) async {
       await b.unsetConfig(rest.first);
-    }, productionSecrets: false);
+    });
   }
 }

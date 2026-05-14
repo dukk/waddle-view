@@ -22,6 +22,7 @@ import 'screens/admin_setup/admin_setup_slide_widget.dart';
 import 'screens/calendar_month/calendar_month_slide_widget.dart';
 import 'screens/clock/analog_clock_slide_widget.dart';
 import 'screens/clock/digital_clock_slide_widget.dart';
+import 'screens/data_health/data_health_slide_widget.dart';
 import 'screens/guest_wifi/guest_wifi_slide_widget.dart';
 import 'screens/joke/joke_slide_widget.dart';
 import 'screens/local_api/local_api_slide_widget.dart';
@@ -901,6 +902,17 @@ class _SlideContent extends StatelessWidget {
         ),
       );
     }
+    if (widgets.length == 1 && widgets.first.type == 'data_health') {
+      final w = widgets.first;
+      return SizedBox.expand(
+        child: DataHealthSlideWidget(
+          db: db,
+          slide: slide,
+          spec: w,
+          theme: theme,
+        ),
+      );
+    }
     // Multi-widget stacks can exceed the slide viewport (e.g. two tall tiles).
     // Scroll instead of overflowing; bounded height comes from the rotator area.
     return SingleChildScrollView(
@@ -1035,6 +1047,13 @@ class _SlideContent extends StatelessWidget {
               );
             case 'stock_quotes':
               return StockQuotesSlideWidget(
+                db: db,
+                slide: slide,
+                spec: w,
+                theme: theme,
+              );
+            case 'data_health':
+              return DataHealthSlideWidget(
                 db: db,
                 slide: slide,
                 spec: w,

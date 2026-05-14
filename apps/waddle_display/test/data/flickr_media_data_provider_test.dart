@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:waddle_shared/config/provider_access_token_env.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_display/data/data_write_context.dart';
 import 'package:waddle_display/data/providers/flickr_media/flickr_media_data_provider.dart';
@@ -32,7 +33,7 @@ void main() {
     await _seedProvider(db);
     final client = _FlickrClient();
     await FlickrMediaDataProvider(httpClient: client).collect(
-      _ctx(db, InMemorySecretStore()),
+      _ctx(db, InMemorySecretStore(), env: const {}),
     );
     expect(client.listCalls, 0);
     await db.close();
@@ -43,7 +44,6 @@ void main() {
     await warmDatabase(db);
     await _seedProvider(db);
     final secrets = InMemorySecretStore();
-    await secrets.write('${ProviderConfigResolver.accessTokenKey}:flickr_media', 'k');
     final client = _FlickrClient(
       photosByGroup: {
         'g1': [
@@ -84,7 +84,6 @@ void main() {
           '{"groupIds":["g1","g2"],"category":"flickr","perPollLimit":1,"sort":"date-posted-desc"}',
     );
     final secrets = InMemorySecretStore();
-    await secrets.write('${ProviderConfigResolver.accessTokenKey}:flickr_media', 'k');
     final client = _FlickrClient(
       photosByGroup: {
         'g1': [
@@ -122,7 +121,6 @@ void main() {
           '{"groupIds":["g1"],"category":"flickr","perPollLimit":10,"sort":"date-posted-desc"}',
     );
     final secrets = InMemorySecretStore();
-    await secrets.write('${ProviderConfigResolver.accessTokenKey}:flickr_media', 'k');
     final client = _FlickrClient(
       photosByGroup: {
         'g1': [
@@ -144,8 +142,12 @@ void main() {
   });
 }
 
-DataWriteContext _ctx(AppDatabase db, InMemorySecretStore secrets) {
-  final resolver = ProviderConfigResolver(db, secrets);
+DataWriteContext _ctx(
+  AppDatabase db,
+  InMemorySecretStore secrets, {
+  Map<String, String> env = const {flickrApiKeyEnv: 'k'},
+}) {
+  final resolver = ProviderConfigResolver(db, env);
   return DataWriteContextImpl(
     db: db,
     blobs: FakeBlobStore(),

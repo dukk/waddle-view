@@ -11,7 +11,6 @@ import 'package:waddle_display/data/seed/tables/joke_categories_seed.dart';
 import 'package:waddle_display/ticker/memory_ticker_curated_repository.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
-import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 
 import 'helpers/memory_database.dart';
 
@@ -31,7 +30,6 @@ void main() {
       alerts: alerts,
       keys: keys,
       ticker: ticker,
-      secrets: InMemorySecretStore(),
       onConfigChanged: () async {},
       keyFile: await _tempKeyFile('supersecret'),
       setupScreenId: 'admin_setup',
@@ -83,7 +81,6 @@ void main() {
       alerts: alerts,
       keys: keys,
       ticker: ticker,
-      secrets: InMemorySecretStore(),
       onConfigChanged: () async {},
       keyFile: await _tempKeyFile('supersecret'),
       setupScreenId: 'admin_setup',
@@ -149,7 +146,6 @@ void main() {
         alerts: alerts,
         keys: keys,
         ticker: ticker,
-        secrets: InMemorySecretStore(),
         onConfigChanged: () async {},
         keyFile: await _tempKeyFile('supersecret'),
         setupScreenId: 'admin_setup',

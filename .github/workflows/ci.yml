@@ -65,8 +65,6 @@ jobs:
       - run: flutter test --coverage --timeout=60s
       - name: Line coverage (lib/)
         run: dart run tool/coverage_check.dart --min=90 coverage/lcov.info
-      - name: Install waddlectl Linux integration deps (secret-tool CLI)
-        run: sudo apt-get update && sudo apt-get install -y libsecret-tools
       - run: flutter test
         working-directory: ${{ github.workspace }}/apps/waddlectl
 

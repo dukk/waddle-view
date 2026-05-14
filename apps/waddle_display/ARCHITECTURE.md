@@ -6,7 +6,7 @@ This document describes how the TV dashboard is structured at runtime and how ma
 
 - **Single process**: Flutter UI, background async loops, and the embedded HTTP server share one isolate unless you add isolates later.
 - **Ports and adapters**: abstract boundaries (`IDataProvider`, `DataWriteContext`, `AlertRepository`, `TickerCuratedRepository`, `DashboardCurator`, `BlobStore`, `SecretStore`, `WindowChromeController`) with Drift/filesystem/Linux implementations.
-- **No secrets in SQLite**: provider tokens and similar values go through [`SecretStore`](lib/secrets/secret_store.dart); SQLite holds non-secret configuration and operational data.
+- **No secrets in SQLite**: static provider API keys are read from the **merged environment map** (see [`ProviderConfigResolver`](../../packages/waddle_shared/lib/config/provider_config_resolver.dart)); **Google / Microsoft Graph OAuth** tokens use [`SecretStore`](lib/secrets/secret_store.dart) / [`FlutterSecureSecretStore`](lib/secrets/flutter_secure_secret_store.dart). SQLite holds non-secret configuration and operational data.
 - **Drift as the hub**: display **screen definitions** (`screen_definitions`), **configuration key–values** (`config_key_values`, including curator program settings and theme/ticker keys), alerts, blob metadata, RSS tables, and provider settings read/write through [`AppDatabase`](../../packages/waddle_shared/lib/persistence/database.dart). **Ticker marquee text is in-memory only** ([`MemoryTickerCuratedRepository`](lib/ticker/memory_ticker_curated_repository.dart)); REST exposes a read-only snapshot.
 
 ## Module map
@@ -105,7 +105,7 @@ At startup, `main()` wires concrete implementations, starts long-running `Future
 
 ## Sequence: application startup
 
-From [`lib/main.dart`](lib/main.dart): filesystem prep → database + seed → secrets and data context → **curator initial `refresh()`** → collection engine (with **`onCycleComplete: curator.refresh`**) → alerts + REST (`MemoryTickerCuratedRepository` for **`GET /v1/ticker/items`**) → dashboard access + **`TickerMarquee`** + **`ScreenRotator`** → window policy → `runApp`.
+From [`lib/main.dart`](lib/main.dart): filesystem prep → database + seed → OAuth `SecretStore` + merged env + **curator initial `refresh()`** → collection engine (with **`onCycleComplete: curator.refresh`**) → alerts + REST (`MemoryTickerCuratedRepository` for **`GET /v1/ticker/items`**) → dashboard access + **`TickerMarquee`** + **`ScreenRotator`** → window policy → `runApp`.
 
 ```mermaid
 sequenceDiagram
@@ -132,7 +132,7 @@ sequenceDiagram
   M->>DB: open SQLite executor
   M->>Seed: migrations + initial rows
   M->>SS: construct
-  M->>Res: ProviderConfigResolver(db, secrets)
+  M->>Res: ProviderConfigResolver(db, mergeBootstrapEnv())
   M->>Blob: FileSystemBlobStore(mediaDir)
   M->>Ctx: DataWriteContextImpl(db, blobs, secrets, resolve)
   M->>MTCR: MemoryTickerCuratedRepository()
@@ -165,11 +165,14 @@ sequenceDiagram
     Eng->>P: collect(ctx)
     P->>DB: read/write rows as needed
     P->>Blob: putBytes / paths
-    opt provider needs tokens or URLs
+    opt provider needs config + static API key
       P->>Ctx: resolveConfig(providerId)
       Ctx->>DB: provider_settings
-      Ctx->>Sec: read secret key
+      Ctx->>Res: resolver (env map → accessToken)
       Ctx-->>P: ProviderRuntimeConfig
+    end
+    opt OAuth provider (Google / Graph)
+      P->>Ctx: secrets.read/write refresh
     end
     P-->>Eng: complete
     Eng->>Eng: onCycleComplete() e.g. DefaultDashboardCurator.refresh
@@ -177,7 +180,7 @@ sequenceDiagram
   end
 ```
 
-The stub provider demonstrates the path: it upserts [`config_key_values`](lib/data/stub_data_provider.dart) (feeds the header title stream) and registers a small blob plus [`blob_metadata`](lib/data/stub_data_provider.dart).
+The stub provider demonstrates the path: it upserts [`config_key_values`](lib/data/stub_data_provider.dart) (feeds the header title stream) and registers a small blob plus [`blob_metadata`](lib/data/stub_data_provider.dart). [`resolveConfig`](lib/data/data_write_context.dart) supplies `baseUrl` / `configJson` / **`accessToken`** from Drift + the startup **env map**; OAuth-only providers additionally use [`DataWriteContext.secrets`](lib/data/data_write_context.dart) outside that resolver path.
 
 ## Sequence: REST alert to on-screen overlay
 

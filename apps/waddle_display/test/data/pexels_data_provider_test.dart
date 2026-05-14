@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart' hide isNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:waddle_shared/config/provider_access_token_env.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/config/provider_runtime_config.dart';
 import 'package:waddle_display/data/data_write_context.dart';
@@ -176,7 +177,7 @@ void main() {
     await PexelsDataProvider(
       httpClient: httpClient,
       nowMs: () => 1,
-    ).collect(_ctx(db, await _secretsWithKey()));
+    ).collect(_ctx(db, InMemorySecretStore()));
     expect(httpClient.requests, isEmpty);
     await db.close();
   });
@@ -185,13 +186,12 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _ensurePexelsProvider(db);
-    final secrets = InMemorySecretStore();
     final httpClient = _FakePexelsHttp(
       curatedPhotos: [_photoJson(1)],
       popularVideos: [],
     );
     await PexelsDataProvider(httpClient: httpClient, nowMs: () => 1).collect(
-      _ctx(db, secrets),
+      _ctx(db, InMemorySecretStore(), tokenEnv: {}),
     );
     expect(httpClient.requests, isEmpty);
     await db.close();
@@ -212,7 +212,7 @@ void main() {
       popularVideos: [],
     );
     await PexelsDataProvider(httpClient: httpClient, nowMs: () => 100001).collect(
-      _ctx(db, await _secretsWithKey()),
+      _ctx(db, InMemorySecretStore()),
     );
     expect(httpClient.requests, isEmpty);
     await db.close();
@@ -223,7 +223,7 @@ void main() {
     await warmDatabase(db);
     await _ensurePexelsProvider(db);
 
-    final secrets = await _secretsWithKey();
+    final secrets = InMemorySecretStore();
     final ctx = _ctx(db, secrets);
     final httpClient = _FakePexelsHttp(
       curatedPhotos: [_photoJson(101)],
@@ -266,7 +266,7 @@ void main() {
           ),
         );
 
-    final secrets = await _secretsWithKey();
+    final secrets = InMemorySecretStore();
     final ctx = _ctx(db, secrets);
     final httpClient = _FakePexelsHttp(
       curatedPhotos: [_photoJson(303)],
@@ -304,7 +304,7 @@ void main() {
           ),
         );
 
-    final secrets = await _secretsWithKey();
+    final secrets = InMemorySecretStore();
     final ctx = _ctx(db, secrets);
     final httpClient = _FakePexelsHttp(
       curatedPhotos: [_photoJson(404)],
@@ -347,7 +347,7 @@ void main() {
           );
     }
 
-    final secrets = await _secretsWithKey();
+    final secrets = InMemorySecretStore();
     final ctx = _ctx(db, secrets);
     await PexelsDataProvider(
       httpClient: _FakePexelsHttp(curatedPhotos: [], popularVideos: []),
@@ -368,7 +368,7 @@ void main() {
       extra: '{"sources":[{"query":"trees","category":"nature"}]}',
     );
 
-    final secrets = await _secretsWithKey();
+    final secrets = InMemorySecretStore();
     final ctx = _ctx(db, secrets);
     final httpClient = _FakePexelsHttp(
       curatedPhotos: [],
@@ -423,7 +423,7 @@ void main() {
           ']}',
     );
 
-    final secrets = await _secretsWithKey();
+    final secrets = InMemorySecretStore();
     final ctx = _ctx(db, secrets);
     final httpClient = _FakePexelsHttp(
       curatedPhotos: [],
@@ -502,7 +502,7 @@ void main() {
     await PexelsDataProvider(
       httpClient: _FakePexelsHttp(curatedPhotos: [], popularVideos: []),
       nowMs: () => 200_000,
-    ).collect(_ctx(db, await _secretsWithKey()));
+    ).collect(_ctx(db, InMemorySecretStore()));
 
     final ids =
         (await db.select(db.videos).get()).map((v) => v.id).toList()..sort();
@@ -527,7 +527,7 @@ void main() {
       popularVideos: [],
     );
     await PexelsDataProvider(httpClient: httpClient, nowMs: () => 1).collect(
-      _ctx(db, await _secretsWithKey()),
+      _ctx(db, InMemorySecretStore()),
     );
     expect(
       httpClient.requests.any((r) => r.startsWith('http://api.pexels.test/v1/')),
@@ -543,7 +543,7 @@ void main() {
     await PexelsDataProvider(
       httpClient: _StatusClient(500),
       nowMs: () => 1,
-    ).collect(_ctx(db, await _secretsWithKey()));
+    ).collect(_ctx(db, InMemorySecretStore()));
     expect(await db.select(db.photos).get(), isEmpty);
     await db.close();
   });
@@ -555,7 +555,7 @@ void main() {
     await PexelsDataProvider(
       httpClient: _BodyClient('oops not json', 200),
       nowMs: () => 1,
-    ).collect(_ctx(db, await _secretsWithKey()));
+    ).collect(_ctx(db, InMemorySecretStore()));
     expect(await db.select(db.photos).get(), isEmpty);
     await db.close();
   });
@@ -567,7 +567,7 @@ void main() {
     await PexelsDataProvider(
       httpClient: _BodyClient('[]', 200),
       nowMs: () => 1,
-    ).collect(_ctx(db, await _secretsWithKey()));
+    ).collect(_ctx(db, InMemorySecretStore()));
     expect(await db.select(db.photos).get(), isEmpty);
     await db.close();
   });
@@ -585,7 +585,7 @@ void main() {
         emptyImage: true,
       ),
       nowMs: () => 1,
-    ).collect(_ctx(db, await _secretsWithKey()));
+    ).collect(_ctx(db, InMemorySecretStore()));
     expect(await db.select(db.photos).get(), isEmpty);
     await db.close();
   });
@@ -599,7 +599,7 @@ void main() {
     await PexelsDataProvider(
       httpClient: _FakePexelsHttp(curatedPhotos: [photo], popularVideos: []),
       nowMs: () => 1,
-    ).collect(_ctx(db, await _secretsWithKey()));
+    ).collect(_ctx(db, InMemorySecretStore()));
     expect((await db.select(db.photos).get()).single.id, '902');
     await db.close();
   });
@@ -622,7 +622,7 @@ void main() {
     await PexelsDataProvider(
       httpClient: httpClient,
       nowMs: () => 100_000,
-    ).collect(_ctx(db, await _secretsWithKey()));
+    ).collect(_ctx(db, InMemorySecretStore()));
     expect(await db.select(db.videos).get(), isEmpty);
     expect(
       httpClient.requests.where((r) => r.contains('/videos/popular')).length,
@@ -639,7 +639,7 @@ void main() {
       extra: '{"sources":[{"query":"x","category":"misc"}]}',
     );
 
-    final secrets = await _secretsWithKey();
+    final secrets = InMemorySecretStore();
     final ctx = _ctx(db, secrets);
     await PexelsDataProvider(
       httpClient: _FakePexelsHttp(
@@ -666,7 +666,7 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _ensurePexelsProvider(db);
-    final secrets = await _secretsWithKey();
+    final secrets = InMemorySecretStore();
     final ctx = _ThrowingResolveContext(
       db: db,
       blobs: FakeBlobStore(),
@@ -686,7 +686,7 @@ void main() {
     await _ensurePexelsProvider(db);
     final client = _TwoPageCuratedClient();
     await PexelsDataProvider(httpClient: client, nowMs: () => 1).collect(
-      _ctx(db, await _secretsWithKey()),
+      _ctx(db, InMemorySecretStore()),
     );
     expect(client.curatedPageRequests, 2);
     await db.close();
@@ -701,7 +701,7 @@ void main() {
           '"minVideoSeconds":11,"maxVideoSeconds":29,"sources":[]}',
     );
     final blobs = FakeBlobStore();
-    final secrets = await _secretsWithKey();
+    final secrets = InMemorySecretStore();
     for (final e in <(String, int)>[('o1', 10), ('o2', 20)]) {
       final ref = await blobs.putBytes(_jpegBytes, logicalKey: 'k/${e.$1}');
       await db.into(db.blobMetadata).insert(
@@ -733,7 +733,7 @@ void main() {
         db: db,
         blobs: blobs,
         secrets: secrets,
-        resolve: ProviderConfigResolver(db, secrets).resolve,
+        resolve: ProviderConfigResolver(db, {pexelsApiKeyEnv: 'k'}).resolve,
       ),
     );
     expect((await db.select(db.photos).get()).single.id, 'o2');
@@ -751,7 +751,7 @@ void main() {
     await PexelsDataProvider(
       httpClient: _MixedPhotosCuratedClient(photo),
       nowMs: () => 1,
-    ).collect(_ctx(db, await _secretsWithKey()));
+    ).collect(_ctx(db, InMemorySecretStore()));
     expect((await db.select(db.photos).get()).single.id, 'sid');
     await db.close();
   });
@@ -767,7 +767,7 @@ void main() {
         throwOnImage: true,
       ),
       nowMs: () => 1,
-    ).collect(_ctx(db, await _secretsWithKey()));
+    ).collect(_ctx(db, InMemorySecretStore()));
     expect(await db.select(db.photos).get(), isEmpty);
     await db.close();
   });
@@ -781,7 +781,7 @@ void main() {
     await PexelsDataProvider(
       httpClient: _FakePexelsHttp(curatedPhotos: [], popularVideos: [v]),
       nowMs: () => 1,
-    ).collect(_ctx(db, await _secretsWithKey()));
+    ).collect(_ctx(db, InMemorySecretStore()));
     expect((await db.select(db.videos).get()).single.id, '707');
     await db.close();
   });
@@ -858,14 +858,12 @@ class _TwoPageCuratedClient extends http.BaseClient {
   }
 }
 
-Future<InMemorySecretStore> _secretsWithKey() async {
-  final secrets = InMemorySecretStore();
-  await secrets.write('${ProviderConfigResolver.accessTokenKey}:pexels', 'k');
-  return secrets;
-}
-
-DataWriteContext _ctx(AppDatabase db, InMemorySecretStore secrets) {
-  final resolver = ProviderConfigResolver(db, secrets);
+DataWriteContext _ctx(
+  AppDatabase db,
+  InMemorySecretStore secrets, {
+  Map<String, String> tokenEnv = const {pexelsApiKeyEnv: 'k'},
+}) {
+  final resolver = ProviderConfigResolver(db, tokenEnv);
   return DataWriteContextImpl(
     db: db,
     blobs: FakeBlobStore(),

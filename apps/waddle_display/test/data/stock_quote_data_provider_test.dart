@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:drift/drift.dart' hide isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:waddle_shared/config/provider_access_token_env.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_display/data/data_write_context.dart';
 import 'package:waddle_display/data/providers/stock_quote/stock_quote_data_provider.dart';
@@ -68,9 +69,10 @@ String _quotePayload({
 
 Future<DataWriteContextImpl> _ctx(
   AppDatabase db,
-  InMemorySecretStore secrets,
-) async {
-  final resolver = ProviderConfigResolver(db, secrets);
+  InMemorySecretStore secrets, {
+  Map<String, String> env = const {},
+}) async {
+  final resolver = ProviderConfigResolver(db, env);
   return DataWriteContextImpl(
     db: db,
     blobs: FakeBlobStore(),
@@ -126,11 +128,7 @@ void main() {
           StockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
         );
     final secrets = InMemorySecretStore();
-    await secrets.write(
-      '${ProviderConfigResolver.accessTokenKey}:$kStockProviderId',
-      'finnhub-key',
-    );
-    final ctx = await _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets, env: {finnhubApiKeyEnv: 'finnhub-key'});
     final client = _FinnhubClient(
       (_) => http.Response(_quotePayload(current: 100), 200),
     );
@@ -169,11 +167,7 @@ void main() {
           ),
         );
     final secrets = InMemorySecretStore();
-    await secrets.write(
-      '${ProviderConfigResolver.accessTokenKey}:$kStockProviderId',
-      'finnhub-key',
-    );
-    final ctx = await _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets, env: {finnhubApiKeyEnv: 'finnhub-key'});
     final seenSymbols = <String>[];
     final client = _FinnhubClient((uri) {
       final symbol = uri.queryParameters['symbol']!;
@@ -224,11 +218,7 @@ void main() {
           StockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
         );
     final secrets = InMemorySecretStore();
-    await secrets.write(
-      '${ProviderConfigResolver.accessTokenKey}:$kStockProviderId',
-      'finnhub-key',
-    );
-    final ctx = await _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets, env: {finnhubApiKeyEnv: 'finnhub-key'});
     Uri? observed;
     final client = _FinnhubClient((uri) {
       observed = uri;
@@ -259,11 +249,7 @@ void main() {
       }),
     );
     final secrets = InMemorySecretStore();
-    await secrets.write(
-      '${ProviderConfigResolver.accessTokenKey}:$kStockProviderId',
-      'finnhub-key',
-    );
-    final ctx = await _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets, env: {finnhubApiKeyEnv: 'finnhub-key'});
     final client = _FinnhubClient(
       (_) => http.Response(_quotePayload(current: 50), 200),
     );
@@ -293,11 +279,7 @@ void main() {
           StockSymbolsCompanion.insert(id: 'msft', symbol: 'MSFT'),
         );
     final secrets = InMemorySecretStore();
-    await secrets.write(
-      '${ProviderConfigResolver.accessTokenKey}:$kStockProviderId',
-      'finnhub-key',
-    );
-    final ctx = await _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets, env: {finnhubApiKeyEnv: 'finnhub-key'});
     final client = _FinnhubClient(
       (_) => http.Response(_quotePayload(current: 99), 200),
     );
@@ -321,11 +303,7 @@ void main() {
           StockSymbolsCompanion.insert(id: 'bad', symbol: 'BAD'),
         );
     final secrets = InMemorySecretStore();
-    await secrets.write(
-      '${ProviderConfigResolver.accessTokenKey}:$kStockProviderId',
-      'finnhub-key',
-    );
-    final ctx = await _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets, env: {finnhubApiKeyEnv: 'finnhub-key'});
     final client = _FinnhubClient((uri) {
       final s = uri.queryParameters['symbol'];
       if (s == 'BAD') {
@@ -351,11 +329,7 @@ void main() {
           StockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
         );
     final secrets = InMemorySecretStore();
-    await secrets.write(
-      '${ProviderConfigResolver.accessTokenKey}:$kStockProviderId',
-      'finnhub-key',
-    );
-    final ctx = await _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets, env: {finnhubApiKeyEnv: 'finnhub-key'});
     final client = _FinnhubClient(
       (_) => http.Response('rate limited', 429),
     );
@@ -376,11 +350,7 @@ void main() {
           StockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
         );
     final secrets = InMemorySecretStore();
-    await secrets.write(
-      '${ProviderConfigResolver.accessTokenKey}:$kStockProviderId',
-      'finnhub-key',
-    );
-    final ctx = await _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets, env: {finnhubApiKeyEnv: 'finnhub-key'});
     final client = _FinnhubClient(
       (_) => http.Response('not-json', 200),
     );
@@ -400,11 +370,7 @@ void main() {
           StockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
         );
     final secrets = InMemorySecretStore();
-    await secrets.write(
-      '${ProviderConfigResolver.accessTokenKey}:$kStockProviderId',
-      'finnhub-key',
-    );
-    final ctx = await _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets, env: {finnhubApiKeyEnv: 'finnhub-key'});
     final client = _ThrowingFinnhubClient(
       http.ClientException(
         'boom',
@@ -428,11 +394,7 @@ void main() {
           StockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
         );
     final secrets = InMemorySecretStore();
-    await secrets.write(
-      '${ProviderConfigResolver.accessTokenKey}:$kStockProviderId',
-      'finnhub-key',
-    );
-    final ctx = await _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets, env: {finnhubApiKeyEnv: 'finnhub-key'});
     final client = _ThrowingFinnhubClient(
       const SocketException('no network'),
     );
@@ -453,11 +415,7 @@ void main() {
           StockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
         );
     final secrets = InMemorySecretStore();
-    await secrets.write(
-      '${ProviderConfigResolver.accessTokenKey}:$kStockProviderId',
-      'finnhub-key',
-    );
-    final ctx = await _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets, env: {finnhubApiKeyEnv: 'finnhub-key'});
     final client = _ThrowingFinnhubClient(StateError('unexpected'));
     final provider = StockQuoteDataProvider(httpClient: client);
 
@@ -479,11 +437,7 @@ void main() {
           StockSymbolsCompanion.insert(id: 'second', symbol: 'SECOND'),
         );
     final secrets = InMemorySecretStore();
-    await secrets.write(
-      '${ProviderConfigResolver.accessTokenKey}:$kStockProviderId',
-      'finnhub-key',
-    );
-    final ctx = await _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets, env: {finnhubApiKeyEnv: 'finnhub-key'});
     final client = _FinnhubClient((uri) {
       final s = uri.queryParameters['symbol'];
       if (s == 'FIRST') {
@@ -508,11 +462,7 @@ void main() {
     await warmDatabase(db);
     await _seedProviderRow(db);
     final secrets = InMemorySecretStore();
-    await secrets.write(
-      '${ProviderConfigResolver.accessTokenKey}:$kStockProviderId',
-      'finnhub-key',
-    );
-    final ctx = await _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets, env: {finnhubApiKeyEnv: 'finnhub-key'});
     final client = _FinnhubClient(
       (_) => http.Response(_quotePayload(current: 50), 200),
     );

@@ -167,14 +167,17 @@ void main() {
     });
 
     await DebugConsoleDiskLogger.installForTest(tmp);
-    final path1 = DebugConsoleDiskLogger.currentLogFileForTest?.path;
+    final logFile = DebugConsoleDiskLogger.currentLogFileForTest;
+    expect(logFile, isNotNull);
+    final initialPath = logFile!.path;
+
     await DebugConsoleDiskLogger.installAtSupportPathWhileInstalledForTest(
       tmp.path,
     );
-    expect(DebugConsoleDiskLogger.currentLogFileForTest?.path, path1);
+    expect(DebugConsoleDiskLogger.currentLogFileForTest?.path, initialPath);
 
-    final logsDir = Directory(p.join(tmp.path, 'debug_console_logs'));
-    expect(logsDir.listSync().whereType<File>().length, 1);
+    final onDisk = await singleLogFile(tmp);
+    expect(p.context.equals(onDisk.path, initialPath), isTrue);
 
     await DebugConsoleDiskLogger.closeForTest();
   });

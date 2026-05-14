@@ -58,7 +58,7 @@ class _MapHttp extends http.BaseClient {
 
 Future<DataWriteContextImpl> _newCtx(AppDatabase db) async {
   final secrets = InMemorySecretStore();
-  final resolver = ProviderConfigResolver(db, secrets);
+  final resolver = ProviderConfigResolver(db, {});
   return DataWriteContextImpl(
     db: db,
     blobs: FakeBlobStore(),

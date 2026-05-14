@@ -203,7 +203,7 @@ void main() {
 }
 
 DataWriteContext _ctx(AppDatabase db, InMemorySecretStore secrets) {
-  final resolver = ProviderConfigResolver(db, secrets);
+  final resolver = ProviderConfigResolver(db, {});
   return DataWriteContextImpl(
     db: db,
     blobs: FakeBlobStore(),

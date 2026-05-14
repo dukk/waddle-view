@@ -17,7 +17,6 @@ import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/display_overlay_repository.dart';
 import 'package:waddle_shared/persistence/reject_term_repository.dart';
 import 'package:waddle_shared/persistence/tables.dart';
-import 'package:waddle_shared/secrets/secret_store.dart';
 import '../theme/display_theme.dart';
 import '../ticker/ticker_curated_repository.dart';
 import 'api_key_constant_time.dart';
@@ -629,7 +628,6 @@ Handler buildRootHandler({
   required AlertRepository alerts,
   required DeploymentApiKeySource keys,
   required TickerCuratedRepository ticker,
-  required SecretStore secrets,
   required Future<void> Function() onConfigChanged,
   required File keyFile,
   required String setupScreenId,
@@ -645,7 +643,6 @@ Handler buildRootHandler({
   final admin = _AdminServer(
     db: db,
     keys: keys,
-    secrets: secrets,
     onConfigChanged: onConfigChanged,
     keyFile: keyFile,
     setupScreenId: setupScreenId,
@@ -716,7 +713,6 @@ class _AdminServer {
   _AdminServer({
     required this.db,
     required this.keys,
-    required this.secrets,
     required this.onConfigChanged,
     required this.keyFile,
     required this.setupScreenId,
@@ -724,7 +720,6 @@ class _AdminServer {
 
   final AppDatabase db;
   final DeploymentApiKeySource keys;
-  final SecretStore secrets;
   final Future<void> Function() onConfigChanged;
   final File keyFile;
   final String setupScreenId;
@@ -927,7 +922,6 @@ class _AdminServer {
 <td><input name="poll_seconds" value="${p.pollSeconds}"/></td>
 <td><input name="base_url" value="${_h(p.baseUrl ?? '')}"/></td>
 <td><input name="config_json" value="${_h(p.configJson ?? '')}"/></td>
-<td><input name="access_token" placeholder="leave blank to keep"/></td>
 <td><button type="submit">Save</button></td>
 </form>
 </tr>
@@ -968,8 +962,9 @@ $tickerTextScaleRows
 $screenRows
 </table>
 <h2>Providers</h2>
+<p>Non-OAuth API keys come from the process environment (and debug <code>.env</code>); see README. Google and Microsoft Graph OAuth tokens use the platform secure store.</p>
 <table border="1" cellpadding="4" cellspacing="0">
-<tr><th>ID</th><th>Type</th><th>Enabled</th><th>Poll Seconds</th><th>Base URL</th><th>Config JSON</th><th>Secret Token</th><th>Action</th></tr>
+<tr><th>ID</th><th>Type</th><th>Enabled</th><th>Poll Seconds</th><th>Base URL</th><th>Config JSON</th><th>Action</th></tr>
 $providerRows
 </table>
 ''',
@@ -1142,10 +1137,6 @@ $providerRows
             : (form['config_json'] ?? '').trim()),
       ),
     );
-    final token = (form['access_token'] ?? '').trim();
-    if (token.isNotEmpty) {
-      await secrets.write('provider:access_token:$id', token);
-    }
     await onConfigChanged();
     return _redirect('/admin');
   }

@@ -30,7 +30,7 @@ void main() {
           ProviderSettingsCompanion.insert(id: 'c', providerType: 'x'),
         );
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, secrets);
+    final resolver = ProviderConfigResolver(db, {});
     final p = CountingProvider();
     final ctx = DataWriteContextImpl(
       db: db,
@@ -57,7 +57,7 @@ void main() {
           ProviderSettingsCompanion.insert(id: 'c', providerType: 'x'),
         );
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, secrets);
+    final resolver = ProviderConfigResolver(db, {});
     final p = CountingProvider();
     final ctx = DataWriteContextImpl(
       db: db,

@@ -492,7 +492,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       _baseSchema(
         title: 'FlickrMediaProviderConfig',
         description:
-            'Public Flickr group photo sync. API key comes from SecretStore.',
+            'Public Flickr group photo sync. API key comes from environment variables (see FLICKR_API_KEY / WADDLE_FLICKR_ACCESS_TOKEN).',
         properties: {
           'groupIds': {
             'type': 'array',
@@ -630,6 +630,7 @@ const List<String> kScreenLayoutWidgetTypes = [
   'pexels_photo_collage',
   'pexels_video',
   'stock_quotes',
+  'data_health',
 ];
 
 /// [TickerDefinitions.tickerType] values for curation and seeds.
@@ -1124,6 +1125,28 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
       ),
     ),
     example: jsonEncode({}),
+  ),
+  'data_health': ScreenConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'DataHealthScreenConfig',
+        description:
+            'Database statistics and content-health charts. Optional headline and '
+            'refresh interval for re-querying aggregates (seconds, clamped 15–300).',
+        properties: {
+          'headline': {'type': 'string'},
+          'refreshIntervalSeconds': {
+            'type': 'integer',
+            'minimum': 15,
+            'maximum': 300,
+          },
+        },
+      ),
+    ),
+    example: jsonEncode({
+      'headline': 'Data health',
+      'refreshIntervalSeconds': 45,
+    }),
   ),
 };
 

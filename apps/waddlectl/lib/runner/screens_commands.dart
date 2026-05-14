@@ -37,7 +37,7 @@ class _ScreensList extends Command<void> {
   Future<void> run() async {
     await withLocalBackend(globalOptions, (b) async {
       CliEmit(globalOptions).emitRows(await b.listScreens());
-    }, productionSecrets: false);
+    });
   }
 }
 
@@ -65,7 +65,7 @@ class _ScreensDescribe extends Command<void> {
         return;
       }
       CliEmit(globalOptions).emitJsonOrText(row);
-    }, productionSecrets: false);
+    });
   }
 }
 
@@ -124,6 +124,6 @@ class _ScreensUpdate extends Command<void> {
         minGapBetweenShowsSeconds: gap,
         configJson: configJson,
       );
-    }, productionSecrets: false);
+    });
   }
 }

@@ -133,10 +133,9 @@ Future<void> _waddleBootstrap() async {
     AppDebugLog.startup('SQLite ready (seed applied if first run)');
 
     final secrets = FlutterSecureSecretStore();
-    await applyJokesTokenFromDevDotenv(secrets);
     await applyGoogleTokensFromDevDotenv(secrets);
     await applyMicrosoftGraphTokensFromDevDotenv(secrets);
-    final resolver = ProviderConfigResolver(db, secrets);
+    final resolver = ProviderConfigResolver(db, mergeBootstrapEnv());
     final blobs = FileSystemBlobStore(mediaDir);
     final ctx = DataWriteContextImpl(
       db: db,
@@ -193,7 +192,6 @@ Future<void> _waddleBootstrap() async {
       alerts: alerts,
       keys: keys,
       ticker: tickerCurated,
-      secrets: secrets,
       onConfigChanged: dashboardCurator.refresh,
       keyFile: keyFile,
       setupScreenId: 'admin_setup',

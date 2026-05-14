@@ -4,6 +4,7 @@ import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 
+import 'package:waddle_shared/config/provider_access_token_env.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_display/data/data_write_context.dart';
 import 'package:waddle_display/data/providers/pexels/pexels_data_provider.dart';
@@ -48,11 +49,7 @@ class _CuratedPhotosClient extends http.BaseClient {
   }
 }
 
-Future<InMemorySecretStore> _secretsWithKey() async {
-  final secrets = InMemorySecretStore();
-  await secrets.write('${ProviderConfigResolver.accessTokenKey}:pexels', 'k');
-  return secrets;
-}
+Future<InMemorySecretStore> _secretsWithKey() async => InMemorySecretStore();
 
 Future<void> _ensurePexels(AppDatabase db) async {
   await db.into(db.providerSettings).insert(
@@ -65,7 +62,7 @@ Future<void> _ensurePexels(AppDatabase db) async {
 }
 
 DataWriteContext _ctx(AppDatabase db, InMemorySecretStore secrets) {
-  final resolver = ProviderConfigResolver(db, secrets);
+  final resolver = ProviderConfigResolver(db, {pexelsApiKeyEnv: 'k'});
   return DataWriteContextImpl(
     db: db,
     blobs: FakeBlobStore(),

@@ -359,4 +359,38 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('cycleGate completes after horizontal wrap with configured gate', (
+    tester,
+  ) async {
+    final gate = MarqueeCycleGate();
+    gate.onCurationWrittenExpectMarqueeLoop();
+    final repo = MemoryTickerCuratedRepository();
+    addTearDown(repo.dispose);
+    final long = List.filled(80, 'Z').join();
+    await repo.replaceAll([TickerItem(kind: 'a', body: long)]);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 80,
+              child: TickerMarquee(
+                repository: repo,
+                cycleGate: gate,
+                pixelsPerSecond: 8000,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    for (var i = 0; i < 2000; i++) {
+      await tester.pump(const Duration(milliseconds: 1));
+    }
+    await gate.awaitPriorMarqueePresentationIfAny();
+    gate.dispose();
+    expect(tester.takeException(), isNull);
+  });
 }
