@@ -55,6 +55,22 @@ const _rssEntitiesInCdata = '''
 ''';
 
 void main() {
+  test('ParsedFeedEntry and ParsedFeed expose stored fields', () {
+    const entry = ParsedFeedEntry(
+      stableKey: 'k',
+      title: 't',
+      link: 'https://example/a',
+      summary: 's',
+      publishedAtMs: 42,
+      imageUrl: 'https://img/x.png',
+    );
+    const feed = ParsedFeed(channelTitle: 'chan', entries: [entry]);
+    expect(feed.channelTitle, 'chan');
+    expect(feed.entries.single, entry);
+    expect(entry.stableKey, 'k');
+    expect(entry.imageUrl, 'https://img/x.png');
+  });
+
   test('parseRssOrAtomXml cleans entities and markup in titles', () {
     final p = parseRssOrAtomXml(_rssEntitiesInCdata);
     expect(p.channelTitle, 'Ch & Co');

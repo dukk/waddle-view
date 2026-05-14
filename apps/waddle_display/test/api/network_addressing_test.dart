@@ -37,4 +37,14 @@ void main() {
     );
     expect(badHost.address, InternetAddress.loopbackIPv4);
   });
+
+  test('non-loopback bind uses that address for displayHost', () async {
+    final cfg = await resolveHttpBindConfig(
+      environment: const {
+        'WADDLE_HTTP_BIND': '192.0.2.1',
+      },
+    );
+    expect(cfg.address.address, '192.0.2.1');
+    expect(cfg.displayHost, '192.0.2.1');
+  });
 }

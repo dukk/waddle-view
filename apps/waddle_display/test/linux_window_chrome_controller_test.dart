@@ -19,4 +19,20 @@ void main() {
       // window_manager may be unavailable in some headless test environments.
     }
   });
+
+  test('applyStartupPolicy fullscreen path is attempted when allowed', () async {
+    final c = LinuxWindowChromeController();
+    try {
+      await c.initialize();
+      await c.applyStartupPolicy(
+        const StartupWindowPolicy(
+          isLinux: true,
+          isDebug: false,
+          allowFullscreen: true,
+        ),
+      );
+    } on Object {
+      // window_manager may be unavailable in some headless test environments.
+    }
+  });
 }
