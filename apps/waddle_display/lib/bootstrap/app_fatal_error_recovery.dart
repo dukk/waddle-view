@@ -4,6 +4,8 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import '../debug/debug_console_disk_logger.dart';
+
 /// Prevents nested fatal handling (e.g. errors during logging or restart).
 final class FatalHandlingGate {
   bool _busy = false;
@@ -29,6 +31,22 @@ void resetFatalHandlingGateForTest() {
   _fatalGate.resetForTest();
 }
 
+@visibleForTesting
+void invokeDefaultLogFatalForTest(
+  String channel,
+  Object error,
+  StackTrace? stack,
+) {
+  _defaultLogFatal(channel, error, stack);
+}
+
+@visibleForTesting
+void invokeDefaultRecoverableFlutterLayoutForTest(
+  FlutterErrorDetails details,
+) {
+  _defaultLogRecoverableFlutterLayout(details);
+}
+
 void _defaultLogFatal(String channel, Object error, StackTrace? stack) {
   developer.log(
     Error.safeToString(error),
@@ -36,6 +54,15 @@ void _defaultLogFatal(String channel, Object error, StackTrace? stack) {
     error: error,
     stackTrace: stack,
   );
+  if (kDebugMode) {
+    DebugConsoleDiskLogger.appendNamedLine(
+      'Fatal.$channel',
+      Error.safeToString(error),
+    );
+    if (stack != null) {
+      DebugConsoleDiskLogger.appendMultiline(stack.toString());
+    }
+  }
   stderr.writeln('[Fatal][$channel] ${Error.safeToString(error)}');
   if (stack != null) {
     stderr.writeln(stack.toString());
@@ -50,6 +77,13 @@ void _defaultLogRecoverableFlutterLayout(FlutterErrorDetails details) {
     error: details.exception,
     stackTrace: details.stack,
   );
+  if (kDebugMode) {
+    DebugConsoleDiskLogger.appendNamedLine('Flutter.recoverable', message);
+    final st = details.stack;
+    if (st != null) {
+      DebugConsoleDiskLogger.appendMultiline(st.toString());
+    }
+  }
   stderr.writeln('[Recoverable][Flutter] $message');
 }
 

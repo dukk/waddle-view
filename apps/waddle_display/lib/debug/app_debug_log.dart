@@ -2,6 +2,8 @@ import 'dart:developer' as developer;
 
 import 'package:flutter/foundation.dart';
 
+import 'debug_console_disk_logger.dart';
+
 /// Debug-only tracing (no-op in release). Shows in **Run** / **Debug Console**
 /// and **Flutter DevTools** logging.
 ///
@@ -30,6 +32,11 @@ abstract final class AppDebugLog {
     if (!kDebugMode) {
       return;
     }
+    DebugConsoleDiskLogger.appendNamedLine(
+      'Engine',
+      '$context: ${Error.safeToString(error)}',
+    );
+    DebugConsoleDiskLogger.appendMultiline(stack.toString());
     developer.log(
       '$context: ${Error.safeToString(error)}',
       name: 'Engine',
@@ -42,6 +49,11 @@ abstract final class AppDebugLog {
     if (!kDebugMode) {
       return;
     }
+    DebugConsoleDiskLogger.appendNamedLine(
+      'Curator',
+      '$context: ${Error.safeToString(error)}',
+    );
+    DebugConsoleDiskLogger.appendMultiline(stack.toString());
     developer.log(
       '$context: ${Error.safeToString(error)}',
       name: 'Curator',
@@ -54,6 +66,11 @@ abstract final class AppDebugLog {
     if (!kDebugMode) {
       return;
     }
+    DebugConsoleDiskLogger.appendNamedLine(
+      'Provider',
+      '$context: ${Error.safeToString(error)}',
+    );
+    DebugConsoleDiskLogger.appendMultiline(stack.toString());
     developer.log(
       '$context: ${Error.safeToString(error)}',
       name: 'Provider',
@@ -75,6 +92,7 @@ abstract final class AppDebugLog {
     if (!kDebugMode) {
       return;
     }
+    DebugConsoleDiskLogger.appendNamedLine(name, message);
     developer.log(message, name: name);
   }
 }

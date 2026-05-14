@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:waddle_display/bootstrap/app_fatal_error_recovery.dart';
+import 'package:waddle_display/debug/debug_console_disk_logger.dart';
 
 FlutterErrorDetails _flutterDetails(
   Object exception, {
@@ -28,6 +32,11 @@ StackTrace _hardwareKeyboardStack() {
 }
 
 void main() {
+  tearDown(() async {
+    DebugConsoleDiskLogger.setSupportDirectoryOverrideForTest(null);
+    await DebugConsoleDiskLogger.closeForTest();
+  });
+
   tearDown(resetFatalHandlingGateForTest);
 
   test('reactToFatalAppError logs and restarts only on first call', () async {
@@ -132,7 +141,44 @@ void main() {
       ),
       isFalse,
     );
+    expect(
+      isRecoverableLayoutFlutterError(
+        _flutterDetails(
+          FlutterError('A ClipRect overflowed by 3.0 pixels on the bottom.'),
+        ),
+      ),
+      isTrue,
+    );
   });
+
+  test(
+    'installGlobalFatalErrorHandlers uses default recoverable logger on overflow',
+    () async {
+      final previousFlutter = FlutterError.onError;
+      final previousPlatform = PlatformDispatcher.instance.onError;
+      final previousPresent = FlutterError.presentError;
+      addTearDown(() async {
+        FlutterError.onError = previousFlutter;
+        PlatformDispatcher.instance.onError = previousPlatform;
+        FlutterError.presentError = previousPresent;
+        resetFatalHandlingGateForTest();
+        await DebugConsoleDiskLogger.closeForTest();
+      });
+      FlutterError.presentError = (_) {};
+      installGlobalFatalErrorHandlers(
+        logFatal: (_, _, _) {},
+        restartProcess: () async {},
+      );
+      FlutterError.onError!(
+        FlutterErrorDetails(
+          exception: FlutterError('A RenderFlex overflowed by 2 pixels.'),
+          stack: StackTrace.current,
+          library: 'rendering',
+        ),
+      );
+      await DebugConsoleDiskLogger.closeForTest();
+    },
+  );
 
   test('isRecoverableHardwareKeyboardError matches HardwareKeyboard assertions',
       () {
@@ -331,5 +377,103 @@ void main() {
     expect(channels, ['Platform']);
     await Future<void>.delayed(Duration.zero);
     expect(restartCount, 1);
+  });
+
+  test('invokeDefaultLogFatalForTest tees to debug disk logger', () async {
+    if (!kDebugMode) {
+      return;
+    }
+    final tmp = await Directory.systemTemp.createTemp('fatal_disk_log_');
+    addTearDown(() async {
+      await DebugConsoleDiskLogger.closeForTest();
+      try {
+        await tmp.delete(recursive: true);
+      } catch (_) {}
+    });
+    await DebugConsoleDiskLogger.installForTest(tmp);
+    invokeDefaultLogFatalForTest('TestCh', StateError('e'), StackTrace.current);
+    await DebugConsoleDiskLogger.closeForTest();
+
+    final logsDir = Directory(p.join(tmp.path, 'debug_console_logs'));
+    final file = logsDir.listSync().whereType<File>().single;
+    final text = await file.readAsString();
+    expect(text, contains('[Fatal.TestCh]'));
+    expect(text, contains("Instance of 'StateError'"));
+  });
+
+  test('invokeDefaultLogFatalForTest disk branch without stack', () async {
+    if (!kDebugMode) {
+      return;
+    }
+    final tmp = await Directory.systemTemp.createTemp('fatal_disk_log_');
+    addTearDown(() async {
+      await DebugConsoleDiskLogger.closeForTest();
+      try {
+        await tmp.delete(recursive: true);
+      } catch (_) {}
+    });
+    await DebugConsoleDiskLogger.installForTest(tmp);
+    invokeDefaultLogFatalForTest('NoStack', StateError('e'), null);
+    await DebugConsoleDiskLogger.closeForTest();
+
+    final logsDir = Directory(p.join(tmp.path, 'debug_console_logs'));
+    final file = logsDir.listSync().whereType<File>().single;
+    final text = await file.readAsString();
+    expect(text, contains('[Fatal.NoStack]'));
+    expect(text, isNot(contains('#0')));
+  });
+
+  test('invokeDefaultRecoverableFlutterLayoutForTest tees to disk', () async {
+    if (!kDebugMode) {
+      return;
+    }
+    final tmp = await Directory.systemTemp.createTemp('recv_disk_log_');
+    addTearDown(() async {
+      await DebugConsoleDiskLogger.closeForTest();
+      try {
+        await tmp.delete(recursive: true);
+      } catch (_) {}
+    });
+    await DebugConsoleDiskLogger.installForTest(tmp);
+    invokeDefaultRecoverableFlutterLayoutForTest(
+      FlutterErrorDetails(
+        exception: FlutterError('overflow'),
+        library: 'test',
+        stack: StackTrace.fromString('#0 fake'),
+      ),
+    );
+    await DebugConsoleDiskLogger.closeForTest();
+
+    final logsDir = Directory(p.join(tmp.path, 'debug_console_logs'));
+    final file = logsDir.listSync().whereType<File>().single;
+    final text = await file.readAsString();
+    expect(text, contains('[Flutter.recoverable]'));
+    expect(text, contains('#0 fake'));
+  });
+
+  test('invokeDefaultRecoverableFlutterLayoutForTest without stack', () async {
+    if (!kDebugMode) {
+      return;
+    }
+    final tmp = await Directory.systemTemp.createTemp('recv_disk_log_');
+    addTearDown(() async {
+      await DebugConsoleDiskLogger.closeForTest();
+      try {
+        await tmp.delete(recursive: true);
+      } catch (_) {}
+    });
+    await DebugConsoleDiskLogger.installForTest(tmp);
+    invokeDefaultRecoverableFlutterLayoutForTest(
+      FlutterErrorDetails(
+        exception: FlutterError('overflow'),
+        library: 'test',
+      ),
+    );
+    await DebugConsoleDiskLogger.closeForTest();
+
+    final logsDir = Directory(p.join(tmp.path, 'debug_console_logs'));
+    final file = logsDir.listSync().whereType<File>().single;
+    final text = await file.readAsString();
+    expect(text, contains('[Flutter.recoverable]'));
   });
 }

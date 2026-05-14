@@ -52,7 +52,7 @@ flutter run -d windows    # common on a Windows dev machine
 flutter run -d linux      # Linux desktop or Pi with Flutter toolchain
 ```
 
-`flutter run` defaults to **debug**: asserts, tracing, and **hot reload** (`r` in the terminal) / **hot restart** (`R`). In debug, the data collection engine uses a **shorter idle** between cycles than in profile or release (see `lib/main.dart`).
+`flutter run` defaults to **debug**: asserts, tracing, and **hot reload** (`r` in the terminal) / **hot restart** (`R`). In debug, the data collection engine uses a **shorter idle** between cycles than in profile or release (see `lib/main.dart`). Each debug session also creates a **timestamped console log file** under the app support directory: `debug_console_logs/debug_console_<UTC>.log` (see `lib/debug/debug_console_disk_logger.dart`). It captures `print` output, `debugPrint`, `AppDebugLog` lines from `lib/debug/app_debug_log.dart`, and fatal / recoverable Flutter error summaries written through the global handlers.
 
 **Unhandled errors (release / kiosk):** most framework, async isolate, and root-zone failures are logged to **stderr** and the Dart **developer log** (name `Fatal.*`), then the process **restarts** by spawning the same executable with the same arguments (`lib/bootstrap/app_fatal_error_recovery.dart`). If restart fails, the process exits with a non-zero code so a supervisor (e.g. **systemd**) can start a fresh instance. Common **layout overflow** assertions (for example `RenderFlex overflowed`) are logged under **`Flutter.recoverable`** and **do not** trigger that restart so the dashboard keeps running. This does not apply to **flutter test** (tests do not run `main()`).
 

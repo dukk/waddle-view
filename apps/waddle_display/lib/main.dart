@@ -30,6 +30,7 @@ import 'curator/default_dashboard_curator.dart';
 import 'curator/drift_curator_read_port.dart';
 import 'curator/gated_dashboard_curator.dart';
 import 'debug/app_debug_log.dart';
+import 'debug/debug_console_disk_logger.dart';
 import 'display/dashboard_data_bound_shell.dart';
 import 'display/dashboard_viewport_scope.dart';
 import 'display/display_viewport.dart';
@@ -66,13 +67,21 @@ import 'window/startup_window_policy.dart';
 import 'window/window_chrome_controller.dart';
 
 void main() {
-  runZonedGuarded(() {
-    WidgetsFlutterBinding.ensureInitialized();
-    ensureDisplayTimeZonesInitialized();
-    MediaKit.ensureInitialized();
-    installGlobalFatalErrorHandlers();
-    unawaited(_waddleBootstrap());
-  }, onZoneFatalError);
+  runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      if (kDebugMode) {
+        await DebugConsoleDiskLogger.install();
+      }
+      ensureDisplayTimeZonesInitialized();
+      MediaKit.ensureInitialized();
+      installGlobalFatalErrorHandlers();
+      await _waddleBootstrap();
+    },
+    onZoneFatalError,
+    zoneSpecification:
+        kDebugMode ? DebugConsoleDiskLogger.debugZoneSpecification() : null,
+  );
 }
 
 Future<void> _waddleBootstrap() async {
@@ -313,6 +322,9 @@ class _WaddleHomeState extends State<WaddleHome> {
 
   @override
   void dispose() {
+    if (kDebugMode) {
+      unawaited(DebugConsoleDiskLogger.close());
+    }
     AppDebugLog.startup('dispose: stopping engine, closing REST and DB');
     widget.tickerCurated.dispose();
     widget.marqueeCycleGate.dispose();
