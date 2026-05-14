@@ -6,6 +6,7 @@ import 'package:waddle_display/curator/default_dashboard_curator.dart';
 import 'package:waddle_display/curator/ticker_item.dart';
 import 'package:waddle_display/curator/ticker_news_candidate.dart';
 import 'package:waddle_display/ticker/ticker_curated_repository.dart';
+import 'package:waddle_shared/curation/reject_filter_context.dart';
 
 class _MapRead implements CuratorReadPort {
   _MapRead(
@@ -44,6 +45,10 @@ class _MapRead implements CuratorReadPort {
   @override
   Future<List<StockTickerRowForMarquee>> loadStockRowsForTicker() async =>
       stockRows ?? const [];
+
+  @override
+  Future<RejectFilterContext> loadRejectFilterContext() async =>
+      const RejectFilterContext.empty();
 }
 
 class _RecordingTickerStore implements TickerCuratedRepository {

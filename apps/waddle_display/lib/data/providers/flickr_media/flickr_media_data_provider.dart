@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 
+import 'package:waddle_shared/curation/reject_filter_context.dart';
+
 import '../../../debug/app_debug_log.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
@@ -64,6 +66,7 @@ class FlickrMediaDataProvider implements IDataProvider {
     }
 
     final base = _normalizeBase(config.baseUrl);
+    final rejectCtx = await RejectFilterContext.loadFromDb(ctx.db);
     var remaining = extra.perPollLimit;
     for (final groupId in extra.groupIds) {
       if (remaining <= 0) {
@@ -85,6 +88,7 @@ class FlickrMediaDataProvider implements IDataProvider {
           photo: photo,
           category: extra.category,
           nowMs: nowMs,
+          rejectCtx: rejectCtx,
         );
         if (ok) {
           remaining--;
@@ -200,6 +204,7 @@ class FlickrMediaDataProvider implements IDataProvider {
     required Map<String, dynamic> photo,
     required String category,
     required int nowMs,
+    required RejectFilterContext rejectCtx,
   }) async {
     final idRaw = photo['id'];
     if (idRaw == null) {
@@ -256,6 +261,13 @@ class FlickrMediaDataProvider implements IDataProvider {
             pixelHeight: pixelH != null ? Value(pixelH) : const Value.absent(),
           ),
         );
+    final photographerUrl =
+        ownerId.isEmpty ? '' : 'https://www.flickr.com/people/$ownerId';
+    final blocked = rejectCtx.isMediaRejected(
+      photographer: owner,
+      altText: title,
+      urls: [photographerUrl, pageUrl],
+    );
     await ctx.db.into(ctx.db.photos).insert(
           PhotosCompanion.insert(
             id: rowId,
@@ -263,10 +275,11 @@ class FlickrMediaDataProvider implements IDataProvider {
             dataProvider: const Value(kMediaDataProviderFlickr),
             mediaBlobKey: logicalKey,
             photographerName: owner,
-            photographerUrl: ownerId.isEmpty ? '' : 'https://www.flickr.com/people/$ownerId',
+            photographerUrl: photographerUrl,
             pexelsPageUrl: pageUrl,
             altText: Value(title),
             fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(nowMs),
+            suppressed: Value(blocked),
           ),
         );
     return true;

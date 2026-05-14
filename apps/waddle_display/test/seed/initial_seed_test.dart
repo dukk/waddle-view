@@ -1,9 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:waddle_display/alerts/alert_severity_icons_kv.dart';
 import 'package:waddle_display/config/google_kv.dart';
 import 'package:waddle_display/data/providers/pexels/pexels_provider_extra_config.dart';
 import 'package:waddle_shared/persistence/content_category_defaults.dart';
+import 'package:waddle_shared/persistence/display_overlay_repository.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_display/data/seed/initial_seed.dart';
 
@@ -40,6 +43,12 @@ void main() {
     final custom =
         rows.singleWhere((r) => r.id == 'ticker_custom');
     expect(custom.enabled, isFalse);
+    for (final r in rows) {
+      expect(r.configJsonSchema, isNotNull);
+      expect(r.exampleConfigJson, isNotNull);
+      expect(jsonDecode(r.configJsonSchema!), isA<Map<String, dynamic>>());
+      expect(jsonDecode(r.exampleConfigJson!), isA<Object>());
+    }
     await db.close();
   });
 
@@ -323,6 +332,48 @@ void main() {
     );
     final enabled = symbols.where((s) => s.enabled).map((s) => s.symbol).toSet();
     expect(enabled, {'AAPL', 'GOOG', 'MSFT', 'NVDA', 'SPY', 'VOO'});
+    await db.close();
+  });
+
+  test('ensureInitialSeed inserts disabled May 13 birthday confetti example', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureInitialSeed(db);
+    final rows = await fetchDisplayOverlaySchedules(db);
+    final birthday = rows
+        .where((r) => r.id == kDefaultBirthdayOverlayExampleId)
+        .toList();
+    expect(birthday, isNotEmpty);
+    final r = birthday.single;
+    expect(r.enabled, isFalse);
+    expect(r.overlayKind, kOverlayKindBirthdayConfetti);
+    expect(r.repeatAnnually, isTrue);
+    expect(r.startMonth, 5);
+    expect(r.startDay, 13);
+    expect(r.nthWeekOfMonth, isNull);
+    expect(r.nthWeekday, isNull);
+    await db.close();
+  });
+
+  test('ensureInitialSeed inserts disabled May 13 bouncing message overlay', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureInitialSeed(db);
+    final rows = await fetchDisplayOverlaySchedules(db);
+    final bounce = rows
+        .where((r) => r.id == kDefaultBouncingMessageOverlayId)
+        .toList();
+    expect(bounce, isNotEmpty);
+    final r = bounce.single;
+    expect(r.enabled, isFalse);
+    expect(r.overlayKind, kOverlayKindBouncingMessage);
+    expect(r.repeatAnnually, isTrue);
+    expect(r.startMonth, 5);
+    expect(r.startDay, 13);
+    expect(
+      jsonDecode(r.messagesJson),
+      [kDefaultBouncingMessageOverlayPhrase],
+    );
     await db.close();
   });
 }

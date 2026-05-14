@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:waddle_shared/config/provider_runtime_config.dart';
+import 'package:waddle_shared/curation/reject_filter_context.dart';
 import '../../../debug/app_debug_log.dart';
 import '../../../util/html_entity_decode.dart';
 import 'package:waddle_shared/persistence/database.dart';
@@ -229,6 +230,7 @@ class TriviaDataProvider implements IDataProvider {
 
       final parsedList = _parseTriviaJsonArray(content);
       final createdAt = _now();
+      final rejectCtx = await RejectFilterContext.loadFromDb(ctx.db);
       var inserted = 0;
 
       final normalizedByCategory = await _normalizedQuestionsByCategory(
@@ -291,6 +293,7 @@ class TriviaDataProvider implements IDataProvider {
           dt,
           correctNorm,
         );
+        final isBlocked = rejectCtx.isBlockedAny([qt, at, bt, ct, dt]);
         await ctx.db.into(ctx.db.triviaQuestions).insert(
               TriviaQuestionsCompanion.insert(
                 id: tid,
@@ -302,6 +305,7 @@ class TriviaDataProvider implements IDataProvider {
                 optionD: dt,
                 correctOption: correctNorm,
                 createdAtMs: createdAt,
+                suppressed: Value(isBlocked),
               ),
               onConflict: DoUpdate(
                 (old) => TriviaQuestionsCompanion(
@@ -313,6 +317,9 @@ class TriviaDataProvider implements IDataProvider {
                   optionD: Value(dt),
                   correctOption: Value(correctNorm),
                   createdAtMs: Value(createdAt),
+                  suppressed: isBlocked
+                      ? const Value(true)
+                      : const Value.absent(),
                 ),
               ),
             );

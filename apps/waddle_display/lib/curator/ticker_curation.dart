@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:waddle_shared/curation/reject_filter_context.dart';
 
 import '../clock.dart';
 import 'curator_read_port.dart';
@@ -221,18 +222,24 @@ List<TickerNewsCandidate> interleaveNewsByFeed(
 }
 
 /// Applies horizontal budget (scroll distance ≈ time × pixels/s) to news bodies.
+/// When [rejectCtx] is non-null, every news title/summary/source string is
+/// passed through [RejectFilterContext.censor] before width budgeting and
+/// rendering. Block-action terms have already led to `suppressed = true` rows
+/// upstream and are excluded by the curator before reaching this helper.
 List<TickerItem> pickNewsTickerItemsByWidthBudget({
   required List<TickerNewsCandidate> interleaved,
   required CuratorTickerConfig config,
+  RejectFilterContext? rejectCtx,
 }) {
   final out = <TickerItem>[];
   final budget = config.newsScrollBudgetPx;
   var used = 0.0;
   final sep = config.newsSeparatorPaddingPx;
+  final ctx = rejectCtx ?? const RejectFilterContext.empty();
   for (final c in interleaved) {
-    final title = redactTickerBody(c.title.trim());
-    final summary = redactTickerBody((c.summary ?? '').trim());
-    final source = redactTickerBody(c.feedName.trim());
+    final title = ctx.censor(redactTickerBody(c.title.trim()));
+    final summary = ctx.censor(redactTickerBody((c.summary ?? '').trim()));
+    final source = ctx.censor(redactTickerBody(c.feedName.trim()));
     if (title.isEmpty && summary.isEmpty) {
       continue;
     }
@@ -300,21 +307,25 @@ List<TickerItem> _tickerItemsTimeOnly(DateTime nowLocal) {
 void _addTickerIfNew(
   List<TickerItem> out,
   Set<String> seenBodies,
-  TickerItem item,
-) {
+  TickerItem item, {
+  RejectFilterContext? rejectCtx,
+}) {
   final redacted = redactTickerBody(item.body);
   if (redacted.isEmpty) {
     return;
   }
-  if (seenBodies.contains(redacted)) {
+  final body = (rejectCtx == null || rejectCtx.isEmpty || redacted == '[redacted]')
+      ? redacted
+      : rejectCtx.censor(redacted);
+  if (seenBodies.contains(body)) {
     return;
   }
-  seenBodies.add(redacted);
+  seenBodies.add(body);
   final rss = redacted == '[redacted]' ? null : item.rss;
   out.add(
     TickerItem(
       kind: item.kind,
-      body: redacted,
+      body: body,
       sourceId: item.sourceId,
       rss: rss,
     ),
@@ -324,13 +335,15 @@ void _addTickerIfNew(
 void _appendWeatherGovAlertTickerItems(
   List<TickerItem> out,
   Set<String> seenBodies,
-  List<WeatherGovAlertTickerItem> alerts,
-) {
+  List<WeatherGovAlertTickerItem> alerts, {
+  RejectFilterContext? rejectCtx,
+}) {
   for (final a in alerts) {
     _addTickerIfNew(
       out,
       seenBodies,
       TickerItem(kind: 'weather', body: a.body, sourceId: a.sourceId),
+      rejectCtx: rejectCtx,
     );
   }
 }
@@ -342,6 +355,7 @@ List<TickerItem> _buildTickerItemsForMarqueeLegacy({
   required List<TickerItem> rssItems,
   CurrentWeatherTickerData? currentWeather,
   List<WeatherGovAlertTickerItem> weatherGovAlerts = const [],
+  RejectFilterContext? rejectCtx,
 }) {
   final out = <TickerItem>[];
   final seenBodies = <String>{};
@@ -369,12 +383,16 @@ List<TickerItem> _buildTickerItemsForMarqueeLegacy({
         body: rawWeather,
         sourceId: 'ticker.marquee.weather',
       ),
+      rejectCtx: rejectCtx,
     );
   }
-  _appendWeatherGovAlertTickerItems(out, seenBodies, weatherGovAlerts);
+  _appendWeatherGovAlertTickerItems(out, seenBodies, weatherGovAlerts,
+      rejectCtx: rejectCtx);
 
   if (rssItems.isNotEmpty) {
     for (final it in rssItems) {
+      // News items already passed through censor in
+      // [pickNewsTickerItemsByWidthBudget].
       _addTickerIfNew(out, seenBodies, it);
     }
   } else {
@@ -388,6 +406,7 @@ List<TickerItem> _buildTickerItemsForMarqueeLegacy({
           body: rawNews.trim(),
           sourceId: 'ticker.marquee.news',
         ),
+        rejectCtx: rejectCtx,
       );
     }
   }
@@ -402,6 +421,7 @@ List<TickerItem> _buildTickerItemsForMarqueeLegacy({
         body: rawQuote.trim(),
         sourceId: 'ticker.marquee.quote',
       ),
+      rejectCtx: rejectCtx,
     );
   }
 
@@ -419,6 +439,7 @@ List<TickerItem> _buildTickerItemsForMarqueeLegacy({
       out,
       seenBodies,
       TickerItem(kind: 'custom', body: raw, sourceId: k),
+      rejectCtx: rejectCtx,
     );
   }
 
@@ -433,6 +454,7 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
   required List<TickerDefinitionForCuration> enabledDefinitions,
   required List<StockTickerRowForMarquee> stockRows,
   List<WeatherGovAlertTickerItem> weatherGovAlerts = const [],
+  RejectFilterContext? rejectCtx,
 }) {
   String stockMarqueeBody(StockTickerRowForMarquee row) {
     final label = row.symbol.trim().isEmpty ? row.symbolId : row.symbol.trim();
@@ -582,9 +604,18 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
     if (chunk.isEmpty || w == 0) {
       continue;
     }
+    final isNews = def.tickerType.trim().toLowerCase() == 'news';
     for (var i = 0; i < w; i++) {
       for (final item in chunk) {
-        _addTickerIfNew(out, seenBodies, item);
+        // News items already passed through reject censor inside
+        // [pickNewsTickerItemsByWidthBudget]; everything else (custom, quote,
+        // weather, stocks) is censored here.
+        _addTickerIfNew(
+          out,
+          seenBodies,
+          item,
+          rejectCtx: isNews ? null : rejectCtx,
+        );
       }
     }
   }
@@ -600,6 +631,12 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
 /// When [definitions] is empty, uses legacy ordering (KV + RSS). Otherwise uses
 /// enabled rows from [TickerDefinitions] with weighted repeats per
 /// [TickerDefinitionForCuration.frequencyWeight].
+///
+/// When [rejectCtx] is non-null and non-empty, every body string from
+/// user-/feed-supplied sources (news titles/summaries/feed labels, weather,
+/// quote, custom marquee KV bodies, stock display name) is passed through
+/// [RejectFilterContext.censor] before assembly. Block-action terms are
+/// already applied at ingest time via `suppressed = true`.
 List<TickerItem> buildTickerItemsForMarquee({
   required Map<String, String> kv,
   required DateTime nowLocal,
@@ -608,11 +645,13 @@ List<TickerItem> buildTickerItemsForMarquee({
   List<TickerDefinitionForCuration> definitions = const [],
   List<StockTickerRowForMarquee> stockRows = const [],
   List<WeatherGovAlertTickerItem> weatherGovAlerts = const [],
+  RejectFilterContext? rejectCtx,
 }) {
   final cfg = CuratorTickerConfig.fromKv(kv);
   final rssItems = pickNewsTickerItemsByWidthBudget(
     interleaved: interleaveNewsByFeed(newsCandidates),
     config: cfg,
+    rejectCtx: rejectCtx,
   );
 
   if (definitions.isEmpty) {
@@ -622,6 +661,7 @@ List<TickerItem> buildTickerItemsForMarquee({
       rssItems: rssItems,
       currentWeather: currentWeather,
       weatherGovAlerts: weatherGovAlerts,
+      rejectCtx: rejectCtx,
     );
   }
 
@@ -646,5 +686,6 @@ List<TickerItem> buildTickerItemsForMarquee({
     enabledDefinitions: enabled,
     stockRows: stockRows,
     weatherGovAlerts: weatherGovAlerts,
+    rejectCtx: rejectCtx,
   );
 }

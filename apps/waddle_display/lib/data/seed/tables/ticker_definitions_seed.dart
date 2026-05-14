@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import 'package:waddle_shared/persistence/config_json_documentation.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 Future<void> ensureTickerDefinitionsSeed(AppDatabase db) async {
@@ -13,6 +14,7 @@ Future<void> ensureTickerDefinitionsSeed(AppDatabase db) async {
     int sortOrder = 0,
     String? configKey,
   }) async {
+    final doc = tickerSlotConfigJsonDocForType(tickerType);
     await db.into(db.tickerDefinitions).insertOnConflictUpdate(
           TickerDefinitionsCompanion.insert(
             id: id,
@@ -25,6 +27,8 @@ Future<void> ensureTickerDefinitionsSeed(AppDatabase db) async {
             configKey: configKey == null
                 ? const Value.absent()
                 : Value(configKey),
+            configJsonSchema: Value(doc.schema),
+            exampleConfigJson: Value(doc.example),
           ),
         );
   }

@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 
+import 'package:waddle_shared/curation/reject_filter_context.dart';
+
 import '../../../blob/blob_store.dart';
 import '../../../config/microsoft_graph_kv.dart';
 import '../../../debug/app_debug_log.dart';
@@ -207,6 +209,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
 
     try {
       final groups = _sourcesGroupedByAccountPath(extra);
+      final rejectCtx = await RejectFilterContext.loadFromDb(ctx.db);
       for (final account in extra.accounts) {
         if (account.sources.isEmpty) {
           continue;
@@ -241,6 +244,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
             specs: entry.value,
             nowMs: nowMs,
             globalRemaining: globalRemaining,
+            rejectCtx: rejectCtx,
           );
           globalRemaining = outcome.globalRemaining;
           didSync = true;
@@ -415,6 +419,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
     required List<OneDriveMediaSourceSpec> specs,
     required int nowMs,
     required int globalRemaining,
+    required RejectFilterContext rejectCtx,
   }) async {
     final deltaKey = kOneDriveMediaDeltaLinkKvKey(
       graphAccountKey,
@@ -549,6 +554,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
                 downloadUrl: dl,
                 item: item,
                 nowMs: nowMs,
+                rejectCtx: rejectCtx,
               );
             } else if (_isVideoMime(mime)) {
               ok = await _tryIngestVideo(
@@ -558,6 +564,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
                 downloadUrl: dl,
                 item: item,
                 nowMs: nowMs,
+                rejectCtx: rejectCtx,
               );
             }
             if (ok) {
@@ -665,6 +672,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
     required String downloadUrl,
     required Map<String, dynamic> item,
     required int nowMs,
+    required RejectFilterContext rejectCtx,
   }) async {
     final exists =
         await (ctx.db.select(
@@ -715,21 +723,32 @@ class OneDriveMediaDataProvider implements IDataProvider {
           ),
         );
 
+    final photographer = _displayName(item);
+    final pageUrl = webUrl is String ? webUrl : '';
+    final altText = name is String ? name : '';
+    final blocked = rejectCtx.isMediaRejected(
+      photographer: photographer,
+      altText: altText,
+      urls: [pageUrl],
+    );
+
     await ctx.db.into(ctx.db.photos).insert(
           PhotosCompanion.insert(
             id: rowId,
             category: Value(category),
             dataProvider: Value(kMediaDataProviderOneDrive),
             mediaBlobKey: logicalKey,
-            photographerName: _displayName(item),
+            photographerName: photographer,
             photographerUrl: '',
-            pexelsPageUrl: webUrl is String ? webUrl : '',
-            altText: Value(name is String ? name : ''),
+            pexelsPageUrl: pageUrl,
+            altText: Value(altText),
             fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(nowMs),
+            suppressed: Value(blocked),
           ),
         );
     AppDebugLog.provider(
-      'onedrive_media: stored photo row=$rowId category=$category bytes=${bytes.length}',
+      'onedrive_media: stored photo row=$rowId category=$category '
+      'bytes=${bytes.length}${blocked ? ' (suppressed by reject list)' : ''}',
     );
     return true;
   }
@@ -741,6 +760,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
     required String downloadUrl,
     required Map<String, dynamic> item,
     required int nowMs,
+    required RejectFilterContext rejectCtx,
   }) async {
     final exists =
         await (ctx.db.select(
@@ -782,6 +802,14 @@ class OneDriveMediaDataProvider implements IDataProvider {
         );
 
     final dur = _videoDurationSeconds(item);
+    final photographer = _displayName(item);
+    final pageUrl = webUrl is String ? webUrl : '';
+    final altText = name is String ? name : '';
+    final blocked = rejectCtx.isMediaRejected(
+      photographer: photographer,
+      altText: altText,
+      urls: [pageUrl],
+    );
 
     await ctx.db.into(ctx.db.videos).insert(
           VideosCompanion.insert(
@@ -789,16 +817,19 @@ class OneDriveMediaDataProvider implements IDataProvider {
             category: Value(category),
             dataProvider: Value(kMediaDataProviderOneDrive),
             mediaBlobKey: logicalKey,
-            photographerName: _displayName(item),
+            photographerName: photographer,
             photographerUrl: '',
-            pexelsPageUrl: webUrl is String ? webUrl : '',
-            altText: Value(name is String ? name : ''),
+            pexelsPageUrl: pageUrl,
+            altText: Value(altText),
             durationSeconds: dur < 1 ? 1 : dur,
             fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(nowMs),
+            suppressed: Value(blocked),
           ),
         );
     AppDebugLog.provider(
-      'onedrive_media: stored video row=$rowId category=$category bytes=${bytes.length} dur=${dur}s',
+      'onedrive_media: stored video row=$rowId category=$category '
+      'bytes=${bytes.length} dur=${dur}s'
+      '${blocked ? ' (suppressed by reject list)' : ''}',
     );
     return true;
   }

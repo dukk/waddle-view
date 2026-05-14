@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
+import 'package:waddle_shared/curation/reject_filter_context.dart';
 
 import '../../../blob/blob_store.dart';
 import '../../../debug/app_debug_log.dart';
@@ -31,6 +32,7 @@ class RssNewsDataProvider implements IDataProvider {
   @override
   Future<void> collect(DataWriteContext ctx) async {
     final now = _nowMs();
+    final rejectCtx = await RejectFilterContext.loadFromDb(ctx.db);
     final feedRows = await (ctx.db.select(
       ctx.db.rssFeedSources,
     )..where((t) => t.enabled.equals(true))).get();
@@ -78,6 +80,7 @@ class RssNewsDataProvider implements IDataProvider {
             feedId: feed.id,
             entry: e,
             now: now,
+            rejectCtx: rejectCtx,
           );
         }
         await _pruneFeedArticles(ctx, feed.id, feed.maxArticles);
@@ -99,6 +102,7 @@ class RssNewsDataProvider implements IDataProvider {
     required String feedId,
     required ParsedFeedEntry entry,
     required int now,
+    required RejectFilterContext rejectCtx,
   }) async {
     final articleId = rssArticleId(feedId, entry.stableKey);
     final existing = await (ctx.db.select(
@@ -116,6 +120,13 @@ class RssNewsDataProvider implements IDataProvider {
       );
     }
 
+    // Pre-suppress new rows that match a `block` reject term so the curator
+    // never schedules them. Existing suppressed rows stay suppressed; clean
+    // rows that were never blocked retain their current `suppressed` value
+    // through the upsert (we only force `suppressed = true` on a match).
+    final isBlocked = rejectCtx.isBlockedAny([entry.title, entry.summary]);
+    final suppressedForInsert = (existing?.suppressed ?? false) || isBlocked;
+
     await ctx.db.into(ctx.db.rssArticles).insert(
           RssArticlesCompanion.insert(
             id: articleId,
@@ -130,6 +141,7 @@ class RssNewsDataProvider implements IDataProvider {
             ),
             fetchedAt: DateTime.fromMillisecondsSinceEpoch(now),
             imageBlobKey: Value(imageKey),
+            suppressed: Value(suppressedForInsert),
           ),
           onConflict: DoUpdate(
             (old) => RssArticlesCompanion(
@@ -146,6 +158,9 @@ class RssNewsDataProvider implements IDataProvider {
               ),
               fetchedAt: Value(DateTime.fromMillisecondsSinceEpoch(now)),
               imageBlobKey: Value(imageKey),
+              suppressed: isBlocked
+                  ? const Value(true)
+                  : const Value.absent(),
             ),
           ),
         );

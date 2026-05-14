@@ -2,7 +2,10 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 
+import 'config_json_documentation.dart';
 import 'database.dart';
+import 'display_overlay_bouncing_message_settings.dart';
+import 'display_overlay_confetti_settings.dart';
 import 'display_overlay_schedule_row.dart';
 import 'display_overlay_sql.dart';
 import 'tables.dart';
@@ -109,7 +112,9 @@ String? validateUpsertDraft({
   if (!_slug.hasMatch(trimmedKind)) {
     return 'invalid_overlay_kind';
   }
-  if (trimmedKind != kOverlayKindHeartsRain) {
+  if (trimmedKind != kOverlayKindHeartsRain &&
+      trimmedKind != kOverlayKindBirthdayConfetti &&
+      trimmedKind != kOverlayKindBouncingMessage) {
     return 'unsupported_overlay_kind';
   }
   if (normalizeMessagesJsonString(messagesJsonNormalized) == null) {
@@ -176,6 +181,17 @@ bool _validYmd(int y, int m, int d) {
   }
 }
 
+Object? _decodedJsonOrNull(String? raw) {
+  if (raw == null || raw.trim().isEmpty) {
+    return null;
+  }
+  try {
+    return jsonDecode(raw);
+  } on Object {
+    return raw;
+  }
+}
+
 Future<void> upsertOverlaySchedule(
   AppDatabase db, {
   required String id,
@@ -183,6 +199,7 @@ Future<void> upsertOverlaySchedule(
   required String overlayKind,
   required String label,
   required String messagesJson,
+  required String configJson,
   required bool repeatAnnually,
   int? yearExact,
   required int startMonth,
@@ -209,20 +226,36 @@ Future<void> upsertOverlaySchedule(
   if (err != null) {
     throw FormatException(err);
   }
+  final kind = overlayKind.trim();
+  final String configNorm = switch (kind) {
+    kOverlayKindHeartsRain => '{}',
+    kOverlayKindBirthdayConfetti =>
+        normalizeBirthdayConfettiSettingsJsonString(configJson) ??
+            (throw FormatException('invalid_config_json')),
+    kOverlayKindBouncingMessage =>
+        normalizeBouncingMessageConfigJsonString(configJson) ??
+            (throw FormatException('invalid_config_json')),
+    _ => throw StateError('unexpected overlay kind'),
+  };
+  final doc = displayOverlayConfigJsonDocForKind(kind);
   final en = enabled ? 1 : 0;
   final ra = repeatAnnually ? 1 : 0;
   await db.customStatement(
     'INSERT OR REPLACE INTO display_overlay_schedules ('
     'id, enabled, overlay_kind, label, messages_json, '
+    'config_json, config_json_schema, example_config_json, '
     'repeat_annually, year_exact, start_month, start_day, '
     'end_month, end_day, nth_week_of_month, nth_weekday) '
-    'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     <Object?>[
       id.trim(),
       en,
       overlayKind.trim(),
       label,
       norm,
+      configNorm,
+      doc.schema,
+      doc.example,
       ra,
       yearExact,
       startMonth,
@@ -269,12 +302,28 @@ Map<String, Object?> overlayScheduleToJson(DisplayOverlayScheduleRow row) {
   } on Object {
     messagesField = const <Object?>[];
   }
+  Object? configField;
+  try {
+    final d = jsonDecode(row.configJson);
+    if (d is Map) {
+      configField = Map<String, Object?>.from(
+        d.map((k, v) => MapEntry(k.toString(), v)),
+      );
+    } else {
+      configField = const <String, Object?>{};
+    }
+  } on Object {
+    configField = const <String, Object?>{};
+  }
   return <String, Object?>{
     'id': row.id,
     'enabled': row.enabled,
     'overlay_kind': row.overlayKind,
     'label': row.label,
     'messages_json': messagesField,
+    'config_json': configField,
+    'config_json_schema': _decodedJsonOrNull(row.configJsonSchema),
+    'example_config_json': _decodedJsonOrNull(row.exampleConfigJson),
     'repeat_annually': row.repeatAnnually,
     'year_exact': row.yearExact,
     'start_month': row.startMonth,

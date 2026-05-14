@@ -23,6 +23,7 @@ import 'clock.dart';
 import 'config/dev_dotenv_secrets.dart';
 import 'config/display_timezone.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
+import 'package:waddle_shared/curation/reject_rescan.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'curator/default_dashboard_curator.dart';
@@ -96,6 +97,10 @@ Future<void> _waddleBootstrap() async {
 
     final db = AppDatabase(createQueryExecutor());
     await ensureInitialSeed(db);
+    // Rescan content against the current reject list on startup so any rows
+    // added by a previous-running provider before the operator extended the
+    // list are caught before the curator picks them.
+    unawaited(_rescanRejectListOnStartup(db));
     if (createdDeploymentKey) {
       await db.into(db.configKeyValues).insertOnConflictUpdate(
             ConfigKeyValuesCompanion.insert(
@@ -389,6 +394,24 @@ class _WaddleHomeState extends State<WaddleHome> {
         ),
       ),
     );
+  }
+}
+
+Future<void> _rescanRejectListOnStartup(AppDatabase db) async {
+  try {
+    final result = await rescanContentForBlockTerms(db);
+    if (result.totalMarked > 0) {
+      AppDebugLog.startup(
+        'reject rescan: marked ${result.totalMarked} row(s) '
+        '(rss=${result.rssArticlesMarked}, '
+        'jokes=${result.jokesMarked}, '
+        'trivia=${result.triviaQuestionsMarked}, '
+        'photos=${result.photosMarked}, '
+        'videos=${result.videosMarked})',
+      );
+    }
+  } catch (e, st) {
+    AppDebugLog.startup('reject rescan failed: $e\n$st');
   }
 }
 

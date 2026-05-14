@@ -11,9 +11,11 @@ import 'package:shelf_router/shelf_router.dart';
 
 import '../alerts/alert_repository.dart';
 import '../debug/app_debug_log.dart';
+import 'package:waddle_shared/curation/reject_rescan.dart';
 import 'package:waddle_shared/persistence/content_suppression_repository.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/display_overlay_repository.dart';
+import 'package:waddle_shared/persistence/reject_term_repository.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';
 import '../theme/display_theme.dart';
@@ -79,6 +81,68 @@ Handler buildProtectedApiRouter({
     return _patchContentSuppressed(
       req,
       (b) => suppression.setTriviaQuestionSuppressed(id, b),
+    );
+  });
+
+  final rejectRepo = RejectTermRepository(db);
+
+  r.get('/v1/reject-terms', (Request req) async {
+    final rows = await rejectRepo.listAll();
+    final fmtRow = await (db.select(db.configKeyValues)
+          ..where((t) => t.key.equals(kRejectCensorFormatKvKey)))
+        .getSingleOrNull();
+    return Response.ok(
+      jsonEncode({
+        'items': [
+          for (final r in rows)
+            {
+              'id': r.id,
+              'term': r.term,
+              'action': r.action,
+              'created_at_ms': r.createdAtMs,
+              'updated_at_ms': r.updatedAtMs,
+            },
+        ],
+        'censor_format': fmtRow?.value ?? kRejectCensorFormatAsterisksFull,
+      }),
+      headers: {'content-type': 'application/json'},
+    );
+  });
+
+  r.post('/v1/reject-terms', (Request req) async {
+    return _upsertRejectTerm(req, rejectRepo, db);
+  });
+
+  r.patch('/v1/reject-terms/<id>', (Request req, String id) async {
+    return _upsertRejectTerm(req, rejectRepo, db, id: id);
+  });
+
+  r.delete('/v1/reject-terms/<id>', (Request req, String id) async {
+    final n = await rejectRepo.deleteById(id);
+    if (n == 0) {
+      return Response(404,
+          body: '{"error":"not_found"}',
+          headers: {'content-type': 'application/json'});
+    }
+    return Response.ok('{}', headers: {'content-type': 'application/json'});
+  });
+
+  r.put('/v1/reject-terms/format', (Request req) async {
+    return _setRejectCensorFormat(req, db);
+  });
+
+  r.post('/v1/reject-terms/rescan', (Request req) async {
+    final result = await rescanContentForBlockTerms(db);
+    return Response.ok(
+      jsonEncode({
+        'rss_articles_marked': result.rssArticlesMarked,
+        'jokes_marked': result.jokesMarked,
+        'trivia_questions_marked': result.triviaQuestionsMarked,
+        'photos_marked': result.photosMarked,
+        'videos_marked': result.videosMarked,
+        'total_marked': result.totalMarked,
+      }),
+      headers: {'content-type': 'application/json'},
     );
   });
 
@@ -222,6 +286,7 @@ Handler buildProtectedApiRouter({
         overlayKind: map['overlay_kind'] as String? ?? '',
         label: map['label'] as String? ?? '',
         messagesJson: _messagesJsonArg(map),
+        configJson: _configJsonArg(map),
         repeatAnnually: _readBoolOverlay(map['repeat_annually'], defaultIfAbsent: true),
         yearExact: _readNullableIntOverlay(map['year_exact']),
         startMonth: _readIntOverlay(map['start_month']),
@@ -275,6 +340,9 @@ Handler buildProtectedApiRouter({
         messagesJson: map.containsKey('messages_json')
             ? _messagesJsonArg(map)
             : existing.messagesJson,
+        configJson: map.containsKey('config_json')
+            ? _configJsonArg(map)
+            : existing.configJson,
         repeatAnnually: map.containsKey('repeat_annually')
             ? _readBoolOverlay(map['repeat_annually'], defaultIfAbsent: true)
             : existing.repeatAnnually,
@@ -368,6 +436,20 @@ String _messagesJsonArg(Map<String, dynamic> map) {
   return '[]';
 }
 
+String _configJsonArg(Map<String, dynamic> map) {
+  final v = map['config_json'];
+  if (v == null) {
+    return '{}';
+  }
+  if (v is String) {
+    return v;
+  }
+  if (v is Map) {
+    return jsonEncode(v);
+  }
+  return '{}';
+}
+
 bool _readBoolOverlay(Object? v, {required bool defaultIfAbsent}) {
   if (v == null) {
     return defaultIfAbsent;
@@ -414,6 +496,91 @@ int _readIntOverlay(Object? v, {String missingError = 'numeric_field_required'})
     throw FormatException(missingError);
   }
   return n;
+}
+
+Future<Response> _upsertRejectTerm(
+  Request req,
+  RejectTermRepository repo,
+  AppDatabase db, {
+  String? id,
+}) async {
+  Map<String, dynamic> body;
+  try {
+    final decoded = jsonDecode(await req.readAsString());
+    if (decoded is! Map<String, dynamic>) {
+      return Response(400,
+          body: '{"error":"expected_json_object"}',
+          headers: {'content-type': 'application/json'});
+    }
+    body = decoded;
+  } on Object {
+    return Response(400,
+        body: '{"error":"invalid_json"}',
+        headers: {'content-type': 'application/json'});
+  }
+  final input = RejectTermInput.parse(
+    rawTerm: body['term'] is String ? body['term'] as String : null,
+    rawAction: body['action'] is String ? body['action'] as String : null,
+  );
+  if (input == null) {
+    return Response(400,
+        body: '{"error":"invalid_term_or_action"}',
+        headers: {'content-type': 'application/json'});
+  }
+  final savedId = await repo.upsert(input, id: id);
+  unawaited(rescanContentForBlockTerms(db));
+  return Response.ok(
+    jsonEncode({
+      'id': savedId,
+      'term': input.term,
+      'action': input.action,
+    }),
+    headers: {'content-type': 'application/json'},
+  );
+}
+
+Future<Response> _setRejectCensorFormat(Request req, AppDatabase db) async {
+  Map<String, dynamic> body;
+  try {
+    final decoded = jsonDecode(await req.readAsString());
+    if (decoded is! Map<String, dynamic>) {
+      return Response(400,
+          body: '{"error":"expected_json_object"}',
+          headers: {'content-type': 'application/json'});
+    }
+    body = decoded;
+  } on Object {
+    return Response(400,
+        body: '{"error":"invalid_json"}',
+        headers: {'content-type': 'application/json'});
+  }
+  final raw = body['format'];
+  if (raw is! String) {
+    return Response(400,
+        body: '{"error":"format_must_be_string"}',
+        headers: {'content-type': 'application/json'});
+  }
+  const allowed = {
+    kRejectCensorFormatAsterisksFull,
+    kRejectCensorFormatAsterisksFixed,
+    kRejectCensorFormatFirstLast,
+    kRejectCensorFormatBracketedToken,
+  };
+  if (!allowed.contains(raw)) {
+    return Response(400,
+        body: '{"error":"unknown_format"}',
+        headers: {'content-type': 'application/json'});
+  }
+  await db.into(db.configKeyValues).insertOnConflictUpdate(
+        ConfigKeyValuesCompanion.insert(
+          key: kRejectCensorFormatKvKey,
+          value: raw,
+        ),
+      );
+  return Response.ok(
+    jsonEncode({'format': raw}),
+    headers: {'content-type': 'application/json'},
+  );
 }
 
 Future<Response> _patchContentSuppressed(

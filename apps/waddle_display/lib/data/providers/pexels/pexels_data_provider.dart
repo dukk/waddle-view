@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../../../blob/blob_store.dart';
 import 'package:waddle_shared/config/provider_runtime_config.dart';
+import 'package:waddle_shared/curation/reject_filter_context.dart';
 import '../../../debug/app_debug_log.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import '../../data_provider.dart';
@@ -100,6 +101,8 @@ class PexelsDataProvider implements IDataProvider {
         videoBudget = 0;
       }
 
+      final rejectCtx = await RejectFilterContext.loadFromDb(ctx.db);
+
       if (photoBudget > 0) {
         if (extra.sources.isEmpty) {
           photoBudget = await _collectCuratedPhotos(
@@ -108,6 +111,7 @@ class PexelsDataProvider implements IDataProvider {
             token: token,
             nowMs: nowMs,
             budget: photoBudget,
+            rejectCtx: rejectCtx,
           );
         } else {
           photoBudget = await _collectSearchPhotosRoundRobin(
@@ -117,6 +121,7 @@ class PexelsDataProvider implements IDataProvider {
             sources: extra.sources,
             nowMs: nowMs,
             budget: photoBudget,
+            rejectCtx: rejectCtx,
           );
         }
       }
@@ -130,6 +135,7 @@ class PexelsDataProvider implements IDataProvider {
             extra: extra,
             nowMs: nowMs,
             budget: videoBudget,
+            rejectCtx: rejectCtx,
           );
         } else {
           videoBudget = await _collectSearchVideosRoundRobin(
@@ -140,6 +146,7 @@ class PexelsDataProvider implements IDataProvider {
             sources: extra.sources,
             nowMs: nowMs,
             budget: videoBudget,
+            rejectCtx: rejectCtx,
           );
         }
       }
@@ -407,6 +414,7 @@ class PexelsDataProvider implements IDataProvider {
     required Map<String, dynamic> photo,
     required String category,
     required int nowMs,
+    required RejectFilterContext rejectCtx,
   }) async {
     final id = _pexelsIdString(photo['id']);
     if (id == null) {
@@ -452,21 +460,33 @@ class PexelsDataProvider implements IDataProvider {
       ),
     );
 
+    final photographerName = '${photo['photographer'] ?? ''}';
+    final photographerUrl = '${photo['photographer_url'] ?? ''}';
+    final pageUrl = '${photo['url'] ?? ''}';
+    final altText = '${photo['alt'] ?? ''}';
+    final blocked = rejectCtx.isMediaRejected(
+      photographer: photographerName,
+      altText: altText,
+      urls: [photographerUrl, pageUrl],
+    );
+
     await ctx.db.into(ctx.db.photos).insert(
       PhotosCompanion.insert(
         id: id,
         category: Value(category),
         dataProvider: Value(kPexelsProviderId),
         mediaBlobKey: logicalKey,
-        photographerName: '${photo['photographer'] ?? ''}',
-        photographerUrl: '${photo['photographer_url'] ?? ''}',
-        pexelsPageUrl: '${photo['url'] ?? ''}',
-        altText: Value('${photo['alt'] ?? ''}'),
+        photographerName: photographerName,
+        photographerUrl: photographerUrl,
+        pexelsPageUrl: pageUrl,
+        altText: Value(altText),
         fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(nowMs),
+        suppressed: Value(blocked),
       ),
     );
     AppDebugLog.provider(
-      'pexels: stored photo id=$id category=$category bytes=${bytes.length}',
+      'pexels: stored photo id=$id category=$category bytes=${bytes.length}'
+      '${blocked ? ' (suppressed by reject list)' : ''}',
     );
     return true;
   }
@@ -477,6 +497,7 @@ class PexelsDataProvider implements IDataProvider {
     required String category,
     required PexelsProviderExtraConfig extra,
     required int nowMs,
+    required RejectFilterContext rejectCtx,
   }) async {
     final dur = _videoDurationSeconds(video);
     if (dur < extra.minVideoSeconds || dur > extra.maxVideoSeconds) {
@@ -530,6 +551,13 @@ class PexelsDataProvider implements IDataProvider {
       photographerUrl = '${u['url'] ?? ''}';
     }
 
+    final pageUrl = '${video['url'] ?? ''}';
+    final blocked = rejectCtx.isMediaRejected(
+      photographer: photographerName,
+      altText: '',
+      urls: [photographerUrl, pageUrl],
+    );
+
     await ctx.db.into(ctx.db.videos).insert(
       VideosCompanion.insert(
         id: id,
@@ -538,14 +566,16 @@ class PexelsDataProvider implements IDataProvider {
         mediaBlobKey: logicalKey,
         photographerName: photographerName,
         photographerUrl: photographerUrl,
-        pexelsPageUrl: '${video['url'] ?? ''}',
-        altText: Value(''),
+        pexelsPageUrl: pageUrl,
+        altText: const Value(''),
         durationSeconds: dur,
         fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(nowMs),
+        suppressed: Value(blocked),
       ),
     );
     AppDebugLog.provider(
-      'pexels: stored video id=$id category=$category bytes=${bytes.length} dur=${dur}s',
+      'pexels: stored video id=$id category=$category bytes=${bytes.length}'
+      ' dur=${dur}s${blocked ? ' (suppressed by reject list)' : ''}',
     );
     return true;
   }
@@ -556,6 +586,7 @@ class PexelsDataProvider implements IDataProvider {
     required String token,
     required int nowMs,
     required int budget,
+    required RejectFilterContext rejectCtx,
   }) async {
     var left = budget;
     var page = 1;
@@ -582,6 +613,7 @@ class PexelsDataProvider implements IDataProvider {
           photo: photo,
           category: 'pexels',
           nowMs: nowMs,
+          rejectCtx: rejectCtx,
         );
         if (inserted) {
           left--;
@@ -603,6 +635,7 @@ class PexelsDataProvider implements IDataProvider {
     required List<PexelsSourceSpec> sources,
     required int nowMs,
     required int budget,
+    required RejectFilterContext rejectCtx,
   }) async {
     var left = budget;
     if (left <= 0 || sources.isEmpty) {
@@ -653,6 +686,7 @@ class PexelsDataProvider implements IDataProvider {
             photo: photo,
             category: source.category,
             nowMs: nowMs,
+            rejectCtx: rejectCtx,
           );
           if (inserted) {
             left--;
@@ -676,6 +710,7 @@ class PexelsDataProvider implements IDataProvider {
     required PexelsProviderExtraConfig extra,
     required int nowMs,
     required int budget,
+    required RejectFilterContext rejectCtx,
   }) async {
     var left = budget;
     var page = 1;
@@ -707,6 +742,7 @@ class PexelsDataProvider implements IDataProvider {
           category: 'pexels',
           extra: extra,
           nowMs: nowMs,
+          rejectCtx: rejectCtx,
         );
         if (inserted) {
           left--;
@@ -729,6 +765,7 @@ class PexelsDataProvider implements IDataProvider {
     required List<PexelsSourceSpec> sources,
     required int nowMs,
     required int budget,
+    required RejectFilterContext rejectCtx,
   }) async {
     var left = budget;
     if (left <= 0 || sources.isEmpty) {
@@ -780,6 +817,7 @@ class PexelsDataProvider implements IDataProvider {
             category: source.category,
             extra: extra,
             nowMs: nowMs,
+            rejectCtx: rejectCtx,
           );
           if (inserted) {
             left--;

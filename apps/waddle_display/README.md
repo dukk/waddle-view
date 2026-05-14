@@ -136,6 +136,28 @@ Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../d
   - `/v1/content/trivia/<id>`
 - **`404`** when the id does not exist. Full table and examples: **[`docs/pi/api.md`](../../docs/pi/api.md)**.
 
+### Reject word list (curse-word filter)
+
+- SQLite table **`reject_terms`** (schema **31**) holds operator-managed words. Each row has an **`action`**:
+  - **`block`** — at **ingest time** providers set **`suppressed = true`** when the term appears in any text field, photographer name, alt text, or URL part (URL separators like `-`, `_`, `/`, `?`, `=`, `&`, `.` are normalized to spaces for whole-word matching). Media matches (Pexels, Bing, Flickr, OneDrive) **always** block, even when the matching term's action is `censor`.
+  - **`censor`** — at **slide and ticker load time** the matched word is replaced with a configurable mask **transiently** (the SQLite row is untouched). The censor format lives in **`config_key_values`** under **`curator.reject.censorFormat`** with values **`asterisks_full`** (default), **`asterisks_fixed`** (always 4 asterisks), **`first_last`** (keeps first and last character, masks middle), or **`bracketed_token`** (replaces with `[censored]`).
+- Matching is case-insensitive and word-boundary aware so substring noise (e.g. *class* containing *ass*) does not trigger.
+- A set of common defaults is seeded by [`reject_term_defaults.dart`](../../packages/waddle_shared/lib/persistence/reject_term_defaults.dart) on first run; remove or replace any of them via REST / `waddlectl`.
+- On every startup, the display app re-evaluates stored content against the current list and updates `suppressed = true` for new matches (already-suppressed rows are left alone). The REST and `waddlectl` mutators trigger the same rescan so operator changes apply to content already in the database, not just future ingests.
+- **REST** (authenticated like other `/v1/*` routes):
+  - `GET /v1/reject-terms` — list current terms and the active censor format.
+  - `POST /v1/reject-terms` — upsert by term (`{"term":"foo","action":"censor"|"block"}`).
+  - `PATCH /v1/reject-terms/<id>` — update an existing row by id.
+  - `DELETE /v1/reject-terms/<id>` — remove a row.
+  - `PUT /v1/reject-terms/format` — set the censor mask format (`{"format":"asterisks_full"}` etc.).
+  - `POST /v1/reject-terms/rescan` — manually re-evaluate stored content; returns per-table counts.
+- **`waddlectl`** (local operator CLI):
+  - `waddlectl reject list`
+  - `waddlectl reject add --action=<block|censor> <term>`
+  - `waddlectl reject remove <term>` (or `--by-id <id>`)
+  - `waddlectl reject format set <asterisks_full|asterisks_fixed|first_last|bracketed_token>`
+  - `waddlectl reject rescan`
+
 ## Local REST API and admin UI (debug, profile, release)
 
 - Defaults to **`127.0.0.1:8787`**. Set `WADDLE_HTTP_BIND` (and optional `WADDLE_HTTP_PORT`) to expose on LAN.
@@ -163,13 +185,18 @@ Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../d
 
 ### Festive display overlays (`display_overlay_schedules` + REST)
 
-- **Effect**: on matching calendar days, an **unobtrusive** translucent layer (floating **hearts** ♥ and occasional **short phrases**) tints from the current theme’s **accent** palette (`PaletteTertiaryLayers` / `ColorScheme` fallback). It sits **above** slides and ticker but **below** priority **alert** overlays, and it does **not** capture pointer or keyboard input.
+- **Effect**: on matching calendar days, an **unobtrusive** translucent layer sits **above** slides and ticker but **below** priority **alert** overlays, and it does **not** capture pointer or keyboard input.
+- **`hearts_rain`**: floating **hearts** ♥ and occasional **short phrases** from `messages_json`, tinted from the current theme’s **accent** palette (`PaletteTertiaryLayers` / `ColorScheme` fallback).
+- **`birthday_confetti`**: low-opacity **falling confetti** (rectangles, circles, stars, thin “streamers”) with optional **sparse** phrases from `messages_json`. Per-row **`config_json`** (JSON object) can tune **`shapes`** (`rect`, `circle`, `star`, `streamer`, `mix`), optional **`colors`** (`#RRGGBB` or `#AARRGGBB`), **`density`** (about **0.15–0.9**, displayed clamped for subtlety), **`message_interval_sec`** (about **8–120** sec between occasional phrases), **`fall_speed`** (**0.02–1.8**, lower = slower drift; **~1.0** matches the original ~5s vertical cycle; **0.02** is the slowest supported, about **4.2 minutes** per full cycle with the current cap), and **`opacity`** (**0.12–0.72**, caps per-piece alpha for stronger or softer confetti). Empty `messages_json` means **no** overlay text. Omit `config_json` or send `{}` for defaults (**slower and more visible** than the first confetti release). **`hearts_rain` always stores `{}`** in `config_json` (extra keys are ignored on upsert).
+- **`bouncing_message`**: a **single line** of text from `messages_json` (first string after merge; if none, the app uses **`Happy Birthday Waddle!!`**) **bounces** within the overlay like a DVD logo. **`config_json`** may set **`color`** (`#RRGGBB` / `#AARRGGBB`), **`font_family`**, **`font_size`** (**14–96**), **`font_weight`** (**100–900**, snapped to hundreds, or a numeric string), **`letter_spacing`** (**-1.5–6**), **`shadow`** (bool), and **`speed`** (**0.25–2.5**, velocity multiplier).
+- **Stacking**: when several kinds match, **confetti** is lowest, then **hearts**, then **bouncing message** on top for readability.
+- **Multiple rows**: merged **message** strings are **deduped** across matching rows (sorted by `id`). For **`birthday_confetti`**, **visual settings** come from the **first** matching row by `id` only; add a dedicated row per distinct look, or keep a single confetti schedule. **`bouncing_message`** uses the **first** matching row’s `config_json` and the **first** merged phrase for the moving text.
 - **Global switch**: `config_key_values` key **`display.overlay.enabled`**. **Omit** or any value other than **`false`**, **`0`**, **`no`**, **`off`** means **on**. Set to `false` to disable all overlays without deleting rows.
-- **Storage**: SQLite **`display_overlay_schedules`** (installed at schema **28**). Rows support **fixed** calendar ranges (`start_month`/`start_day`, optional inclusive `end_*`) or **`nth_week_of_month` + `nth_weekday`** using Dart **`DateTime.weekday`** (Monday=1 … Sunday=7) with `start_month` holding the anchor month (`start_day` is ignored in that mode).
-- **Kinds**: today only **`hearts_rain`** is accepted (REST returns **400** for other `overlay_kind` values).
-- **Default seed**: id **`default_mothers_day_us`** — US **Mother’s Day** (2nd Sunday in May) with message **`Happy Mother's Day!`**. Disable or replace via REST; other countries may use a different fixed or nth-weekday row.
+- **Storage**: SQLite **`display_overlay_schedules`** (installed at schema **28**; `settings_json` added at **32**, renamed to **`config_json`** at **34** with **`config_json_schema`** / **`example_config_json`**; **35** backfills schema/example for **`bouncing_message`**). Rows support **fixed** calendar ranges (`start_month`/`start_day`, optional inclusive `end_*`) or **`nth_week_of_month` + `nth_weekday`** using Dart **`DateTime.weekday`** (Monday=1 … Sunday=7) with `start_month` holding the anchor month (`start_day` is ignored in that mode).
+- **Kinds**: **`hearts_rain`**, **`birthday_confetti`**, **`bouncing_message`**. REST returns **400** for other `overlay_kind` values (or invalid `config_json` for confetti / bouncing message).
+- **Default seeds**: id **`default_mothers_day_us`** — US **Mother’s Day** (2nd Sunday in May) with message **`Happy Mother's Day!`** (`hearts_rain`, **enabled**). Id **`default_birthday_example_may_13`** — **May 13** each year, **`birthday_confetti`** with example message and a **slower, brighter** stock `config_json`, **disabled** so operators can enable or edit via REST without affecting installs until they choose to. Id **`default_bouncing_message_may_13`** — **May 13** each year, **`bouncing_message`** with **`Happy Birthday Waddle!!`** and stock typography `config_json`, **disabled** (same intent as the birthday example).
 - **REST** (authenticated like other `/v1/*` routes):
-  - `GET /v1/display/overlays` — list schedules (JSON `messages_json` decoded as an array in the response).
+  - `GET /v1/display/overlays` — list schedules (`messages_json`, `config_json`, `config_json_schema`, and `example_config_json` decoded as JSON in the response when valid).
   - `POST /v1/display/overlays` — upsert (requires `id`; include `start_month` / `start_day` for fixed mode, or `nth_week_of_month` / `nth_weekday` for floating holidays).
   - `PATCH /v1/display/overlays/{id}` — partial update (merge with existing row).
   - `DELETE /v1/display/overlays/{id}` — remove a schedule.
@@ -319,6 +346,8 @@ The **`nws_weather_alerts`** data provider (`id` / `provider_type`: **`nws_weath
 **Schema 26** adds boolean **`suppressed`** on **`jokes`**, **`rss_articles`**, **`trivia_questions`**, **`photos`**, and **`videos`** (hide from display without deleting rows; see *Content suppression* above).
 
 **Schema 30** adds **`consecutive_failures`** (int, default 0) and **`next_retry_at`** (nullable) on **`rss_feed_sources`**. The RSS provider increments **`consecutive_failures`** on any non-200 response, network throw, or parse error, and schedules the next attempt at `now + pollSeconds * 2^(failures-1)` (capped at 24h). A successful collect resets the counter and clears **`next_retry_at`**. After **5** consecutive failures the feed is force-disabled (**`enabled = false`**) so the engine stops trying — re-enable via the database / REST when the source is healthy again.
+
+**Schema 31** adds the **`reject_terms`** table (`id`, `term`, `action`, `created_at_ms`, `updated_at_ms`) for the curse-word reject list. See **Reject word list** above for the operator workflow.
 
 **User-Agent (required by NWS):** every request sends an identifying **`User-Agent`** header. Set **`userAgent`** in **`provider_settings.config_json`** to a string that includes contact information (website or email), for example `(https://example.org, ops@example.org)`, as described in the [API overview](https://www.weather.gov/documentation/services-web-api). Until you configure this, the app uses a generic placeholder string that points to this README.
 

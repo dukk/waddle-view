@@ -166,7 +166,15 @@ void main() {
     );
 
     final answerAfter = tester.widget<Text>(find.text('Four'));
-    expect(answerAfter.style?.fontWeight, FontWeight.w800);
+    expect(answerAfter.style?.fontWeight, FontWeight.w600);
+    expect(
+      find.byWidgetPredicate((w) {
+        final k = w.key;
+        return k is ValueKey<String> &&
+            k.value.startsWith('trivia_correct_reveal_');
+      }),
+      findsOneWidget,
+    );
 
     await db.close();
   });

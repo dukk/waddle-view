@@ -21,6 +21,7 @@ class BlobMetadata extends Table {
   IntColumn get bytes => integer()();
   TextColumn get mimeType => text().nullable()();
   DateTimeColumn get capturedAt => dateTime()();
+
   /// Native pixel dimensions when known (e.g. Pexels API, OneDrive `image` facet).
   IntColumn get pixelWidth => integer().nullable()();
   IntColumn get pixelHeight => integer().nullable()();
@@ -54,6 +55,7 @@ class ConfigKeyValues extends Table {
 const String kCuratorProgramDurationSecondsKvKey =
     'curator.program.durationSeconds';
 const String kCuratorHistoryDepthKvKey = 'curator.program.historyDepth';
+
 /// When true, RSS screens only curate articles that have a downloaded image;
 /// photo-less articles remain ticker-only unless min-placement fallback applies.
 const String kRequireNewsPhotoForScreensKvKey =
@@ -73,8 +75,23 @@ const String kDefaultDisplayTimezoneIana = 'America/New_York';
 /// Overlay kind stored in `display_overlay_schedules.overlay_kind`.
 const String kOverlayKindHeartsRain = 'hearts_rain';
 
+/// Subtle falling confetti + optional sparse messages.
+const String kOverlayKindBirthdayConfetti = 'birthday_confetti';
+
+/// Single phrase bouncing off screen edges (DVD-style).
+const String kOverlayKindBouncingMessage = 'bouncing_message';
+
+/// Seed row id for the example May 13 bouncing message overlay (installed disabled).
+const String kDefaultBouncingMessageOverlayId = 'default_bouncing_message_may_13';
+
+/// Default phrase for [kOverlayKindBouncingMessage] when [messages_json] is empty.
+const String kDefaultBouncingMessageOverlayPhrase = 'Happy Birthday Waddle!!';
+
 /// Seed row id for the US Mother's Day `[display_overlay_schedules]` preset.
 const String kDefaultMothersDayOverlayId = 'default_mothers_day_us';
+
+/// Seed row id for the example May 13 birthday confetti overlay (installed disabled).
+const String kDefaultBirthdayOverlayExampleId = 'default_birthday_example_may_13';
 
 /// Shared category ids for RSS feeds, Pexels photos/videos, jokes, and trivia
 /// ([RssFeedSources.category], [Photos.category], [Videos.category], and category
@@ -99,8 +116,10 @@ class ScreenDefinitions extends Table {
   TextColumn get name => text()();
   TextColumn get description => text().withDefault(const Constant(''))();
   BoolColumn get enabled => boolean().withDefault(const Constant(true))();
+
   /// Widget `type` string (e.g. `weather`, `rss_article`); see `kScreenLayoutWidgetTypes`.
   TextColumn get screenType => text()();
+
   /// JSON object: former `widgets[0].config` in legacy `layout_json`.
   TextColumn get configJson => text().withDefault(const Constant('{}'))();
   TextColumn get configJsonSchema => text().nullable()();
@@ -126,11 +145,18 @@ class TickerDefinitions extends Table {
   TextColumn get name => text()();
   TextColumn get description => text().withDefault(const Constant(''))();
   BoolColumn get enabled => boolean().withDefault(const Constant(true))();
+
   /// One of: `time`, `weather`, `news`, `quote`, `stocks`, `custom`.
   TextColumn get tickerType => text()();
   IntColumn get frequencyWeight => integer().withDefault(const Constant(100))();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   TextColumn get configKey => text().nullable()();
+
+  /// JSON Schema (draft 2020-12) describing marquee / KV options for [tickerType].
+  TextColumn get configJsonSchema => text().nullable()();
+
+  /// Example JSON for the same documentation shape as [configJsonSchema].
+  TextColumn get exampleConfigJson => text().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -159,19 +185,21 @@ const int kRssMaxRetryBackoffSeconds = 86400;
 class RssFeedSources extends Table {
   TextColumn get id => text()();
   TextColumn get url => text()();
+
   /// Slug matching [ContentCategories.id] (seeded in [ContentCategories]).
   TextColumn get category => text().withDefault(const Constant('general'))();
-  IntColumn get pollSeconds =>
-      integer().withDefault(const Constant(3600))();
+  IntColumn get pollSeconds => integer().withDefault(const Constant(3600))();
   IntColumn get maxArticles => integer().withDefault(const Constant(3))();
   BoolColumn get enabled => boolean().withDefault(const Constant(true))();
   DateTimeColumn get lastFetchedAt => dateTime().nullable()();
   TextColumn get title => text().nullable()();
+
   /// Number of back-to-back failed downloads (HTTP non-200, network throw, or
   /// parse error). Reset to 0 on each successful collect. The RSS provider
   /// forces [enabled] to `false` once this reaches [kRssMaxConsecutiveFailures].
   IntColumn get consecutiveFailures =>
       integer().withDefault(const Constant(0))();
+
   /// Earliest wall-clock time the RSS provider may retry this feed after a
   /// failure. `null` means no active backoff (use [pollSeconds] instead).
   DateTimeColumn get nextRetryAt => dateTime().nullable()();
@@ -180,10 +208,7 @@ class RssFeedSources extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-@TableIndex(
-  name: 'idx_rss_articles_by_feed',
-  columns: {#feedId, #publishedAt},
-)
+@TableIndex(name: 'idx_rss_articles_by_feed', columns: {#feedId, #publishedAt})
 class RssArticles extends Table {
   TextColumn get id => text()();
   TextColumn get feedId => text().references(RssFeedSources, #id)();
@@ -194,6 +219,7 @@ class RssArticles extends Table {
   DateTimeColumn get publishedAt => dateTime()();
   DateTimeColumn get fetchedAt => dateTime()();
   TextColumn get imageBlobKey => text().nullable()();
+
   /// When true, excluded from slides and news ticker; row kept for stable ids.
   BoolColumn get suppressed => boolean().withDefault(const Constant(false))();
 
@@ -211,40 +237,30 @@ class JokeCategories extends Table {
   IntColumn get endMonth => integer().nullable()();
   IntColumn get endDay => integer().nullable()();
   TextColumn get categoryPrompt => text().nullable()();
-  IntColumn get minJokes =>
-      integer().withDefault(const Constant(10))();
-  IntColumn get maxJokes =>
-      integer().withDefault(const Constant(100))();
+  IntColumn get minJokes => integer().withDefault(const Constant(10))();
+  IntColumn get maxJokes => integer().withDefault(const Constant(100))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
 
 /// Records each OpenAI joke-generation request size for rolling-window rate limits.
-@TableIndex(
-  name: 'idx_joke_gen_batches_by_time',
-  columns: {#requestedAtMs},
-)
+@TableIndex(name: 'idx_joke_gen_batches_by_time', columns: {#requestedAtMs})
 class JokeGenerationBatches extends Table {
   IntColumn get id => integer().autoIncrement()();
   DateTimeColumn get requestedAtMs => dateTime()();
   IntColumn get jokesRequested => integer()();
 }
 
-@TableIndex(
-  name: 'idx_jokes_by_created_at',
-  columns: {#createdAtMs},
-)
-@TableIndex(
-  name: 'idx_jokes_by_category',
-  columns: {#categoryId},
-)
+@TableIndex(name: 'idx_jokes_by_created_at', columns: {#createdAtMs})
+@TableIndex(name: 'idx_jokes_by_category', columns: {#categoryId})
 class Jokes extends Table {
   TextColumn get id => text()();
   TextColumn get categoryId => text().references(JokeCategories, #id)();
   TextColumn get setup => text()();
   TextColumn get punchline => text()();
   DateTimeColumn get createdAtMs => dateTime()();
+
   /// When true, excluded from slides; row kept for stable ids.
   BoolColumn get suppressed => boolean().withDefault(const Constant(false))();
 
@@ -262,34 +278,23 @@ class TriviaCategories extends Table {
   IntColumn get endMonth => integer().nullable()();
   IntColumn get endDay => integer().nullable()();
   TextColumn get categoryPrompt => text().nullable()();
-  IntColumn get minQuestions =>
-      integer().withDefault(const Constant(10))();
-  IntColumn get maxQuestions =>
-      integer().withDefault(const Constant(100))();
+  IntColumn get minQuestions => integer().withDefault(const Constant(10))();
+  IntColumn get maxQuestions => integer().withDefault(const Constant(100))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
 
 /// Records each OpenAI trivia-generation request size for rolling-window rate limits.
-@TableIndex(
-  name: 'idx_trivia_gen_batches_by_time',
-  columns: {#requestedAtMs},
-)
+@TableIndex(name: 'idx_trivia_gen_batches_by_time', columns: {#requestedAtMs})
 class TriviaGenerationBatches extends Table {
   IntColumn get id => integer().autoIncrement()();
   DateTimeColumn get requestedAtMs => dateTime()();
   IntColumn get questionsRequested => integer()();
 }
 
-@TableIndex(
-  name: 'idx_trivia_questions_by_created_at',
-  columns: {#createdAtMs},
-)
-@TableIndex(
-  name: 'idx_trivia_questions_by_category',
-  columns: {#categoryId},
-)
+@TableIndex(name: 'idx_trivia_questions_by_created_at', columns: {#createdAtMs})
+@TableIndex(name: 'idx_trivia_questions_by_category', columns: {#categoryId})
 class TriviaQuestions extends Table {
   TextColumn get id => text()();
   TextColumn get categoryId => text().references(TriviaCategories, #id)();
@@ -300,6 +305,7 @@ class TriviaQuestions extends Table {
   TextColumn get optionD => text()();
   TextColumn get correctOption => text()();
   DateTimeColumn get createdAtMs => dateTime()();
+
   /// When true, excluded from slides; row kept for stable ids.
   BoolColumn get suppressed => boolean().withDefault(const Constant(false))();
 
@@ -308,10 +314,7 @@ class TriviaQuestions extends Table {
 }
 
 /// Local and synced calendar events (Outlook / Google providers later).
-@TableIndex(
-  name: 'idx_calendar_events_start_ms',
-  columns: {#startMs},
-)
+@TableIndex(name: 'idx_calendar_events_start_ms', columns: {#startMs})
 class CalendarEvents extends Table {
   TextColumn get id => text()();
   TextColumn get title => text()();
@@ -322,10 +325,13 @@ class CalendarEvents extends Table {
   TextColumn get description => text().nullable()();
   TextColumn get source => text().withDefault(const Constant('local'))();
   TextColumn get externalId => text().nullable()();
+
   /// Shared meeting id across calendars (Graph `iCalUId`, Google `iCalUID`) for deduplication.
   TextColumn get icalUid => text().nullable()();
+
   /// Optional [ContentCategories.id] for dashboard icons / grouping.
-  TextColumn get categoryId => text().nullable().references(ContentCategories, #id)();
+  TextColumn get categoryId =>
+      text().nullable().references(ContentCategories, #id)();
   DateTimeColumn get updatedAtMs => dateTime()();
 
   @override
@@ -338,6 +344,7 @@ class WeatherLocations extends Table {
   RealColumn get latitude => real()();
   RealColumn get longitude => real()();
   BoolColumn get enabled => boolean().withDefault(const Constant(true))();
+
   /// When true, the NWS active-alerts provider may fetch and store alerts for
   /// this row (must also be [enabled]).
   BoolColumn get includeActiveWeatherAlerts =>
@@ -347,10 +354,7 @@ class WeatherLocations extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-@TableIndex(
-  name: 'idx_weather_current_data_observed',
-  columns: {#observedAtMs},
-)
+@TableIndex(name: 'idx_weather_current_data_observed', columns: {#observedAtMs})
 class WeatherCurrentData extends Table {
   TextColumn get locationId => text().references(WeatherLocations, #id)();
   DateTimeColumn get observedAtMs => dateTime()();
@@ -376,6 +380,7 @@ class WeatherGovActiveAlerts extends Table {
   TextColumn get severity => text().nullable()();
   DateTimeColumn get effectiveAt => dateTime().nullable()();
   DateTimeColumn get expiresAt => dateTime().nullable()();
+
   /// Truncated product text for the weather slide (not full CAP description).
   TextColumn get descriptionExcerpt => text().nullable()();
 
@@ -395,16 +400,11 @@ const String kMediaDataProviderFlickr = 'flickr_media';
 /// Bing homepage image of the day into [Photos].
 const String kMediaDataProviderBing = 'bing_iotd';
 
-@TableIndex(
-  name: 'idx_photos_fetched',
-  columns: {#fetchedAtMs},
-)
-@TableIndex(
-  name: 'idx_photos_category',
-  columns: {#category},
-)
+@TableIndex(name: 'idx_photos_fetched', columns: {#fetchedAtMs})
+@TableIndex(name: 'idx_photos_category', columns: {#category})
 class Photos extends Table {
   TextColumn get id => text()();
+
   /// Slug matching [ContentCategories.id] (default `pexels`).
   TextColumn get category => text().withDefault(const Constant('pexels'))();
   TextColumn get dataProvider =>
@@ -415,6 +415,7 @@ class Photos extends Table {
   TextColumn get pexelsPageUrl => text()();
   TextColumn get altText => text().withDefault(const Constant(''))();
   DateTimeColumn get fetchedAtMs => dateTime()();
+
   /// When true, excluded from slides; row kept for stable ids.
   BoolColumn get suppressed => boolean().withDefault(const Constant(false))();
 
@@ -422,16 +423,11 @@ class Photos extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-@TableIndex(
-  name: 'idx_videos_fetched',
-  columns: {#fetchedAtMs},
-)
-@TableIndex(
-  name: 'idx_videos_category',
-  columns: {#category},
-)
+@TableIndex(name: 'idx_videos_fetched', columns: {#fetchedAtMs})
+@TableIndex(name: 'idx_videos_category', columns: {#category})
 class Videos extends Table {
   TextColumn get id => text()();
+
   /// Slug matching [ContentCategories.id] (default `pexels`).
   TextColumn get category => text().withDefault(const Constant('pexels'))();
   TextColumn get dataProvider =>
@@ -443,6 +439,7 @@ class Videos extends Table {
   TextColumn get altText => text().withDefault(const Constant(''))();
   IntColumn get durationSeconds => integer()();
   DateTimeColumn get fetchedAtMs => dateTime()();
+
   /// When true, excluded from slides; row kept for stable ids.
   BoolColumn get suppressed => boolean().withDefault(const Constant(false))();
 
@@ -450,10 +447,7 @@ class Videos extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-@TableIndex(
-  name: 'idx_pexels_fetch_batches_time',
-  columns: {#requestedAtMs},
-)
+@TableIndex(name: 'idx_pexels_fetch_batches_time', columns: {#requestedAtMs})
 class PexelsFetchBatches extends Table {
   IntColumn get id => integer().autoIncrement()();
   DateTimeColumn get requestedAtMs => dateTime()();
@@ -475,12 +469,68 @@ class StockSymbols extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// Operator-curated reject-word list applied by the curator and providers.
+///
+/// Each row's [action] is one of [kRejectTermActionCensor] or
+/// [kRejectTermActionBlock]:
+///
+/// - `censor` rows cause matching words in news/joke/trivia text to be replaced
+///   with a configurable mask (see [kRejectCensorFormatKvKey]) at slide/ticker
+///   load time; the underlying DB row is left untouched.
+/// - `block` rows mark matching news/joke/trivia rows `suppressed = true` so
+///   the curator never schedules them again.
+///
+/// For [Photos] / [Videos] rows, ANY entry in this table (regardless of
+/// [action]) that matches the photographer name, alt text, or any URL field
+/// (with `-` and `_` treated as spaces) sets `suppressed = true`. Image
+/// content cannot be censored, so media matches always block.
+class RejectTerms extends Table {
+  TextColumn get id => text()();
+
+  /// Lowercased single term. Matched case-insensitively with `\b` word
+  /// boundaries against text fields; for URL/media matches the URL is
+  /// normalized (lowercase, `-`/`_`/`/`/`?`/`=`/`&`/`.` -> space) first.
+  TextColumn get term => text().customConstraint('NOT NULL UNIQUE')();
+
+  /// One of [kRejectTermActionCensor] or [kRejectTermActionBlock]; the
+  /// repository validates this on insert/update.
+  TextColumn get action => text()();
+  IntColumn get createdAtMs => integer()();
+  IntColumn get updatedAtMs => integer()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// [RejectTerms.action] value: replace matches in text content at display time.
+const String kRejectTermActionCensor = 'censor';
+
+/// [RejectTerms.action] value: mark matching rows `suppressed = true` so the
+/// curator never schedules them.
+const String kRejectTermActionBlock = 'block';
+
+/// [ConfigKeyValues.key] holding the operator's preferred censor mask format
+/// (one of [kRejectCensorFormatAsterisksFull], [kRejectCensorFormatAsterisksFixed],
+/// [kRejectCensorFormatFirstLast], [kRejectCensorFormatBracketedToken]). Missing
+/// or unrecognized values fall back to [kRejectCensorFormatAsterisksFull].
+const String kRejectCensorFormatKvKey = 'curator.reject.censorFormat';
+
+/// Replace each matched word with asterisks of the same length (`damn` -> `****`).
+const String kRejectCensorFormatAsterisksFull = 'asterisks_full';
+
+/// Replace each matched word with a fixed 4-asterisk token regardless of length.
+const String kRejectCensorFormatAsterisksFixed = 'asterisks_fixed';
+
+/// Keep the first and last character of the matched word, mask the middle
+/// (`damn` -> `d**n`; words of length <=2 fall back to all asterisks).
+const String kRejectCensorFormatFirstLast = 'first_last';
+
+/// Replace each matched word with the literal token `[censored]`.
+const String kRejectCensorFormatBracketedToken = 'bracketed_token';
+
 /// Latest current quote per [StockSymbols.id], written by `StockQuoteDataProvider`.
 /// One row per symbol; provider does an `insertOnConflictUpdate` per collect tick.
-@TableIndex(
-  name: 'idx_stock_quotes_observed',
-  columns: {#observedAtMs},
-)
+@TableIndex(name: 'idx_stock_quotes_observed', columns: {#observedAtMs})
 class StockQuotes extends Table {
   TextColumn get symbolId => text().references(StockSymbols, #id)();
   RealColumn get currentPrice => real().nullable()();

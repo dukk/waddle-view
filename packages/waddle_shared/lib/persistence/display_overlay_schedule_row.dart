@@ -1,5 +1,21 @@
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 
+String _readConfigJson(QueryRow row) {
+  final Object? raw = row.data['config_json'];
+  if (raw == null) {
+    return '{}';
+  }
+  return raw as String;
+}
+
+String? _readOptionalString(QueryRow row, String key) {
+  final Object? raw = row.data[key];
+  if (raw == null) {
+    return null;
+  }
+  return raw as String;
+}
+
 int? _readOptionalInt(QueryRow row, String key) {
   final Object? raw = row.data[key];
   if (raw == null) {
@@ -16,6 +32,9 @@ class DisplayOverlayScheduleRow {
     required this.overlayKind,
     required this.label,
     required this.messagesJson,
+    required this.configJson,
+    required this.configJsonSchema,
+    required this.exampleConfigJson,
     required this.repeatAnnually,
     required this.yearExact,
     required this.startMonth,
@@ -31,6 +50,9 @@ class DisplayOverlayScheduleRow {
   final String overlayKind;
   final String label;
   final String messagesJson;
+  final String configJson;
+  final String? configJsonSchema;
+  final String? exampleConfigJson;
   final bool repeatAnnually;
   final int? yearExact;
   final int startMonth;
@@ -47,6 +69,9 @@ class DisplayOverlayScheduleRow {
       overlayKind: row.read<String>('overlay_kind'),
       label: row.read<String>('label'),
       messagesJson: row.read<String>('messages_json'),
+      configJson: _readConfigJson(row),
+      configJsonSchema: _readOptionalString(row, 'config_json_schema'),
+      exampleConfigJson: _readOptionalString(row, 'example_config_json'),
       repeatAnnually: row.read<int>('repeat_annually') != 0,
       yearExact: _readOptionalInt(row, 'year_exact'),
       startMonth: row.read<int>('start_month'),

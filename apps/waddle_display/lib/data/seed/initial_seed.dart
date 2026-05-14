@@ -94,6 +94,8 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureDisplayTextScaleKv(db);
   await _ensureAlertSeverityIconsKv(db);
   await _ensureDefaultMothersDayOverlay(db);
+  await _ensureDefaultBirthdayOverlayExample(db);
+  await _ensureDefaultBouncingMessageOverlay(db);
   await _ensureWelcomeScreen(db);
   await _ensureJokeScreen(db);
   await _ensureTriviaScreen(db);
@@ -120,6 +122,7 @@ Future<void> _ensureDefaultMothersDayOverlay(AppDatabase db) async {
   final messagesJson = jsonEncode(<String>[
     "Happy Mother's Day!",
   ]);
+  final heartsDoc = displayOverlayConfigJsonDocForKind(kOverlayKindHeartsRain);
   await db.customStatement(
     '''INSERT OR IGNORE INTO display_overlay_schedules (
       id,
@@ -127,6 +130,9 @@ Future<void> _ensureDefaultMothersDayOverlay(AppDatabase db) async {
       overlay_kind,
       label,
       messages_json,
+      config_json,
+      config_json_schema,
+      example_config_json,
       repeat_annually,
       year_exact,
       start_month,
@@ -136,7 +142,7 @@ Future<void> _ensureDefaultMothersDayOverlay(AppDatabase db) async {
       nth_week_of_month,
       nth_weekday
     )
-    VALUES (?, 1, ?, ?, ?, 1,
+    VALUES (?, 1, ?, ?, ?, '{}', ?, ?, 1,
       NULL, 5, 1, NULL, NULL,
       2, ?)''',
     <Object?>[
@@ -144,7 +150,93 @@ Future<void> _ensureDefaultMothersDayOverlay(AppDatabase db) async {
       kOverlayKindHeartsRain,
       "Mother's Day (US: 2nd Sunday in May)",
       messagesJson,
+      heartsDoc.schema,
+      heartsDoc.example,
       DateTime.sunday,
+    ],
+  );
+}
+
+Future<void> _ensureDefaultBirthdayOverlayExample(AppDatabase db) async {
+  await db.customStatement(kEnsureDisplayOverlaySchedulesTableSql);
+  final messagesJson = jsonEncode(<String>['Happy birthday!']);
+  const configJson =
+      '{"shapes":["rect","circle","mix"],"density":0.36,"fall_speed":0.12,'
+      '"opacity":0.48,"message_interval_sec":38}';
+  final confettiDoc = displayOverlayConfigJsonDocForKind(
+    kOverlayKindBirthdayConfetti,
+  );
+  await db.customStatement(
+    '''INSERT OR IGNORE INTO display_overlay_schedules (
+      id,
+      enabled,
+      overlay_kind,
+      label,
+      messages_json,
+      config_json,
+      config_json_schema,
+      example_config_json,
+      repeat_annually,
+      year_exact,
+      start_month,
+      start_day,
+      end_month,
+      end_day,
+      nth_week_of_month,
+      nth_weekday
+    )
+    VALUES (?, 0, ?, ?, ?, ?, ?, ?, 1,
+      NULL, 5, 13, NULL, NULL,
+      NULL, NULL)''',
+    <Object?>[
+      kDefaultBirthdayOverlayExampleId,
+      kOverlayKindBirthdayConfetti,
+      'Example: May 13 birthday (disabled)',
+      messagesJson,
+      configJson,
+      confettiDoc.schema,
+      confettiDoc.example,
+    ],
+  );
+}
+
+Future<void> _ensureDefaultBouncingMessageOverlay(AppDatabase db) async {
+  await db.customStatement(kEnsureDisplayOverlaySchedulesTableSql);
+  final messagesJson = jsonEncode(<String>[kDefaultBouncingMessageOverlayPhrase]);
+  const configJson =
+      '{"color":"#5C6BC0","font_size":40,"font_weight":700,'
+      '"letter_spacing":0.8,"shadow":true,"speed":0.95}';
+  final doc = displayOverlayConfigJsonDocForKind(kOverlayKindBouncingMessage);
+  await db.customStatement(
+    '''INSERT OR IGNORE INTO display_overlay_schedules (
+      id,
+      enabled,
+      overlay_kind,
+      label,
+      messages_json,
+      config_json,
+      config_json_schema,
+      example_config_json,
+      repeat_annually,
+      year_exact,
+      start_month,
+      start_day,
+      end_month,
+      end_day,
+      nth_week_of_month,
+      nth_weekday
+    )
+    VALUES (?, 0, ?, ?, ?, ?, ?, ?, 1,
+      NULL, 5, 13, NULL, NULL,
+      NULL, NULL)''',
+    <Object?>[
+      kDefaultBouncingMessageOverlayId,
+      kOverlayKindBouncingMessage,
+      'Example: May 13 bouncing message (disabled)',
+      messagesJson,
+      configJson,
+      doc.schema,
+      doc.example,
     ],
   );
 }
@@ -228,6 +320,7 @@ Future<void> _ensureTickerDefinitions(AppDatabase db) async {
     int sortOrder = 0,
     String? configKey,
   }) async {
+    final doc = tickerSlotConfigJsonDocForType(tickerType);
     await db
         .into(db.tickerDefinitions)
         .insertOnConflictUpdate(
@@ -242,6 +335,8 @@ Future<void> _ensureTickerDefinitions(AppDatabase db) async {
             configKey: configKey == null
                 ? const Value.absent()
                 : Value(configKey),
+            configJsonSchema: Value(doc.schema),
+            exampleConfigJson: Value(doc.example),
           ),
         );
   }

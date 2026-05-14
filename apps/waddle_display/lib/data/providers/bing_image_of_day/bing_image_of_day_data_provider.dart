@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../../../blob/blob_store.dart';
 import 'package:waddle_shared/config/provider_runtime_config.dart';
+import 'package:waddle_shared/curation/reject_filter_context.dart';
 import '../../../debug/app_debug_log.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
@@ -250,6 +251,13 @@ class BingImageOfDayDataProvider implements IDataProvider {
         ),
       );
 
+      final rejectCtx = await RejectFilterContext.loadFromDb(ctx.db);
+      final blocked = rejectCtx.isMediaRejected(
+        photographer: photographer,
+        altText: title,
+        urls: [copyrightLink],
+      );
+
       await ctx.db.into(ctx.db.photos).insert(
         PhotosCompanion.insert(
           id: photoId,
@@ -261,6 +269,7 @@ class BingImageOfDayDataProvider implements IDataProvider {
           pexelsPageUrl: copyrightLink,
           altText: Value(title),
           fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(nowMs),
+          suppressed: Value(blocked),
         ),
       );
 

@@ -1,28 +1,46 @@
 import 'dart:typed_data';
 
-import 'package:drift/drift.dart' show Expression, OrderingTerm;
+import 'package:drift/drift.dart' show Expression, OrderingTerm, Value;
+
+import 'package:waddle_shared/curation/reject_filter_context.dart';
 
 import '../../../blob/blob_store.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import '../../../curator/screen_program_curator.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
+RssArticle _censorArticle(RssArticle article, RejectFilterContext ctx) {
+  if (ctx.isEmpty) {
+    return article;
+  }
+  return article.copyWith(
+    title: ctx.censor(article.title),
+    summary: Value(
+      article.summary == null ? null : ctx.censor(article.summary!),
+    ),
+  );
+}
+
 /// Loads an RSS row for [choiceKey] in [slide.randomChoices], or picks the
 /// best-ranked article not in [excludeArticleIds] (same ranking as the single
 /// [rss_article] slide and multi-article layouts such as [rss_article_columns]
-/// / [rss_article_stack]).
+/// / [rss_article_stack]). Title and summary are passed through the curator's
+/// [RejectFilterContext] so configured `censor` terms are masked transiently
+/// in memory.
 Future<RssArticle?> loadRssArticleForSlideChoice(
   AppDatabase db,
   ParsedWidgetSpec spec,
   ResolvedSlide slide,
   String choiceKey,
-  Set<String> excludeArticleIds,
-) async {
+  Set<String> excludeArticleIds, {
+  RejectFilterContext? rejectCtx,
+}) async {
+  final ctx = rejectCtx ?? await RejectFilterContext.loadFromDb(db);
   final curatedId = slide.randomChoices[choiceKey];
   if (curatedId != null &&
       curatedId.isNotEmpty &&
       !excludeArticleIds.contains(curatedId)) {
-    return (db.select(
+    final row = await (db.select(
       db.rssArticles,
     )..where(
           (t) => Expression.and([
@@ -31,6 +49,7 @@ Future<RssArticle?> loadRssArticleForSlideChoice(
           ]),
         ))
         .getSingleOrNull();
+    return row == null ? null : _censorArticle(row, ctx);
   }
   final feedId = spec.config['feedId'] as String?;
   final q = db.select(db.rssArticles);
@@ -86,7 +105,7 @@ Future<RssArticle?> loadRssArticleForSlideChoice(
     }
     return b.fetchedAt.compareTo(a.fetchedAt);
   });
-  return filtered.first;
+  return _censorArticle(filtered.first, ctx);
 }
 
 /// Result of loading an RSS article thumbnail from [BlobStore].

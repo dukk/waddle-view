@@ -33,8 +33,8 @@ If the key file is **missing or empty**, protected routes return **503** (`api_k
 | GET | `/v1/alerts` | All alerts (no redaction of bodies in MVP; do not store secrets in alerts). |
 | POST | `/v1/alerts` | JSON body: `title`, `body`, optional `qr_payload`, `severity`, `priority`, `expires_at` (epoch ms). |
 | DELETE | `/v1/alerts/{id}` | Dismisses alert (`dismissed_at` set). |
-| GET | `/v1/display/overlays` | Schedules for festive full-screen overlays (`hearts_rain`, …). |
-| POST | `/v1/display/overlays` | Upsert a row: `id`, `overlay_kind` (`hearts_rain`), `label`, `messages_json` (JSON array of strings or a JSON string), `repeat_annually`, optional `year_exact`, `start_month`/`start_day`, optional `end_month`/`end_day`, optional `nth_week_of_month`/`nth_weekday` (both required together). |
+| GET | `/v1/display/overlays` | Schedules for festive full-screen overlays (`hearts_rain`, `birthday_confetti`, `bouncing_message`). Each row includes `config_json`, `config_json_schema`, and `example_config_json` (decoded as JSON when valid). |
+| POST | `/v1/display/overlays` | Upsert a row: `id`, `overlay_kind` (`hearts_rain`, `birthday_confetti`, or `bouncing_message`), `label`, `messages_json` (JSON array of strings or a JSON string), optional `config_json` (JSON object; see README — `{}` for hearts; confetti or bouncing keys for those kinds), `repeat_annually`, optional `year_exact`, `start_month`/`start_day`, optional `end_month`/`end_day`, optional `nth_week_of_month`/`nth_weekday` (both required together). |
 | PATCH | `/v1/display/overlays/{id}` | Partial update; merges with the existing row. **404** if missing. |
 | DELETE | `/v1/display/overlays/{id}` | Deletes the schedule. **404** if missing. |
 | PATCH | `/v1/content/jokes/{id}` | JSON body: `{"suppressed": true}` or `false`. Row kept; hidden from slides/ticker. Returns **404** if id missing. |
@@ -60,19 +60,30 @@ curl -sS -H "X-Api-Key: $KEY" -H 'Content-Type: application/json' \
   -d '{"title":"Door","body":"Open","qr_payload":"https://example.com/ack"}' \
   http://127.0.0.1:8787/v1/alerts
 
-# Example: add a single-day birthday overlay (fixed date, repeats every year)
+# Example: birthday confetti overlay (fixed date, repeats every year)
 curl -sS -H "X-Api-Key: $KEY" -H 'Content-Type: application/json' \
   -d '{
     "id":"birthday_alex",
     "enabled":true,
-    "overlay_kind":"hearts_rain",
+    "overlay_kind":"birthday_confetti",
     "label":"Alex birthday",
     "messages_json":["Happy birthday, Alex!"],
+    "config_json":{
+      "shapes":["rect","circle","mix"],
+      "colors":["#E05C6C","#FFE356"],
+      "density":0.36,
+      "message_interval_sec":36,
+      "fall_speed":0.14,
+      "opacity":0.46
+    },
     "repeat_annually":true,
     "start_month":6,
     "start_day":12
   }' \
   http://127.0.0.1:8787/v1/display/overlays
+
+# First-time seed also inserts `default_birthday_example_may_13` (May 13, `birthday_confetti`, disabled).
+# PATCH `{"enabled":true}` on that id to turn on the stock example.
 
 # Global overlay kill-switch: SQLite `config_key_values` key `display.overlay.enabled`
 # = `false` (no dedicated REST for arbitrary KV rows in MVP).

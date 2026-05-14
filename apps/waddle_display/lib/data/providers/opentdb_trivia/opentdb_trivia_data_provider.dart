@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 
+import 'package:waddle_shared/curation/reject_filter_context.dart';
 import '../../../debug/app_debug_log.dart';
 import '../../../util/html_entity_decode.dart';
 import 'package:waddle_shared/persistence/database.dart';
@@ -110,6 +111,7 @@ class OpenTdbTriviaDataProvider implements IDataProvider {
       );
       var inserted = 0;
       final createdAt = _now();
+      final rejectCtx = await RejectFilterContext.loadFromDb(ctx.db);
       for (final row in results) {
         if (row is! Map) {
           continue;
@@ -144,6 +146,13 @@ class OpenTdbTriviaDataProvider implements IDataProvider {
           mappedQuestion.optionD,
           mappedQuestion.correctOption,
         );
+        final isBlocked = rejectCtx.isBlockedAny([
+          mappedQuestion.question,
+          mappedQuestion.optionA,
+          mappedQuestion.optionB,
+          mappedQuestion.optionC,
+          mappedQuestion.optionD,
+        ]);
         await ctx.db.into(ctx.db.triviaQuestions).insert(
               TriviaQuestionsCompanion.insert(
                 id: id,
@@ -155,6 +164,7 @@ class OpenTdbTriviaDataProvider implements IDataProvider {
                 optionD: mappedQuestion.optionD,
                 correctOption: mappedQuestion.correctOption,
                 createdAtMs: createdAt,
+                suppressed: Value(isBlocked),
               ),
               onConflict: DoUpdate(
                 (old) => TriviaQuestionsCompanion(
@@ -166,6 +176,9 @@ class OpenTdbTriviaDataProvider implements IDataProvider {
                   optionD: Value(mappedQuestion.optionD),
                   correctOption: Value(mappedQuestion.correctOption),
                   createdAtMs: Value(createdAt),
+                  suppressed: isBlocked
+                      ? const Value(true)
+                      : const Value.absent(),
                 ),
               ),
             );

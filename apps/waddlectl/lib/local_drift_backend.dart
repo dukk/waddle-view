@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:waddle_shared/config/provider_config_resolver.dart';
+import 'package:waddle_shared/curation/reject_rescan.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/reject_term_repository.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';
 import 'package:waddle_shared/theme/display_text_scale_kv.dart';
@@ -77,6 +79,25 @@ abstract class WaddleAdminBackend {
   Future<String?> describeSecret(String key);
   Future<void> setSecret(String key, String value);
   Future<void> deleteSecret(String key);
+
+  Future<List<Map<String, Object?>>> listRejectTerms();
+  Future<String?> getRejectCensorFormat();
+
+  /// Adds or replaces a reject term. Returns the upserted id. Triggers a
+  /// background rescan of stored content via [rescanRejectContent].
+  Future<String> upsertRejectTerm({
+    required String term,
+    required String action,
+    String? id,
+  });
+  Future<int> removeRejectTermById(String id);
+  Future<int> removeRejectTermByTerm(String term);
+
+  /// Updates the censor format KV entry. The caller is responsible for ensuring
+  /// [format] is one of the documented constants.
+  Future<void> setRejectCensorFormat(String format);
+
+  Future<Map<String, Object?>> rescanRejectContent();
 }
 
 class LocalDriftBackend implements WaddleAdminBackend {
@@ -271,6 +292,8 @@ class LocalDriftBackend implements WaddleAdminBackend {
     'frequency_weight': row.frequencyWeight,
     'sort_order': row.sortOrder,
     'config_key': row.configKey,
+    'config_json_schema': row.configJsonSchema,
+    'example_config_json': row.exampleConfigJson,
   };
 
   @override
@@ -459,4 +482,77 @@ class LocalDriftBackend implements WaddleAdminBackend {
 
   @override
   Future<void> deleteSecret(String key) => _secrets.delete(key);
+
+  @override
+  Future<List<Map<String, Object?>>> listRejectTerms() async {
+    final repo = RejectTermRepository(_db);
+    final rows = await repo.listAll();
+    return [
+      for (final r in rows)
+        <String, Object?>{
+          'id': r.id,
+          'term': r.term,
+          'action': r.action,
+          'created_at_ms': r.createdAtMs,
+          'updated_at_ms': r.updatedAtMs,
+        },
+    ];
+  }
+
+  @override
+  Future<String?> getRejectCensorFormat() async {
+    return getConfig(kRejectCensorFormatKvKey);
+  }
+
+  @override
+  Future<String> upsertRejectTerm({
+    required String term,
+    required String action,
+    String? id,
+  }) async {
+    final input = RejectTermInput.parse(rawTerm: term, rawAction: action);
+    if (input == null) {
+      throw ArgumentError(
+        'Invalid reject term or action (action must be censor or block).',
+      );
+    }
+    return RejectTermRepository(_db).upsert(input, id: id);
+  }
+
+  @override
+  Future<int> removeRejectTermById(String id) =>
+      RejectTermRepository(_db).deleteById(id);
+
+  @override
+  Future<int> removeRejectTermByTerm(String term) =>
+      RejectTermRepository(_db).deleteByTerm(term);
+
+  @override
+  Future<void> setRejectCensorFormat(String format) async {
+    const allowed = {
+      kRejectCensorFormatAsterisksFull,
+      kRejectCensorFormatAsterisksFixed,
+      kRejectCensorFormatFirstLast,
+      kRejectCensorFormatBracketedToken,
+    };
+    if (!allowed.contains(format)) {
+      throw ArgumentError(
+        'Unknown reject censor format: $format. Allowed: ${allowed.join(', ')}.',
+      );
+    }
+    await setConfig(kRejectCensorFormatKvKey, format);
+  }
+
+  @override
+  Future<Map<String, Object?>> rescanRejectContent() async {
+    final result = await rescanContentForBlockTerms(_db);
+    return {
+      'rss_articles_marked': result.rssArticlesMarked,
+      'jokes_marked': result.jokesMarked,
+      'trivia_questions_marked': result.triviaQuestionsMarked,
+      'photos_marked': result.photosMarked,
+      'videos_marked': result.videosMarked,
+      'total_marked': result.totalMarked,
+    };
+  }
 }

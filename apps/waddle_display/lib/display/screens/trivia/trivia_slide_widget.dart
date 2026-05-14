@@ -11,6 +11,7 @@ import '../../../theme/theme_palette_extension.dart';
 import '../../content_category_slide_header.dart';
 import '../../dashboard_viewport_scope.dart';
 import '../../slide_content_joke_trivia.dart';
+import 'trivia_correct_reveal_animation.dart';
 import 'trivia_slide_timing.dart';
 import 'trivia_strike_animation.dart';
 
@@ -66,7 +67,7 @@ const int kTriviaTwoColumnMaxOptionChars = 28;
 double _triviaOptionRowMinHeight(double s) => 52.0 * s;
 
 /// Uniform option row height so every tile matches the largest text need, for a
-/// given inner Row width (tile width minus horizontal [tile] padding).
+/// given inner Row width (tile width minus horizontal tile inset, 12×[s] total).
 @visibleForTesting
 double triviaUniformOptionRowHeightForTesting({
   required double innerRowWidth,
@@ -76,7 +77,7 @@ double triviaUniformOptionRowHeightForTesting({
   required double s,
 }) {
   final underlineH = (3 * s).clamp(2.0, 6.0);
-  final textPadH = 20.0 * s;
+  final textPadH = 40.0 * s;
   final textPadV = 24.0 * s;
   final minR = _triviaOptionRowMinHeight(s);
   if (innerRowWidth <= textPadH + minR + 1) {
@@ -120,7 +121,7 @@ double triviaUniformOptionRowHeightForTesting({
   required TextScaler textScaler,
   required double s,
 }) {
-  final textPadH = 20.0 * s;
+  final textPadH = 40.0 * s;
   final minR = _triviaOptionRowMinHeight(s);
   final minInner = minR + textPadH + 8;
   var innerW = maxInnerRowWidth.clamp(minInner, double.infinity);
@@ -180,6 +181,9 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
   TriviaStrikeAnimationKind _strikeAnimationKind =
       TriviaStrikeAnimationKind.scribbleOut;
   int _strikeAnimationDurationMs = kTriviaStrikeAnimationMs;
+  TriviaCorrectRevealKind _correctRevealKind =
+      TriviaCorrectRevealKind.smoothRing;
+  int _correctRevealDurationMs = kTriviaCorrectRevealAnimationMs;
 
   @override
   void initState() {
@@ -242,6 +246,10 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     );
     _strikeAnimationKind = parseTriviaStrikeAnimationKind(widget.spec.config);
     _strikeAnimationDurationMs = parseStrikeAnimationDurationMs(
+      widget.spec.config,
+    );
+    _correctRevealKind = parseTriviaCorrectRevealKind(widget.spec.config);
+    _correctRevealDurationMs = parseCorrectRevealAnimationDurationMs(
       widget.spec.config,
     );
     _eliminationEndMs = triviaEliminationEndMs(
@@ -478,7 +486,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
 
     final questionTextStyle = theme.textTheme.headlineSmall;
     final optionStyle = questionTextStyle?.copyWith(
-      fontWeight: highlight ? FontWeight.w800 : FontWeight.w600,
+      fontWeight: FontWeight.w600,
     );
 
     final dividerColor = Color.alphaBlend(
@@ -486,7 +494,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
       accentColor,
     );
 
-    final tileInset = EdgeInsets.symmetric(vertical: 5 * s, horizontal: 3 * s);
+    final tileInset = EdgeInsets.symmetric(vertical: 5 * s, horizontal: 6 * s);
     final tileBorderRadius = BorderRadius.horizontal(
       right: Radius.circular(5 * s),
     );
@@ -544,8 +552,8 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                           alignment: AlignmentDirectional.centerStart,
                           child: Padding(
                             padding: EdgeInsets.only(
-                              left: 10 * s,
-                              right: 10 * s,
+                              left: 20 * s,
+                              right: 20 * s,
                               top: 12 * s,
                               bottom: 12 * s,
                             ),
@@ -574,11 +582,8 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
 
     final bottomPad = EdgeInsets.only(bottom: useTwoColumns ? 0 : 22 * s);
 
-    if (!struck) {
-      return Padding(padding: bottomPad, child: optionCard);
-    }
-
-    final strikeStyleSeed = Object.hash(
+    if (struck) {
+      final strikeStyleSeed = Object.hash(
       displayLetter.codeUnitAt(0),
       slot,
       row.id.hashCode,
@@ -684,6 +689,69 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
         },
       ),
     );
+    }
+
+    if (highlight) {
+      final ringSeed = Object.hash(
+        displayLetter.codeUnitAt(0),
+        slot,
+        row.id.hashCode,
+      );
+      final ringColor = Color.alphaBlend(
+        Colors.white.withValues(alpha: 0.42),
+        cs.primary,
+      ).withValues(alpha: 0.94);
+      return Padding(
+        padding: bottomPad,
+        child: TweenAnimationBuilder<double>(
+          key: ValueKey<String>(
+            'trivia_correct_${row.id}_${displayLetter}_'
+            '${_correctRevealKind.name}_$_correctRevealDurationMs',
+          ),
+          duration: Duration(milliseconds: _correctRevealDurationMs),
+          tween: Tween(begin: 0, end: 1),
+          curve: [
+            Curves.easeOutCubic,
+            Curves.easeOutQuad,
+            Curves.easeInOutCubic,
+            Curves.decelerate,
+          ][ringSeed.abs() % 4],
+          builder: (context, t, child) {
+            return Stack(
+              clipBehavior: Clip.none,
+              children: [
+                child!,
+                Positioned.fill(
+                  child: Padding(
+                    padding: tileInset,
+                    child: ClipRRect(
+                      borderRadius: tileClipRadius,
+                      child: CustomPaint(
+                        key: ValueKey<String>(
+                          'trivia_correct_reveal_$displayLetter',
+                        ),
+                        painter: TriviaCorrectRevealPainter(
+                          kind: _correctRevealKind,
+                          progress: t,
+                          color: ringColor,
+                          strokeWidth: (3.8 * s).clamp(2.0, 8.0),
+                          styleSeed: ringSeed,
+                          topRightRadius: 4 * s,
+                          bottomRightRadius: 4 * s,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+          child: optionCard,
+        ),
+      );
+    }
+
+    return Padding(padding: bottomPad, child: optionCard);
   }
 
   @override
@@ -766,9 +834,9 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
           final maxCellOuterW = (optionCount == 2 || useTwoColumns)
               ? (w - 22 * s) / 2
               : w;
-          final maxInner = max(0.0, maxCellOuterW - 6 * s);
+          final maxInner = max(0.0, maxCellOuterW - 12 * s);
           final optionStyleMeasure = theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
           );
           final geom = triviaUniformOptionGeometryForTesting(
             maxInnerRowWidth: maxInner > 0 ? maxInner : 1.0,
@@ -779,7 +847,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
           );
           final uniformInnerRowWidth = geom.innerRowWidth;
           final uniformRowHeight = geom.rowHeight;
-          final tileOuterW = uniformInnerRowWidth + 6 * s;
+          final tileOuterW = uniformInnerRowWidth + 12 * s;
 
           final answersSection = Align(
             alignment: Alignment.topCenter,

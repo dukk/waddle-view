@@ -1,4 +1,5 @@
 import 'package:meta/meta.dart';
+import 'package:waddle_shared/curation/reject_filter_context.dart';
 
 import 'ticker_news_candidate.dart';
 
@@ -92,4 +93,7 @@ abstract class CuratorReadPort {
 
   /// Enabled [StockSymbols] rows with optional [StockQuotes], ordered by symbol.
   Future<List<StockTickerRowForMarquee>> loadStockRowsForTicker();
+
+  /// Snapshot of the operator-curated reject list + chosen censor format.
+  Future<RejectFilterContext> loadRejectFilterContext();
 }

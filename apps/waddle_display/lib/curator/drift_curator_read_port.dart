@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:waddle_shared/curation/reject_filter_context.dart';
 
 import 'package:waddle_shared/persistence/database.dart';
 import 'curator_read_port.dart';
@@ -200,4 +201,8 @@ class DriftCuratorReadPort implements CuratorReadPort {
     }
     return feed.category;
   }
+
+  @override
+  Future<RejectFilterContext> loadRejectFilterContext() =>
+      RejectFilterContext.loadFromDb(_db);
 }

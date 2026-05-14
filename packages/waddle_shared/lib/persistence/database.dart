@@ -8,6 +8,7 @@ import '../layout/screen_layout_parse.dart';
 import 'config_json_documentation.dart';
 import 'content_category_defaults.dart';
 import 'display_overlay_sql.dart';
+import 'reject_term_defaults.dart';
 import 'tables.dart';
 
 part 'database.g.dart';
@@ -39,13 +40,14 @@ part 'database.g.dart';
     PexelsFetchBatches,
     StockSymbols,
     StockQuotes,
+    RejectTerms,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 30;
+  int get schemaVersion => 35;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -59,6 +61,7 @@ WHERE dismissed_at IS NULL
 ORDER BY priority DESC, created_at DESC;
 ''');
       await customStatement(kEnsureDisplayOverlaySchedulesTableSql);
+      await _seedDefaultRejectTerms(this);
     },
     onUpgrade: (Migrator m, int from, int to) async {
       if (from < 6) {
@@ -177,8 +180,7 @@ FROM curator_settings WHERE id = 'app';
           "SELECT name FROM sqlite_master WHERE type='table' "
           "AND name IN ('pexels_photos','pexels_videos')",
         ).get();
-        final legacy =
-            legacyTables.map((r) => r.read<String>('name')).toSet();
+        final legacy = legacyTables.map((r) => r.read<String>('name')).toSet();
         if (legacy.contains('pexels_photos')) {
           await customStatement('ALTER TABLE pexels_photos RENAME TO photos;');
           await customStatement(
@@ -235,12 +237,10 @@ FROM curator_settings WHERE id = 'app';
       }
       if (from < 20) {
         Future<bool> legacyTableExists(String table) async {
-          final rows =
-              await customSelect(
-                    "SELECT name FROM sqlite_master WHERE type = 'table' "
-                    "AND name = '$table';",
-                  )
-                  .get();
+          final rows = await customSelect(
+            "SELECT name FROM sqlite_master WHERE type = 'table' "
+            "AND name = '$table';",
+          ).get();
           return rows.isNotEmpty;
         }
 
@@ -270,14 +270,14 @@ FROM curator_settings WHERE id = 'app';
           final providerRows = await select(providerSettings).get();
           for (final p in providerRows) {
             final doc = providerConfigJsonDocForType(p.providerType);
-            await (update(providerSettings)
-                  ..where((t) => t.id.equals(p.id)))
-                .write(
-                  ProviderSettingsCompanion(
-                    configJsonSchema: Value(doc.schema),
-                    exampleConfigJson: Value(doc.example),
-                  ),
-                );
+            await (update(
+              providerSettings,
+            )..where((t) => t.id.equals(p.id))).write(
+              ProviderSettingsCompanion(
+                configJsonSchema: Value(doc.schema),
+                exampleConfigJson: Value(doc.example),
+              ),
+            );
           }
         }
 
@@ -293,8 +293,9 @@ FROM curator_settings WHERE id = 'app';
               'ALTER TABLE screen_definitions ADD COLUMN example_layout_json TEXT;',
             );
           }
-          final screenRows =
-              await customSelect('SELECT id FROM screen_definitions').get();
+          final screenRows = await customSelect(
+            'SELECT id FROM screen_definitions',
+          ).get();
           for (final s in screenRows) {
             final id = s.read<String>('id');
             await customStatement(
@@ -352,8 +353,7 @@ FROM curator_settings WHERE id = 'app';
         }
 
         Future<Set<String>> legacyColumnNames(String table) async {
-          final rows =
-              await customSelect('PRAGMA table_info($table);').get();
+          final rows = await customSelect('PRAGMA table_info($table);').get();
           return rows.map((r) => r.read<String>('name')).toSet();
         }
 
@@ -435,8 +435,9 @@ FROM curator_settings WHERE id = 'app';
           "AND name = 'weather_locations';",
         ).get();
         if (wlTables.isNotEmpty) {
-          final wlCols =
-              await customSelect('PRAGMA table_info(weather_locations);').get();
+          final wlCols = await customSelect(
+            'PRAGMA table_info(weather_locations);',
+          ).get();
           final wlNames = wlCols.map((r) => r.read<String>('name')).toSet();
           if (!wlNames.contains('include_active_weather_alerts')) {
             await customStatement(
@@ -455,8 +456,7 @@ FROM curator_settings WHERE id = 'app';
           final rssCols = await customSelect(
             'PRAGMA table_info(rss_feed_sources);',
           ).get();
-          final rssNames =
-              rssCols.map((r) => r.read<String>('name')).toSet();
+          final rssNames = rssCols.map((r) => r.read<String>('name')).toSet();
           if (!rssNames.contains('consecutive_failures')) {
             await customStatement(
               'ALTER TABLE rss_feed_sources ADD COLUMN consecutive_failures '
@@ -470,11 +470,208 @@ FROM curator_settings WHERE id = 'app';
           }
         }
       }
+      if (from < 31) {
+        await m.createTable(rejectTerms);
+        await _seedDefaultRejectTerms(this);
+      }
+      if (from < 32) {
+        final overlayTables = await customSelect(
+          "SELECT name FROM sqlite_master WHERE type = 'table' "
+          "AND name = 'display_overlay_schedules';",
+        ).get();
+        if (overlayTables.isNotEmpty) {
+          final cols = await customSelect(
+            'PRAGMA table_info(display_overlay_schedules);',
+          ).get();
+          final names = cols.map((r) => r.read<String>('name')).toSet();
+          if (!names.contains('settings_json') && !names.contains('config_json')) {
+            await customStatement(
+              'ALTER TABLE display_overlay_schedules ADD COLUMN settings_json '
+              "TEXT NOT NULL DEFAULT '{}'",
+            );
+          }
+        }
+      }
+      if (from < 33) {
+        Future<bool> legacyTableExists(String table) async {
+          final rows = await customSelect(
+            "SELECT name FROM sqlite_master WHERE type = 'table' "
+            "AND name = '$table';",
+          ).get();
+          return rows.isNotEmpty;
+        }
+
+        Future<Set<String>> tableColumnNames(String table) async {
+          final rows = await customSelect('PRAGMA table_info($table);').get();
+          return rows.map((r) => r.read<String>('name')).toSet();
+        }
+
+        if (await legacyTableExists('ticker_definitions')) {
+          final tCols = await tableColumnNames('ticker_definitions');
+          if (!tCols.contains('config_json_schema')) {
+            await customStatement(
+              'ALTER TABLE ticker_definitions ADD COLUMN config_json_schema TEXT;',
+            );
+          }
+          if (!tCols.contains('example_config_json')) {
+            await customStatement(
+              'ALTER TABLE ticker_definitions ADD COLUMN example_config_json TEXT;',
+            );
+          }
+        }
+
+        if (await legacyTableExists('screen_definitions')) {
+          final screenRows = await select(screenDefinitions).get();
+          for (final s in screenRows) {
+            final doc = screenConfigJsonDocForType(s.screenType);
+            await (update(
+              screenDefinitions,
+            )..where((t) => t.id.equals(s.id))).write(
+              ScreenDefinitionsCompanion(
+                configJsonSchema: Value(doc.schema),
+                exampleConfigJson: Value(doc.example),
+              ),
+            );
+          }
+        }
+
+        if (await legacyTableExists('provider_settings')) {
+          final providerRows = await select(providerSettings).get();
+          for (final p in providerRows) {
+            final doc = providerConfigJsonDocForType(p.providerType);
+            await (update(
+              providerSettings,
+            )..where((t) => t.id.equals(p.id))).write(
+              ProviderSettingsCompanion(
+                configJsonSchema: Value(doc.schema),
+                exampleConfigJson: Value(doc.example),
+              ),
+            );
+          }
+        }
+
+        if (await legacyTableExists('ticker_definitions')) {
+          final tickerRows = await select(tickerDefinitions).get();
+          for (final tk in tickerRows) {
+            final doc = tickerSlotConfigJsonDocForType(tk.tickerType);
+            await (update(
+              tickerDefinitions,
+            )..where((r) => r.id.equals(tk.id))).write(
+              TickerDefinitionsCompanion(
+                configJsonSchema: Value(doc.schema),
+                exampleConfigJson: Value(doc.example),
+              ),
+            );
+          }
+        }
+      }
+      if (from < 34) {
+        Future<bool> legacyOverlayTableExists() async {
+          final rows = await customSelect(
+            "SELECT name FROM sqlite_master WHERE type = 'table' "
+            "AND name = 'display_overlay_schedules';",
+          ).get();
+          return rows.isNotEmpty;
+        }
+
+        Future<Set<String>> overlayColumnNames() async {
+          final rows = await customSelect(
+            'PRAGMA table_info(display_overlay_schedules);',
+          ).get();
+          return rows.map((r) => r.read<String>('name')).toSet();
+        }
+
+        if (await legacyOverlayTableExists()) {
+          var names = await overlayColumnNames();
+          if (names.contains('settings_json')) {
+            await customStatement(
+              'ALTER TABLE display_overlay_schedules RENAME COLUMN settings_json TO config_json',
+            );
+            names = await overlayColumnNames();
+          }
+          if (!names.contains('config_json')) {
+            await customStatement(
+              'ALTER TABLE display_overlay_schedules ADD COLUMN config_json '
+              "TEXT NOT NULL DEFAULT '{}'",
+            );
+            names = await overlayColumnNames();
+          }
+          if (!names.contains('config_json_schema')) {
+            await customStatement(
+              'ALTER TABLE display_overlay_schedules ADD COLUMN config_json_schema TEXT;',
+            );
+          }
+          if (!names.contains('example_config_json')) {
+            await customStatement(
+              'ALTER TABLE display_overlay_schedules ADD COLUMN example_config_json TEXT;',
+            );
+          }
+          final heartsDoc = displayOverlayConfigJsonDocForKind(
+            kOverlayKindHeartsRain,
+          );
+          final confettiDoc = displayOverlayConfigJsonDocForKind(
+            kOverlayKindBirthdayConfetti,
+          );
+          await customStatement(
+            'UPDATE display_overlay_schedules SET config_json_schema = ?, '
+            'example_config_json = ? WHERE overlay_kind = ?',
+            <Object?>[heartsDoc.schema, heartsDoc.example, kOverlayKindHeartsRain],
+          );
+          await customStatement(
+            'UPDATE display_overlay_schedules SET config_json_schema = ?, '
+            'example_config_json = ? WHERE overlay_kind = ?',
+            <Object?>[confettiDoc.schema, confettiDoc.example, kOverlayKindBirthdayConfetti],
+          );
+        }
+      }
+      if (from < 35) {
+        final overlayTable = await customSelect(
+          "SELECT name FROM sqlite_master WHERE type = 'table' "
+          "AND name = 'display_overlay_schedules';",
+        ).get();
+        if (overlayTable.isNotEmpty) {
+          final bounceDoc = displayOverlayConfigJsonDocForKind(
+            kOverlayKindBouncingMessage,
+          );
+          await customStatement(
+            'UPDATE display_overlay_schedules SET config_json_schema = ?, '
+            'example_config_json = ? WHERE overlay_kind = ?',
+            <Object?>[
+              bounceDoc.schema,
+              bounceDoc.example,
+              kOverlayKindBouncingMessage,
+            ],
+          );
+        }
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON;');
     },
   );
+}
+
+Future<void> _seedDefaultRejectTerms(AppDatabase db) async {
+  final existing = await db
+      .customSelect('SELECT COUNT(*) AS n FROM reject_terms;')
+      .getSingle();
+  if (existing.read<int>('n') > 0) {
+    return;
+  }
+  final nowMs = DateTime.now().millisecondsSinceEpoch;
+  for (final entry in kDefaultRejectTermSeeds) {
+    await db
+        .into(db.rejectTerms)
+        .insert(
+          RejectTermsCompanion.insert(
+            id: entry.id,
+            term: entry.term,
+            action: entry.action,
+            createdAtMs: nowMs,
+            updatedAtMs: nowMs,
+          ),
+        );
+  }
 }
 
 /// Opens a file-backed SQLite at [sqliteFile] (e.g. for `waddlectl --database`).

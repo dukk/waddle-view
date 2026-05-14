@@ -26,6 +26,7 @@ class DefaultDashboardCurator implements DashboardCurator {
     final weatherGovAlerts = await _read.loadWeatherGovAlertsForTicker();
     final tickerDefs = await _read.loadTickerDefinitionsForCuration();
     final stockRows = await _read.loadStockRowsForTicker();
+    final rejectCtx = await _read.loadRejectFilterContext();
     final items = buildTickerItemsForMarquee(
       kv: kv,
       nowLocal: _clock.now().toLocal(),
@@ -34,6 +35,7 @@ class DefaultDashboardCurator implements DashboardCurator {
       definitions: tickerDefs,
       stockRows: stockRows,
       weatherGovAlerts: weatherGovAlerts,
+      rejectCtx: rejectCtx,
     );
     await _tickerStore.replaceAll(items);
     final kinds = items.map((e) => e.kind).join(', ');

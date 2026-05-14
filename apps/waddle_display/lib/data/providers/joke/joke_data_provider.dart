@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:waddle_shared/config/provider_runtime_config.dart';
+import 'package:waddle_shared/curation/reject_filter_context.dart';
 import '../../../debug/app_debug_log.dart';
 import '../../../util/html_entity_decode.dart';
 import 'package:waddle_shared/persistence/database.dart';
@@ -205,6 +206,7 @@ class JokeDataProvider implements IDataProvider {
 
       final parsedList = _parseJokeJsonArray(content);
       final createdAt = _now();
+      final rejectCtx = await RejectFilterContext.loadFromDb(ctx.db);
       var inserted = 0;
 
       for (final item in parsedList) {
@@ -224,6 +226,7 @@ class JokeDataProvider implements IDataProvider {
           continue;
         }
         final jokeId = jokeStableId(cid, setup, punchline);
+        final isBlocked = rejectCtx.isBlockedAny([setup, punchline]);
         await ctx.db.into(ctx.db.jokes).insert(
               JokesCompanion.insert(
                 id: jokeId,
@@ -231,6 +234,7 @@ class JokeDataProvider implements IDataProvider {
                 setup: setup,
                 punchline: punchline,
                 createdAtMs: createdAt,
+                suppressed: Value(isBlocked),
               ),
               onConflict: DoUpdate(
                 (old) => JokesCompanion(
@@ -238,6 +242,9 @@ class JokeDataProvider implements IDataProvider {
                   setup: Value(setup),
                   punchline: Value(punchline),
                   createdAtMs: Value(createdAt),
+                  suppressed: isBlocked
+                      ? const Value(true)
+                      : const Value.absent(),
                 ),
               ),
             );

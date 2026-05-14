@@ -32,6 +32,45 @@ void main() {
     );
   });
 
+  test('every screen layout widget type has config schema entry', () {
+    for (final t in kScreenLayoutWidgetTypes) {
+      expect(
+        kScreenConfigJsonMeta.containsKey(t),
+        isTrue,
+        reason: 'Add ScreenConfigJsonDoc for $t in kScreenConfigJsonMeta',
+      );
+    }
+  });
+
+  test('ticker slot meta schemas decode and cover all ticker types', () {
+    for (final entry in kTickerSlotConfigJsonMeta.entries) {
+      expect(jsonDecode(entry.value.schema), isA<Map<String, dynamic>>());
+      expect(jsonDecode(entry.value.example), isA<Object>());
+    }
+    for (final t in kTickerSlotDefinitionTypes) {
+      expect(
+        kTickerSlotConfigJsonMeta.containsKey(t),
+        isTrue,
+        reason: 'Add ScreenConfigJsonDoc for ticker type $t',
+      );
+    }
+    final generic = tickerSlotConfigJsonDocForType('unknown_ticker_xyz');
+    expect(jsonDecode(generic.schema), isA<Map<String, dynamic>>());
+    expect(jsonDecode(generic.example), isA<Object>());
+  });
+
+  test('display overlay schedule config meta decodes', () {
+    final hearts = displayOverlayConfigJsonDocForKind('hearts_rain');
+    expect(jsonDecode(hearts.schema), isA<Map<String, dynamic>>());
+    expect(jsonDecode(hearts.example), isA<Object>());
+    final confetti = displayOverlayConfigJsonDocForKind('birthday_confetti');
+    expect(jsonDecode(confetti.schema), isA<Map<String, dynamic>>());
+    expect(jsonDecode(confetti.example), isA<Map<String, dynamic>>());
+    final bounce = displayOverlayConfigJsonDocForKind('bouncing_message');
+    expect(jsonDecode(bounce.schema), isA<Map<String, dynamic>>());
+    expect(jsonDecode(bounce.example), isA<Map<String, dynamic>>());
+  });
+
   test('seeded provider types have explicit meta entries', () {
     const seededTypes = [
       'stub',
