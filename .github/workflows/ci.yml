@@ -94,13 +94,32 @@ jobs:
       - run: dart run build_runner build --delete-conflicting-outputs
         working-directory: ${{ github.workspace }}/packages/waddle_shared
       - run: flutter build linux --release --build-number "${{ github.run_number }}"
+      - name: Build waddlectl CLI
+        working-directory: ${{ github.workspace }}/apps/waddlectl
+        run: dart build cli -o build/waddlectl_release
+      - name: Merge waddlectl into Linux bundle
+        working-directory: ${{ github.workspace }}/apps/waddle_display
+        run: |
+          src="${{ github.workspace }}/apps/waddlectl/build/waddlectl_release/bundle"
+          dst="build/linux/x64/release/bundle/waddlectl"
+          test -f "$src/bin/waddlectl"
+          chmod +x "$src/bin/waddlectl"
+          rm -rf "$dst"
+          cp -a "$src" "$dst"
       - name: Audit Linux runtime dependencies
         run: |
           APP_BIN="build/linux/x64/release/bundle/waddle_display"
+          WCTL_BIN="build/linux/x64/release/bundle/waddlectl/bin/waddlectl"
           test -x "$APP_BIN"
+          test -x "$WCTL_BIN"
           ldd "$APP_BIN" | tee /tmp/waddle-ldd.txt
           if grep -q "not found" /tmp/waddle-ldd.txt; then
             echo "Missing runtime shared libraries detected."
+            exit 1
+          fi
+          ldd "$WCTL_BIN" | tee /tmp/waddlectl-ldd.txt
+          if grep -q "not found" /tmp/waddlectl-ldd.txt; then
+            echo "Missing runtime shared libraries detected (waddlectl)."
             exit 1
           fi
 
@@ -121,8 +140,24 @@ jobs:
       - run: dart run build_runner build --delete-conflicting-outputs
         working-directory: ${{ github.workspace }}/packages/waddle_shared
       - run: flutter build windows --release --build-number "${{ github.run_number }}"
+      - name: Build waddlectl CLI
+        working-directory: ${{ github.workspace }}/apps/waddlectl
+        run: dart build cli -o build/waddlectl_release
+      - name: Merge waddlectl into Windows Release bundle
+        shell: pwsh
+        working-directory: ${{ github.workspace }}/apps/waddle_display
+        run: |
+          $releaseDir = "build/windows/x64/runner/Release"
+          $src = "${{ github.workspace }}/apps/waddlectl/build/waddlectl_release/bundle"
+          if (-not (Test-Path "$src/bin/waddlectl.exe")) { throw "Missing $src/bin/waddlectl.exe" }
+          $dst = Join-Path $releaseDir "waddlectl"
+          if (Test-Path $dst) { Remove-Item -Recurse -Force $dst }
+          New-Item -ItemType Directory -Force $dst | Out-Null
+          Copy-Item -Path (Join-Path $src "*") -Destination $dst -Recurse
       - name: Verify Release output
         shell: pwsh
         run: |
           $exe = "build/windows/x64/runner/Release/waddle_display.exe"
           if (-not (Test-Path $exe)) { throw "Missing $exe" }
+          $wctl = "build/windows/x64/runner/Release/waddlectl/bin/waddlectl.exe"
+          if (-not (Test-Path $wctl)) { throw "Missing $wctl" }

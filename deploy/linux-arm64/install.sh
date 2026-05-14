@@ -70,4 +70,11 @@ else
   rm -f "$ldd_tmp"
 fi
 
+WCTL="$ROOT/bundle/waddlectl/bin/waddlectl"
+if [[ -x "$WCTL" ]]; then
+  echo "Operator CLI (waddlectl): $WCTL"
+else
+  echo "Note: waddlectl not found at $WCTL (optional; older release bundles may omit it)."
+fi
+
 echo "Done. Configure autostart or systemd (see waddle-view.service template)."

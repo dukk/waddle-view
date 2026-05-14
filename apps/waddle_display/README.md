@@ -78,6 +78,8 @@ Per-test wall time is capped at **60s** by `dart_test.yaml` (and CI uses the sam
 
 The **`apps/waddlectl`** package is a shell tool against the same **SQLite** database as the display app and, on **Linux**, the same **libsecret**-backed `SecretStore` as `flutter_secure_storage` (via `secret-tool`). Use **`backup create`** for a single-file archive of the database, **`media/`** blobs, and optionally an encrypted secrets bundle; it is **not** a substitute for backing up the whole machine.
 
+**Prebuilt `waddlectl`** is included in **GitHub Release** artifacts next to the display app: **Windows** (`…/waddlectl/bin/waddlectl.exe` inside the `.zip` Release tree), **Linux** (`…/bundle/waddlectl/bin/waddlectl` next to `waddle_display` in the tarball’s `bundle/`). From a dev checkout you can build the same layout with **`dart build cli`** (see *Build installable bundles* below).
+
 ### Full backups (`backup create` / `backup restore` / `backup schedule`)
 
 - **Create** (timestamped **`.zip`** or **`.tar.gz`** in the current directory, or under `--output`):
@@ -122,14 +124,15 @@ Release binaries are what you ship or copy to a device (no hot reload).
 ```bash
 flutter build windows --release
 flutter build linux --release
+(cd apps/waddlectl && dart build cli -o build/waddlectl_release)
 ```
 
-- **Windows**: runnable under `build/windows/x64/runner/Release/` (launch `waddle_display.exe` from Explorer or a terminal).
-- **Linux**: bundle under `build/linux/<arch>/release/bundle/` (e.g. `arm64` on an ARM64 host). Run the `waddle_display` executable from that **bundle** directory so assets resolve correctly.
+- **Windows**: runnable under `build/windows/x64/runner/Release/` (launch `waddle_display.exe` from Explorer or a terminal). CI and release workflows also place **`waddlectl/bin/waddlectl.exe`** (and **`waddlectl/lib/`** native libs) under that same `Release/` directory.
+- **Linux**: bundle under `build/linux/<arch>/release/bundle/` (e.g. `arm64` on an ARM64 host). Run the `waddle_display` executable from that **bundle** directory so assets resolve correctly. Release and CI merges add **`waddlectl/bin/waddlectl`** (and **`waddlectl/lib/`**) beside `waddle_display` inside `bundle/`.
 
-**GitHub Releases:** pushing a **`v*`** tag runs **[`release.yml`](../../.github/workflows/release.yml)**, which calls **[`release-windows.yml`](../../.github/workflows/release-windows.yml)** (Windows **`.zip`**), **[`release-linux-x64.yml`](../../.github/workflows/release-linux-x64.yml)** (Linux x64 **`.tar.gz`**), and **[`release-pi.yml`](../../.github/workflows/release-pi.yml)** (Linux arm64 **`.tar.gz`**) and attaches all three to the GitHub Release. CI passes **`flutter build … --build-number`** using GitHub Actions **`github.run_number`**, so each workflow run gets a monotonic integer build id; **`pubspec.yaml`** `version: …+N` is **not** auto-synced to that number. The reusable release workflows are only invoked from **`release.yml`**; use **`workflow_dispatch`** on **`release.yml`** if you want CI builds without creating a GitHub Release (the publish step still runs only on **`v*`** tag pushes).
+**GitHub Releases:** pushing a **`v*`** tag runs **[`release.yml`](../../.github/workflows/release.yml)**, which calls **[`release-windows.yml`](../../.github/workflows/release-windows.yml)** (Windows **`.zip`**), **[`release-linux-x64.yml`](../../.github/workflows/release-linux-x64.yml)** (Linux x64 **`.tar.gz`**), and **[`release-pi.yml`](../../.github/workflows/release-pi.yml)** (Linux arm64 **`.tar.gz`**) and attaches all three to the GitHub Release. Each desktop bundle includes the display binary plus a native **`waddlectl`** tree (**`dart build cli`**). CI passes **`flutter build … --build-number`** using GitHub Actions **`github.run_number`**, so each workflow run gets a monotonic integer build id; **`pubspec.yaml`** `version: …+N` is **not** auto-synced to that number. The reusable release workflows are only invoked from **`release.yml`**; use **`workflow_dispatch`** on **`release.yml`** if you want CI builds without creating a GitHub Release (the publish step still runs only on **`v*`** tag pushes).
 
-**PR / branch CI:** **[`ci.yml`](../../.github/workflows/ci.yml)** also compiles **Linux x64** and **Windows x64** release binaries (`flutter build linux|windows --release`) so desktop release breakages are caught before a tag.
+**PR / branch CI:** **[`ci.yml`](../../.github/workflows/ci.yml)** also compiles **Linux x64** and **Windows x64** release binaries (`flutter build linux|windows --release`) and merges **`waddlectl`** the same way as release, so desktop release breakages are caught before a tag.
 
 Tagged **Pi** tarballs and `install.sh` are produced in CI and documented under [`../../docs/pi/`](../../docs/pi/); templates live in [`../../deploy/linux-arm64/`](../../deploy/linux-arm64/).
 
@@ -137,7 +140,7 @@ Tagged **Pi** tarballs and `install.sh` are produced in CI and documented under 
 
 1. Obtain **`waddle-view-linux-arm64-<tag>.tar.gz`** (GitHub Releases or CI artifacts); verify **SHA256** when published.
 2. On 64-bit Raspberry Pi OS, extract and run **`install.sh`** (installs under `/opt/waddle-view` by default, creates **`/etc/waddle-view/api.key`** for operator reference—see REST section below).
-3. Start the app from **`/opt/waddle-view/bundle/waddle_display`** with a graphical session (`DISPLAY` set for systemd/kiosk). Optional: **`waddle-view.service`** in `deploy/linux-arm64/`, autostart `.desktop`, disable screen blanking for kiosk use.
+3. Start the app from **`/opt/waddle-view/bundle/waddle_display`** with a graphical session (`DISPLAY` set for systemd/kiosk). The same install includes **`/opt/waddle-view/bundle/waddlectl/bin/waddlectl`** for operator tasks against the SQLite file. Optional: **`waddle-view.service`** in `deploy/linux-arm64/`, autostart `.desktop`, disable screen blanking for kiosk use.
 
 Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../docs/pi/using-the-image.md)**, **[`docs/pi/upgrade.md`](../../docs/pi/upgrade.md)**, **[`docs/pi/api.md`](../../docs/pi/api.md)**.
 

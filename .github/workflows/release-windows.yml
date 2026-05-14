@@ -30,6 +30,20 @@ jobs:
         run: dart run build_runner build --delete-conflicting-outputs
         working-directory: ${{ github.workspace }}/packages/waddle_shared
       - run: flutter build windows --release --build-number "${{ inputs.build_number }}"
+      - name: Build waddlectl CLI
+        working-directory: ${{ github.workspace }}/apps/waddlectl
+        run: dart build cli -o build/waddlectl_release
+      - name: Merge waddlectl into Windows Release bundle
+        shell: pwsh
+        working-directory: ${{ github.workspace }}/apps/waddle_display
+        run: |
+          $releaseDir = "build/windows/x64/runner/Release"
+          $src = "${{ github.workspace }}/apps/waddlectl/build/waddlectl_release/bundle"
+          if (-not (Test-Path "$src/bin/waddlectl.exe")) { throw "Missing $src/bin/waddlectl.exe" }
+          $dst = Join-Path $releaseDir "waddlectl"
+          if (Test-Path $dst) { Remove-Item -Recurse -Force $dst }
+          New-Item -ItemType Directory -Force $dst | Out-Null
+          Copy-Item -Path (Join-Path $src "*") -Destination $dst -Recurse
       - name: Package dist
         shell: pwsh
         run: |
@@ -37,6 +51,7 @@ jobs:
           $distName = "waddle-view-windows-x64-$version"
           $releaseDir = "build/windows/x64/runner/Release"
           if (-not (Test-Path "$releaseDir/waddle_display.exe")) { throw "Missing $releaseDir/waddle_display.exe" }
+          if (-not (Test-Path "$releaseDir/waddlectl/bin/waddlectl.exe")) { throw "Missing $releaseDir/waddlectl/bin/waddlectl.exe" }
           New-Item -ItemType Directory -Force "../../dist" | Out-Null
           $zip = "../../dist/$distName.zip"
           Compress-Archive -Path "$releaseDir/*" -DestinationPath $zip -Force
