@@ -21,11 +21,13 @@ jobs:
     container:
       image: debian:bookworm-slim
     env:
-      LINUX_BUILD_DEPS_FILE: ${{ github.workspace }}/deploy/linux-arm64/build-deps.txt
+      # Paths must resolve inside the job container: ${{ github.workspace }} stays on the
+      # runner host (/home/runner/...) while builds run under $GITHUB_WORKSPACE (/__w/...).
+      LINUX_BUILD_DEPS_FILE: deploy/linux-arm64/build-deps.txt
     steps:
       # Before checkout, apps/waddle_display does not exist — override workflow default cwd.
       - name: Install tools for checkout and Flutter (container has no git by default)
-        working-directory: ${{ github.workspace }}
+        working-directory: .
         run: |
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -41,28 +43,29 @@ jobs:
         run: flutter --version
       - name: Validate Linux dependency baseline
         run: |
-          test -f "$LINUX_BUILD_DEPS_FILE"
+          deps="$GITHUB_WORKSPACE/$LINUX_BUILD_DEPS_FILE"
+          test -f "$deps"
           for dep in clang lld-14 cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libsecret-1-dev libjsoncpp-dev libmpv-dev; do
-            grep -qx "$dep" "$LINUX_BUILD_DEPS_FILE"
+            grep -qx "$dep" "$deps"
           done
       - name: Install Linux build dependencies
         run: |
           sudo apt-get update
-          xargs -a "$LINUX_BUILD_DEPS_FILE" sudo apt-get install -y
+          xargs -a "$GITHUB_WORKSPACE/$LINUX_BUILD_DEPS_FILE" sudo apt-get install -y
       - run: flutter config --enable-linux-desktop
       - run: flutter pub get
-        working-directory: ${{ github.workspace }}
+        working-directory: .
       - name: Generate code
         run: dart run build_runner build --delete-conflicting-outputs
-        working-directory: ${{ github.workspace }}/packages/waddle_shared
+        working-directory: packages/waddle_shared
       - run: flutter build linux --release --build-number "${{ inputs.build_number }}"
       - name: Build waddlectl CLI
-        working-directory: ${{ github.workspace }}/apps/waddlectl
+        working-directory: apps/waddlectl
         run: dart build cli -o build/waddlectl_release
       - name: Merge waddlectl into Linux bundle
-        working-directory: ${{ github.workspace }}/apps/waddle_display
+        working-directory: apps/waddle_display
         run: |
-          src="${{ github.workspace }}/apps/waddlectl/build/waddlectl_release/bundle"
+          src="$GITHUB_WORKSPACE/apps/waddlectl/build/waddlectl_release/bundle"
           dst="build/linux/arm64/release/bundle/waddlectl"
           test -f "$src/bin/waddlectl"
           chmod +x "$src/bin/waddlectl"
