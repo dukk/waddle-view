@@ -9,6 +9,7 @@ const _coverageRoots = <String>{
   'lib/backup_manifest.dart',
   'lib/backup_schedule.dart',
   'lib/backup_sqlite_checkpoint.dart',
+  'lib/export_sqlite_seed_sql.dart',
 };
 
 bool _includeSourceFile(String sf) {

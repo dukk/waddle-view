@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_display/data/providers/weather/weather_locations_for_collect.dart';
-import 'package:waddle_display/data/providers/weather/weather_provider_extra_config.dart';
+import 'package:waddle_data_providers/weather_openweathermap/weather_locations_for_collect.dart';
+import 'package:waddle_data_providers/weather_openweathermap/weather_provider_extra_config.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 import '../helpers/memory_database.dart';

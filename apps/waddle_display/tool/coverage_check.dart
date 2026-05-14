@@ -1,5 +1,6 @@
 // Parses coverage/lcov.info and enforces a minimum line hit ratio on Dart sources
-// under `apps/waddle_display/lib/` and `packages/waddle_shared/lib/`.
+// under `apps/waddle_display/lib/`, `packages/waddle_shared/lib/`, and
+// `packages/waddle_data_providers/lib/`.
 // Excludes: `*.g.dart`, declarative `persistence/tables.dart`, and `lib/main.dart`
 // (display app composition root only).
 import 'dart:io';
@@ -15,7 +16,8 @@ bool _includeSourceFile(String sf) {
   final isDisplayLib =
       norm.startsWith('lib/') || norm.contains('/apps/waddle_display/lib/');
   final isSharedLib = norm.contains('packages/waddle_shared/lib/');
-  if (!isDisplayLib && !isSharedLib) {
+  final isDataProvidersLib = norm.contains('packages/waddle_data_providers/lib/');
+  if (!isDisplayLib && !isSharedLib && !isDataProvidersLib) {
     return false;
   }
   // Declarative Drift table definitions (no executable lines in practice).
@@ -67,16 +69,17 @@ void main(List<String> args) {
   }
   if (totalLf == 0) {
     stderr.writeln(
-      'No LF entries found for waddle_display/lib or waddle_shared/lib '
-      '(did you run flutter test --coverage?)',
+      'No LF entries found for waddle_display/lib, waddle_shared/lib, or '
+      'waddle_data_providers/lib (did you run flutter test --coverage?)',
     );
     exitCode = 1;
     return;
   }
   final pct = 100.0 * totalLh / totalLf;
   stdout.writeln(
-    'Coverage (waddle_display/lib + packages/waddle_shared/lib, excluding '
-    '*.g.dart, persistence/tables.dart, main.dart, display/screen_rotator.dart): '
+    'Coverage (waddle_display/lib + waddle_shared/lib + '
+    'waddle_data_providers/lib, excluding *.g.dart, persistence/tables.dart, '
+    'main.dart, display/screen_rotator.dart): '
     '${pct.toStringAsFixed(2)}% ($totalLh / $totalLf lines)',
   );
   if (pct + 1e-9 < minPct) {

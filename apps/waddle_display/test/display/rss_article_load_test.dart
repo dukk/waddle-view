@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_display/blob/blob_store.dart';
+import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_display/curator/screen_program_curator.dart';
 import 'package:waddle_display/display/screens/rss_article/rss_article_load.dart';
 import 'package:waddle_shared/persistence/database.dart';

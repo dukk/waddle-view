@@ -1,4 +1,4 @@
-import '../blob/blob_store.dart';
+import 'package:waddle_shared/blob/blob_store.dart';
 import '../curator/photo_collage_curation.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';

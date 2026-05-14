@@ -5,17 +5,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_display/config/microsoft_graph_kv.dart'
     show
-        kDefaultMicrosoftGraphClientId,
         kMicrosoftGraphAccessTokenExpiresAtKvKey,
-        kMicrosoftGraphClientIdKvKey,
         kOneDriveMediaDeltaLinkKvKey,
         kOneDriveMediaItemRowId,
         kOneDriveMediaLastCollectKvKey,
         microsoftGraphAccessTokenSecret;
+import 'package:waddle_shared/config/provider_access_token_env.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
-import 'package:waddle_display/data/data_write_context.dart';
-import 'package:waddle_display/data/providers/microsoft_graph/microsoft_graph_oauth.dart';
-import 'package:waddle_display/data/providers/onedrive_media/onedrive_media_data_provider.dart';
+import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_data_providers/microsoft_graph/microsoft_graph_oauth.dart';
+import 'package:waddle_data_providers/media_onedrive/onedrive_media_data_provider.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
@@ -43,13 +42,13 @@ void main() {
     await db.close();
   });
 
-  test('skip when microsoft.graph.client_id KV missing', () async {
+  test('skip when WADDLE_MICROSOFT_GRAPH_CLIENT_ID unset', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await db.into(db.providerSettings).insertOnConflictUpdate(
           ProviderSettingsCompanion.insert(
             id: kOneDriveMediaProviderId,
-            providerType: 'onedrive_media',
+            providerType: 'media_onedrive',
             enabled: const Value(true),
             pollSeconds: const Value(0),
             baseUrl: const Value('https://graph.microsoft.com/v1.0'),
@@ -59,7 +58,7 @@ void main() {
           ),
         );
     final httpClient = _CountingClient();
-    final ctx = _ctx(db, InMemorySecretStore());
+    final ctx = _ctx(db, InMemorySecretStore(), env: const {});
     await OneDriveMediaDataProvider(httpClient: httpClient).collect(ctx);
     expect(httpClient.requests, 0);
     await db.close();
@@ -578,13 +577,18 @@ Map<String, Object?> _drivePhoto(String id, String downloadUrl) => {
       },
     };
 
-DataWriteContext _ctx(AppDatabase db, InMemorySecretStore secrets) {
+DataWriteContext _ctx(
+  AppDatabase db,
+  InMemorySecretStore secrets, {
+  Map<String, String> env = const {waddleMicrosoftGraphClientIdEnv: 'test-ms-client-id'},
+}) {
   final resolver = ProviderConfigResolver(db, {});
   return DataWriteContextImpl(
     db: db,
     blobs: FakeBlobStore(),
     secrets: secrets,
     resolve: resolver.resolve,
+    env: env,
   );
 }
 
@@ -595,16 +599,10 @@ Future<void> _seedProvider(
   int globalPerPoll = 50,
   bool enabled = true,
 }) async {
-  await db.into(db.configKeyValues).insertOnConflictUpdate(
-        ConfigKeyValuesCompanion.insert(
-          key: kMicrosoftGraphClientIdKvKey,
-          value: kDefaultMicrosoftGraphClientId,
-        ),
-      );
   await db.into(db.providerSettings).insertOnConflictUpdate(
         ProviderSettingsCompanion.insert(
           id: kOneDriveMediaProviderId,
-          providerType: 'onedrive_media',
+          providerType: 'media_onedrive',
           enabled: Value(enabled),
           pollSeconds: Value(pollSeconds),
           baseUrl: const Value('https://graph.microsoft.com/v1.0'),

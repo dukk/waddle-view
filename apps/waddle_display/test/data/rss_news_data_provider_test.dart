@@ -5,8 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:waddle_shared/config/provider_config_resolver.dart';
-import 'package:waddle_display/data/data_write_context.dart';
-import 'package:waddle_display/data/providers/rss_news/rss_news_data_provider.dart';
+import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_data_providers/news_rss/rss_news_data_provider.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 
@@ -71,7 +71,7 @@ class _MapHttp extends http.BaseClient {
 void main() {
   test('RssNewsDataProvider default client and clock', () {
     final p = RssNewsDataProvider();
-    expect(p.id, 'rss');
+    expect(p.id, 'news_rss');
   });
 
   test('collect upserts articles, downloads image, trims to maxArticles', () async {
@@ -79,8 +79,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'rss',
-            providerType: 'rss',
+            id: 'news_rss',
+            providerType: 'news_rss',
             pollSeconds: const Value(1),
           ),
         );
@@ -132,8 +132,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'rss',
-            providerType: 'rss',
+            id: 'news_rss',
+            providerType: 'news_rss',
           ),
         );
     await db.into(db.rssFeedSources).insert(
@@ -163,7 +163,7 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(id: 'rss', providerType: 'rss'),
+          ProviderSettingsCompanion.insert(id: 'news_rss', providerType: 'news_rss'),
         );
     await db.into(db.rssFeedSources).insert(
           RssFeedSourcesCompanion.insert(
@@ -203,7 +203,7 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(id: 'rss', providerType: 'rss'),
+          ProviderSettingsCompanion.insert(id: 'news_rss', providerType: 'news_rss'),
         );
     const last = 1_000_000;
     await db.into(db.rssFeedSources).insert(
@@ -237,7 +237,7 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(id: 'rss', providerType: 'rss'),
+          ProviderSettingsCompanion.insert(id: 'news_rss', providerType: 'news_rss'),
         );
     await db.into(db.rssFeedSources).insert(
           RssFeedSourcesCompanion.insert(

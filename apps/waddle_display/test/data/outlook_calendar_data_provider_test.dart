@@ -5,20 +5,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_display/config/microsoft_graph_kv.dart'
     show
-        kDefaultMicrosoftGraphClientId,
         kMicrosoftGraphAccessTokenExpiresAtKvKey,
-        kMicrosoftGraphClientIdKvKey,
         kMicrosoftGraphOAuthAlertSource,
         kMicrosoftGraphOAuthRedirectUri,
         microsoftGraphAccessTokenSecret,
         microsoftGraphRefreshTokenSecret,
         outlookCalendarEventSource;
+import 'package:waddle_shared/config/provider_access_token_env.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
-import 'package:waddle_display/data/data_write_context.dart';
-import 'package:waddle_display/data/providers/microsoft_graph/microsoft_graph_oauth.dart'
+import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_data_providers/microsoft_graph/microsoft_graph_oauth.dart'
     show kMicrosoftGraphOAuthScopes, MicrosoftGraphOAuth;
-import 'package:waddle_display/data/providers/outlook_calendar/outlook_calendar_data_provider.dart';
-import 'package:waddle_display/data/providers/outlook_calendar/outlook_calendar_extra_config.dart';
+import 'package:waddle_data_providers/calendar_outlook/outlook_calendar_data_provider.dart';
+import 'package:waddle_data_providers/calendar_outlook/outlook_calendar_extra_config.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 
@@ -209,6 +208,7 @@ DataWriteContext _ctx(AppDatabase db, InMemorySecretStore secrets) {
     blobs: FakeBlobStore(),
     secrets: secrets,
     resolve: resolver.resolve,
+    env: const {waddleMicrosoftGraphClientIdEnv: 'test-ms-client-id'},
   );
 }
 
@@ -217,16 +217,10 @@ Future<void> _seedKvAndProvider(
   required String extraAccountsJson,
   int pollSeconds = 0,
 }) async {
-  await db.into(db.configKeyValues).insertOnConflictUpdate(
-        ConfigKeyValuesCompanion.insert(
-          key: kMicrosoftGraphClientIdKvKey,
-          value: kDefaultMicrosoftGraphClientId,
-        ),
-      );
   await db.into(db.providerSettings).insertOnConflictUpdate(
         ProviderSettingsCompanion.insert(
           id: kOutlookCalendarProviderId,
-          providerType: 'outlook_calendar',
+          providerType: 'calendar_outlook',
           enabled: const Value(true),
           pollSeconds: Value(pollSeconds),
           baseUrl: const Value('https://graph.microsoft.com/v1.0'),

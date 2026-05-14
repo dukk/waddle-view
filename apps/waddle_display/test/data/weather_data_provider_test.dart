@@ -5,8 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/config/provider_access_token_env.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
-import 'package:waddle_display/data/data_write_context.dart';
-import 'package:waddle_display/data/providers/weather/weather_data_provider.dart';
+import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_data_providers/weather_openweathermap/weather_data_provider.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 
@@ -104,8 +104,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'weather',
-            providerType: 'weather',
+            id: 'weather_openweathermap',
+            providerType: 'weather_openweathermap',
             pollSeconds: const Value(60),
           ),
         );
@@ -127,8 +127,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'weather',
-            providerType: 'weather',
+            id: 'weather_openweathermap',
+            providerType: 'weather_openweathermap',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.openweathermap.org'),
             configJson: const Value(
@@ -145,7 +145,7 @@ void main() {
           ),
         );
     final secrets = InMemorySecretStore();
-    final ctx = await _ctx(db, secrets, env: {openWeatherMapApiKeyEnv: 'owm-key'});
+    final ctx = await _ctx(db, secrets, env: {waddleOpenWeatherMapApiKeyEnv: 'owm-key'});
 
     final client = _WeatherClient((uri) {
       if (uri.path.endsWith('/data/2.5/forecast')) {
@@ -186,8 +186,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'weather',
-            providerType: 'weather',
+            id: 'weather_openweathermap',
+            providerType: 'weather_openweathermap',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.openweathermap.org'),
             configJson: const Value(
@@ -212,7 +212,7 @@ void main() {
           ),
         );
     final secrets = InMemorySecretStore();
-    final ctx = await _ctx(db, secrets, env: {openWeatherMapApiKeyEnv: 'owm-key'});
+    final ctx = await _ctx(db, secrets, env: {waddleOpenWeatherMapApiKeyEnv: 'owm-key'});
 
     final seen = <String>[];
     final client = _WeatherClient((uri) {
@@ -252,8 +252,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'weather',
-            providerType: 'weather',
+            id: 'weather_openweathermap',
+            providerType: 'weather_openweathermap',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.openweathermap.org'),
           ),
@@ -267,7 +267,7 @@ void main() {
           ),
         );
     final secrets = InMemorySecretStore();
-    final ctx = await _ctx(db, secrets, env: {openWeatherMapApiKeyEnv: 'owm-key'});
+    final ctx = await _ctx(db, secrets, env: {waddleOpenWeatherMapApiKeyEnv: 'owm-key'});
     final client = _WeatherClient((uri) {
       if (uri.path.contains('/img/wn/')) {
         return http.Response.bytes(
@@ -296,8 +296,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'weather',
-            providerType: 'weather',
+            id: 'weather_openweathermap',
+            providerType: 'weather_openweathermap',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.openweathermap.org'),
           ),
@@ -311,7 +311,7 @@ void main() {
           ),
         );
     final secrets = InMemorySecretStore();
-    final ctx = await _ctx(db, secrets, env: {openWeatherMapApiKeyEnv: 'owm-key'});
+    final ctx = await _ctx(db, secrets, env: {waddleOpenWeatherMapApiKeyEnv: 'owm-key'});
     final client = _ThrowingWeatherClient(
       http.ClientException(
         'socket failed',

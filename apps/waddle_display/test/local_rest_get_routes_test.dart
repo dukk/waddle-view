@@ -18,8 +18,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'jokes',
-            providerType: 'jokes',
+            id: 'joke_openai',
+            providerType: 'joke_openai',
             pollSeconds: const Value(30),
           ),
         );
@@ -43,8 +43,8 @@ void main() {
         headers: {'x-api-key': 'k'},
       );
       expect(res.statusCode, 200);
-      expect(res.body, contains('"id":"jokes"'));
-      expect(res.body, contains('"type":"jokes"'));
+      expect(res.body, contains('"id":"joke_openai"'));
+      expect(res.body, contains('"type":"joke_openai"'));
       expect(res.body, contains('"enabled":true'));
     } finally {
       await server.close();

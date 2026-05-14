@@ -16,7 +16,7 @@ Mirror of [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) `analy
 ```bash
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs -C packages/waddle_shared
-dart test -C packages/waddle_shared
+flutter test -C packages/waddle_shared
 cd apps/waddle_display
 flutter analyze
 flutter test --coverage --timeout=60s

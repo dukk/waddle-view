@@ -5,9 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/config/provider_access_token_env.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
-import 'package:waddle_display/data/data_write_context.dart';
-import 'package:waddle_display/data/providers/trivia/trivia_data_provider.dart';
-import 'package:waddle_display/data/providers/trivia/trivia_id.dart';
+import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_data_providers/trivia_openai/trivia_data_provider.dart';
+import 'package:waddle_data_providers/trivia_openai/trivia_id.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 
@@ -77,8 +77,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'trivia',
-            providerType: 'trivia',
+            id: 'trivia_openai',
+            providerType: 'trivia_openai',
             pollSeconds: const Value(1),
             configJson: const Value('{"questionsPerDay":2}'),
             baseUrl: const Value('http://api.local/v1'),
@@ -98,7 +98,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
+    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -136,8 +136,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'trivia',
-            providerType: 'trivia',
+            id: 'trivia_openai',
+            providerType: 'trivia_openai',
             pollSeconds: const Value(1),
             configJson: const Value('{"questionsPerDay":5}'),
             baseUrl: const Value('http://api.local/v1'),
@@ -148,7 +148,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
+    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -187,8 +187,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'trivia',
-            providerType: 'trivia',
+            id: 'trivia_openai',
+            providerType: 'trivia_openai',
             pollSeconds: const Value(1),
             configJson: const Value('{"questionsPerDay":5}'),
             baseUrl: const Value('http://api.local/v1'),
@@ -199,7 +199,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
+    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -230,8 +230,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'trivia',
-            providerType: 'trivia',
+            id: 'trivia_openai',
+            providerType: 'trivia_openai',
             pollSeconds: const Value(1),
             configJson: const Value('{"questionsPerDay":5}'),
             baseUrl: const Value('http://api.local/v1'),
@@ -242,7 +242,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
+    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -272,8 +272,8 @@ void main() {
 
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'trivia',
-            providerType: 'trivia',
+            id: 'trivia_openai',
+            providerType: 'trivia_openai',
             pollSeconds: const Value(1),
             configJson: const Value(
               '{"questionsPerDay":5,"questionRetentionDays":14}',
@@ -318,7 +318,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
+    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -342,8 +342,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'trivia',
-            providerType: 'trivia',
+            id: 'trivia_openai',
+            providerType: 'trivia_openai',
             pollSeconds: const Value(1),
             configJson: const Value('{"questionsPerDay":1}'),
             baseUrl: const Value('http://api.local/v1'),
@@ -354,7 +354,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
+    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -396,8 +396,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'trivia',
-            providerType: 'trivia',
+            id: 'trivia_openai',
+            providerType: 'trivia_openai',
             pollSeconds: const Value(1),
             configJson: const Value(
               '{"maxQuestionPerDay":5,"maxQuestionPerHour":20,'
@@ -411,7 +411,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
+    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -439,8 +439,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'trivia',
-            providerType: 'trivia',
+            id: 'trivia_openai',
+            providerType: 'trivia_openai',
             pollSeconds: const Value(1),
             configJson: const Value(
               '{"maxQuestionPerDay":5,"maxQuestionPerHour":20,'
@@ -454,7 +454,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
+    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -481,8 +481,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'trivia',
-            providerType: 'trivia',
+            id: 'trivia_openai',
+            providerType: 'trivia_openai',
             pollSeconds: const Value(1),
             configJson: const Value('{"maxQuestionPerDay":5}'),
             baseUrl: const Value('http://api.local/v1'),
@@ -493,7 +493,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
+    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -529,8 +529,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'trivia',
-            providerType: 'trivia',
+            id: 'trivia_openai',
+            providerType: 'trivia_openai',
             pollSeconds: const Value(1),
             configJson: const Value(
               '{"maxQuestionPerDay":5,"maxQuestionPerHour":20,'
@@ -565,7 +565,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
+    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),

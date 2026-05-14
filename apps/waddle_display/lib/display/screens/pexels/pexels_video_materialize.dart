@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
 
-import '../../../blob/blob_store.dart';
+import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 /// Resolves a local [File] for [row] media: direct blob path or temp copy.

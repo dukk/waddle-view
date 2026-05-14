@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_display/data/providers/trivia/trivia_slot_allocation.dart';
+import 'package:waddle_data_providers/trivia_openai/trivia_slot_allocation.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 void main() {

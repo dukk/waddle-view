@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../blob/blob_store.dart';
+import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import '../../../curator/screen_program_curator.dart';
 import 'package:waddle_shared/persistence/database.dart';

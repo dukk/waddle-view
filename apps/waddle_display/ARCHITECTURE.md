@@ -6,7 +6,7 @@ This document describes how the TV dashboard is structured at runtime and how ma
 
 - **Single process**: Flutter UI, background async loops, and the embedded HTTP server share one isolate unless you add isolates later.
 - **Ports and adapters**: abstract boundaries (`IDataProvider`, `DataWriteContext`, `AlertRepository`, `TickerCuratedRepository`, `DashboardCurator`, `BlobStore`, `SecretStore`, `WindowChromeController`) with Drift/filesystem/Linux implementations.
-- **No secrets in SQLite**: static provider API keys are read from the **merged environment map** (see [`ProviderConfigResolver`](../../packages/waddle_shared/lib/config/provider_config_resolver.dart)); **Google / Microsoft Graph OAuth** tokens use [`SecretStore`](lib/secrets/secret_store.dart) / [`FlutterSecureSecretStore`](lib/secrets/flutter_secure_secret_store.dart). SQLite holds non-secret configuration and operational data.
+- **No secrets in SQLite**: static provider API keys are read from the **merged environment map** (see [`ProviderConfigResolver`](../../packages/waddle_shared/lib/config/provider_config_resolver.dart)); **Google / Microsoft Graph OAuth** tokens use [`SecretStore`](../../packages/waddle_shared/lib/secrets/secret_store.dart) / [`FlutterSecureSecretStore`](../../packages/waddle_shared/lib/secrets/flutter_secure_secret_store.dart). SQLite holds non-secret configuration and operational data.
 - **Drift as the hub**: display **screen definitions** (`screen_definitions`), **configuration key–values** (`config_key_values`, including curator program settings and theme/ticker keys), alerts, blob metadata, RSS tables, and provider settings read/write through [`AppDatabase`](../../packages/waddle_shared/lib/persistence/database.dart). **Ticker marquee text is in-memory only** ([`MemoryTickerCuratedRepository`](lib/ticker/memory_ticker_curated_repository.dart)); REST exposes a read-only snapshot.
 
 ## Module map
@@ -134,7 +134,7 @@ sequenceDiagram
   M->>SS: construct
   M->>Res: ProviderConfigResolver(db, mergeBootstrapEnv())
   M->>Blob: FileSystemBlobStore(mediaDir)
-  M->>Ctx: DataWriteContextImpl(db, blobs, secrets, resolve)
+  M->>Ctx: DataWriteContextImpl(db, blobs, secrets, resolve, env: mergeBootstrapEnv())
   M->>MTCR: MemoryTickerCuratedRepository()
   M->>Cur: DefaultDashboardCurator(read, tickerStore, clock)
   M->>Cur: await refresh() initial curated rows
@@ -149,7 +149,7 @@ sequenceDiagram
 
 ## Sequence: data collection cycle
 
-[`DataCollectionEngine`](lib/data/engine/data_collection_engine.dart) walks the configured [`IDataProvider`](lib/data/data_provider.dart) list in order, awaits each `collect`, then sleeps `idleBetweenCycles` (shorter in debug builds). Providers must not run overlapping collects; the engine enforces one in flight.
+[`DataCollectionEngine`](../../packages/waddle_shared/lib/collect/data_collection_engine.dart) walks the configured [`IDataProvider`](../../packages/waddle_shared/lib/collect/data_provider.dart) list in order, awaits each `collect`, then sleeps `idleBetweenCycles` (shorter in debug builds). Providers must not run overlapping collects; the engine enforces one in flight.
 
 ```mermaid
 sequenceDiagram
@@ -180,7 +180,7 @@ sequenceDiagram
   end
 ```
 
-The stub provider demonstrates the path: it upserts [`config_key_values`](lib/data/stub_data_provider.dart) (feeds the header title stream) and registers a small blob plus [`blob_metadata`](lib/data/stub_data_provider.dart). [`resolveConfig`](lib/data/data_write_context.dart) supplies `baseUrl` / `configJson` / **`accessToken`** from Drift + the startup **env map**; OAuth-only providers additionally use [`DataWriteContext.secrets`](lib/data/data_write_context.dart) outside that resolver path.
+The stub provider demonstrates the path: it upserts [`config_key_values`](../../packages/waddle_shared/lib/collect/stub_data_provider.dart) (feeds the header title stream) and registers a small blob plus [`blob_metadata`](../../packages/waddle_shared/lib/collect/stub_data_provider.dart). [`resolveConfig`](../../packages/waddle_shared/lib/collect/data_write_context.dart) supplies `baseUrl` / `configJson` / **`accessToken`** from Drift + the startup **env map**; OAuth-only providers additionally use [`DataWriteContext.secrets`](../../packages/waddle_shared/lib/collect/data_write_context.dart) outside that resolver path.
 
 ## Sequence: REST alert to on-screen overlay
 

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_display/data/providers/rss_news/rss_text_sanitize.dart';
+import 'package:waddle_data_providers/news_rss/rss_text_sanitize.dart';
 
 void main() {
   test('sanitizeRssDisplayText decodes common entities', () {

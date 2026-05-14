@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_display/data/providers/stock_quote/stock_quote_provider_extra_config.dart';
+import 'package:waddle_data_providers/stock_finnhub/stock_quote_provider_extra_config.dart';
 
 void main() {
   test('parse(null) yields built-in defaults', () {

@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:waddle_shared/config/provider_config_resolver.dart';
-import 'package:waddle_display/data/data_provider.dart';
-import 'package:waddle_display/data/data_write_context.dart';
-import 'package:waddle_display/data/engine/data_collection_engine.dart';
+import 'package:waddle_shared/collect/data_provider.dart';
+import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_shared/collect/data_collection_engine.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 

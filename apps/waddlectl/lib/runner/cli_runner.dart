@@ -12,6 +12,7 @@ import 'emit.dart';
 import 'providers_commands.dart';
 import 'reject_commands.dart';
 import 'screens_commands.dart';
+import 'sqlite_commands.dart';
 import 'tickers_commands.dart';
 
 /// Handles `waddlectl help ...` without registering a second `help` command on
@@ -57,6 +58,7 @@ class WaddlectlRootRunner extends CommandRunner<void> {
     addCommand(CuratorCommand(globalOptions));
     addCommand(BackupCommand(globalOptions));
     addCommand(RejectCommand(globalOptions));
+    addCommand(SqliteCommand(globalOptions));
   }
 
   final GlobalCliOptions globalOptions;
@@ -87,19 +89,30 @@ class WaddlectlRootRunner extends CommandRunner<void> {
       ..writeln(
         '  ${'curator'.padRight(14)} Curator program settings and data-key limits',
       )
-      ..writeln('  ${'backup'.padRight(14)} Full backup / restore / schedule (SQLite + media)')
-      ..writeln('  ${'reject'.padRight(14)} Curse-word reject list (block + censor) & rescan')
-      ..writeln('  ${'help'.padRight(14)} Print help for a command path (see below)')
+      ..writeln(
+        '  ${'backup'.padRight(14)} Full backup / restore / schedule (SQLite + media)',
+      )
+      ..writeln(
+        '  ${'reject'.padRight(14)} Curse-word reject list (block + censor) & rescan',
+      )
+      ..writeln('  ${'sqlite'.padRight(14)} SQLite utilities (export-seed)')
+      ..writeln(
+        '  ${'help'.padRight(14)} Print help for a command path (see below)',
+      )
       ..writeln('  ${'options'.padRight(14)} List global flags only')
       ..writeln('  ${'version'.padRight(14)} Print tool version')
       ..writeln()
-      ..writeln('Use `waddlectl help <group>` for nested commands (gcloud-style).')
+      ..writeln(
+        'Use `waddlectl help <group>` for nested commands (gcloud-style).',
+      )
       ..writeln('Examples:')
       ..writeln('  waddlectl --database=/path/waddle_view.sqlite config list')
       ..writeln('  waddlectl help screens')
       ..writeln('  waddlectl help screens update')
       ..writeln()
-      ..writeln('Use `waddlectl options` for global flags (--database, --output, …).');
+      ..writeln(
+        'Use `waddlectl options` for global flags (--database, --output, …).',
+      );
     return b.toString();
   }
 }
@@ -132,6 +145,8 @@ class VersionCommand extends Command<void> {
 
   @override
   Future<void> run() async {
-    CliEmit(globalOptions).emitJsonOrText({'waddlectl': kWaddlectlPackageVersion});
+    CliEmit(
+      globalOptions,
+    ).emitJsonOrText({'waddlectl': kWaddlectlPackageVersion});
   }
 }

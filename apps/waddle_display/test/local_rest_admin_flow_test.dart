@@ -170,8 +170,8 @@ void main() {
           );
       await db.into(db.providerSettings).insert(
             ProviderSettingsCompanion.insert(
-              id: 'jokes',
-              providerType: 'jokes',
+              id: 'joke_openai',
+              providerType: 'joke_openai',
               pollSeconds: const Value(60),
               baseUrl: const Value('http://openai.test'),
               configJson: const Value('{}'),
@@ -268,7 +268,7 @@ void main() {
 
         final provBody =
             'csrf=${Uri.encodeQueryComponent(s.csrf)}'
-            '&id=jokes'
+            '&id=joke_openai'
             '&enabled=on'
             '&poll_seconds=99'
             '&base_url=http%3A%2F%2Fapi.updated'
@@ -284,7 +284,7 @@ void main() {
         );
         expect(prov.statusCode, 302);
         final ps = await (db.select(db.providerSettings)
-              ..where((t) => t.id.equals('jokes')))
+              ..where((t) => t.id.equals('joke_openai')))
             .getSingle();
         expect(ps.pollSeconds, 99);
         expect(ps.baseUrl, 'http://api.updated');

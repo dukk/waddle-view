@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
-import '../blob/blob_store.dart' show BlobRef, BlobStore;
+import 'package:waddle_shared/blob/blob_store.dart' show BlobRef, BlobStore;
 import 'package:waddle_shared/persistence/database.dart';
 import '../theme/display_theme.dart';
 import 'content_category_material_icon.dart';

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_display/data/providers/joke/joke_slot_allocation.dart';
+import 'package:waddle_data_providers/joke_openai/joke_slot_allocation.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 void main() {

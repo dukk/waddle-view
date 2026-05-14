@@ -32,14 +32,14 @@ From the **repository root** (monorepo Pub workspace):
 ```bash
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs -C packages/waddle_shared
-dart test -C packages/waddle_shared
+flutter test -C packages/waddle_shared
 ```
 
 After editing `packages/waddle_shared/lib/persistence/tables.dart` or `database.dart` schema:
 
 ```bash
 dart run build_runner build --delete-conflicting-outputs -C packages/waddle_shared
-dart test -C packages/waddle_shared
+flutter test -C packages/waddle_shared
 ```
 
 ## Run locally (debug and other modes)
@@ -93,6 +93,8 @@ The **`apps/waddlectl`** package is a shell tool against the same **SQLite** dat
 - **Schedule** prints a ready-to-paste **crontab** line and **systemd user** unit sketches (`backup schedule`); it does not install anything.
 
 - **Archive layout**: `manifest.json`, `db/<sqlite basename>`, optional `media/...`. Legacy archives may also contain `secrets/secret_bundle.bin` (ignored on restore).
+
+- **Data-only SQL seed** (`sqlite export-seed`): writes **DELETE + INSERT** statements for all user tables (foreign keys off during replay). Use **`--file=PATH`** or **`--stdout`**; default output is **`<stem>_seed.sql`** next to the database. Apply only on a file that **already matches** the current app schema (for example after the app created or migrated it). Do not commit exports that contain secrets.
 
 ## Build installable bundles (local)
 
@@ -209,7 +211,7 @@ Each **`screen_definitions`** row stores **`screen_type`** (widget id, e.g. `wea
 - **Analog clock labels** — optional `analog_clock` widget `config.dialLabels` controls clock-face labels: **`none`** (default), **`numbers`** (1-12), **`roman`** (I-XII), or **`cardinal_numbers`** (12/3/6/9 only).
 - **Analog clock hand accents** — by default, hands use accent colors **1/2/3** for **hour/minute/second**. Optional per-hand config keys can override accent choice: **`hourHandAccent`**, **`minuteHandAccent`**, **`secondHandAccent`** with values **`accent1`**, **`accent2`**, **`accent3`** (or numeric **`1`**, **`2`**, **`3`**).
 - **RSS screen photos** — config key **`curator.news.screens.require_photo`** (default **true** in seed): when true, only RSS rows with a downloaded image are used for **screen** slides; the **ticker** is unchanged. If a news screen must still run (e.g. **min placements** / data-key minimum) and no image-backed article is available, the curator may place a photo-less row and set **`*_imageMode`** = **`icon`** (per slot for columns/stack) so the UI shows a **newspaper** icon instead of a photo.
-- **Summary fit** — optional keys in **`config_json`** for RSS screens: **`summaryCapacityChars`** (single `rss_article`), **`summaryCapacityCharsPerColumn`** (`rss_article_columns`), **`summaryCapacityCharsPerSlot`** (`rss_article_stack`). The curator scores screen+article pairs so summary text length is less likely to be wasted or heavily truncated. Seeded default news screens set these in [`initial_seed.dart`](lib/data/seed/initial_seed.dart).
+- **Summary fit** — optional keys in **`config_json`** for RSS screens: **`summaryCapacityChars`** (single `rss_article`), **`summaryCapacityCharsPerColumn`** (`rss_article_columns`), **`summaryCapacityCharsPerSlot`** (`rss_article_stack`). The curator scores screen+article pairs so summary text length is less likely to be wasted or heavily truncated. Seeded default news screens set these in [`initial_seed.dart`](../../packages/waddle_shared/lib/seed/initial_seed.dart).
 
 ### Bottom ticker (`ticker_definitions`)
 
@@ -217,7 +219,7 @@ SQLite table **`ticker_definitions`** configures the bottom marquee: which **typ
 
 Content still comes from **`config_key_values`** (`ticker.marquee.*`), live weather plus **active NWS alerts** (same `weather` ticker kind), stored RSS articles for **`news`**, and (for definition-based curation) enabled **`stock_symbols`** / **`stock_quotes`** when a **`stocks`** row is enabled. If **`ticker_definitions`** has **no rows** (empty table), curation keeps the legacy fixed order: time, standard keys, sorted extras — **without** stock lines. If the table has rows but **none are enabled**, curation falls back to **time** only.
 
-Seeded defaults: **`ticker_time`** … **`ticker_stocks`** enabled, **`ticker_custom`** disabled ([`initial_seed.dart`](lib/data/seed/initial_seed.dart)).
+Seeded defaults: **`ticker_time`** … **`ticker_stocks`** enabled, **`ticker_custom`** disabled ([`initial_seed.dart`](../../packages/waddle_shared/lib/seed/initial_seed.dart)).
 
 ### Text scale — screens vs ticker (`config_key_values`)
 
@@ -259,19 +261,21 @@ The **`dev_data_health`** screen (`screen_type` **`data_health`**, installed **d
 - **Secret storage**: `flutter_secure_storage` uses the Secret Service / **libsecret** where available; headless images without D-Bus may need a documented fallback (see repo **`docs/pi/`**).
 - **Data**: SQLite and **`media/`** live under the application support directory (see `path_provider` on device).
 
-The **`content_categories`** table holds shared category ids for **RSS** (`rss_feed_sources.category`), **Pexels** (`photos.category` / `videos.category`), **jokes** (`joke_categories.id`), and **trivia** (`trivia_categories.id`). Each row has a display **`label`**, optional **`material_icon_name`** (resolved in the app via [`content_category_material_icon.dart`](lib/display/content_category_material_icon.dart)), and optional **`icon_blob_key`** for a custom image in the blob store. Initial rows are created by migration to schema version **19** and by [`ensureDefaultContentCategories`](lib/data/seed/tables/content_categories_seed.dart) during startup seeding.
+The **`content_categories`** table holds shared category ids for **RSS** (`rss_feed_sources.category`), **Pexels** (`photos.category` / `videos.category`), **jokes** (`joke_categories.id`), and **trivia** (`trivia_categories.id`). Each row has a display **`label`**, optional **`material_icon_name`** (resolved in the app via [`content_category_material_icon.dart`](lib/display/content_category_material_icon.dart)), and optional **`icon_blob_key`** for a custom image in the blob store. Initial rows are created by migration to schema version **19** and by [`ensureDefaultContentCategories`](../../packages/waddle_shared/lib/seed/tables/content_categories_seed.dart) during startup seeding.
 
-## Provider secrets (OpenAI / jokes / trivia)
+## Provider secrets (OpenAI / joke_openai / trivia_openai)
 
 The joke and trivia data providers read OpenAI-style API keys from **environment variables** (merged with debug `.env`), not from `provider_settings` or SQLite.
 
-Supported names include **`OPENAI_API_KEY`**, **`WADDLE_JOKES_ACCESS_TOKEN`**, and **`WADDLE_TRIVIA_ACCESS_TOKEN`** (see [`packages/waddle_shared/lib/config/provider_access_token_env.dart`](../../packages/waddle_shared/lib/config/provider_access_token_env.dart)).
+Supported env name: **`WADDLE_OPENAI_API_KEY`** (shared by **`joke_openai`** and **`trivia_openai`** (and **`trivia_opentdb`**); see [`packages/waddle_shared/lib/config/provider_access_token_env.dart`](../../packages/waddle_shared/lib/config/provider_access_token_env.dart)).
 
-**Local onboarding:** copy **[`.env.example`](.env.example)** to **`.env`** in this directory and set the variables above. In **debug** builds, the app loads that file into the merged env map (see [`lib/config/dev_dotenv_secrets.dart`](lib/config/dev_dotenv_secrets.dart)). **Google / Microsoft Graph** OAuth tokens in debug can still be copied from `.env` into **`SecretStore`** via `applyGoogleTokensFromDevDotenv` / `applyMicrosoftGraphTokensFromDevDotenv`. Full detail: **[`docs/pi/development.md`](../../docs/pi/development.md#joke-data-provider-openai-api-key)**.
+The **`weather_openweathermap`** data provider uses **`WADDLE_OPEN_WEATHER_MAP_API_KEY`**.
+
+**Local onboarding:** copy **[`.env.example`](.env.example)** to **`.env`** in this directory and set the variables above. In **debug** builds, the app loads that file into the merged env map (see [`lib/config/dev_dotenv_secrets.dart`](lib/config/dev_dotenv_secrets.dart)). **Google / Microsoft Graph** OAuth **tokens** use **`SecretStore`** only (device-code flow or `waddlectl secrets set`); set public **client ids** with **`WADDLE_GOOGLE_CLIENT_ID`** and **`WADDLE_MICROSOFT_GRAPH_CLIENT_ID`** in the environment (or the same debug `.env`). Full detail: **[`docs/pi/development.md`](../../docs/pi/development.md#joke-data-provider-openai-api-key)**.
 
 OpenTDB trivia does **not** require a token.
 
-### Trivia provider (`provider_type`: **`trivia`**)
+### Trivia provider (`provider_type`: **`trivia_openai`**)
 
 The trivia data provider calls OpenAI Chat Completions, then upserts rows into **`trivia_questions`**. Eligible **`trivia_categories`** are cycled in **round-robin** order (starting offset rotates each hour). Each request’s user prompt includes **recent question stems** so the model avoids obvious repeats.
 
@@ -286,7 +290,7 @@ The trivia data provider calls OpenAI Chat Completions, then upserts rows into *
 
 True/false rows store options in A/B and leave C/D blank; the slide renders and reveals two choices accordingly.
 
-### OpenTDB trivia provider (`provider_type`: **`opentdb_trivia`**)
+### OpenTDB trivia provider (`provider_type`: **`trivia_opentdb`**)
 
 The OpenTDB provider fetches questions from [Open Trivia DB](https://opentdb.com/api_config.php) and writes them into the same **`trivia_questions`** table as the OpenAI trivia provider.
 
@@ -303,9 +307,9 @@ Generated text must stay short (enforced in prompts and validation): question **
 
 ## Pexels photos / videos provider
 
-The **Pexels** provider (`id` / `provider_type`: **`pexels`**) downloads curated photos (`GET /v1/curated`) and popular videos (`GET /v1/videos/popular` with duration bounds), stores binaries in the **blob** store, and keeps metadata in **`photos`** and **`videos`** (with **`data_provider`** set to the provider id, e.g. **`pexels`**). API key: **`PEXELS_API_KEY`** or **`WADDLE_PEXELS_ACCESS_TOKEN`** environment variables (never in SQLite).
+The **Pexels** provider (`id` / `provider_type`: **`media_pexels`**) downloads curated photos (`GET /v1/curated`) and popular videos (`GET /v1/videos/popular` with duration bounds), stores binaries in the **blob** store, and keeps metadata in **`photos`** and **`videos`** (with **`data_provider`** set to the provider id, e.g. **`media_pexels`**). API key: **`WADDLE_PEXELS_API_KEY`** environment variable (never in SQLite).
 
-**Debug `.env`:** **`PEXELS_API_KEY`** or **`WADDLE_PEXELS_ACCESS_TOKEN`** (see [`.env.example`](.env.example)).
+**Debug `.env`:** **`WADDLE_PEXELS_API_KEY`** (see [`.env.example`](.env.example)).
 
 **`provider_settings.config_json`** (JSON) holds the runtime payload. **`config_json_schema`** and **`example_config_json`** are documentation columns (JSON Schema and sample JSON) populated per row type.
 
@@ -320,9 +324,9 @@ The **Pexels** provider (`id` / `provider_type`: **`pexels`**) downloads curated
 
 ## Stock quote provider (Finnhub)
 
-The **stocks** provider (`id` / `provider_type`: **`stocks`**) calls [Finnhub](https://finnhub.io/docs/api/quote) **`GET /api/v1/quote?symbol=...&token=...`** for every enabled row in **`stock_symbols`** and upserts the latest quote into **`stock_quotes`** (one row per symbol). API key: **`FINNHUB_API_KEY`** or **`WADDLE_STOCKS_ACCESS_TOKEN`** (never in SQLite).
+The **stocks** provider (`id` / `provider_type`: **`stock_finnhub`**) calls [Finnhub](https://finnhub.io/docs/api/quote) **`GET /api/v1/quote?symbol=...&token=...`** for every enabled row in **`stock_symbols`** and upserts the latest quote into **`stock_quotes`** (one row per symbol). API key: **`WADDLE_FINHUB_API_KEY`** (never in SQLite).
 
-**Debug `.env`:** **`FINNHUB_API_KEY`** or **`WADDLE_STOCKS_ACCESS_TOKEN`** (see [`.env.example`](.env.example)).
+**Debug `.env`:** **`WADDLE_FINHUB_API_KEY`** (see [`.env.example`](.env.example)).
 
 **Symbol management:** seed inserts AAPL / MSFT / GOOG / NVDA / AMZN with **AAPL** and **MSFT** enabled by default; toggle [`StockSymbols.enabled`](../../packages/waddle_shared/lib/persistence/tables.dart) to add or remove symbols at runtime. When `stock_symbols` has no enabled rows the provider falls back to **`config_json.defaultSymbols`** and writes those entries into the table on first collect so the slide widget can display them.
 
@@ -337,7 +341,7 @@ The **stocks** provider (`id` / `provider_type`: **`stocks`**) calls [Finnhub](h
 
 ## NWS weather alerts (api.weather.gov)
 
-The **`nws_weather_alerts`** data provider (`id` / `provider_type`: **`nws_weather_alerts`**) calls the National Weather Service [JSON API](https://www.weather.gov/documentation/services-web-api) **`GET /alerts/active?point=<lat>,<lon>`** for each enabled **`weather_locations`** row with **`include_active_weather_alerts`** true (schema version **29**; default **true**). When no rows are enabled for weather, it uses **`defaultLocation`** from **`config_json`** (same shape as the OpenWeather provider), like the OpenWeather collector. If every enabled location opts out of active alerts, stored **`weather_gov_active_alerts`** rows are cleared and no NWS requests are made. Responses are stored in **`weather_gov_active_alerts`** (schema version **25**). **No API key** is required.
+The **`weather_nws_alerts`** data provider (`id` / `provider_type`: **`weather_nws_alerts`**; legacy DBs migrated from **`nws_weather_alerts`**) calls the National Weather Service [JSON API](https://www.weather.gov/documentation/services-web-api) **`GET /alerts/active?point=<lat>,<lon>`** for each enabled **`weather_locations`** row with **`include_active_weather_alerts`** true (schema version **29**; default **true**). When no rows are enabled for weather, it uses **`defaultLocation`** from **`config_json`** (same shape as the OpenWeather provider), like the OpenWeather collector. If every enabled location opts out of active alerts, stored **`weather_gov_active_alerts`** rows are cleared and no NWS requests are made. Responses are stored in **`weather_gov_active_alerts`** (schema version **25**). **No API key** is required.
 
 **Schema 26** adds boolean **`suppressed`** on **`jokes`**, **`rss_articles`**, **`trivia_questions`**, **`photos`**, and **`videos`** (hide from display without deleting rows; see *Content suppression* above).
 
@@ -355,9 +359,9 @@ The **`nws_weather_alerts`** data provider (`id` / `provider_type`: **`nws_weath
 
 ## Outlook calendar (Microsoft Graph)
 
-The **Outlook calendar** provider (`id` / `provider_type`: **`outlook_calendar`**) reads delegated calendar data via [Microsoft Graph](https://learn.microsoft.com/en-us/graph/api/resources/calendar) `calendarView` and stores events in **`calendar_events`** (shown on the **`calendar_month`** slide). Seed adds the provider **disabled** by default; set **`provider_settings.enabled`** after configuration.
+The **Outlook calendar** provider (`id` / `provider_type`: **`calendar_outlook`**) reads delegated calendar data via [Microsoft Graph](https://learn.microsoft.com/en-us/graph/api/resources/calendar) `calendarView` and stores events in **`calendar_events`** (shown on the **`calendar_month`** slide). Seed adds the provider **disabled** by default; set **`provider_settings.enabled`** after configuration.
 
-**App registration (Entra ID):** delegated permissions **`Calendars.Read`**, **`Files.Read`** (for OneDrive media sync), **`User.Read`**, and **`offline_access`**. The shared public **client id** lives in **`config_key_values`** as **`microsoft.graph.client_id`** (default `27bc410e-75a4-4bdc-9281-921f446aef52` on first seed). Other Graph-based providers should read the same key. If you already signed in before **`Files.Read`** was added, the next token refresh may fall back to **device code** once so you can re-consent for the broader scope.
+**App registration (Entra ID):** delegated permissions **`Calendars.Read`**, **`Files.Read`** (for OneDrive media sync), **`User.Read`**, and **`offline_access`**. The shared public **application (client) id** is read from the environment as **`WADDLE_MICROSOFT_GRAPH_CLIENT_ID`** (process env or merged debug `.env`) — not from SQLite. Other Graph-based providers use the same variable. If you already signed in before **`Files.Read`** was added, the next token refresh may fall back to **device code** once so you can re-consent for the broader scope.
 
 **Authentication platform:** turn on **Allow public client flows** (device code). Under **Authentication**, add a **Mobile and desktop applications** redirect URI **`https://login.microsoftonline.com/common/oauth2/nativeclient`** (same value the app sends as `redirect_uri` on token and device-code requests). Without this, Entra may return errors such as a missing **`redirect_uri`** on the request.
 
@@ -378,15 +382,15 @@ The **Outlook calendar** provider (`id` / `provider_type`: **`outlook_calendar`*
 
 **`provider_settings.poll_seconds`:** default **3600** (one sync per hour when enabled).
 
-**Debug `.env`:** optional **`WADDLE_MSGRAPH_ACCESS_TOKEN_<graphAccountKey>`** and **`WADDLE_MSGRAPH_REFRESH_TOKEN_<graphAccountKey>`** (see [`.env.example`](.env.example)).
+**Schema 37** deletes legacy **`microsoft.graph.client_id`** / **`google.client_id`** rows from **`config_key_values`**; use **`WADDLE_MICROSOFT_GRAPH_CLIENT_ID`** / **`WADDLE_GOOGLE_CLIENT_ID`** in the environment instead.
 
 ## Google Calendar
 
-The **Google Calendar** provider (`id` / `provider_type`: **`google_calendar`**) reads calendars/events from [Google Calendar API](https://developers.google.com/calendar/api/v3/reference) and stores normalized rows in **`calendar_events`** for the **`calendar_month`** slide.
+The **Google Calendar** provider (`id` / `provider_type`: **`calendar_google`**) reads calendars/events from [Google Calendar API](https://developers.google.com/calendar/api/v3/reference) and stores normalized rows in **`calendar_events`** for the **`calendar_month`** slide.
 
 Seed adds the provider **disabled** by default. Configure and enable in `provider_settings` when ready.
 
-**OAuth client id:** set **`google.client_id`** in **`config_key_values`** to your Google OAuth client id.
+**OAuth client id:** set **`WADDLE_GOOGLE_CLIENT_ID`** in the process environment (or merged debug `.env`) to your Google OAuth client id — not in `config_key_values`.
 
 **SecretStore keys (per Google account):**
 
@@ -403,11 +407,9 @@ Seed adds the provider **disabled** by default. Configure and enable in `provide
 
 **`provider_settings.poll_seconds`:** default **3600**.
 
-**Debug `.env`:** optional **`WADDLE_GOOGLE_ACCESS_TOKEN_<googleAccountKey>`** and **`WADDLE_GOOGLE_REFRESH_TOKEN_<googleAccountKey>`** (see [`.env.example`](.env.example)).
-
 ## OneDrive media (Microsoft Graph)
 
-The **OneDrive media** provider (`id` / `provider_type`: **`onedrive_media`**) keeps a **read-only local mirror** of folders on the signed-in user’s **personal OneDrive** (`/me/drive/...`). It uses Microsoft Graph **driveItem delta** (not shallow folder listing): each configured **`path`** is synced **recursively** (the entire subtree). The app only **GETs** metadata and file bytes from Graph—it **never** uploads or deletes anything in OneDrive. Items removed in OneDrive appear in the delta feed with a **`deleted`** facet and are **removed locally** ( **`photos`** / **`videos`** row and blob). Supported images and videos are stored with **`data_provider`** = **`onedrive_media`**. It reuses the same **SecretStore** keys and **device-code** flow as Outlook (**`provider:access_token:microsoft_graph:<graphAccountKey>`** / **`provider:refresh_token:...`**). Seed adds the row **disabled** by default.
+The **OneDrive media** provider (`id` / `provider_type`: **`media_onedrive`**) keeps a **read-only local mirror** of folders on the signed-in user’s **personal OneDrive** (`/me/drive/...`). It uses Microsoft Graph **driveItem delta** (not shallow folder listing): each configured **`path`** is synced **recursively** (the entire subtree). The app only **GETs** metadata and file bytes from Graph—it **never** uploads or deletes anything in OneDrive. Items removed in OneDrive appear in the delta feed with a **`deleted`** facet and are **removed locally** ( **`photos`** / **`videos`** row and blob). Supported images and videos are stored with **`data_provider`** = **`media_onedrive`**. It reuses the same **SecretStore** keys and **device-code** flow as Outlook (**`provider:access_token:microsoft_graph:<graphAccountKey>`** / **`provider:refresh_token:...`**). Seed adds the row **disabled** by default.
 
 **`provider_settings.config_json`** (JSON):
 
@@ -422,9 +424,9 @@ The **OneDrive media** provider (`id` / `provider_type`: **`onedrive_media`**) k
 
 ## Flickr group photos
 
-The **Flickr media** provider (`id` / `provider_type`: **`flickr_media`**) pulls **public** photos from one or more Flickr groups using `flickr.groups.pools.getPhotos`, downloads image bytes, and stores rows in **`photos`** with **`data_provider`** = **`flickr_media`**.
+The **Flickr media** provider (`id` / `provider_type`: **`media_flickr`**) pulls **public** photos from one or more Flickr groups using `flickr.groups.pools.getPhotos`, downloads image bytes, and stores rows in **`photos`** with **`data_provider`** = **`media_flickr`**.
 
-The **Flickr** provider … **API key:** **`FLICKR_API_KEY`** / **`WADDLE_FLICKR_ACCESS_TOKEN`** (never in SQLite).
+The **Flickr** provider … **API key:** **`WADDLE_FLICKR_API_KEY`** (never in SQLite).
 
 **`provider_settings.config_json`** (JSON):
 
@@ -439,11 +441,11 @@ The **Flickr** provider … **API key:** **`FLICKR_API_KEY`** / **`WADDLE_FLICKR
 
 **`provider_settings.poll_seconds`:** default **3600** when seeded.
 
-**Debug `.env`:** **`FLICKR_API_KEY`** or **`WADDLE_FLICKR_ACCESS_TOKEN`** (see [`.env.example`](.env.example)).
+**Debug `.env`:** **`WADDLE_FLICKR_API_KEY`** (see [`.env.example`](.env.example)).
 
 ## Bing image of the day
 
-The **Bing image of the day** provider (`id` / `provider_type`: **`bing_iotd`**) calls Bing’s **`HPImageArchive.aspx`** (`format=js`, `idx=0`, `n=1`, `mkt` from config), then downloads the wallpaper at **`{baseUrl}{urlbase}_{resolution}.jpg`** (same URL pattern as [TimothyYe/bing-wallpaper](https://github.com/TimothyYe/bing-wallpaper)). Image bytes go to the blob store; **`photos`** rows use **`data_provider`** = **`bing_iotd`**. **No API key** or SecretStore entry.
+The **Bing image of the day** provider (`id` / `provider_type`: **`media_bing_iotd`**) calls Bing’s **`HPImageArchive.aspx`** (`format=js`, `idx=0`, `n=1`, `mkt` from config), then downloads the wallpaper at **`{baseUrl}{urlbase}_{resolution}.jpg`** (same URL pattern as [TimothyYe/bing-wallpaper](https://github.com/TimothyYe/bing-wallpaper)). Image bytes go to the blob store; **`photos`** rows use **`data_provider`** = **`media_bing_iotd`**. **No API key** or SecretStore entry.
 
 **`provider_settings.base_url`:** default **`https://www.bing.com`**.
 
@@ -466,5 +468,5 @@ After editing `packages/waddle_shared/lib/persistence/tables.dart` or `database.
 
 ```bash
 dart run build_runner build --delete-conflicting-outputs -C packages/waddle_shared
-dart test -C packages/waddle_shared
+flutter test -C packages/waddle_shared
 ```

@@ -4,7 +4,7 @@ import 'package:drift/drift.dart' show Expression, OrderingTerm, Value;
 
 import 'package:waddle_shared/curation/reject_filter_context.dart';
 
-import '../../../blob/blob_store.dart';
+import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import '../../../curator/screen_program_curator.dart';
 import 'package:waddle_shared/persistence/database.dart';

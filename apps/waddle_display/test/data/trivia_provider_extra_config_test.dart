@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_display/data/providers/trivia/trivia_provider_extra_config.dart';
+import 'package:waddle_data_providers/trivia_openai/trivia_provider_extra_config.dart';
 
 void main() {
   test('parse prefers maxQuestionPerDay and maxQuestionPerHour', () {

@@ -9,6 +9,7 @@ workspace:
   - apps/waddle_display
   - apps/waddlectl
   - packages/waddle_shared
+  - packages/waddle_data_providers
 
 dependency_overrides:
   xml: ^6.5.0

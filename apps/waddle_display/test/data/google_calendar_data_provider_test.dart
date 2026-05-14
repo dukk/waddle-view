@@ -4,11 +4,12 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_display/config/google_kv.dart';
+import 'package:waddle_shared/config/provider_access_token_env.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
-import 'package:waddle_display/data/data_write_context.dart';
-import 'package:waddle_display/data/providers/google_calendar/google_calendar_data_provider.dart';
-import 'package:waddle_display/data/providers/google_calendar/google_calendar_extra_config.dart';
-import 'package:waddle_display/data/providers/google_calendar/google_oauth.dart';
+import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_data_providers/calendar_google/google_calendar_data_provider.dart';
+import 'package:waddle_data_providers/calendar_google/google_calendar_extra_config.dart';
+import 'package:waddle_data_providers/calendar_google/google_oauth.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 
@@ -169,6 +170,7 @@ DataWriteContext _ctx(AppDatabase db, InMemorySecretStore secrets) {
     blobs: FakeBlobStore(),
     secrets: secrets,
     resolve: resolver.resolve,
+    env: const {waddleGoogleClientIdEnv: 'google-client-id'},
   );
 }
 
@@ -177,16 +179,10 @@ Future<void> _seedKvAndProvider(
   required String extraAccountsJson,
   int pollSeconds = 0,
 }) async {
-  await db.into(db.configKeyValues).insertOnConflictUpdate(
-        ConfigKeyValuesCompanion.insert(
-          key: kGoogleClientIdKvKey,
-          value: 'google-client-id',
-        ),
-      );
   await db.into(db.providerSettings).insertOnConflictUpdate(
         ProviderSettingsCompanion.insert(
           id: kGoogleCalendarProviderId,
-          providerType: 'google_calendar',
+          providerType: 'calendar_google',
           enabled: const Value(true),
           pollSeconds: Value(pollSeconds),
           baseUrl: const Value(kDefaultGoogleCalendarBaseUrl),

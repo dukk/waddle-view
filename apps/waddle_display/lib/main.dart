@@ -16,46 +16,35 @@ import 'alerts/drift_alert_repository.dart';
 import 'api/deployment_api_key_source.dart';
 import 'api/local_rest_server.dart';
 import 'api/network_addressing.dart';
-import 'blob/blob_store.dart';
-import 'blob/filesystem_blob_store.dart';
 import 'bootstrap/app_fatal_error_recovery.dart';
 import 'clock.dart';
 import 'config/dev_dotenv_secrets.dart';
 import 'config/display_timezone.dart';
+import 'package:waddle_shared/blob/blob_store.dart';
+import 'package:waddle_shared/blob/filesystem_blob_store.dart';
+import 'package:waddle_shared/collect/data_collection_engine.dart';
+import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_shared/collect/stub_data_provider.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/curation/reject_rescan.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
+import 'package:waddle_shared/secrets/flutter_secure_secret_store.dart';
+import 'package:waddle_shared/seed/initial_seed.dart';
+import 'package:waddle_data_providers/waddle_data_providers.dart';
 import 'curator/default_dashboard_curator.dart';
 import 'curator/drift_curator_read_port.dart';
 import 'curator/gated_dashboard_curator.dart';
 import 'debug/app_debug_log.dart';
+import 'debug/display_collect_diagnostics.dart';
 import 'debug/debug_console_disk_logger.dart';
 import 'display/dashboard_data_bound_shell.dart';
 import 'display/dashboard_viewport_scope.dart';
 import 'display/display_viewport.dart';
 import 'display/overlay/celebration_overlay_host.dart';
 import 'display/screen_rotator.dart';
-import 'data/data_write_context.dart';
-import 'data/engine/data_collection_engine.dart';
-import 'data/providers/google_calendar/google_calendar_data_provider.dart';
-import 'data/providers/bing_image_of_day/bing_image_of_day_data_provider.dart';
-import 'data/providers/flickr_media/flickr_media_data_provider.dart';
-import 'data/providers/joke/joke_data_provider.dart';
-import 'data/providers/onedrive_media/onedrive_media_data_provider.dart';
-import 'data/providers/outlook_calendar/outlook_calendar_data_provider.dart';
-import 'data/providers/pexels/pexels_data_provider.dart';
-import 'data/providers/rss_news/rss_news_data_provider.dart';
-import 'data/providers/stock_quote/stock_quote_data_provider.dart';
-import 'data/providers/trivia/trivia_data_provider.dart';
-import 'data/providers/nws_weather_gov/nws_weather_gov_alerts_data_provider.dart';
-import 'data/providers/opentdb_trivia/opentdb_trivia_data_provider.dart';
-import 'data/providers/weather/weather_data_provider.dart';
-import 'data/stub_data_provider.dart';
 import 'marquee_cycle_gate.dart';
 import 'persistence/flutter_query_executor.dart';
-import 'secrets/flutter_secure_secret_store.dart';
-import 'data/seed/initial_seed.dart';
 import 'sleeper.dart';
 import 'theme/display_theme.dart';
 import 'theme/tv_overscan.dart';
@@ -133,15 +122,17 @@ Future<void> _waddleBootstrap() async {
     AppDebugLog.startup('SQLite ready (seed applied if first run)');
 
     final secrets = FlutterSecureSecretStore();
-    await applyGoogleTokensFromDevDotenv(secrets);
-    await applyMicrosoftGraphTokensFromDevDotenv(secrets);
-    final resolver = ProviderConfigResolver(db, mergeBootstrapEnv());
+    final envMap = mergeBootstrapEnv();
+    final resolver = ProviderConfigResolver(db, envMap);
     final blobs = FileSystemBlobStore(mediaDir);
+    final collectDiag = defaultDisplayCollectDiagnostics();
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: blobs,
       secrets: secrets,
       resolve: resolver.resolve,
+      env: envMap,
+      diagnostics: collectDiag,
     );
     const clock = SystemClock();
     final tickerCurated = MemoryTickerCuratedRepository();
@@ -160,7 +151,7 @@ Future<void> _waddleBootstrap() async {
     );
     final engine = DataCollectionEngine(
       providers: [
-        StubDataProvider(),
+        const StubDataProvider(),
         RssNewsDataProvider(),
         JokeDataProvider(),
         TriviaDataProvider(),
@@ -181,6 +172,7 @@ Future<void> _waddleBootstrap() async {
           ? const Duration(seconds: 5)
           : const Duration(seconds: 30),
       onCycleComplete: dashboardCurator.refresh,
+      diagnostics: collectDiag,
     );
     unawaited(engine.start());
 

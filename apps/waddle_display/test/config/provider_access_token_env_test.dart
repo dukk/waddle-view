@@ -2,41 +2,30 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_shared/config/provider_access_token_env.dart';
 
 void main() {
-  test('waddleProviderAccessTokenEnvKey upper-snakes provider id', () {
-    expect(
-      waddleProviderAccessTokenEnvKey('opentdb_trivia'),
-      'WADDLE_PROVIDER_ACCESS_TOKEN_OPENTDB_TRIVIA',
-    );
-    expect(
-      waddleProviderAccessTokenEnvKey('bing-image-of-day'),
-      'WADDLE_PROVIDER_ACCESS_TOKEN_BING_IMAGE_OF_DAY',
-    );
-  });
-
   test('readJokesTokenFromEnvMap', () {
     expect(
       readJokesTokenFromEnvMap({
-        waddleJokesAccessTokenKey: '  a  ',
-        openAiApiKeyEnv: 'b',
+        waddleOpenAiApiKeyEnv: '  a  ',
       }),
       'a',
     );
-    expect(readJokesTokenFromEnvMap({openAiApiKeyEnv: 'x'}), 'x');
     expect(readJokesTokenFromEnvMap({}), isNull);
-    expect(readJokesTokenFromEnvMap({openAiApiKeyEnv: '  '}), isNull);
+    expect(
+      readJokesTokenFromEnvMap({waddleOpenAiApiKeyEnv: '  '}),
+      isNull,
+    );
   });
 
-  test('readTriviaTokenFromEnvMap', () {
+  test('readTriviaTokenFromEnvMap matches jokes resolution', () {
     expect(
-      readTriviaTokenFromEnvMap({waddleTriviaAccessTokenKey: 't'}),
+      readTriviaTokenFromEnvMap({waddleOpenAiApiKeyEnv: 't'}),
       't',
     );
-    expect(readTriviaTokenFromEnvMap({openAiApiKeyEnv: 'j'}), 'j');
   });
 
   test('readWeatherTokenFromEnvMap', () {
     expect(
-      readWeatherTokenFromEnvMap({openWeatherMapApiKeyEnv: 'w'}),
+      readWeatherTokenFromEnvMap({waddleOpenWeatherMapApiKeyEnv: 'w'}),
       'w',
     );
     expect(readWeatherTokenFromEnvMap({}), isNull);
@@ -44,138 +33,125 @@ void main() {
 
   test('readPexelsTokenFromEnvMap', () {
     expect(
-      readPexelsTokenFromEnvMap({waddlePexelsAccessTokenKey: 'p'}),
+      readPexelsTokenFromEnvMap({waddlePexelsApiKeyEnv: 'p'}),
       'p',
     );
-    expect(readPexelsTokenFromEnvMap({pexelsApiKeyEnv: 'q'}), 'q');
+    expect(readPexelsTokenFromEnvMap({}), isNull);
   });
 
   test('readFlickrTokenFromEnvMap', () {
     expect(
-      readFlickrTokenFromEnvMap({waddleFlickrAccessTokenKey: 'f'}),
+      readFlickrTokenFromEnvMap({waddleFlickrApiKeyEnv: 'f'}),
       'f',
     );
-    expect(readFlickrTokenFromEnvMap({flickrApiKeyEnv: 'g'}), 'g');
+    expect(readFlickrTokenFromEnvMap({}), isNull);
   });
 
   test('readStocksTokenFromEnvMap', () {
     expect(
-      readStocksTokenFromEnvMap({waddleStocksAccessTokenKey: 's'}),
+      readStocksTokenFromEnvMap({waddleFinhubApiKeyEnv: 's'}),
       's',
     );
-    expect(readStocksTokenFromEnvMap({finnhubApiKeyEnv: 't'}), 't');
+    expect(readStocksTokenFromEnvMap({}), isNull);
   });
 
-  test('resolveProviderAccessTokenFromEnv switch and default', () {
+  test('resolveProviderAccessTokenFromEnv known providers and null otherwise', () {
     expect(
       resolveProviderAccessTokenFromEnv('jokes', {
-        openAiApiKeyEnv: 'jk',
+        waddleOpenAiApiKeyEnv: 'jk',
       }),
       'jk',
     );
     expect(
       resolveProviderAccessTokenFromEnv('trivia', {
-        waddleTriviaAccessTokenKey: 'tk',
+        waddleOpenAiApiKeyEnv: 'tk',
       }),
       'tk',
     );
     expect(
       resolveProviderAccessTokenFromEnv('opentdb_trivia', {
-        openAiApiKeyEnv: 'ok',
+        waddleOpenAiApiKeyEnv: 'ok',
       }),
       'ok',
     );
     expect(
       resolveProviderAccessTokenFromEnv('weather', {
-        openWeatherMapApiKeyEnv: 'wk',
+        waddleOpenWeatherMapApiKeyEnv: 'wk',
       }),
       'wk',
     );
     expect(
-      resolveProviderAccessTokenFromEnv('pexels', {pexelsApiKeyEnv: 'pk'}),
+      resolveProviderAccessTokenFromEnv('pexels', {waddlePexelsApiKeyEnv: 'pk'}),
       'pk',
     );
     expect(
       resolveProviderAccessTokenFromEnv('flickr_media', {
-        flickrApiKeyEnv: 'fk',
+        waddleFlickrApiKeyEnv: 'fk',
       }),
       'fk',
     );
     expect(
-      resolveProviderAccessTokenFromEnv('stocks', {finnhubApiKeyEnv: 'sk'}),
+      resolveProviderAccessTokenFromEnv('stocks', {waddleFinhubApiKeyEnv: 'sk'}),
       'sk',
     );
+    expect(resolveProviderAccessTokenFromEnv('media_bing_iotd', {}), isNull);
     expect(
-      resolveProviderAccessTokenFromEnv('bing_image_of_day', {
-        'WADDLE_PROVIDER_ACCESS_TOKEN_BING_IMAGE_OF_DAY': 'bk',
+      resolveProviderAccessTokenFromEnv('weather_nws_alerts', {
+        waddleOpenWeatherMapApiKeyEnv: 'ignored',
       }),
-      'bk',
+      isNull,
     );
-    expect(resolveProviderAccessTokenFromEnv('bing_image_of_day', {}), isNull);
+    expect(
+      resolveProviderAccessTokenFromEnv('unknown_provider', {
+        waddleOpenAiApiKeyEnv: 'x',
+      }),
+      isNull,
+    );
   });
 
   test('readJokesTokenFromEnvMap ignores blank explicit', () {
     expect(
       readJokesTokenFromEnvMap({
-        waddleJokesAccessTokenKey: '   ',
-        openAiApiKeyEnv: 'ok',
+        waddleOpenAiApiKeyEnv: '   ',
       }),
-      'ok',
+      isNull,
     );
   });
 
-  test('readTriviaTokenFromEnvMap ignores blank explicit trivia key', () {
+  test('readTriviaTokenFromEnvMap ignores blank waddle OpenAI key', () {
     expect(
       readTriviaTokenFromEnvMap({
-        waddleTriviaAccessTokenKey: ' ',
-        openAiApiKeyEnv: 'x',
+        waddleOpenAiApiKeyEnv: ' ',
       }),
-      'x',
+      isNull,
     );
   });
 
   test('readPexelsTokenFromEnvMap ignores blank waddle key', () {
     expect(
       readPexelsTokenFromEnvMap({
-        waddlePexelsAccessTokenKey: ' ',
-        pexelsApiKeyEnv: 'p',
+        waddlePexelsApiKeyEnv: ' ',
       }),
-      'p',
+      isNull,
     );
   });
 
   test('readFlickrTokenFromEnvMap ignores blank waddle key', () {
     expect(
       readFlickrTokenFromEnvMap({
-        waddleFlickrAccessTokenKey: '\t',
-        flickrApiKeyEnv: 'f',
+        waddleFlickrApiKeyEnv: '\t',
       }),
-      'f',
+      isNull,
     );
   });
 
   test('readStocksTokenFromEnvMap ignores blank waddle key', () {
     expect(
       readStocksTokenFromEnvMap({
-        waddleStocksAccessTokenKey: '',
-        finnhubApiKeyEnv: 's',
-      }),
-      's',
-    );
-  });
-
-  test('resolveProviderAccessTokenFromEnv default trims generic key', () {
-    expect(
-      resolveProviderAccessTokenFromEnv('nws_weather_alerts', {
-        'WADDLE_PROVIDER_ACCESS_TOKEN_NWS_WEATHER_ALERTS': '  ua  ',
-      }),
-      'ua',
-    );
-    expect(
-      resolveProviderAccessTokenFromEnv('nws_weather_alerts', {
-        'WADDLE_PROVIDER_ACCESS_TOKEN_NWS_WEATHER_ALERTS': ' ',
+        waddleFinhubApiKeyEnv: '',
       }),
       isNull,
     );
   });
+
 }

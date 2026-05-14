@@ -67,6 +67,9 @@ void main() {
     final b = a.copyWith(primary: const Color(0xFFAAAAAA));
     expect(b.primary, const Color(0xFFAAAAAA));
     expect(b.iconColor, a.iconColor);
+    final c = a.copyWith();
+    expect(c.primary, a.primary);
+    expect(c.iconColor, a.iconColor);
   });
 
   test('lerp returns this for wrong extension type', () {

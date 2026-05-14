@@ -45,8 +45,8 @@ final ProviderConfigJsonDoc kGenericProviderConfigJsonDoc =
 /// Documentation keyed by [ProviderSettings.providerType] (seeded + built-in).
 final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
   'stub': kGenericProviderConfigJsonDoc,
-  'rss': kGenericProviderConfigJsonDoc,
-  'pexels': ProviderConfigJsonDoc(
+  'news_rss': kGenericProviderConfigJsonDoc,
+  'media_pexels': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'PexelsProviderConfig',
@@ -86,7 +86,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       ],
     }),
   ),
-  'weather': ProviderConfigJsonDoc(
+  'weather_openweathermap': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'WeatherProviderConfig',
@@ -116,7 +116,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       'defaultLocation': {'name': 'Default', 'lat': 40.7128, 'lon': -74.006},
     }),
   ),
-  'nws_weather_alerts': ProviderConfigJsonDoc(
+  'weather_nws_alerts': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'NwsWeatherGovAlertsConfig',
@@ -143,7 +143,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       'defaultLocation': {'name': 'Default', 'lat': 40.7128, 'lon': -74.006},
     }),
   ),
-  'jokes': ProviderConfigJsonDoc(
+  'joke_openai': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'JokeProviderConfig',
@@ -170,7 +170,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       'globalPrompt': 'You write original, family-friendly jokes.',
     }),
   ),
-  'trivia': ProviderConfigJsonDoc(
+  'trivia_openai': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'TriviaProviderConfig',
@@ -211,7 +211,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       'model': 'gpt-4o-mini',
     }),
   ),
-  'opentdb_trivia': ProviderConfigJsonDoc(
+  'trivia_opentdb': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'OpenTdbTriviaProviderConfig',
@@ -248,7 +248,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       'maxOptionChars': 45,
     }),
   ),
-  'stocks': ProviderConfigJsonDoc(
+  'stock_finnhub': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'StockQuoteProviderConfig',
@@ -280,7 +280,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       ],
     }),
   ),
-  'outlook_calendar': ProviderConfigJsonDoc(
+  'calendar_outlook': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'OutlookCalendarProviderConfig',
@@ -353,7 +353,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       'futureDays': 14,
     }),
   ),
-  'google_calendar': ProviderConfigJsonDoc(
+  'calendar_google': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'GoogleCalendarProviderConfig',
@@ -419,7 +419,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       'futureDays': 14,
     }),
   ),
-  'onedrive_media': ProviderConfigJsonDoc(
+  'media_onedrive': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'OneDriveMediaProviderConfig',
@@ -487,12 +487,12 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       ],
     }),
   ),
-  'flickr_media': ProviderConfigJsonDoc(
+  'media_flickr': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'FlickrMediaProviderConfig',
         description:
-            'Public Flickr group photo sync. API key comes from environment variables (see FLICKR_API_KEY / WADDLE_FLICKR_ACCESS_TOKEN).',
+            'Public Flickr group photo sync. API key comes from environment variable WADDLE_FLICKR_API_KEY.',
         properties: {
           'groupIds': {
             'type': 'array',
@@ -511,7 +511,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       'sort': 'date-posted-desc',
     }),
   ),
-  'bing_iotd': ProviderConfigJsonDoc(
+  'media_bing_iotd': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'BingImageOfDayProviderConfig',

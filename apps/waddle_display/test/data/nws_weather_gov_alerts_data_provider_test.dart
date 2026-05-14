@@ -4,8 +4,8 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/config/provider_config_resolver.dart';
-import 'package:waddle_display/data/data_write_context.dart';
-import 'package:waddle_display/data/providers/nws_weather_gov/nws_weather_gov_alerts_data_provider.dart';
+import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_data_providers/weather_nws_alerts/nws_weather_gov_alerts_data_provider.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 
@@ -76,7 +76,7 @@ void main() {
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
             id: kNwsWeatherAlertsProviderId,
-            providerType: 'nws_weather_alerts',
+            providerType: 'weather_nws_alerts',
             enabled: const Value(false),
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.weather.gov'),
@@ -136,7 +136,7 @@ void main() {
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
             id: kNwsWeatherAlertsProviderId,
-            providerType: 'nws_weather_alerts',
+            providerType: 'weather_nws_alerts',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.weather.gov'),
             configJson: const Value(
@@ -186,7 +186,7 @@ void main() {
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
             id: kNwsWeatherAlertsProviderId,
-            providerType: 'nws_weather_alerts',
+            providerType: 'weather_nws_alerts',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.weather.gov'),
             configJson: const Value('{}'),
@@ -237,7 +237,7 @@ void main() {
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
             id: kNwsWeatherAlertsProviderId,
-            providerType: 'nws_weather_alerts',
+            providerType: 'weather_nws_alerts',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.weather.gov'),
             configJson: const Value('{}'),
@@ -279,7 +279,7 @@ void main() {
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
             id: kNwsWeatherAlertsProviderId,
-            providerType: 'nws_weather_alerts',
+            providerType: 'weather_nws_alerts',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.weather.gov'),
             configJson: const Value('{}'),
@@ -324,7 +324,7 @@ void main() {
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
             id: kNwsWeatherAlertsProviderId,
-            providerType: 'nws_weather_alerts',
+            providerType: 'weather_nws_alerts',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.weather.gov'),
             configJson: const Value('{}'),
@@ -356,7 +356,7 @@ void main() {
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
             id: kNwsWeatherAlertsProviderId,
-            providerType: 'nws_weather_alerts',
+            providerType: 'weather_nws_alerts',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.weather.gov'),
             configJson: const Value('{}'),
@@ -400,7 +400,7 @@ void main() {
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
             id: kNwsWeatherAlertsProviderId,
-            providerType: 'nws_weather_alerts',
+            providerType: 'weather_nws_alerts',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.weather.gov'),
             configJson: const Value('{}'),
@@ -445,7 +445,7 @@ void main() {
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
             id: kNwsWeatherAlertsProviderId,
-            providerType: 'nws_weather_alerts',
+            providerType: 'weather_nws_alerts',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.weather.gov'),
             configJson: const Value('{}'),

@@ -388,17 +388,17 @@ class WeatherGovActiveAlerts extends Table {
   Set<Column<Object>> get primaryKey => {locationId, nwsAlertId};
 }
 
-/// Matches [ProviderSettings.id] for media sourced from that provider (e.g. `pexels`).
-const String kMediaDataProviderPexels = 'pexels';
+/// Matches [ProviderSettings.id] for media sourced from that provider.
+const String kMediaDataProviderPexels = 'media_pexels';
 
 /// Microsoft Graph OneDrive sync into [Photos] / [Videos].
-const String kMediaDataProviderOneDrive = 'onedrive_media';
+const String kMediaDataProviderOneDrive = 'media_onedrive';
 
 /// Flickr group photo sync into [Photos].
-const String kMediaDataProviderFlickr = 'flickr_media';
+const String kMediaDataProviderFlickr = 'media_flickr';
 
 /// Bing homepage image of the day into [Photos].
-const String kMediaDataProviderBing = 'bing_iotd';
+const String kMediaDataProviderBing = 'media_bing_iotd';
 
 @TableIndex(name: 'idx_photos_fetched', columns: {#fetchedAtMs})
 @TableIndex(name: 'idx_photos_category', columns: {#category})

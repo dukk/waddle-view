@@ -1,25 +1,35 @@
+import 'dart:io';
+
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_display/config/dev_dotenv_secrets.dart';
-import 'package:waddle_display/config/google_kv.dart';
-import 'package:waddle_display/config/microsoft_graph_kv.dart';
-import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 
 void main() {
-  test('readJokesTokenFromEnvMap prefers WADDLE_JOKES_ACCESS_TOKEN', () {
-    expect(
-      readJokesTokenFromEnvMap({
-        waddleJokesAccessTokenKey: '  sk-waddle  ',
-        openAiApiKeyEnv: 'sk-openai',
-      }),
-      'sk-waddle',
-    );
+  test('mergeBootstrapEnv starts from Platform.environment', () {
+    dotenv.clean();
+    final merged = mergeBootstrapEnv();
+    expect(merged.length, greaterThanOrEqualTo(Platform.environment.length));
+    for (final e in Platform.environment.entries) {
+      expect(merged[e.key], e.value);
+    }
   });
 
-  test('readJokesTokenFromEnvMap falls back to OPENAI_API_KEY', () {
+  test('mergeBootstrapEnv lets dotenv override duplicate keys', () {
+    dotenv.clean();
+    dotenv.loadFromString(
+      envString: 'WADDLE_MERGE_TEST_KEY=from_dotenv',
+      isOptional: true,
+    );
+    final merged = mergeBootstrapEnv();
+    expect(merged['WADDLE_MERGE_TEST_KEY'], 'from_dotenv');
+  });
+
+  test('readJokesTokenFromEnvMap reads WADDLE_OPENAI_API_KEY', () {
     expect(
-      readJokesTokenFromEnvMap({openAiApiKeyEnv: 'sk-fallback'}),
-      'sk-fallback',
+      readJokesTokenFromEnvMap({
+        waddleOpenAiApiKeyEnv: '  sk-waddle  ',
+      }),
+      'sk-waddle',
     );
   });
 
@@ -27,80 +37,52 @@ void main() {
     expect(readJokesTokenFromEnvMap({}), isNull);
     expect(
       readJokesTokenFromEnvMap({
-        waddleJokesAccessTokenKey: '  ',
-        openAiApiKeyEnv: '',
+        waddleOpenAiApiKeyEnv: '  ',
       }),
       isNull,
     );
   });
 
-  test('readTriviaTokenFromEnvMap prefers WADDLE_TRIVIA_ACCESS_TOKEN', () {
+  test('readTriviaTokenFromEnvMap uses same keys as jokes', () {
     expect(
       readTriviaTokenFromEnvMap({
-        waddleTriviaAccessTokenKey: ' sk-trivia ',
-        waddleJokesAccessTokenKey: 'sk-jokes',
+        waddleOpenAiApiKeyEnv: ' sk-shared ',
       }),
-      'sk-trivia',
+      'sk-shared',
     );
   });
 
-  test('readWeatherTokenFromEnvMap reads OPEN_WEATHER_MAP_API_KEY', () {
+  test('readWeatherTokenFromEnvMap reads WADDLE_OPEN_WEATHER_MAP_API_KEY', () {
     expect(
       readWeatherTokenFromEnvMap({
-        openWeatherMapApiKeyEnv: ' owm-token ',
+        waddleOpenWeatherMapApiKeyEnv: ' owm-token ',
       }),
       'owm-token',
     );
   });
 
-  test('readPexelsTokenFromEnvMap prefers WADDLE_PEXELS_ACCESS_TOKEN', () {
+  test('readPexelsTokenFromEnvMap reads WADDLE_PEXELS_API_KEY', () {
     expect(
       readPexelsTokenFromEnvMap({
-        waddlePexelsAccessTokenKey: ' pex-a ',
-        pexelsApiKeyEnv: 'pex-b',
+        waddlePexelsApiKeyEnv: ' pex-a ',
       }),
       'pex-a',
     );
   });
 
-  test('readPexelsTokenFromEnvMap falls back to PEXELS_API_KEY', () {
-    expect(
-      readPexelsTokenFromEnvMap({pexelsApiKeyEnv: ' pex-only '}),
-      'pex-only',
-    );
-  });
-
-  test('readFlickrTokenFromEnvMap prefers WADDLE_FLICKR_ACCESS_TOKEN', () {
+  test('readFlickrTokenFromEnvMap reads WADDLE_FLICKR_API_KEY', () {
     expect(
       readFlickrTokenFromEnvMap({
-        waddleFlickrAccessTokenKey: ' fl-a ',
-        flickrApiKeyEnv: 'fl-b',
+        waddleFlickrApiKeyEnv: ' fl-a ',
       }),
       'fl-a',
     );
   });
 
-  test('readFlickrTokenFromEnvMap falls back to FLICKR_API_KEY', () {
+  test('readStocksTokenFromEnvMap reads WADDLE_FINHUB_API_KEY', () {
     expect(
-      readFlickrTokenFromEnvMap({flickrApiKeyEnv: ' fl-only '}),
-      'fl-only',
-    );
-  });
-
-  test('readStocksTokenFromEnvMap reads FINNHUB_API_KEY', () {
-    expect(
-      readStocksTokenFromEnvMap({finnhubApiKeyEnv: ' fhub-token '}),
+      readStocksTokenFromEnvMap({waddleFinhubApiKeyEnv: ' fhub-token '}),
       'fhub-token',
-    );
-  });
-
-  test('readStocksTokenFromEnvMap prefers WADDLE_STOCKS_ACCESS_TOKEN', () {
-    expect(
-      readStocksTokenFromEnvMap({
-        waddleStocksAccessTokenKey: ' waddle-stocks ',
-        finnhubApiKeyEnv: 'fhub',
-      }),
-      'waddle-stocks',
     );
   });
 
@@ -108,38 +90,28 @@ void main() {
     expect(readStocksTokenFromEnvMap({}), isNull);
     expect(
       readStocksTokenFromEnvMap({
-        waddleStocksAccessTokenKey: '   ',
-        finnhubApiKeyEnv: '',
+        waddleFinhubApiKeyEnv: '   ',
       }),
       isNull,
     );
   });
 
-  test('applyMicrosoftGraphTokensFromDevDotenv writes access and refresh', () async {
-    dotenv.clean();
-    dotenv.loadFromString(
-      envString:
-          '${waddleMsGraphAccessTokenPrefix}work=acc123\n'
-          '${waddleMsGraphRefreshTokenPrefix}work=ref456',
-      isOptional: true,
-    );
-    final secrets = InMemorySecretStore();
-    await applyMicrosoftGraphTokensFromDevDotenv(secrets);
-    expect(await secrets.read(microsoftGraphAccessTokenSecret('work')), 'acc123');
-    expect(await secrets.read(microsoftGraphRefreshTokenSecret('work')), 'ref456');
-  });
-
-  test('applyGoogleTokensFromDevDotenv writes access and refresh', () async {
-    dotenv.clean();
-    dotenv.loadFromString(
-      envString:
-          '${waddleGoogleAccessTokenPrefix}home=acc123\n'
-          '${waddleGoogleRefreshTokenPrefix}home=ref456',
-      isOptional: true,
-    );
-    final secrets = InMemorySecretStore();
-    await applyGoogleTokensFromDevDotenv(secrets);
-    expect(await secrets.read(googleAccessTokenSecret('home')), 'acc123');
-    expect(await secrets.read(googleRefreshTokenSecret('home')), 'ref456');
-  });
+  test(
+    'loadDevDotenvFromFilesystem initializes empty dotenv when no candidate files exist',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('waddle_dotenv_');
+      final prev = Directory.current;
+      try {
+        Directory.current = tmp;
+        dotenv.clean();
+        await loadDevDotenvFromFilesystem();
+        expect(dotenv.isInitialized, isTrue);
+        final merged = mergeBootstrapEnv();
+        expect(merged.length, greaterThanOrEqualTo(Platform.environment.length));
+      } finally {
+        Directory.current = prev;
+        await tmp.delete(recursive: true);
+      }
+    },
+  );
 }

@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../blob/blob_store.dart';
+import 'package:waddle_shared/blob/blob_store.dart';
 import '../debug/app_debug_log.dart';
 import '../curator/curator_content_pools.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';

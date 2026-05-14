@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import '../../../blob/blob_store.dart';
+import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:timezone/timezone.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'calendar_month_grid.dart';

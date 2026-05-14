@@ -5,10 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:waddle_shared/config/provider_config_resolver.dart';
-import 'package:waddle_display/data/data_write_context.dart';
-import 'package:waddle_display/data/providers/rss_news/rss_news_data_provider.dart';
-import 'package:waddle_display/data/providers/joke/joke_data_provider.dart';
-import 'package:waddle_display/data/providers/trivia/trivia_data_provider.dart';
+import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_data_providers/news_rss/rss_news_data_provider.dart';
+import 'package:waddle_data_providers/joke_openai/joke_data_provider.dart';
+import 'package:waddle_data_providers/trivia_openai/trivia_data_provider.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/reject_term_repository.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
@@ -79,8 +79,8 @@ void main() {
 
     await db.into(db.providerSettings).insert(
       ProviderSettingsCompanion.insert(
-        id: 'rss',
-        providerType: 'rss',
+        id: 'news_rss',
+        providerType: 'news_rss',
         pollSeconds: const Value(1),
       ),
     );
@@ -121,8 +121,8 @@ void main() {
 
       await db.into(db.providerSettings).insert(
         ProviderSettingsCompanion.insert(
-          id: 'rss',
-          providerType: 'rss',
+          id: 'news_rss',
+          providerType: 'news_rss',
           pollSeconds: const Value(1),
         ),
       );
@@ -149,11 +149,11 @@ void main() {
 
   test('JokeDataProvider class is plain Dart constructor (smoke)', () {
     final p = JokeDataProvider();
-    expect(p.id, 'jokes');
+    expect(p.id, 'joke_openai');
   });
 
   test('TriviaDataProvider class is plain Dart constructor (smoke)', () {
     final p = TriviaDataProvider();
-    expect(p.id, 'trivia');
+    expect(p.id, 'trivia_openai');
   });
 }

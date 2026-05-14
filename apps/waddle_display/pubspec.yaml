@@ -20,6 +20,8 @@ dependencies:
     sdk: flutter
   waddle_shared:
     path: ../../packages/waddle_shared
+  waddle_data_providers:
+    path: ../../packages/waddle_data_providers
   meta: ^1.17.0
   cupertino_icons: ^1.0.8
   drift: ^2.33.0
@@ -27,11 +29,9 @@ dependencies:
   sqlite3: ^3.3.1
   path: ^1.9.1
   path_provider: ^2.1.5
-  flutter_secure_storage: ^10.1.0
   shelf: ^1.4.2
   shelf_router: ^1.1.4
   qr_flutter: ^4.1.0
-  crypto: ^3.0.6
   window_manager: ^0.5.1
   http: ^1.2.2
   webfeed: ^0.7.0

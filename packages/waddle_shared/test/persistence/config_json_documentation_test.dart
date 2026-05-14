@@ -74,19 +74,19 @@ void main() {
   test('seeded provider types have explicit meta entries', () {
     const seededTypes = [
       'stub',
-      'rss',
-      'jokes',
-      'trivia',
-      'opentdb_trivia',
-      'weather',
-      'nws_weather_alerts',
-      'pexels',
-      'stocks',
-      'google_calendar',
-      'outlook_calendar',
-      'onedrive_media',
-      'flickr_media',
-      'bing_iotd',
+      'news_rss',
+      'joke_openai',
+      'trivia_openai',
+      'trivia_opentdb',
+      'weather_openweathermap',
+      'weather_nws_alerts',
+      'media_pexels',
+      'stock_finnhub',
+      'calendar_google',
+      'calendar_outlook',
+      'media_onedrive',
+      'media_flickr',
+      'media_bing_iotd',
     ];
     for (final t in seededTypes) {
       expect(kProviderConfigJsonMeta.containsKey(t), isTrue);

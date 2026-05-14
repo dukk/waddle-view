@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_display/data/providers/trivia/trivia_id.dart';
+import 'package:waddle_data_providers/trivia_openai/trivia_id.dart';
 
 void main() {
   test('multiple_choice id matches legacy null option payload', () {

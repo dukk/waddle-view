@@ -8,6 +8,7 @@ on:
       - 'apps/waddle_display/**'
       - 'apps/waddlectl/**'
       - 'packages/waddle_shared/**'
+      - 'packages/waddle_data_providers/**'
       - 'pubspec.yaml'
       - 'deploy/**'
       - 'docs/pi/**'
@@ -59,8 +60,10 @@ jobs:
         working-directory: ${{ github.workspace }}
       - run: dart run build_runner build --delete-conflicting-outputs
         working-directory: ${{ github.workspace }}/packages/waddle_shared
-      - run: dart test
+      - run: flutter test
         working-directory: ${{ github.workspace }}/packages/waddle_shared
+      - run: dart test
+        working-directory: ${{ github.workspace }}/packages/waddle_data_providers
       - run: flutter analyze
       - run: flutter test --coverage --timeout=60s
       - name: Line coverage (lib/)

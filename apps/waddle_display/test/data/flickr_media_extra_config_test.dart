@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_display/data/providers/flickr_media/flickr_media_extra_config.dart';
+import 'package:waddle_data_providers/media_flickr/flickr_media_extra_config.dart';
 
 void main() {
   test('defaults for null config', () {

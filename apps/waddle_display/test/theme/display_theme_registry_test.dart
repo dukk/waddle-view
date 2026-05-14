@@ -27,4 +27,10 @@ void main() {
       expect(t.colorScheme.brightness, Brightness.dark);
     }
   });
+
+  test('themeDataForNormalizedDisplayThemeId falls back to default when id unknown', () {
+    final unknown = themeDataForNormalizedDisplayThemeId('__no_such_theme__');
+    final navy = themeDataForNormalizedDisplayThemeId(kDisplayThemeNavyCoral);
+    expect(unknown.colorScheme.primary, navy.colorScheme.primary);
+  });
 }

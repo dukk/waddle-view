@@ -5,8 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/config/provider_access_token_env.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
-import 'package:waddle_display/data/data_write_context.dart';
-import 'package:waddle_display/data/providers/flickr_media/flickr_media_data_provider.dart';
+import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_data_providers/media_flickr/flickr_media_data_provider.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
@@ -145,7 +145,7 @@ void main() {
 DataWriteContext _ctx(
   AppDatabase db,
   InMemorySecretStore secrets, {
-  Map<String, String> env = const {flickrApiKeyEnv: 'k'},
+  Map<String, String> env = const {waddleFlickrApiKeyEnv: 'k'},
 }) {
   final resolver = ProviderConfigResolver(db, env);
   return DataWriteContextImpl(
@@ -166,7 +166,7 @@ Future<void> _seedProvider(
   await db.into(db.providerSettings).insertOnConflictUpdate(
         ProviderSettingsCompanion.insert(
           id: kFlickrMediaProviderId,
-          providerType: 'flickr_media',
+          providerType: 'media_flickr',
           enabled: Value(enabled),
           pollSeconds: Value(pollSeconds),
           baseUrl: const Value('https://api.flickr.com/services/rest'),

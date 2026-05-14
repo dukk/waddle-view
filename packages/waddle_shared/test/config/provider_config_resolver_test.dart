@@ -13,14 +13,14 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'p1',
-            providerType: 't',
+            id: 'weather_openweathermap',
+            providerType: 'weather_openweathermap',
             baseUrl: const Value('https://example.com'),
           ),
         );
-    final env = {waddleProviderAccessTokenEnvKey('p1'): 'tok'};
+    final env = {waddleOpenWeatherMapApiKeyEnv: 'tok'};
     final resolver = ProviderConfigResolver(db, env);
-    final cfg = await resolver.resolve('p1');
+    final cfg = await resolver.resolve('weather_openweathermap');
     expect(cfg.accessToken, 'tok');
     expect(cfg.baseUrl, 'https://example.com');
     expect(cfg.describeForLogs(), contains('<redacted>'));

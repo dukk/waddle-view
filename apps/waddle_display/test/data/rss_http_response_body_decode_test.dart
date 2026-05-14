@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 
-import 'package:waddle_display/data/providers/rss_news/rss_http_response_body_decode.dart';
+import 'package:waddle_data_providers/news_rss/rss_http_response_body_decode.dart';
 
 void main() {
   test('decodeRssHttpResponseBody uses UTF-8 when charset is omitted (rss+xml)',

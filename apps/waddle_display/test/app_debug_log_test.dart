@@ -17,5 +17,6 @@ void main() {
     AppDebugLog.providerFail('ctx', StateError('z'), StackTrace.current);
     expect(AppDebugLog.safeHttpUri(Uri.parse('https://x.example/a?q=secret')),
         'https://x.example/a');
+    expect(AppDebugLog.safeHttpUri(Uri(path: 'relative/no/host')), 'relative/no/host');
   });
 }

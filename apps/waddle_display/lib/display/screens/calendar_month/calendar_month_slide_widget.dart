@@ -4,7 +4,7 @@ import 'dart:math' as math;
 import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 
-import '../../../blob/blob_store.dart';
+import 'package:waddle_shared/blob/blob_store.dart';
 import '../../../clock.dart';
 import '../../../config/display_timezone.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';

@@ -5,9 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/config/provider_access_token_env.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
-import 'package:waddle_display/data/data_write_context.dart';
-import 'package:waddle_display/data/providers/joke/joke_data_provider.dart';
-import 'package:waddle_display/data/providers/joke/joke_id.dart';
+import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_data_providers/joke_openai/joke_data_provider.dart';
+import 'package:waddle_data_providers/joke_openai/joke_id.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 
@@ -44,8 +44,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'jokes',
-            providerType: 'jokes',
+            id: 'joke_openai',
+            providerType: 'joke_openai',
             pollSeconds: const Value(1),
             configJson: const Value('{"jokesPerDay":2}'),
             baseUrl: const Value('http://api.local/v1'),
@@ -65,7 +65,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
+    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -115,8 +115,8 @@ void main() {
 
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'jokes',
-            providerType: 'jokes',
+            id: 'joke_openai',
+            providerType: 'joke_openai',
             pollSeconds: const Value(1),
             configJson: const Value(
               '{"jokesPerDay":5,"jokeRetentionDays":14}',
@@ -155,7 +155,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
+    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -179,8 +179,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'jokes',
-            providerType: 'jokes',
+            id: 'joke_openai',
+            providerType: 'joke_openai',
             pollSeconds: const Value(1),
             configJson: const Value(
               '{"jokesPerDay":2,"maxJokesPerTwoHours":10}',
@@ -207,7 +207,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
+    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -244,8 +244,8 @@ void main() {
     final t = DateTime(2026, 3, 15, 12);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'jokes',
-            providerType: 'jokes',
+            id: 'joke_openai',
+            providerType: 'joke_openai',
             pollSeconds: const Value(1),
             configJson: const Value('{"jokesPerDay":50}'),
           ),
@@ -269,7 +269,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
+    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -290,8 +290,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'jokes',
-            providerType: 'jokes',
+            id: 'joke_openai',
+            providerType: 'joke_openai',
             pollSeconds: const Value(1),
             configJson: const Value(
               '{"jokesPerDay":50,"maxJokesPerTwoHours":5}',
@@ -311,7 +311,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
+    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -335,8 +335,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'jokes',
-            providerType: 'jokes',
+            id: 'joke_openai',
+            providerType: 'joke_openai',
             pollSeconds: const Value(1),
             configJson: const Value('{"jokesPerDay":5}'),
           ),
@@ -354,7 +354,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
+    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -377,8 +377,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'jokes',
-            providerType: 'jokes',
+            id: 'joke_openai',
+            providerType: 'joke_openai',
             pollSeconds: const Value(1),
           ),
         );
@@ -408,8 +408,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'jokes',
-            providerType: 'jokes',
+            id: 'joke_openai',
+            providerType: 'joke_openai',
             pollSeconds: const Value(1),
             configJson: const Value('{"jokesPerDay":1}'),
           ),
@@ -419,7 +419,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
+    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -457,8 +457,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insert(
           ProviderSettingsCompanion.insert(
-            id: 'jokes',
-            providerType: 'jokes',
+            id: 'joke_openai',
+            providerType: 'joke_openai',
             pollSeconds: const Value(1),
             configJson: const Value('{"jokesPerDay":5}'),
             baseUrl: const Value('http://api.local/v1'),
@@ -469,7 +469,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {openAiApiKeyEnv: 't'});
+    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),

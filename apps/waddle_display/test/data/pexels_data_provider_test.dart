@@ -6,12 +6,13 @@ import 'package:http/http.dart' as http;
 import 'package:waddle_shared/config/provider_access_token_env.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/config/provider_runtime_config.dart';
-import 'package:waddle_display/data/data_write_context.dart';
-import 'package:waddle_display/data/providers/pexels/pexels_data_provider.dart';
+import 'package:waddle_shared/collect/collect_diagnostics.dart';
+import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_data_providers/media_pexels/pexels_data_provider.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';
-import 'package:waddle_display/blob/blob_store.dart';
+import 'package:waddle_shared/blob/blob_store.dart';
 
 import '../helpers/fake_blob_store.dart';
 import '../helpers/memory_database.dart';
@@ -148,8 +149,8 @@ Future<void> _ensurePexelsProvider(
 }) async {
   await db.into(db.providerSettings).insertOnConflictUpdate(
         ProviderSettingsCompanion.insert(
-          id: 'pexels',
-          providerType: 'pexels',
+          id: 'media_pexels',
+          providerType: 'media_pexels',
           pollSeconds: Value(pollSeconds),
           baseUrl: const Value('http://api.pexels.test'),
           configJson: Value(extra),
@@ -163,8 +164,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insertOnConflictUpdate(
           ProviderSettingsCompanion.insert(
-            id: 'pexels',
-            providerType: 'pexels',
+            id: 'media_pexels',
+            providerType: 'media_pexels',
             enabled: const Value(false),
             pollSeconds: const Value(0),
             baseUrl: const Value('http://api.pexels.test'),
@@ -515,8 +516,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.providerSettings).insertOnConflictUpdate(
           ProviderSettingsCompanion.insert(
-            id: 'pexels',
-            providerType: 'pexels',
+            id: 'media_pexels',
+            providerType: 'media_pexels',
             pollSeconds: const Value(0),
             baseUrl: const Value('http://api.pexels.test/'),
             configJson: const Value('{}'),
@@ -733,7 +734,7 @@ void main() {
         db: db,
         blobs: blobs,
         secrets: secrets,
-        resolve: ProviderConfigResolver(db, {pexelsApiKeyEnv: 'k'}).resolve,
+        resolve: ProviderConfigResolver(db, {waddlePexelsApiKeyEnv: 'k'}).resolve,
       ),
     );
     expect((await db.select(db.photos).get()).single.id, 'o2');
@@ -804,6 +805,12 @@ class _ThrowingResolveContext implements DataWriteContext {
   final SecretStore secrets;
 
   @override
+  final CollectDiagnostics diagnostics = const NoOpCollectDiagnostics();
+
+  @override
+  final Map<String, String> env = const {};
+
+  @override
   Future<ProviderRuntimeConfig> resolveConfig(String providerId) async {
     throw StateError('unavailable');
   }
@@ -861,7 +868,7 @@ class _TwoPageCuratedClient extends http.BaseClient {
 DataWriteContext _ctx(
   AppDatabase db,
   InMemorySecretStore secrets, {
-  Map<String, String> tokenEnv = const {pexelsApiKeyEnv: 'k'},
+  Map<String, String> tokenEnv = const {waddlePexelsApiKeyEnv: 'k'},
 }) {
   final resolver = ProviderConfigResolver(db, tokenEnv);
   return DataWriteContextImpl(
@@ -869,5 +876,6 @@ DataWriteContext _ctx(
     blobs: FakeBlobStore(),
     secrets: secrets,
     resolve: resolver.resolve,
+    env: tokenEnv,
   );
 }

@@ -6,8 +6,8 @@ import 'package:http/http.dart' as http;
 
 import 'package:waddle_shared/config/provider_access_token_env.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
-import 'package:waddle_display/data/data_write_context.dart';
-import 'package:waddle_display/data/providers/pexels/pexels_data_provider.dart';
+import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_data_providers/media_pexels/pexels_data_provider.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/reject_term_repository.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
@@ -54,15 +54,15 @@ Future<InMemorySecretStore> _secretsWithKey() async => InMemorySecretStore();
 Future<void> _ensurePexels(AppDatabase db) async {
   await db.into(db.providerSettings).insert(
         ProviderSettingsCompanion.insert(
-          id: 'pexels',
-          providerType: 'pexels',
+          id: 'media_pexels',
+          providerType: 'media_pexels',
           pollSeconds: const Value(0),
         ),
       );
 }
 
 DataWriteContext _ctx(AppDatabase db, InMemorySecretStore secrets) {
-  final resolver = ProviderConfigResolver(db, {pexelsApiKeyEnv: 'k'});
+  final resolver = ProviderConfigResolver(db, {waddlePexelsApiKeyEnv: 'k'});
   return DataWriteContextImpl(
     db: db,
     blobs: FakeBlobStore(),

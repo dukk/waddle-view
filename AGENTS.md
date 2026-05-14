@@ -2,12 +2,12 @@
 
 ## Scope
 
-1. **Mono-repo**: default application directory is **`apps/waddle_display/`** (underscore; Dart package **`waddle_display`**). Shared Drift schema and persistence live in **`packages/waddle_shared/`** (`waddle_shared`). The repo root **`pubspec.yaml`** defines a Pub **workspace** (`resolution: workspace` in each member); run **`flutter pub get`** from the **repository root** (or any workspace member) so dependencies resolve once. If a clone still has **`apps/waddle_view/`** or a stray **`apps/waddle-display/`** on disk (common on case-insensitive filesystems), align the tree with Git—IDE locks sometimes block renames until folders are closed. Do not edit other `apps/*` paths unless the task explicitly names them.
+1. **Mono-repo**: default application directory is **`apps/waddle_display/`** (underscore; Dart package **`waddle_display`**). Shared Drift schema and persistence live in **`packages/waddle_shared/`** (`waddle_shared`). Concrete HTTP collectors live in **`packages/waddle_data_providers/`** (`waddle_data_providers`). The repo root **`pubspec.yaml`** defines a Pub **workspace** (`resolution: workspace` in each member); run **`flutter pub get`** from the **repository root** (or any workspace member) so dependencies resolve once. If a clone still has **`apps/waddle_view/`** or a stray **`apps/waddle-display/`** on disk (common on case-insensitive filesystems), align the tree with Git—IDE locks sometimes block renames until folders are closed. Do not edit other `apps/*` paths unless the task explicitly names them.
 2. **Tests first**: add or extend a failing test before production code for new behavior.
-3. **Coverage**: maintain **≥ 90% line coverage** on `apps/waddle_display/lib/` plus `packages/waddle_shared/lib/` per `apps/waddle_display/tool/coverage_check.dart` (excludes **`persistence/tables.dart`** declarative schema-only lines in either package, **generated `*.g.dart` Drift**, **`lib/main.dart`** in the display app, and **`lib/display/screen_rotator.dart`** slide-dispatch UI wiring covered indirectly via slide widget tests). **Drift migration and shared-model unit tests** live under **`packages/waddle_shared/test/`** (`dart test -C packages/waddle_shared`). Run from the app directory:
+3. **Coverage**: maintain **≥ 90% line coverage** on `apps/waddle_display/lib/` plus `packages/waddle_shared/lib/` plus `packages/waddle_data_providers/lib/` per `apps/waddle_display/tool/coverage_check.dart` (excludes **`persistence/tables.dart`** declarative schema-only lines in either package, **generated `*.g.dart` Drift**, **`lib/main.dart`** in the display app, and **`lib/display/screen_rotator.dart`** slide-dispatch UI wiring covered indirectly via slide widget tests). **Drift migration and shared-model unit tests** live under **`packages/waddle_shared/test/`** (`cd packages/waddle_shared` then `flutter test`). **Collector unit tests** also run under **`packages/waddle_data_providers/test/`** (`cd packages/waddle_data_providers` then `dart test`). Run from the app directory:
    - `flutter test --coverage` (each test is capped at **60s** via `apps/waddle_display/dart_test.yaml`; CI also sets a **12-minute** job timeout)
    - `dart run tool/coverage_check.dart --min=90`
-4. **Secrets**: never store provider passwords, API keys, access/refresh tokens, or client secrets in SQLite. **Static provider API keys** (OpenWeatherMap, Pexels, Finnhub, OpenAI for jokes/trivia, etc.) are read from **environment variables** (and merged debug `.env`); see [`packages/waddle_shared/lib/config/provider_access_token_env.dart`](packages/waddle_shared/lib/config/provider_access_token_env.dart). **Google and Microsoft Graph OAuth tokens** still use `SecretStore` / `flutter_secure_storage` so refresh flows can persist. **Deployment REST API keys** must never be committed; only document paths (e.g. `/etc/waddle-view/api.key`).
+4. **Secrets**: never store provider passwords, API keys, access/refresh tokens, or client secrets in SQLite. **Static provider API keys** use **`WADDLE_*` environment variable names** (see [`apps/waddle_display/.env.example`](apps/waddle_display/.env.example) and [`packages/waddle_shared/lib/config/provider_access_token_env.dart`](packages/waddle_shared/lib/config/provider_access_token_env.dart)); values are read from the process environment (and merged debug `.env`). **Google and Microsoft Graph OAuth access/refresh tokens** use `SecretStore` / `flutter_secure_storage` only (not environment variables). **Google / Microsoft Graph OAuth public client ids** use **`WADDLE_GOOGLE_CLIENT_ID`** and **`WADDLE_MICROSOFT_GRAPH_CLIENT_ID`** in the environment — not `config_key_values`. **Deployment REST API keys** must never be committed; only document paths (e.g. `/etc/waddle-view/api.key`).
 5. **Project rules**: read [`.cursor/rules/waddle-view-flutter.mdc`](.cursor/rules/waddle-view-flutter.mdc) before large edits.
 6. **Sub-agents / delegated tasks**: include explicit **paths**, **deliverable**, and **forbidden paths** in the prompt.
 7. **Documentation freshness**: when behavior, configuration, env vars, public endpoints, or operator workflows change, update the corresponding docs in the same task (for example `apps/waddle_display/README.md`, `.env.example`, and runbooks) or explain why no doc change is needed.
@@ -17,9 +17,12 @@
 
 ```bash
 flutter pub get
-dart run build_runner build --delete-conflicting-outputs -C packages/waddle_shared
-dart test -C packages/waddle_shared
-cd apps/waddle_display
+cd packages/waddle_shared
+dart run build_runner build --delete-conflicting-outputs
+flutter test
+cd ../waddle_data_providers
+dart test
+cd ../../apps/waddle_display
 flutter analyze
 flutter test --coverage
 dart run tool/coverage_check.dart --min=90

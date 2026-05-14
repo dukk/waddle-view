@@ -98,7 +98,7 @@ void main() {
         const {},
         tickerDefs: const [
           TickerDefinitionForCuration(
-            id: 'stocks',
+            id: 'stock_finnhub',
             tickerType: 'stocks',
             enabled: true,
             frequencyWeight: 1,

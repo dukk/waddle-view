@@ -10,6 +10,12 @@ void main() {
     expect(cfg.address.address, '127.0.0.1');
   });
 
+  test('uses Platform.environment when environment argument omitted', () async {
+    final cfg = await resolveHttpBindConfig();
+    expect(cfg.port, isA<int>());
+    expect(cfg.port, greaterThan(0));
+  });
+
   test('accepts explicit bind and port', () async {
     final cfg = await resolveHttpBindConfig(
       environment: const {

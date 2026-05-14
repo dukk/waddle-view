@@ -47,7 +47,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 35;
+  int get schemaVersion => 37;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -621,6 +621,134 @@ FROM curator_settings WHERE id = 'app';
             'UPDATE display_overlay_schedules SET config_json_schema = ?, '
             'example_config_json = ? WHERE overlay_kind = ?',
             <Object?>[confettiDoc.schema, confettiDoc.example, kOverlayKindBirthdayConfetti],
+          );
+        }
+      }
+      if (from < 36) {
+        Future<bool> v36TableExists(String table) async {
+          final rows = await customSelect(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='$table';",
+          ).get();
+          return rows.isNotEmpty;
+        }
+        if (await v36TableExists('provider_settings')) {
+          await customStatement(
+            "UPDATE provider_settings SET id = 'news_rss', provider_type = 'news_rss' "
+            "WHERE id = 'rss';",
+          );
+          await customStatement(
+            "UPDATE provider_settings SET id = 'joke_openai', provider_type = 'joke_openai' "
+            "WHERE id = 'jokes';",
+          );
+          await customStatement(
+            "UPDATE provider_settings SET id = 'trivia_openai', provider_type = 'trivia_openai' "
+            "WHERE id = 'trivia';",
+          );
+          await customStatement(
+            "UPDATE provider_settings SET id = 'trivia_opentdb', provider_type = 'trivia_opentdb' "
+            "WHERE id = 'opentdb_trivia';",
+          );
+          await customStatement(
+            "UPDATE provider_settings SET id = 'weather_openweathermap', "
+            "provider_type = 'weather_openweathermap' WHERE id = 'weather';",
+          );
+          await customStatement(
+            "UPDATE provider_settings SET id = 'weather_nws_alerts', "
+            "provider_type = 'weather_nws_alerts' WHERE id = 'nws_weather_alerts';",
+          );
+          await customStatement(
+            "UPDATE provider_settings SET id = 'calendar_google', "
+            "provider_type = 'calendar_google' WHERE id = 'google_calendar';",
+          );
+          await customStatement(
+            "UPDATE provider_settings SET id = 'calendar_outlook', "
+            "provider_type = 'calendar_outlook' WHERE id = 'outlook_calendar';",
+          );
+          await customStatement(
+            "UPDATE provider_settings SET id = 'media_onedrive', "
+            "provider_type = 'media_onedrive' WHERE id = 'onedrive_media';",
+          );
+          await customStatement(
+            "UPDATE provider_settings SET id = 'media_flickr', "
+            "provider_type = 'media_flickr' WHERE id = 'flickr_media';",
+          );
+          await customStatement(
+            "UPDATE provider_settings SET id = 'media_bing_iotd', "
+            "provider_type = 'media_bing_iotd' WHERE id = 'bing_iotd';",
+          );
+          await customStatement(
+            "UPDATE provider_settings SET id = 'media_pexels', "
+            "provider_type = 'media_pexels' WHERE id = 'pexels';",
+          );
+          await customStatement(
+            "UPDATE provider_settings SET id = 'stock_finnhub', "
+            "provider_type = 'stock_finnhub' WHERE id = 'stocks';",
+          );
+        }
+        if (await v36TableExists('photos')) {
+          await customStatement(
+            "UPDATE photos SET data_provider = 'media_pexels' WHERE data_provider = 'pexels';",
+          );
+          await customStatement(
+            "UPDATE photos SET data_provider = 'media_onedrive' "
+            "WHERE data_provider = 'onedrive_media';",
+          );
+          await customStatement(
+            "UPDATE photos SET data_provider = 'media_flickr' WHERE data_provider = 'flickr_media';",
+          );
+          await customStatement(
+            "UPDATE photos SET data_provider = 'media_bing_iotd' WHERE data_provider = 'bing_iotd';",
+          );
+        }
+        if (await v36TableExists('videos')) {
+          await customStatement(
+            "UPDATE videos SET data_provider = 'media_pexels' WHERE data_provider = 'pexels';",
+          );
+          await customStatement(
+            "UPDATE videos SET data_provider = 'media_onedrive' "
+            "WHERE data_provider = 'onedrive_media';",
+          );
+        }
+        if (await v36TableExists('config_key_values')) {
+          await customStatement(
+            "UPDATE config_key_values SET key = replace(key, 'provider.pexels.', "
+            "'provider.media_pexels.') WHERE key LIKE 'provider.pexels.%';",
+          );
+          await customStatement(
+            "UPDATE config_key_values SET key = replace(key, 'provider.flickr_media.', "
+            "'provider.media_flickr.') WHERE key LIKE 'provider.flickr_media.%';",
+          );
+          await customStatement(
+            "UPDATE config_key_values SET key = replace(key, 'provider.bing_iotd.', "
+            "'provider.media_bing_iotd.') WHERE key LIKE 'provider.bing_iotd.%';",
+          );
+          await customStatement(
+            "UPDATE config_key_values SET key = replace(key, 'provider.stocks.', "
+            "'provider.stock_finnhub.') WHERE key LIKE 'provider.stocks.%';",
+          );
+          await customStatement(
+            "UPDATE config_key_values SET key = replace(key, 'provider.google_calendar.', "
+            "'provider.calendar_google.') WHERE key LIKE 'provider.google_calendar.%';",
+          );
+          await customStatement(
+            "UPDATE config_key_values SET key = replace(key, 'provider.outlook_calendar.', "
+            "'provider.calendar_outlook.') WHERE key LIKE 'provider.outlook_calendar.%';",
+          );
+          await customStatement(
+            "UPDATE config_key_values SET key = replace(key, 'provider.onedrive_media.', "
+            "'provider.media_onedrive.') WHERE key LIKE 'provider.onedrive_media.%';",
+          );
+        }
+      }
+      if (from < 37) {
+        final ck = await customSelect(
+          "SELECT name FROM sqlite_master WHERE type='table' "
+          "AND name='config_key_values';",
+        ).get();
+        if (ck.isNotEmpty) {
+          await customStatement(
+            "DELETE FROM config_key_values WHERE key IN ("
+            "'microsoft.graph.client_id', 'google.client_id');",
           );
         }
       }

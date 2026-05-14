@@ -62,8 +62,9 @@ CREATE TABLE screen_definitions (
 
       final ps =
           await (db.select(db.providerSettings)
-                ..where((t) => t.id.equals('jokes')))
+                ..where((t) => t.id.equals('joke_openai')))
               .getSingle();
+      expect(ps.providerType, 'joke_openai');
       expect(ps.configJson, '{"jokesPerDay":1}');
       expect(ps.configJsonSchema, isNotNull);
       expect(ps.exampleConfigJson, isNotNull);

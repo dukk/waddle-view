@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_display/data/providers/joke/joke_seasonal_eligibility.dart';
+import 'package:waddle_data_providers/joke_openai/joke_seasonal_eligibility.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 void main() {
