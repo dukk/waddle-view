@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:path/path.dart' as p;
 import 'package:waddlectl/backup_archive_codec.dart';
 import 'package:waddlectl/backup_fs_sync.dart';

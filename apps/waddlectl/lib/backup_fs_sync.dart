@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:path/path.dart' as p;
 
-import 'backup_manifest.dart';
+import 'backup_archive_codec.dart';
 
 /// `media/` next to the SQLite file (same layout as the display app).
 Directory mediaDirectoryNextToSqlite(File sqliteFile) =>
@@ -65,13 +65,25 @@ String compactTimestampUtc(DateTime utc) {
   final h = utc.hour.toString().padLeft(2, '0');
   final mi = utc.minute.toString().padLeft(2, '0');
   final s = utc.second.toString().padLeft(2, '0');
-  return '$y${mo}d${d}T$h$mi${s}Z'.replaceFirst('d', ''); // bug - fix
+  return '$y$mo${d}T$h$mi${s}Z';
+}
 
-Actually I made a typo - should be ${y}${mo}${d}T${h}${mi}${s}Z without stray d
-
-Let me fix compactTimestampUtc in the file - I wrote broken string
-
-
-
-
-StrReplace
+/// Recursively copies files and directories from [src] into [dst].
+///
+/// [dst] is created if missing. Existing files under [dst] are overwritten.
+Future<void> copyDirectoryContents(Directory src, Directory dst) async {
+  if (!await src.exists()) {
+    return;
+  }
+  await dst.create(recursive: true);
+  await for (final entity in src.list(recursive: true, followLinks: false)) {
+    final rel = p.relative(entity.path, from: src.path);
+    final destPath = p.join(dst.path, rel);
+    if (entity is Directory) {
+      await Directory(destPath).create(recursive: true);
+    } else if (entity is File) {
+      await Directory(p.dirname(destPath)).create(recursive: true);
+      await entity.copy(destPath);
+    }
+  }
+}

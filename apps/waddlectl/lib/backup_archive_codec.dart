@@ -80,6 +80,9 @@ Future<void> extractArchiveToDirectory(Archive archive, Directory dest) async {
   }
   for (final file in archive) {
     final name = file.name.replaceAll(r'\', '/');
+    if (name.split('/').any((s) => s == '..')) {
+      throw FormatException('unsafe archive path: $name');
+    }
     final outPath = p.join(dest.path, p.normalize(name));
     final base = p.normalize(dest.path);
     if (!p.isWithin(base, outPath) && p.equals(outPath, base) == false) {

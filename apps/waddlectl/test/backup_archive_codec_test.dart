@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:path/path.dart' as p;
 import 'package:waddlectl/backup_archive_codec.dart';
 import 'package:waddlectl/backup_manifest.dart';
@@ -58,7 +58,7 @@ void main() {
       ..addFile(ArchiveFile.bytes('media/../../evil.txt', Uint8List(1)));
     final tmp = Directory.systemTemp.createTempSync('waddle_bu_arc');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    expect(
+    await expectLater(
       () => extractArchiveToDirectory(bad, tmp),
       throwsA(isA<FormatException>()),
     );
