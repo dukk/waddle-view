@@ -49,12 +49,31 @@ jobs:
           chmod +x "$src/bin/waddlectl"
           rm -rf "$dst"
           cp -a "$src" "$dst"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/waddle_controller/package-lock.json
+      - name: Build waddle_controller SPA
+        working-directory: ${{ github.workspace }}/apps/waddle_controller
+        run: npm ci && npm run build
+      - name: Merge waddle_controller into Linux bundle
+        working-directory: ${{ github.workspace }}/apps/waddle_display
+        run: |
+          src="${{ github.workspace }}/apps/waddle_controller/dist"
+          dst="build/linux/x64/release/bundle/waddle_controller"
+          test -f "$src/index.html"
+          rm -rf "$dst"
+          mkdir -p "$dst"
+          cp -a "$src"/. "$dst/"
       - name: Audit Linux runtime dependencies
         run: |
           APP_BIN="build/linux/x64/release/bundle/waddle_display"
           WCTL_BIN="build/linux/x64/release/bundle/waddlectl/bin/waddlectl"
+          CTRL_IDX="build/linux/x64/release/bundle/waddle_controller/index.html"
           test -x "$APP_BIN"
           test -x "$WCTL_BIN"
+          test -f "$CTRL_IDX"
           ldd "$APP_BIN" | tee /tmp/waddle-ldd.txt
           if grep -q "not found" /tmp/waddle-ldd.txt; then
             echo "Missing runtime shared libraries detected."

@@ -267,6 +267,46 @@ void main() {
     await db.close();
   });
 
+  test(
+    'preloadResolvedSlideContent survives pexels_photo_collage blob read failure',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
+      await db.into(db.blobMetadata).insert(
+            BlobMetadataCompanion.insert(
+              blobKey: 'bk_fail',
+              sha256: 'a',
+              relativePath: 'rel/missing',
+              bytes: 2,
+              capturedAt: DateTime.fromMillisecondsSinceEpoch(1),
+            ),
+          );
+      await db.into(db.photos).insert(
+            PhotosCompanion.insert(
+              id: 'ph_fail',
+              mediaBlobKey: 'bk_fail',
+              photographerName: 'n',
+              photographerUrl: 'https://example.com/p',
+              pexelsPageUrl: 'https://example.com',
+              fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
+            ),
+          );
+      final slide = ResolvedSlide(
+        screenId: 'col',
+        dwellMs: 1000,
+        layoutJson:
+            '{"widgets":[{"type":"pexels_photo_collage","slot":"c","config":{}}]}',
+        randomChoices: const {'c_pexels_photo_collage_0': 'ph_fail'},
+      );
+      await preloadResolvedSlideContent(
+        db: db,
+        blobs: FailingReadBlobStore(),
+        slide: slide,
+      );
+      await db.close();
+    },
+  );
+
   test('preloadResolvedSlideContent warms pexels_photo_collage slots', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);

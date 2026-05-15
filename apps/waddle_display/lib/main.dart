@@ -36,8 +36,10 @@ import 'curator/default_dashboard_curator.dart';
 import 'curator/drift_curator_read_port.dart';
 import 'curator/gated_dashboard_curator.dart';
 import 'debug/app_debug_log.dart';
-import 'debug/display_collect_diagnostics.dart';
 import 'debug/debug_console_disk_logger.dart';
+import 'debug/display_collect_diagnostics.dart';
+import 'debug/operator_telemetry_hub.dart';
+import 'display/display_navigation_bus.dart';
 import 'display/dashboard_data_bound_shell.dart';
 import 'display/dashboard_viewport_scope.dart';
 import 'display/display_viewport.dart';
@@ -125,7 +127,8 @@ Future<void> _waddleBootstrap() async {
     final envMap = mergeBootstrapEnv();
     final resolver = ProviderConfigResolver(db, envMap);
     final blobs = FileSystemBlobStore(mediaDir);
-    final collectDiag = defaultDisplayCollectDiagnostics();
+    final telemetryHub = OperatorTelemetryHub();
+    final collectDiag = defaultDisplayCollectDiagnostics(telemetryHub: telemetryHub);
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: blobs,
@@ -179,6 +182,8 @@ Future<void> _waddleBootstrap() async {
     final alerts = DriftAlertRepository(db);
     final keys = FileDeploymentApiKeySource(keyFile);
     final httpConfig = await resolveHttpBindConfig(environment: envMap);
+    final navigationBus = DisplayNavigationBus();
+    final corsOrigins = parseCorsAllowedOrigins(envMap['WADDLE_HTTP_CORS_ORIGINS']);
     final handler = buildRootHandler(
       db: db,
       alerts: alerts,
@@ -187,6 +192,9 @@ Future<void> _waddleBootstrap() async {
       onConfigChanged: dashboardCurator.refresh,
       keyFile: keyFile,
       setupScreenId: 'admin_setup',
+      telemetryHub: telemetryHub,
+      navigationBus: navigationBus,
+      corsAllowedOrigins: corsOrigins,
     );
     final server = await LocalRestServer.bind(
       handler: handler,
@@ -219,6 +227,8 @@ Future<void> _waddleBootstrap() async {
         engine: engine,
         tickerCurated: tickerCurated,
         marqueeCycleGate: marqueeCycleGate,
+        telemetryHub: telemetryHub,
+        navigationBus: navigationBus,
       ),
     );
   } catch (e, st) {
@@ -237,6 +247,8 @@ class WaddleRoot extends StatefulWidget {
     required this.engine,
     required this.tickerCurated,
     required this.marqueeCycleGate,
+    required this.telemetryHub,
+    required this.navigationBus,
   });
 
   final AppDatabase db;
@@ -247,6 +259,8 @@ class WaddleRoot extends StatefulWidget {
   final DataCollectionEngine engine;
   final MemoryTickerCuratedRepository tickerCurated;
   final MarqueeCycleGate marqueeCycleGate;
+  final OperatorTelemetryHub telemetryHub;
+  final DisplayNavigationBus navigationBus;
 
   @override
   State<WaddleRoot> createState() => _WaddleRootState();
@@ -282,6 +296,8 @@ class _WaddleRootState extends State<WaddleRoot> {
             engine: widget.engine,
             tickerCurated: widget.tickerCurated,
             marqueeCycleGate: widget.marqueeCycleGate,
+            telemetryHub: widget.telemetryHub,
+            navigationBus: widget.navigationBus,
             dashboardKv: kv,
           ),
         );
@@ -301,6 +317,8 @@ class WaddleHome extends StatefulWidget {
     required this.engine,
     required this.tickerCurated,
     required this.marqueeCycleGate,
+    required this.telemetryHub,
+    required this.navigationBus,
     required this.dashboardKv,
   });
 
@@ -312,6 +330,8 @@ class WaddleHome extends StatefulWidget {
   final DataCollectionEngine engine;
   final MemoryTickerCuratedRepository tickerCurated;
   final MarqueeCycleGate marqueeCycleGate;
+  final OperatorTelemetryHub telemetryHub;
+  final DisplayNavigationBus navigationBus;
   final Map<String, String> dashboardKv;
 
   @override
@@ -392,6 +412,8 @@ class _WaddleHomeState extends State<WaddleHome> {
                     localRestBaseUrl: widget.server.baseUrl,
                     adminBaseUrl: widget.server.displayBaseUrl,
                     setupPasswordFile: widget.setupPasswordFile,
+                    telemetryHub: widget.telemetryHub,
+                    navigationBus: widget.navigationBus,
                   ),
                   ticker: MediaQuery(
                     data: mq.copyWith(textScaler: tickerScaler),
@@ -410,6 +432,8 @@ class _WaddleHomeState extends State<WaddleHome> {
                           pixelsPerSecond: px * s,
                           cycleGate: widget.marqueeCycleGate,
                           navigationController: _tickerNavigationController,
+                          telemetryHub: widget.telemetryHub,
+                          navigationBus: widget.navigationBus,
                         );
                       },
                     ),

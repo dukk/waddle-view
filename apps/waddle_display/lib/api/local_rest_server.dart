@@ -11,6 +11,8 @@ import 'package:shelf_router/shelf_router.dart';
 
 import '../alerts/alert_repository.dart';
 import '../debug/app_debug_log.dart';
+import '../debug/operator_telemetry_hub.dart';
+import '../display/display_navigation_bus.dart';
 import 'package:waddle_shared/curation/reject_rescan.dart';
 import 'package:waddle_shared/persistence/content_suppression_repository.dart';
 import 'package:waddle_shared/persistence/database.dart';
@@ -21,6 +23,7 @@ import '../theme/display_theme.dart';
 import '../ticker/ticker_curated_repository.dart';
 import 'api_key_constant_time.dart';
 import 'deployment_api_key_source.dart';
+import 'operator_rest_routes.dart';
 
 Middleware apiKeyAuth(DeploymentApiKeySource keys) {
   return (Handler inner) {
@@ -57,6 +60,9 @@ Handler buildProtectedApiRouter({
   required AppDatabase db,
   required AlertRepository alerts,
   required TickerCuratedRepository ticker,
+  required Future<void> Function() onConfigChanged,
+  OperatorTelemetryHub? telemetryHub,
+  DisplayNavigationBus? navigationBus,
 }) {
   final r = Router();
   final suppression = ContentSuppressionRepository(db);
@@ -154,6 +160,10 @@ Handler buildProtectedApiRouter({
             'type': e.providerType,
             'enabled': e.enabled,
             'poll_seconds': e.pollSeconds,
+            'base_url': e.baseUrl,
+            'config_json': _jsonDecodeLoose(e.configJson),
+            'config_json_schema': _jsonDecodeLoose(e.configJsonSchema),
+            'example_config_json': _jsonDecodeLoose(e.exampleConfigJson),
           },
         )
         .toList();
@@ -172,7 +182,7 @@ Handler buildProtectedApiRouter({
     };
     final list = rows
         .map(
-          (e) => <String, Object?>{
+          (e) => <String, dynamic>{
             'id': e.id,
             'name': e.name,
             'description': e.description,
@@ -206,7 +216,7 @@ Handler buildProtectedApiRouter({
 
   r.get('/v1/ticker/items', (Request req) async {
     final rows = await ticker.snapshot();
-    final list = <Map<String, Object?>>[];
+    final list = <Map<String, dynamic>>[];
     for (var i = 0; i < rows.length; i++) {
       final e = rows[i];
       list.add({
@@ -398,10 +408,29 @@ Handler buildProtectedApiRouter({
     return Response.ok('{}', headers: {'content-type': 'application/json'});
   });
 
+  registerOperatorRestRoutes(
+    r,
+    db: db,
+    onConfigChanged: onConfigChanged,
+    telemetryHub: telemetryHub,
+    navigationBus: navigationBus,
+  );
+
   return r.call;
 }
 
-Map<String, Object?> _alertJson(DashboardAlert a) => {
+dynamic _jsonDecodeLoose(String? raw) {
+  if (raw == null || raw.trim().isEmpty) {
+    return null;
+  }
+  try {
+    return jsonDecode(raw);
+  } catch (_) {
+    return raw;
+  }
+}
+
+Map<String, dynamic> _alertJson(DashboardAlert a) => {
   'id': a.id,
   'title': a.title,
   'body': a.body,
@@ -414,7 +443,7 @@ Future<Map<String, dynamic>?> _readOverlayJson(Request req) async {
   try {
     final decoded = jsonDecode(await req.readAsString());
     return decoded is Map<String, dynamic> ? decoded : null;
-  } on Object {
+  } catch (_) {
     return null;
   }
 }
@@ -512,7 +541,7 @@ Future<Response> _upsertRejectTerm(
           headers: {'content-type': 'application/json'});
     }
     body = decoded;
-  } on Object {
+  } catch (_) {
     return Response(400,
         body: '{"error":"invalid_json"}',
         headers: {'content-type': 'application/json'});
@@ -548,7 +577,7 @@ Future<Response> _setRejectCensorFormat(Request req, AppDatabase db) async {
           headers: {'content-type': 'application/json'});
     }
     body = decoded;
-  } on Object {
+  } catch (_) {
     return Response(400,
         body: '{"error":"invalid_json"}',
         headers: {'content-type': 'application/json'});
@@ -597,7 +626,7 @@ Future<Response> _patchContentSuppressed(
       );
     }
     map = decoded;
-  } on Object {
+  } catch (_) {
     return Response(
       400,
       body: '{"error":"invalid_json"}',
@@ -631,6 +660,9 @@ Handler buildRootHandler({
   required Future<void> Function() onConfigChanged,
   required File keyFile,
   required String setupScreenId,
+  OperatorTelemetryHub? telemetryHub,
+  DisplayNavigationBus? navigationBus,
+  List<String> corsAllowedOrigins = const [],
 }) {
   Response health(Request req) =>
       Response.ok('{"status":"ok"}', headers: {'content-type': 'application/json'});
@@ -638,7 +670,14 @@ Handler buildRootHandler({
   final protected = Pipeline()
       .addMiddleware(apiKeyAuth(keys))
       .addHandler(
-        buildProtectedApiRouter(db: db, alerts: alerts, ticker: ticker),
+        buildProtectedApiRouter(
+          db: db,
+          alerts: alerts,
+          ticker: ticker,
+          onConfigChanged: onConfigChanged,
+          telemetryHub: telemetryHub,
+          navigationBus: navigationBus,
+        ),
       );
   final admin = _AdminServer(
     db: db,
@@ -659,8 +698,37 @@ Handler buildRootHandler({
     return protected(req);
   }
 
-  return withDebugRequestLogging(root);
+  Handler handler = root;
+  if (corsAllowedOrigins.isNotEmpty) {
+    handler = _corsWrap(handler, corsAllowedOrigins);
+  }
+  return withDebugRequestLogging(handler);
 }
+
+Handler _corsWrap(Handler inner, List<String> allowedOrigins) {
+  return (Request req) async {
+    final origin = req.headers['origin'];
+    final allowed =
+        origin != null && allowedOrigins.contains(origin);
+    if (allowed && req.method == 'OPTIONS') {
+      return Response(204, headers: _corsHeaders(origin));
+    }
+    final res = await inner(req);
+    if (!allowed) {
+      return res;
+    }
+    return res.change(headers: _corsHeaders(origin));
+  };
+}
+
+Map<String, String> _corsHeaders(String origin) => {
+  'access-control-allow-origin': origin,
+  'access-control-allow-methods':
+      'GET,POST,PATCH,PUT,DELETE,OPTIONS',
+  'access-control-allow-headers':
+      'Content-Type, X-Api-Key, Authorization',
+  'access-control-max-age': '86400',
+};
 
 /// Logs method, path, and status in debug only (never logs headers or body).
 Handler withDebugRequestLogging(Handler inner) {

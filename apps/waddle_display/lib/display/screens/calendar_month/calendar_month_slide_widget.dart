@@ -206,12 +206,23 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
                       todayStartZ.add(const Duration(days: 5));
                   final fromMs = todayStartZ.millisecondsSinceEpoch;
                   final toMs = nextFiveDaysEndZ.millisecondsSinceEpoch;
+                  final windowEndDate =
+                      startOfToday.add(const Duration(days: 5));
                   final bundle = snapshot.data;
                   final allEvents = bundle?.events ?? [];
                   final filtered = allEvents
                       .where(
                         (event) {
-                          final ms = event.startMs.millisecondsSinceEpoch;
+                          if (event.allDay) {
+                            return calendarAllDayCivilRangesOverlap(
+                              event.startMs,
+                              event.endMs,
+                              startOfToday,
+                              windowEndDate,
+                            );
+                          }
+                          final ms =
+                              event.startMs.millisecondsSinceEpoch;
                           return ms >= fromMs && ms < toMs;
                         },
                       )

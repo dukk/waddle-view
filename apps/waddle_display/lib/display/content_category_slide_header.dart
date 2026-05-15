@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import 'package:waddle_shared/blob/blob_store.dart' show BlobRef, BlobStore;
+import 'package:waddle_shared/blob/display_blob_read.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import '../theme/display_theme.dart';
 import 'content_category_material_icon.dart';
@@ -113,12 +114,11 @@ Future<_CategoryHeaderData> _loadCategoryHeaderData(
         db.blobMetadata,
       )..where((t) => t.blobKey.equals(bk))).getSingleOrNull();
       if (meta != null) {
-        try {
-          final raw = await blobs.readBytes(BlobRef(meta.relativePath));
-          if (raw.isNotEmpty) {
-            bytes = Uint8List.fromList(raw);
-          }
-        } catch (_) {}
+        final read = await readDisplayBlobBytes(
+          blobs,
+          BlobRef(meta.relativePath),
+        );
+        bytes = read.bytes;
       }
     }
     return _CategoryHeaderData(

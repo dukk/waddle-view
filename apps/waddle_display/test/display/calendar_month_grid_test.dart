@@ -11,6 +11,29 @@ void main() {
     utc = getLocation('Etc/UTC');
   });
 
+  group('calendarAllDayCivilRangesOverlap', () {
+    test('single-day all-day overlaps that calendar day only', () {
+      expect(
+        calendarAllDayCivilRangesOverlap(
+          DateTime.utc(2024, 6, 12),
+          DateTime.utc(2024, 6, 13),
+          DateTime(2024, 6, 12),
+          DateTime(2024, 6, 13),
+        ),
+        isTrue,
+      );
+      expect(
+        calendarAllDayCivilRangesOverlap(
+          DateTime.utc(2024, 6, 12),
+          DateTime.utc(2024, 6, 13),
+          DateTime(2024, 6, 11),
+          DateTime(2024, 6, 12),
+        ),
+        isFalse,
+      );
+    });
+  });
+
   group('startOfTodayInZoneMs', () {
     test('returns UTC midnight for same calendar day', () {
       final noon = DateTime.utc(2026, 5, 4, 12, 30);

@@ -5,6 +5,7 @@ import 'package:drift/drift.dart' show Expression, OrderingTerm, Value;
 import 'package:waddle_shared/curation/reject_filter_context.dart';
 
 import 'package:waddle_shared/blob/blob_store.dart';
+import 'package:waddle_shared/blob/display_blob_read.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import '../../../curator/screen_program_curator.dart';
 import 'package:waddle_shared/persistence/database.dart';
@@ -141,15 +142,14 @@ Future<RssArticleImageLoad> loadRssArticleImage(
   if (meta == null) {
     return const RssArticleImageLoad.absent();
   }
-  try {
-    final raw = await blobs.readBytes(BlobRef(meta.relativePath));
-    if (raw.isEmpty) {
-      return const RssArticleImageLoad.absent();
-    }
-    return RssArticleImageLoad.ok(Uint8List.fromList(raw));
-  } catch (_) {
+  final read = await readDisplayBlobBytes(blobs, BlobRef(meta.relativePath));
+  if (read.isOk) {
+    return RssArticleImageLoad.ok(read.bytes!);
+  }
+  if (read.readFailed) {
     return const RssArticleImageLoad.blobReadFailed();
   }
+  return const RssArticleImageLoad.absent();
 }
 
 /// Category id for RSS slide chrome: curated program key, else feed category.

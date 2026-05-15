@@ -6,7 +6,9 @@ import 'package:flutter/material.dart';
 import '../curator/ticker_item.dart';
 import '../display/dashboard_viewport_scope.dart';
 import '../display/content_category_material_icon.dart';
+import '../display/display_navigation_bus.dart';
 import '../debug/app_debug_log.dart';
+import '../debug/operator_telemetry_hub.dart';
 import '../theme/display_theme.dart';
 import '../theme/ticker_marquee_style.dart';
 import '../marquee_cycle_gate.dart';
@@ -23,6 +25,8 @@ class TickerMarquee extends StatefulWidget {
     this.height = 96,
     this.cycleGate,
     this.navigationController,
+    this.telemetryHub,
+    this.navigationBus,
   });
 
   final TickerCuratedRepository repository;
@@ -34,6 +38,12 @@ class TickerMarquee extends StatefulWidget {
   /// full scroll loop so [GatedDashboardCurator] can serialize curation.
   final MarqueeCycleGate? cycleGate;
   final TickerMarqueeNavigationController? navigationController;
+
+  /// Optional operator REST telemetry (in-memory ring buffer).
+  final OperatorTelemetryHub? telemetryHub;
+
+  /// Optional REST-driven navigation (same as arrow up/down on ticker).
+  final DisplayNavigationBus? navigationBus;
 
   @override
   State<TickerMarquee> createState() => _TickerMarqueeState();
@@ -100,6 +110,7 @@ class _TickerMarqueeState extends State<TickerMarquee>
     _controller = AnimationController(vsync: this);
     _subscription = widget.repository.watchOrdered().listen(_onItems);
     widget.navigationController?.addListener(_onNavigationCommand);
+    widget.navigationBus?.addListener(_onExternalTickerNavigation);
   }
 
   void _onItems(List<TickerItem> next) {
@@ -112,6 +123,7 @@ class _TickerMarqueeState extends State<TickerMarquee>
       return;
     }
     AppDebugLog.ticker('curated items: ${next.length} (re-layout marquee)');
+    widget.telemetryHub?.recordTickerProgram(next);
     _detachWrapListener();
     setState(() {
       _items = next;
@@ -200,11 +212,16 @@ class _TickerMarqueeState extends State<TickerMarquee>
       oldWidget.navigationController?.removeListener(_onNavigationCommand);
       widget.navigationController?.addListener(_onNavigationCommand);
     }
+    if (oldWidget.navigationBus != widget.navigationBus) {
+      oldWidget.navigationBus?.removeListener(_onExternalTickerNavigation);
+      widget.navigationBus?.addListener(_onExternalTickerNavigation);
+    }
   }
 
   @override
   void dispose() {
     widget.navigationController?.removeListener(_onNavigationCommand);
+    widget.navigationBus?.removeListener(_onExternalTickerNavigation);
     _manualIdleTimer?.cancel();
     _overlayFadeController.dispose();
     _detachWrapListener();
@@ -222,6 +239,21 @@ class _TickerMarqueeState extends State<TickerMarquee>
       return;
     }
     if (direction < 0) {
+      _navigateBackward();
+    } else {
+      _navigateForward();
+    }
+  }
+
+  void _onExternalTickerNavigation() {
+    if (!mounted) {
+      return;
+    }
+    final dir = widget.navigationBus?.dequeueTickerNav();
+    if (dir == null) {
+      return;
+    }
+    if (dir < 0) {
       _navigateBackward();
     } else {
       _navigateForward();

@@ -1,0 +1,27 @@
+{
+  "name": "waddle_display_mock_api",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "lint": "eslint .",
+    "docker:build": "docker build -t waddle-display-mock-api .",
+    "docker:run": "docker run --rm -p 8080:80 -e MOCK_API_KEY=dev-mock-key waddle-display-mock-api"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.14.0",
+    "hono": "^4.7.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.25.0",
+    "@types/node": "^22.15.3",
+    "eslint": "^9.25.0",
+    "globals": "^16.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.30.1"
+  }
+}

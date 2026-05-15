@@ -59,3 +59,15 @@ Future<String> _resolveDisplayHost(InternetAddress boundAddress) async {
   }
   return InternetAddress.loopbackIPv4.address;
 }
+
+/// Comma-separated origins for `Access-Control-Allow-Origin` (e.g. `http://localhost:5173`).
+List<String> parseCorsAllowedOrigins(String? raw) {
+  if (raw == null || raw.trim().isEmpty) {
+    return const [];
+  }
+  return raw
+      .split(',')
+      .map((s) => s.trim())
+      .where((s) => s.isNotEmpty)
+      .toList();
+}

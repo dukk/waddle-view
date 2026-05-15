@@ -112,6 +112,58 @@ void main() {
     expect(entries[1].showTimeColumn, isFalse);
   });
 
+  test('all-day upcoming list buckets by stored civil date not display zone', () {
+    final la = getLocation('America/Los_Angeles');
+    final day0 = DateTime(2024, 6, 11);
+    final rows = [
+      CalendarSlideEventRow(
+        event: _ev(
+          id: 'a',
+          title: 'Holiday',
+          start: DateTime.utc(2024, 6, 12),
+          end: DateTime.utc(2024, 6, 13),
+          allDay: true,
+        ),
+      ),
+    ];
+    final items = buildCalendarUpcomingListItems(
+      rows: rows,
+      todayLocal: day0,
+      displayZone: la,
+    );
+    final headings =
+        items.whereType<CalendarUpcomingDayHeading>().map((e) => e.label).toList();
+    // June 12 civil date is the day after day0; zone conversion would wrongly
+    // map UTC midnight to June 11 local and show under "Today".
+    expect(headings, contains('Tomorrow'));
+    expect(headings, isNot(contains('Today')));
+  });
+
+  test('buildCalendarMonthDayMarkersByDay all-day uses civil day not zone day slice',
+      () {
+    final la = getLocation('America/Los_Angeles');
+    final scheme = ColorScheme.fromSeed(seedColor: Colors.indigo);
+    final rows = [
+      CalendarSlideEventRow(
+        event: _ev(
+          id: 'allday',
+          title: 'Trip',
+          start: DateTime.utc(2024, 6, 12),
+          end: DateTime.utc(2024, 6, 13),
+          allDay: true,
+        ),
+      ),
+    ];
+    final map = buildCalendarMonthDayMarkersByDay(
+      rows: rows,
+      displayZone: la,
+      monthAnchor: DateTime.utc(2024, 6, 15),
+      colorScheme: scheme,
+    );
+    expect(map[11]?.allDayTopColors ?? [], isEmpty);
+    expect(map[12]!.allDayTopColors, hasLength(1));
+  });
+
   test('buildCalendarMonthDayMarkersByDay splits all-day vs timed', () {
     final scheme = ColorScheme.fromSeed(seedColor: Colors.indigo);
     final rows = [

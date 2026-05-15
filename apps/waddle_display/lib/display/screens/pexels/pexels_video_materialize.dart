@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:waddle_shared/blob/blob_store.dart';
+import 'package:waddle_shared/blob/display_blob_read.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 /// Resolves a local [File] for [row] media: direct blob path or temp copy.
@@ -23,12 +24,14 @@ Future<File> materializePexelsVideoFile(
   if (direct != null) {
     return direct;
   }
-  final bytes = await blobs.readBytes(ref);
-  if (bytes.isEmpty) {
-    throw StateError('empty video bytes');
+  final read = await readDisplayBlobBytes(blobs, ref);
+  if (read.bytes == null) {
+    throw StateError(
+      read.readFailed ? 'video blob read failed' : 'empty video bytes',
+    );
   }
   final dir = await getTemporaryDirectory();
   final f = File('${dir.path}/pexels_vid_${row.id}.mp4');
-  await f.writeAsBytes(bytes, flush: true);
+  await f.writeAsBytes(read.bytes!, flush: true);
   return f;
 }

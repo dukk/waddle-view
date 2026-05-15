@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 
 import 'package:waddle_shared/blob/blob_store.dart';
 import '../debug/app_debug_log.dart';
+import '../debug/operator_telemetry_hub.dart';
 import '../curator/curator_content_pools.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';
@@ -17,6 +18,7 @@ import 'package:waddle_shared/persistence/tables.dart';
 import '../theme/display_theme.dart';
 import 'dashboard_kv_flags.dart';
 import 'dashboard_viewport_scope.dart';
+import 'display_navigation_bus.dart';
 import 'slide_content_preload.dart';
 import 'screens/admin_setup/admin_setup_slide_widget.dart';
 import 'screens/calendar_month/calendar_month_slide_widget.dart';
@@ -59,7 +61,9 @@ class ScreenRotator extends StatefulWidget {
     required this.blobs,
     required this.localRestBaseUrl,
     required this.adminBaseUrl,
-    required this.setupPasswordFile,
+    required     this.setupPasswordFile,
+    this.telemetryHub,
+    this.navigationBus,
   });
 
   final AppDatabase db;
@@ -69,6 +73,12 @@ class ScreenRotator extends StatefulWidget {
   final String localRestBaseUrl;
   final String adminBaseUrl;
   final File setupPasswordFile;
+
+  /// Optional operator REST telemetry (in-memory ring buffer).
+  final OperatorTelemetryHub? telemetryHub;
+
+  /// Optional REST-driven navigation (same as arrow left/right on carousel).
+  final DisplayNavigationBus? navigationBus;
 
   @override
   State<ScreenRotator> createState() => _ScreenRotatorState();
@@ -164,11 +174,22 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
   @override
   void initState() {
     super.initState();
+    widget.navigationBus?.addListener(_onExternalScreenNavigation);
     unawaited(_bootstrap());
   }
 
   @override
+  void didUpdateWidget(covariant ScreenRotator oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.navigationBus != widget.navigationBus) {
+      oldWidget.navigationBus?.removeListener(_onExternalScreenNavigation);
+      widget.navigationBus?.addListener(_onExternalScreenNavigation);
+    }
+  }
+
+  @override
   void dispose() {
+    widget.navigationBus?.removeListener(_onExternalScreenNavigation);
     _dwellTimer?.cancel();
     _manualIdleTimer?.cancel();
     _anim.dispose();
@@ -250,6 +271,13 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
       rssArticleMetrics: loadedPools.rssArticleMetrics,
       photoMetrics: loadedPools.photoMetrics,
       requirePhotoForRssScreens: requireNewsPhotoForScreens,
+    );
+
+    final screenTypeById = {for (final r in defs) r.id: r.screenType};
+    widget.telemetryHub?.recordScreenProgram(
+      reason: 'new_program',
+      slides: program,
+      screenTypeById: screenTypeById,
     );
 
     if (kDebugMode) {
@@ -437,6 +465,21 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
     });
     _overlayFadeController.reverse();
     _scheduleDwellForCurrentSlide();
+  }
+
+  void _onExternalScreenNavigation() {
+    if (!mounted) {
+      return;
+    }
+    final dir = widget.navigationBus?.dequeueScreenNav();
+    if (dir == null) {
+      return;
+    }
+    if (dir < 0) {
+      unawaited(_handleLeftNavigation());
+    } else {
+      unawaited(_handleRightNavigation());
+    }
   }
 
   KeyEventResult _onKeyEvent(FocusNode _, KeyEvent event) {

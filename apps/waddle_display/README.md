@@ -111,7 +111,7 @@ flutter build linux --release
 
 **GitHub Releases:** pushing a **`v*`** tag runs **[`release.yml`](../../.github/workflows/release.yml)**, which calls **[`release-windows.yml`](../../.github/workflows/release-windows.yml)** (Windows **`.zip`**), **[`release-linux-x64.yml`](../../.github/workflows/release-linux-x64.yml)** (Linux x64 **`.tar.gz`**), and **[`release-pi.yml`](../../.github/workflows/release-pi.yml)** (Linux arm64 **`.tar.gz`**) and attaches all three to the GitHub Release. Each desktop bundle includes the display binary plus a native **`waddlectl`** tree (**`dart build cli`**). CI passes **`flutter build … --build-number`** using GitHub Actions **`github.run_number`**, so each workflow run gets a monotonic integer build id; **`pubspec.yaml`** `version: …+N` is **not** auto-synced to that number. The reusable release workflows are only invoked from **`release.yml`**; use **`workflow_dispatch`** on **`release.yml`** if you want CI builds without creating a GitHub Release (the publish step still runs only on **`v*`** tag pushes).
 
-**PR / branch CI:** **[`ci.yml`](../../.github/workflows/ci.yml)** also compiles **Linux x64** and **Windows x64** release binaries (`flutter build linux|windows --release`) and merges **`waddlectl`** the same way as release, so desktop release breakages are caught before a tag.
+**PR / branch CI:** **[`ci.yml`](../../.github/workflows/ci.yml)** runs tests and analysis, then compiles a **Linux arm64 (Pi)** release bundle via **[`release-pi.yml`](../../.github/workflows/release-pi.yml)** (with **`waddlectl`** merged like tagged releases). **Linux x64** and **Windows** compile checks are **not** run in CI right now; catch desktop breakages locally or via a **`v*`** tag push (**`release.yml`** still builds all three platforms).
 
 Tagged **Pi** tarballs and `install.sh` are produced in CI and documented under [`../../docs/pi/`](../../docs/pi/); templates live in [`../../deploy/linux-arm64/`](../../deploy/linux-arm64/).
 
@@ -164,6 +164,7 @@ Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../d
 - **Install/admin password source**: same key file (`waddle_api.key`). There is no `.env` variable for this password in the current runtime.
 - **`/v1/health`** does not require a key; other `/v1/*` routes return **503** if the key file is missing or empty, **401** if the key is wrong.
 - **Admin UI**: open `/admin/login` on the same base URL. First login requires password change, which rotates `waddle_api.key`.
+- **Operator JSON API** (telemetry, screen/ticker navigation, screens CRUD, ticker definitions, providers, curator settings): documented in **[`docs/pi/api.md`](../../docs/pi/api.md)** under *Operator JSON API*. The **`apps/waddle_controller`** SPA (Vite + React + MUI) calls these endpoints with `X-Api-Key`. When the SPA is served from a **different origin** than the display (for example `http://localhost:5173` → `http://127.0.0.1:8787`), set **`WADDLE_HTTP_CORS_ORIGINS`** to a comma-separated allowlist of exact origins (process env, or merged debug `.env` — see **`.env.example`**).
 
 ### Display theme (`config_key_values`)
 

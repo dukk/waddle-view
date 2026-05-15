@@ -22,12 +22,22 @@ There is no app env var for the admin/install password source in the current Flu
 
 If the key file is **missing or empty**, protected routes return **503** (`api_key_unconfigured`). Invalid keys return **401**.
 
+## Cross-origin browser access (CORS)
+
+When a browser-based client (for example the **`waddle_controller`** SPA hosted on another port or host) calls this API, the browser sends an **`Origin`** header. By default the Shelf stack does **not** emit CORS headers, so those fetches fail unless the client uses a same-origin proxy.
+
+Optional allowlist (comma-separated **exact** origins, no wildcards):
+
+- Set environment variable **`WADDLE_HTTP_CORS_ORIGINS`** (for example `http://127.0.0.1:5173,http://localhost:5173`).
+- When the request **`Origin`** matches one of the listed values, responses include **`Access-Control-Allow-Origin`**, **`Access-Control-Allow-Methods`** (`GET,POST,PATCH,PUT,DELETE,OPTIONS`), and **`Access-Control-Allow-Headers`** (`Content-Type`, `X-Api-Key`, `Authorization`). **`OPTIONS`** preflight returns **204** for allowed origins.
+- **`/admin`** is not special-cased: if you need CORS for admin HTML, the same allowlist applies to those responses when reached through the root handler.
+
 ## Endpoints (MVP)
 
 | Method | Path | Notes |
 |--------|------|--------|
 | GET | `/v1/health` | No API key required. |
-| GET | `/v1/providers` | Lists non-secret provider settings. |
+| GET | `/v1/providers` | Lists non-secret provider settings (`id`, `type`, `enabled`, `poll_seconds`, `base_url`, decoded `config_json` / `config_json_schema` / `example_config_json` when stored). |
 | GET | `/v1/screens` | Display screen definitions from SQLite (`screen_type`, `config_json`, `dwell_seconds`, scheduling hints, optional `config_json_schema` / `example_config_json`). |
 | GET | `/v1/ticker/items` | Current bottom-marquee items (`ordinal`, `kind`, `body`) — in-process snapshot; read-only. |
 | GET | `/v1/alerts` | All alerts (no redaction of bodies in MVP; do not store secrets in alerts). |
@@ -42,6 +52,28 @@ If the key file is **missing or empty**, protected routes return **503** (`api_k
 | PATCH | `/v1/content/photos/{id}` | Same as jokes. |
 | PATCH | `/v1/content/videos/{id}` | Same as jokes. |
 | PATCH | `/v1/content/trivia/{id}` | Same as jokes. |
+
+## Operator JSON API (machine clients / `waddle_controller`)
+
+These routes use the same **`X-Api-Key` / `Authorization: Bearer`** auth as other `/v1/*` paths. Prefer JSON **`Content-Type: application/json`** on mutators.
+
+| Method | Path | Notes |
+|--------|------|--------|
+| GET | `/v1/telemetry/providers` | Query: optional `limit` (default 200, max 2000), `since_ms`. Returns `{"items":[{at_ms, channel, message}, ...]}` — in-process ring buffer (provider + engine lines). |
+| GET | `/v1/telemetry/programs` | Query: optional `limit` (default 50, max 500), `since_ms`. Returns `{"items":[{at_ms, reason, slides:[...]}, ...]}` — recent screen programs. |
+| GET | `/v1/telemetry/ticker-programs` | Same query shape as programs; `{"items":[{at_ms, items:[...]}, ...]}` for ticker rows. |
+| POST | `/v1/display/navigation` | Body: `{"surface":"screen"|"ticker","direction":"back"|"forward"}`. Enqueues UI navigation. **503** `navigation_unavailable` if the display was started without a navigation bus. |
+| GET | `/v1/meta/screen-types` | `{"items":[{screen_type, config_json_schema, example_config_json}, ...]}` for schema-driven screen editors. |
+| GET | `/v1/ticker/definitions` | Full `ticker_definitions` rows (including `config_json_schema` / `example_config_json` when present). |
+| PATCH | `/v1/ticker/definitions/{id}` | JSON body may include `enabled`, `frequency_weight`, `sort_order`, `config_key`. |
+| GET | `/v1/curator/settings` | Aggregated curator/display tuning (program duration, history depth, ticker speed, theme, text scales, RSS photo requirement, etc.). |
+| PUT | `/v1/curator/settings` | Replaces the same fields; requires at least `program_duration_seconds` and `history_depth` (see implementation for optional keys). |
+| PATCH | `/v1/providers/{id}` | Partial update: `enabled`, `poll_seconds`, `base_url`, `config_json` (JSON string or object). |
+| POST | `/v1/screens` | Create screen: `id`, `screen_type`, `config_json` (object or string), optional `name`, `description`, `enabled`, `dwell_seconds`, `frequency_weight`, scheduling keys, `data_key`. **409** if `id` exists. |
+| PATCH | `/v1/screens/{id}` | Partial update; `config_json` re-validates layout. |
+| DELETE | `/v1/screens/{id}` | Deletes row; **404** if missing. |
+
+**Expanded read shape:** `GET /v1/providers` includes `base_url`, decoded `config_json`, `config_json_schema`, and `example_config_json` when stored (omit secrets in client logs).
 
 ## Admin web UI
 
@@ -95,3 +127,11 @@ curl -sS -H "X-Api-Key: $KEY" -H 'Content-Type: application/json' \
 ```
 
 Never log or commit the API key.
+
+### Example: remote navigation
+
+```bash
+curl -sS -H "X-Api-Key: $KEY" -H 'Content-Type: application/json' \
+  -d '{"surface":"screen","direction":"forward"}' \
+  http://127.0.0.1:8787/v1/display/navigation
+```

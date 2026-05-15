@@ -9,6 +9,46 @@ TZDateTime calendarInstantInZone(DateTime stored, Location zone) {
   return TZDateTime.from(utc, zone);
 }
 
+/// Civil calendar date (Y-M-D) derived from [stored] using **UTC** components.
+///
+/// All-day events are persisted as UTC instants (often `DateTime.utc(y, m, d)`).
+/// Mapping that instant through the display timezone for bucketing can move the
+/// event to the wrong calendar day on the slide.
+DateTime calendarAllDayCivilDateFromStoredUtc(DateTime stored) {
+  final u = stored.toUtc();
+  return DateTime(u.year, u.month, u.day);
+}
+
+/// Exclusive end date for an all-day range in the same convention as calendar
+/// APIs (end date is the next calendar day). If [endMs] is not after [startMs]
+/// on the civil calendar, treats the event as a single day.
+DateTime calendarAllDayEndExclusiveCivilFromStored(
+  DateTime startMs,
+  DateTime endMs,
+) {
+  final start = calendarAllDayCivilDateFromStoredUtc(startMs);
+  final end = calendarAllDayCivilDateFromStoredUtc(endMs);
+  if (!end.isAfter(start)) {
+    return start.add(const Duration(days: 1));
+  }
+  return end;
+}
+
+/// Half-open civil-day ranges [[startMs],[endMs)) and [[rangeStart],[rangeEnd))
+/// overlap (used for all-day windows without instant/timezone shifting).
+bool calendarAllDayCivilRangesOverlap(
+  DateTime startMs,
+  DateTime endMs,
+  DateTime rangeStart,
+  DateTime rangeEnd,
+) {
+  final es = calendarAllDayCivilDateFromStoredUtc(startMs);
+  final ee = calendarAllDayEndExclusiveCivilFromStored(startMs, endMs);
+  final rs = DateTime(rangeStart.year, rangeStart.month, rangeStart.day);
+  final re = DateTime(rangeEnd.year, rangeEnd.month, rangeEnd.day);
+  return es.isBefore(re) && ee.isAfter(rs);
+}
+
 /// UTC epoch ms for midnight at the start of [now]'s calendar day in [zone].
 int startOfTodayInZoneMs(Location zone, DateTime now) {
   final wall = calendarInstantInZone(now, zone);

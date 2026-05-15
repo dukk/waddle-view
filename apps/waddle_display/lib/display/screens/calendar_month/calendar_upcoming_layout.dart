@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:timezone/timezone.dart';
 import 'package:waddle_shared/blob/blob_store.dart';
+import 'package:waddle_shared/blob/display_blob_read.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 import 'calendar_month_grid.dart';
@@ -82,13 +83,9 @@ Future<List<CalendarSlideEventRow>> loadCalendarSlideEventRows(
     if (meta == null) {
       continue;
     }
-    try {
-      final raw = await blobs.readBytes(BlobRef(meta.relativePath));
-      if (raw.isNotEmpty) {
-        bytesByCategory[c.id] = Uint8List.fromList(raw);
-      }
-    } on Object {
-      // ignore missing blob
+    final read = await readDisplayBlobBytes(blobs, BlobRef(meta.relativePath));
+    if (read.bytes != null) {
+      bytesByCategory[c.id] = read.bytes!;
     }
   }
   return events
@@ -177,14 +174,26 @@ Map<int, CalendarMonthDayMarkers> buildCalendarMonthDayMarkersByDay({
   final byDay = <int, List<CalendarSlideEventRow>>{};
   for (final row in rows) {
     final e = row.event;
-    final startMs = e.startMs.millisecondsSinceEpoch;
-    final endMs = e.endMs.millisecondsSinceEpoch;
     for (var d = 1; d <= daysInMonth; d++) {
-      final dayStart = TZDateTime(displayZone, y, m, d);
-      final dayEnd = dayStart.add(const Duration(days: 1));
-      final ds = dayStart.millisecondsSinceEpoch;
-      final de = dayEnd.millisecondsSinceEpoch;
-      if (startMs < de && endMs > ds) {
+      final cellDate = DateTime(y, m, d);
+      final bool touches;
+      if (e.allDay) {
+        touches = calendarAllDayCivilRangesOverlap(
+          e.startMs,
+          e.endMs,
+          cellDate,
+          cellDate.add(const Duration(days: 1)),
+        );
+      } else {
+        final startMs = e.startMs.millisecondsSinceEpoch;
+        final endMs = e.endMs.millisecondsSinceEpoch;
+        final dayStart = TZDateTime(displayZone, y, m, d);
+        final dayEnd = dayStart.add(const Duration(days: 1));
+        final ds = dayStart.millisecondsSinceEpoch;
+        final de = dayEnd.millisecondsSinceEpoch;
+        touches = startMs < de && endMs > ds;
+      }
+      if (touches) {
         byDay.putIfAbsent(d, () => []).add(row);
       }
     }
@@ -268,8 +277,13 @@ List<CalendarUpcomingListItem> buildCalendarUpcomingListItems({
 }) {
   final byDay = <DateTime, List<CalendarSlideEventRow>>{};
   for (final r in rows) {
-    final z = calendarInstantInZone(r.event.startMs, displayZone);
-    final key = DateTime(z.year, z.month, z.day);
+    final DateTime key;
+    if (r.event.allDay) {
+      key = calendarAllDayCivilDateFromStoredUtc(r.event.startMs);
+    } else {
+      final z = calendarInstantInZone(r.event.startMs, displayZone);
+      key = DateTime(z.year, z.month, z.day);
+    }
     byDay.putIfAbsent(key, () => []).add(r);
   }
   final days = byDay.keys.toList()..sort();

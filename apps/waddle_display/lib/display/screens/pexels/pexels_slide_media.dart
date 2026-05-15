@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:drift/drift.dart'
     show CustomExpression, Expression, OrderingTerm;
 import 'package:waddle_shared/blob/blob_store.dart';
+import 'package:waddle_shared/blob/display_blob_read.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_display/curator/screen_program_curator.dart';
 import 'package:waddle_shared/persistence/database.dart';
@@ -70,6 +71,6 @@ Future<Uint8List?> loadPhotoBlobBytes(
   if (meta == null) {
     return null;
   }
-  final bytes = await blobs.readBytes(BlobRef(meta.relativePath));
-  return bytes.isEmpty ? null : Uint8List.fromList(bytes);
+  final read = await readDisplayBlobBytes(blobs, BlobRef(meta.relativePath));
+  return read.bytes;
 }

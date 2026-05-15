@@ -177,6 +177,10 @@ Future<void> _preloadPexelsVideo(
 ) async {
   final row = await loadPexelsVideoForSlide(db, w, slide);
   if (row != null) {
-    await materializePexelsVideoFile(db, blobs, row);
+    try {
+      await materializePexelsVideoFile(db, blobs, row);
+    } catch (_) {
+      // Missing or unreadable blob must not abort slide preload.
+    }
   }
 }

@@ -44,6 +44,25 @@ jobs:
           if (Test-Path $dst) { Remove-Item -Recurse -Force $dst }
           New-Item -ItemType Directory -Force $dst | Out-Null
           Copy-Item -Path (Join-Path $src "*") -Destination $dst -Recurse
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/waddle_controller/package-lock.json
+      - name: Build waddle_controller SPA
+        working-directory: ${{ github.workspace }}/apps/waddle_controller
+        run: npm ci && npm run build
+      - name: Merge waddle_controller into Windows Release bundle
+        shell: pwsh
+        working-directory: ${{ github.workspace }}/apps/waddle_display
+        run: |
+          $releaseDir = "build/windows/x64/runner/Release"
+          $src = "${{ github.workspace }}/apps/waddle_controller/dist"
+          if (-not (Test-Path "$src/index.html")) { throw "Missing waddle_controller dist at $src" }
+          $dst = Join-Path $releaseDir "waddle_controller"
+          if (Test-Path $dst) { Remove-Item -Recurse -Force $dst }
+          New-Item -ItemType Directory -Force $dst | Out-Null
+          Copy-Item -Path (Join-Path $src "*") -Destination $dst -Recurse
       - name: Package dist
         shell: pwsh
         run: |
@@ -52,6 +71,7 @@ jobs:
           $releaseDir = "build/windows/x64/runner/Release"
           if (-not (Test-Path "$releaseDir/waddle_display.exe")) { throw "Missing $releaseDir/waddle_display.exe" }
           if (-not (Test-Path "$releaseDir/waddlectl/bin/waddlectl.exe")) { throw "Missing $releaseDir/waddlectl/bin/waddlectl.exe" }
+          if (-not (Test-Path "$releaseDir/waddle_controller/index.html")) { throw "Missing $releaseDir/waddle_controller/index.html" }
           New-Item -ItemType Directory -Force "../../dist" | Out-Null
           $zip = "../../dist/$distName.zip"
           Compress-Archive -Path "$releaseDir/*" -DestinationPath $zip -Force

@@ -31,3 +31,5 @@ dist/
 **/__pycache__/*
 
 deploy/dev-pi/*.tar.gz
+
+**/node_modules/**

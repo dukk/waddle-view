@@ -6,6 +6,8 @@ on:
   pull_request:
     paths:
       - 'apps/waddle_display/**'
+      - 'apps/waddle_display_mock_api/**'
+      - 'apps/waddle_controller/**'
       - 'apps/waddlectl/**'
       - 'packages/waddle_shared/**'
       - 'packages/waddle_data_providers/**'
@@ -74,7 +76,7 @@ jobs:
       - run: flutter test
         working-directory: ${{ github.workspace }}/apps/waddlectl
 
-  # Release-mode compile check (x86-64 / x64); mirrors tag-time release-linux-x64 / release-windows.
+  # Release-mode compile checks; run only after flutter analyze + tests pass (analyze-test).
   build-linux-release:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -198,6 +200,34 @@ jobs:
           name: ci-bundle-windows-x64-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ github.workspace }}/dist/*.zip
 
+  waddle-controller:
+    runs-on: ubuntu-latest
+    needs: validate-linux-build-deps
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/waddle_controller/package-lock.json
+      - name: npm ci + build + lint (waddle_controller)
+        working-directory: apps/waddle_controller
+        run: npm ci && npm run build && npm run lint
+
+  waddle-display-mock-api:
+    runs-on: ubuntu-latest
+    needs: validate-linux-build-deps
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/waddle_display_mock_api/package-lock.json
+      - name: npm ci + build + lint (waddle_display_mock_api)
+        working-directory: apps/waddle_display_mock_api
+        run: npm ci && npm run build && npm run lint
+
   build-pi:
     needs: analyze-test
     permissions:
@@ -211,13 +241,20 @@ jobs:
 
   cleanup-ci-bundle-artifacts:
     runs-on: ubuntu-latest
-    needs: [analyze-test, build-linux-release, build-windows-release, build-pi]
+    needs:
+      - analyze-test
+      - waddle-controller
+      - waddle-display-mock-api
+      - build-linux-release
+      - build-windows-release
+      - build-pi
     if: always() && !cancelled()
     permissions:
       actions: write
       contents: read
     steps:
       - name: Prune old CI bundle artifacts (keep newest 5 per platform)
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

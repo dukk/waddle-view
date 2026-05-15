@@ -38,6 +38,7 @@ Run the [`run-waddle-checks`](.cursor/skills/run-waddle-checks/SKILL.md) skill (
 4. **`db.customStatement(sql, args)` only accepts raw values** (`null`, `bool`, `int`, `num`, `String`, `List<int>`); never pass `Variable<T>` — that's typed-builder territory.
 5. **`calendar_events.category_id` is a foreign key to `content_categories.id`** with FKs on. Tests that drive calendar providers with `category` / `defaultCategory` must seed those ids first via `seedContentCategoriesForTest(db, [...])`.
 6. **Every new `materialIconName` in `kContentCategoryDefaults`** (in `packages/waddle_shared/lib/persistence/content_category_defaults.dart`) needs a matching `case` in **`contentCategoryMaterialIcon`** — the dedicated test enforces this and is easy to miss when adding categories.
+7. **Display-time `BlobStore.readBytes` must not throw**: slide UI and preload paths use [`readDisplayBlobBytes`](packages/waddle_shared/lib/blob/display_blob_read.dart) (see [`.cursor/rules/waddle-view-flutter.mdc`](.cursor/rules/waddle-view-flutter.mdc)); uncaught `FileSystemException` from missing blob files triggers kiosk process restart.
 
 See [`.cursor/rules/waddle-view-tests.mdc`](.cursor/rules/waddle-view-tests.mdc) for the full list including Dart 3 null-promotion rules.
 
