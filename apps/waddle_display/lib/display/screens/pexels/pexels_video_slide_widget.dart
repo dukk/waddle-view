@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:drift/drift.dart'
     show CustomExpression, Expression, OrderingTerm;
@@ -14,6 +15,7 @@ import 'package:waddle_shared/persistence/database.dart';
 import '../../dashboard_viewport_scope.dart';
 import 'pexels_attribution_overlay.dart';
 import 'pexels_video_materialize.dart';
+import 'pexels_video_playback.dart';
 
 Future<Video?> loadPexelsVideoForSlide(
   AppDatabase db,
@@ -80,6 +82,7 @@ class PexelsVideoSlideWidget extends StatefulWidget {
     required this.slide,
     required this.spec,
     required this.theme,
+    this.allowPlayback = true,
   });
 
   final AppDatabase db;
@@ -88,38 +91,57 @@ class PexelsVideoSlideWidget extends StatefulWidget {
   final ParsedWidgetSpec spec;
   final ThemeData theme;
 
+  /// When false (e.g. during carousel slide transition), native video surfaces
+  /// are not created so media_kit is not asked to resize textures to 0×0.
+  final bool allowPlayback;
+
   @override
   State<PexelsVideoSlideWidget> createState() => _PexelsVideoSlideWidgetState();
 }
 
 class _PexelsVideoSlideWidgetState extends State<PexelsVideoSlideWidget> {
   Video? _row;
+  File? _mediaFile;
+  bool _loop = true;
+  bool _unmuted = false;
   Player? _player;
   mkv.VideoController? _videoController;
+  StreamSubscription<String>? _errorSub;
   bool _loading = true;
   String? _error;
+  bool _layoutReady = false;
+  bool _playbackStarted = false;
+  int _playbackRetries = 0;
+  int _playbackGeneration = 0;
 
   @override
   void initState() {
     super.initState();
-    unawaited(_bootstrap());
+    unawaited(_prepareMedia());
+  }
+
+  @override
+  void didUpdateWidget(covariant PexelsVideoSlideWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.allowPlayback != widget.allowPlayback) {
+      if (widget.allowPlayback) {
+        unawaited(_maybeStartPlayback());
+      } else {
+        unawaited(_teardownPlayback());
+      }
+    }
   }
 
   @override
   void dispose() {
-    final p = _player;
-    _player = null;
-    _videoController = null;
-    if (p != null) {
-      unawaited(p.dispose());
-    }
+    unawaited(_teardownPlayback(disposing: true));
     super.dispose();
   }
 
-  Future<void> _bootstrap() async {
+  Future<void> _prepareMedia() async {
     final c = widget.spec.config;
-    final unmuted = pexelsVideoSlideConfigBool(c, 'unmuted', false);
-    final loop = pexelsVideoSlideConfigBool(c, 'loop', true);
+    _unmuted = pexelsVideoSlideConfigBool(c, 'unmuted', false);
+    _loop = pexelsVideoSlideConfigBool(c, 'loop', true);
 
     try {
       final row = await loadPexelsVideoForSlide(
@@ -137,23 +159,15 @@ class _PexelsVideoSlideWidgetState extends State<PexelsVideoSlideWidget> {
         return;
       }
       final file = await materializePexelsVideoFile(widget.db, widget.blobs, row);
-      final player = Player();
-      final videoController = mkv.VideoController(player);
-      await player.setPlaylistMode(
-        loop ? PlaylistMode.single : PlaylistMode.none,
-      );
-      await player.setVolume(unmuted ? 100.0 : 0.0);
-      await player.open(Media(Uri.file(file.path).toString()));
       if (!mounted) {
-        await player.dispose();
         return;
       }
       setState(() {
         _row = row;
-        _player = player;
-        _videoController = videoController;
+        _mediaFile = file;
         _loading = false;
       });
+      await _maybeStartPlayback();
     } on Object catch (e) {
       if (mounted) {
         setState(() {
@@ -161,6 +175,138 @@ class _PexelsVideoSlideWidgetState extends State<PexelsVideoSlideWidget> {
           _error = '$e';
         });
       }
+    }
+  }
+
+  void _reportLayoutSize(double width, double height) {
+    final ready = pexelsVideoLayoutSizeReady(width, height);
+    if (ready == _layoutReady) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      if (ready == _layoutReady) {
+        return;
+      }
+      setState(() {
+        _layoutReady = ready;
+      });
+      if (ready) {
+        unawaited(_maybeStartPlayback());
+      }
+    });
+  }
+
+  Future<void> _maybeStartPlayback() async {
+    if (!mounted ||
+        !widget.allowPlayback ||
+        !_layoutReady ||
+        _playbackStarted ||
+        _mediaFile == null ||
+        _row == null ||
+        _error != null) {
+      return;
+    }
+    await _startPlayback();
+  }
+
+  Future<void> _startPlayback() async {
+    final file = _mediaFile;
+    if (file == null || _playbackStarted) {
+      return;
+    }
+    final generation = ++_playbackGeneration;
+    _playbackStarted = true;
+    try {
+      final player = Player();
+      final videoController = mkv.VideoController(player);
+      _errorSub?.cancel();
+      _errorSub = player.stream.error.listen(
+        (message) => unawaited(_onPlaybackError(message)),
+      );
+      await player.setPlaylistMode(
+        _loop ? PlaylistMode.single : PlaylistMode.none,
+      );
+      await player.setVolume(_unmuted ? 100.0 : 0.0);
+      await player.open(Media(Uri.file(file.path).toString()));
+      if (!mounted || generation != _playbackGeneration) {
+        await player.dispose();
+        return;
+      }
+      setState(() {
+        _player = player;
+        _videoController = videoController;
+      });
+    } on Object catch (e) {
+      _playbackStarted = false;
+      await _errorSub?.cancel();
+      _errorSub = null;
+      if (mounted && generation == _playbackGeneration) {
+        setState(() {
+          _error = '$e';
+        });
+      }
+    }
+  }
+
+  Future<void> _onPlaybackError(String message) async {
+    if (!mounted || !widget.allowPlayback) {
+      return;
+    }
+    if (_playbackRetries >= kPexelsVideoMaxPlaybackRetries) {
+      if (mounted) {
+        setState(() {
+          _error = message;
+        });
+      }
+      return;
+    }
+    _playbackRetries++;
+    final delay = pexelsVideoRetryDelay(_playbackRetries);
+    await Future<void>.delayed(delay);
+    if (!mounted || !widget.allowPlayback) {
+      return;
+    }
+    await _restartPlayback();
+  }
+
+  Future<void> _restartPlayback() async {
+    await _teardownPlayback(keepMedia: true);
+    if (!mounted || _mediaFile == null) {
+      return;
+    }
+    await _maybeStartPlayback();
+  }
+
+  Future<void> _teardownPlayback({
+    bool disposing = false,
+    bool keepMedia = false,
+  }) async {
+    _playbackGeneration++;
+    _playbackStarted = false;
+    await _errorSub?.cancel();
+    _errorSub = null;
+    final player = _player;
+    _player = null;
+    _videoController = null;
+    if (player != null) {
+      try {
+        await player.stop();
+      } on Object {
+        // Best-effort before dispose.
+      }
+      try {
+        await player.dispose();
+      } on Object {
+        // Native teardown may race with texture release during transitions.
+      }
+    }
+    if (!disposing && mounted && !keepMedia) {
+      setState(() {});
+    } else if (!disposing && mounted) {
+      setState(() {});
     }
   }
 
@@ -197,7 +343,7 @@ class _PexelsVideoSlideWidgetState extends State<PexelsVideoSlideWidget> {
       );
     }
     final row = _row!;
-    final vc = _videoController!;
+    final vc = _videoController;
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -205,14 +351,20 @@ class _PexelsVideoSlideWidgetState extends State<PexelsVideoSlideWidget> {
           builder: (context, constraints) {
             final w = constraints.maxWidth;
             final h = constraints.maxHeight;
-            if ((w.isFinite && w <= 0) || (h.isFinite && h <= 0)) {
-              return const SizedBox.shrink();
+            _reportLayoutSize(w, h);
+            if (vc == null ||
+                !widget.allowPlayback ||
+                !pexelsVideoLayoutSizeReady(w, h)) {
+              return ColoredBox(
+                color: widget.theme.colorScheme.surface,
+              );
             }
             return Center(
               child: mkv.Video(
+                key: const Key('pexels_video_surface'),
                 controller: vc,
-                width: w.isFinite ? w : null,
-                height: h.isFinite ? h : null,
+                width: w,
+                height: h,
                 fit: BoxFit.cover,
                 controls: null,
               ),

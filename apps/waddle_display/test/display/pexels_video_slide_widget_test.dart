@@ -161,6 +161,68 @@ void main() {
     await db.close();
   });
 
+  testWidgets('defer playback surface when allowPlayback is false', (
+    tester,
+  ) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final blobs = FakeBlobStore();
+    final ref = await blobs.putBytes([1, 2, 3], logicalKey: 'vid/ok');
+    await db.into(db.blobMetadata).insert(
+          BlobMetadataCompanion.insert(
+            blobKey: 'vid/ok',
+            sha256: 'abc',
+            relativePath: ref.storageKey,
+            bytes: 3,
+            capturedAt: DateTime.fromMillisecondsSinceEpoch(1),
+          ),
+        );
+    await db.into(db.videos).insert(
+          VideosCompanion.insert(
+            id: 'vok',
+            category: const Value('pexels'),
+            mediaBlobKey: 'vid/ok',
+            photographerName: 'P',
+            photographerUrl: 'https://www.pexels.com/@p',
+            pexelsPageUrl: 'https://www.pexels.com/video/3/',
+            altText: const Value(''),
+            durationSeconds: 12,
+            fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
+          ),
+        );
+    const layout = ParsedWidgetSpec(
+      type: 'pexels_video',
+      slot: 'main',
+      config: {},
+    );
+    final slide = ResolvedSlide(
+      screenId: 's',
+      dwellMs: 5000,
+      layoutJson: '',
+      randomChoices: const {'main_pexels_video': 'vok'},
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: Scaffold(
+          body: PexelsVideoSlideWidget(
+            db: db,
+            blobs: blobs,
+            slide: slide,
+            spec: layout,
+            theme: ThemeData.dark(),
+            allowPlayback: false,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(const Key('pexels_video_surface')), findsNothing);
+    await db.close();
+  });
+
   testWidgets('shows error when video bytes are empty', (tester) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);

@@ -180,6 +180,54 @@ void main() {
     },
   );
 
+  StackTrace _mediaKitVideoStack() {
+    return StackTrace.fromString(
+      '#0      NativeVideoController.resize '
+      '(package:media_kit_video/src/video_controller/native_video_controller/real.dart:10:5)\n'
+      '#1      VideoState.build '
+      '(package:media_kit_video/src/video/video_texture.dart:20:5)\n',
+    );
+  }
+
+  test('isRecoverableMediaKitFlutterError matches media_kit_video stacks', () {
+    expect(
+      isRecoverableMediaKitFlutterError(
+        _flutterDetails(
+          StateError('texture unavailable'),
+          stack: _mediaKitVideoStack(),
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      isRecoverableMediaKitFlutterError(
+        _flutterDetails(
+          FlutterError('VideoOutput resize failed'),
+          stack: _mediaKitVideoStack(),
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      isRecoverableMediaKitFlutterError(
+        _flutterDetails(
+          StateError('texture unavailable'),
+          stack: StackTrace.current,
+        ),
+      ),
+      isFalse,
+    );
+    expect(
+      isRecoverableMediaKitFlutterError(
+        _flutterDetails(
+          Exception('not a framework error'),
+          stack: _mediaKitVideoStack(),
+        ),
+      ),
+      isFalse,
+    );
+  });
+
   test('isRecoverableHardwareKeyboardError matches HardwareKeyboard assertions',
       () {
     expect(

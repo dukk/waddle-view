@@ -61,7 +61,7 @@ class ScreenRotator extends StatefulWidget {
     required this.blobs,
     required this.localRestBaseUrl,
     required this.adminBaseUrl,
-    required     this.setupPasswordFile,
+    required     this.instanceIdFile,
     this.telemetryHub,
     this.navigationBus,
   });
@@ -72,7 +72,7 @@ class ScreenRotator extends StatefulWidget {
   /// Bound loopback base URL for the in-process REST server (e.g. `http://127.0.0.1:8787`).
   final String localRestBaseUrl;
   final String adminBaseUrl;
-  final File setupPasswordFile;
+  final File instanceIdFile;
 
   /// Optional operator REST telemetry (in-memory ring buffer).
   final OperatorTelemetryHub? telemetryHub;
@@ -601,6 +601,9 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
     final theme = Theme.of(context);
     final outgoing = _fromSlide;
     final incoming = _toSlide ?? outgoing;
+    final slideTransitionActive = outgoing != null &&
+        incoming != null &&
+        outgoing != incoming;
 
     if (_history.isEmpty || _visibleProgram.isEmpty) {
       return Center(
@@ -631,10 +634,11 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
                   blobs: widget.blobs,
                   localRestBaseUrl: widget.localRestBaseUrl,
                   adminBaseUrl: widget.adminBaseUrl,
-                  setupPasswordFile: widget.setupPasswordFile,
+                  instanceIdFile: widget.instanceIdFile,
                   slide: outgoing,
                   theme: theme,
                   slideIndex: _slideCursor > 0 ? _slideCursor - 1 : 0,
+                  allowVideoPlayback: !slideTransitionActive,
                   onReportDesiredDwell: _reportDesiredDwellForSlide,
                 ),
               ),
@@ -651,10 +655,11 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
                       blobs: widget.blobs,
                       localRestBaseUrl: widget.localRestBaseUrl,
                       adminBaseUrl: widget.adminBaseUrl,
-                      setupPasswordFile: widget.setupPasswordFile,
+                      instanceIdFile: widget.instanceIdFile,
                       slide: incoming,
                       theme: theme,
                       slideIndex: _slideCursor,
+                      allowVideoPlayback: !slideTransitionActive,
                       onReportDesiredDwell: _reportDesiredDwellForSlide,
                     )
                   : const SizedBox.shrink(),
@@ -807,10 +812,11 @@ class _SlideContent extends StatelessWidget {
     required this.blobs,
     required this.localRestBaseUrl,
     required this.adminBaseUrl,
-    required this.setupPasswordFile,
+    required this.instanceIdFile,
     required this.slide,
     required this.theme,
     required this.slideIndex,
+    required this.allowVideoPlayback,
     required this.onReportDesiredDwell,
   });
 
@@ -818,10 +824,11 @@ class _SlideContent extends StatelessWidget {
   final BlobStore blobs;
   final String localRestBaseUrl;
   final String adminBaseUrl;
-  final File setupPasswordFile;
+  final File instanceIdFile;
   final ResolvedSlide slide;
   final ThemeData theme;
   final int slideIndex;
+  final bool allowVideoPlayback;
   final void Function(int slideIndex, int ms) onReportDesiredDwell;
 
   @override
@@ -842,6 +849,7 @@ class _SlideContent extends StatelessWidget {
           widgets,
           slide,
           slideIndex,
+          allowVideoPlayback,
           onReportDesiredDwell,
         ),
       ),
@@ -853,6 +861,7 @@ class _SlideContent extends StatelessWidget {
     List<ParsedWidgetSpec> widgets,
     ResolvedSlide slide,
     int slideIndex,
+    bool allowVideoPlayback,
     void Function(int slideIndex, int ms) onReportDesiredDwell,
   ) {
     final s = DashboardViewportScope.scaleOf(context);
@@ -942,6 +951,7 @@ class _SlideContent extends StatelessWidget {
           slide: slide,
           spec: w,
           theme: theme,
+          allowPlayback: allowVideoPlayback,
         ),
       );
     }
@@ -1051,9 +1061,8 @@ class _SlideContent extends StatelessWidget {
               );
             case 'admin_setup':
               return AdminSetupSlideWidget(
-                db: db,
                 adminBaseUrl: adminBaseUrl,
-                setupPasswordFile: setupPasswordFile,
+                instanceIdFile: instanceIdFile,
                 spec: w,
                 theme: theme,
               );
@@ -1087,6 +1096,7 @@ class _SlideContent extends StatelessWidget {
                 slide: slide,
                 spec: w,
                 theme: theme,
+                allowPlayback: allowVideoPlayback,
               );
             case 'stock_quotes':
               return StockQuotesSlideWidget(

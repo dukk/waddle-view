@@ -115,6 +115,22 @@ bool isRecoverableHardwareKeyboardError(FlutterErrorDetails details) {
   );
 }
 
+/// media_kit texture resize / platform teardown races during slide transitions
+/// should not restart the kiosk; the slide widget retries or shows an error.
+@visibleForTesting
+bool isRecoverableMediaKitFlutterError(FlutterErrorDetails details) {
+  final stack = details.stack?.toString();
+  if (stack == null) {
+    return false;
+  }
+  if (!stack.contains('package:media_kit_video/') &&
+      !stack.contains('package:media_kit/')) {
+    return false;
+  }
+  final ex = details.exception;
+  return ex is StateError || ex is FlutterError;
+}
+
 Future<void> _defaultRestartProcess() async {
   if (kIsWeb) {
     stderr.writeln('[Fatal] restart skipped on web');
@@ -165,7 +181,8 @@ void installGlobalFatalErrorHandlers({
   FlutterError.onError = (FlutterErrorDetails details) {
     FlutterError.presentError(details);
     if (isRecoverableLayoutFlutterError(details) ||
-        isRecoverableHardwareKeyboardError(details)) {
+        isRecoverableHardwareKeyboardError(details) ||
+        isRecoverableMediaKitFlutterError(details)) {
       logRecoverable(details);
       return;
     }
@@ -180,14 +197,16 @@ void installGlobalFatalErrorHandlers({
   };
 
   PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
-    if (isRecoverableHardwareKeyboardError(
-      FlutterErrorDetails(exception: error, stack: stack),
-    )) {
+    final details = FlutterErrorDetails(exception: error, stack: stack);
+    if (isRecoverableHardwareKeyboardError(details) ||
+        isRecoverableMediaKitFlutterError(details)) {
       logRecoverable(
         FlutterErrorDetails(
           exception: error,
           stack: stack,
-          library: 'services',
+          library: isRecoverableMediaKitFlutterError(details)
+              ? 'media_kit'
+              : 'services',
         ),
       );
       return true;
