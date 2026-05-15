@@ -14,6 +14,7 @@ import 'package:waddle_shared/collect/data_write_context.dart';
 import '../microsoft_graph/microsoft_graph_base_url.dart';
 import '../microsoft_graph/microsoft_graph_oauth.dart';
 import 'outlook_calendar_extra_config.dart';
+import '../shared/provider_calendar_date_time.dart';
 
 const String kOutlookCalendarProviderId = 'calendar_outlook';
 
@@ -600,18 +601,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
     Map<String, dynamic>? m, {
     required bool isAllDay,
   }) {
-    if (m == null) {
-      return null;
-    }
-    final dt = m['dateTime'];
-    final date = m['date'];
-    if (dt is String && dt.isNotEmpty) {
-      return DateTime.tryParse(dt);
-    }
-    if (isAllDay && date is String && date.isNotEmpty) {
-      return DateTime.tryParse('${date}T00:00:00');
-    }
-    return null;
+    return parseCalendarEventDateMapUtc(m, isAllDay: isAllDay);
   }
 
   String _stableEventId(String accountKey, String mailbox, String graphEventId) {

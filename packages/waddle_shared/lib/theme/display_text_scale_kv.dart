@@ -80,15 +80,15 @@ double linearFactorForDisplayTextScaleOption(String canonical) {
     case kDisplayTextScaleNormal:
       return 1.0;
     case kDisplayTextScaleLarge:
-      return 1.15;
+      return 1.2;
     case kDisplayTextScaleLarger:
-      return 1.3;
+      return 1.4;
     case kDisplayTextScaleXLarge:
-      return 1.45;
-    case kDisplayTextScaleXXLarge:
       return 1.6;
+    case kDisplayTextScaleXXLarge:
+      return 1.8;
     case kDisplayTextScaleXXXLarge:
-      return 1.75;
+      return 2.0;
     default:
       return 1.0;
   }

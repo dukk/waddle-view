@@ -14,6 +14,15 @@ Examples::
     python deploy/dev-pi/install_main_to_pi.py --sync-local-dev
     python deploy/dev-pi/install_main_to_pi.py --sync-local-dev --db C:\\path\\waddle_view.sqlite
 
+After a successful upgrade the script also copies ``apps/waddle_display/.env.example`` to
+``~/.config/waddle_view/.env.example`` (reference only; not sourced by the shell) and, if it
+exists locally, ``.env.development`` to ``~/.config/waddle_view/.env``. It merges a small
+**idempotent** block into ``~/.bashrc`` (or ``~/.bash_profile`` when ``.bashrc`` is absent) so
+interactive SSH sessions ``source`` ``~/.config/waddle_view/.env`` when present (``set -a`` exports
+``KEY=value`` assignments).
+Uploaded dotenv files are normalized on the Pi with ``sed`` to strip Windows ``\\r`` line endings
+so ``bash`` does not emit ``$'\\r': command not found``.
+
 ``--sync-local-dev`` copies your desktop **SQLite** file (``waddle_view.sqlite``), the
 **``media/``** tree used by ``FileSystemBlobStore`` (same parent directory as the DB), to the Pi
 under ``/home/<ssh-user>/.local/share/com.waddleview.waddle_display/`` (same layout as Flutter Linux
@@ -39,6 +48,7 @@ import argparse
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path, PurePosixPath
 from typing import Optional
 
@@ -52,6 +62,19 @@ DEFAULT_SSH = "dukk@10.2.0.10"
 REMOTE_APP_SUPPORT_REL = Path(".local/share/com.waddleview.waddle_display")
 REMOTE_SQLITE_NAME = "waddle_view.sqlite"
 REMOTE_BUNDLE_ENV = "/opt/waddle-view/bundle/.env.development"
+# Remote shell dotenv layout under the SSH user's home (absolute paths built at runtime).
+REMOTE_SHELL_DOTENV_DIR_REL = Path(".config/waddle_view")
+REMOTE_SHELL_DOTENV_EXAMPLE_NAME = ".env.example"
+REMOTE_SHELL_DOTENV_ENV_NAME = ".env"
+
+# Idempotent markers for ~/.bashrc (or ~/.bash_profile) — safe for sed address ranges.
+SHELL_RC_BLOCK_BEGIN = "# WADDLE_VIEW_INSTALL_MAIN_TO_PI_BEGIN"
+SHELL_RC_BLOCK_END = "# WADDLE_VIEW_INSTALL_MAIN_TO_PI_END"
+
+
+def remote_shell_dotenv_dir(remote_home: str) -> str:
+    """Absolute POSIX path to ``~/.config/waddle_view`` on the remote."""
+    return str(PurePosixPath(remote_home).joinpath(*REMOTE_SHELL_DOTENV_DIR_REL.parts))
 
 
 def ssh_user_from_target(target: str) -> str:
@@ -148,6 +171,47 @@ def resolve_local_sqlite_path(
     )
 
 
+def resolve_env_example_path(
+    *,
+    app_package_dir: Path = APP_PACKAGE_DIR,
+) -> Path:
+    p = (app_package_dir / ".env.example").resolve()
+    if not p.is_file():
+        raise SystemExit(f"Missing {p}")
+    return p
+
+
+def optional_local_env_development_path(
+    explicit: Optional[Path],
+    *,
+    app_package_dir: Path = APP_PACKAGE_DIR,
+) -> Optional[Path]:
+    """Return a local ``.env.development`` path if present; do not require the file."""
+    if explicit is not None:
+        p = explicit.expanduser().resolve()
+        if not p.is_file():
+            raise SystemExit(f".env.development not found: {p}")
+        return p
+    p = (app_package_dir / ".env.development").resolve()
+    return p if p.is_file() else None
+
+
+def pick_remote_shell_rc_path(
+    remote_home: str,
+    *,
+    bashrc_exists: bool,
+    bash_profile_exists: bool,
+) -> str:
+    """Match remote login-shell practice: prefer ``.bashrc``, else ``.bash_profile``, else ``.bashrc``."""
+    br = str(PurePosixPath(remote_home) / ".bashrc")
+    bp = str(PurePosixPath(remote_home) / ".bash_profile")
+    if bashrc_exists:
+        return br
+    if bash_profile_exists:
+        return bp
+    return br
+
+
 def resolve_dev_env_path(
     explicit: Optional[Path],
     *,
@@ -191,9 +255,32 @@ def _posix_sh_single_quote(s: str) -> str:
     return "'" + s.replace("'", "'\"'\"'") + "'"
 
 
+def _remote_gnu_sed_strip_cr_inplace(quoted_path: str) -> str:
+    """Remote GNU ``sed -i`` to drop Windows ``\\r`` before ``\\n`` (path must already be shell-quoted)."""
+    return f"sed -i 's/\\r$//' {quoted_path}"
+
+
 def _ssh_remote_bash_lc(script: str) -> str:
     """One ``ssh`` argv after ``user@host``: ``bash -lc '<script>'`` for the remote shell."""
     return "bash -lc " + _posix_sh_single_quote(script)
+
+
+def shell_env_bashrc_block(remote_home: str) -> str:
+    """Lines (with markers) appended to the remote user's rc file; *remote_home* is absolute POSIX."""
+    dev = str(
+        PurePosixPath(remote_shell_dotenv_dir(remote_home)) / REMOTE_SHELL_DOTENV_ENV_NAME
+    )
+    lines = [
+        SHELL_RC_BLOCK_BEGIN,
+        "# Waddle Display dotenv (sourced for ssh sessions; Flutter uses its own paths).",
+        f"if [ -f {_posix_sh_single_quote(dev)} ]; then",
+        "  set -a",
+        f"  . {_posix_sh_single_quote(dev)}",
+        "  set +a",
+        "fi",
+        SHELL_RC_BLOCK_END,
+    ]
+    return "\n".join(lines) + "\n"
 
 
 def _scp_push(
@@ -367,6 +454,7 @@ def sync_local_dev_to_pi(
         f"sudo cp {tmp_q} {bundle_q} && "
         f"sudo chown {owner_q} {bundle_q} && "
         f"sudo chmod 600 {bundle_q} && "
+        f"sudo sed -i 's/\\r$//' {bundle_q} && "
         f"rm -f {tmp_q}"
     )
     maybe_run(ssh_cmd + [_ssh_remote_bash_lc(remote_install)])
@@ -379,6 +467,131 @@ def sync_local_dev_to_pi(
             ),
         ]
     )
+
+
+def sync_shell_env_dotfiles_to_pi(
+    target: str,
+    *,
+    env_development: Optional[Path],
+    port: Optional[int],
+    identity: Optional[Path],
+    batch_mode: bool,
+    dry_run: bool,
+) -> None:
+    """Push ``.env.example`` to ``~/.config/waddle_view/.env.example`` and dev env to ``~/.config/waddle_view/.env``; source only the latter in bash rc."""
+    ssh_cmd = _ssh_base_args(
+        target, port=port, identity=identity, batch_mode=batch_mode
+    )
+    remote_home = remote_unix_home_from_ssh_target(target)
+    config_dir = remote_shell_dotenv_dir(remote_home)
+    config_dir_q = _posix_sh_single_quote(config_dir)
+    dst_example = str(PurePosixPath(config_dir) / REMOTE_SHELL_DOTENV_EXAMPLE_NAME)
+    dst_dev = str(PurePosixPath(config_dir) / REMOTE_SHELL_DOTENV_ENV_NAME)
+    example_local = resolve_env_example_path()
+    dev_local = optional_local_env_development_path(env_development)
+
+    def maybe_run(cmd: list[str]) -> None:
+        print("+", " ".join(cmd), flush=True)
+        if not dry_run:
+            subprocess.run(cmd, check=True)
+
+    maybe_run(ssh_cmd + [_ssh_remote_bash_lc("mkdir -p " + config_dir_q)])
+
+    pid = os.getpid()
+    tmp_ex = f"/tmp/waddle-env-example-{pid}"
+    tmp_ex_q = _posix_sh_single_quote(tmp_ex)
+    dst_ex_q = _posix_sh_single_quote(dst_example)
+    maybe_run(
+        _scp_push(
+            example_local,
+            tmp_ex,
+            target,
+            port=port,
+            identity=identity,
+            batch_mode=batch_mode,
+        )
+    )
+    maybe_run(
+        ssh_cmd
+        + [
+            _ssh_remote_bash_lc(
+                f"mv -f {tmp_ex_q} {dst_ex_q} && chmod 644 {dst_ex_q} && "
+                f"{_remote_gnu_sed_strip_cr_inplace(dst_ex_q)}",
+            ),
+        ],
+    )
+
+    tmp_dev = f"/tmp/waddle-env-development-{pid}"
+    tmp_dev_q = _posix_sh_single_quote(tmp_dev)
+    dst_dev_q = _posix_sh_single_quote(dst_dev)
+    if dev_local is not None:
+        maybe_run(
+            _scp_push(
+                dev_local,
+                tmp_dev,
+                target,
+                port=port,
+                identity=identity,
+                batch_mode=batch_mode,
+            )
+        )
+        maybe_run(
+            ssh_cmd
+            + [
+                _ssh_remote_bash_lc(
+                    f"mv -f {tmp_dev_q} {dst_dev_q} && chmod 600 {dst_dev_q} && "
+                    f"{_remote_gnu_sed_strip_cr_inplace(dst_dev_q)}",
+                ),
+            ],
+        )
+    else:
+        maybe_run(ssh_cmd + [_ssh_remote_bash_lc(f"rm -f {dst_dev_q}")])
+
+    block = shell_env_bashrc_block(remote_home)
+    frag_local = Path(tempfile.gettempdir()) / f"waddle-rc-block-{pid}.txt"
+    try:
+        frag_local.write_text(block, encoding="utf-8", newline="\n")
+    except OSError as exc:
+        raise SystemExit(f"Could not write local rc fragment: {exc}") from exc
+
+    frag_remote = f"/tmp/waddle-rc-block-{pid}.txt"
+    frag_remote_q = _posix_sh_single_quote(frag_remote)
+    maybe_run(
+        _scp_push(
+            frag_local,
+            frag_remote,
+            target,
+            port=port,
+            identity=identity,
+            batch_mode=batch_mode,
+        )
+    )
+    frag_local.unlink(missing_ok=True)
+
+    br = str(PurePosixPath(remote_home) / ".bashrc")
+    bp = str(PurePosixPath(remote_home) / ".bash_profile")
+    br_q = _posix_sh_single_quote(br)
+    bp_q = _posix_sh_single_quote(bp)
+    remote_rc_patch = (
+        f"if [ -f {br_q} ]; then RC={br_q}; "
+        f"elif [ -f {bp_q} ]; then RC={bp_q}; "
+        f"else RC={br_q}; fi && "
+        'touch "$RC" && '
+        "sed -i '/# WADDLE_VIEW_INSTALL_MAIN_TO_PI_BEGIN/,/# WADDLE_VIEW_INSTALL_MAIN_TO_PI_END/d' "
+        '"$RC" && '
+        f"{_remote_gnu_sed_strip_cr_inplace(frag_remote_q)} && "
+        f"cat {frag_remote_q} >> \"$RC\" && "
+        f"rm -f {frag_remote_q}"
+    )
+    maybe_run(ssh_cmd + [_ssh_remote_bash_lc(remote_rc_patch)])
+
+    if dev_local is None:
+        print(
+            "No local apps/waddle_display/.env.development (skipped upload; "
+            "removed remote ~/.config/waddle_view/.env if it existed).",
+            file=sys.stderr,
+            flush=True,
+        )
 
 
 def parse_args(argv: Optional[list[str]]) -> argparse.Namespace:
@@ -442,7 +655,7 @@ def parse_args(argv: Optional[list[str]]) -> argparse.Namespace:
         help=(
             "After a successful upgrade, copy local waddle_view.sqlite (+ WAL/SHM if present), "
             "the sibling media/ blob tree, and apps/waddle_display/.env.development to the Pi "
-            "(see module docstring)."
+            "(see module docstring). The dev env file must exist (default path or --env-development)."
         ),
     )
     p.add_argument(
@@ -456,7 +669,11 @@ def parse_args(argv: Optional[list[str]]) -> argparse.Namespace:
         type=Path,
         default=None,
         metavar="PATH",
-        help="Override path to .env.development (default: apps/waddle_display/.env.development).",
+        help=(
+            "Path to .env.development. Used for --sync-local-dev (required file). Also used for "
+            "the post-upgrade ~/.config/waddle_view/.env copy when set; otherwise that step looks for "
+            "apps/waddle_display/.env.development and skips the file if absent."
+        ),
     )
     p.add_argument(
         "passthrough",
@@ -507,6 +724,15 @@ def main(argv: Optional[list[str]] = None) -> None:
     exit_code = subprocess.call(cmd)
     if exit_code != 0:
         raise SystemExit(exit_code)
+
+    sync_shell_env_dotfiles_to_pi(
+        target,
+        env_development=args.env_development,
+        port=args.port,
+        identity=args.identity,
+        batch_mode=batch_mode,
+        dry_run=args.dry_run,
+    )
 
     if args.sync_local_dev:
         local_db = resolve_local_sqlite_path(args.db)

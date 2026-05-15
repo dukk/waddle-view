@@ -12,6 +12,7 @@ dependencies:
     path: ../waddle_shared
   drift: ^2.33.0
   http: ^1.2.2
+  timezone: ^0.11.0
   webfeed: ^0.7.0
   crypto: ^3.0.6
   meta: ^1.17.0

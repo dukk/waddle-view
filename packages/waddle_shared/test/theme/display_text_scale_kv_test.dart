@@ -59,7 +59,7 @@ void main() {
   test('linearFactorForDisplayTextScaleKvValue uses normalization', () {
     expect(
       linearFactorForDisplayTextScaleKvValue('  LARGE '),
-      closeTo(1.15, 1e-9),
+      closeTo(1.2, 1e-9),
     );
   });
 }

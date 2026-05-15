@@ -31,6 +31,76 @@ class TestInstallMainToPiHelpers(unittest.TestCase):
         im = self.im
         self.assertEqual(im.remote_unix_home_from_ssh_target("dukk@10.2.0.10"), "/home/dukk")
         self.assertEqual(im.remote_unix_home_from_ssh_target("root@host"), "/root")
+
+    def test_pick_remote_shell_rc_path(self):
+        im = self.im
+        h = "/home/pi"
+        self.assertEqual(
+            im.pick_remote_shell_rc_path(h, bashrc_exists=True, bash_profile_exists=True),
+            f"{h}/.bashrc",
+        )
+        self.assertEqual(
+            im.pick_remote_shell_rc_path(h, bashrc_exists=False, bash_profile_exists=True),
+            f"{h}/.bash_profile",
+        )
+        self.assertEqual(
+            im.pick_remote_shell_rc_path(h, bashrc_exists=False, bash_profile_exists=False),
+            f"{h}/.bashrc",
+        )
+
+    def test_remote_shell_dotenv_dir(self):
+        im = self.im
+        self.assertEqual(
+            im.remote_shell_dotenv_dir("/home/pi"),
+            "/home/pi/.config/waddle_view",
+        )
+
+    def test_shell_env_bashrc_block_paths(self):
+        im = self.im
+        block = im.shell_env_bashrc_block("/home/pi")
+        self.assertIn(im.SHELL_RC_BLOCK_BEGIN, block)
+        self.assertIn(im.SHELL_RC_BLOCK_END, block)
+        self.assertIn("'/home/pi/.config/waddle_view/.env'", block)
+        self.assertNotIn(".env.example", block)
+
+    def test_resolve_env_example_path(self):
+        im = self.im
+        with tempfile.TemporaryDirectory() as tmp:
+            app_dir = Path(tmp) / "waddle_display"
+            app_dir.mkdir()
+            with self.assertRaises(SystemExit):
+                im.resolve_env_example_path(app_package_dir=app_dir)
+            (app_dir / ".env.example").write_text("# x\n", encoding="utf-8")
+            self.assertEqual(
+                im.resolve_env_example_path(app_package_dir=app_dir),
+                (app_dir / ".env.example").resolve(),
+            )
+
+    def test_optional_local_env_development_path(self):
+        im = self.im
+        with tempfile.TemporaryDirectory() as tmp:
+            app_dir = Path(tmp) / "waddle_display"
+            app_dir.mkdir()
+            self.assertIsNone(
+                im.optional_local_env_development_path(None, app_package_dir=app_dir)
+            )
+            missing = app_dir / "nope.env"
+            with self.assertRaises(SystemExit):
+                im.optional_local_env_development_path(missing, app_package_dir=app_dir)
+            dev = app_dir / ".env.development"
+            dev.write_text("K=v\n", encoding="utf-8")
+            self.assertEqual(
+                im.optional_local_env_development_path(None, app_package_dir=app_dir),
+                dev.resolve(),
+            )
+
+    def test_remote_gnu_sed_strip_cr_inplace(self):
+        im = self.im
+        self.assertEqual(
+            im._remote_gnu_sed_strip_cr_inplace("'/tmp/f'"),
+            "sed -i 's/\\r$//' '/tmp/f'",
+        )
+
     def test_default_local_sqlite_candidates_linux_shape(self):
         im = self.im
         home = Path("/home/tester")
@@ -94,6 +164,13 @@ class TestInstallMainToPiHelpers(unittest.TestCase):
         self.assertTrue(q.startswith("'") and q.endswith("'"))
         self.assertIn("a", q)
         self.assertIn("b", q)
+
+    def test_remote_gnu_sed_strip_cr_inplace(self):
+        im = self.im
+        self.assertEqual(
+            im._remote_gnu_sed_strip_cr_inplace("'/tmp/f'"),
+            "sed -i 's/\\r$//' '/tmp/f'",
+        )
 
     def test_ssh_remote_bash_lc_quotes_full_script(self):
         im = self.im

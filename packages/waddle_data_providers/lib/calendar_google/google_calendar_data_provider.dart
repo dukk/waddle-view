@@ -12,6 +12,7 @@ import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import '../shared/calendar_provider_calendar_entry.dart';
+import '../shared/provider_calendar_date_time.dart';
 import 'google_calendar_extra_config.dart';
 import 'google_oauth.dart';
 
@@ -394,8 +395,9 @@ class GoogleCalendarDataProvider implements IDataProvider {
     if (eventId is! String || eventId.isEmpty) {
       return;
     }
-    final start = _parseEventDateTime(event['start']);
-    final end = _parseEventDateTime(event['end']);
+    final allDay = _isAllDay(event['start']);
+    final start = _parseEventDateTime(event['start'], isAllDay: allDay);
+    final end = _parseEventDateTime(event['end'], isAllDay: allDay);
     if (start == null || end == null) {
       return;
     }
@@ -405,7 +407,6 @@ class GoogleCalendarDataProvider implements IDataProvider {
         : '(no title)';
     final locationRaw = event['location'];
     final descriptionRaw = event['description'];
-    final allDay = _isAllDay(event['start']);
     final icalRaw = event['iCalUID'] ?? event['iCalUid'];
     final icalUid = icalRaw is String && icalRaw.trim().isNotEmpty
         ? icalRaw.trim()
@@ -437,19 +438,11 @@ class GoogleCalendarDataProvider implements IDataProvider {
         );
   }
 
-  DateTime? _parseEventDateTime(Object? raw) {
+  DateTime? _parseEventDateTime(Object? raw, {required bool isAllDay}) {
     if (raw is! Map<String, dynamic>) {
       return null;
     }
-    final dt = raw['dateTime'];
-    if (dt is String && dt.isNotEmpty) {
-      return DateTime.tryParse(dt);
-    }
-    final date = raw['date'];
-    if (date is String && date.isNotEmpty) {
-      return DateTime.tryParse('${date}T00:00:00');
-    }
-    return null;
+    return parseCalendarEventDateMapUtc(raw, isAllDay: isAllDay);
   }
 
   bool _isAllDay(Object? raw) {
