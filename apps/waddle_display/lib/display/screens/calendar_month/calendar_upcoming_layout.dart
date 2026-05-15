@@ -1,8 +1,10 @@
 import 'dart:typed_data';
 
-import 'package:waddle_shared/blob/blob_store.dart';
+import 'package:flutter/material.dart';
 import 'package:timezone/timezone.dart';
+import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/persistence/database.dart';
+
 import 'calendar_month_grid.dart';
 
 /// One calendar row with optional [ContentCategories] metadata for icons.
@@ -119,6 +121,101 @@ Future<CalendarMonthStreamBundle> buildCalendarMonthStreamBundle(
 ) async {
   final rows = await loadCalendarSlideEventRows(db, blobs, events);
   return CalendarMonthStreamBundle(events: events, rows: rows);
+}
+
+/// Accent colors used for month-grid event markers (dots / all-day squares).
+List<Color> calendarEventMarkerAccentPalette(ColorScheme scheme) => [
+  scheme.primary,
+  scheme.tertiary,
+  scheme.secondary,
+  scheme.error,
+  scheme.surfaceTint,
+  scheme.primaryContainer,
+];
+
+/// Picks a stable accent from [calendarEventMarkerAccentPalette] using category,
+/// calendar [CalendarEvent.source], and event id.
+Color calendarEventMarkerAccent(ColorScheme scheme, CalendarEvent event) {
+  final cat = event.categoryId?.trim() ?? '';
+  final src = event.source.trim();
+  final h = Object.hash(cat, src, event.id);
+  final palette = calendarEventMarkerAccentPalette(scheme);
+  return palette[h.abs() % palette.length];
+}
+
+/// Per-day markers for the calendar month grid (keys: `1..daysInMonth`).
+class CalendarMonthDayMarkers {
+  const CalendarMonthDayMarkers({
+    this.allDayTopColors = const [],
+    this.timedDotColors = const [],
+  });
+
+  static const empty = CalendarMonthDayMarkers();
+
+  final List<Color> allDayTopColors;
+  final List<Color> timedDotColors;
+
+  bool get isEmpty => allDayTopColors.isEmpty && timedDotColors.isEmpty;
+}
+
+/// Maps each day of [monthAnchor]'s month to marker colors from [rows].
+Map<int, CalendarMonthDayMarkers> buildCalendarMonthDayMarkersByDay({
+  required List<CalendarSlideEventRow> rows,
+  required Location displayZone,
+  required DateTime monthAnchor,
+  required ColorScheme colorScheme,
+}) {
+  final y = monthAnchor.year;
+  final m = monthAnchor.month;
+  final monthStart = TZDateTime(displayZone, y, m, 1);
+  final monthEndExclusive = m < 12
+      ? TZDateTime(displayZone, y, m + 1, 1)
+      : TZDateTime(displayZone, y + 1, 1, 1);
+  final daysInMonth =
+      monthEndExclusive.difference(monthStart).inDays.clamp(1, 31);
+
+  final byDay = <int, List<CalendarSlideEventRow>>{};
+  for (final row in rows) {
+    final e = row.event;
+    final startMs = e.startMs.millisecondsSinceEpoch;
+    final endMs = e.endMs.millisecondsSinceEpoch;
+    for (var d = 1; d <= daysInMonth; d++) {
+      final dayStart = TZDateTime(displayZone, y, m, d);
+      final dayEnd = dayStart.add(const Duration(days: 1));
+      final ds = dayStart.millisecondsSinceEpoch;
+      final de = dayEnd.millisecondsSinceEpoch;
+      if (startMs < de && endMs > ds) {
+        byDay.putIfAbsent(d, () => []).add(row);
+      }
+    }
+  }
+
+  final out = <int, CalendarMonthDayMarkers>{};
+  for (final entry in byDay.entries) {
+    final sorted = List<CalendarSlideEventRow>.from(entry.value)
+      ..sort((a, b) {
+        final c = a.event.startMs.compareTo(b.event.startMs);
+        if (c != 0) {
+          return c;
+        }
+        return a.event.id.compareTo(b.event.id);
+      });
+    final allDay = <Color>[];
+    final timed = <Color>[];
+    for (final r in sorted) {
+      final c = calendarEventMarkerAccent(colorScheme, r.event);
+      if (r.event.allDay) {
+        allDay.add(c);
+      } else {
+        timed.add(c);
+      }
+    }
+    out[entry.key] = CalendarMonthDayMarkers(
+      allDayTopColors: allDay,
+      timedDotColors: timed,
+    );
+  }
+  return out;
 }
 
 sealed class CalendarUpcomingListItem {}

@@ -6,6 +6,16 @@ on:
       build_number:
         type: string
         required: true
+      # CI: unique tarball base (e.g. waddle-view-linux-arm64-ci-run-…). Empty = release layout using GITHUB_REF_NAME.
+      dist_basename:
+        type: string
+        required: false
+        default: ''
+      # CI: actions/upload-artifact name. Empty = linux-arm64-bundle-<build_number> (release).
+      artifact_name:
+        type: string
+        required: false
+        default: ''
 
 defaults:
   run:
@@ -113,13 +123,17 @@ jobs:
           assert_glibc_max "build/linux/arm64/release/bundle/waddlectl/bin/waddlectl" "waddlectl"
       - name: Package dist
         run: |
-          VERSION="${GITHUB_REF_NAME}"
-          DIST="waddle-view-linux-arm64-${VERSION}"
+          if [[ -n '${{ inputs.dist_basename }}' ]]; then
+            DIST='${{ inputs.dist_basename }}'
+          else
+            VERSION="${GITHUB_REF_NAME}"
+            DIST="waddle-view-linux-arm64-${VERSION}"
+          fi
           mkdir -p "../../dist/${DIST}"
           cp -r build/linux/arm64/release/bundle "../../dist/${DIST}/"
           cp -r ../../deploy/linux-arm64/* "../../dist/${DIST}/" 2>/dev/null || true
           cd ../../dist && tar czf "${DIST}.tar.gz" "${DIST}"
       - uses: actions/upload-artifact@v4
         with:
-          name: linux-arm64-bundle-${{ inputs.build_number }}
+          name: ${{ inputs.artifact_name || format('linux-arm64-bundle-{0}', inputs.build_number) }}
           path: dist/*.tar.gz

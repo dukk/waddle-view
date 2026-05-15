@@ -176,4 +176,67 @@ void main() {
     await tester.pumpAndSettle();
     await db.close();
   });
+
+  testWidgets('price line does not overflow with large text scaling', (
+    tester,
+  ) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.stockSymbols).insert(
+          StockSymbolsCompanion.insert(
+            id: 'brk',
+            symbol: 'BRK.A',
+            displayName: const Value('Berkshire'),
+          ),
+        );
+    await db.into(db.stockQuotes).insert(
+          StockQuotesCompanion.insert(
+            symbolId: 'brk',
+            currentPrice: const Value(628421.03),
+            percentChange: const Value(0.01),
+            observedAtMs: DateTime.fromMillisecondsSinceEpoch(1000),
+          ),
+        );
+
+    const spec = ParsedWidgetSpec(
+      type: 'stock_quotes',
+      slot: 'main',
+      config: {},
+    );
+    const slide = ResolvedSlide(
+      screenId: 'stock_quotes',
+      dwellMs: 10000,
+      layoutJson:
+          '{"v":1,"layout":"single","widgets":[{"type":"stock_quotes","slot":"main","config":{}}]}',
+    );
+    final theme = DisplayTheme.build();
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(textScaler: TextScaler.linear(2.0)),
+        child: MaterialApp(
+          theme: theme,
+          home: Scaffold(
+            body: SizedBox(
+              width: 480,
+              height: 640,
+              child: StockQuotesSlideWidget(
+                db: db,
+                slide: slide,
+                spec: spec,
+                theme: theme,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text(r'$628421.03'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+    await db.close();
+  });
 }

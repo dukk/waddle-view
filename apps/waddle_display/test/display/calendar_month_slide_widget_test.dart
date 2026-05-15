@@ -5,6 +5,7 @@ import 'package:waddle_display/clock.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_display/display/content_category_material_icon.dart';
 import 'package:waddle_display/display/screens/calendar_month/calendar_month_slide_widget.dart';
+import 'package:waddle_display/display/screens/calendar_month/calendar_upcoming_layout.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 import '../helpers/fake_blob_store.dart';
@@ -134,6 +135,133 @@ void main() {
     expect(find.text('Jun 2024'), findsOneWidget);
     expect(find.text('Upcoming events'), findsOneWidget);
     expect(find.text('Birthday party'), findsOneWidget);
+
+    await db.close();
+  });
+
+  testWidgets('upcoming list shows large timed marker matching grid accent',
+      (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db, displayTimeZoneIana: 'Etc/UTC');
+    await db.into(db.calendarEvents).insert(
+          CalendarEventsCompanion.insert(
+            id: 'marker-e',
+            title: 'Marker match',
+            startMs: DateTime.utc(2024, 6, 16, 15, 0),
+            endMs: DateTime.utc(2024, 6, 16, 16, 0),
+            updatedAtMs: DateTime.utc(2024, 6, 1),
+          ),
+        );
+    const spec = ParsedWidgetSpec(
+      type: 'calendar_month',
+      slot: 'main',
+      config: {},
+    );
+    final theme = ThemeData.light();
+    final clock = FakeClock(DateTime.utc(2024, 6, 15, 9, 0));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: CalendarMonthSlideWidget(
+            db: db,
+            blobs: FakeBlobStore(),
+            spec: spec,
+            theme: theme,
+            clock: clock,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final keyFinder =
+        find.byKey(const ValueKey<String>('calendar_upcoming_marker_marker-e'));
+    expect(keyFinder, findsOneWidget);
+    final decorated = tester.widget<DecoratedBox>(keyFinder);
+    final deco = decorated.decoration as BoxDecoration;
+    expect(
+      deco.color,
+      calendarEventMarkerAccent(
+        theme.colorScheme,
+        CalendarEvent(
+          id: 'marker-e',
+          title: 'Marker match',
+          startMs: DateTime.utc(2024, 6, 16, 15, 0),
+          endMs: DateTime.utc(2024, 6, 16, 16, 0),
+          allDay: false,
+          source: 'local',
+          updatedAtMs: DateTime.utc(2024, 6, 1),
+        ),
+      ),
+    );
+    expect(deco.shape, BoxShape.circle);
+    final inner = tester.widget<SizedBox>(
+      find.descendant(of: keyFinder, matching: find.byType(SizedBox)).first,
+    );
+    expect(inner.width, greaterThanOrEqualTo(8.0));
+    expect(inner.height, greaterThanOrEqualTo(8.0));
+
+    await db.close();
+  });
+
+  testWidgets('upcoming list shows large all-day square marker',
+      (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db, displayTimeZoneIana: 'Etc/UTC');
+    await db.into(db.calendarEvents).insert(
+          CalendarEventsCompanion.insert(
+            id: 'marker-ad',
+            title: 'All-day list marker',
+            startMs: DateTime.utc(2024, 6, 16),
+            endMs: DateTime.utc(2024, 6, 17),
+            allDay: const Value(true),
+            updatedAtMs: DateTime.utc(2024, 6, 1),
+          ),
+        );
+    const spec = ParsedWidgetSpec(
+      type: 'calendar_month',
+      slot: 'main',
+      config: {},
+    );
+    final theme = ThemeData.light();
+    final clock = FakeClock(DateTime.utc(2024, 6, 15, 9, 0));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: CalendarMonthSlideWidget(
+            db: db,
+            blobs: FakeBlobStore(),
+            spec: spec,
+            theme: theme,
+            clock: clock,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final keyFinder =
+        find.byKey(const ValueKey<String>('calendar_upcoming_marker_marker-ad'));
+    expect(keyFinder, findsOneWidget);
+    final deco =
+        tester.widget<DecoratedBox>(keyFinder).decoration as BoxDecoration;
+    expect(deco.shape, isNot(BoxShape.circle));
+    expect(deco.borderRadius, isNotNull);
+    expect(
+      deco.color,
+      calendarEventMarkerAccent(
+        theme.colorScheme,
+        CalendarEvent(
+          id: 'marker-ad',
+          title: 'All-day list marker',
+          startMs: DateTime.utc(2024, 6, 16),
+          endMs: DateTime.utc(2024, 6, 17),
+          allDay: true,
+          source: 'local',
+          updatedAtMs: DateTime.utc(2024, 6, 1),
+        ),
+      ),
+    );
 
     await db.close();
   });
@@ -395,7 +523,7 @@ void main() {
     await db.close();
   });
 
-  testWidgets('uses accent day styling for today and days with events',
+  testWidgets('shows timed markers on days with events and keeps today fill',
       (tester) async {
     final db = openMemoryDatabase();
     await warmDatabase(db, displayTimeZoneIana: 'Etc/UTC');
@@ -444,45 +572,116 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final day16Decoration = tester
-        .widgetList<DecoratedBox>(
-          find.ancestor(
-            of: find.text('16'),
-            matching: find.byType(DecoratedBox),
-          ),
-        )
-        .map((widget) => widget.decoration)
-        .whereType<BoxDecoration>()
-        .firstWhere((decoration) => decoration.border != null);
-    final border = day16Decoration.border as Border;
-    expect(border.top.color, theme.colorScheme.secondaryContainer);
+    int circleMarkerCountForInMonthDay(int day) {
+      final column = find.descendant(
+        of: find.byKey(calendarMonthInMonthDayCellKey(day)),
+        matching: find.byType(Column),
+      );
+      var count = 0;
+      for (final w in tester.widgetList<DecoratedBox>(
+        find.descendant(
+          of: column,
+          matching: find.byType(DecoratedBox),
+        ),
+      )) {
+        final d = w.decoration;
+        if (d is BoxDecoration && d.shape == BoxShape.circle) {
+          count++;
+        }
+      }
+      return count;
+    }
 
-    final day14Decoration = tester
-        .widgetList<DecoratedBox>(
-          find.ancestor(
-            of: find.text('14'),
-            matching: find.byType(DecoratedBox),
-          ),
-        )
-        .map((widget) => widget.decoration)
-        .whereType<BoxDecoration>()
-        .firstWhere((decoration) => decoration.border != null);
-    final pastBorder = day14Decoration.border as Border;
-    expect(pastBorder.top.color, theme.colorScheme.secondaryContainer);
+    expect(circleMarkerCountForInMonthDay(16), greaterThanOrEqualTo(1));
+    expect(circleMarkerCountForInMonthDay(14), greaterThanOrEqualTo(1));
+    expect(circleMarkerCountForInMonthDay(15), 0);
 
-    final day15Decorations = tester
-        .widgetList<DecoratedBox>(
-          find.ancestor(
-            of: find.text('15'),
+    final day16Outer = tester.widget<DecoratedBox>(
+      find
+          .descendant(
+            of: find.byKey(calendarMonthInMonthDayCellKey(16)),
             matching: find.byType(DecoratedBox),
+          )
+          .first,
+    );
+    expect(day16Outer.decoration, isA<BoxDecoration>());
+    expect((day16Outer.decoration as BoxDecoration).border, isNull);
+
+    final day15Outer = tester.widget<DecoratedBox>(
+      find
+          .descendant(
+            of: find.byKey(calendarMonthInMonthDayCellKey(15)),
+            matching: find.byType(DecoratedBox),
+          )
+          .first,
+    );
+    expect((day15Outer.decoration as BoxDecoration).color,
+        theme.colorScheme.secondaryContainer);
+
+    await db.close();
+  });
+
+  testWidgets('shows top squares for all-day events in month grid',
+      (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db, displayTimeZoneIana: 'Etc/UTC');
+    await db.into(db.calendarEvents).insert(
+          CalendarEventsCompanion.insert(
+            id: 'allday-grid',
+            title: 'Company holiday',
+            startMs: DateTime.utc(2024, 6, 20),
+            endMs: DateTime.utc(2024, 6, 21),
+            allDay: const Value(true),
+            updatedAtMs: DateTime.utc(2024, 6, 1),
           ),
-        )
-        .map((widget) => widget.decoration)
-        .whereType<BoxDecoration>()
-        .toList();
-    final todayDecoration =
-        day15Decorations.firstWhere((decoration) => decoration.color != null);
-    expect(todayDecoration.color, theme.colorScheme.secondaryContainer);
+        );
+    const spec = ParsedWidgetSpec(
+      type: 'calendar_month',
+      slot: 'main',
+      config: {},
+    );
+    final theme = ThemeData.light();
+    final clock = FakeClock(DateTime.utc(2024, 6, 15, 9, 0));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: CalendarMonthSlideWidget(
+            db: db,
+            blobs: FakeBlobStore(),
+            spec: spec,
+            theme: theme,
+            clock: clock,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    int squareMarkerCountForInMonthDay(int day) {
+      final column = find.descendant(
+        of: find.byKey(calendarMonthInMonthDayCellKey(day)),
+        matching: find.byType(Column),
+      );
+      var count = 0;
+      for (final w in tester.widgetList<DecoratedBox>(
+        find.descendant(
+          of: column,
+          matching: find.byType(DecoratedBox),
+        ),
+      )) {
+        final d = w.decoration;
+        if (d is BoxDecoration &&
+            d.shape != BoxShape.circle &&
+            d.borderRadius != null) {
+          count++;
+        }
+      }
+      return count;
+    }
+
+    expect(squareMarkerCountForInMonthDay(20), greaterThanOrEqualTo(1));
+    expect(squareMarkerCountForInMonthDay(16), 0);
 
     await db.close();
   });

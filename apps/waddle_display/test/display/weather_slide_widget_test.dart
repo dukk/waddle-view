@@ -8,10 +8,33 @@ import 'package:waddle_display/curator/screen_program_curator.dart';
 import 'package:waddle_display/display/screens/weather/weather_slide_widget.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_display/theme/display_theme.dart';
+import 'package:waddle_shared/theme/display_text_scale_kv.dart';
 
 import '../helpers/memory_database.dart';
 
 void main() {
+  test('weatherHourlyForecastScreenTextRatio implicit normal one step down', () {
+    expect(weatherHourlyForecastScreenTextRatio(null), closeTo(0.85, 1e-9));
+  });
+
+  test('weatherHourlyForecastScreenTextRatio one step down from large', () {
+    expect(
+      weatherHourlyForecastScreenTextRatio(kDisplayTextScaleLarge),
+      closeTo(1.0 / 1.2, 1e-9),
+    );
+  });
+
+  test('weatherHourlyForecastScreenTextRatio one step down from normal', () {
+    expect(
+      weatherHourlyForecastScreenTextRatio(kDisplayTextScaleNormal),
+      closeTo(0.85 / 1.0, 1e-9),
+    );
+  });
+
+  test('weatherHourlyForecastScreenTextRatio clamps at smallest tier', () {
+    expect(weatherHourlyForecastScreenTextRatio(kDisplayTextScaleXXXSmall), 1.0);
+  });
+
   test('weatherLocationIdForSpec chooses explicit locationId override', () {
     const spec = ParsedWidgetSpec(
       type: 'weather',
@@ -100,7 +123,7 @@ void main() {
     expect(find.textContaining('Atlanta, GA'), findsOneWidget);
     expect(find.text('65°'), findsOneWidget);
     expect(find.text('cloudy'), findsOneWidget);
-    expect(find.text('Hourly forecast (3-hour steps)'), findsOneWidget);
+    expect(find.text('Hourly forecast'), findsOneWidget);
     expect(find.byIcon(Icons.cloud), findsOneWidget);
     expect(find.byIcon(Icons.umbrella), findsOneWidget);
     final cloudIcon = tester.widget<Icon>(find.byIcon(Icons.cloud));
@@ -231,11 +254,91 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    final textScaler = MediaQuery.textScalerOf(
+      tester.element(find.text('Only City')),
+    );
     final fogIcons = tester.widgetList<Icon>(find.byIcon(Icons.foggy));
-    final mainIcon = fogIcons.firstWhere((i) => i.size == 42);
+    final mainIcon = fogIcons.firstWhere((i) => i.size == textScaler.scale(56));
     expect(mainIcon.color, theme.colorScheme.secondary);
-    final hourlyIcon = fogIcons.firstWhere((i) => i.size == 20);
+    final hourlyRatio = weatherHourlyForecastScreenTextRatio(null);
+    final hourlyIcon = fogIcons.firstWhere(
+      (i) => i.size == textScaler.scale(22 * hourlyRatio),
+    );
     expect(hourlyIcon.color, theme.colorScheme.onSurfaceVariant);
+    await db.close();
+  });
+
+  testWidgets('hourly forecast tiles widen with screen text scaler', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(800, 2000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.weatherLocations).insert(
+          WeatherLocationsCompanion.insert(
+            id: 'only',
+            name: 'Scaler City',
+            latitude: 1,
+            longitude: 2,
+          ),
+        );
+    await db.into(db.weatherCurrentData).insert(
+          WeatherCurrentDataCompanion.insert(
+            locationId: 'only',
+            observedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
+            currentTemp: const Value(55),
+            currentDescription: const Value('fog'),
+            hourlyJson: Value(
+              jsonEncode([
+                {'temp': 56.0, 'description': 'fog'},
+              ]),
+            ),
+          ),
+        );
+    const spec = ParsedWidgetSpec(
+      type: 'weather',
+      slot: 'main',
+      config: {},
+    );
+    const slide = ResolvedSlide(
+      screenId: 'weather',
+      dwellMs: 10000,
+      layoutJson: '{}',
+    );
+    final theme = DisplayTheme.build();
+
+    Future<double> tileWidthUnderScaler(TextScaler scaler) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: MediaQuery(
+            data: MediaQueryData(textScaler: scaler),
+            child: Scaffold(
+              body: WeatherSlideWidget(
+                db: db,
+                slide: slide,
+                spec: spec,
+                theme: theme,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final wrap = tester.widget<Wrap>(find.byType(Wrap));
+      final firstTile = wrap.children.first as SizedBox;
+      return firstTile.width ?? 0;
+    }
+
+    final narrow = await tileWidthUnderScaler(TextScaler.noScaling);
+    final wide = await tileWidthUnderScaler(const TextScaler.linear(2));
+    expect(wide, greaterThan(narrow));
+    expect(wide, closeTo(narrow * 2, 1.0));
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
     await db.close();
   });
 }

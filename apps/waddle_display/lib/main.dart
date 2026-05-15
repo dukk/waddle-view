@@ -178,7 +178,7 @@ Future<void> _waddleBootstrap() async {
 
     final alerts = DriftAlertRepository(db);
     final keys = FileDeploymentApiKeySource(keyFile);
-    final httpConfig = await resolveHttpBindConfig();
+    final httpConfig = await resolveHttpBindConfig(environment: envMap);
     final handler = buildRootHandler(
       db: db,
       alerts: alerts,
@@ -226,7 +226,7 @@ Future<void> _waddleBootstrap() async {
   }
 }
 
-class WaddleRoot extends StatelessWidget {
+class WaddleRoot extends StatefulWidget {
   const WaddleRoot({
     super.key,
     required this.db,
@@ -249,9 +249,21 @@ class WaddleRoot extends StatelessWidget {
   final MarqueeCycleGate marqueeCycleGate;
 
   @override
+  State<WaddleRoot> createState() => _WaddleRootState();
+}
+
+class _WaddleRootState extends State<WaddleRoot> {
+  /// One Drift stream for the lifetime of the app. A fresh `.watch()` on every
+  /// [build] (or on every parent rebuild) makes [StreamBuilder] tear down and
+  /// resubscribe repeatedly and can leak native resources (Linux: EMFILE /
+  /// GLib GWakeup pipe exhaustion on long-running kiosks).
+  late final Stream<List<ConfigKeyValue>> _configKvStream =
+      widget.db.select(widget.db.configKeyValues).watch();
+
+  @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<ConfigKeyValue>>(
-      stream: db.select(db.configKeyValues).watch(),
+      stream: _configKvStream,
       builder: (context, snapshot) {
         final rows = snapshot.data ?? const <ConfigKeyValue>[];
         final kv = {for (final r in rows) r.key: r.value};
@@ -262,14 +274,14 @@ class WaddleRoot extends StatelessWidget {
           builder: (context, child) =>
               child ?? const SizedBox.shrink(),
           home: WaddleHome(
-            db: db,
-            blobs: blobs,
-            alerts: alerts,
-            server: server,
-            setupPasswordFile: setupPasswordFile,
-            engine: engine,
-            tickerCurated: tickerCurated,
-            marqueeCycleGate: marqueeCycleGate,
+            db: widget.db,
+            blobs: widget.blobs,
+            alerts: widget.alerts,
+            server: widget.server,
+            setupPasswordFile: widget.setupPasswordFile,
+            engine: widget.engine,
+            tickerCurated: widget.tickerCurated,
+            marqueeCycleGate: widget.marqueeCycleGate,
             dashboardKv: kv,
           ),
         );
@@ -383,11 +395,23 @@ class _WaddleHomeState extends State<WaddleHome> {
                   ),
                   ticker: MediaQuery(
                     data: mq.copyWith(textScaler: tickerScaler),
-                    child: _KvAwareMarquee(
-                      db: widget.db,
-                      repository: widget.tickerCurated,
-                      marqueeCycleGate: widget.marqueeCycleGate,
-                      navigationController: _tickerNavigationController,
+                    child: Builder(
+                      builder: (context) {
+                        final s = DashboardViewportScope.scaleOf(context);
+                        final px =
+                            double.tryParse(
+                              widget.dashboardKv['curator.ticker.newsPixelsPerSecond']
+                                      ?.trim() ??
+                                  '',
+                            ) ??
+                            80;
+                        return TickerMarquee(
+                          repository: widget.tickerCurated,
+                          pixelsPerSecond: px * s,
+                          cycleGate: widget.marqueeCycleGate,
+                          navigationController: _tickerNavigationController,
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -417,44 +441,3 @@ Future<void> _rescanRejectListOnStartup(AppDatabase db) async {
   }
 }
 
-/// [TickerMarquee] scroll speed from `curator.ticker.newsPixelsPerSecond` in [ConfigKeyValue].
-class _KvAwareMarquee extends StatelessWidget {
-  const _KvAwareMarquee({
-    required this.db,
-    required this.repository,
-    required this.marqueeCycleGate,
-    required this.navigationController,
-  });
-
-  final AppDatabase db;
-  final MemoryTickerCuratedRepository repository;
-  final MarqueeCycleGate marqueeCycleGate;
-  final TickerMarqueeNavigationController navigationController;
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<List<ConfigKeyValue>>(
-      stream: db.select(db.configKeyValues).watch(),
-      builder: (context, snapshot) {
-        final rows = snapshot.data ?? const <ConfigKeyValue>[];
-        final m = {for (final r in rows) r.key: r.value};
-        final px =
-            double.tryParse(
-              m['curator.ticker.newsPixelsPerSecond']?.trim() ?? '',
-            ) ??
-            80;
-        return Builder(
-          builder: (context) {
-            final s = DashboardViewportScope.scaleOf(context);
-            return TickerMarquee(
-              repository: repository,
-              pixelsPerSecond: px * s,
-              cycleGate: marqueeCycleGate,
-              navigationController: navigationController,
-            );
-          },
-        );
-      },
-    );
-  }
-}

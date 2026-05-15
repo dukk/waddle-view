@@ -167,14 +167,6 @@ void main() {
 
     final answerAfter = tester.widget<Text>(find.text('Four'));
     expect(answerAfter.style?.fontWeight, FontWeight.w600);
-    expect(
-      find.byWidgetPredicate((w) {
-        final k = w.key;
-        return k is ValueKey<String> &&
-            k.value.startsWith('trivia_correct_reveal_');
-      }),
-      findsOneWidget,
-    );
 
     await db.close();
   });
@@ -601,6 +593,72 @@ void main() {
       (cp.painter! as TriviaStrikeOverlayPainter).kind,
       TriviaStrikeAnimationKind.scribbleOut,
     );
+
+    await db.close();
+  });
+
+  testWidgets('fadeOut strike dims options without scribble or close badge', (
+    tester,
+  ) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureDefaultTriviaCategories(db);
+    await ensureDefaultContentCategories(db);
+    await db.into(db.triviaQuestions).insert(
+          TriviaQuestionsCompanion.insert(
+            id: 't1',
+            categoryId: 'science',
+            question: '2 + 2?',
+            optionA: '3',
+            optionB: 'Four',
+            optionC: '5',
+            optionD: '22',
+            correctOption: 'B',
+            createdAtMs: DateTime.fromMillisecondsSinceEpoch(1),
+          ),
+        );
+
+    final slide = ResolvedSlide(
+      screenId: 'trivia',
+      dwellMs: 5000,
+      layoutJson: '{}',
+    );
+    final spec = ParsedWidgetSpec(
+      type: 'trivia',
+      slot: 'main',
+      config: <String, dynamic>{'strikeAnimation': 'fade_out'},
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.light(),
+        home: Scaffold(
+          body: TriviaSlideWidget(
+            db: db,
+            blobs: FakeBlobStore(),
+            slide: slide,
+            spec: spec,
+            theme: ThemeData.light(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final windowMs = triviaEliminationWindowMs(slide.dwellMs);
+    final endMs = triviaEliminationEndMs(windowMs);
+    await tester.pump(Duration(milliseconds: endMs + 400));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byWidgetPredicate((w) {
+        final k = w.key;
+        return k is ValueKey<String> &&
+            k.value.startsWith('trivia_strike_cross_');
+      }),
+      findsNothing,
+    );
+    expect(find.byIcon(Icons.close), findsNothing);
 
     await db.close();
   });

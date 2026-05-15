@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart';
@@ -64,6 +65,18 @@ void main() {
         DateTime(2024, 6, 15),
       );
       expect(cells.any((c) => c.isToday), isFalse);
+    });
+
+    test('calendarDate covers leading, in-month, and trailing cells', () {
+      final cells = buildMonthGridCells(
+        DateTime(2024, 6, 1),
+        DateTime(2024, 6, 15),
+      );
+      expect(cells.first.calendarDate, DateTime(2024, 5, 26));
+      expect(cells[6].calendarDate, DateTime(2024, 6, 1));
+      final today = cells.firstWhere((c) => c.isToday);
+      expect(today.calendarDate, DateTime(2024, 6, 15));
+      expect(cells.last.calendarDate, DateTime(2024, 7, 6));
     });
   });
 
@@ -146,6 +159,52 @@ void main() {
       expect(o.noonLabel, 'Lunch');
       expect(o.timeWidthCompact, 72);
       expect(o.timeWidth, 90);
+    });
+  });
+
+  group('calendarMonthDayCellFill', () {
+    test('in-month future fill is darker than in-month past fill', () {
+      final scheme = ColorScheme.fromSeed(seedColor: Colors.teal);
+      final today = DateTime(2024, 6, 15);
+      final outCell = MonthGridCell(
+        day: 31,
+        inCurrentMonth: false,
+        isToday: false,
+        calendarDate: DateTime(2024, 5, 31),
+      );
+      final pastCell = MonthGridCell(
+        day: 10,
+        inCurrentMonth: true,
+        isToday: false,
+        calendarDate: DateTime(2024, 6, 10),
+      );
+      final futureCell = MonthGridCell(
+        day: 20,
+        inCurrentMonth: true,
+        isToday: false,
+        calendarDate: DateTime(2024, 6, 20),
+      );
+      expect(calendarMonthDayCellFill(scheme, outCell, today), isNull);
+      final past = calendarMonthDayCellFill(scheme, pastCell, today);
+      final future = calendarMonthDayCellFill(scheme, futureCell, today);
+      expect(past, isNotNull);
+      expect(future, isNotNull);
+      expect(future!.computeLuminance(), lessThan(past!.computeLuminance()));
+    });
+
+    test('today uses secondaryContainer', () {
+      final scheme = ColorScheme.fromSeed(seedColor: Colors.deepPurple);
+      final today = DateTime(2024, 6, 15);
+      final todayCell = MonthGridCell(
+        day: 15,
+        inCurrentMonth: true,
+        isToday: true,
+        calendarDate: DateTime(2024, 6, 15),
+      );
+      expect(
+        calendarMonthDayCellFill(scheme, todayCell, today),
+        scheme.secondaryContainer,
+      );
     });
   });
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -130,8 +131,8 @@ class _DataHealthSlideWidgetState extends State<DataHealthSlideWidget> {
               ),
               SizedBox(height: 8 * s),
               SizedBox(
-                height: 200 * s,
-                child: _familyBarChart(data, s),
+                height: 220 * s,
+                child: _familyContentPie(data, s),
               ),
               SizedBox(height: 24 * s),
               Text(
@@ -140,8 +141,8 @@ class _DataHealthSlideWidgetState extends State<DataHealthSlideWidget> {
               ),
               SizedBox(height: 8 * s),
               SizedBox(
-                height: 220 * s,
-                child: _mediaByCategoryChart(data, s),
+                height: 280 * s,
+                child: _mediaByCategoryPies(data, s),
               ),
               SizedBox(height: 24 * s),
               Text(
@@ -228,15 +229,38 @@ class _DataHealthSlideWidgetState extends State<DataHealthSlideWidget> {
     );
   }
 
-  Widget _familyBarChart(DatabaseHealthSnapshot d, double s) {
+  List<Color> _familyTypeColors() {
     final palette = widget.theme.extension<PaletteTertiaryLayers>();
-    final colors = [
+    return [
       palette?.accent1 ?? widget.theme.colorScheme.primary,
       palette?.accent2 ?? widget.theme.colorScheme.secondary,
       palette?.accent3 ?? widget.theme.colorScheme.tertiary,
       palette?.accent4 ?? widget.theme.colorScheme.primaryContainer,
       palette?.iconColor ?? widget.theme.colorScheme.outline,
     ];
+  }
+
+  /// Distinct colors for category wedges (reused for photos and videos pies).
+  List<Color> _categoryColors(int n) {
+    final palette = widget.theme.extension<PaletteTertiaryLayers>();
+    final base = <Color>[
+      palette?.accent2 ?? widget.theme.colorScheme.secondary,
+      palette?.accent3 ?? widget.theme.colorScheme.tertiary,
+      palette?.accent1 ?? widget.theme.colorScheme.primary,
+      palette?.accent4 ?? widget.theme.colorScheme.primaryContainer,
+      palette?.iconColor ?? widget.theme.colorScheme.outline,
+      widget.theme.colorScheme.secondaryContainer,
+      widget.theme.colorScheme.tertiaryContainer,
+    ];
+    return List<Color>.generate(
+      n,
+      (i) => base[i % base.length],
+      growable: false,
+    );
+  }
+
+  Widget _familyContentPie(DatabaseHealthSnapshot d, double s) {
+    final colors = _familyTypeColors();
     final values = [
       d.rssArticleActive.toDouble(),
       d.photoActive.toDouble(),
@@ -244,75 +268,70 @@ class _DataHealthSlideWidgetState extends State<DataHealthSlideWidget> {
       d.jokeActive.toDouble(),
       d.triviaActive.toDouble(),
     ];
-    final maxY = values.fold<double>(0, (a, b) => a > b ? a : b);
-    final top = maxY <= 0 ? 1.0 : maxY * 1.15;
-
-    final groups = <BarChartGroupData>[
-      for (var i = 0; i < _familyLabels.length; i++)
-        BarChartGroupData(
-          x: i,
-          barRods: [
-            BarChartRodData(
-              toY: values[i],
-              color: colors[i % colors.length],
-              width: 18 * s,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(6 * s),
-                topRight: Radius.circular(6 * s),
-              ),
-            ),
-          ],
+    final total = values.fold<double>(0, (a, b) => a + b);
+    if (total <= 0) {
+      return Center(
+        child: Text(
+          'No active content yet.',
+          style: widget.theme.textTheme.bodyMedium,
         ),
+      );
+    }
+
+    final sections = <PieChartSectionData>[
+      for (var i = 0; i < _familyLabels.length; i++)
+        if (values[i] > 0)
+          PieChartSectionData(
+            value: values[i],
+            color: colors[i],
+            radius: 58 * s,
+            showTitle: false,
+          ),
     ];
 
-    return BarChart(
-      BarChartData(
-        maxY: top,
-        minY: 0,
-        gridData: const FlGridData(show: false),
-        borderData: FlBorderData(show: false),
-        titlesData: FlTitlesData(
-          topTitles: const AxisTitles(),
-          rightTitles: const AxisTitles(),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 36 * s,
-              interval: top <= 5 ? 1 : null,
-              getTitlesWidget: (v, m) => Text(
-                v == v.roundToDouble() ? v.toInt().toString() : '',
-                style: widget.theme.textTheme.bodySmall,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          flex: 52,
+          child: AspectRatio(
+            aspectRatio: 1,
+            child: PieChart(
+              PieChartData(
+                sections: sections,
+                centerSpaceRadius: 20 * s,
+                sectionsSpace: 2,
               ),
-            ),
-          ),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 28 * s,
-              getTitlesWidget: (v, m) {
-                final i = v.toInt();
-                if (i < 0 || i >= _familyLabels.length) {
-                  return const SizedBox.shrink();
-                }
-                return Padding(
-                  padding: EdgeInsets.only(top: 4 * s),
-                  child: Text(
-                    _familyLabels[i],
-                    style: widget.theme.textTheme.bodySmall,
-                  ),
-                );
-              },
+              duration: const Duration(milliseconds: 200),
             ),
           ),
         ),
-        barGroups: groups,
-        alignment: BarChartAlignment.spaceAround,
-      ),
-      duration: const Duration(milliseconds: 200),
+        SizedBox(width: 12 * s),
+        Expanded(
+          flex: 48,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var i = 0; i < _familyLabels.length; i++)
+                  if (values[i] > 0)
+                    Padding(
+                      padding: EdgeInsets.only(bottom: 8 * s),
+                      child: _legendRow(
+                        s,
+                        colors[i],
+                        '${_familyLabels[i]} · ${values[i].toInt()}',
+                      ),
+                    ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _mediaByCategoryChart(DatabaseHealthSnapshot d, double s) {
+  Widget _mediaByCategoryPies(DatabaseHealthSnapshot d, double s) {
     final merged = mergePhotosVideosForChart(d);
     if (merged.isEmpty) {
       return Center(
@@ -323,95 +342,143 @@ class _DataHealthSlideWidgetState extends State<DataHealthSlideWidget> {
       );
     }
 
-    final palette = widget.theme.extension<PaletteTertiaryLayers>();
-    final photoColor =
-        palette?.accent2 ?? widget.theme.colorScheme.secondary;
-    final videoColor =
-        palette?.accent3 ?? widget.theme.colorScheme.tertiary;
-
-    final maxY = merged
-        .map((e) => e.photos + e.videos)
-        .fold<int>(0, (a, b) => a > b ? a : b)
-        .toDouble();
-    final top = maxY <= 0 ? 1.0 : maxY * 1.15;
-
-    final groups = <BarChartGroupData>[
+    final colors = _categoryColors(merged.length);
+    final photoSections = <PieChartSectionData>[
       for (var i = 0; i < merged.length; i++)
-        BarChartGroupData(
-          x: i,
-          barsSpace: 4 * s,
-          barRods: [
-            BarChartRodData(
-              toY: merged[i].photos.toDouble(),
-              color: photoColor,
-              width: 10 * s,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(4 * s),
-                topRight: Radius.circular(4 * s),
-              ),
-            ),
-            BarChartRodData(
-              toY: merged[i].videos.toDouble(),
-              color: videoColor,
-              width: 10 * s,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(4 * s),
-                topRight: Radius.circular(4 * s),
-              ),
-            ),
-          ],
-        ),
+        if (merged[i].photos > 0)
+          PieChartSectionData(
+            value: merged[i].photos.toDouble(),
+            color: colors[i],
+            radius: 50 * s,
+            showTitle: false,
+          ),
+    ];
+    final videoSections = <PieChartSectionData>[
+      for (var i = 0; i < merged.length; i++)
+        if (merged[i].videos > 0)
+          PieChartSectionData(
+            value: merged[i].videos.toDouble(),
+            color: colors[i],
+            radius: 50 * s,
+            showTitle: false,
+          ),
     ];
 
-    return BarChart(
-      BarChartData(
-        maxY: top,
-        minY: 0,
-        gridData: const FlGridData(show: false),
-        borderData: FlBorderData(show: false),
-        titlesData: FlTitlesData(
-          topTitles: const AxisTitles(),
-          rightTitles: const AxisTitles(),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 32 * s,
-              interval: top <= 5 ? 1 : null,
-              getTitlesWidget: (v, m) => Text(
-                v == v.roundToDouble() ? v.toInt().toString() : '',
-                style: widget.theme.textTheme.bodySmall,
+    Widget pieCell(List<PieChartSectionData> sections, String emptyLabel) {
+      if (sections.isEmpty) {
+        return Center(
+          child: Text(
+            emptyLabel,
+            style: widget.theme.textTheme.bodySmall,
+            textAlign: TextAlign.center,
+          ),
+        );
+      }
+      return LayoutBuilder(
+        builder: (context, c) {
+          final side = math.min(c.maxWidth, c.maxHeight);
+          return Center(
+            child: SizedBox(
+              width: side,
+              height: side,
+              child: PieChart(
+                PieChartData(
+                  sections: sections,
+                  centerSpaceRadius: 14 * s,
+                  sectionsSpace: 2,
+                ),
+                duration: const Duration(milliseconds: 200),
               ),
             ),
+          );
+        },
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          flex: 5,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Photos',
+                      style: widget.theme.textTheme.titleSmall,
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 4 * s),
+                    Expanded(
+                      child: pieCell(photoSections, 'None'),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 10 * s),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Videos',
+                      style: widget.theme.textTheme.titleSmall,
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 4 * s),
+                    Expanded(
+                      child: pieCell(videoSections, 'None'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 40 * s,
-              getTitlesWidget: (v, m) {
-                final i = v.toInt();
-                if (i < 0 || i >= merged.length) {
-                  return const SizedBox.shrink();
-                }
-                final label = merged[i].label;
-                final short =
-                    label.length > 10 ? '${label.substring(0, 9)}…' : label;
-                return Padding(
-                  padding: EdgeInsets.only(top: 4 * s),
-                  child: Text(
-                    short,
-                    style: widget.theme.textTheme.bodySmall,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+        ),
+        SizedBox(height: 10 * s),
+        Expanded(
+          flex: 4,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = 0; i < merged.length; i++) ...[
+                  if (i > 0) SizedBox(height: 6 * s),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.only(top: 2 * s),
+                        child: Container(
+                          width: 12 * s,
+                          height: 12 * s,
+                          decoration: BoxDecoration(
+                            color: colors[i],
+                            borderRadius: BorderRadius.circular(3 * s),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8 * s),
+                      Expanded(
+                        child: Text(
+                          '${merged[i].label}\n'
+                          '${merged[i].photos} photos · ${merged[i].videos} videos',
+                          style: widget.theme.textTheme.bodySmall,
+                          softWrap: true,
+                        ),
+                      ),
+                    ],
                   ),
-                );
-              },
+                ],
+              ],
             ),
           ),
         ),
-        barGroups: groups,
-        alignment: BarChartAlignment.spaceAround,
-      ),
-      duration: const Duration(milliseconds: 200),
+      ],
     );
   }
 

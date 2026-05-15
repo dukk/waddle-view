@@ -11,7 +11,6 @@ import '../../../theme/theme_palette_extension.dart';
 import '../../content_category_slide_header.dart';
 import '../../dashboard_viewport_scope.dart';
 import '../../slide_content_joke_trivia.dart';
-import 'trivia_correct_reveal_animation.dart';
 import 'trivia_slide_timing.dart';
 import 'trivia_strike_animation.dart';
 
@@ -33,7 +32,7 @@ Color _readableOnStripe(Color background) {
 }
 
 /// Multiple-choice trivia: wrong answers strike out; a progress bar (like [JokeSlideWidget])
-/// counts down until the correct answer is emphasized.
+/// counts down until elimination completes.
 class TriviaSlideWidget extends StatefulWidget {
   const TriviaSlideWidget({
     super.key,
@@ -76,7 +75,6 @@ double triviaUniformOptionRowHeightForTesting({
   required TextScaler textScaler,
   required double s,
 }) {
-  final underlineH = (3 * s).clamp(2.0, 6.0);
   final textPadH = 40.0 * s;
   final textPadV = 24.0 * s;
   final minR = _triviaOptionRowMinHeight(s);
@@ -94,7 +92,7 @@ double triviaUniformOptionRowHeightForTesting({
         maxLines: null,
         textScaler: textScaler,
       )..layout(maxWidth: textMaxW);
-      final need = painter.height + textPadV + underlineH;
+      final need = painter.height + textPadV;
       if (need > maxNeed) {
         maxNeed = need;
       }
@@ -181,9 +179,6 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
   TriviaStrikeAnimationKind _strikeAnimationKind =
       TriviaStrikeAnimationKind.scribbleOut;
   int _strikeAnimationDurationMs = kTriviaStrikeAnimationMs;
-  TriviaCorrectRevealKind _correctRevealKind =
-      TriviaCorrectRevealKind.smoothRing;
-  int _correctRevealDurationMs = kTriviaCorrectRevealAnimationMs;
 
   @override
   void initState() {
@@ -246,10 +241,6 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     );
     _strikeAnimationKind = parseTriviaStrikeAnimationKind(widget.spec.config);
     _strikeAnimationDurationMs = parseStrikeAnimationDurationMs(
-      widget.spec.config,
-    );
-    _correctRevealKind = parseTriviaCorrectRevealKind(widget.spec.config);
-    _correctRevealDurationMs = parseCorrectRevealAnimationDurationMs(
       widget.spec.config,
     );
     _eliminationEndMs = triviaEliminationEndMs(
@@ -316,11 +307,6 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     }
     super.dispose();
   }
-
-  bool _isRevealComplete() =>
-      _question != null &&
-      _eliminationEndMs > 0 &&
-      _elapsedMs >= _eliminationEndMs;
 
   String _optionText(TriviaQuestion row, String letter) {
     switch (letter) {
@@ -454,7 +440,6 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     required int slot,
     required ThemeData theme,
     required double s,
-    required bool revealComplete,
     required bool useTwoColumns,
     required double uniformRowHeight,
     required double uniformInnerRowWidth,
@@ -462,8 +447,9 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     final displayLetter = String.fromCharCode('A'.codeUnitAt(0) + slot);
     final sourceLetter = perm[slot];
     final struck = _struckWrong.contains(displayLetter);
-    final correctSource = row.correctOption.trim().toUpperCase();
-    final highlight = revealComplete && sourceLetter == correctSource;
+    final fadeStrikeOnly =
+        struck && _strikeAnimationKind == TriviaStrikeAnimationKind.fadeOut;
+    final useStruckPalette = fadeStrikeOnly;
     final cs = theme.colorScheme;
     final palette = theme.extension<PaletteTertiaryLayers>();
     final accentColors = [
@@ -476,11 +462,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     final text = _optionText(row, sourceLetter);
 
     final leftStripe = Color.alphaBlend(
-      Colors.black.withValues(alpha: struck ? 0.4 : 0.22),
-      accentColor,
-    );
-    final answerPanel = Color.alphaBlend(
-      Colors.white.withValues(alpha: struck ? 0.22 : 0.48),
+      Colors.black.withValues(alpha: useStruckPalette ? 0.4 : 0.22),
       accentColor,
     );
 
@@ -501,7 +483,6 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     final tileClipRadius = BorderRadius.horizontal(
       right: Radius.circular(4 * s),
     );
-    final underlineThickness = (3 * s).clamp(2.0, 6.0);
 
     final optionCard = Padding(
       padding: tileInset,
@@ -544,33 +525,22 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                 ),
                 SizedBox(
                   width: max(1.0, uniformInnerRowWidth - uniformRowHeight),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        child: Align(
-                          alignment: AlignmentDirectional.centerStart,
-                          child: Padding(
-                            padding: EdgeInsets.only(
-                              left: 20 * s,
-                              right: 20 * s,
-                              top: 12 * s,
-                              bottom: 12 * s,
-                            ),
-                            child: Text(
-                              text,
-                              style: optionStyle,
-                              softWrap: true,
-                              textAlign: TextAlign.start,
-                            ),
-                          ),
-                        ),
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        left: 20 * s,
+                        right: 20 * s,
+                        top: 12 * s,
+                        bottom: 12 * s,
                       ),
-                      Container(
-                        height: underlineThickness,
-                        color: answerPanel,
+                      child: Text(
+                        text,
+                        style: optionStyle,
+                        softWrap: true,
+                        textAlign: TextAlign.start,
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ],
@@ -584,97 +554,106 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
 
     if (struck) {
       final strikeStyleSeed = Object.hash(
-      displayLetter.codeUnitAt(0),
-      slot,
-      row.id.hashCode,
-    );
+        displayLetter.codeUnitAt(0),
+        slot,
+        row.id.hashCode,
+      );
 
-    return Padding(
-      padding: bottomPad,
-      child: TweenAnimationBuilder<double>(
-        key: ValueKey<String>(
-          'trivia_strike_${displayLetter}_${_strikeAnimationKind.name}_'
-          '$_strikeAnimationDurationMs',
-        ),
-        duration: Duration(milliseconds: _strikeAnimationDurationMs),
-        tween: Tween(begin: 0, end: 1),
-        curve: [
-          Curves.easeOutCubic,
-          Curves.easeOutQuad,
-          Curves.easeInOutCubic,
-          Curves.decelerate,
-        ][strikeStyleSeed.abs() % 4],
-        builder: (context, t, _) {
-          final strikeInk = Color.alphaBlend(
-            Colors.white.withValues(alpha: 0.12 + 0.1 * t),
-            accentColor,
-          ).withValues(alpha: (0.82 + 0.16 * t).clamp(0.0, 1.0));
-          return Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Opacity(
-                opacity: (1.0 - 0.52 * t).clamp(0.0, 1.0),
-                child: optionCard,
-              ),
-              Positioned.fill(
-                child: Padding(
-                  padding: tileInset,
-                  child: ClipRRect(
-                    borderRadius: tileClipRadius,
-                    child: ColoredBox(
-                      color: Colors.black.withValues(alpha: 0.12 * t),
-                    ),
+      return Padding(
+        padding: bottomPad,
+        child: TweenAnimationBuilder<double>(
+          key: ValueKey<String>(
+            'trivia_strike_${displayLetter}_${_strikeAnimationKind.name}_'
+            '$_strikeAnimationDurationMs',
+          ),
+          duration: Duration(milliseconds: _strikeAnimationDurationMs),
+          tween: Tween(begin: 0, end: 1),
+          curve: [
+            Curves.easeOutCubic,
+            Curves.easeOutQuad,
+            Curves.easeInOutCubic,
+            Curves.decelerate,
+          ][strikeStyleSeed.abs() % 4],
+          builder: (context, t, _) {
+            if (_strikeAnimationKind == TriviaStrikeAnimationKind.fadeOut) {
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Opacity(
+                    opacity: (1.0 - 0.52 * t).clamp(0.0, 1.0),
+                    child: optionCard,
                   ),
-                ),
-              ),
-              if (_strikeAnimationKind != TriviaStrikeAnimationKind.strikeOutX)
-                Positioned.fill(
-                  child: Padding(
-                    padding: tileInset,
-                    child: ClipRRect(
-                      borderRadius: tileClipRadius,
-                      child: CustomPaint(
-                        key: ValueKey<String>(
-                          'trivia_strike_cross_$displayLetter',
-                        ),
-                        painter: TriviaStrikeOverlayPainter(
-                          kind: _strikeAnimationKind,
-                          progress: t,
-                          color: strikeInk,
-                          strokeWidth: (3.5 * s).clamp(2.0, 8.0),
-                          styleSeed: strikeStyleSeed,
+                  Positioned.fill(
+                    child: Padding(
+                      padding: tileInset,
+                      child: ClipRRect(
+                        borderRadius: tileClipRadius,
+                        child: ColoredBox(
+                          color: Colors.black.withValues(alpha: 0.12 * t),
                         ),
                       ),
                     ),
                   ),
-                ),
-              if (_strikeAnimationKind == TriviaStrikeAnimationKind.strikeOutX)
-                Positioned.fill(
-                  child: Padding(
-                    padding: tileInset,
-                    child: ClipRRect(
-                      borderRadius: tileClipRadius,
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: Padding(
-                          padding: EdgeInsets.only(right: 4 * s),
-                          child: Opacity(
-                            opacity: t,
-                            child: Transform.scale(
-                              scale: 0.82 + (0.18 * t),
-                              child: Container(
-                                padding: EdgeInsets.all(5 * s),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.5),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.close,
-                                  key: ValueKey<String>(
-                                    'trivia_close_icon_$displayLetter',
+                ],
+              );
+            }
+            final strikeInk = Color.alphaBlend(
+              Colors.white.withValues(alpha: 0.12 + 0.1 * t),
+              accentColor,
+            ).withValues(alpha: (0.82 + 0.16 * t).clamp(0.0, 1.0));
+            return Stack(
+              clipBehavior: Clip.none,
+              children: [
+                optionCard,
+                if (_strikeAnimationKind != TriviaStrikeAnimationKind.strikeOutX)
+                  Positioned.fill(
+                    child: Padding(
+                      padding: tileInset,
+                      child: ClipRRect(
+                        borderRadius: tileClipRadius,
+                        child: CustomPaint(
+                          key: ValueKey<String>(
+                            'trivia_strike_cross_$displayLetter',
+                          ),
+                          painter: TriviaStrikeOverlayPainter(
+                            kind: _strikeAnimationKind,
+                            progress: t,
+                            color: strikeInk,
+                            strokeWidth: (3.5 * s).clamp(2.0, 8.0),
+                            styleSeed: strikeStyleSeed,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                if (_strikeAnimationKind == TriviaStrikeAnimationKind.strikeOutX)
+                  Positioned.fill(
+                    child: Padding(
+                      padding: tileInset,
+                      child: ClipRRect(
+                        borderRadius: tileClipRadius,
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: Padding(
+                            padding: EdgeInsets.only(right: 4 * s),
+                            child: Opacity(
+                              opacity: t,
+                              child: Transform.scale(
+                                scale: 0.82 + (0.18 * t),
+                                child: Container(
+                                  padding: EdgeInsets.all(5 * s),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.5),
+                                    shape: BoxShape.circle,
                                   ),
-                                  color: strikeInk,
-                                  size: 24 * s,
+                                  child: Icon(
+                                    Icons.close,
+                                    key: ValueKey<String>(
+                                      'trivia_close_icon_$displayLetter',
+                                    ),
+                                    color: strikeInk,
+                                    size: 24 * s,
+                                  ),
                                 ),
                               ),
                             ),
@@ -683,70 +662,9 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                       ),
                     ),
                   ),
-                ),
-            ],
-          );
-        },
-      ),
-    );
-    }
-
-    if (highlight) {
-      final ringSeed = Object.hash(
-        displayLetter.codeUnitAt(0),
-        slot,
-        row.id.hashCode,
-      );
-      final ringColor = Color.alphaBlend(
-        Colors.white.withValues(alpha: 0.42),
-        cs.primary,
-      ).withValues(alpha: 0.94);
-      return Padding(
-        padding: bottomPad,
-        child: TweenAnimationBuilder<double>(
-          key: ValueKey<String>(
-            'trivia_correct_${row.id}_${displayLetter}_'
-            '${_correctRevealKind.name}_$_correctRevealDurationMs',
-          ),
-          duration: Duration(milliseconds: _correctRevealDurationMs),
-          tween: Tween(begin: 0, end: 1),
-          curve: [
-            Curves.easeOutCubic,
-            Curves.easeOutQuad,
-            Curves.easeInOutCubic,
-            Curves.decelerate,
-          ][ringSeed.abs() % 4],
-          builder: (context, t, child) {
-            return Stack(
-              clipBehavior: Clip.none,
-              children: [
-                child!,
-                Positioned.fill(
-                  child: Padding(
-                    padding: tileInset,
-                    child: ClipRRect(
-                      borderRadius: tileClipRadius,
-                      child: CustomPaint(
-                        key: ValueKey<String>(
-                          'trivia_correct_reveal_$displayLetter',
-                        ),
-                        painter: TriviaCorrectRevealPainter(
-                          kind: _correctRevealKind,
-                          progress: t,
-                          color: ringColor,
-                          strokeWidth: (3.8 * s).clamp(2.0, 8.0),
-                          styleSeed: ringSeed,
-                          topRightRadius: 4 * s,
-                          bottomRightRadius: 4 * s,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
               ],
             );
           },
-          child: optionCard,
         ),
       );
     }
@@ -818,7 +736,6 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     if (perm.length != optionCount) {
       return const SizedBox.shrink();
     }
-    final revealComplete = _isRevealComplete();
     final useTwoColumns =
         optionCount == 4 && _optionsShortForTwoColumns(row, perm);
 
@@ -867,7 +784,6 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                               slot: 0,
                               theme: theme,
                               s: s,
-                              revealComplete: revealComplete,
                               useTwoColumns: true,
                               uniformRowHeight: uniformRowHeight,
                               uniformInnerRowWidth: uniformInnerRowWidth,
@@ -882,7 +798,6 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                               slot: 1,
                               theme: theme,
                               s: s,
-                              revealComplete: revealComplete,
                               useTwoColumns: true,
                               uniformRowHeight: uniformRowHeight,
                               uniformInnerRowWidth: uniformInnerRowWidth,
@@ -912,7 +827,6 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                                   slot: 0,
                                   theme: theme,
                                   s: s,
-                                  revealComplete: revealComplete,
                                   useTwoColumns: true,
                                   uniformRowHeight: uniformRowHeight,
                                   uniformInnerRowWidth: uniformInnerRowWidth,
@@ -927,7 +841,6 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                                   slot: 1,
                                   theme: theme,
                                   s: s,
-                                  revealComplete: revealComplete,
                                   useTwoColumns: true,
                                   uniformRowHeight: uniformRowHeight,
                                   uniformInnerRowWidth: uniformInnerRowWidth,
@@ -947,7 +860,6 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                                   slot: 2,
                                   theme: theme,
                                   s: s,
-                                  revealComplete: revealComplete,
                                   useTwoColumns: true,
                                   uniformRowHeight: uniformRowHeight,
                                   uniformInnerRowWidth: uniformInnerRowWidth,
@@ -962,7 +874,6 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                                   slot: 3,
                                   theme: theme,
                                   s: s,
-                                  revealComplete: revealComplete,
                                   useTwoColumns: true,
                                   uniformRowHeight: uniformRowHeight,
                                   uniformInnerRowWidth: uniformInnerRowWidth,
@@ -988,7 +899,6 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
                             slot: slot,
                             theme: theme,
                             s: s,
-                            revealComplete: revealComplete,
                             useTwoColumns: false,
                             uniformRowHeight: uniformRowHeight,
                             uniformInnerRowWidth: uniformInnerRowWidth,

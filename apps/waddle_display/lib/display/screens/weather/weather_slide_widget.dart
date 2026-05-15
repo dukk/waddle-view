@@ -2,10 +2,17 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:flutter/material.dart';
-
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
-import '../../../curator/screen_program_curator.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/theme/display_text_scale_kv.dart'
+    show
+        kDisplayTextScaleNormal,
+        kDisplayTextScaleOptions,
+        kDisplayTextScaleScreenKvKey,
+        linearFactorForDisplayTextScaleOption,
+        normalizeDisplayTextScaleOption;
+
+import '../../../curator/screen_program_curator.dart';
 import '../../../theme/display_theme.dart';
 import '../../dashboard_viewport_scope.dart';
 
@@ -15,6 +22,55 @@ String? weatherLocationIdForSpec(ParsedWidgetSpec spec) {
     return null;
   }
   return raw;
+}
+
+/// Linear multiplier to apply to [MediaQuery.textScaler] so hourly forecast
+/// matches one semantic **screen** text-size step below the effective
+/// `display.text_scale.screen` value ([rawScreenScaleKv], or implicit normal).
+@visibleForTesting
+double weatherHourlyForecastScreenTextRatio(String? rawScreenScaleKv) {
+  final currentId = normalizeDisplayTextScaleOption(rawScreenScaleKv);
+  var i = kDisplayTextScaleOptions.indexOf(currentId);
+  if (i < 0) {
+    i = kDisplayTextScaleOptions.indexOf(kDisplayTextScaleNormal);
+  }
+  final down = i > 0 ? i - 1 : 0;
+  final curF = linearFactorForDisplayTextScaleOption(
+    kDisplayTextScaleOptions[i],
+  );
+  final downF = linearFactorForDisplayTextScaleOption(
+    kDisplayTextScaleOptions[down],
+  );
+  if (curF <= 0) {
+    return 1.0;
+  }
+  return downF / curF;
+}
+
+@immutable
+final class _HourlyForecastTextScaler extends TextScaler {
+  const _HourlyForecastTextScaler(this._parent, this._ratio)
+    : assert(_ratio > 0);
+
+  final TextScaler _parent;
+  final double _ratio;
+
+  @override
+  double scale(double fontSize) => _parent.scale(fontSize) * _ratio;
+
+  @override
+  @Deprecated('Use scale() or a linear TextScaler where possible.')
+  double get textScaleFactor => _parent.textScaleFactor * _ratio;
+
+  @override
+  bool operator ==(Object other) {
+    return other is _HourlyForecastTextScaler &&
+        other._parent == _parent &&
+        other._ratio == _ratio;
+  }
+
+  @override
+  int get hashCode => Object.hash(_parent, _ratio);
 }
 
 class WeatherSlideWidget extends StatelessWidget {
@@ -60,9 +116,10 @@ class WeatherSlideWidget extends StatelessWidget {
           }
         }
         return StreamBuilder<dynamic>(
-          stream: (db.select(db.weatherCurrentData)
-                ..where((t) => t.locationId.equals(location.id)))
-              .watchSingleOrNull(),
+          stream:
+              (db.select(db.weatherCurrentData)
+                    ..where((t) => t.locationId.equals(location.id)))
+                  .watchSingleOrNull(),
           builder: (context, dataSnapshot) {
             final weather = dataSnapshot.data;
             if (weather == null) {
@@ -70,124 +127,246 @@ class WeatherSlideWidget extends StatelessWidget {
             }
             final hourly = _parseHourly(weather.hourlyJson);
             final s = DashboardViewportScope.scaleOf(context);
-            final hourlyTileWidth = 132 * s;
-            final hourlyTileHeight = _uniformHourlyTileHeight(
-              context: context,
-              items: hourly.take(6).toList(),
-              tileWidth: hourlyTileWidth,
-              scale: s,
-            );
-            final currentDescription = (weather.currentDescription ?? '').trim();
+            final textScaler = MediaQuery.textScalerOf(context);
+            final currentDescription = (weather.currentDescription ?? '')
+                .trim();
             final currentIcon = _iconForWeather(
               description: currentDescription,
             );
             return StreamBuilder<List<WeatherGovActiveAlert>>(
-              stream: (db.select(db.weatherGovActiveAlerts)
-                    ..where((t) => t.locationId.equals(location.id))
-                    ..orderBy([
-                      (t) => OrderingTerm.asc(t.severity),
-                      (t) => OrderingTerm.asc(t.event),
-                    ]))
-                  .watch(),
+              stream:
+                  (db.select(db.weatherGovActiveAlerts)
+                        ..where((t) => t.locationId.equals(location.id))
+                        ..orderBy([
+                          (t) => OrderingTerm.asc(t.severity),
+                          (t) => OrderingTerm.asc(t.event),
+                        ]))
+                      .watch(),
               builder: (context, alertSnapshot) {
-                final alerts = alertSnapshot.data ?? const <WeatherGovActiveAlert>[];
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(location.name, style: theme.textTheme.headlineSmall),
-                    if (alerts.isNotEmpty) ...[
-                      SizedBox(height: 12 * s),
-                      Text(
-                        'Active alerts',
-                        style: theme.textTheme.titleMedium,
-                      ),
-                      SizedBox(height: 10 * s),
-                      ...alerts.map(
-                        (a) => Padding(
-                          padding: EdgeInsets.only(bottom: 10 * s),
-                          child: _weatherGovAlertCard(
-                            context: context,
-                            alert: a,
-                            scale: s,
-                            theme: theme,
-                          ),
-                        ),
-                      ),
-                    ],
-                    SizedBox(height: 16 * s),
-                    Icon(
-                      currentIcon,
-                      size: 42 * s,
-                      color: primaryAccent,
-                    ),
-                    SizedBox(height: 10 * s),
-                    Text(
-                      _formatTemp(weather.currentTemp),
-                      style: theme.textTheme.displaySmall,
-                    ),
-                    SizedBox(height: 10 * s),
-                    Text(currentDescription, style: theme.textTheme.titleLarge),
-                    SizedBox(height: 24 * s),
-                    Text(
-                      'Hourly forecast (3-hour steps)',
-                      style: theme.textTheme.titleMedium,
-                    ),
-                    SizedBox(height: 14 * s),
-                    Wrap(
-                      spacing: 24 * s,
-                      runSpacing: 14 * s,
-                      alignment: WrapAlignment.center,
-                      children: hourly.take(6).map((item) {
-                        final dt = (item['dt'] as num?)?.toInt();
-                        final hourText = _hourText(dt);
-                        final description = (item['description'] as String?) ?? '';
-                        return SizedBox(
-                          width: hourlyTileWidth,
-                          height: hourlyTileHeight,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(12 * s),
-                            ),
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 10 * s,
-                                vertical: 8 * s,
+                final alerts =
+                    alertSnapshot.data ?? const <WeatherGovActiveAlert>[];
+                final horizontalPad = textScaler.scale(24 * s);
+                return Padding(
+                  padding: EdgeInsets.symmetric(horizontal: horizontalPad),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              location.name,
+                              style: theme.textTheme.headlineMedium?.copyWith(
+                                color: theme.colorScheme.onSurface,
+                                fontWeight: FontWeight.w500,
                               ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.start,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.left,
+                            ),
+                          ),
+                          SizedBox(width: textScaler.scale(12 * s)),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                currentIcon,
+                                size: textScaler.scale(56 * s),
+                                color: primaryAccent,
+                              ),
+                              SizedBox(width: textScaler.scale(12 * s)),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text(hourText, style: theme.textTheme.bodySmall),
-                                  SizedBox(height: 4 * s),
-                                  Icon(
-                                    _iconForWeather(
-                                      code: item['icon'] as String?,
-                                      description: description,
-                                    ),
-                                    size: 20 * s,
-                                    color: iconColor,
-                                  ),
-                                  SizedBox(height: 4 * s),
                                   Text(
-                                    _formatTemp(item['temp']),
-                                    style: theme.textTheme.titleMedium,
+                                    _formatTemp(weather.currentTemp),
+                                    style: theme.textTheme.displayMedium
+                                        ?.copyWith(
+                                          color: theme.colorScheme.onSurface,
+                                          fontWeight: FontWeight.w200,
+                                          height: 1.05,
+                                        ),
                                   ),
-                                  SizedBox(height: 2 * s),
+                                  SizedBox(height: textScaler.scale(4 * s)),
                                   Text(
-                                    description,
-                                    style: theme.textTheme.bodySmall,
-                                    softWrap: true,
-                                    textAlign: TextAlign.center,
+                                    currentDescription,
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(
+                                          color: theme.colorScheme.onSurface,
+                                          fontWeight: FontWeight.w400,
+                                        ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.left,
                                   ),
                                 ],
                               ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      if (alerts.isNotEmpty) ...[
+                        SizedBox(height: textScaler.scale(16 * s)),
+                        Text(
+                          'Active alerts',
+                          style: theme.textTheme.titleLarge,
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: textScaler.scale(10 * s)),
+                        ...alerts.map(
+                          (a) => Padding(
+                            padding: EdgeInsets.only(
+                              bottom: textScaler.scale(10 * s),
+                            ),
+                            child: _weatherGovAlertCard(
+                              alert: a,
+                              scale: s,
+                              textScaler: textScaler,
+                              theme: theme,
                             ),
                           ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
+                        ),
+                      ],
+                      SizedBox(height: textScaler.scale(28 * s)),
+                      StreamBuilder<ConfigKeyValue?>(
+                        stream:
+                            (db.select(db.configKeyValues)..where(
+                                  (t) => t.key.equals(
+                                    kDisplayTextScaleScreenKvKey,
+                                  ),
+                                ))
+                                .watchSingleOrNull(),
+                        builder: (context, kvSnap) {
+                          final ratio = weatherHourlyForecastScreenTextRatio(
+                            kvSnap.data?.value,
+                          );
+                          final parentMq = MediaQuery.of(context);
+                          final hourlyScaler = _HourlyForecastTextScaler(
+                            parentMq.textScaler,
+                            ratio,
+                          );
+                          return MediaQuery(
+                            data: parentMq.copyWith(textScaler: hourlyScaler),
+                            child: Builder(
+                              builder: (context) {
+                                final ts = MediaQuery.textScalerOf(context);
+                                final tileW = ts.scale(132 * s);
+                                return Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Hourly forecast',
+                                      style: theme.textTheme.titleLarge
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    SizedBox(height: ts.scale(14 * s)),
+                                    Wrap(
+                                      spacing: ts.scale(24 * s),
+                                      runSpacing: ts.scale(14 * s),
+                                      alignment: WrapAlignment.center,
+                                      children: hourly.take(6).map((item) {
+                                        final dt = (item['dt'] as num?)
+                                            ?.toInt();
+                                        final hourText = _hourText(dt);
+                                        final description =
+                                            (item['description'] as String?) ??
+                                            '';
+                                        return SizedBox(
+                                          width: tileW,
+                                          child: DecoratedBox(
+                                            decoration: BoxDecoration(
+                                              color: theme
+                                                  .colorScheme
+                                                  .surfaceContainerHighest,
+                                              borderRadius:
+                                                  BorderRadius.circular(12 * s),
+                                            ),
+                                            child: Padding(
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: ts.scale(10 * s),
+                                                vertical: ts.scale(8 * s),
+                                              ),
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    hourText,
+                                                    style: theme
+                                                        .textTheme
+                                                        .titleSmall
+                                                        ?.copyWith(
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                        ),
+                                                    textAlign: TextAlign.center,
+                                                  ),
+                                                  SizedBox(
+                                                    height: ts.scale(6 * s),
+                                                  ),
+                                                  Icon(
+                                                    _iconForWeather(
+                                                      code:
+                                                          item['icon']
+                                                              as String?,
+                                                      description: description,
+                                                    ),
+                                                    size: ts.scale(22 * s),
+                                                    color: iconColor,
+                                                  ),
+                                                  SizedBox(
+                                                    height: ts.scale(6 * s),
+                                                  ),
+                                                  Text(
+                                                    _formatTemp(item['temp']),
+                                                    style: theme
+                                                        .textTheme
+                                                        .titleMedium
+                                                        ?.copyWith(
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                        ),
+                                                    textAlign: TextAlign.center,
+                                                  ),
+                                                  SizedBox(
+                                                    height: ts.scale(4 * s),
+                                                  ),
+                                                  Text(
+                                                    description,
+                                                    style: theme
+                                                        .textTheme
+                                                        .bodySmall,
+                                                    softWrap: true,
+                                                    maxLines: 3,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    textAlign: TextAlign.center,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 );
               },
             );
@@ -198,9 +377,9 @@ class WeatherSlideWidget extends StatelessWidget {
   }
 
   Widget _weatherGovAlertCard({
-    required BuildContext context,
     required WeatherGovActiveAlert alert,
     required double scale,
+    required TextScaler textScaler,
     required ThemeData theme,
   }) {
     final accent = _severityColor(theme, alert.severity);
@@ -211,8 +390,8 @@ class WeatherSlideWidget extends StatelessWidget {
       borderRadius: BorderRadius.circular(12 * scale),
       child: Padding(
         padding: EdgeInsets.symmetric(
-          horizontal: 14 * scale,
-          vertical: 10 * scale,
+          horizontal: textScaler.scale(14 * scale),
+          vertical: textScaler.scale(10 * scale),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,29 +399,29 @@ class WeatherSlideWidget extends StatelessWidget {
             Icon(
               Icons.warning_amber_rounded,
               color: accent,
-              size: 26 * scale,
+              size: textScaler.scale(26 * scale),
             ),
-            SizedBox(width: 10 * scale),
+            SizedBox(width: textScaler.scale(10 * scale)),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     alert.event,
-                    style: theme.textTheme.titleSmall?.copyWith(
+                    style: theme.textTheme.titleMedium?.copyWith(
                       color: accent,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   if (headline.isNotEmpty) ...[
-                    SizedBox(height: 4 * scale),
-                    Text(headline, style: theme.textTheme.bodyMedium),
+                    SizedBox(height: textScaler.scale(4 * scale)),
+                    Text(headline, style: theme.textTheme.bodyLarge),
                   ],
                   if (expiry != null) ...[
-                    SizedBox(height: 4 * scale),
+                    SizedBox(height: textScaler.scale(4 * scale)),
                     Text(
                       'Until ${_formatAlertExpiryLocal(expiry)}',
-                      style: theme.textTheme.bodySmall,
+                      style: theme.textTheme.bodyMedium,
                     ),
                   ],
                 ],
@@ -296,7 +475,9 @@ class WeatherSlideWidget extends StatelessWidget {
     if (dtSeconds == null || dtSeconds <= 0) {
       return '--';
     }
-    final local = DateTime.fromMillisecondsSinceEpoch(dtSeconds * 1000).toLocal();
+    final local = DateTime.fromMillisecondsSinceEpoch(
+      dtSeconds * 1000,
+    ).toLocal();
     final hour = local.hour;
     final suffix = hour >= 12 ? 'PM' : 'AM';
     final twelveHour = hour % 12 == 0 ? 12 : hour % 12;
@@ -308,73 +489,6 @@ class WeatherSlideWidget extends StatelessWidget {
       return '${raw.round()}\u00B0';
     }
     return '--\u00B0';
-  }
-
-  double _uniformHourlyTileHeight({
-    required BuildContext context,
-    required List<Map<String, dynamic>> items,
-    required double tileWidth,
-    required double scale,
-  }) {
-    const fallback = 144.0;
-    if (items.isEmpty) {
-      return fallback * scale;
-    }
-    final bodyStyle = theme.textTheme.bodySmall ?? const TextStyle(fontSize: 12);
-    final tempStyle = theme.textTheme.titleMedium ?? const TextStyle(fontSize: 16);
-    final textScaler = MediaQuery.textScalerOf(context);
-    final maxDescriptionHeight = items
-        .map((item) => (item['description'] as String?)?.trim() ?? '')
-        .map(
-          (text) => _measureTextHeight(
-            text: text,
-            style: bodyStyle,
-            maxWidth: tileWidth - (20 * scale),
-            textScaler: textScaler,
-          ),
-        )
-        .fold<double>(0, (prev, h) => h > prev ? h : prev);
-    final hourHeight = _measureTextHeight(
-      text: '12 PM',
-      style: bodyStyle,
-      maxWidth: tileWidth - (20 * scale),
-      textScaler: textScaler,
-    );
-    final tempHeight = _measureTextHeight(
-      text: '99°',
-      style: tempStyle,
-      maxWidth: tileWidth - (20 * scale),
-      textScaler: textScaler,
-    );
-    final fixedHeight =
-        (8 * scale) + // top padding
-        hourHeight +
-        (4 * scale) +
-        (20 * scale) + // icon
-        (4 * scale) +
-        tempHeight +
-        (2 * scale) +
-        (8 * scale); // bottom padding
-    final computed = fixedHeight + maxDescriptionHeight;
-    final minimum = fallback * scale;
-    return computed > minimum ? computed : minimum;
-  }
-
-  double _measureTextHeight({
-    required String text,
-    required TextStyle style,
-    required double maxWidth,
-    required TextScaler textScaler,
-  }) {
-    final painter = TextPainter(
-      text: TextSpan(
-        text: text.isEmpty ? ' ' : text,
-        style: style,
-      ),
-      textDirection: TextDirection.ltr,
-      textScaler: textScaler,
-    )..layout(maxWidth: maxWidth);
-    return painter.height;
   }
 
   IconData _iconForWeather({String? code, String? description}) {
@@ -402,19 +516,25 @@ class WeatherSlideWidget extends StatelessWidget {
       }
     }
     final value = (description ?? '').toLowerCase();
-    if (value.contains('snow') || value.contains('sleet') || value.contains('ice')) {
+    if (value.contains('snow') ||
+        value.contains('sleet') ||
+        value.contains('ice')) {
       return Icons.ac_unit;
     }
     if (value.contains('thunder') || value.contains('storm')) {
       return Icons.thunderstorm;
     }
-    if (value.contains('rain') || value.contains('drizzle') || value.contains('shower')) {
+    if (value.contains('rain') ||
+        value.contains('drizzle') ||
+        value.contains('shower')) {
       return Icons.umbrella;
     }
     if (value.contains('cloud') || value.contains('overcast')) {
       return Icons.cloud;
     }
-    if (value.contains('fog') || value.contains('mist') || value.contains('haze')) {
+    if (value.contains('fog') ||
+        value.contains('mist') ||
+        value.contains('haze')) {
       return Icons.foggy;
     }
     return Icons.wb_sunny;

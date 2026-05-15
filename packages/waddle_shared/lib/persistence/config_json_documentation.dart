@@ -715,8 +715,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
       _baseSchema(
         title: 'TriviaScreenConfig',
         description:
-            'Category pool, elimination timing, wrong-answer strike animation, '
-            'and correct-answer ring reveal.',
+            'Category pool, elimination timing, and wrong-answer strike animation.',
         properties: {
           'categoryId': {'type': 'string', 'minLength': 1},
           'eliminationWindowMs': {
@@ -730,7 +729,8 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
             'description':
                 'Wrong-answer strike style (case-insensitive; spaces and '
                 'underscores ignored). Typical values: scribble / scribble_out '
-                '(default), hand_drawn_x, strike_out_x / strikeout.',
+                '(default), hand_drawn_x, strike_out_x / strikeout, fade_out / '
+                'fade / opacity (opacity-only, no scribble or X).',
           },
           'strikeAnimationDurationMs': {
             'type': 'integer',
@@ -739,21 +739,6 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
             'description':
                 'Duration of the strike animation in ms (clamped to 120–3000).',
           },
-          'correctRevealAnimation': {
-            'type': 'string',
-            'description':
-                'Correct-answer outline style after elimination (case-insensitive; '
-                'spaces and underscores ignored). Typical values: smooth_ring / '
-                'smooth (default), wobbly_ring / wobbly, double_sweep / double.',
-          },
-          'correctRevealAnimationDurationMs': {
-            'type': 'integer',
-            'minimum': 120,
-            'maximum': 3000,
-            'description':
-                'Duration of the correct-answer ring animation in ms (clamped to '
-                '120–3000).',
-          },
         },
       ),
     ),
@@ -761,8 +746,6 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
       'categoryId': 'science',
       'strikeAnimation': 'hand_drawn_x',
       'strikeAnimationDurationMs': 450,
-      'correctRevealAnimation': 'wobbly_ring',
-      'correctRevealAnimationDurationMs': 420,
     }),
   ),
   'guest_wifi': ScreenConfigJsonDoc(

@@ -91,7 +91,7 @@ class StockQuotesSlideWidget extends StatelessWidget {
     final trendColor = _trendColor(percent);
     final trendIcon = _trendIcon(percent);
     return SizedBox(
-      width: 200 * scale,
+      width: 248 * scale,
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: theme.colorScheme.surfaceContainerHighest,
@@ -103,7 +103,7 @@ class StockQuotesSlideWidget extends StatelessWidget {
             vertical: 12 * scale,
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(symbol.symbol, style: theme.textTheme.titleLarge),
@@ -118,9 +118,15 @@ class StockQuotesSlideWidget extends StatelessWidget {
                   ),
                 ),
               SizedBox(height: 8 * scale),
-              Text(
-                priceText,
-                style: theme.textTheme.headlineSmall,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  priceText,
+                  style: theme.textTheme.headlineSmall,
+                  maxLines: 1,
+                  softWrap: false,
+                ),
               ),
               SizedBox(height: 4 * scale),
               Row(

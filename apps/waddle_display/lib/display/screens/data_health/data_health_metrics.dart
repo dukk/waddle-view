@@ -1,6 +1,6 @@
 import 'package:waddle_shared/persistence/database_stats_repository.dart';
 
-/// One row for the photos-vs-videos grouped bar chart.
+/// One row for the photos-vs-videos-by-category charts (paired pies + legend).
 class MediaCategoryRow {
   const MediaCategoryRow({
     required this.label,

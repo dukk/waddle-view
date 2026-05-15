@@ -14,6 +14,9 @@ enum TriviaStrikeAnimationKind {
 
   /// Dense horizontal scribble drawn progressively across the option (default).
   scribbleOut,
+
+  /// Wrong options dim via opacity only (no scribble / X overlay).
+  fadeOut,
 }
 
 /// Parses `strikeAnimation` from trivia widget `config` (case-insensitive;
@@ -36,6 +39,12 @@ TriviaStrikeAnimationKind parseTriviaStrikeAnimationKind(
     case 'handdrawnx':
     case 'handdrawn':
       return TriviaStrikeAnimationKind.handDrawnX;
+    case 'fadeout':
+    case 'fade':
+    case 'opacity':
+    case 'transparent':
+    case 'dim':
+      return TriviaStrikeAnimationKind.fadeOut;
     default:
       return TriviaStrikeAnimationKind.scribbleOut;
   }
@@ -170,7 +179,7 @@ Path _buildScribblePath(double w, double h, int seed) {
 }
 
 /// Paints hand-drawn X or scribble strike overlay ([TriviaStrikeAnimationKind.strikeOutX]
-/// is handled in the widget with a badge, not this painter).
+/// and [TriviaStrikeAnimationKind.fadeOut] are handled in the widget, not this painter).
 class TriviaStrikeOverlayPainter extends CustomPainter {
   TriviaStrikeOverlayPainter({
     required this.kind,
@@ -190,6 +199,7 @@ class TriviaStrikeOverlayPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     switch (kind) {
       case TriviaStrikeAnimationKind.strikeOutX:
+      case TriviaStrikeAnimationKind.fadeOut:
         return;
       case TriviaStrikeAnimationKind.handDrawnX:
         _paintHandDrawnX(canvas, size);

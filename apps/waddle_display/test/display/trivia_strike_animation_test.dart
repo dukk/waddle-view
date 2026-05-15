@@ -17,6 +17,14 @@ void main() {
       TriviaStrikeAnimationKind.scribbleOut,
     );
     expect(
+      parseTriviaStrikeAnimationKind({'strikeAnimation': 'fade_out'}),
+      TriviaStrikeAnimationKind.fadeOut,
+    );
+    expect(
+      parseTriviaStrikeAnimationKind({'strikeAnimation': 'TRANSPARENT'}),
+      TriviaStrikeAnimationKind.fadeOut,
+    );
+    expect(
       parseTriviaStrikeAnimationKind({'strikeAnimation': 'unknown'}),
       TriviaStrikeAnimationKind.scribbleOut,
     );

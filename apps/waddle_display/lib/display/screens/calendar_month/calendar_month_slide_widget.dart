@@ -16,6 +16,10 @@ import 'calendar_upcoming_layout.dart';
 import '../../content_category_material_icon.dart';
 import '../../dashboard_viewport_scope.dart';
 
+/// ValueKey for an in-current-month day cell on [CalendarMonthSlideWidget] (tests).
+Key calendarMonthInMonthDayCellKey(int day) =>
+    ValueKey<String>('calendar_month_in_month_$day');
+
 const _weekdayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const _monthNamesShort = [
   'Jan',
@@ -230,21 +234,14 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
                   );
                   final monthAnchor =
                       DateTime(nowWall.year, nowWall.month, nowWall.day);
-                  final eventDaysInMonth = allEvents
-                      .where(
-                        (event) {
-                          final z =
-                              calendarInstantInZone(event.startMs, displayZone);
-                          return z.year == monthAnchor.year &&
-                              z.month == monthAnchor.month;
-                        },
-                      )
-                      .map(
-                        (event) =>
-                            calendarInstantInZone(event.startMs, displayZone)
-                                .day,
-                      )
-                      .toSet();
+                  final markersByDay = bundle == null
+                      ? <int, CalendarMonthDayMarkers>{}
+                      : buildCalendarMonthDayMarkersByDay(
+                          rows: bundle.rows,
+                          displayZone: displayZone,
+                          monthAnchor: monthAnchor,
+                          colorScheme: widget.theme.colorScheme,
+                        );
                   final cells = buildMonthGridCells(monthAnchor, startOfToday);
                   final monthTitle =
                       '${_monthNamesShort[monthAnchor.month - 1]} ${monthAnchor.year}';
@@ -275,7 +272,8 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
                                 child: _MonthGridPanel(
                                   monthTitle: monthTitle,
                                   cells: cells,
-                                  eventDaysInMonth: eventDaysInMonth,
+                                  markersByDay: markersByDay,
+                                  displayTodayDate: startOfToday,
                                   theme: widget.theme,
                                   layoutScale: s,
                                   layoutCompact: layoutCompact,
@@ -422,6 +420,16 @@ class _UpcomingEventsPanel extends StatelessWidget {
                 final hasIcon =
                     slideRow.categoryIconBytes != null ||
                     (cat?.materialIconName?.trim().isNotEmpty ?? false);
+                final markerColor =
+                    calendarEventMarkerAccent(theme.colorScheme, e);
+                final listDotD = math.max(8.0, 11.0 * s);
+                final listSq = math.max(9.0, 12.0 * s);
+                final markerExtent = e.allDay ? listSq : listDotD;
+                final upcomingMarkerCol =
+                    math.max(16.0 * s, markerExtent + 3 * s);
+                final titleBlockStartPad = upcomingMarkerCol +
+                    8 * s +
+                    (hasIcon ? iconCol + 8 * s : 0);
                 return Padding(
                   padding: EdgeInsets.only(left: 8 * s),
                   child: Row(
@@ -442,39 +450,78 @@ class _UpcomingEventsPanel extends StatelessWidget {
                             : const SizedBox.shrink(),
                       ),
                       SizedBox(width: 10 * s),
-                      if (hasIcon) ...[
-                        SizedBox(
-                          width: iconCol,
-                          height: iconCol,
-                          child: slideRow.categoryIconBytes != null
-                              ? Image.memory(
-                                  slideRow.categoryIconBytes!,
-                                  width: iconCol,
-                                  height: iconCol,
-                                  fit: BoxFit.contain,
-                                )
-                              : Icon(
-                                  contentCategoryMaterialIcon(
-                                    slideRow.category?.materialIconName,
-                                  ),
-                                  size: iconCol,
-                                  color: iconColor,
-                                ),
-                        ),
-                        SizedBox(width: 8 * s),
-                      ],
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(e.title, style: theme.textTheme.titleMedium),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: upcomingMarkerCol,
+                                  child: Center(
+                                    child: DecoratedBox(
+                                      key: ValueKey<String>(
+                                        'calendar_upcoming_marker_${e.id}',
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: markerColor,
+                                        shape: e.allDay
+                                            ? BoxShape.rectangle
+                                            : BoxShape.circle,
+                                        borderRadius: e.allDay
+                                            ? BorderRadius.circular(2 * s)
+                                            : null,
+                                      ),
+                                      child: SizedBox(
+                                        width: markerExtent,
+                                        height: markerExtent,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 8 * s),
+                                if (hasIcon) ...[
+                                  SizedBox(
+                                    width: iconCol,
+                                    height: iconCol,
+                                    child: slideRow.categoryIconBytes != null
+                                        ? Image.memory(
+                                            slideRow.categoryIconBytes!,
+                                            width: iconCol,
+                                            height: iconCol,
+                                            fit: BoxFit.contain,
+                                          )
+                                        : Icon(
+                                            contentCategoryMaterialIcon(
+                                              slideRow.category
+                                                  ?.materialIconName,
+                                            ),
+                                            size: iconCol,
+                                            color: iconColor,
+                                          ),
+                                  ),
+                                  SizedBox(width: 8 * s),
+                                ],
+                                Expanded(
+                                  child: Text(
+                                    e.title,
+                                    style: theme.textTheme.titleMedium,
+                                  ),
+                                ),
+                              ],
+                            ),
                             if (loc != null && loc.isNotEmpty) ...[
                               SizedBox(height: 4 * s),
-                              Text(
-                                loc,
-                                style: theme.textTheme.bodySmall,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
+                              Padding(
+                                padding:
+                                    EdgeInsets.only(left: titleBlockStartPad),
+                                child: Text(
+                                  loc,
+                                  style: theme.textTheme.bodySmall,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ],
                           ],
@@ -495,7 +542,8 @@ class _MonthGridPanel extends StatelessWidget {
   const _MonthGridPanel({
     required this.monthTitle,
     required this.cells,
-    required this.eventDaysInMonth,
+    required this.markersByDay,
+    required this.displayTodayDate,
     required this.theme,
     required this.layoutScale,
     required this.layoutCompact,
@@ -503,7 +551,8 @@ class _MonthGridPanel extends StatelessWidget {
 
   final String monthTitle;
   final List<MonthGridCell> cells;
-  final Set<int> eventDaysInMonth;
+  final Map<int, CalendarMonthDayMarkers> markersByDay;
+  final DateTime displayTodayDate;
   final ThemeData theme;
   final double layoutScale;
   final bool layoutCompact;
@@ -604,13 +653,19 @@ class _MonthGridPanel extends StatelessWidget {
                           itemCount: cells.length,
                           itemBuilder: (context, index) {
                             final cell = cells[index];
+                            final markers = cell.inCurrentMonth
+                                ? (markersByDay[cell.day] ??
+                                    CalendarMonthDayMarkers.empty)
+                                : CalendarMonthDayMarkers.empty;
                             return _MonthDayCell(
+                              key: cell.inCurrentMonth
+                                  ? calendarMonthInMonthDayCellKey(cell.day)
+                                  : null,
                               cell: cell,
+                              displayTodayDate: displayTodayDate,
                               theme: theme,
                               layoutScale: s,
-                              hasEvent:
-                                  cell.inCurrentMonth &&
-                                  eventDaysInMonth.contains(cell.day),
+                              markers: markers,
                             );
                           },
                         ),
@@ -629,44 +684,117 @@ class _MonthGridPanel extends StatelessWidget {
 
 class _MonthDayCell extends StatelessWidget {
   const _MonthDayCell({
+    super.key,
     required this.cell,
+    required this.displayTodayDate,
     required this.theme,
     required this.layoutScale,
-    required this.hasEvent,
+    required this.markers,
   });
 
   final MonthGridCell cell;
+  final DateTime displayTodayDate;
   final ThemeData theme;
   final double layoutScale;
-  final bool hasEvent;
+  final CalendarMonthDayMarkers markers;
 
   @override
   Widget build(BuildContext context) {
     final s = layoutScale;
-    final muted = theme.colorScheme.onSurface.withValues(
-      alpha: cell.inCurrentMonth ? 1 : 0.38,
-    );
+    final scheme = theme.colorScheme;
+    final fill = calendarMonthDayCellFill(scheme, cell, displayTodayDate);
+
+    final Color dayNumberColor;
+    if (!cell.inCurrentMonth) {
+      dayNumberColor = scheme.onSurface.withValues(alpha: 0.38);
+    } else if (cell.isToday) {
+      dayNumberColor = scheme.onSecondaryContainer;
+    } else {
+      final cellDay = calendarDateOnly(cell.calendarDate);
+      final todayDay = calendarDateOnly(displayTodayDate);
+      if (cellDay.isBefore(todayDay)) {
+        dayNumberColor = scheme.onSurface.withValues(alpha: 0.80);
+      } else {
+        dayNumberColor = scheme.onSurface;
+      }
+    }
+    final topColors = markers.allDayTopColors;
+    final dotColors = markers.timedDotColors;
+    final dotSize = math.max(3.0, 4.0 * s);
+    final squareSize = math.max(4.0, 5.0 * s);
+    final markerGap = 2.0 * s;
+
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: cell.isToday
-            ? theme.colorScheme.secondaryContainer
-            : Colors.transparent,
-        border: hasEvent
-            ? Border.all(
-                color: theme.colorScheme.secondaryContainer,
-                width: math.max(1.0, 1.5 * s),
-              )
-            : null,
+        color: fill,
         borderRadius: BorderRadius.circular(8 * s),
       ),
-      child: Center(
-        child: Text(
-          '${cell.day}',
-          style: (theme.textTheme.titleMedium ?? theme.textTheme.bodyLarge)
-              ?.copyWith(
-                color: muted,
-                fontWeight: cell.isToday ? FontWeight.w700 : FontWeight.w400,
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 2 * s, vertical: 3 * s),
+        child: Column(
+          children: [
+            if (topColors.isNotEmpty)
+              Padding(
+                padding: EdgeInsets.only(bottom: 2 * s),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var i = 0; i < topColors.length && i < 3; i++) ...[
+                      if (i > 0) SizedBox(width: markerGap),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: topColors[i],
+                          borderRadius: BorderRadius.circular(1 * s),
+                        ),
+                        child: SizedBox(
+                          width: squareSize,
+                          height: squareSize,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
+            Expanded(
+              child: Center(
+                child: Text(
+                  '${cell.day}',
+                  style:
+                      (theme.textTheme.titleMedium ?? theme.textTheme.bodyLarge)
+                          ?.copyWith(
+                            color: dayNumberColor,
+                            fontWeight: cell.isToday
+                                ? FontWeight.w700
+                                : FontWeight.w400,
+                          ),
+                ),
+              ),
+            ),
+            if (dotColors.isNotEmpty)
+              Padding(
+                padding: EdgeInsets.only(top: 2 * s),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var i = 0; i < dotColors.length && i < 5; i++) ...[
+                      if (i > 0) SizedBox(width: markerGap),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: dotColors[i],
+                          shape: BoxShape.circle,
+                        ),
+                        child: SizedBox(
+                          width: dotSize,
+                          height: dotSize,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+          ],
         ),
       ),
     );

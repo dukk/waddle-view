@@ -18,6 +18,9 @@ defaults:
   run:
     working-directory: apps/waddle_display
 
+permissions:
+  contents: read
+
 jobs:
   validate-linux-build-deps:
     runs-on: ubuntu-latest
@@ -75,7 +78,10 @@ jobs:
   build-linux-release:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: validate-linux-build-deps
+    needs: analyze-test
+    permissions:
+      actions: write
+      contents: read
     env:
       LINUX_BUILD_DEPS_FILE: ${{ github.workspace }}/deploy/linux-arm64/build-deps.txt
     defaults:
@@ -124,11 +130,26 @@ jobs:
             echo "Missing runtime shared libraries detected (waddlectl)."
             exit 1
           fi
+      - name: Package CI dist (Linux x64)
+        working-directory: ${{ github.workspace }}/apps/waddle_display
+        run: |
+          DIST="waddle-view-linux-x64-ci-run-${{ github.run_id }}-att-${{ github.run_attempt }}"
+          mkdir -p "../../dist/${DIST}"
+          cp -r build/linux/x64/release/bundle "../../dist/${DIST}/"
+          cp ../../deploy/linux-arm64/install.sh ../../deploy/linux-arm64/waddle-view.service "../../dist/${DIST}/"
+          cd ../../dist && tar czf "${DIST}.tar.gz" "${DIST}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ci-bundle-linux-x64-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ github.workspace }}/dist/*.tar.gz
 
   build-windows-release:
     runs-on: windows-latest
     timeout-minutes: 25
-    needs: validate-linux-build-deps
+    needs: analyze-test
+    permissions:
+      actions: write
+      contents: read
     defaults:
       run:
         working-directory: apps/waddle_display
@@ -163,3 +184,106 @@ jobs:
           if (-not (Test-Path $exe)) { throw "Missing $exe" }
           $wctl = "build/windows/x64/runner/Release/waddlectl/bin/waddlectl.exe"
           if (-not (Test-Path $wctl)) { throw "Missing $wctl" }
+      - name: Package CI dist (Windows x64)
+        shell: pwsh
+        working-directory: ${{ github.workspace }}/apps/waddle_display
+        run: |
+          $distName = "waddle-view-windows-x64-ci-run-${{ github.run_id }}-att-${{ github.run_attempt }}"
+          $releaseDir = "build/windows/x64/runner/Release"
+          New-Item -ItemType Directory -Force "../../dist" | Out-Null
+          $zip = "../../dist/$distName.zip"
+          Compress-Archive -Path "$releaseDir/*" -DestinationPath $zip -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ci-bundle-windows-x64-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ github.workspace }}/dist/*.zip
+
+  build-pi:
+    needs: analyze-test
+    permissions:
+      actions: write
+      contents: read
+    uses: ./.github/workflows/release-pi.yml
+    with:
+      build_number: ${{ github.run_number }}
+      dist_basename: waddle-view-linux-arm64-ci-run-${{ github.run_id }}-att-${{ github.run_attempt }}
+      artifact_name: ci-bundle-linux-arm64-${{ github.run_id }}-${{ github.run_attempt }}
+
+  cleanup-ci-bundle-artifacts:
+    runs-on: ubuntu-latest
+    needs: [analyze-test, build-linux-release, build-windows-release, build-pi]
+    if: always() && !cancelled()
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Prune old CI bundle artifacts (keep newest 5 per platform)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 <<'PY'
+          import json, os, subprocess, sys
+
+          repo = os.environ["GITHUB_REPOSITORY"]
+          token = os.environ.get("GH_TOKEN", "")
+          if not token:
+              print("No GH_TOKEN; skipping cleanup")
+              sys.exit(0)
+
+          prefixes = (
+              "ci-bundle-linux-arm64-",
+              "ci-bundle-linux-x64-",
+              "ci-bundle-windows-x64-",
+          )
+          keep = 5
+
+          def list_artifacts():
+              page = 1
+              out = []
+              while True:
+                  raw = subprocess.check_output(
+                      [
+                          "gh",
+                          "api",
+                          f"/repos/{repo}/actions/artifacts?per_page=100&page={page}",
+                      ],
+                      text=True,
+                  )
+                  data = json.loads(raw)
+                  batch = data.get("artifacts") or []
+                  out.extend(batch)
+                  if len(batch) < 100:
+                      break
+                  page += 1
+              return out
+
+          def delete_artifact(aid: int):
+              subprocess.check_call(
+                  [
+                      "gh",
+                      "api",
+                      "--method",
+                      "DELETE",
+                      f"/repos/{repo}/actions/artifacts/{aid}",
+                  ],
+              )
+
+          try:
+              all_arts = list_artifacts()
+          except subprocess.CalledProcessError as e:
+              print("Artifact list failed (non-fatal):", e)
+              sys.exit(0)
+
+          for prefix in prefixes:
+              matching = [a for a in all_arts if a.get("name", "").startswith(prefix)]
+              matching.sort(key=lambda a: a.get("created_at") or "", reverse=True)
+              for a in matching[keep:]:
+                  aid = a.get("id")
+                  if aid is None:
+                      continue
+                  print("Deleting artifact", aid, a.get("name"))
+                  try:
+                      delete_artifact(int(aid))
+                  except subprocess.CalledProcessError as e:
+                      print("Delete failed:", e)
+          PY

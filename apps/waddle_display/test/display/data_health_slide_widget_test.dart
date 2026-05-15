@@ -102,8 +102,67 @@ void main() {
     expect(find.textContaining('200 B'), findsOneWidget);
     expect(find.textContaining('1 on'), findsOneWidget);
     expect(find.text('Active content by type'), findsOneWidget);
-    expect(find.text('RSS'), findsWidgets);
+    expect(find.textContaining('RSS'), findsWidgets);
     expect(find.text('Photos and videos by category'), findsOneWidget);
+    expect(find.text('Photos'), findsOneWidget);
+    expect(find.text('Videos'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+    await db.close();
+  });
+
+  testWidgets('media legend shows full category label without ellipsis', (
+    tester,
+  ) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    const longLabel =
+        'Bing images wallpaper daily picks and featured backgrounds';
+    await seedContentCategoriesForTest(db, ['bing_wallpapers'], label: longLabel);
+
+    await db.into(db.photos).insert(
+          PhotosCompanion.insert(
+            id: 'p1',
+            category: const Value('bing_wallpapers'),
+            mediaBlobKey: 'blob/p1',
+            photographerName: 'n',
+            photographerUrl: 'https://x/p',
+            pexelsPageUrl: 'https://x/photo',
+            altText: const Value(''),
+            fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(4),
+          ),
+        );
+
+    const spec = ParsedWidgetSpec(
+      type: 'data_health',
+      slot: 'main',
+      config: {},
+    );
+    const slide = ResolvedSlide(
+      screenId: 'dev_data_health',
+      dwellMs: 20000,
+      layoutJson:
+          '{"v":1,"layout":"single","widgets":[{"type":"data_health","slot":"main","config":{}}]}',
+    );
+    final theme = DisplayTheme.build();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: DataHealthSlideWidget(
+            db: db,
+            slide: slide,
+            spec: spec,
+            theme: theme,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining(longLabel), findsOneWidget);
+    expect(find.textContaining('1 photos · 0 videos'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpAndSettle();

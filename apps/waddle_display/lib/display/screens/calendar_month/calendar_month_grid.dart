@@ -1,5 +1,6 @@
 // Month grid helpers (Sunday-first columns; see [buildMonthGridCells]).
 
+import 'package:flutter/material.dart';
 import 'package:timezone/timezone.dart';
 
 /// Interprets [stored] as an absolute instant and returns its wall clock in [zone].
@@ -28,11 +29,15 @@ class MonthGridCell {
     required this.day,
     required this.inCurrentMonth,
     required this.isToday,
+    required this.calendarDate,
   });
 
   final int day;
   final bool inCurrentMonth;
   final bool isToday;
+
+  /// Wall-calendar date this cell represents (year/month/day; time ignored).
+  final DateTime calendarDate;
 }
 
 /// Builds day cells for [monthAnchor]'s month (year/month taken from local date).
@@ -56,6 +61,7 @@ List<MonthGridCell> buildMonthGridCells(
         day: dayNum,
         inCurrentMonth: false,
         isToday: false,
+        calendarDate: DateTime(prevLast.year, prevLast.month, dayNum),
       ),
     );
   }
@@ -73,6 +79,7 @@ List<MonthGridCell> buildMonthGridCells(
         day: d,
         inCurrentMonth: true,
         isToday: isToday,
+        calendarDate: DateTime(y, m, d),
       ),
     );
   }
@@ -84,12 +91,48 @@ List<MonthGridCell> buildMonthGridCells(
         day: trailingDay,
         inCurrentMonth: false,
         isToday: false,
+        calendarDate: DateTime(nextFirst.year, nextFirst.month, trailingDay),
       ),
     );
     trailingDay++;
   }
 
   return out;
+}
+
+/// Normalizes [d] to a date-only value (time components ignored).
+DateTime calendarDateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
+/// Fill for a month grid cell: today uses [ColorScheme.secondaryContainer];
+/// adjacent-month days are left clear (same as the former in-month future look);
+/// in-month days after [displayTodayDateOnly] use the stronger [ColorScheme.surface]
+/// tint that was previously used for adjacent-month cells.
+Color? calendarMonthDayCellFill(
+  ColorScheme scheme,
+  MonthGridCell cell,
+  DateTime displayTodayDateOnly,
+) {
+  if (cell.isToday) {
+    return scheme.secondaryContainer;
+  }
+  if (!cell.inCurrentMonth) {
+    return null;
+  }
+  final cellDay = calendarDateOnly(cell.calendarDate);
+  final todayDay = calendarDateOnly(displayTodayDateOnly);
+  if (cellDay.isBefore(todayDay)) {
+    return Color.alphaBlend(
+      scheme.onSurface.withValues(alpha: 0.10),
+      scheme.surface,
+    );
+  }
+  if (cellDay.isAfter(todayDay)) {
+    return Color.alphaBlend(
+      scheme.onSurface.withValues(alpha: 0.22),
+      scheme.surface,
+    );
+  }
+  return null;
 }
 
 /// Layout and formatting for upcoming-event time labels on the [calendar_month] slide.
