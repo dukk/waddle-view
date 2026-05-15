@@ -41,13 +41,16 @@ part 'database.g.dart';
     StockSymbols,
     StockQuotes,
     RejectTerms,
+    Users,
+    UserSessions,
+    UserOauthIdentities,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 37;
+  int get schemaVersion => 38;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -751,6 +754,11 @@ FROM curator_settings WHERE id = 'app';
             "'microsoft.graph.client_id', 'google.client_id');",
           );
         }
+      }
+      if (from < 38) {
+        await m.createTable(users);
+        await m.createTable(userSessions);
+        await m.createTable(userOauthIdentities);
       }
       if (from < 35) {
         final overlayTable = await customSelect(

@@ -546,3 +546,50 @@ class StockQuotes extends Table {
   @override
   Set<Column<Object>> get primaryKey => {symbolId};
 }
+
+/// Built-in operator roles for display REST / controller auth.
+const String kUserRoleAdmin = 'admin';
+const String kUserRoleOperator = 'operator';
+const String kUserRoleViewer = 'viewer';
+
+/// Reserved bootstrap username (password = instance id file when no named users).
+const String kBootstrapUsername = 'display';
+
+/// Display API operator accounts.
+class Users extends Table {
+  TextColumn get id => text()();
+  TextColumn get username => text()();
+  TextColumn get usernameLower => text()();
+  TextColumn get displayName => text()();
+  TextColumn get role => text()();
+  TextColumn get passwordHash => text().nullable()();
+  BoolColumn get isBootstrap => boolean().withDefault(const Constant(false))();
+  IntColumn get disabledAtMs => integer().nullable()();
+  IntColumn get createdAtMs => integer()();
+  IntColumn get updatedAtMs => integer()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Opaque bearer sessions for operator REST clients.
+class UserSessions extends Table {
+  TextColumn get id => text()();
+  TextColumn get userId => text().references(Users, #id)();
+  IntColumn get createdAtMs => integer()();
+  IntColumn get expiresAtMs => integer()();
+  TextColumn get clientLabel => text().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Links operator users to external IdP subjects (tokens in SecretStore).
+class UserOauthIdentities extends Table {
+  TextColumn get userId => text().references(Users, #id)();
+  TextColumn get provider => text()();
+  TextColumn get subject => text()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {userId, provider};
+}

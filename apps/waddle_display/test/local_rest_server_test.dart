@@ -1,68 +1,109 @@
 import 'dart:convert';
-import 'dart:io';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-
-import 'package:waddle_display/alerts/drift_alert_repository.dart';
-import 'package:waddle_display/api/deployment_api_key_source.dart';
-import 'package:waddle_display/api/local_rest_server.dart';
-import 'package:waddle_shared/seed/tables/joke_categories_seed.dart';
-import 'package:waddle_display/ticker/memory_ticker_curated_repository.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
+import 'package:waddle_shared/seed/tables/joke_categories_seed.dart';
 
 import 'helpers/memory_database.dart';
+import 'helpers/rest_auth_helper.dart';
+
+Future<void> _seedContentTypes(AppDatabase db) async {
+  const cat = 'general';
+  await db.into(db.contentCategories).insert(
+        ContentCategoriesCompanion.insert(id: cat, label: 'General'),
+      );
+  await db.into(db.jokeCategories).insert(
+        JokeCategoriesCompanion.insert(id: cat, label: 'General'),
+      );
+  await db.into(db.triviaCategories).insert(
+        TriviaCategoriesCompanion.insert(id: cat, label: 'General'),
+      );
+  await db.into(db.rssFeedSources).insert(
+        RssFeedSourcesCompanion.insert(id: 'f1', url: 'https://example.com/feed.xml'),
+      );
+  await db.into(db.jokes).insert(
+        JokesCompanion.insert(
+          id: 'rest_j1',
+          categoryId: cat,
+          setup: 'x',
+          punchline: 'y',
+          createdAtMs: DateTime.fromMillisecondsSinceEpoch(1),
+        ),
+      );
+  await db.into(db.rssArticles).insert(
+        RssArticlesCompanion.insert(
+          id: 'rest_a1',
+          feedId: 'f1',
+          guid: 'g1',
+          title: 't',
+          link: 'https://x/1',
+          publishedAt: DateTime.fromMillisecondsSinceEpoch(2),
+          fetchedAt: DateTime.fromMillisecondsSinceEpoch(3),
+        ),
+      );
+  await db.into(db.photos).insert(
+        PhotosCompanion.insert(
+          id: 'rest_p1',
+          mediaBlobKey: 'blob/p1',
+          photographerName: 'n',
+          photographerUrl: 'https://x/p',
+          pexelsPageUrl: 'https://x/photo',
+          altText: const Value(''),
+          fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(4),
+        ),
+      );
+  await db.into(db.videos).insert(
+        VideosCompanion.insert(
+          id: 'rest_v1',
+          mediaBlobKey: 'blob/v1',
+          photographerName: 'n',
+          photographerUrl: 'https://x/v',
+          pexelsPageUrl: 'https://x/video',
+          altText: const Value(''),
+          durationSeconds: 1,
+          fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(5),
+        ),
+      );
+  await db.into(db.triviaQuestions).insert(
+        TriviaQuestionsCompanion.insert(
+          id: 'rest_q1',
+          categoryId: cat,
+          question: 'q?',
+          optionA: 'a',
+          optionB: 'b',
+          optionC: 'c',
+          optionD: 'd',
+          correctOption: 'A',
+          createdAtMs: DateTime.fromMillisecondsSinceEpoch(6),
+        ),
+      );
+}
 
 void main() {
-  test('health is public; providers require API key', () async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(id: 'x', providerType: 'y'),
-        );
-    final alerts = DriftAlertRepository(db);
-    final keys = FakeDeploymentApiKeySource('supersecret');
-    final ticker = MemoryTickerCuratedRepository();
-    addTearDown(ticker.dispose);
-    final handler = buildRootHandler(
-      db: db,
-      alerts: alerts,
-      keys: keys,
-      ticker: ticker,
-      onConfigChanged: () async {},
-      keyFile: await _tempKeyFile('supersecret'),
-      setupScreenId: 'admin_setup',
+  test('health is public; providers require session', () async {
+    final h = await RestTestHarness.start();
+    addTearDown(h.dispose);
+    final health = await http.get(Uri.parse('${h.baseUrl}/v1/health'));
+    expect(health.statusCode, 200);
+
+    final denied = await http.get(Uri.parse('${h.baseUrl}/v1/providers'));
+    expect(denied.statusCode, 401);
+
+    final ok = await http.get(
+      Uri.parse('${h.baseUrl}/v1/providers'),
+      headers: h.authHeaders,
     );
-    final server = await LocalRestServer.bind(handler: handler, port: 0);
-    try {
-      final health = await http.get(
-        Uri.parse('${server.baseUrl}/v1/health'),
-      );
-      expect(health.statusCode, 200);
-
-      final denied = await http.get(
-        Uri.parse('${server.baseUrl}/v1/providers'),
-      );
-      expect(denied.statusCode, 401);
-
-      final ok = await http.get(
-        Uri.parse('${server.baseUrl}/v1/providers'),
-        headers: {'x-api-key': 'supersecret'},
-      );
-      expect(ok.statusCode, 200);
-    } finally {
-      await server.close();
-      await db.close();
-    }
+    expect(ok.statusCode, 200);
   });
 
   test('PATCH content suppression updates row', () async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
-    await ensureDefaultJokeCategories(db);
-
-    await db.into(db.jokes).insert(
+    final h = await RestTestHarness.start();
+    addTearDown(h.dispose);
+    await ensureDefaultJokeCategories(h.db);
+    await h.db.into(h.db.jokes).insert(
           JokesCompanion.insert(
             id: 'rest_j1',
             categoryId: 'dad',
@@ -71,206 +112,175 @@ void main() {
             createdAtMs: DateTime.fromMillisecondsSinceEpoch(1),
           ),
         );
-
-    final alerts = DriftAlertRepository(db);
-    final keys = FakeDeploymentApiKeySource('supersecret');
-    final ticker = MemoryTickerCuratedRepository();
-    addTearDown(ticker.dispose);
-    final handler = buildRootHandler(
-      db: db,
-      alerts: alerts,
-      keys: keys,
-      ticker: ticker,
-      onConfigChanged: () async {},
-      keyFile: await _tempKeyFile('supersecret'),
-      setupScreenId: 'admin_setup',
+    final uri = Uri.parse('${h.baseUrl}/v1/content/jokes/rest_j1');
+    final res = await http.patch(
+      uri,
+      headers: h.authHeaders,
+      body: '{"suppressed":true}',
     );
-    final server = await LocalRestServer.bind(handler: handler, port: 0);
-    try {
-      final uri = Uri.parse('${server.baseUrl}/v1/content/jokes/rest_j1');
+    expect(res.statusCode, 200);
+    final row = await (h.db.select(h.db.jokes)
+          ..where((t) => t.id.equals('rest_j1')))
+        .getSingle();
+    expect(row.suppressed, isTrue);
+  });
+
+  test('PATCH content suppression for rss photos videos trivia', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await _seedContentTypes(db);
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+
+    for (final path in [
+      '/v1/content/rss-articles/rest_a1',
+      '/v1/content/photos/rest_p1',
+      '/v1/content/videos/rest_v1',
+      '/v1/content/trivia/rest_q1',
+    ]) {
       final res = await http.patch(
-        uri,
-        headers: {
-          'x-api-key': 'supersecret',
-          'content-type': 'application/json',
-        },
+        Uri.parse('${h.baseUrl}$path'),
+        headers: h.authHeaders,
         body: '{"suppressed":true}',
       );
-      expect(res.statusCode, 200);
-      final row = await (db.select(db.jokes)
-            ..where((t) => t.id.equals('rest_j1')))
-          .getSingle();
-      expect(row.suppressed, isTrue);
-    } finally {
-      await server.close();
-      await db.close();
+      expect(res.statusCode, 200, reason: path);
     }
   });
 
-  test(
-    '/v1/reject-terms supports list, upsert, delete, format, and rescan',
-    () async {
-      final db = openMemoryDatabase();
-      await warmDatabase(db);
-      await ensureDefaultJokeCategories(db);
+  test('PATCH content suppression validates body', () async {
+    final h = await RestTestHarness.start();
+    addTearDown(h.dispose);
+    final badType = await http.patch(
+      Uri.parse('${h.baseUrl}/v1/content/jokes/missing'),
+      headers: h.authHeaders,
+      body: '{"suppressed":"yes"}',
+    );
+    expect(badType.statusCode, 400);
+    expect(badType.body, contains('suppressed_must_be_bool'));
 
-      // Seed an RSS article whose title contains a future block term so the
-      // rescan endpoint marks it suppressed after we add the term.
-      await db.into(db.rssFeedSources).insert(
-            RssFeedSourcesCompanion.insert(
-              id: 'feed1',
-              url: 'https://example.test/rss',
-            ),
-          );
-      await db.into(db.rssArticles).insert(
-            RssArticlesCompanion.insert(
-              id: 'rest_a1',
-              feedId: 'feed1',
-              guid: 'g1',
-              title: 'Cuss is here',
-              link: 'https://x.test',
-              publishedAt: DateTime.fromMillisecondsSinceEpoch(1),
-              fetchedAt: DateTime.fromMillisecondsSinceEpoch(1),
-            ),
-          );
+    final notFound = await http.patch(
+      Uri.parse('${h.baseUrl}/v1/content/jokes/missing'),
+      headers: h.authHeaders,
+      body: '{"suppressed":true}',
+    );
+    expect(notFound.statusCode, 404);
+  });
 
-      // Clear the default reject terms so we can drive the behavior cleanly.
-      await db.delete(db.rejectTerms).go();
+  test('reject-terms REST CRUD and format', () async {
+    final h = await RestTestHarness.start();
+    addTearDown(h.dispose);
 
-      final alerts = DriftAlertRepository(db);
-      final keys = FakeDeploymentApiKeySource('supersecret');
-      final ticker = MemoryTickerCuratedRepository();
-      addTearDown(ticker.dispose);
-      final handler = buildRootHandler(
-        db: db,
-        alerts: alerts,
-        keys: keys,
-        ticker: ticker,
-        onConfigChanged: () async {},
-        keyFile: await _tempKeyFile('supersecret'),
-        setupScreenId: 'admin_setup',
-      );
-      final server = await LocalRestServer.bind(handler: handler, port: 0);
-      try {
-        final base = '${server.baseUrl}/v1/reject-terms';
-        final auth = {'x-api-key': 'supersecret'};
+    final list0 = await http.get(
+      Uri.parse('${h.baseUrl}/v1/reject-terms'),
+      headers: h.authHeaders,
+    );
+    expect(list0.statusCode, 200);
 
-        // Initial GET returns empty list and the default censor format.
-        final initial = await http.get(Uri.parse(base), headers: auth);
-        expect(initial.statusCode, 200);
-        final initialBody =
-            jsonDecode(initial.body) as Map<String, dynamic>;
-        expect(initialBody['items'], isEmpty);
-        expect(
-          initialBody['censor_format'],
-          kRejectCensorFormatAsterisksFull,
-        );
+    final post = await http.post(
+      Uri.parse('${h.baseUrl}/v1/reject-terms'),
+      headers: h.authHeaders,
+      body: jsonEncode({'term': 'badword', 'action': 'block'}),
+    );
+    expect(post.statusCode, 200);
+    final id = (jsonDecode(post.body) as Map)['id'] as String;
 
-        // POST a block term.
-        final created = await http.post(
-          Uri.parse(base),
-          headers: {...auth, 'content-type': 'application/json'},
-          body: '{"term":"Cuss","action":"block"}',
-        );
-        expect(created.statusCode, 200);
-        final createdBody =
-            jsonDecode(created.body) as Map<String, dynamic>;
-        expect(createdBody['term'], 'cuss');
-        expect(createdBody['action'], 'block');
-        final createdId = createdBody['id'] as String;
-        expect(createdId, isNotEmpty);
+    final patch = await http.patch(
+      Uri.parse('${h.baseUrl}/v1/reject-terms/$id'),
+      headers: h.authHeaders,
+      body: jsonEncode({'term': 'badword', 'action': 'censor'}),
+    );
+    expect(patch.statusCode, 200);
 
-        // The POST kicks off a rescan; wait until the row is suppressed.
-        var marked = false;
-        for (var attempt = 0; attempt < 50 && !marked; attempt++) {
-          final row = await (db.select(db.rssArticles)
-                ..where((t) => t.id.equals('rest_a1')))
-              .getSingle();
-          if (row.suppressed) {
-            marked = true;
-            break;
-          }
-          await Future<void>.delayed(const Duration(milliseconds: 20));
-        }
-        expect(marked, isTrue,
-            reason: 'rescan should suppress matching article');
+    final format = await http.put(
+      Uri.parse('${h.baseUrl}/v1/reject-terms/format'),
+      headers: h.authHeaders,
+      body: jsonEncode({'format': kRejectCensorFormatFirstLast}),
+    );
+    expect(format.statusCode, 200);
 
-        // Invalid action returns 400.
-        final invalid = await http.post(
-          Uri.parse(base),
-          headers: {...auth, 'content-type': 'application/json'},
-          body: '{"term":"hello","action":"banana"}',
-        );
-        expect(invalid.statusCode, 400);
+    final rescan = await http.post(
+      Uri.parse('${h.baseUrl}/v1/reject-terms/rescan'),
+      headers: h.authHeaders,
+    );
+    expect(rescan.statusCode, 200);
 
-        // PATCH updates the action in place.
-        final patched = await http.patch(
-          Uri.parse('$base/$createdId'),
-          headers: {...auth, 'content-type': 'application/json'},
-          body: '{"term":"Cuss","action":"censor"}',
-        );
-        expect(patched.statusCode, 200);
-        final patchedRow = await (db.select(db.rejectTerms)
-              ..where((t) => t.id.equals(createdId)))
-            .getSingle();
-        expect(patchedRow.action, kRejectTermActionCensor);
+    final del = await http.delete(
+      Uri.parse('${h.baseUrl}/v1/reject-terms/$id'),
+      headers: h.authHeaders,
+    );
+    expect(del.statusCode, 200);
 
-        // PUT the censor format.
-        final fmt = await http.put(
-          Uri.parse('$base/format'),
-          headers: {...auth, 'content-type': 'application/json'},
-          body: '{"format":"bracketed_token"}',
-        );
-        expect(fmt.statusCode, 200);
-        final fmtRow = await (db.select(db.configKeyValues)
-              ..where((t) => t.key.equals(kRejectCensorFormatKvKey)))
-            .getSingle();
-        expect(fmtRow.value, kRejectCensorFormatBracketedToken);
+    final missing = await http.delete(
+      Uri.parse('${h.baseUrl}/v1/reject-terms/ghost'),
+      headers: h.authHeaders,
+    );
+    expect(missing.statusCode, 404);
+  });
 
-        // Unknown format rejected.
-        final badFmt = await http.put(
-          Uri.parse('$base/format'),
-          headers: {...auth, 'content-type': 'application/json'},
-          body: '{"format":"crayons"}',
-        );
-        expect(badFmt.statusCode, 400);
+  test('reject-terms rejects invalid payloads', () async {
+    final h = await RestTestHarness.start();
+    addTearDown(h.dispose);
 
-        // POST rescan returns counts (article already suppressed so 0 marked).
-        final rescan = await http.post(
-          Uri.parse('$base/rescan'),
-          headers: {...auth, 'content-type': 'application/json'},
-          body: '{}',
-        );
-        expect(rescan.statusCode, 200);
-        final rescanBody = jsonDecode(rescan.body) as Map<String, dynamic>;
-        expect(rescanBody['total_marked'], 0);
+    final badJson = await http.post(
+      Uri.parse('${h.baseUrl}/v1/reject-terms'),
+      headers: h.authHeaders,
+      body: '{',
+    );
+    expect(badJson.statusCode, 400);
 
-        // DELETE removes the row.
-        final del = await http.delete(
-          Uri.parse('$base/$createdId'),
-          headers: auth,
-        );
-        expect(del.statusCode, 200);
-        final missing = await http.delete(
-          Uri.parse('$base/$createdId'),
-          headers: auth,
-        );
-        expect(missing.statusCode, 404);
+    final badTerm = await http.post(
+      Uri.parse('${h.baseUrl}/v1/reject-terms'),
+      headers: h.authHeaders,
+      body: jsonEncode({'term': '', 'action': 'block'}),
+    );
+    expect(badTerm.statusCode, 400);
 
-        final after = await http.get(Uri.parse(base), headers: auth);
-        final afterBody = jsonDecode(after.body) as Map<String, dynamic>;
-        expect(afterBody['items'], isEmpty);
-      } finally {
-        await server.close();
-        await db.close();
-      }
-    },
-  );
-}
+    final badFormat = await http.put(
+      Uri.parse('${h.baseUrl}/v1/reject-terms/format'),
+      headers: h.authHeaders,
+      body: jsonEncode({'format': 'unknown'}),
+    );
+    expect(badFormat.statusCode, 400);
 
-Future<File> _tempKeyFile(String value) async {
-  final dir = await Directory.systemTemp.createTemp('wv_rest_test_');
-  final file = File('${dir.path}/waddle_api.key');
-  await file.writeAsString('$value\n', flush: true);
-  return file;
+    final notString = await http.put(
+      Uri.parse('${h.baseUrl}/v1/reject-terms/format'),
+      headers: h.authHeaders,
+      body: jsonEncode({'format': 1}),
+    );
+    expect(notString.statusCode, 400);
+  });
+
+  test('PATCH content suppression rejects invalid json', () async {
+    final h = await RestTestHarness.start();
+    addTearDown(h.dispose);
+    final res = await http.patch(
+      Uri.parse('${h.baseUrl}/v1/content/jokes/x'),
+      headers: h.authHeaders,
+      body: '{',
+    );
+    expect(res.statusCode, 400);
+    expect(res.body, contains('invalid_json'));
+  });
+
+  test('CORS adds headers for allowed origin', () async {
+    const origin = 'http://localhost:5173';
+    final h = await RestTestHarness.start(
+      corsAllowedOrigins: [origin],
+    );
+    addTearDown(h.dispose);
+
+    final preflight = await http.Client().send(
+      http.Request('OPTIONS', Uri.parse('${h.baseUrl}/v1/health'))
+        ..headers['Origin'] = origin,
+    );
+    expect(preflight.statusCode, 204);
+    expect(preflight.headers['access-control-allow-origin'], origin);
+
+    final get = await http.get(
+      Uri.parse('${h.baseUrl}/v1/health'),
+      headers: {'Origin': origin},
+    );
+    expect(get.statusCode, 200);
+    expect(get.headers['access-control-allow-origin'], origin);
+  });
 }

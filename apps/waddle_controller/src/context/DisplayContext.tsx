@@ -19,7 +19,7 @@ type DisplayCtx = {
   active: SavedDisplay | null;
   setActiveId: (id: string) => void;
   refresh: () => void;
-  addNewDisplay: (input: { baseUrl: string; apiKey: string; label?: string }) => void;
+  addNewDisplay: (input: { baseUrl: string; label?: string }) => void;
   replaceDisplays: (next: SavedDisplay[]) => void;
   removeDisplay: (id: string) => void;
 };
@@ -47,7 +47,7 @@ export function DisplayProvider({ children }: { children: ReactNode }) {
   );
 
   const addNewDisplay = useCallback(
-    (input: { baseUrl: string; apiKey: string; label?: string }) => {
+    (input: { baseUrl: string; label?: string }) => {
       const d = addDisplay(input);
       setDisplays(loadDisplays());
       setActiveId(d.id);

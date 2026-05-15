@@ -52,8 +52,9 @@ class LocalApiSlideWidget extends StatelessWidget {
           ),
           SizedBox(height: 16 * s),
           Text(
-            'Use header X-Api-Key with the key from waddle_api.key '
-            '(application support directory).',
+            'Sign in via waddle_controller (POST /v1/auth/login) using a '
+            'user account, or bootstrap user display with the instance id from '
+            'waddle_instance.id in the application support directory.',
             style: theme.textTheme.bodyMedium,
             textAlign: TextAlign.center,
           ),

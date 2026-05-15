@@ -13,8 +13,9 @@ import 'alerts/alert_repository.dart';
 import 'alerts/alert_overlay_host.dart';
 import 'alerts/alert_severity_icons_kv.dart';
 import 'alerts/drift_alert_repository.dart';
-import 'api/deployment_api_key_source.dart';
+import 'api/display_instance_id_source.dart';
 import 'api/local_rest_server.dart';
+import 'package:waddle_shared/auth/user_repository.dart';
 import 'api/network_addressing.dart';
 import 'bootstrap/app_fatal_error_recovery.dart';
 import 'clock.dart';
@@ -28,7 +29,6 @@ import 'package:waddle_shared/collect/stub_data_provider.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/curation/reject_rescan.dart';
 import 'package:waddle_shared/persistence/database.dart';
-import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/secrets/flutter_secure_secret_store.dart';
 import 'package:waddle_shared/seed/initial_seed.dart';
 import 'package:waddle_data_providers/waddle_data_providers.dart';
@@ -81,14 +81,17 @@ Future<void> _waddleBootstrap() async {
     await loadDevDotenvFromFilesystem();
     final support = await getApplicationSupportDirectory();
     AppDebugLog.startup('app support directory: ${support.path}');
-    final keyFile = File(p.join(support.path, 'waddle_api.key'));
-    var createdDeploymentKey = false;
-    if (!await keyFile.exists()) {
-      final rnd = Random.secure();
-      final bytes = List<int>.generate(32, (_) => rnd.nextInt(256));
-      final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-      await keyFile.writeAsString('$hex\n', flush: true);
-      createdDeploymentKey = true;
+    final legacyKeyFile = File(p.join(support.path, 'waddle_api.key'));
+    final instanceIdFile = File(p.join(support.path, 'waddle_instance.id'));
+    if (!await instanceIdFile.exists()) {
+      if (await legacyKeyFile.exists()) {
+        await legacyKeyFile.rename(instanceIdFile.path);
+      } else {
+        final rnd = Random.secure();
+        final bytes = List<int>.generate(32, (_) => rnd.nextInt(256));
+        final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+        await instanceIdFile.writeAsString('$hex\n', flush: true);
+      }
     }
     final mediaDir = Directory(p.join(support.path, 'media'));
     if (!await mediaDir.exists()) {
@@ -101,25 +104,10 @@ Future<void> _waddleBootstrap() async {
     // added by a previous-running provider before the operator extended the
     // list are caught before the curator picks them.
     unawaited(_rescanRejectListOnStartup(db));
-    if (createdDeploymentKey) {
-      await db.into(db.configKeyValues).insertOnConflictUpdate(
-            ConfigKeyValuesCompanion.insert(
-              key: kAdminBootstrapDoneKvKey,
-              value: '0',
-            ),
-          );
-    } else {
-      final existing = await (db.select(db.configKeyValues)
-            ..where((t) => t.key.equals(kAdminBootstrapDoneKvKey)))
-          .getSingleOrNull();
-      if (existing == null) {
-        await db.into(db.configKeyValues).insertOnConflictUpdate(
-              ConfigKeyValuesCompanion.insert(
-                key: kAdminBootstrapDoneKvKey,
-                value: '1',
-              ),
-            );
-      }
+    final users = UserRepository(db);
+    final instanceId = await FileDisplayInstanceIdSource(instanceIdFile).load();
+    if (instanceId != null && instanceId.isNotEmpty) {
+      await users.ensureBootstrapUser(instanceIdPassword: instanceId);
     }
     AppDebugLog.startup('SQLite ready (seed applied if first run)');
 
@@ -180,18 +168,16 @@ Future<void> _waddleBootstrap() async {
     unawaited(engine.start());
 
     final alerts = DriftAlertRepository(db);
-    final keys = FileDeploymentApiKeySource(keyFile);
     final httpConfig = await resolveHttpBindConfig(environment: envMap);
     final navigationBus = DisplayNavigationBus();
     final corsOrigins = parseCorsAllowedOrigins(envMap['WADDLE_HTTP_CORS_ORIGINS']);
     final handler = buildRootHandler(
       db: db,
       alerts: alerts,
-      keys: keys,
+      users: users,
       ticker: tickerCurated,
       onConfigChanged: dashboardCurator.refresh,
-      keyFile: keyFile,
-      setupScreenId: 'admin_setup',
+      env: envMap,
       telemetryHub: telemetryHub,
       navigationBus: navigationBus,
       corsAllowedOrigins: corsOrigins,
@@ -223,7 +209,7 @@ Future<void> _waddleBootstrap() async {
         blobs: blobs,
         alerts: alerts,
         server: server,
-        setupPasswordFile: keyFile,
+        instanceIdFile: instanceIdFile,
         engine: engine,
         tickerCurated: tickerCurated,
         marqueeCycleGate: marqueeCycleGate,
@@ -243,7 +229,7 @@ class WaddleRoot extends StatefulWidget {
     required this.blobs,
     required this.alerts,
     required this.server,
-    required this.setupPasswordFile,
+    required this.instanceIdFile,
     required this.engine,
     required this.tickerCurated,
     required this.marqueeCycleGate,
@@ -255,7 +241,7 @@ class WaddleRoot extends StatefulWidget {
   final BlobStore blobs;
   final DriftAlertRepository alerts;
   final LocalRestServer server;
-  final File setupPasswordFile;
+  final File instanceIdFile;
   final DataCollectionEngine engine;
   final MemoryTickerCuratedRepository tickerCurated;
   final MarqueeCycleGate marqueeCycleGate;
@@ -292,7 +278,7 @@ class _WaddleRootState extends State<WaddleRoot> {
             blobs: widget.blobs,
             alerts: widget.alerts,
             server: widget.server,
-            setupPasswordFile: widget.setupPasswordFile,
+            instanceIdFile: widget.instanceIdFile,
             engine: widget.engine,
             tickerCurated: widget.tickerCurated,
             marqueeCycleGate: widget.marqueeCycleGate,
@@ -313,7 +299,7 @@ class WaddleHome extends StatefulWidget {
     required this.blobs,
     required this.alerts,
     required this.server,
-    required this.setupPasswordFile,
+    required this.instanceIdFile,
     required this.engine,
     required this.tickerCurated,
     required this.marqueeCycleGate,
@@ -326,7 +312,7 @@ class WaddleHome extends StatefulWidget {
   final BlobStore blobs;
   final AlertRepository alerts;
   final LocalRestServer server;
-  final File setupPasswordFile;
+  final File instanceIdFile;
   final DataCollectionEngine engine;
   final MemoryTickerCuratedRepository tickerCurated;
   final MarqueeCycleGate marqueeCycleGate;
@@ -411,7 +397,7 @@ class _WaddleHomeState extends State<WaddleHome> {
                     blobs: widget.blobs,
                     localRestBaseUrl: widget.server.baseUrl,
                     adminBaseUrl: widget.server.displayBaseUrl,
-                    setupPasswordFile: widget.setupPasswordFile,
+                    instanceIdFile: widget.instanceIdFile,
                     telemetryHub: widget.telemetryHub,
                     navigationBus: widget.navigationBus,
                   ),

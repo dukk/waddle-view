@@ -67,4 +67,4 @@ The UI does not expose a form for static provider API keys. Recommended onboardi
 
 4. **OAuth (Google / Microsoft)**: access and refresh tokens live in **`SecretStore`** only (device-code sign-in in the app, or `waddlectl secrets set` on Linux). Public OAuth **client ids** use **`WADDLE_GOOGLE_CLIENT_ID`** and **`WADDLE_MICROSOFT_GRAPH_CLIENT_ID`** in the process environment (or merged debug `.env`) — not SQLite. Headless Linux needs a working Secret Service for token persistence.
 
-Note: this env flow configures static provider API keys. Admin/install password authentication uses `waddle_api.key` from the app support directory, not an env variable.
+Note: this env flow configures static provider API keys. Operator REST authentication uses session tokens from **`POST /v1/auth/login`** (bootstrap user **`display`** / password = contents of **`waddle_instance.id`** in app support until the first named user is created). Legacy **`waddle_api.key`** is renamed to **`waddle_instance.id`** on upgrade.

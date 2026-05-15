@@ -4,7 +4,6 @@ export type SavedDisplay = {
   id: string;
   label: string;
   baseUrl: string;
-  apiKey: string;
 };
 
 function randomId(): string {
@@ -31,17 +30,12 @@ export function normalizeBaseUrl(url: string): string {
   return url.trim().replace(/\/+$/, '');
 }
 
-export function addDisplay(input: {
-  baseUrl: string;
-  apiKey: string;
-  label?: string;
-}): SavedDisplay {
+export function addDisplay(input: { baseUrl: string; label?: string }): SavedDisplay {
   const displays = loadDisplays();
   const d: SavedDisplay = {
     id: randomId(),
     label: input.label?.trim() || normalizeBaseUrl(input.baseUrl),
     baseUrl: normalizeBaseUrl(input.baseUrl),
-    apiKey: input.apiKey.trim(),
   };
   displays.push(d);
   saveDisplays(displays);
@@ -70,6 +64,29 @@ function isDisplay(x: unknown): x is SavedDisplay {
     typeof o.id === 'string' &&
     typeof o.label === 'string' &&
     typeof o.baseUrl === 'string' &&
-    typeof o.apiKey === 'string'
+    !('apiKey' in o)
   );
+}
+
+/** Legacy import: strips apiKey from older backups. */
+export function importDisplaysJsonLegacy(json: string): void {
+  const parsed = JSON.parse(json) as unknown;
+  if (!Array.isArray(parsed)) throw new Error('Expected array');
+  const next: SavedDisplay[] = [];
+  for (const item of parsed) {
+    if (!item || typeof item !== 'object') continue;
+    const o = item as Record<string, unknown>;
+    if (
+      typeof o.id === 'string' &&
+      typeof o.label === 'string' &&
+      typeof o.baseUrl === 'string'
+    ) {
+      next.push({
+        id: o.id,
+        label: o.label,
+        baseUrl: normalizeBaseUrl(String(o.baseUrl)),
+      });
+    }
+  }
+  saveDisplays(next);
 }

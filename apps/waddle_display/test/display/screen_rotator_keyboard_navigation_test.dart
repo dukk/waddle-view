@@ -153,7 +153,7 @@ Future<void> _pumpRotator(WidgetTester tester, AppDatabase db) async {
           blobs: FakeBlobStore(),
           localRestBaseUrl: 'http://127.0.0.1:8787',
           adminBaseUrl: 'http://127.0.0.1:8787/admin',
-          setupPasswordFile: file,
+          instanceIdFile: file,
         ),
       ),
     ),

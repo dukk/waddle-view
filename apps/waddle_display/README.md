@@ -118,7 +118,7 @@ Tagged **Pi** tarballs and `install.sh` are produced in CI and documented under 
 ## Deployed / Raspberry Pi (summary)
 
 1. Obtain **`waddle-view-linux-arm64-<tag>.tar.gz`** (GitHub Releases or CI artifacts); verify **SHA256** when published.
-2. On 64-bit Raspberry Pi OS, extract and run **`install.sh`** (installs under `/opt/waddle-view` by default, creates **`/etc/waddle-view/api.key`** for operator reference—see REST section below).
+2. On 64-bit Raspberry Pi OS, extract and run **`install.sh`** (installs under `/opt/waddle-view` by default, creates **`/etc/waddle-view/instance.id`** for operator reference—see REST section below).
 3. Start the app from **`/opt/waddle-view/bundle/waddle_display`** with a graphical session (`DISPLAY` set for systemd/kiosk). The same install includes **`/opt/waddle-view/bundle/waddlectl/bin/waddlectl`** for operator tasks against the SQLite file. Optional: **`waddle-view.service`** in `deploy/linux-arm64/`, autostart `.desktop`, disable screen blanking for kiosk use.
 
 Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../docs/pi/using-the-image.md)**, **[`docs/pi/upgrade.md`](../../docs/pi/upgrade.md)**, **[`docs/pi/api.md`](../../docs/pi/api.md)**.
@@ -159,12 +159,11 @@ Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../d
 ## Local REST API and admin UI (debug, profile, release)
 
 - Defaults to **`127.0.0.1:8787`**. Set `WADDLE_HTTP_BIND` (and optional `WADDLE_HTTP_PORT`) to expose on LAN.
-- **Authentication**: `X-Api-Key` or `Authorization: Bearer <key>` (see `docs/pi/api.md`).
-- **Key file used by the app**: **`waddle_api.key`** in Flutter’s **application support** directory for the user running the process (`getApplicationSupportDirectory()` in `lib/main.dart`). The file is created on first launch if missing. Use that file’s contents for `curl` and automation on the same machine as the app.
-- **Install/admin password source**: same key file (`waddle_api.key`). There is no `.env` variable for this password in the current runtime.
-- **`/v1/health`** does not require a key; other `/v1/*` routes return **503** if the key file is missing or empty, **401** if the key is wrong.
-- **Admin UI**: open `/admin/login` on the same base URL. First login requires password change, which rotates `waddle_api.key`.
-- **Operator JSON API** (telemetry, screen/ticker navigation, screens CRUD, ticker definitions, providers, curator settings): documented in **[`docs/pi/api.md`](../../docs/pi/api.md)** under *Operator JSON API*. The **`apps/waddle_controller`** SPA (Vite + React + MUI) calls these endpoints with `X-Api-Key`. When the SPA is served from a **different origin** than the display (for example `http://localhost:5173` → `http://127.0.0.1:8787`), set **`WADDLE_HTTP_CORS_ORIGINS`** to a comma-separated allowlist of exact origins (process env, or merged debug `.env` — see **`.env.example`**).
+- **Authentication**: `POST /v1/auth/login` then `Authorization: Bearer <session_token>` on protected routes (see [`docs/pi/api.md`](../../docs/pi/api.md)).
+- **Instance id file**: **`waddle_instance.id`** in Flutter’s **application support** directory (`getApplicationSupportDirectory()` in `lib/main.dart`). Created on first launch; legacy **`waddle_api.key`** is renamed on upgrade. This value is the bootstrap password for reserved user **`display`** until a named user is created.
+- **`/v1/health`** is public; other `/v1/*` routes return **401** without a valid session, **403** when the user lacks permission.
+- **Operator UI**: use **`apps/waddle_controller`** (not the removed `/admin` HTML UI).
+- **Operator JSON API** (telemetry, navigation, screens, ticker, providers, curator, users): documented in **[`docs/pi/api.md`](../../docs/pi/api.md)**. The controller stores session tokens in **`sessionStorage`** per display. For cross-origin dev (`http://localhost:5173` → `http://127.0.0.1:8787`), set **`WADDLE_HTTP_CORS_ORIGINS`** (see **`.env.example`**).
 
 ### Display theme (`config_key_values`)
 
@@ -252,7 +251,7 @@ While the dashboard is focused, keyboard arrows can be used to browse curated pr
 - At the oldest history boundary, the overlay shows an end-of-history message.
 - If no arrow key is pressed for a few seconds, overlays fade out and automatic dwell-based rotation resumes.
 
-Startup logs include **`REST listening at …`** with the bound **base URL**. To show the same information on the TV carousel, enable the **`dev_local_api`** row in **`screen_definitions`** (`enabled = 1`); that developer slide shows the URL and an **`X-Api-Key` / `waddle_api.key`** reminder.
+Startup logs include **`REST listening at …`** with the bound **base URL**. To show the same information on the TV carousel, enable the **`dev_local_api`** row in **`screen_definitions`** (`enabled = 1`); that developer slide shows the URL and **`waddle_instance.id`** / login hints.
 
 The **`dev_data_health`** screen (`screen_type` **`data_health`**, installed **disabled**) shows a **data health** dashboard: active content as a **pie chart** by type (RSS, photos, videos, jokes, trivia), **paired pie charts** for photos vs videos by category with a full-width legend (no truncated axis labels), RSS image coverage, feed enable/retry hints, calendar row count, and blob-store size. Optional `config_json`: **`headline`** (string) and **`refreshIntervalSeconds`** (15–300, default 45) for how often aggregates refresh while the slide is visible. Enable the row like any other screen (REST **`GET`/`PATCH `/v1/screens`**, Admin UI, or SQLite).
 

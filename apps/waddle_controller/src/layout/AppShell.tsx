@@ -30,6 +30,7 @@ import LayersIcon from '@mui/icons-material/Layers';
 import StorageIcon from '@mui/icons-material/Storage';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import SettingsIcon from '@mui/icons-material/Settings';
+import { useAuth } from '@/context/AuthContext';
 import { useDisplay } from '@/context/DisplayContext';
 import { apiFetch, ApiError } from '@/api/client';
 
@@ -51,6 +52,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const { displays, active, setActiveId } = useDisplay();
+  const { bootstrapWarning, needsLogin } = useAuth();
   const [snack, setSnack] = useState<string | null>(null);
 
   useEffect(() => {
@@ -229,6 +231,12 @@ export function AppShell({ children }: { children?: ReactNode }) {
           minHeight: '100vh',
         }}
       >
+        {bootstrapWarning && !needsLogin && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            You are signed in as the bootstrap user <strong>display</strong>. Create a named user
+            account in Settings — the bootstrap account is disabled once another user exists.
+          </Alert>
+        )}
         {children ?? <Outlet />}
       </Box>
 

@@ -10,7 +10,7 @@ Build a customized **64-bit Raspberry Pi OS** disk image that includes the **Wad
 
 ## Security
 
-- The generated image contains `**/etc/waddle-view/api.key**` (random hex). Treat the `.img` like a secret until flashed; do not publish it publicly without understanding operator risk.
+- On first boot, **`waddle_display`** creates **`waddle_instance.id`** in the app support directory. That value is the bootstrap password for reserved user **`display`** until an operator creates a named user via the controller. Treat flashed images like secrets if you rely on that bootstrap password.
 - Official Raspberry Pi OS images ship with **known-default credentials** until you change them on first boot. Rotate passwords before exposing the device to a network.
 - You are producing a **derivative** of Raspberry Pi OS. Follow [Raspberry Pi trademark & redistribution guidance](https://www.raspberrypi.com/trademark-rules/) if you distribute images outside your organization.
 

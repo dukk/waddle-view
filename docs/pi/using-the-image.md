@@ -29,14 +29,14 @@ cd waddle-view-linux-arm64-v1.0.0
 sudo bash install.sh
 ```
 
-4. The installer creates **`/etc/waddle-view/api.key`** on first install (random hex, mode `0600`). Do not commit this file.
+4. On first launch, **`waddle_display`** creates **`waddle_instance.id`** in the app support directory (bootstrap password for user **`display`** until a named operator is created). Use **`POST /v1/auth/login`** and **`Authorization: Bearer <session_token>`** from the controller or other REST clients. Do not commit instance id files or session tokens.
 5. **System libraries (mpv, GTK, Secret Service, AT-SPI):** the bundle does not ship Debian `.deb` dependencies. If **`./waddle_display`** fails with **`libmpv.so.2`** (or other `not found` from **`ldd`**), run **`sudo apt update && sudo apt install -y --no-install-recommends at-spi2-core libmpv2 mpv libgtk-3-0 libsecret-1-0`**, or re-run **`install.sh`** with **`WADDLE_INSTALL_RUNTIME_PACKAGES=1`** so it installs the list in **`runtime-apt-packages.txt`** (same directory as **`install.sh`**). One-liner install: **`WADDLE_INSTALL_RUNTIME_PACKAGES=1 curl -fsSL … | bash`** (see Tier 0).
 6. Configure **autostart** (`~/.config/autostart/*.desktop`) or install the sample **`waddle-view.service`** (edit `User`, `DISPLAY`, and paths).
 7. **Disable screen blanking** for kiosk use (`xset s off`, `xset -dpms`, or Wayland equivalents).
 
 ## Tier 2: flashable SD card image (Docker builder)
 
-For a single **`.img`** you can write with **Raspberry Pi Imager** or **balenaEtcher**, use the privileged Docker workflow under **[`deploy/pi-image/README.md`](../../deploy/pi-image/README.md)**. You still need a **pre-built ARM64 Linux bundle** (Tier 1 produces the same `bundle/` tree); the Docker builder downloads official **Raspberry Pi OS arm64**, installs the bundle into **`/opt/waddle-view`**, creates **`/etc/waddle-view/api.key`**, enables **LightDM auto-login** for the configured user (default **`pi`**), and adds an **`/etc/xdg/autostart`** entry for **`waddle_display`**.
+For a single **`.img`** you can write with **Raspberry Pi Imager** or **balenaEtcher**, use the privileged Docker workflow under **[`deploy/pi-image/README.md`](../../deploy/pi-image/README.md)**. You still need a **pre-built ARM64 Linux bundle** (Tier 1 produces the same `bundle/` tree); the Docker builder downloads official **Raspberry Pi OS arm64**, installs the bundle into **`/opt/waddle-view`**, enables **LightDM auto-login** for the configured user (default **`pi`**), and adds an **`/etc/xdg/autostart`** entry for **`waddle_display`**.
 
 **Redistribution**: That image is **third-party customized Raspberry Pi OS**. Follow Raspberry Pi **trademark** and licensing expectations if you ship images outside your own devices; for internal or factory-style provisioning, keep checksums and OS URLs pinned as documented.
 

@@ -45,7 +45,7 @@ flowchart TB
     DDA[DashboardDataAccess]
     BS[BlobStore]
     SS[SecretStore]
-    Keys[DeploymentApiKeySource]
+    Users[UserRepository]
   end
 
   subgraph adapters["Adapters (concrete)"]
@@ -55,7 +55,7 @@ flowchart TB
     DDAD[DriftDashboardDataAccess]
     FSB[FileSystemBlobStore]
     FSS[FlutterSecureSecretStore]
-    FKS[FileDeploymentApiKeySource]
+    UR[UserRepository]
     DB[(AppDatabase / SQLite)]
   end
 
@@ -76,7 +76,7 @@ flowchart TB
   Handlers --> DB
   Handlers --> TCR
   Handlers --> AR
-  Handlers --> Keys
+  Handlers --> Users
 
   Engine --> IData
   Engine --> DWC
@@ -92,7 +92,7 @@ flowchart TB
   DDAD -. implements .-> DDA
   FSB -. implements .-> BS
   FSS -. implements .-> SS
-  FKS -. implements .-> Keys
+  UR -. implements .-> Users
   MTCR -. in-memory .-> TCR
   DAR --> DB
   DDAD --> DB
@@ -128,7 +128,7 @@ sequenceDiagram
   participant UI as runApp WaddleRoot
 
   M->>FS: getApplicationSupportDirectory
-  M->>FS: ensure waddle_api.key, media/
+  M->>FS: ensure waddle_instance.id, media/
   M->>DB: open SQLite executor
   M->>Seed: migrations + initial rows
   M->>SS: construct
@@ -191,14 +191,14 @@ sequenceDiagram
   participant Ext as External client curl
   participant S as HttpServer Shelf
   participant Auth as apiKeyAuth middleware
-  participant Keys as FileDeploymentApiKeySource
+  participant Users as UserRepository
   participant R as Shelf Router
   participant AR as DriftAlertRepository
   participant DB as SQLite Drift streams
   participant Host as AlertOverlayHost StreamBuilder
   participant Op as TV operator
 
-  Ext->>S: POST /v1/alerts + X-Api-Key
+  Ext->>S: POST /v1/auth/login then Bearer session
   S->>Auth: pipeline
   Auth->>Keys: load expected key
   Keys-->>Auth: key material

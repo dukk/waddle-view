@@ -32,12 +32,12 @@ python3 deploy/pi-remote-upgrade.py pi@raspberrypi.local --bundle ./waddle-view-
 Optional flags: **`-i` / `--identity`** (private key), **`-p` / `--port`**, **`--branch`** (for Actions run filter, default `main`), **`--yes` / `-y`** (skip confirmation).
 
 1. Stop the app (`systemctl --user stop waddle-view` or close the session).
-2. Replace the **`bundle/`** tree under `/opt/waddle-view` with the new release (preserve **`/etc/waddle-view/api.key`** unless rotating).
+2. Replace the **`bundle/`** tree under `/opt/waddle-view` with the new release (preserve the SQLite database and app support directory, including **`waddle_instance.id`** and operator sessions, unless you intend to reset auth).
 3. Start the app again.
 4. **Drift** runs migrations on startup (`schemaVersion` in `packages/waddle_shared/lib/persistence/database.dart`); back up the SQLite file before major upgrades.
 
-## API key rotation
+## Operator session rotation
 
-1. Generate a new key: `sudo sh -c 'umask 077; openssl rand -hex 32 > /etc/waddle-view/api.key.new'`.
-2. Atomically replace: `sudo mv /etc/waddle-view/api.key.new /etc/waddle-view/api.key`.
-3. Restart the service. Update any automation that embeds the old key.
+1. Sign in to the controller (or call **`POST /v1/auth/login`**) as an admin.
+2. Change passwords via **Settings → Users** or **`POST /v1/users/<id>/password`**.
+3. **`POST /v1/auth/logout`** invalidates the current session token; other sessions for a user are cleared when an admin resets that user's password.

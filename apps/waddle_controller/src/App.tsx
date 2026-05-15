@@ -1,5 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { AuthProvider } from '@/context/AuthContext';
 import { DisplayProvider } from '@/context/DisplayContext';
+import { LoginDialog } from '@/components/LoginDialog';
 import { AppShell } from '@/layout/AppShell';
 import { FirstRunDialog } from '@/components/FirstRunDialog';
 import { CuratorsPage } from '@/pages/CuratorsPage';
@@ -27,7 +29,8 @@ export default function App() {
           <Route path="activity" element={<ActivityPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
-      </Routes>
+        </Routes>
+      </AuthProvider>
     </DisplayProvider>
   );
 }

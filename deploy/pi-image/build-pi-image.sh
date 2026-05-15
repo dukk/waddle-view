@@ -270,12 +270,7 @@ mkdir -p "$ROOT_MOUNT/opt/waddle-view"
 rsync -a --delete "$BUNDLE_DIR/" "$ROOT_MOUNT/opt/waddle-view/bundle/"
 chmod +x "$ROOT_MOUNT/opt/waddle-view/bundle/waddle_display"
 
-log "Ensuring /etc/waddle-view/api.key…"
-mkdir -p "$ROOT_MOUNT/etc/waddle-view"
-if [[ ! -s "$ROOT_MOUNT/etc/waddle-view/api.key" ]]; then
-  openssl rand -hex 32 >"$ROOT_MOUNT/etc/waddle-view/api.key"
-fi
-chmod 600 "$ROOT_MOUNT/etc/waddle-view/api.key"
+log "Note: instance id and operator users are created on first waddle_display launch (app support directory)."
 
 mkdir -p "$ROOT_MOUNT/etc/xdg/autostart"
 cat >"$ROOT_MOUNT/etc/xdg/autostart/waddle-display.desktop" <<EOF
@@ -283,7 +278,7 @@ cat >"$ROOT_MOUNT/etc/xdg/autostart/waddle-display.desktop" <<EOF
 Type=Application
 Name=Waddle Display
 Comment=Waddle Display TV dashboard
-Exec=env DISPLAY=:0 WADDLE_API_KEY_FILE=/etc/waddle-view/api.key /opt/waddle-view/bundle/waddle_display
+Exec=env DISPLAY=:0 /opt/waddle-view/bundle/waddle_display
 Path=/opt/waddle-view/bundle
 Terminal=false
 Categories=Utility;

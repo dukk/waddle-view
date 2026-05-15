@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_display/api/network_addressing.dart';
 
@@ -9,5 +11,38 @@ void main() {
       parseCorsAllowedOrigins(' http://a.test ,http://b.test, '),
       ['http://a.test', 'http://b.test'],
     );
+  });
+
+  test('resolveHttpBindConfig defaults to loopback and port 8787', () async {
+    final cfg = await resolveHttpBindConfig(environment: {});
+    expect(cfg.port, 8787);
+    expect(cfg.address, InternetAddress.loopbackIPv4);
+    expect(cfg.displayHost, isNotEmpty);
+  });
+
+  test('resolveHttpBindConfig honors WADDLE_HTTP_BIND and port', () async {
+    final cfg = await resolveHttpBindConfig(
+      environment: {
+        'WADDLE_HTTP_BIND': '0.0.0.0',
+        'WADDLE_HTTP_PORT': '9999',
+      },
+    );
+    expect(cfg.port, 9999);
+    expect(cfg.address, InternetAddress.anyIPv4);
+    expect(cfg.displayHost, isNot(equals('0.0.0.0')));
+  });
+
+  test('resolveHttpBindConfig falls back on invalid host', () async {
+    final cfg = await resolveHttpBindConfig(
+      environment: {'WADDLE_HTTP_BIND': 'not-an-ip'},
+    );
+    expect(cfg.address, InternetAddress.loopbackIPv4);
+  });
+
+  test('resolveHttpBindConfig supports IPv6 any bind', () async {
+    final cfg = await resolveHttpBindConfig(
+      environment: {'WADDLE_HTTP_BIND': '::'},
+    );
+    expect(cfg.address, InternetAddress.anyIPv6);
   });
 }

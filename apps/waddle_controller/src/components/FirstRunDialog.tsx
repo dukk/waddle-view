@@ -16,27 +16,18 @@ export function FirstRunDialog() {
   const { displays, addNewDisplay } = useDisplay();
   const open = displays.length === 0;
   const [baseUrl, setBaseUrl] = useState('http://127.0.0.1:8787');
-  const [apiKey, setApiKey] = useState('');
   const [label, setLabel] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const submit = () => {
     setError(null);
-    const key = apiKey.trim();
-    if (!key) {
-      setError('API key is required (same value as in your display key file).');
-      return;
-    }
-    let normalized: string;
     try {
-      normalized = normalizeBaseUrl(baseUrl);
+      const normalized = normalizeBaseUrl(baseUrl);
       void new URL(normalized);
+      addNewDisplay({ baseUrl: normalized, label: label.trim() || undefined });
     } catch {
       setError('Enter a valid base URL (for example http://192.168.1.50:8787).');
-      return;
     }
-    addNewDisplay({ baseUrl: normalized, apiKey: key, label: label.trim() || undefined });
-    setApiKey('');
   };
 
   return (
@@ -46,9 +37,8 @@ export function FirstRunDialog() {
         <Stack spacing={2} sx={{ mt: 1 }}>
           {error && <Alert severity="error">{error}</Alert>}
           <Alert severity="info">
-            The controller stores the API key only in this browser&apos;s{' '}
-            <strong>localStorage</strong>. Use a dedicated operator machine or profile; do not
-            paste production keys on shared workstations.
+            You will sign in on the next step with a user account (or bootstrap user{' '}
+            <strong>display</strong> using the instance id from the TV).
           </Alert>
           <TextField
             label="Display base URL"
@@ -57,15 +47,6 @@ export function FirstRunDialog() {
             fullWidth
             required
             helperText="REST root of the running waddle_display instance (no trailing slash)."
-          />
-          <TextField
-            label="API key"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            fullWidth
-            required
-            type="password"
-            autoComplete="off"
           />
           <TextField
             label="Label (optional)"
@@ -78,7 +59,7 @@ export function FirstRunDialog() {
       </DialogContent>
       <DialogActions>
         <Button variant="contained" onClick={submit}>
-          Save and continue
+          Continue
         </Button>
       </DialogActions>
     </Dialog>

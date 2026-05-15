@@ -8,19 +8,39 @@
 
 ## Authentication
 
-Send the deployment key in either header:
+Protected routes require a **user session** from `POST /v1/auth/login`:
 
-- `X-Api-Key: <key>`
-- `Authorization: Bearer <key>`
+```json
+{"username":"display","password":"<instance-id>"}
+```
 
-The app currently reads the key from its runtime key file:
+Response includes `session_token`. Send it on later requests:
 
-- local/dev default: app support `waddle_api.key` (created on first launch)
-- packaged install reference copy: `/etc/waddle-view/api.key`
+- `Authorization: Bearer <session_token>`
 
-There is no app env var for the admin/install password source in the current Flutter app runtime.
+**Bootstrap user:** reserved username `display` with password equal to the display **instance id** (see below). Enabled only until the first **named** user is created via `POST /v1/users` (admin role). After that, bootstrap login returns **403** `bootstrap_admin_disabled`.
 
-If the key file is **missing or empty**, protected routes return **503** (`api_key_unconfigured`). Invalid keys return **401**.
+**Roles:** `admin`, `operator`, `viewer` — each maps to a fixed permission set. `GET /v1/auth/me` returns `permissions` for the signed-in user.
+
+**Instance id file** (not a shared API secret):
+
+- local/dev: app support `waddle_instance.id` (created on first launch; legacy `waddle_api.key` is renamed on upgrade)
+- packaged install reference: `/etc/waddle-view/instance.id`
+
+Invalid or missing session → **401** `unauthorized`. Authenticated but lacking permission → **403** `forbidden`.
+
+### Auth endpoints
+
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| POST | `/v1/auth/login` | public | Returns `session_token`, `user`, `permissions`, `warnings` |
+| POST | `/v1/auth/logout` | session | Invalidates token |
+| GET | `/v1/auth/me` | session | Current user + permissions |
+| GET | `/v1/users` | `users.manage` | List users |
+| POST | `/v1/users` | `users.manage` | Create named user (disables bootstrap) |
+| PATCH | `/v1/users/{id}` | `users.manage` | Update role / disable |
+| POST | `/v1/users/{id}/password` | self or `users.manage` | Change password |
+| DELETE | `/v1/users/{id}` | `users.manage` | Soft-disable user |
 
 ## Cross-origin browser access (CORS)
 
@@ -29,14 +49,13 @@ When a browser-based client (for example the **`waddle_controller`** SPA hosted 
 Optional allowlist (comma-separated **exact** origins, no wildcards):
 
 - Set environment variable **`WADDLE_HTTP_CORS_ORIGINS`** (for example `http://127.0.0.1:5173,http://localhost:5173`).
-- When the request **`Origin`** matches one of the listed values, responses include **`Access-Control-Allow-Origin`**, **`Access-Control-Allow-Methods`** (`GET,POST,PATCH,PUT,DELETE,OPTIONS`), and **`Access-Control-Allow-Headers`** (`Content-Type`, `X-Api-Key`, `Authorization`). **`OPTIONS`** preflight returns **204** for allowed origins.
-- **`/admin`** is not special-cased: if you need CORS for admin HTML, the same allowlist applies to those responses when reached through the root handler.
+- When the request **`Origin`** matches one of the listed values, responses include **`Access-Control-Allow-Origin`**, **`Access-Control-Allow-Methods`** (`GET,POST,PATCH,PUT,DELETE,OPTIONS`), and **`Access-Control-Allow-Headers`** (`Content-Type`, `Authorization`). **`OPTIONS`** preflight returns **204** for allowed origins.
 
 ## Endpoints (MVP)
 
 | Method | Path | Notes |
 |--------|------|--------|
-| GET | `/v1/health` | No API key required. |
+| GET | `/v1/health` | No auth required. |
 | GET | `/v1/providers` | Lists non-secret provider settings (`id`, `type`, `enabled`, `poll_seconds`, `base_url`, decoded `config_json` / `config_json_schema` / `example_config_json` when stored). |
 | GET | `/v1/screens` | Display screen definitions from SQLite (`screen_type`, `config_json`, `dwell_seconds`, scheduling hints, optional `config_json_schema` / `example_config_json`). |
 | GET | `/v1/ticker/items` | Current bottom-marquee items (`ordinal`, `kind`, `body`) — in-process snapshot; read-only. |
@@ -55,7 +74,7 @@ Optional allowlist (comma-separated **exact** origins, no wildcards):
 
 ## Operator JSON API (machine clients / `waddle_controller`)
 
-These routes use the same **`X-Api-Key` / `Authorization: Bearer`** auth as other `/v1/*` paths. Prefer JSON **`Content-Type: application/json`** on mutators.
+These routes use the same **Bearer session** auth as other protected `/v1/*` paths. Prefer JSON **`Content-Type: application/json`** on mutators.
 
 | Method | Path | Notes |
 |--------|------|--------|
@@ -75,25 +94,20 @@ These routes use the same **`X-Api-Key` / `Authorization: Bearer`** auth as othe
 
 **Expanded read shape:** `GET /v1/providers` includes `base_url`, decoded `config_json`, `config_json_schema`, and `example_config_json` when stored (omit secrets in client logs).
 
-## Admin web UI
-
-- Browser UI is served from **`/admin`** on the same server/port.
-- Login password is the install-time random key from `waddle_api.key` until it is rotated.
-- On first login, users are forced to change password.
-- Rotating the admin password rewrites `waddle_api.key`, so API clients must update their key.
-- After first-time password rotation, setup status is marked complete and the `admin_setup` TV screen is disabled.
-
 ## Examples
 
 ```bash
-KEY=$(sudo tr -d '\n' < /etc/waddle-view/api.key)
-curl -sS -H "X-Api-Key: $KEY" http://127.0.0.1:8787/v1/health
-curl -sS -H "X-Api-Key: $KEY" -H 'Content-Type: application/json' \
+INSTANCE_ID=$(sudo tr -d '\n' < /etc/waddle-view/instance.id)
+TOKEN=$(curl -sS -H 'Content-Type: application/json' \
+  -d "{\"username\":\"display\",\"password\":\"$INSTANCE_ID\"}" \
+  http://127.0.0.1:8787/v1/auth/login | jq -r .session_token)
+curl -sS -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8787/v1/health
+curl -sS -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"title":"Door","body":"Open","qr_payload":"https://example.com/ack"}' \
   http://127.0.0.1:8787/v1/alerts
 
 # Example: birthday confetti overlay (fixed date, repeats every year)
-curl -sS -H "X-Api-Key: $KEY" -H 'Content-Type: application/json' \
+curl -sS -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{
     "id":"birthday_alex",
     "enabled":true,
@@ -120,7 +134,7 @@ curl -sS -H "X-Api-Key: $KEY" -H 'Content-Type: application/json' \
 # Global overlay kill-switch: SQLite `config_key_values` key `display.overlay.enabled`
 # = `false` (no dedicated REST for arbitrary KV rows in MVP).
 
-curl -sS -H "X-Api-Key: $KEY" -H 'Content-Type: application/json' \
+curl -sS -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -X PATCH \
   -d '{"suppressed": true}' \
   http://127.0.0.1:8787/v1/content/videos/<video-row-id>
@@ -131,7 +145,7 @@ Never log or commit the API key.
 ### Example: remote navigation
 
 ```bash
-curl -sS -H "X-Api-Key: $KEY" -H 'Content-Type: application/json' \
+curl -sS -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"surface":"screen","direction":"forward"}' \
   http://127.0.0.1:8787/v1/display/navigation
 ```
