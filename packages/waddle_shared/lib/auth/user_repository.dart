@@ -221,15 +221,16 @@ class UserRepository {
   }
 
   Future<bool> verifyLoginPassword(User user, String password) async {
-    if (user.disabledAtMs != null) {
+    final current = await findById(user.id);
+    if (current == null || current.disabledAtMs != null) {
       return false;
     }
-    if (user.isBootstrap) {
+    if (current.isBootstrap) {
       if (!(await bootstrapLoginAllowed())) {
         return false;
       }
     }
-    final hash = user.passwordHash;
+    final hash = current.passwordHash;
     if (hash == null || hash.isEmpty) {
       return false;
     }

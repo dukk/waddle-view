@@ -4,19 +4,11 @@ import 'blob_store.dart';
 
 /// Result of a kiosk-safe display-time [BlobStore.readBytes] (never throws).
 final class DisplayBlobBytes {
-  const DisplayBlobBytes._({this.bytes, required this.readFailed});
+  const DisplayBlobBytes.absent() : bytes = null, readFailed = false;
 
-  const DisplayBlobBytes.absent()
-    : bytes = null,
-      readFailed = false;
+  const DisplayBlobBytes.ok(Uint8List data) : bytes = data, readFailed = false;
 
-  const DisplayBlobBytes.ok(Uint8List data)
-    : bytes = data,
-      readFailed = false;
-
-  const DisplayBlobBytes.readFailed()
-    : bytes = null,
-      readFailed = true;
+  const DisplayBlobBytes.readFailed() : bytes = null, readFailed = true;
 
   final Uint8List? bytes;
   final bool readFailed;

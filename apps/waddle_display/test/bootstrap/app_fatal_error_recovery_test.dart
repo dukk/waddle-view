@@ -56,8 +56,14 @@ void main() {
       restartCount++;
     }
 
-    reactToFatalAppError('Flutter', StateError('x'), StackTrace.current, gate,
-        log, restart);
+    reactToFatalAppError(
+      'Flutter',
+      StateError('x'),
+      StackTrace.current,
+      gate,
+      log,
+      restart,
+    );
     reactToFatalAppError('Zone', StateError('y'), null, gate, log, restart);
 
     expect(logCount, 1);
@@ -112,44 +118,51 @@ void main() {
     expect(restartCount, 1);
   });
 
-  test('isRecoverableLayoutFlutterError matches common overflow assertions', () {
-    expect(
-      isRecoverableLayoutFlutterError(
-        _flutterDetails(
-          FlutterError('A RenderFlex overflowed by 131 pixels on the bottom.'),
+  test(
+    'isRecoverableLayoutFlutterError matches common overflow assertions',
+    () {
+      expect(
+        isRecoverableLayoutFlutterError(
+          _flutterDetails(
+            FlutterError(
+              'A RenderFlex overflowed by 131 pixels on the bottom.',
+            ),
+          ),
         ),
-      ),
-      isTrue,
-    );
-    expect(
-      isRecoverableLayoutFlutterError(
-        _flutterDetails(
-          FlutterError('A RenderParagraph overflowed by 4.0 pixels on the right.'),
+        isTrue,
+      );
+      expect(
+        isRecoverableLayoutFlutterError(
+          _flutterDetails(
+            FlutterError(
+              'A RenderParagraph overflowed by 4.0 pixels on the right.',
+            ),
+          ),
         ),
-      ),
-      isTrue,
-    );
-    expect(
-      isRecoverableLayoutFlutterError(
-        _flutterDetails(Exception('A RenderFlex overflowed')),
-      ),
-      isFalse,
-    );
-    expect(
-      isRecoverableLayoutFlutterError(
-        _flutterDetails(FlutterError('Some other framework failure')),
-      ),
-      isFalse,
-    );
-    expect(
-      isRecoverableLayoutFlutterError(
-        _flutterDetails(
-          FlutterError('A ClipRect overflowed by 3.0 pixels on the bottom.'),
+        isTrue,
+      );
+      expect(
+        isRecoverableLayoutFlutterError(
+          _flutterDetails(Exception('A RenderFlex overflowed')),
         ),
-      ),
-      isTrue,
-    );
-  });
+        isFalse,
+      );
+      expect(
+        isRecoverableLayoutFlutterError(
+          _flutterDetails(FlutterError('Some other framework failure')),
+        ),
+        isFalse,
+      );
+      expect(
+        isRecoverableLayoutFlutterError(
+          _flutterDetails(
+            FlutterError('A ClipRect overflowed by 3.0 pixels on the bottom.'),
+          ),
+        ),
+        isTrue,
+      );
+    },
+  );
 
   test(
     'installGlobalFatalErrorHandlers uses default recoverable logger on overflow',
@@ -180,7 +193,7 @@ void main() {
     },
   );
 
-  StackTrace _mediaKitVideoStack() {
+  StackTrace mediaKitVideoStack() {
     return StackTrace.fromString(
       '#0      NativeVideoController.resize '
       '(package:media_kit_video/src/video_controller/native_video_controller/real.dart:10:5)\n'
@@ -194,7 +207,7 @@ void main() {
       isRecoverableMediaKitFlutterError(
         _flutterDetails(
           StateError('texture unavailable'),
-          stack: _mediaKitVideoStack(),
+          stack: mediaKitVideoStack(),
         ),
       ),
       isTrue,
@@ -203,7 +216,7 @@ void main() {
       isRecoverableMediaKitFlutterError(
         _flutterDetails(
           FlutterError('VideoOutput resize failed'),
-          stack: _mediaKitVideoStack(),
+          stack: mediaKitVideoStack(),
         ),
       ),
       isTrue,
@@ -221,50 +234,54 @@ void main() {
       isRecoverableMediaKitFlutterError(
         _flutterDetails(
           Exception('not a framework error'),
-          stack: _mediaKitVideoStack(),
+          stack: mediaKitVideoStack(),
         ),
       ),
       isFalse,
     );
   });
 
-  test('isRecoverableHardwareKeyboardError matches HardwareKeyboard assertions',
-      () {
-    expect(
-      isRecoverableHardwareKeyboardError(
-        _flutterDetails(
-          AssertionError('A KeyUpEvent is dispatched, but the state shows that '
-              'the physical key is not pressed.'),
-          stack: _hardwareKeyboardStack(),
+  test(
+    'isRecoverableHardwareKeyboardError matches HardwareKeyboard assertions',
+    () {
+      expect(
+        isRecoverableHardwareKeyboardError(
+          _flutterDetails(
+            AssertionError(
+              'A KeyUpEvent is dispatched, but the state shows that '
+              'the physical key is not pressed.',
+            ),
+            stack: _hardwareKeyboardStack(),
+          ),
         ),
-      ),
-      isTrue,
-    );
-    expect(
-      isRecoverableHardwareKeyboardError(
-        _flutterDetails(
-          Exception('not an assertion'),
-          stack: _hardwareKeyboardStack(),
+        isTrue,
+      );
+      expect(
+        isRecoverableHardwareKeyboardError(
+          _flutterDetails(
+            Exception('not an assertion'),
+            stack: _hardwareKeyboardStack(),
+          ),
         ),
-      ),
-      isFalse,
-    );
-    expect(
-      isRecoverableHardwareKeyboardError(
-        _flutterDetails(
-          AssertionError('unrelated assertion'),
-          stack: StackTrace.fromString('#0 someOther (package:foo/bar.dart)'),
+        isFalse,
+      );
+      expect(
+        isRecoverableHardwareKeyboardError(
+          _flutterDetails(
+            AssertionError('unrelated assertion'),
+            stack: StackTrace.fromString('#0 someOther (package:foo/bar.dart)'),
+          ),
         ),
-      ),
-      isFalse,
-    );
-    expect(
-      isRecoverableHardwareKeyboardError(
-        _flutterDetails(AssertionError('no stack')),
-      ),
-      isFalse,
-    );
-  });
+        isFalse,
+      );
+      expect(
+        isRecoverableHardwareKeyboardError(
+          _flutterDetails(AssertionError('no stack')),
+        ),
+        isFalse,
+      );
+    },
+  );
 
   test('installGlobalFatalErrorHandlers does not restart on hardware keyboard '
       'assertion', () async {
@@ -292,8 +309,10 @@ void main() {
     );
     FlutterError.onError!(
       _flutterDetails(
-        AssertionError('A KeyUpEvent is dispatched, but the state shows that '
-            'the physical key is not pressed.'),
+        AssertionError(
+          'A KeyUpEvent is dispatched, but the state shows that '
+          'the physical key is not pressed.',
+        ),
         stack: _hardwareKeyboardStack(),
       ),
     );
@@ -303,71 +322,72 @@ void main() {
     expect(restartCount, 0);
   });
 
-  test('installGlobalFatalErrorHandlers does not restart on layout overflow',
-      () async {
-    final previousFlutter = FlutterError.onError;
-    final previousPlatform = PlatformDispatcher.instance.onError;
-    final previousPresent = FlutterError.presentError;
-    addTearDown(() {
-      FlutterError.onError = previousFlutter;
-      PlatformDispatcher.instance.onError = previousPlatform;
-      FlutterError.presentError = previousPresent;
-      resetFatalHandlingGateForTest();
-    });
-    FlutterError.presentError = (_) {};
-    final channels = <String>[];
-    var restartCount = 0;
-    var recoverableCount = 0;
-    installGlobalFatalErrorHandlers(
-      logFatal: (channel, error, stack) => channels.add(channel),
-      restartProcess: () async {
-        restartCount++;
-      },
-      logRecoverableLayoutFlutter: (_) {
-        recoverableCount++;
-      },
-    );
-    FlutterError.onError!(
-      _flutterDetails(
-        FlutterError('A RenderFlex overflowed by 1 pixel on the bottom.'),
-      ),
-    );
-    expect(channels, isEmpty);
-    expect(recoverableCount, 1);
-    await Future<void>.delayed(Duration.zero);
-    expect(restartCount, 0);
-  });
+  test(
+    'installGlobalFatalErrorHandlers does not restart on layout overflow',
+    () async {
+      final previousFlutter = FlutterError.onError;
+      final previousPlatform = PlatformDispatcher.instance.onError;
+      final previousPresent = FlutterError.presentError;
+      addTearDown(() {
+        FlutterError.onError = previousFlutter;
+        PlatformDispatcher.instance.onError = previousPlatform;
+        FlutterError.presentError = previousPresent;
+        resetFatalHandlingGateForTest();
+      });
+      FlutterError.presentError = (_) {};
+      final channels = <String>[];
+      var restartCount = 0;
+      var recoverableCount = 0;
+      installGlobalFatalErrorHandlers(
+        logFatal: (channel, error, stack) => channels.add(channel),
+        restartProcess: () async {
+          restartCount++;
+        },
+        logRecoverableLayoutFlutter: (_) {
+          recoverableCount++;
+        },
+      );
+      FlutterError.onError!(
+        _flutterDetails(
+          FlutterError('A RenderFlex overflowed by 1 pixel on the bottom.'),
+        ),
+      );
+      expect(channels, isEmpty);
+      expect(recoverableCount, 1);
+      await Future<void>.delayed(Duration.zero);
+      expect(restartCount, 0);
+    },
+  );
 
-  test('installGlobalFatalErrorHandlers invokes injectable log on FlutterError',
-      () async {
-    final previousFlutter = FlutterError.onError;
-    final previousPlatform = PlatformDispatcher.instance.onError;
-    final previousPresent = FlutterError.presentError;
-    addTearDown(() {
-      FlutterError.onError = previousFlutter;
-      PlatformDispatcher.instance.onError = previousPlatform;
-      FlutterError.presentError = previousPresent;
-      resetFatalHandlingGateForTest();
-    });
-    FlutterError.presentError = (_) {};
-    final channels = <String>[];
-    var restartCount = 0;
-    installGlobalFatalErrorHandlers(
-      logFatal: (channel, error, stack) => channels.add(channel),
-      restartProcess: () async {
-        restartCount++;
-      },
-    );
-    FlutterError.onError!(
-      FlutterErrorDetails(
-        exception: Exception('widget'),
-        library: 'test',
-      ),
-    );
-    expect(channels, ['Flutter']);
-    await Future<void>.delayed(Duration.zero);
-    expect(restartCount, 1);
-  });
+  test(
+    'installGlobalFatalErrorHandlers invokes injectable log on FlutterError',
+    () async {
+      final previousFlutter = FlutterError.onError;
+      final previousPlatform = PlatformDispatcher.instance.onError;
+      final previousPresent = FlutterError.presentError;
+      addTearDown(() {
+        FlutterError.onError = previousFlutter;
+        PlatformDispatcher.instance.onError = previousPlatform;
+        FlutterError.presentError = previousPresent;
+        resetFatalHandlingGateForTest();
+      });
+      FlutterError.presentError = (_) {};
+      final channels = <String>[];
+      var restartCount = 0;
+      installGlobalFatalErrorHandlers(
+        logFatal: (channel, error, stack) => channels.add(channel),
+        restartProcess: () async {
+          restartCount++;
+        },
+      );
+      FlutterError.onError!(
+        FlutterErrorDetails(exception: Exception('widget'), library: 'test'),
+      );
+      expect(channels, ['Flutter']);
+      await Future<void>.delayed(Duration.zero);
+      expect(restartCount, 1);
+    },
+  );
 
   test('installGlobalFatalErrorHandlers does not restart on hardware keyboard '
       'assertion via platform onError', () async {
@@ -391,8 +411,10 @@ void main() {
       },
     );
     final handled = PlatformDispatcher.instance.onError!(
-      AssertionError('A KeyUpEvent is dispatched, but the state shows that '
-          'the physical key is not pressed.'),
+      AssertionError(
+        'A KeyUpEvent is dispatched, but the state shows that '
+        'the physical key is not pressed.',
+      ),
       _hardwareKeyboardStack(),
     );
     expect(handled, isTrue);
@@ -512,10 +534,7 @@ void main() {
     });
     await DebugConsoleDiskLogger.installForTest(tmp);
     invokeDefaultRecoverableFlutterLayoutForTest(
-      FlutterErrorDetails(
-        exception: FlutterError('overflow'),
-        library: 'test',
-      ),
+      FlutterErrorDetails(exception: FlutterError('overflow'), library: 'test'),
     );
     await DebugConsoleDiskLogger.closeForTest();
 

@@ -4,13 +4,13 @@ import '../helpers/memory_database.dart';
 
 void main() {
   test(
-    'fresh AppDatabase exposes display_overlay_schedules at schema v37',
+    'fresh AppDatabase exposes display_overlay_schedules at schema v38',
     () async {
       final db = openMemoryDatabase();
       await warmDatabase(db);
 
       final ver = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(ver.read<int>('user_version'), 37);
+      expect(ver.read<int>('user_version'), 38);
 
       final check = await db.customSelect(
         "SELECT COUNT(*) AS c FROM sqlite_master WHERE "

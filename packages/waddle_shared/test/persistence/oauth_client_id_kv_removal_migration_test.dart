@@ -6,7 +6,7 @@ import 'package:waddle_shared/config/microsoft_graph_kv.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 void main() {
-  test('v36 -> v37 removes oauth client id rows from config_key_values', () async {
+  test('v36 -> v38 removes oauth client id rows from config_key_values', () async {
     final raw = sqlite.sqlite3.openInMemory();
     raw.execute('PRAGMA foreign_keys = ON;');
     raw.execute('''
@@ -32,7 +32,7 @@ CREATE TABLE config_key_values (
     expect(keys.contains(kGoogleClientIdKvKey), isFalse);
 
     final ver = await db.customSelect('PRAGMA user_version').getSingle();
-    expect(ver.read<int>('user_version'), 37);
+    expect(ver.read<int>('user_version'), 38);
 
     await db.close();
   });

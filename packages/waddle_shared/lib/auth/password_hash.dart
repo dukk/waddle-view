@@ -13,7 +13,7 @@ const String kPasswordHashPrefix = 'pbkdf2-sha256';
 String hashPassword(String password) {
   final salt = _randomSalt();
   final hash = _derive(password, salt);
-  return '$kPasswordHashPrefix\$${kPasswordHashIterations}\$'
+  return '$kPasswordHashPrefix\$$kPasswordHashIterations\$'
       '${base64Encode(salt)}\$${base64Encode(hash)}';
 }
 
