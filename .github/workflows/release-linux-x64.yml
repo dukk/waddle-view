@@ -54,9 +54,9 @@ jobs:
           node-version: '22'
           cache: npm
           cache-dependency-path: apps/waddle_controller/package-lock.json
-      - name: Build waddle_controller SPA
+      - name: Lint, test, coverage, and build waddle_controller SPA
         working-directory: ${{ github.workspace }}/apps/waddle_controller
-        run: npm ci && npm run build
+        run: npm ci && npm run lint && npm run test:coverage && npm run coverage:check && npm run build
       - name: Merge waddle_controller into Linux bundle
         working-directory: ${{ github.workspace }}/apps/waddle_display
         run: |

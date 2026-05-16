@@ -1,0 +1,21 @@
+---
+description: waddle_controller Vitest conventions
+globs: apps/waddle_controller/src/**/*.test.ts
+---
+
+# waddle_controller tests
+
+- Co-locate tests as `*.test.ts` beside the module under `src/auth/`, `src/api/`, `src/storage/`, `src/util/`, or `src/constants/`.
+- Use Vitest (`describe` / `it` / `expect` / `vi`); `vitest.setup.ts` clears `localStorage` and `sessionStorage` after each test.
+- Mock `fetch` with `vi.stubGlobal('fetch', …)` for API modules; avoid real network I/O.
+- For time-dependent session expiry, use `vi.useFakeTimers()` in `sessions` tests.
+- Page-level UI: prefer React Testing Library in `*.test.tsx` when adding component coverage; keep business logic in `.ts` modules with unit tests.
+
+Before pushing controller test changes:
+
+```bash
+cd apps/waddle_controller
+npm run lint
+npm run test:coverage
+npm run coverage:check
+```

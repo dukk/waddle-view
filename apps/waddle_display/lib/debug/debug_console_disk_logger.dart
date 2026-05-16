@@ -76,6 +76,7 @@ final class DebugConsoleDiskLogger {
         _sink!.write(chunk);
       }
       _buffer.clear();
+      await _sink?.flush();
       _chainDebugPrint();
     } catch (_) {
       _installed = false;

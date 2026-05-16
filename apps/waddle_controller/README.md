@@ -21,6 +21,20 @@ npm run dev
 
 The display slide type **`controller_invite`** shows a QR that opens **`/join?api=<display REST>&secret=…`** on this SPA. That page adds the display (if needed), lets someone **sign in** with an existing account, or **register** a new **viewer** account when the display has **`WADDLE_VIEWER_REGISTRATION_SECRET`** set and **`WADDLE_HTTP_CORS_ORIGINS`** includes this app’s origin (or you use a dev proxy so the browser origin matches the display). Viewer accounts use the **Programs** and **Account** pages in the controller; the display API grants them **`telemetry.read`** (telemetry + media GETs) for operator data, while profile and password updates use the self-service user routes (no `users.manage`). A named **`power_viewer`** (set in **Settings → Users**) also gets **Data** as a read-only catalog (**`content.catalog_read`**: no suppressed rows, no suppression toggles, no `PATCH /v1/content/*`) and **`navigation.control`** for arrow-key remote control. Profile and password updates still use the self-service user routes (no `users.manage`).
 
+## Tests
+
+Unit tests use [Vitest](https://vitest.dev/) with **jsdom**. Co-locate tests as `src/**/*.test.ts` next to the module under test.
+
+```bash
+npm ci
+npm run test              # single run
+npm run test:watch        # watch mode
+npm run test:coverage     # lcov under coverage/
+npm run coverage:check    # CI floor: ≥ 80% lines on auth, api, storage, util/*.ts, constants
+```
+
+CI also runs `npm run lint` and `npm run build`. Prefer extracting testable logic out of large page components into `src/util/`, `src/storage/`, or `src/api/` so coverage stays maintainable.
+
 ## Production build
 
 ```bash

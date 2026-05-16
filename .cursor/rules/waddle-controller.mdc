@@ -1,0 +1,16 @@
+---
+description: waddle_controller SPA — Vitest, coverage, SOLID, TypeScript conventions
+globs: apps/waddle_controller/**/*
+---
+
+# waddle_controller (`apps/waddle_controller`)
+
+- **SOLID**: keep API clients (`src/api/`), persistence (`src/storage/`), and pure helpers (`src/util/`, `src/auth/`) free of React; pages compose those modules. Do not embed fetch or `localStorage`/`sessionStorage` directly in page components when a storage or API helper already exists.
+- **TDD**: add or extend a failing Vitest test (`src/**/*.test.ts`) before production changes in gated paths (`auth/`, `api/`, `storage/`, `util/*.ts`, `constants/`).
+- **Coverage**: CI enforces **≥ 80%** line coverage on gated logic via [`tool/coverage_check.mjs`](../../apps/waddle_controller/tool/coverage_check.mjs); **90%** is the aspirational target (warn only). UI shells (`pages/`, `layout/`, `components/`, `context/`, `App.tsx`, `main.tsx`) are outside the floor until covered with React Testing Library.
+- **Pre-commit**: from `apps/waddle_controller`, run `npm run lint` (zero issues), `npm run test:coverage`, `npm run coverage:check`, and `npm run build`.
+- **Secrets**: never commit display API keys or session tokens; sessions live in `sessionStorage` per display id; display base URLs in `localStorage` only.
+- **Role permissions**: keep [`src/auth/rolePermissions.ts`](../../apps/waddle_controller/src/auth/rolePermissions.ts) in sync with `packages/waddle_shared/lib/auth/role_permissions.dart`.
+- **Docs**: update [`apps/waddle_controller/README.md`](../../apps/waddle_controller/README.md) when operator workflows or env/proxy setup change.
+
+See [`waddle-controller-tests.mdc`](waddle-controller-tests.mdc) for test-file conventions.

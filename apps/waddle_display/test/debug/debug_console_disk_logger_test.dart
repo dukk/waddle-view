@@ -175,11 +175,12 @@ void main() {
       tmp.path,
     );
     expect(DebugConsoleDiskLogger.currentLogFileForTest?.path, initialPath);
+    expect(await File(initialPath).exists(), isTrue);
+
+    await DebugConsoleDiskLogger.closeForTest();
 
     final onDisk = await singleLogFile(tmp);
     expect(p.context.equals(onDisk.path, initialPath), isTrue);
-
-    await DebugConsoleDiskLogger.closeForTest();
   });
 
   test('install uses support directory override when set', () async {

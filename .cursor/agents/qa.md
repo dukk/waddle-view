@@ -23,7 +23,7 @@ You are the waddle-view QA specialist. You run **after** implementation work, no
 | `packages/waddle_shared/lib/persistence/` | Migration present; migration tests updated; no secrets in SQLite |
 | `apps/waddle_display/` | `flutter analyze` (zero issues); relevant `flutter test`; coverage not regressed for touched lib paths |
 | `packages/waddle_data_providers/` | `dart test` for affected collectors |
-| `apps/waddle_controller/` | TypeScript build/lint if the project has a check script; UI regressions called out manually |
+| `apps/waddle_controller/` | `npm run lint`, `npm run test:coverage`, `npm run coverage:check` (≥ 80% on gated logic paths); `npm run build`; add/extend Vitest tests for new behavior in `auth/`, `api/`, `storage/`, `util/` |
 | All | No `WADDLE_*` secrets or tokens in committed code; paths use `waddle_display` not stale `waddle_view` / `waddle-display` |
 
 For full CI parity before merge, follow [.cursor/skills/run-waddle-checks/SKILL.md](../skills/run-waddle-checks/SKILL.md).
