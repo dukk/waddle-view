@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": "python .cursor/hooks/qa_track_edit.py",
+        "matcher": "Write"
+      }
+    ],
+    "stop": [
+      {
+        "command": "python .cursor/hooks/qa_trigger_stop.py",
+        "matcher": "Stop",
+        "loop_limit": 3
+      }
+    ]
+  }
+}
