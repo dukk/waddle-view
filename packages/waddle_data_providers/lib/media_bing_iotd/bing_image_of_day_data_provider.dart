@@ -15,7 +15,7 @@ import 'bing_image_of_day_extra_config.dart';
 
 const String kBingImageOfDayProviderId = 'media_bing_iotd';
 
-/// Last successful [BingImageOfDayDataProvider.collect] (for [ProviderSettings.pollSeconds]).
+/// Last successful [BingImageOfDayDataProvider.collect] (for [Integration.pollSeconds]).
 const String kBingImageOfDayLastCollectKvKey = 'provider.media_bing_iotd.last_collect_ms';
 
 /// Desktop UA (matches TimothyYe/bing-wallpaper `wallpaper.go`).
@@ -98,7 +98,7 @@ class BingImageOfDayDataProvider implements IDataProvider {
   Future<void> collect(DataWriteContext ctx) async {
     final setting =
         await (ctx.db.select(
-              ctx.db.providerSettings,
+              ctx.db.integrations,
             )..where((t) => t.id.equals(kBingImageOfDayProviderId)))
             .getSingleOrNull();
     if (setting == null || !setting.enabled) {

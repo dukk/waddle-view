@@ -42,6 +42,17 @@ export function addDisplay(input: { baseUrl: string; label?: string }): SavedDis
   return d;
 }
 
+/** Returns an existing display row when [baseUrl] already exists (normalized). */
+export function upsertDisplayByBaseUrl(input: { baseUrl: string; label?: string }): SavedDisplay {
+  const normalized = normalizeBaseUrl(input.baseUrl);
+  const displays = loadDisplays();
+  const hit = displays.find((d) => normalizeBaseUrl(d.baseUrl) === normalized);
+  if (hit) {
+    return hit;
+  }
+  return addDisplay(input);
+}
+
 export function removeDisplay(id: string): void {
   saveDisplays(loadDisplays().filter((d) => d.id !== id));
 }

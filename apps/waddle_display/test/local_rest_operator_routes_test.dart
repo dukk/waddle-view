@@ -8,7 +8,9 @@ import 'package:waddle_display/curator/ticker_item.dart';
 import 'package:waddle_display/debug/operator_telemetry_hub.dart';
 import 'package:waddle_display/display/display_navigation_bus.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/tables.dart';
 
+import 'helpers/fake_blob_store.dart';
 import 'helpers/memory_database.dart';
 import 'helpers/rest_auth_helper.dart';
 
@@ -16,8 +18,8 @@ void main() {
   test('telemetry and navigation endpoints', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    final hub = OperatorTelemetryHub(maxProviderLines: 10);
-    hub.addProviderLine('hello');
+    final hub = OperatorTelemetryHub(maxIntegrationLines: 10);
+    hub.addIntegrationLine('hello');
     final nav = DisplayNavigationBus();
     final h = await RestTestHarness.start(
       database: db,
@@ -27,7 +29,7 @@ void main() {
     addTearDown(h.dispose);
 
     final tel = await http.get(
-      Uri.parse('${h.baseUrl}/v1/telemetry/providers'),
+      Uri.parse('${h.baseUrl}/v1/telemetry/integrations'),
       headers: h.authHeaders,
     );
     expect(tel.statusCode, 200);
@@ -93,6 +95,42 @@ void main() {
     expect((items.first as Map).containsKey('screen_type'), isTrue);
   });
 
+  test('GET meta ticker-types', () async {
+    final h = await RestTestHarness.start();
+    addTearDown(h.dispose);
+
+    final res = await http.get(
+      Uri.parse('${h.baseUrl}/v1/meta/ticker-types'),
+      headers: h.authHeaders,
+    );
+    expect(res.statusCode, 200);
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    final items = body['items'] as List<dynamic>;
+    expect(items.isNotEmpty, isTrue);
+    expect((items.first as Map).containsKey('ticker_type'), isTrue);
+  });
+
+  test('POST and DELETE ticker tape round-trip', () async {
+    final h = await RestTestHarness.start();
+    addTearDown(h.dispose);
+
+    final post = await http.post(
+      Uri.parse('${h.baseUrl}/v1/ticker/tapes'),
+      headers: h.authHeaders,
+      body: jsonEncode({
+        'id': 'rest_test_tape',
+        'ticker_type': 'time',
+        'name': 'Test clock',
+      }),
+    );
+    expect(post.statusCode, 200);
+    final del = await http.delete(
+      Uri.parse('${h.baseUrl}/v1/ticker/tapes/rest_test_tape'),
+      headers: h.authHeaders,
+    );
+    expect(del.statusCode, 200);
+  });
+
   test('GET telemetry programs and ticker-programs', () async {
     final hub =
         OperatorTelemetryHub(maxScreenPrograms: 5, maxTickerPrograms: 5);
@@ -135,6 +173,61 @@ void main() {
     expect(tickItems.length, 1);
   });
 
+  test('GET media rss-articles and blob-by-key', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.rssFeedSources).insert(
+          RssFeedSourcesCompanion.insert(
+            id: 'f_media_test',
+            url: 'https://example.com/feed.xml',
+          ),
+        );
+    await db.into(db.rssArticles).insert(
+          RssArticlesCompanion.insert(
+            id: 'art_media_test',
+            feedId: 'f_media_test',
+            guid: 'g_media',
+            title: 'Headline',
+            link: 'https://example.com/a',
+            publishedAt: DateTime.fromMillisecondsSinceEpoch(10),
+            fetchedAt: DateTime.fromMillisecondsSinceEpoch(20),
+            imageBlobKey: const Value('img_blob_k'),
+          ),
+        );
+    await db.into(db.blobMetadata).insert(
+          BlobMetadataCompanion.insert(
+            blobKey: 'img_blob_k',
+            sha256: List.filled(64, '0').join(),
+            relativePath: 'aa/bb/ccfeed',
+            bytes: 3,
+            mimeType: const Value('image/png'),
+            capturedAt: DateTime.fromMillisecondsSinceEpoch(30),
+          ),
+        );
+    final fake = FakeBlobStore()..seed('aa/bb/ccfeed', [10, 20, 30]);
+    final h = await RestTestHarness.start(database: db, blobStore: fake);
+    addTearDown(h.dispose);
+
+    final j = await http.get(
+      Uri.parse('${h.baseUrl}/v1/media/rss-articles/art_media_test'),
+      headers: h.authHeaders,
+    );
+    expect(j.statusCode, 200);
+    final map = jsonDecode(j.body) as Map<String, dynamic>;
+    expect(map['title'], 'Headline');
+    expect(map['image_blob_key'], 'img_blob_k');
+
+    final img = await http.get(
+      Uri.parse(
+        '${h.baseUrl}/v1/media/blob-by-key?key=${Uri.encodeComponent('img_blob_k')}',
+      ),
+      headers: {'Authorization': 'Bearer ${h.token}'},
+    );
+    expect(img.statusCode, 200);
+    expect(img.bodyBytes, [10, 20, 30]);
+    expect(img.headers['content-type'], contains('image/png'));
+  });
+
   test('ticker navigation POST', () async {
     final nav = DisplayNavigationBus();
     final h = await RestTestHarness.start(
@@ -152,6 +245,59 @@ void main() {
     );
     expect(res.statusCode, 200);
     expect(nav.dequeueTickerNav(), 1);
+  });
+
+  test('power_viewer may POST display navigation', () async {
+    final nav = DisplayNavigationBus();
+    final h = await RestTestHarness.start(
+      role: kUserRolePowerViewer,
+      navigationBus: nav,
+    );
+    addTearDown(h.dispose);
+
+    final res = await http.post(
+      Uri.parse('${h.baseUrl}/v1/display/navigation'),
+      headers: h.authHeaders,
+      body: jsonEncode({
+        'surface': 'screen',
+        'direction': 'forward',
+      }),
+    );
+    expect(res.statusCode, 200);
+    expect(nav.dequeueScreenNav(), 1);
+  });
+
+  test('GET media weather-at-location', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.weatherLocations).insert(
+          WeatherLocationsCompanion.insert(
+            id: 'den',
+            name: 'Denver',
+            latitude: 39,
+            longitude: -105,
+          ),
+        );
+    await db.into(db.weatherCurrent).insert(
+          WeatherCurrentCompanion.insert(
+            locationId: 'den',
+            observedAtMs: DateTime.utc(2026, 1, 1),
+            currentTemp: const Value(5),
+            currentDescription: const Value('snow'),
+          ),
+        );
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+
+    final res = await http.get(
+      Uri.parse('${h.baseUrl}/v1/media/weather-at-location/den'),
+      headers: h.authHeaders,
+    );
+    expect(res.statusCode, 200);
+    final m = jsonDecode(res.body) as Map<String, dynamic>;
+    expect(m['location_name'], 'Denver');
+    expect(m['current_temp_c'], 5);
+    expect(m['current_description'], 'snow');
   });
 
   test('navigation validation errors', () async {
@@ -183,11 +329,11 @@ void main() {
     expect(badSurf.statusCode, 400);
   });
 
-  test('PUT curator settings and PATCH ticker definition', () async {
+  test('PUT curator settings and PATCH ticker tape', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.tickerDefinitions).insert(
-          TickerDefinitionsCompanion.insert(
+    await db.into(db.tickerTapes).insert(
+          TickerTapesCompanion.insert(
             id: 'op_tick',
             name: 'Op',
             tickerType: 'time',
@@ -206,7 +352,7 @@ void main() {
     addTearDown(h.dispose);
 
     final defs = await http.get(
-      Uri.parse('${h.baseUrl}/v1/ticker/definitions'),
+      Uri.parse('${h.baseUrl}/v1/ticker/tapes'),
       headers: h.authHeaders,
     );
     expect(defs.statusCode, 200);
@@ -215,7 +361,7 @@ void main() {
     expect(defItems.any((e) => (e as Map)['id'] == 'op_tick'), isTrue);
 
     final patchTick = await http.patch(
-      Uri.parse('${h.baseUrl}/v1/ticker/definitions/op_tick'),
+      Uri.parse('${h.baseUrl}/v1/ticker/tapes/op_tick'),
       headers: h.authHeaders,
       body: jsonEncode({
         'enabled': false,
@@ -253,28 +399,28 @@ void main() {
     expect(curBody['require_news_photo_for_screens'], isFalse);
   });
 
-  test('PATCH ticker 404 and invalid_fields', () async {
+  test('PATCH ticker tape 404 and invalid_fields', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     final h = await RestTestHarness.start(database: db);
     addTearDown(h.dispose);
 
     final miss = await http.patch(
-      Uri.parse('${h.baseUrl}/v1/ticker/definitions/missing'),
+      Uri.parse('${h.baseUrl}/v1/ticker/tapes/missing'),
       headers: h.authHeaders,
       body: jsonEncode({'enabled': true}),
     );
     expect(miss.statusCode, 404);
 
-    await h.db.into(h.db.tickerDefinitions).insert(
-          TickerDefinitionsCompanion.insert(
+    await h.db.into(h.db.tickerTapes).insert(
+          TickerTapesCompanion.insert(
             id: 'bad_tick',
             name: 'B',
             tickerType: 'quote',
           ),
         );
     final bad = await http.patch(
-      Uri.parse('${h.baseUrl}/v1/ticker/definitions/bad_tick'),
+      Uri.parse('${h.baseUrl}/v1/ticker/tapes/bad_tick'),
       headers: h.authHeaders,
       body: jsonEncode({'enabled': null}),
     );
@@ -284,8 +430,8 @@ void main() {
   test('PATCH provider', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'stock_test',
             providerType: 'stock_finnhub',
             pollSeconds: const Value(120),
@@ -304,7 +450,7 @@ void main() {
     addTearDown(h.dispose);
 
     final list = await http.get(
-      Uri.parse('${h.baseUrl}/v1/providers'),
+      Uri.parse('${h.baseUrl}/v1/integrations'),
       headers: h.authHeaders,
     );
     expect(list.statusCode, 200);
@@ -313,7 +459,7 @@ void main() {
     expect(items.any((e) => (e as Map)['id'] == 'stock_test'), isTrue);
 
     final patch = await http.patch(
-      Uri.parse('${h.baseUrl}/v1/providers/stock_test'),
+      Uri.parse('${h.baseUrl}/v1/integrations/stock_test'),
       headers: h.authHeaders,
       body: jsonEncode({
         'enabled': false,
@@ -326,14 +472,14 @@ void main() {
     expect(calls, 1);
 
     final miss = await http.patch(
-      Uri.parse('${h.baseUrl}/v1/providers/nope'),
+      Uri.parse('${h.baseUrl}/v1/integrations/nope'),
       headers: h.authHeaders,
       body: jsonEncode({'enabled': true, 'poll_seconds': 1}),
     );
     expect(miss.statusCode, 404);
 
     final badCfg = await http.patch(
-      Uri.parse('${h.baseUrl}/v1/providers/stock_test'),
+      Uri.parse('${h.baseUrl}/v1/integrations/stock_test'),
       headers: h.authHeaders,
       body: jsonEncode({
         'enabled': true,
@@ -409,16 +555,16 @@ void main() {
     expect(delMiss.statusCode, 404);
   });
 
-  test('PUT curator validation', () async {
+  test('PUT curator settings rejects empty update', () async {
     final h = await RestTestHarness.start();
     addTearDown(h.dispose);
 
-    final bad = await http.put(
+    final empty = await http.put(
       Uri.parse('${h.baseUrl}/v1/curator/settings'),
       headers: h.authHeaders,
-      body: jsonEncode({'program_duration_seconds': 1}),
+      body: jsonEncode({}),
     );
-    expect(bad.statusCode, 400);
+    expect(empty.statusCode, 400);
 
     final badJson = await http.put(
       Uri.parse('${h.baseUrl}/v1/curator/settings'),
@@ -426,6 +572,26 @@ void main() {
       body: '[]',
     );
     expect(badJson.statusCode, 400);
+  });
+
+  test('PUT curator settings allows partial updates', () async {
+    final h = await RestTestHarness.start();
+    addTearDown(h.dispose);
+
+    final partial = await http.put(
+      Uri.parse('${h.baseUrl}/v1/curator/settings'),
+      headers: h.authHeaders,
+      body: jsonEncode({'program_duration_seconds': 42}),
+    );
+    expect(partial.statusCode, 200);
+
+    final cur = await http.get(
+      Uri.parse('${h.baseUrl}/v1/curator/settings'),
+      headers: h.authHeaders,
+    );
+    expect(cur.statusCode, 200);
+    final curBody = jsonDecode(cur.body) as Map<String, dynamic>;
+    expect(curBody['program_duration_seconds'], 42);
   });
 
   test('CORS preflight and GET with allowlisted origin', () async {
@@ -456,6 +622,55 @@ void main() {
     }
   });
 
+  test('curator categories CRUD', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+
+    final post = await http.post(
+      Uri.parse('${h.baseUrl}/v1/curator/categories'),
+      headers: h.authHeaders,
+      body: jsonEncode({
+        'id': 'ctl_test_cat',
+        'label': 'Ctl test',
+        'material_icon_name': 'star',
+      }),
+    );
+    expect(post.statusCode, 200);
+
+    final list = await http.get(
+      Uri.parse('${h.baseUrl}/v1/curator/categories'),
+      headers: h.authHeaders,
+    );
+    expect(list.statusCode, 200);
+    final items =
+        (jsonDecode(list.body) as Map<String, dynamic>)['items'] as List<dynamic>;
+    expect(
+      items.any((e) => (e as Map<String, dynamic>)['id'] == 'ctl_test_cat'),
+      isTrue,
+    );
+
+    final patch = await http.patch(
+      Uri.parse('${h.baseUrl}/v1/curator/categories/ctl_test_cat'),
+      headers: h.authHeaders,
+      body: jsonEncode({'label': 'Ctl test renamed'}),
+    );
+    expect(patch.statusCode, 200);
+
+    final delReserved = await http.delete(
+      Uri.parse('${h.baseUrl}/v1/curator/categories/general'),
+      headers: h.authHeaders,
+    );
+    expect(delReserved.statusCode, 403);
+
+    final del = await http.delete(
+      Uri.parse('${h.baseUrl}/v1/curator/categories/ctl_test_cat'),
+      headers: h.authHeaders,
+    );
+    expect(del.statusCode, 200);
+  });
+
   test('GET curator settings', () async {
     final h = await RestTestHarness.start();
     addTearDown(h.dispose);
@@ -467,5 +682,71 @@ void main() {
     expect(res.statusCode, 200);
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     expect(body.containsKey('program_duration_seconds'), isTrue);
+    expect(body['display_timezone'], isNotNull);
+  });
+
+  test('PUT curator settings display_timezone and config key-values REST', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+
+    final putTz = await http.put(
+      Uri.parse('${h.baseUrl}/v1/curator/settings'),
+      headers: h.authHeaders,
+      body: jsonEncode({'display_timezone': 'America/Chicago'}),
+    );
+    expect(putTz.statusCode, 200);
+
+    final cur = await http.get(
+      Uri.parse('${h.baseUrl}/v1/curator/settings'),
+      headers: h.authHeaders,
+    );
+    expect(cur.statusCode, 200);
+    expect(
+      (jsonDecode(cur.body) as Map<String, dynamic>)['display_timezone'],
+      'America/Chicago',
+    );
+
+    final list = await http.get(
+      Uri.parse('${h.baseUrl}/v1/config/key-values'),
+      headers: h.authHeaders,
+    );
+    expect(list.statusCode, 200);
+    final items =
+        (jsonDecode(list.body) as Map<String, dynamic>)['items'] as List<dynamic>;
+    expect(
+      items.any((e) {
+        final m = e as Map<String, dynamic>;
+        return m['key'] == kDisplayTimezoneKvKey && m['value'] == 'America/Chicago';
+      }),
+      isTrue,
+    );
+
+    final upsert = await http.put(
+      Uri.parse('${h.baseUrl}/v1/config/key-values'),
+      headers: h.authHeaders,
+      body: jsonEncode({'key': 'ctl.kv.test', 'value': 'hello'}),
+    );
+    expect(upsert.statusCode, 200);
+
+    final delMiss = await http.delete(
+      Uri.parse('${h.baseUrl}/v1/config/key-values?key=${Uri.encodeComponent('nope')}'),
+      headers: h.authHeaders,
+    );
+    expect(delMiss.statusCode, 404);
+
+    final delOk = await http.delete(
+      Uri.parse('${h.baseUrl}/v1/config/key-values?key=${Uri.encodeComponent('ctl.kv.test')}'),
+      headers: h.authHeaders,
+    );
+    expect(delOk.statusCode, 200);
+
+    final badPut = await http.put(
+      Uri.parse('${h.baseUrl}/v1/config/key-values'),
+      headers: h.authHeaders,
+      body: jsonEncode({'value': 'x'}),
+    );
+    expect(badPut.statusCode, 400);
   });
 }

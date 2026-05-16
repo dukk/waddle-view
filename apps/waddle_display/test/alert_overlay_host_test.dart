@@ -96,8 +96,8 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     final t0 = DateTime.utc(2030, 1, 1, 12, 0, 0);
-    await db.into(db.dashboardAlerts).insert(
-          DashboardAlertsCompanion.insert(
+    await db.into(db.alerts).insert(
+          AlertsCompanion.insert(
             title: 'Timed',
             body: 'Text',
             createdAt: t0,

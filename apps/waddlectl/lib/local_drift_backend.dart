@@ -31,9 +31,9 @@ abstract class WaddleAdminBackend {
     String? configJson,
   });
 
-  Future<List<Map<String, Object?>>> listProviders();
-  Future<Map<String, Object?>?> describeProvider(String id);
-  Future<void> updateProvider({
+  Future<List<Map<String, Object?>>> listIntegrations();
+  Future<Map<String, Object?>?> describeIntegration(String id);
+  Future<void> updateIntegration({
     required String id,
     bool? enabled,
     int? pollSeconds,
@@ -137,7 +137,7 @@ class LocalDriftBackend implements WaddleAdminBackend {
 
   @override
   Future<List<Map<String, Object?>>> listScreens() async {
-    final rows = await _db.select(_db.screenDefinitions).get();
+    final rows = await _db.select(_db.screens).get();
     return rows.map(_screenToMap).toList();
   }
 
@@ -159,7 +159,7 @@ class LocalDriftBackend implements WaddleAdminBackend {
   @override
   Future<Map<String, Object?>?> describeScreen(String id) async {
     final row = await (_db.select(
-      _db.screenDefinitions,
+      _db.screens,
     )..where((t) => t.id.equals(id))).getSingleOrNull();
     return row == null ? null : _screenToMap(row);
   }
@@ -175,15 +175,15 @@ class LocalDriftBackend implements WaddleAdminBackend {
     String? configJson,
   }) async {
     final existing = await (_db.select(
-      _db.screenDefinitions,
+      _db.screens,
     )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (existing == null) {
       throw StateError('Unknown screen id: $id');
     }
     await (_db.update(
-      _db.screenDefinitions,
+      _db.screens,
     )..where((t) => t.id.equals(id))).write(
-      ScreenDefinitionsCompanion(
+      ScreensCompanion(
         name: name == null ? const Value.absent() : Value(name),
         enabled: enabled == null ? const Value.absent() : Value(enabled),
         dwellSeconds: dwellSeconds == null
@@ -203,14 +203,14 @@ class LocalDriftBackend implements WaddleAdminBackend {
   }
 
   @override
-  Future<List<Map<String, Object?>>> listProviders() async {
-    final rows = await _db.select(_db.providerSettings).get();
-    return rows.map(_providerToMap).toList();
+  Future<List<Map<String, Object?>>> listIntegrations() async {
+    final rows = await _db.select(_db.integrations).get();
+    return rows.map(_integrationToMap).toList();
   }
 
-  Map<String, Object?> _providerToMap(ProviderSetting row) => {
+  Map<String, Object?> _integrationToMap(Integration row) => {
     'id': row.id,
-    'provider_type': row.providerType,
+    'integration_type': row.providerType,
     'enabled': row.enabled,
     'poll_seconds': row.pollSeconds,
     'base_url': row.baseUrl,
@@ -218,15 +218,15 @@ class LocalDriftBackend implements WaddleAdminBackend {
   };
 
   @override
-  Future<Map<String, Object?>?> describeProvider(String id) async {
+  Future<Map<String, Object?>?> describeIntegration(String id) async {
     final row = await (_db.select(
-      _db.providerSettings,
+      _db.integrations,
     )..where((t) => t.id.equals(id))).getSingleOrNull();
-    return row == null ? null : _providerToMap(row);
+    return row == null ? null : _integrationToMap(row);
   }
 
   @override
-  Future<void> updateProvider({
+  Future<void> updateIntegration({
     required String id,
     bool? enabled,
     int? pollSeconds,
@@ -234,15 +234,15 @@ class LocalDriftBackend implements WaddleAdminBackend {
     String? configJson,
   }) async {
     final existing = await (_db.select(
-      _db.providerSettings,
+      _db.integrations,
     )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (existing == null) {
-      throw StateError('Unknown provider id: $id');
+      throw StateError('Unknown integration id: $id');
     }
     await (_db.update(
-      _db.providerSettings,
+      _db.integrations,
     )..where((t) => t.id.equals(id))).write(
-      ProviderSettingsCompanion(
+      IntegrationsCompanion(
         enabled: enabled == null ? const Value.absent() : Value(enabled),
         pollSeconds: pollSeconds == null
             ? const Value.absent()
@@ -259,11 +259,11 @@ class LocalDriftBackend implements WaddleAdminBackend {
 
   @override
   Future<List<Map<String, Object?>>> listTickers() async {
-    final rows = await _db.select(_db.tickerDefinitions).get();
+    final rows = await _db.select(_db.tickerTapes).get();
     return rows.map(_tickerToMap).toList();
   }
 
-  Map<String, Object?> _tickerToMap(TickerDefinition row) => {
+  Map<String, Object?> _tickerToMap(TickerTape row) => {
     'id': row.id,
     'name': row.name,
     'description': row.description,
@@ -279,7 +279,7 @@ class LocalDriftBackend implements WaddleAdminBackend {
   @override
   Future<Map<String, Object?>?> describeTicker(String id) async {
     final row = await (_db.select(
-      _db.tickerDefinitions,
+      _db.tickerTapes,
     )..where((t) => t.id.equals(id))).getSingleOrNull();
     return row == null ? null : _tickerToMap(row);
   }
@@ -295,15 +295,15 @@ class LocalDriftBackend implements WaddleAdminBackend {
     String? configKey,
   }) async {
     final existing = await (_db.select(
-      _db.tickerDefinitions,
+      _db.tickerTapes,
     )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (existing == null) {
       throw StateError('Unknown ticker id: $id');
     }
     await (_db.update(
-      _db.tickerDefinitions,
+      _db.tickerTapes,
     )..where((t) => t.id.equals(id))).write(
-      TickerDefinitionsCompanion(
+      TickerTapesCompanion(
         name: name == null ? const Value.absent() : Value(name),
         enabled: enabled == null ? const Value.absent() : Value(enabled),
         tickerType: tickerType == null

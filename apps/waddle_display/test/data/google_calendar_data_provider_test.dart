@@ -143,7 +143,7 @@ void main() {
     );
     final p = GoogleCalendarDataProvider(httpClient: http, oauth: oauth);
     await p.collect(_ctx(db, secrets));
-    final alerts = await db.select(db.dashboardAlerts).get();
+    final alerts = await db.select(db.alerts).get();
     expect(alerts.length, 1);
     expect(alerts.single.source, kGoogleOAuthAlertSource);
     expect(alerts.single.severity, 'auth');
@@ -179,8 +179,8 @@ Future<void> _seedKvAndProvider(
   required String extraAccountsJson,
   int pollSeconds = 0,
 }) async {
-  await db.into(db.providerSettings).insertOnConflictUpdate(
-        ProviderSettingsCompanion.insert(
+  await db.into(db.integrations).insertOnConflictUpdate(
+        IntegrationsCompanion.insert(
           id: kGoogleCalendarProviderId,
           providerType: 'calendar_google',
           enabled: const Value(true),

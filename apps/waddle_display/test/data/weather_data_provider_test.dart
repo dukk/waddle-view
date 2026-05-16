@@ -102,8 +102,8 @@ void main() {
   test('collect skips when weather token missing', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'weather_openweathermap',
             providerType: 'weather_openweathermap',
             pollSeconds: const Value(60),
@@ -117,7 +117,7 @@ void main() {
     await provider.collect(ctx);
 
     expect(client.sends, 0);
-    final rows = await db.select(db.weatherCurrentData).get();
+    final rows = await db.select(db.weatherCurrent).get();
     expect(rows, isEmpty);
     await db.close();
   });
@@ -125,8 +125,8 @@ void main() {
   test('collect writes weather payload to weather tables', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'weather_openweathermap',
             providerType: 'weather_openweathermap',
             pollSeconds: const Value(60),
@@ -168,7 +168,7 @@ void main() {
     await provider.collect(ctx);
 
     expect(client.sends, 3);
-    final nyc = await (db.select(db.weatherCurrentData)
+    final nyc = await (db.select(db.weatherCurrent)
           ..where((t) => t.locationId.equals('nyc')))
         .getSingleOrNull();
     expect(nyc, isNotNull);
@@ -184,8 +184,8 @@ void main() {
   test('collect fetches all enabled configured weather locations', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'weather_openweathermap',
             providerType: 'weather_openweathermap',
             pollSeconds: const Value(60),
@@ -235,10 +235,10 @@ void main() {
     await provider.collect(ctx);
 
     expect(client.sends, 6);
-    final nyc = await (db.select(db.weatherCurrentData)
+    final nyc = await (db.select(db.weatherCurrent)
           ..where((t) => t.locationId.equals('nyc')))
         .getSingleOrNull();
-    final denver = await (db.select(db.weatherCurrentData)
+    final denver = await (db.select(db.weatherCurrent)
           ..where((t) => t.locationId.equals('denver')))
         .getSingleOrNull();
     expect(nyc, isNotNull);
@@ -250,8 +250,8 @@ void main() {
   test('collect stores weather icon in blob metadata', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'weather_openweathermap',
             providerType: 'weather_openweathermap',
             pollSeconds: const Value(60),
@@ -284,7 +284,7 @@ void main() {
     final provider = WeatherDataProvider(httpClient: client, nowMs: () => 2000);
     await provider.collect(ctx);
 
-    final weather = await db.select(db.weatherCurrentData).getSingle();
+    final weather = await db.select(db.weatherCurrent).getSingle();
     expect(weather.currentIconBlobKey, isNotNull);
     final blob = await db.select(db.blobMetadata).getSingle();
     expect(blob.blobKey, startsWith('weather/icons/10d'));
@@ -294,8 +294,8 @@ void main() {
   test('collect swallows client socket failures and continues safely', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'weather_openweathermap',
             providerType: 'weather_openweathermap',
             pollSeconds: const Value(60),
@@ -323,7 +323,7 @@ void main() {
     await provider.collect(ctx);
 
     expect(client.sends, 1);
-    final rows = await db.select(db.weatherCurrentData).get();
+    final rows = await db.select(db.weatherCurrent).get();
     expect(rows, isEmpty);
     await db.close();
   });

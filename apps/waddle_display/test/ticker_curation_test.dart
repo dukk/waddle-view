@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:waddle_display/clock.dart';
@@ -26,22 +28,47 @@ void main() {
       feedName: 'F',
       title: 'T',
       publishedAtMs: 0,
+      articleId: 'art0',
     );
     expect(c.publishedAt.isUtc, isTrue);
     expect(c.publishedAt.millisecondsSinceEpoch, 0);
   });
 
-  test('buildTickerItemsForMarquee legacy includes quote from kv', () {
+  test('parseTickerTapeFallbackText reads fallbackText and legacy keys', () {
+    expect(
+      parseTickerTapeFallbackText(jsonEncode({'fallbackText': '  x '})),
+      'x',
+    );
+    expect(
+      parseTickerTapeFallbackText(jsonEncode({'ticker.marquee.quote': 'y'})),
+      'y',
+    );
+    expect(parseTickerTapeFallbackText(''), isNull);
+    expect(parseTickerTapeFallbackText('not json'), isNull);
+  });
+
+  test('buildTickerItemsForMarquee quote tape uses config_json fallback', () {
     final items = buildTickerItemsForMarquee(
-      kv: const {'ticker.marquee.quote': 'Inspiration'},
+      kv: const {},
       nowLocal: DateTime(2026, 1, 1, 12, 0, 0),
       newsCandidates: const [],
+      definitions: const [
+        TickerTapeForCuration(
+          id: 'q',
+          tickerType: 'quote',
+          enabled: true,
+          frequencyWeight: 1,
+          sortOrder: 0,
+          configJson: '{"fallbackText":"Inspiration"}',
+        ),
+      ],
     );
     final q = items.singleWhere((e) => e.kind == 'quote');
     expect(q.body, 'Inspiration');
+    expect(q.sourceId, 'ticker_tape:q');
   });
 
-  test('orders time then known keys then extra keys', () {
+  test('buildTickerItemsFromKv orders time then sorted ticker.marquee keys as custom', () {
     final t = DateTime(2026, 3, 4, 9, 8, 7);
     final items = buildTickerItemsFromKv(
       kv: {
@@ -54,14 +81,19 @@ void main() {
     );
     expect(items.map((e) => e.kind).toList(), [
       'time',
-      'weather',
-      'news',
-      'quote',
+      'custom',
+      'custom',
+      'custom',
       'custom',
     ]);
     expect(items[0].body, '09:08:07');
-    expect(items[1].body, 'W1');
-    expect(items[4].body, 'E1');
+    expect(items.map((e) => e.body).toList(), [
+      '09:08:07',
+      'E1',
+      'N1',
+      'Q1',
+      'W1',
+    ]);
   });
 
   test('dedupes identical bodies', () {
@@ -81,7 +113,7 @@ void main() {
       nowLocal: DateTime(2020, 1, 1),
     );
     expect(
-      items.any((e) => e.kind == 'news' && e.body == '[redacted]'),
+      items.any((e) => e.kind == 'custom' && e.body == '[redacted]'),
       isTrue,
     );
   });
@@ -91,7 +123,7 @@ void main() {
       kv: {'ticker.marquee.news': '   '},
       nowLocal: DateTime(2020, 1, 1),
     );
-    expect(items.where((e) => e.kind == 'news'), isEmpty);
+    expect(items.where((e) => e.kind == 'custom'), isEmpty);
     expect(items.first.kind, 'time');
   });
 
@@ -143,9 +175,7 @@ void main() {
 
   test('buildTickerItemsForMarquee uses current weather when available', () {
     final items = buildTickerItemsForMarquee(
-      kv: {
-        'ticker.marquee.weather': 'Fallback Weather',
-      },
+      kv: const {},
       nowLocal: DateTime(2026, 5, 1, 10, 0, 0),
       newsCandidates: const [],
       currentWeather: const CurrentWeatherTickerData(
@@ -153,9 +183,20 @@ void main() {
         temperatureC: 19.6,
         description: 'sunny',
       ),
+      definitions: const [
+        TickerTapeForCuration(
+          id: 'w',
+          tickerType: 'weather',
+          enabled: true,
+          frequencyWeight: 1,
+          sortOrder: 0,
+          configJson: '{"fallbackText":"Fallback Weather"}',
+        ),
+      ],
     );
     final weather = items.firstWhere((e) => e.kind == 'weather');
     expect(weather.body, 'Denver, CO: 20° · sunny');
+    expect(weather.sourceId, 'ticker_tape:w');
   });
 
   test('buildTickerItemsForMarquee appends NWS alert lines after live weather', () {
@@ -174,6 +215,15 @@ void main() {
           sourceId: 'nws.alert.urn:test',
         ),
       ],
+      definitions: const [
+        TickerTapeForCuration(
+          id: 'w',
+          tickerType: 'weather',
+          enabled: true,
+          frequencyWeight: 1,
+          sortOrder: 0,
+        ),
+      ],
     );
     final weatherItems = items.where((e) => e.kind == 'weather').toList();
     expect(weatherItems, hasLength(2));
@@ -184,26 +234,25 @@ void main() {
 
   test('buildTickerItemsForMarquee omits types not present in definitions', () {
     final defs = [
-      const TickerDefinitionForCuration(
+      const TickerTapeForCuration(
         id: 't1',
         tickerType: 'time',
         enabled: true,
         frequencyWeight: 1,
         sortOrder: 0,
       ),
-      const TickerDefinitionForCuration(
+      TickerTapeForCuration(
         id: 't2',
         tickerType: 'news',
         enabled: true,
         frequencyWeight: 1,
         sortOrder: 10,
+        configJson: jsonEncode({'fallbackText': 'KV'}),
       ),
     ];
     final ms = DateTime.utc(2026, 1, 1).millisecondsSinceEpoch;
     final items = buildTickerItemsForMarquee(
       kv: {
-        'ticker.marquee.weather': 'W',
-        'ticker.marquee.news': 'KV',
         'curator.ticker.newsScrollBudgetSeconds': '10000',
         'curator.ticker.newsCharWidthPx': '1',
         'curator.ticker.newsSeparatorPaddingPx': '0',
@@ -215,6 +264,7 @@ void main() {
           feedName: 'F',
           title: 'RSS',
           publishedAtMs: ms,
+          articleId: 'art-rss',
         ),
       ],
       definitions: defs,
@@ -225,21 +275,23 @@ void main() {
 
   test('buildTickerItemsForMarquee uses definition sort_order', () {
     final defs = [
-      const TickerDefinitionForCuration(
+      const TickerTapeForCuration(
         id: 'n',
         tickerType: 'news',
         enabled: true,
         frequencyWeight: 1,
         sortOrder: 20,
+        configJson: '{"fallbackText":"N"}',
       ),
-      const TickerDefinitionForCuration(
+      TickerTapeForCuration(
         id: 'q',
         tickerType: 'quote',
         enabled: true,
         frequencyWeight: 1,
         sortOrder: 10,
+        configJson: '{"fallbackText":"Q"}',
       ),
-      const TickerDefinitionForCuration(
+      const TickerTapeForCuration(
         id: 't',
         tickerType: 'time',
         enabled: true,
@@ -249,8 +301,9 @@ void main() {
     ];
     final items = buildTickerItemsForMarquee(
       kv: {
-        'ticker.marquee.news': 'N',
-        'ticker.marquee.quote': 'Q',
+        'curator.ticker.newsScrollBudgetSeconds': '10000',
+        'curator.ticker.newsCharWidthPx': '1',
+        'curator.ticker.newsSeparatorPaddingPx': '0',
       },
       nowLocal: DateTime(2026, 3, 4, 9, 8, 7),
       newsCandidates: const [],
@@ -261,7 +314,7 @@ void main() {
 
   test('buildTickerItemsForMarquee falls back to time when all definitions disabled', () {
     final defs = [
-      const TickerDefinitionForCuration(
+      const TickerTapeForCuration(
         id: 'x',
         tickerType: 'news',
         enabled: false,
@@ -270,7 +323,7 @@ void main() {
       ),
     ];
     final items = buildTickerItemsForMarquee(
-      kv: {'ticker.marquee.news': 'Headline'},
+      kv: const {},
       nowLocal: DateTime(2026, 3, 4, 9, 8, 7),
       newsCandidates: const [],
       definitions: defs,
@@ -280,7 +333,7 @@ void main() {
 
   test('buildTickerItemsForMarquee includes stocks from stockRows when definition enabled', () {
     final defs = [
-      const TickerDefinitionForCuration(
+      const TickerTapeForCuration(
         id: 's',
         tickerType: 'stocks',
         enabled: true,
@@ -326,7 +379,7 @@ void main() {
 
   test('buildTickerItemsForMarquee applies frequency_weight for distinct news bodies', () {
     final defs = [
-      const TickerDefinitionForCuration(
+      const TickerTapeForCuration(
         id: 'n',
         tickerType: 'news',
         enabled: true,
@@ -349,12 +402,14 @@ void main() {
           feedName: 'A',
           title: 'One',
           publishedAtMs: ms + 2,
+          articleId: 'art-one',
         ),
         TickerNewsCandidate(
           feedId: 'b',
           feedName: 'B',
           title: 'Two',
           publishedAtMs: ms + 1,
+          articleId: 'art-two',
         ),
       ],
       definitions: defs,

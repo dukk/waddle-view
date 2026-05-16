@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
-class ProviderSettings extends Table {
+/// Operator-configured integrations (collectors); persisted as SQLite `integrations`.
+class Integrations extends Table {
   TextColumn get id => text()();
   TextColumn get providerType => text()();
   BoolColumn get enabled => boolean().withDefault(const Constant(true))();
@@ -30,7 +31,12 @@ class BlobMetadata extends Table {
   Set<Column<Object>> get primaryKey => {blobKey};
 }
 
-class DashboardAlerts extends Table {
+/// Operator-visible alerts (OAuth device codes, manual notices). SQLite `alerts`.
+@DataClassName('DashboardAlert')
+class Alerts extends Table {
+  @override
+  String get tableName => 'alerts';
+
   IntColumn get id => integer().autoIncrement()();
   TextColumn get title => text()();
   TextColumn get body => text()();
@@ -72,22 +78,22 @@ const String kDisplayTimezoneKvKey = 'display.timezone';
 /// Default [kDisplayTimezoneKvKey] on first seed (US Eastern, observes DST).
 const String kDefaultDisplayTimezoneIana = 'America/New_York';
 
-/// Overlay kind stored in `display_overlay_schedules.overlay_kind`.
-const String kOverlayKindHeartsRain = 'hearts_rain';
+/// Overlay type stored in `overlays.overlay_type` (semantic id, like `screen_type`).
+const String kOverlayTypeHeartsRain = 'hearts_rain';
 
 /// Subtle falling confetti + optional sparse messages.
-const String kOverlayKindBirthdayConfetti = 'birthday_confetti';
+const String kOverlayTypeBirthdayConfetti = 'birthday_confetti';
 
 /// Single phrase bouncing off screen edges (DVD-style).
-const String kOverlayKindBouncingMessage = 'bouncing_message';
+const String kOverlayTypeBouncingMessage = 'bouncing_message';
 
 /// Seed row id for the example May 13 bouncing message overlay (installed disabled).
 const String kDefaultBouncingMessageOverlayId = 'default_bouncing_message_may_13';
 
-/// Default phrase for [kOverlayKindBouncingMessage] when [messages_json] is empty.
+/// Default phrase for [kOverlayTypeBouncingMessage] when `config_json.messages` is empty.
 const String kDefaultBouncingMessageOverlayPhrase = 'Happy Birthday Waddle!!';
 
-/// Seed row id for the US Mother's Day `[display_overlay_schedules]` preset.
+/// Seed row id for the US Mother's Day `[overlays]` preset.
 const String kDefaultMothersDayOverlayId = 'default_mothers_day_us';
 
 /// Seed row id for the example May 13 birthday confetti overlay (installed disabled).
@@ -99,7 +105,11 @@ const String kDefaultBirthdayOverlayExampleId = 'default_birthday_example_may_13
 ///
 /// Icon: set [materialIconName] (resolved in app code) and/or [iconBlobKey] for a
 /// custom image in blob storage.
+///
+/// Persisted as SQLite `curator_categories` (renamed from `content_categories`).
 class ContentCategories extends Table {
+  @override
+  String get tableName => 'curator_categories';
   TextColumn get id => text()();
   TextColumn get label => text()();
   TextColumn get iconBlobKey => text().nullable()();
@@ -111,7 +121,12 @@ class ContentCategories extends Table {
 
 /// TV display screen definition (single widget type + config + scheduling hints).
 /// Runtime layout JSON for the curator is synthesized when mapping rows to slides.
-class ScreenDefinitions extends Table {
+/// SQLite `screens` (legacy name `screen_definitions`).
+@DataClassName('ScreenDefinition')
+class Screens extends Table {
+  @override
+  String get tableName => 'screens';
+
   TextColumn get id => text()();
   TextColumn get name => text()();
   TextColumn get description => text().withDefault(const Constant(''))();
@@ -137,10 +152,14 @@ class ScreenDefinitions extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-/// Bottom ticker slot: which [tickerType] runs, how often ([frequencyWeight]),
-/// and display order ([sortOrder]). [configKey] binds `custom` rows to a
-/// `ticker.marquee.*` key; when null, all extra marquee keys are included.
-class TickerDefinitions extends Table {
+/// Bottom ticker tape: which [tickerType] runs, how often ([frequencyWeight]),
+/// and display order ([sortOrder]). [configJson] holds per-tape options (for
+/// example [fallbackText] for weather/news/quote). [configKey] binds `custom`
+/// rows to a `ticker.marquee.*` key in [ConfigKeyValues]; when null, all
+/// `ticker.marquee.*` keys are included for that tape.
+///
+/// Backed by the SQLite table `ticker_tapes` (formerly `ticker_definitions`).
+class TickerTapes extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
   TextColumn get description => text().withDefault(const Constant(''))();
@@ -151,6 +170,9 @@ class TickerDefinitions extends Table {
   IntColumn get frequencyWeight => integer().withDefault(const Constant(100))();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   TextColumn get configKey => text().nullable()();
+
+  /// Slot JSON (e.g. `fallbackText` when live/RSS data is missing for weather/news/quote).
+  TextColumn get configJson => text().withDefault(const Constant('{}'))();
 
   /// JSON Schema (draft 2020-12) describing marquee / KV options for [tickerType].
   TextColumn get configJsonSchema => text().nullable()();
@@ -306,6 +328,9 @@ class TriviaQuestions extends Table {
   TextColumn get correctOption => text()();
   DateTimeColumn get createdAtMs => dateTime()();
 
+  /// [Integrations.id] for the collector that wrote this row (`trivia_openai`, `trivia_opentdb`).
+  TextColumn get integrationId => text().nullable()();
+
   /// When true, excluded from slides; row kept for stable ids.
   BoolColumn get suppressed => boolean().withDefault(const Constant(false))();
 
@@ -354,8 +379,12 @@ class WeatherLocations extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-@TableIndex(name: 'idx_weather_current_data_observed', columns: {#observedAtMs})
-class WeatherCurrentData extends Table {
+@TableIndex(name: 'idx_weather_current_observed', columns: {#observedAtMs})
+@DataClassName('WeatherCurrentData')
+class WeatherCurrent extends Table {
+  @override
+  String get tableName => 'weather_current';
+
   TextColumn get locationId => text().references(WeatherLocations, #id)();
   DateTimeColumn get observedAtMs => dateTime()();
   RealColumn get currentTemp => real().nullable()();
@@ -368,11 +397,16 @@ class WeatherCurrentData extends Table {
 }
 
 /// Active NWS (api.weather.gov) alerts for a [WeatherLocations] row, keyed by CAP id.
+/// SQLite `weather_alerts` (legacy `weather_gov_active_alerts`).
 @TableIndex(
-  name: 'idx_weather_gov_active_alerts_location',
+  name: 'idx_weather_alerts_location',
   columns: {#locationId},
 )
-class WeatherGovActiveAlerts extends Table {
+@DataClassName('WeatherGovActiveAlert')
+class WeatherAlerts extends Table {
+  @override
+  String get tableName => 'weather_alerts';
+
   TextColumn get locationId => text().references(WeatherLocations, #id)();
   TextColumn get nwsAlertId => text()();
   TextColumn get event => text()();
@@ -388,7 +422,7 @@ class WeatherGovActiveAlerts extends Table {
   Set<Column<Object>> get primaryKey => {locationId, nwsAlertId};
 }
 
-/// Matches [ProviderSettings.id] for media sourced from that provider.
+/// Matches [Integrations.id] for media sourced from that integration.
 const String kMediaDataProviderPexels = 'media_pexels';
 
 /// Microsoft Graph OneDrive sync into [Photos] / [Videos].
@@ -458,7 +492,7 @@ class PexelsFetchBatches extends Table {
 /// User-configurable list of ticker symbols collected by the `stocks` provider.
 /// Mirrors the [WeatherLocations] pattern: rows can be enabled/disabled per
 /// symbol and the provider falls back to the seeded `defaultSymbols` from
-/// [ProviderSettings.configJson] when no rows are enabled.
+/// [Integrations.configJson] when no rows are enabled.
 class StockSymbols extends Table {
   TextColumn get id => text()();
   TextColumn get symbol => text()();
@@ -484,7 +518,11 @@ class StockSymbols extends Table {
 /// [action]) that matches the photographer name, alt text, or any URL field
 /// (with `-` and `_` treated as spaces) sets `suppressed = true`. Image
 /// content cannot be censored, so media matches always block.
+///
+/// Persisted as SQLite `curator_rejected_terms` (renamed from `reject_terms`).
 class RejectTerms extends Table {
+  @override
+  String get tableName => 'curator_rejected_terms';
   TextColumn get id => text()();
 
   /// Lowercased single term. Matched case-insensitively with `\b` word
@@ -550,6 +588,7 @@ class StockQuotes extends Table {
 /// Built-in operator roles for display REST / controller auth.
 const String kUserRoleAdmin = 'admin';
 const String kUserRoleOperator = 'operator';
+const String kUserRolePowerViewer = 'power_viewer';
 const String kUserRoleViewer = 'viewer';
 
 /// Reserved bootstrap username (password = instance id file when no named users).

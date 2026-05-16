@@ -19,11 +19,13 @@ import '../theme/display_theme.dart';
 import 'dashboard_kv_flags.dart';
 import 'dashboard_viewport_scope.dart';
 import 'display_navigation_bus.dart';
+import 'viewer_invite_runtime.dart';
 import 'slide_content_preload.dart';
 import 'screens/admin_setup/admin_setup_slide_widget.dart';
 import 'screens/calendar_month/calendar_month_slide_widget.dart';
 import 'screens/clock/analog_clock_slide_widget.dart';
 import 'screens/clock/digital_clock_slide_widget.dart';
+import 'screens/controller_invite/controller_invite_slide_widget.dart';
 import 'screens/data_health/data_health_slide_widget.dart';
 import 'screens/guest_wifi/guest_wifi_slide_widget.dart';
 import 'screens/joke/joke_slide_widget.dart';
@@ -53,7 +55,7 @@ String screenShownDebugLogLine({
 }
 
 /// Full-area carousel above the ticker: slides exit left / enter right between
-/// curated programs loaded from `screen_definitions` and [config_key_values].
+/// curated programs loaded from `screens` and [config_key_values].
 class ScreenRotator extends StatefulWidget {
   const ScreenRotator({
     super.key,
@@ -61,7 +63,8 @@ class ScreenRotator extends StatefulWidget {
     required this.blobs,
     required this.localRestBaseUrl,
     required this.adminBaseUrl,
-    required     this.instanceIdFile,
+    required this.instanceIdFile,
+    required this.viewerInviteRuntime,
     this.telemetryHub,
     this.navigationBus,
   });
@@ -73,6 +76,9 @@ class ScreenRotator extends StatefulWidget {
   final String localRestBaseUrl;
   final String adminBaseUrl;
   final File instanceIdFile;
+
+  /// Join QR / registration secret wiring from the display process environment.
+  final ViewerInviteRuntime viewerInviteRuntime;
 
   /// Optional operator REST telemetry (in-memory ring buffer).
   final OperatorTelemetryHub? telemetryHub;
@@ -204,7 +210,7 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
 
   Future<void> _startNewProgram() async {
     final defs =
-        await (widget.db.select(widget.db.screenDefinitions)
+        await (widget.db.select(widget.db.screens)
               ..where((t) => t.enabled.equals(true))
               ..orderBy([(t) => OrderingTerm.asc(t.id)]))
             .get();
@@ -635,6 +641,7 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
                   localRestBaseUrl: widget.localRestBaseUrl,
                   adminBaseUrl: widget.adminBaseUrl,
                   instanceIdFile: widget.instanceIdFile,
+                  viewerInviteRuntime: widget.viewerInviteRuntime,
                   slide: outgoing,
                   theme: theme,
                   slideIndex: _slideCursor > 0 ? _slideCursor - 1 : 0,
@@ -656,6 +663,7 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
                       localRestBaseUrl: widget.localRestBaseUrl,
                       adminBaseUrl: widget.adminBaseUrl,
                       instanceIdFile: widget.instanceIdFile,
+                      viewerInviteRuntime: widget.viewerInviteRuntime,
                       slide: incoming,
                       theme: theme,
                       slideIndex: _slideCursor,
@@ -813,6 +821,7 @@ class _SlideContent extends StatelessWidget {
     required this.localRestBaseUrl,
     required this.adminBaseUrl,
     required this.instanceIdFile,
+    required this.viewerInviteRuntime,
     required this.slide,
     required this.theme,
     required this.slideIndex,
@@ -825,6 +834,7 @@ class _SlideContent extends StatelessWidget {
   final String localRestBaseUrl;
   final String adminBaseUrl;
   final File instanceIdFile;
+  final ViewerInviteRuntime viewerInviteRuntime;
   final ResolvedSlide slide;
   final ThemeData theme;
   final int slideIndex;
@@ -955,6 +965,17 @@ class _SlideContent extends StatelessWidget {
         ),
       );
     }
+    if (widgets.length == 1 && widgets.first.type == 'controller_invite') {
+      final w = widgets.first;
+      return SizedBox.expand(
+        child: ControllerInviteSlideWidget(
+          displayApiBaseUrl: localRestBaseUrl,
+          viewerInviteRuntime: viewerInviteRuntime,
+          spec: w,
+          theme: theme,
+        ),
+      );
+    }
     if (widgets.length == 1 && widgets.first.type == 'data_health') {
       final w = widgets.first;
       return SizedBox.expand(
@@ -1000,8 +1021,8 @@ class _SlideContent extends StatelessWidget {
                 spec: w,
                 theme: theme,
               );
-            case 'guest_wifi':
-              return GuestWifiSlideWidget(db: db, spec: w, theme: theme);
+            case 'wifi':
+              return GuestWifiSlideWidget(spec: w, theme: theme);
             case 'digital_clock':
               return DigitalClockSlideWidget(spec: w, theme: theme);
             case 'analog_clock':
@@ -1063,6 +1084,13 @@ class _SlideContent extends StatelessWidget {
               return AdminSetupSlideWidget(
                 adminBaseUrl: adminBaseUrl,
                 instanceIdFile: instanceIdFile,
+                spec: w,
+                theme: theme,
+              );
+            case 'controller_invite':
+              return ControllerInviteSlideWidget(
+                displayApiBaseUrl: localRestBaseUrl,
+                viewerInviteRuntime: viewerInviteRuntime,
                 spec: w,
                 theme: theme,
               );

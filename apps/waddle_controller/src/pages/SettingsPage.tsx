@@ -1,13 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
   Divider,
+  FormControl,
+  IconButton,
+  InputLabel,
   List,
   ListItem,
   ListItemText,
   MenuItem,
+  Select,
   Stack,
   TextField,
   Typography,
@@ -17,10 +26,16 @@ import {
   exportDisplaysJson,
   importDisplaysJson,
   importDisplaysJsonLegacy,
+  type SavedDisplay,
 } from '@/storage/displays';
 import { useAuth } from '@/context/AuthContext';
 import { useDisplay } from '@/context/DisplayContext';
-import { apiFetch, apiJson } from '@/api/client';
+import { apiFetch, apiJson, ApiError } from '@/api/client';
+import {
+  curatorThemeIds,
+  curatorTextScaleIds,
+  type CuratorDisplaySettings,
+} from '@/constants/curatorDisplaySettings';
 
 type UserRow = {
   id: string;
@@ -28,11 +43,20 @@ type UserRow = {
   display_name: string;
   role: string;
   disabled: boolean;
+  /** Absent on older display builds; falls back to username `display`. */
+  is_bootstrap?: boolean;
 };
+
+function isBootstrapLikeUser(u: UserRow): boolean {
+  if (u.is_bootstrap === true) return true;
+  if (u.is_bootstrap === false) return false;
+  return u.username.toLowerCase() === 'display';
+}
 
 export function SettingsPage() {
   const { displays, active, refresh, removeDisplay } = useDisplay();
   const { hasPermission, session, refreshSession } = useAuth();
+  const [kvWriteTick, setKvWriteTick] = useState(0);
   const [importText, setImportText] = useState('');
   const [msg, setMsg] = useState<{ level: 'success' | 'error'; text: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -72,7 +96,8 @@ export function SettingsPage() {
 
       {session && (
         <Alert severity="info">
-          Signed in as <strong>{session.user.username}</strong> ({session.user.role})
+          Signed in as <strong>{session.user.username}</strong> ({session.user.role}). Open{' '}
+          <strong>Account</strong> from the user menu (top right) to change display name or password.
         </Alert>
       )}
 
@@ -81,11 +106,22 @@ export function SettingsPage() {
         navigate the <strong>screen</strong> carousel; Up/Down navigate the <strong>ticker</strong>.
       </Alert>
 
-      {canManageUsers && active && <UsersSection display={active} onChanged={() => void refreshSession()} />}
-
-      {!canManageUsers && active && (
-        <ProfilePasswordSection display={active} userId={session?.user.id ?? ''} />
+      {active && hasPermission('curator.read') && (
+        <>
+          <CuratorDisplaySettingsSection
+            display={active}
+            canWrite={hasPermission('curator.write')}
+            kvWriteTick={kvWriteTick}
+          />
+          <AdvancedConfigKeyValuesSection
+            display={active}
+            canWrite={hasPermission('curator.write')}
+            onApplied={() => setKvWriteTick((t) => t + 1)}
+          />
+        </>
       )}
+
+      {canManageUsers && active && <UsersSection display={active} onChanged={() => void refreshSession()} />}
 
       <Box>
         <Typography variant="subtitle1" gutterBottom>
@@ -164,6 +200,352 @@ export function SettingsPage() {
   );
 }
 
+function CuratorDisplaySettingsSection({
+  display,
+  canWrite,
+  kvWriteTick,
+}: {
+  display: { id: string; baseUrl: string; label: string };
+  canWrite: boolean;
+  /** Incremented when SQLite `config_key_values` may have changed elsewhere on this page. */
+  kvWriteTick: number;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [form, setForm] = useState<CuratorDisplaySettings | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await apiJson<CuratorDisplaySettings>(display, '/v1/curator/settings');
+      const tz =
+        typeof data.display_timezone === 'string' && data.display_timezone.trim() !== ''
+          ? data.display_timezone.trim()
+          : 'America/New_York';
+      setForm({ ...data, display_timezone: tz });
+    } catch (e) {
+      setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [display]);
+
+  useEffect(() => {
+    void load();
+  }, [load, kvWriteTick]);
+
+  const save = async () => {
+    if (!form) return;
+    setError(null);
+    setSaved(false);
+    try {
+      await apiJson(display, '/v1/curator/settings', {
+        method: 'PUT',
+        body: JSON.stringify({
+          program_duration_seconds: form.program_duration_seconds,
+          history_depth: form.history_depth,
+          ticker_pixels_per_second: form.ticker_pixels_per_second,
+          display_theme_id: form.display_theme_id,
+          display_text_scale_screen: form.display_text_scale_screen,
+          display_text_scale_ticker: form.display_text_scale_ticker,
+          display_timezone: form.display_timezone,
+        }),
+      });
+      setSaved(true);
+    } catch (e) {
+      setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
+    }
+  };
+
+  if (loading || !form) {
+    return <Typography variant="body2">Loading display and curator tuning…</Typography>;
+  }
+
+  return (
+    <Box>
+      <Typography variant="subtitle1" gutterBottom>
+        Display and curator tuning
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Program timing, ticker speed, typography, and wall-clock timezone for calendars. News photo
+        requirement stays on the <strong>Curators</strong> page.
+      </Typography>
+      {error && (
+        <Alert severity="error" sx={{ mb: 1 }}>
+          {error}
+        </Alert>
+      )}
+      {saved && (
+        <Alert severity="success" sx={{ mb: 1 }} onClose={() => setSaved(false)}>
+          Saved.
+        </Alert>
+      )}
+      <Stack spacing={2} sx={{ maxWidth: 560 }}>
+        <TextField
+          label="Program duration (seconds)"
+          type="number"
+          disabled={!canWrite}
+          value={form.program_duration_seconds}
+          onChange={(e) =>
+            setForm({ ...form, program_duration_seconds: Number(e.target.value) || 0 })
+          }
+          fullWidth
+        />
+        <TextField
+          label="History depth"
+          type="number"
+          disabled={!canWrite}
+          value={form.history_depth}
+          onChange={(e) => setForm({ ...form, history_depth: Number(e.target.value) || 0 })}
+          fullWidth
+        />
+        <TextField
+          label="Ticker pixels per second"
+          disabled={!canWrite}
+          value={form.ticker_pixels_per_second}
+          onChange={(e) => setForm({ ...form, ticker_pixels_per_second: e.target.value })}
+          fullWidth
+        />
+        <TextField
+          label="Display timezone (IANA)"
+          disabled={!canWrite}
+          value={form.display_timezone}
+          onChange={(e) => setForm({ ...form, display_timezone: e.target.value })}
+          fullWidth
+          helperText="Stored as config key display.timezone (e.g. America/Chicago). Invalid ids fall back on the display."
+        />
+        <FormControl fullWidth disabled={!canWrite}>
+          <InputLabel id="theme-label">Display theme</InputLabel>
+          <Select
+            labelId="theme-label"
+            label="Display theme"
+            value={form.display_theme_id}
+            onChange={(e) => setForm({ ...form, display_theme_id: String(e.target.value) })}
+          >
+            {curatorThemeIds.map((t) => (
+              <MenuItem key={t.id} value={t.id}>
+                {t.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <FormControl fullWidth disabled={!canWrite}>
+          <InputLabel id="screen-scale">Screen text scale</InputLabel>
+          <Select
+            labelId="screen-scale"
+            label="Screen text scale"
+            value={form.display_text_scale_screen}
+            onChange={(e) => setForm({ ...form, display_text_scale_screen: String(e.target.value) })}
+          >
+            {curatorTextScaleIds.map((id) => (
+              <MenuItem key={id} value={id}>
+                {id}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <FormControl fullWidth disabled={!canWrite}>
+          <InputLabel id="ticker-scale">Ticker text scale</InputLabel>
+          <Select
+            labelId="ticker-scale"
+            label="Ticker text scale"
+            value={form.display_text_scale_ticker}
+            onChange={(e) => setForm({ ...form, display_text_scale_ticker: String(e.target.value) })}
+          >
+            {curatorTextScaleIds.map((id) => (
+              <MenuItem key={`t-${id}`} value={id}>
+                {id}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        {canWrite && (
+          <Button variant="contained" onClick={() => void save()}>
+            Save display and curator tuning
+          </Button>
+        )}
+      </Stack>
+    </Box>
+  );
+}
+
+type KvRow = { key: string; value: string };
+
+function AdvancedConfigKeyValuesSection({
+  display,
+  canWrite,
+  onApplied,
+}: {
+  display: SavedDisplay;
+  canWrite: boolean;
+  onApplied: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [savedMsg, setSavedMsg] = useState<string | null>(null);
+  const [rows, setRows] = useState<KvRow[]>([]);
+  const [initialKeys, setInitialKeys] = useState<Set<string>>(() => new Set());
+
+  const loadRows = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    setSavedMsg(null);
+    try {
+      const body = await apiJson<{ items: { key: string; value: string }[] }>(
+        display,
+        '/v1/config/key-values',
+      );
+      const next = (body.items ?? []).map((r: { key: string; value: string }) => ({
+        key: r.key,
+        value: r.value,
+      }));
+      setRows(next);
+      setInitialKeys(new Set(next.map((r) => r.key)));
+    } catch (e) {
+      setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [display]);
+
+  useEffect(() => {
+    if (expanded) {
+      void loadRows();
+    }
+  }, [expanded, loadRows]);
+
+  const applyChanges = async () => {
+    setError(null);
+    setSavedMsg(null);
+    const trimmed = rows.map((r) => ({ key: r.key.trim(), value: r.value }));
+    for (const r of trimmed) {
+      if (!r.key && r.value.trim() !== '') {
+        setError('Each value needs a non-empty key, or clear the value on unused rows.');
+        return;
+      }
+    }
+    const activeRows = trimmed.filter((r) => r.key.length > 0);
+    const keys = activeRows.map((r) => r.key);
+    if (new Set(keys).size !== keys.length) {
+      setError('Duplicate keys are not allowed.');
+      return;
+    }
+    const nextMap = new Map(activeRows.map((r) => [r.key, r.value]));
+    try {
+      for (const k of initialKeys) {
+        if (!nextMap.has(k)) {
+          await apiFetch(
+            display,
+            `/v1/config/key-values?key=${encodeURIComponent(k)}`,
+            { method: 'DELETE' },
+          );
+        }
+      }
+      for (const [key, value] of nextMap) {
+        await apiFetch(display, '/v1/config/key-values', {
+          method: 'PUT',
+          body: JSON.stringify({ key, value }),
+        });
+      }
+      setSavedMsg('Key–value changes applied.');
+      setInitialKeys(new Set(nextMap.keys()));
+      onApplied();
+    } catch (e) {
+      setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
+    }
+  };
+
+  return (
+    <Accordion
+      expanded={expanded}
+      onChange={(_, next) => setExpanded(next)}
+      disableGutters
+      elevation={0}
+      sx={{ maxWidth: 720, '&:before': { display: 'none' } }}
+    >
+      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+        <Typography fontWeight={600}>Advanced: config key–values</Typography>
+      </AccordionSummary>
+      <AccordionDetails sx={{ pt: 0 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Direct access to SQLite <code>config_key_values</code> (curator defaults, theme, ticker copy,
+          <code>display.timezone</code>, etc.). Use carefully; invalid keys can confuse the display.
+        </Typography>
+        {error && (
+          <Alert severity="error" sx={{ mb: 1 }}>
+            {error}
+          </Alert>
+        )}
+        {savedMsg && (
+          <Alert severity="success" sx={{ mb: 1 }} onClose={() => setSavedMsg(null)}>
+            {savedMsg}
+          </Alert>
+        )}
+        {expanded && loading && <Typography variant="body2">Loading keys…</Typography>}
+        {expanded && !loading && (
+          <Stack spacing={2}>
+            {rows.map((row, idx) => (
+              <Stack key={idx} direction="row" spacing={1} alignItems="flex-start">
+                <TextField
+                  label="Key"
+                  value={row.key}
+                  disabled={!canWrite}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setRows((prev) => prev.map((p, i) => (i === idx ? { ...p, key: v } : p)));
+                  }}
+                  fullWidth
+                  size="small"
+                />
+                <TextField
+                  label="Value"
+                  value={row.value}
+                  disabled={!canWrite}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setRows((prev) => prev.map((p, i) => (i === idx ? { ...p, value: v } : p)));
+                  }}
+                  fullWidth
+                  size="small"
+                />
+                <IconButton
+                  aria-label="Remove row"
+                  disabled={!canWrite}
+                  onClick={() => setRows((prev) => prev.filter((_, i) => i !== idx))}
+                  sx={{ mt: 0.5 }}
+                >
+                  <DeleteOutlineIcon />
+                </IconButton>
+              </Stack>
+            ))}
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={!canWrite}
+                onClick={() => setRows((prev) => [...prev, { key: '', value: '' }])}
+              >
+                Add row
+              </Button>
+              <Button size="small" variant="outlined" disabled={!canWrite} onClick={() => void loadRows()}>
+                Reload from display
+              </Button>
+              {canWrite && (
+                <Button size="small" variant="contained" onClick={() => void applyChanges()}>
+                  Apply changes
+                </Button>
+              )}
+            </Stack>
+          </Stack>
+        )}
+      </AccordionDetails>
+    </Accordion>
+  );
+}
+
 function UsersSection({
   display,
   onChanged,
@@ -171,11 +553,21 @@ function UsersSection({
   display: { id: string; baseUrl: string; label: string };
   onChanged: () => void;
 }) {
+  const { login } = useAuth();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('operator');
   const [err, setErr] = useState<string | null>(null);
+
+  const nonBootstrapUsers = users.filter((u) => !isBootstrapLikeUser(u));
+  const forceAdminRole = users.length > 0 && nonBootstrapUsers.length === 0;
+
+  useEffect(() => {
+    if (forceAdminRole) {
+      setRole('admin');
+    }
+  }, [forceAdminRole]);
 
   const load = useCallback(async () => {
     const body = await apiJson<{ items: UserRow[] }>(display, '/v1/users');
@@ -188,13 +580,26 @@ function UsersSection({
 
   const create = async () => {
     setErr(null);
+    const u = username.trim();
+    const p = password;
+    const reloginAsNewUser = forceAdminRole;
     try {
       await apiFetch(display, '/v1/users', {
         method: 'POST',
-        body: JSON.stringify({ username, password, role }),
+        body: JSON.stringify({
+          username: u,
+          password: p,
+          role: reloginAsNewUser ? 'admin' : role,
+        }),
       });
       setUsername('');
       setPassword('');
+      // Creating the first named user disables the bootstrap `display` account; the
+      // current session token is then rejected. Sign in as the new user before
+      // any further /v1/* calls (load, refreshSession).
+      if (reloginAsNewUser) {
+        await login(u, p);
+      }
       await load();
       onChanged();
     } catch (e) {
@@ -227,58 +632,25 @@ function UsersSection({
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <TextField select label="Role" value={role} onChange={(e) => setRole(e.target.value)}>
+        <TextField
+          select
+          label="Role"
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+          disabled={forceAdminRole}
+          helperText={
+            forceAdminRole
+              ? 'The first named user must be an administrator so you keep access after the bootstrap account is disabled.'
+              : undefined
+          }
+        >
           <MenuItem value="admin">admin</MenuItem>
           <MenuItem value="operator">operator</MenuItem>
+          <MenuItem value="power_viewer">power_viewer</MenuItem>
           <MenuItem value="viewer">viewer</MenuItem>
         </TextField>
         <Button variant="contained" onClick={() => void create()}>
           Create
-        </Button>
-      </Stack>
-    </Box>
-  );
-}
-
-function ProfilePasswordSection({
-  display,
-  userId,
-}: {
-  display: { id: string; baseUrl: string; label: string };
-  userId: string;
-}) {
-  const [password, setPassword] = useState('');
-  const [msg, setMsg] = useState<string | null>(null);
-
-  const submit = async () => {
-    if (!userId) return;
-    try {
-      await apiFetch(display, `/v1/users/${userId}/password`, {
-        method: 'POST',
-        body: JSON.stringify({ password }),
-      });
-      setPassword('');
-      setMsg('Password updated.');
-    } catch (e) {
-      setMsg(String(e));
-    }
-  };
-
-  return (
-    <Box>
-      <Typography variant="subtitle1" gutterBottom>
-        Change your password
-      </Typography>
-      {msg && <Alert severity="info">{msg}</Alert>}
-      <Stack spacing={1}>
-        <TextField
-          type="password"
-          label="New password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <Button variant="outlined" onClick={() => void submit()}>
-          Update password
         </Button>
       </Stack>
     </Box>

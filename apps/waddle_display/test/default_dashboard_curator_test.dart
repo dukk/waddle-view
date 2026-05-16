@@ -19,7 +19,7 @@ class _MapRead implements CuratorReadPort {
   final Map<String, String> data;
   final CurrentWeatherTickerData? currentWeather;
   final List<WeatherGovAlertTickerItem>? weatherGovAlerts;
-  final List<TickerDefinitionForCuration>? tickerDefs;
+  final List<TickerTapeForCuration>? tickerDefs;
   final List<StockTickerRowForMarquee>? stockRows;
 
   @override
@@ -39,7 +39,7 @@ class _MapRead implements CuratorReadPort {
       weatherGovAlerts ?? const [];
 
   @override
-  Future<List<TickerDefinitionForCuration>> loadTickerDefinitionsForCuration() async =>
+  Future<List<TickerTapeForCuration>> loadTickerTapesForCuration() async =>
       tickerDefs ?? const [];
 
   @override
@@ -72,10 +72,34 @@ void main() {
   test('refresh writes curated ticker list', () async {
     final store = _RecordingTickerStore();
     final curator = DefaultDashboardCurator(
-      read: _MapRead({
-        'ticker.marquee.news': 'Headline',
-        'ticker.marquee.weather': 'Cold',
-      }),
+      read: _MapRead(
+        const {},
+        tickerDefs: const [
+          TickerTapeForCuration(
+            id: 'ticker_time',
+            tickerType: 'time',
+            enabled: true,
+            frequencyWeight: 1,
+            sortOrder: 0,
+          ),
+          TickerTapeForCuration(
+            id: 'ticker_weather',
+            tickerType: 'weather',
+            enabled: true,
+            frequencyWeight: 1,
+            sortOrder: 10,
+            configJson: '{"fallbackText":"Cold"}',
+          ),
+          TickerTapeForCuration(
+            id: 'ticker_news',
+            tickerType: 'news',
+            enabled: true,
+            frequencyWeight: 1,
+            sortOrder: 20,
+            configJson: '{"fallbackText":"Headline"}',
+          ),
+        ],
+      ),
       tickerStore: store,
       clock: FakeClock(DateTime(2026, 1, 2, 15, 0, 0)),
     );
@@ -91,13 +115,13 @@ void main() {
     expect(store.last![2].body, 'Headline');
   });
 
-  test('refresh includes stock quotes when ticker_definitions includes stocks', () async {
+  test('refresh includes stock quotes when ticker_tapes includes stocks', () async {
     final store = _RecordingTickerStore();
     final curator = DefaultDashboardCurator(
       read: _MapRead(
         const {},
         tickerDefs: const [
-          TickerDefinitionForCuration(
+          TickerTapeForCuration(
             id: 'stock_finnhub',
             tickerType: 'stocks',
             enabled: true,
@@ -130,10 +154,32 @@ void main() {
     final store = _RecordingTickerStore();
     final curator = DefaultDashboardCurator(
       read: _MapRead(
-        {
-          'ticker.marquee.news': 'Headline',
-          'ticker.marquee.weather': 'Fallback Weather',
-        },
+        const {},
+        tickerDefs: const [
+          TickerTapeForCuration(
+            id: 'ticker_time',
+            tickerType: 'time',
+            enabled: true,
+            frequencyWeight: 1,
+            sortOrder: 0,
+          ),
+          TickerTapeForCuration(
+            id: 'ticker_weather',
+            tickerType: 'weather',
+            enabled: true,
+            frequencyWeight: 1,
+            sortOrder: 10,
+            configJson: '{"fallbackText":"Fallback Weather"}',
+          ),
+          TickerTapeForCuration(
+            id: 'ticker_news',
+            tickerType: 'news',
+            enabled: true,
+            frequencyWeight: 1,
+            sortOrder: 20,
+            configJson: '{"fallbackText":"Headline"}',
+          ),
+        ],
         currentWeather: const CurrentWeatherTickerData(
           locationName: 'Atlanta, GA',
           temperatureC: 23,
@@ -166,7 +212,7 @@ void main() {
           ),
         ],
         tickerDefs: const [
-          TickerDefinitionForCuration(
+          TickerTapeForCuration(
             id: 'w',
             tickerType: 'weather',
             enabled: true,

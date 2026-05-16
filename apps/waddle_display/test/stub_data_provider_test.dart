@@ -4,6 +4,7 @@ import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_shared/collect/stub_data_provider.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/seed/tables/ticker_tapes_seed.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 
 import 'helpers/fake_blob_store.dart';
@@ -13,8 +14,9 @@ void main() {
   test('collect writes kv and blob metadata', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(id: 'stub', providerType: 'stub'),
+    await ensureTickerTapesSeed(db);
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(id: 'stub', providerType: 'stub'),
         );
     final secrets = InMemorySecretStore();
     final resolver = ProviderConfigResolver(db, {});
@@ -30,6 +32,10 @@ void main() {
               ..where((t) => t.key.equals('header.title')))
             .getSingle();
     expect(row.value, 'Waddle View');
+    final weatherTape = await (db.select(db.tickerTapes)
+          ..where((t) => t.id.equals('ticker_weather')))
+        .getSingle();
+    expect(weatherTape.configJson.contains('72°F'), isTrue);
     final blobs = await db.select(db.blobMetadata).get();
     expect(blobs, isNotEmpty);
     await db.close();

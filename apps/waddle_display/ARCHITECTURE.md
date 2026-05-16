@@ -7,7 +7,7 @@ This document describes how the TV dashboard is structured at runtime and how ma
 - **Single process**: Flutter UI, background async loops, and the embedded HTTP server share one isolate unless you add isolates later.
 - **Ports and adapters**: abstract boundaries (`IDataProvider`, `DataWriteContext`, `AlertRepository`, `TickerCuratedRepository`, `DashboardCurator`, `BlobStore`, `SecretStore`, `WindowChromeController`) with Drift/filesystem/Linux implementations.
 - **No secrets in SQLite**: static provider API keys are read from the **merged environment map** (see [`ProviderConfigResolver`](../../packages/waddle_shared/lib/config/provider_config_resolver.dart)); **Google / Microsoft Graph OAuth** tokens use [`SecretStore`](../../packages/waddle_shared/lib/secrets/secret_store.dart) / [`FlutterSecureSecretStore`](../../packages/waddle_shared/lib/secrets/flutter_secure_secret_store.dart). SQLite holds non-secret configuration and operational data.
-- **Drift as the hub**: display **screen definitions** (`screen_definitions`), **configuration key–values** (`config_key_values`, including curator program settings and theme/ticker keys), alerts, blob metadata, RSS tables, and provider settings read/write through [`AppDatabase`](../../packages/waddle_shared/lib/persistence/database.dart). **Ticker marquee text is in-memory only** ([`MemoryTickerCuratedRepository`](lib/ticker/memory_ticker_curated_repository.dart)); REST exposes a read-only snapshot.
+- **Drift as the hub**: display **screen definitions** (`screens`), **configuration key–values** (`config_key_values`, including curator program settings and theme/ticker keys), alerts, blob metadata, RSS tables, and provider settings read/write through [`AppDatabase`](../../packages/waddle_shared/lib/persistence/database.dart). **Ticker marquee text is in-memory only** ([`MemoryTickerCuratedRepository`](lib/ticker/memory_ticker_curated_repository.dart)); REST exposes a read-only snapshot.
 
 ## Module map
 
@@ -167,7 +167,7 @@ sequenceDiagram
     P->>Blob: putBytes / paths
     opt provider needs config + static API key
       P->>Ctx: resolveConfig(providerId)
-      Ctx->>DB: provider_settings
+      Ctx->>DB: integrations
       Ctx->>Res: resolver (env map → accessToken)
       Ctx-->>P: ProviderRuntimeConfig
     end
@@ -204,7 +204,7 @@ sequenceDiagram
   Keys-->>Auth: key material
   Auth->>R: forward if valid
   R->>AR: insertAlert(title, body, ...)
-  AR->>DB: INSERT dashboard_alerts
+  AR->>DB: INSERT alerts
   DB-->>AR: new id
   R-->>Ext: 200 JSON id
   DB-->>Host: watch emits rows
@@ -216,11 +216,11 @@ sequenceDiagram
 
 ## Sequence: curated marquee ticker
 
-Providers persist **domain** rows (for example [`config_key_values`](../../packages/waddle_shared/lib/persistence/tables.dart) keys such as `ticker.marquee.*`). [`DefaultDashboardCurator`](lib/curator/default_dashboard_curator.dart) reads them via [`DriftCuratorReadPort`](lib/curator/drift_curator_read_port.dart), maps them through pure [`buildTickerItemsForMarquee`](lib/curator/ticker_curation.dart), and writes the ordered list to [`MemoryTickerCuratedRepository`](lib/ticker/memory_ticker_curated_repository.dart). [`TickerMarquee`](lib/ticker/ticker_marquee.dart) subscribes with `watchOrdered()` and scrolls horizontally at a fixed **pixels per second**. `GET /v1/ticker/items` uses the same repository’s `snapshot()`.
+Providers persist **domain** rows in SQLite (for example [`config_key_values`](../../packages/waddle_shared/lib/persistence/tables.dart) for curator tuning and **`ticker.marquee.*`** lines used only by **`custom`** ticker tapes). [`DefaultDashboardCurator`](lib/curator/default_dashboard_curator.dart) reads them via [`DriftCuratorReadPort`](lib/curator/drift_curator_read_port.dart), maps them through pure [`buildTickerItemsForMarquee`](lib/curator/ticker_curation.dart) together with **`ticker_tapes.config_json`** fallbacks for weather/news/quote, and writes the ordered list to [`MemoryTickerCuratedRepository`](lib/ticker/memory_ticker_curated_repository.dart). [`TickerMarquee`](lib/ticker/ticker_marquee.dart) subscribes with `watchOrdered()` and scrolls horizontally at a fixed **pixels per second**. `GET /v1/ticker/items` uses the same repository’s `snapshot()`.
 
 ## Sequence: display screen programs
 
-[`ScreenRotator`](lib/display/screen_rotator.dart) loads enabled rows from [`screen_definitions`](../../packages/waddle_shared/lib/persistence/tables.dart) and curator program keys in [`config_key_values`](../../packages/waddle_shared/lib/persistence/tables.dart) (`curator.program.*`), runs [`ScreenProgramCurator.buildProgram`](lib/curator/screen_program_curator.dart) (weighted picks biased by recent slide ids, random photo pools without duplicate assets in one program), then advances slides on a dwell timer with **exit left / enter right** transitions. When a program finishes, a new program is curated using the rolling history of shown screen ids.
+[`ScreenRotator`](lib/display/screen_rotator.dart) loads enabled rows from [`screens`](../../packages/waddle_shared/lib/persistence/tables.dart) and curator program keys in [`config_key_values`](../../packages/waddle_shared/lib/persistence/tables.dart) (`curator.program.*`), runs [`ScreenProgramCurator.buildProgram`](lib/curator/screen_program_curator.dart) (weighted picks biased by recent slide ids, random photo pools without duplicate assets in one program), then advances slides on a dwell timer with **exit left / enter right** transitions. When a program finishes, a new program is curated using the rolling history of shown screen ids.
 
 Before each transition (and before showing the first slide of a newly curated program), the rotator awaits [`preloadResolvedSlideContent`](lib/display/slide_content_preload.dart), which warms the same DB/blob/video file paths the async slide widgets would load, so incoming slides avoid loading spinners and flicker. While the current slide is showing, it **prefetches** the next slide in the background; if a transition is requested before prefetch finishes, the rotator waits for preparation anyway. A very slow asset can therefore **extend** the visible time of the current slide slightly (the next slide appears only after its resources are ready).
 

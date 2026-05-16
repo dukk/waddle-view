@@ -40,6 +40,7 @@ class TickerItem {
     required this.body,
     this.sourceId,
     this.rss,
+    this.articleId,
   });
 
   final String kind;
@@ -51,14 +52,18 @@ class TickerItem {
   /// deduplication and APIs.
   final TickerRssSegments? rss;
 
+  /// [RssArticles.id] when [kind] is `news` from a concrete article row.
+  final String? articleId;
+
   @override
   bool operator ==(Object other) =>
       other is TickerItem &&
       other.kind == kind &&
       other.body == body &&
       other.sourceId == sourceId &&
-      other.rss == rss;
+      other.rss == rss &&
+      other.articleId == articleId;
 
   @override
-  int get hashCode => Object.hash(kind, body, sourceId, rss);
+  int get hashCode => Object.hash(kind, body, sourceId, rss, articleId);
 }

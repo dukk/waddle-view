@@ -125,11 +125,11 @@ export function ScreensPage() {
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>id</TableCell>
-              <TableCell>name</TableCell>
-              <TableCell>type</TableCell>
-              <TableCell>enabled</TableCell>
-              <TableCell align="right">actions</TableCell>
+              <TableCell>ID</TableCell>
+              <TableCell>Name</TableCell>
+              <TableCell>Type</TableCell>
+              <TableCell>Enabled</TableCell>
+              <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>

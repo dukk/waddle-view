@@ -6,24 +6,24 @@ import '../global_options.dart';
 import 'emit.dart';
 import 'with_backend.dart';
 
-class ProvidersCommand extends Command<void> {
-  ProvidersCommand(this.globalOptions) : super() {
-    addSubcommand(_ProvidersList(globalOptions));
-    addSubcommand(_ProvidersDescribe(globalOptions));
-    addSubcommand(_ProvidersUpdate(globalOptions));
+class IntegrationsCommand extends Command<void> {
+  IntegrationsCommand(this.globalOptions) : super() {
+    addSubcommand(_IntegrationsList(globalOptions));
+    addSubcommand(_IntegrationsDescribe(globalOptions));
+    addSubcommand(_IntegrationsUpdate(globalOptions));
   }
 
   final GlobalCliOptions globalOptions;
 
   @override
-  String get name => 'providers';
+  String get name => 'integrations';
 
   @override
-  String get description => 'Manage provider_settings rows.';
+  String get description => 'Manage integrations table rows.';
 }
 
-class _ProvidersList extends Command<void> {
-  _ProvidersList(this.globalOptions) : super();
+class _IntegrationsList extends Command<void> {
+  _IntegrationsList(this.globalOptions) : super();
 
   final GlobalCliOptions globalOptions;
 
@@ -31,18 +31,18 @@ class _ProvidersList extends Command<void> {
   String get name => 'list';
 
   @override
-  String get description => 'List all providers.';
+  String get description => 'List all integrations.';
 
   @override
   Future<void> run() async {
     await withLocalBackend(globalOptions, (b) async {
-      CliEmit(globalOptions).emitRows(await b.listProviders());
+      CliEmit(globalOptions).emitRows(await b.listIntegrations());
     });
   }
 }
 
-class _ProvidersDescribe extends Command<void> {
-  _ProvidersDescribe(this.globalOptions) : super();
+class _IntegrationsDescribe extends Command<void> {
+  _IntegrationsDescribe(this.globalOptions) : super();
 
   final GlobalCliOptions globalOptions;
 
@@ -50,16 +50,16 @@ class _ProvidersDescribe extends Command<void> {
   String get name => 'describe';
 
   @override
-  String get description => 'Show one provider row by id.';
+  String get description => 'Show one integration row by id.';
 
   @override
   Future<void> run() async {
     final rest = argResults!.rest;
     if (rest.length != 1) {
-      usageException('Usage: waddlectl providers describe <id>');
+      usageException('Usage: waddlectl integrations describe <id>');
     }
     await withLocalBackend(globalOptions, (b) async {
-      final row = await b.describeProvider(rest.first);
+      final row = await b.describeIntegration(rest.first);
       if (row == null) {
         stderr.writeln('Not found: ${rest.first}');
         return;
@@ -69,8 +69,8 @@ class _ProvidersDescribe extends Command<void> {
   }
 }
 
-class _ProvidersUpdate extends Command<void> {
-  _ProvidersUpdate(this.globalOptions) : super() {
+class _IntegrationsUpdate extends Command<void> {
+  _IntegrationsUpdate(this.globalOptions) : super() {
     argParser
       ..addOption('enabled', allowed: ['true', 'false'])
       ..addOption('poll-seconds')
@@ -84,13 +84,13 @@ class _ProvidersUpdate extends Command<void> {
   String get name => 'update';
 
   @override
-  String get description => 'Update provider poll / URLs / config_json.';
+  String get description => 'Update integration poll / URLs / config_json.';
 
   @override
   Future<void> run() async {
     final rest = argResults!.rest;
     if (rest.length != 1) {
-      usageException('Usage: waddlectl providers update <id> [flags]');
+      usageException('Usage: waddlectl integrations update <id> [flags]');
     }
     final id = rest.first;
     final o = argResults!;
@@ -106,7 +106,7 @@ class _ProvidersUpdate extends Command<void> {
       configJson = await File(cjf).readAsString();
     }
     await withLocalBackend(globalOptions, (b) async {
-      await b.updateProvider(
+      await b.updateIntegration(
         id: id,
         enabled: enabled,
         pollSeconds: poll,

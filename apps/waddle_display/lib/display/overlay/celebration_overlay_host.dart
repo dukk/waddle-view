@@ -60,7 +60,7 @@ class CelebrationOverlayHost extends StatelessWidget {
                   rows
                       .where(
                         (r) =>
-                            r.overlayKind.trim() == kOverlayKindHeartsRain &&
+                            r.overlayType.trim() == kOverlayTypeHeartsRain &&
                             matchesCelebrationOverlay(r, now),
                       )
                       .toList()
@@ -70,8 +70,8 @@ class CelebrationOverlayHost extends StatelessWidget {
                   rows
                       .where(
                         (r) =>
-                            r.overlayKind.trim() ==
-                                kOverlayKindBirthdayConfetti &&
+                            r.overlayType.trim() ==
+                                kOverlayTypeBirthdayConfetti &&
                             matchesCelebrationOverlay(r, now),
                       )
                       .toList()
@@ -81,8 +81,8 @@ class CelebrationOverlayHost extends StatelessWidget {
                   rows
                       .where(
                         (r) =>
-                            r.overlayKind.trim() ==
-                                kOverlayKindBouncingMessage &&
+                            r.overlayType.trim() ==
+                                kOverlayTypeBouncingMessage &&
                             matchesCelebrationOverlay(r, now),
                       )
                       .toList()

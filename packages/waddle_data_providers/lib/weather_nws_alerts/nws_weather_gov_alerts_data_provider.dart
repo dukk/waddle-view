@@ -31,7 +31,7 @@ class NwsWeatherGovAlertsDataProvider implements IDataProvider {
   @override
   Future<void> collect(DataWriteContext ctx) async {
     final setting =
-        await (ctx.db.select(ctx.db.providerSettings)
+        await (ctx.db.select(ctx.db.integrations)
               ..where((t) => t.id.equals(kNwsWeatherAlertsProviderId)))
             .getSingleOrNull();
     if (setting == null || !setting.enabled) {
@@ -53,7 +53,7 @@ class NwsWeatherGovAlertsDataProvider implements IDataProvider {
           ))
         .get();
     for (final row in optedOut) {
-      await (ctx.db.delete(ctx.db.weatherGovActiveAlerts)
+      await (ctx.db.delete(ctx.db.weatherAlerts)
             ..where((t) => t.locationId.equals(row.id)))
           .go();
     }
@@ -72,7 +72,7 @@ class NwsWeatherGovAlertsDataProvider implements IDataProvider {
         'nws_alerts: no locations with include_active_weather_alerts; '
         'cleared stored alerts',
       );
-      await ctx.db.delete(ctx.db.weatherGovActiveAlerts).go();
+      await ctx.db.delete(ctx.db.weatherAlerts).go();
       return;
     }
 
@@ -101,11 +101,11 @@ class NwsWeatherGovAlertsDataProvider implements IDataProvider {
         }
         final companions = _parseGeoJsonFeatures(res.body, location.id);
         await ctx.db.transaction(() async {
-          await (ctx.db.delete(ctx.db.weatherGovActiveAlerts)
+          await (ctx.db.delete(ctx.db.weatherAlerts)
                 ..where((t) => t.locationId.equals(location.id)))
               .go();
           for (final c in companions) {
-            await ctx.db.into(ctx.db.weatherGovActiveAlerts).insert(c);
+            await ctx.db.into(ctx.db.weatherAlerts).insert(c);
           }
         });
         ctx.diagnostics.provider(
@@ -138,7 +138,7 @@ String _parseUserAgent(String? configJson) {
   }
 }
 
-List<WeatherGovActiveAlertsCompanion> _parseGeoJsonFeatures(
+List<WeatherAlertsCompanion> _parseGeoJsonFeatures(
   String body,
   String locationId,
 ) {
@@ -152,7 +152,7 @@ List<WeatherGovActiveAlertsCompanion> _parseGeoJsonFeatures(
     if (features is! List) {
       return const [];
     }
-    final out = <WeatherGovActiveAlertsCompanion>[];
+    final out = <WeatherAlertsCompanion>[];
     for (final f in features) {
       if (f is! Map) {
         continue;
@@ -174,7 +174,7 @@ List<WeatherGovActiveAlertsCompanion> _parseGeoJsonFeatures(
       final effectiveAt = _parseAlertDate(props['effective']);
       final expiresAt = _parseAlertDate(props['expires']);
       out.add(
-        WeatherGovActiveAlertsCompanion.insert(
+        WeatherAlertsCompanion.insert(
           locationId: locationId,
           nwsAlertId: nwsId,
           event: (event == null || event.isEmpty) ? 'Weather alert' : event,

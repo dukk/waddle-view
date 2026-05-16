@@ -16,7 +16,7 @@ void main() {
       called = true;
       return Response.ok('ok');
     });
-    final res = await handler(Request('GET', Uri.parse('http://x/v1/providers')));
+    final res = await handler(Request('GET', Uri.parse('http://x/v1/integrations')));
     expect(res.statusCode, 401);
     expect(called, isFalse);
     await db.close();
@@ -34,7 +34,7 @@ void main() {
     final res = await handler(
       Request(
         'GET',
-        Uri.parse('http://x/v1/providers'),
+        Uri.parse('http://x/v1/integrations'),
         headers: {'authorization': 'Bearer not-a-real-token'},
       ),
     );
@@ -64,7 +64,7 @@ void main() {
     final res = await handler(
       Request(
         'GET',
-        Uri.parse('http://x/v1/providers'),
+        Uri.parse('http://x/v1/integrations'),
         headers: {'authorization': 'Bearer valid-tok'},
       ),
     );

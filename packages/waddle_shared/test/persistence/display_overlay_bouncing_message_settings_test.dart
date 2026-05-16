@@ -25,6 +25,17 @@ void main() {
     expect(m['speed'], 0.5);
   });
 
+  test('normalize preserves messages with other keys', () {
+    final out = normalizeBouncingMessageConfigJsonString(
+      '{"messages":["Hi"],"font_size":22,"speed":0.5}',
+    );
+    expect(out, isNotNull);
+    final m = jsonDecode(out!) as Map<String, dynamic>;
+    expect(m['messages'], ['Hi']);
+    expect(m['font_size'], 22);
+    expect(m['speed'], 0.5);
+  });
+
   test('normalize rejects unknown keys', () {
     expect(
       normalizeBouncingMessageConfigJsonString('{"font_size":20,"extra":1}'),

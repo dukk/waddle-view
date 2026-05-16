@@ -54,14 +54,14 @@ CREATE TABLE screen_definitions (
       await db.customStatement('SELECT 1');
 
       final pragmaCols = await db
-          .customSelect('PRAGMA table_info(provider_settings);')
+          .customSelect('PRAGMA table_info(integrations);')
           .get();
       final colNames = pragmaCols.map((r) => r.read<String>('name')).toSet();
       expect(colNames.contains('config_json'), isTrue);
       expect(colNames.contains('extra_json'), isFalse);
 
       final ps =
-          await (db.select(db.providerSettings)
+          await (db.select(db.integrations)
                 ..where((t) => t.id.equals('joke_openai')))
               .getSingle();
       expect(ps.providerType, 'joke_openai');
@@ -72,7 +72,7 @@ CREATE TABLE screen_definitions (
       jsonDecode(ps.exampleConfigJson!);
 
       final scr =
-          await (db.select(db.screenDefinitions)
+          await (db.select(db.screens)
                 ..where((t) => t.id.equals('s')))
               .getSingle();
       expect(scr.screenType, 'static_text');
@@ -83,7 +83,7 @@ CREATE TABLE screen_definitions (
       jsonDecode(scr.exampleConfigJson!);
 
       final screenCols = await db
-          .customSelect('PRAGMA table_info(screen_definitions);')
+          .customSelect('PRAGMA table_info(screens);')
           .get();
       final screenColNames =
           screenCols.map((r) => r.read<String>('name')).toSet();

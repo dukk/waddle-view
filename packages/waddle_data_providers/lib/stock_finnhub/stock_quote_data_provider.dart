@@ -39,7 +39,7 @@ class StockQuoteDataProvider implements IDataProvider {
 
   @override
   Future<void> collect(DataWriteContext ctx) async {
-    final setting = await (ctx.db.select(ctx.db.providerSettings)
+    final setting = await (ctx.db.select(ctx.db.integrations)
           ..where((t) => t.id.equals(kStockProviderId)))
         .getSingleOrNull();
     if (setting == null || !setting.enabled) {

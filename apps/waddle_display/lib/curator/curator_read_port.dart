@@ -3,16 +3,17 @@ import 'package:waddle_shared/curation/reject_filter_context.dart';
 
 import 'ticker_news_candidate.dart';
 
-/// One row from [TickerDefinitions] for marquee curation.
+/// One row from [TickerTapes] for marquee curation.
 @immutable
-class TickerDefinitionForCuration {
-  const TickerDefinitionForCuration({
+class TickerTapeForCuration {
+  const TickerTapeForCuration({
     required this.id,
     required this.tickerType,
     required this.enabled,
     required this.frequencyWeight,
     required this.sortOrder,
     this.configKey,
+    this.configJson = '{}',
   });
 
   final String id;
@@ -24,6 +25,8 @@ class TickerDefinitionForCuration {
   /// When [tickerType] is `custom`, optional `ticker.marquee.*` key; when null,
   /// all extra marquee keys are included (same as legacy “custom” bucket).
   final String? configKey;
+  /// JSON object for the tape (e.g. `fallbackText` for weather/news/quote).
+  final String configJson;
 }
 
 @immutable
@@ -87,9 +90,9 @@ abstract class CuratorReadPort {
   /// Active NWS alerts for enabled weather locations (deduped by NWS id).
   Future<List<WeatherGovAlertTickerItem>> loadWeatherGovAlertsForTicker();
 
-  /// All ticker definition rows, ordered by [TickerDefinitionForCuration.sortOrder]
+  /// All ticker tape rows, ordered by [TickerTapeForCuration.sortOrder]
   /// then id.
-  Future<List<TickerDefinitionForCuration>> loadTickerDefinitionsForCuration();
+  Future<List<TickerTapeForCuration>> loadTickerTapesForCuration();
 
   /// Enabled [StockSymbols] rows with optional [StockQuotes], ordered by symbol.
   Future<List<StockTickerRowForMarquee>> loadStockRowsForTicker();

@@ -147,8 +147,8 @@ Future<void> _ensurePexelsProvider(
       '"minVideoSeconds":11,"maxVideoSeconds":29,"sources":[]}',
   int pollSeconds = 0,
 }) async {
-  await db.into(db.providerSettings).insertOnConflictUpdate(
-        ProviderSettingsCompanion.insert(
+  await db.into(db.integrations).insertOnConflictUpdate(
+        IntegrationsCompanion.insert(
           id: 'media_pexels',
           providerType: 'media_pexels',
           pollSeconds: Value(pollSeconds),
@@ -162,8 +162,8 @@ void main() {
   test('collect is a no-op when provider disabled', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insertOnConflictUpdate(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insertOnConflictUpdate(
+          IntegrationsCompanion.insert(
             id: 'media_pexels',
             providerType: 'media_pexels',
             enabled: const Value(false),
@@ -514,8 +514,8 @@ void main() {
   test('strips trailing slash from configured baseUrl', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insertOnConflictUpdate(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insertOnConflictUpdate(
+          IntegrationsCompanion.insert(
             id: 'media_pexels',
             providerType: 'media_pexels',
             pollSeconds: const Value(0),

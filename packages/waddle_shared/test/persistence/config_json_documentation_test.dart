@@ -60,13 +60,13 @@ void main() {
   });
 
   test('display overlay schedule config meta decodes', () {
-    final hearts = displayOverlayConfigJsonDocForKind('hearts_rain');
+    final hearts = displayOverlayConfigJsonDocForType('hearts_rain');
     expect(jsonDecode(hearts.schema), isA<Map<String, dynamic>>());
     expect(jsonDecode(hearts.example), isA<Object>());
-    final confetti = displayOverlayConfigJsonDocForKind('birthday_confetti');
+    final confetti = displayOverlayConfigJsonDocForType('birthday_confetti');
     expect(jsonDecode(confetti.schema), isA<Map<String, dynamic>>());
     expect(jsonDecode(confetti.example), isA<Map<String, dynamic>>());
-    final bounce = displayOverlayConfigJsonDocForKind('bouncing_message');
+    final bounce = displayOverlayConfigJsonDocForType('bouncing_message');
     expect(jsonDecode(bounce.schema), isA<Map<String, dynamic>>());
     expect(jsonDecode(bounce.example), isA<Map<String, dynamic>>());
   });

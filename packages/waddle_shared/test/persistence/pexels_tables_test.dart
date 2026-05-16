@@ -8,10 +8,10 @@ void main() {
     await warmDatabase(db);
     final rows = await db.customSelect(
       "SELECT name FROM sqlite_master WHERE type='table' "
-      "AND name IN ('content_categories','photos','videos','pexels_fetch_batches')",
+      "AND name IN ('curator_categories','photos','videos','pexels_fetch_batches')",
     ).get();
     final names = rows.map((r) => r.read<String>('name')).toSet();
-    expect(names, {'content_categories', 'photos', 'videos', 'pexels_fetch_batches'});
+    expect(names, {'curator_categories', 'photos', 'videos', 'pexels_fetch_batches'});
 
     final photoCols = await db.customSelect('PRAGMA table_info(photos)').get();
     expect(

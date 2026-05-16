@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 
 import '../persistence/database.dart';
@@ -22,24 +24,29 @@ class StubDataProvider implements IDataProvider {
             value: 'Waddle View',
           ),
         );
-    await ctx.db.into(ctx.db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: 'ticker.marquee.weather',
-            value: '72°F · Sunny',
-          ),
-        );
-    await ctx.db.into(ctx.db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: 'ticker.marquee.news',
-            value: 'Local headlines refresh with each collect',
-          ),
-        );
-    await ctx.db.into(ctx.db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: 'ticker.marquee.quote',
-            value: 'WADDLE +1.2%',
-          ),
-        );
+    await (ctx.db.update(ctx.db.tickerTapes)
+          ..where((t) => t.id.equals('ticker_weather')))
+        .write(
+      TickerTapesCompanion(
+        configJson: Value(jsonEncode({'fallbackText': '72°F · Sunny'})),
+      ),
+    );
+    await (ctx.db.update(ctx.db.tickerTapes)
+          ..where((t) => t.id.equals('ticker_news')))
+        .write(
+      TickerTapesCompanion(
+        configJson: Value(
+          jsonEncode({'fallbackText': 'Local headlines refresh with each collect'}),
+        ),
+      ),
+    );
+    await (ctx.db.update(ctx.db.tickerTapes)
+          ..where((t) => t.id.equals('ticker_quote')))
+        .write(
+      TickerTapesCompanion(
+        configJson: Value(jsonEncode({'fallbackText': 'WADDLE +1.2%'})),
+      ),
+    );
     final ref = await ctx.blobs.putBytes(
       const <int>[0x57, 0x41], // "WA"
       logicalKey: 'stub/ping',
@@ -54,6 +61,6 @@ class StubDataProvider implements IDataProvider {
         capturedAt: DateTime.now(),
       ),
     );
-    ctx.diagnostics.provider('stub: wrote KV + ping blob (2 bytes)');
+    ctx.diagnostics.provider('stub: wrote header KV, ticker tape fallbacks, ping blob (2 bytes)');
   }
 }

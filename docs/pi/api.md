@@ -20,7 +20,9 @@ Response includes `session_token`. Send it on later requests:
 
 **Bootstrap user:** reserved username `display` with password equal to the display **instance id** (see below). Enabled only until the first **named** user is created via `POST /v1/users` (admin role). After that, bootstrap login returns **403** `bootstrap_admin_disabled`.
 
-**Roles:** `admin`, `operator`, `viewer` — each maps to a fixed permission set. `GET /v1/auth/me` returns `permissions` for the signed-in user.
+**Self-service viewer signup:** `POST /v1/auth/register-viewer` (public) creates a **named** user with role **`viewer`** and returns the same session payload as `POST /v1/auth/login`. It is enabled only when **`WADDLE_VIEWER_REGISTRATION_SECRET`** is set on the display process and at least one named operator account already exists (bootstrap-only installs return **403** `viewer_registration_requires_operator`). The request body must include matching `registration_secret`. Intended for kiosk QR / `waddle_controller` **`/join`** flows; keep the secret off the public internet unless the display HTTP surface is appropriately isolated.
+
+**Roles:** `admin`, `operator`, `viewer`, `power_viewer` — each maps to a fixed permission set. **`viewer`** has **`telemetry.read`** only (controller **Programs** plus `GET /v1/telemetry/*` + `GET /v1/media/*`). **`power_viewer`** adds **`navigation.control`** and **`content.catalog_read`** (controller **Programs**, read-only **Data** catalog without suppressed rows or `suppressed=true`, plus arrow-key navigation). **`content.moderate`** is required for **`PATCH /v1/content/*`**, full suppression filters, and seeing **`suppressed`** in catalog JSON. Any signed-in user may still **`PATCH /v1/users/{self}`** (display_name only) and **`POST /v1/users/{self}/password`** without `users.manage`. `GET /v1/auth/me` returns `permissions` for the signed-in user.
 
 **Instance id file** (not a shared API secret):
 
@@ -34,6 +36,7 @@ Invalid or missing session → **401** `unauthorized`. Authenticated but lacking
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
 | POST | `/v1/auth/login` | public | Returns `session_token`, `user`, `permissions`, `warnings` |
+| POST | `/v1/auth/register-viewer` | public | Body: `username`, `password`, `registration_secret`. Creates `viewer` user + session when enabled (see above). **403** `viewer_registration_disabled` / `viewer_registration_requires_operator`; **401** `invalid_registration_secret`; **409** `username_taken` |
 | POST | `/v1/auth/logout` | session | Invalidates token |
 | GET | `/v1/auth/me` | session | Current user + permissions |
 | GET | `/v1/users` | `users.manage` | List users |
@@ -56,14 +59,14 @@ Optional allowlist (comma-separated **exact** origins, no wildcards):
 | Method | Path | Notes |
 |--------|------|--------|
 | GET | `/v1/health` | No auth required. |
-| GET | `/v1/providers` | Lists non-secret provider settings (`id`, `type`, `enabled`, `poll_seconds`, `base_url`, decoded `config_json` / `config_json_schema` / `example_config_json` when stored). |
-| GET | `/v1/screens` | Display screen definitions from SQLite (`screen_type`, `config_json`, `dwell_seconds`, scheduling hints, optional `config_json_schema` / `example_config_json`). |
+| GET | `/v1/integrations` | Lists non-secret integration settings (`id`, `integration_type`, `enabled`, `poll_seconds`, `base_url`, decoded `config_json` / `config_json_schema` / `example_config_json` when stored). |
+| GET | `/v1/screens` | Display screen definitions from SQLite table **`screens`** (`screen_type`, `config_json`, `dwell_seconds`, scheduling hints, optional `config_json_schema` / `example_config_json`). |
 | GET | `/v1/ticker/items` | Current bottom-marquee items (`ordinal`, `kind`, `body`) — in-process snapshot; read-only. |
-| GET | `/v1/alerts` | All alerts (no redaction of bodies in MVP; do not store secrets in alerts). |
+| GET | `/v1/alerts` | All operator alerts from SQLite **`alerts`** (no redaction of bodies in MVP; do not store secrets in alerts). |
 | POST | `/v1/alerts` | JSON body: `title`, `body`, optional `qr_payload`, `severity`, `priority`, `expires_at` (epoch ms). |
 | DELETE | `/v1/alerts/{id}` | Dismisses alert (`dismissed_at` set). |
-| GET | `/v1/display/overlays` | Schedules for festive full-screen overlays (`hearts_rain`, `birthday_confetti`, `bouncing_message`). Each row includes `config_json`, `config_json_schema`, and `example_config_json` (decoded as JSON when valid). |
-| POST | `/v1/display/overlays` | Upsert a row: `id`, `overlay_kind` (`hearts_rain`, `birthday_confetti`, or `bouncing_message`), `label`, `messages_json` (JSON array of strings or a JSON string), optional `config_json` (JSON object; see README — `{}` for hearts; confetti or bouncing keys for those kinds), `repeat_annually`, optional `year_exact`, `start_month`/`start_day`, optional `end_month`/`end_day`, optional `nth_week_of_month`/`nth_weekday` (both required together). |
+| GET | `/v1/display/overlays` | Schedules for festive full-screen overlays. SQLite table `overlays`: `overlay_type` (semantic id, like `screen_type`), `config_json` (includes `messages` string array), plus `config_json_schema` / `example_config_json` when stored (decoded as JSON when valid). Built-in renderers: `hearts_rain`, `birthday_confetti`, `bouncing_message`; other types are stored for forward use. |
+| POST | `/v1/display/overlays` | Upsert a row: `id`, `overlay_type`, `label`, `config_json` (object; phrases live under `messages`), `repeat_annually`, optional `year_exact`, `start_month`/`start_day`, optional `end_month`/`end_day`, optional `nth_week_of_month`/`nth_weekday` (both required together). Legacy clients may still send `overlay_kind` and `messages_json`; the server maps them into `overlay_type` / merges `messages_json` into `config_json.messages`. |
 | PATCH | `/v1/display/overlays/{id}` | Partial update; merges with the existing row. **404** if missing. |
 | DELETE | `/v1/display/overlays/{id}` | Deletes the schedule. **404** if missing. |
 | PATCH | `/v1/content/jokes/{id}` | JSON body: `{"suppressed": true}` or `false`. Row kept; hidden from slides/ticker. Returns **404** if id missing. |
@@ -72,27 +75,66 @@ Optional allowlist (comma-separated **exact** origins, no wildcards):
 | PATCH | `/v1/content/videos/{id}` | Same as jokes. |
 | PATCH | `/v1/content/trivia/{id}` | Same as jokes. |
 
+## Ingested content catalog (paginated browse)
+
+**Access:** `GET /v1/catalog/*` requires **`content.catalog_read`** or **`content.moderate`**. **`content.moderate`** alone unlocks optional **`suppressed`** filters, the **`suppressed`** field in JSON, and **`PATCH /v1/content/*`**. Callers with only **`content.catalog_read`** (for example **`power_viewer`**) always receive active (non-suppressed) rows only, omit **`suppressed`** from item objects, and get **403** if they pass **`suppressed=true`**. Query parameters are shared where applicable: `limit` (default **25**, max **100**), `offset` (default **0**), optional **`suppressed`** (`true` / `false`) on jokes, trivia, RSS articles, photos, and videos when permitted.
+
+**Text filters:** each list supports optional substring query parameters on its text columns (`%` / `_` wildcards are stripped from the needle). Multiple parameters **AND** together. Every catalog item includes **`integration_type`**: the collector id / provider string (for example `joke_openai`, `news_rss`, `media_pexels`, `stock_finnhub`, `weather_openweathermap`, `weather_nws_alerts`). Trivia rows use the stored `integration_id` when present (`trivia_openai`, `trivia_opentdb`). Operator **`alerts`** use `integration_type` equal to the row `source` string.
+
+| Method | Path | Optional text filters (substring) |
+|--------|------|-----------------------------------|
+| GET | `/v1/catalog/jokes` | `setup`, `punchline`. Also optional `category` = `category_id`. |
+| GET | `/v1/catalog/trivia` | `question`, `option_a`, `option_b`, `option_c`, `option_d`, `integration_type`. Also optional `category`. |
+| GET | `/v1/catalog/rss-articles` | `title`, `summary`, `link`, `guid`. Optional `feed_id`. |
+| GET | `/v1/catalog/rss-feeds` | Small list of RSS sources (`id`, `url`, `title`, `category`) for filter UI. |
+| GET | `/v1/catalog/photos` | `alt_text`, `photographer_name`, `data_provider`. Optional `category`. |
+| GET | `/v1/catalog/videos` | `alt_text`, `photographer_name`, `data_provider`. Optional `category`. |
+| GET | `/v1/catalog/stock-quotes` | `symbol`, `display_name` (ticker symbol row; both AND when both set). |
+| GET | `/v1/catalog/weather-current` | `description` (current conditions text), `location_name` (matches configured location names). Optional `location_id`. |
+| GET | `/v1/catalog/weather-alerts` | `event`, `headline`, `severity`, `excerpt` (description excerpt), `location_name`. Optional `location_id`. |
+| GET | `/v1/catalog/alerts` | `title`, `body`, `source`, `severity`. |
+| GET | `/v1/catalog/weather-locations` | All configured weather locations (for filter dropdowns). |
+
+Response shape (except `rss-feeds` and `weather-locations`): `{"items":[...], "total": <int>, "limit": <int>, "offset": <int>}`.
+
 ## Operator JSON API (machine clients / `waddle_controller`)
 
 These routes use the same **Bearer session** auth as other protected `/v1/*` paths. Prefer JSON **`Content-Type: application/json`** on mutators.
 
 | Method | Path | Notes |
 |--------|------|--------|
-| GET | `/v1/telemetry/providers` | Query: optional `limit` (default 200, max 2000), `since_ms`. Returns `{"items":[{at_ms, channel, message}, ...]}` — in-process ring buffer (provider + engine lines). |
+| GET | `/v1/telemetry/integrations` | Query: optional `limit` (default 200, max 2000), `since_ms`. Returns `{"items":[{at_ms, channel, message}, ...]}` — in-process ring buffer (`integration` + `engine` lines). |
 | GET | `/v1/telemetry/programs` | Query: optional `limit` (default 50, max 500), `since_ms`. Returns `{"items":[{at_ms, reason, slides:[...]}, ...]}` — recent screen programs. |
 | GET | `/v1/telemetry/ticker-programs` | Same query shape as programs; `{"items":[{at_ms, items:[...]}, ...]}` for ticker rows. |
+| GET | `/v1/media/blob-by-key` | Query: **`key`** = `blob_metadata.blob_key` (URL-encoded). Returns raw bytes with `Content-Type` from metadata (or `application/octet-stream`). **404** when metadata or backing file is missing. Requires `telemetry.read`. Used by `waddle_controller` Programs view to show cached RSS/photo/video bytes. |
+| GET | `/v1/media/rss-articles/{id}` | JSON: `id`, `feed_id`, `title`, `summary`, `link`, `image_blob_key`, `published_at_ms`. **404** if missing or suppressed. |
+| GET | `/v1/media/weather-at-location/{location_id}` | JSON: `location_id`, `location_name`, `latitude`, `longitude`, `enabled`, optional `observed_at_ms`, `current_temp_c`, `current_description`, `current_icon_blob_key` from `weather_locations` / `weather_current`. **404** if the location row does not exist. Requires `telemetry.read` (Programs slide previews). |
+| GET | `/v1/media/photos/{id}` | JSON metadata for `photos` row (`media_blob_key`, `alt_text`, photographer + Pexels URLs). **404** if missing or suppressed. |
+| GET | `/v1/media/videos/{id}` | Same shape as photos plus `duration_seconds`. **404** if missing or suppressed. |
+| GET | `/v1/media/jokes/{id}` | JSON: `setup`, `punchline`, `category_id`. **404** if missing or suppressed. |
+| GET | `/v1/media/trivia/{id}` | JSON: `question`, `option_a`…`option_d`, `correct_option`, `category_id`. **404** if missing or suppressed. |
 | POST | `/v1/display/navigation` | Body: `{"surface":"screen"|"ticker","direction":"back"|"forward"}`. Enqueues UI navigation. **503** `navigation_unavailable` if the display was started without a navigation bus. |
 | GET | `/v1/meta/screen-types` | `{"items":[{screen_type, config_json_schema, example_config_json}, ...]}` for schema-driven screen editors. |
-| GET | `/v1/ticker/definitions` | Full `ticker_definitions` rows (including `config_json_schema` / `example_config_json` when present). |
-| PATCH | `/v1/ticker/definitions/{id}` | JSON body may include `enabled`, `frequency_weight`, `sort_order`, `config_key`. |
-| GET | `/v1/curator/settings` | Aggregated curator/display tuning (program duration, history depth, ticker speed, theme, text scales, RSS photo requirement, etc.). |
-| PUT | `/v1/curator/settings` | Replaces the same fields; requires at least `program_duration_seconds` and `history_depth` (see implementation for optional keys). |
-| PATCH | `/v1/providers/{id}` | Partial update: `enabled`, `poll_seconds`, `base_url`, `config_json` (JSON string or object). |
+| GET | `/v1/meta/ticker-types` | `{"items":[{ticker_type, config_json_schema, example_config_json}, ...]}` for ticker tape editors. |
+| GET | `/v1/ticker/tapes` | Full `ticker_tapes` rows: `config_json` plus `config_json_schema` / `example_config_json` when present. |
+| POST | `/v1/ticker/tapes` | Create tape: `id`, `ticker_type`, optional `name`, `description`, `enabled`, `frequency_weight`, `sort_order`, `config_key`, `config_json`. **400** on unknown type; **409** if `id` exists. |
+| PATCH | `/v1/ticker/tapes/{id}` | JSON body may include `enabled`, `frequency_weight`, `sort_order`, `config_key`, `config_json`, `name`, `description`, `ticker_type`. |
+| DELETE | `/v1/ticker/tapes/{id}` | Deletes row; **404** if missing. |
+| GET | `/v1/curator/settings` | Aggregated curator/display tuning (program duration, history depth, ticker speed, theme, text scales, RSS photo requirement, resolved `display_timezone`, etc.). |
+| PUT | `/v1/curator/settings` | Partial update: include only keys to change among `program_duration_seconds`, `history_depth`, `ticker_pixels_per_second`, `require_news_photo_for_screens`, `display_theme_id`, `display_text_scale_screen`, `display_text_scale_ticker`, `display_timezone` (IANA id for SQLite `display.timezone`; empty string removes the row so the display falls back to its default). **400** `no_curator_settings_fields` if the body is empty or has no recognized keys. |
+| GET | `/v1/config/key-values` | `{"items":[{key,value},...]}` — all rows in SQLite `config_key_values`, sorted by `key`. |
+| PUT | `/v1/config/key-values` | Upsert one row: JSON `{"key":"...","value":"..."}`. **400** `key_required` / `key_too_long` / `value_too_long` when out of range. |
+| DELETE | `/v1/config/key-values` | Query **`key`** (required): deletes that row. **404** `not_found` when absent. |
+| GET | `/v1/curator/categories` | `{"items":[{id,label,material_icon_name,icon_blob_key,reserved},...]}` — shared category slugs (SQLite `curator_categories`, renamed from `content_categories`). |
+| POST | `/v1/curator/categories` | Create: `id` (lowercase slug), `label`, optional `material_icon_name`, optional `icon_blob_key`. **400** invalid id/label; **409** id exists. |
+| PATCH | `/v1/curator/categories/{id}` | Update `label`, `material_icon_name`, `icon_blob_key` (null clears optional icon fields). |
+| DELETE | `/v1/curator/categories/{id}` | **403** `reserved_category` for seeded defaults; **409** `category_in_use_calendar` when calendar events reference the id. |
+| PATCH | `/v1/integrations/{id}` | Partial update: `enabled`, `poll_seconds`, `base_url`, `config_json` (JSON string or object). |
 | POST | `/v1/screens` | Create screen: `id`, `screen_type`, `config_json` (object or string), optional `name`, `description`, `enabled`, `dwell_seconds`, `frequency_weight`, scheduling keys, `data_key`. **409** if `id` exists. |
 | PATCH | `/v1/screens/{id}` | Partial update; `config_json` re-validates layout. |
 | DELETE | `/v1/screens/{id}` | Deletes row; **404** if missing. |
 
-**Expanded read shape:** `GET /v1/providers` includes `base_url`, decoded `config_json`, `config_json_schema`, and `example_config_json` when stored (omit secrets in client logs).
+**Expanded read shape:** `GET /v1/integrations` includes `base_url`, decoded `config_json`, `config_json_schema`, and `example_config_json` when stored (omit secrets in client logs).
 
 ## Examples
 
@@ -111,10 +153,10 @@ curl -sS -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{
     "id":"birthday_alex",
     "enabled":true,
-    "overlay_kind":"birthday_confetti",
+    "overlay_type":"birthday_confetti",
     "label":"Alex birthday",
-    "messages_json":["Happy birthday, Alex!"],
     "config_json":{
+      "messages":["Happy birthday, Alex!"],
       "shapes":["rect","circle","mix"],
       "colors":["#E05C6C","#FFE356"],
       "density":0.36,
@@ -132,7 +174,7 @@ curl -sS -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
 # PATCH `{"enabled":true}` on that id to turn on the stock example.
 
 # Global overlay kill-switch: SQLite `config_key_values` key `display.overlay.enabled`
-# = `false` (no dedicated REST for arbitrary KV rows in MVP).
+# = `false`, or use `GET`/`PUT`/`DELETE /v1/config/key-values` for arbitrary keys (same permission as curator read/write).
 
 curl -sS -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -X PATCH \

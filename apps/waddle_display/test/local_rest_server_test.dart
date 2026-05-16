@@ -89,11 +89,11 @@ void main() {
     final health = await http.get(Uri.parse('${h.baseUrl}/v1/health'));
     expect(health.statusCode, 200);
 
-    final denied = await http.get(Uri.parse('${h.baseUrl}/v1/providers'));
+    final denied = await http.get(Uri.parse('${h.baseUrl}/v1/integrations'));
     expect(denied.statusCode, 401);
 
     final ok = await http.get(
-      Uri.parse('${h.baseUrl}/v1/providers'),
+      Uri.parse('${h.baseUrl}/v1/integrations'),
       headers: h.authHeaders,
     );
     expect(ok.statusCode, 200);

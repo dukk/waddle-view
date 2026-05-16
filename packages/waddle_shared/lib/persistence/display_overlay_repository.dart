@@ -12,7 +12,7 @@ import 'tables.dart';
 
 Selectable<DisplayOverlayScheduleRow> _overlaySelectable(AppDatabase db) {
   return db.customSelect(
-    'SELECT * FROM display_overlay_schedules ORDER BY id ASC',
+    'SELECT * FROM overlays ORDER BY id ASC',
   ).map(DisplayOverlayScheduleRow.fromQueryRow);
 }
 
@@ -31,8 +31,8 @@ Stream<List<DisplayOverlayScheduleRow>> watchDisplayOverlaySchedules(
   }
 }
 
-Future<void> ensureDisplayOverlayTableExists(AppDatabase db) async {
-  await db.customStatement(kEnsureDisplayOverlaySchedulesTableSql);
+Future<void> ensureOverlaysTableExists(AppDatabase db) async {
+  await db.customStatement(kEnsureOverlaysTableSql);
 }
 
 /// Returns `false` only for explicit disables (`false`, `0`, `no`, `off`).
@@ -51,51 +51,150 @@ bool parseDisplayOverlayGloballyEnabled(String? kv) {
   }
 }
 
-String? normalizeMessagesJsonString(String raw) {
-  final trimmed = raw.trim();
-  if (trimmed.isEmpty || trimmed == '[]') {
-    return '[]';
-  }
+({Map<String, dynamic> rest, List<String> messages}) _splitOverlayConfigForNormalize(
+  String configJson,
+) {
   dynamic decoded;
   try {
-    decoded = jsonDecode(trimmed);
+    decoded = jsonDecode(configJson.trim().isEmpty ? '{}' : configJson);
   } on Object {
-    return null;
+    throw FormatException('invalid_config_json');
   }
-  if (decoded is! List) {
-    return null;
+  if (decoded is! Map) {
+    throw FormatException('invalid_config_json');
   }
-  for (final e in decoded) {
-    if (e is! String || e.trim().isEmpty) {
-      return null;
+  final map = Map<String, dynamic>.from(
+    decoded.map((k, v) => MapEntry(k.toString(), v)),
+  );
+  final messagesRaw = map.remove('messages');
+  final messages = <String>[];
+  if (messagesRaw != null) {
+    if (messagesRaw is! List) {
+      throw FormatException('invalid_messages_in_config');
+    }
+    for (final e in messagesRaw) {
+      if (e is! String || e.trim().isEmpty) {
+        throw FormatException('invalid_messages_in_config');
+      }
+      messages.add(e.trim());
     }
   }
-  return jsonEncode(decoded.cast<String>());
+  return (rest: map, messages: messages);
+}
+
+String _mergeMessagesIntoConfigJsonString(
+  String normalizedInnerJson,
+  List<String> messages,
+) {
+  dynamic decoded;
+  try {
+    decoded = jsonDecode(normalizedInnerJson.trim().isEmpty ? '{}' : normalizedInnerJson);
+  } on Object {
+    return jsonEncode(<String, Object?>{'messages': messages});
+  }
+  final map = decoded is Map
+      ? Map<String, dynamic>.from(
+          decoded.map((k, v) => MapEntry(k.toString(), v)),
+        )
+      : <String, dynamic>{};
+  map['messages'] = messages;
+  return jsonEncode(map);
+}
+
+bool _isJsonEncodableOverlayValue(Object? v) {
+  if (v == null) {
+    return true;
+  }
+  if (v is bool || v is num || v is String) {
+    return true;
+  }
+  if (v is List) {
+    for (final e in v) {
+      if (!_isJsonEncodableOverlayValue(e)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  if (v is Map) {
+    for (final e in v.entries) {
+      if (e.key is! String) {
+        return false;
+      }
+      if (!_isJsonEncodableOverlayValue(e.value)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
+String _normalizeUnknownOverlayConfigJson(
+  Map<String, dynamic> rest,
+  List<String> messages,
+) {
+  for (final v in rest.values) {
+    if (!_isJsonEncodableOverlayValue(v)) {
+      throw FormatException('invalid_config_json');
+    }
+  }
+  final out = Map<String, dynamic>.from(rest);
+  out['messages'] = messages;
+  return jsonEncode(out);
+}
+
+/// Normalizes and returns stored `config_json` (including a `messages` array).
+String normalizeOverlayConfigForUpsert({
+  required String overlayType,
+  required String configJson,
+}) {
+  final trimmedType = overlayType.trim();
+  final split = _splitOverlayConfigForNormalize(configJson);
+  final restJson = jsonEncode(split.rest);
+  return switch (trimmedType) {
+    kOverlayTypeHeartsRain => jsonEncode(<String, Object?>{'messages': split.messages}),
+    kOverlayTypeBirthdayConfetti => () {
+        final normalizedInner =
+            normalizeBirthdayConfettiSettingsJsonString(restJson) ??
+                (throw FormatException('invalid_config_json'));
+        return _mergeMessagesIntoConfigJsonString(normalizedInner, split.messages);
+      }(),
+    kOverlayTypeBouncingMessage => () {
+        final normalizedInner =
+            normalizeBouncingMessageConfigJsonString(restJson) ??
+                (throw FormatException('invalid_config_json'));
+        return _mergeMessagesIntoConfigJsonString(normalizedInner, split.messages);
+      }(),
+    _ => _normalizeUnknownOverlayConfigJson(split.rest, split.messages),
+  };
 }
 
 List<String> decodeMessagesNonEmpty(DisplayOverlayScheduleRow row) {
-  List<dynamic>? list;
   try {
-    final decoded = jsonDecode(row.messagesJson);
-    list = decoded is List ? decoded : null;
+    final decoded = jsonDecode(row.configJson);
+    if (decoded is! Map) {
+      return const [];
+    }
+    final map = decoded.cast<String, dynamic>();
+    final raw = map['messages'];
+    if (raw is! List) {
+      return const [];
+    }
+    return [
+      for (final e in raw)
+        if (e is String && e.trim().isNotEmpty) e.trim(),
+    ];
   } on Object {
     return const [];
   }
-  if (list == null) {
-    return const [];
-  }
-  return [
-    for (final e in list)
-      if (e is String && e.trim().isNotEmpty) e.trim(),
-  ];
 }
 
 final RegExp _slug = RegExp(r'^[a-z0-9][a-z0-9_.-]*$');
 
 String? validateUpsertDraft({
   required String id,
-  required String overlayKind,
-  required String messagesJsonNormalized,
+  required String overlayType,
   required bool repeatAnnually,
   required int? yearExact,
   required int startMonth,
@@ -108,17 +207,9 @@ String? validateUpsertDraft({
   if (!_slug.hasMatch(id.trim())) {
     return 'invalid_id_slug';
   }
-  final trimmedKind = overlayKind.trim();
-  if (!_slug.hasMatch(trimmedKind)) {
-    return 'invalid_overlay_kind';
-  }
-  if (trimmedKind != kOverlayKindHeartsRain &&
-      trimmedKind != kOverlayKindBirthdayConfetti &&
-      trimmedKind != kOverlayKindBouncingMessage) {
-    return 'unsupported_overlay_kind';
-  }
-  if (normalizeMessagesJsonString(messagesJsonNormalized) == null) {
-    return 'invalid_messages_json';
+  final trimmedType = overlayType.trim();
+  if (!_slug.hasMatch(trimmedType)) {
+    return 'invalid_overlay_type';
   }
 
   final nthSet = nthWeekOfMonth != null || nthWeekday != null;
@@ -196,9 +287,8 @@ Future<void> upsertOverlaySchedule(
   AppDatabase db, {
   required String id,
   required bool enabled,
-  required String overlayKind,
+  required String overlayType,
   required String label,
-  required String messagesJson,
   required String configJson,
   required bool repeatAnnually,
   int? yearExact,
@@ -209,11 +299,9 @@ Future<void> upsertOverlaySchedule(
   int? nthWeekOfMonth,
   int? nthWeekday,
 }) async {
-  final norm = normalizeMessagesJsonString(messagesJson) ?? '[]';
   final err = validateUpsertDraft(
     id: id,
-    overlayKind: overlayKind,
-    messagesJsonNormalized: norm,
+    overlayType: overlayType,
     repeatAnnually: repeatAnnually,
     yearExact: yearExact,
     startMonth: startMonth,
@@ -226,33 +314,32 @@ Future<void> upsertOverlaySchedule(
   if (err != null) {
     throw FormatException(err);
   }
-  final kind = overlayKind.trim();
-  final String configNorm = switch (kind) {
-    kOverlayKindHeartsRain => '{}',
-    kOverlayKindBirthdayConfetti =>
-        normalizeBirthdayConfettiSettingsJsonString(configJson) ??
-            (throw FormatException('invalid_config_json')),
-    kOverlayKindBouncingMessage =>
-        normalizeBouncingMessageConfigJsonString(configJson) ??
-            (throw FormatException('invalid_config_json')),
-    _ => throw StateError('unexpected overlay kind'),
-  };
-  final doc = displayOverlayConfigJsonDocForKind(kind);
+  final String configNorm;
+  try {
+    configNorm = normalizeOverlayConfigForUpsert(
+      overlayType: overlayType,
+      configJson: configJson,
+    );
+  } on FormatException {
+    rethrow;
+  } on Object {
+    throw FormatException('invalid_config_json');
+  }
+  final doc = displayOverlayConfigJsonDocForType(overlayType.trim());
   final en = enabled ? 1 : 0;
   final ra = repeatAnnually ? 1 : 0;
   await db.customStatement(
-    'INSERT OR REPLACE INTO display_overlay_schedules ('
-    'id, enabled, overlay_kind, label, messages_json, '
+    'INSERT OR REPLACE INTO overlays ('
+    'id, enabled, overlay_type, label, '
     'config_json, config_json_schema, example_config_json, '
     'repeat_annually, year_exact, start_month, start_day, '
     'end_month, end_day, nth_week_of_month, nth_weekday) '
-    'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     <Object?>[
       id.trim(),
       en,
-      overlayKind.trim(),
+      overlayType.trim(),
       label,
-      norm,
       configNorm,
       doc.schema,
       doc.example,
@@ -270,7 +357,7 @@ Future<void> upsertOverlaySchedule(
 
 Future<void> deleteOverlaySchedule(AppDatabase db, String id) async {
   await db.customStatement(
-    'DELETE FROM display_overlay_schedules WHERE id = ?',
+    'DELETE FROM overlays WHERE id = ?',
     <Object?>[id.trim()],
   );
 }
@@ -283,7 +370,7 @@ Future<DisplayOverlayScheduleRow?> overlayScheduleById(
   final rows =
       await db
           .customSelect(
-            'SELECT * FROM display_overlay_schedules WHERE id = ? LIMIT 1',
+            'SELECT * FROM overlays WHERE id = ? LIMIT 1',
             variables: [Variable<String>(trimmed)],
           )
           .map(DisplayOverlayScheduleRow.fromQueryRow)
@@ -295,13 +382,6 @@ Future<DisplayOverlayScheduleRow?> overlayScheduleById(
 }
 
 Map<String, Object?> overlayScheduleToJson(DisplayOverlayScheduleRow row) {
-  Object? messagesField;
-  try {
-    final d = jsonDecode(row.messagesJson);
-    messagesField = d is List ? d : const <Object?>[];
-  } on Object {
-    messagesField = const <Object?>[];
-  }
   Object? configField;
   try {
     final d = jsonDecode(row.configJson);
@@ -318,9 +398,8 @@ Map<String, Object?> overlayScheduleToJson(DisplayOverlayScheduleRow row) {
   return <String, Object?>{
     'id': row.id,
     'enabled': row.enabled,
-    'overlay_kind': row.overlayKind,
+    'overlay_type': row.overlayType,
     'label': row.label,
-    'messages_json': messagesField,
     'config_json': configField,
     'config_json_schema': _decodedJsonOrNull(row.configJsonSchema),
     'example_config_json': _decodedJsonOrNull(row.exampleConfigJson),

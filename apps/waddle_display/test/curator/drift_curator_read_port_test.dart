@@ -12,13 +12,13 @@ void main() {
     await warmDatabase(db);
     await db.into(db.configKeyValues).insert(
           ConfigKeyValuesCompanion.insert(
-            key: 'ticker.marquee.news',
+            key: 'header.subtitle',
             value: 'Hello',
           ),
         );
     final port = DriftCuratorReadPort(db);
     final kv = await port.loadKeyValuesForCuration();
-    expect(kv['ticker.marquee.news'], 'Hello');
+    expect(kv['header.subtitle'], 'Hello');
     await db.close();
   });
 
@@ -151,19 +151,19 @@ void main() {
     await db.close();
   });
 
-  test('loadTickerDefinitionsForCuration returns rows ordered by sort_order', () async {
+  test('loadTickerTapesForCuration returns rows ordered by sort_order', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.tickerDefinitions).insert(
-          TickerDefinitionsCompanion.insert(
+    await db.into(db.tickerTapes).insert(
+          TickerTapesCompanion.insert(
             id: 'b',
             name: 'B',
             tickerType: 'quote',
             sortOrder: const Value(10),
           ),
         );
-    await db.into(db.tickerDefinitions).insert(
-          TickerDefinitionsCompanion.insert(
+    await db.into(db.tickerTapes).insert(
+          TickerTapesCompanion.insert(
             id: 'a',
             name: 'A',
             tickerType: 'time',
@@ -171,9 +171,10 @@ void main() {
           ),
         );
     final port = DriftCuratorReadPort(db);
-    final list = await port.loadTickerDefinitionsForCuration();
+    final list = await port.loadTickerTapesForCuration();
     expect(list.map((e) => e.id).toList(), ['a', 'b']);
     expect(list.first.tickerType, 'time');
+    expect(list.first.configJson, '{}');
     await db.close();
   });
 
@@ -245,8 +246,8 @@ void main() {
             longitude: -84.388,
           ),
         );
-    await db.into(db.weatherCurrentData).insert(
-          WeatherCurrentDataCompanion.insert(
+    await db.into(db.weatherCurrent).insert(
+          WeatherCurrentCompanion.insert(
             locationId: 'atlanta',
             observedAtMs: DateTime.fromMillisecondsSinceEpoch(2),
             currentTemp: const Value(24.4),
@@ -281,8 +282,8 @@ void main() {
             longitude: -104.9903,
           ),
         );
-    await db.into(db.weatherGovActiveAlerts).insert(
-          WeatherGovActiveAlertsCompanion.insert(
+    await db.into(db.weatherAlerts).insert(
+          WeatherAlertsCompanion.insert(
             locationId: 'atlanta',
             nwsAlertId: 'urn:dup:1',
             event: 'Heat Advisory',
@@ -290,8 +291,8 @@ void main() {
             severity: const Value('Moderate'),
           ),
         );
-    await db.into(db.weatherGovActiveAlerts).insert(
-          WeatherGovActiveAlertsCompanion.insert(
+    await db.into(db.weatherAlerts).insert(
+          WeatherAlertsCompanion.insert(
             locationId: 'denver',
             nwsAlertId: 'urn:dup:1',
             event: 'Duplicate id',

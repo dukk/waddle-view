@@ -30,7 +30,7 @@ void main() {
     );
     expect(logout.statusCode, 200);
     final after = await http.get(
-      Uri.parse('${h.baseUrl}/v1/providers'),
+      Uri.parse('${h.baseUrl}/v1/integrations'),
       headers: h.authHeaders,
     );
     expect(after.statusCode, 401);
@@ -64,6 +64,82 @@ void main() {
     final res = await http.get(
       Uri.parse('${h.baseUrl}/v1/users'),
       headers: h.authHeaders,
+    );
+    expect(res.statusCode, 403);
+  });
+
+  test('operator can patch own display_name only', () async {
+    final h = await RestTestHarness.start(role: kUserRoleOperator);
+    addTearDown(h.dispose);
+    final res = await http.patch(
+      Uri.parse('${h.baseUrl}/v1/users/user_test_admin'),
+      headers: h.authHeaders,
+      body: jsonEncode({'display_name': 'Operator display'}),
+    );
+    expect(res.statusCode, 200);
+    final user =
+        (jsonDecode(res.body) as Map<String, dynamic>)['user'] as Map<String, dynamic>;
+    expect(user['display_name'], 'Operator display');
+  });
+
+  test('operator cannot patch own role via self profile', () async {
+    final h = await RestTestHarness.start(role: kUserRoleOperator);
+    addTearDown(h.dispose);
+    final res = await http.patch(
+      Uri.parse('${h.baseUrl}/v1/users/user_test_admin'),
+      headers: h.authHeaders,
+      body: jsonEncode({
+        'display_name': 'X',
+        'role': kUserRoleAdmin,
+      }),
+    );
+    expect(res.statusCode, 400);
+  });
+
+  test('operator cannot patch another user', () async {
+    final admin = await RestTestHarness.start();
+    addTearDown(admin.dispose);
+    final victim = await http.post(
+      Uri.parse('${admin.baseUrl}/v1/users'),
+      headers: admin.authHeaders,
+      body: jsonEncode({
+        'username': 'victim',
+        'password': 'victim-password-12',
+        'role': kUserRoleViewer,
+      }),
+    );
+    expect(victim.statusCode, 200);
+    final victimId =
+        (jsonDecode(victim.body) as Map<String, dynamic>)['user']['id'] as String;
+
+    await http.post(
+      Uri.parse('${admin.baseUrl}/v1/users'),
+      headers: admin.authHeaders,
+      body: jsonEncode({
+        'username': 'someop',
+        'password': 'someop-password-12',
+        'role': kUserRoleOperator,
+      }),
+    );
+    final opLogin = await http.post(
+      Uri.parse('${admin.baseUrl}/v1/auth/login'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'username': 'someop',
+        'password': 'someop-password-12',
+      }),
+    );
+    expect(opLogin.statusCode, 200);
+    final opToken =
+        (jsonDecode(opLogin.body) as Map<String, dynamic>)['session_token'] as String;
+
+    final res = await http.patch(
+      Uri.parse('${admin.baseUrl}/v1/users/$victimId'),
+      headers: {
+        'Authorization': 'Bearer $opToken',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'display_name': 'nope'}),
     );
     expect(res.statusCode, 403);
   });
@@ -398,5 +474,84 @@ void main() {
       body: jsonEncode({'role': 'not-a-role'}),
     );
     expect(res.statusCode, 400);
+  });
+
+  test('register viewer disabled when registration secret unset', () async {
+    final h = await RestTestHarness.start();
+    addTearDown(h.dispose);
+    final res = await http.post(
+      Uri.parse('${h.baseUrl}/v1/auth/register-viewer'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'username': 'v',
+        'password': 'password12',
+        'registration_secret': 'x',
+      }),
+    );
+    expect(res.statusCode, 403);
+    expect(res.body, contains('viewer_registration_disabled'));
+  });
+
+  test('register viewer requires at least one named operator', () async {
+    final h = await BootstrapRestTestHarness.start(
+      env: {'WADDLE_VIEWER_REGISTRATION_SECRET': 'invite-secret'},
+    );
+    addTearDown(h.dispose);
+    final res = await http.post(
+      Uri.parse('${h.baseUrl}/v1/auth/register-viewer'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'username': 'v',
+        'password': 'password12',
+        'registration_secret': 'invite-secret',
+      }),
+    );
+    expect(res.statusCode, 403);
+    expect(res.body, contains('viewer_registration_requires_operator'));
+  });
+
+  test('register viewer rejects wrong secret', () async {
+    final h = await RestTestHarness.start(
+      env: {'WADDLE_VIEWER_REGISTRATION_SECRET': 'correct'},
+    );
+    addTearDown(h.dispose);
+    final res = await http.post(
+      Uri.parse('${h.baseUrl}/v1/auth/register-viewer'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'username': 'v',
+        'password': 'password12',
+        'registration_secret': 'wrong',
+      }),
+    );
+    expect(res.statusCode, 401);
+  });
+
+  test('register viewer creates viewer user and session', () async {
+    final h = await RestTestHarness.start(
+      env: {'WADDLE_VIEWER_REGISTRATION_SECRET': 'invite-secret'},
+    );
+    addTearDown(h.dispose);
+    final res = await http.post(
+      Uri.parse('${h.baseUrl}/v1/auth/register-viewer'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'username': 'from_qr',
+        'password': 'password12',
+        'registration_secret': 'invite-secret',
+      }),
+    );
+    expect(res.statusCode, 200);
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    expect(body['user']['username'], 'from_qr');
+    expect(body['user']['role'], kUserRoleViewer);
+    expect(body['session_token'], isNotEmpty);
+    final me = await http.get(
+      Uri.parse('${h.baseUrl}/v1/auth/me'),
+      headers: {
+        'Authorization': 'Bearer ${body['session_token']}',
+      },
+    );
+    expect(me.statusCode, 200);
   });
 }

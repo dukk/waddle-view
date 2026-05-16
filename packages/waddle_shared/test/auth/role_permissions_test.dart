@@ -7,9 +7,38 @@ void main() {
     expect(userHasPermission(kUserRoleAdmin, WaddlePermission.usersManage), isTrue);
   });
 
-  test('viewer cannot write screens', () {
+  test('power_viewer can read telemetry, navigate, and browse catalog (not moderate)', () {
+    expect(
+      userHasPermission(kUserRolePowerViewer, WaddlePermission.telemetryRead),
+      isTrue,
+    );
+    expect(
+      userHasPermission(kUserRolePowerViewer, WaddlePermission.navigationControl),
+      isTrue,
+    );
+    expect(
+      userHasPermission(kUserRolePowerViewer, WaddlePermission.contentCatalogRead),
+      isTrue,
+    );
+    expect(userHasPermission(kUserRolePowerViewer, WaddlePermission.contentModerate), isFalse);
+    expect(userHasPermission(kUserRolePowerViewer, WaddlePermission.screensRead), isFalse);
+    expect(userHasPermission(kUserRolePowerViewer, WaddlePermission.usersManage), isFalse);
+    expect(
+      userHasPermission(kUserRolePowerViewer, WaddlePermission.rejectTermsManage),
+      isFalse,
+    );
+  });
+
+  test('viewer cannot write screens or read operator surfaces', () {
     expect(userHasPermission(kUserRoleViewer, WaddlePermission.screensWrite), isFalse);
-    expect(userHasPermission(kUserRoleViewer, WaddlePermission.screensRead), isTrue);
+    expect(userHasPermission(kUserRoleViewer, WaddlePermission.screensRead), isFalse);
+    expect(userHasPermission(kUserRoleViewer, WaddlePermission.integrationsRead), isFalse);
+    expect(userHasPermission(kUserRoleViewer, WaddlePermission.curatorRead), isFalse);
+    expect(userHasPermission(kUserRoleViewer, WaddlePermission.navigationControl), isFalse);
+  });
+
+  test('viewer can read telemetry and media (programs)', () {
+    expect(userHasPermission(kUserRoleViewer, WaddlePermission.telemetryRead), isTrue);
   });
 
   test('operator has navigation', () {

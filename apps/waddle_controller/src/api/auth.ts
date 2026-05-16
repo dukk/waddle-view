@@ -35,6 +35,41 @@ export async function loginDisplay(
   };
 }
 
+export async function registerViewerDisplay(
+  baseUrl: string,
+  input: { username: string; password: string; registrationSecret: string },
+): Promise<LoginResult> {
+  const url = `${normalizeBaseUrl(baseUrl)}/v1/auth/register-viewer`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      username: input.username,
+      password: input.password,
+      registration_secret: input.registrationSecret,
+    }),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(text || `Registration failed (${res.status})`);
+  }
+  const body = (await res.json()) as {
+    session_token: string;
+    expires_at_ms: number;
+    user: DisplaySession['user'];
+    permissions: string[];
+    warnings: string[];
+  };
+  return {
+    baseUrl: normalizeBaseUrl(baseUrl),
+    token: body.session_token,
+    expiresAtMs: body.expires_at_ms,
+    user: body.user,
+    permissions: body.permissions,
+    warnings: body.warnings ?? [],
+  };
+}
+
 export async function fetchMe(
   baseUrl: string,
   token: string,

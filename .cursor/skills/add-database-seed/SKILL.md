@@ -20,7 +20,7 @@ Repo constraints: [AGENTS.md](../../../AGENTS.md) (default app **`apps/waddle_di
 
 1. **Entry point** — Implement idempotent logic in [`ensureInitialSeed`](../../../apps/waddle_display/lib/seed/initial_seed.dart) or a helper it calls. Prefer `insertOnConflictUpdate` or a select-then-insert pattern like existing `_ensure*` functions.
 2. **Factoring** — For non-trivial table-specific seeding, add `apps/waddle_display/lib/seed/tables/<name>_seed.dart` and call it from `ensureInitialSeed` (see [`content_categories_seed.dart`](../../../apps/waddle_display/lib/seed/tables/content_categories_seed.dart)).
-3. **Provider rows** — When inserting `provider_settings`, use [`providerConfigJsonDocForType`](../../../apps/waddle_display/lib/persistence/config_json_documentation.dart) for `configJsonSchema` / `exampleConfigJson` where applicable.
+3. **Integration rows** — When inserting into `integrations`, use [`providerConfigJsonDocForType`](../../../packages/waddle_shared/lib/persistence/config_json_documentation.dart) for `configJsonSchema` / `exampleConfigJson` where applicable.
 4. **Screens / tickers** — Reuse patterns in `initial_seed.dart` for `screen_definitions` and `ticker_definitions` (avoid duplicating the same seed logic in two files).
 5. **Persistence migrations** — If adding columns or tables, update Drift schema + migration steps under `apps/waddle_display/lib/persistence/` and add validation tests per project rules.
 6. **Tests** — Add tests under `apps/waddle_display/test/seed/` proving rows exist, counts, and **idempotency** (second `ensureInitialSeed` does not duplicate or break data). Model after [`initial_seed_test.dart`](../../../apps/waddle_display/test/seed/initial_seed_test.dart).

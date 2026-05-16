@@ -16,7 +16,7 @@ class ProviderConfigResolver {
   Future<ProviderRuntimeConfig> resolve(String providerId) async {
     final row =
         await (_db.select(
-          _db.providerSettings,
+          _db.integrations,
         )..where((t) => t.id.equals(providerId))).getSingleOrNull();
     if (row == null) {
       throw StateError('Unknown provider $providerId');

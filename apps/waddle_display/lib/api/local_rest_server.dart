@@ -11,14 +11,18 @@ import '../alerts/alert_repository.dart';
 import '../debug/app_debug_log.dart';
 import '../debug/operator_telemetry_hub.dart';
 import '../display/display_navigation_bus.dart';
+import 'package:waddle_shared/blob/blob_store.dart';
+import 'package:waddle_shared/blob/display_blob_read.dart';
 import 'package:waddle_shared/curation/reject_rescan.dart';
 import 'package:waddle_shared/persistence/content_suppression_repository.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/display_overlay_repository.dart';
+import 'package:waddle_shared/persistence/display_overlay_schedule_row.dart';
 import 'package:waddle_shared/persistence/reject_term_repository.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import '../ticker/ticker_curated_repository.dart';
 import 'auth_rest_routes.dart';
+import 'content_catalog_rest_routes.dart';
 import 'operator_rest_routes.dart';
 import 'session_auth.dart';
 import 'package:waddle_shared/auth/user_repository.dart';
@@ -27,6 +31,7 @@ Handler buildProtectedApiRouter({
   required AppDatabase db,
   required AlertRepository alerts,
   required TickerCuratedRepository ticker,
+  required BlobStore blobs,
   required Future<void> Function() onConfigChanged,
   OperatorTelemetryHub? telemetryHub,
   DisplayNavigationBus? navigationBus,
@@ -55,6 +60,8 @@ Handler buildProtectedApiRouter({
       (b) => suppression.setTriviaQuestionSuppressed(id, b),
     );
   });
+
+  registerContentCatalogRoutes(r, db: db);
 
   final rejectRepo = RejectTermRepository(db);
 
@@ -118,13 +125,13 @@ Handler buildProtectedApiRouter({
     );
   });
 
-  r.get('/v1/providers', (Request req) async {
-    final rows = await db.select(db.providerSettings).get();
+  r.get('/v1/integrations', (Request req) async {
+    final rows = await db.select(db.integrations).get();
     final list = rows
         .map(
           (e) => {
             'id': e.id,
-            'type': e.providerType,
+            'integration_type': e.providerType,
             'enabled': e.enabled,
             'poll_seconds': e.pollSeconds,
             'base_url': e.baseUrl,
@@ -141,7 +148,7 @@ Handler buildProtectedApiRouter({
   });
 
   r.get('/v1/screens', (Request req) async {
-    final rows = await db.select(db.screenDefinitions).get();
+    final rows = await db.select(db.screens).get();
     final dataKeyLimitRows =
         await db.select(db.curatorDataKeyProgramLimits).get();
     final dataKeyLimits = <String, CuratorDataKeyProgramLimit>{
@@ -199,7 +206,7 @@ Handler buildProtectedApiRouter({
   });
 
   r.get('/v1/alerts', (Request req) async {
-    final rows = await db.select(db.dashboardAlerts).get();
+    final rows = await db.select(db.alerts).get();
     return Response.ok(
       jsonEncode({'items': rows.map(_alertJson).toList()}),
       headers: {'content-type': 'application/json'},
@@ -229,7 +236,7 @@ Handler buildProtectedApiRouter({
   });
 
   r.get('/v1/display/overlays', (Request req) async {
-    await ensureDisplayOverlayTableExists(db);
+    await ensureOverlaysTableExists(db);
     final rows = await fetchDisplayOverlaySchedules(db);
     return Response.ok(
       jsonEncode({'items': rows.map(overlayScheduleToJson).toList()}),
@@ -259,10 +266,9 @@ Handler buildProtectedApiRouter({
         db,
         id: id,
         enabled: _readBoolOverlay(map['enabled'], defaultIfAbsent: true),
-        overlayKind: map['overlay_kind'] as String? ?? '',
+        overlayType: _readOverlayTypeFromMap(map),
         label: map['label'] as String? ?? '',
-        messagesJson: _messagesJsonArg(map),
-        configJson: _configJsonArg(map),
+        configJson: _effectiveOverlayConfigFromBody(map),
         repeatAnnually: _readBoolOverlay(map['repeat_annually'], defaultIfAbsent: true),
         yearExact: _readNullableIntOverlay(map['year_exact']),
         startMonth: _readIntOverlay(map['start_month']),
@@ -283,7 +289,7 @@ Handler buildProtectedApiRouter({
   });
 
   r.patch('/v1/display/overlays/<id>', (Request req, String pathId) async {
-    await ensureDisplayOverlayTableExists(db);
+    await ensureOverlaysTableExists(db);
     final existing = await overlayScheduleById(db, pathId);
     if (existing == null) {
       return Response(
@@ -307,18 +313,11 @@ Handler buildProtectedApiRouter({
         enabled: map.containsKey('enabled')
             ? _readBoolOverlay(map['enabled'], defaultIfAbsent: true)
             : existing.enabled,
-        overlayKind: map.containsKey('overlay_kind')
-            ? map['overlay_kind'] as String? ?? ''
-            : existing.overlayKind,
+        overlayType: _patchOverlayType(existing, map),
         label: map.containsKey('label')
             ? map['label'] as String? ?? ''
             : existing.label,
-        messagesJson: map.containsKey('messages_json')
-            ? _messagesJsonArg(map)
-            : existing.messagesJson,
-        configJson: map.containsKey('config_json')
-            ? _configJsonArg(map)
-            : existing.configJson,
+        configJson: _patchOverlayConfigJson(existing, map),
         repeatAnnually: map.containsKey('repeat_annually')
             ? _readBoolOverlay(map['repeat_annually'], defaultIfAbsent: true)
             : existing.repeatAnnually,
@@ -362,7 +361,7 @@ Handler buildProtectedApiRouter({
   });
 
   r.delete('/v1/display/overlays/<id>', (Request req, String id) async {
-    await ensureDisplayOverlayTableExists(db);
+    await ensureOverlaysTableExists(db);
     final row = await overlayScheduleById(db, id);
     if (row == null) {
       return Response(
@@ -373,6 +372,193 @@ Handler buildProtectedApiRouter({
     }
     await deleteOverlaySchedule(db, id);
     return Response.ok('{}', headers: {'content-type': 'application/json'});
+  });
+
+  r.get('/v1/media/blob-by-key', (Request req) async {
+    final key = req.url.queryParameters['key']?.trim() ?? '';
+    if (!_isSafeBlobLookupKey(key)) {
+      return Response(
+        400,
+        body: '{"error":"invalid_key"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    final row = await (db.select(db.blobMetadata)
+          ..where((t) => t.blobKey.equals(key)))
+        .getSingleOrNull();
+    if (row == null) {
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    final read = await readDisplayBlobBytes(blobs, BlobRef(row.relativePath));
+    if (!read.isOk) {
+      return Response(
+        404,
+        body: '{"error":"blob_unavailable"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    final mime = row.mimeType?.trim();
+    return Response.ok(
+      read.bytes!,
+      headers: {
+        'content-type':
+            (mime != null && mime.isNotEmpty) ? mime : 'application/octet-stream',
+        'cache-control': 'private, max-age=60',
+      },
+    );
+  });
+
+  r.get('/v1/media/rss-articles/<id>', (Request req, String id) async {
+    final row = await (db.select(db.rssArticles)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (row == null || row.suppressed) {
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    return Response.ok(
+      jsonEncode({
+        'id': row.id,
+        'feed_id': row.feedId,
+        'title': row.title,
+        'summary': row.summary,
+        'link': row.link,
+        'image_blob_key': row.imageBlobKey,
+        'published_at_ms': row.publishedAt.millisecondsSinceEpoch,
+      }),
+      headers: {'content-type': 'application/json'},
+    );
+  });
+
+  r.get('/v1/media/photos/<id>', (Request req, String id) async {
+    final row = await (db.select(db.photos)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (row == null || row.suppressed) {
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    return Response.ok(
+      jsonEncode({
+        'id': row.id,
+        'category': row.category,
+        'data_provider': row.dataProvider,
+        'alt_text': row.altText,
+        'photographer_name': row.photographerName,
+        'photographer_url': row.photographerUrl,
+        'pexels_page_url': row.pexelsPageUrl,
+        'media_blob_key': row.mediaBlobKey,
+      }),
+      headers: {'content-type': 'application/json'},
+    );
+  });
+
+  r.get('/v1/media/videos/<id>', (Request req, String id) async {
+    final row = await (db.select(db.videos)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (row == null || row.suppressed) {
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    return Response.ok(
+      jsonEncode({
+        'id': row.id,
+        'category': row.category,
+        'data_provider': row.dataProvider,
+        'alt_text': row.altText,
+        'photographer_name': row.photographerName,
+        'photographer_url': row.photographerUrl,
+        'pexels_page_url': row.pexelsPageUrl,
+        'media_blob_key': row.mediaBlobKey,
+        'duration_seconds': row.durationSeconds,
+      }),
+      headers: {'content-type': 'application/json'},
+    );
+  });
+
+  r.get('/v1/media/jokes/<id>', (Request req, String id) async {
+    final row = await (db.select(db.jokes)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (row == null || row.suppressed) {
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    return Response.ok(
+      jsonEncode({
+        'id': row.id,
+        'category_id': row.categoryId,
+        'setup': row.setup,
+        'punchline': row.punchline,
+      }),
+      headers: {'content-type': 'application/json'},
+    );
+  });
+
+  r.get('/v1/media/trivia/<id>', (Request req, String id) async {
+    final row = await (db.select(db.triviaQuestions)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (row == null || row.suppressed) {
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    return Response.ok(
+      jsonEncode({
+        'id': row.id,
+        'category_id': row.categoryId,
+        'question': row.question,
+        'option_a': row.optionA,
+        'option_b': row.optionB,
+        'option_c': row.optionC,
+        'option_d': row.optionD,
+        'correct_option': row.correctOption,
+      }),
+      headers: {'content-type': 'application/json'},
+    );
+  });
+
+  r.get('/v1/media/weather-at-location/<id>', (Request req, String id) async {
+    final loc = await (db.select(db.weatherLocations)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (loc == null) {
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    final cur = await (db.select(db.weatherCurrent)..where((t) => t.locationId.equals(id)))
+        .getSingleOrNull();
+    return Response.ok(
+      jsonEncode({
+        'location_id': loc.id,
+        'location_name': loc.name,
+        'latitude': loc.latitude,
+        'longitude': loc.longitude,
+        'enabled': loc.enabled,
+        'observed_at_ms': cur?.observedAtMs.millisecondsSinceEpoch,
+        'current_temp_c': cur?.currentTemp,
+        'current_description': cur?.currentDescription,
+        'current_icon_blob_key': cur?.currentIconBlobKey,
+      }),
+      headers: {'content-type': 'application/json'},
+    );
   });
 
   registerOperatorRestRoutes(
@@ -413,6 +599,104 @@ Future<Map<String, dynamic>?> _readOverlayJson(Request req) async {
   } catch (_) {
     return null;
   }
+}
+
+String _readOverlayTypeFromMap(Map<String, dynamic> map) {
+  final t = map['overlay_type'];
+  if (t is String && t.trim().isNotEmpty) {
+    return t.trim();
+  }
+  final k = map['overlay_kind'];
+  if (k is String && k.trim().isNotEmpty) {
+    return k.trim();
+  }
+  return '';
+}
+
+String _mergeLegacyMessagesJsonIntoConfigJson(
+  String configJson,
+  Map<String, dynamic> map,
+) {
+  if (!map.containsKey('messages_json')) {
+    return configJson;
+  }
+  final legacyListJson = _messagesJsonArg(map);
+  Map<String, dynamic> cfg;
+  try {
+    final d = jsonDecode(configJson.trim().isEmpty ? '{}' : configJson);
+    cfg = d is Map
+        ? Map<String, dynamic>.from(d.map((k, v) => MapEntry(k.toString(), v)))
+        : <String, dynamic>{};
+  } catch (_) {
+    cfg = <String, dynamic>{};
+  }
+  List<dynamic> raw;
+  try {
+    final decoded = jsonDecode(legacyListJson);
+    raw = decoded is List ? decoded : <dynamic>[];
+  } catch (_) {
+    raw = <dynamic>[];
+  }
+  final msgs = <String>[
+    for (final e in raw)
+      if (e is String && e.trim().isNotEmpty) e.trim(),
+  ];
+  cfg['messages'] = msgs;
+  return jsonEncode(cfg);
+}
+
+String _effectiveOverlayConfigFromBody(Map<String, dynamic> map) {
+  final base = _configJsonArg(map);
+  return _mergeLegacyMessagesJsonIntoConfigJson(base, map);
+}
+
+String _shallowMergeOverlayConfigJson(String existing, String patch) {
+  Map<String, dynamic> e;
+  Map<String, dynamic> p;
+  try {
+    final d = jsonDecode(existing.trim().isEmpty ? '{}' : existing);
+    e = d is Map
+        ? Map<String, dynamic>.from(d.map((k, v) => MapEntry(k.toString(), v)))
+        : <String, dynamic>{};
+  } catch (_) {
+    e = <String, dynamic>{};
+  }
+  try {
+    final d = jsonDecode(patch.trim().isEmpty ? '{}' : patch);
+    p = d is Map
+        ? Map<String, dynamic>.from(d.map((k, v) => MapEntry(k.toString(), v)))
+        : <String, dynamic>{};
+  } catch (_) {
+    p = <String, dynamic>{};
+  }
+  return jsonEncode(<String, dynamic>{...e, ...p});
+}
+
+String _patchOverlayType(
+  DisplayOverlayScheduleRow existing,
+  Map<String, dynamic> map,
+) {
+  if (map.containsKey('overlay_type')) {
+    return (map['overlay_type'] as String?)?.trim() ?? '';
+  }
+  if (map.containsKey('overlay_kind')) {
+    return (map['overlay_kind'] as String?)?.trim() ?? '';
+  }
+  return existing.overlayType;
+}
+
+String _patchOverlayConfigJson(
+  DisplayOverlayScheduleRow existing,
+  Map<String, dynamic> map,
+) {
+  if (!map.containsKey('config_json') && !map.containsKey('messages_json')) {
+    return existing.configJson;
+  }
+  var base = existing.configJson;
+  if (map.containsKey('config_json')) {
+    base = _shallowMergeOverlayConfigJson(base, _configJsonArg(map));
+  }
+  return _mergeLegacyMessagesJsonIntoConfigJson(base, map);
 }
 
 String _messagesJsonArg(Map<String, dynamic> map) {
@@ -619,11 +903,22 @@ Future<Response> _patchContentSuppressed(
   return Response.ok('{}', headers: {'content-type': 'application/json'});
 }
 
+bool _isSafeBlobLookupKey(String key) {
+  if (key.isEmpty || key.length > 512) {
+    return false;
+  }
+  if (key.contains('..')) {
+    return false;
+  }
+  return true;
+}
+
 Handler buildRootHandler({
   required AppDatabase db,
   required AlertRepository alerts,
   required UserRepository users,
   required TickerCuratedRepository ticker,
+  required BlobStore blobs,
   required Future<void> Function() onConfigChanged,
   required Map<String, String> env,
   OperatorTelemetryHub? telemetryHub,
@@ -651,6 +946,7 @@ Handler buildRootHandler({
           db: db,
           alerts: alerts,
           ticker: ticker,
+          blobs: blobs,
           onConfigChanged: onConfigChanged,
           telemetryHub: telemetryHub,
           navigationBus: navigationBus,
@@ -672,6 +968,8 @@ Handler buildRootHandler({
     if (path.startsWith('/v1/auth') || path.startsWith('v1/auth')) {
       if (path == '/v1/auth/login' ||
           path == 'v1/auth/login' ||
+          path == '/v1/auth/register-viewer' ||
+          path == 'v1/auth/register-viewer' ||
           path.startsWith('/v1/auth/oauth') ||
           path.startsWith('v1/auth/oauth')) {
         return authPublic(req);

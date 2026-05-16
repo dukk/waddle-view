@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-/// Allowed `shapes` entries in `display_overlay_schedules.config_json` for
-/// `overlay_kind` `birthday_confetti`.
+/// Allowed `shapes` entries in `overlays.config_json` for
+/// `overlay_type` `birthday_confetti`.
 const Set<String> kBirthdayConfettiShapeTokens = {
   'rect',
   'circle',
@@ -210,10 +210,28 @@ String? normalizeBirthdayConfettiSettingsJsonString(String raw) {
     final v = (map['opacity'] as num).toDouble().clamp(0.12, 0.72);
     out['opacity'] = v;
   }
+  if (map.containsKey('messages') && map['messages'] is List) {
+    final list = <String>[
+      for (final e in map['messages'] as List)
+        if (e is String && e.trim().isNotEmpty) e.trim(),
+    ];
+    out['messages'] = list;
+  }
   return jsonEncode(out);
 }
 
 bool _confettiSettingsMapValid(Map<String, dynamic> map) {
+  if (map.containsKey('messages')) {
+    final raw = map['messages'];
+    if (raw is! List) {
+      return false;
+    }
+    for (final e in raw) {
+      if (e is! String || e.trim().isEmpty) {
+        return false;
+      }
+    }
+  }
   if (map.containsKey('shapes')) {
     final raw = map['shapes'];
     if (raw != null && raw is! List) {

@@ -12,21 +12,21 @@ import 'package:waddle_shared/theme/display_text_scale_kv.dart';
 import 'package:waddle_shared/theme/display_theme_kv.dart';
 import 'tables/content_categories_seed.dart';
 import 'tables/joke_categories_seed.dart';
-import 'tables/provider_settings_seed.dart';
+import 'tables/integrations_seed.dart';
 import 'tables/rss_feed_sources_seed.dart';
 import 'tables/trivia_categories_seed.dart';
 
 /// Idempotent demo rows for stub provider + ticker.
 Future<void> ensureInitialSeed(AppDatabase db) async {
   final existing = await (db.select(
-    db.providerSettings,
+    db.integrations,
   )..where((t) => t.id.equals('stub'))).getSingleOrNull();
   if (existing == null) {
     final stubDoc = providerConfigJsonDocForType('stub');
     await db
-        .into(db.providerSettings)
+        .into(db.integrations)
         .insert(
-          ProviderSettingsCompanion.insert(
+          IntegrationsCompanion.insert(
             id: 'stub',
             providerType: 'stub',
             enabled: const Value(true),
@@ -35,32 +35,8 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
             exampleConfigJson: Value(stubDoc.example),
           ),
         );
-    await db
-        .into(db.configKeyValues)
-        .insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: 'ticker.marquee.news',
-            value: 'Welcome to Waddle View',
-          ),
-        );
-    await db
-        .into(db.configKeyValues)
-        .insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: 'ticker.marquee.weather',
-            value: '— °F · demo',
-          ),
-        );
-    await db
-        .into(db.configKeyValues)
-        .insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: 'ticker.marquee.quote',
-            value: 'Market data updates after each collect',
-          ),
-        );
   }
-  await ensureProviderSettingsDefaults(db);
+  await ensureIntegrationsDefaults(db);
   await _ensureDefaultStockSymbols(db);
   await _ensureDefaultWeatherLocations(db);
   await ensureDefaultContentCategories(db);
@@ -68,7 +44,7 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await ensureDefaultTriviaCategories(db);
   await ensureDefaultRssNewsFeeds(db);
   await _ensureCuratorSettings(db);
-  await _ensureTickerDefinitions(db);
+  await _ensureTickerTapes(db);
   await _ensureDisplayThemeKv(db);
   await _ensureDisplayTimezoneKv(db);
   await _ensureDisplayTextScaleKv(db);
@@ -99,18 +75,17 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
 }
 
 Future<void> _ensureDefaultMothersDayOverlay(AppDatabase db) async {
-  await db.customStatement(kEnsureDisplayOverlaySchedulesTableSql);
-  final messagesJson = jsonEncode(<String>[
-    "Happy Mother's Day!",
-  ]);
-  final heartsDoc = displayOverlayConfigJsonDocForKind(kOverlayKindHeartsRain);
+  await db.customStatement(kEnsureOverlaysTableSql);
+  final configJson = jsonEncode(<String, Object?>{
+    'messages': <String>["Happy Mother's Day!"],
+  });
+  final heartsDoc = displayOverlayConfigJsonDocForType(kOverlayTypeHeartsRain);
   await db.customStatement(
-    '''INSERT OR IGNORE INTO display_overlay_schedules (
+    '''INSERT OR IGNORE INTO overlays (
       id,
       enabled,
-      overlay_kind,
+      overlay_type,
       label,
-      messages_json,
       config_json,
       config_json_schema,
       example_config_json,
@@ -123,14 +98,14 @@ Future<void> _ensureDefaultMothersDayOverlay(AppDatabase db) async {
       nth_week_of_month,
       nth_weekday
     )
-    VALUES (?, 1, ?, ?, ?, '{}', ?, ?, 1,
+    VALUES (?, 1, ?, ?, ?, ?, ?, 1,
       NULL, 5, 1, NULL, NULL,
       2, ?)''',
     <Object?>[
       kDefaultMothersDayOverlayId,
-      kOverlayKindHeartsRain,
+      kOverlayTypeHeartsRain,
       "Mother's Day (US: 2nd Sunday in May)",
-      messagesJson,
+      configJson,
       heartsDoc.schema,
       heartsDoc.example,
       DateTime.sunday,
@@ -139,21 +114,24 @@ Future<void> _ensureDefaultMothersDayOverlay(AppDatabase db) async {
 }
 
 Future<void> _ensureDefaultBirthdayOverlayExample(AppDatabase db) async {
-  await db.customStatement(kEnsureDisplayOverlaySchedulesTableSql);
-  final messagesJson = jsonEncode(<String>['Happy birthday!']);
-  const configJson =
-      '{"shapes":["rect","circle","mix"],"density":0.36,"fall_speed":0.12,'
-      '"opacity":0.48,"message_interval_sec":38}';
-  final confettiDoc = displayOverlayConfigJsonDocForKind(
-    kOverlayKindBirthdayConfetti,
+  await db.customStatement(kEnsureOverlaysTableSql);
+  final configJson = jsonEncode(<String, Object?>{
+    'messages': <String>['Happy birthday!'],
+    'shapes': <String>['rect', 'circle', 'mix'],
+    'density': 0.36,
+    'fall_speed': 0.12,
+    'opacity': 0.48,
+    'message_interval_sec': 38,
+  });
+  final confettiDoc = displayOverlayConfigJsonDocForType(
+    kOverlayTypeBirthdayConfetti,
   );
   await db.customStatement(
-    '''INSERT OR IGNORE INTO display_overlay_schedules (
+    '''INSERT OR IGNORE INTO overlays (
       id,
       enabled,
-      overlay_kind,
+      overlay_type,
       label,
-      messages_json,
       config_json,
       config_json_schema,
       example_config_json,
@@ -166,14 +144,13 @@ Future<void> _ensureDefaultBirthdayOverlayExample(AppDatabase db) async {
       nth_week_of_month,
       nth_weekday
     )
-    VALUES (?, 0, ?, ?, ?, ?, ?, ?, 1,
+    VALUES (?, 0, ?, ?, ?, ?, ?, 1,
       NULL, 5, 13, NULL, NULL,
       NULL, NULL)''',
     <Object?>[
       kDefaultBirthdayOverlayExampleId,
-      kOverlayKindBirthdayConfetti,
+      kOverlayTypeBirthdayConfetti,
       'Example: May 13 birthday (disabled)',
-      messagesJson,
       configJson,
       confettiDoc.schema,
       confettiDoc.example,
@@ -182,19 +159,23 @@ Future<void> _ensureDefaultBirthdayOverlayExample(AppDatabase db) async {
 }
 
 Future<void> _ensureDefaultBouncingMessageOverlay(AppDatabase db) async {
-  await db.customStatement(kEnsureDisplayOverlaySchedulesTableSql);
-  final messagesJson = jsonEncode(<String>[kDefaultBouncingMessageOverlayPhrase]);
-  const configJson =
-      '{"color":"#5C6BC0","font_size":40,"font_weight":700,'
-      '"letter_spacing":0.8,"shadow":true,"speed":0.95}';
-  final doc = displayOverlayConfigJsonDocForKind(kOverlayKindBouncingMessage);
+  await db.customStatement(kEnsureOverlaysTableSql);
+  final configJson = jsonEncode(<String, Object?>{
+    'messages': <String>[kDefaultBouncingMessageOverlayPhrase],
+    'color': '#5C6BC0',
+    'font_size': 40,
+    'font_weight': 700,
+    'letter_spacing': 0.8,
+    'shadow': true,
+    'speed': 0.95,
+  });
+  final doc = displayOverlayConfigJsonDocForType(kOverlayTypeBouncingMessage);
   await db.customStatement(
-    '''INSERT OR IGNORE INTO display_overlay_schedules (
+    '''INSERT OR IGNORE INTO overlays (
       id,
       enabled,
-      overlay_kind,
+      overlay_type,
       label,
-      messages_json,
       config_json,
       config_json_schema,
       example_config_json,
@@ -207,14 +188,13 @@ Future<void> _ensureDefaultBouncingMessageOverlay(AppDatabase db) async {
       nth_week_of_month,
       nth_weekday
     )
-    VALUES (?, 0, ?, ?, ?, ?, ?, ?, 1,
+    VALUES (?, 0, ?, ?, ?, ?, ?, 1,
       NULL, 5, 13, NULL, NULL,
       NULL, NULL)''',
     <Object?>[
       kDefaultBouncingMessageOverlayId,
-      kOverlayKindBouncingMessage,
+      kOverlayTypeBouncingMessage,
       'Example: May 13 bouncing message (disabled)',
-      messagesJson,
       configJson,
       doc.schema,
       doc.example,
@@ -290,7 +270,7 @@ Future<void> _ensureAlertSeverityIconsKv(AppDatabase db) async {
       );
 }
 
-Future<void> _ensureTickerDefinitions(AppDatabase db) async {
+Future<void> _ensureTickerTapes(AppDatabase db) async {
   Future<void> upsert({
     required String id,
     required String name,
@@ -303,9 +283,9 @@ Future<void> _ensureTickerDefinitions(AppDatabase db) async {
   }) async {
     final doc = tickerSlotConfigJsonDocForType(tickerType);
     await db
-        .into(db.tickerDefinitions)
+        .into(db.tickerTapes)
         .insertOnConflictUpdate(
-          TickerDefinitionsCompanion.insert(
+          TickerTapesCompanion.insert(
             id: id,
             name: name,
             description: Value(description),
@@ -316,10 +296,28 @@ Future<void> _ensureTickerDefinitions(AppDatabase db) async {
             configKey: configKey == null
                 ? const Value.absent()
                 : Value(configKey),
+            configJson: const Value.absent(),
             configJsonSchema: Value(doc.schema),
             exampleConfigJson: Value(doc.example),
           ),
         );
+  }
+
+  Future<void> ensureTapeFallbackIfUnset(String id, String fallback) async {
+    final r = await (db.select(db.tickerTapes)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (r == null) {
+      return;
+    }
+    final raw = r.configJson.trim();
+    if (raw.isNotEmpty && raw != '{}') {
+      return;
+    }
+    await (db.update(db.tickerTapes)..where((t) => t.id.equals(id))).write(
+      TickerTapesCompanion(
+        configJson: Value(jsonEncode({'fallbackText': fallback})),
+      ),
+    );
   }
 
   await upsert(
@@ -332,21 +330,21 @@ Future<void> _ensureTickerDefinitions(AppDatabase db) async {
   await upsert(
     id: 'ticker_weather',
     name: 'Weather',
-    description: 'Live weather or ticker.marquee.weather',
+    description: 'Live weather; optional fallbackText in config_json',
     tickerType: 'weather',
     sortOrder: 10,
   );
   await upsert(
     id: 'ticker_news',
     name: 'News',
-    description: 'RSS headlines or ticker.marquee.news',
+    description: 'RSS headlines; optional fallbackText in config_json',
     tickerType: 'news',
     sortOrder: 20,
   );
   await upsert(
     id: 'ticker_quote',
     name: 'Quote',
-    description: 'ticker.marquee.quote',
+    description: 'Static line from config_json fallbackText',
     tickerType: 'quote',
     sortOrder: 30,
   );
@@ -360,10 +358,17 @@ Future<void> _ensureTickerDefinitions(AppDatabase db) async {
   await upsert(
     id: 'ticker_custom',
     name: 'Custom marquee',
-    description: 'Extra ticker.marquee.* keys (disabled by default)',
+    description: 'Extra ticker.marquee.* keys in config_key_values (disabled by default)',
     enabled: false,
     tickerType: 'custom',
     sortOrder: 40,
+  );
+
+  await ensureTapeFallbackIfUnset('ticker_weather', '— °F · demo');
+  await ensureTapeFallbackIfUnset('ticker_news', 'Welcome to Waddle View');
+  await ensureTapeFallbackIfUnset(
+    'ticker_quote',
+    'Market data updates after each collect',
   );
 }
 
@@ -390,15 +395,15 @@ Future<void> _ensureCuratorSettings(AppDatabase db) async {
 
 Future<void> _ensureWelcomeScreen(AppDatabase db) async {
   final row = await (db.select(
-    db.screenDefinitions,
+    db.screens,
   )..where((t) => t.id.equals('welcome'))).getSingleOrNull();
   if (row != null) {
     return;
   }
   await db
-      .into(db.screenDefinitions)
+      .into(db.screens)
       .insert(
-        ScreenDefinitionsCompanion.insert(
+        ScreensCompanion.insert(
           id: 'welcome',
           name: 'Welcome',
           description: const Value('Demo display screen'),
@@ -420,15 +425,15 @@ Future<void> _ensureWelcomeScreen(AppDatabase db) async {
 
 Future<void> _ensureJokeScreen(AppDatabase db) async {
   final row = await (db.select(
-    db.screenDefinitions,
+    db.screens,
   )..where((t) => t.id.equals('jokes'))).getSingleOrNull();
   if (row != null) {
     return;
   }
   await db
-      .into(db.screenDefinitions)
+      .into(db.screens)
       .insert(
-        ScreenDefinitionsCompanion.insert(
+        ScreensCompanion.insert(
           id: 'jokes',
           name: 'Jokes',
           description: const Value('Random joke with delayed punchline'),
@@ -448,15 +453,15 @@ Future<void> _ensureJokeScreen(AppDatabase db) async {
 
 Future<void> _ensureTriviaScreen(AppDatabase db) async {
   final row = await (db.select(
-    db.screenDefinitions,
+    db.screens,
   )..where((t) => t.id.equals('trivia'))).getSingleOrNull();
   if (row != null) {
     return;
   }
   await db
-      .into(db.screenDefinitions)
+      .into(db.screens)
       .insert(
-        ScreenDefinitionsCompanion.insert(
+        ScreensCompanion.insert(
           id: 'trivia',
           name: 'Trivia',
           description: const Value(
@@ -479,25 +484,25 @@ Future<void> _ensureTriviaScreen(AppDatabase db) async {
 
 Future<void> _ensureGuestWifiScreen(AppDatabase db) async {
   final row = await (db.select(
-    db.screenDefinitions,
+    db.screens,
   )..where((t) => t.id.equals('guest_wifi'))).getSingleOrNull();
   if (row != null) {
     return;
   }
   await db
-      .into(db.screenDefinitions)
+      .into(db.screens)
       .insert(
-        ScreenDefinitionsCompanion.insert(
+        ScreensCompanion.insert(
           id: 'guest_wifi',
           name: 'Guest WiFi',
           description: const Value('QR and credentials for guest network'),
-          screenType: 'guest_wifi',
+          screenType: 'wifi',
           configJson: const Value('{}'),
           configJsonSchema: Value(
-            screenConfigJsonDocForType('guest_wifi').schema,
+            screenConfigJsonDocForType('wifi').schema,
           ),
           exampleConfigJson: Value(
-            screenConfigJsonDocForType('guest_wifi').example,
+            screenConfigJsonDocForType('wifi').example,
           ),
           dwellSeconds: const Value(18),
           maxPlacementsPerProgram: const Value(1),
@@ -508,13 +513,13 @@ Future<void> _ensureGuestWifiScreen(AppDatabase db) async {
 
 Future<void> _ensureNewsScreen(AppDatabase db) async {
   final row = await (db.select(
-    db.screenDefinitions,
+    db.screens,
   )..where((t) => t.id.equals('news'))).getSingleOrNull();
   if (row != null) {
     await (db.update(
-      db.screenDefinitions,
+      db.screens,
     )..where((t) => t.id.equals('news'))).write(
-      ScreenDefinitionsCompanion(
+      ScreensCompanion(
         dataKey: const Value('news'),
         maxPlacementsPerProgram: const Value(null),
         minPlacementsPerProgram: const Value(1),
@@ -533,9 +538,9 @@ Future<void> _ensureNewsScreen(AppDatabase db) async {
     return;
   }
   await db
-      .into(db.screenDefinitions)
+      .into(db.screens)
       .insert(
-        ScreenDefinitionsCompanion.insert(
+        ScreensCompanion.insert(
           id: 'news',
           name: 'News',
           description: const Value(
@@ -559,13 +564,13 @@ Future<void> _ensureNewsScreen(AppDatabase db) async {
 
 Future<void> _ensureNewsRightImageScreen(AppDatabase db) async {
   final row = await (db.select(
-    db.screenDefinitions,
+    db.screens,
   )..where((t) => t.id.equals('news_right'))).getSingleOrNull();
   if (row != null) {
     await (db.update(
-      db.screenDefinitions,
+      db.screens,
     )..where((t) => t.id.equals('news_right'))).write(
-      ScreenDefinitionsCompanion(
+      ScreensCompanion(
         dataKey: const Value('news'),
         screenType: const Value('rss_article'),
         configJson: const Value(
@@ -582,9 +587,9 @@ Future<void> _ensureNewsRightImageScreen(AppDatabase db) async {
     return;
   }
   await db
-      .into(db.screenDefinitions)
+      .into(db.screens)
       .insert(
-        ScreenDefinitionsCompanion.insert(
+        ScreensCompanion.insert(
           id: 'news_right',
           name: 'News (image right)',
           description: const Value(
@@ -608,13 +613,13 @@ Future<void> _ensureNewsRightImageScreen(AppDatabase db) async {
 
 Future<void> _ensureNewsColumnsScreen(AppDatabase db) async {
   final row = await (db.select(
-    db.screenDefinitions,
+    db.screens,
   )..where((t) => t.id.equals('news_columns'))).getSingleOrNull();
   if (row != null) {
     await (db.update(
-      db.screenDefinitions,
+      db.screens,
     )..where((t) => t.id.equals('news_columns'))).write(
-      ScreenDefinitionsCompanion(
+      ScreensCompanion(
         dataKey: const Value('news'),
         screenType: const Value('rss_article_columns'),
         configJson: const Value(
@@ -631,9 +636,9 @@ Future<void> _ensureNewsColumnsScreen(AppDatabase db) async {
     return;
   }
   await db
-      .into(db.screenDefinitions)
+      .into(db.screens)
       .insert(
-        ScreenDefinitionsCompanion.insert(
+        ScreensCompanion.insert(
           id: 'news_columns',
           name: 'News (3 columns)',
           description: const Value(
@@ -657,13 +662,13 @@ Future<void> _ensureNewsColumnsScreen(AppDatabase db) async {
 
 Future<void> _ensureNewsStackScreen(AppDatabase db) async {
   final row = await (db.select(
-    db.screenDefinitions,
+    db.screens,
   )..where((t) => t.id.equals('news_stack'))).getSingleOrNull();
   if (row != null) {
     await (db.update(
-      db.screenDefinitions,
+      db.screens,
     )..where((t) => t.id.equals('news_stack'))).write(
-      ScreenDefinitionsCompanion(
+      ScreensCompanion(
         dataKey: const Value('news'),
         screenType: const Value('rss_article_stack'),
         configJson: const Value(
@@ -680,9 +685,9 @@ Future<void> _ensureNewsStackScreen(AppDatabase db) async {
     return;
   }
   await db
-      .into(db.screenDefinitions)
+      .into(db.screens)
       .insert(
-        ScreenDefinitionsCompanion.insert(
+        ScreensCompanion.insert(
           id: 'news_stack',
           name: 'News (stack of 2)',
           description: const Value(
@@ -719,13 +724,13 @@ Future<void> _ensureClockDataKeyLimit(AppDatabase db) async {
 
 Future<void> _ensureClockDigitalScreen(AppDatabase db) async {
   final row = await (db.select(
-    db.screenDefinitions,
+    db.screens,
   )..where((t) => t.id.equals('clock_digital'))).getSingleOrNull();
   if (row != null) {
     await (db.update(
-      db.screenDefinitions,
+      db.screens,
     )..where((t) => t.id.equals('clock_digital'))).write(
-      ScreenDefinitionsCompanion(
+      ScreensCompanion(
         dataKey: const Value('clock'),
         minPlacementsPerProgram: const Value(0),
         maxPlacementsPerProgram: const Value(1),
@@ -740,9 +745,9 @@ Future<void> _ensureClockDigitalScreen(AppDatabase db) async {
     return;
   }
   await db
-      .into(db.screenDefinitions)
+      .into(db.screens)
       .insert(
-        ScreenDefinitionsCompanion.insert(
+        ScreensCompanion.insert(
           id: 'clock_digital',
           name: 'Digital clock',
           description: const Value('Local time and date'),
@@ -764,13 +769,13 @@ Future<void> _ensureClockDigitalScreen(AppDatabase db) async {
 
 Future<void> _ensureClockAnalogScreen(AppDatabase db) async {
   final row = await (db.select(
-    db.screenDefinitions,
+    db.screens,
   )..where((t) => t.id.equals('clock_analog'))).getSingleOrNull();
   if (row != null) {
     await (db.update(
-      db.screenDefinitions,
+      db.screens,
     )..where((t) => t.id.equals('clock_analog'))).write(
-      ScreenDefinitionsCompanion(
+      ScreensCompanion(
         dataKey: const Value('clock'),
         minPlacementsPerProgram: const Value(0),
         maxPlacementsPerProgram: const Value(1),
@@ -785,9 +790,9 @@ Future<void> _ensureClockAnalogScreen(AppDatabase db) async {
     return;
   }
   await db
-      .into(db.screenDefinitions)
+      .into(db.screens)
       .insert(
-        ScreenDefinitionsCompanion.insert(
+        ScreensCompanion.insert(
           id: 'clock_analog',
           name: 'Analog clock',
           description: const Value('Analog dial with local date'),
@@ -809,15 +814,15 @@ Future<void> _ensureClockAnalogScreen(AppDatabase db) async {
 
 Future<void> _ensureCalendarScreen(AppDatabase db) async {
   final row = await (db.select(
-    db.screenDefinitions,
+    db.screens,
   )..where((t) => t.id.equals('calendar'))).getSingleOrNull();
   if (row != null) {
     return;
   }
   await db
-      .into(db.screenDefinitions)
+      .into(db.screens)
       .insert(
-        ScreenDefinitionsCompanion.insert(
+        ScreensCompanion.insert(
           id: 'calendar',
           name: 'Calendar',
           description: const Value(
@@ -841,15 +846,15 @@ Future<void> _ensureCalendarScreen(AppDatabase db) async {
 
 Future<void> _ensureLocalApiScreen(AppDatabase db) async {
   final row = await (db.select(
-    db.screenDefinitions,
+    db.screens,
   )..where((t) => t.id.equals('dev_local_api'))).getSingleOrNull();
   if (row != null) {
     return;
   }
   await db
-      .into(db.screenDefinitions)
+      .into(db.screens)
       .insert(
-        ScreenDefinitionsCompanion.insert(
+        ScreensCompanion.insert(
           id: 'dev_local_api',
           name: 'Developer — Local API',
           description: const Value(
@@ -874,15 +879,15 @@ Future<void> _ensureLocalApiScreen(AppDatabase db) async {
 
 Future<void> _ensureDataHealthScreen(AppDatabase db) async {
   final row = await (db.select(
-    db.screenDefinitions,
+    db.screens,
   )..where((t) => t.id.equals('dev_data_health'))).getSingleOrNull();
   if (row != null) {
     return;
   }
   await db
-      .into(db.screenDefinitions)
+      .into(db.screens)
       .insert(
-        ScreenDefinitionsCompanion.insert(
+        ScreensCompanion.insert(
           id: 'dev_data_health',
           name: 'Developer — Data health',
           description: const Value(
@@ -910,15 +915,15 @@ Future<void> _ensureDataHealthScreen(AppDatabase db) async {
 
 Future<void> _ensureAdminSetupScreen(AppDatabase db) async {
   final row = await (db.select(
-    db.screenDefinitions,
+    db.screens,
   )..where((t) => t.id.equals('admin_setup'))).getSingleOrNull();
   if (row != null) {
     return;
   }
   await db
-      .into(db.screenDefinitions)
+      .into(db.screens)
       .insert(
-        ScreenDefinitionsCompanion.insert(
+        ScreensCompanion.insert(
           id: 'admin_setup',
           name: 'Setup Admin Access',
           description: const Value(
@@ -945,15 +950,15 @@ Future<void> _ensureAdminSetupScreen(AppDatabase db) async {
 
 Future<void> _ensureWeatherScreen(AppDatabase db) async {
   final row = await (db.select(
-    db.screenDefinitions,
+    db.screens,
   )..where((t) => t.id.equals('weather'))).getSingleOrNull();
   if (row != null) {
     return;
   }
   await db
-      .into(db.screenDefinitions)
+      .into(db.screens)
       .insert(
-        ScreenDefinitionsCompanion.insert(
+        ScreensCompanion.insert(
           id: 'weather',
           name: 'Weather',
           description: const Value('Current weather'),
@@ -1023,15 +1028,15 @@ Future<void> _ensureDefaultStockSymbols(AppDatabase db) async {
 
 Future<void> _ensureStockQuotesScreen(AppDatabase db) async {
   final row = await (db.select(
-    db.screenDefinitions,
+    db.screens,
   )..where((t) => t.id.equals('stock_quotes'))).getSingleOrNull();
   if (row != null) {
     return;
   }
   await db
-      .into(db.screenDefinitions)
+      .into(db.screens)
       .insert(
-        ScreenDefinitionsCompanion.insert(
+        ScreensCompanion.insert(
           id: 'stock_quotes',
           name: 'Stock quotes',
           description: const Value('Latest Finnhub quotes for enabled symbols'),
@@ -1052,15 +1057,15 @@ Future<void> _ensureStockQuotesScreen(AppDatabase db) async {
 
 Future<void> _ensurePexelsPhotoScreen(AppDatabase db) async {
   final row = await (db.select(
-    db.screenDefinitions,
+    db.screens,
   )..where((t) => t.id.equals('pexels_photo'))).getSingleOrNull();
   if (row != null) {
     return;
   }
   await db
-      .into(db.screenDefinitions)
+      .into(db.screens)
       .insert(
-        ScreenDefinitionsCompanion.insert(
+        ScreensCompanion.insert(
           id: 'pexels_photo',
           name: 'Pexels photo',
           description: const Value('Curated / search photos from Pexels'),
@@ -1081,15 +1086,15 @@ Future<void> _ensurePexelsPhotoScreen(AppDatabase db) async {
 
 Future<void> _ensurePexelsVideoScreen(AppDatabase db) async {
   final row = await (db.select(
-    db.screenDefinitions,
+    db.screens,
   )..where((t) => t.id.equals('pexels_video'))).getSingleOrNull();
   if (row != null) {
     return;
   }
   await db
-      .into(db.screenDefinitions)
+      .into(db.screens)
       .insert(
-        ScreenDefinitionsCompanion.insert(
+        ScreensCompanion.insert(
           id: 'pexels_video',
           name: 'Pexels video',
           description: const Value('Popular / search videos from Pexels'),
@@ -1116,16 +1121,16 @@ Future<void> _ensurePhotoCollageScreens(AppDatabase db) async {
     int dwellSeconds = 18,
   }) async {
     final row = await (db.select(
-      db.screenDefinitions,
+      db.screens,
     )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (row != null) {
       return;
     }
     final collageDoc = screenConfigJsonDocForType('pexels_photo_collage');
     await db
-        .into(db.screenDefinitions)
+        .into(db.screens)
         .insert(
-          ScreenDefinitionsCompanion.insert(
+          ScreensCompanion.insert(
             id: id,
             name: name,
             description: const Value(

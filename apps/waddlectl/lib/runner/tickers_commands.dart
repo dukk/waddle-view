@@ -20,7 +20,7 @@ class TickersCommand extends Command<void> {
 
   @override
   String get description =>
-      'Manage ticker_definitions (curator slots; not live marquee text).';
+      'Manage ticker_tapes rows (curator slots; not live marquee text).';
 }
 
 class _TickersList extends Command<void> {

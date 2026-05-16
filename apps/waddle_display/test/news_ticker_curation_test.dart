@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:waddle_display/curator/curator_read_port.dart';
 import 'package:waddle_display/curator/ticker_curation.dart';
 import 'package:waddle_display/curator/ticker_news_candidate.dart';
 
@@ -19,24 +20,28 @@ void main() {
         feedName: 'Local',
         title: 'f1 newest',
         publishedAtMs: a,
+        articleId: 'f1-new',
       ),
       TickerNewsCandidate(
         feedId: 'f1',
         feedName: 'Local',
         title: 'f1 old',
         publishedAtMs: d,
+        articleId: 'f1-old',
       ),
       TickerNewsCandidate(
         feedId: 'f2',
         feedName: 'World',
         title: 'f2 mid',
         publishedAtMs: b,
+        articleId: 'f2-mid',
       ),
       TickerNewsCandidate(
         feedId: 'f2',
         feedName: 'World',
         title: 'f2 old',
         publishedAtMs: c,
+        articleId: 'f2-old',
       ),
     ];
     final x = interleaveNewsByFeed(candidates);
@@ -58,6 +63,7 @@ void main() {
           feedName: 'x',
           title: '012345678901234567890',
           publishedAtMs: 1,
+          articleId: 'long',
         ),
       ],
       config: cfg,
@@ -80,18 +86,21 @@ void main() {
         feedName: 'x',
         title: '0123456789',
         publishedAtMs: 1,
+        articleId: 'a1',
       ),
       const TickerNewsCandidate(
         feedId: 'b',
         feedName: 'y',
         title: '0123456789',
         publishedAtMs: 2,
+        articleId: 'b1',
       ),
       const TickerNewsCandidate(
         feedId: 'a',
         feedName: 'x',
         title: '0123456789',
         publishedAtMs: 3,
+        articleId: 'a2',
       ),
     ];
     final items = pickNewsTickerItemsByWidthBudget(
@@ -101,26 +110,47 @@ void main() {
     expect(items.length, 2);
   });
 
-  test('buildTickerItemsForMarquee uses KV news when RSS empty', () {
+  test('buildTickerItemsForMarquee uses tape fallback when RSS empty', () {
     final t = DateTime(2026, 3, 4, 9, 8, 7);
     final items = buildTickerItemsForMarquee(
-      kv: {
-        'ticker.marquee.news': 'KV headline',
-        'ticker.marquee.weather': 'W',
-      },
+      kv: const {},
       nowLocal: t,
       newsCandidates: const [],
+      definitions: const [
+        TickerTapeForCuration(
+          id: 'tm',
+          tickerType: 'time',
+          enabled: true,
+          frequencyWeight: 1,
+          sortOrder: 0,
+        ),
+        TickerTapeForCuration(
+          id: 'w',
+          tickerType: 'weather',
+          enabled: true,
+          frequencyWeight: 1,
+          sortOrder: 5,
+          configJson: '{"fallbackText":"W"}',
+        ),
+        TickerTapeForCuration(
+          id: 'n',
+          tickerType: 'news',
+          enabled: true,
+          frequencyWeight: 1,
+          sortOrder: 10,
+          configJson: '{"fallbackText":"KV headline"}',
+        ),
+      ],
     );
     expect(items.map((e) => e.kind).toList(), ['time', 'weather', 'news']);
     expect(items[2].body, 'KV headline');
   });
 
-  test('buildTickerItemsForMarquee prefers RSS over KV news', () {
+  test('buildTickerItemsForMarquee prefers RSS over tape news fallback', () {
     final t = DateTime(2026, 3, 4, 9, 8, 7);
     final ms = DateTime.utc(2026, 1, 1).millisecondsSinceEpoch;
     final items = buildTickerItemsForMarquee(
       kv: {
-        'ticker.marquee.news': 'KV headline',
         'curator.ticker.newsScrollBudgetSeconds': '10000',
         'curator.ticker.newsCharWidthPx': '1',
         'curator.ticker.newsSeparatorPaddingPx': '0',
@@ -133,6 +163,7 @@ void main() {
           feedName: 'Reuters',
           title: 'RSS title',
           publishedAtMs: ms,
+          articleId: 'rss-title-1',
         ),
       ],
     );
@@ -144,6 +175,7 @@ void main() {
     expect(news.rss!.sourceTitle, 'Reuters');
     expect(news.rss!.articleTitle, 'RSS title');
     expect(news.rss!.summary, '');
+    expect(news.articleId, 'rss-title-1');
   });
 
   test('buildTickerItemsForMarquee appends sorted custom marquee keys', () {
@@ -151,7 +183,6 @@ void main() {
     final ms = DateTime.utc(2026, 1, 1).millisecondsSinceEpoch;
     final items = buildTickerItemsForMarquee(
       kv: {
-        'ticker.marquee.weather': 'W',
         'ticker.marquee.extra_z': 'Z',
         'ticker.marquee.extra_a': 'A',
         'ticker.marquee.extra_blank': '   ',
@@ -166,6 +197,30 @@ void main() {
           feedName: 'F',
           title: 'T',
           publishedAtMs: ms,
+          articleId: 'rss-t',
+        ),
+      ],
+      definitions: const [
+        TickerTapeForCuration(
+          id: 'tm',
+          tickerType: 'time',
+          enabled: true,
+          frequencyWeight: 1,
+          sortOrder: 0,
+        ),
+        TickerTapeForCuration(
+          id: 'nw',
+          tickerType: 'news',
+          enabled: true,
+          frequencyWeight: 1,
+          sortOrder: 10,
+        ),
+        TickerTapeForCuration(
+          id: 'c',
+          tickerType: 'custom',
+          enabled: true,
+          frequencyWeight: 1,
+          sortOrder: 20,
         ),
       ],
     );
@@ -190,6 +245,7 @@ void main() {
           title: 'Headline',
           summary: 'The deck.',
           publishedAtMs: 1,
+          articleId: 'deck',
         ),
       ],
       config: cfg,
@@ -213,6 +269,7 @@ void main() {
           feedName: 'BBC World',
           title: 'Headline',
           publishedAtMs: 1,
+          articleId: 'brack',
         ),
       ],
       config: cfg,
@@ -237,6 +294,7 @@ void main() {
           title: 'Headline',
           categoryIconName: 'public',
           publishedAtMs: 1,
+          articleId: 'icon',
         ),
       ],
       config: cfg,

@@ -75,8 +75,8 @@ void main() {
   test('collect inserts trivia from API and respects daily cap', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'trivia_openai',
             providerType: 'trivia_openai',
             pollSeconds: const Value(1),
@@ -134,8 +134,8 @@ void main() {
   test('collect decodes HTML entities in questions and choices', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'trivia_openai',
             providerType: 'trivia_openai',
             pollSeconds: const Value(1),
@@ -185,8 +185,8 @@ void main() {
   test('collect skips unknown categoryId in response', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'trivia_openai',
             providerType: 'trivia_openai',
             pollSeconds: const Value(1),
@@ -228,8 +228,8 @@ void main() {
   test('collect skips item when correct option invalid', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'trivia_openai',
             providerType: 'trivia_openai',
             pollSeconds: const Value(1),
@@ -270,8 +270,8 @@ void main() {
     final oldMs = t.subtract(const Duration(days: 20)).millisecondsSinceEpoch;
     final recentMs = t.subtract(const Duration(days: 2)).millisecondsSinceEpoch;
 
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'trivia_openai',
             providerType: 'trivia_openai',
             pollSeconds: const Value(1),
@@ -340,8 +340,8 @@ void main() {
   test('parse strips markdown fence from model content', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'trivia_openai',
             providerType: 'trivia_openai',
             pollSeconds: const Value(1),
@@ -394,8 +394,8 @@ void main() {
   test('collect skips item when question or option exceeds length cap', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'trivia_openai',
             providerType: 'trivia_openai',
             pollSeconds: const Value(1),
@@ -437,8 +437,8 @@ void main() {
   test('collect skips second item with duplicate normalized question text', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'trivia_openai',
             providerType: 'trivia_openai',
             pollSeconds: const Value(1),
@@ -479,8 +479,8 @@ void main() {
   test('collect accepts true_false rows with A/B options only', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'trivia_openai',
             providerType: 'trivia_openai',
             pollSeconds: const Value(1),
@@ -527,8 +527,8 @@ void main() {
   test('user prompt lists recent questions to avoid', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'trivia_openai',
             providerType: 'trivia_openai',
             pollSeconds: const Value(1),

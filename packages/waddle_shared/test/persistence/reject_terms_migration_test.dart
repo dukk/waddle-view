@@ -9,7 +9,7 @@ import '../helpers/legacy_migration_schema_stubs.dart';
 import '../helpers/memory_database.dart';
 
 void main() {
-  test('v30 -> v31 creates reject_terms and seeds defaults', () async {
+  test('v30 -> v31 creates curator_rejected_terms and seeds defaults', () async {
     final raw = sqlite.sqlite3.openInMemory();
     raw.execute('PRAGMA foreign_keys = ON;');
     raw.execute('PRAGMA user_version = 30;');
@@ -21,7 +21,7 @@ void main() {
     await db.customStatement('SELECT 1');
 
     final cols = await db
-        .customSelect('PRAGMA table_info(reject_terms);')
+        .customSelect('PRAGMA table_info(curator_rejected_terms);')
         .get();
     final names = cols.map((r) => r.read<String>('name')).toSet();
     expect(
@@ -55,7 +55,7 @@ void main() {
     await db.close();
   });
 
-  test('fresh DB at v31 seeds reject_terms defaults', () async {
+  test('fresh DB at v31 seeds curator_rejected_terms defaults', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     final rows = await db.select(db.rejectTerms).get();
@@ -63,7 +63,7 @@ void main() {
     await db.close();
   });
 
-  test('seed does not overwrite existing reject_terms rows on reopen',
+  test('seed does not overwrite existing curator_rejected_terms rows on reopen',
       () async {
     final raw = sqlite.sqlite3.openInMemory();
     raw.execute('PRAGMA foreign_keys = ON;');

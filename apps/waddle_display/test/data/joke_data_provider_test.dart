@@ -42,8 +42,8 @@ void main() {
   test('collect inserts jokes from API and respects daily cap', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'joke_openai',
             providerType: 'joke_openai',
             pollSeconds: const Value(1),
@@ -113,8 +113,8 @@ void main() {
     final oldMs = t.subtract(const Duration(days: 20)).millisecondsSinceEpoch;
     final recentMs = t.subtract(const Duration(days: 2)).millisecondsSinceEpoch;
 
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'joke_openai',
             providerType: 'joke_openai',
             pollSeconds: const Value(1),
@@ -177,8 +177,8 @@ void main() {
   test('collect runs when prior batches are older than 2h window', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'joke_openai',
             providerType: 'joke_openai',
             pollSeconds: const Value(1),
@@ -242,8 +242,8 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     final t = DateTime(2026, 3, 15, 12);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'joke_openai',
             providerType: 'joke_openai',
             pollSeconds: const Value(1),
@@ -288,8 +288,8 @@ void main() {
   test('collect skips when 2h request budget is exhausted', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'joke_openai',
             providerType: 'joke_openai',
             pollSeconds: const Value(1),
@@ -333,8 +333,8 @@ void main() {
   test('collect skips when no categories are eligible (seasonal)', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'joke_openai',
             providerType: 'joke_openai',
             pollSeconds: const Value(1),
@@ -375,8 +375,8 @@ void main() {
   test('collect skips when API token missing', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'joke_openai',
             providerType: 'joke_openai',
             pollSeconds: const Value(1),
@@ -406,8 +406,8 @@ void main() {
   test('parse strips markdown fence from model content', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'joke_openai',
             providerType: 'joke_openai',
             pollSeconds: const Value(1),
@@ -455,8 +455,8 @@ void main() {
   test('collect decodes HTML entities in setup and punchline', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'joke_openai',
             providerType: 'joke_openai',
             pollSeconds: const Value(1),

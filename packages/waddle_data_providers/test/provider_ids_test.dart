@@ -14,7 +14,7 @@ import 'package:waddle_data_providers/weather_nws_alerts/nws_weather_gov_alerts_
 import 'package:waddle_data_providers/weather_openweathermap/weather_data_provider.dart';
 
 void main() {
-  test('collector IDataProvider ids match persisted provider_settings ids', () {
+  test('collector IDataProvider ids match persisted integrations ids', () {
     expect(RssNewsDataProvider().id, 'news_rss');
     expect(JokeDataProvider().id, 'joke_openai');
     expect(TriviaDataProvider().id, 'trivia_openai');

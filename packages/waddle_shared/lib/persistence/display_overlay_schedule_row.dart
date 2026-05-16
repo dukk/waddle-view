@@ -24,14 +24,13 @@ int? _readOptionalInt(QueryRow row, String key) {
   return raw as int;
 }
 
-/// One row of [display_overlay_schedules] (custom SQL backed).
+/// One row of [overlays] (custom SQL backed).
 class DisplayOverlayScheduleRow {
   const DisplayOverlayScheduleRow({
     required this.id,
     required this.enabled,
-    required this.overlayKind,
+    required this.overlayType,
     required this.label,
-    required this.messagesJson,
     required this.configJson,
     required this.configJsonSchema,
     required this.exampleConfigJson,
@@ -47,9 +46,8 @@ class DisplayOverlayScheduleRow {
 
   final String id;
   final bool enabled;
-  final String overlayKind;
+  final String overlayType;
   final String label;
-  final String messagesJson;
   final String configJson;
   final String? configJsonSchema;
   final String? exampleConfigJson;
@@ -66,9 +64,8 @@ class DisplayOverlayScheduleRow {
     return DisplayOverlayScheduleRow(
       id: row.read<String>('id'),
       enabled: row.read<int>('enabled') != 0,
-      overlayKind: row.read<String>('overlay_kind'),
+      overlayType: row.read<String>('overlay_type'),
       label: row.read<String>('label'),
-      messagesJson: row.read<String>('messages_json'),
       configJson: _readConfigJson(row),
       configJsonSchema: _readOptionalString(row, 'config_json_schema'),
       exampleConfigJson: _readOptionalString(row, 'example_config_json'),

@@ -14,4 +14,16 @@ void main() {
   test('password route has no permission gate', () {
     expect(permissionForRoute('POST', '/v1/users/u1/password'), isNull);
   });
+
+  test('PATCH own user id has no permission gate when actor matches', () {
+    expect(
+      permissionForRoute('PATCH', '/v1/users/u1', actorUserId: 'u1'),
+      isNull,
+    );
+    expect(
+      permissionForRoute('PATCH', '/v1/users/u1', actorUserId: 'other'),
+      WaddlePermission.usersManage,
+    );
+    expect(permissionForRoute('PATCH', '/v1/users/u1'), WaddlePermission.usersManage);
+  });
 }

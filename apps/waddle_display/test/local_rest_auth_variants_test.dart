@@ -8,7 +8,7 @@ void main() {
     final h = await RestTestHarness.start();
     addTearDown(h.dispose);
     final r = await http.get(
-      Uri.parse('${h.baseUrl}/v1/providers'),
+      Uri.parse('${h.baseUrl}/v1/integrations'),
       headers: {'Authorization': 'Bearer ${h.token}'},
     );
     expect(r.statusCode, 200);

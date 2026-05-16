@@ -52,8 +52,8 @@ class _CuratedPhotosClient extends http.BaseClient {
 Future<InMemorySecretStore> _secretsWithKey() async => InMemorySecretStore();
 
 Future<void> _ensurePexels(AppDatabase db) async {
-  await db.into(db.providerSettings).insert(
-        ProviderSettingsCompanion.insert(
+  await db.into(db.integrations).insert(
+        IntegrationsCompanion.insert(
           id: 'media_pexels',
           providerType: 'media_pexels',
           pollSeconds: const Value(0),

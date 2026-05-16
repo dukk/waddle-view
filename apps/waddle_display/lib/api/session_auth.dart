@@ -1,5 +1,4 @@
 import 'package:shelf/shelf.dart';
-import 'package:waddle_shared/auth/role_permissions.dart';
 import 'package:waddle_shared/auth/user_repository.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
@@ -35,8 +34,12 @@ Middleware routePermissionGuard() {
       if (user == null) {
         return _jsonUnauthorized();
       }
-      final perm = permissionForRoute(request.method, request.requestedUri.path);
-      if (perm != null && !userHasPermission(user.role, perm)) {
+      final perm = permissionForRoute(
+        request.method,
+        request.requestedUri.path,
+        actorUserId: user.id,
+      );
+      if (perm != null && !roleSatisfiesRoutePermission(user.role, perm)) {
         AppDebugLog.api('403 ${request.requestedUri.path} forbidden');
         return _jsonForbidden();
       }

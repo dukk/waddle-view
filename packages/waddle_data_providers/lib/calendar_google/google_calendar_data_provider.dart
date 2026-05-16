@@ -45,7 +45,7 @@ class GoogleCalendarDataProvider implements IDataProvider {
 
   @override
   Future<void> collect(DataWriteContext ctx) async {
-    final setting = await (ctx.db.select(ctx.db.providerSettings)
+    final setting = await (ctx.db.select(ctx.db.integrations)
           ..where((t) => t.id.equals(kGoogleCalendarProviderId)))
         .getSingleOrNull();
     if (setting == null || !setting.enabled) {

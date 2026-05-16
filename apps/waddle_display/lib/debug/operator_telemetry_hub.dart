@@ -6,32 +6,40 @@ import '../curator/ticker_item.dart';
 /// In-process ring buffers for operator REST / UI (not persisted to SQLite).
 final class OperatorTelemetryHub {
   OperatorTelemetryHub({
-    this.maxProviderLines = 500,
+    this.maxIntegrationLines = 500,
     this.maxScreenPrograms = 50,
     this.maxTickerPrograms = 50,
   });
 
-  final int maxProviderLines;
+  final int maxIntegrationLines;
   final int maxScreenPrograms;
   final int maxTickerPrograms;
 
-  final ListQueue<TelemetryTextLine> _providerLines = ListQueue();
+  final ListQueue<TelemetryTextLine> _integrationLines = ListQueue();
   final ListQueue<ScreenProgramRecord> _screenPrograms = ListQueue();
   final ListQueue<TickerProgramRecord> _tickerPrograms = ListQueue();
 
-  void addProviderLine(String message) {
-    _appendLine(_providerLines, TelemetryTextLine(atMs: _nowMs(), channel: 'provider', message: message), maxProviderLines);
+  void addIntegrationLine(String message) {
+    _appendLine(
+      _integrationLines,
+      TelemetryTextLine(atMs: _nowMs(), channel: 'integration', message: message),
+      maxIntegrationLines,
+    );
   }
 
   void addEngineLine(String message) {
-    _appendLine(_providerLines, TelemetryTextLine(atMs: _nowMs(), channel: 'engine', message: message), maxProviderLines);
+    _appendLine(
+      _integrationLines,
+      TelemetryTextLine(atMs: _nowMs(), channel: 'engine', message: message),
+      maxIntegrationLines,
+    );
   }
 
-  void addProviderFail(String context, Object error, StackTrace stack) {
+  void addIntegrationFail(String context, Object error, StackTrace stack) {
     final msg =
         'FAIL $context: ${Error.safeToString(error)} '
         '(${_stackHead(stack)})';
-    addProviderLine(msg);
+    addIntegrationLine(msg);
   }
 
   void addEngineFail(String context, Object error, StackTrace stack) {
@@ -72,8 +80,8 @@ final class OperatorTelemetryHub {
     );
   }
 
-  List<Map<String, Object?>> snapshotProviderLines({int? limit, int? sinceMs}) {
-    return _snapshotLines(_providerLines, limit: limit, sinceMs: sinceMs);
+  List<Map<String, Object?>> snapshotIntegrationLines({int? limit, int? sinceMs}) {
+    return _snapshotLines(_integrationLines, limit: limit, sinceMs: sinceMs);
   }
 
   List<Map<String, Object?>> snapshotScreenPrograms({int? limit, int? sinceMs}) {
@@ -204,6 +212,8 @@ Map<String, Object?> _tickerItemJson(TickerItem i) {
     'kind': i.kind,
     'body': i.body,
     'source_id': i.sourceId,
+    if (i.articleId != null && i.articleId!.trim().isNotEmpty)
+      'article_id': i.articleId,
     if (rss != null)
       'rss': <String, Object?>{
         'source_title': rss.sourceTitle,

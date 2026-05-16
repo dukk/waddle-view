@@ -202,7 +202,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
   Future<void> collect(DataWriteContext ctx) async {
     final setting =
         await (ctx.db.select(
-              ctx.db.providerSettings,
+              ctx.db.integrations,
             )..where((t) => t.id.equals(kOneDriveMediaProviderId)))
             .getSingleOrNull();
     if (setting == null || !setting.enabled) {

@@ -11,8 +11,8 @@ void main() {
   test('merges drift row with env token', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'weather_openweathermap',
             providerType: 'weather_openweathermap',
             baseUrl: const Value('https://example.com'),

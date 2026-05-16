@@ -1,15 +1,18 @@
 import 'package:waddle_shared/auth/role_permissions.dart';
 
 /// Resolves required permission for a protected REST route, or null if unknown.
-String? permissionForRoute(String method, String path) {
+///
+/// [actorUserId] is the authenticated user id when known; used so users can
+/// PATCH their own profile (`display_name` only) without [WaddlePermission.usersManage].
+String? permissionForRoute(String method, String path, {String? actorUserId}) {
   final p = path.startsWith('/') ? path : '/$path';
   final m = method.toUpperCase();
 
-  if (p == '/v1/providers' && m == 'GET') {
-    return WaddlePermission.providersRead;
+  if (p == '/v1/integrations' && m == 'GET') {
+    return WaddlePermission.integrationsRead;
   }
-  if (p.startsWith('/v1/providers/') && m == 'PATCH') {
-    return WaddlePermission.providersWrite;
+  if (p.startsWith('/v1/integrations/') && m == 'PATCH') {
+    return WaddlePermission.integrationsWrite;
   }
 
   if (p == '/v1/screens' && m == 'GET') {
@@ -28,10 +31,16 @@ String? permissionForRoute(String method, String path) {
   if (p == '/v1/ticker/items' && m == 'GET') {
     return WaddlePermission.tickerRead;
   }
-  if (p == '/v1/ticker/definitions' && m == 'GET') {
+  if (p == '/v1/ticker/tapes' && m == 'GET') {
     return WaddlePermission.tickerRead;
   }
-  if (p.startsWith('/v1/ticker/definitions/') && m == 'PATCH') {
+  if (p == '/v1/ticker/tapes' && m == 'POST') {
+    return WaddlePermission.tickerWrite;
+  }
+  if (p.startsWith('/v1/ticker/tapes/') && m == 'PATCH') {
+    return WaddlePermission.tickerWrite;
+  }
+  if (p.startsWith('/v1/ticker/tapes/') && m == 'DELETE') {
     return WaddlePermission.tickerWrite;
   }
 
@@ -39,6 +48,29 @@ String? permissionForRoute(String method, String path) {
     return WaddlePermission.curatorRead;
   }
   if (p == '/v1/curator/settings' && m == 'PUT') {
+    return WaddlePermission.curatorWrite;
+  }
+
+  if (p == '/v1/config/key-values' && m == 'GET') {
+    return WaddlePermission.curatorRead;
+  }
+  if (p == '/v1/config/key-values' && m == 'PUT') {
+    return WaddlePermission.curatorWrite;
+  }
+  if (p == '/v1/config/key-values' && m == 'DELETE') {
+    return WaddlePermission.curatorWrite;
+  }
+
+  if (p == '/v1/curator/categories' && m == 'GET') {
+    return WaddlePermission.curatorRead;
+  }
+  if (p == '/v1/curator/categories' && m == 'POST') {
+    return WaddlePermission.curatorWrite;
+  }
+  if (p.startsWith('/v1/curator/categories/') && m == 'PATCH') {
+    return WaddlePermission.curatorWrite;
+  }
+  if (p.startsWith('/v1/curator/categories/') && m == 'DELETE') {
     return WaddlePermission.curatorWrite;
   }
 
@@ -68,6 +100,14 @@ String? permissionForRoute(String method, String path) {
     return WaddlePermission.navigationControl;
   }
 
+  if (p.startsWith('/v1/media/') && m == 'GET') {
+    return WaddlePermission.telemetryRead;
+  }
+
+  if (p.startsWith('/v1/catalog/') && m == 'GET') {
+    return WaddlePermission.contentCatalogRead;
+  }
+
   if (p.startsWith('/v1/content/') && m == 'PATCH') {
     return WaddlePermission.contentModerate;
   }
@@ -85,6 +125,9 @@ String? permissionForRoute(String method, String path) {
   if (p == '/v1/meta/screen-types' && m == 'GET') {
     return WaddlePermission.metaRead;
   }
+  if (p == '/v1/meta/ticker-types' && m == 'GET') {
+    return WaddlePermission.metaRead;
+  }
 
   if (p == '/v1/auth/logout' && m == 'POST') {
     return null;
@@ -92,12 +135,30 @@ String? permissionForRoute(String method, String path) {
   if (p == '/v1/auth/me' || p == '/v1/auth/permissions') {
     return null;
   }
-  if (p.contains('/password') && m == 'POST') {
-    return null;
-  }
   if (p.startsWith('/v1/users')) {
+    if (p.contains('/password') && m == 'POST') {
+      return null;
+    }
+    final selfPatch = RegExp(r'^/v1/users/([^/]+)$');
+    final match = selfPatch.firstMatch(p);
+    if (m == 'PATCH' &&
+        match != null &&
+        actorUserId != null &&
+        match.group(1) == actorUserId) {
+      return null;
+    }
     return WaddlePermission.usersManage;
   }
 
   return null;
+}
+
+/// Whether [role] satisfies [permissionForRoute]'s [perm] (handles OR cases, e.g. catalog GET).
+bool roleSatisfiesRoutePermission(String role, String? perm) {
+  if (perm == null) return true;
+  if (perm == WaddlePermission.contentCatalogRead) {
+    return userHasPermission(role, WaddlePermission.contentModerate) ||
+        userHasPermission(role, WaddlePermission.contentCatalogRead);
+  }
+  return userHasPermission(role, perm);
 }

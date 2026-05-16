@@ -14,7 +14,7 @@ const String kMicrosoftGraphClientIdKvKey = 'microsoft.graph.client_id';
 const String kMicrosoftGraphOAuthRedirectUri =
     'https://login.microsoftonline.com/common/oauth2/nativeclient';
 
-/// [DashboardAlerts.source] for shared Microsoft Graph device-code sign-in.
+/// [Alerts.source] for shared Microsoft Graph device-code sign-in.
 const String kMicrosoftGraphOAuthAlertSource = 'microsoft_graph';
 
 /// Last successful OneDrive media provider collect (poll gate).

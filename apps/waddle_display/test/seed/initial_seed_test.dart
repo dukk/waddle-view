@@ -17,18 +17,18 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await ensureInitialSeed(db);
-    final providers1 = await db.select(db.providerSettings).get();
+    final providers1 = await db.select(db.integrations).get();
     await ensureInitialSeed(db);
-    final providers2 = await db.select(db.providerSettings).get();
+    final providers2 = await db.select(db.integrations).get();
     expect(providers2.length, providers1.length);
     await db.close();
   });
 
-  test('ensureInitialSeed seeds ticker_definitions defaults', () async {
+  test('ensureInitialSeed seeds ticker_tapes defaults', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await ensureInitialSeed(db);
-    final rows = await (db.select(db.tickerDefinitions)
+    final rows = await (db.select(db.tickerTapes)
           ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
         .get();
     expect(rows.length, 6);
@@ -58,16 +58,16 @@ void main() {
 
     await ensureInitialSeed(db);
 
-    final left = await (db.select(db.screenDefinitions)
+    final left = await (db.select(db.screens)
           ..where((t) => t.id.equals('news')))
         .getSingleOrNull();
-    final right = await (db.select(db.screenDefinitions)
+    final right = await (db.select(db.screens)
           ..where((t) => t.id.equals('news_right')))
         .getSingleOrNull();
-    final columns = await (db.select(db.screenDefinitions)
+    final columns = await (db.select(db.screens)
           ..where((t) => t.id.equals('news_columns')))
         .getSingleOrNull();
-    final stack = await (db.select(db.screenDefinitions)
+    final stack = await (db.select(db.screens)
           ..where((t) => t.id.equals('news_stack')))
         .getSingleOrNull();
     expect(left, isNotNull);
@@ -127,13 +127,13 @@ void main() {
 
     await ensureInitialSeed(db);
 
-    final provider = await (db.select(db.providerSettings)
+    final provider = await (db.select(db.integrations)
           ..where((t) => t.id.equals('weather_openweathermap')))
         .getSingleOrNull();
     expect(provider, isNotNull);
     expect(provider!.providerType, 'weather_openweathermap');
 
-    final nws = await (db.select(db.providerSettings)
+    final nws = await (db.select(db.integrations)
           ..where((t) => t.id.equals('weather_nws_alerts')))
         .getSingleOrNull();
     expect(nws, isNotNull);
@@ -141,7 +141,7 @@ void main() {
     expect(nws.enabled, isTrue);
     expect(nws.baseUrl, 'https://api.weather.gov');
 
-    final screen = await (db.select(db.screenDefinitions)
+    final screen = await (db.select(db.screens)
           ..where((t) => t.id.equals('weather')))
         .getSingleOrNull();
     expect(screen, isNotNull);
@@ -163,7 +163,7 @@ void main() {
 
     await ensureInitialSeed(db);
 
-    final row = await (db.select(db.providerSettings)
+    final row = await (db.select(db.integrations)
           ..where((t) => t.id.equals('media_onedrive')))
         .getSingleOrNull();
     expect(row, isNotNull);
@@ -179,7 +179,7 @@ void main() {
 
     await ensureInitialSeed(db);
 
-    final row = await (db.select(db.providerSettings)
+    final row = await (db.select(db.integrations)
           ..where((t) => t.id.equals('trivia_opentdb')))
         .getSingleOrNull();
     expect(row, isNotNull);
@@ -196,7 +196,7 @@ void main() {
 
     await ensureInitialSeed(db);
 
-    final row = await (db.select(db.providerSettings)
+    final row = await (db.select(db.integrations)
           ..where((t) => t.id.equals('media_flickr')))
         .getSingleOrNull();
     expect(row, isNotNull);
@@ -212,7 +212,7 @@ void main() {
 
     await ensureInitialSeed(db);
 
-    final row = await (db.select(db.providerSettings)
+    final row = await (db.select(db.integrations)
           ..where((t) => t.id.equals('media_bing_iotd')))
         .getSingleOrNull();
     expect(row, isNotNull);
@@ -230,7 +230,7 @@ void main() {
 
     await ensureInitialSeed(db);
 
-    final provider = await (db.select(db.providerSettings)
+    final provider = await (db.select(db.integrations)
           ..where((t) => t.id.equals('media_pexels')))
         .getSingleOrNull();
     expect(provider, isNotNull);
@@ -267,7 +267,7 @@ void main() {
     await warmDatabase(db);
     await ensureInitialSeed(db);
 
-    final provider = await (db.select(db.providerSettings)
+    final provider = await (db.select(db.integrations)
           ..where((t) => t.id.equals('calendar_google')))
         .getSingleOrNull();
     expect(provider, isNotNull);
@@ -288,7 +288,7 @@ void main() {
 
     await ensureInitialSeed(db);
 
-    final provider = await (db.select(db.providerSettings)
+    final provider = await (db.select(db.integrations)
           ..where((t) => t.id.equals('stock_finnhub')))
         .getSingleOrNull();
     expect(provider, isNotNull);
@@ -296,7 +296,7 @@ void main() {
     expect(provider.enabled, isTrue);
     expect(provider.baseUrl, 'https://finnhub.io');
 
-    final screen = await (db.select(db.screenDefinitions)
+    final screen = await (db.select(db.screens)
           ..where((t) => t.id.equals('stock_quotes')))
         .getSingleOrNull();
     expect(screen, isNotNull);
@@ -345,7 +345,7 @@ void main() {
     expect(birthday, isNotEmpty);
     final r = birthday.single;
     expect(r.enabled, isFalse);
-    expect(r.overlayKind, kOverlayKindBirthdayConfetti);
+    expect(r.overlayType, kOverlayTypeBirthdayConfetti);
     expect(r.repeatAnnually, isTrue);
     expect(r.startMonth, 5);
     expect(r.startDay, 13);
@@ -365,12 +365,12 @@ void main() {
     expect(bounce, isNotEmpty);
     final r = bounce.single;
     expect(r.enabled, isFalse);
-    expect(r.overlayKind, kOverlayKindBouncingMessage);
+    expect(r.overlayType, kOverlayTypeBouncingMessage);
     expect(r.repeatAnnually, isTrue);
     expect(r.startMonth, 5);
     expect(r.startDay, 13);
     expect(
-      jsonDecode(r.messagesJson),
+      (jsonDecode(r.configJson) as Map<String, dynamic>)['messages'],
       [kDefaultBouncingMessageOverlayPhrase],
     );
     await db.close();

@@ -45,6 +45,7 @@ import 'display/dashboard_viewport_scope.dart';
 import 'display/display_viewport.dart';
 import 'display/overlay/celebration_overlay_host.dart';
 import 'display/screen_rotator.dart';
+import 'display/viewer_invite_runtime.dart';
 import 'marquee_cycle_gate.dart';
 import 'persistence/flutter_query_executor.dart';
 import 'sleeper.dart';
@@ -176,6 +177,7 @@ Future<void> _waddleBootstrap() async {
       alerts: alerts,
       users: users,
       ticker: tickerCurated,
+      blobs: blobs,
       onConfigChanged: dashboardCurator.refresh,
       env: envMap,
       telemetryHub: telemetryHub,
@@ -215,6 +217,11 @@ Future<void> _waddleBootstrap() async {
         marqueeCycleGate: marqueeCycleGate,
         telemetryHub: telemetryHub,
         navigationBus: navigationBus,
+        viewerInviteRuntime: ViewerInviteRuntime(
+          controllerPublicUrl: (envMap['WADDLE_CONTROLLER_PUBLIC_URL'] ?? '').trim(),
+          viewerRegistrationSecret:
+              (envMap['WADDLE_VIEWER_REGISTRATION_SECRET'] ?? '').trim(),
+        ),
       ),
     );
   } catch (e, st) {
@@ -235,6 +242,7 @@ class WaddleRoot extends StatefulWidget {
     required this.marqueeCycleGate,
     required this.telemetryHub,
     required this.navigationBus,
+    required this.viewerInviteRuntime,
   });
 
   final AppDatabase db;
@@ -247,6 +255,7 @@ class WaddleRoot extends StatefulWidget {
   final MarqueeCycleGate marqueeCycleGate;
   final OperatorTelemetryHub telemetryHub;
   final DisplayNavigationBus navigationBus;
+  final ViewerInviteRuntime viewerInviteRuntime;
 
   @override
   State<WaddleRoot> createState() => _WaddleRootState();
@@ -285,6 +294,7 @@ class _WaddleRootState extends State<WaddleRoot> {
             telemetryHub: widget.telemetryHub,
             navigationBus: widget.navigationBus,
             dashboardKv: kv,
+            viewerInviteRuntime: widget.viewerInviteRuntime,
           ),
         );
       },
@@ -306,6 +316,7 @@ class WaddleHome extends StatefulWidget {
     required this.telemetryHub,
     required this.navigationBus,
     required this.dashboardKv,
+    required this.viewerInviteRuntime,
   });
 
   final AppDatabase db;
@@ -319,6 +330,7 @@ class WaddleHome extends StatefulWidget {
   final OperatorTelemetryHub telemetryHub;
   final DisplayNavigationBus navigationBus;
   final Map<String, String> dashboardKv;
+  final ViewerInviteRuntime viewerInviteRuntime;
 
   @override
   State<WaddleHome> createState() => _WaddleHomeState();
@@ -398,6 +410,7 @@ class _WaddleHomeState extends State<WaddleHome> {
                     localRestBaseUrl: widget.server.baseUrl,
                     adminBaseUrl: widget.server.displayBaseUrl,
                     instanceIdFile: widget.instanceIdFile,
+                    viewerInviteRuntime: widget.viewerInviteRuntime,
                     telemetryHub: widget.telemetryHub,
                     navigationBus: widget.navigationBus,
                   ),

@@ -15,7 +15,7 @@ import 'pexels_provider_extra_config.dart';
 
 const String kPexelsProviderId = 'media_pexels';
 
-/// Last successful [PexelsDataProvider.collect] completion (for [ProviderSettings.pollSeconds]).
+/// Last successful [PexelsDataProvider.collect] completion (for [Integration.pollSeconds]).
 const String kPexelsLastCollectKvKey = 'provider.media_pexels.last_collect_ms';
 
 const String kDefaultPexelsBaseUrl = 'https://api.pexels.com';
@@ -39,7 +39,7 @@ class PexelsDataProvider implements IDataProvider {
   Future<void> collect(DataWriteContext ctx) async {
     final setting =
         await (ctx.db.select(
-              ctx.db.providerSettings,
+              ctx.db.integrations,
             )..where((t) => t.id.equals(kPexelsProviderId)))
             .getSingleOrNull();
     if (setting == null || !setting.enabled) {

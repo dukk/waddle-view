@@ -164,8 +164,8 @@ class GoogleOAuth {
         return null;
       }
 
-      final alertId = await db.into(db.dashboardAlerts).insert(
-            DashboardAlertsCompanion.insert(
+      final alertId = await db.into(db.alerts).insert(
+            AlertsCompanion.insert(
               title: '$kGoogleDeviceSignInTitle ($googleAccountKey)',
               body:
                   'Account: $googleAccountKey\nCode: $userCode\nOpen: $verificationUrl\n'
@@ -229,9 +229,9 @@ class GoogleOAuth {
           refreshToken: refresh,
           expiresInSec: _asInt(tok['expires_in']),
         );
-        await (db.update(db.dashboardAlerts)..where((t) => t.id.equals(alertId)))
+        await (db.update(db.alerts)..where((t) => t.id.equals(alertId)))
             .write(
-              DashboardAlertsCompanion(
+              AlertsCompanion(
                 dismissedAt: Value(DateTime.fromMillisecondsSinceEpoch(_nowMs())),
               ),
             );

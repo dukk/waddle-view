@@ -26,8 +26,8 @@ void main() {
   test('runs one provider then stops when sleeper stops engine', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(id: 'c', providerType: 'x'),
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(id: 'c', providerType: 'x'),
         );
     final secrets = InMemorySecretStore();
     final resolver = ProviderConfigResolver(db, {});
@@ -53,8 +53,8 @@ void main() {
   test('onCycleComplete runs once per full provider round before idle', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(id: 'c', providerType: 'x'),
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(id: 'c', providerType: 'x'),
         );
     final secrets = InMemorySecretStore();
     final resolver = ProviderConfigResolver(db, {});

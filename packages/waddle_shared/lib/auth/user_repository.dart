@@ -129,7 +129,10 @@ class UserRepository {
     required String role,
     String? displayName,
   }) async {
-    if (!isValidUserRole(role)) {
+    final namedCount = await countNamedUsers();
+    final effectiveRole =
+        namedCount == 0 ? kUserRoleAdmin : role;
+    if (namedCount > 0 && !isValidUserRole(role)) {
       throw ArgumentError('invalid role');
     }
     final trimmed = username.trim();
@@ -153,7 +156,7 @@ class UserRepository {
         displayName: displayName?.trim().isNotEmpty == true
             ? displayName!.trim()
             : trimmed,
-        role: role,
+        role: effectiveRole,
         passwordHash: Value(hashPassword(password)),
         isBootstrap: const Value(false),
         createdAtMs: now,

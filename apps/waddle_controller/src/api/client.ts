@@ -38,6 +38,26 @@ export async function apiFetch(
   return res;
 }
 
+/** Loads a blob from `GET /v1/media/blob-by-key` into an object URL (revoke when done). */
+export async function fetchBlobObjectUrl(
+  display: SavedDisplay,
+  blobKey: string,
+): Promise<string | null> {
+  const session = loadSession(display.id);
+  if (!session) {
+    return null;
+  }
+  const path = `/v1/media/blob-by-key?key=${encodeURIComponent(blobKey)}`;
+  const url = `${display.baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${session.token}` } });
+  if (!res.ok) {
+    return null;
+  }
+  const buf = await res.arrayBuffer();
+  const mime = res.headers.get('content-type') ?? 'application/octet-stream';
+  return URL.createObjectURL(new Blob([buf], { type: mime }));
+}
+
 export async function apiJson<T>(
   display: SavedDisplay,
   path: string,

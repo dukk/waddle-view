@@ -9,8 +9,17 @@ import '../display/display_navigation_bus.dart';
 import '../theme/display_theme.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_shared/persistence/config_json_documentation.dart';
+import 'package:waddle_shared/persistence/content_category_defaults.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
+
+final Set<String> _reservedCuratorCategoryIds = {
+  for (final d in kContentCategoryDefaults) d.id,
+};
+
+bool _isValidCuratorCategoryId(String id) {
+  return RegExp(r'^[a-z][a-z0-9_]{0,62}$').hasMatch(id);
+}
 
 dynamic _jsonFieldDecode(String? raw) {
   if (raw == null || raw.trim().isEmpty) {
@@ -30,10 +39,10 @@ void registerOperatorRestRoutes(
   OperatorTelemetryHub? telemetryHub,
   DisplayNavigationBus? navigationBus,
 }) {
-  r.get('/v1/telemetry/providers', (Request req) async {
+  r.get('/v1/telemetry/integrations', (Request req) async {
     final limit = int.tryParse(req.url.queryParameters['limit'] ?? '') ?? 200;
     final sinceMs = int.tryParse(req.url.queryParameters['since_ms'] ?? '');
-    final items = telemetryHub?.snapshotProviderLines(
+    final items = telemetryHub?.snapshotIntegrationLines(
           limit: limit.clamp(1, 2000),
           sinceMs: sinceMs,
         ) ??
@@ -135,8 +144,24 @@ void registerOperatorRestRoutes(
     );
   });
 
-  r.get('/v1/ticker/definitions', (Request req) async {
-    final rows = await (db.select(db.tickerDefinitions)
+  r.get('/v1/meta/ticker-types', (Request req) async {
+    final items = <Map<String, Object?>>[];
+    for (final t in kTickerSlotDefinitionTypes) {
+      final doc = tickerSlotConfigJsonDocForType(t);
+      items.add({
+        'ticker_type': t,
+        'config_json_schema': _jsonFieldDecode(doc.schema),
+        'example_config_json': _jsonFieldDecode(doc.example),
+      });
+    }
+    return Response.ok(
+      jsonEncode({'items': items}),
+      headers: {'content-type': 'application/json'},
+    );
+  });
+
+  r.get('/v1/ticker/tapes', (Request req) async {
+    final rows = await (db.select(db.tickerTapes)
           ..orderBy([
             (t) => OrderingTerm.asc(t.sortOrder),
             (t) => OrderingTerm.asc(t.id),
@@ -155,6 +180,7 @@ void registerOperatorRestRoutes(
               'frequency_weight': e.frequencyWeight,
               'sort_order': e.sortOrder,
               'config_key': e.configKey,
+              'config_json': _jsonFieldDecode(e.configJson),
               'config_json_schema': _jsonFieldDecode(e.configJsonSchema),
               'example_config_json': _jsonFieldDecode(e.exampleConfigJson),
             },
@@ -164,8 +190,86 @@ void registerOperatorRestRoutes(
     );
   });
 
-  r.patch('/v1/ticker/definitions/<id>', (Request req, String id) async {
-    final existing = await (db.select(db.tickerDefinitions)
+  r.post('/v1/ticker/tapes', (Request req) async {
+    Map<String, dynamic> map;
+    try {
+      final decoded = jsonDecode(await req.readAsString());
+      if (decoded is! Map<String, dynamic>) {
+        return Response(400,
+            body: '{"error":"expected_json_object"}',
+            headers: {'content-type': 'application/json'});
+      }
+      map = decoded;
+    } catch (_) {
+      return Response(400,
+          body: '{"error":"invalid_json"}',
+          headers: {'content-type': 'application/json'});
+    }
+    final id = (map['id'] as String?)?.trim() ?? '';
+    final tickerType = (map['ticker_type'] as String?)?.trim() ?? '';
+    if (id.isEmpty || tickerType.isEmpty) {
+      return Response(400,
+          body: '{"error":"id_and_ticker_type_required"}',
+          headers: {'content-type': 'application/json'});
+    }
+    if (!kTickerSlotDefinitionTypes.contains(tickerType)) {
+      return Response(400,
+          body: '{"error":"unknown_ticker_type"}',
+          headers: {'content-type': 'application/json'});
+    }
+    final dup = await (db.select(db.tickerTapes)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (dup != null) {
+      return Response(409,
+          body: '{"error":"id_already_exists"}',
+          headers: {'content-type': 'application/json'});
+    }
+    final doc = tickerSlotConfigJsonDocForType(tickerType);
+    final name = (map['name'] as String?)?.trim();
+    final description = (map['description'] as String?)?.trim() ?? '';
+    final enabled = map['enabled'] is bool ? map['enabled'] as bool : true;
+    final frequencyWeight = (map['frequency_weight'] as num?)?.toInt() ?? 100;
+    final sortOrder = (map['sort_order'] as num?)?.toInt() ?? 0;
+    final rawCk = map['config_key'];
+    String? configKey;
+    if (rawCk is String) {
+      final t = rawCk.trim();
+      configKey = t.isEmpty ? null : t;
+    }
+    final resolvedName = (name == null || name.isEmpty) ? id : name;
+    String configJsonStr = '{}';
+    if (map.containsKey('config_json')) {
+      try {
+        configJsonStr = _configJsonStringFromBody(map['config_json']);
+      } on FormatException {
+        return Response(400,
+            body: '{"error":"config_json_must_be_string_or_object"}',
+            headers: {'content-type': 'application/json'});
+      }
+    }
+    await db.into(db.tickerTapes).insert(
+          TickerTapesCompanion.insert(
+            id: id,
+            name: resolvedName,
+            description: Value(description),
+            enabled: Value(enabled),
+            tickerType: tickerType,
+            frequencyWeight: Value(frequencyWeight),
+            sortOrder: Value(sortOrder),
+            configKey: configKey == null
+                ? const Value.absent()
+                : Value(configKey),
+            configJson: Value(configJsonStr),
+            configJsonSchema: Value(doc.schema),
+            exampleConfigJson: Value(doc.example),
+          ),
+        );
+    await onConfigChanged();
+    return Response.ok('{}', headers: {'content-type': 'application/json'});
+  });
+
+  r.patch('/v1/ticker/tapes/<id>', (Request req, String id) async {
+    final existing = await (db.select(db.tickerTapes)
           ..where((t) => t.id.equals(id)))
         .getSingleOrNull();
     if (existing == null) {
@@ -195,24 +299,74 @@ void registerOperatorRestRoutes(
     final sortOrder = map.containsKey('sort_order')
         ? (map['sort_order'] as num?)?.toInt()
         : existing.sortOrder;
-    final configKey = map.containsKey('config_key')
-        ? map['config_key'] as String?
-        : existing.configKey;
+    final Value<String?> configKeyVal;
+    if (!map.containsKey('config_key')) {
+      configKeyVal = const Value.absent();
+    } else {
+      final ck = map['config_key'] as String?;
+      configKeyVal =
+          Value(ck == null || ck.trim().isEmpty ? null : ck.trim());
+    }
+    final name = map.containsKey('name')
+        ? ((map['name'] as String?)?.trim() ?? '')
+        : existing.name;
+    final description = map.containsKey('description')
+        ? ((map['description'] as String?)?.trim() ?? '')
+        : existing.description;
+    final tickerType = map.containsKey('ticker_type')
+        ? (map['ticker_type'] as String?)?.trim() ?? existing.tickerType
+        : existing.tickerType;
     if (enabled == null || weight == null || sortOrder == null) {
       return Response(400,
           body: '{"error":"invalid_fields"}',
           headers: {'content-type': 'application/json'});
     }
-    await (db.update(db.tickerDefinitions)..where((t) => t.id.equals(id))).write(
-      TickerDefinitionsCompanion(
+    if (!kTickerSlotDefinitionTypes.contains(tickerType)) {
+      return Response(400,
+          body: '{"error":"unknown_ticker_type"}',
+          headers: {'content-type': 'application/json'});
+    }
+    final Value<String> configJsonVal;
+    if (!map.containsKey('config_json')) {
+      configJsonVal = const Value.absent();
+    } else {
+      try {
+        configJsonVal = Value(_configJsonStringFromBody(map['config_json']));
+      } on FormatException catch (e) {
+        return Response(
+          400,
+          body: jsonEncode({'error': 'invalid_config_json', 'detail': e.message}),
+          headers: {'content-type': 'application/json'},
+        );
+      }
+    }
+    final doc = tickerSlotConfigJsonDocForType(tickerType);
+    await (db.update(db.tickerTapes)..where((t) => t.id.equals(id))).write(
+      TickerTapesCompanion(
+        name: Value(name),
+        description: Value(description),
         enabled: Value(enabled),
         frequencyWeight: Value(weight),
         sortOrder: Value(sortOrder),
-        configKey: configKey == null
-            ? const Value.absent()
-            : Value(configKey.isEmpty ? null : configKey),
+        configKey: configKeyVal,
+        tickerType: Value(tickerType),
+        configJson: configJsonVal,
+        configJsonSchema: Value(doc.schema),
+        exampleConfigJson: Value(doc.example),
       ),
     );
+    await onConfigChanged();
+    return Response.ok('{}', headers: {'content-type': 'application/json'});
+  });
+
+  r.delete('/v1/ticker/tapes/<id>', (Request req, String id) async {
+    final n =
+        await (db.delete(db.tickerTapes)..where((t) => t.id.equals(id))).go();
+    if (n == 0) {
+      return Response(404,
+          body: '{"error":"not_found"}',
+          headers: {'content-type': 'application/json'});
+    }
     await onConfigChanged();
     return Response.ok('{}', headers: {'content-type': 'application/json'});
   });
@@ -236,6 +390,9 @@ void registerOperatorRestRoutes(
     final tickerTextScale = normalizeDisplayTextScaleOption(
       kv[kDisplayTextScaleTickerKvKey],
     );
+    final tzRaw = kv[kDisplayTimezoneKvKey]?.trim() ?? '';
+    final displayTimezone =
+        tzRaw.isEmpty ? kDefaultDisplayTimezoneIana : tzRaw;
     return Response.ok(
       jsonEncode({
         'program_duration_seconds': programDurationSeconds,
@@ -245,9 +402,176 @@ void registerOperatorRestRoutes(
         'display_theme_id': themeId,
         'display_text_scale_screen': screenTextScale,
         'display_text_scale_ticker': tickerTextScale,
+        'display_timezone': displayTimezone,
       }),
       headers: {'content-type': 'application/json'},
     );
+  });
+
+  r.get('/v1/curator/categories', (Request req) async {
+    final rows = await db.select(db.contentCategories).get();
+    return Response.ok(
+      jsonEncode({
+        'items': [
+          for (final r in rows)
+            {
+              'id': r.id,
+              'label': r.label,
+              'material_icon_name': r.materialIconName,
+              'icon_blob_key': r.iconBlobKey,
+              'reserved': _reservedCuratorCategoryIds.contains(r.id),
+            },
+        ],
+      }),
+      headers: {'content-type': 'application/json'},
+    );
+  });
+
+  r.post('/v1/curator/categories', (Request req) async {
+    Map<String, dynamic> body;
+    try {
+      final decoded = jsonDecode(await req.readAsString());
+      if (decoded is! Map<String, dynamic>) {
+        return Response(400,
+            body: '{"error":"expected_json_object"}',
+            headers: {'content-type': 'application/json'});
+      }
+      body = decoded;
+    } catch (_) {
+      return Response(400,
+          body: '{"error":"invalid_json"}',
+          headers: {'content-type': 'application/json'});
+    }
+    final id = '${body['id'] ?? ''}'.trim();
+    final label = '${body['label'] ?? ''}'.trim();
+    if (id.isEmpty || label.isEmpty) {
+      return Response(400,
+          body: '{"error":"id_and_label_required"}',
+          headers: {'content-type': 'application/json'});
+    }
+    if (!_isValidCuratorCategoryId(id)) {
+      return Response(400,
+          body: '{"error":"invalid_category_id"}',
+          headers: {'content-type': 'application/json'});
+    }
+    final existing = await (db.select(db.contentCategories)
+          ..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (existing != null) {
+      return Response(409,
+          body: '{"error":"category_id_exists"}',
+          headers: {'content-type': 'application/json'});
+    }
+    String? material;
+    final rawMat = body['material_icon_name'];
+    if (rawMat != null) {
+      final s = '$rawMat'.trim();
+      material = s.isEmpty ? null : s;
+    }
+    String? iconKey;
+    final rawIcon = body['icon_blob_key'];
+    if (rawIcon != null) {
+      final s = '$rawIcon'.trim();
+      iconKey = s.isEmpty ? null : s;
+    }
+    await db.into(db.contentCategories).insert(
+          ContentCategoriesCompanion.insert(
+            id: id,
+            label: label,
+            materialIconName: Value(material),
+            iconBlobKey: Value(iconKey),
+          ),
+        );
+    await onConfigChanged();
+    return Response.ok('{}', headers: {'content-type': 'application/json'});
+  });
+
+  r.patch('/v1/curator/categories/<id>', (Request req, String id) async {
+    final existing = await (db.select(db.contentCategories)
+          ..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (existing == null) {
+      return Response(404,
+          body: '{"error":"not_found"}',
+          headers: {'content-type': 'application/json'});
+    }
+    Map<String, dynamic> body;
+    try {
+      final decoded = jsonDecode(await req.readAsString());
+      if (decoded is! Map<String, dynamic>) {
+        return Response(400,
+            body: '{"error":"expected_json_object"}',
+            headers: {'content-type': 'application/json'});
+      }
+      body = decoded;
+    } catch (_) {
+      return Response(400,
+          body: '{"error":"invalid_json"}',
+          headers: {'content-type': 'application/json'});
+    }
+    final label = body.containsKey('label')
+        ? '${body['label']}'.trim()
+        : existing.label;
+    if (label.isEmpty) {
+      return Response(400,
+          body: '{"error":"invalid_label"}',
+          headers: {'content-type': 'application/json'});
+    }
+    String? material;
+    if (body.containsKey('material_icon_name')) {
+      final raw = body['material_icon_name'];
+      material = raw == null ? null : '$raw'.trim();
+      if (material != null && material.isEmpty) {
+        material = null;
+      }
+    } else {
+      material = existing.materialIconName;
+    }
+    String? iconKey;
+    if (body.containsKey('icon_blob_key')) {
+      final raw = body['icon_blob_key'];
+      iconKey = raw == null ? null : '$raw'.trim();
+      if (iconKey != null && iconKey.isEmpty) {
+        iconKey = null;
+      }
+    } else {
+      iconKey = existing.iconBlobKey;
+    }
+    await (db.update(db.contentCategories)..where((t) => t.id.equals(id))).write(
+      ContentCategoriesCompanion(
+        label: Value(label),
+        materialIconName: Value(material),
+        iconBlobKey: Value(iconKey),
+      ),
+    );
+    await onConfigChanged();
+    return Response.ok('{}', headers: {'content-type': 'application/json'});
+  });
+
+  r.delete('/v1/curator/categories/<id>', (Request req, String id) async {
+    if (_reservedCuratorCategoryIds.contains(id)) {
+      return Response(403,
+          body: '{"error":"reserved_category"}',
+          headers: {'content-type': 'application/json'});
+    }
+    final cal = await (db.select(db.calendarEvents)
+          ..where((t) => t.categoryId.equals(id)))
+        .get();
+    if (cal.isNotEmpty) {
+      return Response(409,
+          body: '{"error":"category_in_use_calendar"}',
+          headers: {'content-type': 'application/json'});
+    }
+    final n =
+        await (db.delete(db.contentCategories)..where((t) => t.id.equals(id)))
+            .go();
+    if (n == 0) {
+      return Response(404,
+          body: '{"error":"not_found"}',
+          headers: {'content-type': 'application/json'});
+    }
+    await onConfigChanged();
+    return Response.ok('{}', headers: {'content-type': 'application/json'});
   });
 
   r.put('/v1/curator/settings', (Request req) async {
@@ -265,27 +589,39 @@ void registerOperatorRestRoutes(
           body: '{"error":"invalid_json"}',
           headers: {'content-type': 'application/json'});
     }
-    final duration = (body['program_duration_seconds'] as num?)?.toInt() ??
-        int.tryParse('${body['program_duration_seconds'] ?? ''}');
-    final depth = (body['history_depth'] as num?)?.toInt() ??
-        int.tryParse('${body['history_depth'] ?? ''}');
-    if (duration == null || depth == null) {
-      return Response(400,
-          body: '{"error":"program_duration_seconds_and_history_depth_required"}',
-          headers: {'content-type': 'application/json'});
+    var touched = false;
+    if (body.containsKey('program_duration_seconds')) {
+      final duration = (body['program_duration_seconds'] as num?)?.toInt() ??
+          int.tryParse('${body['program_duration_seconds'] ?? ''}');
+      if (duration == null) {
+        return Response(400,
+            body: '{"error":"invalid_program_duration_seconds"}',
+            headers: {'content-type': 'application/json'});
+      }
+      await db.into(db.configKeyValues).insertOnConflictUpdate(
+            ConfigKeyValuesCompanion.insert(
+              key: kCuratorProgramDurationSecondsKvKey,
+              value: '$duration',
+            ),
+          );
+      touched = true;
     }
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kCuratorProgramDurationSecondsKvKey,
-            value: '$duration',
-          ),
-        );
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kCuratorHistoryDepthKvKey,
-            value: '$depth',
-          ),
-        );
+    if (body.containsKey('history_depth')) {
+      final depth = (body['history_depth'] as num?)?.toInt() ??
+          int.tryParse('${body['history_depth'] ?? ''}');
+      if (depth == null) {
+        return Response(400,
+            body: '{"error":"invalid_history_depth"}',
+            headers: {'content-type': 'application/json'});
+      }
+      await db.into(db.configKeyValues).insertOnConflictUpdate(
+            ConfigKeyValuesCompanion.insert(
+              key: kCuratorHistoryDepthKvKey,
+              value: '$depth',
+            ),
+          );
+      touched = true;
+    }
     final tickerPx = (body['ticker_pixels_per_second'] as String?)?.trim() ??
         (body['ticker_pixels_per_second'] as num?)?.toString();
     if (tickerPx != null && tickerPx.isNotEmpty) {
@@ -295,6 +631,7 @@ void registerOperatorRestRoutes(
               value: tickerPx,
             ),
           );
+      touched = true;
     }
     if (body.containsKey('require_news_photo_for_screens')) {
       final v = body['require_news_photo_for_screens'];
@@ -305,6 +642,7 @@ void registerOperatorRestRoutes(
               value: flag ? 'true' : 'false',
             ),
           );
+      touched = true;
     }
     if (body.containsKey('display_theme_id')) {
       final themeId = normalizeDisplayThemeId('${body['display_theme_id']}');
@@ -314,6 +652,7 @@ void registerOperatorRestRoutes(
               value: themeId,
             ),
           );
+      touched = true;
     }
     if (body.containsKey('display_text_scale_screen')) {
       final screenTextScale = normalizeDisplayTextScaleOption(
@@ -325,6 +664,7 @@ void registerOperatorRestRoutes(
               value: screenTextScale,
             ),
           );
+      touched = true;
     }
     if (body.containsKey('display_text_scale_ticker')) {
       final tickerTextScale = normalizeDisplayTextScaleOption(
@@ -336,13 +676,112 @@ void registerOperatorRestRoutes(
               value: tickerTextScale,
             ),
           );
+      touched = true;
+    }
+    if (body.containsKey('display_timezone')) {
+      final raw = body['display_timezone'];
+      final s = raw == null ? '' : '$raw'.trim();
+      if (s.isEmpty) {
+        await (db.delete(db.configKeyValues)
+              ..where((t) => t.key.equals(kDisplayTimezoneKvKey)))
+            .go();
+      } else {
+        await db.into(db.configKeyValues).insertOnConflictUpdate(
+              ConfigKeyValuesCompanion.insert(
+                key: kDisplayTimezoneKvKey,
+                value: s,
+              ),
+            );
+      }
+      touched = true;
+    }
+    if (!touched) {
+      return Response(400,
+          body: '{"error":"no_curator_settings_fields"}',
+          headers: {'content-type': 'application/json'});
     }
     await onConfigChanged();
     return Response.ok('{}', headers: {'content-type': 'application/json'});
   });
 
-  r.patch('/v1/providers/<id>', (Request req, String id) async {
-    final existing = await (db.select(db.providerSettings)
+  r.get('/v1/config/key-values', (Request req) async {
+    final rows = await (db.select(db.configKeyValues)
+          ..orderBy([(t) => OrderingTerm.asc(t.key)]))
+        .get();
+    return Response.ok(
+      jsonEncode({
+        'items': [
+          for (final r in rows) {'key': r.key, 'value': r.value},
+        ],
+      }),
+      headers: {'content-type': 'application/json'},
+    );
+  });
+
+  r.put('/v1/config/key-values', (Request req) async {
+    Map<String, dynamic> body;
+    try {
+      final decoded = jsonDecode(await req.readAsString());
+      if (decoded is! Map<String, dynamic>) {
+        return Response(400,
+            body: '{"error":"expected_json_object"}',
+            headers: {'content-type': 'application/json'});
+      }
+      body = decoded;
+    } catch (_) {
+      return Response(400,
+          body: '{"error":"invalid_json"}',
+          headers: {'content-type': 'application/json'});
+    }
+    final key = '${body['key'] ?? ''}'.trim();
+    if (key.isEmpty) {
+      return Response(400,
+          body: '{"error":"key_required"}',
+          headers: {'content-type': 'application/json'});
+    }
+    if (key.length > 512) {
+      return Response(400,
+          body: '{"error":"key_too_long"}',
+          headers: {'content-type': 'application/json'});
+    }
+    final rawVal = body['value'];
+    final value = rawVal == null ? '' : '$rawVal';
+    if (value.length > 262144) {
+      return Response(400,
+          body: '{"error":"value_too_long"}',
+          headers: {'content-type': 'application/json'});
+    }
+    await db.into(db.configKeyValues).insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: key,
+            value: value,
+          ),
+        );
+    await onConfigChanged();
+    return Response.ok('{}', headers: {'content-type': 'application/json'});
+  });
+
+  r.delete('/v1/config/key-values', (Request req) async {
+    final key = req.url.queryParameters['key']?.trim() ?? '';
+    if (key.isEmpty) {
+      return Response(400,
+          body: '{"error":"key_required"}',
+          headers: {'content-type': 'application/json'});
+    }
+    final n =
+        await (db.delete(db.configKeyValues)..where((t) => t.key.equals(key)))
+            .go();
+    if (n == 0) {
+      return Response(404,
+          body: '{"error":"not_found"}',
+          headers: {'content-type': 'application/json'});
+    }
+    await onConfigChanged();
+    return Response.ok('{}', headers: {'content-type': 'application/json'});
+  });
+
+  r.patch('/v1/integrations/<id>', (Request req, String id) async {
+    final existing = await (db.select(db.integrations)
           ..where((t) => t.id.equals(id)))
         .getSingleOrNull();
     if (existing == null) {
@@ -405,8 +844,8 @@ void registerOperatorRestRoutes(
             headers: {'content-type': 'application/json'});
       }
     }
-    await (db.update(db.providerSettings)..where((t) => t.id.equals(id))).write(
-      ProviderSettingsCompanion(
+    await (db.update(db.integrations)..where((t) => t.id.equals(id))).write(
+      IntegrationsCompanion(
         enabled: Value(enabled),
         pollSeconds: Value(poll),
         baseUrl: Value(baseUrl),
@@ -444,7 +883,7 @@ void registerOperatorRestRoutes(
           body: '{"error":"unknown_screen_type"}',
           headers: {'content-type': 'application/json'});
     }
-    final dup = await (db.select(db.screenDefinitions)
+    final dup = await (db.select(db.screens)
           ..where((t) => t.id.equals(id)))
         .getSingleOrNull();
     if (dup != null) {
@@ -481,8 +920,8 @@ void registerOperatorRestRoutes(
     final maxPlacements = (map['max_placements_per_program'] as num?)?.toInt();
     final dataKey = (map['data_key'] as String?)?.trim() ?? '';
     final resolvedName = (name == null || name.isEmpty) ? id : name;
-    await db.into(db.screenDefinitions).insert(
-          ScreenDefinitionsCompanion.insert(
+    await db.into(db.screens).insert(
+          ScreensCompanion.insert(
             id: id,
             name: resolvedName,
             description: Value(description),
@@ -506,7 +945,7 @@ void registerOperatorRestRoutes(
   });
 
   r.patch('/v1/screens/<id>', (Request req, String id) async {
-    final existing = await (db.select(db.screenDefinitions)
+    final existing = await (db.select(db.screens)
           ..where((t) => t.id.equals(id)))
         .getSingleOrNull();
     if (existing == null) {
@@ -585,8 +1024,8 @@ void registerOperatorRestRoutes(
     final dataKey = map.containsKey('data_key')
         ? ((map['data_key'] as String?)?.trim() ?? '')
         : existing.dataKey;
-    await (db.update(db.screenDefinitions)..where((t) => t.id.equals(id))).write(
-      ScreenDefinitionsCompanion(
+    await (db.update(db.screens)..where((t) => t.id.equals(id))).write(
+      ScreensCompanion(
         name: Value(name),
         description: Value(description),
         enabled: Value(enabled),
@@ -607,7 +1046,7 @@ void registerOperatorRestRoutes(
   });
 
   r.delete('/v1/screens/<id>', (Request req, String id) async {
-    final n = await (db.delete(db.screenDefinitions)
+    final n = await (db.delete(db.screens)
           ..where((t) => t.id.equals(id)))
         .go();
     if (n == 0) {

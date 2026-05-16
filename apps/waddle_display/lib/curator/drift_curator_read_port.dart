@@ -66,6 +66,7 @@ class DriftCuratorReadPort implements CuratorReadPort {
           summary: a.summary,
           categoryIconName: categoryIconById[feedById[a.feedId]?.category],
           publishedAtMs: a.publishedAt.millisecondsSinceEpoch,
+          articleId: a.id,
         ),
     ];
   }
@@ -94,22 +95,23 @@ class DriftCuratorReadPort implements CuratorReadPort {
   }
 
   @override
-  Future<List<TickerDefinitionForCuration>> loadTickerDefinitionsForCuration() async {
+  Future<List<TickerTapeForCuration>> loadTickerTapesForCuration() async {
     final rows = await (_db.select(
-      _db.tickerDefinitions,
+      _db.tickerTapes,
     )..orderBy([
       (t) => OrderingTerm.asc(t.sortOrder),
       (t) => OrderingTerm.asc(t.id),
     ])).get();
     return [
       for (final r in rows)
-        TickerDefinitionForCuration(
+        TickerTapeForCuration(
           id: r.id,
           tickerType: r.tickerType,
           enabled: r.enabled,
           frequencyWeight: r.frequencyWeight,
           sortOrder: r.sortOrder,
           configKey: r.configKey,
+          configJson: r.configJson,
         ),
     ];
   }
@@ -124,7 +126,7 @@ class DriftCuratorReadPort implements CuratorReadPort {
     }
     final locationById = {for (final location in locations) location.id: location};
     final weatherRows = await (_db.select(
-      _db.weatherCurrentData,
+      _db.weatherCurrent,
     )..orderBy([(t) => OrderingTerm.desc(t.observedAtMs)])).get();
     for (final weather in weatherRows) {
       final location = locationById[weather.locationId];
@@ -149,7 +151,7 @@ class DriftCuratorReadPort implements CuratorReadPort {
       return const [];
     }
     final locationById = {for (final l in locations) l.id: l};
-    final rows = await _db.select(_db.weatherGovActiveAlerts).get();
+    final rows = await _db.select(_db.weatherAlerts).get();
     final filtered = [
       for (final a in rows)
         if (locationById.containsKey(a.locationId)) a,

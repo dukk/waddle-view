@@ -9,7 +9,7 @@ import 'backup_commands.dart';
 import 'config_commands.dart';
 import 'curator_commands.dart';
 import 'emit.dart';
-import 'providers_commands.dart';
+import 'integrations_commands.dart';
 import 'reject_commands.dart';
 import 'screens_commands.dart';
 import 'sqlite_commands.dart';
@@ -53,7 +53,7 @@ class WaddlectlRootRunner extends CommandRunner<void> {
     addCommand(VersionCommand(globalOptions));
     addCommand(ConfigCommand(globalOptions));
     addCommand(ScreensCommand(globalOptions));
-    addCommand(ProvidersCommand(globalOptions));
+    addCommand(IntegrationsCommand(globalOptions));
     addCommand(TickersCommand(globalOptions));
     addCommand(CuratorCommand(globalOptions));
     addCommand(BackupCommand(globalOptions));
@@ -81,10 +81,10 @@ class WaddlectlRootRunner extends CommandRunner<void> {
         '  ${'screens'.padRight(14)} Screen definitions (screen_definitions)',
       )
       ..writeln(
-        '  ${'providers'.padRight(14)} Provider settings (provider_settings)',
+        '  ${'integrations'.padRight(14)} Integrations (integrations table)',
       )
       ..writeln(
-        '  ${'tickers'.padRight(14)} Ticker definition slots (ticker_definitions)',
+        '  ${'tickers'.padRight(14)} Ticker tape slots (ticker_tapes)',
       )
       ..writeln(
         '  ${'curator'.padRight(14)} Curator program settings and data-key limits',

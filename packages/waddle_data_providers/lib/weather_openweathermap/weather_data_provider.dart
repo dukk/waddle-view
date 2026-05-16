@@ -31,7 +31,7 @@ class WeatherDataProvider implements IDataProvider {
   @override
   Future<void> collect(DataWriteContext ctx) async {
     final setting =
-        await (ctx.db.select(ctx.db.providerSettings)
+        await (ctx.db.select(ctx.db.integrations)
               ..where((t) => t.id.equals(kWeatherProviderId)))
             .getSingleOrNull();
     if (setting == null || !setting.enabled) {
@@ -131,8 +131,8 @@ class WeatherDataProvider implements IDataProvider {
           baseUrl: baseUrl,
           iconCode: currentIconCode,
         );
-        await ctx.db.into(ctx.db.weatherCurrentData).insertOnConflictUpdate(
-              WeatherCurrentDataCompanion.insert(
+        await ctx.db.into(ctx.db.weatherCurrent).insertOnConflictUpdate(
+              WeatherCurrentCompanion.insert(
                 locationId: location.id,
                 observedAtMs: DateTime.fromMillisecondsSinceEpoch(now),
                 currentTemp: Value((current['temp'] as num?)?.toDouble()),

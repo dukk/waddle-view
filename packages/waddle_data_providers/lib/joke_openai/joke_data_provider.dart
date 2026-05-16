@@ -39,7 +39,7 @@ class JokeDataProvider implements IDataProvider {
   @override
   Future<void> collect(DataWriteContext ctx) async {
     final setting =
-        await (ctx.db.select(ctx.db.providerSettings)
+        await (ctx.db.select(ctx.db.integrations)
               ..where((t) => t.id.equals(kJokeProviderId)))
             .getSingleOrNull();
     if (setting == null || !setting.enabled) {

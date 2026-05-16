@@ -25,12 +25,12 @@ class DefaultDashboardCurator implements DashboardCurator {
     final news = await _read.loadNewsCandidatesForTicker();
     final currentWeather = await _read.loadCurrentWeatherForTicker();
     final weatherGovAlerts = await _read.loadWeatherGovAlertsForTicker();
-    final tickerDefs = await _read.loadTickerDefinitionsForCuration();
+    final tickerDefs = await _read.loadTickerTapesForCuration();
     final stockRows = await _read.loadStockRowsForTicker();
     final rejectCtx = await _read.loadRejectFilterContext();
     AppDebugLog.curator(
       'ticker refresh: loaded inputs kvKeys=${kv.length} newsCandidates=${news.length} '
-      'tickerDefinitions=${tickerDefs.length} stockRows=${stockRows.length} '
+      'tickerTapes=${tickerDefs.length} stockRows=${stockRows.length} '
       'govAlerts=${weatherGovAlerts.length} liveWeather=${currentWeather != null} '
       'rejectFilter=${rejectCtx.isEmpty ? "off" : "on"}',
     );

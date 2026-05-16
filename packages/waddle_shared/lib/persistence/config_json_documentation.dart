@@ -42,7 +42,7 @@ final ProviderConfigJsonDoc kGenericProviderConfigJsonDoc =
       example: '{}',
     );
 
-/// Documentation keyed by [ProviderSettings.providerType] (seeded + built-in).
+/// Documentation keyed by [Integrations.providerType] (seeded + built-in).
 final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
   'stub': kGenericProviderConfigJsonDoc,
   'news_rss': kGenericProviderConfigJsonDoc,
@@ -556,7 +556,7 @@ ProviderConfigJsonDoc providerConfigJsonDocForType(String providerType) {
   return kProviderConfigJsonMeta[providerType] ?? kGenericProviderConfigJsonDoc;
 }
 
-/// JSON Schema and example for [ScreenDefinitions.configJson] (widget `config` object).
+/// JSON Schema and example for [Screens.configJson] (widget `config` object).
 class ScreenConfigJsonDoc {
   const ScreenConfigJsonDoc({required this.schema, required this.example});
 
@@ -615,7 +615,7 @@ const List<String> kScreenLayoutWidgetTypes = [
   'static_text',
   'joke',
   'trivia',
-  'guest_wifi',
+  'wifi',
   'digital_clock',
   'analog_clock',
   'calendar_month',
@@ -625,6 +625,7 @@ const List<String> kScreenLayoutWidgetTypes = [
   'rss_article_stack',
   'local_api',
   'admin_setup',
+  'controller_invite',
   'weather',
   'pexels_photo',
   'pexels_photo_collage',
@@ -633,7 +634,7 @@ const List<String> kScreenLayoutWidgetTypes = [
   'data_health',
 ];
 
-/// [TickerDefinitions.tickerType] values for curation and seeds.
+/// [TickerTapes.tickerType] values for curation and seeds.
 const List<String> kTickerSlotDefinitionTypes = [
   'time',
   'weather',
@@ -748,18 +749,27 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
       'strikeAnimationDurationMs': 450,
     }),
   ),
-  'guest_wifi': ScreenConfigJsonDoc(
+  'wifi': ScreenConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
-        title: 'GuestWifiScreenConfig',
-        description: 'KV key for WiFi credentials and optional headline.',
+        title: 'WifiScreenConfig',
+        description:
+            'Standard Wi‑Fi QR payload (`WIFI:...;`) and optional headline. '
+            'Each screen can use a different `connection` for multiple networks.',
         properties: {
-          'kvKey': {'type': 'string', 'minLength': 1},
+          'connection': {
+            'type': 'string',
+            'minLength': 1,
+            'description': 'Wi‑Fi DPP / ZXing-style connection string for the QR code.',
+          },
           'headline': {'type': 'string'},
         },
       ),
     ),
-    example: jsonEncode({'kvKey': 'guest_wifi', 'headline': 'Guest WiFi'}),
+    example: jsonEncode({
+      'headline': 'Guest WiFi',
+      'connection': 'WIFI:S:Guest;T:WPA;P:;;',
+    }),
   ),
   'digital_clock': ScreenConfigJsonDoc(
     schema: jsonEncode(
@@ -1109,6 +1119,33 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
     ),
     example: jsonEncode({}),
   ),
+  'controller_invite': ScreenConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'ControllerInviteScreenConfig',
+        description:
+            'Promotes the waddle_controller web UI. Optional controllerUrl overrides '
+            'WADDLE_CONTROLLER_PUBLIC_URL on the display device for the QR link.',
+        properties: {
+          'headline': {'type': 'string'},
+          'body': {'type': 'string'},
+          'controllerUrl': {
+            'type': 'string',
+            'minLength': 1,
+            'description':
+                'Public origin of the controller SPA (e.g. http://192.168.1.10:5173).',
+          },
+        },
+      ),
+    ),
+    example: jsonEncode({
+      'headline': 'Manage this display from your phone',
+      'body':
+          'Scan the QR code to open waddle_controller, then create a viewer account '
+          '(Programs + account access) or sign in.',
+      'controllerUrl': 'http://192.168.1.10:5173',
+    }),
+  ),
   'data_health': ScreenConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
@@ -1137,8 +1174,8 @@ ScreenConfigJsonDoc screenConfigJsonDocForType(String screenType) {
   return kScreenConfigJsonMeta[screenType] ?? kGenericScreenConfigJsonDoc;
 }
 
-/// JSON Schema and example for [TickerDefinitions] documentation columns
-/// (marquee-related [ConfigKeyValues] keys and curator tuning).
+/// JSON Schema and example for [TickerTapes] documentation columns
+/// (per-tape config_json, optional curator tuning keys, and custom-slot KV).
 final Map<String, ScreenConfigJsonDoc> kTickerSlotConfigJsonMeta = {
   'time': ScreenConfigJsonDoc(
     schema: jsonEncode(
@@ -1146,7 +1183,7 @@ final Map<String, ScreenConfigJsonDoc> kTickerSlotConfigJsonMeta = {
         title: 'TickerTimeSlotDoc',
         description:
             'Local wall clock (HH:MM:SS). No config_key_values keys; slot is '
-            'controlled only by ticker_definitions enabled / frequency_weight / '
+            'controlled only by ticker_tapes enabled / frequency_weight / '
             'sort_order.',
         properties: {},
       ),
@@ -1160,9 +1197,10 @@ final Map<String, ScreenConfigJsonDoc> kTickerSlotConfigJsonMeta = {
         description:
             'Live weather line plus optional NWS active-alert lines when '
             'weather_locations.include_active_weather_alerts is enabled. When '
-            'live data is empty, falls back to ticker.marquee.weather.',
+            'live data is empty, falls back to [fallbackText] in this tape’s '
+            'config_json.',
         properties: {
-          'ticker.marquee.weather': {
+          'fallbackText': {
             'type': 'string',
             'description':
                 'Fallback marquee text when no live weather string is available.',
@@ -1171,7 +1209,7 @@ final Map<String, ScreenConfigJsonDoc> kTickerSlotConfigJsonMeta = {
       ),
     ),
     example: jsonEncode({
-      'ticker.marquee.weather': 'Cool and clear — tap for details',
+      'fallbackText': 'Cool and clear — tap for details',
     }),
   ),
   'news': ScreenConfigJsonDoc(
@@ -1180,67 +1218,37 @@ final Map<String, ScreenConfigJsonDoc> kTickerSlotConfigJsonMeta = {
         title: 'TickerNewsSlotDoc',
         description:
             'RSS headlines from stored articles when available; otherwise '
-            'ticker.marquee.news. Curator KV keys tune scroll width and cadence '
-            '(string values in config_key_values, parsed as numbers/bools). '
+            '[fallbackText] in this tape’s config_json. Curator KV keys in '
+            'config_key_values (curator.ticker.*) tune scroll width and cadence '
+            '(string values, parsed as numbers/bools). '
             'Operator UI may also set display_text_scale_ticker for ticker font scale.',
         properties: {
-          'ticker.marquee.news': {
+          'fallbackText': {
             'type': 'string',
             'description':
-                'Fallback single-line headline when RSS slice is empty.',
-          },
-          'curator.ticker.newsScrollBudgetSeconds': {
-            'type': 'string',
-            'description':
-                'Approximate seconds of RSS text to budget into the '
-                'marquee width (integer string, default 300).',
-          },
-          'curator.ticker.newsPixelsPerSecond': {
-            'type': 'string',
-            'description':
-                'Horizontal scroll speed for news items (integer string, default 80).',
-          },
-          'curator.ticker.newsCharWidthPx': {
-            'type': 'string',
-            'description':
-                'Estimated average character width in px (number string, default 12).',
-          },
-          'curator.ticker.newsSeparatorPaddingPx': {
-            'type': 'string',
-            'description':
-                'Padding between concatenated news items (number string, default 30).',
-          },
-          'curator.ticker.newsPrefixCategory': {
-            'type': 'string',
-            'description':
-                'When true/1/yes, prefix bodies with feed category (default true).',
+                'Fallback single-line headline when the RSS slice is empty.',
           },
         },
       ),
     ),
     example: jsonEncode({
-      'ticker.marquee.news': 'Local headlines when RSS is quiet',
-      'curator.ticker.newsScrollBudgetSeconds': '300',
-      'curator.ticker.newsPixelsPerSecond': '80',
-      'curator.ticker.newsCharWidthPx': '12',
-      'curator.ticker.newsSeparatorPaddingPx': '30',
-      'curator.ticker.newsPrefixCategory': 'true',
+      'fallbackText': 'Local headlines when RSS is quiet',
     }),
   ),
   'quote': ScreenConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'TickerQuoteSlotDoc',
-        description: 'Single static line from config_key_values.',
+        description: 'Single static line from config_json [fallbackText].',
         properties: {
-          'ticker.marquee.quote': {
+          'fallbackText': {
             'type': 'string',
             'description': 'Quote or tagline text for the quote ticker slot.',
           },
         },
       ),
     ),
-    example: jsonEncode({'ticker.marquee.quote': 'Make it a great day'}),
+    example: jsonEncode({'fallbackText': 'Make it a great day'}),
   ),
   'stocks': ScreenConfigJsonDoc(
     schema: jsonEncode(
@@ -1259,10 +1267,10 @@ final Map<String, ScreenConfigJsonDoc> kTickerSlotConfigJsonMeta = {
       _baseSchema(
         title: 'TickerCustomSlotDoc',
         description:
-            'Uses ticker_definitions.config_key: when set to a single '
+            'Uses ticker_tapes.config_key: when set to a single '
             'ticker.marquee.* key, only that key is read from config_key_values. '
-            'When null, every extra ticker.marquee.* key outside weather/news/quote '
-            'is included (sorted).',
+            'When null, every ticker.marquee.* key in config_key_values is '
+            'included (sorted).',
         properties: {
           'ticker.marquee.example_key': {
             'type': 'string',
@@ -1281,31 +1289,45 @@ ScreenConfigJsonDoc tickerSlotConfigJsonDocForType(String tickerType) {
   return kTickerSlotConfigJsonMeta[tickerType] ?? kGenericScreenConfigJsonDoc;
 }
 
-/// JSON Schema + example for [display_overlay_schedules.config_json] by [overlayKind].
-ProviderConfigJsonDoc displayOverlayConfigJsonDocForKind(String overlayKind) {
-  final k = overlayKind.trim();
-  if (k == kOverlayKindHeartsRain) {
+/// JSON Schema + example for [overlays.config_json] by [overlayType].
+ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
+  final k = overlayType.trim();
+  if (k == kOverlayTypeHeartsRain) {
     return ProviderConfigJsonDoc(
       schema: jsonEncode(
         _baseSchema(
           title: 'HeartsRainOverlayConfig',
           description:
-              'Reserved for future use. Store an empty JSON object; values are ignored.',
-          properties: {},
+              'Floating hearts use the theme accent palette. Phrases come from '
+              'the messages array.',
+          properties: {
+            'messages': {
+              'type': 'array',
+              'items': {'type': 'string', 'minLength': 1},
+              'description': 'Short phrases occasionally shown with the hearts.',
+            },
+          },
         ),
       ),
-      example: '{}',
+      example: jsonEncode({
+        'messages': ['Happy Day!'],
+      }),
     );
   }
-  if (k == kOverlayKindBirthdayConfetti) {
+  if (k == kOverlayTypeBirthdayConfetti) {
     return ProviderConfigJsonDoc(
       schema: jsonEncode(
         _baseSchema(
           title: 'BirthdayConfettiOverlayConfig',
           description:
               'Optional shapes, hex colors, density, message interval, fall '
-              'speed, and opacity for birthday_confetti overlays.',
+              'speed, opacity, and sparse overlay phrases in messages.',
           properties: {
+            'messages': {
+              'type': 'array',
+              'items': {'type': 'string', 'minLength': 1},
+              'description': 'Sparse phrases shown among confetti pieces.',
+            },
             'shapes': {
               'type': 'array',
               'items': {
@@ -1348,6 +1370,7 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForKind(String overlayKind) {
         ),
       ),
       example: jsonEncode({
+        'messages': ['Happy birthday!'],
         'shapes': ['rect', 'circle', 'mix'],
         'colors': ['#E05C6C', '#FFE356'],
         'density': 0.36,
@@ -1357,16 +1380,21 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForKind(String overlayKind) {
       }),
     );
   }
-  if (k == kOverlayKindBouncingMessage) {
+  if (k == kOverlayTypeBouncingMessage) {
     return ProviderConfigJsonDoc(
       schema: jsonEncode(
         _baseSchema(
           title: 'BouncingMessageOverlayConfig',
           description:
               'Optional typography and motion for bouncing_message overlays. '
-              'The visible phrase comes from messages_json (first string); '
-              'when empty the app uses a built-in default.',
+              'The visible phrase is the first entry in messages; when empty '
+              'the app uses a built-in default.',
           properties: {
+            'messages': {
+              'type': 'array',
+              'items': {'type': 'string', 'minLength': 1},
+              'description': 'First string is shown as the bouncing line.',
+            },
             'color': {
               'type': 'string',
               'pattern': r'^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$',
@@ -1405,6 +1433,7 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForKind(String overlayKind) {
         ),
       ),
       example: jsonEncode({
+        'messages': ['Happy Birthday Waddle!!'],
         'color': '#E05C6C',
         'font_family': 'Roboto',
         'font_size': 40,
@@ -1415,5 +1444,21 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForKind(String overlayKind) {
       }),
     );
   }
-  return kGenericProviderConfigJsonDoc;
+  return ProviderConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'OverlayConfig',
+        description:
+            'Custom overlay_type values the display may not render yet. '
+            'Use JSON-serializable keys; messages holds optional phrases.',
+        properties: {
+          'messages': {
+            'type': 'array',
+            'items': {'type': 'string', 'minLength': 1},
+          },
+        },
+      ),
+    ),
+    example: jsonEncode({'messages': ['Hello']}),
+  );
 }

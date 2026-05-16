@@ -163,8 +163,8 @@ Future<void> _seedProvider(
   String configJson =
       '{"groupIds":["g1"],"category":"flickr","perPollLimit":20,"sort":"date-posted-desc"}',
 }) async {
-  await db.into(db.providerSettings).insertOnConflictUpdate(
-        ProviderSettingsCompanion.insert(
+  await db.into(db.integrations).insertOnConflictUpdate(
+        IntegrationsCompanion.insert(
           id: kFlickrMediaProviderId,
           providerType: 'media_flickr',
           enabled: Value(enabled),

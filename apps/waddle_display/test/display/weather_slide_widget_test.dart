@@ -58,8 +58,8 @@ void main() {
             longitude: -111.8910,
           ),
         );
-    await db.into(db.weatherCurrentData).insert(
-          WeatherCurrentDataCompanion.insert(
+    await db.into(db.weatherCurrent).insert(
+          WeatherCurrentCompanion.insert(
             locationId: 'salt_lake_city_ut',
             observedAtMs: DateTime.fromMillisecondsSinceEpoch(1234),
             currentTemp: const Value(72.2),
@@ -80,8 +80,8 @@ void main() {
             longitude: -84.3880,
           ),
         );
-    await db.into(db.weatherCurrentData).insert(
-          WeatherCurrentDataCompanion.insert(
+    await db.into(db.weatherCurrent).insert(
+          WeatherCurrentCompanion.insert(
             locationId: 'atlanta_ga',
             observedAtMs: DateTime.fromMillisecondsSinceEpoch(1235),
             currentTemp: const Value(65.1),
@@ -146,8 +146,8 @@ void main() {
             longitude: -84.3880,
           ),
         );
-    await db.into(db.weatherCurrentData).insert(
-          WeatherCurrentDataCompanion.insert(
+    await db.into(db.weatherCurrent).insert(
+          WeatherCurrentCompanion.insert(
             locationId: 'atlanta_ga',
             observedAtMs: DateTime.fromMillisecondsSinceEpoch(1235),
             currentTemp: const Value(65.1),
@@ -155,8 +155,8 @@ void main() {
             hourlyJson: const Value('[]'),
           ),
         );
-    await db.into(db.weatherGovActiveAlerts).insert(
-          WeatherGovActiveAlertsCompanion.insert(
+    await db.into(db.weatherAlerts).insert(
+          WeatherAlertsCompanion.insert(
             locationId: 'atlanta_ga',
             nwsAlertId: 'urn:test:1',
             event: 'Heat Advisory',
@@ -213,8 +213,8 @@ void main() {
             longitude: 2,
           ),
         );
-    await db.into(db.weatherCurrentData).insert(
-          WeatherCurrentDataCompanion.insert(
+    await db.into(db.weatherCurrent).insert(
+          WeatherCurrentCompanion.insert(
             locationId: 'only',
             observedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
             currentTemp: const Value(55),
@@ -284,8 +284,8 @@ void main() {
             longitude: 2,
           ),
         );
-    await db.into(db.weatherCurrentData).insert(
-          WeatherCurrentDataCompanion.insert(
+    await db.into(db.weatherCurrent).insert(
+          WeatherCurrentCompanion.insert(
             locationId: 'only',
             observedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
             currentTemp: const Value(55),

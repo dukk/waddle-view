@@ -77,8 +77,8 @@ void main() {
   test('collect upserts articles, downloads image, trims to maxArticles', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'news_rss',
             providerType: 'news_rss',
             pollSeconds: const Value(1),
@@ -130,8 +130,8 @@ void main() {
   test('collect skips feed when HTTP status is not 200', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'news_rss',
             providerType: 'news_rss',
           ),
@@ -162,8 +162,8 @@ void main() {
   test('collect keeps article when image download throws', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(id: 'news_rss', providerType: 'news_rss'),
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(id: 'news_rss', providerType: 'news_rss'),
         );
     await db.into(db.rssFeedSources).insert(
           RssFeedSourcesCompanion.insert(
@@ -202,8 +202,8 @@ void main() {
   test('collect skips feed when within poll interval', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(id: 'news_rss', providerType: 'news_rss'),
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(id: 'news_rss', providerType: 'news_rss'),
         );
     const last = 1_000_000;
     await db.into(db.rssFeedSources).insert(
@@ -236,8 +236,8 @@ void main() {
   test('collect continues when feed GET throws', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(id: 'news_rss', providerType: 'news_rss'),
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(id: 'news_rss', providerType: 'news_rss'),
         );
     await db.into(db.rssFeedSources).insert(
           RssFeedSourcesCompanion.insert(

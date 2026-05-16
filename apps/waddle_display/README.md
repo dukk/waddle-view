@@ -136,7 +136,7 @@ Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../d
 
 ### Reject word list (curse-word filter)
 
-- SQLite table **`reject_terms`** (schema **31**) holds operator-managed words. Each row has an **`action`**:
+- SQLite table **`curator_rejected_terms`** (renamed from `reject_terms` in schema **42**) holds operator-managed words. Each row has an **`action`**:
   - **`block`** — at **ingest time** providers set **`suppressed = true`** when the term appears in any text field, photographer name, alt text, or URL part (URL separators like `-`, `_`, `/`, `?`, `=`, `&`, `.` are normalized to spaces for whole-word matching). Media matches (Pexels, Bing, Flickr, OneDrive) **always** block, even when the matching term's action is `censor`.
   - **`censor`** — at **slide and ticker load time** the matched word is replaced with a configurable mask **transiently** (the SQLite row is untouched). The censor format lives in **`config_key_values`** under **`curator.reject.censorFormat`** with values **`asterisks_full`** (default), **`asterisks_fixed`** (always 4 asterisks), **`first_last`** (keeps first and last character, masks middle), or **`bracketed_token`** (replaces with `[censored]`).
 - Matching is case-insensitive and word-boundary aware so substring noise (e.g. *class* containing *ass*) does not trigger.
@@ -162,7 +162,7 @@ Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../d
 - **Authentication**: `POST /v1/auth/login` then `Authorization: Bearer <session_token>` on protected routes (see [`docs/pi/api.md`](../../docs/pi/api.md)).
 - **Instance id file**: **`waddle_instance.id`** in Flutter’s **application support** directory (`getApplicationSupportDirectory()` in `lib/main.dart`). Created on first launch; legacy **`waddle_api.key`** is renamed on upgrade. This value is the bootstrap password for reserved user **`display`** until a named user is created.
 - **`/v1/health`** is public; other `/v1/*` routes return **401** without a valid session, **403** when the user lacks permission.
-- **Operator UI**: use **`apps/waddle_controller`** (not the removed `/admin` HTML UI).
+- **Operator UI**: use **`apps/waddle_controller`** (not the removed `/admin` HTML UI). The **`controller_invite`** screen type shows a QR to **`/join`** on the controller for viewer self-signup (see **`POST /v1/auth/register-viewer`** in [`docs/pi/api.md`](../../docs/pi/api.md)); optional env **`WADDLE_CONTROLLER_PUBLIC_URL`**, **`WADDLE_VIEWER_REGISTRATION_SECRET`** (see **`.env.example`**). The **`viewer`** role is **`telemetry.read`** only for operator APIs (controller **Programs**); the **`power_viewer`** role adds **`navigation.control`** and **`content.catalog_read`** (carousel/ticker remote control plus read-only controller **Data** / catalog, excluding suppressed content). **Account** (display name + password) uses self-service user routes. Operators and admins use the broader permission sets in **`docs/pi/api.md`**.
 - **Operator JSON API** (telemetry, navigation, screens, ticker, providers, curator, users): documented in **[`docs/pi/api.md`](../../docs/pi/api.md)**. The controller stores session tokens in **`sessionStorage`** per display. For cross-origin dev (`http://localhost:5173` → `http://127.0.0.1:8787`), set **`WADDLE_HTTP_CORS_ORIGINS`** (see **`.env.example`**).
 
 ### Display theme (`config_key_values`)
@@ -181,43 +181,43 @@ Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../d
 - **Default**: first seed inserts **`America/New_York`**. Empty or unknown values fall back to that default.
 - **Code**: [`lib/config/display_timezone.dart`](lib/config/display_timezone.dart) and [`packages/waddle_shared/lib/persistence/tables.dart`](../../packages/waddle_shared/lib/persistence/tables.dart) (`kDisplayTimezoneKvKey`).
 
-### Festive display overlays (`display_overlay_schedules` + REST)
+### Festive display overlays (`overlays` + REST)
 
 - **Effect**: on matching calendar days, an **unobtrusive** translucent layer sits **above** slides and ticker but **below** priority **alert** overlays, and it does **not** capture pointer or keyboard input.
-- **`hearts_rain`**: floating **hearts** ♥ and occasional **short phrases** from `messages_json`, tinted from the current theme’s **accent** palette (`PaletteTertiaryLayers` / `ColorScheme` fallback).
-- **`birthday_confetti`**: low-opacity **falling confetti** (rectangles, circles, stars, thin “streamers”) with optional **sparse** phrases from `messages_json`. Per-row **`config_json`** (JSON object) can tune **`shapes`** (`rect`, `circle`, `star`, `streamer`, `mix`), optional **`colors`** (`#RRGGBB` or `#AARRGGBB`), **`density`** (about **0.15–0.9**, displayed clamped for subtlety), **`message_interval_sec`** (about **8–120** sec between occasional phrases), **`fall_speed`** (**0.02–1.8**, lower = slower drift; **~1.0** matches the original ~5s vertical cycle; **0.02** is the slowest supported, about **4.2 minutes** per full cycle with the current cap), and **`opacity`** (**0.12–0.72**, caps per-piece alpha for stronger or softer confetti). Empty `messages_json` means **no** overlay text. Omit `config_json` or send `{}` for defaults (**slower and more visible** than the first confetti release). **`hearts_rain` always stores `{}`** in `config_json` (extra keys are ignored on upsert).
-- **`bouncing_message`**: a **single line** of text from `messages_json` (first string after merge; if none, the app uses **`Happy Birthday Waddle!!`**) **bounces** within the overlay like a DVD logo. **`config_json`** may set **`color`** (`#RRGGBB` / `#AARRGGBB`), **`font_family`**, **`font_size`** (**14–96**), **`font_weight`** (**100–900**, snapped to hundreds, or a numeric string), **`letter_spacing`** (**-1.5–6**), **`shadow`** (bool), and **`speed`** (**0.25–2.5**, velocity multiplier).
+- **`hearts_rain`**: floating **hearts** ♥ and occasional **short phrases** from `config_json.messages`, tinted from the current theme’s **accent** palette (`PaletteTertiaryLayers` / `ColorScheme` fallback).
+- **`birthday_confetti`**: low-opacity **falling confetti** (rectangles, circles, stars, thin “streamers”) with optional **sparse** phrases from `config_json.messages`. Other **`config_json`** keys tune **`shapes`** (`rect`, `circle`, `star`, `streamer`, `mix`), optional **`colors`** (`#RRGGBB` or `#AARRGGBB`), **`density`** (about **0.15–0.9**, displayed clamped for subtlety), **`message_interval_sec`** (about **8–120** sec between occasional phrases), **`fall_speed`** (**0.02–1.8**, lower = slower drift; **~1.0** matches the original ~5s vertical cycle; **0.02** is the slowest supported, about **4.2 minutes** per full cycle with the current cap), and **`opacity`** (**0.12–0.72**, caps per-piece alpha for stronger or softer confetti). Empty `messages` means **no** overlay text. **`hearts_rain`** upserts normalize to **`{"messages":[…]}`** only.
+- **`bouncing_message`**: a **single line** of text from **`config_json.messages`** (first string; if none, the app uses **`Happy Birthday Waddle!!`**) **bounces** within the overlay like a DVD logo. Other **`config_json`** keys may set **`color`** (`#RRGGBB` / `#AARRGGBB`), **`font_family`**, **`font_size`** (**14–96**), **`font_weight`** (**100–900**, snapped to hundreds, or a numeric string), **`letter_spacing`** (**-1.5–6**), **`shadow`** (bool), and **`speed`** (**0.25–2.5**, velocity multiplier).
 - **Stacking**: when several kinds match, **confetti** is lowest, then **hearts**, then **bouncing message** on top for readability.
 - **Multiple rows**: merged **message** strings are **deduped** across matching rows (sorted by `id`). For **`birthday_confetti`**, **visual settings** come from the **first** matching row by `id` only; add a dedicated row per distinct look, or keep a single confetti schedule. **`bouncing_message`** uses the **first** matching row’s `config_json` and the **first** merged phrase for the moving text.
 - **Global switch**: `config_key_values` key **`display.overlay.enabled`**. **Omit** or any value other than **`false`**, **`0`**, **`no`**, **`off`** means **on**. Set to `false` to disable all overlays without deleting rows.
-- **Storage**: SQLite **`display_overlay_schedules`** (installed at schema **28**; `settings_json` added at **32**, renamed to **`config_json`** at **34** with **`config_json_schema`** / **`example_config_json`**; **35** backfills schema/example for **`bouncing_message`**). Rows support **fixed** calendar ranges (`start_month`/`start_day`, optional inclusive `end_*`) or **`nth_week_of_month` + `nth_weekday`** using Dart **`DateTime.weekday`** (Monday=1 … Sunday=7) with `start_month` holding the anchor month (`start_day` is ignored in that mode).
-- **Kinds**: **`hearts_rain`**, **`birthday_confetti`**, **`bouncing_message`**. REST returns **400** for other `overlay_kind` values (or invalid `config_json` for confetti / bouncing message).
+- **Storage**: SQLite **`overlays`** (migration **41** copies legacy `display_overlay_schedules` when present; fresh databases at schema **42** create **`overlays`** directly). Column **`overlay_type`** replaces **`overlay_kind`**; legacy **`messages_json`** is merged into **`config_json.messages`** on upgrade. Rows support **fixed** calendar ranges (`start_month`/`start_day`, optional inclusive `end_*`) or **`nth_week_of_month` + `nth_weekday`** using Dart **`DateTime.weekday`** (Monday=1 … Sunday=7) with `start_month` holding the anchor month (`start_day` is ignored in that mode).
+- **Types**: **`overlay_type`** uses the same slug style as **`screen_type`**. Built-in renderers today: **`hearts_rain`**, **`birthday_confetti`**, **`bouncing_message`**. Additional types may be stored and edited over REST; the kiosk ignores unknown types until a renderer exists.
 - **Default seeds**: id **`default_mothers_day_us`** — US **Mother’s Day** (2nd Sunday in May) with message **`Happy Mother's Day!`** (`hearts_rain`, **enabled**). Id **`default_birthday_example_may_13`** — **May 13** each year, **`birthday_confetti`** with example message and a **slower, brighter** stock `config_json`, **disabled** so operators can enable or edit via REST without affecting installs until they choose to. Id **`default_bouncing_message_may_13`** — **May 13** each year, **`bouncing_message`** with **`Happy Birthday Waddle!!`** and stock typography `config_json`, **disabled** (same intent as the birthday example).
 - **REST** (authenticated like other `/v1/*` routes):
-  - `GET /v1/display/overlays` — list schedules (`messages_json`, `config_json`, `config_json_schema`, and `example_config_json` decoded as JSON in the response when valid).
+  - `GET /v1/display/overlays` — list schedules (`config_json`, `config_json_schema`, and `example_config_json` decoded as JSON in the response when valid).
   - `POST /v1/display/overlays` — upsert (requires `id`; include `start_month` / `start_day` for fixed mode, or `nth_week_of_month` / `nth_weekday` for floating holidays).
-  - `PATCH /v1/display/overlays/{id}` — partial update (merge with existing row).
+  - `PATCH /v1/display/overlays/{id}` — partial update (merge with existing row; `config_json` merges shallowly at the top level).
   - `DELETE /v1/display/overlays/{id}` — remove a schedule.
 - **Details and curl examples**: [`docs/pi/api.md`](../../docs/pi/api.md).
 
 ### Screen program (main carousel)
 
-When the app assembles a timed program from `screen_definitions`, [`ScreenProgramCurator`](lib/curator/screen_program_curator.dart) pre-assigns **content ids** on each [`ResolvedSlide`](lib/curator/screen_program_curator.dart) for **jokes**, **RSS articles**, **trivia** (and existing **random photo** pools). Slide widgets read those ids from `randomChoices` first, so the same joke or article is not shown twice in one program when SQLite has enough distinct rows. If every candidate is already used, the slide falls back to the previous random / “best article” selection. Multi-article RSS widgets use suffixed keys, for example **`main_rss_article_columns_0`** … **`_2`**, or **`main_rss_article_stack_0`** / **`_1`** for the two-row stack layout ([`rss_article_stack_slide_widget.dart`](lib/display/screens/rss_article/rss_article_stack_slide_widget.dart)). The **`rss_article_columns`** layout places a **QR code** under each column’s **title** (start-aligned) with the **summary beside it** when that article’s `link` is non-empty; optional widget `config` **`qrLogicalSize`** (default **80**, clamped) scales the code after the viewport multiplier ([`rss_article_columns_slide_widget.dart`](lib/display/screens/rss_article/rss_article_columns_slide_widget.dart)).
+When the app assembles a timed program from `screens`, [`ScreenProgramCurator`](lib/curator/screen_program_curator.dart) pre-assigns **content ids** on each [`ResolvedSlide`](lib/curator/screen_program_curator.dart) for **jokes**, **RSS articles**, **trivia** (and existing **random photo** pools). Slide widgets read those ids from `randomChoices` first, so the same joke or article is not shown twice in one program when SQLite has enough distinct rows. If every candidate is already used, the slide falls back to the previous random / “best article” selection. Multi-article RSS widgets use suffixed keys, for example **`main_rss_article_columns_0`** … **`_2`**, or **`main_rss_article_stack_0`** / **`_1`** for the two-row stack layout ([`rss_article_stack_slide_widget.dart`](lib/display/screens/rss_article/rss_article_stack_slide_widget.dart)). The **`rss_article_columns`** layout places a **QR code** under each column’s **title** (start-aligned) with the **summary beside it** when that article’s `link` is non-empty; optional widget `config` **`qrLogicalSize`** (default **80**, clamped) scales the code after the viewport multiplier ([`rss_article_columns_slide_widget.dart`](lib/display/screens/rss_article/rss_article_columns_slide_widget.dart)).
 
 RSS widget `config` may include **`feedId`** (single feed), **`categoryId`** (slug shared with **`content_categories.id`**, pool key **`rss_category:<id>`**), or neither. With the global **`rss`** pool, the curator assigns articles from **one** category per slide so columns/stack rows do not mix unrelated feeds; it stores that id in **`randomChoices`** under **`rss_screen_category_id`** ([`ScreenProgramCurator.rssScreenCategoryChoiceKey`](lib/curator/screen_program_curator.dart)). **RSS**, **joke**, and **trivia** slides render a **category strip** at the top (label + icon from **`content_categories`**, with fallbacks — [`content_category_slide_header.dart`](lib/display/content_category_slide_header.dart)).
 
-Each **`screen_definitions`** row stores **`screen_type`** (widget id, e.g. `weather`, `rss_article`), runtime **`config_json`** (JSON object: the former per-widget `config` in legacy `layout_json`), plus documentation columns **`config_json_schema`** and **`example_config_json`** for that config shape. `GET /v1/screens` includes the schema and example fields.
+Each **`screens`** row stores **`screen_type`** (widget id, e.g. `weather`, `rss_article`), runtime **`config_json`** (JSON object: the former per-widget `config` in legacy `layout_json`), plus documentation columns **`config_json_schema`** and **`example_config_json`** for that config shape. `GET /v1/screens` includes the schema and example fields.
 
 - **Analog clock labels** — optional `analog_clock` widget `config.dialLabels` controls clock-face labels: **`none`** (default), **`numbers`** (1-12), **`roman`** (I-XII), or **`cardinal_numbers`** (12/3/6/9 only).
 - **Analog clock hand accents** — by default, hands use accent colors **1/2/3** for **hour/minute/second**. Optional per-hand config keys can override accent choice: **`hourHandAccent`**, **`minuteHandAccent`**, **`secondHandAccent`** with values **`accent1`**, **`accent2`**, **`accent3`** (or numeric **`1`**, **`2`**, **`3`**).
 - **RSS screen photos** — config key **`curator.news.screens.require_photo`** (default **true** in seed): when true, only RSS rows with a downloaded image are used for **screen** slides; the **ticker** is unchanged. If a news screen must still run (e.g. **min placements** / data-key minimum) and no image-backed article is available, the curator may place a photo-less row and set **`*_imageMode`** = **`icon`** (per slot for columns/stack) so the UI shows a **newspaper** icon instead of a photo.
 - **Summary fit** — optional keys in **`config_json`** for RSS screens: **`summaryCapacityChars`** (single `rss_article`), **`summaryCapacityCharsPerColumn`** (`rss_article_columns`), **`summaryCapacityCharsPerSlot`** (`rss_article_stack`). The curator scores screen+article pairs so summary text length is less likely to be wasted or heavily truncated. Seeded default news screens set these in [`initial_seed.dart`](../../packages/waddle_shared/lib/seed/initial_seed.dart).
 
-### Bottom ticker (`ticker_definitions`)
+### Bottom ticker (`ticker_tapes`)
 
-SQLite table **`ticker_definitions`** configures the bottom marquee: which **types** run (`time`, `weather`, `news`, `quote`, `stocks`, `custom`), **order** (`sort_order`, then id), **`enabled`**, and **`frequency_weight`** (repeat that type’s item bundle that many times when building the curated list; identical bodies are still deduplicated). **`custom`** rows may set **`config_key`** to pin one `ticker.marquee.*` key; when null, every extra `ticker.marquee.*` key outside the standard weather/news/quote keys is included (legacy “extras” bucket).
+SQLite table **`ticker_tapes`** configures the bottom marquee: which **types** run (`time`, `weather`, `news`, `quote`, `stocks`, `custom`), **order** (`sort_order`, then id), **`enabled`**, and **`frequency_weight`** (repeat that type’s item bundle that many times when building the curated list; identical bodies are still deduplicated). Each row has **`config_json`**: for **`weather`**, **`news`**, and **`quote`**, optional **`fallbackText`** is used when live weather, RSS articles, or (for quote) nothing else supplies a line. **`custom`** rows may set **`config_key`** to pin one `ticker.marquee.*` key in **`config_key_values`**; when null, every **`ticker.marquee.*`** key in **`config_key_values`** is included for that tape (sorted).
 
-Content still comes from **`config_key_values`** (`ticker.marquee.*`), live weather plus **active NWS alerts** (same `weather` ticker kind), stored RSS articles for **`news`**, and (for definition-based curation) enabled **`stock_symbols`** / **`stock_quotes`** when a **`stocks`** row is enabled. If **`ticker_definitions`** has **no rows** (empty table), curation keeps the legacy fixed order: time, standard keys, sorted extras — **without** stock lines. If the table has rows but **none are enabled**, curation falls back to **time** only.
+Live weather plus **active NWS alerts** (same `weather` ticker kind), stored RSS articles for **`news`**, and enabled **`stock_symbols`** / **`stock_quotes`** for **`stocks`** are read from their domain tables. **`curator.ticker.*`** keys in **`config_key_values`** still tune RSS width budgeting for the news slice. If **`ticker_tapes`** has **no rows** (empty table), curation uses a legacy path: **time**, live weather (if any), RSS news, then every **`ticker.marquee.*`** value in **`config_key_values`** as **`custom`** lines — **without** stock lines. If the table has rows but **none are enabled**, curation falls back to **time** only.
 
 Seeded defaults: **`ticker_time`** … **`ticker_stocks`** enabled, **`ticker_custom`** disabled ([`initial_seed.dart`](../../packages/waddle_shared/lib/seed/initial_seed.dart)).
 
@@ -247,11 +247,11 @@ While the dashboard is focused, keyboard arrows can be used to browse curated pr
 
 - `Right`: move to the next screen in the current program. At the tail of the newest program, navigation stops and waits for a newly curated program.
 - `Left`: move backward through the current program and then into older programs in history.
-- On manual navigation, a timeline overlay appears at the bottom of the screen area (above ticker) and highlights the current screen by `screen_definitions.id`.
+- On manual navigation, a timeline overlay appears at the bottom of the screen area (above ticker) and highlights the current screen by `screens.id`.
 - At the oldest history boundary, the overlay shows an end-of-history message.
 - If no arrow key is pressed for a few seconds, overlays fade out and automatic dwell-based rotation resumes.
 
-Startup logs include **`REST listening at …`** with the bound **base URL**. To show the same information on the TV carousel, enable the **`dev_local_api`** row in **`screen_definitions`** (`enabled = 1`); that developer slide shows the URL and **`waddle_instance.id`** / login hints.
+Startup logs include **`REST listening at …`** with the bound **base URL**. To show the same information on the TV carousel, enable the **`dev_local_api`** row in **`screens`** (`enabled = 1`); that developer slide shows the URL and **`waddle_instance.id`** / login hints.
 
 The **`dev_data_health`** screen (`screen_type` **`data_health`**, installed **disabled**) shows a **data health** dashboard: active content as a **pie chart** by type (RSS, photos, videos, jokes, trivia), **paired pie charts** for photos vs videos by category with a full-width legend (no truncated axis labels), RSS image coverage, feed enable/retry hints, calendar row count, and blob-store size. Optional `config_json`: **`headline`** (string) and **`refreshIntervalSeconds`** (15–300, default 45) for how often aggregates refresh while the slide is visible. Enable the row like any other screen (REST **`GET`/`PATCH `/v1/screens`**, Admin UI, or SQLite).
 
@@ -261,11 +261,11 @@ The **`dev_data_health`** screen (`screen_type` **`data_health`**, installed **d
 - **Secret storage**: `flutter_secure_storage` uses the Secret Service / **libsecret** where available; headless images without D-Bus may need a documented fallback (see repo **`docs/pi/`**).
 - **Data**: SQLite and **`media/`** live under the application support directory (see `path_provider` on device).
 
-The **`content_categories`** table holds shared category ids for **RSS** (`rss_feed_sources.category`), **Pexels** (`photos.category` / `videos.category`), **jokes** (`joke_categories.id`), and **trivia** (`trivia_categories.id`). Each row has a display **`label`**, optional **`material_icon_name`** (resolved in the app via [`content_category_material_icon.dart`](lib/display/content_category_material_icon.dart)), and optional **`icon_blob_key`** for a custom image in the blob store. Initial rows are created by migration to schema version **19** and by [`ensureDefaultContentCategories`](../../packages/waddle_shared/lib/seed/tables/content_categories_seed.dart) during startup seeding.
+The **`curator_categories`** table (renamed from **`content_categories`** in schema **42**) holds shared category ids for **RSS** (`rss_feed_sources.category`), **Pexels** (`photos.category` / `videos.category`), **jokes** (`joke_categories.id`), and **trivia** (`trivia_categories.id`). Each row has a display **`label`**, optional **`material_icon_name`** (resolved in the app via [`content_category_material_icon.dart`](lib/display/content_category_material_icon.dart)), and optional **`icon_blob_key`** for a custom image in the blob store. Initial rows are created by migration to schema version **19** and by [`ensureDefaultContentCategories`](../../packages/waddle_shared/lib/seed/tables/content_categories_seed.dart) during startup seeding.
 
 ## Provider secrets (OpenAI / joke_openai / trivia_openai)
 
-The joke and trivia data providers read OpenAI-style API keys from **environment variables** (merged with debug `.env`), not from `provider_settings` or SQLite.
+The joke and trivia data providers read OpenAI-style API keys from **environment variables** (merged with debug `.env`), not from the **`integrations`** table or other SQLite configuration.
 
 Supported env name: **`WADDLE_OPENAI_API_KEY`** (shared by **`joke_openai`** and **`trivia_openai`** (and **`trivia_opentdb`**); see [`packages/waddle_shared/lib/config/provider_access_token_env.dart`](../../packages/waddle_shared/lib/config/provider_access_token_env.dart)).
 
@@ -279,7 +279,7 @@ OpenTDB trivia does **not** require a token.
 
 The trivia data provider calls OpenAI Chat Completions, then upserts rows into **`trivia_questions`**. Eligible **`trivia_categories`** are cycled in **round-robin** order (starting offset rotates each hour). Each request’s user prompt includes **recent question stems** so the model avoids obvious repeats.
 
-**`provider_settings.config_json`** (canonical keys):
+**`integrations.config_json`** (canonical keys):
 
 - **`maxQuestionPerDay`**: cap on new questions created per local calendar day (default **200**). Legacy **`questionsPerDay`** is still read if **`maxQuestionPerDay`** is omitted.
 - **`maxQuestionPerHour`**: cap on questions **requested** in a rolling window (default **20** per **`twoHourWindowMs`**). Legacy **`maxQuestionsPerTwoHours`** is still read if **`maxQuestionPerHour`** is omitted.
@@ -294,7 +294,7 @@ True/false rows store options in A/B and leave C/D blank; the slide renders and 
 
 The OpenTDB provider fetches questions from [Open Trivia DB](https://opentdb.com/api_config.php) and writes them into the same **`trivia_questions`** table as the OpenAI trivia provider.
 
-**`provider_settings.config_json`** keys:
+**`integrations.config_json`** keys:
 
 - **`amount`**: number of questions per request (1-50, default 10).
 - **`difficulty`**: optional `easy`, `medium`, or `hard`.
@@ -311,7 +311,7 @@ The **Pexels** provider (`id` / `provider_type`: **`media_pexels`**) downloads c
 
 **Debug `.env`:** **`WADDLE_PEXELS_API_KEY`** (see [`.env.example`](.env.example)).
 
-**`provider_settings.config_json`** (JSON) holds the runtime payload. **`config_json_schema`** and **`example_config_json`** are documentation columns (JSON Schema and sample JSON) populated per row type.
+**`integrations.config_json`** (JSON) holds the runtime payload. **`config_json_schema`** and **`example_config_json`** are documentation columns (JSON Schema and sample JSON) populated per row type.
 
 **`config_json`** for Pexels supports:
 
@@ -320,7 +320,7 @@ The **Pexels** provider (`id` / `provider_type`: **`media_pexels`**) downloads c
 - **`minVideoSeconds`** / **`maxVideoSeconds`**: inclusive duration window for videos (defaults **11** and **29** seconds).
 - **`sources`**: optional list of `{ "query": "…", "category": "…" }` for `/v1/search` (photos) and `/v1/videos/search` (videos); results use that **category** string (the default curated/popular path uses category **`pexels`**).
 
-**Screens:** widget types **`pexels_photo`**, **`pexels_photo_collage`** (multi-tile layouts; `config.template` picks one of the built-in grids, and the curator matches **native aspect ratio** to each cell when **`blob_metadata.pixel_width` / `pixel_height`** are populated), and **`pexels_video`**. Optional `config.categoryId` selects the curator pool (`pexels_photo` vs `pexels_photo:<category>`). Seed adds **`pexels_photo`**, several collage screens, and **`pexels_video`** rows in **`screen_definitions`** disabled by default; enable after configuring the API key. Attribution (photographer name, profile URL, alt text) is shown on the photo slide; videos autoplay **muted** unless `config.unmuted` is true.
+**Screens:** widget types **`pexels_photo`**, **`pexels_photo_collage`** (multi-tile layouts; `config.template` picks one of the built-in grids, and the curator matches **native aspect ratio** to each cell when **`blob_metadata.pixel_width` / `pixel_height`** are populated), and **`pexels_video`**. Optional `config.categoryId` selects the curator pool (`pexels_photo` vs `pexels_photo:<category>`). Seed adds **`pexels_photo`**, several collage screens, and **`pexels_video`** rows in **`screens`** disabled by default; enable after configuring the API key. Attribution (photographer name, profile URL, alt text) is shown on the photo slide; videos autoplay **muted** unless `config.unmuted` is true.
 
 ## Stock quote provider (Finnhub)
 
@@ -337,11 +337,11 @@ The **stocks** provider (`id` / `provider_type`: **`stock_finnhub`**) calls [Fin
 
 **Schema:** **`stock_symbols(id, symbol, display_name, enabled)`** and **`stock_quotes(symbol_id, current_price, change_amount, percent_change, high_of_day, low_of_day, open_price, previous_close, quoted_at_ms, observed_at_ms)`** are added in schema version **21**.
 
-**Screen:** widget type **`stock_quotes`**. Seed adds a **`stock_quotes`** row in **`screen_definitions`** disabled by default; enable after configuring the API key. The slide renders symbol, price, and percent change with up/down trend coloring per enabled symbol.
+**Screen:** widget type **`stock_quotes`**. Seed adds a **`stock_quotes`** row in **`screens`** disabled by default; enable after configuring the API key. The slide renders symbol, price, and percent change with up/down trend coloring per enabled symbol.
 
 ## NWS weather alerts (api.weather.gov)
 
-The **`weather_nws_alerts`** data provider (`id` / `provider_type`: **`weather_nws_alerts`**; legacy DBs migrated from **`nws_weather_alerts`**) calls the National Weather Service [JSON API](https://www.weather.gov/documentation/services-web-api) **`GET /alerts/active?point=<lat>,<lon>`** for each enabled **`weather_locations`** row with **`include_active_weather_alerts`** true (schema version **29**; default **true**). When no rows are enabled for weather, it uses **`defaultLocation`** from **`config_json`** (same shape as the OpenWeather provider), like the OpenWeather collector. If every enabled location opts out of active alerts, stored **`weather_gov_active_alerts`** rows are cleared and no NWS requests are made. Responses are stored in **`weather_gov_active_alerts`** (schema version **25**). **No API key** is required.
+The **`weather_nws_alerts`** data provider (`id` / `provider_type`: **`weather_nws_alerts`**; legacy DBs migrated from **`nws_weather_alerts`**) calls the National Weather Service [JSON API](https://www.weather.gov/documentation/services-web-api) **`GET /alerts/active?point=<lat>,<lon>`** for each enabled **`weather_locations`** row with **`include_active_weather_alerts`** true (schema version **29**; default **true**). When no rows are enabled for weather, it uses **`defaultLocation`** from **`config_json`** (same shape as the OpenWeather provider), like the OpenWeather collector. If every enabled location opts out of active alerts, stored **`weather_alerts`** rows are cleared and no NWS requests are made. Responses are stored in **`weather_alerts`** (schema version **25**). **No API key** is required.
 
 **Schema 26** adds boolean **`suppressed`** on **`jokes`**, **`rss_articles`**, **`trivia_questions`**, **`photos`**, and **`videos`** (hide from display without deleting rows; see *Content suppression* above).
 
@@ -349,17 +349,17 @@ The **`weather_nws_alerts`** data provider (`id` / `provider_type`: **`weather_n
 
 **Schema 31** adds the **`reject_terms`** table (`id`, `term`, `action`, `created_at_ms`, `updated_at_ms`) for the curse-word reject list. See **Reject word list** above for the operator workflow.
 
-**User-Agent (required by NWS):** every request sends an identifying **`User-Agent`** header. Set **`userAgent`** in **`provider_settings.config_json`** to a string that includes contact information (website or email), for example `(https://example.org, ops@example.org)`, as described in the [API overview](https://www.weather.gov/documentation/services-web-api). Until you configure this, the app uses a generic placeholder string that points to this README.
+**User-Agent (required by NWS):** every request sends an identifying **`User-Agent`** header. Set **`userAgent`** in **`integrations.config_json`** to a string that includes contact information (website or email), for example `(https://example.org, ops@example.org)`, as described in the [API overview](https://www.weather.gov/documentation/services-web-api). Until you configure this, the app uses a generic placeholder string that points to this README.
 
-**Coverage:** alerts are **US-only** (NWS). **`provider_settings.base_url`** defaults to **`https://api.weather.gov`**.
+**Coverage:** alerts are **US-only** (NWS). **`integrations.base_url`** defaults to **`https://api.weather.gov`**.
 
 **UI:** the **`weather`** slide shows an **Active alerts** section when rows exist for the slide’s location. When the marquee includes a **`weather`** ticker definition (or legacy ordering), each active alert adds an extra **`weather`-kind** ticker line after the temperature summary (deduped by NWS alert id across locations).
 
-**`provider_settings.poll_seconds`:** default **900** when seeded (aligned with the OpenWeather provider).
+**`integrations.poll_seconds`:** default **900** when seeded (aligned with the OpenWeather provider).
 
 ## Outlook calendar (Microsoft Graph)
 
-The **Outlook calendar** provider (`id` / `provider_type`: **`calendar_outlook`**) reads delegated calendar data via [Microsoft Graph](https://learn.microsoft.com/en-us/graph/api/resources/calendar) `calendarView` and stores events in **`calendar_events`** (shown on the **`calendar_month`** slide). Seed adds the provider **disabled** by default; set **`provider_settings.enabled`** after configuration.
+The **Outlook calendar** provider (`id` / `provider_type`: **`calendar_outlook`**) reads delegated calendar data via [Microsoft Graph](https://learn.microsoft.com/en-us/graph/api/resources/calendar) `calendarView` and stores events in **`calendar_events`** (shown on the **`calendar_month`** slide). Seed adds the provider **disabled** by default; set **`integrations.enabled`** after configuration.
 
 **App registration (Entra ID):** delegated permissions **`Calendars.Read`**, **`Files.Read`** (for OneDrive media sync), **`User.Read`**, and **`offline_access`**. The shared public **application (client) id** is read from the environment as **`WADDLE_MICROSOFT_GRAPH_CLIENT_ID`** (process env or merged debug `.env`) — not from SQLite. Other Graph-based providers use the same variable. If you already signed in before **`Files.Read`** was added, the next token refresh may fall back to **device code** once so you can re-consent for the broader scope.
 
@@ -370,9 +370,9 @@ The **Outlook calendar** provider (`id` / `provider_type`: **`calendar_outlook`*
 - Access: **`provider:access_token:microsoft_graph:<graphAccountKey>`**
 - Refresh: **`provider:refresh_token:microsoft_graph:<graphAccountKey>`**
 
-**OAuth:** when access and refresh tokens are missing or expired, the provider starts the **device code** flow. A **`dashboard_alerts`** row shows the **user code** and verification URL on the dashboard, and a **QR code** (when the identity platform returns `verification_uri_complete`, otherwise the base verification URL) so you can open the sign-in page on a phone. Repeated prompts are throttled (per account) after the last device-code attempt.
+**OAuth:** when access and refresh tokens are missing or expired, the provider starts the **device code** flow. An **`alerts`** row shows the **user code** and verification URL on the dashboard, and a **QR code** (when the identity platform returns `verification_uri_complete`, otherwise the base verification URL) so you can open the sign-in page on a phone. Repeated prompts are throttled (per account) after the last device-code attempt.
 
-**`provider_settings.config_json`** (JSON):
+**`integrations.config_json`** (JSON):
 
 - **`accounts`**: list of `{ "graphAccountKey": "<id>", "sources": [ ... ] }`. Each **`graphAccountKey`** must match the suffix used in SecretStore (e.g. `personal`, `work`).
 - **`sources`**: list of mailbox objects. **`mailbox`** is the Graph user (`me` or a UPN). **`calendars`**: display names or Graph calendar ids, each either a **string** or `{ "calendar": "Name", "categoryId": "<content_categories.id>" }` (alias: **`category`**) to force a **content category** for every event from that calendar. An **empty** `calendars` array means the user’s **default** calendar only; optional **`defaultCategoryId`** (alias: **`defaultCategory`**) then applies to those events. Optional **`categoryMap`** maps **Outlook** event category labels (Graph `categories`) to **`content_categories.id`** when no per-calendar override applies.
@@ -380,7 +380,7 @@ The **Outlook calendar** provider (`id` / `provider_type`: **`calendar_outlook`*
 
 **`calendar_events`** (schema **22+**) also stores **`ical_uid`** (for deduplication across calendars) and optional **`category_id`** (FK to **`content_categories`**). The **`calendar_month`** slide shows a category **icon** when present, **deduplicates** shared meetings, and **reuses** one time label for events at the same clock time or for **all-day** items on the same day. The month grid uses **accent squares** at the top of a day for **all-day** events and **accent dots** along the bottom for timed events (colors vary by **`category_id`**, **`source`**, and event id); the **Upcoming events** list shows a **larger** matching square or dot beside each row using the same color rule. Day cells **outside the displayed month** stay visually light (no fill tint); **in-month days after today** use a stronger **surface** tint than **in-month days before today**; **today** keeps the **secondary container** highlight. **Widget `config`** (optional): **`upcomingTime12Hour`** (default **true**) for `h:mm AM/PM` vs 24-hour; **`upcomingTimeNoonLabel`** (default **`Noon`**) for exactly 12:00 PM local; **`upcomingTimeWidthCompact`** / **`upcomingTimeWidth`** (default **132** / **156** logical px before TV scale) for the upcoming-events time column.
 
-**`provider_settings.poll_seconds`:** default **3600** (one sync per hour when enabled).
+**`integrations.poll_seconds`:** default **3600** (one sync per hour when enabled).
 
 **Schema 37** deletes legacy **`microsoft.graph.client_id`** / **`google.client_id`** rows from **`config_key_values`**; use **`WADDLE_MICROSOFT_GRAPH_CLIENT_ID`** / **`WADDLE_GOOGLE_CLIENT_ID`** in the environment instead.
 
@@ -388,7 +388,7 @@ The **Outlook calendar** provider (`id` / `provider_type`: **`calendar_outlook`*
 
 The **Google Calendar** provider (`id` / `provider_type`: **`calendar_google`**) reads calendars/events from [Google Calendar API](https://developers.google.com/calendar/api/v3/reference) and stores normalized rows in **`calendar_events`** for the **`calendar_month`** slide.
 
-Seed adds the provider **disabled** by default. Configure and enable in `provider_settings` when ready.
+Seed adds the provider **disabled** by default. Configure and enable in `integrations` when ready.
 
 **OAuth client id:** set **`WADDLE_GOOGLE_CLIENT_ID`** in the process environment (or merged debug `.env`) to your Google OAuth client id — not in `config_key_values`.
 
@@ -397,21 +397,21 @@ Seed adds the provider **disabled** by default. Configure and enable in `provide
 - Access: **`provider:access_token:google:<googleAccountKey>`**
 - Refresh: **`provider:refresh_token:google:<googleAccountKey>`**
 
-**OAuth:** when cached access/refresh tokens are unavailable or expired, the provider starts OAuth **device authorization**. A `dashboard_alerts` row shows the user code and verification URL so an operator can approve access on another device.
+**OAuth:** when cached access/refresh tokens are unavailable or expired, the provider starts OAuth **device authorization**. An `alerts` row shows the user code and verification URL so an operator can approve access on another device.
 
-**`provider_settings.config_json`** (JSON):
+**`integrations.config_json`** (JSON):
 
 - **`accounts`**: list of `{ "googleAccountKey": "<id>", "sources": [ ... ] }`. Each `googleAccountKey` must match SecretStore key suffixes.
 - **`sources`**: list of `{ "calendars": [ ... ], "defaultCategoryId": "<optional>" }` (alias: **`defaultCategory`**). Each calendar entry is a **string** or `{ "calendar": "primary", "categoryId": "<slug>" }` (alias: **`category`**). Empty `calendars` defaults to **`primary`** for that account; **`defaultCategoryId`** applies when using that default or as a fallback for entries without their own **`categoryId`**.
 - **`pastDays`** / **`futureDays`**: sync window around today’s UTC midnight (defaults **14** / **14**).
 
-**`provider_settings.poll_seconds`:** default **3600**.
+**`integrations.poll_seconds`:** default **3600**.
 
 ## OneDrive media (Microsoft Graph)
 
 The **OneDrive media** provider (`id` / `provider_type`: **`media_onedrive`**) keeps a **read-only local mirror** of folders on the signed-in user’s **personal OneDrive** (`/me/drive/...`). It uses Microsoft Graph **driveItem delta** (not shallow folder listing): each configured **`path`** is synced **recursively** (the entire subtree). The app only **GETs** metadata and file bytes from Graph—it **never** uploads or deletes anything in OneDrive. Items removed in OneDrive appear in the delta feed with a **`deleted`** facet and are **removed locally** ( **`photos`** / **`videos`** row and blob). Supported images and videos are stored with **`data_provider`** = **`media_onedrive`**. It reuses the same **SecretStore** keys and **device-code** flow as Outlook (**`provider:access_token:microsoft_graph:<graphAccountKey>`** / **`provider:refresh_token:...`**). Seed adds the row **disabled** by default.
 
-**`provider_settings.config_json`** (JSON):
+**`integrations.config_json`** (JSON):
 
 - **`accounts`**: list of `{ "graphAccountKey": "<id>", "sources": [ ... ] }` (same account keys as Outlook).
 - **`sources`**: list of `{ "path": "/Pictures/MyFolder", "kind": "photo" | "video" | "both", "category": "<slug>", "maxFiles": <n>, "perPollLimit": <optional> }`. **`path`** is root-relative (leading `/` optional). Use **`""`** for the **drive root** (entire default drive—can be large). Multiple sources that share the same **`graphAccountKey`** and normalized **`path`** run **one** delta pass per collect. **`kind`**: **`both`** ingests supported photo and video MIME types into the same **`category`** (photos go to **`photos`**, videos to **`videos`**). **`category`** must match a **`content_categories.id`** (and optional **`config.categoryId`** on **`pexels_photo`** / **`pexels_video`** screens). **`maxFiles`**: retention cap per table for that category—oldest OneDrive-sourced rows in that table may be removed with their blobs **even if the file still exists in OneDrive** (separate from cloud-driven deletes). **`perPollLimit`**: max **new** downloads per collect for that source; omit to use **`maxFiles`**. **`globalPerPollLimit`**: cap on new downloads per engine cycle across all sources (default **50**). The provider persists **`@odata.deltaLink`** in app KV per account and path for incremental sync; if Graph returns **410** / resync, it clears the link and re-enumerates locally (still pull-only).
@@ -420,7 +420,7 @@ The **OneDrive media** provider (`id` / `provider_type`: **`media_onedrive`**) k
 
 **Screens:** use existing **`pexels_photo`** / **`pexels_video`** widgets; set **`config.categoryId`** to the same slug as the folder’s **`category`** so the curator pool includes OneDrive items alongside Pexels (or use a dedicated category for OneDrive-only folders).
 
-**`provider_settings.poll_seconds`:** default **3600** when seeded.
+**`integrations.poll_seconds`:** default **3600** when seeded.
 
 ## Flickr group photos
 
@@ -428,7 +428,7 @@ The **Flickr media** provider (`id` / `provider_type`: **`media_flickr`**) pulls
 
 The **Flickr** provider … **API key:** **`WADDLE_FLICKR_API_KEY`** (never in SQLite).
 
-**`provider_settings.config_json`** (JSON):
+**`integrations.config_json`** (JSON):
 
 - **`groupIds`**: array of Flickr group NSIDs to sync (for example `34427469792@N01`).
 - **`category`**: one category id for all synced photos (must match `content_categories.id`; default `flickr`).
@@ -439,7 +439,7 @@ The **Flickr** provider … **API key:** **`WADDLE_FLICKR_API_KEY`** (never in S
 
 **Screens:** use **`pexels_photo`** (or collage widgets); set **`config.categoryId`** to the same slug as **`category`** (default **`flickr`**) so the curator pool includes downloaded Flickr rows.
 
-**`provider_settings.poll_seconds`:** default **3600** when seeded.
+**`integrations.poll_seconds`:** default **3600** when seeded.
 
 **Debug `.env`:** **`WADDLE_FLICKR_API_KEY`** (see [`.env.example`](.env.example)).
 
@@ -447,9 +447,9 @@ The **Flickr** provider … **API key:** **`WADDLE_FLICKR_API_KEY`** (never in S
 
 The **Bing image of the day** provider (`id` / `provider_type`: **`media_bing_iotd`**) calls Bing’s **`HPImageArchive.aspx`** (`format=js`, `idx=0`, `n=1`, `mkt` from config), then downloads the wallpaper at **`{baseUrl}{urlbase}_{resolution}.jpg`** (same URL pattern as [TimothyYe/bing-wallpaper](https://github.com/TimothyYe/bing-wallpaper)). Image bytes go to the blob store; **`photos`** rows use **`data_provider`** = **`media_bing_iotd`**. **No API key** or SecretStore entry.
 
-**`provider_settings.base_url`:** default **`https://www.bing.com`**.
+**`integrations.base_url`:** default **`https://www.bing.com`**.
 
-**`provider_settings.config_json`** (JSON):
+**`integrations.config_json`** (JSON):
 
 - **`retentionDays`**: drop **`photos`** (and blobs) older than this many **24h periods** (default **1**). **`<= 0`** disables age-based pruning.
 - **`market`**: Bing **`mkt`** parameter (default **`en-US`**).
@@ -460,7 +460,7 @@ The **Bing image of the day** provider (`id` / `provider_type`: **`media_bing_io
 
 Requests send a desktop **`User-Agent`** and **`Referer`** matching the Bing origin (Bing may throttle anonymous clients otherwise). Each HTTP call uses a **5s** timeout.
 
-**`provider_settings.poll_seconds`:** default **3600** when seeded; provider is **enabled** by default.
+**`integrations.poll_seconds`:** default **3600** when seeded; provider is **enabled** by default.
 
 ## Drift codegen
 

@@ -6,6 +6,7 @@ import 'package:shelf_router/shelf_router.dart';
 import 'package:waddle_shared/auth/role_permissions.dart';
 import 'package:waddle_shared/auth/user_repository.dart';
 import 'package:waddle_shared/config/provider_access_token_env.dart';
+import 'package:waddle_shared/persistence/tables.dart';
 import 'session_auth.dart';
 
 const int kSessionTtlMs = 7 * 24 * 60 * 60 * 1000;
@@ -17,9 +18,16 @@ void registerAuthRoutes(
   required Map<String, String> env,
 }) {
   r.post('/v1/auth/login', (Request req) => _login(req, users));
+  r.post(
+    '/v1/auth/register-viewer',
+    (Request req) => _registerViewer(req, users, env),
+  );
   r.get('/v1/auth/oauth/providers', (Request req) => _oauthProviders(env));
 
-  r.post('/v1/auth/oauth/<provider>/start', (Request req, String provider) async {
+  r.post('/v1/auth/oauth/<provider>/start', (
+    Request req,
+    String provider,
+  ) async {
     return Response(
       501,
       body: jsonEncode({
@@ -30,7 +38,10 @@ void registerAuthRoutes(
     );
   });
 
-  r.get('/v1/auth/oauth/<provider>/callback', (Request req, String provider) async {
+  r.get('/v1/auth/oauth/<provider>/callback', (
+    Request req,
+    String provider,
+  ) async {
     return Response(
       501,
       body: jsonEncode({
@@ -52,10 +63,18 @@ void registerAuthenticatedAuthRoutes(
 
   r.get('/v1/users', (Request req) => _listUsers(req, users));
   r.post('/v1/users', (Request req) => _createUser(req, users));
-  r.patch('/v1/users/<id>', (Request req, String id) => _patchUser(req, users, id));
-  r.post('/v1/users/<id>/password', (Request req, String id) =>
-      _changePassword(req, users, id));
-  r.delete('/v1/users/<id>', (Request req, String id) => _disableUser(req, users, id));
+  r.patch(
+    '/v1/users/<id>',
+    (Request req, String id) => _patchUser(req, users, id),
+  );
+  r.post(
+    '/v1/users/<id>/password',
+    (Request req, String id) => _changePassword(req, users, id),
+  );
+  r.delete(
+    '/v1/users/<id>',
+    (Request req, String id) => _disableUser(req, users, id),
+  );
 }
 
 Future<Response> _login(Request req, UserRepository users) async {
@@ -77,7 +96,8 @@ Future<Response> _login(Request req, UserRepository users) async {
       headers: {'content-type': 'application/json'},
     );
   }
-  if (user.isBootstrap && !(await users.bootstrapLoginAllowed())) {
+  final bootstrapLoginAllowed = await users.bootstrapLoginAllowed();
+  if (user.isBootstrap && !bootstrapLoginAllowed) {
     return Response(
       403,
       body: '{"error":"bootstrap_admin_disabled"}',
@@ -112,6 +132,85 @@ Future<Response> _login(Request req, UserRepository users) async {
     }),
     headers: {'content-type': 'application/json'},
   );
+}
+
+Future<Response> _registerViewer(
+  Request req,
+  UserRepository users,
+  Map<String, String> env,
+) async {
+  final configuredSecret = (env['WADDLE_VIEWER_REGISTRATION_SECRET'] ?? '').trim();
+  if (configuredSecret.isEmpty) {
+    return Response(
+      403,
+      body: '{"error":"viewer_registration_disabled"}',
+      headers: {'content-type': 'application/json'},
+    );
+  }
+  if (await users.countNamedUsers() == 0) {
+    return Response(
+      403,
+      body: '{"error":"viewer_registration_requires_operator"}',
+      headers: {'content-type': 'application/json'},
+    );
+  }
+  Map<String, dynamic> body;
+  try {
+    body = jsonDecode(await req.readAsString()) as Map<String, dynamic>;
+  } catch (_) {
+    return _badRequest('invalid_json');
+  }
+  final registrationSecret = (body['registration_secret'] as String? ?? '').trim();
+  if (registrationSecret != configuredSecret) {
+    return Response.unauthorized(
+      '{"error":"invalid_registration_secret"}',
+      headers: {'content-type': 'application/json'},
+    );
+  }
+  final username = (body['username'] as String? ?? '').trim();
+  final password = body['password'] as String? ?? '';
+  if (username.isEmpty || password.isEmpty) {
+    return _badRequest('username_and_password_required');
+  }
+  if (password.length < 8) {
+    return _badRequest('password_too_short');
+  }
+  try {
+    final user = await users.createNamedUser(
+      username: username,
+      password: password,
+      role: kUserRoleViewer,
+    );
+    final token = _randomHex(32);
+    final expiresAt = DateTime.now().millisecondsSinceEpoch + kSessionTtlMs;
+    await users.createSession(
+      userId: user.id,
+      token: token,
+      expiresAtMs: expiresAt,
+      clientLabel: req.headers['user-agent'],
+    );
+    return Response.ok(
+      jsonEncode({
+        'session_token': token,
+        'expires_at_ms': expiresAt,
+        'user': users.toView(user).toJson(),
+        'permissions': permissionsForRole(user.role),
+        'warnings': <String>[],
+      }),
+      headers: {'content-type': 'application/json'},
+    );
+  } on StateError catch (e) {
+    if (e.message == 'username_taken') {
+      return Response(
+        409,
+        body: '{"error":"username_taken"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    rethrow;
+  } on ArgumentError {
+    return _badRequest('invalid_user_fields');
+  }
 }
 
 Future<Response> _logout(Request req, UserRepository users) async {
@@ -202,7 +301,43 @@ Future<Response> _patchUser(
   } catch (_) {
     return _badRequest('invalid_json');
   }
+  final actor = authUser(req);
+  if (actor == null) {
+    return Response.unauthorized(
+      '{"error":"unauthorized"}',
+      headers: {'content-type': 'application/json'},
+    );
+  }
+  final canManage = userHasPermission(actor.role, WaddlePermission.usersManage);
+  if (actor.id != id && !canManage) {
+    return Response(
+      403,
+      body: '{"error":"forbidden"}',
+      headers: {'content-type': 'application/json'},
+    );
+  }
   try {
+    if (!canManage) {
+      if (!body.containsKey('display_name')) {
+        return _badRequest('invalid_user_fields');
+      }
+      for (final k in body.keys) {
+        if (k != 'display_name') {
+          return _badRequest('invalid_user_fields');
+        }
+      }
+      final updated = await users.updateUser(
+        id: id,
+        displayName: body['display_name'] as String?,
+      );
+      if (updated == null) {
+        return _notFound();
+      }
+      return Response.ok(
+        jsonEncode({'user': users.toView(updated).toJson()}),
+        headers: {'content-type': 'application/json'},
+      );
+    }
     final updated = await users.updateUser(
       id: id,
       role: body['role'] as String?,
@@ -334,7 +469,8 @@ Response _notFound() => Response(
 
 String _randomHex(int bytes) {
   final r = Random.secure();
-  return List<int>.generate(bytes, (_) => r.nextInt(256))
-      .map((b) => b.toRadixString(16).padLeft(2, '0'))
-      .join();
+  return List<int>.generate(
+    bytes,
+    (_) => r.nextInt(256),
+  ).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
 }

@@ -12,7 +12,7 @@ void main() {
   test('display overlays REST CRUD', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await ensureDisplayOverlayTableExists(db);
+    await ensureOverlaysTableExists(db);
     final h = await RestTestHarness.start(database: db);
     addTearDown(h.dispose);
 
@@ -22,7 +22,7 @@ void main() {
       body: jsonEncode({
         'id': 'x_test_overlay',
         'enabled': true,
-        'overlay_kind': kOverlayKindHeartsRain,
+        'overlay_type': kOverlayTypeHeartsRain,
         'label': 'Test',
         'messages_json': ['Hi'],
         'repeat_annually': true,
@@ -62,7 +62,7 @@ void main() {
   test('display overlays REST birthday confetti config_json', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await ensureDisplayOverlayTableExists(db);
+    await ensureOverlaysTableExists(db);
     final h = await RestTestHarness.start(database: db);
     addTearDown(h.dispose);
 
@@ -72,10 +72,10 @@ void main() {
       body: jsonEncode({
         'id': 'bd_test_overlay',
         'enabled': true,
-        'overlay_kind': kOverlayKindBirthdayConfetti,
+        'overlay_type': kOverlayTypeBirthdayConfetti,
         'label': 'Birthday',
-        'messages_json': ['Happy birthday!'],
         'config_json': {
+          'messages': ['Happy birthday!'],
           'shapes': ['circle', 'rect'],
           'colors': ['#FF00AA'],
           'density': 0.55,
@@ -102,7 +102,7 @@ void main() {
   test('display overlays REST rejects invalid confetti config_json', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await ensureDisplayOverlayTableExists(db);
+    await ensureOverlaysTableExists(db);
     final h = await RestTestHarness.start(database: db);
     addTearDown(h.dispose);
 
@@ -112,10 +112,9 @@ void main() {
       body: jsonEncode({
         'id': 'bad_confetti',
         'enabled': true,
-        'overlay_kind': kOverlayKindBirthdayConfetti,
+        'overlay_type': kOverlayTypeBirthdayConfetti,
         'label': 'x',
-        'messages_json': [],
-        'config_json': {'shapes': ['not_a_shape']},
+        'config_json': {'messages': [], 'shapes': ['not_a_shape']},
         'repeat_annually': true,
         'start_month': 1,
         'start_day': 2,
@@ -128,14 +127,14 @@ void main() {
   test('display overlays REST validation and not-found', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await ensureDisplayOverlayTableExists(db);
+    await ensureOverlaysTableExists(db);
     final h = await RestTestHarness.start(database: db);
     addTearDown(h.dispose);
 
     final noId = await http.post(
       Uri.parse('${h.baseUrl}/v1/display/overlays'),
       headers: h.authHeaders,
-      body: jsonEncode({'overlay_kind': kOverlayKindHeartsRain}),
+      body: jsonEncode({'overlay_type': kOverlayTypeHeartsRain}),
     );
     expect(noId.statusCode, 400);
 
@@ -164,7 +163,7 @@ void main() {
   test('display overlays REST bouncing_message config_json', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await ensureDisplayOverlayTableExists(db);
+    await ensureOverlaysTableExists(db);
     final h = await RestTestHarness.start(database: db);
     addTearDown(h.dispose);
 
@@ -174,10 +173,10 @@ void main() {
       body: jsonEncode({
         'id': 'bounce_rest_test',
         'enabled': true,
-        'overlay_kind': kOverlayKindBouncingMessage,
+        'overlay_type': kOverlayTypeBouncingMessage,
         'label': 'Bounce',
-        'messages_json': ['Ping'],
         'config_json': {
+          'messages': ['Ping'],
           'color': '#00AAFF',
           'font_size': 24,
           'font_weight': 500,

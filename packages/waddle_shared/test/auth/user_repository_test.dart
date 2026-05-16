@@ -22,6 +22,25 @@ void main() {
     await db.close();
   });
 
+  test('first named user is forced to admin when only bootstrap exists', () async {
+    final db = openMemoryDatabase();
+    final users = UserRepository(db);
+    await users.ensureBootstrapUser(instanceIdPassword: 'inst');
+    final alice = await users.createNamedUser(
+      username: 'alice',
+      password: 'password-12chars',
+      role: kUserRoleOperator,
+    );
+    expect(alice.role, kUserRoleAdmin);
+    final bob = await users.createNamedUser(
+      username: 'bob',
+      password: 'password-12chars',
+      role: kUserRoleOperator,
+    );
+    expect(bob.role, kUserRoleOperator);
+    await db.close();
+  });
+
   test('verifyLoginPassword rejects disabled user', () async {
     final db = openMemoryDatabase();
     final users = UserRepository(db);

@@ -53,11 +53,11 @@ final class HubCollectDiagnostics implements CollectDiagnostics {
       _hub.addEngineFail(context, error, stack);
 
   @override
-  void provider(String message) => _hub.addProviderLine(message);
+  void provider(String message) => _hub.addIntegrationLine(message);
 
   @override
   void providerFail(String context, Object error, StackTrace stack) =>
-      _hub.addProviderFail(context, error, stack);
+      _hub.addIntegrationFail(context, error, stack);
 }
 
 final class CompositeCollectDiagnostics implements CollectDiagnostics {
@@ -94,7 +94,7 @@ final class CompositeCollectDiagnostics implements CollectDiagnostics {
   }
 }
 
-/// When [telemetryHub] is set, provider/engine lines are recorded for REST (release too).
+/// When [telemetryHub] is set, integration/engine lines are recorded for REST (release too).
 /// Debug builds also forward to [AppDebugLog] via [DisplayCollectDiagnostics].
 CollectDiagnostics defaultDisplayCollectDiagnostics({
   OperatorTelemetryHub? telemetryHub,

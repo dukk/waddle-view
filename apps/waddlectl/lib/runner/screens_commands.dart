@@ -19,7 +19,7 @@ class ScreensCommand extends Command<void> {
   String get name => 'screens';
 
   @override
-  String get description => 'Manage screen_definitions (TV slides).';
+  String get description => 'Manage screens (TV slides).';
 }
 
 class _ScreensList extends Command<void> {

@@ -45,8 +45,8 @@ void main() {
   test('skip when WADDLE_MICROSOFT_GRAPH_CLIENT_ID unset', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insertOnConflictUpdate(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insertOnConflictUpdate(
+          IntegrationsCompanion.insert(
             id: kOneDriveMediaProviderId,
             providerType: 'media_onedrive',
             enabled: const Value(true),
@@ -599,8 +599,8 @@ Future<void> _seedProvider(
   int globalPerPoll = 50,
   bool enabled = true,
 }) async {
-  await db.into(db.providerSettings).insertOnConflictUpdate(
-        ProviderSettingsCompanion.insert(
+  await db.into(db.integrations).insertOnConflictUpdate(
+        IntegrationsCompanion.insert(
           id: kOneDriveMediaProviderId,
           providerType: 'media_onedrive',
           enabled: Value(enabled),

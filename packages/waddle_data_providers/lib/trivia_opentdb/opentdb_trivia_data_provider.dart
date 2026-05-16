@@ -35,7 +35,7 @@ class OpenTdbTriviaDataProvider implements IDataProvider {
 
   @override
   Future<void> collect(DataWriteContext ctx) async {
-    final setting = await (ctx.db.select(ctx.db.providerSettings)
+    final setting = await (ctx.db.select(ctx.db.integrations)
           ..where((t) => t.id.equals(kOpenTdbTriviaProviderId)))
         .getSingleOrNull();
     if (setting == null || !setting.enabled) {
@@ -165,6 +165,7 @@ class OpenTdbTriviaDataProvider implements IDataProvider {
                 optionD: mappedQuestion.optionD,
                 correctOption: mappedQuestion.correctOption,
                 createdAtMs: createdAt,
+                integrationId: const Value(kOpenTdbTriviaProviderId),
                 suppressed: Value(isBlocked),
               ),
               onConflict: DoUpdate(
@@ -177,6 +178,7 @@ class OpenTdbTriviaDataProvider implements IDataProvider {
                   optionD: Value(mappedQuestion.optionD),
                   correctOption: Value(mappedQuestion.correctOption),
                   createdAtMs: Value(createdAt),
+                  integrationId: const Value(kOpenTdbTriviaProviderId),
                   suppressed: isBlocked
                       ? const Value(true)
                       : const Value.absent(),

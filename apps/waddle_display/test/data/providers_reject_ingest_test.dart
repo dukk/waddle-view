@@ -77,8 +77,8 @@ void main() {
       RejectTermInput.parse(rawTerm: 'damn', rawAction: 'block')!,
     );
 
-    await db.into(db.providerSettings).insert(
-      ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+      IntegrationsCompanion.insert(
         id: 'news_rss',
         providerType: 'news_rss',
         pollSeconds: const Value(1),
@@ -119,8 +119,8 @@ void main() {
         RejectTermInput.parse(rawTerm: 'damn', rawAction: 'censor')!,
       );
 
-      await db.into(db.providerSettings).insert(
-        ProviderSettingsCompanion.insert(
+      await db.into(db.integrations).insert(
+        IntegrationsCompanion.insert(
           id: 'news_rss',
           providerType: 'news_rss',
           pollSeconds: const Value(1),

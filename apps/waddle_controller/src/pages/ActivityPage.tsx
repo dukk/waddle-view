@@ -1,7 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  Box,
+  FormControl,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   Table,
   TableBody,
@@ -9,6 +14,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Typography,
 } from '@mui/material';
 import { useDisplay } from '@/context/DisplayContext';
@@ -17,16 +23,68 @@ import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 
 type Line = { at_ms: number; channel: string; message: string };
 
+function formatAtMs(atMs: number): string {
+  const d = new Date(atMs);
+  if (Number.isNaN(d.getTime())) {
+    return String(atMs);
+  }
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      fractionalSecondDigits: 3,
+    }).format(d);
+  } catch {
+    return d.toLocaleString();
+  }
+}
+
 export function ActivityPage() {
   const { active } = useDisplay();
   const [items, setItems] = useState<Line[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [filterText, setFilterText] = useState('');
+  const [channelFilter, setChannelFilter] = useState<string>('');
+
+  const channels = useMemo(() => {
+    const set = new Set<string>();
+    for (const row of items) {
+      if (row.channel) set.add(row.channel);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [items]);
+
+  const filteredRows = useMemo(() => {
+    const newestFirst = [...items].reverse();
+    const q = filterText.trim().toLowerCase();
+    return newestFirst.filter((row) => {
+      if (channelFilter && row.channel !== channelFilter) return false;
+      if (!q) return true;
+      const timeStr = formatAtMs(row.at_ms).toLowerCase();
+      return (
+        row.message.toLowerCase().includes(q) ||
+        row.channel.toLowerCase().includes(q) ||
+        String(row.at_ms).includes(q) ||
+        timeStr.includes(q)
+      );
+    });
+  }, [items, filterText, channelFilter]);
+
+  useEffect(() => {
+    if (channelFilter && !channels.includes(channelFilter)) {
+      setChannelFilter('');
+    }
+  }, [channels, channelFilter]);
 
   const load = useCallback(async () => {
     if (!active) return;
     setError(null);
     try {
-      const res = await apiJson<{ items: Line[] }>(active, '/v1/telemetry/providers?limit=300');
+      const res = await apiJson<{ items: Line[] }>(active, '/v1/telemetry/integrations?limit=300');
       setItems(res.items ?? []);
     } catch (e) {
       setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
@@ -49,23 +107,54 @@ export function ActivityPage() {
         Activity log
       </Typography>
       <Typography variant="body2" color="text.secondary">
-        Provider and engine lines captured in-memory on the display (newest at the bottom of the
+        Integration and engine lines captured in-memory on the display (newest at the bottom of the
         buffer; this table shows the latest chunk, newest first).
       </Typography>
       {error && <Alert severity="error">{error}</Alert>}
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }}>
+        <TextField
+          label="Filter"
+          placeholder="Message, channel, time, or at_ms"
+          value={filterText}
+          onChange={(e) => setFilterText(e.target.value)}
+          size="small"
+          sx={{ minWidth: { sm: 260 }, flex: 1 }}
+        />
+        <FormControl size="small" sx={{ minWidth: 180 }}>
+          <InputLabel id="activity-channel-filter-label">Channel</InputLabel>
+          <Select
+            labelId="activity-channel-filter-label"
+            label="Channel"
+            value={channelFilter}
+            onChange={(e) => setChannelFilter(e.target.value)}
+          >
+            <MenuItem value="">
+              <em>All</em>
+            </MenuItem>
+            {channels.map((c) => (
+              <MenuItem key={c} value={c}>
+                {c}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Stack>
       <TableContainer component={Paper} variant="outlined">
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell width={160}>at_ms</TableCell>
-              <TableCell width={100}>channel</TableCell>
-              <TableCell>message</TableCell>
+              <TableCell width={200}>Time</TableCell>
+              <TableCell width={100}>Channel</TableCell>
+              <TableCell>Message</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {[...items].reverse().map((row) => (
-              <TableRow key={`${row.at_ms}-${row.channel}-${row.message.slice(0, 40)}`}>
-                <TableCell>{row.at_ms}</TableCell>
+            {filteredRows.map((row, i) => (
+              <TableRow
+                key={`${row.at_ms}-${row.channel}-${i}-${row.message.slice(0, 48)}`}
+                title={String(row.at_ms)}
+              >
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatAtMs(row.at_ms)}</TableCell>
                 <TableCell>{row.channel}</TableCell>
                 <TableCell sx={{ fontFamily: 'monospace', fontSize: 12, whiteSpace: 'pre-wrap' }}>
                   {row.message}
@@ -75,6 +164,15 @@ export function ActivityPage() {
             {items.length === 0 && (
               <TableRow>
                 <TableCell colSpan={3}>No telemetry lines yet.</TableCell>
+              </TableRow>
+            )}
+            {items.length > 0 && filteredRows.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={3}>
+                  <Box component="span" color="text.secondary">
+                    No lines match the current filter.
+                  </Box>
+                </TableCell>
               </TableRow>
             )}
           </TableBody>

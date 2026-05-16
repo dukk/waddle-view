@@ -86,8 +86,8 @@ Future<void> _seedProviderRow(
   bool enabled = true,
   String? configJson,
 }) async {
-  await db.into(db.providerSettings).insert(
-        ProviderSettingsCompanion.insert(
+  await db.into(db.integrations).insert(
+        IntegrationsCompanion.insert(
           id: kStockProviderId,
           providerType: kStockProviderId,
           pollSeconds: const Value(60),

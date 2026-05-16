@@ -5,8 +5,8 @@ abstract final class WaddlePermission {
   static const usersManage = 'users.manage';
   static const screensRead = 'screens.read';
   static const screensWrite = 'screens.write';
-  static const providersRead = 'providers.read';
-  static const providersWrite = 'providers.write';
+  static const integrationsRead = 'integrations.read';
+  static const integrationsWrite = 'integrations.write';
   static const curatorRead = 'curator.read';
   static const curatorWrite = 'curator.write';
   static const tickerRead = 'ticker.read';
@@ -16,6 +16,8 @@ abstract final class WaddlePermission {
   static const alertsRead = 'alerts.read';
   static const alertsWrite = 'alerts.write';
   static const contentModerate = 'content.moderate';
+  /// Paginated catalog GETs without suppressed rows or suppression filters (`power_viewer`).
+  static const contentCatalogRead = 'content.catalog_read';
   static const rejectTermsManage = 'reject_terms.manage';
   static const navigationControl = 'navigation.control';
   static const telemetryRead = 'telemetry.read';
@@ -26,8 +28,8 @@ const _adminPermissions = <String>{
   WaddlePermission.usersManage,
   WaddlePermission.screensRead,
   WaddlePermission.screensWrite,
-  WaddlePermission.providersRead,
-  WaddlePermission.providersWrite,
+  WaddlePermission.integrationsRead,
+  WaddlePermission.integrationsWrite,
   WaddlePermission.curatorRead,
   WaddlePermission.curatorWrite,
   WaddlePermission.tickerRead,
@@ -46,8 +48,8 @@ const _adminPermissions = <String>{
 const _operatorPermissions = <String>{
   WaddlePermission.screensRead,
   WaddlePermission.screensWrite,
-  WaddlePermission.providersRead,
-  WaddlePermission.providersWrite,
+  WaddlePermission.integrationsRead,
+  WaddlePermission.integrationsWrite,
   WaddlePermission.curatorRead,
   WaddlePermission.curatorWrite,
   WaddlePermission.tickerRead,
@@ -63,21 +65,22 @@ const _operatorPermissions = <String>{
   WaddlePermission.metaRead,
 };
 
+/// Read-only kiosk program / slide telemetry and related media rows (controller Programs view).
 const _viewerPermissions = <String>{
-  WaddlePermission.screensRead,
-  WaddlePermission.providersRead,
-  WaddlePermission.curatorRead,
-  WaddlePermission.tickerRead,
-  WaddlePermission.overlaysRead,
-  WaddlePermission.alertsRead,
-  WaddlePermission.navigationControl,
   WaddlePermission.telemetryRead,
-  WaddlePermission.metaRead,
+};
+
+/// Programs telemetry, remote navigation, and read-only catalog (no suppressed rows or PATCH).
+const _powerViewerPermissions = <String>{
+  WaddlePermission.telemetryRead,
+  WaddlePermission.navigationControl,
+  WaddlePermission.contentCatalogRead,
 };
 
 const Map<String, Set<String>> kRolePermissions = {
   kUserRoleAdmin: _adminPermissions,
   kUserRoleOperator: _operatorPermissions,
+  kUserRolePowerViewer: _powerViewerPermissions,
   kUserRoleViewer: _viewerPermissions,
 };
 
@@ -85,6 +88,7 @@ const Map<String, Set<String>> kRolePermissions = {
 const Set<String> kValidUserRoles = {
   kUserRoleAdmin,
   kUserRoleOperator,
+  kUserRolePowerViewer,
   kUserRoleViewer,
 };
 

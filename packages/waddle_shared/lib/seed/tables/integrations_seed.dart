@@ -6,14 +6,14 @@ import 'package:waddle_shared/persistence/database.dart';
 /// Inserts the stub provider when missing. Returns `true` if a row was added.
 Future<bool> ensureStubProviderRow(AppDatabase db) async {
   final existing =
-      await (db.select(db.providerSettings)..where((t) => t.id.equals('stub')))
+      await (db.select(db.integrations)..where((t) => t.id.equals('stub')))
           .getSingleOrNull();
   if (existing != null) {
     return false;
   }
   final stubDoc = providerConfigJsonDocForType('stub');
-  await db.into(db.providerSettings).insert(
-        ProviderSettingsCompanion.insert(
+  await db.into(db.integrations).insert(
+        IntegrationsCompanion.insert(
           id: 'stub',
           providerType: 'stub',
           enabled: const Value(true),
@@ -32,14 +32,14 @@ Future<void> _ensureProviderRow(
   required int pollSeconds,
 }) async {
   final row =
-      await (db.select(db.providerSettings)..where((t) => t.id.equals(id)))
+      await (db.select(db.integrations)..where((t) => t.id.equals(id)))
           .getSingleOrNull();
   if (row != null) {
     return;
   }
   final doc = providerConfigJsonDocForType(providerType);
-  await db.into(db.providerSettings).insert(
-        ProviderSettingsCompanion.insert(
+  await db.into(db.integrations).insert(
+        IntegrationsCompanion.insert(
           id: id,
           providerType: providerType,
           enabled: const Value(true),
@@ -52,15 +52,15 @@ Future<void> _ensureProviderRow(
 
 Future<void> _ensureJokesProviderRow(AppDatabase db) async {
   final row =
-      await (db.select(db.providerSettings)
+      await (db.select(db.integrations)
             ..where((t) => t.id.equals('joke_openai')))
           .getSingleOrNull();
   if (row != null) {
     return;
   }
   final jokesDoc = providerConfigJsonDocForType('joke_openai');
-  await db.into(db.providerSettings).insert(
-        ProviderSettingsCompanion.insert(
+  await db.into(db.integrations).insert(
+        IntegrationsCompanion.insert(
           id: 'joke_openai',
           providerType: 'joke_openai',
           enabled: const Value(true),
@@ -78,15 +78,15 @@ Future<void> _ensureJokesProviderRow(AppDatabase db) async {
 
 Future<void> _ensureTriviaProviderRow(AppDatabase db) async {
   final row =
-      await (db.select(db.providerSettings)
+      await (db.select(db.integrations)
             ..where((t) => t.id.equals('trivia_openai')))
           .getSingleOrNull();
   if (row != null) {
     return;
   }
   final triviaDoc = providerConfigJsonDocForType('trivia_openai');
-  await db.into(db.providerSettings).insert(
-        ProviderSettingsCompanion.insert(
+  await db.into(db.integrations).insert(
+        IntegrationsCompanion.insert(
           id: 'trivia_openai',
           providerType: 'trivia_openai',
           enabled: const Value(true),
@@ -103,15 +103,15 @@ Future<void> _ensureTriviaProviderRow(AppDatabase db) async {
 }
 
 Future<void> _ensureOpenTdbTriviaProviderRow(AppDatabase db) async {
-  final row = await (db.select(db.providerSettings)
+  final row = await (db.select(db.integrations)
         ..where((t) => t.id.equals('trivia_opentdb')))
       .getSingleOrNull();
   if (row != null) {
     return;
   }
   final doc = providerConfigJsonDocForType('trivia_opentdb');
-  await db.into(db.providerSettings).insert(
-        ProviderSettingsCompanion.insert(
+  await db.into(db.integrations).insert(
+        IntegrationsCompanion.insert(
           id: 'trivia_opentdb',
           providerType: 'trivia_opentdb',
           enabled: const Value(false),
@@ -128,15 +128,15 @@ Future<void> _ensureOpenTdbTriviaProviderRow(AppDatabase db) async {
 
 Future<void> _ensureWeatherProviderRow(AppDatabase db) async {
   final row =
-      await (db.select(db.providerSettings)
+      await (db.select(db.integrations)
             ..where((t) => t.id.equals('weather_openweathermap')))
           .getSingleOrNull();
   if (row != null) {
     return;
   }
   final weatherDoc = providerConfigJsonDocForType('weather_openweathermap');
-  await db.into(db.providerSettings).insert(
-        ProviderSettingsCompanion.insert(
+  await db.into(db.integrations).insert(
+        IntegrationsCompanion.insert(
           id: 'weather_openweathermap',
           providerType: 'weather_openweathermap',
           enabled: const Value(true),
@@ -154,15 +154,15 @@ Future<void> _ensureWeatherProviderRow(AppDatabase db) async {
 
 Future<void> _ensureNwsWeatherAlertsProviderRow(AppDatabase db) async {
   final row =
-      await (db.select(db.providerSettings)
+      await (db.select(db.integrations)
             ..where((t) => t.id.equals('weather_nws_alerts')))
           .getSingleOrNull();
   if (row != null) {
     return;
   }
   final doc = providerConfigJsonDocForType('weather_nws_alerts');
-  await db.into(db.providerSettings).insert(
-        ProviderSettingsCompanion.insert(
+  await db.into(db.integrations).insert(
+        IntegrationsCompanion.insert(
           id: 'weather_nws_alerts',
           providerType: 'weather_nws_alerts',
           enabled: const Value(true),
@@ -179,15 +179,15 @@ Future<void> _ensureNwsWeatherAlertsProviderRow(AppDatabase db) async {
 }
 
 Future<void> _ensureGoogleCalendarProviderRow(AppDatabase db) async {
-  final row = await (db.select(db.providerSettings)
+  final row = await (db.select(db.integrations)
         ..where((t) => t.id.equals('calendar_google')))
       .getSingleOrNull();
   if (row != null) {
     return;
   }
   final doc = providerConfigJsonDocForType('calendar_google');
-  await db.into(db.providerSettings).insert(
-        ProviderSettingsCompanion.insert(
+  await db.into(db.integrations).insert(
+        IntegrationsCompanion.insert(
           id: 'calendar_google',
           providerType: 'calendar_google',
           enabled: const Value(false),
@@ -204,15 +204,15 @@ Future<void> _ensureGoogleCalendarProviderRow(AppDatabase db) async {
 
 Future<void> _ensureOutlookCalendarProviderRow(AppDatabase db) async {
   final row =
-      await (db.select(db.providerSettings)
+      await (db.select(db.integrations)
             ..where((t) => t.id.equals('calendar_outlook')))
           .getSingleOrNull();
   if (row != null) {
     return;
   }
   final outlookDoc = providerConfigJsonDocForType('calendar_outlook');
-  await db.into(db.providerSettings).insert(
-        ProviderSettingsCompanion.insert(
+  await db.into(db.integrations).insert(
+        IntegrationsCompanion.insert(
           id: 'calendar_outlook',
           providerType: 'calendar_outlook',
           enabled: const Value(false),
@@ -229,15 +229,15 @@ Future<void> _ensureOutlookCalendarProviderRow(AppDatabase db) async {
 
 Future<void> _ensureOneDriveMediaProviderRow(AppDatabase db) async {
   final row =
-      await (db.select(db.providerSettings)
+      await (db.select(db.integrations)
             ..where((t) => t.id.equals('media_onedrive')))
           .getSingleOrNull();
   if (row != null) {
     return;
   }
   final doc = providerConfigJsonDocForType('media_onedrive');
-  await db.into(db.providerSettings).insert(
-        ProviderSettingsCompanion.insert(
+  await db.into(db.integrations).insert(
+        IntegrationsCompanion.insert(
           id: 'media_onedrive',
           providerType: 'media_onedrive',
           enabled: const Value(false),
@@ -254,15 +254,15 @@ Future<void> _ensureOneDriveMediaProviderRow(AppDatabase db) async {
 
 Future<void> _ensureFlickrMediaProviderRow(AppDatabase db) async {
   final row =
-      await (db.select(db.providerSettings)
+      await (db.select(db.integrations)
             ..where((t) => t.id.equals('media_flickr')))
           .getSingleOrNull();
   if (row != null) {
     return;
   }
   final doc = providerConfigJsonDocForType('media_flickr');
-  await db.into(db.providerSettings).insert(
-        ProviderSettingsCompanion.insert(
+  await db.into(db.integrations).insert(
+        IntegrationsCompanion.insert(
           id: 'media_flickr',
           providerType: 'media_flickr',
           enabled: const Value(false),
@@ -279,15 +279,15 @@ Future<void> _ensureFlickrMediaProviderRow(AppDatabase db) async {
 
 Future<void> _ensureBingImageOfDayProviderRow(AppDatabase db) async {
   final row =
-      await (db.select(db.providerSettings)
+      await (db.select(db.integrations)
             ..where((t) => t.id.equals('media_bing_iotd')))
           .getSingleOrNull();
   if (row != null) {
     return;
   }
   final doc = providerConfigJsonDocForType('media_bing_iotd');
-  await db.into(db.providerSettings).insert(
-        ProviderSettingsCompanion.insert(
+  await db.into(db.integrations).insert(
+        IntegrationsCompanion.insert(
           id: 'media_bing_iotd',
           providerType: 'media_bing_iotd',
           enabled: const Value(true),
@@ -304,15 +304,15 @@ Future<void> _ensureBingImageOfDayProviderRow(AppDatabase db) async {
 
 Future<void> _ensurePexelsProviderRow(AppDatabase db) async {
   final row =
-      await (db.select(db.providerSettings)
+      await (db.select(db.integrations)
             ..where((t) => t.id.equals('media_pexels')))
           .getSingleOrNull();
   if (row != null) {
     return;
   }
   final pexelsDoc = providerConfigJsonDocForType('media_pexels');
-  await db.into(db.providerSettings).insert(
-        ProviderSettingsCompanion.insert(
+  await db.into(db.integrations).insert(
+        IntegrationsCompanion.insert(
           id: 'media_pexels',
           providerType: 'media_pexels',
           enabled: const Value(true),
@@ -337,15 +337,15 @@ Future<void> _ensurePexelsProviderRow(AppDatabase db) async {
 
 Future<void> _ensureStocksProviderRow(AppDatabase db) async {
   final row =
-      await (db.select(db.providerSettings)
+      await (db.select(db.integrations)
             ..where((t) => t.id.equals('stock_finnhub')))
           .getSingleOrNull();
   if (row != null) {
     return;
   }
   final stocksDoc = providerConfigJsonDocForType('stock_finnhub');
-  await db.into(db.providerSettings).insert(
-        ProviderSettingsCompanion.insert(
+  await db.into(db.integrations).insert(
+        IntegrationsCompanion.insert(
           id: 'stock_finnhub',
           providerType: 'stock_finnhub',
           enabled: const Value(true),
@@ -378,8 +378,8 @@ Future<void> _ensureStocksProviderRow(AppDatabase db) async {
       );
 }
 
-/// Default [ProviderSettings] rows (stub handled separately).
-Future<void> ensureProviderSettingsDefaults(AppDatabase db) async {
+/// Default integration rows (stub handled separately).
+Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
   await _ensureProviderRow(
     db,
     id: 'news_rss',

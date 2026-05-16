@@ -44,7 +44,7 @@ class TriviaDataProvider implements IDataProvider {
   @override
   Future<void> collect(DataWriteContext ctx) async {
     final setting =
-        await (ctx.db.select(ctx.db.providerSettings)
+        await (ctx.db.select(ctx.db.integrations)
               ..where((t) => t.id.equals(kTriviaProviderId)))
             .getSingleOrNull();
     if (setting == null || !setting.enabled) {
@@ -304,6 +304,7 @@ class TriviaDataProvider implements IDataProvider {
                 optionD: dt,
                 correctOption: correctNorm,
                 createdAtMs: createdAt,
+                integrationId: const Value(kTriviaProviderId),
                 suppressed: Value(isBlocked),
               ),
               onConflict: DoUpdate(
@@ -316,6 +317,7 @@ class TriviaDataProvider implements IDataProvider {
                   optionD: Value(dt),
                   correctOption: Value(correctNorm),
                   createdAtMs: Value(createdAt),
+                  integrationId: const Value(kTriviaProviderId),
                   suppressed: isBlocked
                       ? const Value(true)
                       : const Value.absent(),

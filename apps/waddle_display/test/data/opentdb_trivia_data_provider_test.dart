@@ -30,8 +30,8 @@ void main() {
   test('collect inserts multiple-choice and true_false rows', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'trivia_opentdb',
             providerType: 'trivia_opentdb',
             enabled: const Value(true),

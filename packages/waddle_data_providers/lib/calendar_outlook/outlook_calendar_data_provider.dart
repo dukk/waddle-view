@@ -145,7 +145,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
     try {
     final setting =
         await (ctx.db.select(
-              ctx.db.providerSettings,
+              ctx.db.integrations,
             )..where((t) => t.id.equals(kOutlookCalendarProviderId)))
             .getSingleOrNull();
     if (setting == null || !setting.enabled) {

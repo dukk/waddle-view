@@ -4,28 +4,6 @@ import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/theme/display_text_scale_kv.dart';
 import 'package:waddle_shared/theme/display_theme_kv.dart';
 
-/// Demo ticker marquee lines inserted once alongside the stub provider row.
-Future<void> ensureStubTickerMarqueeKvs(AppDatabase db) async {
-  await db.into(db.configKeyValues).insertOnConflictUpdate(
-        ConfigKeyValuesCompanion.insert(
-          key: 'ticker.marquee.news',
-          value: 'Welcome to Waddle View',
-        ),
-      );
-  await db.into(db.configKeyValues).insertOnConflictUpdate(
-        ConfigKeyValuesCompanion.insert(
-          key: 'ticker.marquee.weather',
-          value: '— °F · demo',
-        ),
-      );
-  await db.into(db.configKeyValues).insertOnConflictUpdate(
-        ConfigKeyValuesCompanion.insert(
-          key: 'ticker.marquee.quote',
-          value: 'Market data updates after each collect',
-        ),
-      );
-}
-
 Future<void> ensureDisplayThemeKv(AppDatabase db) async {
   final row = await (db.select(db.configKeyValues)
         ..where((t) => t.key.equals(kDisplayThemeIdKvKey)))

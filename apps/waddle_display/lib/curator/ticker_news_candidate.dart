@@ -10,6 +10,7 @@ class TickerNewsCandidate {
     this.summary,
     this.categoryIconName,
     required this.publishedAtMs,
+    required this.articleId,
   });
 
   final String feedId;
@@ -20,6 +21,9 @@ class TickerNewsCandidate {
   final String? summary;
   final String? categoryIconName;
   final int publishedAtMs;
+
+  /// [RssArticles.id] for this headline (telemetry / controller can load images).
+  final String articleId;
 
   DateTime get publishedAt =>
       DateTime.fromMillisecondsSinceEpoch(publishedAtMs, isUtc: true);

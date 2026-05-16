@@ -51,8 +51,8 @@ Future<void> _insertBingProvider(
   String baseUrl = 'https://www.bing.com',
 }) async {
   final doc = providerConfigJsonDocForType('media_bing_iotd');
-  await db.into(db.providerSettings).insert(
-    ProviderSettingsCompanion.insert(
+  await db.into(db.integrations).insert(
+    IntegrationsCompanion.insert(
       id: kBingImageOfDayProviderId,
       providerType: kBingImageOfDayProviderId,
       enabled: Value(enabled),

@@ -22,9 +22,9 @@ class DriftAlertRepository implements AlertRepository {
     int? expiresAtMs,
   }) async {
     final id = await _db
-        .into(_db.dashboardAlerts)
+        .into(_db.alerts)
         .insert(
-          DashboardAlertsCompanion.insert(
+          AlertsCompanion.insert(
             title: title,
             body: body,
             qrPayload: Value(qrPayload),
@@ -43,9 +43,9 @@ class DriftAlertRepository implements AlertRepository {
 
   @override
   Future<void> dismiss(int id) async {
-    await (_db.update(_db.dashboardAlerts)..where((t) => t.id.equals(id)))
+    await (_db.update(_db.alerts)..where((t) => t.id.equals(id)))
         .write(
-          DashboardAlertsCompanion(
+          AlertsCompanion(
             dismissedAt: Value(DateTime.now()),
           ),
         );
@@ -53,7 +53,7 @@ class DriftAlertRepository implements AlertRepository {
 
   @override
   Stream<DashboardAlert?> watchActive(Clock clock) {
-    return (_db.select(_db.dashboardAlerts)
+    return (_db.select(_db.alerts)
           ..where((t) => t.dismissedAt.isNull())
           ..orderBy([
             (t) => OrderingTerm.desc(t.priority),

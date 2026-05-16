@@ -165,7 +165,7 @@ void main() {
     final ctx = _ctx(db, secrets);
     final p = OutlookCalendarDataProvider(httpClient: http, oauth: oauth);
     await p.collect(ctx);
-    final alerts = await db.select(db.dashboardAlerts).get();
+    final alerts = await db.select(db.alerts).get();
     expect(alerts.length, 1);
     expect(alerts.single.source, kMicrosoftGraphOAuthAlertSource);
     expect(alerts.single.severity, 'auth');
@@ -217,8 +217,8 @@ Future<void> _seedKvAndProvider(
   required String extraAccountsJson,
   int pollSeconds = 0,
 }) async {
-  await db.into(db.providerSettings).insertOnConflictUpdate(
-        ProviderSettingsCompanion.insert(
+  await db.into(db.integrations).insertOnConflictUpdate(
+        IntegrationsCompanion.insert(
           id: kOutlookCalendarProviderId,
           providerType: 'calendar_outlook',
           enabled: const Value(true),

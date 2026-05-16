@@ -2,26 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_display/display/screens/guest_wifi/guest_wifi_slide_widget.dart';
-import 'package:waddle_shared/persistence/database.dart';
-
-import '../helpers/memory_database.dart';
 
 void main() {
-  testWidgets('shows headline, QR fields, and labels when KV configured', (
+  testWidgets('shows headline, QR fields, and labels when connection configured', (
     tester,
   ) async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
-    await db.into(db.configKeyValues).insert(
-          ConfigKeyValuesCompanion.insert(
-            key: 'dashboard.guest_wifi.connection',
-            value: 'WIFI:T:WPA;S:Lobby;P:guestpass;;',
-          ),
-        );
     const spec = ParsedWidgetSpec(
-      type: 'guest_wifi',
+      type: 'wifi',
       slot: 'main',
-      config: {},
+      config: {
+        'connection': 'WIFI:T:WPA;S:Lobby;P:guestpass;;',
+      },
     );
     final theme = ThemeData.light();
     await tester.pumpWidget(
@@ -29,7 +20,6 @@ void main() {
         theme: theme,
         home: Scaffold(
           body: GuestWifiSlideWidget(
-            db: db,
             spec: spec,
             theme: theme,
           ),
@@ -44,25 +34,15 @@ void main() {
     expect(find.text('SSID:'), findsOneWidget);
     expect(find.text('Security:'), findsOneWidget);
     expect(find.text('Password:'), findsOneWidget);
-
-    await db.close();
   });
 
-  testWidgets('respects custom kvKey and headline', (tester) async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
-    await db.into(db.configKeyValues).insert(
-          ConfigKeyValuesCompanion.insert(
-            key: 'wifi.custom',
-            value: 'WIFI:T:WPA;S:Zone;P:secret;;',
-          ),
-        );
-    final spec = ParsedWidgetSpec(
-      type: 'guest_wifi',
+  testWidgets('respects custom headline', (tester) async {
+    const spec = ParsedWidgetSpec(
+      type: 'wifi',
       slot: 'main',
       config: {
-        'kvKey': 'wifi.custom',
         'headline': 'Lobby WiFi',
+        'connection': 'WIFI:T:WPA;S:Zone;P:secret;;',
       },
     );
     final theme = ThemeData.light();
@@ -71,7 +51,6 @@ void main() {
         theme: theme,
         home: Scaffold(
           body: GuestWifiSlideWidget(
-            db: db,
             spec: spec,
             theme: theme,
           ),
@@ -81,23 +60,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Lobby WiFi'), findsOneWidget);
     expect(find.text('Zone'), findsOneWidget);
-
-    await db.close();
   });
 
-  testWidgets('shows not configured when KV value is invalid', (tester) async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
-    await db.into(db.configKeyValues).insert(
-          ConfigKeyValuesCompanion.insert(
-            key: 'dashboard.guest_wifi.connection',
-            value: 'not-a-wifi-string',
-          ),
-        );
+  testWidgets('shows not configured when connection value is invalid', (
+    tester,
+  ) async {
     const spec = ParsedWidgetSpec(
-      type: 'guest_wifi',
+      type: 'wifi',
       slot: 'main',
-      config: {},
+      config: {
+        'connection': 'not-a-wifi-string',
+      },
     );
     final theme = ThemeData.dark();
     await tester.pumpWidget(
@@ -105,7 +78,6 @@ void main() {
         theme: theme,
         home: Scaffold(
           body: GuestWifiSlideWidget(
-            db: db,
             spec: spec,
             theme: theme,
           ),
@@ -113,26 +85,18 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Guest Wi‑Fi not configured'), findsOneWidget);
-
-    await db.close();
+    expect(find.text('Wi‑Fi not configured'), findsOneWidget);
   });
 
   testWidgets('labels are bold and values use a monospaced font', (
     tester,
   ) async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
-    await db.into(db.configKeyValues).insert(
-          ConfigKeyValuesCompanion.insert(
-            key: 'dashboard.guest_wifi.connection',
-            value: 'WIFI:T:WPA;S:Lobby;P:guestpass;;',
-          ),
-        );
     const spec = ParsedWidgetSpec(
-      type: 'guest_wifi',
+      type: 'wifi',
       slot: 'main',
-      config: {},
+      config: {
+        'connection': 'WIFI:T:WPA;S:Lobby;P:guestpass;;',
+      },
     );
     final theme = ThemeData.light();
     await tester.pumpWidget(
@@ -140,7 +104,6 @@ void main() {
         theme: theme,
         home: Scaffold(
           body: GuestWifiSlideWidget(
-            db: db,
             spec: spec,
             theme: theme,
           ),
@@ -175,15 +138,11 @@ void main() {
         reason: '$value should use the monospaced font fallback',
       );
     }
-
-    await db.close();
   });
 
-  testWidgets('shows not configured when KV missing', (tester) async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
+  testWidgets('shows not configured when connection missing', (tester) async {
     const spec = ParsedWidgetSpec(
-      type: 'guest_wifi',
+      type: 'wifi',
       slot: 'main',
       config: {},
     );
@@ -193,7 +152,6 @@ void main() {
         theme: theme,
         home: Scaffold(
           body: GuestWifiSlideWidget(
-            db: db,
             spec: spec,
             theme: theme,
           ),
@@ -201,8 +159,6 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Guest Wi‑Fi not configured'), findsOneWidget);
-
-    await db.close();
+    expect(find.text('Wi‑Fi not configured'), findsOneWidget);
   });
 }

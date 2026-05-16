@@ -230,7 +230,7 @@ SELECT f.category AS category_id,
        COUNT(*) AS cnt
 FROM rss_articles a
 INNER JOIN rss_feed_sources f ON f.id = a.feed_id
-LEFT JOIN content_categories cc ON cc.id = f.category
+LEFT JOIN curator_categories cc ON cc.id = f.category
 GROUP BY f.category
 ORDER BY cnt DESC, f.category ASC
 ''',
@@ -243,7 +243,7 @@ SELECT p.category AS category_id,
        COALESCE(MAX(cc.label), p.category) AS label,
        COUNT(*) AS cnt
 FROM photos p
-LEFT JOIN content_categories cc ON cc.id = p.category
+LEFT JOIN curator_categories cc ON cc.id = p.category
 GROUP BY p.category
 ORDER BY cnt DESC, p.category ASC
 ''',
@@ -256,7 +256,7 @@ SELECT v.category AS category_id,
        COALESCE(MAX(cc.label), v.category) AS label,
        COUNT(*) AS cnt
 FROM videos v
-LEFT JOIN content_categories cc ON cc.id = v.category
+LEFT JOIN curator_categories cc ON cc.id = v.category
 GROUP BY v.category
 ORDER BY cnt DESC, v.category ASC
 ''',
@@ -269,7 +269,7 @@ SELECT j.category_id AS category_id,
        COALESCE(MAX(cc.label), j.category_id) AS label,
        COUNT(*) AS cnt
 FROM jokes j
-LEFT JOIN content_categories cc ON cc.id = j.category_id
+LEFT JOIN curator_categories cc ON cc.id = j.category_id
 GROUP BY j.category_id
 ORDER BY cnt DESC, j.category_id ASC
 ''',
@@ -282,7 +282,7 @@ SELECT t.category_id AS category_id,
        COALESCE(MAX(cc.label), t.category_id) AS label,
        COUNT(*) AS cnt
 FROM trivia_questions t
-LEFT JOIN content_categories cc ON cc.id = t.category_id
+LEFT JOIN curator_categories cc ON cc.id = t.category_id
 GROUP BY t.category_id
 ORDER BY cnt DESC, t.category_id ASC
 ''',

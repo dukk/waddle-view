@@ -129,9 +129,9 @@ void main() {
     });
 
     await db
-        .into(db.screenDefinitions)
+        .into(db.screens)
         .insert(
-          ScreenDefinitionsCompanion.insert(
+          ScreensCompanion.insert(
             id: 'waddlectl_test_screen',
             name: 'T',
             screenType: 'clock',

@@ -6,31 +6,31 @@ import 'package:waddle_shared/persistence/database.dart';
 import 'helpers/rest_auth_helper.dart';
 
 void main() {
-  test('GET providers lists enabled rows', () async {
+  test('GET integrations lists enabled rows', () async {
     final h = await RestTestHarness.start();
     addTearDown(h.dispose);
-    await h.db.into(h.db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await h.db.into(h.db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'joke_openai',
             providerType: 'joke_openai',
             pollSeconds: const Value(30),
           ),
         );
     final res = await http.get(
-      Uri.parse('${h.baseUrl}/v1/providers'),
+      Uri.parse('${h.baseUrl}/v1/integrations'),
       headers: h.authHeaders,
     );
     expect(res.statusCode, 200);
     expect(res.body, contains('"id":"joke_openai"'));
-    expect(res.body, contains('"type":"joke_openai"'));
+    expect(res.body, contains('"integration_type":"joke_openai"'));
     expect(res.body, contains('"enabled":true'));
   });
 
-  test('GET providers returns raw string when config_json is invalid', () async {
+  test('GET integrations returns raw string when config_json is invalid', () async {
     final h = await RestTestHarness.start();
     addTearDown(h.dispose);
-    await h.db.into(h.db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await h.db.into(h.db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: 'loose_json',
             providerType: 'joke_openai',
             pollSeconds: const Value(30),
@@ -38,7 +38,7 @@ void main() {
           ),
         );
     final res = await http.get(
-      Uri.parse('${h.baseUrl}/v1/providers'),
+      Uri.parse('${h.baseUrl}/v1/integrations'),
       headers: h.authHeaders,
     );
     expect(res.statusCode, 200);
@@ -48,8 +48,8 @@ void main() {
   test('GET screens and alerts list', () async {
     final h = await RestTestHarness.start();
     addTearDown(h.dispose);
-    await h.db.into(h.db.screenDefinitions).insert(
-          ScreenDefinitionsCompanion.insert(
+    await h.db.into(h.db.screens).insert(
+          ScreensCompanion.insert(
             id: 'a',
             name: 'Screen A',
             screenType: 'static_text',
@@ -65,8 +65,8 @@ void main() {
             maxPlacementsPerProgram: const Value(4),
           ),
         );
-    await h.db.into(h.db.dashboardAlerts).insert(
-          DashboardAlertsCompanion.insert(
+    await h.db.into(h.db.alerts).insert(
+          AlertsCompanion.insert(
             title: 't',
             body: 'b',
             createdAt: DateTime.fromMillisecondsSinceEpoch(1),

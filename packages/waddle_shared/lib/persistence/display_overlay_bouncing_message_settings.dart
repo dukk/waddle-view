@@ -170,6 +170,16 @@ String? normalizeBouncingMessageConfigJsonString(String raw) {
   if (map.containsKey('speed') && map['speed'] is num) {
     out['speed'] = (map['speed'] as num).toDouble().clamp(0.25, 2.5);
   }
+  if (map.containsKey('messages')) {
+    final raw = map['messages'];
+    if (raw is List) {
+      final list = <String>[
+        for (final e in raw)
+          if (e is String && e.trim().isNotEmpty) e.trim(),
+      ];
+      out['messages'] = list;
+    }
+  }
   return jsonEncode(out);
 }
 
@@ -183,6 +193,7 @@ bool _bouncingMessageConfigMapValid(Map<String, dynamic> map) {
       'letter_spacing',
       'shadow',
       'speed',
+      'messages',
     }.contains(key)) {
       return false;
     }
@@ -214,6 +225,17 @@ bool _bouncingMessageConfigMapValid(Map<String, dynamic> map) {
   }
   if (map.containsKey('speed') && map['speed'] is! num) {
     return false;
+  }
+  if (map.containsKey('messages')) {
+    final raw = map['messages'];
+    if (raw is! List) {
+      return false;
+    }
+    for (final e in raw) {
+      if (e is! String || e.trim().isEmpty) {
+        return false;
+      }
+    }
   }
   return true;
 }

@@ -7,7 +7,7 @@ import 'package:crypto/crypto.dart';
 /// `package:waddle_shared/config/provider_access_token_env.dart` instead).
 const String kGoogleClientIdKvKey = 'google.client_id';
 
-/// [DashboardAlerts.source] for Google device-code sign-in prompts.
+/// [Alerts.source] for Google device-code sign-in prompts.
 const String kGoogleOAuthAlertSource = 'google_calendar';
 
 /// Recommended scope for calendar read-only synchronization.

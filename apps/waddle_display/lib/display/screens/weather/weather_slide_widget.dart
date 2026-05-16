@@ -117,7 +117,7 @@ class WeatherSlideWidget extends StatelessWidget {
         }
         return StreamBuilder<dynamic>(
           stream:
-              (db.select(db.weatherCurrentData)
+              (db.select(db.weatherCurrent)
                     ..where((t) => t.locationId.equals(location.id)))
                   .watchSingleOrNull(),
           builder: (context, dataSnapshot) {
@@ -135,7 +135,7 @@ class WeatherSlideWidget extends StatelessWidget {
             );
             return StreamBuilder<List<WeatherGovActiveAlert>>(
               stream:
-                  (db.select(db.weatherGovActiveAlerts)
+                  (db.select(db.weatherAlerts)
                         ..where((t) => t.locationId.equals(location.id))
                         ..orderBy([
                           (t) => OrderingTerm.asc(t.severity),

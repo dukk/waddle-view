@@ -49,9 +49,9 @@ The joke collector ([`JokeDataProvider`](../../packages/waddle_data_providers/li
 
 | What | Value |
 |------|--------|
-| Provider id (also `provider_settings.id`) | `joke_openai` (see [`kJokeProviderId`](../../packages/waddle_data_providers/lib/joke_openai/joke_data_provider.dart)) |
+| Provider id (also `integrations.id`) | `joke_openai` (see [`kJokeProviderId`](../../packages/waddle_data_providers/lib/joke_openai/joke_data_provider.dart)) |
 | Env resolution | [`resolveProviderAccessTokenFromEnv`](../../packages/waddle_shared/lib/config/provider_access_token_env.dart) for static keys (e.g. **`WADDLE_OPENAI_API_KEY`** for `joke_openai` / legacy `jokes`, trivia, and OpenTDB-backed trivia ids) |
-| Non-secret config | `provider_settings` row for `joke_openai`: `base_url` (optional override; default API root is defined on the provider), `config_json` for model and prompts — see seed and [`JokeProviderExtraConfig`](../../packages/waddle_data_providers/lib/joke_openai/joke_provider_extra_config.dart) |
+| Non-secret config | `integrations` row for `joke_openai`: `base_url` (optional override; default API root is defined on the provider), `config_json` for model and prompts — see seed and [`JokeProviderExtraConfig`](../../packages/waddle_data_providers/lib/joke_openai/joke_provider_extra_config.dart) |
 
 If no token is resolved (null or empty), [`collect`](../../packages/waddle_data_providers/lib/joke_openai/joke_data_provider.dart) exits early and logs that the API token is missing.
 

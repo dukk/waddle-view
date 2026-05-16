@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import type { Scenario } from '../lib/scenario.js';
 import { wantsEmpty, wantsError } from '../lib/scenario.js';
 
+const mockConfigKv = new Map<string, string>([['display.timezone', 'America/New_York']]);
+
 function maybeErr(c: { json: (a: unknown, s: number) => Response }, scenario: Scenario) {
   if (wantsError(scenario)) {
     return c.json({ error: 'mock_error' }, 500);
@@ -14,14 +16,14 @@ export function v1Router() {
 
   r.get('/health', (c) => c.json({ status: 'ok' }));
 
-  r.get('/telemetry/providers', (c) => {
+  r.get('/telemetry/integrations', (c) => {
     const scenario = c.get('scenario');
     const bad = maybeErr(c, scenario);
     if (bad) return bad;
     if (wantsEmpty(scenario)) return c.json({ items: [] });
     return c.json({
       items: [
-        { at_ms: Date.now(), channel: 'provider', message: 'mock: collector idle' },
+        { at_ms: Date.now(), channel: 'integration', message: 'mock: collector idle' },
         { at_ms: Date.now() - 1000, channel: 'engine', message: 'mock: tick' },
       ],
     });
@@ -91,7 +93,21 @@ export function v1Router() {
     });
   });
 
-  r.get('/ticker/definitions', (c) => {
+  r.get('/meta/ticker-types', (c) => {
+    const scenario = c.get('scenario');
+    if (wantsEmpty(scenario)) return c.json({ items: [] });
+    return c.json({
+      items: [
+        {
+          ticker_type: 'time',
+          config_json_schema: { type: 'object' },
+          example_config_json: {},
+        },
+      ],
+    });
+  });
+
+  r.get('/ticker/tapes', (c) => {
     const scenario = c.get('scenario');
     if (wantsEmpty(scenario)) return c.json({ items: [] });
     return c.json({
@@ -112,7 +128,11 @@ export function v1Router() {
     });
   });
 
-  r.patch('/ticker/definitions/:id', (c) => c.json({}));
+  r.post('/ticker/tapes', (c) => c.json({}));
+
+  r.patch('/ticker/tapes/:id', (c) => c.json({}));
+
+  r.delete('/ticker/tapes/:id', (c) => c.json({}));
 
   r.get('/ticker/items', (c) => {
     const scenario = c.get('scenario');
@@ -122,8 +142,12 @@ export function v1Router() {
     });
   });
 
-  r.get('/curator/settings', (c) =>
-    c.json({
+  r.get('/curator/settings', (c) => {
+    const scenario = c.get('scenario');
+    const bad = maybeErr(c, scenario);
+    if (bad) return bad;
+    const display_timezone = mockConfigKv.get('display.timezone') ?? 'America/New_York';
+    return c.json({
       program_duration_seconds: 180,
       history_depth: 5,
       ticker_pixels_per_second: '80',
@@ -131,19 +155,74 @@ export function v1Router() {
       display_theme_id: 'navy_coral',
       display_text_scale_screen: 'normal',
       display_text_scale_ticker: 'normal',
-    }),
-  );
+      display_timezone,
+    });
+  });
 
-  r.put('/curator/settings', (c) => c.json({}));
+  r.put('/curator/settings', async (c) => {
+    const scenario = c.get('scenario');
+    const bad = maybeErr(c, scenario);
+    if (bad) return bad;
+    try {
+      const body = (await c.req.json()) as Record<string, unknown>;
+      if (typeof body.display_timezone === 'string') {
+        const t = body.display_timezone.trim();
+        if (t) mockConfigKv.set('display.timezone', t);
+        else mockConfigKv.delete('display.timezone');
+      }
+    } catch {
+      /* ignore malformed body */
+    }
+    return c.json({});
+  });
 
-  r.get('/providers', (c) => {
+  r.get('/config/key-values', (c) => {
+    const scenario = c.get('scenario');
+    const bad = maybeErr(c, scenario);
+    if (bad) return bad;
+    if (wantsEmpty(scenario)) return c.json({ items: [] });
+    const items = [...mockConfigKv.entries()]
+      .map(([key, value]) => ({ key, value }))
+      .sort((a, b) => a.key.localeCompare(b.key));
+    return c.json({ items });
+  });
+
+  r.put('/config/key-values', async (c) => {
+    const scenario = c.get('scenario');
+    const bad = maybeErr(c, scenario);
+    if (bad) return bad;
+    let body: Record<string, unknown>;
+    try {
+      body = (await c.req.json()) as Record<string, unknown>;
+    } catch {
+      return c.json({ error: 'invalid_json' }, 400);
+    }
+    const key = typeof body.key === 'string' ? body.key.trim() : '';
+    if (!key) return c.json({ error: 'key_required' }, 400);
+    const value = body.value == null ? '' : String(body.value);
+    mockConfigKv.set(key, value);
+    return c.json({});
+  });
+
+  r.delete('/config/key-values', (c) => {
+    const scenario = c.get('scenario');
+    const bad = maybeErr(c, scenario);
+    if (bad) return bad;
+    const key = c.req.query('key')?.trim() ?? '';
+    if (!key) return c.json({ error: 'key_required' }, 400);
+    if (!mockConfigKv.has(key)) return c.json({ error: 'not_found' }, 404);
+    mockConfigKv.delete(key);
+    return c.json({});
+  });
+
+  r.get('/integrations', (c) => {
     const scenario = c.get('scenario');
     if (wantsEmpty(scenario)) return c.json({ items: [] });
     return c.json({
       items: [
         {
-          id: 'mock_provider',
-          type: 'mock',
+          id: 'mock_integration',
+          integration_type: 'mock',
           enabled: true,
           poll_seconds: 60,
           base_url: 'https://example.invalid',
@@ -155,7 +234,7 @@ export function v1Router() {
     });
   });
 
-  r.patch('/providers/:id', (c) => c.json({}));
+  r.patch('/integrations/:id', (c) => c.json({}));
 
   r.get('/screens', (c) => {
     const scenario = c.get('scenario');
@@ -209,10 +288,9 @@ export function v1Router() {
         {
           id: 'mock_overlay',
           enabled: false,
-          overlay_kind: 'hearts_rain',
+          overlay_type: 'hearts_rain',
           label: 'Mock',
-          messages_json: ['Hi'],
-          config_json: {},
+          config_json: { messages: ['Hi'] },
           config_json_schema: {},
           example_config_json: {},
         },

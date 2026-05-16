@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_display/display/screen_rotator.dart';
+import 'package:waddle_display/display/viewer_invite_runtime.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 
@@ -115,8 +116,8 @@ Future<void> _seedTwoSlideProgram(AppDatabase db) async {
         ),
       );
 
-  await db.into(db.screenDefinitions).insert(
-        ScreenDefinitionsCompanion.insert(
+  await db.into(db.screens).insert(
+        ScreensCompanion.insert(
           id: 'alpha_screen',
           name: 'Alpha',
           screenType: 'static_text',
@@ -128,8 +129,8 @@ Future<void> _seedTwoSlideProgram(AppDatabase db) async {
           maxPlacementsPerProgram: const Value(1),
         ),
       );
-  await db.into(db.screenDefinitions).insert(
-        ScreenDefinitionsCompanion.insert(
+  await db.into(db.screens).insert(
+        ScreensCompanion.insert(
           id: 'beta_screen',
           name: 'Beta',
           screenType: 'static_text',
@@ -154,6 +155,10 @@ Future<void> _pumpRotator(WidgetTester tester, AppDatabase db) async {
           localRestBaseUrl: 'http://127.0.0.1:8787',
           adminBaseUrl: 'http://127.0.0.1:8787/admin',
           instanceIdFile: file,
+          viewerInviteRuntime: const ViewerInviteRuntime(
+            controllerPublicUrl: '',
+            viewerRegistrationSecret: '',
+          ),
         ),
       ),
     ),

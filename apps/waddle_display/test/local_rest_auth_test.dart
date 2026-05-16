@@ -35,6 +35,10 @@ void main() {
       }),
     );
     expect(createRes.statusCode, 200);
+    final created =
+        (jsonDecode(createRes.body) as Map<String, dynamic>)['user']
+            as Map<String, dynamic>;
+    expect(created['role'], kUserRoleAdmin);
 
     final bootstrapLogin = await http.post(
       Uri.parse('${h.baseUrl}/v1/auth/login'),
@@ -59,10 +63,30 @@ void main() {
     expect(res.statusCode, 403);
   });
 
+  test('viewer can GET telemetry programs', () async {
+    final h = await RestTestHarness.start(role: kUserRoleViewer);
+    addTearDown(h.dispose);
+    final res = await http.get(
+      Uri.parse('${h.baseUrl}/v1/telemetry/programs'),
+      headers: h.authHeaders,
+    );
+    expect(res.statusCode, 200);
+  });
+
+  test('viewer cannot GET screens', () async {
+    final h = await RestTestHarness.start(role: kUserRoleViewer);
+    addTearDown(h.dispose);
+    final res = await http.get(
+      Uri.parse('${h.baseUrl}/v1/screens'),
+      headers: h.authHeaders,
+    );
+    expect(res.statusCode, 403);
+  });
+
   test('unauthenticated GET providers returns 401', () async {
     final h = await RestTestHarness.start();
     addTearDown(h.dispose);
-    final res = await http.get(Uri.parse('${h.baseUrl}/v1/providers'));
+    final res = await http.get(Uri.parse('${h.baseUrl}/v1/integrations'));
     expect(res.statusCode, 401);
   });
 

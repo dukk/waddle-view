@@ -9,9 +9,11 @@ import 'package:waddle_display/display/display_navigation_bus.dart';
 import 'package:waddle_display/ticker/memory_ticker_curated_repository.dart';
 import 'package:waddle_shared/auth/password_hash.dart';
 import 'package:waddle_shared/auth/user_repository.dart';
+import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 
+import 'fake_blob_store.dart';
 import 'memory_database.dart';
 
 /// Boots a REST server with an admin session for integration tests.
@@ -21,12 +23,14 @@ class RestTestHarness {
     required this.server,
     required this.token,
     required this.users,
+    required this.blobs,
   });
 
   final AppDatabase db;
   final LocalRestServer server;
   final String token;
   final UserRepository users;
+  final BlobStore blobs;
 
   String get baseUrl => server.baseUrl;
 
@@ -45,6 +49,7 @@ class RestTestHarness {
     Future<void> Function()? onConfigChanged,
     List<String> corsAllowedOrigins = const [],
     Map<String, String> env = const {},
+    FakeBlobStore? blobStore,
   }) async {
     final db = database ?? openMemoryDatabase();
     if (database == null) {
@@ -70,11 +75,13 @@ class RestTestHarness {
     }
     final alerts = DriftAlertRepository(db);
     final ticker = MemoryTickerCuratedRepository();
+    final blobs = blobStore ?? FakeBlobStore();
     final handler = buildRootHandler(
       db: db,
       alerts: alerts,
       users: users,
       ticker: ticker,
+      blobs: blobs,
       onConfigChanged: onConfigChanged ?? () async {},
       env: env,
       telemetryHub: telemetryHub,
@@ -97,6 +104,7 @@ class RestTestHarness {
       server: server,
       token: token,
       users: users,
+      blobs: blobs,
     );
   }
 
@@ -130,6 +138,7 @@ class BootstrapRestTestHarness {
 
   static Future<BootstrapRestTestHarness> start({
     String instanceId = 'bootstrap-instance-id-hex',
+    Map<String, String> env = const {},
   }) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
@@ -137,13 +146,15 @@ class BootstrapRestTestHarness {
     await users.ensureBootstrapUser(instanceIdPassword: instanceId);
     final alerts = DriftAlertRepository(db);
     final ticker = MemoryTickerCuratedRepository();
+    final blobs = FakeBlobStore();
     final handler = buildRootHandler(
       db: db,
       alerts: alerts,
       users: users,
       ticker: ticker,
+      blobs: blobs,
       onConfigChanged: () async {},
-      env: const {},
+      env: env,
     );
     final server = await LocalRestServer.bind(handler: handler, port: 0);
     final loginRes = await http.post(

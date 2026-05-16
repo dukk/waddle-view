@@ -1,6 +1,4 @@
 /// Standard Wi‑Fi QR payload (`WIFI:...`, per common Android / ZXing format).
-const String kGuestWifiDashboardKvKey = 'dashboard.guest_wifi.connection';
-
 /// Result of [parseWifiConnectionUri].
 class WifiConnectionUriParseResult {
   const WifiConnectionUriParseResult._({

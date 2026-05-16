@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:developer' show log;
 import 'dart:io';
 
@@ -16,12 +17,12 @@ part 'database.g.dart';
 @DriftDatabase(
   tables: [
     ContentCategories,
-    ProviderSettings,
+    Integrations,
     BlobMetadata,
-    DashboardAlerts,
+    Alerts,
     ConfigKeyValues,
-    ScreenDefinitions,
-    TickerDefinitions,
+    Screens,
+    TickerTapes,
     CuratorDataKeyProgramLimits,
     RssFeedSources,
     RssArticles,
@@ -33,8 +34,8 @@ part 'database.g.dart';
     TriviaGenerationBatches,
     CalendarEvents,
     WeatherLocations,
-    WeatherCurrentData,
-    WeatherGovActiveAlerts,
+    WeatherCurrent,
+    WeatherAlerts,
     Photos,
     Videos,
     PexelsFetchBatches,
@@ -50,23 +51,34 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 38;
+  int get schemaVersion => 46;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator m) async {
       await m.createAll();
       await customStatement('''
-CREATE VIEW IF NOT EXISTS v_dashboard_alert_active_candidates AS
+CREATE VIEW IF NOT EXISTS v_alert_active_candidates AS
 SELECT *
-FROM dashboard_alerts
+FROM alerts
 WHERE dismissed_at IS NULL
 ORDER BY priority DESC, created_at DESC;
 ''');
-      await customStatement(kEnsureDisplayOverlaySchedulesTableSql);
+      await customStatement(kEnsureOverlaysTableSql);
       await _seedDefaultRejectTerms(this);
     },
     onUpgrade: (Migrator m, int from, int to) async {
+      if (from < 40) {
+        final legacyTicker = await customSelect(
+          "SELECT name FROM sqlite_master WHERE type = 'table' "
+          "AND name = 'ticker_definitions';",
+        ).get();
+        if (legacyTicker.isNotEmpty) {
+          await customStatement(
+            'ALTER TABLE ticker_definitions RENAME TO ticker_tapes;',
+          );
+        }
+      }
       if (from < 6) {
         await customStatement('DROP TABLE IF EXISTS ticker_conditions;');
         await customStatement('DROP TABLE IF EXISTS ticker_condition_groups;');
@@ -79,7 +91,7 @@ ORDER BY priority DESC, created_at DESC;
         await m.createTable(rssArticles);
       }
       if (from < 6) {
-        await m.createTable(screenDefinitions);
+        await m.createTable(screens);
         await customStatement('''
 CREATE TABLE IF NOT EXISTS curator_settings (
   id TEXT NOT NULL PRIMARY KEY,
@@ -123,7 +135,7 @@ CREATE TABLE IF NOT EXISTS curator_settings (
       }
       if (from < 12) {
         await m.createTable(weatherLocations);
-        await m.createTable(weatherCurrentData);
+        await m.createTable(weatherCurrent);
       }
       if (from < 14) {
         await customStatement(
@@ -270,16 +282,17 @@ FROM curator_settings WHERE id = 'app';
               'ALTER TABLE provider_settings ADD COLUMN example_config_json TEXT;',
             );
           }
-          final providerRows = await select(providerSettings).get();
+          final providerRows = await customSelect(
+            'SELECT id, provider_type FROM provider_settings;',
+          ).get();
           for (final p in providerRows) {
-            final doc = providerConfigJsonDocForType(p.providerType);
-            await (update(
-              providerSettings,
-            )..where((t) => t.id.equals(p.id))).write(
-              ProviderSettingsCompanion(
-                configJsonSchema: Value(doc.schema),
-                exampleConfigJson: Value(doc.example),
-              ),
+            final id = p.read<String>('id');
+            final providerType = p.read<String>('provider_type');
+            final doc = providerConfigJsonDocForType(providerType);
+            await customStatement(
+              'UPDATE provider_settings SET config_json_schema = ?, '
+              'example_config_json = ? WHERE id = ?',
+              <Object?>[doc.schema, doc.example, id],
             );
           }
         }
@@ -331,7 +344,7 @@ FROM curator_settings WHERE id = 'app';
         );
       }
       if (from < 23) {
-        await m.createTable(tickerDefinitions);
+        await m.createTable(tickerTapes);
       }
       if (from < 24) {
         await customStatement(
@@ -342,7 +355,7 @@ FROM curator_settings WHERE id = 'app';
         );
       }
       if (from < 25) {
-        await m.createTable(weatherGovActiveAlerts);
+        await m.createTable(weatherAlerts);
       }
       if (from < 26) {
         Future<bool> legacyTableExists(String table) async {
@@ -391,7 +404,7 @@ FROM curator_settings WHERE id = 'app';
           await customStatement(
             'ALTER TABLE screen_definitions RENAME TO screen_definitions_pre_v27;',
           );
-          await m.createTable(screenDefinitions);
+          await m.createTable(screens);
           for (final r in rows) {
             final layoutJson = r.read<String>('layout_json');
             final extracted = extractLegacyScreenFields(layoutJson);
@@ -401,8 +414,8 @@ FROM curator_settings WHERE id = 'app';
                 ? enabledRaw
                 : ((enabledRaw as int) != 0);
             final maxRaw = r.data['max_placements_per_program'];
-            await into(screenDefinitions).insert(
-              ScreenDefinitionsCompanion.insert(
+            await into(screens).insert(
+              ScreensCompanion.insert(
                 id: r.read<String>('id'),
                 name: r.read<String>('name'),
                 description: Value(r.read<String>('description')),
@@ -430,7 +443,7 @@ FROM curator_settings WHERE id = 'app';
         });
       }
       if (from < 28) {
-        await customStatement(kEnsureDisplayOverlaySchedulesTableSql);
+        await customStatement(kLegacyEnsureDisplayOverlaySchedulesTableSql);
       }
       if (from < 29) {
         final wlTables = await customSelect(
@@ -509,58 +522,74 @@ FROM curator_settings WHERE id = 'app';
           return rows.map((r) => r.read<String>('name')).toSet();
         }
 
-        if (await legacyTableExists('ticker_definitions')) {
-          final tCols = await tableColumnNames('ticker_definitions');
+        if (await legacyTableExists('ticker_tapes')) {
+          final tCols = await tableColumnNames('ticker_tapes');
           if (!tCols.contains('config_json_schema')) {
             await customStatement(
-              'ALTER TABLE ticker_definitions ADD COLUMN config_json_schema TEXT;',
+              'ALTER TABLE ticker_tapes ADD COLUMN config_json_schema TEXT;',
             );
           }
           if (!tCols.contains('example_config_json')) {
             await customStatement(
-              'ALTER TABLE ticker_definitions ADD COLUMN example_config_json TEXT;',
+              'ALTER TABLE ticker_tapes ADD COLUMN example_config_json TEXT;',
             );
           }
         }
 
-        if (await legacyTableExists('screen_definitions')) {
-          final screenRows = await select(screenDefinitions).get();
-          for (final s in screenRows) {
-            final doc = screenConfigJsonDocForType(s.screenType);
-            await (update(
-              screenDefinitions,
-            )..where((t) => t.id.equals(s.id))).write(
-              ScreenDefinitionsCompanion(
-                configJsonSchema: Value(doc.schema),
-                exampleConfigJson: Value(doc.example),
-              ),
-            );
+        Future<String?> screenTableForV33() async {
+          if (await legacyTableExists('screens')) {
+            return 'screens';
+          }
+          if (await legacyTableExists('screen_definitions')) {
+            return 'screen_definitions';
+          }
+          return null;
+        }
+
+        final screenTable = await screenTableForV33();
+        if (screenTable != null) {
+          final screenCols = await tableColumnNames(screenTable);
+          if (screenCols.contains('screen_type')) {
+            final screenRows = await customSelect(
+              'SELECT id, screen_type FROM $screenTable;',
+            ).get();
+            for (final s in screenRows) {
+              final id = s.read<String>('id');
+              final screenType = s.read<String>('screen_type');
+              final doc = screenConfigJsonDocForType(screenType);
+              await customStatement(
+                'UPDATE $screenTable SET config_json_schema = ?, '
+                'example_config_json = ? WHERE id = ?',
+                <Object?>[doc.schema, doc.example, id],
+              );
+            }
           }
         }
 
         if (await legacyTableExists('provider_settings')) {
-          final providerRows = await select(providerSettings).get();
+          final providerRows = await customSelect(
+            'SELECT id, provider_type FROM provider_settings;',
+          ).get();
           for (final p in providerRows) {
-            final doc = providerConfigJsonDocForType(p.providerType);
-            await (update(
-              providerSettings,
-            )..where((t) => t.id.equals(p.id))).write(
-              ProviderSettingsCompanion(
-                configJsonSchema: Value(doc.schema),
-                exampleConfigJson: Value(doc.example),
-              ),
+            final id = p.read<String>('id');
+            final providerType = p.read<String>('provider_type');
+            final doc = providerConfigJsonDocForType(providerType);
+            await customStatement(
+              'UPDATE provider_settings SET config_json_schema = ?, '
+              'example_config_json = ? WHERE id = ?',
+              <Object?>[doc.schema, doc.example, id],
             );
           }
         }
 
-        if (await legacyTableExists('ticker_definitions')) {
-          final tickerRows = await select(tickerDefinitions).get();
+        if (await legacyTableExists('ticker_tapes')) {
+          final tickerRows = await select(tickerTapes).get();
           for (final tk in tickerRows) {
             final doc = tickerSlotConfigJsonDocForType(tk.tickerType);
             await (update(
-              tickerDefinitions,
+              tickerTapes,
             )..where((r) => r.id.equals(tk.id))).write(
-              TickerDefinitionsCompanion(
+              TickerTapesCompanion(
                 configJsonSchema: Value(doc.schema),
                 exampleConfigJson: Value(doc.example),
               ),
@@ -609,21 +638,21 @@ FROM curator_settings WHERE id = 'app';
               'ALTER TABLE display_overlay_schedules ADD COLUMN example_config_json TEXT;',
             );
           }
-          final heartsDoc = displayOverlayConfigJsonDocForKind(
-            kOverlayKindHeartsRain,
+          final heartsDoc = displayOverlayConfigJsonDocForType(
+            kOverlayTypeHeartsRain,
           );
-          final confettiDoc = displayOverlayConfigJsonDocForKind(
-            kOverlayKindBirthdayConfetti,
-          );
-          await customStatement(
-            'UPDATE display_overlay_schedules SET config_json_schema = ?, '
-            'example_config_json = ? WHERE overlay_kind = ?',
-            <Object?>[heartsDoc.schema, heartsDoc.example, kOverlayKindHeartsRain],
+          final confettiDoc = displayOverlayConfigJsonDocForType(
+            kOverlayTypeBirthdayConfetti,
           );
           await customStatement(
             'UPDATE display_overlay_schedules SET config_json_schema = ?, '
             'example_config_json = ? WHERE overlay_kind = ?',
-            <Object?>[confettiDoc.schema, confettiDoc.example, kOverlayKindBirthdayConfetti],
+            <Object?>[heartsDoc.schema, heartsDoc.example, kOverlayTypeHeartsRain],
+          );
+          await customStatement(
+            'UPDATE display_overlay_schedules SET config_json_schema = ?, '
+            'example_config_json = ? WHERE overlay_kind = ?',
+            <Object?>[confettiDoc.schema, confettiDoc.example, kOverlayTypeBirthdayConfetti],
           );
         }
       }
@@ -760,14 +789,25 @@ FROM curator_settings WHERE id = 'app';
         await m.createTable(userSessions);
         await m.createTable(userOauthIdentities);
       }
+      if (from < 39) {
+        final ps = await customSelect(
+          "SELECT name FROM sqlite_master WHERE type='table' "
+          "AND name='provider_settings';",
+        ).get();
+        if (ps.isNotEmpty) {
+          await customStatement(
+            'ALTER TABLE provider_settings RENAME TO integrations;',
+          );
+        }
+      }
       if (from < 35) {
         final overlayTable = await customSelect(
           "SELECT name FROM sqlite_master WHERE type = 'table' "
           "AND name = 'display_overlay_schedules';",
         ).get();
         if (overlayTable.isNotEmpty) {
-          final bounceDoc = displayOverlayConfigJsonDocForKind(
-            kOverlayKindBouncingMessage,
+          final bounceDoc = displayOverlayConfigJsonDocForType(
+            kOverlayTypeBouncingMessage,
           );
           await customStatement(
             'UPDATE display_overlay_schedules SET config_json_schema = ?, '
@@ -775,8 +815,34 @@ FROM curator_settings WHERE id = 'app';
             <Object?>[
               bounceDoc.schema,
               bounceDoc.example,
-              kOverlayKindBouncingMessage,
+              kOverlayTypeBouncingMessage,
             ],
+          );
+        }
+      }
+      if (from < 41) {
+        await _migrateOverlaysTableV41(this);
+      }
+      if (from < 42) {
+        await _renameCuratorTablesV42(this);
+      }
+      if (from < 43) {
+        await _migrateGuestWifiToWifiV43(this);
+      }
+      if (from < 44) {
+        await _migrateTickerTapeMarqueeKvToConfigJsonV44(this);
+      }
+      if (from < 45) {
+        await _renameCoreTablesV45(this);
+      }
+      if (from < 46) {
+        final triviaTable = await customSelect(
+          "SELECT name FROM sqlite_master WHERE type='table' "
+          "AND name='trivia_questions' LIMIT 1",
+        ).get();
+        if (triviaTable.isNotEmpty) {
+          await customStatement(
+            'ALTER TABLE trivia_questions ADD COLUMN integration_id TEXT;',
           );
         }
       }
@@ -787,11 +853,338 @@ FROM curator_settings WHERE id = 'app';
   );
 }
 
+String _mergeLegacyOverlaySchedulesRowForV41({
+  required String configJson,
+  required String messagesJson,
+}) {
+  Map<String, dynamic> cfg;
+  try {
+    final d = jsonDecode(configJson.trim().isEmpty ? '{}' : configJson);
+    cfg = d is Map
+        ? Map<String, dynamic>.from(d.map((k, v) => MapEntry(k.toString(), v)))
+        : <String, dynamic>{};
+  } on Object {
+    cfg = <String, dynamic>{};
+  }
+  List<dynamic> rawList;
+  try {
+    final m = jsonDecode(messagesJson.trim().isEmpty ? '[]' : messagesJson);
+    rawList = m is List ? m : <dynamic>[];
+  } on Object {
+    rawList = <dynamic>[];
+  }
+  final msgs = <String>[
+    for (final e in rawList)
+      if (e is String && e.trim().isNotEmpty) e.trim(),
+  ];
+  cfg['messages'] = msgs;
+  return jsonEncode(cfg);
+}
+
+/// Renames legacy SQLite tables to match current [Table.tableName] values.
+Future<void> _renameCoreTablesV45(AppDatabase db) async {
+  await db.customStatement(
+    'DROP VIEW IF EXISTS v_dashboard_alert_active_candidates;',
+  );
+  await db.customStatement('DROP VIEW IF EXISTS v_alert_active_candidates;');
+
+  final hasDashboardAlerts = await db.customSelect(
+    "SELECT 1 FROM sqlite_master WHERE type='table' "
+    "AND name='dashboard_alerts' LIMIT 1",
+  ).get();
+  if (hasDashboardAlerts.isNotEmpty) {
+    await db.customStatement('ALTER TABLE dashboard_alerts RENAME TO alerts;');
+  }
+
+  final hasScreenDefinitions = await db.customSelect(
+    "SELECT 1 FROM sqlite_master WHERE type='table' "
+    "AND name='screen_definitions' LIMIT 1",
+  ).get();
+  if (hasScreenDefinitions.isNotEmpty) {
+    await db.customStatement(
+      'ALTER TABLE screen_definitions RENAME TO screens;',
+    );
+  }
+
+  final hasWeatherGovAlerts = await db.customSelect(
+    "SELECT 1 FROM sqlite_master WHERE type='table' "
+    "AND name='weather_gov_active_alerts' LIMIT 1",
+  ).get();
+  if (hasWeatherGovAlerts.isNotEmpty) {
+    await db.customStatement(
+      'ALTER TABLE weather_gov_active_alerts RENAME TO weather_alerts;',
+    );
+  }
+
+  final hasWeatherCurrentData = await db.customSelect(
+    "SELECT 1 FROM sqlite_master WHERE type='table' "
+    "AND name='weather_current_data' LIMIT 1",
+  ).get();
+  if (hasWeatherCurrentData.isNotEmpty) {
+    await db.customStatement(
+      'ALTER TABLE weather_current_data RENAME TO weather_current;',
+    );
+  }
+
+  await db.customStatement('''
+CREATE VIEW IF NOT EXISTS v_alert_active_candidates AS
+SELECT *
+FROM alerts
+WHERE dismissed_at IS NULL
+ORDER BY priority DESC, created_at DESC;
+''');
+}
+
+Future<void> _migrateOverlaysTableV41(AppDatabase db) async {
+  final hasNew = await db.customSelect(
+    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='overlays' LIMIT 1",
+  ).get();
+  if (hasNew.isNotEmpty) {
+    return;
+  }
+  final hasOld = await db.customSelect(
+    "SELECT 1 FROM sqlite_master WHERE type='table' "
+    "AND name='display_overlay_schedules' LIMIT 1",
+  ).get();
+  await db.customStatement(kEnsureOverlaysTableSql);
+  if (hasOld.isEmpty) {
+    return;
+  }
+  final rows = await db.customSelect('SELECT * FROM display_overlay_schedules').get();
+  for (final r in rows) {
+    final merged = _mergeLegacyOverlaySchedulesRowForV41(
+      configJson: r.read<String>('config_json'),
+      messagesJson: r.read<String>('messages_json'),
+    );
+    await db.customStatement(
+      'INSERT OR REPLACE INTO overlays ('
+      'id, enabled, overlay_type, label, config_json, config_json_schema, '
+      'example_config_json, repeat_annually, year_exact, start_month, start_day, '
+      'end_month, end_day, nth_week_of_month, nth_weekday) '
+      'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      <Object?>[
+        r.read<String>('id'),
+        r.read<int>('enabled'),
+        r.read<String>('overlay_kind'),
+        r.read<String>('label'),
+        merged,
+        r.data['config_json_schema'],
+        r.data['example_config_json'],
+        r.read<int>('repeat_annually'),
+        r.data['year_exact'],
+        r.read<int>('start_month'),
+        r.read<int>('start_day'),
+        r.data['end_month'],
+        r.data['end_day'],
+        r.data['nth_week_of_month'],
+        r.data['nth_weekday'],
+      ],
+    );
+  }
+  await db.customStatement('DROP TABLE display_overlay_schedules');
+}
+
+Future<void> _renameCuratorTablesV42(AppDatabase db) async {
+  final ccOld = await db.customSelect(
+    "SELECT 1 FROM sqlite_master WHERE type='table' "
+    "AND name='content_categories' LIMIT 1",
+  ).get();
+  if (ccOld.isNotEmpty) {
+    await db.customStatement(
+      'ALTER TABLE content_categories RENAME TO curator_categories;',
+    );
+  }
+  final rtOld = await db.customSelect(
+    "SELECT 1 FROM sqlite_master WHERE type='table' "
+    "AND name='reject_terms' LIMIT 1",
+  ).get();
+  if (rtOld.isNotEmpty) {
+    await db.customStatement(
+      'ALTER TABLE reject_terms RENAME TO curator_rejected_terms;',
+    );
+  }
+}
+
+Future<void> _migrateGuestWifiToWifiV43(AppDatabase db) async {
+  String? screenTable;
+  final hasScreens = await db.customSelect(
+    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='screens' LIMIT 1",
+  ).get();
+  if (hasScreens.isNotEmpty) {
+    screenTable = 'screens';
+  } else {
+    final hasLegacy = await db.customSelect(
+      "SELECT 1 FROM sqlite_master WHERE type='table' "
+      "AND name='screen_definitions' LIMIT 1",
+    ).get();
+    if (hasLegacy.isNotEmpty) {
+      screenTable = 'screen_definitions';
+    }
+  }
+  if (screenTable == null) {
+    return;
+  }
+
+  final screenCols = await db.customSelect(
+    'PRAGMA table_info($screenTable);',
+  ).get();
+  final screenColNames = screenCols.map((r) => r.read<String>('name')).toSet();
+  if (!screenColNames.contains('screen_type')) {
+    return;
+  }
+
+  final hasKv = await db.customSelect(
+    "SELECT 1 FROM sqlite_master WHERE type='table' "
+    "AND name='config_key_values' LIMIT 1",
+  ).get();
+  final Map<String, String> kvValues;
+  if (hasKv.isEmpty) {
+    kvValues = <String, String>{};
+  } else {
+    kvValues = {
+      for (final r in await db.select(db.configKeyValues).get()) r.key: r.value,
+    };
+  }
+
+  const legacyDefaultKvKey = 'dashboard.guest_wifi.connection';
+
+  final rows = await db.customSelect(
+    'SELECT id, screen_type, config_json FROM $screenTable '
+    "WHERE screen_type = 'guest_wifi';",
+  ).get();
+
+  for (final row in rows) {
+    final id = row.read<String>('id');
+    Map<String, dynamic> cfg = <String, dynamic>{};
+    try {
+      final raw = row.read<String>('config_json');
+      final d = jsonDecode(raw.trim().isEmpty ? '{}' : raw);
+      if (d is Map<String, dynamic>) {
+        cfg = Map<String, dynamic>.from(d);
+      } else if (d is Map) {
+        cfg = Map<String, dynamic>.from(
+          d.map((k, v) => MapEntry(k.toString(), v)),
+        );
+      }
+    } on Object {
+      cfg = <String, dynamic>{};
+    }
+
+    final kvKey = cfg['kvKey'] as String? ?? legacyDefaultKvKey;
+    final fromCfg = cfg['connection'];
+    final connectionFromCfg =
+        fromCfg is String && fromCfg.trim().isNotEmpty ? fromCfg.trim() : null;
+    final kvVal = kvValues[kvKey];
+    final connection =
+        connectionFromCfg ??
+        (kvVal != null && kvVal.trim().isNotEmpty ? kvVal.trim() : null);
+
+    final newCfg = <String, dynamic>{};
+    if (connection != null && connection.isNotEmpty) {
+      newCfg['connection'] = connection;
+    }
+    final headline = cfg['headline'];
+    if (headline is String && headline.trim().isNotEmpty) {
+      newCfg['headline'] = headline.trim();
+    }
+
+    final doc = screenConfigJsonDocForType('wifi');
+    await db.customStatement(
+      'UPDATE $screenTable SET screen_type = ?, config_json = ?, '
+      'config_json_schema = ?, example_config_json = ? WHERE id = ?',
+      <Object?>['wifi', jsonEncode(newCfg), doc.schema, doc.example, id],
+    );
+  }
+}
+
+Future<void> _migrateTickerTapeMarqueeKvToConfigJsonV44(AppDatabase db) async {
+  final tickerTables = await db.customSelect(
+    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ticker_tapes' LIMIT 1",
+  ).get();
+  if (tickerTables.isEmpty) {
+    return;
+  }
+
+  final cols = await db.customSelect('PRAGMA table_info(ticker_tapes);').get();
+  final colNames = cols.map((r) => r.read<String>('name')).toSet();
+  if (!colNames.contains('config_json')) {
+    await db.customStatement(
+      "ALTER TABLE ticker_tapes ADD COLUMN config_json TEXT NOT NULL DEFAULT '{}'",
+    );
+  }
+
+  Future<String?> kvLine(String key) async {
+    final hasCfg = await db.customSelect(
+      "SELECT 1 FROM sqlite_master WHERE type='table' "
+      "AND name='config_key_values' LIMIT 1",
+    ).get();
+    if (hasCfg.isEmpty) {
+      return null;
+    }
+    final rows = await db.customSelect(
+      'SELECT value FROM config_key_values WHERE key = ?',
+      variables: [Variable<String>(key)],
+    ).get();
+    if (rows.isEmpty) {
+      return null;
+    }
+    return rows.first.read<String?>('value');
+  }
+
+  Future<void> mergeFallbackIntoTapeRow(String tapeId, String fallback) async {
+    final rows = await db.customSelect(
+      'SELECT config_json FROM ticker_tapes WHERE id = ?',
+      variables: [Variable<String>(tapeId)],
+    ).get();
+    if (rows.isEmpty) {
+      return;
+    }
+    final existingRaw = rows.first.read<String?>('config_json') ?? '{}';
+    var cfg = <String, dynamic>{};
+    try {
+      final d = jsonDecode(existingRaw.trim().isEmpty ? '{}' : existingRaw);
+      if (d is Map) {
+        cfg = Map<String, dynamic>.from(
+          d.map((k, Object? v) => MapEntry(k.toString(), v)),
+        );
+      }
+    } on Object {
+      cfg = <String, dynamic>{};
+    }
+    cfg['fallbackText'] = fallback;
+    await db.customStatement(
+      'UPDATE ticker_tapes SET config_json = ? WHERE id = ?',
+      <Object?>[jsonEncode(cfg), tapeId],
+    );
+  }
+
+  const bindings = <(String, String)>[
+    ('ticker.marquee.weather', 'ticker_weather'),
+    ('ticker.marquee.news', 'ticker_news'),
+    ('ticker.marquee.quote', 'ticker_quote'),
+  ];
+  for (final b in bindings) {
+    final v = await kvLine(b.$1);
+    if (v != null && v.trim().isNotEmpty) {
+      await mergeFallbackIntoTapeRow(b.$2, v.trim());
+    }
+  }
+
+  final hasCfg = await db.customSelect(
+    "SELECT 1 FROM sqlite_master WHERE type='table' "
+    "AND name='config_key_values' LIMIT 1",
+  ).get();
+  if (hasCfg.isNotEmpty) {
+    await db.customStatement(
+      "DELETE FROM config_key_values WHERE key IN "
+      "('ticker.marquee.weather','ticker.marquee.news','ticker.marquee.quote')",
+    );
+  }
+}
+
 Future<void> _seedDefaultRejectTerms(AppDatabase db) async {
-  final existing = await db
-      .customSelect('SELECT COUNT(*) AS n FROM reject_terms;')
-      .getSingle();
-  if (existing.read<int>('n') > 0) {
+  final existing = await db.select(db.rejectTerms).get();
+  if (existing.isNotEmpty) {
     return;
   }
   final nowMs = DateTime.now().millisecondsSinceEpoch;

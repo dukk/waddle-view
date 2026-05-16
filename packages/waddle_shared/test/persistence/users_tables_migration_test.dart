@@ -4,7 +4,7 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:waddle_shared/persistence/database.dart';
 
 void main() {
-  test('v37 -> v38 creates user auth tables', () async {
+  test('v37 -> v39 creates user auth tables', () async {
     final raw = sqlite.sqlite3.openInMemory();
     raw.execute('PRAGMA foreign_keys = ON;');
     raw.execute('''
@@ -25,7 +25,7 @@ CREATE TABLE config_key_values (
     expect(tables.length, 3);
 
     final ver = await db.customSelect('PRAGMA user_version').getSingle();
-    expect(ver.read<int>('user_version'), 38);
+    expect(ver.read<int>('user_version'), 46);
 
     await db.close();
   });

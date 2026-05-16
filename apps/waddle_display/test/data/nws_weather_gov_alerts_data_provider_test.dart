@@ -73,8 +73,8 @@ void main() {
   test('collect skips when provider disabled', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: kNwsWeatherAlertsProviderId,
             providerType: 'weather_nws_alerts',
             enabled: const Value(false),
@@ -133,8 +133,8 @@ void main() {
   test('collect writes NWS alerts for each enabled location', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: kNwsWeatherAlertsProviderId,
             providerType: 'weather_nws_alerts',
             pollSeconds: const Value(60),
@@ -168,7 +168,7 @@ void main() {
     await provider.collect(ctx);
 
     expect(client.sends, 1);
-    final rows = await db.select(db.weatherGovActiveAlerts).get();
+    final rows = await db.select(db.weatherAlerts).get();
     expect(rows, hasLength(1));
     expect(rows.single.locationId, 'nyc');
     expect(rows.single.nwsAlertId, 'urn:oid:1.2.3');
@@ -183,8 +183,8 @@ void main() {
   test('collect replaces prior alerts for location', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: kNwsWeatherAlertsProviderId,
             providerType: 'weather_nws_alerts',
             pollSeconds: const Value(60),
@@ -220,11 +220,11 @@ void main() {
     final provider = NwsWeatherGovAlertsDataProvider(httpClient: client);
 
     await provider.collect(ctx);
-    expect(await db.select(db.weatherGovActiveAlerts).get(), hasLength(1));
-    expect((await db.select(db.weatherGovActiveAlerts).get()).single.event, 'First');
+    expect(await db.select(db.weatherAlerts).get(), hasLength(1));
+    expect((await db.select(db.weatherAlerts).get()).single.event, 'First');
 
     await provider.collect(ctx);
-    final rows = await db.select(db.weatherGovActiveAlerts).get();
+    final rows = await db.select(db.weatherAlerts).get();
     expect(rows, hasLength(1));
     expect(rows.single.nwsAlertId, 'urn:b');
     expect(rows.single.event, 'Second');
@@ -234,8 +234,8 @@ void main() {
   test('collect clears stored alerts when API returns empty features', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: kNwsWeatherAlertsProviderId,
             providerType: 'weather_nws_alerts',
             pollSeconds: const Value(60),
@@ -251,8 +251,8 @@ void main() {
             longitude: -74.0060,
           ),
         );
-    await db.into(db.weatherGovActiveAlerts).insert(
-          WeatherGovActiveAlertsCompanion.insert(
+    await db.into(db.weatherAlerts).insert(
+          WeatherAlertsCompanion.insert(
             locationId: 'nyc',
             nwsAlertId: 'urn:old',
             event: 'Old',
@@ -269,15 +269,15 @@ void main() {
 
     await provider.collect(ctx);
 
-    expect(await db.select(db.weatherGovActiveAlerts).get(), isEmpty);
+    expect(await db.select(db.weatherAlerts).get(), isEmpty);
     await db.close();
   });
 
   test('collect does not clear alerts on HTTP error', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: kNwsWeatherAlertsProviderId,
             providerType: 'weather_nws_alerts',
             pollSeconds: const Value(60),
@@ -293,8 +293,8 @@ void main() {
             longitude: -74.0060,
           ),
         );
-    await db.into(db.weatherGovActiveAlerts).insert(
-          WeatherGovActiveAlertsCompanion.insert(
+    await db.into(db.weatherAlerts).insert(
+          WeatherAlertsCompanion.insert(
             locationId: 'nyc',
             nwsAlertId: 'urn:stale',
             event: 'Old',
@@ -312,7 +312,7 @@ void main() {
 
     await provider.collect(ctx);
 
-    final rows = await db.select(db.weatherGovActiveAlerts).get();
+    final rows = await db.select(db.weatherAlerts).get();
     expect(rows, hasLength(1));
     expect(rows.single.event, 'Old');
     await db.close();
@@ -321,8 +321,8 @@ void main() {
   test('collect catches per-location errors without rethrowing', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: kNwsWeatherAlertsProviderId,
             providerType: 'weather_nws_alerts',
             pollSeconds: const Value(60),
@@ -353,8 +353,8 @@ void main() {
   test('collect stores truncated description excerpt for long text', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: kNwsWeatherAlertsProviderId,
             providerType: 'weather_nws_alerts',
             pollSeconds: const Value(60),
@@ -386,7 +386,7 @@ void main() {
 
     await provider.collect(ctx);
 
-    final row = (await db.select(db.weatherGovActiveAlerts).get()).single;
+    final row = (await db.select(db.weatherAlerts).get()).single;
     expect(row.descriptionExcerpt, isNotNull);
     expect(row.descriptionExcerpt!.length, lessThanOrEqualTo(401));
     expect(row.descriptionExcerpt!.endsWith('\u2026'), isTrue);
@@ -397,8 +397,8 @@ void main() {
       () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: kNwsWeatherAlertsProviderId,
             providerType: 'weather_nws_alerts',
             pollSeconds: const Value(60),
@@ -416,8 +416,8 @@ void main() {
             includeActiveWeatherAlerts: const Value(false),
           ),
         );
-    await db.into(db.weatherGovActiveAlerts).insert(
-          WeatherGovActiveAlertsCompanion.insert(
+    await db.into(db.weatherAlerts).insert(
+          WeatherAlertsCompanion.insert(
             locationId: 'nyc',
             nwsAlertId: 'urn:old',
             event: 'Old',
@@ -434,7 +434,7 @@ void main() {
     await provider.collect(ctx);
 
     expect(client.sends, 0);
-    expect(await db.select(db.weatherGovActiveAlerts).get(), isEmpty);
+    expect(await db.select(db.weatherAlerts).get(), isEmpty);
     await db.close();
   });
 
@@ -442,8 +442,8 @@ void main() {
       () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.providerSettings).insert(
-          ProviderSettingsCompanion.insert(
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
             id: kNwsWeatherAlertsProviderId,
             providerType: 'weather_nws_alerts',
             pollSeconds: const Value(60),

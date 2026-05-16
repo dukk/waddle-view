@@ -311,8 +311,8 @@ class MicrosoftGraphOAuth {
         'expiresInSec=$expiresIn verification_uri=$verificationUri',
       );
 
-      final alertId = await db.into(db.dashboardAlerts).insert(
-            DashboardAlertsCompanion.insert(
+      final alertId = await db.into(db.alerts).insert(
+            AlertsCompanion.insert(
               title: '$kMicrosoftGraphDeviceSignInTitle ($graphAccountKey)',
               body: bodyText.toString(),
               qrPayload: Value(qrUrl),
@@ -436,9 +436,9 @@ class MicrosoftGraphOAuth {
   }
 
   Future<void> _dismissDeviceCodeAlert(AppDatabase db, int alertId) async {
-    await (db.update(db.dashboardAlerts)..where((t) => t.id.equals(alertId)))
+    await (db.update(db.alerts)..where((t) => t.id.equals(alertId)))
         .write(
-          DashboardAlertsCompanion(
+          AlertsCompanion(
             dismissedAt: Value(
               DateTime.fromMillisecondsSinceEpoch(_nowMs()),
             ),

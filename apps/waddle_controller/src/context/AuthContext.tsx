@@ -15,6 +15,7 @@ import {
   saveSession,
   type DisplaySession,
 } from '@/storage/sessions';
+import { permissionsForRole, PREVIEWABLE_CONTROLLER_ROLES } from '@/auth/rolePermissions';
 
 type AuthCtx = {
   session: DisplaySession | null;
@@ -22,14 +23,30 @@ type AuthCtx = {
   logout: () => Promise<void>;
   refreshSession: () => Promise<void>;
   hasPermission: (perm: string) => boolean;
+  /** Role for UI + routing (admin “view as” preview overrides actual role). */
+  effectiveRole: string | null;
+  /** Viewer or power viewer: operator sidebar is trimmed; allowed routes are enforced in `ProgramsOnlyOutlet`. */
+  isProgramsOnlyControllerUser: boolean;
   bootstrapWarning: boolean;
   needsLogin: boolean;
+  /** Sign-in dialog is open because it is required or the user asked to sign in again. */
+  loginDialogOpen: boolean;
+  openLoginDialog: () => void;
+  closeLoginDialog: () => void;
+  /** Signed-in user is an administrator (not affected by UI preview). */
+  isAdminUser: boolean;
+  /** When set, the controller UI treats permissions as this role (admin preview only). */
+  viewAsRole: string | null;
+  setViewAsRole: (role: string) => void;
+  clearViewAsRole: () => void;
 };
 
 const Ctx = createContext<AuthCtx | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { active } = useDisplay();
+  const [loginDialogForced, setLoginDialogForced] = useState(false);
+  const [viewAsRole, setViewAsRoleState] = useState<string | null>(null);
   const [session, setSession] = useState<DisplaySession | null>(() =>
     active ? loadSession(active.id) : null,
   );
@@ -45,6 +62,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     syncFromStorage();
   }, [syncFromStorage]);
 
+  useEffect(() => {
+    setViewAsRoleState(null);
+  }, [active?.id]);
+
+  useEffect(() => {
+    if (!active) {
+      setLoginDialogForced(false);
+    }
+  }, [active]);
+
+  const isAdminUser = session?.user.role === 'admin';
+
+  useEffect(() => {
+    if (!isAdminUser) setViewAsRoleState(null);
+  }, [isAdminUser]);
+
+  const openLoginDialog = useCallback(() => {
+    if (active) {
+      setLoginDialogForced(true);
+    }
+  }, [active]);
+
+  const closeLoginDialog = useCallback(() => {
+    setLoginDialogForced(false);
+  }, []);
+
   const login = useCallback(
     async (username: string, password: string) => {
       if (!active) throw new Error('No display selected');
@@ -58,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
       saveSession(active.id, stored);
       setSession(stored);
+      setLoginDialogForced(false);
     },
     [active],
   );
@@ -68,6 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearSession(active.id);
     }
     setSession(null);
+    setViewAsRoleState(null);
+    setLoginDialogForced(false);
   }, [active, session]);
 
   const refreshSession = useCallback(async () => {
@@ -88,17 +134,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [active]);
 
+  const needsLogin = active != null && session == null;
+  const loginDialogOpen = Boolean(active && (needsLogin || loginDialogForced));
+
+  const previewPermissions = useMemo(() => {
+    if (!session || !isAdminUser || !viewAsRole) return null;
+    return permissionsForRole(viewAsRole);
+  }, [session, isAdminUser, viewAsRole]);
+
+  const effectiveRole = useMemo(() => {
+    if (!session) return null;
+    if (isAdminUser && viewAsRole) return viewAsRole;
+    return session.user.role;
+  }, [session, isAdminUser, viewAsRole]);
+
+  const isProgramsOnlyControllerUser =
+    effectiveRole === 'viewer' || effectiveRole === 'power_viewer';
+
+  const setViewAsRole = useCallback(
+    (role: string) => {
+      if (!isAdminUser) return;
+      if (!(PREVIEWABLE_CONTROLLER_ROLES as readonly string[]).includes(role)) return;
+      setViewAsRoleState(role);
+    },
+    [isAdminUser],
+  );
+
+  const clearViewAsRole = useCallback(() => {
+    setViewAsRoleState(null);
+  }, []);
+
   const value = useMemo(
     () => ({
       session,
       login,
       logout,
       refreshSession,
-      hasPermission: (perm: string) => session?.permissions.includes(perm) ?? false,
+      hasPermission: (perm: string) => {
+        if (!session) return false;
+        if (previewPermissions) return previewPermissions.includes(perm);
+        return session.permissions.includes(perm);
+      },
+      effectiveRole,
+      isProgramsOnlyControllerUser,
       bootstrapWarning: session?.warnings.includes('bootstrap_admin') ?? false,
-      needsLogin: active != null && session == null,
+      needsLogin,
+      loginDialogOpen,
+      openLoginDialog,
+      closeLoginDialog,
+      isAdminUser,
+      viewAsRole: isAdminUser ? viewAsRole : null,
+      setViewAsRole,
+      clearViewAsRole,
     }),
-    [session, login, logout, refreshSession, active],
+    [
+      session,
+      login,
+      logout,
+      refreshSession,
+      previewPermissions,
+      effectiveRole,
+      isProgramsOnlyControllerUser,
+      needsLogin,
+      loginDialogOpen,
+      openLoginDialog,
+      closeLoginDialog,
+      isAdminUser,
+      viewAsRole,
+      setViewAsRole,
+      clearViewAsRole,
+    ],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

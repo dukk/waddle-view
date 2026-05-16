@@ -39,9 +39,9 @@ void main() {
         summary: 'U',
         showSource: false,
       );
-      const a = TickerItem(kind: 'news', body: 'plain', rss: rss);
-      const b = TickerItem(kind: 'news', body: 'plain', rss: rss);
-      const c = TickerItem(kind: 'news', body: 'plain');
+      const a = TickerItem(kind: 'news', body: 'plain', rss: rss, articleId: 'x');
+      const b = TickerItem(kind: 'news', body: 'plain', rss: rss, articleId: 'x');
+      const c = TickerItem(kind: 'news', body: 'plain', rss: rss, articleId: 'y');
       expect(a, b);
       expect(a.hashCode, b.hashCode);
       expect(a, isNot(c));

@@ -5,13 +5,13 @@ import 'package:waddle_display/curator/ticker_item.dart';
 import 'package:waddle_display/debug/operator_telemetry_hub.dart';
 
 void main() {
-  test('provider lines ring buffer drops oldest', () {
-    final hub = OperatorTelemetryHub(maxProviderLines: 3);
-    hub.addProviderLine('a');
-    hub.addProviderLine('b');
-    hub.addProviderLine('c');
-    hub.addProviderLine('d');
-    final snap = hub.snapshotProviderLines();
+  test('integration/engine lines ring buffer drops oldest', () {
+    final hub = OperatorTelemetryHub(maxIntegrationLines: 3);
+    hub.addIntegrationLine('a');
+    hub.addIntegrationLine('b');
+    hub.addIntegrationLine('c');
+    hub.addIntegrationLine('d');
+    final snap = hub.snapshotIntegrationLines();
     expect(snap.length, 3);
     expect(snap.map((e) => e['message']), ['b', 'c', 'd']);
   });
@@ -48,6 +48,7 @@ void main() {
         kind: 'news',
         body: 'hello',
         sourceId: 'id1',
+        articleId: 'art99',
         rss: const TickerRssSegments(
           sourceTitle: 'Src',
           articleTitle: 'Title',
@@ -60,25 +61,26 @@ void main() {
     expect(snap.length, 1);
     final items = snap.first['items'] as List<dynamic>;
     expect((items.first as Map)['kind'], 'news');
+    expect((items.first as Map)['article_id'], 'art99');
     expect((items.first as Map)['rss'], isNotNull);
   });
 
   test('sinceMs filters snapshots', () async {
-    final hub = OperatorTelemetryHub(maxProviderLines: 100);
+    final hub = OperatorTelemetryHub(maxIntegrationLines: 100);
     hub.addEngineLine('old');
     await Future<void>.delayed(const Duration(milliseconds: 5));
     final t0 = DateTime.now().millisecondsSinceEpoch;
     hub.addEngineLine('new');
-    final filtered = hub.snapshotProviderLines(sinceMs: t0);
+    final filtered = hub.snapshotIntegrationLines(sinceMs: t0);
     expect(filtered.length, 1);
     expect(filtered.first['message'], 'new');
   });
 
-  test('addProviderFail and addEngineFail append lines', () {
-    final hub = OperatorTelemetryHub(maxProviderLines: 20);
-    hub.addProviderFail('ctx', StateError('x'), StackTrace.current);
+  test('addIntegrationFail and addEngineFail append lines', () {
+    final hub = OperatorTelemetryHub(maxIntegrationLines: 20);
+    hub.addIntegrationFail('ctx', StateError('x'), StackTrace.current);
     hub.addEngineFail('eng', ArgumentError('y'), StackTrace.current);
-    final snap = hub.snapshotProviderLines();
+    final snap = hub.snapshotIntegrationLines();
     expect(snap.length, 2);
     expect((snap[0]['message'] as String).contains('FAIL ctx'), isTrue);
     expect((snap[1]['message'] as String).contains('FAIL eng'), isTrue);
