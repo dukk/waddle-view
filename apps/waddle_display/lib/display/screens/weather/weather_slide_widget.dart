@@ -47,6 +47,14 @@ double weatherHourlyForecastScreenTextRatio(String? rawScreenScaleKv) {
   return downF / curF;
 }
 
+/// Base horizontal gap between hourly forecast tiles (scaled by viewport + text).
+@visibleForTesting
+const double kWeatherHourlyForecastTileSpacing = 12;
+
+/// Base vertical gap when hourly tiles wrap to a second row.
+@visibleForTesting
+const double kWeatherHourlyForecastTileRunSpacing = 8;
+
 @immutable
 final class _HourlyForecastTextScaler extends TextScaler {
   const _HourlyForecastTextScaler(this._parent, this._ratio)
@@ -269,8 +277,12 @@ class WeatherSlideWidget extends StatelessWidget {
                                     ),
                                     SizedBox(height: ts.scale(14 * s)),
                                     Wrap(
-                                      spacing: ts.scale(24 * s),
-                                      runSpacing: ts.scale(14 * s),
+                                      spacing: ts.scale(
+                                        kWeatherHourlyForecastTileSpacing * s,
+                                      ),
+                                      runSpacing: ts.scale(
+                                        kWeatherHourlyForecastTileRunSpacing * s,
+                                      ),
                                       alignment: WrapAlignment.center,
                                       children: hourly.take(6).map((item) {
                                         final dt = (item['dt'] as num?)

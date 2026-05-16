@@ -268,6 +268,71 @@ void main() {
     await db.close();
   });
 
+  testWidgets('hourly forecast wrap uses compact tile spacing', (
+    tester,
+  ) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.weatherLocations).insert(
+          WeatherLocationsCompanion.insert(
+            id: 'only',
+            name: 'Compact City',
+            latitude: 1,
+            longitude: 2,
+          ),
+        );
+    await db.into(db.weatherCurrent).insert(
+          WeatherCurrentCompanion.insert(
+            locationId: 'only',
+            observedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
+            currentTemp: const Value(55),
+            currentDescription: const Value('clear'),
+            hourlyJson: Value(
+              jsonEncode([
+                {'temp': 56.0, 'description': 'clear'},
+                {'temp': 57.0, 'description': 'clear'},
+              ]),
+            ),
+          ),
+        );
+    const spec = ParsedWidgetSpec(
+      type: 'weather',
+      slot: 'main',
+      config: {},
+    );
+    const slide = ResolvedSlide(
+      screenId: 'weather',
+      dwellMs: 10000,
+      layoutJson: '{}',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: DisplayTheme.build(),
+        home: Scaffold(
+          body: WeatherSlideWidget(
+            db: db,
+            slide: slide,
+            spec: spec,
+            theme: DisplayTheme.build(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final wrap = tester.widget<Wrap>(find.byType(Wrap));
+    final hourlyRatio = weatherHourlyForecastScreenTextRatio(null);
+    expect(
+      wrap.spacing,
+      closeTo(kWeatherHourlyForecastTileSpacing * hourlyRatio, 0.01),
+    );
+    expect(
+      wrap.runSpacing,
+      closeTo(kWeatherHourlyForecastTileRunSpacing * hourlyRatio, 0.01),
+    );
+    await db.close();
+  });
+
   testWidgets('hourly forecast tiles widen with screen text scaler', (
     tester,
   ) async {
