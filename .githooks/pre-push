@@ -1,0 +1,7 @@
+#!/bin/sh
+# Blocks git push when unit tests / analyze fail (see scripts/pre_push_checks.py).
+set -e
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+export WADDLE_REPO_ROOT="$ROOT"
+exec python "$ROOT/scripts/pre_push_checks.py"

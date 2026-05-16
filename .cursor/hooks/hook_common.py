@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
-"""Shared helpers for waddle-view QA hooks."""
+"""Shared helpers for waddle-view agent hooks."""
 
 from __future__ import annotations
 
 import json
 import os
 import re
-import sys
-from datetime import datetime, timezone
 from pathlib import Path
 
 STATE_DIR = Path(".cursor/hooks/state")
-STATE_PATH = STATE_DIR / "qa-edited-files.json"
+STATE_PATH = STATE_DIR / "agent-edited-files.json"
 
 SKIP_PATH_PARTS = (
     "/.cursor/hooks/state/",
@@ -53,13 +51,24 @@ def save_state(data: dict) -> None:
     path.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 
+def is_dependency_file(file_path: str) -> bool:
+    normalized = file_path.replace("\\", "/")
+    if "/node_modules/" in normalized or "/.git/" in normalized:
+        return False
+    name = Path(normalized).name
+    if name in ("pubspec.yaml", "pubspec.lock"):
+        return True
+    if name in ("package.json", "package-lock.json") and "/apps/" in normalized:
+        return True
+    return False
+
+
 def should_track_file(file_path: str) -> bool:
     normalized = file_path.replace("\\", "/")
     if any(part in normalized for part in SKIP_PATH_PARTS):
         return False
     if any(normalized.endswith(suffix) for suffix in SKIP_SUFFIXES):
         return False
-    # QA targets source under apps/ and packages/, plus root config touched by agents.
     if re.search(r"/(apps|packages)/", normalized):
         return True
     name = Path(normalized).name
@@ -80,6 +89,8 @@ def conversation_id(payload: dict) -> str:
 
 
 def read_stdin_json() -> dict:
+    import sys
+
     try:
         raw = sys.stdin.read()
         if not raw.strip():

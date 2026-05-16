@@ -1,15 +1,22 @@
 {
   "version": 1,
   "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "python .cursor/hooks/block_push_if_checks_fail.py",
+        "matcher": "git\\s+.*\\bpush\\b",
+        "failClosed": true
+      }
+    ],
     "afterFileEdit": [
       {
-        "command": "python .cursor/hooks/qa_track_edit.py",
+        "command": "python .cursor/hooks/track_source_edit.py",
         "matcher": "Write"
       }
     ],
     "stop": [
       {
-        "command": "python .cursor/hooks/qa_trigger_stop.py",
+        "command": "python .cursor/hooks/agent_stop_followup.py",
         "matcher": "Stop",
         "loop_limit": 3
       }
