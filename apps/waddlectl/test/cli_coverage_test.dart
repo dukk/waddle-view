@@ -31,13 +31,13 @@ void main() {
 
   List<String> w(List<String> tail) => ['--database', dbPath, ...tail];
 
-  test('screens tickers providers curator config surface', () async {
+  test('screens tickers integrations curator config surface', () async {
     expect(await runWaddlectl(w(['screens', 'list'])), 0);
     expect(await runWaddlectl(w(['screens', 'describe', 'missing'])), 0);
     expect(await runWaddlectl(w(['tickers', 'list'])), 0);
     expect(await runWaddlectl(w(['tickers', 'describe', 'missing'])), 0);
-    expect(await runWaddlectl(w(['providers', 'list'])), 0);
-    expect(await runWaddlectl(w(['providers', 'describe', 'missing'])), 0);
+    expect(await runWaddlectl(w(['integrations', 'list'])), 0);
+    expect(await runWaddlectl(w(['integrations', 'describe', 'missing'])), 0);
     expect(await runWaddlectl(w(['curator', 'describe-program'])), 0);
     expect(
       await runWaddlectl(
