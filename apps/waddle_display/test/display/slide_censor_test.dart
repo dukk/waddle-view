@@ -204,4 +204,114 @@ void main() {
     expect(r!.setup, 'damn setup');
     await db.close();
   });
+
+  test('loadJokeForSlide random path filters by categoryId', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.jokeCategories).insert(
+          JokeCategoriesCompanion.insert(id: 'c1', label: 'c1'),
+        );
+    await db.into(db.jokes).insert(
+          JokesCompanion.insert(
+            id: 'j_cat',
+            categoryId: 'c1',
+            setup: 's',
+            punchline: 'p',
+            createdAtMs: DateTime.fromMillisecondsSinceEpoch(1),
+          ),
+        );
+    final spec = _spec('joke', 'main', {'categoryId': 'c1'});
+    final joke = await loadJokeForSlide(
+      db,
+      spec,
+      _slide({}),
+      rejectCtx: const RejectFilterContext.empty(),
+    );
+    expect(joke?.id, 'j_cat');
+    await db.close();
+  });
+
+  test('loadJokeForSlide random path without categoryId', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.jokeCategories).insert(
+          JokeCategoriesCompanion.insert(id: 'c2', label: 'c2'),
+        );
+    await db.into(db.jokes).insert(
+          JokesCompanion.insert(
+            id: 'j_any',
+            categoryId: 'c2',
+            setup: 's2',
+            punchline: 'p2',
+            createdAtMs: DateTime.fromMillisecondsSinceEpoch(2),
+          ),
+        );
+    final spec = _spec('joke', 'side', const {});
+    final joke = await loadJokeForSlide(
+      db,
+      spec,
+      _slide({}),
+      rejectCtx: const RejectFilterContext.empty(),
+    );
+    expect(joke?.id, 'j_any');
+    await db.close();
+  });
+
+  test('loadJokeForSlide returns null when curated id row missing', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final spec = _spec('joke', 'slot');
+    final joke = await loadJokeForSlide(
+      db,
+      spec,
+      _slide({spec.choiceKey: 'missing'}),
+      rejectCtx: const RejectFilterContext.empty(),
+    );
+    expect(joke, isNull);
+    await db.close();
+  });
+
+  test('loadTriviaForSlide random path filters by categoryId', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.triviaCategories).insert(
+          TriviaCategoriesCompanion.insert(id: 'tc', label: 'tc'),
+        );
+    await db.into(db.triviaQuestions).insert(
+          TriviaQuestionsCompanion.insert(
+            id: 'tq_cat',
+            categoryId: 'tc',
+            question: 'q',
+            optionA: 'a',
+            optionB: 'b',
+            optionC: 'c',
+            optionD: 'd',
+            correctOption: 'A',
+            createdAtMs: DateTime.fromMillisecondsSinceEpoch(1),
+          ),
+        );
+    final spec = _spec('trivia', 'main', {'categoryId': 'tc'});
+    final q = await loadTriviaForSlide(
+      db,
+      spec,
+      _slide({}),
+      rejectCtx: const RejectFilterContext.empty(),
+    );
+    expect(q?.id, 'tq_cat');
+    await db.close();
+  });
+
+  test('loadTriviaForSlide returns null when curated id row missing', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final spec = _spec('trivia', 'slot');
+    final q = await loadTriviaForSlide(
+      db,
+      spec,
+      _slide({spec.choiceKey: 'nope'}),
+      rejectCtx: const RejectFilterContext.empty(),
+    );
+    expect(q, isNull);
+    await db.close();
+  });
 }

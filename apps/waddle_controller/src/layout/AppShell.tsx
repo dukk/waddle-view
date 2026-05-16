@@ -82,7 +82,6 @@ const nav = [
   { to: '/overlays', label: 'Overlays', icon: <LayersIcon /> },
   { to: '/integrations', label: 'Integrations', icon: <StorageIcon /> },
   { to: '/data', label: 'Data', icon: <DatasetIcon /> },
-  { to: '/activity', label: 'Activity Log', icon: <ListAltIcon /> },
 ];
 
 export function AppShell({ children }: { children?: ReactNode }) {
@@ -219,12 +218,42 @@ export function AppShell({ children }: { children?: ReactNode }) {
         <List sx={{ px: 1, py: 1 }}>
           <ListItemButton
             component={RouterLink}
+            to="/activity"
+            selected={location.pathname.startsWith('/activity')}
+            onClick={() => setMobileOpen(false)}
+            sx={{
+              borderRadius: 2,
+              my: 0.5,
+              '&.Mui-selected': { bgcolor: 'primary.main', color: 'primary.contrastText' },
+            }}
+          >
+            <ListItemIcon
+              sx={{
+                color: location.pathname.startsWith('/activity') ? 'inherit' : 'grey.400',
+                minWidth: 40,
+              }}
+            >
+              <ListAltIcon />
+            </ListItemIcon>
+            <ListItemText primary="Activity Log" />
+          </ListItemButton>
+          <ListItemButton
+            component={RouterLink}
             to="/settings"
             selected={location.pathname.startsWith('/settings')}
             onClick={() => setMobileOpen(false)}
-            sx={{ borderRadius: 2 }}
+            sx={{
+              borderRadius: 2,
+              my: 0.5,
+              '&.Mui-selected': { bgcolor: 'primary.main', color: 'primary.contrastText' },
+            }}
           >
-            <ListItemIcon sx={{ color: 'grey.400', minWidth: 40 }}>
+            <ListItemIcon
+              sx={{
+                color: location.pathname.startsWith('/settings') ? 'inherit' : 'grey.400',
+                minWidth: 40,
+              }}
+            >
               <SettingsIcon />
             </ListItemIcon>
             <ListItemText primary="Settings" />
@@ -259,7 +288,9 @@ export function AppShell({ children }: { children?: ReactNode }) {
               ? 'Settings'
               : location.pathname.startsWith('/account')
                 ? 'Account'
-                : location.pathname.startsWith('/data')
+                : location.pathname.startsWith('/activity')
+                  ? 'Activity Log'
+                  : location.pathname.startsWith('/data')
                   ? 'Data'
                   : drawerNavItems.find((n) => location.pathname.startsWith(n.to))?.label ??
                     nav.find((n) => location.pathname.startsWith(n.to))?.label ??

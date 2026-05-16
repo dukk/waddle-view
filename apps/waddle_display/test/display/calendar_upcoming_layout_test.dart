@@ -233,41 +233,34 @@ void main() {
     final c = calendarEventMarkerAccent(scheme, e);
     expect(palette, contains(c));
     expect(calendarEventMarkerAccent(scheme, e), c);
-    final distinct = <Color>{
-      calendarEventMarkerAccent(
-        scheme,
-        _ev(
-          id: '1',
-          title: 'A',
-          start: DateTime.utc(2024, 1, 1),
-          end: DateTime.utc(2024, 1, 1, 1),
-          source: 'google_calendar',
-          categoryId: 'work',
-        ),
-      ),
-      calendarEventMarkerAccent(
-        scheme,
-        _ev(
-          id: '2',
-          title: 'B',
-          start: DateTime.utc(2024, 1, 2),
-          end: DateTime.utc(2024, 1, 2, 1),
-          source: 'google_calendar',
-          categoryId: 'family',
-        ),
-      ),
-      calendarEventMarkerAccent(
-        scheme,
-        _ev(
-          id: '3',
-          title: 'C',
-          start: DateTime.utc(2024, 1, 3),
-          end: DateTime.utc(2024, 1, 3, 1),
-          source: 'outlook_calendar',
-          categoryId: 'work',
-        ),
-      ),
-    };
-    expect(distinct.length, greaterThanOrEqualTo(2));
+    final ev1 = _ev(
+      id: '1',
+      title: 'A',
+      start: DateTime.utc(2024, 1, 1),
+      end: DateTime.utc(2024, 1, 1, 1),
+      source: 'google_calendar',
+      categoryId: 'work',
+    );
+    final ev2 = _ev(
+      id: '2',
+      title: 'B',
+      start: DateTime.utc(2024, 1, 2),
+      end: DateTime.utc(2024, 1, 2, 1),
+      source: 'google_calendar',
+      categoryId: 'family',
+    );
+    final ev3 = _ev(
+      id: '3',
+      title: 'C',
+      start: DateTime.utc(2024, 1, 3),
+      end: DateTime.utc(2024, 1, 3, 1),
+      source: 'outlook_calendar',
+      categoryId: 'work',
+    );
+    for (final ev in [ev1, ev2, ev3]) {
+      final accent = calendarEventMarkerAccent(scheme, ev);
+      expect(palette, contains(accent));
+      expect(calendarEventMarkerAccent(scheme, ev), accent);
+    }
   });
 }

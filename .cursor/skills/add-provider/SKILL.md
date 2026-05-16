@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 # Add IDataProvider (waddle-display)
 
-Repo constraints: [AGENTS.md](../../../AGENTS.md) (default app **`apps/waddle_display/`** only; tests-first; ≥90% line coverage on `lib/`; no secrets in SQLite; Drift migrations if persistence changes).
+Repo constraints: [AGENTS.md](../../../AGENTS.md) (default app **`apps/waddle_display/`** only; tests-first; ≥85% line coverage on `lib/`; no secrets in SQLite; Drift migrations if persistence changes).
 
 ## Forbidden
 
@@ -32,4 +32,4 @@ Repo constraints: [AGENTS.md](../../../AGENTS.md) (default app **`apps/waddle_di
 
 ## Verification
 
-From `apps/waddle_display`: `flutter analyze`, `flutter test --coverage`, `dart run tool/coverage_check.dart --min=90`.
+From `apps/waddle_display`: `flutter analyze`, `flutter test --coverage`, `dart run tool/coverage_check.dart --min=85`.

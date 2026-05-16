@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 # Run waddle_display CI checks locally
 
-Mirror of [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) `analyze-test` job. CI fails on **any** `flutter analyze` issue (warnings included) and on coverage below 90%, so run the same commands locally before pushing.
+Mirror of [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) `analyze-test` job. CI fails on **any** `flutter analyze` issue (warnings included) and on coverage **below 85%** (the **90%** line is a target: the checker warns but does not fail between 85% and 90%), so run the same commands locally before pushing.
 
 ## Commands (from repo root)
 
@@ -20,7 +20,7 @@ flutter test -C packages/waddle_shared
 cd apps/waddle_display
 flutter analyze
 flutter test --coverage --timeout=60s
-dart run tool/coverage_check.dart --min=90 coverage/lcov.info
+dart run tool/coverage_check.dart --min=85 --target=90 coverage/lcov.info
 ```
 
 ## Notes

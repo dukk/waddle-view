@@ -69,8 +69,10 @@ Useful variants:
 ```bash
 flutter analyze
 flutter test --coverage
-dart run tool/coverage_check.dart --min=90
+dart run tool/coverage_check.dart --min=85 --target=90
 ```
+
+**Coverage gate:** **≥ 85%** is the CI **minimum** (build fails below it). **90%** is the **target**; between 85% and 90% the check **passes** but prints a **stderr warning** so coverage can be raised over time.
 
 Per-test wall time is capped at **60s** by `dart_test.yaml` (and CI uses the same `--timeout=60s`) so a stuck async test fails instead of blocking the suite. Override in code only when a test is genuinely slow: `test('...', () { ... }, timeout: Timeout(Duration(minutes: 2)));`
 

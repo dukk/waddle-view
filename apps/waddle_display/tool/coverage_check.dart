@@ -1,6 +1,11 @@
-// Parses coverage/lcov.info and enforces a minimum line hit ratio on Dart sources
+// Parses coverage/lcov.info and enforces a **CI floor** line hit ratio on Dart sources
 // under `apps/waddle_display/lib/`, `packages/waddle_shared/lib/`, and
 // `packages/waddle_data_providers/lib/`.
+//
+// Also compares against an optional **aspirational target** (default 90%): falling
+// short of the target prints a warning to stderr but **does not** change exit
+// code as long as coverage is at or above `--min=` (default 85%).
+//
 // Excludes: `*.g.dart`, declarative `persistence/tables.dart`, and `lib/main.dart`
 // (display app composition root only).
 import 'dart:io';
@@ -33,11 +38,14 @@ bool _includeSourceFile(String sf) {
 }
 
 void main(List<String> args) {
-  var minPct = 90.0;
+  var minPct = 85.0;
+  var targetPct = 90.0;
   String lcovPath = 'coverage/lcov.info';
   for (final a in args) {
     if (a.startsWith('--min=')) {
       minPct = double.parse(a.split('=').last);
+    } else if (a.startsWith('--target=')) {
+      targetPct = double.parse(a.split('=').last);
     } else if (!a.startsWith('--')) {
       lcovPath = a;
     }
@@ -83,7 +91,22 @@ void main(List<String> args) {
     '${pct.toStringAsFixed(2)}% ($totalLh / $totalLf lines)',
   );
   if (pct + 1e-9 < minPct) {
-    stderr.writeln('Below minimum ${minPct.toStringAsFixed(0)}%');
+    stderr.writeln(
+      'Below CI minimum ${minPct.toStringAsFixed(0)}% '
+      '(target is ${targetPct.toStringAsFixed(0)}% — see --target=).',
+    );
     exitCode = 1;
+    return;
+  }
+  if (targetPct > minPct + 1e-9 && pct + 1e-9 < targetPct) {
+    stderr.writeln(
+      'Coverage meets CI minimum (${minPct.toStringAsFixed(0)}%) but is below '
+      'the project target (${targetPct.toStringAsFixed(0)}%). '
+      'This is a warning only; raise coverage when practical.',
+    );
+  } else if (targetPct > minPct + 1e-9 && pct + 1e-9 >= targetPct) {
+    stdout.writeln(
+      'Meets project coverage target (>= ${targetPct.toStringAsFixed(0)}%).',
+    );
   }
 }

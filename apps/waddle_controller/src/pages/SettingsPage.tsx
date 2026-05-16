@@ -22,7 +22,6 @@ import {
   Typography,
 } from '@mui/material';
 import {
-  addDisplay,
   exportDisplaysJson,
   importDisplaysJson,
   importDisplaysJsonLegacy,
@@ -54,7 +53,7 @@ function isBootstrapLikeUser(u: UserRow): boolean {
 }
 
 export function SettingsPage() {
-  const { displays, active, refresh, removeDisplay } = useDisplay();
+  const { active, refresh } = useDisplay();
   const { hasPermission, session, refreshSession } = useAuth();
   const [kvWriteTick, setKvWriteTick] = useState(0);
   const [importText, setImportText] = useState('');
@@ -97,7 +96,8 @@ export function SettingsPage() {
       {session && (
         <Alert severity="info">
           Signed in as <strong>{session.user.username}</strong> ({session.user.role}). Open{' '}
-          <strong>Account</strong> from the user menu (top right) to change display name or password.
+          <strong>Account</strong> from the user menu (top right) to change display name, password,
+          appearance, or which kiosk displays this browser connects to.
         </Alert>
       )}
 
@@ -122,35 +122,6 @@ export function SettingsPage() {
       )}
 
       {canManageUsers && active && <UsersSection display={active} onChanged={() => void refreshSession()} />}
-
-      <Box>
-        <Typography variant="subtitle1" gutterBottom>
-          Displays ({displays.length})
-        </Typography>
-        <List dense>
-          {displays.map((d) => (
-            <ListItem
-              key={d.id}
-              secondaryAction={
-                <Button size="small" color="error" onClick={() => removeDisplay(d.id)}>
-                  Remove
-                </Button>
-              }
-            >
-              <ListItemText
-                primary={`${d.label}${active?.id === d.id ? ' (active)' : ''}`}
-                secondary={d.baseUrl}
-              />
-            </ListItem>
-          ))}
-        </List>
-        <AddDisplayInline
-          onAdded={() => {
-            refresh();
-            setMsg({ level: 'success', text: 'Display added.' });
-          }}
-        />
-      </Box>
 
       <Divider />
 
@@ -654,33 +625,5 @@ function UsersSection({
         </Button>
       </Stack>
     </Box>
-  );
-}
-
-function AddDisplayInline({ onAdded }: { onAdded: () => void }) {
-  const [baseUrl, setBaseUrl] = useState('http://127.0.0.1:8787');
-  const [label, setLabel] = useState('');
-  const [err, setErr] = useState<string | null>(null);
-
-  const submit = () => {
-    setErr(null);
-    try {
-      addDisplay({ baseUrl, label: label.trim() || undefined });
-      onAdded();
-    } catch (e) {
-      setErr(String(e));
-    }
-  };
-
-  return (
-    <Stack spacing={1} sx={{ mt: 2 }}>
-      <Typography variant="subtitle2">Add another display</Typography>
-      {err && <Alert severity="error">{err}</Alert>}
-      <TextField label="Base URL" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
-      <TextField label="Label" value={label} onChange={(e) => setLabel(e.target.value)} />
-      <Button variant="outlined" onClick={submit}>
-        Add
-      </Button>
-    </Stack>
   );
 }

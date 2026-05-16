@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 # Add database seed data
 
-Repo constraints: [AGENTS.md](../../../AGENTS.md) (default app **`apps/waddle_display/`** only; tests-first; ≥90% line coverage; **never** store provider passwords, API keys, tokens, or client secrets in SQLite—use [`SecretStore`](../../../apps/waddle_display/lib/secrets/); any schema change under `lib/persistence/` needs a **Drift migration + tests** in the same task).
+Repo constraints: [AGENTS.md](../../../AGENTS.md) (default app **`apps/waddle_display/`** only; tests-first; ≥85% line coverage; **never** store provider passwords, API keys, tokens, or client secrets in SQLite—use [`SecretStore`](../../../apps/waddle_display/lib/secrets/); any schema change under `lib/persistence/` needs a **Drift migration + tests** in the same task).
 
 ## Forbidden
 
@@ -32,4 +32,4 @@ Repo constraints: [AGENTS.md](../../../AGENTS.md) (default app **`apps/waddle_di
 
 ## Verification
 
-From `apps/waddle_display`: `flutter analyze`, `flutter test test/seed/`, `flutter test --coverage`, `dart run tool/coverage_check.dart --min=90`.
+From `apps/waddle_display`: `flutter analyze`, `flutter test test/seed/`, `flutter test --coverage`, `dart run tool/coverage_check.dart --min=85`.

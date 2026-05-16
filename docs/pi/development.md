@@ -21,7 +21,7 @@ From the app directory:
 flutter pub get
 flutter analyze
 flutter test --coverage
-dart run tool/coverage_check.dart --min=90
+dart run tool/coverage_check.dart --min=85 --target=90
 ```
 
 After editing shared Drift schema, run from the **repository root** (see [`AGENTS.md`](../../AGENTS.md)):

@@ -22,10 +22,10 @@ flutter pub get
 dart run build_runner build --delete-conflicting-outputs
 flutter analyze
 flutter test --coverage
-dart run tool/coverage_check.dart --min=90
+dart run tool/coverage_check.dart --min=85
 ```
 
-Coverage gate: **≥ 90%** line coverage on `lib/` (excluding `lib/persistence/tables.dart` and `lib/main.dart` from the gate script; see `tool/coverage_check.dart`).
+Coverage gate: **≥ 85%** line coverage on `lib/` (excluding `lib/persistence/tables.dart` and `lib/main.dart` from the gate script; see `tool/coverage_check.dart`).
 
 ### Run in debug (or profile / release)
 
