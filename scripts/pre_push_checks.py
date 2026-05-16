@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -33,11 +34,107 @@ def skip_checks() -> bool:
     }
 
 
+_path_augmented = False
+
+
+def _windows_registry_path() -> list[str]:
+    if os.name != "nt":
+        return []
+    try:
+        import winreg
+    except ImportError:
+        return []
+
+    entries: list[str] = []
+
+    def read_path(root, subkey: str, name: str) -> None:
+        try:
+            with winreg.OpenKey(root, subkey) as key:
+                value, _ = winreg.QueryValueEx(key, name)
+        except OSError:
+            return
+        if isinstance(value, str) and value.strip():
+            entries.extend(value.split(os.pathsep))
+
+    read_path(winreg.HKEY_CURRENT_USER, "Environment", "Path")
+    read_path(
+        winreg.HKEY_LOCAL_MACHINE,
+        r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment",
+        "Path",
+    )
+    return entries
+
+
+def augment_path_for_tooling() -> None:
+    """Git hooks on Windows often have a minimal PATH; restore user + SDK paths."""
+    global _path_augmented
+    if _path_augmented:
+        return
+    _path_augmented = True
+
+    extra: list[str] = []
+    for key in ("FLUTTER_ROOT", "DART_SDK"):
+        value = os.environ.get(key)
+        if value:
+            extra.append(str(Path(value) / "bin"))
+
+    if os.name == "nt":
+        extra.extend(_windows_registry_path())
+        local_app_data = os.environ.get("LOCALAPPDATA", "")
+        candidates = [
+            Path(local_app_data) / "flutter" / "bin",
+            Path.home() / "flutter" / "bin",
+            Path.home() / "develop" / "flutter" / "bin",
+            Path("C:/flutter/bin"),
+            Path("C:/src/flutter/bin"),
+        ]
+        repo = repo_root()
+        candidates.append(repo / ".flutter-sdk" / "bin")
+        for path in candidates:
+            if path.is_dir():
+                extra.append(str(path))
+
+    current = os.environ.get("PATH", "")
+    combined: list[str] = []
+    seen: set[str] = set()
+    for entry in extra + ([current] if current else []):
+        for part in entry.split(os.pathsep):
+            part = part.strip()
+            if not part:
+                continue
+            key = part.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            combined.append(part)
+    if combined:
+        os.environ["PATH"] = os.pathsep.join(combined)
+
+
+def resolve_argv(argv: list[str]) -> list[str]:
+    """Resolve CLI names to absolute paths (required on Windows for .bat shims)."""
+    if not argv:
+        return argv
+    augment_path_for_tooling()
+    executable = shutil.which(argv[0])
+    if executable:
+        return [executable, *argv[1:]]
+    return argv
+
+
 def run_step(step: Step) -> int:
+    argv = resolve_argv(step.argv)
     print(f"\n==> {step.label}", flush=True)
     print(f"    cwd: {step.cwd}", flush=True)
-    print(f"    cmd: {' '.join(step.argv)}", flush=True)
-    result = subprocess.run(step.argv, cwd=step.cwd)
+    print(f"    cmd: {' '.join(argv)}", flush=True)
+    if argv == step.argv and shutil.which(step.argv[0]) is None:
+        print(
+            f"\nFAILED: command not found on PATH: {step.argv[0]!r}. "
+            "Install it or add it to PATH (Git hooks use a minimal environment).",
+            file=sys.stderr,
+        )
+        return 127
+    result = subprocess.run(argv, cwd=step.cwd)
     if result.returncode != 0:
         print(f"\nFAILED: {step.label} (exit {result.returncode})", file=sys.stderr)
     return result.returncode
@@ -70,7 +167,7 @@ def git_changed_files(root: Path, remote_sha: str, local_sha: str) -> list[str] 
     if not remote_sha or remote_sha == zero:
         return None
     result = subprocess.run(
-        ["git", "diff", "--name-only", remote_sha, local_sha],
+        resolve_argv(["git", "diff", "--name-only", remote_sha, local_sha]),
         cwd=root,
         capture_output=True,
         text=True,
@@ -182,22 +279,21 @@ def build_steps(root: Path, scopes: set[str]) -> list[Step]:
         )
 
     if "controller" in scopes:
-        npm = "npm.cmd" if os.name == "nt" else "npm"
         steps.extend(
             [
                 Step(
                     "npm ci (waddle_controller)",
-                    [npm, "ci"],
+                    ["npm", "ci"],
                     controller,
                 ),
                 Step(
                     "npm run build (waddle_controller)",
-                    [npm, "run", "build"],
+                    ["npm", "run", "build"],
                     controller,
                 ),
                 Step(
                     "npm run lint (waddle_controller)",
-                    [npm, "run", "lint"],
+                    ["npm", "run", "lint"],
                     controller,
                 ),
             ]
