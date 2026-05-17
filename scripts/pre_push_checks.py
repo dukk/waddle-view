@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Run CI-equivalent tests before git push. Used by .githooks/pre-push and Cursor hooks."""
+"""Run CI-equivalent tests before git push. Used by .githooks/pre-push and Cursor hooks.
+
+Controller JavaScript deps are **not** reinstalled here (no ``npm ci``). A running
+``npm run dev`` (Vite/tsx) locks native modules under ``node_modules`` on Windows and
+causes ``EPERM`` during ``npm ci``. GitHub Actions runs ``npm ci`` on a clean runner;
+pre-push only runs ``npm run build`` and ``npm run lint`` against your existing tree.
+"""
 
 from __future__ import annotations
 
@@ -9,6 +15,13 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+
+# Pre-push never runs npm ci (see module docstring).
+PREPUSH_SKIP_NPM_CI_REASON = (
+    "pre-push does not run npm ci (CI installs on a clean runner; "
+    "local npm run dev locks native modules on Windows)"
+)
 
 
 @dataclass(frozen=True)
@@ -140,6 +153,94 @@ def _emit_stream(stream, text: str) -> None:
         else:
             stream.write(payload.encode(encoding, errors="replace").decode(encoding))
             stream.flush()
+
+
+def _npm_lockfile_satisfied(project_dir: Path) -> bool:
+    """True when ``node_modules/.package-lock.json`` is at least as new as ``package-lock.json``."""
+    lock = project_dir / "package-lock.json"
+    stamp = project_dir / "node_modules" / ".package-lock.json"
+    if not lock.is_file() or not stamp.is_file():
+        return False
+    try:
+        return lock.stat().st_mtime_ns <= stamp.stat().st_mtime_ns
+    except OSError:
+        return False
+
+
+def _waddle_node_tls_dir(controller: Path) -> Path:
+    return controller.parent.parent / "packages" / "waddle_node_tls"
+
+
+def _controller_dev_server_running(controller: Path) -> bool:
+    """True when node appears to be running waddle_controller dev tooling."""
+    ctrl = str(controller.resolve())
+    ctrl_lower = ctrl.lower()
+    dev_tokens = ("vite", "tsx", "concurrently", "esbuild")
+
+    def matches(cmdline: str) -> bool:
+        low = cmdline.lower()
+        return ctrl_lower in low and any(token in low for token in dev_tokens)
+
+    if os.name == "nt":
+        script = (
+            "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" "
+            "| ForEach-Object { $_.CommandLine }"
+        )
+        try:
+            result = subprocess.run(
+                ["powershell", "-NoProfile", "-Command", script],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=30,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return False
+        if result.returncode != 0:
+            return False
+        return any(matches(line) for line in result.stdout.splitlines())
+
+    try:
+        result = subprocess.run(
+            ["ps", "-eww", "-o", "command="],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=15,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    if result.returncode != 0:
+        return False
+    return any(matches(line) for line in result.stdout.splitlines())
+
+
+def controller_lockfile_stale_warning(controller: Path) -> str | None:
+    """Warn when lockfiles changed but node_modules may be stale (non-blocking)."""
+    messages: list[str] = []
+    if not _npm_lockfile_satisfied(controller):
+        messages.append(
+            "apps/waddle_controller: package-lock.json is newer than node_modules"
+        )
+    tls = _waddle_node_tls_dir(controller)
+    if (tls / "package-lock.json").is_file() and not _npm_lockfile_satisfied(tls):
+        messages.append(
+            "packages/waddle_node_tls: package-lock.json is newer than node_modules"
+        )
+    if not messages:
+        return None
+    hint = (
+        " — run `npm ci` in apps/waddle_controller after stopping `npm run dev` "
+        "(CI verifies a clean install)."
+    )
+    if _controller_dev_server_running(controller):
+        hint = (
+            " — stop `npm run dev` in apps/waddle_controller, then run `npm ci` "
+            "(dev locks native modules on Windows)."
+        )
+    return "; ".join(messages) + hint
 
 
 def resolve_argv(argv: list[str]) -> list[str]:
@@ -322,13 +423,15 @@ def build_steps(root: Path, scopes: set[str]) -> list[Step]:
         )
 
     if "controller" in scopes:
+        print(
+            f"\n==> npm ci (waddle_controller) — skipped ({PREPUSH_SKIP_NPM_CI_REASON})",
+            flush=True,
+        )
+        stale = controller_lockfile_stale_warning(controller)
+        if stale:
+            print(f"\nWARNING: {stale}", file=sys.stderr, flush=True)
         steps.extend(
             [
-                Step(
-                    "npm ci (waddle_controller)",
-                    ["npm", "ci"],
-                    controller,
-                ),
                 Step(
                     "npm run build (waddle_controller)",
                     ["npm", "run", "build"],
