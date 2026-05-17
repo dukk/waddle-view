@@ -37,7 +37,9 @@ Restart=on-failure
 # Shared secret for POST /v1/auth/register-viewer (/join QR). Unset disables self-service viewer signup.
 # Environment=WADDLE_DISPLAY_VIEWER_REGISTRATION_SECRET=change-me
 
-# OpenAI (joke_openai, trivia_openai, trivia_opentdb)
+# Integration API keys / OAuth client ids: configure via controller Integrations UI (encrypted SQLite).
+
+# OpenAI (deprecated env)
 # Environment=WADDLE_DISPLAY_OPENAI_API_KEY=
 
 # OpenWeatherMap (weather_openweathermap)
@@ -64,6 +66,9 @@ Restart=on-failure
 
 # Google Calendar OAuth public client id — not in SQLite
 # Environment=WADDLE_DISPLAY_GOOGLE_CLIENT_ID=
+
+# Drop-in plugin directories (manifest.json per folder); restart display after changes.
+# Environment=WADDLE_DISPLAY_PLUGINS_DIR=/opt/waddle-view/plugins
 
 [Install]
 WantedBy=default.target

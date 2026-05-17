@@ -19,7 +19,7 @@ void main() {
           IntegrationsCompanion.insert(id: 'stub', providerType: 'stub'),
         );
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {});
+    final resolver = ProviderConfigResolver(db, secrets);
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),

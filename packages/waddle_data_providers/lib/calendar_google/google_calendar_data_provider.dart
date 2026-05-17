@@ -5,8 +5,8 @@ import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:waddle_shared/config/google_kv.dart';
-import 'package:waddle_shared/config/provider_access_token_env.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';
 import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
@@ -54,10 +54,11 @@ class GoogleCalendarDataProvider implements IDataProvider {
     }
 
     final nowMs = _nowMs();
-    final clientId = readGoogleClientIdFromEnvMap(ctx.env) ?? '';
+    final clientId =
+        await readGoogleClientIdFromStore(ctx.secrets) ?? '';
     if (clientId.isEmpty) {
       ctx.diagnostics.provider(
-        'google_calendar: skip (no $waddleGoogleClientIdEnv)',
+        'google_calendar: skip (no Google OAuth client ID configured)',
       );
       return;
     }

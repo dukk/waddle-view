@@ -60,7 +60,7 @@ String _geoJson({
 }
 
 Future<DataWriteContextImpl> _ctx(AppDatabase db, InMemorySecretStore secrets) async {
-  final resolver = ProviderConfigResolver(db, {});
+  final resolver = ProviderConfigResolver(db, secrets);
   return DataWriteContextImpl(
     db: db,
     blobs: FakeBlobStore(),

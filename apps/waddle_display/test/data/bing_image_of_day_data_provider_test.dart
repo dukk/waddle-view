@@ -97,7 +97,7 @@ void main() {
       db: db,
       blobs: FakeBlobStore(),
       secrets: secrets,
-      resolve: ProviderConfigResolver(db, {}).resolve,
+      resolve: ProviderConfigResolver(db, secrets).resolve,
     );
     await provider.collect(ctx);
     expect(requests, isEmpty);
@@ -124,7 +124,7 @@ void main() {
       db: db,
       blobs: FakeBlobStore(),
       secrets: secrets,
-      resolve: ProviderConfigResolver(db, {}).resolve,
+      resolve: ProviderConfigResolver(db, secrets).resolve,
     );
     await provider.collect(ctx);
     expect(requests, isEmpty);
@@ -148,7 +148,7 @@ void main() {
       db: db,
       blobs: blobs,
       secrets: secrets,
-      resolve: ProviderConfigResolver(db, {}).resolve,
+      resolve: ProviderConfigResolver(db, secrets).resolve,
     );
     await provider.collect(ctx);
 
@@ -198,7 +198,7 @@ void main() {
       db: db,
       blobs: FakeBlobStore(),
       secrets: secrets,
-      resolve: ProviderConfigResolver(db, {}).resolve,
+      resolve: ProviderConfigResolver(db, secrets).resolve,
     );
     final provider = BingImageOfDayDataProvider(httpClient: client);
     await provider.collect(ctx);
@@ -258,7 +258,7 @@ void main() {
       db: db,
       blobs: FakeBlobStore(),
       secrets: secrets,
-      resolve: ProviderConfigResolver(db, {}).resolve,
+      resolve: ProviderConfigResolver(db, secrets).resolve,
     );
     await BingImageOfDayDataProvider(httpClient: client).collect(ctx);
 
@@ -287,7 +287,7 @@ void main() {
       db: db,
       blobs: FakeBlobStore(),
       secrets: secrets,
-      resolve: ProviderConfigResolver(db, {}).resolve,
+      resolve: ProviderConfigResolver(db, secrets).resolve,
     );
     await BingImageOfDayDataProvider(httpClient: client).collect(ctx);
     final rows = await db.select(db.photos).get();
@@ -308,7 +308,7 @@ void main() {
       db: db,
       blobs: FakeBlobStore(),
       secrets: secrets,
-      resolve: ProviderConfigResolver(db, {}).resolve,
+      resolve: ProviderConfigResolver(db, secrets).resolve,
     );
     await BingImageOfDayDataProvider(httpClient: client).collect(ctx);
     final row = await (db.select(db.photos)
@@ -341,7 +341,7 @@ void main() {
       db: db,
       blobs: FakeBlobStore(),
       secrets: secrets,
-      resolve: ProviderConfigResolver(db, {}).resolve,
+      resolve: ProviderConfigResolver(db, secrets).resolve,
     );
     await BingImageOfDayDataProvider(httpClient: client).collect(ctx);
     expect(requests[0].url.queryParameters['mkt'], 'en-GB');
@@ -366,7 +366,7 @@ void main() {
       db: db,
       blobs: FakeBlobStore(),
       secrets: secrets,
-      resolve: ProviderConfigResolver(db, {}).resolve,
+      resolve: ProviderConfigResolver(db, secrets).resolve,
     );
     await BingImageOfDayDataProvider(
       httpClient: hang,

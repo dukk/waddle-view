@@ -95,7 +95,7 @@ void main() {
           ),
         );
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {});
+    final resolver = ProviderConfigResolver(db, secrets);
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -145,7 +145,7 @@ void main() {
           ),
         );
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {});
+    final resolver = ProviderConfigResolver(db, secrets);
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -174,7 +174,7 @@ void main() {
           ),
         );
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {});
+    final resolver = ProviderConfigResolver(db, secrets);
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -216,7 +216,7 @@ void main() {
           ),
         );
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {});
+    final resolver = ProviderConfigResolver(db, secrets);
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -248,7 +248,7 @@ void main() {
           ),
         );
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {});
+    final resolver = ProviderConfigResolver(db, secrets);
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),

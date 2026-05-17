@@ -14,6 +14,9 @@ import 'package:waddle_shared/config/adoption.dart';
 import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
+import 'package:waddle_shared/secrets/db_encrypted_secret_store.dart';
+import 'package:waddle_shared/secrets/platform/in_memory_dek_protector.dart';
+import 'package:waddle_shared/secrets/secret_store.dart';
 
 import 'fake_blob_store.dart';
 import 'adoption_test_helpers.dart';
@@ -28,6 +31,7 @@ class RestTestHarness {
     required this.adoption,
     required this.corsOrigins,
     required this.blobs,
+    required this.secrets,
     required this.instanceId,
     required this.identifier,
     required this.role,
@@ -39,6 +43,7 @@ class RestTestHarness {
   final AdoptionRepository adoption;
   final CorsOriginRepository corsOrigins;
   final BlobStore blobs;
+  final SecretStore secrets;
   final String instanceId;
   final String identifier;
   final String role;
@@ -155,6 +160,7 @@ class RestTestHarness {
       adoption: built.adoption,
       corsOrigins: built.corsOrigins,
       blobs: built.blobs,
+      secrets: built.secrets,
       instanceId: instanceId,
       identifier: identifier,
       role: role,
@@ -207,6 +213,7 @@ class RestTestHarness {
       adoption: built.adoption,
       corsOrigins: built.corsOrigins,
       blobs: built.blobs,
+      secrets: built.secrets,
       instanceId: instanceId,
       identifier: identifier,
       role: role,
@@ -219,6 +226,7 @@ class RestTestHarness {
         AdoptionRepository adoption,
         CorsOriginRepository corsOrigins,
         BlobStore blobs,
+        SecretStore secrets,
       })> _buildServer({
     required AppDatabase db,
     required String instanceId,
@@ -238,6 +246,10 @@ class RestTestHarness {
     final alerts = DriftAlertRepository(db);
     final ticker = MemoryTickerCuratedRepository();
     final blobs = blobStore ?? FakeBlobStore();
+    final secrets = DbEncryptedSecretStore(
+      db: db,
+      protector: InMemoryDekProtector(),
+    );
     final handler = buildRootHandler(
       db: db,
       alerts: alerts,
@@ -245,6 +257,7 @@ class RestTestHarness {
       corsOrigins: corsOrigins,
       ticker: ticker,
       blobs: blobs,
+      secrets: secrets,
       onConfigChanged: onConfigChanged ?? () async {},
       env: env,
       telemetryHub: telemetryHub,
@@ -260,6 +273,7 @@ class RestTestHarness {
       adoption: adoption,
       corsOrigins: corsOrigins,
       blobs: blobs,
+      secrets: secrets,
     );
   }
 

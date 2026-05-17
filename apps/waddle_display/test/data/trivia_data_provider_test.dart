@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:drift/drift.dart' hide isNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-import 'package:waddle_shared/config/provider_access_token_env.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
+import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_data_providers/trivia_openai/trivia_data_provider.dart';
 import 'package:waddle_data_providers/trivia_openai/trivia_id.dart';
@@ -98,7 +98,8 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
+    await secrets.write(providerAccessTokenSecretKey('trivia_openai'), 't');
+    final resolver = ProviderConfigResolver(db, secrets);
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -148,7 +149,8 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
+    await secrets.write(providerAccessTokenSecretKey('trivia_openai'), 't');
+    final resolver = ProviderConfigResolver(db, secrets);
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -199,7 +201,8 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
+    await secrets.write(providerAccessTokenSecretKey('trivia_openai'), 't');
+    final resolver = ProviderConfigResolver(db, secrets);
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -242,7 +245,8 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
+    await secrets.write(providerAccessTokenSecretKey('trivia_openai'), 't');
+    final resolver = ProviderConfigResolver(db, secrets);
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -318,7 +322,8 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
+    await secrets.write(providerAccessTokenSecretKey('trivia_openai'), 't');
+    final resolver = ProviderConfigResolver(db, secrets);
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -354,7 +359,8 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
+    await secrets.write(providerAccessTokenSecretKey('trivia_openai'), 't');
+    final resolver = ProviderConfigResolver(db, secrets);
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -411,7 +417,8 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
+    await secrets.write(providerAccessTokenSecretKey('trivia_openai'), 't');
+    final resolver = ProviderConfigResolver(db, secrets);
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -454,7 +461,8 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
+    await secrets.write(providerAccessTokenSecretKey('trivia_openai'), 't');
+    final resolver = ProviderConfigResolver(db, secrets);
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -493,7 +501,8 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
+    await secrets.write(providerAccessTokenSecretKey('trivia_openai'), 't');
+    final resolver = ProviderConfigResolver(db, secrets);
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),
@@ -565,7 +574,8 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    final resolver = ProviderConfigResolver(db, {waddleOpenAiApiKeyEnv: 't'});
+    await secrets.write(providerAccessTokenSecretKey('trivia_openai'), 't');
+    final resolver = ProviderConfigResolver(db, secrets);
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: FakeBlobStore(),

@@ -30,7 +30,9 @@ import 'content_catalog_rest_routes.dart';
 import 'interests_rest_routes.dart';
 import 'cors_policy.dart';
 import 'display_health.dart';
+import 'integration_secrets_rest_routes.dart';
 import 'operator_rest_routes.dart';
+import 'package:waddle_shared/secrets/secret_store.dart';
 import 'package:waddle_shared/auth/adoption_repository.dart';
 import 'package:waddle_shared/auth/cors_origin_repository.dart';
 
@@ -41,6 +43,7 @@ Handler buildProtectedApiRouter({
   required CorsOriginRepository corsOrigins,
   required TickerCuratedRepository ticker,
   required BlobStore blobs,
+  required SecretStore secrets,
   required Future<void> Function() onConfigChanged,
   OperatorTelemetryHub? telemetryHub,
   DisplayNavigationBus? navigationBus,
@@ -148,20 +151,21 @@ Handler buildProtectedApiRouter({
 
   r.get('/v1/integrations', (Request req) async {
     final rows = await db.select(db.integrations).get();
-    final list = rows
-        .map(
-          (e) => {
-            'id': e.id,
-            'integration_type': e.providerType,
-            'enabled': e.enabled,
-            'poll_seconds': e.pollSeconds,
-            'base_url': e.baseUrl,
-            'config_json': _jsonDecodeLoose(e.configJson),
-            'config_json_schema': _jsonDecodeLoose(e.configJsonSchema),
-            'example_config_json': _jsonDecodeLoose(e.exampleConfigJson),
-          },
-        )
-        .toList();
+    final list = <Map<String, dynamic>>[];
+    for (final e in rows) {
+      list.add({
+        'id': e.id,
+        'integration_type': e.providerType,
+        'enabled': e.enabled,
+        'poll_seconds': e.pollSeconds,
+        'base_url': e.baseUrl,
+        'config_json': _jsonDecodeLoose(e.configJson),
+        'config_json_schema': _jsonDecodeLoose(e.configJsonSchema),
+        'example_config_json': _jsonDecodeLoose(e.exampleConfigJson),
+        'secrets_configured':
+            await integrationSecretsConfigured(secrets, e.id),
+      });
+    }
     return Response.ok(
       jsonEncode({'items': list}),
       headers: {'content-type': 'application/json'},
@@ -581,6 +585,7 @@ Handler buildProtectedApiRouter({
   registerOperatorRestRoutes(
     r,
     db: db,
+    secrets: secrets,
     onConfigChanged: onConfigChanged,
     telemetryHub: telemetryHub,
     navigationBus: navigationBus,
@@ -940,6 +945,7 @@ Handler buildRootHandler({
   required CorsOriginRepository corsOrigins,
   required TickerCuratedRepository ticker,
   required BlobStore blobs,
+  required SecretStore secrets,
   required Future<void> Function() onConfigChanged,
   required Map<String, String> env,
   OperatorTelemetryHub? telemetryHub,
@@ -978,6 +984,7 @@ Handler buildRootHandler({
             corsOrigins: corsOrigins,
             ticker: ticker,
             blobs: blobs,
+            secrets: secrets,
             onConfigChanged: onConfigChanged,
             telemetryHub: telemetryHub,
             navigationBus: navigationBus,

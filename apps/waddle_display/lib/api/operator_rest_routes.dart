@@ -16,6 +16,10 @@ import 'package:waddle_shared/persistence/config_json_documentation.dart';
 import 'package:waddle_shared/persistence/content_category_defaults.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
+import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
+import 'package:waddle_shared/secrets/secret_store.dart';
+
+import 'integration_secrets_rest_routes.dart';
 
 final Set<String> _reservedCuratorCategoryIds = {
   for (final d in kContentCategoryDefaults) d.id,
@@ -39,10 +43,12 @@ dynamic _jsonFieldDecode(String? raw) {
 void registerOperatorRestRoutes(
   Router r, {
   required AppDatabase db,
+  required SecretStore secrets,
   required Future<void> Function() onConfigChanged,
   OperatorTelemetryHub? telemetryHub,
   DisplayNavigationBus? navigationBus,
 }) {
+  registerIntegrationSecretsRestRoutes(r, db: db, secrets: secrets);
   r.get('/v1/telemetry/integrations', (Request req) async {
     final limit = int.tryParse(req.url.queryParameters['limit'] ?? '') ?? 200;
     final sinceMs = int.tryParse(req.url.queryParameters['since_ms'] ?? '');
@@ -814,6 +820,15 @@ void registerOperatorRestRoutes(
       return Response(400,
           body: '{"error":"invalid_enabled"}',
           headers: {'content-type': 'application/json'});
+    }
+    if (enabled &&
+        requiredSecretSlotsFor(id).isNotEmpty &&
+        !await isIntegrationSecretsFullyConfigured(secrets, id)) {
+      return Response(
+        400,
+        body: '{"error":"secrets_required_before_enable"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     String? baseUrl = existing.baseUrl;
     if (map.containsKey('base_url')) {

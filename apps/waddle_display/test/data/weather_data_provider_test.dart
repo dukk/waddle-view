@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:drift/drift.dart' hide isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-import 'package:waddle_shared/config/provider_access_token_env.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
+import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_data_providers/weather_openweathermap/weather_data_provider.dart';
 import 'package:waddle_shared/persistence/database.dart';
@@ -87,9 +87,15 @@ String _forecastPayload({required double baseTemp}) {
 Future<DataWriteContextImpl> _ctx(
   AppDatabase db,
   InMemorySecretStore secrets, {
-  Map<String, String> env = const {},
+  String? apiKey,
 }) async {
-  final resolver = ProviderConfigResolver(db, env);
+  if (apiKey != null) {
+    await secrets.write(
+      providerAccessTokenSecretKey('weather_openweathermap'),
+      apiKey,
+    );
+  }
+  final resolver = ProviderConfigResolver(db, secrets);
   return DataWriteContextImpl(
     db: db,
     blobs: FakeBlobStore(),
@@ -145,7 +151,7 @@ void main() {
           ),
         );
     final secrets = InMemorySecretStore();
-    final ctx = await _ctx(db, secrets, env: {waddleOpenWeatherMapApiKeyEnv: 'owm-key'});
+    final ctx = await _ctx(db, secrets, apiKey: 'owm-key');
 
     final client = _WeatherClient((uri) {
       if (uri.path.endsWith('/data/2.5/forecast')) {
@@ -212,7 +218,7 @@ void main() {
           ),
         );
     final secrets = InMemorySecretStore();
-    final ctx = await _ctx(db, secrets, env: {waddleOpenWeatherMapApiKeyEnv: 'owm-key'});
+    final ctx = await _ctx(db, secrets, apiKey: 'owm-key');
 
     final seen = <String>[];
     final client = _WeatherClient((uri) {
@@ -267,7 +273,7 @@ void main() {
           ),
         );
     final secrets = InMemorySecretStore();
-    final ctx = await _ctx(db, secrets, env: {waddleOpenWeatherMapApiKeyEnv: 'owm-key'});
+    final ctx = await _ctx(db, secrets, apiKey: 'owm-key');
     final client = _WeatherClient((uri) {
       if (uri.path.contains('/img/wn/')) {
         return http.Response.bytes(
@@ -311,7 +317,7 @@ void main() {
           ),
         );
     final secrets = InMemorySecretStore();
-    final ctx = await _ctx(db, secrets, env: {waddleOpenWeatherMapApiKeyEnv: 'owm-key'});
+    final ctx = await _ctx(db, secrets, apiKey: 'owm-key');
     final client = _ThrowingWeatherClient(
       http.ClientException(
         'socket failed',

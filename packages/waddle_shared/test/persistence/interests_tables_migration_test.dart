@@ -140,7 +140,7 @@ CREATE TABLE stock_symbols (
     expect(sym.read<String>('symbol'), 'AAPL');
 
     final version = await db.customSelect('PRAGMA user_version').getSingle();
-    expect(version.read<int>('user_version'), 2);
+    expect(version.read<int>('user_version'), db.schemaVersion);
 
     await db.close();
   });

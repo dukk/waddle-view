@@ -1,14 +1,9 @@
-/// Env keys and readers for **non-OAuth** provider API tokens (never SQLite).
+/// Legacy env key names for provider API tokens and OAuth client ids.
 ///
-/// OAuth **access/refresh** tokens for Google / Microsoft Graph stay in
-/// [SecretStore] only — they are not read from environment variables.
-///
-/// OAuth **public client ids** for those flows are read from
-/// [waddleMicrosoftGraphClientIdEnv] / [waddleGoogleClientIdEnv] (process env
-/// and optional merged debug `.env`).
-///
-/// These helpers back [ProviderConfigResolver] with `Platform.environment`
-/// and/or merged debug `.env` maps for static API keys.
+/// **Deprecated for runtime:** integration secrets are configured via the
+/// controller UI and stored in encrypted SQLite ([DbEncryptedSecretStore]).
+/// These constants remain for documentation, migration notes, and tests that
+/// assert env parsing helpers.
 library;
 
 /// OpenAI-style API key for jokes, trivia, and the OpenTDB path when it shares the resolver.

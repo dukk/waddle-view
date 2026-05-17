@@ -11,8 +11,8 @@ import 'package:waddle_display/config/microsoft_graph_kv.dart'
         microsoftGraphAccessTokenSecret,
         microsoftGraphRefreshTokenSecret,
         outlookCalendarEventSource;
-import 'package:waddle_shared/config/provider_access_token_env.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
+import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_data_providers/microsoft_graph/microsoft_graph_oauth.dart'
     show kMicrosoftGraphOAuthScopes, MicrosoftGraphOAuth;
@@ -61,7 +61,7 @@ void main() {
     await warmDatabase(db);
     await _seedKvAndProvider(db, extraAccountsJson: '[]');
     final http = _CountingClient();
-    final ctx = _ctx(db, InMemorySecretStore());
+    final ctx = await _ctx(db, InMemorySecretStore());
     final p = OutlookCalendarDataProvider(httpClient: http);
     await p.collect(ctx);
     expect(http.requests, 0);
@@ -87,7 +87,7 @@ void main() {
         );
     var clock = 10_000_000_000;
     final http = _CountingClient();
-    final ctx = _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets);
     final p = OutlookCalendarDataProvider(httpClient: http, nowMs: () => clock);
     await p.collect(ctx);
     expect(http.requests, greaterThan(0));
@@ -121,7 +121,7 @@ void main() {
           ),
         );
     final http = _RefreshThenGraphClient();
-    final ctx = _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets);
     final p = OutlookCalendarDataProvider(httpClient: http);
     await p.collect(ctx);
     expect(http.deviceCodePosts, 0);
@@ -162,7 +162,7 @@ void main() {
         clock += 5000;
       },
     );
-    final ctx = _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets);
     final p = OutlookCalendarDataProvider(httpClient: http, oauth: oauth);
     await p.collect(ctx);
     final alerts = await db.select(db.alerts).get();
@@ -201,14 +201,17 @@ void main() {
   });
 }
 
-DataWriteContext _ctx(AppDatabase db, InMemorySecretStore secrets) {
-  final resolver = ProviderConfigResolver(db, {});
+Future<DataWriteContext> _ctx(
+  AppDatabase db,
+  InMemorySecretStore secrets,
+) async {
+  await secrets.write(kMicrosoftGraphClientIdSecretKey, 'test-ms-client-id');
+  final resolver = ProviderConfigResolver(db, secrets);
   return DataWriteContextImpl(
     db: db,
     blobs: FakeBlobStore(),
     secrets: secrets,
     resolve: resolver.resolve,
-    env: const {waddleMicrosoftGraphClientIdEnv: 'test-ms-client-id'},
   );
 }
 

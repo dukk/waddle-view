@@ -8,6 +8,15 @@ String? permissionForRoute(String method, String path) {
   if (p == '/v1/integrations' && m == 'GET') {
     return WaddlePermission.integrationsRead;
   }
+  final integrationSecrets = RegExp(r'^/v1/integrations/[^/]+/secrets(?:/[^/]+)?$');
+  if (integrationSecrets.hasMatch(p)) {
+    if (m == 'GET') {
+      return WaddlePermission.integrationsRead;
+    }
+    if (m == 'PUT' || m == 'DELETE') {
+      return WaddlePermission.integrationsWrite;
+    }
+  }
   if (p.startsWith('/v1/integrations/') && m == 'PATCH') {
     return WaddlePermission.integrationsWrite;
   }
@@ -69,6 +78,16 @@ String? permissionForRoute(String method, String path) {
   }
   if (p.startsWith('/v1/curator/categories/') && m == 'DELETE') {
     return WaddlePermission.curatorWrite;
+  }
+
+  if (p == '/v1/runtime/signals' && m == 'GET') {
+    return WaddlePermission.curatorRead;
+  }
+  if (p.startsWith('/v1/runtime/signals/') && m == 'PUT') {
+    return WaddlePermission.curatorWrite;
+  }
+  if (p == '/v1/plugins' && m == 'GET') {
+    return WaddlePermission.integrationsRead;
   }
 
   if (p == '/v1/alerts' && m == 'GET') {

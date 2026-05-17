@@ -63,7 +63,7 @@ Future<void> _ensureJokesProviderRow(AppDatabase db) async {
         IntegrationsCompanion.insert(
           id: 'joke_openai',
           providerType: 'joke_openai',
-          enabled: const Value(true),
+          enabled: const Value(false),
           pollSeconds: const Value(3600),
           configJson: const Value(
             '{"jokesPerDay":10,"maxJokesPerTwoHours":20,"twoHourWindowMs":7200000,'
@@ -89,7 +89,7 @@ Future<void> _ensureTriviaProviderRow(AppDatabase db) async {
         IntegrationsCompanion.insert(
           id: 'trivia_openai',
           providerType: 'trivia_openai',
-          enabled: const Value(true),
+          enabled: const Value(false),
           pollSeconds: const Value(3600),
           configJson: const Value(
             '{"maxQuestionPerDay":200,"maxQuestionPerHour":20,'
@@ -139,7 +139,7 @@ Future<void> _ensureWeatherProviderRow(AppDatabase db) async {
         IntegrationsCompanion.insert(
           id: 'weather_openweathermap',
           providerType: 'weather_openweathermap',
-          enabled: const Value(true),
+          enabled: const Value(false),
           pollSeconds: const Value(900),
           baseUrl: const Value('https://api.openweathermap.org'),
           configJson: const Value(
@@ -315,7 +315,7 @@ Future<void> _ensurePexelsProviderRow(AppDatabase db) async {
         IntegrationsCompanion.insert(
           id: 'media_pexels',
           providerType: 'media_pexels',
-          enabled: const Value(true),
+          enabled: const Value(false),
           pollSeconds: const Value(1800),
           baseUrl: const Value('https://api.pexels.com'),
           configJson: const Value(
@@ -348,7 +348,7 @@ Future<void> _ensureStocksProviderRow(AppDatabase db) async {
         IntegrationsCompanion.insert(
           id: 'stock_finnhub',
           providerType: 'stock_finnhub',
-          enabled: const Value(true),
+          enabled: const Value(false),
           pollSeconds: const Value(300),
           baseUrl: const Value('https://finnhub.io'),
           configJson: const Value(

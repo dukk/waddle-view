@@ -4,8 +4,8 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_display/config/google_kv.dart';
-import 'package:waddle_shared/config/provider_access_token_env.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
+import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_data_providers/calendar_google/google_calendar_data_provider.dart';
 import 'package:waddle_data_providers/calendar_google/google_calendar_extra_config.dart';
@@ -52,7 +52,7 @@ void main() {
     await _seedKvAndProvider(db, extraAccountsJson: '[]');
     final http = _CountingClient();
     final p = GoogleCalendarDataProvider(httpClient: http);
-    await p.collect(_ctx(db, InMemorySecretStore()));
+    await p.collect(await _ctx(db, InMemorySecretStore()));
     expect(http.requests, 0);
     await db.close();
   });
@@ -77,14 +77,14 @@ void main() {
     var clock = 10_000_000_000;
     final http = _CountingClient();
     final p = GoogleCalendarDataProvider(httpClient: http, nowMs: () => clock);
-    await p.collect(_ctx(db, secrets));
+    await p.collect(await _ctx(db, secrets));
     expect(http.requests, greaterThan(0));
     final n1 = http.requests;
     clock += 1000;
-    await p.collect(_ctx(db, secrets));
+    await p.collect(await _ctx(db, secrets));
     expect(http.requests, n1);
     clock = 10_000_000_000 + (3600 * 1000) + 1;
-    await p.collect(_ctx(db, secrets));
+    await p.collect(await _ctx(db, secrets));
     expect(http.requests, greaterThan(n1));
     await db.close();
   });
@@ -109,7 +109,7 @@ void main() {
         );
     final http = _RefreshThenGoogleClient();
     final p = GoogleCalendarDataProvider(httpClient: http);
-    await p.collect(_ctx(db, secrets));
+    await p.collect(await _ctx(db, secrets));
     expect(http.deviceCodePosts, 0);
     expect(http.refreshTokenRequestBody, isNotNull);
     expect(http.refreshTokenRequestBody, contains('grant_type=refresh_token'));
@@ -142,7 +142,7 @@ void main() {
       },
     );
     final p = GoogleCalendarDataProvider(httpClient: http, oauth: oauth);
-    await p.collect(_ctx(db, secrets));
+    await p.collect(await _ctx(db, secrets));
     final alerts = await db.select(db.alerts).get();
     expect(alerts.length, 1);
     expect(alerts.single.source, kGoogleOAuthAlertSource);
@@ -163,14 +163,17 @@ void main() {
   });
 }
 
-DataWriteContext _ctx(AppDatabase db, InMemorySecretStore secrets) {
-  final resolver = ProviderConfigResolver(db, {});
+Future<DataWriteContext> _ctx(
+  AppDatabase db,
+  InMemorySecretStore secrets,
+) async {
+  await secrets.write(kGoogleClientIdSecretKey, 'google-client-id');
+  final resolver = ProviderConfigResolver(db, secrets);
   return DataWriteContextImpl(
     db: db,
     blobs: FakeBlobStore(),
     secrets: secrets,
     resolve: resolver.resolve,
-    env: const {waddleGoogleClientIdEnv: 'google-client-id'},
   );
 }
 

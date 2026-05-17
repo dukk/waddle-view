@@ -4,8 +4,8 @@ import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 
-import 'package:waddle_shared/config/provider_access_token_env.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
+import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_data_providers/media_pexels/pexels_data_provider.dart';
 import 'package:waddle_shared/persistence/database.dart';
@@ -61,8 +61,9 @@ Future<void> _ensurePexels(AppDatabase db) async {
       );
 }
 
-DataWriteContext _ctx(AppDatabase db, InMemorySecretStore secrets) {
-  final resolver = ProviderConfigResolver(db, {waddlePexelsApiKeyEnv: 'k'});
+Future<DataWriteContext> _ctx(AppDatabase db, InMemorySecretStore secrets) async {
+  await secrets.write(providerAccessTokenSecretKey('media_pexels'), 'k');
+  final resolver = ProviderConfigResolver(db, secrets);
   return DataWriteContextImpl(
     db: db,
     blobs: FakeBlobStore(),
@@ -107,7 +108,7 @@ void main() {
       final client = _CuratedPhotosClient([blocked, clean]);
       final secrets = await _secretsWithKey();
       await PexelsDataProvider(httpClient: client, nowMs: () => 1)
-          .collect(_ctx(db, secrets));
+          .collect(await _ctx(db, secrets));
 
       final p1 = await (db.select(db.photos)
             ..where((t) => t.id.equals('1001')))
@@ -143,7 +144,7 @@ void main() {
     final client = _CuratedPhotosClient([clean]);
     final secrets = await _secretsWithKey();
     await PexelsDataProvider(httpClient: client, nowMs: () => 1)
-        .collect(_ctx(db, secrets));
+        .collect(await _ctx(db, secrets));
 
     final p = await (db.select(db.photos)
           ..where((t) => t.id.equals('2001')))

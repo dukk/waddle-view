@@ -10,8 +10,8 @@ import 'package:waddle_display/config/microsoft_graph_kv.dart'
         kOneDriveMediaItemRowId,
         kOneDriveMediaLastCollectKvKey,
         microsoftGraphAccessTokenSecret;
-import 'package:waddle_shared/config/provider_access_token_env.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
+import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_data_providers/microsoft_graph/microsoft_graph_oauth.dart';
 import 'package:waddle_data_providers/media_onedrive/onedrive_media_data_provider.dart';
@@ -36,7 +36,7 @@ void main() {
     await warmDatabase(db);
     await _seedProvider(db, accountsJson: '[]', enabled: false);
     final httpClient = _CountingClient();
-    final ctx = _ctx(db, InMemorySecretStore());
+    final ctx = await _ctx(db, InMemorySecretStore());
     await OneDriveMediaDataProvider(httpClient: httpClient).collect(ctx);
     expect(httpClient.requests, 0);
     await db.close();
@@ -58,7 +58,7 @@ void main() {
           ),
         );
     final httpClient = _CountingClient();
-    final ctx = _ctx(db, InMemorySecretStore(), env: const {});
+    final ctx = await _ctx(db, InMemorySecretStore(), clientId: null);
     await OneDriveMediaDataProvider(httpClient: httpClient).collect(ctx);
     expect(httpClient.requests, 0);
     await db.close();
@@ -74,7 +74,7 @@ void main() {
     );
     final http = _CountingClient();
     final oauth = _NullGraphOAuth(httpClient: http, nowMs: () => 0);
-    final ctx = _ctx(db, InMemorySecretStore());
+    final ctx = await _ctx(db, InMemorySecretStore());
     await OneDriveMediaDataProvider(httpClient: http, oauth: oauth).collect(ctx);
     expect(http.requests, 0);
     await db.close();
@@ -89,7 +89,7 @@ void main() {
     );
     final http = _CountingClient();
     final oauth = _ThrowingOAuth();
-    final ctx = _ctx(db, InMemorySecretStore());
+    final ctx = await _ctx(db, InMemorySecretStore());
     await OneDriveMediaDataProvider(httpClient: http, oauth: oauth).collect(ctx);
     expect(http.requests, 0);
     await db.close();
@@ -123,7 +123,7 @@ void main() {
         _deltaPage([_drivePhoto('x', 'https://dl.example.com/x')]),
       ],
     );
-    final ctx = _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets);
     final oauth = _FixedTokenOAuth(httpClient: http, nowMs: () => 0);
     await OneDriveMediaDataProvider(httpClient: http, oauth: oauth).collect(ctx);
     expect(http.graphGets, greaterThan(0));
@@ -147,7 +147,7 @@ void main() {
           ),
         );
     final http = _ErrorJsonGraphClient();
-    final ctx = _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets);
     await OneDriveMediaDataProvider(httpClient: http).collect(ctx);
     expect(http.graphGets, 1);
     expect(await db.select(db.photos).get(), isEmpty);
@@ -171,7 +171,7 @@ void main() {
           ),
         );
     final http = _PagingGraphClient();
-    final ctx = _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets);
     await OneDriveMediaDataProvider(httpClient: http).collect(ctx);
     expect(http.graphGets, 3);
     expect((await db.select(db.photos).get()).length, 2);
@@ -211,7 +211,7 @@ void main() {
         ]),
       ],
     );
-    final ctx = _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets);
     await OneDriveMediaDataProvider(httpClient: http).collect(ctx);
     final vids = await db.select(db.videos).get();
     expect(vids.length, 1);
@@ -242,7 +242,7 @@ void main() {
           ),
         );
     final http = _TwoFolderGraphClient();
-    final ctx = _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets);
     await OneDriveMediaDataProvider(httpClient: http).collect(ctx);
     expect(http.graphGets, 2);
     expect((await db.select(db.photos).get()).length, 1);
@@ -254,7 +254,7 @@ void main() {
     await warmDatabase(db);
     await _seedProvider(db, accountsJson: '[]');
     final httpClient = _CountingClient();
-    final ctx = _ctx(db, InMemorySecretStore());
+    final ctx = await _ctx(db, InMemorySecretStore());
     final p = OneDriveMediaDataProvider(httpClient: httpClient);
     await p.collect(ctx);
     expect(httpClient.requests, 0);
@@ -280,7 +280,7 @@ void main() {
         );
     var clock = 10_000_000_000;
     final httpClient = _CountingClient();
-    final ctx = _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets);
     final p = OneDriveMediaDataProvider(httpClient: httpClient, nowMs: () => clock);
     await p.collect(ctx);
     expect(httpClient.requests, greaterThan(0));
@@ -318,7 +318,7 @@ void main() {
         ]),
       ],
     );
-    final ctx = _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets);
     final p = OneDriveMediaDataProvider(httpClient: httpClient);
     await p.collect(ctx);
     expect(httpClient.downloadGets, 2);
@@ -354,7 +354,7 @@ void main() {
         ]),
       ],
     );
-    final ctx = _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets);
     final p = OneDriveMediaDataProvider(httpClient: httpClient);
     await p.collect(ctx);
     expect(httpClient.downloadGets, 1);
@@ -403,7 +403,7 @@ void main() {
     final httpClient = _GraphAndDownloadClient(
       deltaPages: [_deltaPage([])],
     );
-    final ctx = _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets);
     final p = OneDriveMediaDataProvider(httpClient: httpClient);
     await p.collect(ctx);
 
@@ -437,7 +437,7 @@ void main() {
         _deltaPage([_drivePhoto('x', 'https://dl.example.com/x')]),
       ],
     );
-    final ctx = _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets);
     final p = OneDriveMediaDataProvider(httpClient: httpClient);
     await p.collect(ctx);
     expect(httpClient.downloadGets, 0);
@@ -479,7 +479,7 @@ void main() {
         ]),
       ],
     );
-    final ctx = _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets);
     await OneDriveMediaDataProvider(httpClient: httpClient).collect(ctx);
     expect(httpClient.downloadGets, 2);
     expect((await db.select(db.photos).get()).length, 1);
@@ -524,7 +524,7 @@ void main() {
         ]),
       ],
     );
-    final ctx = _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets);
     await OneDriveMediaDataProvider(httpClient: httpClient).collect(ctx);
     expect(await db.select(db.photos).get(), isEmpty);
     await db.close();
@@ -555,7 +555,7 @@ void main() {
         },
       ],
     );
-    final ctx = _ctx(db, secrets);
+    final ctx = await _ctx(db, secrets);
     await OneDriveMediaDataProvider(httpClient: httpClient).collect(ctx);
     final key = kOneDriveMediaDeltaLinkKvKey('u', 'z');
     final row =
@@ -577,18 +577,20 @@ Map<String, Object?> _drivePhoto(String id, String downloadUrl) => {
       },
     };
 
-DataWriteContext _ctx(
+Future<DataWriteContext> _ctx(
   AppDatabase db,
   InMemorySecretStore secrets, {
-  Map<String, String> env = const {waddleMicrosoftGraphClientIdEnv: 'test-ms-client-id'},
-}) {
-  final resolver = ProviderConfigResolver(db, {});
+  String? clientId = 'test-ms-client-id',
+}) async {
+  if (clientId != null) {
+    await secrets.write(kMicrosoftGraphClientIdSecretKey, clientId);
+  }
+  final resolver = ProviderConfigResolver(db, secrets);
   return DataWriteContextImpl(
     db: db,
     blobs: FakeBlobStore(),
     secrets: secrets,
     resolve: resolver.resolve,
-    env: env,
   );
 }
 

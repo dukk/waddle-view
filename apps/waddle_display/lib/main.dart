@@ -32,7 +32,8 @@ import 'package:waddle_shared/collect/stub_data_provider.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/curation/reject_rescan.dart';
 import 'package:waddle_shared/persistence/database.dart';
-import 'package:waddle_shared/secrets/flutter_secure_secret_store.dart';
+import 'package:waddle_shared/secrets/db_encrypted_secret_store.dart';
+import 'package:waddle_shared/secrets/platform/platform_dek_protector.dart';
 import 'package:waddle_shared/seed/initial_seed.dart';
 import 'package:waddle_data_providers/waddle_data_providers.dart';
 import 'curator/active_curator_service.dart';
@@ -119,13 +120,16 @@ Future<void> _waddleBootstrap() async {
     final corsOrigins = CorsOriginRepository(db);
     AppDebugLog.startup('SQLite ready (seed applied if first run)');
 
-    final secrets = FlutterSecureSecretStore();
+    final secrets = DbEncryptedSecretStore(
+      db: db,
+      protector: createPlatformDekProtector(),
+    );
     final envMap = mergeBootstrapEnv();
     await corsOrigins.seedEnvOrigins(
       parseCorsAllowedOrigins(envMap[kDisplayHttpCorsOriginsEnv]),
       nowMs: DateTime.now().millisecondsSinceEpoch,
     );
-    final resolver = ProviderConfigResolver(db, envMap);
+    final resolver = ProviderConfigResolver(db, secrets);
     final blobs = FileSystemBlobStore(mediaDir);
     final telemetryHub = OperatorTelemetryHub();
     final collectDiag = defaultDisplayCollectDiagnostics(telemetryHub: telemetryHub);
@@ -197,6 +201,7 @@ Future<void> _waddleBootstrap() async {
       corsOrigins: corsOrigins,
       ticker: tickerCurated,
       blobs: blobs,
+      secrets: secrets,
       onConfigChanged: dashboardCurator.refresh,
       env: envMap,
       telemetryHub: telemetryHub,

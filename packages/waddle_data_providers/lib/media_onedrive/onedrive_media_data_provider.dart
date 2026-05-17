@@ -8,7 +8,7 @@ import 'package:waddle_shared/curation/reject_filter_context.dart';
 
 import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/config/microsoft_graph_kv.dart';
-import 'package:waddle_shared/config/provider_access_token_env.dart';
+import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';
@@ -212,10 +212,11 @@ class OneDriveMediaDataProvider implements IDataProvider {
 
     final nowMs = _nowMs();
 
-    final clientId = readMicrosoftGraphClientIdFromEnvMap(ctx.env) ?? '';
+    final clientId =
+        await readMicrosoftGraphClientIdFromStore(ctx.secrets) ?? '';
     if (clientId.isEmpty) {
       ctx.diagnostics.provider(
-        'onedrive_media: skip (no $waddleMicrosoftGraphClientIdEnv)',
+        'onedrive_media: skip (no Microsoft Graph client ID configured)',
       );
       return;
     }

@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-import 'package:waddle_shared/config/provider_access_token_env.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
+import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_data_providers/media_flickr/flickr_media_data_provider.dart';
 import 'package:waddle_shared/persistence/database.dart';
@@ -21,7 +21,7 @@ void main() {
     await _seedProvider(db, enabled: false);
     final client = _FlickrClient();
     await FlickrMediaDataProvider(httpClient: client).collect(
-      _ctx(db, InMemorySecretStore()),
+      await _ctx(db, InMemorySecretStore(), apiKey: null),
     );
     expect(client.listCalls, 0);
     await db.close();
@@ -33,7 +33,7 @@ void main() {
     await _seedProvider(db);
     final client = _FlickrClient();
     await FlickrMediaDataProvider(httpClient: client).collect(
-      _ctx(db, InMemorySecretStore(), env: const {}),
+      await _ctx(db, InMemorySecretStore(), apiKey: null),
     );
     expect(client.listCalls, 0);
     await db.close();
@@ -60,7 +60,7 @@ void main() {
       },
     );
     await FlickrMediaDataProvider(httpClient: client, nowMs: () => 1000).collect(
-      _ctx(db, secrets),
+      await _ctx(db, secrets),
     );
     final photos = await db.select(db.photos).get();
     expect(photos.length, 1);
@@ -106,7 +106,7 @@ void main() {
         ],
       },
     );
-    await FlickrMediaDataProvider(httpClient: client).collect(_ctx(db, secrets));
+    await FlickrMediaDataProvider(httpClient: client).collect(await _ctx(db, secrets));
     expect((await db.select(db.photos).get()).length, 1);
     await db.close();
   });
@@ -135,19 +135,22 @@ void main() {
       },
     );
     final provider = FlickrMediaDataProvider(httpClient: client, nowMs: () => 2000);
-    await provider.collect(_ctx(db, secrets));
-    await provider.collect(_ctx(db, secrets));
+    await provider.collect(await _ctx(db, secrets));
+    await provider.collect(await _ctx(db, secrets));
     expect((await db.select(db.photos).get()).length, 1);
     await db.close();
   });
 }
 
-DataWriteContext _ctx(
+Future<DataWriteContext> _ctx(
   AppDatabase db,
   InMemorySecretStore secrets, {
-  Map<String, String> env = const {waddleFlickrApiKeyEnv: 'k'},
-}) {
-  final resolver = ProviderConfigResolver(db, env);
+  String? apiKey = 'k',
+}) async {
+  if (apiKey != null) {
+    await secrets.write(providerAccessTokenSecretKey('media_flickr'), apiKey);
+  }
+  final resolver = ProviderConfigResolver(db, secrets);
   return DataWriteContextImpl(
     db: db,
     blobs: FakeBlobStore(),

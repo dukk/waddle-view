@@ -5,7 +5,7 @@ import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:waddle_shared/config/microsoft_graph_kv.dart';
-import 'package:waddle_shared/config/provider_access_token_env.dart';
+import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';
 import 'package:waddle_shared/collect/collect_diagnostics.dart';
@@ -159,10 +159,11 @@ class OutlookCalendarDataProvider implements IDataProvider {
 
     final nowMs = _nowMs();
 
-    final clientId = readMicrosoftGraphClientIdFromEnvMap(ctx.env) ?? '';
+    final clientId =
+        await readMicrosoftGraphClientIdFromStore(ctx.secrets) ?? '';
     if (clientId.isEmpty) {
       _collectDiag!.provider(
-        'outlook_calendar: skip (no $waddleMicrosoftGraphClientIdEnv)',
+        'outlook_calendar: skip (no Microsoft Graph client ID configured)',
       );
       return;
     }

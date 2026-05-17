@@ -44,13 +44,15 @@ part 'database.g.dart';
     AdoptionPending,
     ApiClients,
     CorsAllowedOrigins,
+    IntegrationSecrets,
+    SecretStoreMeta,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -67,8 +69,15 @@ ORDER BY priority DESC, created_at DESC;
       await _seedDefaultRejectTerms(this);
     },
     onUpgrade: (Migrator m, int from, int to) async {
-      if (from == 1 && to == 2) {
+      if (from == 1 && to >= 2) {
         await _migrateV1ToV2InterestsTableRenames(this);
+        if (to == 2) {
+          return;
+        }
+        from = 2;
+      }
+      if (from == 2 && to >= 3) {
+        await _migrateV2ToV3IntegrationSecrets(this, m);
         return;
       }
       throw UnsupportedError(
@@ -80,6 +89,42 @@ ORDER BY priority DESC, created_at DESC;
       await customStatement('PRAGMA foreign_keys = ON');
     },
   );
+}
+
+/// Integration ids that require operator-configured secrets (schema 2 → 3 cutover).
+const kIntegrationsDisabledOnSecretStoreMigration = <String>[
+  'joke_openai',
+  'trivia_openai',
+  'weather_openweathermap',
+  'media_pexels',
+  'media_flickr',
+  'stock_finnhub',
+  'calendar_google',
+  'calendar_outlook',
+  'media_onedrive',
+];
+
+/// Adds encrypted secret tables and disables env-dependent integrations.
+Future<void> _migrateV2ToV3IntegrationSecrets(
+  AppDatabase db,
+  Migrator m,
+) async {
+  await m.createTable(db.integrationSecrets);
+  await m.createTable(db.secretStoreMeta);
+  final integrationsPresent = await db
+      .customSelect(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='integrations' LIMIT 1",
+      )
+      .get();
+  if (integrationsPresent.isEmpty) {
+    return;
+  }
+  for (final id in kIntegrationsDisabledOnSecretStoreMigration) {
+    await db.customStatement(
+      'UPDATE integrations SET enabled = 0 WHERE id = ?',
+      [id],
+    );
+  }
 }
 
 /// Renames legacy interest catalog tables to `interests_*` (schema 1 → 2).

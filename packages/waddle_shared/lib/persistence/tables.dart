@@ -718,3 +718,26 @@ const String kCorsOriginSourceAdoption = 'adoption';
 
 /// [CorsAllowedOrigins.source] for [WADDLE_DISPLAY_HTTP_CORS_ORIGINS] at startup.
 const String kCorsOriginSourceEnv = 'env';
+
+/// AES-GCM ciphertext for one integration secret ([SecretStore] storage key).
+class IntegrationSecrets extends Table {
+  TextColumn get secretKey => text()();
+  BlobColumn get ciphertext => blob()();
+  IntColumn get updatedAtMs => integer()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {secretKey};
+}
+
+/// Platform-wrapped data-encryption key metadata (row id [kSecretStoreDekMetaId]).
+class SecretStoreMeta extends Table {
+  TextColumn get id => text()();
+  BlobColumn get wrappedDek => blob()();
+  IntColumn get algorithmVersion => integer()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// [SecretStoreMeta.id] for the single wrapped DEK row.
+const String kSecretStoreDekMetaId = 'dek_v1';

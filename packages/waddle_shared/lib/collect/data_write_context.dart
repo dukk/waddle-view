@@ -14,9 +14,9 @@ abstract class DataWriteContext {
 
   CollectDiagnostics get diagnostics;
 
-  /// Merged process environment (and optional debug `.env`), used for OAuth
-  /// public client ids and static provider API keys — never OAuth refresh
-  /// material for Google / Microsoft Graph (those use [secrets] only).
+  /// Merged process environment (and optional debug `.env`) for display HTTP,
+  /// TLS, CORS, and other non-integration settings — not provider API keys or
+  /// OAuth material (those use [secrets] only).
   Map<String, String> get env;
 
   Future<ProviderRuntimeConfig> resolveConfig(String providerId);

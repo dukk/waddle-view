@@ -1,6 +1,6 @@
 # Waddle View
 
-Flutter **Linux** TV dashboard (Windows desktop supported for local development). Features: **Drift** SQLite, filesystem **blob** store, **environment-backed API keys** plus **`SecretStore`** for Google/Microsoft OAuth tokens only, sequential **data collection** engine, curated **bottom ticker** (RTL marquee), **RSS news slides** with an article-link **QR code** for scanning, **overlay alerts** (optional QR), configurable **festive display overlays** (hearts + short phrases driven from SQLite and theme accent colors), embedded **Shelf** REST API with per-deployment API key.
+Flutter **Linux** TV dashboard (Windows desktop supported for local development). Features: **Drift** SQLite, filesystem **blob** store, **encrypted integration secrets** in SQLite (configured from the controller UI; DEK wrapped with **DPAPI** on Windows and **machine-id** binding on Linux), sequential **data collection** engine, curated **bottom ticker** (RTL marquee), **RSS news slides** with an article-link **QR code** for scanning, **overlay alerts** (optional QR), configurable **festive display overlays** (hearts + short phrases driven from SQLite and theme accent colors), embedded **Shelf** REST API with per-deployment API key.
 
 For module boundaries, startup order, and **Mermaid** sequence diagrams (startup, data collection, REST alerts, ticker), see **[`ARCHITECTURE.md`](ARCHITECTURE.md)**.
 
@@ -265,17 +265,11 @@ The **`dev_data_health`** screen (`screen_type` **`data_health`**, installed **d
 
 The **`curator_categories`** table (renamed from **`content_categories`** in schema **42**) holds shared category ids for **RSS** (`rss_feed_sources.category`), **Pexels** (`photos.category` / `videos.category`), **jokes** (`joke_categories.id`), and **trivia** (`trivia_categories.id`). Each row has a display **`label`**, optional **`material_icon_name`** (resolved in the app via [`content_category_material_icon.dart`](lib/display/content_category_material_icon.dart)), and optional **`icon_blob_key`** for a custom image in the blob store. Initial rows are created by migration to schema version **19** and by [`ensureDefaultContentCategories`](../../packages/waddle_shared/lib/seed/tables/content_categories_seed.dart) during startup seeding.
 
-## Provider secrets (OpenAI / joke_openai / trivia_openai)
+## Integration secrets (API keys and OAuth client ids)
 
-The joke and trivia data providers read OpenAI-style API keys from **environment variables** (merged with debug `.env`), not from the **`integrations`** table or other SQLite configuration.
+Provider credentials are stored encrypted in SQLite (`integration_secrets`) via [`DbEncryptedSecretStore`](../../packages/waddle_shared/lib/secrets/db_encrypted_secret_store.dart). Configure them in **`apps/waddle_controller`** → **Integrations** (secrets fields); values are write-only over REST. **`WADDLE_DISPLAY_*` provider API key env vars are deprecated** and ignored at collect time. After upgrade, integrations that need secrets start **disabled** until configured. OAuth accounts may need re-authentication if tokens lived only in the old OS keyring. Catalog: [`integration_secret_catalog.dart`](../../packages/waddle_shared/lib/secrets/integration_secret_catalog.dart).
 
-Supported env name: **`WADDLE_DISPLAY_OPENAI_API_KEY`** (shared by **`joke_openai`** and **`trivia_openai`** (and **`trivia_opentdb`**); see [`packages/waddle_shared/lib/config/provider_access_token_env.dart`](../../packages/waddle_shared/lib/config/provider_access_token_env.dart)).
-
-The **`weather_openweathermap`** data provider uses **`WADDLE_DISPLAY_OPEN_WEATHER_MAP_API_KEY`**.
-
-**Local onboarding:** copy **[`.env.example`](.env.example)** to **`.env`** in this directory and set the variables above. In **debug** builds, the app loads that file into the merged env map (see [`lib/config/dev_dotenv_secrets.dart`](lib/config/dev_dotenv_secrets.dart)). **Google / Microsoft Graph** OAuth **tokens** use **`SecretStore`** only (device-code flow or `waddlectl secrets set`); set public **client ids** with **`WADDLE_DISPLAY_GOOGLE_CLIENT_ID`** and **`WADDLE_DISPLAY_MICROSOFT_GRAPH_CLIENT_ID`** in the environment (or the same debug `.env`). Full detail: **[`docs/pi/development.md`](../../docs/pi/development.md#joke-data-provider-openai-api-key)**.
-
-OpenTDB trivia does **not** require a token.
+OpenTDB trivia does **not** require an API key.
 
 ### Trivia provider (`provider_type`: **`trivia_openai`**)
 

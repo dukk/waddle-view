@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { IntegrationSecretSlot } from '@/util/integrationSecrets';
+import { integrationSecretsSatisfiedForEnable } from '@/util/integrationSecrets';
 import {
   Alert,
   Box,
@@ -34,6 +36,8 @@ import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { catalogCardGridSx } from '@/constants/catalogLayout';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
+import { IntegrationBrandIcon } from '@/components/IntegrationBrandIcon';
+import { integrationDataFamily } from '@/util/integrationIcon';
 import { integrationDisplayName } from '@/util/integrationDisplayName';
 import { parseJsonObject } from '@/util/json';
 import { prepareRjsfSchema } from '@/util/rjsfSchema';
@@ -47,6 +51,7 @@ type IntegrationRow = {
   config_json: unknown;
   config_json_schema?: unknown;
   example_config_json?: unknown;
+  secrets_configured?: boolean;
 };
 
 function integrationConfigSchema(row: IntegrationRow): RJSFSchema {
@@ -62,16 +67,6 @@ function configJsonSatisfiesSchema(row: IntegrationRow): boolean {
 
 function sortById(a: IntegrationRow, b: IntegrationRow): number {
   return a.id.localeCompare(b.id);
-}
-
-/** Provider `integration_type` values use a `{family}_{implementation}` prefix (e.g. `calendar_google`). */
-function integrationDataFamily(integrationType: string): string {
-  const t = integrationType.trim();
-  const u = t.indexOf('_');
-  if (u <= 0) {
-    return t.length > 0 ? t : 'other';
-  }
-  return t.slice(0, u);
 }
 
 function familyLabel(family: string): string {
@@ -227,8 +222,9 @@ export function IntegrationsPage() {
         </Typography>
         <Typography variant="body2" color="text.secondary">
           Connect external data sources—calendars, news, weather, stocks, and more—that collectors
-          poll into the display database. Enable a provider, set its poll interval, and complete{' '}
-          <code>config_json</code> (credentials and endpoints) so scheduled fetches succeed.
+          poll into the display database. Set API keys and OAuth client IDs in the secrets section
+          below (stored encrypted on the display), then enable the provider and complete{' '}
+          <code>config_json</code> so scheduled fetches succeed.
         </Typography>
       </Box>
       {error && <Alert severity="error">{error}</Alert>}
@@ -320,12 +316,13 @@ export function IntegrationsPage() {
           <Box sx={catalogCardGridSx}>
             {disabledRows.map((r) => {
               const configOk = configJsonSatisfiesSchema(r);
+              const secretsOk = r.secrets_configured !== false;
               return (
                 <IntegrationCard
                   key={r.id}
                   row={r}
                   actionLabel="Enable"
-                  configSatisfied={configOk}
+                  configSatisfied={configOk && secretsOk}
                   onAction={() => {
                     setDialogIntent('enable');
                     setEdit(r);
@@ -384,9 +381,19 @@ function IntegrationCard({
     >
       <CardContent sx={{ flexGrow: 1 }}>
         <Stack spacing={1}>
-          <Typography variant="subtitle1" fontWeight={600} sx={{ wordBreak: 'break-word' }}>
-            {displayName}
-          </Typography>
+          <Stack direction="row" spacing={1.5} alignItems="flex-start">
+            <IntegrationBrandIcon
+              integrationType={row.integration_type}
+              baseUrl={row.base_url}
+            />
+            <Typography
+              variant="subtitle1"
+              fontWeight={600}
+              sx={{ wordBreak: 'break-word', flex: 1, minWidth: 0, pt: 0.25 }}
+            >
+              {displayName}
+            </Typography>
+          </Stack>
           <Typography variant="caption" color="text.secondary" display="block">
             Poll every {row.poll_seconds}s
           </Typography>
@@ -428,7 +435,43 @@ function EditIntegrationDialog({
   const [formData, setFormData] = useState<Record<string, unknown>>(() =>
     parseJsonObject(row.config_json),
   );
+  const [secretSlots, setSecretSlots] = useState<IntegrationSecretSlot[]>([]);
+  const [secretDrafts, setSecretDrafts] = useState<Record<string, string>>({});
+  const [secretsLoading, setSecretsLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!active) return;
+    let cancelled = false;
+    void (async () => {
+      setSecretsLoading(true);
+      try {
+        const res = await apiJson<{ slots: IntegrationSecretSlot[] }>(
+          active,
+          `/v1/integrations/${encodeURIComponent(row.id)}/secrets`,
+        );
+        if (!cancelled) {
+          setSecretSlots(res.slots ?? []);
+        }
+      } catch {
+        if (!cancelled) {
+          setSecretSlots([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setSecretsLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [active, row.id]);
+
+  const secretsReady = useMemo(
+    () => integrationSecretsSatisfiedForEnable(secretSlots, secretDrafts),
+    [secretSlots, secretDrafts],
+  );
 
   const displayName = useMemo(
     () => integrationDisplayName(row.integration_type),
@@ -449,7 +492,24 @@ function EditIntegrationDialog({
       setErr('Poll seconds must be greater than zero.');
       return;
     }
+    if (enabled && !secretsReady) {
+      setErr('Configure all required secrets before enabling this integration.');
+      return;
+    }
     try {
+      for (const slot of secretSlots) {
+        const draft = (secretDrafts[slot.id] ?? '').trim();
+        if (draft.length > 0) {
+          await apiFetch(
+            active,
+            `/v1/integrations/${encodeURIComponent(row.id)}/secrets/${encodeURIComponent(slot.id)}`,
+            {
+              method: 'PUT',
+              body: JSON.stringify({ value: draft }),
+            },
+          );
+        }
+      }
       await apiFetch(active, `/v1/integrations/${encodeURIComponent(row.id)}`, {
         method: 'PATCH',
         body: JSON.stringify({
@@ -469,14 +529,66 @@ function EditIntegrationDialog({
 
   return (
     <Dialog open onClose={onClose} fullWidth maxWidth="md">
-      <DialogTitle>{title}</DialogTitle>
+      <DialogTitle>
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          <IntegrationBrandIcon
+            integrationType={row.integration_type}
+            baseUrl={row.base_url}
+            size={32}
+          />
+          <span>{title}</span>
+        </Stack>
+      </DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           {err && <Alert severity="error">{err}</Alert>}
           <Stack direction="row" alignItems="center" spacing={1}>
-            <Switch checked={enabled} onChange={(_, v) => setEnabled(v)} />
+            <Switch
+              checked={enabled}
+              onChange={(_, v) => setEnabled(v)}
+              disabled={enabled === false && secretSlots.length > 0 && !secretsReady}
+            />
             <Typography>Enabled</Typography>
           </Stack>
+          {secretSlots.length > 0 && !secretsReady ? (
+            <Alert severity="info">
+              Enter API keys or OAuth client IDs in the secrets section before enabling.
+            </Alert>
+          ) : null}
+          {secretsLoading ? (
+            <Typography variant="body2" color="text.secondary">
+              Loading secrets…
+            </Typography>
+          ) : secretSlots.length > 0 ? (
+            <Stack spacing={1.5}>
+              <Typography variant="subtitle2">Secrets (stored on display)</Typography>
+              {secretSlots.map((slot) => (
+                <Stack key={slot.id} spacing={0.5}>
+                  <Stack direction="row" alignItems="center" spacing={1}>
+                    <Typography variant="body2">{slot.label}</Typography>
+                    {slot.configured ? (
+                      <Chip size="small" color="success" label="Configured" />
+                    ) : (
+                      <Chip size="small" color="warning" label="Required" />
+                    )}
+                  </Stack>
+                  <TextField
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder={
+                      slot.configured ? 'Leave blank to keep current value' : 'Enter value'
+                    }
+                    value={secretDrafts[slot.id] ?? ''}
+                    onChange={(e) =>
+                      setSecretDrafts((prev) => ({ ...prev, [slot.id]: e.target.value }))
+                    }
+                    fullWidth
+                    size="small"
+                  />
+                </Stack>
+              ))}
+            </Stack>
+          ) : null}
           <TextField
             label="Poll seconds"
             type="number"
@@ -507,7 +619,11 @@ function EditIntegrationDialog({
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={() => void save()} disabled={poll <= 0}>
+        <Button
+          variant="contained"
+          onClick={() => void save()}
+          disabled={poll <= 0 || (enabled && !secretsReady)}
+        >
           Save
         </Button>
       </DialogActions>

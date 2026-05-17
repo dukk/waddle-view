@@ -6,7 +6,7 @@ alwaysApply: false
 
 # waddle_display (`apps/waddle_display`)
 
-- **SOLID**: composition in `lib/main.dart`; shared ports for blobs/secrets in [`waddle_shared`](../../packages/waddle_shared) (`BlobStore`, `SecretStore`, filesystem / secure implementations). App-local ports under `lib/data/`, `lib/api/`, `lib/window/`, etc.; repositories own Drift access; HTTP handlers delegate to repositories; no secrets in SQLite.
+- **SOLID**: composition in `lib/main.dart`; shared ports for blobs/secrets in [`waddle_shared`](../../packages/waddle_shared) (`BlobStore`, `SecretStore`, `DbEncryptedSecretStore`, filesystem blob implementations). App-local ports under `lib/data/`, `lib/api/`, `lib/window/`, etc.; repositories own Drift access; HTTP handlers delegate to repositories; no **cleartext** secrets in SQLite (ciphertext in `integration_secrets` is allowed).
 - **TDD**: tests first for new behavior; `test/` mirrors `lib/`. **`dart_test.yaml`** caps each test at **60s** so hangs fail fast; use `test(..., timeout: ...)` only when a test truly needs more wall time.
 - **Coverage**: keep `apps/waddle_display/lib/` at **≥ 85%** line coverage (CI floor); **90%** is the project target (`tool/coverage_check.dart` warns below target but does not fail CI between 85% and 90%).
 - **Dependencies**: justify new packages in PR/commit message.
