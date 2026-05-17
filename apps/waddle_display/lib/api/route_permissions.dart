@@ -126,6 +126,19 @@ String? permissionForRoute(String method, String path) {
     return WaddlePermission.metaRead;
   }
 
+  if (p == '/v1/adoption/session' && m == 'GET') {
+    return null;
+  }
+  if (p == '/v1/adoption/clients' && m == 'GET') {
+    return WaddlePermission.usersManage;
+  }
+  if (p == '/v1/adoption/clients' && m == 'POST') {
+    return WaddlePermission.usersManage;
+  }
+  if (p.startsWith('/v1/adoption/clients/') && m == 'DELETE') {
+    return WaddlePermission.usersManage;
+  }
+
   return null;
 }
 

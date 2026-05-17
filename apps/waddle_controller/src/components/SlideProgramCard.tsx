@@ -15,9 +15,11 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { apiJson, ApiError, fetchBlobObjectUrl } from '@/api/client';
 import type { SavedDisplay } from '@/storage/displays';
+import { SlideScreenPreviewIcon } from '@/icons/slideScreenPreviewIcon';
 import {
   collectSlideContentIds,
   collectWeatherLocationIds,
+  slideScreenPreviewKind,
   type SlideCardModel,
 } from '@/util/programTelemetry';
 
@@ -324,6 +326,11 @@ export function SlideProgramCard({ display, model, onDetails }: Props) {
   );
 
   const typeLabel = model.screenType ?? model.summaries[0]?.type ?? 'slide';
+  const previewKind = useMemo(() => slideScreenPreviewKind(model), [model]);
+
+  const hasRasterPreview =
+    Boolean(videoUrl) || nPhotos > 0 || Boolean(rssImgUrl) || Boolean(wxIconUrl);
+  const showTypeIllustration = !loading && !hasRasterPreview && previewKind != null;
 
   const textLines: string[] = [];
   if (firstJoke?.setup) textLines.push(firstJoke.setup);
@@ -461,6 +468,17 @@ export function SlideProgramCard({ display, model, onDetails }: Props) {
                 />
                 <Typography variant="body2">{weatherLine}</Typography>
               </Stack>
+            )}
+            {showTypeIllustration && (
+              <SlideScreenPreviewIcon
+                kind={previewKind}
+                aria-hidden
+                sx={{
+                  fontSize: 88,
+                  color: 'primary.main',
+                  opacity: 0.72,
+                }}
+              />
             )}
           </Box>
           <Stack spacing={0.5}>

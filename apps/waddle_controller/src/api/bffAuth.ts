@@ -12,6 +12,7 @@ export type BffStatus = {
   authEnabled: boolean;
   userManagementEnabled: boolean;
   needsBootstrap: boolean;
+  clientIdentifier?: string;
   user?: BffUser;
 };
 

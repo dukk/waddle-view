@@ -1,20 +1,18 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  Box,
   Button,
+  Card,
+  CardActions,
+  CardContent,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  Paper,
   Stack,
   Switch,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Typography,
   FormControl,
@@ -24,7 +22,9 @@ import {
 } from '@mui/material';
 import { useDisplay } from '@/context/DisplayContext';
 import { apiFetch, apiJson, ApiError } from '@/api/client';
+import { CatalogPageHelp } from '@/components/CatalogPageHelp';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
+import { TickerTapesHelpContent } from '@/components/help/TickerTapesHelpContent';
 
 type TickerTapeRow = {
   id: string;
@@ -45,6 +45,20 @@ type TickerTypeMeta = {
   config_json_schema: unknown;
   example_config_json: unknown;
 };
+
+function sortById(a: TickerTapeRow, b: TickerTapeRow): number {
+  return a.id.localeCompare(b.id);
+}
+
+function tickerTypeLabel(tickerType: string): string {
+  return tickerType.replace(/_/g, ' ');
+}
+
+const catalogCardGridSx = {
+  display: 'grid',
+  gap: 2,
+  gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+} as const;
 
 export function TickerPage() {
   const { active } = useDisplay();
@@ -73,67 +87,99 @@ export function TickerPage() {
     void load();
   }, [load]);
 
+  const { enabledRows, disabledRows } = useMemo(() => {
+    const enabled = rows.filter((r) => r.enabled).sort(sortById);
+    const disabled = rows.filter((r) => !r.enabled).sort(sortById);
+    return { enabledRows: enabled, disabledRows: disabled };
+  }, [rows]);
+
+  const deleteTape = useCallback(
+    async (id: string) => {
+      if (!active) return;
+      if (!confirm(`Delete ticker tape ${id}?`)) return;
+      try {
+        await apiFetch(active, `/v1/ticker/tapes/${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+        });
+        await load();
+      } catch (e) {
+        setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
+      }
+    },
+    [active, load],
+  );
+
   if (!active) {
     return <NoDisplayPlaceholder />;
   }
 
   return (
-    <Stack spacing={2}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
+    <Stack spacing={3}>
+      <Box>
+        <Stack direction="row" alignItems="center" spacing={0.25} sx={{ mb: 0.5 }}>
+          <Typography variant="h6" fontWeight={600}>
+            Bottom marquee feeds
+          </Typography>
+          <CatalogPageHelp title="Ticker tapes and the curator">
+            <TickerTapesHelpContent />
+          </CatalogPageHelp>
+        </Stack>
+        <Typography variant="body2" color="text.secondary">
+          Configure feeds merged into the bottom marquee—clock, weather, RSS, stocks, quotes, or
+          custom copy. Sort order and frequency weight control how often each tape repeats; scroll
+          speed is under Display settings.
+        </Typography>
+      </Box>
+      <Stack direction="row" justifyContent="flex-end">
         <Button variant="contained" onClick={() => setAddOpen(true)} disabled={!meta.length}>
           Add ticker tape
         </Button>
       </Stack>
       {error && <Alert severity="error">{error}</Alert>}
-      <TableContainer component={Paper} variant="outlined">
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Name</TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell>Enabled</TableCell>
-              <TableCell>Weight</TableCell>
-              <TableCell>Sort</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell>{r.id}</TableCell>
-                <TableCell>{r.name}</TableCell>
-                <TableCell>{r.ticker_type}</TableCell>
-                <TableCell>{r.enabled ? 'yes' : 'no'}</TableCell>
-                <TableCell>{r.frequency_weight}</TableCell>
-                <TableCell>{r.sort_order}</TableCell>
-                <TableCell align="right">
-                  <Button size="small" onClick={() => setEdit(r)}>
-                    Edit
-                  </Button>
-                  <Button
-                    size="small"
-                    color="error"
-                    onClick={async () => {
-                      if (!confirm(`Delete ticker tape ${r.id}?`)) return;
-                      try {
-                        await apiFetch(active, `/v1/ticker/tapes/${encodeURIComponent(r.id)}`, {
-                          method: 'DELETE',
-                        });
-                        await load();
-                      } catch (e) {
-                        setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
-                      }
-                    }}
-                  >
-                    Delete
-                  </Button>
-                </TableCell>
-              </TableRow>
+
+      <Stack spacing={1.5}>
+        <Typography variant="subtitle1" fontWeight={600}>
+          Enabled
+        </Typography>
+        {enabledRows.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            No ticker tapes are enabled.
+          </Typography>
+        ) : (
+          <Box sx={catalogCardGridSx}>
+            {enabledRows.map((r) => (
+              <TickerTapeCard
+                key={r.id}
+                row={r}
+                onEdit={() => setEdit(r)}
+                onDelete={() => void deleteTape(r.id)}
+              />
             ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+          </Box>
+        )}
+      </Stack>
+
+      <Stack spacing={1.5}>
+        <Typography variant="subtitle1" fontWeight={600}>
+          Disabled
+        </Typography>
+        {disabledRows.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            All ticker tapes are enabled.
+          </Typography>
+        ) : (
+          <Box sx={catalogCardGridSx}>
+            {disabledRows.map((r) => (
+              <TickerTapeCard
+                key={r.id}
+                row={r}
+                onEdit={() => setEdit(r)}
+                onDelete={() => void deleteTape(r.id)}
+              />
+            ))}
+          </Box>
+        )}
+      </Stack>
 
       {addOpen && (
         <AddTickerTapeDialog
@@ -158,6 +204,72 @@ export function TickerPage() {
         />
       )}
     </Stack>
+  );
+}
+
+function TickerTapeCard({
+  row,
+  onEdit,
+  onDelete,
+}: {
+  row: TickerTapeRow;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const title = row.name.trim() || row.id;
+  const typeLabel = tickerTypeLabel(row.ticker_type);
+
+  return (
+    <Card
+      variant="outlined"
+      sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}
+      aria-label={`${title} ticker tape`}
+    >
+      <CardContent sx={{ flexGrow: 1 }}>
+        <Stack spacing={1}>
+          <Typography variant="subtitle1" fontWeight={600} sx={{ wordBreak: 'break-word' }}>
+            {title}
+          </Typography>
+          {row.name.trim() ? (
+            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+              {row.id}
+            </Typography>
+          ) : null}
+          <Chip size="small" label={typeLabel} variant="outlined" sx={{ alignSelf: 'flex-start' }} />
+          <Typography variant="caption" color="text.secondary" display="block">
+            Weight {row.frequency_weight} · sort {row.sort_order}
+          </Typography>
+          {row.description.trim() ? (
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{
+                wordBreak: 'break-word',
+                display: '-webkit-box',
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }}
+            >
+              {row.description.trim()}
+            </Typography>
+          ) : null}
+          {row.config_key?.trim() ? (
+            <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
+              {row.config_key.trim()}
+            </Typography>
+          ) : null}
+        </Stack>
+      </CardContent>
+      <CardActions sx={{ justifyContent: 'flex-end', px: 2, pb: 2 }}>
+        <Button size="small" variant="outlined" onClick={onEdit}>
+          Edit
+        </Button>
+        <Button size="small" variant="outlined" color="error" onClick={onDelete}>
+          Delete
+        </Button>
+      </CardActions>
+    </Card>
   );
 }
 
@@ -271,6 +383,7 @@ function AddTickerTapeDialog({
             value={weight}
             onChange={(e) => setWeight(Number(e.target.value) || 0)}
             fullWidth
+            helperText="Repeat this tape's marquee bundle this many times when building the list (0 = skip)."
           />
           <TextField
             label="Sort order"
@@ -278,6 +391,7 @@ function AddTickerTapeDialog({
             value={sort}
             onChange={(e) => setSort(Number(e.target.value) || 0)}
             fullWidth
+            helperText="Lower numbers are merged into the marquee before higher numbers."
           />
           <TextField
             label="Config key (optional, e.g. custom ticker.marquee.*)"
@@ -408,6 +522,7 @@ function EditTickerTapeDialog({
             value={weight}
             onChange={(e) => setWeight(Number(e.target.value) || 0)}
             fullWidth
+            helperText="Repeat this tape's marquee bundle this many times when building the list (0 = skip)."
           />
           <TextField
             label="Sort order"
@@ -415,6 +530,7 @@ function EditTickerTapeDialog({
             value={sort}
             onChange={(e) => setSort(Number(e.target.value) || 0)}
             fullWidth
+            helperText="Lower numbers are merged into the marquee before higher numbers."
           />
           <TextField
             label="Config key (optional)"

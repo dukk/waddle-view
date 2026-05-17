@@ -65,11 +65,13 @@ void main() {
     });
   });
 
-  group('isAdoptionPath', () {
-    test('matches adoption routes only', () {
-      expect(isAdoptionPath('/v1/adoption/request'), isTrue);
-      expect(isAdoptionPath('v1/adoption/confirm'), isTrue);
-      expect(isAdoptionPath('/v1/screens'), isFalse);
+  group('isPublicAdoptionPath', () {
+    test('matches unauthenticated adoption routes only', () {
+      expect(isPublicAdoptionPath('/v1/adoption/request'), isTrue);
+      expect(isPublicAdoptionPath('v1/adoption/confirm'), isTrue);
+      expect(isPublicAdoptionPath('/v1/adoption/clients'), isFalse);
+      expect(isPublicAdoptionPath('/v1/adoption/session'), isFalse);
+      expect(isPublicAdoptionPath('/v1/screens'), isFalse);
     });
   });
 

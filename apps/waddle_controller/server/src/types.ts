@@ -13,5 +13,6 @@ export type StatusResponse = {
   authEnabled: boolean;
   userManagementEnabled: boolean;
   needsBootstrap: boolean;
+  clientIdentifier?: string;
   user?: Pick<PublicUser, 'id' | 'username' | 'role'>;
 };

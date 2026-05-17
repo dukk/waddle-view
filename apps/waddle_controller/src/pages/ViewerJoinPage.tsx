@@ -1,5 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -8,6 +11,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   confirmAdoption,
@@ -15,7 +19,10 @@ import {
   sessionFromAdoption,
 } from '@/api/adoption';
 import { useAuth } from '@/context/AuthContext';
+import { useControllerAuth } from '@/context/ControllerAuthContext';
 import { useDisplay } from '@/context/DisplayContext';
+import { syncUserDisplayToServer } from '@/storage/userDisplaysSync';
+import { resolveClientIdentifier } from '@/util/clientIdentifier';
 import { normalizeBaseUrl, upsertDisplayByBaseUrl } from '@/storage/displays';
 import { saveSession } from '@/storage/sessions';
 import { AdoptionChallengeCodeField } from '@/components/AdoptionChallengeCodeField';
@@ -23,6 +30,7 @@ import {
   isAdoptionChallengeCodeComplete,
   normalizeAdoptionChallengeCode,
 } from '@/util/adoptionChallengeCode';
+import { adoptionErrorMessage } from '@/util/adoptionFetchError';
 import { adoptionError, adoptionLog } from '@/util/adoptionLog';
 
 function defaultViewerIdentifier(): string {
@@ -36,14 +44,22 @@ export function ViewerJoinPage() {
   const navigate = useNavigate();
   const { setActiveId, refresh } = useDisplay();
   const { saveAdoptionSession } = useAuth();
+  const { status } = useControllerAuth();
+  const clientId = resolveClientIdentifier(status, defaultViewerIdentifier());
 
   const initialApi = useMemo(() => (params.get('api') ?? '').trim(), [params]);
-  const [apiUrl, setApiUrl] = useState(initialApi || 'http://127.0.0.1:8787');
-  const [identifier, setIdentifier] = useState(defaultViewerIdentifier);
+  const [apiUrl, setApiUrl] = useState(initialApi || 'https://127.0.0.1:8787');
+  const [identifier, setIdentifier] = useState(clientId.value);
   const [challengeCode, setChallengeCode] = useState('');
   const [pendingConfirm, setPendingConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (clientId.locked) {
+      setIdentifier(clientId.value);
+    }
+  }, [clientId.locked, clientId.value]);
 
   const onRequest = async () => {
     setError(null);
@@ -67,7 +83,7 @@ export function ViewerJoinPage() {
       adoptionError('ui.join.request.failed', 'viewer join request failed', {
         error: String(e),
       });
-      setError(String(e));
+      setError(adoptionErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -91,6 +107,7 @@ export function ViewerJoinPage() {
       const session = sessionFromAdoption(api, result);
       saveSession(d.id, session);
       saveAdoptionSession(session);
+      await syncUserDisplayToServer(d, session).catch(() => undefined);
       setActiveId(d.id);
       refresh();
       adoptionLog('ui.join.confirm.success', 'viewer join complete', {
@@ -101,7 +118,7 @@ export function ViewerJoinPage() {
       adoptionError('ui.join.confirm.failed', 'viewer join confirm failed', {
         error: String(e),
       });
-      setError(String(e));
+      setError(adoptionErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -115,7 +132,7 @@ export function ViewerJoinPage() {
       const d = upsertDisplayByBaseUrl({ baseUrl: api });
       setActiveId(d.id);
       refresh();
-      navigate('/displays');
+      navigate('/controller-settings');
     } catch {
       setError('Enter a valid display API base URL.');
     }
@@ -123,12 +140,13 @@ export function ViewerJoinPage() {
 
   return (
     <Box sx={{ p: 3, maxWidth: 520, mx: 'auto' }}>
-      <Typography variant="h5" gutterBottom>
-        Join this display
+      <Typography variant="h5" fontWeight={600} gutterBottom>
+        Viewer pairing
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Adopt this browser as a <strong>viewer</strong> client. Confirm the challenge code shown on
-        the kiosk alert (same flow as Manage displays).
+        Pair this browser as a <strong>viewer</strong> client with read-focused permissions. Enter
+        the challenge code from the kiosk alert—the same adoption flow as Controller settings, but
+        the display issues a viewer role instead of operator or admin.
       </Typography>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -143,12 +161,25 @@ export function ViewerJoinPage() {
           fullWidth
           helperText="Usually pre-filled from the QR link (?api=…)."
         />
-        <TextField
-          label="Client identifier"
-          value={identifier}
-          onChange={(e) => setIdentifier(e.target.value)}
-          fullWidth
-        />
+        <Accordion>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography variant="subtitle2">Advanced</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <TextField
+              label="Client identifier"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              fullWidth
+              disabled={clientId.locked}
+              helperText={
+                clientId.locked
+                  ? 'Set by WADDLE_CONTROLLER_CLIENT_IDENTIFIER on the server.'
+                  : undefined
+              }
+            />
+          </AccordionDetails>
+        </Accordion>
         {!pendingConfirm ? (
           <Button variant="contained" onClick={() => void onRequest()} disabled={busy}>
             Request viewer adoption
@@ -161,6 +192,11 @@ export function ViewerJoinPage() {
               onChange={setChallengeCode}
               fullWidth
               helperText="Must match the code on the kiosk alert (XXXX-XXXX)."
+              onEnter={() => {
+                if (!busy && isAdoptionChallengeCodeComplete(challengeCode)) {
+                  void onConfirm();
+                }
+              }}
             />
             <Button
               variant="contained"

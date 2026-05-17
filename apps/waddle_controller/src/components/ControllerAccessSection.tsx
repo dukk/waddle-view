@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Alert,
   Box,
   Chip,
   FormControlLabel,
-  Link,
   Stack,
   Switch,
   Typography,
@@ -72,10 +71,8 @@ export function ControllerAccessSection() {
           label="Enable user management"
         />
         {status.userManagementEnabled && isControllerAdmin && (
-          <Typography variant="body2">
-            <Link component={RouterLink} to="/users">
-              Manage controller users
-            </Link>
+          <Typography variant="body2" color="text.secondary">
+            Open the <strong>Users</strong> tab to manage controller accounts.
           </Typography>
         )}
         {status.authEnabled && status.user && (

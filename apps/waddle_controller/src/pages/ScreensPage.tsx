@@ -3,6 +3,10 @@ import {
   Alert,
   Box,
   Button,
+  Card,
+  CardActions,
+  CardContent,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -13,16 +17,14 @@ import {
   Select,
   Stack,
   Switch,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Typography,
-  Paper,
 } from '@mui/material';
+import { CatalogPageHelp } from '@/components/CatalogPageHelp';
+import { ScreenSchedulingHelpContent } from '@/components/help/ScreenSchedulingHelpContent';
+import { SlideScreenPreviewIcon } from '@/icons/slideScreenPreviewIcon';
+import { ScreenCarouselIcon } from '@/icons/ScreenCarouselIcon';
+import { screenTypePreviewKind } from '@/util/programTelemetry';
 import Form from '@rjsf/mui';
 import type { IChangeEvent } from '@rjsf/core';
 import type { RJSFSchema } from '@rjsf/utils';
@@ -31,6 +33,7 @@ import { useDisplay } from '@/context/DisplayContext';
 import { apiFetch, apiJson, ApiError } from '@/api/client';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { parseJsonObject } from '@/util/json';
+import { prepareRjsfSchema } from '@/util/rjsfSchema';
 
 type ScreenRow = {
   id: string;
@@ -55,13 +58,29 @@ type ScreenTypeMeta = {
   example_config_json: unknown;
 };
 
-function schemaObject(raw: unknown): RJSFSchema {
-  const o = parseJsonObject(raw);
-  if (Object.keys(o).length > 0) {
-    return o as RJSFSchema;
-  }
-  return { type: 'object', additionalProperties: true } as RJSFSchema;
+function sortById(a: ScreenRow, b: ScreenRow): number {
+  return a.id.localeCompare(b.id);
 }
+
+function screenTypeLabel(screenType: string): string {
+  return screenType.replace(/_/g, ' ');
+}
+
+const catalogCardGridSx = {
+  display: 'grid',
+  gap: 2,
+  gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+} as const;
+
+const screenCardPreviewSx = {
+  borderRadius: 1,
+  bgcolor: 'action.hover',
+  minHeight: 100,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+} as const;
+
 
 export function ScreensPage() {
   const { active } = useDisplay();
@@ -93,7 +112,7 @@ export function ScreensPage() {
   const schemaForType = useCallback(
     (screenType: string) => {
       const hit = meta.find((m) => m.screen_type === screenType);
-      return schemaObject(hit?.config_json_schema);
+      return prepareRjsfSchema(hit?.config_json_schema);
     },
     [meta],
   );
@@ -106,66 +125,100 @@ export function ScreensPage() {
     [meta],
   );
 
+  const { enabledRows, disabledRows } = useMemo(() => {
+    const enabled = rows.filter((r) => r.enabled).sort(sortById);
+    const disabled = rows.filter((r) => !r.enabled).sort(sortById);
+    return { enabledRows: enabled, disabledRows: disabled };
+  }, [rows]);
+
+  const deleteScreen = useCallback(
+    async (id: string) => {
+      if (!active) return;
+      if (!confirm(`Delete screen ${id}?`)) return;
+      try {
+        await apiFetch(active, `/v1/screens/${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+        });
+        await load();
+      } catch (e) {
+        setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
+      }
+    },
+    [active, load],
+  );
+
   if (!active) {
     return <NoDisplayPlaceholder />;
   }
 
   return (
-    <Stack spacing={2}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Typography variant="h5" fontWeight={600}>
-          Screens
+    <Stack spacing={3}>
+      <Box>
+        <Stack direction="row" alignItems="center" spacing={0.25} sx={{ mb: 0.5 }}>
+          <Typography variant="h6" fontWeight={600}>
+            Slideshow slide catalog
+          </Typography>
+          <CatalogPageHelp title="Screen scheduling">
+            <ScreenSchedulingHelpContent />
+          </CatalogPageHelp>
+        </Stack>
+        <Typography variant="body2" color="text.secondary">
+          Catalog slide types in the main slideshow (RSS, weather, photos, and others). Set dwell
+          time and frequency weight so the curator fills each program&apos;s time budget; the help
+          icon explains how placement and recent-history deprioritization work.
         </Typography>
+      </Box>
+      <Stack direction="row" justifyContent="flex-end">
         <Button variant="contained" onClick={() => setAddOpen(true)} disabled={!meta.length}>
           Add screen
         </Button>
       </Stack>
+
       {error && <Alert severity="error">{error}</Alert>}
-      <TableContainer component={Paper} variant="outlined">
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Name</TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell>Enabled</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell>{r.id}</TableCell>
-                <TableCell>{r.name}</TableCell>
-                <TableCell>{r.screen_type}</TableCell>
-                <TableCell>{r.enabled ? 'yes' : 'no'}</TableCell>
-                <TableCell align="right">
-                  <Button size="small" onClick={() => setEditRow(r)}>
-                    Edit
-                  </Button>
-                  <Button
-                    size="small"
-                    color="error"
-                    onClick={async () => {
-                      if (!confirm(`Delete screen ${r.id}?`)) return;
-                      try {
-                        await apiFetch(active, `/v1/screens/${encodeURIComponent(r.id)}`, {
-                          method: 'DELETE',
-                        });
-                        await load();
-                      } catch (e) {
-                        setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
-                      }
-                    }}
-                  >
-                    Delete
-                  </Button>
-                </TableCell>
-              </TableRow>
+
+      <Stack spacing={1.5}>
+        <Typography variant="subtitle1" fontWeight={600}>
+          Enabled
+        </Typography>
+        {enabledRows.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            No screens are enabled.
+          </Typography>
+        ) : (
+          <Box sx={catalogCardGridSx}>
+            {enabledRows.map((r) => (
+              <ScreenCard
+                key={r.id}
+                row={r}
+                onEdit={() => setEditRow(r)}
+                onDelete={() => void deleteScreen(r.id)}
+              />
             ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+          </Box>
+        )}
+      </Stack>
+
+      <Stack spacing={1.5}>
+        <Typography variant="subtitle1" fontWeight={600}>
+          Disabled
+        </Typography>
+        {disabledRows.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            All screens are enabled.
+          </Typography>
+        ) : (
+          <Box sx={catalogCardGridSx}>
+            {disabledRows.map((r) => (
+              <ScreenCard
+                key={r.id}
+                row={r}
+                onEdit={() => setEditRow(r)}
+                onDelete={() => void deleteScreen(r.id)}
+              />
+            ))}
+          </Box>
+        )}
+      </Stack>
 
       {addOpen && (
         <AddScreenDialog
@@ -183,7 +236,7 @@ export function ScreensPage() {
       {editRow && (
         <EditScreenDialog
           row={editRow}
-          schema={schemaObject(editRow.config_json_schema)}
+          schema={prepareRjsfSchema(editRow.config_json_schema)}
           onClose={() => setEditRow(null)}
           onSaved={async () => {
             setEditRow(null);
@@ -192,6 +245,80 @@ export function ScreensPage() {
         />
       )}
     </Stack>
+  );
+}
+
+function ScreenCard({
+  row,
+  onEdit,
+  onDelete,
+}: {
+  row: ScreenRow;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const title = row.name.trim() || row.id;
+  const typeLabel = screenTypeLabel(row.screen_type);
+  const previewKind = screenTypePreviewKind(row.screen_type);
+
+  return (
+    <Card
+      variant="outlined"
+      sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}
+      aria-label={`${title} screen`}
+    >
+      <CardContent sx={{ flexGrow: 1 }}>
+        <Stack spacing={1}>
+          <Box sx={screenCardPreviewSx}>
+            {previewKind ? (
+              <SlideScreenPreviewIcon
+                kind={previewKind}
+                aria-hidden
+                sx={{
+                  fontSize: 64,
+                  color: 'primary.main',
+                  opacity: 0.72,
+                }}
+              />
+            ) : (
+              <ScreenCarouselIcon
+                aria-hidden
+                sx={{
+                  fontSize: 64,
+                  color: 'text.secondary',
+                  opacity: 0.45,
+                }}
+              />
+            )}
+          </Box>
+          <Typography variant="subtitle1" fontWeight={600} sx={{ wordBreak: 'break-word' }}>
+            {title}
+          </Typography>
+          {row.name.trim() ? (
+            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+              {row.id}
+            </Typography>
+          ) : null}
+          <Chip size="small" label={typeLabel} variant="outlined" sx={{ alignSelf: 'flex-start' }} />
+          <Typography variant="caption" color="text.secondary" display="block">
+            Dwell {row.dwell_seconds}s · weight {row.frequency_weight}
+          </Typography>
+          {row.description?.trim() ? (
+            <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
+              {row.description.trim()}
+            </Typography>
+          ) : null}
+        </Stack>
+      </CardContent>
+      <CardActions sx={{ justifyContent: 'flex-end', px: 2, pb: 2 }}>
+        <Button size="small" variant="outlined" onClick={onEdit}>
+          Edit
+        </Button>
+        <Button size="small" variant="outlined" color="error" onClick={onDelete}>
+          Delete
+        </Button>
+      </CardActions>
+    </Card>
   );
 }
 
@@ -348,12 +475,16 @@ function EditScreenDialog({
             type="number"
             value={dwell}
             onChange={(e) => setDwell(Number(e.target.value) || 0)}
+            fullWidth
+            helperText="Seconds on screen each time this row is placed in a curated program (0 = skip automatic rotation)."
           />
           <TextField
             label="Frequency weight"
             type="number"
             value={weight}
             onChange={(e) => setWeight(Number(e.target.value) || 0)}
+            fullWidth
+            helperText="Higher values are chosen more often; recent appearances in the history window reduce effective weight."
           />
           <Typography variant="subtitle2">config.json</Typography>
           <Form

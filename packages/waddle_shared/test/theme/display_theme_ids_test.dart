@@ -16,6 +16,8 @@ void main() {
       normalizeDisplayThemeId('  graphite amber  '),
       kDisplayThemeGraphiteAmber,
     );
+    expect(normalizeDisplayThemeId('Ocean-Depth'), kDisplayThemeOceanDepth);
+    expect(normalizeDisplayThemeId('dopamine pop'), kDisplayThemeDopaminePop);
   });
 
   test('normalizeDisplayThemeId maps spaces and hyphens to underscores', () {

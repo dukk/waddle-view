@@ -52,8 +52,14 @@ export function AccountPage() {
 
   return (
     <Stack spacing={3} sx={{ maxWidth: 720 }}>
-      <Typography variant="h5" fontWeight={600}>
-        Account
+      <Typography variant="h5" fontWeight={600} gutterBottom>
+        Your session & preferences
+      </Typography>
+      <Typography variant="body2" color="text.secondary">
+        Your adopted display session (client id, role, and permissions) and controller appearance.
+        Add or re-adopt kiosks on{' '}
+        <RouterLink to="/controller-settings">Controller settings</RouterLink>; API keys stay in
+        this browser only and are not included in display-list export.
       </Typography>
 
       <Box>
@@ -77,12 +83,6 @@ export function AccountPage() {
           </Select>
         </FormControl>
       </Box>
-
-      <Typography variant="body2" color="text.secondary">
-        Add or re-adopt displays on the{' '}
-        <RouterLink to="/displays">Displays</RouterLink> page. API keys stay in this browser
-        only; export/import does not include them.
-      </Typography>
 
       {adoptionBody}
     </Stack>

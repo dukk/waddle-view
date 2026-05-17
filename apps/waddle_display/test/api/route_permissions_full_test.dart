@@ -35,6 +35,9 @@ void main() {
     ('PATCH', '/v1/ticker/tapes/t1', WaddlePermission.tickerWrite),
     ('DELETE', '/v1/ticker/tapes/t1', WaddlePermission.tickerWrite),
     ('GET', '/v1/meta/ticker-types', WaddlePermission.metaRead),
+    ('GET', '/v1/adoption/clients', WaddlePermission.usersManage),
+    ('POST', '/v1/adoption/clients', WaddlePermission.usersManage),
+    ('DELETE', '/v1/adoption/clients/x', WaddlePermission.usersManage),
   ];
 
   for (final (method, path, perm) in cases) {

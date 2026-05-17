@@ -67,7 +67,8 @@ void main() {
       identifier: identifier,
     );
     expect(keyA, keyB);
-    expect(keyA, isNotEmpty);
+    expect(keyA, startsWith(kAdoptionApiKeyPrefix));
+    expect(keyA.length, greaterThan(kAdoptionApiKeyPrefix.length));
   });
 
   test('hashAdoptionApiKey verifies with constantTimeStringEquals', () {

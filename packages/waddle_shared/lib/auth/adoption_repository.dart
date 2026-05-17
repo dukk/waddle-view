@@ -46,12 +46,35 @@ class ApiClientRecord {
     required this.identifier,
     required this.role,
     required this.apiKeyHash,
+    required this.createdAtMs,
+    required this.updatedAtMs,
   });
 
   final String id;
   final String identifier;
   final String role;
   final String apiKeyHash;
+  final int createdAtMs;
+  final int updatedAtMs;
+}
+
+/// API client row for operator listing (key shown masked from hash only).
+class ApiClientListItem {
+  const ApiClientListItem({
+    required this.id,
+    required this.identifier,
+    required this.role,
+    required this.maskedApiKey,
+    required this.createdAtMs,
+    required this.updatedAtMs,
+  });
+
+  final String id;
+  final String identifier;
+  final String role;
+  final String maskedApiKey;
+  final int createdAtMs;
+  final int updatedAtMs;
 }
 
 class AdoptionRepository {
@@ -240,10 +263,34 @@ class AdoptionRepository {
           identifier: row.identifier,
           role: row.role,
           apiKeyHash: row.apiKeyHash,
+          createdAtMs: row.createdAtMs,
+          updatedAtMs: row.updatedAtMs,
         );
       }
     }
     return null;
+  }
+
+  Future<List<ApiClientListItem>> listClients() async {
+    final rows = await _db.select(_db.apiClients).get();
+    rows.sort((a, b) => b.createdAtMs.compareTo(a.createdAtMs));
+    return [
+      for (final row in rows)
+        ApiClientListItem(
+          id: row.id,
+          identifier: row.identifier,
+          role: row.role,
+          maskedApiKey: maskAdoptionApiKeyHash(row.apiKeyHash),
+          createdAtMs: row.createdAtMs,
+          updatedAtMs: row.updatedAtMs,
+        ),
+    ];
+  }
+
+  Future<bool> revokeClient(String id) async {
+    final deleted = await (_db.delete(_db.apiClients)..where((t) => t.id.equals(id)))
+        .go();
+    return deleted > 0;
   }
 
   Future<void> sweepExpiredPending({

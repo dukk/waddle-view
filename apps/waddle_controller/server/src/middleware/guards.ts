@@ -28,6 +28,16 @@ export const bootstrapGuard = createMiddleware<{ Variables: AppVariables }>(asyn
   return c.json({ error: 'Admin bootstrap required', code: 'needs_bootstrap' }, 409);
 });
 
+/** Routes that need a logged-in user (user_displays, etc.). */
+export const requireAuthEnabled = createMiddleware<{ Variables: AppVariables }>(
+  async (c, next) => {
+    if (!c.get('config').authEnabled) {
+      return c.json({ error: 'Authentication is disabled', code: 'auth_disabled' }, 403);
+    }
+    await next();
+  },
+);
+
 export const requireAuth = createMiddleware<{ Variables: AppVariables }>(async (c, next) => {
   if (!c.get('config').authEnabled) {
     await next();

@@ -52,7 +52,7 @@ class TestInstallMainToPiHelpers(unittest.TestCase):
         im = self.im
         self.assertEqual(
             im.remote_shell_dotenv_dir("/home/pi"),
-            "/home/pi/.config/waddle_view",
+            "/home/pi/.local/share/waddle_display",
         )
 
     def test_shell_env_bashrc_block_paths(self):
@@ -60,7 +60,7 @@ class TestInstallMainToPiHelpers(unittest.TestCase):
         block = im.shell_env_bashrc_block("/home/pi")
         self.assertIn(im.SHELL_RC_BLOCK_BEGIN, block)
         self.assertIn(im.SHELL_RC_BLOCK_END, block)
-        self.assertIn("'/home/pi/.config/waddle_view/.env'", block)
+        self.assertIn("'/home/pi/.local/share/waddle_display/.env'", block)
         self.assertNotIn(".env.example", block)
 
     def test_resolve_env_example_path(self):

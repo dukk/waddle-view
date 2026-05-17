@@ -1,90 +1,336 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+
 import {
+
   Alert,
-  Box,
+
   Button,
-  List,
-  ListItem,
-  ListItemText,
+
+  Chip,
+
+  Paper,
+
   Stack,
+
+  Table,
+
+  TableBody,
+
+  TableCell,
+
+  TableContainer,
+
+  TableHead,
+
+  TableRow,
+
   Typography,
+
 } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
+
 import { AdoptDisplayDialog } from '@/components/AdoptDisplayDialog';
-import { AdoptDisplayForm } from '@/components/AdoptDisplayForm';
+
+import { EditDisplayDialog } from '@/components/EditDisplayDialog';
+
+import { DisplaysBackupSection } from '@/components/DisplaysBackupSection';
+
 import { useDisplay } from '@/context/DisplayContext';
+
+import type { SavedDisplay } from '@/storage/displays';
+
+import { loadSession } from '@/storage/sessions';
+
 import { hasAnyAdoptedDisplay } from '@/util/adoptedDisplays';
 
-export function DisplaysPage() {
-  const { displays, active, refresh, removeDisplay } = useDisplay();
+
+
+type DisplaysPageProps = {
+
+  /** When true, omit outer page chrome (used inside Controller Settings tabs). */
+
+  embedded?: boolean;
+
+};
+
+
+
+export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
+
+  const { displays, active, refresh, removeDisplay, updateDisplay } = useDisplay();
+
   const [success, setSuccess] = useState<string | null>(null);
+
+  const [labelError, setLabelError] = useState<string | null>(null);
+
+  const [adoptOpen, setAdoptOpen] = useState(false);
+
+  const [editDisplay, setEditDisplay] = useState<SavedDisplay | null>(null);
+
   const adopted = hasAnyAdoptedDisplay(displays);
 
-  if (!adopted) {
-    return (
-      <Stack spacing={2} sx={{ maxWidth: 720 }}>
-        <Typography variant="h5" fontWeight={600}>
-          Displays
-        </Typography>
-        <AdoptDisplayDialog open onAdopted={() => refresh()} />
-      </Stack>
-    );
-  }
+
+
+  useEffect(() => {
+
+    if (!adopted) {
+
+      setAdoptOpen(true);
+
+    }
+
+  }, [adopted]);
+
+
+
+  const handleAdopted = () => {
+
+    refresh();
+
+    setSuccess('Display adopted and saved.');
+
+    setAdoptOpen(false);
+
+  };
+
+
 
   return (
-    <Stack spacing={3} sx={{ maxWidth: 720 }}>
-      <Typography variant="h5" fontWeight={600}>
-        Displays
-      </Typography>
-      <Typography variant="body2" color="text.secondary">
-        Manage saved kiosks and adopt additional displays. API keys stay in this browser only.
-      </Typography>
 
-      {success && (
-        <Alert severity="success" onClose={() => setSuccess(null)}>
-          {success}
-        </Alert>
+    <Stack spacing={2}>
+
+      {!embedded && (
+
+        <Stack direction="row" justifyContent="space-between" alignItems="flex-end" gap={2}>
+
+          <Typography variant="body2" color="text.secondary">
+            Pair kiosks with this browser, rename them, and switch which display the controller
+            targets. Adopted API keys stay in local storage only—they are not included in backup
+            export.
+          </Typography>
+
+          <Button variant="contained" onClick={() => setAdoptOpen(true)}>
+
+            Adopt display
+
+          </Button>
+
+        </Stack>
+
       )}
 
-      <Box>
-        <Typography variant="subtitle1" gutterBottom>
-          Saved displays ({displays.length})
-        </Typography>
-        <List dense>
-          {displays.map((d) => (
-            <ListItem
-              key={d.id}
-              secondaryAction={
-                <Button size="small" color="error" onClick={() => removeDisplay(d.id)}>
-                  Remove
-                </Button>
-              }
-            >
-              <ListItemText
-                primary={`${d.label}${active?.id === d.id ? ' (active)' : ''}`}
-                secondary={d.baseUrl}
-              />
-            </ListItem>
-          ))}
-        </List>
-      </Box>
+      {embedded && (
 
-      <Box>
-        <Typography variant="subtitle1" gutterBottom>
-          Add display
-        </Typography>
-        <AdoptDisplayForm
-          onAdopted={() => {
-            refresh();
-            setSuccess('Display adopted and saved.');
-          }}
+        <Stack direction="row" justifyContent="flex-end">
+
+          <Button variant="contained" onClick={() => setAdoptOpen(true)}>
+
+            Adopt display
+
+          </Button>
+
+        </Stack>
+
+      )}
+
+
+
+      {success && (
+
+        <Alert severity="success" onClose={() => setSuccess(null)}>
+
+          {success}
+
+        </Alert>
+
+      )}
+
+      {labelError && (
+
+        <Alert severity="error" onClose={() => setLabelError(null)}>
+
+          {labelError}
+
+        </Alert>
+
+      )}
+
+
+
+      <TableContainer component={Paper} variant="outlined">
+
+        <Table size="small">
+
+          <TableHead>
+
+            <TableRow>
+
+              <TableCell>Display</TableCell>
+
+              <TableCell>Base URL</TableCell>
+
+              <TableCell>Adoption</TableCell>
+
+              <TableCell align="right">Actions</TableCell>
+
+            </TableRow>
+
+          </TableHead>
+
+          <TableBody>
+
+            {displays.length === 0 ? (
+
+              <TableRow>
+
+                <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
+
+                  <Typography variant="body2" color="text.secondary">
+
+                    No displays saved yet. Use <strong>Adopt display</strong> to pair with a kiosk.
+
+                  </Typography>
+
+                </TableCell>
+
+              </TableRow>
+
+            ) : (
+
+              displays.map((d) => {
+
+                const session = loadSession(d.id);
+
+                const isActive = active?.id === d.id;
+
+                return (
+
+                  <TableRow key={d.id} selected={isActive}>
+
+                    <TableCell>
+
+                      <Stack direction="row" alignItems="center" spacing={1} useFlexGap flexWrap="wrap">
+
+                        <Typography variant="body2" fontWeight={isActive ? 600 : 400}>
+
+                          {d.label}
+
+                        </Typography>
+
+                        {isActive && <Chip label="Active" size="small" color="primary" />}
+
+                      </Stack>
+
+                    </TableCell>
+
+                    <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
+
+                      {d.baseUrl}
+
+                    </TableCell>
+
+                    <TableCell>
+
+                      {session ? (
+
+                        <Typography variant="body2">
+
+                          {session.identifier} ({session.role})
+
+                        </Typography>
+
+                      ) : (
+
+                        <Typography variant="body2" color="text.secondary">
+
+                          Not adopted
+
+                        </Typography>
+
+                      )}
+
+                    </TableCell>
+
+                    <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+
+                      <Button size="small" onClick={() => setEditDisplay(d)}>
+
+                        Edit
+
+                      </Button>
+
+                      <Button size="small" color="error" onClick={() => removeDisplay(d.id)}>
+
+                        Remove
+
+                      </Button>
+
+                    </TableCell>
+
+                  </TableRow>
+
+                );
+
+              })
+
+            )}
+
+          </TableBody>
+
+        </Table>
+
+      </TableContainer>
+
+
+
+      <DisplaysBackupSection onChanged={refresh} />
+
+
+
+      {adoptOpen && (
+
+        <AdoptDisplayDialog
+
+          open
+
+          dismissible={adopted}
+
+          onClose={() => setAdoptOpen(false)}
+
+          onAdopted={handleAdopted}
+
         />
-      </Box>
 
-      <Typography variant="body2" color="text.secondary">
-        Export or import the display list from{' '}
-        <RouterLink to="/settings">Settings</RouterLink> (API keys are not included).
-      </Typography>
+      )}
+
+
+
+      {editDisplay && (
+
+        <EditDisplayDialog
+
+          display={editDisplay}
+
+          onClose={() => setEditDisplay(null)}
+
+          onSave={async (input) => {
+            setLabelError(null);
+            try {
+              await updateDisplay(editDisplay.id, input);
+              setSuccess('Display saved.');
+            } catch (e) {
+              setLabelError(String(e));
+              throw e;
+            }
+          }}
+
+        />
+
+      )}
+
     </Stack>
+
   );
+
 }
+
+

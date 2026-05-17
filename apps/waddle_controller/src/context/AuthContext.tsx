@@ -10,6 +10,7 @@ import {
 import { confirmAdoption, sessionFromAdoption } from '@/api/adoption';
 import { normalizeAdoptionChallengeCode } from '@/util/adoptionChallengeCode';
 import { adoptionError, adoptionLog } from '@/util/adoptionLog';
+import { syncUserDisplayToServer } from '@/storage/userDisplaysSync';
 import { useDisplay } from '@/context/DisplayContext';
 import {
   clearSession,
@@ -22,7 +23,7 @@ import { permissionsForRole, PREVIEWABLE_CONTROLLER_ROLES } from '@/auth/rolePer
 type AuthCtx = {
   session: DisplaySession | null;
   completeAdoption: (identifier: string, challengeCode: string) => Promise<void>;
-  saveAdoptionSession: (session: DisplaySession) => void;
+  saveAdoptionSession: (session: DisplaySession, displayId?: string) => void;
   logout: () => void;
   hasPermission: (perm: string) => boolean;
   effectiveRole: string | null;
@@ -92,10 +93,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [active]);
 
   const saveAdoptionSession = useCallback(
-    (next: DisplaySession) => {
-      if (!active) return;
-      saveSession(active.id, next);
-      setSession(next);
+    (next: DisplaySession, displayId?: string) => {
+      const id = displayId ?? active?.id;
+      if (!id) return;
+      saveSession(id, next);
+      if (id === active?.id) {
+        setSession(next);
+      }
       setLoginDialogForced(false);
     },
     [active],
@@ -118,6 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const stored = sessionFromAdoption(active.baseUrl, result);
         saveSession(active.id, stored);
         setSession(stored);
+        await syncUserDisplayToServer(active, stored).catch(() => undefined);
         setLoginDialogForced(false);
         adoptionLog('ui.loginDialog.confirm.success', 'session updated for display', {
           displayId: active.id,

@@ -17,9 +17,9 @@ All other `/v1/*` routes require an **adopted API key**:
 
 ### Adoption (device-style pairing)
 
-1. **`POST /v1/adoption/request`** (public) — body: `identifier` (required string, caller label), optional `role` (`admin`, `operator`, `power_viewer`, `viewer`; default **`operator`**). Creates a kiosk **security** alert (shield icon) naming the requested role and an **8-character challenge** formatted **`XXXX-XXXX`** (valid **5 minutes**). The challenge is **shown only on the display** — the HTTP response is `{ "expires_at_ms", "identifier", "role" }` (no `challenge_code`). With **`Authorization: Bearer <admin api_key>`** and the same body, an **admin** client is granted instantly (no challenge): response is `{ "api_key", "identifier", "role", "permissions" }`. Non-admin keys → **403**.
+1. **`POST /v1/adoption/request`** (public) — body: `identifier` (required string, caller label), optional `role` (`admin`, `operator`, `power_viewer`, `viewer`; default **`operator`**). Creates a kiosk **security** alert (shield icon) naming the requested role and an **8-character challenge** formatted **`XXXX-XXXX`** (valid **5 minutes**). The challenge is **shown only on the display** — the HTTP response is `{ "expires_at_ms", "identifier", "role" }` (no `challenge_code`). With **`Authorization: Bearer <admin api_key>`** and the same body, an **admin** client is granted instantly (no challenge): response is `{ "api_key", "identifier", "role", "permissions" }`. Non-admin keys → **403**. **403** `adoption_role_not_allowed` when the requested role is not in curator `adoption_allowed_roles` (see **`GET /v1/curator/settings`**).
 2. Operator reads the challenge on the display (alert overlay) and enters it on the controller in the same **`XXXX-XXXX`** form (hyphens optional on confirm).
-3. **`POST /v1/adoption/confirm`** (public) — body: `identifier`, `challenge_code` (8 Crockford characters; hyphens stripped). On success returns `{ "api_key", "identifier", "role", "permissions" }`. The API key is derived from the display **instance id**, challenge, and identifier; only a **SHA-256 hash** is stored in SQLite (`api_clients`).
+3. **`POST /v1/adoption/confirm`** (public) — body: `identifier`, `challenge_code` (8 Crockford characters; hyphens stripped). On success returns `{ "api_key", "identifier", "role", "permissions" }`. The API key is derived from the display **instance id**, challenge, and identifier, prefixed with **`wd_`**; only a **SHA-256 hash** of the full key (including the prefix) is stored in SQLite (`api_clients`).
 4. Use the API key on protected routes. Re-adopting the same **identifier** **rotates** the key.
 
 **503** `adoption_unavailable` when `waddle_instance.id` is missing. **401** `invalid_challenge` on bad/expired confirm.
@@ -39,6 +39,10 @@ Invalid or missing API key → **401** `unauthorized`. Authenticated but lacking
 |--------|------|------|-------|
 | POST | `/v1/adoption/request` | public (or admin bearer) | Start challenge, or instant grant when admin key present |
 | POST | `/v1/adoption/confirm` | public | Exchange code for `api_key` |
+| GET | `/v1/adoption/session` | bearer | Current client `{ identifier, role, permissions }` (any adopted role) |
+| GET | `/v1/adoption/clients` | admin bearer | List adopted clients with `masked_api_key`, role, identifier, `created_at_ms` |
+| POST | `/v1/adoption/clients` | admin bearer | Issue a new key: body `identifier`, optional `role`; returns plaintext `api_key` once |
+| DELETE | `/v1/adoption/clients/<id>` | admin bearer | Revoke a client row by id |
 
 Send the controller’s browser origin on adoption calls so the display can allow later API traffic: standard **`Origin`**, or **`Referer`** when the browser omits `Origin`. On successful **confirm** (or admin instant **request**), the normalized origin is stored in SQLite **`cors_allowed_origins`** (`source: adoption`).
 
@@ -46,7 +50,7 @@ Send the controller’s browser origin on adoption calls so the display can allo
 
 Browser clients (for example **`waddle_controller`**) send an **`Origin`** header (or parsed **`Referer`** as fallback). CORS is **always** evaluated (not gated on env configuration).
 
-**Adoption routes** (`/v1/adoption/*`): permissive LAN policy — allow origins whose host is loopback, RFC1918/link-local, ends with **`.local`**, or whose DNS lookup (cached ~5 minutes) resolves **only** to private addresses. Public IPs and lookup failures are denied.
+**Public adoption routes** (`POST /v1/adoption/request`, `POST /v1/adoption/confirm`): permissive LAN policy — allow origins whose host is loopback, RFC1918/link-local, ends with **`.local`**, or whose DNS lookup (cached ~5 minutes) resolves **only** to private addresses. Public IPs and lookup failures are denied. Other `/v1/adoption/*` paths use the protected CORS policy below.
 
 **All other `/v1/*` routes**: allow origins in **`cors_allowed_origins`** (adoption + env seed) **or** the static env list below.
 
@@ -122,8 +126,8 @@ These routes use the same **Bearer session** auth as other protected `/v1/*` pat
 | POST | `/v1/ticker/tapes` | Create tape: `id`, `ticker_type`, optional `name`, `description`, `enabled`, `frequency_weight`, `sort_order`, `config_key`, `config_json`. **400** on unknown type; **409** if `id` exists. |
 | PATCH | `/v1/ticker/tapes/{id}` | JSON body may include `enabled`, `frequency_weight`, `sort_order`, `config_key`, `config_json`, `name`, `description`, `ticker_type`. |
 | DELETE | `/v1/ticker/tapes/{id}` | Deletes row; **404** if missing. |
-| GET | `/v1/curator/settings` | Aggregated curator/display tuning (program duration, history depth, ticker speed, theme, text scales, RSS photo requirement, resolved `display_timezone`, etc.). |
-| PUT | `/v1/curator/settings` | Partial update: include only keys to change among `program_duration_seconds`, `history_depth`, `ticker_pixels_per_second`, `require_news_photo_for_screens`, `display_theme_id`, `display_text_scale_screen`, `display_text_scale_ticker`, `display_timezone` (IANA id for SQLite `display.timezone`; empty string removes the row so the display falls back to its default). **400** `no_curator_settings_fields` if the body is empty or has no recognized keys. |
+| GET | `/v1/curator/settings` | Aggregated curator/display tuning (program duration, history depth, ticker speed, theme, text scales, RSS photo requirement, resolved `display_timezone`, `adoption_allowed_roles`, etc.). |
+| PUT | `/v1/curator/settings` | Partial update: include only keys to change among `program_duration_seconds`, `history_depth`, `ticker_pixels_per_second`, `require_news_photo_for_screens`, `display_theme_id`, `display_text_scale_screen`, `display_text_scale_ticker`, `display_timezone` (IANA id for SQLite `display.timezone`; empty string removes the row so the display falls back to its default), `adoption_allowed_roles` (JSON array of role ids; empty array blocks all public adoption requests). Legacy `adoption_allow_new_requests` (`true` → all roles, `false` → none) is still accepted. **400** `no_curator_settings_fields` if the body is empty or has no recognized keys. |
 | GET | `/v1/config/key-values` | `{"items":[{key,value},...]}` — all rows in SQLite `config_key_values`, sorted by `key`. |
 | PUT | `/v1/config/key-values` | Upsert one row: JSON `{"key":"...","value":"..."}`. **400** `key_required` / `key_too_long` / `value_too_long` when out of range. |
 | DELETE | `/v1/config/key-values` | Query **`key`** (required): deletes that row. **404** `not_found` when absent. |
@@ -144,11 +148,11 @@ These routes use the same **Bearer session** auth as other protected `/v1/*` pat
 INSTANCE_ID=$(sudo tr -d '\n' < /etc/waddle-view/instance.id)
 TOKEN=$(curl -sS -H 'Content-Type: application/json' \
   -d "{\"username\":\"display\",\"password\":\"$INSTANCE_ID\"}" \
-  http://127.0.0.1:8787/v1/auth/login | jq -r .session_token)
-curl -sS -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8787/v1/health
+  https://127.0.0.1:8787/v1/auth/login | jq -r .session_token)
+curl -sS -H "Authorization: Bearer $TOKEN" https://127.0.0.1:8787/v1/health
 curl -sS -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"title":"Door","body":"Open","qr_payload":"https://example.com/ack"}' \
-  http://127.0.0.1:8787/v1/alerts
+  https://127.0.0.1:8787/v1/alerts
 
 # Example: birthday confetti overlay (fixed date, repeats every year)
 curl -sS -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
@@ -170,7 +174,7 @@ curl -sS -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
     "start_month":6,
     "start_day":12
   }' \
-  http://127.0.0.1:8787/v1/display/overlays
+  https://127.0.0.1:8787/v1/display/overlays
 
 # First-time seed also inserts `default_birthday_example_may_13` (May 13, `birthday_confetti`, disabled).
 # PATCH `{"enabled":true}` on that id to turn on the stock example.
@@ -181,7 +185,7 @@ curl -sS -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
 curl -sS -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -X PATCH \
   -d '{"suppressed": true}' \
-  http://127.0.0.1:8787/v1/content/videos/<video-row-id>
+  https://127.0.0.1:8787/v1/content/videos/<video-row-id>
 ```
 
 Never log or commit the API key.
@@ -191,5 +195,5 @@ Never log or commit the API key.
 ```bash
 curl -sS -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"surface":"screen","direction":"forward"}' \
-  http://127.0.0.1:8787/v1/display/navigation
+  https://127.0.0.1:8787/v1/display/navigation
 ```

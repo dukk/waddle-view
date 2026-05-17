@@ -20,6 +20,20 @@ void main() {
     );
   });
 
+  test('registeredDisplayThemeIds includes 12 presets', () {
+    expect(registeredDisplayThemeIds, hasLength(12));
+    expect(
+      registeredDisplayThemeIds,
+      containsAll([
+        kDisplayThemeNavyCoral,
+        kDisplayThemeGraphiteAmber,
+        kDisplayThemeTealGoldSunset,
+        kDisplayThemeOceanDepth,
+        kDisplayThemeWarmMinimal,
+      ]),
+    );
+  });
+
   test('themeDataForNormalizedDisplayThemeId returns ThemeData for each registered id', () {
     for (final id in registeredDisplayThemeIds) {
       final t = themeDataForNormalizedDisplayThemeId(id);

@@ -1,7 +1,9 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_display/curator/screen_program_curator.dart';
+import 'package:waddle_display/display/screens/web_page/web_page_session.dart';
 import 'package:waddle_display/display/slide_content_preload.dart';
+import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/seed/tables/content_categories_seed.dart';
 import 'package:waddle_shared/seed/tables/joke_categories_seed.dart';
@@ -369,6 +371,36 @@ void main() {
       blobs: FakeBlobStore(),
       slide: slide,
     );
+    await db.close();
+  });
+
+  test('preloadResolvedSlideContent preloads web_page via cache', () async {
+    WebPagePrepareCache.debugLoader =
+        (_, config) async => FakeWebPagePreparedSession(config: config);
+    addTearDown(() {
+      WebPagePrepareCache.debugLoader = null;
+      WebPagePrepareCache.instance.disposeAll();
+    });
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    const spec = ParsedWidgetSpec(
+      type: 'web_page',
+      slot: 'main',
+      config: {'url': 'https://example.com'},
+    );
+    final slide = ResolvedSlide(
+      screenId: 'wp',
+      dwellMs: 10000,
+      layoutJson:
+          '{"widgets":[{"type":"web_page","slot":"main","config":{"url":"https://example.com"}}]}',
+    );
+    await preloadResolvedSlideContent(
+      db: db,
+      blobs: FakeBlobStore(),
+      slide: slide,
+    );
+    final session = WebPagePrepareCache.instance.takeReady(spec);
+    expect(session, isNotNull);
     await db.close();
   });
 

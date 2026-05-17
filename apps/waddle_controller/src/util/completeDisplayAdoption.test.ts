@@ -6,6 +6,7 @@ import { loadSession } from '@/storage/sessions';
 describe('completeDisplayAdoption', () => {
   beforeEach(() => {
     localStorage.clear();
+    localStorage.clear();
     sessionStorage.clear();
   });
 
@@ -40,5 +41,51 @@ describe('completeDisplayAdoption', () => {
     expect(session.apiKey).toBe('wk_test');
     expect(loadDisplays()).toHaveLength(1);
     expect(loadSession(display.id)?.apiKey).toBe('wk_test');
+  });
+
+  it('second adoption on same base URL creates a separate display row', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            api_key: 'wk_admin',
+            identifier: 'wc-host',
+            role: 'admin',
+            permissions: ['users.manage'],
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            api_key: 'wk_operator',
+            identifier: 'wc-host-operator',
+            role: 'operator',
+            permissions: ['telemetry.read'],
+          }),
+          { status: 200 },
+        ),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const first = await completeDisplayAdoption({
+      baseUrl: 'https://kiosk.test',
+      identifier: 'wc-host',
+      challengeCode: 'AAAAAAAA',
+    });
+    const second = await completeDisplayAdoption({
+      baseUrl: 'https://kiosk.test',
+      identifier: 'wc-host-operator',
+      challengeCode: 'BBBBBBBB',
+    });
+
+    const rows = loadDisplays();
+    expect(rows).toHaveLength(2);
+    expect(loadSession(first.display.id)?.role).toBe('admin');
+    expect(loadSession(second.display.id)?.role).toBe('operator');
+    expect(loadSession(first.display.id)?.apiKey).toBe('wk_admin');
+    expect(loadSession(second.display.id)?.apiKey).toBe('wk_operator');
   });
 });

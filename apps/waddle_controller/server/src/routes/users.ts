@@ -6,12 +6,12 @@ import { requireAdmin, requireAuth, requireUserManagement } from '../middleware/
 
 export function usersRoutes() {
   const app = new Hono<{ Variables: AppVariables }>();
+  const adminOnly = new Hono<{ Variables: AppVariables }>();
+  adminOnly.use('*', requireAuth, requireAdmin, requireUserManagement);
 
-  app.use('*', requireAuth, requireAdmin, requireUserManagement);
+  adminOnly.get('/', (c) => c.json({ users: listUsers(c.get('db')) }));
 
-  app.get('/users', (c) => c.json({ users: listUsers(c.get('db')) }));
-
-  app.post('/users', async (c) => {
+  adminOnly.post('/', async (c) => {
     const body = (await c.req.json<{
       username?: string;
       password?: string;
@@ -39,7 +39,7 @@ export function usersRoutes() {
     }
   });
 
-  app.patch('/users/:id', async (c) => {
+  adminOnly.patch('/:id', async (c) => {
     const id = c.req.param('id');
     const body = (await c.req.json<{
       role?: ControllerRole;
@@ -63,7 +63,7 @@ export function usersRoutes() {
     }
   });
 
-  app.delete('/users/:id', (c) => {
+  adminOnly.delete('/:id', (c) => {
     try {
       deleteUser(c.get('db'), c.req.param('id'));
       return c.json({ ok: true });
@@ -74,5 +74,6 @@ export function usersRoutes() {
     }
   });
 
+  app.route('/users', adminOnly);
   return app;
 }

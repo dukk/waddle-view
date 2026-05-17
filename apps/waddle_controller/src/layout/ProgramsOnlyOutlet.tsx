@@ -3,8 +3,9 @@ import { useAuth } from '@/context/AuthContext';
 
 /**
  * Restricts signed-in viewers and power viewers (and admins previewing those roles) to allowed routes:
- * **Programs**, **Account**, and **Data** when the session includes **`content.catalog_read`** (power viewer) or
- * **`content.moderate`**. Plain viewers only have Programs + Account. Other paths redirect to `/programs`.
+ * **Programs**, **Remote** (when **`navigation.control`** is granted), **Account**, and **Data** when the session
+ * includes **`content.catalog_read`** (power viewer) or **`content.moderate`**. Plain viewers only have Programs +
+ * Account. Other paths redirect to `/programs`.
  */
 export function ProgramsOnlyOutlet() {
   const { isProgramsOnlyControllerUser, hasPermission } = useAuth();
@@ -18,6 +19,7 @@ export function ProgramsOnlyOutlet() {
   if (
     path === '/programs' ||
     path.startsWith('/programs/') ||
+    ((path === '/remote' || path.startsWith('/remote/')) && hasPermission('navigation.control')) ||
     path === '/account' ||
     path.startsWith('/account/')
   ) {

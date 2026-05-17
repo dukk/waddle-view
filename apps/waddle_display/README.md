@@ -170,7 +170,7 @@ Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../d
 ### Display theme (`config_key_values`)
 
 - **Key**: `display.theme.id`
-- **Values**: `navy_coral` (default), `graphite_amber`
+- **Values**: `navy_coral` (default), `graphite_amber`, plus ten Coolors trending presets: `teal_gold_sunset`, `ocean_depth`, `forest_cream`, `heritage_coast`, `plum_ember`, `slate_crimson`, `wine_ember`, `dopamine_pop`, `sage_wellness`, `warm_minimal` (hex sources in [`lib/theme/config/palettes/coolors_trending_palettes.dart`](lib/theme/config/palettes/coolors_trending_palettes.dart))
 - **Operator UI**: Admin home → Curator → **Display theme** (saved with other curator settings).
 - **Code**: palettes and builders live under [`lib/theme/config/`](lib/theme/config/); registered ids are listed in [`lib/theme/config/display_theme_registry.dart`](lib/theme/config/display_theme_registry.dart).
 - **Default palette details** (`navy_coral`): primary starts at `#0D1B2A` and follows a 9-color sequence: five neutrals, then four accents (`#83AF84`, `#E05C6C`, `#FFE356`, `#966CB3`). The theme also exposes a `PaletteTertiaryLayers` extension (including `accent1`–`accent4`) with 4 tertiary layers for each palette color, plus gradients for the first pair (`#0D1B2A` → `#1B263B`) and next pair (`#415A77` → `#778DA9`).

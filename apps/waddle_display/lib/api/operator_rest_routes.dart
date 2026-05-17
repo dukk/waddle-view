@@ -7,6 +7,9 @@ import 'package:shelf_router/shelf_router.dart';
 import '../debug/operator_telemetry_hub.dart';
 import '../display/display_navigation_bus.dart';
 import '../theme/display_theme.dart';
+import 'package:waddle_shared/config/adoption.dart';
+import 'package:waddle_shared/config/adoption_allowed_roles.dart';
+import 'package:waddle_shared/auth/role_permissions.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_shared/persistence/config_json_documentation.dart';
 import 'package:waddle_shared/persistence/content_category_defaults.dart';
@@ -393,6 +396,13 @@ void registerOperatorRestRoutes(
     final tzRaw = kv[kDisplayTimezoneKvKey]?.trim() ?? '';
     final displayTimezone =
         tzRaw.isEmpty ? kDefaultDisplayTimezoneIana : tzRaw;
+    final adoptionAllowedRoles = await readAdoptionAllowedRoles(db);
+    final adoptionRolesList = adoptionAllowedRoles.toList()
+      ..sort((a, b) {
+        final ai = kAdoptionConfigurableRoles.indexOf(a);
+        final bi = kAdoptionConfigurableRoles.indexOf(b);
+        return (ai < 0 ? 999 : ai).compareTo(bi < 0 ? 999 : bi);
+      });
     return Response.ok(
       jsonEncode({
         'program_duration_seconds': programDurationSeconds,
@@ -403,6 +413,8 @@ void registerOperatorRestRoutes(
         'display_text_scale_screen': screenTextScale,
         'display_text_scale_ticker': tickerTextScale,
         'display_timezone': displayTimezone,
+        'adoption_allowed_roles': adoptionRolesList,
+        'adoption_allow_new_requests': adoptionAllowedRoles.isNotEmpty,
       }),
       headers: {'content-type': 'application/json'},
     );
@@ -693,6 +705,50 @@ void registerOperatorRestRoutes(
               ),
             );
       }
+      touched = true;
+    }
+    if (body.containsKey('adoption_allowed_roles')) {
+      final raw = body['adoption_allowed_roles'];
+      final roles = <String>{};
+      if (raw is List) {
+        for (final item in raw) {
+          if (item is String) {
+            final role = item.trim();
+            if (isValidUserRole(role)) {
+              roles.add(role);
+            }
+          }
+        }
+      }
+      await db.into(db.configKeyValues).insertOnConflictUpdate(
+            ConfigKeyValuesCompanion.insert(
+              key: kAdoptionAllowedRolesKvKey,
+              value: encodeAdoptionAllowedRoles(roles),
+            ),
+          );
+      await db.into(db.configKeyValues).insertOnConflictUpdate(
+            ConfigKeyValuesCompanion.insert(
+              key: kAdoptionAllowNewRequestsKvKey,
+              value: roles.isEmpty ? 'false' : 'true',
+            ),
+          );
+      touched = true;
+    } else if (body.containsKey('adoption_allow_new_requests')) {
+      final raw = body['adoption_allow_new_requests'];
+      final flag = raw is bool ? raw : raw?.toString().toLowerCase() == 'true';
+      final roles = flag ? Set<String>.from(kValidUserRoles) : <String>{};
+      await db.into(db.configKeyValues).insertOnConflictUpdate(
+            ConfigKeyValuesCompanion.insert(
+              key: kAdoptionAllowedRolesKvKey,
+              value: encodeAdoptionAllowedRoles(roles),
+            ),
+          );
+      await db.into(db.configKeyValues).insertOnConflictUpdate(
+            ConfigKeyValuesCompanion.insert(
+              key: kAdoptionAllowNewRequestsKvKey,
+              value: flag ? 'true' : 'false',
+            ),
+          );
       touched = true;
     }
     if (!touched) {

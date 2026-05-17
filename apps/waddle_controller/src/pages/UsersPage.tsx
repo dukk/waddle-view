@@ -88,19 +88,34 @@ export function UsersPage() {
 
   if (!status?.userManagementEnabled) {
     return (
-      <Alert severity="info">User management is disabled. Enable it in Settings (admin only).</Alert>
+      <Alert severity="info">
+        User management is disabled. Enable it on the <strong>Users</strong> tab under Controller
+        Settings (admin only).
+      </Alert>
     );
   }
 
   return (
     <Stack spacing={3} sx={{ maxWidth: 960 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h5" fontWeight={600}>
-          Controller users
+      <Box>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          justifyContent="space-between"
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+          spacing={1}
+          sx={{ mb: 1 }}
+        >
+          <Typography variant="h5" fontWeight={600}>
+            BFF operator accounts
+          </Typography>
+          <Button variant="contained" onClick={() => setCreateOpen(true)}>
+            Add user
+          </Button>
+        </Stack>
+        <Typography variant="body2" color="text.secondary">
+          Operator and admin accounts for BFF sign-in to this controller. Disabled users remain in
+          the list but cannot authenticate until re-enabled.
         </Typography>
-        <Button variant="contained" onClick={() => setCreateOpen(true)}>
-          Add user
-        </Button>
       </Box>
       {error && <Alert severity="error">{error}</Alert>}
       <Table size="small">

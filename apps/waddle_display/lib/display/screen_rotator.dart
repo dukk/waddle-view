@@ -39,6 +39,7 @@ import 'screens/rss_article/rss_article_stack_slide_widget.dart';
 import 'screens/stock_quotes/stock_quotes_slide_widget.dart';
 import 'screens/trivia/trivia_slide_widget.dart';
 import 'screens/weather/weather_slide_widget.dart';
+import 'screens/web_page/web_page_slide_widget.dart';
 
 String screenShownDebugLogLine({
   required String reason,
@@ -72,7 +73,7 @@ class ScreenRotator extends StatefulWidget {
   final AppDatabase db;
   final BlobStore blobs;
 
-  /// Bound loopback base URL for the in-process REST server (e.g. `http://127.0.0.1:8787`).
+  /// Bound loopback base URL for the in-process REST server (e.g. `https://127.0.0.1:8787`).
   final String localRestBaseUrl;
   final String adminBaseUrl;
   final File instanceIdFile;
@@ -90,7 +91,8 @@ class ScreenRotator extends StatefulWidget {
   State<ScreenRotator> createState() => _ScreenRotatorState();
 }
 
-class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateMixin {
+class _ScreenRotatorState extends State<ScreenRotator>
+    with TickerProviderStateMixin {
   late final AnimationController _anim = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 420),
@@ -355,7 +357,9 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
       _history.isEmpty ? const [] : _history[_historyCursor].slides;
 
   bool get _canAutoAdvance =>
-      !_manualNavigationActive && _historyCursor == 0 && _visibleProgram.isNotEmpty;
+      !_manualNavigationActive &&
+      _historyCursor == 0 &&
+      _visibleProgram.isNotEmpty;
 
   void _scheduleDwellForCurrentSlide() {
     _dwellTimer?.cancel();
@@ -607,9 +611,8 @@ class _ScreenRotatorState extends State<ScreenRotator> with TickerProviderStateM
     final theme = Theme.of(context);
     final outgoing = _fromSlide;
     final incoming = _toSlide ?? outgoing;
-    final slideTransitionActive = outgoing != null &&
-        incoming != null &&
-        outgoing != incoming;
+    final slideTransitionActive =
+        outgoing != null && incoming != null && outgoing != incoming;
 
     if (_history.isEmpty || _visibleProgram.isEmpty) {
       return Center(
@@ -731,7 +734,10 @@ class _ScreenNavigationOverlay extends StatelessWidget {
           transitionBuilder: (child, animation) {
             final begin = Offset(0, timelineDirection > 0 ? -0.35 : 0.35);
             return SlideTransition(
-              position: Tween<Offset>(begin: begin, end: Offset.zero).animate(animation),
+              position: Tween<Offset>(
+                begin: begin,
+                end: Offset.zero,
+              ).animate(animation),
               child: FadeTransition(opacity: animation, child: child),
             );
           },
@@ -765,12 +771,16 @@ class _ScreenNavigationOverlay extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 6,
+                                ),
                                 child: Text(
                                   slides[i].screenId,
                                   style: theme.textTheme.bodyMedium?.copyWith(
-                                    fontWeight:
-                                        i == currentIndex ? FontWeight.w700 : FontWeight.w500,
+                                    fontWeight: i == currentIndex
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
                                   ),
                                 ),
                               ),
@@ -802,10 +812,7 @@ class _ScreenNavigationOverlay extends StatelessWidget {
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Text(
-                notice!,
-                style: theme.textTheme.bodyMedium,
-              ),
+              child: Text(notice!, style: theme.textTheme.bodyMedium),
             ),
           ),
         ],
@@ -987,6 +994,16 @@ class _SlideContent extends StatelessWidget {
         ),
       );
     }
+    if (widgets.length == 1 && widgets.first.type == 'web_page') {
+      final w = widgets.first;
+      return SizedBox.expand(
+        child: WebPageSlideWidget(
+          slide: slide,
+          spec: w,
+          onReportDesiredDwell: (ms) => onReportDesiredDwell(slideIndex, ms),
+        ),
+      );
+    }
     // Multi-widget stacks can exceed the slide viewport (e.g. two tall tiles).
     // Scroll instead of overflowing; bounded height comes from the rotator area.
     return SingleChildScrollView(
@@ -1139,6 +1156,13 @@ class _SlideContent extends StatelessWidget {
                 slide: slide,
                 spec: w,
                 theme: theme,
+              );
+            case 'web_page':
+              return WebPageSlideWidget(
+                slide: slide,
+                spec: w,
+                onReportDesiredDwell: (ms) =>
+                    onReportDesiredDwell(slideIndex, ms),
               );
             default:
               return Padding(

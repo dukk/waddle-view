@@ -128,7 +128,11 @@ class _LookupCacheEntry {
   final DateTime expiresAt;
 }
 
-bool isAdoptionPath(String path) {
+/// Unauthenticated adoption challenge routes (LAN CORS policy).
+bool isPublicAdoptionPath(String path) {
   final p = path.startsWith('/') ? path : '/$path';
-  return p.startsWith('/v1/adoption');
+  return p == '/v1/adoption/request' || p == '/v1/adoption/confirm';
 }
+
+/// @deprecated Use [isPublicAdoptionPath]; kept for tests referencing the name.
+bool isAdoptionPath(String path) => isPublicAdoptionPath(path);

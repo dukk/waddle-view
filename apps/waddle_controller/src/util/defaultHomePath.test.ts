@@ -5,24 +5,25 @@ import { defaultHomePath } from '@/util/defaultHomePath';
 
 const display: SavedDisplay = {
   id: 'd1',
-  baseUrl: 'http://127.0.0.1:8787',
+  baseUrl: 'https://127.0.0.1:8787',
   label: 'Kiosk',
 };
 
 describe('defaultHomePath', () => {
   afterEach(() => {
+    localStorage.clear();
     sessionStorage.clear();
   });
 
-  it('returns /displays when there are no saved displays', () => {
-    expect(defaultHomePath([], false)).toBe('/displays');
+  it('returns /controller-settings when there are no saved displays', () => {
+    expect(defaultHomePath([], false)).toBe('/controller-settings');
   });
 
-  it('returns /displays when displays exist but none are adopted', () => {
-    expect(defaultHomePath([display], false)).toBe('/displays');
+  it('returns /controller-settings when displays exist but none are adopted', () => {
+    expect(defaultHomePath([display], false)).toBe('/controller-settings');
   });
 
-  it('returns /curators when at least one display is adopted', () => {
+  it('returns /display-settings when at least one display is adopted', () => {
     saveSession(display.id, {
       apiKey: 'key',
       identifier: 'op',
@@ -30,7 +31,7 @@ describe('defaultHomePath', () => {
       permissions: [],
       expiresAtMs: Date.now() + 60_000,
     });
-    expect(defaultHomePath([display], false)).toBe('/curators');
+    expect(defaultHomePath([display], false)).toBe('/display-settings');
   });
 
   it('returns /programs for programs-only users with adoption', () => {

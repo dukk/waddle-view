@@ -6,6 +6,8 @@ import 'package:waddle_shared/auth/adoption_repository.dart';
 import 'package:waddle_shared/auth/cors_origin_repository.dart';
 import 'package:waddle_shared/auth/role_permissions.dart';
 import 'package:waddle_shared/config/adoption.dart';
+import 'package:waddle_shared/config/adoption_allowed_roles.dart';
+import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 
 import '../alerts/alert_repository.dart';
@@ -15,6 +17,7 @@ const int _maxIdentifierLength = 128;
 
 void registerAdoptionRoutes(
   Router r, {
+  required AppDatabase db,
   required AdoptionRepository? adoption,
   required AlertRepository alerts,
   CorsOriginRepository? corsOrigins,
@@ -22,6 +25,7 @@ void registerAdoptionRoutes(
   r.post('/v1/adoption/request', (Request req) async {
     return _request(
       req,
+      db: db,
       adoption: adoption,
       alerts: alerts,
       corsOrigins: corsOrigins,
@@ -39,6 +43,7 @@ void registerAdoptionRoutes(
 
 Future<Response> _request(
   Request req, {
+  required AppDatabase db,
   required AdoptionRepository? adoption,
   required AlertRepository alerts,
   CorsOriginRepository? corsOrigins,
@@ -88,6 +93,10 @@ Future<Response> _request(
     } catch (_) {
       return _jsonError(500, 'adoption_grant_failed');
     }
+  }
+
+  if (!await isAdoptionRoleAllowed(db, role)) {
+    return _jsonError(403, 'adoption_role_not_allowed');
   }
 
   try {

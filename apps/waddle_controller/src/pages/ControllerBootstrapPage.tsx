@@ -40,7 +40,7 @@ export function ControllerBootstrapPage() {
     >
       <Stack component="form" onSubmit={submit} spacing={2} sx={{ width: '100%', maxWidth: 440 }}>
         <Typography variant="h5" fontWeight={600}>
-          Create admin account
+          First administrator account
         </Typography>
         <Typography variant="body2" color="text.secondary">
           User management was enabled but no accounts exist yet. Create the first administrator

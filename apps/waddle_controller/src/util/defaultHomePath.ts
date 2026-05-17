@@ -7,7 +7,7 @@ export function defaultHomePath(
   isProgramsOnlyControllerUser: boolean,
 ): string {
   if (!hasAnyAdoptedDisplay(displays)) {
-    return '/displays';
+    return '/controller-settings';
   }
-  return isProgramsOnlyControllerUser ? '/programs' : '/curators';
+  return isProgramsOnlyControllerUser ? '/programs' : '/display-settings';
 }

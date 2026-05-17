@@ -9,6 +9,9 @@ import { authRoutes } from './routes/auth.js';
 import { bootstrapRoutes } from './routes/bootstrap.js';
 import { settingsRoutes } from './routes/settings.js';
 import { usersRoutes } from './routes/users.js';
+import { proxyRoutes } from './routes/proxy.js';
+import { userDisplaysRoutes } from './routes/userDisplays.js';
+import { DISPLAY_ID_HEADER, DISPLAY_URL_HEADER } from './constants/proxyHeaders.js';
 
 export function createApp(config: AppConfig, db: AppDatabase) {
   const app = new Hono<{ Variables: AppVariables }>();
@@ -19,7 +22,7 @@ export function createApp(config: AppConfig, db: AppDatabase) {
       origin: (origin) => origin ?? '*',
       credentials: true,
       allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowHeaders: ['Content-Type'],
+      allowHeaders: ['Content-Type', DISPLAY_URL_HEADER, DISPLAY_ID_HEADER, 'Authorization'],
     }),
   );
 
@@ -32,7 +35,10 @@ export function createApp(config: AppConfig, db: AppDatabase) {
   v1.route('/', bootstrapRoutes());
   v1.route('/', settingsRoutes());
   v1.route('/', usersRoutes());
+  v1.route('/', userDisplaysRoutes());
 
+  // Mount separately so other v1 sub-apps' `use('*')` middleware cannot block /proxy/*.
+  app.route('/bff/v1', proxyRoutes());
   app.route('/bff/v1', v1);
 
   app.get('/bff/health', (c) => c.json({ ok: true }));

@@ -6,18 +6,14 @@ import 'package:waddle_display/theme/display_theme.dart';
 
 void main() {
   testWidgets('shows base URL, headline, and API key hint', (tester) async {
-    const spec = ParsedWidgetSpec(
-      type: 'local_api',
-      slot: 'main',
-      config: {},
-    );
+    const spec = ParsedWidgetSpec(type: 'local_api', slot: 'main', config: {});
     final theme = DisplayTheme.build();
     await tester.pumpWidget(
       MaterialApp(
         theme: theme,
         home: Scaffold(
           body: LocalApiSlideWidget(
-            baseUrl: 'http://127.0.0.1:8787',
+            baseUrl: 'https://127.0.0.1:8787',
             spec: spec,
             theme: theme,
           ),
@@ -26,7 +22,7 @@ void main() {
     );
 
     expect(find.text('Local REST API'), findsOneWidget);
-    expect(find.text('http://127.0.0.1:8787'), findsOneWidget);
+    expect(find.text('https://127.0.0.1:8787'), findsOneWidget);
     expect(find.textContaining('/v1/adoption/request'), findsOneWidget);
     expect(find.textContaining('api_key'), findsOneWidget);
     final icon = tester.widget<Icon>(find.byIcon(Icons.api_outlined));

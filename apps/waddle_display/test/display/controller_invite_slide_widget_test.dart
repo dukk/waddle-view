@@ -29,7 +29,7 @@ void main() {
       MaterialApp(
         home: Scaffold(
           body: ControllerInviteSlideWidget(
-            displayApiBaseUrl: 'http://127.0.0.1:8787',
+            displayApiBaseUrl: 'https://127.0.0.1:8787',
             viewerInviteRuntime: const ViewerInviteRuntime(
               controllerPublicUrl: 'http://example.com:8080',
               viewerRegistrationSecret: 'sekrit',

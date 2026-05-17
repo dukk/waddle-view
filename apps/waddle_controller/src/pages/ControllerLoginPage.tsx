@@ -35,7 +35,7 @@ export function ControllerLoginPage() {
     >
       <Stack component="form" onSubmit={submit} spacing={2} sx={{ width: '100%', maxWidth: 400 }}>
         <Typography variant="h5" fontWeight={600}>
-          Controller sign in
+          Sign in to this controller
         </Typography>
         <Typography variant="body2" color="text.secondary">
           Sign in to use the operator UI. Display adoption is separate and unchanged.

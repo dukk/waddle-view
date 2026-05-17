@@ -1,5 +1,6 @@
 import 'package:drift/native.dart';
 import 'package:test/test.dart';
+import 'package:waddle_shared/auth/adoption_crypto.dart';
 import 'package:waddle_shared/auth/adoption_repository.dart';
 import 'package:waddle_shared/config/adoption.dart';
 import 'package:waddle_shared/persistence/database.dart';
@@ -129,5 +130,47 @@ void main() {
     expect(await repo.clientForApiKey(firstConfirm.apiKey), isNull);
     final rotated = await repo.clientForApiKey(secondConfirm.apiKey);
     expect(rotated?.identifier, 'rotate');
+  });
+
+  test('listClients returns masked keys sorted by createdAtMs desc', () async {
+    const now = 5_000_000;
+    await repo.grantInstant(
+      identifier: 'older',
+      role: kUserRoleViewer,
+      nowMs: now,
+    );
+    await repo.grantInstant(
+      identifier: 'newer',
+      role: kUserRoleAdmin,
+      nowMs: now + 10_000,
+    );
+
+    final items = await repo.listClients();
+    expect(items.length, 2);
+    expect(items.first.identifier, 'newer');
+    expect(items.first.maskedApiKey, startsWith(kAdoptionApiKeyPrefix));
+    expect(items.first.maskedApiKey, contains('••••'));
+  });
+
+  test('revokeClient removes client', () async {
+    const now = 6_000_000;
+    final granted = await repo.grantInstant(
+      identifier: 'revoke-me',
+      role: kUserRoleOperator,
+      nowMs: now,
+    );
+    final listed = await repo.listClients();
+    final id = listed.single.id;
+
+    expect(await repo.revokeClient(id), isTrue);
+    expect(await repo.clientForApiKey(granted.apiKey), isNull);
+    expect(await repo.revokeClient(id), isFalse);
+  });
+
+  test('maskAdoptionApiKeyHash is stable', () {
+    final masked = maskAdoptionApiKeyHash('abc123xyz');
+    expect(masked, startsWith(kAdoptionApiKeyPrefix));
+    expect(masked, endsWith('xyz'));
+    expect(masked, contains('••••'));
   });
 }

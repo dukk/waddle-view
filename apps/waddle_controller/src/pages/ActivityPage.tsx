@@ -104,11 +104,11 @@ export function ActivityPage() {
   return (
     <Stack spacing={2}>
       <Typography variant="h5" fontWeight={600}>
-        Activity log
+        Live integration log
       </Typography>
       <Typography variant="body2" color="text.secondary">
-        Integration and engine lines captured in-memory on the display (newest at the bottom of the
-        buffer; this table shows the latest chunk, newest first).
+        Live integration and engine log from the active display (refreshes about every four seconds).
+        Filter by channel or message text to trace collector errors, curation, and runtime events.
       </Typography>
       {error && <Alert severity="error">{error}</Alert>}
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }}>

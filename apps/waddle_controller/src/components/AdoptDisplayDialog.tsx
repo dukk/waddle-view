@@ -1,5 +1,7 @@
 import {
+  Button,
   Dialog,
+  DialogActions,
   DialogContent,
   DialogTitle,
   Typography,
@@ -8,13 +10,29 @@ import { AdoptDisplayForm } from '@/components/AdoptDisplayForm';
 
 type Props = {
   open: boolean;
+  /** When false, escape and backdrop dismiss are disabled (first-time pairing). */
+  dismissible?: boolean;
+  onClose?: () => void;
   onAdopted?: () => void;
 };
 
-export function AdoptDisplayDialog({ open, onAdopted }: Props) {
+export function AdoptDisplayDialog({
+  open,
+  dismissible = true,
+  onClose,
+  onAdopted,
+}: Props) {
+  const handleClose = dismissible ? onClose : undefined;
+
   return (
-    <Dialog open={open} fullWidth maxWidth="sm" disableEscapeKeyDown>
-      <DialogTitle>Add a display</DialogTitle>
+    <Dialog
+      open={open}
+      fullWidth
+      maxWidth="sm"
+      onClose={handleClose}
+      disableEscapeKeyDown={!dismissible}
+    >
+      <DialogTitle>Adopt display</DialogTitle>
       <DialogContent>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Pair this browser with a kiosk by requesting adoption on the display, then confirming
@@ -22,6 +40,11 @@ export function AdoptDisplayDialog({ open, onAdopted }: Props) {
         </Typography>
         <AdoptDisplayForm requestLabel="Continue to adoption" onAdopted={onAdopted} />
       </DialogContent>
+      {dismissible && onClose ? (
+        <DialogActions>
+          <Button onClick={onClose}>Cancel</Button>
+        </DialogActions>
+      ) : null}
     </Dialog>
   );
 }

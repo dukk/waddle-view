@@ -1,9 +1,11 @@
 import { confirmAdoption, sessionFromAdoption } from '@/api/adoption';
 import { addDisplay, normalizeBaseUrl } from '@/storage/displays';
+import { suggestDisplayLabel } from '@/util/adoptionDisplayIdentity';
 import type { SavedDisplay } from '@/storage/displays';
 import { saveSession, type DisplaySession } from '@/storage/sessions';
 import { normalizeAdoptionChallengeCode } from '@/util/adoptionChallengeCode';
 import { adoptionError, adoptionLog } from '@/util/adoptionLog';
+import { syncUserDisplayToServer } from '@/storage/userDisplaysSync';
 
 export type CompleteAdoptionInput = {
   baseUrl: string;
@@ -32,9 +34,10 @@ export async function completeDisplayAdoption(
     const session = sessionFromAdoption(normalized, result);
     const display = addDisplay({
       baseUrl: normalized,
-      label: input.label?.trim() || undefined,
+      label: suggestDisplayLabel(normalized, session.role, input.label),
     });
     saveSession(display.id, session);
+    await syncUserDisplayToServer(display, session).catch(() => undefined);
     adoptionLog('persist.success', 'display and session saved', {
       displayId: display.id,
       displayLabel: display.label,

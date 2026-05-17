@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_shared/config/adoption.dart';
+import 'package:waddle_shared/config/adoption_allowed_roles.dart';
+import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 
 import '../helpers/adoption_test_helpers.dart';
@@ -97,5 +99,130 @@ void main() {
 
     final res = await http.get(Uri.parse('${h.baseUrl}/v1/health'));
     expect(res.statusCode, 200);
+  });
+
+  test('adoption clients list revoke and grant', () async {
+    final h = await RestTestHarness.startViaAdoption(role: kUserRoleAdmin);
+    addTearDown(h.dispose);
+
+    final listRes = await http.get(
+      Uri.parse('${h.baseUrl}/v1/adoption/clients'),
+      headers: h.authHeaders,
+    );
+    expect(listRes.statusCode, 200);
+    final listed = jsonDecode(listRes.body) as Map<String, dynamic>;
+    final items = listed['items'] as List<dynamic>;
+    expect(items, isNotEmpty);
+    final self = items.firstWhere(
+      (e) => (e as Map<String, dynamic>)['identifier'] == h.identifier,
+    ) as Map<String, dynamic>;
+    expect(self['masked_api_key'], startsWith('wd_'));
+    expect(self['role'], kUserRoleAdmin);
+
+    final grantRes = await http.post(
+      Uri.parse('${h.baseUrl}/v1/adoption/clients'),
+      headers: {
+        ...h.authHeaders,
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'identifier': 'issued-from-settings',
+        'role': kUserRoleViewer,
+      }),
+    );
+    expect(grantRes.statusCode, 200);
+    final granted = jsonDecode(grantRes.body) as Map<String, dynamic>;
+    expect(granted['api_key'], startsWith('wd_'));
+
+    final sessionRes = await http.get(
+      Uri.parse('${h.baseUrl}/v1/adoption/session'),
+      headers: {
+        'Authorization': 'Bearer ${granted['api_key']}',
+      },
+    );
+    expect(sessionRes.statusCode, 200);
+    final session = jsonDecode(sessionRes.body) as Map<String, dynamic>;
+    expect(session['identifier'], 'issued-from-settings');
+    expect(session['role'], kUserRoleViewer);
+
+    final afterGrant = await http.get(
+      Uri.parse('${h.baseUrl}/v1/adoption/clients'),
+      headers: h.authHeaders,
+    );
+    final afterItems =
+        (jsonDecode(afterGrant.body) as Map<String, dynamic>)['items'] as List;
+    final issued = afterItems.firstWhere(
+      (e) => (e as Map<String, dynamic>)['identifier'] == 'issued-from-settings',
+    ) as Map<String, dynamic>;
+
+    final revokeRes = await http.delete(
+      Uri.parse('${h.baseUrl}/v1/adoption/clients/${issued['id']}'),
+      headers: h.authHeaders,
+    );
+    expect(revokeRes.statusCode, 200);
+  });
+
+  test('adoption clients require admin', () async {
+    final h = await RestTestHarness.startViaAdoption(role: kUserRoleOperator);
+    addTearDown(h.dispose);
+
+    final res = await http.get(
+      Uri.parse('${h.baseUrl}/v1/adoption/clients'),
+      headers: h.authHeaders,
+    );
+    expect(res.statusCode, 403);
+  });
+
+  test('adoption request rejected when new requests disabled', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.configKeyValues).insert(
+          ConfigKeyValuesCompanion.insert(
+            key: kAdoptionAllowNewRequestsKvKey,
+            value: 'false',
+          ),
+        );
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+
+    final res = await http.post(
+      Uri.parse('${h.baseUrl}/v1/adoption/request'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'identifier': 'blocked-client', 'role': kUserRoleViewer}),
+    );
+    expect(res.statusCode, 403);
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    expect(body['error'], 'adoption_role_not_allowed');
+  });
+
+  test('adoption request allowed only for configured roles', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.configKeyValues).insert(
+          ConfigKeyValuesCompanion.insert(
+            key: kAdoptionAllowedRolesKvKey,
+            value: encodeAdoptionAllowedRoles({kUserRoleViewer}),
+          ),
+        );
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+
+    final blocked = await http.post(
+      Uri.parse('${h.baseUrl}/v1/adoption/request'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'identifier': 'admin-client', 'role': kUserRoleAdmin}),
+    );
+    expect(blocked.statusCode, 403);
+    expect(
+      (jsonDecode(blocked.body) as Map<String, dynamic>)['error'],
+      'adoption_role_not_allowed',
+    );
+
+    final allowed = await http.post(
+      Uri.parse('${h.baseUrl}/v1/adoption/request'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'identifier': 'viewer-client', 'role': kUserRoleViewer}),
+    );
+    expect(allowed.statusCode, 200);
   });
 }

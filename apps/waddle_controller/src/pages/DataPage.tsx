@@ -435,6 +435,16 @@ export function DataPage() {
 
   return (
     <Stack spacing={2}>
+      <Box>
+        <Typography variant="h6" fontWeight={600} gutterBottom>
+          Collected content browser
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Browse content stored on the active kiosk—jokes, news, photos, stocks, weather, and alerts.
+          Filter and paginate each tab; with <strong>content.moderate</strong> you can suppress rows
+          so they are omitted from future programs.
+        </Typography>
+      </Box>
       {error && (
         <Alert severity="error" onClose={() => setError(null)}>
           {error}

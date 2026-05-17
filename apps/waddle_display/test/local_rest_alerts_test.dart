@@ -21,6 +21,13 @@ void main() {
       headers: h.authHeaders,
     );
     expect(list.statusCode, 200);
+    final items =
+        (jsonDecode(list.body) as Map<String, dynamic>)['items'] as List<dynamic>;
+    expect(items, isNotEmpty);
+    final listed = items.first as Map<String, dynamic>;
+    expect(listed['created_at_ms'], isA<int>());
+    expect(listed.containsKey('expires_at_ms'), isTrue);
+    expect(listed.containsKey('dismissed_at_ms'), isTrue);
     final del = await http.delete(
       Uri.parse('${h.baseUrl}/v1/alerts/$id'),
       headers: h.authHeaders,

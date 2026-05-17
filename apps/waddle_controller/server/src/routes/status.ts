@@ -15,6 +15,9 @@ export function statusRoutes() {
       userManagementEnabled: isUserManagementEnabled(c.get('db')),
       needsBootstrap: needsBootstrap(c.get('db'), config.authEnabled),
     };
+    if (config.clientIdentifier) {
+      body.clientIdentifier = config.clientIdentifier;
+    }
     if (user) {
       body.user = { id: user.id, username: user.username, role: user.role };
     }

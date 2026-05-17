@@ -7,6 +7,7 @@ import 'screens/pexels/pexels_slide_media.dart';
 import 'screens/pexels/pexels_video_slide_widget.dart';
 import 'screens/pexels/pexels_video_materialize.dart';
 import 'screens/rss_article/rss_article_load.dart';
+import 'screens/web_page/web_page_session.dart';
 import 'slide_content_joke_trivia.dart';
 
 /// Warms DB/blob/video file resources for every async widget on this slide so
@@ -45,6 +46,8 @@ Future<void> _preloadWidget(
       await loadJokeForSlide(db, w, slide);
     case 'trivia':
       await loadTriviaForSlide(db, w, slide);
+    case 'web_page':
+      await WebPagePrepareCache.instance.preload(w);
     default:
       return;
   }

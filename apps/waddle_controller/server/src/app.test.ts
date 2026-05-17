@@ -1,7 +1,9 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { createTestApp, sessionCookieHeader } from './testHelpers.js';
 import { setUserManagementEnabled } from './services/settings.js';
 import type { StatusResponse } from './types.js';
+import { DISPLAY_URL_HEADER } from './constants/proxyHeaders.js';
+import * as displayProxy from './services/displayProxy.js';
 
 describe('controller BFF', () => {
   let cleanup: (() => void) | undefined;
@@ -118,5 +120,40 @@ describe('controller BFF', () => {
     cleanup = t.cleanup;
     const res = await t.app.request('/bff/v1/users');
     expect(res.status).toBe(401);
+  });
+
+  it('serves status and display proxy without users middleware blocking', async () => {
+    const t = createTestApp();
+    cleanup = t.cleanup;
+    setUserManagementEnabled(t.db, true);
+    await t.app.request('/bff/v1/bootstrap/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'admin', password: 'passwordpassword' }),
+    });
+    const status = await t.app.request('/bff/v1/status');
+    expect(status.status).toBe(200);
+
+    const forward = vi
+      .spyOn(displayProxy, 'forwardDisplayProxy')
+      .mockResolvedValue(new Response('[]', { status: 200 }));
+    const proxy = await t.app.request('/bff/v1/proxy/v1/screens', {
+      headers: { [DISPLAY_URL_HEADER]: 'https://127.0.0.1:8787' },
+    });
+    expect(proxy.status).toBe(200);
+    expect(forward).toHaveBeenCalled();
+    forward.mockRestore();
+  });
+
+  it('returns 502 JSON when the display upstream is unreachable', async () => {
+    const t = createTestApp({ authEnabled: false });
+    cleanup = t.cleanup;
+    const res = await t.app.request('/bff/v1/proxy/v1/screens', {
+      headers: { [DISPLAY_URL_HEADER]: 'http://127.0.0.1:1' },
+    });
+    expect(res.status).toBe(502);
+    const body = (await res.json()) as { code?: string; error?: string };
+    expect(body.code).toBe('display_unreachable');
+    expect(body.error).toMatch(/Could not reach the display/);
   });
 });

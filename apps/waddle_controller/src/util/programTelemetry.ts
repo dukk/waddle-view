@@ -121,6 +121,21 @@ function summarizeWidget(
     }
     case 'data_health':
       return { headline: 'Data health' };
+    case 'web_page': {
+      const pageUrl = str(w.config['url']);
+      let host = '';
+      if (pageUrl) {
+        try {
+          host = new URL(pageUrl).host;
+        } catch {
+          host = '';
+        }
+      }
+      return {
+        headline: host ? `Web · ${host}` : 'Web page',
+        sub: pageUrl || undefined,
+      };
+    }
     case 'calendar_month':
       return { headline: 'Calendar', sub: str(w.config['title']) || undefined };
     case 'bing_image_of_day':
@@ -266,4 +281,136 @@ export function collectWeatherLocationIds(model: SlideCardModel): string[] {
     }
   }
   return [...new Set(ids.filter((x) => x.length > 0))];
+}
+
+export type SlideScreenPreviewKind =
+  | 'static_text'
+  | 'joke'
+  | 'trivia'
+  | 'wifi'
+  | 'clock'
+  | 'calendar'
+  | 'rss_article'
+  | 'rss_article_columns'
+  | 'rss_article_stack'
+  | 'local_api'
+  | 'admin_setup'
+  | 'controller_invite'
+  | 'weather'
+  | 'stock'
+  | 'data_health'
+  | 'photo'
+  | 'photo_collage'
+  | 'video';
+
+/** Screen/widget types that use photo or video previews instead of type icons on program cards. */
+const PHOTO_VIDEO_SCREEN_TYPES = new Set([
+  'pexels_photo',
+  'pexels_photo_collage',
+  'pexels_video',
+  'photo_random',
+  'bing_image_of_day',
+]);
+
+const SCREEN_TYPE_PREVIEW_KIND: Record<string, SlideScreenPreviewKind> = {
+  static_text: 'static_text',
+  joke: 'joke',
+  trivia: 'trivia',
+  wifi: 'wifi',
+  digital_clock: 'clock',
+  analog_clock: 'clock',
+  calendar_month: 'calendar',
+  rss_article: 'rss_article',
+  rss_article_columns: 'rss_article_columns',
+  rss_article_stack: 'rss_article_stack',
+  local_api: 'local_api',
+  admin_setup: 'admin_setup',
+  controller_invite: 'controller_invite',
+  weather: 'weather',
+  stock_quotes: 'stock',
+  data_health: 'data_health',
+  pexels_photo: 'photo',
+  pexels_photo_collage: 'photo_collage',
+  pexels_video: 'video',
+  photo_random: 'photo',
+  bing_image_of_day: 'photo',
+};
+
+const WIDGET_TYPE_PREVIEW_KIND: Record<string, SlideScreenPreviewKind> = {
+  static_text: 'static_text',
+  joke: 'joke',
+  trivia: 'trivia',
+  wifi: 'wifi',
+  calendar_month: 'calendar',
+  rss_article: 'rss_article',
+  rss_article_columns: 'rss_article_columns',
+  rss_article_stack: 'rss_article_stack',
+  local_api: 'local_api',
+  admin_setup: 'admin_setup',
+  controller_invite: 'controller_invite',
+  weather: 'weather',
+  stock_quotes: 'stock',
+  data_health: 'data_health',
+};
+
+/** Preview icon kind for a `screens.screen_type` row (catalog UI). */
+export function screenTypePreviewKind(screenType: string): SlideScreenPreviewKind | null {
+  const st = screenType.trim();
+  if (!st) return null;
+  return SCREEN_TYPE_PREVIEW_KIND[st] ?? null;
+}
+
+/** Icon kind for the program card image slot when no photo/video/RSS preview is available. */
+export function slideScreenPreviewKind(model: SlideCardModel): SlideScreenPreviewKind | null {
+  const st = model.screenType?.trim();
+  if (st) {
+    if (PHOTO_VIDEO_SCREEN_TYPES.has(st)) return null;
+    const byScreen = SCREEN_TYPE_PREVIEW_KIND[st];
+    if (byScreen) return byScreen;
+  }
+  for (const w of model.widgets) {
+    if (PHOTO_VIDEO_SCREEN_TYPES.has(w.type)) continue;
+    const byWidget = WIDGET_TYPE_PREVIEW_KIND[w.type];
+    if (byWidget) return byWidget;
+  }
+  return null;
+}
+
+export function programAtMs(row: Record<string, unknown>): number {
+  const v = row['at_ms'];
+  return typeof v === 'number' ? v : Number(v) || 0;
+}
+
+export function sortProgramsByAtMsDesc(
+  items: Record<string, unknown>[],
+): Record<string, unknown>[] {
+  return [...items].sort((a, b) => programAtMs(b) - programAtMs(a));
+}
+
+export type PaginatedList<T> = {
+  items: T[];
+  total: number;
+  page: number;
+  pageCount: number;
+  pageSize: number;
+};
+
+/** Client-side page slice; clamps `page` when the list shrinks. */
+export function paginateList<T>(
+  items: readonly T[],
+  page: number,
+  pageSize: number,
+): PaginatedList<T> {
+  const total = items.length;
+  const safePageSize = pageSize > 0 ? pageSize : Math.max(total, 1);
+  const pageCount = Math.max(1, Math.ceil(total / safePageSize));
+  const safePage = Math.min(Math.max(0, page), pageCount - 1);
+  const start = safePage * safePageSize;
+  return {
+    items: items.slice(start, start + safePageSize),
+    total,
+    page: safePage,
+    pageCount,
+    pageSize: safePageSize,
+  };
 }

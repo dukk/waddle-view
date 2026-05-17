@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import EditIcon from '@mui/icons-material/Edit';
 import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -17,7 +12,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   FormControl,
   IconButton,
   InputLabel,
@@ -30,7 +24,6 @@ import {
   Typography,
 } from '@mui/material';
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import TodayOutlinedIcon from '@mui/icons-material/TodayOutlined';
 import Form from '@rjsf/mui';
@@ -39,8 +32,11 @@ import type { RJSFSchema } from '@rjsf/utils';
 import { useAuth } from '@/context/AuthContext';
 import { useDisplay } from '@/context/DisplayContext';
 import { apiFetch, apiJson, ApiError } from '@/api/client';
+import { CatalogPageHelp } from '@/components/CatalogPageHelp';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
+import { OverlaysHelpContent } from '@/components/help/OverlaysHelpContent';
 import { parseJsonObject } from '@/util/json';
+import { prepareRjsfSchema } from '@/util/rjsfSchema';
 import type { SavedDisplay } from '@/storage/displays';
 
 /** Mirrors `GET /v1/display/overlays` item shape (`overlayScheduleToJson`). */
@@ -307,6 +303,12 @@ function overlayTypeLabel(type: string): string {
   return OVERLAY_TYPE_LABELS[k] ?? (k || 'Unknown type');
 }
 
+const catalogCardGridSx = {
+  display: 'grid',
+  gap: 2,
+  gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+} as const;
+
 function sortSchedules(rows: OverlayScheduleRow[], now: Date): OverlayScheduleRow[] {
   return [...rows].sort((a, b) => {
     const at = matchesOverlaySchedule(a, now) ? 0 : 1;
@@ -323,26 +325,8 @@ function isBuiltinOverlayType(t: string): boolean {
   return (BUILTIN_OVERLAY_TYPES as readonly string[]).includes(t.trim());
 }
 
-const permissiveOverlayConfigSchema: RJSFSchema = {
-  type: 'object',
-  additionalProperties: true,
-};
-
 function overlayRowConfigSchema(schemaField: unknown): RJSFSchema {
-  if (schemaField != null && typeof schemaField === 'object' && !Array.isArray(schemaField)) {
-    return schemaField as RJSFSchema;
-  }
-  if (typeof schemaField === 'string' && schemaField.trim()) {
-    try {
-      const parsed: unknown = JSON.parse(schemaField);
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        return parsed as RJSFSchema;
-      }
-    } catch {
-      /* fall through */
-    }
-  }
-  return permissiveOverlayConfigSchema;
+  return prepareRjsfSchema(schemaField);
 }
 
 function defaultConfigForOverlayType(t: string): Record<string, unknown> {
@@ -654,6 +638,81 @@ function OverlayScheduleDialog({
   );
 }
 
+function OverlayScheduleCard({
+  row,
+  firesToday,
+  canWrite,
+  onEdit,
+  onDelete,
+}: {
+  row: OverlayScheduleRow;
+  firesToday: boolean;
+  canWrite: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const messages = decodeMessagesFromConfig(row.config_json);
+  const typeLabel = overlayTypeLabel(row.overlay_type);
+  const title = row.label.trim() || row.id;
+
+  return (
+    <Card
+      variant="outlined"
+      sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}
+      aria-label={`${title} overlay schedule`}
+    >
+      <CardContent sx={{ flexGrow: 1 }}>
+        <Stack spacing={1}>
+          <Typography variant="subtitle1" fontWeight={600} sx={{ wordBreak: 'break-word' }}>
+            {title}
+          </Typography>
+          {row.label.trim() ? (
+            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+              {row.id}
+            </Typography>
+          ) : null}
+          <Stack direction="row" flexWrap="wrap" gap={0.75} useFlexGap>
+            {firesToday && (
+              <Chip
+                size="small"
+                color="primary"
+                variant="outlined"
+                icon={<TodayOutlinedIcon />}
+                label="Matches today"
+              />
+            )}
+            <Chip size="small" label={typeLabel} variant="outlined" />
+            <Chip size="small" label={scheduleKindLabel(row)} variant="outlined" />
+          </Stack>
+          <Stack direction="row" spacing={0.75} alignItems="flex-start">
+            <CalendarMonthOutlinedIcon color="action" sx={{ mt: 0.2 }} fontSize="small" />
+            <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
+              {scheduleSummary(row)}
+            </Typography>
+          </Stack>
+          {messages.length > 0 ? (
+            <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
+              {messages.length === 1
+                ? messages[0]
+                : `${messages.length} messages · ${messages[0]}`}
+            </Typography>
+          ) : null}
+        </Stack>
+      </CardContent>
+      {canWrite ? (
+        <CardActions sx={{ justifyContent: 'flex-end', px: 2, pb: 2 }}>
+          <Button size="small" variant="outlined" onClick={onEdit}>
+            Edit
+          </Button>
+          <Button size="small" variant="outlined" color="error" onClick={onDelete}>
+            Delete
+          </Button>
+        </CardActions>
+      ) : null}
+    </Card>
+  );
+}
+
 export function OverlaysPage() {
   const { active } = useDisplay();
   const { hasPermission } = useAuth();
@@ -705,6 +764,9 @@ export function OverlaysPage() {
 
   const sorted = useMemo(() => sortSchedules(rows, evalNow), [rows, evalNow]);
 
+  const enabledSchedules = useMemo(() => sorted.filter((r) => r.enabled), [sorted]);
+  const disabledSchedules = useMemo(() => sorted.filter((r) => !r.enabled), [sorted]);
+
   const activeTodayCount = useMemo(
     () => rows.filter((r) => matchesOverlaySchedule(r, evalNow)).length,
     [rows, evalNow],
@@ -731,41 +793,48 @@ export function OverlaysPage() {
     return <NoDisplayPlaceholder />;
   }
 
+  const openCreate = () => {
+    setDialogMode('create');
+    setDialogInitial(null);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (row: OverlayScheduleRow) => {
+    setDialogMode('edit');
+    setDialogInitial(row);
+    setDialogOpen(true);
+  };
+
   return (
-    <Stack spacing={2}>
-      <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={2}>
-        <Box>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, maxWidth: 720 }}>
-            SQLite table <code>overlays</code>: each row is a calendar rule on the display (local
-            date) with <code>overlay_type</code> (like <code>screen_type</code>) and{' '}
-            <code>config_json</code> (phrases in <code>messages</code>). Built-in renderers today:{' '}
-            <code>hearts_rain</code>, <code>birthday_confetti</code>, <code>bouncing_message</code>.
-            API: <code>docs/pi/api.md</code>.
+    <Stack spacing={3}>
+      <Box>
+        <Stack direction="row" alignItems="center" spacing={0.25} sx={{ mb: 0.5 }}>
+          <Typography variant="h6" fontWeight={600}>
+            Celebration overlay schedules
           </Typography>
-        </Box>
-        <Stack direction="row" spacing={0.5} alignItems="center">
-          {canWrite && (
-            <Button
-              startIcon={<AddIcon />}
-              variant="outlined"
-              size="small"
-              onClick={() => {
-                setDialogMode('create');
-                setDialogInitial(null);
-                setDialogOpen(true);
-              }}
-            >
-              Add schedule
-            </Button>
-          )}
-          <Tooltip title="Reload schedules">
-            <span>
-              <IconButton onClick={() => void load()} disabled={loading} aria-label="Reload overlays">
-                <RefreshIcon />
-              </IconButton>
-            </span>
-          </Tooltip>
+          <CatalogPageHelp title="Overlay schedules">
+            <OverlaysHelpContent />
+          </CatalogPageHelp>
         </Stack>
+        <Typography variant="body2" color="text.secondary">
+          Schedule date-based celebration overlays—confetti, hearts, bouncing text, and similar
+          effects matched to the display&apos;s local calendar. Enable a rule, set its date pattern,
+          and edit overlay type plus messages in <code>config_json</code>.
+        </Typography>
+      </Box>
+      <Stack direction="row" justifyContent="flex-end" spacing={0.5} alignItems="center">
+        {canWrite && (
+          <Button startIcon={<AddIcon />} variant="contained" onClick={openCreate}>
+            Add schedule
+          </Button>
+        )}
+        <Tooltip title="Reload schedules">
+          <span>
+            <IconButton onClick={() => void load()} disabled={loading} aria-label="Reload overlays">
+              <RefreshIcon />
+            </IconButton>
+          </span>
+        </Tooltip>
       </Stack>
 
       {activeTodayCount > 0 && (
@@ -785,127 +854,58 @@ export function OverlaysPage() {
         </Alert>
       )}
 
-      {sorted.map((row) => {
-        const firesToday = matchesOverlaySchedule(row, evalNow);
-        const messages = decodeMessagesFromConfig(row.config_json);
-        const typeLabel = overlayTypeLabel(row.overlay_type);
+      <Stack spacing={1.5}>
+        <Typography variant="subtitle1" fontWeight={600}>
+          Enabled
+        </Typography>
+        {enabledSchedules.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            No overlay schedules are enabled.
+          </Typography>
+        ) : (
+          <Box sx={catalogCardGridSx}>
+            {enabledSchedules.map((row) => (
+              <OverlayScheduleCard
+                key={row.id}
+                row={row}
+                firesToday={matchesOverlaySchedule(row, evalNow)}
+                canWrite={canWrite}
+                onEdit={() => openEdit(row)}
+                onDelete={() => void deleteRow(row.id)}
+              />
+            ))}
+          </Box>
+        )}
+      </Stack>
 
-        return (
-          <Card key={row.id} variant="outlined">
-            <CardContent>
-              <Stack spacing={1.5}>
-                <Stack
-                  direction={{ xs: 'column', sm: 'row' }}
-                  spacing={1}
-                  alignItems={{ xs: 'flex-start', sm: 'center' }}
-                  justifyContent="space-between"
-                >
-                  <Box>
-                    <Typography variant="subtitle1" fontWeight={700}>
-                      {row.label.trim() || row.id}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-                      {row.id}
-                    </Typography>
-                  </Box>
-                  <Stack direction="row" flexWrap="wrap" gap={0.75} useFlexGap>
-                    {firesToday && (
-                      <Chip
-                        size="small"
-                        color="primary"
-                        variant="outlined"
-                        icon={<TodayOutlinedIcon />}
-                        label="Matches today"
-                      />
-                    )}
-                    <Chip
-                      size="small"
-                      label={row.enabled ? 'Enabled' : 'Disabled'}
-                      color={row.enabled ? 'success' : 'default'}
-                      variant={row.enabled ? 'filled' : 'outlined'}
-                    />
-                    <Chip size="small" label={typeLabel} variant="outlined" />
-                    <Chip size="small" label={scheduleKindLabel(row)} variant="outlined" />
-                  </Stack>
-                </Stack>
+      <Stack spacing={1.5}>
+        <Typography variant="subtitle1" fontWeight={600}>
+          Disabled
+        </Typography>
+        {disabledSchedules.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            All overlay schedules are enabled.
+          </Typography>
+        ) : (
+          <Box sx={catalogCardGridSx}>
+            {disabledSchedules.map((row) => (
+              <OverlayScheduleCard
+                key={row.id}
+                row={row}
+                firesToday={matchesOverlaySchedule(row, evalNow)}
+                canWrite={canWrite}
+                onEdit={() => openEdit(row)}
+                onDelete={() => void deleteRow(row.id)}
+              />
+            ))}
+          </Box>
+        )}
+      </Stack>
 
-                <Divider />
-
-                <Stack direction="row" spacing={1} alignItems="flex-start">
-                  <CalendarMonthOutlinedIcon color="action" sx={{ mt: 0.25 }} fontSize="small" />
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                      When it runs
-                    </Typography>
-                    <Typography variant="body2">{scheduleSummary(row)}</Typography>
-                  </Box>
-                </Stack>
-
-                {messages.length > 0 && (
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                      Messages
-                    </Typography>
-                    <Stack component="ul" sx={{ m: 0, pl: 2.5, mt: 0.25 }}>
-                      {messages.map((m) => (
-                        <Typography key={m} component="li" variant="body2">
-                          {m}
-                        </Typography>
-                      ))}
-                    </Stack>
-                  </Box>
-                )}
-
-                <Accordion disableGutters elevation={0} sx={{ '&:before': { display: 'none' } }}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="caption" color="text.secondary">
-                      Raw JSON (schemas and config)
-                    </Typography>
-                  </AccordionSummary>
-                  <AccordionDetails sx={{ pt: 0 }}>
-                    <Typography
-                      component="pre"
-                      sx={{ fontFamily: 'monospace', fontSize: 12, m: 0, whiteSpace: 'pre-wrap' }}
-                    >
-                      {JSON.stringify(
-                        rawItems.find((x) => String(x.id ?? '') === row.id) ?? row,
-                        null,
-                        2,
-                      )}
-                    </Typography>
-                  </AccordionDetails>
-                </Accordion>
-              </Stack>
-            </CardContent>
-            {canWrite && (
-              <CardActions>
-                <Button
-                  size="small"
-                  startIcon={<EditIcon />}
-                  onClick={() => {
-                    setDialogMode('edit');
-                    setDialogInitial(row);
-                    setDialogOpen(true);
-                  }}
-                >
-                  Edit
-                </Button>
-                <Button
-                  size="small"
-                  color="error"
-                  startIcon={<DeleteOutlineIcon />}
-                  onClick={() => void deleteRow(row.id)}
-                >
-                  Delete
-                </Button>
-              </CardActions>
-            )}
-          </Card>
-        );
-      })}
-
-      {sorted.length === 0 && !error && (
-        <Typography color="text.secondary">No overlay schedules returned.</Typography>
+      {sorted.length === 0 && !error && !loading && (
+        <Typography variant="body2" color="text.secondary">
+          No overlay schedules returned.
+        </Typography>
       )}
 
       <OverlayScheduleDialog

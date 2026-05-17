@@ -22,6 +22,7 @@ import 'package:waddle_shared/persistence/reject_term_repository.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import '../ticker/ticker_curated_repository.dart';
 import 'http_tls.dart';
+import 'adoption_clients_rest_routes.dart';
 import 'adoption_rest_routes.dart';
 import 'api_key_auth.dart';
 import 'caller_origin.dart';
@@ -34,6 +35,8 @@ import 'package:waddle_shared/auth/cors_origin_repository.dart';
 Handler buildProtectedApiRouter({
   required AppDatabase db,
   required AlertRepository alerts,
+  required AdoptionRepository? adoption,
+  required CorsOriginRepository corsOrigins,
   required TickerCuratedRepository ticker,
   required BlobStore blobs,
   required Future<void> Function() onConfigChanged,
@@ -41,6 +44,13 @@ Handler buildProtectedApiRouter({
   DisplayNavigationBus? navigationBus,
 }) {
   final r = Router();
+  if (adoption != null) {
+    registerAdoptionClientRoutes(
+      r,
+      adoption: adoption,
+      corsOrigins: corsOrigins,
+    );
+  }
   final suppression = ContentSuppressionRepository(db);
 
   r.patch('/v1/content/jokes/<id>', (Request req, String id) async {
@@ -594,6 +604,9 @@ Map<String, dynamic> _alertJson(DashboardAlert a) => {
   'severity': a.severity,
   'priority': a.priority,
   'qr_payload': a.qrPayload,
+  'created_at_ms': a.createdAt.millisecondsSinceEpoch,
+  'expires_at_ms': a.expiresAt?.millisecondsSinceEpoch,
+  'dismissed_at_ms': a.dismissedAt?.millisecondsSinceEpoch,
 };
 
 Future<Map<String, dynamic>?> _readOverlayJson(Request req) async {
@@ -937,6 +950,7 @@ Handler buildRootHandler({
   final adoptionPublic = Router();
   registerAdoptionRoutes(
     adoptionPublic,
+    db: db,
     adoption: adoption,
     alerts: alerts,
     corsOrigins: corsOrigins,
@@ -951,6 +965,8 @@ Handler buildRootHandler({
           buildProtectedApiRouter(
             db: db,
             alerts: alerts,
+            adoption: adoption,
+            corsOrigins: corsOrigins,
             ticker: ticker,
             blobs: blobs,
             onConfigChanged: onConfigChanged,
@@ -978,7 +994,7 @@ Handler buildRootHandler({
         headers: {'content-type': 'application/json'},
       );
     }
-    if (path.startsWith('/v1/adoption') || path.startsWith('v1/adoption')) {
+    if (isPublicAdoptionPath(path)) {
       return adoptionPublic(req);
     }
     return apiProtected(req);
@@ -1002,7 +1018,7 @@ Handler _dynamicCorsWrap(
   return (Request req) async {
     final origin = callerOriginFromRequest(req);
     final path = req.requestedUri.path;
-    final allowed = isAdoptionPath(path)
+    final allowed = isPublicAdoptionPath(path)
         ? await corsPolicy.isAdoptionOriginAllowed(origin)
         : await corsPolicy.isProtectedOriginAllowed(origin, corsOrigins);
 

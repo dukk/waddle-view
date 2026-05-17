@@ -8,6 +8,7 @@ export type AppConfig = {
   dataDir: string;
   dbPath: string;
   sessionSecret: string;
+  clientIdentifier: string | null;
   secureCookies: boolean;
   tls: ResolvedTls;
 };
@@ -44,6 +45,8 @@ export function loadConfig(): AppConfig {
       ? envFlag('WADDLE_CONTROLLER_SECURE_COOKIES', process.env, false)
       : tls.enabled;
 
+  const clientIdentifier = process.env.WADDLE_CONTROLLER_CLIENT_IDENTIFIER?.trim() || null;
+
   return {
     authEnabled,
     bindHost: process.env.WADDLE_CONTROLLER_BIND?.trim() || '127.0.0.1',
@@ -51,6 +54,7 @@ export function loadConfig(): AppConfig {
     dataDir,
     dbPath: path.join(dataDir, 'controller.db'),
     sessionSecret: sessionSecret || 'dev-insecure-secret',
+    clientIdentifier,
     secureCookies,
     tls,
   };

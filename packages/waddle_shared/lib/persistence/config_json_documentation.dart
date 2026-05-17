@@ -632,6 +632,7 @@ const List<String> kScreenLayoutWidgetTypes = [
   'pexels_video',
   'stock_quotes',
   'data_health',
+  'web_page',
 ];
 
 /// [TickerTapes.tickerType] values for curation and seeds.
@@ -1166,6 +1167,139 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
     example: jsonEncode({
       'headline': 'Data health',
       'refreshIntervalSeconds': 45,
+    }),
+  ),
+  'web_page': ScreenConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'WebPageScreenConfig',
+        description:
+            'Embedded web page loaded before the slide is shown. Supports custom '
+            'user agent, per-request headers, auto-scroll, and iframe-like sandbox '
+            'restrictions.',
+        properties: {
+          'url': {
+            'type': 'string',
+            'minLength': 1,
+            'description': 'HTTP or HTTPS URL to load (required).',
+          },
+          'userAgent': {
+            'type': 'string',
+            'description': 'Optional User-Agent override for the web view.',
+          },
+          'requestHeaders': {
+            'type': 'object',
+            'additionalProperties': {'type': 'string'},
+            'description':
+                'Extra HTTP headers sent with the initial navigation only.',
+          },
+          'javascriptEnabled': {
+            'type': 'boolean',
+            'description':
+                'When true (default), JavaScript runs. Ignored when [security.sandbox] '
+                'is set without allow-scripts.',
+          },
+          'loadTimeoutSeconds': {
+            'type': 'integer',
+            'minimum': 5,
+            'maximum': 120,
+            'description':
+                'Max seconds to wait for the page to finish loading (default 30).',
+          },
+          'autoScroll': {
+            'type': 'object',
+            'description': 'Slow vertical scroll through the loaded document.',
+            'properties': {
+              'enabled': {'type': 'boolean'},
+              'delayMs': {
+                'type': 'integer',
+                'minimum': 0,
+                'description': 'Pause before scrolling starts (default 2500).',
+              },
+              'pixelsPerSecond': {
+                'type': 'number',
+                'minimum': 1,
+                'description': 'Scroll speed (default 48).',
+              },
+              'trailingHoldMs': {
+                'type': 'integer',
+                'minimum': 0,
+                'description': 'Hold at bottom before advancing (default 1500).',
+              },
+            },
+          },
+          'security': {
+            'type': 'object',
+            'description':
+                'Navigation and capability restrictions (iframe sandbox–like).',
+            'properties': {
+              'restrictNavigation': {
+                'type': 'boolean',
+                'description':
+                    'When true (default), block navigations away from the initial host '
+                    'unless listed in allowedHosts.',
+              },
+              'allowedHosts': {
+                'type': 'array',
+                'items': {'type': 'string', 'minLength': 1},
+                'description':
+                    'Extra hostnames allowed when restrictNavigation is true.',
+              },
+              'blockPopups': {
+                'type': 'boolean',
+                'description': 'Block window.open / target=_blank (default true).',
+              },
+              'allowFileAccess': {
+                'type': 'boolean',
+                'description': 'Allow file:// URLs (default false).',
+              },
+              'mixedContentMode': {
+                'type': 'string',
+                'enum': ['never', 'compatibility', 'always'],
+                'description':
+                    'HTTPS page loading HTTP subresources (platform-dependent).',
+              },
+              'sandbox': {
+                'type': 'array',
+                'items': {
+                  'type': 'string',
+                  'enum': [
+                    'allow-scripts',
+                    'allow-same-origin',
+                    'allow-forms',
+                    'allow-popups',
+                    'allow-top-navigation',
+                    'allow-modals',
+                  ],
+                },
+                'description':
+                    'When set, enables only listed capabilities (like iframe sandbox). '
+                    'Omit allow-scripts to disable JavaScript regardless of javascriptEnabled.',
+              },
+            },
+          },
+        },
+        requiredKeys: ['url'],
+      ),
+    ),
+    example: jsonEncode({
+      'url': 'https://example.com/status-board',
+      'userAgent': 'WaddleDisplay/1.0',
+      'requestHeaders': {'X-Waddle-Display': 'lobby'},
+      'javascriptEnabled': true,
+      'loadTimeoutSeconds': 45,
+      'autoScroll': {
+        'enabled': true,
+        'delayMs': 3000,
+        'pixelsPerSecond': 40,
+        'trailingHoldMs': 2000,
+      },
+      'security': {
+        'restrictNavigation': true,
+        'allowedHosts': ['cdn.example.com'],
+        'blockPopups': true,
+        'sandbox': ['allow-scripts', 'allow-same-origin', 'allow-forms'],
+      },
     }),
   ),
 };

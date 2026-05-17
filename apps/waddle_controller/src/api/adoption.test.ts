@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { DISPLAY_URL_HEADER } from '@/constants/proxyHeaders';
 import {
   adoptionJsonHeaders,
   confirmAdoption,
   expectedControllerOrigin,
+  fetchAdoptionSession,
   grantAdoption,
   requestAdoption,
   sessionFromAdoption,
@@ -22,7 +24,7 @@ describe('adoption API', () => {
     vi.restoreAllMocks();
   });
 
-  it('requestAdoption posts identifier and role', async () => {
+  it('requestAdoption posts identifier and role via BFF proxy', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -43,16 +45,16 @@ describe('adoption API', () => {
     expect(result.identifier).toBe('ctrl-1');
     expect(result).not.toHaveProperty('challenge_code');
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://kiosk.test/v1/adoption/request',
+      '/bff/v1/proxy/v1/adoption/request',
       expect.objectContaining({
         method: 'POST',
         referrerPolicy: 'origin',
+        credentials: 'include',
       }),
     );
     const init = fetchMock.mock.calls[0]![1] as RequestInit;
-    expect(init.headers).toMatchObject(
-      expect.objectContaining({ 'Content-Type': 'application/json' }),
-    );
+    const headers = init.headers as Headers;
+    expect(headers.get(DISPLAY_URL_HEADER)).toBe('https://kiosk.test');
     expect(JSON.parse(String(init.body))).toEqual({
       identifier: 'ctrl-1',
       role: 'operator',
@@ -84,7 +86,7 @@ describe('adoption API', () => {
     expect(result.permissions).toContain('telemetry.read');
   });
 
-  it('grantAdoption sends admin bearer', async () => {
+  it('grantAdoption sends admin bearer via proxy', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -104,7 +106,8 @@ describe('adoption API', () => {
     });
 
     const init = fetchMock.mock.calls[0]![1] as RequestInit;
-    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer admin-key');
+    const headers = init.headers as Headers;
+    expect(headers.get('Authorization')).toBe('Bearer admin-key');
   });
 
   it('throws on HTTP errors', async () => {
@@ -112,6 +115,33 @@ describe('adoption API', () => {
     await expect(
       requestAdoption('https://kiosk.test', { identifier: 'x', role: 'viewer' }),
     ).rejects.toThrow('denied');
+  });
+
+  it('throws a descriptive error when fetch fails to connect', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+    await expect(
+      requestAdoption('https://127.0.0.1:8787', { identifier: 'x', role: 'viewer' }),
+    ).rejects.toThrow(/Could not reach the display at https:\/\/127\.0\.0\.1:8787/);
+  });
+
+  it('fetchAdoptionSession validates bearer via proxy', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          identifier: 'manual',
+          role: 'operator',
+          permissions: ['telemetry.read'],
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const info = await fetchAdoptionSession('https://kiosk.test', 'wd_provided');
+    expect(info.identifier).toBe('manual');
+    const init = fetchMock.mock.calls[0]![1] as RequestInit;
+    const headers = init.headers as Headers;
+    expect(headers.get('Authorization')).toBe('Bearer wd_provided');
   });
 
   it('sessionFromAdoption builds DisplaySession', () => {

@@ -4,8 +4,13 @@ import {
   collectSlideContentIds,
   collectWeatherLocationIds,
   formatDwell,
+  paginateList,
   parseLayoutWidgets,
+  programAtMs,
   programTimestamp,
+  screenTypePreviewKind,
+  slideScreenPreviewKind,
+  sortProgramsByAtMsDesc,
   tickerTapeSummary,
 } from './programTelemetry';
 
@@ -72,6 +77,29 @@ describe('buildSlideCardModel', () => {
     expect(model.summaries[0]?.headline).toBe('Hello');
   });
 
+  it('summarizes web_page with host and url', () => {
+    const model = buildSlideCardModel(
+      {
+        screen_id: 'wp',
+        screen_type: 'web_page',
+        dwell_ms: 15000,
+        layout_json: {
+          widgets: [
+            {
+              type: 'web_page',
+              slot: 'main',
+              config: { url: 'https://status.example.com/board' },
+            },
+          ],
+        },
+        random_choices: {},
+      },
+      0,
+    );
+    expect(model.summaries[0]?.headline).toBe('Web · status.example.com');
+    expect(model.summaries[0]?.sub).toBe('https://status.example.com/board');
+  });
+
   it('uses curated choice labels for RSS', () => {
     const model = buildSlideCardModel(
       {
@@ -123,6 +151,121 @@ describe('collectWeatherLocationIds', () => {
       0,
     );
     expect(collectWeatherLocationIds(model)).toEqual(['chicago']);
+  });
+});
+
+describe('programAtMs', () => {
+  it('reads numeric and string at_ms', () => {
+    expect(programAtMs({ at_ms: 1000 })).toBe(1000);
+    expect(programAtMs({ at_ms: '2500' })).toBe(2500);
+    expect(programAtMs({})).toBe(0);
+  });
+});
+
+describe('sortProgramsByAtMsDesc', () => {
+  it('orders newest first without mutating input', () => {
+    const input = [{ at_ms: 1 }, { at_ms: 3 }, { at_ms: 2 }];
+    const sorted = sortProgramsByAtMsDesc(input);
+    expect(sorted.map((r) => programAtMs(r))).toEqual([3, 2, 1]);
+    expect(input.map((r) => programAtMs(r))).toEqual([1, 3, 2]);
+  });
+});
+
+describe('paginateList', () => {
+  it('returns the requested page slice', () => {
+    const all = [1, 2, 3, 4, 5, 6, 7];
+    expect(paginateList(all, 0, 3)).toMatchObject({
+      items: [1, 2, 3],
+      total: 7,
+      page: 0,
+      pageCount: 3,
+    });
+    expect(paginateList(all, 1, 3)).toMatchObject({
+      items: [4, 5, 6],
+      page: 1,
+    });
+    expect(paginateList(all, 2, 3)).toMatchObject({
+      items: [7],
+      page: 2,
+    });
+  });
+
+  it('clamps page when the list is shorter', () => {
+    expect(paginateList([1, 2, 3], 5, 2)).toMatchObject({
+      items: [3],
+      page: 1,
+      pageCount: 2,
+    });
+  });
+});
+
+describe('screenTypePreviewKind', () => {
+  it('maps catalog screen types including photo and video', () => {
+    expect(screenTypePreviewKind('joke')).toBe('joke');
+    expect(screenTypePreviewKind('pexels_photo')).toBe('photo');
+    expect(screenTypePreviewKind('pexels_video')).toBe('video');
+    expect(screenTypePreviewKind('pexels_photo_collage')).toBe('photo_collage');
+    expect(screenTypePreviewKind('web_page')).toBeNull();
+  });
+
+  it('returns null for unknown types', () => {
+    expect(screenTypePreviewKind('')).toBeNull();
+    expect(screenTypePreviewKind('layout')).toBeNull();
+  });
+});
+
+describe('slideScreenPreviewKind', () => {
+  it('maps screen_type to preview kinds', () => {
+    expect(
+      slideScreenPreviewKind(
+        buildSlideCardModel({ screen_id: 'a', screen_type: 'digital_clock', layout_json: {} }, 0),
+      ),
+    ).toBe('clock');
+    expect(
+      slideScreenPreviewKind(
+        buildSlideCardModel({ screen_id: 'b', screen_type: 'stock_quotes', layout_json: {} }, 0),
+      ),
+    ).toBe('stock');
+  });
+
+  it('falls back to widget types on layout screens', () => {
+    const model = buildSlideCardModel(
+      {
+        screen_id: 'c',
+        screen_type: 'layout',
+        layout_json: {
+          widgets: [{ type: 'joke', slot: 'main', config: {} }],
+        },
+      },
+      0,
+    );
+    expect(slideScreenPreviewKind(model)).toBe('joke');
+  });
+
+  it('maps non-media screen types', () => {
+    expect(
+      slideScreenPreviewKind(
+        buildSlideCardModel({ screen_id: 'd', screen_type: 'rss_article', layout_json: {} }, 0),
+      ),
+    ).toBe('rss_article');
+    expect(
+      slideScreenPreviewKind(
+        buildSlideCardModel({ screen_id: 'e', screen_type: 'wifi', layout_json: {} }, 0),
+      ),
+    ).toBe('wifi');
+  });
+
+  it('returns null for photo and video screen types', () => {
+    expect(
+      slideScreenPreviewKind(
+        buildSlideCardModel({ screen_id: 'f', screen_type: 'pexels_photo', layout_json: {} }, 0),
+      ),
+    ).toBeNull();
+    expect(
+      slideScreenPreviewKind(
+        buildSlideCardModel({ screen_id: 'g', screen_type: 'pexels_video', layout_json: {} }, 0),
+      ),
+    ).toBeNull();
   });
 });
 

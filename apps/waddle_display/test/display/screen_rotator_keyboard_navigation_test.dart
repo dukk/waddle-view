@@ -30,7 +30,10 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('screen_nav_overlay_timeline')), findsOneWidget);
+    expect(
+      find.byKey(const Key('screen_nav_overlay_timeline')),
+      findsOneWidget,
+    );
     expect(find.byKey(const Key('screen_nav_current_index')), findsOneWidget);
     expect(find.textContaining('alpha_screen'), findsWidgets);
     expect(find.textContaining('beta_screen'), findsWidgets);
@@ -38,7 +41,10 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('screen_nav_overlay_timeline')), findsOneWidget);
+    expect(
+      find.byKey(const Key('screen_nav_overlay_timeline')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('shows end of history message at oldest program boundary', (
@@ -63,7 +69,10 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('screen_nav_end_history_message')), findsOneWidget);
+    expect(
+      find.byKey(const Key('screen_nav_end_history_message')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('overlay fades out after idle timeout', (tester) async {
@@ -85,7 +94,9 @@ void main() {
     expect(find.byKey(const Key('screen_nav_overlay_root')), findsNothing);
   });
 
-  testWidgets('arrow up and down do not drive screen navigation overlay', (tester) async {
+  testWidgets('arrow up and down do not drive screen navigation overlay', (
+    tester,
+  ) async {
     final db = openMemoryDatabase();
     await _seedTwoSlideProgram(db);
     addTearDown(db.close);
@@ -103,20 +114,26 @@ void main() {
 }
 
 Future<void> _seedTwoSlideProgram(AppDatabase db) async {
-  await db.into(db.configKeyValues).insertOnConflictUpdate(
+  await db
+      .into(db.configKeyValues)
+      .insertOnConflictUpdate(
         const ConfigKeyValuesCompanion(
           key: Value(kCuratorProgramDurationSecondsKvKey),
           value: Value('2'),
         ),
       );
-  await db.into(db.configKeyValues).insertOnConflictUpdate(
+  await db
+      .into(db.configKeyValues)
+      .insertOnConflictUpdate(
         const ConfigKeyValuesCompanion(
           key: Value(kCuratorHistoryDepthKvKey),
           value: Value('4'),
         ),
       );
 
-  await db.into(db.screens).insert(
+  await db
+      .into(db.screens)
+      .insert(
         ScreensCompanion.insert(
           id: 'alpha_screen',
           name: 'Alpha',
@@ -129,7 +146,9 @@ Future<void> _seedTwoSlideProgram(AppDatabase db) async {
           maxPlacementsPerProgram: const Value(1),
         ),
       );
-  await db.into(db.screens).insert(
+  await db
+      .into(db.screens)
+      .insert(
         ScreensCompanion.insert(
           id: 'beta_screen',
           name: 'Beta',
@@ -152,8 +171,8 @@ Future<void> _pumpRotator(WidgetTester tester, AppDatabase db) async {
         body: ScreenRotator(
           db: db,
           blobs: FakeBlobStore(),
-          localRestBaseUrl: 'http://127.0.0.1:8787',
-          adminBaseUrl: 'http://127.0.0.1:8787/admin',
+          localRestBaseUrl: 'https://127.0.0.1:8787',
+          adminBaseUrl: 'https://127.0.0.1:8787/admin',
           instanceIdFile: file,
           viewerInviteRuntime: const ViewerInviteRuntime(
             controllerPublicUrl: '',

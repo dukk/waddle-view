@@ -30,30 +30,29 @@ import {
   Radio,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
-import PeopleIcon from '@mui/icons-material/People';
-import BarChartIcon from '@mui/icons-material/BarChart';
-import DesktopWindowsIcon from '@mui/icons-material/DesktopWindows';
+import { ProgramsPlayoutIcon } from '@/icons/ProgramsPlayoutIcon';
+import { ScreenCarouselIcon } from '@/icons/ScreenCarouselIcon';
+import { TickerTapeIcon } from '@/icons/TickerTapeIcon';
 import LayersIcon from '@mui/icons-material/Layers';
 import StorageIcon from '@mui/icons-material/Storage';
 import DatasetIcon from '@mui/icons-material/Dataset';
+import SettingsRemoteIcon from '@mui/icons-material/SettingsRemote';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import SettingsIcon from '@mui/icons-material/Settings';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined';
 import LoginIcon from '@mui/icons-material/Login';
 import LogoutIcon from '@mui/icons-material/Logout';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
-import GroupIcon from '@mui/icons-material/Group';
 import { useAuth } from '@/context/AuthContext';
 import { useControllerAuth } from '@/context/ControllerAuthContext';
 import { useDisplay } from '@/context/DisplayContext';
-import { apiFetch, ApiError } from '@/api/client';
-import TheatersIcon from '@mui/icons-material/Theaters';
+import { dismissActiveDisplayAlert, postDisplayNavigation } from '@/util/displayRemote';
 import { PREVIEWABLE_CONTROLLER_ROLES } from '@/auth/rolePermissions';
 import { DisplaySelector } from '@/components/DisplaySelector';
 
 const drawerWidth = 260;
+const appVersion = __APP_VERSION__;
 
 function clientInitials(identifier: string): string {
   const id = identifier.trim();
@@ -62,10 +61,10 @@ function clientInitials(identifier: string): string {
 }
 
 const nav = [
-  { to: '/curators', label: 'Curators', icon: <PeopleIcon /> },
-  { to: '/programs', label: 'Programs', icon: <BarChartIcon /> },
-  { to: '/screens', label: 'Screens', icon: <DesktopWindowsIcon /> },
-  { to: '/ticker-tapes', label: 'Ticker Tapes', icon: <TheatersIcon /> },
+  { to: '/remote', label: 'Remote', icon: <SettingsRemoteIcon />, requiresNavigationControl: true },
+  { to: '/programs', label: 'Programs', icon: <ProgramsPlayoutIcon /> },
+  { to: '/screens', label: 'Screens', icon: <ScreenCarouselIcon /> },
+  { to: '/ticker-tapes', label: 'Ticker Tapes', icon: <TickerTapeIcon /> },
   { to: '/overlays', label: 'Overlays', icon: <LayersIcon /> },
   { to: '/integrations', label: 'Integrations', icon: <StorageIcon /> },
   { to: '/data', label: 'Data', icon: <DatasetIcon /> },
@@ -90,24 +89,23 @@ export function AppShell({ children }: { children?: ReactNode }) {
     hasPermission,
     isProgramsOnlyControllerUser,
   } = useAuth();
-  const {
-    status: bffStatus,
-    logout: controllerLogout,
-    isControllerAdmin,
-  } = useControllerAuth();
+  const { status: bffStatus, logout: controllerLogout } = useControllerAuth();
 
   const signedIn = Boolean(session && !needsLogin);
   const showUserMenu = Boolean(bffStatus?.authEnabled);
-  const showUsersNav = Boolean(bffStatus?.userManagementEnabled && isControllerAdmin);
 
-  const drawerNavItems = isProgramsOnlyControllerUser
-    ? nav.filter(
-        (item) =>
-          item.to === '/programs' ||
-          (item.to === '/data' &&
-            (hasPermission('content.moderate') || hasPermission('content.catalog_read'))),
-      )
-    : nav;
+  const drawerNavItems = nav.filter((item) => {
+    if ('requiresNavigationControl' in item && item.requiresNavigationControl) {
+      if (!hasPermission('navigation.control')) return false;
+    }
+    if (!isProgramsOnlyControllerUser) return true;
+    return (
+      item.to === '/programs' ||
+      item.to === '/remote' ||
+      (item.to === '/data' &&
+        (hasPermission('content.moderate') || hasPermission('content.catalog_read')))
+    );
+  });
   const [snack, setSnack] = useState<string | null>(null);
   const [rolePreviewOpen, setRolePreviewOpen] = useState(false);
   const [rolePreviewChoice, setRolePreviewChoice] =
@@ -141,20 +139,24 @@ export function AppShell({ children }: { children?: ReactNode }) {
         surface = 'ticker';
         direction = 'forward';
       }
-      if (!surface || !direction) return;
-      e.preventDefault();
-      void (async () => {
-        try {
-          await apiFetch(active, '/v1/display/navigation', {
-            method: 'POST',
-            body: JSON.stringify({ surface, direction }),
-          });
-        } catch (err) {
-          const msg =
-            err instanceof ApiError ? `${err.status}: ${err.message}` : String(err);
-          setSnack(msg);
-        }
-      })();
+      if (surface && direction) {
+        e.preventDefault();
+        void (async () => {
+          const err = await postDisplayNavigation(active, surface, direction);
+          if (err) setSnack(err);
+        })();
+        return;
+      }
+      if (
+        (e.key === 'Enter' || e.key === 'NumpadEnter') &&
+        hasPermission('alerts.write')
+      ) {
+        e.preventDefault();
+        void (async () => {
+          const err = await dismissActiveDisplayAlert(active);
+          if (err) setSnack(err);
+        })();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -167,6 +169,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
           Waddle Controller
         </Typography>
       </Toolbar>
+
       {signedIn && (
         <>
           <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
@@ -194,56 +197,17 @@ export function AppShell({ children }: { children?: ReactNode }) {
               );
             })}
           </List>
+          <Typography variant="body2" color="text.secondary" sx={{ px: 1, py: 0.5 }}>
+            v{appVersion}
+          </Typography>
           <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
-          {!isProgramsOnlyControllerUser && (
-            <List sx={{ px: 1, py: 1 }}>
-              <ListItemButton
-                component={RouterLink}
-                to="/activity"
-                selected={location.pathname.startsWith('/activity')}
-                onClick={() => setMobileOpen(false)}
-                sx={{
-                  borderRadius: 2,
-                  my: 0.5,
-                  '&.Mui-selected': { bgcolor: 'primary.main', color: 'primary.contrastText' },
-                }}
-              >
-                <ListItemIcon
-                  sx={{
-                    color: location.pathname.startsWith('/activity') ? 'inherit' : 'grey.400',
-                    minWidth: 40,
-                  }}
-                >
-                  <ListAltIcon />
-                </ListItemIcon>
-                <ListItemText primary="Activity Log" />
-              </ListItemButton>
-              <ListItemButton
-                component={RouterLink}
-                to="/settings"
-                selected={location.pathname.startsWith('/settings')}
-                onClick={() => setMobileOpen(false)}
-                sx={{
-                  borderRadius: 2,
-                  my: 0.5,
-                  '&.Mui-selected': { bgcolor: 'primary.main', color: 'primary.contrastText' },
-                }}
-              >
-                <ListItemIcon
-                  sx={{
-                    color: location.pathname.startsWith('/settings') ? 'inherit' : 'grey.400',
-                    minWidth: 40,
-                  }}
-                >
-                  <SettingsIcon />
-                </ListItemIcon>
-                <ListItemText primary="Settings" />
-              </ListItemButton>
-              {showUsersNav && (
+          <List sx={{ px: 1, py: 1 }}>
+            {!isProgramsOnlyControllerUser && (
+              <>
                 <ListItemButton
                   component={RouterLink}
-                  to="/users"
-                  selected={location.pathname.startsWith('/users')}
+                  to="/activity"
+                  selected={location.pathname.startsWith('/activity')}
                   onClick={() => setMobileOpen(false)}
                   sx={{
                     borderRadius: 2,
@@ -253,17 +217,40 @@ export function AppShell({ children }: { children?: ReactNode }) {
                 >
                   <ListItemIcon
                     sx={{
-                      color: location.pathname.startsWith('/users') ? 'inherit' : 'grey.400',
+                      color: location.pathname.startsWith('/activity') ? 'inherit' : 'grey.400',
                       minWidth: 40,
                     }}
                   >
-                    <GroupIcon />
+                    <ListAltIcon />
                   </ListItemIcon>
-                  <ListItemText primary="Users" />
+                  <ListItemText primary="Activity Log" />
                 </ListItemButton>
-              )}
-            </List>
-          )}
+                <ListItemButton
+                  component={RouterLink}
+                  to="/display-settings"
+                  selected={location.pathname.startsWith('/display-settings')}
+                  onClick={() => setMobileOpen(false)}
+                  sx={{
+                    borderRadius: 2,
+                    my: 0.5,
+                    '&.Mui-selected': { bgcolor: 'primary.main', color: 'primary.contrastText' },
+                  }}
+                >
+                  <ListItemIcon
+                    sx={{
+                      color: location.pathname.startsWith('/display-settings')
+                        ? 'inherit'
+                        : 'grey.400',
+                      minWidth: 40,
+                    }}
+                  >
+                    <SettingsIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="Display Settings" />
+                </ListItemButton>
+              </>
+            )}
+          </List>
         </>
       )}
     </Box>
@@ -289,16 +276,14 @@ export function AppShell({ children }: { children?: ReactNode }) {
               <MenuIcon />
             </IconButton>
           )}
-          <DisplaySelector  />
+          
           <Typography variant="h6" fontWeight={600} sx={{ flexGrow: 1 }}>
-          {location.pathname.startsWith('/displays')
-              ? 'Displays'
-              : location.pathname.startsWith('/settings')
-              ? 'Settings'
-              : location.pathname.startsWith('/users')
-                ? 'Users'
-              : location.pathname.startsWith('/account')
-                ? 'Account'
+          {location.pathname.startsWith('/controller-settings')
+              ? 'Controller Settings'
+              : location.pathname.startsWith('/display-settings')
+                ? 'Display Settings'
+                : location.pathname.startsWith('/account')
+                ? 'Preferences'
                 : location.pathname.startsWith('/activity')
                   ? 'Activity Log'
                   : location.pathname.startsWith('/data')
@@ -307,6 +292,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
                     nav.find((n) => location.pathname.startsWith(n.to))?.label ??
                     'Waddle'}
           </Typography>
+          <DisplaySelector  />
           {active && (
             <>
               {session && !needsLogin ? (
@@ -350,16 +336,6 @@ export function AppShell({ children }: { children?: ReactNode }) {
                     transformOrigin={{ vertical: 'top', horizontal: 'right' }}
                     slotProps={{ list: { 'aria-labelledby': 'user-menu-button' } }}
                   >
-                    <MenuItem
-                      component={RouterLink}
-                      to="/account"
-                      onClick={() => setUserMenuAnchor(null)}
-                    >
-                      <ListItemIcon>
-                        <AccountCircleOutlinedIcon fontSize="small" />
-                      </ListItemIcon>
-                      <ListItemText>Account</ListItemText>
-                    </MenuItem>
                     {isAdminUser && viewAsRole && (
                       <MenuItem
                         onClick={() => {

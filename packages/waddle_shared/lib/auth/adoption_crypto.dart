@@ -7,6 +7,9 @@ import 'adoption_challenge_format.dart';
 
 const _crockfordAlphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 
+/// Prefix on adoption-derived display API keys (`Authorization: Bearer wd_…`).
+const kAdoptionApiKeyPrefix = 'wd_';
+
 /// Generates a URL-safe random nonce for adoption challenges.
 String generateAdoptionNonce() {
   final bytes = List<int>.generate(16, (_) => Random.secure().nextInt(256));
@@ -36,11 +39,24 @@ String deriveAdoptionApiKey({
   final message = 'adoption-api-key-v1|$normalized|$identifier';
   final digest =
       Hmac(sha256, utf8.encode(instanceId)).convert(utf8.encode(message));
-  return base64Url.encode(digest.bytes).replaceAll('=', '');
+  final secret =
+      base64Url.encode(digest.bytes).replaceAll('=', '');
+  return '$kAdoptionApiKeyPrefix$secret';
 }
 
 String hashAdoptionApiKey(String apiKey) {
   return base64.encode(sha256.convert(utf8.encode(apiKey)).bytes);
+}
+
+/// Stable masked label for a stored API key hash (plaintext keys are never persisted).
+String maskAdoptionApiKeyHash(String apiKeyHash) {
+  if (apiKeyHash.isEmpty) {
+    return '${kAdoptionApiKeyPrefix}****';
+  }
+  final suffix = apiKeyHash.length <= 4
+      ? apiKeyHash
+      : apiKeyHash.substring(apiKeyHash.length - 4);
+  return '${kAdoptionApiKeyPrefix}••••••••$suffix';
 }
 
 String hashAdoptionChallengeCode(String challengeCode) {

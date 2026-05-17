@@ -156,6 +156,8 @@ export function v1Router() {
       display_text_scale_screen: 'normal',
       display_text_scale_ticker: 'normal',
       display_timezone,
+      adoption_allowed_roles: ['viewer', 'power_viewer', 'operator', 'admin'],
+      adoption_allow_new_requests: true,
     });
   });
 

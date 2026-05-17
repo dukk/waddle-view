@@ -71,6 +71,15 @@ void main() {
     );
   });
 
+  test('Coolors trending theme builds multi-accent palette', () {
+    final ocean = DisplayTheme.buildForId(kDisplayThemeOceanDepth);
+    final palette = ocean.extension<PaletteTertiaryLayers>();
+    expect(ocean.brightness, Brightness.dark);
+    expect(palette, isNotNull);
+    expect(palette!.colorOrder, hasLength(9));
+    expect(palette.accent1, isNot(equals(palette.accent2)));
+  });
+
   test('DisplayTextScaler equality and deprecated textScaleFactor', () {
     const a = DisplayTextScaler(TextScaler.linear(2), 1.5);
     const b = DisplayTextScaler(TextScaler.linear(2), 1.5);

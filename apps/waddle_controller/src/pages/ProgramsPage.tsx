@@ -11,21 +11,14 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
-  IconButton,
   Link,
   Paper,
-  Snackbar,
   Stack,
-  Tooltip,
+  TablePagination,
   Typography,
 } from '@mui/material';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
-import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import { useDisplay } from '@/context/DisplayContext';
-import { useAuth } from '@/context/AuthContext';
-import { apiFetch, apiJson, ApiError, fetchBlobObjectUrl } from '@/api/client';
+import { apiJson, ApiError, fetchBlobObjectUrl } from '@/api/client';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { SlideProgramCard } from '@/components/SlideProgramCard';
 import { TickerProgramCard } from '@/components/TickerProgramCard';
@@ -34,9 +27,14 @@ import {
   buildSlideCardModel,
   collectSlideContentIds,
   collectWeatherLocationIds,
+  paginateList,
+  programAtMs,
   programTimestamp,
+  sortProgramsByAtMsDesc,
   type SlideCardModel,
 } from '@/util/programTelemetry';
+
+const PROGRAMS_PAGE_SIZE = 1;
 
 type Items<T> = { items: T[] };
 
@@ -718,13 +716,13 @@ function TickerItemDetailDialog({
 
 export function ProgramsPage() {
   const { active } = useDisplay();
-  const { hasPermission } = useAuth();
   const [screen, setScreen] = useState<Record<string, unknown>[]>([]);
   const [ticker, setTicker] = useState<Record<string, unknown>[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [navSnack, setNavSnack] = useState<string | null>(null);
   const [slideDetailLoc, setSlideDetailLoc] = useState<{ pi: number; si: number } | null>(null);
   const [tickerDetailLoc, setTickerDetailLoc] = useState<{ pi: number; ii: number } | null>(null);
+  const [screenPage, setScreenPage] = useState(0);
+  const [tickerPage, setTickerPage] = useState(0);
 
   const lastScreenJson = useRef<string | null>(null);
   const lastTickerJson = useRef<string | null>(null);
@@ -732,6 +730,8 @@ export function ProgramsPage() {
   useEffect(() => {
     lastScreenJson.current = null;
     lastTickerJson.current = null;
+    setScreenPage(0);
+    setTickerPage(0);
   }, [active?.id]);
 
   const load = useCallback(async () => {
@@ -766,25 +766,30 @@ export function ProgramsPage() {
     return () => window.clearInterval(id);
   }, [load]);
 
-  const screenProgramsDesc = useMemo(
-    () =>
-      [...screen].sort((a, b) => {
-        const ta = typeof a.at_ms === 'number' ? a.at_ms : Number(a.at_ms) || 0;
-        const tb = typeof b.at_ms === 'number' ? b.at_ms : Number(b.at_ms) || 0;
-        return tb - ta;
-      }),
-    [screen],
+  const screenProgramsDesc = useMemo(() => sortProgramsByAtMsDesc(screen), [screen]);
+  const tickerProgramsDesc = useMemo(() => sortProgramsByAtMsDesc(ticker), [ticker]);
+
+  const screenProgramsPage = useMemo(
+    () => paginateList(screenProgramsDesc, screenPage, PROGRAMS_PAGE_SIZE),
+    [screenProgramsDesc, screenPage],
   );
 
-  const tickerProgramsDesc = useMemo(
-    () =>
-      [...ticker].sort((a, b) => {
-        const ta = typeof a.at_ms === 'number' ? a.at_ms : Number(a.at_ms) || 0;
-        const tb = typeof b.at_ms === 'number' ? b.at_ms : Number(b.at_ms) || 0;
-        return tb - ta;
-      }),
-    [ticker],
+  const tickerProgramsPage = useMemo(
+    () => paginateList(tickerProgramsDesc, tickerPage, PROGRAMS_PAGE_SIZE),
+    [tickerProgramsDesc, tickerPage],
   );
+
+  useEffect(() => {
+    if (screenPage !== screenProgramsPage.page) {
+      setScreenPage(screenProgramsPage.page);
+    }
+  }, [screenPage, screenProgramsPage.page]);
+
+  useEffect(() => {
+    if (tickerPage !== tickerProgramsPage.page) {
+      setTickerPage(tickerProgramsPage.page);
+    }
+  }, [tickerPage, tickerProgramsPage.page]);
 
   const slideDetailSlides = useMemo(() => {
     if (slideDetailLoc == null) return [] as Record<string, unknown>[];
@@ -810,95 +815,29 @@ export function ProgramsPage() {
     return asRecordArray(tickerDetailRow['items']);
   }, [tickerDetailRow]);
 
-  const postNav = useCallback(
-    async (surface: 'screen' | 'ticker', direction: 'back' | 'forward') => {
-      if (!active) return;
-      try {
-        await apiFetch(active, '/v1/display/navigation', {
-          method: 'POST',
-          body: JSON.stringify({ surface, direction }),
-        });
-      } catch (e) {
-        const msg = e instanceof ApiError ? `${e.status}: ${e.message}` : String(e);
-        setNavSnack(msg);
-      }
-    },
-    [active],
-  );
-
   if (!active) {
     return <NoDisplayPlaceholder />;
   }
 
   return (
     <Stack spacing={3}>
-      <Snackbar
-        open={navSnack != null}
-        autoHideDuration={6000}
-        onClose={() => setNavSnack(null)}
-        message={navSnack ?? ''}
-      />
-      <Typography variant="h5" fontWeight={600}>
-        Programs
-      </Typography>
       {error && <Alert severity="error">{error}</Alert>}
 
-      {hasPermission('navigation.control') && (
-        <Paper variant="outlined" sx={{ p: 1.5 }}>
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-            <Typography variant="subtitle2" fontWeight={600} sx={{ mr: 0.5 }}>
-              Display remote
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ flexBasis: '100%' }}>
-              Same as controller arrow hotkeys: ← → for slides, ↑ ↓ for ticker.
-            </Typography>
-            <Tooltip title="Previous slide (←)">
-              <IconButton
-                size="small"
-                onClick={() => void postNav('screen', 'back')}
-                aria-label="Previous slide"
-              >
-                <KeyboardArrowLeftIcon />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Next slide (→)">
-              <IconButton
-                size="small"
-                onClick={() => void postNav('screen', 'forward')}
-                aria-label="Next slide"
-              >
-                <KeyboardArrowRightIcon />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Ticker backward (↑)">
-              <IconButton
-                size="small"
-                onClick={() => void postNav('ticker', 'back')}
-                aria-label="Ticker previous"
-              >
-                <KeyboardArrowUpIcon />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Ticker forward (↓)">
-              <IconButton
-                size="small"
-                onClick={() => void postNav('ticker', 'forward')}
-                aria-label="Ticker next"
-              >
-                <KeyboardArrowDownIcon />
-              </IconButton>
-            </Tooltip>
-          </Stack>
-        </Paper>
-      )}
-
-      <Typography variant="subtitle1" fontWeight={600}>
-        Screen programs
-      </Typography>
+      <Box>
+        <Typography variant="h6" fontWeight={600} gutterBottom>
+          Recent playout snapshots
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Read-only snapshots of recent screen and ticker programs the display already built—slide
+          order, curator reason, and item previews. Use this to debug playout; edit screens, tapes,
+          or integrations elsewhere to change what runs next.
+        </Typography>
+      </Box>
       <Stack spacing={2}>
-        {screenProgramsDesc.map((row, pi) => {
+        {screenProgramsPage.items.map((row, localPi) => {
+          const pi = screenProgramsPage.page * screenProgramsPage.pageSize + localPi;
           const slides = asRecordArray(row['slides']);
-          const atMs = typeof row.at_ms === 'number' ? row.at_ms : Number(row.at_ms) || 0;
+          const atMs = programAtMs(row);
           const reason = String(row['reason'] ?? '');
           return (
             <Paper key={`${atMs}-sp-${pi}`} variant="outlined" sx={{ p: 2 }}>
@@ -919,7 +858,7 @@ export function ProgramsPage() {
                       </Typography>
                     )}
                   </div>
-                  <Chip label={`${slides.length} slide${slides.length === 1 ? '' : 's'}`} size="small" />
+                  <Chip label={`${slides.length} screen${slides.length === 1 ? '' : 's'}`} size="small" />
                 </Stack>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
                   {slides.map((slide, si) => {
@@ -949,14 +888,25 @@ export function ProgramsPage() {
           </Typography>
         )}
       </Stack>
+      {screenProgramsPage.total > 0 && (
+        <TablePagination
+          component="div"
+          rowsPerPageOptions={[]}
+          rowsPerPage={PROGRAMS_PAGE_SIZE}
+          count={screenProgramsPage.total}
+          page={screenProgramsPage.page}
+          onPageChange={(_, p) => setScreenPage(p)}
+        />
+      )}
 
       <Typography variant="subtitle1" fontWeight={600}>
         Ticker programs
       </Typography>
       <Stack spacing={2}>
-        {tickerProgramsDesc.map((row, pi) => {
+        {tickerProgramsPage.items.map((row, localPi) => {
+          const pi = tickerProgramsPage.page * tickerProgramsPage.pageSize + localPi;
           const items = asRecordArray(row['items']);
-          const atMs = typeof row.at_ms === 'number' ? row.at_ms : Number(row.at_ms) || 0;
+          const atMs = programAtMs(row);
           return (
             <Paper key={`${atMs}-tp-${pi}`} variant="outlined" sx={{ p: 2 }}>
               <Stack spacing={1.5}>
@@ -1002,6 +952,16 @@ export function ProgramsPage() {
           </Typography>
         )}
       </Stack>
+      {tickerProgramsPage.total > 0 && (
+        <TablePagination
+          component="div"
+          rowsPerPageOptions={[]}
+          rowsPerPage={PROGRAMS_PAGE_SIZE}
+          count={tickerProgramsPage.total}
+          page={tickerProgramsPage.page}
+          onPageChange={(_, p) => setTickerPage(p)}
+        />
+      )}
 
       <SlideTelemetryDetail
         display={active}

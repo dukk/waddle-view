@@ -16,6 +16,9 @@ import {
   type BffStatus,
 } from '@/api/bffAuth';
 import { BffError } from '@/api/bffClient';
+import { setDisplayProxyAuthEnabled } from '@/api/displayAuthMode';
+import { clearLocalDisplaysMigrationComplete } from '@/storage/displays';
+import { pullUserDisplaysFromServer } from '@/storage/userDisplaysSync';
 
 type ControllerAuthCtx = {
   status: BffStatus | null;
@@ -44,6 +47,12 @@ export function ControllerAuthProvider({ children }: { children: ReactNode }) {
     try {
       const next = await fetchBffStatus();
       setStatus(next);
+      setDisplayProxyAuthEnabled(next.authEnabled);
+      if (!next.authEnabled) {
+        clearLocalDisplaysMigrationComplete();
+      } else if (next.user) {
+        await pullUserDisplaysFromServer();
+      }
     } catch (e) {
       // BFF not running (static-only dev or release bundle): treat as auth disabled.
       const offline =

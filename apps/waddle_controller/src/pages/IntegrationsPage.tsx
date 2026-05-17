@@ -24,6 +24,7 @@ import { apiFetch, apiJson, ApiError } from '@/api/client';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { integrationDisplayName } from '@/util/integrationDisplayName';
 import { parseJsonObject } from '@/util/json';
+import { prepareRjsfSchema } from '@/util/rjsfSchema';
 
 type IntegrationRow = {
   id: string;
@@ -36,30 +37,8 @@ type IntegrationRow = {
   example_config_json?: unknown;
 };
 
-const permissiveConfigSchema: RJSFSchema = {
-  type: 'object',
-  additionalProperties: true,
-};
-
 function integrationConfigSchema(row: IntegrationRow): RJSFSchema {
-  const raw = row.config_json_schema;
-  if (raw != null && typeof raw === 'object' && !Array.isArray(raw)) {
-    return raw as RJSFSchema;
-  }
-  if (typeof raw === 'string') {
-    const t = raw.trim();
-    if (t) {
-      try {
-        const parsed: unknown = JSON.parse(t);
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-          return parsed as RJSFSchema;
-        }
-      } catch {
-        /* fall through */
-      }
-    }
-  }
-  return permissiveConfigSchema;
+  return prepareRjsfSchema(row.config_json_schema);
 }
 
 function configJsonSatisfiesSchema(row: IntegrationRow): boolean {
@@ -169,6 +148,16 @@ export function IntegrationsPage() {
 
   return (
     <Stack spacing={3}>
+      <Box>
+        <Typography variant="h6" fontWeight={600} gutterBottom>
+          External data sources
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Connect external data sources—calendars, news, weather, stocks, and more—that collectors
+          poll into the kiosk database. Enable a provider, set its poll interval, and complete{' '}
+          <code>config_json</code> (credentials and endpoints) so scheduled fetches succeed.
+        </Typography>
+      </Box>
       {error && <Alert severity="error">{error}</Alert>}
 
       <Stack spacing={1}>

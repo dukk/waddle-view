@@ -46,4 +46,10 @@ describe('loadConfig', () => {
     const cfg = loadConfig();
     expect(cfg.tls.enabled).toBe(false);
   });
+
+  it('reads optional client identifier from env', () => {
+    process.env.WADDLE_CONTROLLER_CLIENT_IDENTIFIER = 'wc-deployed';
+    const cfg = loadConfig();
+    expect(cfg.clientIdentifier).toBe('wc-deployed');
+  });
 });

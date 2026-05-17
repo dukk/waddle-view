@@ -15,10 +15,10 @@ Examples::
     python deploy/dev-pi/install_main_to_pi.py --sync-local-dev --db C:\\path\\waddle_view.sqlite
 
 After a successful upgrade the script also copies ``apps/waddle_display/.env.example`` to
-``~/.config/waddle_view/.env.example`` (reference only; not sourced by the shell) and, if it
-exists locally, ``.env.development`` to ``~/.config/waddle_view/.env``. It merges a small
+``~/.local/share/waddle_display/.env.example`` (reference only; not sourced by the shell) and, if it
+exists locally, ``.env.development`` to ``~/.local/share/waddle_display/.env``. It merges a small
 **idempotent** block into ``~/.bashrc`` (or ``~/.bash_profile`` when ``.bashrc`` is absent) so
-interactive SSH sessions ``source`` ``~/.config/waddle_view/.env`` when present (``set -a`` exports
+interactive SSH sessions ``source`` ``~/.local/share/waddle_display/.env`` when present (``set -a`` exports
 ``KEY=value`` assignments).
 Uploaded dotenv files are normalized on the Pi with ``sed`` to strip Windows ``\\r`` line endings
 so ``bash`` does not emit ``$'\\r': command not found``.
@@ -63,7 +63,7 @@ REMOTE_APP_SUPPORT_REL = Path(".local/share/com.waddleview.waddle_display")
 REMOTE_SQLITE_NAME = "waddle_view.sqlite"
 REMOTE_BUNDLE_ENV = "/opt/waddle-view/bundle/.env.development"
 # Remote shell dotenv layout under the SSH user's home (absolute paths built at runtime).
-REMOTE_SHELL_DOTENV_DIR_REL = Path(".config/waddle_view")
+REMOTE_SHELL_DOTENV_DIR_REL = Path(".local/share/waddle_display")
 REMOTE_SHELL_DOTENV_EXAMPLE_NAME = ".env.example"
 REMOTE_SHELL_DOTENV_ENV_NAME = ".env"
 
@@ -73,7 +73,7 @@ SHELL_RC_BLOCK_END = "# WADDLE_VIEW_INSTALL_MAIN_TO_PI_END"
 
 
 def remote_shell_dotenv_dir(remote_home: str) -> str:
-    """Absolute POSIX path to ``~/.config/waddle_view`` on the remote."""
+    """Absolute POSIX path to ``~/.local/share/waddle_display`` on the remote."""
     return str(PurePosixPath(remote_home).joinpath(*REMOTE_SHELL_DOTENV_DIR_REL.parts))
 
 
@@ -478,7 +478,7 @@ def sync_shell_env_dotfiles_to_pi(
     batch_mode: bool,
     dry_run: bool,
 ) -> None:
-    """Push ``.env.example`` to ``~/.config/waddle_view/.env.example`` and dev env to ``~/.config/waddle_view/.env``; source only the latter in bash rc."""
+    """Push ``.env.example`` to ``~/.local/share/waddle_display/.env.example`` and dev env to ``~/.local/share/waddle_display/.env``; source only the latter in bash rc."""
     ssh_cmd = _ssh_base_args(
         target, port=port, identity=identity, batch_mode=batch_mode
     )
@@ -588,7 +588,7 @@ def sync_shell_env_dotfiles_to_pi(
     if dev_local is None:
         print(
             "No local apps/waddle_display/.env.development (skipped upload; "
-            "removed remote ~/.config/waddle_view/.env if it existed).",
+            "removed remote ~/.local/share/waddle_display/.env if it existed).",
             file=sys.stderr,
             flush=True,
         )
@@ -671,7 +671,7 @@ def parse_args(argv: Optional[list[str]]) -> argparse.Namespace:
         metavar="PATH",
         help=(
             "Path to .env.development. Used for --sync-local-dev (required file). Also used for "
-            "the post-upgrade ~/.config/waddle_view/.env copy when set; otherwise that step looks for "
+            "the post-upgrade ~/.local/share/waddle_display/.env copy when set; otherwise that step looks for "
             "apps/waddle_display/.env.development and skips the file if absent."
         ),
     )

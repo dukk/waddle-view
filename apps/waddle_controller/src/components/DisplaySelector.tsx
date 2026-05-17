@@ -10,9 +10,10 @@ import {
   MenuItem,
   Typography,
 } from '@mui/material';
-import DesktopWindowsIcon from '@mui/icons-material/DesktopWindows';
+import DesktopWindowsOutlinedIcon from '@mui/icons-material/DesktopWindowsOutlined';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import SettingsIcon from '@mui/icons-material/Settings';
+import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
+import TuneIcon from '@mui/icons-material/Tune';
 import { useDisplay } from '@/context/DisplayContext';
 import { loadSession } from '@/storage/sessions';
 
@@ -21,7 +22,28 @@ export function DisplaySelector() {
   const [anchor, setAnchor] = useState<null | HTMLElement>(null);
 
   if (displays.length === 0) {
-    return null;
+    return (
+      <Box sx={{ display: 'flex', gap: 0.5, mr: 1, flexShrink: 0 }}>
+        <Button
+          component={RouterLink}
+          to="/controller-settings"
+          color="inherit"
+          startIcon={<ManageAccountsIcon />}
+          sx={{ fontWeight: 600, textTransform: 'none' }}
+        >
+          Controller settings
+        </Button>
+        <Button
+          component={RouterLink}
+          to="/account"
+          color="inherit"
+          startIcon={<TuneIcon />}
+          sx={{ fontWeight: 600, textTransform: 'none' }}
+        >
+          Preferences
+        </Button>
+      </Box>
+    );
   }
 
   const activeLabel = active?.label ?? 'Display';
@@ -32,7 +54,7 @@ export function DisplaySelector() {
       <Button
         color="inherit"
         onClick={(e) => setAnchor(e.currentTarget)}
-        startIcon={<DesktopWindowsIcon />}
+        startIcon={<DesktopWindowsOutlinedIcon />}
         endIcon={<KeyboardArrowDownIcon />}
         sx={{
           fontWeight: 600,
@@ -87,13 +109,19 @@ export function DisplaySelector() {
         <Divider />
         <MenuItem
           component={RouterLink}
-          to="/displays"
+          to="/controller-settings"
           onClick={() => setAnchor(null)}
         >
           <ListItemIcon>
-            <SettingsIcon fontSize="small" />
+            <ManageAccountsIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText>Manage displays…</ListItemText>
+          <ListItemText>Controller settings</ListItemText>
+        </MenuItem>
+        <MenuItem component={RouterLink} to="/account" onClick={() => setAnchor(null)}>
+          <ListItemIcon>
+            <TuneIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Preferences</ListItemText>
         </MenuItem>
       </Menu>
     </>

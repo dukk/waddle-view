@@ -36,3 +36,5 @@ dist/
 deploy/dev-pi/*.tar.gz
 
 **/node_modules/**
+
+*.pem

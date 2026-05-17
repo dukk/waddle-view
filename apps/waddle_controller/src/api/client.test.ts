@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { DISPLAY_ID_HEADER, DISPLAY_URL_HEADER } from '@/constants/proxyHeaders';
 import { ApiError, apiFetch, fetchBlobObjectUrl, hasPermission } from './client';
 import { saveSession, type DisplaySession } from '@/storage/sessions';
 import type { SavedDisplay } from '@/storage/displays';
@@ -19,7 +20,7 @@ const session: DisplaySession = {
 
 describe('api client', () => {
   beforeEach(() => {
-    sessionStorage.clear();
+    localStorage.clear();
     saveSession(display.id, session);
   });
 
@@ -29,24 +30,28 @@ describe('api client', () => {
     expect(hasPermission(null, 'telemetry.read')).toBe(false);
   });
 
-  it('apiFetch attaches bearer token and normalizes path', async () => {
+  it('apiFetch uses BFF proxy with bearer and display headers', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
 
     await apiFetch(display, 'v1/screens');
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://display.test/v1/screens',
+      '/bff/v1/proxy/v1/screens',
       expect.objectContaining({
+        credentials: 'include',
+        referrerPolicy: 'origin',
         headers: expect.any(Headers),
       }),
     );
     const headers = fetchMock.mock.calls[0]![1]!.headers as Headers;
     expect(headers.get('Authorization')).toBe('Bearer secret-api-key');
+    expect(headers.get(DISPLAY_URL_HEADER)).toBe('https://display.test');
+    expect(headers.get(DISPLAY_ID_HEADER)).toBe('d-test');
   });
 
   it('apiFetch throws ApiError when not signed in', async () => {
-    sessionStorage.clear();
+    localStorage.clear();
     await expect(apiFetch(display, '/v1/screens')).rejects.toMatchObject({
       name: 'ApiError',
       status: 401,
@@ -61,7 +66,7 @@ describe('api client', () => {
     expect(new ApiError('msg', 500).name).toBe('ApiError');
   });
 
-  it('fetchBlobObjectUrl returns object URL for blobs', async () => {
+  it('fetchBlobObjectUrl returns object URL for blobs via proxy', async () => {
     const blob = new Uint8Array([1, 2, 3]);
     vi.stubGlobal(
       'fetch',
@@ -78,10 +83,12 @@ describe('api client', () => {
     const url = await fetchBlobObjectUrl(display, 'blob-key');
     expect(url).toBe('blob:mock');
     expect(createObjectURL).toHaveBeenCalled();
+    const fetchMock = vi.mocked(fetch);
+    expect(fetchMock.mock.calls[0]![0]).toContain('/bff/v1/proxy/v1/media/blob-by-key');
   });
 
   it('fetchBlobObjectUrl returns null without session or on failure', async () => {
-    sessionStorage.clear();
+    localStorage.clear();
     expect(await fetchBlobObjectUrl(display, 'k')).toBeNull();
 
     saveSession(display.id, session);
