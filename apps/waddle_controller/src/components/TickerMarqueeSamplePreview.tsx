@@ -58,7 +58,7 @@ export function TickerMarqueeSamplePreview({
     whiteSpace: 'nowrap' as const,
     px: 1.5,
     fontWeight: 600,
-    fontSize: theme.typography.titleLarge?.fontSize ?? '1.25rem',
+    fontSize: theme.typography.h6.fontSize,
     lineHeight: 1.2,
     color: theme.palette.text.primary,
   };

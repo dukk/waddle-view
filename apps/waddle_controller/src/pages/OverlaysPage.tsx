@@ -426,7 +426,7 @@ function OverlayScheduleDialog({
     if (hit?.config_json_schema != null) {
       return overlayRowConfigSchema(hit.config_json_schema);
     }
-    return permissiveOverlayConfigSchema;
+    return prepareRjsfSchema({});
   }, [allRows, overlayType]);
 
   const handleOverlayTypeSelect = (next: string) => {
