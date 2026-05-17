@@ -19,8 +19,12 @@ function initialMap(displays: SavedDisplay[]): DisplaysReachabilityMap {
 }
 
 /** Polls `GET /v1/health` for each saved display (public, no API key). */
-export function useDisplaysReachability(displays: SavedDisplay[]): DisplaysReachabilityMap {
+export function useDisplaysReachability(displays: SavedDisplay[]): {
+  reachability: DisplaysReachabilityMap;
+  refreshing: boolean;
+} {
   const [map, setMap] = useState<DisplaysReachabilityMap>(() => initialMap(displays));
+  const [refreshing, setRefreshing] = useState(false);
   const displaysRef = useRef(displays);
   displaysRef.current = displays;
 
@@ -28,8 +32,10 @@ export function useDisplaysReachability(displays: SavedDisplay[]): DisplaysReach
     const list = displaysRef.current;
     if (list.length === 0) {
       setMap({});
+      setRefreshing(false);
       return;
     }
+    setRefreshing(true);
     setMap((prev) => {
       const next = { ...prev };
       for (const d of list) {
@@ -37,10 +43,14 @@ export function useDisplaysReachability(displays: SavedDisplay[]): DisplaysReach
       }
       return next;
     });
-    const results = await Promise.all(
-      list.map(async (d) => [d.id, await fetchDisplayHealth(d)] as const),
-    );
-    setMap(Object.fromEntries(results));
+    try {
+      const results = await Promise.all(
+        list.map(async (d) => [d.id, await fetchDisplayHealth(d)] as const),
+      );
+      setMap(Object.fromEntries(results));
+    } finally {
+      setRefreshing(false);
+    }
   }, []);
 
   const displayIdsKey = displays.map((d) => `${d.id}\0${d.baseUrl}`).join('|');
@@ -51,5 +61,5 @@ export function useDisplaysReachability(displays: SavedDisplay[]): DisplaysReach
     return () => window.clearInterval(id);
   }, [refresh, displayIdsKey]);
 
-  return map;
+  return { reachability: map, refreshing };
 }

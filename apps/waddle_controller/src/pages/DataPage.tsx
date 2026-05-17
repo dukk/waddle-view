@@ -24,7 +24,9 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { useDisplay } from '@/context/DisplayContext';
 import { apiFetch, apiJson, ApiError, fetchBlobObjectUrl } from '@/api/client';
+import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
+import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import type { SavedDisplay } from '@/storage/displays';
 import { integrationDisplayName } from '@/util/integrationDisplayName';
 
@@ -271,7 +273,7 @@ export function DataPage() {
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const { loading, wrapRefresh } = useDisplayRefresh();
 
   const [categories, setCategories] = useState<{ id: string; label: string }[]>([]);
   const [feeds, setFeeds] = useState<{ id: string; title: string | null; url: string }[]>([]);
@@ -312,7 +314,7 @@ export function DataPage() {
 
   useEffect(() => {
     if (!active || !canBrowseData) return;
-    void (async () => {
+    void wrapRefresh(async () => {
       try {
         const [catRes, feedRes, locRes] = await Promise.all([
           apiJson<{ items: { id: string; label: string }[] }>(active, '/v1/curator/categories'),
@@ -325,8 +327,8 @@ export function DataPage() {
       } catch {
         /* optional metadata */
       }
-    })();
-  }, [active, canBrowseData]);
+    });
+  }, [active, canBrowseData, wrapRefresh]);
 
   const offset = page * rowsPerPage;
 
@@ -362,29 +364,26 @@ export function DataPage() {
     const controller = new AbortController();
     catalogFetchAbortRef.current = controller;
     const myGen = ++catalogLoadGenerationRef.current;
-    setLoading(true);
     setError(null);
-    try {
-      const path = `${catalogPath(kind)}${querySuffix}`;
-      const data = await apiJson<Paginated<Record<string, unknown>>>(active, path, {
-        signal: controller.signal,
-        cache: 'no-store',
-      });
-      if (myGen !== catalogLoadGenerationRef.current || controller.signal.aborted) return;
-      setRows(data.items ?? []);
-      setTotal(typeof data.total === 'number' ? data.total : 0);
-    } catch (e) {
-      if (controller.signal.aborted || myGen !== catalogLoadGenerationRef.current) return;
-      const msg = e instanceof ApiError ? `${e.status}: ${e.message}` : String(e);
-      setError(msg);
-      setRows([]);
-      setTotal(0);
-    } finally {
-      if (!controller.signal.aborted && myGen === catalogLoadGenerationRef.current) {
-        setLoading(false);
+    await wrapRefresh(async () => {
+      try {
+        const path = `${catalogPath(kind)}${querySuffix}`;
+        const data = await apiJson<Paginated<Record<string, unknown>>>(active, path, {
+          signal: controller.signal,
+          cache: 'no-store',
+        });
+        if (myGen !== catalogLoadGenerationRef.current || controller.signal.aborted) return;
+        setRows(data.items ?? []);
+        setTotal(typeof data.total === 'number' ? data.total : 0);
+      } catch (e) {
+        if (controller.signal.aborted || myGen !== catalogLoadGenerationRef.current) return;
+        const msg = e instanceof ApiError ? `${e.status}: ${e.message}` : String(e);
+        setError(msg);
+        setRows([]);
+        setTotal(0);
       }
-    }
-  }, [active, canBrowseData, kind, querySuffix]);
+    });
+  }, [active, canBrowseData, kind, querySuffix, wrapRefresh]);
 
   useEffect(() => {
     void load();
@@ -435,12 +434,13 @@ export function DataPage() {
 
   return (
     <Stack spacing={2}>
+      <DisplayRefreshIndicator loading={loading} />
       <Box>
         <Typography variant="h6" fontWeight={600} gutterBottom>
           Collected content browser
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Browse content stored on the active kiosk—jokes, news, photos, stocks, weather, and alerts.
+          Browse content stored on the active display—jokes, news, photos, stocks, weather, and alerts.
           Filter and paginate each tab; with <strong>content.moderate</strong> you can suppress rows
           so they are omitted from future programs.
         </Typography>
@@ -644,7 +644,7 @@ export function DataPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {loading && (
+            {loading && rows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={12}>
                   <Typography variant="body2" color="text.secondary">
@@ -652,9 +652,8 @@ export function DataPage() {
                   </Typography>
                 </TableCell>
               </TableRow>
-            )}
-            {!loading &&
-              rows.map((row, index) => {
+            ) : null}
+            {rows.map((row, index) => {
                 const id = String(row.id ?? '');
                 const sup = Boolean(row.suppressed);
                 const rowKey = catalogRowKey(kind, row, index);

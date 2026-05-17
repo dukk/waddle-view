@@ -15,12 +15,24 @@ import {
   InputLabel,
   MenuItem,
   Select,
+  Paper,
   Stack,
   Switch,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   TextField,
   Typography,
 } from '@mui/material';
+import { CatalogPageToolbar } from '@/components/CatalogPageToolbar';
 import { CatalogPageHelp } from '@/components/CatalogPageHelp';
+import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
+import { catalogCardGridSx } from '@/constants/catalogLayout';
+import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
+import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import { ScreenSchedulingHelpContent } from '@/components/help/ScreenSchedulingHelpContent';
 import { SlideScreenPreviewIcon } from '@/icons/slideScreenPreviewIcon';
 import { ScreenCarouselIcon } from '@/icons/ScreenCarouselIcon';
@@ -66,12 +78,6 @@ function screenTypeLabel(screenType: string): string {
   return screenType.replace(/_/g, ' ');
 }
 
-const catalogCardGridSx = {
-  display: 'grid',
-  gap: 2,
-  gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-} as const;
-
 const screenCardPreviewSx = {
   borderRadius: 1,
   bgcolor: 'action.hover',
@@ -82,8 +88,63 @@ const screenCardPreviewSx = {
 } as const;
 
 
+function ScreenTable({
+  rows,
+  onEdit,
+  onDelete,
+}: {
+  rows: ScreenRow[];
+  onEdit: (row: ScreenRow) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <TableContainer component={Paper} variant="outlined">
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell>Name</TableCell>
+            <TableCell>ID</TableCell>
+            <TableCell>Type</TableCell>
+            <TableCell>Dwell</TableCell>
+            <TableCell>Weight</TableCell>
+            <TableCell>Description</TableCell>
+            <TableCell align="right">Actions</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {rows.map((row) => {
+            const title = row.name.trim() || row.id;
+            return (
+              <TableRow key={row.id} hover>
+                <TableCell sx={{ fontWeight: row.name.trim() ? 600 : 400 }}>{title}</TableCell>
+                <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.id}</TableCell>
+                <TableCell>{screenTypeLabel(row.screen_type)}</TableCell>
+                <TableCell>{row.dwell_seconds}s</TableCell>
+                <TableCell>{row.frequency_weight}</TableCell>
+                <TableCell sx={{ maxWidth: 280, wordBreak: 'break-word' }}>
+                  {row.description?.trim() ?? ''}
+                </TableCell>
+                <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                  <Button size="small" onClick={() => onEdit(row)}>
+                    Edit
+                  </Button>
+                  <Button size="small" color="error" onClick={() => onDelete(row.id)}>
+                    Delete
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+}
+
 export function ScreensPage() {
   const { active } = useDisplay();
+  const { loading, wrapRefresh } = useDisplayRefresh();
+  const { layout, setLayout } = useListLayoutPreference('screens');
   const [rows, setRows] = useState<ScreenRow[]>([]);
   const [meta, setMeta] = useState<ScreenTypeMeta[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -92,18 +153,20 @@ export function ScreensPage() {
 
   const load = useCallback(async () => {
     if (!active) return;
-    setError(null);
-    try {
-      const [s, m] = await Promise.all([
-        apiJson<{ items: ScreenRow[] }>(active, '/v1/screens'),
-        apiJson<{ items: ScreenTypeMeta[] }>(active, '/v1/meta/screen-types'),
-      ]);
-      setRows(s.items ?? []);
-      setMeta(m.items ?? []);
-    } catch (e) {
-      setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
-    }
-  }, [active]);
+    await wrapRefresh(async () => {
+      setError(null);
+      try {
+        const [s, m] = await Promise.all([
+          apiJson<{ items: ScreenRow[] }>(active, '/v1/screens'),
+          apiJson<{ items: ScreenTypeMeta[] }>(active, '/v1/meta/screen-types'),
+        ]);
+        setRows(s.items ?? []);
+        setMeta(m.items ?? []);
+      } catch (e) {
+        setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
+      }
+    });
+  }, [active, wrapRefresh]);
 
   useEffect(() => {
     void load();
@@ -153,6 +216,7 @@ export function ScreensPage() {
 
   return (
     <Stack spacing={3}>
+      <DisplayRefreshIndicator loading={loading} />
       <Box>
         <Stack direction="row" alignItems="center" spacing={0.25} sx={{ mb: 0.5 }}>
           <Typography variant="h6" fontWeight={600}>
@@ -168,11 +232,11 @@ export function ScreensPage() {
           icon explains how placement and recent-history deprioritization work.
         </Typography>
       </Box>
-      <Stack direction="row" justifyContent="flex-end">
+      <CatalogPageToolbar layout={layout} onLayoutChange={setLayout}>
         <Button variant="contained" onClick={() => setAddOpen(true)} disabled={!meta.length}>
           Add screen
         </Button>
-      </Stack>
+      </CatalogPageToolbar>
 
       {error && <Alert severity="error">{error}</Alert>}
 
@@ -184,7 +248,7 @@ export function ScreensPage() {
           <Typography variant="body2" color="text.secondary">
             No screens are enabled.
           </Typography>
-        ) : (
+        ) : layout === 'card' ? (
           <Box sx={catalogCardGridSx}>
             {enabledRows.map((r) => (
               <ScreenCard
@@ -195,6 +259,12 @@ export function ScreensPage() {
               />
             ))}
           </Box>
+        ) : (
+          <ScreenTable
+            rows={enabledRows}
+            onEdit={setEditRow}
+            onDelete={(id) => void deleteScreen(id)}
+          />
         )}
       </Stack>
 
@@ -206,7 +276,7 @@ export function ScreensPage() {
           <Typography variant="body2" color="text.secondary">
             All screens are enabled.
           </Typography>
-        ) : (
+        ) : layout === 'card' ? (
           <Box sx={catalogCardGridSx}>
             {disabledRows.map((r) => (
               <ScreenCard
@@ -217,6 +287,12 @@ export function ScreensPage() {
               />
             ))}
           </Box>
+        ) : (
+          <ScreenTable
+            rows={disabledRows}
+            onEdit={setEditRow}
+            onDelete={(id) => void deleteScreen(id)}
+          />
         )}
       </Stack>
 

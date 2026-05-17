@@ -11,8 +11,15 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Paper,
   Stack,
   Switch,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   TextField,
   Typography,
 } from '@mui/material';
@@ -21,7 +28,12 @@ import validator from '@rjsf/validator-ajv8';
 import type { RJSFSchema } from '@rjsf/utils';
 import { useDisplay } from '@/context/DisplayContext';
 import { apiFetch, apiJson, ApiError } from '@/api/client';
+import { CatalogPageToolbar } from '@/components/CatalogPageToolbar';
+import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
+import { catalogCardGridSx } from '@/constants/catalogLayout';
+import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
+import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import { integrationDisplayName } from '@/util/integrationDisplayName';
 import { parseJsonObject } from '@/util/json';
 import { prepareRjsfSchema } from '@/util/rjsfSchema';
@@ -88,8 +100,66 @@ function compareFamilies(a: string, b: string): number {
   return a.localeCompare(b);
 }
 
+function IntegrationTable({
+  rows,
+  actionLabel,
+  onAction,
+}: {
+  rows: IntegrationRow[];
+  actionLabel: string;
+  onAction: (row: IntegrationRow) => void;
+}) {
+  return (
+    <TableContainer component={Paper} variant="outlined">
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell>Integration</TableCell>
+            <TableCell>Poll interval</TableCell>
+            <TableCell>Base URL</TableCell>
+            <TableCell>Config</TableCell>
+            <TableCell align="right">Actions</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {rows.map((row) => {
+            const displayName = integrationDisplayName(row.integration_type);
+            const configOk = configJsonSatisfiesSchema(row);
+            const showConfigHint = actionLabel === 'Enable' && !configOk;
+            return (
+              <TableRow key={row.id} hover>
+                <TableCell sx={{ fontWeight: 600 }}>{displayName}</TableCell>
+                <TableCell>{row.poll_seconds}s</TableCell>
+                <TableCell sx={{ maxWidth: 280, wordBreak: 'break-all', fontSize: '0.85rem' }}>
+                  {row.base_url ?? ''}
+                </TableCell>
+                <TableCell>
+                  {showConfigHint ? (
+                    <Chip size="small" color="warning" label="Schema mismatch" />
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      OK
+                    </Typography>
+                  )}
+                </TableCell>
+                <TableCell align="right">
+                  <Button size="small" variant="outlined" onClick={() => onAction(row)}>
+                    {actionLabel}
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+}
+
 export function IntegrationsPage() {
   const { active } = useDisplay();
+  const { loading, wrapRefresh } = useDisplayRefresh();
+  const { layout, setLayout } = useListLayoutPreference('integrations');
   const [rows, setRows] = useState<IntegrationRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [edit, setEdit] = useState<IntegrationRow | null>(null);
@@ -98,14 +168,16 @@ export function IntegrationsPage() {
 
   const load = useCallback(async () => {
     if (!active) return;
-    setError(null);
-    try {
-      const res = await apiJson<{ items: IntegrationRow[] }>(active, '/v1/integrations');
-      setRows(res.items ?? []);
-    } catch (e) {
-      setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
-    }
-  }, [active]);
+    await wrapRefresh(async () => {
+      setError(null);
+      try {
+        const res = await apiJson<{ items: IntegrationRow[] }>(active, '/v1/integrations');
+        setRows(res.items ?? []);
+      } catch (e) {
+        setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
+      }
+    });
+  }, [active, wrapRefresh]);
 
   useEffect(() => {
     void load();
@@ -148,17 +220,20 @@ export function IntegrationsPage() {
 
   return (
     <Stack spacing={3}>
+      <DisplayRefreshIndicator loading={loading} />
       <Box>
         <Typography variant="h6" fontWeight={600} gutterBottom>
           External data sources
         </Typography>
         <Typography variant="body2" color="text.secondary">
           Connect external data sources—calendars, news, weather, stocks, and more—that collectors
-          poll into the kiosk database. Enable a provider, set its poll interval, and complete{' '}
+          poll into the display database. Enable a provider, set its poll interval, and complete{' '}
           <code>config_json</code> (credentials and endpoints) so scheduled fetches succeed.
         </Typography>
       </Box>
       {error && <Alert severity="error">{error}</Alert>}
+
+      <CatalogPageToolbar layout={layout} onLayoutChange={setLayout} />
 
       <Stack spacing={1}>
         <Typography variant="subtitle2" color="text.secondary">
@@ -205,14 +280,8 @@ export function IntegrationsPage() {
               ? 'No enabled integrations match this filter.'
               : 'No integrations are enabled.'}
           </Typography>
-        ) : (
-          <Box
-            sx={{
-              display: 'grid',
-              gap: 2,
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            }}
-          >
+        ) : layout === 'card' ? (
+          <Box sx={catalogCardGridSx}>
             {enabledRows.map((r) => (
               <IntegrationCard
                 key={r.id}
@@ -225,6 +294,15 @@ export function IntegrationsPage() {
               />
             ))}
           </Box>
+        ) : (
+          <IntegrationTable
+            rows={enabledRows}
+            actionLabel="Edit"
+            onAction={(r) => {
+              setDialogIntent('edit');
+              setEdit(r);
+            }}
+          />
         )}
       </Stack>
 
@@ -238,14 +316,8 @@ export function IntegrationsPage() {
               ? 'No disabled integrations match this filter.'
               : 'All integrations are enabled.'}
           </Typography>
-        ) : (
-          <Box
-            sx={{
-              display: 'grid',
-              gap: 2,
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            }}
-          >
+        ) : layout === 'card' ? (
+          <Box sx={catalogCardGridSx}>
             {disabledRows.map((r) => {
               const configOk = configJsonSatisfiesSchema(r);
               return (
@@ -262,6 +334,15 @@ export function IntegrationsPage() {
               );
             })}
           </Box>
+        ) : (
+          <IntegrationTable
+            rows={disabledRows}
+            actionLabel="Enable"
+            onAction={(r) => {
+              setDialogIntent('enable');
+              setEdit(r);
+            }}
+          />
         )}
       </Stack>
 

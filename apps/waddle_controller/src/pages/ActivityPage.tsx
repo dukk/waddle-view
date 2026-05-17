@@ -19,7 +19,9 @@ import {
 } from '@mui/material';
 import { useDisplay } from '@/context/DisplayContext';
 import { apiJson, ApiError } from '@/api/client';
+import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
+import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 
 type Line = { at_ms: number; channel: string; message: string };
 
@@ -45,6 +47,7 @@ function formatAtMs(atMs: number): string {
 
 export function ActivityPage() {
   const { active } = useDisplay();
+  const { loading, wrapRefresh } = useDisplayRefresh();
   const [items, setItems] = useState<Line[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [filterText, setFilterText] = useState('');
@@ -82,14 +85,16 @@ export function ActivityPage() {
 
   const load = useCallback(async () => {
     if (!active) return;
-    setError(null);
-    try {
-      const res = await apiJson<{ items: Line[] }>(active, '/v1/telemetry/integrations?limit=300');
-      setItems(res.items ?? []);
-    } catch (e) {
-      setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
-    }
-  }, [active]);
+    await wrapRefresh(async () => {
+      setError(null);
+      try {
+        const res = await apiJson<{ items: Line[] }>(active, '/v1/telemetry/integrations?limit=300');
+        setItems(res.items ?? []);
+      } catch (e) {
+        setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
+      }
+    });
+  }, [active, wrapRefresh]);
 
   useEffect(() => {
     void load();
@@ -103,6 +108,7 @@ export function ActivityPage() {
 
   return (
     <Stack spacing={2}>
+      <DisplayRefreshIndicator loading={loading} />
       <Typography variant="h5" fontWeight={600}>
         Live integration log
       </Typography>

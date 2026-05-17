@@ -21,6 +21,8 @@ import {
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import type { SavedDisplay } from '@/storage/displays';
 import { apiJson, ApiError } from '@/api/client';
+import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
+import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import { curatorCategoryMaterialIconComponent } from '@/util/curatorCategoryMaterialIcon';
 
 type CuratorSettings = {
@@ -44,7 +46,8 @@ export function CuratorCategoriesSection({
   display: SavedDisplay;
   canWrite: boolean;
 }) {
-  const [loading, setLoading] = useState(true);
+  const { loading, wrapRefresh } = useDisplayRefresh();
+  const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [photoForm, setPhotoForm] = useState<CuratorSettings | null>(null);
@@ -57,30 +60,30 @@ export function CuratorCategoriesSection({
   const [catRowsPerPage, setCatRowsPerPage] = useState(defaultCatRowsPerPage);
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const settings = await apiJson<{
-        require_news_photo_for_screens: boolean;
-      }>(display, '/v1/curator/settings');
-      setPhotoForm({ require_news_photo_for_screens: settings.require_news_photo_for_screens });
+    await wrapRefresh(async () => {
+      setError(null);
+      try {
+        const settings = await apiJson<{
+          require_news_photo_for_screens: boolean;
+        }>(display, '/v1/curator/settings');
+        setPhotoForm({ require_news_photo_for_screens: settings.require_news_photo_for_screens });
 
-      const catBody = await apiJson<{ items: CuratorCategoryRow[] }>(display, '/v1/curator/categories');
-      setCategories(catBody.items);
-      const next: Record<string, { label: string; material: string }> = {};
-      for (const c of catBody.items) {
-        next[c.id] = {
-          label: c.label,
-          material: c.material_icon_name ?? '',
-        };
+        const catBody = await apiJson<{ items: CuratorCategoryRow[] }>(display, '/v1/curator/categories');
+        setCategories(catBody.items);
+        const next: Record<string, { label: string; material: string }> = {};
+        for (const c of catBody.items) {
+          next[c.id] = {
+            label: c.label,
+            material: c.material_icon_name ?? '',
+          };
+        }
+        setCatEdits(next);
+        setInitialized(true);
+      } catch (e) {
+        setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
       }
-      setCatEdits(next);
-    } catch (e) {
-      setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
-    } finally {
-      setLoading(false);
-    }
-  }, [display]);
+    });
+  }, [display, wrapRefresh]);
 
   useEffect(() => {
     void load();
@@ -183,12 +186,20 @@ export function CuratorCategoriesSection({
     }
   };
 
-  if (loading) {
-    return <Typography variant="body2">Loading categories…</Typography>;
+  if (!initialized && loading) {
+    return (
+      <Stack spacing={1}>
+        <DisplayRefreshIndicator loading={loading} />
+        <Typography variant="body2" color="text.secondary">
+          Loading categories…
+        </Typography>
+      </Stack>
+    );
   }
 
   return (
     <Stack spacing={3}>
+      <DisplayRefreshIndicator loading={loading} />
       {error && (
         <Alert severity="error" onClose={() => setError(null)}>
           {error}

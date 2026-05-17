@@ -23,6 +23,8 @@ import {
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import type { SavedDisplay } from '@/storage/displays';
 import { apiJson, ApiError } from '@/api/client';
+import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
+import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import { maskRejectTermForDisplay } from '@/util/maskRejectTerm';
 
 type RejectTermRow = {
@@ -41,7 +43,8 @@ const censorFormats = [
 const defaultRejRowsPerPage = 10;
 
 export function RejectTermsSection({ display }: { display: SavedDisplay }) {
-  const [loading, setLoading] = useState(true);
+  const { loading, wrapRefresh } = useDisplayRefresh();
+  const [initialized, setInitialized] = useState(false);
   const [rejectMsg, setRejectMsg] = useState<string | null>(null);
   const [rejectItems, setRejectItems] = useState<RejectTermRow[]>([]);
   const [censorFormat, setCensorFormat] = useState('asterisks_full');
@@ -51,21 +54,21 @@ export function RejectTermsSection({ display }: { display: SavedDisplay }) {
   const [rejRowsPerPage, setRejRowsPerPage] = useState(defaultRejRowsPerPage);
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setRejectMsg(null);
-    try {
-      const rj = await apiJson<{ items: RejectTermRow[]; censor_format: string }>(
-        display,
-        '/v1/reject-terms',
-      );
-      setRejectItems(rj.items);
-      setCensorFormat(rj.censor_format || 'asterisks_full');
-    } catch (e) {
-      setRejectMsg(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
-    } finally {
-      setLoading(false);
-    }
-  }, [display]);
+    await wrapRefresh(async () => {
+      setRejectMsg(null);
+      try {
+        const rj = await apiJson<{ items: RejectTermRow[]; censor_format: string }>(
+          display,
+          '/v1/reject-terms',
+        );
+        setRejectItems(rj.items);
+        setCensorFormat(rj.censor_format || 'asterisks_full');
+        setInitialized(true);
+      } catch (e) {
+        setRejectMsg(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
+      }
+    });
+  }, [display, wrapRefresh]);
 
   useEffect(() => {
     void load();
@@ -134,12 +137,20 @@ export function RejectTermsSection({ display }: { display: SavedDisplay }) {
     }
   };
 
-  if (loading) {
-    return <Typography variant="body2">Loading rejected terms…</Typography>;
+  if (!initialized && loading) {
+    return (
+      <Stack spacing={1}>
+        <DisplayRefreshIndicator loading={loading} />
+        <Typography variant="body2" color="text.secondary">
+          Loading rejected terms…
+        </Typography>
+      </Stack>
+    );
   }
 
   return (
     <Stack spacing={2}>
+      <DisplayRefreshIndicator loading={loading} />
       {rejectMsg && (
         <Alert severity="error" onClose={() => setRejectMsg(null)}>
           {rejectMsg}

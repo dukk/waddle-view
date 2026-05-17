@@ -17,8 +17,15 @@ import {
   InputLabel,
   MenuItem,
   Select,
+  Paper,
   Stack,
   Switch,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   TextField,
   Tooltip,
   Typography,
@@ -32,8 +39,13 @@ import type { RJSFSchema } from '@rjsf/utils';
 import { useAuth } from '@/context/AuthContext';
 import { useDisplay } from '@/context/DisplayContext';
 import { apiFetch, apiJson, ApiError } from '@/api/client';
+import { CatalogPageToolbar } from '@/components/CatalogPageToolbar';
 import { CatalogPageHelp } from '@/components/CatalogPageHelp';
+import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
+import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
+import { catalogCardGridSx } from '@/constants/catalogLayout';
+import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import { OverlaysHelpContent } from '@/components/help/OverlaysHelpContent';
 import { parseJsonObject } from '@/util/json';
 import { prepareRjsfSchema } from '@/util/rjsfSchema';
@@ -302,12 +314,6 @@ function overlayTypeLabel(type: string): string {
   const k = type.trim();
   return OVERLAY_TYPE_LABELS[k] ?? (k || 'Unknown type');
 }
-
-const catalogCardGridSx = {
-  display: 'grid',
-  gap: 2,
-  gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-} as const;
 
 function sortSchedules(rows: OverlayScheduleRow[], now: Date): OverlayScheduleRow[] {
   return [...rows].sort((a, b) => {
@@ -638,6 +644,85 @@ function OverlayScheduleDialog({
   );
 }
 
+function OverlayScheduleTable({
+  rows,
+  evalNow,
+  canWrite,
+  onEdit,
+  onDelete,
+}: {
+  rows: OverlayScheduleRow[];
+  evalNow: Date;
+  canWrite: boolean;
+  onEdit: (row: OverlayScheduleRow) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <TableContainer component={Paper} variant="outlined">
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell>Label</TableCell>
+            <TableCell>ID</TableCell>
+            <TableCell>Type</TableCell>
+            <TableCell>Schedule</TableCell>
+            <TableCell>Messages</TableCell>
+            <TableCell>Today</TableCell>
+            {canWrite ? <TableCell align="right">Actions</TableCell> : null}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {rows.map((row) => {
+            const messages = decodeMessagesFromConfig(row.config_json);
+            const firesToday = matchesOverlaySchedule(row, evalNow);
+            const title = row.label.trim() || row.id;
+            return (
+              <TableRow key={row.id} hover>
+                <TableCell sx={{ fontWeight: row.label.trim() ? 600 : 400 }}>{title}</TableCell>
+                <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.id}</TableCell>
+                <TableCell>{overlayTypeLabel(row.overlay_type)}</TableCell>
+                <TableCell sx={{ maxWidth: 280, wordBreak: 'break-word' }}>
+                  {scheduleSummary(row)}
+                </TableCell>
+                <TableCell sx={{ maxWidth: 240, wordBreak: 'break-word' }}>
+                  {messages.length === 0
+                    ? ''
+                    : messages.length === 1
+                      ? messages[0]
+                      : `${messages.length} messages · ${messages[0]}`}
+                </TableCell>
+                <TableCell>
+                  {firesToday ? (
+                    <Chip
+                      size="small"
+                      color="primary"
+                      variant="outlined"
+                      icon={<TodayOutlinedIcon />}
+                      label="Matches today"
+                    />
+                  ) : (
+                    '—'
+                  )}
+                </TableCell>
+                {canWrite ? (
+                  <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                    <Button size="small" onClick={() => onEdit(row)}>
+                      Edit
+                    </Button>
+                    <Button size="small" color="error" onClick={() => onDelete(row.id)}>
+                      Delete
+                    </Button>
+                  </TableCell>
+                ) : null}
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+}
+
 function OverlayScheduleCard({
   row,
   firesToday,
@@ -715,31 +800,31 @@ function OverlayScheduleCard({
 
 export function OverlaysPage() {
   const { active } = useDisplay();
+  const { layout, setLayout } = useListLayoutPreference('overlays');
   const { hasPermission } = useAuth();
   const canWrite = hasPermission('overlays.write');
   const [rawItems, setRawItems] = useState<Record<string, unknown>[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const { loading, wrapRefresh } = useDisplayRefresh();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<OverlayDialogMode>('create');
   const [dialogInitial, setDialogInitial] = useState<OverlayScheduleRow | null>(null);
 
   const load = useCallback(async () => {
     if (!active) return;
-    setError(null);
-    setLoading(true);
-    try {
-      const res = await apiJson<{ items: Record<string, unknown>[] }>(
-        active,
-        '/v1/display/overlays',
-      );
-      setRawItems(res.items ?? []);
-    } catch (e) {
-      setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
-    } finally {
-      setLoading(false);
-    }
-  }, [active]);
+    await wrapRefresh(async () => {
+      setError(null);
+      try {
+        const res = await apiJson<{ items: Record<string, unknown>[] }>(
+          active,
+          '/v1/display/overlays',
+        );
+        setRawItems(res.items ?? []);
+      } catch (e) {
+        setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
+      }
+    });
+  }, [active, wrapRefresh]);
 
   useEffect(() => {
     void load();
@@ -807,6 +892,7 @@ export function OverlaysPage() {
 
   return (
     <Stack spacing={3}>
+      <DisplayRefreshIndicator loading={loading} />
       <Box>
         <Stack direction="row" alignItems="center" spacing={0.25} sx={{ mb: 0.5 }}>
           <Typography variant="h6" fontWeight={600}>
@@ -822,7 +908,7 @@ export function OverlaysPage() {
           and edit overlay type plus messages in <code>config_json</code>.
         </Typography>
       </Box>
-      <Stack direction="row" justifyContent="flex-end" spacing={0.5} alignItems="center">
+      <CatalogPageToolbar layout={layout} onLayoutChange={setLayout}>
         {canWrite && (
           <Button startIcon={<AddIcon />} variant="contained" onClick={openCreate}>
             Add schedule
@@ -835,7 +921,7 @@ export function OverlaysPage() {
             </IconButton>
           </span>
         </Tooltip>
-      </Stack>
+      </CatalogPageToolbar>
 
       {activeTodayCount > 0 && (
         <Alert severity="info" icon={<TodayOutlinedIcon fontSize="inherit" />}>
@@ -862,7 +948,7 @@ export function OverlaysPage() {
           <Typography variant="body2" color="text.secondary">
             No overlay schedules are enabled.
           </Typography>
-        ) : (
+        ) : layout === 'card' ? (
           <Box sx={catalogCardGridSx}>
             {enabledSchedules.map((row) => (
               <OverlayScheduleCard
@@ -875,6 +961,14 @@ export function OverlaysPage() {
               />
             ))}
           </Box>
+        ) : (
+          <OverlayScheduleTable
+            rows={enabledSchedules}
+            evalNow={evalNow}
+            canWrite={canWrite}
+            onEdit={openEdit}
+            onDelete={(id) => void deleteRow(id)}
+          />
         )}
       </Stack>
 
@@ -886,7 +980,7 @@ export function OverlaysPage() {
           <Typography variant="body2" color="text.secondary">
             All overlay schedules are enabled.
           </Typography>
-        ) : (
+        ) : layout === 'card' ? (
           <Box sx={catalogCardGridSx}>
             {disabledSchedules.map((row) => (
               <OverlayScheduleCard
@@ -899,6 +993,14 @@ export function OverlaysPage() {
               />
             ))}
           </Box>
+        ) : (
+          <OverlayScheduleTable
+            rows={disabledSchedules}
+            evalNow={evalNow}
+            canWrite={canWrite}
+            onEdit={openEdit}
+            onDelete={(id) => void deleteRow(id)}
+          />
         )}
       </Stack>
 

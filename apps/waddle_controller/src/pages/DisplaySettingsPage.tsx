@@ -51,7 +51,9 @@ import { CuratorSliderField } from '@/components/CuratorSliderField';
 import { DisplayThemePaletteSwatches } from '@/components/DisplayThemePaletteSwatches';
 import { TickerMarqueeSamplePreview } from '@/components/TickerMarqueeSamplePreview';
 import { RejectTermsSection } from '@/components/curator/RejectTermsSection';
+import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
+import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import {
   displayTimezoneSelectOptions,
   filterDisplayTimezoneOptions,
@@ -124,12 +126,12 @@ export function DisplaySettingsPage() {
     <Stack spacing={2}>
       <Box>
         <Typography variant="h6" fontWeight={600} gutterBottom>
-          Curator & kiosk setup — {displayLabel}
+          Curator & display setup — {displayLabel}
         </Typography>
         <Typography variant="body2" color="text.secondary">
           Theme, program duration, ticker speed, content categories, reject terms, adoption roles,
           and REST API keys for <strong>{displayLabel}</strong>. Most curator values affect the next
-          program the kiosk builds.
+          program the display builds.
         </Typography>
       </Box>
       <Paper sx={{ px: 2, pt: 1 }}>
@@ -263,7 +265,8 @@ function ApiClientsManagementSection({
 }) {
   const { status } = useControllerAuth();
   const clientId = resolveClientIdentifier(status, 'controller');
-  const [loading, setLoading] = useState(true);
+  const { loading, wrapRefresh } = useDisplayRefresh();
+  const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [clients, setClients] = useState<ApiClientListItem[]>([]);
   const [issueOpen, setIssueOpen] = useState(false);
@@ -274,16 +277,16 @@ function ApiClientsManagementSection({
   const [revokeBusyId, setRevokeBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      setClients(await listApiClients(display));
-    } catch (e) {
-      setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
-    } finally {
-      setLoading(false);
-    }
-  }, [display]);
+    await wrapRefresh(async () => {
+      setError(null);
+      try {
+        setClients(await listApiClients(display));
+        setInitialized(true);
+      } catch (e) {
+        setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
+      }
+    });
+  }, [display, wrapRefresh]);
 
   useEffect(() => {
     void load();
@@ -343,11 +346,12 @@ function ApiClientsManagementSection({
 
   return (
     <Box>
+      <DisplayRefreshIndicator loading={loading} />
       <Typography variant="subtitle1" fontWeight={600} gutterBottom>
         API keys
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Adopted REST clients for this kiosk. Plaintext keys are shown only when issued; stored keys
+        Adopted REST clients for this display. Plaintext keys are shown only when issued; stored keys
         are listed masked by fingerprint.
       </Typography>
       {error && (
@@ -363,8 +367,10 @@ function ApiClientsManagementSection({
           Refresh
         </Button>
       </Stack>
-      {loading ? (
-        <Typography variant="body2">Loading API keys…</Typography>
+      {loading && !initialized ? (
+        <Typography variant="body2" color="text.secondary">
+          Loading API keys…
+        </Typography>
       ) : clients.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
           No API keys on this display yet.
@@ -431,8 +437,8 @@ function ApiClientsManagementSection({
                   disabled={clientId.locked}
                   helperText={
                     clientId.locked
-                      ? 'Server client id is fixed; a role suffix is added when this identifier is already used on the kiosk.'
-                      : 'Unique per API key on this kiosk (suggested value includes the role when needed).'
+                      ? 'Server client id is fixed; a role suffix is added when this identifier is already used on the display.'
+                      : 'Unique per API key on this display (suggested value includes the role when needed).'
                   }
                 />
                 <FormControl fullWidth>
@@ -472,24 +478,25 @@ function ApiClientsManagementSection({
 }
 
 function DisplayAdoptionSettingsSection({ display }: { display: SavedDisplay }) {
-  const [loading, setLoading] = useState(true);
+  const { loading, wrapRefresh } = useDisplayRefresh();
+  const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [allowedRoles, setAllowedRoles] = useState<Set<string>>(() => new Set());
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await apiJson<CuratorDisplaySettings>(display, '/v1/curator/settings');
-      setAllowedRoles(parseAdoptionAllowedRoles(data));
-    } catch (e) {
-      setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
-    } finally {
-      setLoading(false);
-    }
-  }, [display]);
+    await wrapRefresh(async () => {
+      setError(null);
+      try {
+        const data = await apiJson<CuratorDisplaySettings>(display, '/v1/curator/settings');
+        setAllowedRoles(parseAdoptionAllowedRoles(data));
+        setInitialized(true);
+      } catch (e) {
+        setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
+      }
+    });
+  }, [display, wrapRefresh]);
 
   useEffect(() => {
     void load();
@@ -528,12 +535,20 @@ function DisplayAdoptionSettingsSection({ display }: { display: SavedDisplay }) 
     }
   };
 
-  if (loading) {
-    return <Typography variant="body2">Loading adoption settings…</Typography>;
+  if (!initialized && loading) {
+    return (
+      <Stack spacing={1}>
+        <DisplayRefreshIndicator loading={loading} />
+        <Typography variant="body2" color="text.secondary">
+          Loading adoption settings…
+        </Typography>
+      </Stack>
+    );
   }
 
   return (
     <Box>
+      <DisplayRefreshIndicator loading={loading} />
       <Typography variant="subtitle1" fontWeight={600} gutterBottom>
         Controller adoption
       </Typography>
@@ -585,7 +600,8 @@ function CuratorDisplaySettingsSection({
   canWrite: boolean;
   kvWriteTick: number;
 }) {
-  const [loading, setLoading] = useState(true);
+  const { loading, wrapRefresh } = useDisplayRefresh();
+  const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [form, setForm] = useState<CuratorDisplaySettings | null>(null);
@@ -607,38 +623,38 @@ function CuratorDisplaySettingsSection({
   }, [form, timezoneOptions]);
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await apiJson<CuratorDisplaySettings>(display, '/v1/curator/settings');
-      const tz =
-        typeof data.display_timezone === 'string' && data.display_timezone.trim() !== ''
-          ? data.display_timezone.trim()
-          : 'America/New_York';
-      const duration = clampNumber(
-        data.program_duration_seconds ?? CURATOR_PROGRAM_DURATION.default,
-        CURATOR_PROGRAM_DURATION.min,
-        CURATOR_PROGRAM_DURATION.max,
-      );
-      const depth = clampNumber(
-        data.history_depth ?? CURATOR_HISTORY_DEPTH.default,
-        CURATOR_HISTORY_DEPTH.min,
-        CURATOR_HISTORY_DEPTH.max,
-      );
-      const tickerPx = String(parseTickerPixelsPerSecond(data.ticker_pixels_per_second ?? ''));
-      setForm({
-        ...data,
-        display_timezone: tz,
-        program_duration_seconds: duration,
-        history_depth: depth,
-        ticker_pixels_per_second: tickerPx,
-      });
-    } catch (e) {
-      setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
-    } finally {
-      setLoading(false);
-    }
-  }, [display]);
+    await wrapRefresh(async () => {
+      setError(null);
+      try {
+        const data = await apiJson<CuratorDisplaySettings>(display, '/v1/curator/settings');
+        const tz =
+          typeof data.display_timezone === 'string' && data.display_timezone.trim() !== ''
+            ? data.display_timezone.trim()
+            : 'America/New_York';
+        const duration = clampNumber(
+          data.program_duration_seconds ?? CURATOR_PROGRAM_DURATION.default,
+          CURATOR_PROGRAM_DURATION.min,
+          CURATOR_PROGRAM_DURATION.max,
+        );
+        const depth = clampNumber(
+          data.history_depth ?? CURATOR_HISTORY_DEPTH.default,
+          CURATOR_HISTORY_DEPTH.min,
+          CURATOR_HISTORY_DEPTH.max,
+        );
+        const tickerPx = String(parseTickerPixelsPerSecond(data.ticker_pixels_per_second ?? ''));
+        setForm({
+          ...data,
+          display_timezone: tz,
+          program_duration_seconds: duration,
+          history_depth: depth,
+          ticker_pixels_per_second: tickerPx,
+        });
+        setInitialized(true);
+      } catch (e) {
+        setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
+      }
+    });
+  }, [display, wrapRefresh]);
 
   useEffect(() => {
     void load();
@@ -667,12 +683,20 @@ function CuratorDisplaySettingsSection({
     }
   };
 
-  if (loading || !form) {
-    return <Typography variant="body2">Loading display and curator tuning…</Typography>;
+  if ((!initialized && loading) || !form) {
+    return (
+      <Stack spacing={1}>
+        <DisplayRefreshIndicator loading={loading} />
+        <Typography variant="body2" color="text.secondary">
+          Loading display and curator tuning…
+        </Typography>
+      </Stack>
+    );
   }
 
   return (
     <Box>
+      <DisplayRefreshIndicator loading={loading} />
       <Typography variant="subtitle1" fontWeight={600} gutterBottom>
         Display and curator tuning
       </Typography>

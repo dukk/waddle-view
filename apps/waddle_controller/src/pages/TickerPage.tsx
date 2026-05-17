@@ -11,8 +11,15 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Paper,
   Stack,
   Switch,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   TextField,
   Typography,
   FormControl,
@@ -22,7 +29,12 @@ import {
 } from '@mui/material';
 import { useDisplay } from '@/context/DisplayContext';
 import { apiFetch, apiJson, ApiError } from '@/api/client';
+import { CatalogPageToolbar } from '@/components/CatalogPageToolbar';
 import { CatalogPageHelp } from '@/components/CatalogPageHelp';
+import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
+import { catalogCardGridSx } from '@/constants/catalogLayout';
+import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
+import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { TickerTapesHelpContent } from '@/components/help/TickerTapesHelpContent';
 
@@ -54,14 +66,67 @@ function tickerTypeLabel(tickerType: string): string {
   return tickerType.replace(/_/g, ' ');
 }
 
-const catalogCardGridSx = {
-  display: 'grid',
-  gap: 2,
-  gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-} as const;
+function TickerTapeTable({
+  rows,
+  onEdit,
+  onDelete,
+}: {
+  rows: TickerTapeRow[];
+  onEdit: (row: TickerTapeRow) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <TableContainer component={Paper} variant="outlined">
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell>Name</TableCell>
+            <TableCell>ID</TableCell>
+            <TableCell>Type</TableCell>
+            <TableCell>Weight</TableCell>
+            <TableCell>Sort</TableCell>
+            <TableCell>Description</TableCell>
+            <TableCell>Config key</TableCell>
+            <TableCell align="right">Actions</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {rows.map((row) => {
+            const title = row.name.trim() || row.id;
+            return (
+              <TableRow key={row.id} hover>
+                <TableCell sx={{ fontWeight: row.name.trim() ? 600 : 400 }}>{title}</TableCell>
+                <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.id}</TableCell>
+                <TableCell>{tickerTypeLabel(row.ticker_type)}</TableCell>
+                <TableCell>{row.frequency_weight}</TableCell>
+                <TableCell>{row.sort_order}</TableCell>
+                <TableCell sx={{ maxWidth: 240, wordBreak: 'break-word' }}>
+                  {row.description.trim()}
+                </TableCell>
+                <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                  {row.config_key?.trim() ?? ''}
+                </TableCell>
+                <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                  <Button size="small" onClick={() => onEdit(row)}>
+                    Edit
+                  </Button>
+                  <Button size="small" color="error" onClick={() => onDelete(row.id)}>
+                    Delete
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+}
 
 export function TickerPage() {
   const { active } = useDisplay();
+  const { loading, wrapRefresh } = useDisplayRefresh();
+  const { layout, setLayout } = useListLayoutPreference('ticker-tapes');
   const [rows, setRows] = useState<TickerTapeRow[]>([]);
   const [meta, setMeta] = useState<TickerTypeMeta[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -70,18 +135,20 @@ export function TickerPage() {
 
   const load = useCallback(async () => {
     if (!active) return;
-    setError(null);
-    try {
-      const [tapes, types] = await Promise.all([
-        apiJson<{ items: TickerTapeRow[] }>(active, '/v1/ticker/tapes'),
-        apiJson<{ items: TickerTypeMeta[] }>(active, '/v1/meta/ticker-types'),
-      ]);
-      setRows(tapes.items ?? []);
-      setMeta(types.items ?? []);
-    } catch (e) {
-      setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
-    }
-  }, [active]);
+    await wrapRefresh(async () => {
+      setError(null);
+      try {
+        const [tapes, types] = await Promise.all([
+          apiJson<{ items: TickerTapeRow[] }>(active, '/v1/ticker/tapes'),
+          apiJson<{ items: TickerTypeMeta[] }>(active, '/v1/meta/ticker-types'),
+        ]);
+        setRows(tapes.items ?? []);
+        setMeta(types.items ?? []);
+      } catch (e) {
+        setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
+      }
+    });
+  }, [active, wrapRefresh]);
 
   useEffect(() => {
     void load();
@@ -115,6 +182,7 @@ export function TickerPage() {
 
   return (
     <Stack spacing={3}>
+      <DisplayRefreshIndicator loading={loading} />
       <Box>
         <Stack direction="row" alignItems="center" spacing={0.25} sx={{ mb: 0.5 }}>
           <Typography variant="h6" fontWeight={600}>
@@ -130,11 +198,11 @@ export function TickerPage() {
           speed is under Display settings.
         </Typography>
       </Box>
-      <Stack direction="row" justifyContent="flex-end">
+      <CatalogPageToolbar layout={layout} onLayoutChange={setLayout}>
         <Button variant="contained" onClick={() => setAddOpen(true)} disabled={!meta.length}>
           Add ticker tape
         </Button>
-      </Stack>
+      </CatalogPageToolbar>
       {error && <Alert severity="error">{error}</Alert>}
 
       <Stack spacing={1.5}>
@@ -145,7 +213,7 @@ export function TickerPage() {
           <Typography variant="body2" color="text.secondary">
             No ticker tapes are enabled.
           </Typography>
-        ) : (
+        ) : layout === 'card' ? (
           <Box sx={catalogCardGridSx}>
             {enabledRows.map((r) => (
               <TickerTapeCard
@@ -156,6 +224,12 @@ export function TickerPage() {
               />
             ))}
           </Box>
+        ) : (
+          <TickerTapeTable
+            rows={enabledRows}
+            onEdit={setEdit}
+            onDelete={(id) => void deleteTape(id)}
+          />
         )}
       </Stack>
 
@@ -167,7 +241,7 @@ export function TickerPage() {
           <Typography variant="body2" color="text.secondary">
             All ticker tapes are enabled.
           </Typography>
-        ) : (
+        ) : layout === 'card' ? (
           <Box sx={catalogCardGridSx}>
             {disabledRows.map((r) => (
               <TickerTapeCard
@@ -178,6 +252,12 @@ export function TickerPage() {
               />
             ))}
           </Box>
+        ) : (
+          <TickerTapeTable
+            rows={disabledRows}
+            onEdit={setEdit}
+            onDelete={(id) => void deleteTape(id)}
+          />
         )}
       </Stack>
 
