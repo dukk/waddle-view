@@ -31,7 +31,7 @@ describe('completeDisplayAdoption', () => {
     );
 
     const { display, session } = await completeDisplayAdoption({
-      baseUrl: 'https://kiosk.test',
+      baseUrl: 'https://display.test',
       label: 'Lab',
       identifier: 'ctrl-1',
       challengeCode: 'ABCD1234',
@@ -71,12 +71,12 @@ describe('completeDisplayAdoption', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const first = await completeDisplayAdoption({
-      baseUrl: 'https://kiosk.test',
+      baseUrl: 'https://display.test',
       identifier: 'wc-host',
       challengeCode: 'AAAAAAAA',
     });
     const second = await completeDisplayAdoption({
-      baseUrl: 'https://kiosk.test',
+      baseUrl: 'https://display.test',
       identifier: 'wc-host-operator',
       challengeCode: 'BBBBBBBB',
     });

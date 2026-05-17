@@ -275,7 +275,7 @@ class _WaddleRootState extends State<WaddleRoot> {
   /// One Drift stream for the lifetime of the app. A fresh `.watch()` on every
   /// [build] (or on every parent rebuild) makes [StreamBuilder] tear down and
   /// resubscribe repeatedly and can leak native resources (Linux: EMFILE /
-  /// GLib GWakeup pipe exhaustion on long-running kiosks).
+  /// GLib GWakeup pipe exhaustion on long-running displays).
   late final Stream<List<ConfigKeyValue>> _configKvStream =
       widget.db.select(widget.db.configKeyValues).watch();
 

@@ -16,7 +16,7 @@ String generateAdoptionNonce() {
   return base64Url.encode(bytes);
 }
 
-/// Eight-character Crockford base32 challenge shown on the kiosk.
+/// Eight-character Crockford base32 challenge shown on the display.
 String deriveAdoptionChallengeCode({
   required String instanceId,
   required String identifier,

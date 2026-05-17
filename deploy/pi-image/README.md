@@ -83,7 +83,7 @@ docker run --rm --privileged \
 
 1. Write `**dist/pi-img-out/<your>.img**` with Raspberry Pi Imager or balenaEtcher (whole-card write).
 2. Boot the Pi with keyboard/display at least once; verify the desktop session starts **Waddle Display**.
-3. For kiosk use, disable screen blanking (`xset`, DPMS, or Wayland equivalents) as described in `docs/pi/using-the-image.md`.
+3. For display use, disable screen blanking (`xset`, DPMS, or Wayland equivalents) as described in `docs/pi/using-the-image.md`.
 
 ## Troubleshooting
 

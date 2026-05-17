@@ -42,7 +42,7 @@ void main() {
         hostResolver: (_) async => [InternetAddress('192.168.2.1')],
       );
       expect(
-        await privatePolicy.isAdoptionOriginAllowed('http://kiosk.lan:5173'),
+        await privatePolicy.isAdoptionOriginAllowed('http://display.lan:5173'),
         isTrue,
       );
     });

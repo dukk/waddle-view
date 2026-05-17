@@ -35,8 +35,8 @@ export function AdoptDisplayDialog({
       <DialogTitle>Adopt display</DialogTitle>
       <DialogContent>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Pair this browser with a kiosk by requesting adoption on the display, then confirming
-          the challenge code from the kiosk alert.
+          Pair this browser with a display by requesting adoption on the display, then confirming
+          the challenge code from the display alert.
         </Typography>
         <AdoptDisplayForm requestLabel="Continue to adoption" onAdopted={onAdopted} />
       </DialogContent>

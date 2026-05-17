@@ -33,7 +33,7 @@ describe('userDisplaysSync', () => {
       display: {
         id: '1',
         displayId: 'd1',
-        label: 'Kiosk',
+        label: 'Display',
         baseUrl: 'https://127.0.0.1:8787',
         clientIdentifier: 'wc',
         adoptedRole: 'admin',
@@ -44,9 +44,9 @@ describe('userDisplaysSync', () => {
         updatedAt: '',
       },
     });
-    saveDisplays([{ id: 'd1', label: 'Kiosk', baseUrl: 'https://127.0.0.1:8787' }]);
+    saveDisplays([{ id: 'd1', label: 'Display', baseUrl: 'https://127.0.0.1:8787' }]);
     await syncUserDisplayToServer(
-      { id: 'd1', label: 'Kiosk', baseUrl: 'https://127.0.0.1:8787' },
+      { id: 'd1', label: 'Display', baseUrl: 'https://127.0.0.1:8787' },
       {
         apiKey: 'key',
         identifier: 'wc',

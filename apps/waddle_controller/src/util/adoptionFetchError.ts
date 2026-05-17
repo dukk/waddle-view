@@ -42,7 +42,7 @@ export function adoptionConnectErrorMessage(displayBaseUrl: string, cause?: unkn
   const base = normalizeBaseUrl(displayBaseUrl);
   const lines = [
     `Could not reach the display at ${base}.`,
-    'Check that waddle_display is running, the base URL is correct, and this browser can reach the kiosk (firewall, VPN, or wrong host/port).',
+    'Check that waddle_display is running, the base URL is correct, and this browser can reach the display (firewall, VPN, or wrong host/port).',
   ];
 
   const mixed = mixedContentHint(base);
@@ -52,7 +52,7 @@ export function adoptionConnectErrorMessage(displayBaseUrl: string, cause?: unkn
 
   if (typeof window !== 'undefined' && window.location?.origin) {
     lines.push(
-      `Adoption requests are sent from ${window.location.origin}; the kiosk only accepts origins on localhost, .local, or private LAN addresses.`,
+      `Adoption requests are sent from ${window.location.origin}; the display only accepts origins on localhost, .local, or private LAN addresses.`,
     );
   }
 

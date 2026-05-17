@@ -68,7 +68,7 @@ export function AdoptDisplayForm({
     setIdentifier(suggestAdoptionIdentifier(baseUrl, role, clientId.value));
   }, [baseUrl, role, clientId.value, apiKey]);
 
-  const sameKioskCount = displaysForBaseUrl(baseUrl).length;
+  const sameDisplayCount = displaysForBaseUrl(baseUrl).length;
 
   const submitConnectWithApiKey = async () => {
     setError(null);
@@ -127,7 +127,7 @@ export function AdoptDisplayForm({
       setChallengeCode('');
       setPendingConfirm(true);
       setInfo(
-        'A challenge code was shown on the kiosk alert. Enter that code below to prove you can see the display.',
+        'A challenge code was shown on the display alert. Enter that code below to prove you can see the display.',
       );
       adoptionLog('ui.request.success', 'awaiting operator-entered challenge', {
         expires_at_ms: result.expires_at_ms,
@@ -198,9 +198,9 @@ export function AdoptDisplayForm({
         fullWidth
         disabled={pendingConfirm}
         helperText={
-          sameKioskCount > 0
-            ? 'This kiosk is already saved — use a distinct label (for example host + role) so entries are easy to tell apart.'
-            : 'Shown in the display menu when you manage multiple kiosks.'
+          sameDisplayCount > 0
+            ? 'This display is already saved — use a distinct label (for example host + role) so entries are easy to tell apart.'
+            : 'Shown in the display menu when you manage multiple displays.'
         }
       />
       <Accordion disabled={pendingConfirm}>
@@ -215,7 +215,7 @@ export function AdoptDisplayForm({
               onChange={(e) => setApiKey(e.target.value)}
               fullWidth
               autoComplete="off"
-              helperText="Leave blank for the normal adoption flow (kiosk challenge). If set, connects immediately using this key."
+              helperText="Leave blank for the normal adoption flow (display challenge). If set, connects immediately using this key."
             />
             {apiKey.trim() ? (
               <Alert severity="info">
@@ -233,12 +233,12 @@ export function AdoptDisplayForm({
                   disabled={clientId.locked}
                   helperText={
                     clientId.locked
-                      ? sameKioskCount > 0
-                        ? 'Server client id is fixed; a role suffix is added so each role keeps its own API key on this kiosk.'
+                      ? sameDisplayCount > 0
+                        ? 'Server client id is fixed; a role suffix is added so each role keeps its own API key on this display.'
                         : 'Set by WADDLE_CONTROLLER_CLIENT_IDENTIFIER on the server.'
-                      : sameKioskCount > 0
-                        ? 'Must be unique per saved role on this kiosk (suggested value includes the role).'
-                        : 'Shown on the kiosk adoption alert.'
+                      : sameDisplayCount > 0
+                        ? 'Must be unique per saved role on this display (suggested value includes the role).'
+                        : 'Shown on the display adoption alert.'
                   }
                 />
                 <FormControl fullWidth>
@@ -273,7 +273,7 @@ export function AdoptDisplayForm({
             onChange={setChallengeCode}
             fullWidth
             required
-            helperText="Must match the code on the kiosk alert (XXXX-XXXX)."
+            helperText="Must match the code on the display alert (XXXX-XXXX)."
             onEnter={() => {
               if (!busy && isAdoptionChallengeCodeComplete(challengeCode)) {
                 void submitConfirm();
@@ -305,8 +305,8 @@ export function AdoptDisplayForm({
       {!pendingConfirm && (
         <Typography variant="body2" color="text.secondary">
           {apiKey.trim()
-            ? 'The display is saved after the API key is validated against the kiosk.'
-            : 'Requesting adoption shows a challenge on the kiosk. The display is saved only after you complete adoption successfully.'}
+            ? 'The display is saved after the API key is validated against the display.'
+            : 'Requesting adoption shows a challenge on the display. The display is saved only after you complete adoption successfully.'}
         </Typography>
       )}
     </Stack>

@@ -36,7 +36,7 @@ describe('adoptionConnectErrorMessage', () => {
   });
 
   it('preserves non-network error messages', () => {
-    expect(adoptionConnectErrorMessage('http://kiosk', new Error('Invalid URL'))).toBe(
+    expect(adoptionConnectErrorMessage('http://display', new Error('Invalid URL'))).toBe(
       'Invalid URL',
     );
   });

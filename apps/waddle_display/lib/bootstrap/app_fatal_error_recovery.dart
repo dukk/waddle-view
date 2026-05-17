@@ -88,7 +88,7 @@ void _defaultLogRecoverableFlutterLayout(FlutterErrorDetails details) {
 }
 
 /// Layout-time [FlutterError] messages (overflow, clipping) that should not
-/// tear down the kiosk process; the framework has already reported them via
+/// tear down the display process; the framework has already reported them via
 /// [FlutterError.presentError].
 @visibleForTesting
 bool isRecoverableLayoutFlutterError(FlutterErrorDetails details) {
@@ -103,7 +103,7 @@ bool isRecoverableLayoutFlutterError(FlutterErrorDetails details) {
 /// `HardwareKeyboard._assertEventIsRegular` fires when the OS delivers a
 /// `KeyUpEvent` for a key Flutter never observed pressed (focus-loss /
 /// Alt-Tab on Windows, modifier held during launch, IME, remote-desktop).
-/// Restarting the kiosk on every such event is hostile to UX; the framework
+/// Restarting the display on every such event is hostile to UX; the framework
 /// recovers cleanly on the next event, so we treat it as recoverable.
 @visibleForTesting
 bool isRecoverableHardwareKeyboardError(FlutterErrorDetails details) {
@@ -116,7 +116,7 @@ bool isRecoverableHardwareKeyboardError(FlutterErrorDetails details) {
 }
 
 /// media_kit texture resize / platform teardown races during slide transitions
-/// should not restart the kiosk; the slide widget retries or shows an error.
+/// should not restart the display; the slide widget retries or shows an error.
 @visibleForTesting
 bool isRecoverableMediaKitFlutterError(FlutterErrorDetails details) {
   final stack = details.stack?.toString();

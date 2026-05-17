@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'blob_store.dart';
 
-/// Result of a kiosk-safe display-time [BlobStore.readBytes] (never throws).
+/// Result of a display-safe display-time [BlobStore.readBytes] (never throws).
 final class DisplayBlobBytes {
   const DisplayBlobBytes.absent() : bytes = null, readFailed = false;
 

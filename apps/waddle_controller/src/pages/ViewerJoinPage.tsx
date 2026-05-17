@@ -78,7 +78,7 @@ export function ViewerJoinPage() {
       });
       setChallengeCode('');
       setPendingConfirm(true);
-      adoptionLog('ui.join.request.success', 'viewer join awaiting kiosk code');
+      adoptionLog('ui.join.request.success', 'viewer join awaiting display code');
     } catch (e) {
       adoptionError('ui.join.request.failed', 'viewer join request failed', {
         error: String(e),
@@ -145,7 +145,7 @@ export function ViewerJoinPage() {
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         Pair this browser as a <strong>viewer</strong> client with read-focused permissions. Enter
-        the challenge code from the kiosk alert—the same adoption flow as Controller settings, but
+        the challenge code from the display alert—the same adoption flow as Controller settings, but
         the display issues a viewer role instead of operator or admin.
       </Typography>
       {error && (
@@ -191,7 +191,7 @@ export function ViewerJoinPage() {
               value={challengeCode}
               onChange={setChallengeCode}
               fullWidth
-              helperText="Must match the code on the kiosk alert (XXXX-XXXX)."
+              helperText="Must match the code on the display alert (XXXX-XXXX)."
               onEnter={() => {
                 if (!busy && isAdoptionChallengeCodeComplete(challengeCode)) {
                   void onConfirm();

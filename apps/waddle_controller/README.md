@@ -2,7 +2,7 @@
 
 Browser **operator UI** for one or more **`waddle_display`** instances. Pair each display with the **adoption API** (`POST /v1/adoption/request` + `POST /v1/adoption/confirm`), then send **`Authorization: Bearer <api_key>`** on protected `/v1/*` routes.
 
-A colocated **BFF** (`server/`, Hono + SQLite) can optionally gate access to the controller SPA and manage local operator accounts. All display REST traffic goes through **`/bff/v1/proxy/*`** so the BFF can reach kiosks with self-signed TLS; the browser never talks to the display origin directly.
+A colocated **BFF** (`server/`, Hono + SQLite) can optionally gate access to the controller SPA and manage local operator accounts. All display REST traffic goes through **`/bff/v1/proxy/*`** so the BFF can reach displays with self-signed TLS; the browser never talks to the display origin directly.
 
 ## Development
 
@@ -13,7 +13,7 @@ npm ci
 npm run dev
 ```
 
-`npm run dev` starts **Vite** (default **https://127.0.0.1:5173**) and the **BFF** (**https://127.0.0.1:5199**). Both use **self-signed TLS by default** (accept the browser warning once). Vite proxies **`/bff`** to the BFF, which forwards display API calls to each kiosk URL. Set **`WADDLE_CONTROLLER_TLS=0`** (and restart) to use plain HTTP everywhere in dev.
+`npm run dev` starts **Vite** (default **https://127.0.0.1:5173**) and the **BFF** (**https://127.0.0.1:5199**). Both use **self-signed TLS by default** (accept the browser warning once). Vite proxies **`/bff`** to the BFF, which forwards display API calls to each display URL. Set **`WADDLE_CONTROLLER_TLS=0`** (and restart) to use plain HTTP everywhere in dev.
 
 Run only the SPA or only the BFF:
 
@@ -57,15 +57,15 @@ When **`WADDLE_CONTROLLER_AUTH_ENABLED=1`**, adopted displays and encrypted API 
 ### Display pairing
 
 1. Add a display in the first-run dialog (base URL only), or open **Manage displays**.
-2. On **Displays**, enter the kiosk REST root, then open **Advanced** for **client identifier** and **role** if needed, and **Request adoption**. Confirm the **challenge code** shown on the kiosk alert.
+2. On **Displays**, enter the display REST root, then open **Advanced** for **client identifier** and **role** if needed, and **Request adoption**. Confirm the **challenge code** shown on the display alert.
 3. The browser sends **`Origin`** and **`Referer`** through the BFF proxy so the display can allow this origin on protected routes after pairing.
-4. Use the **display menu** (top-left) to switch kiosks; each display keeps its API key and adopted role in **`localStorage`** (and in **`user_displays`** when controller auth is on).
+4. Use the **display menu** (top-left) to switch displays; each display keeps its API key and adopted role in **`localStorage`** (and in **`user_displays`** when controller auth is on).
 
 If a display loses its session, use **Adopt display** in the app bar (or complete adoption again on **Displays**).
 
-## Join from a kiosk QR (`/join`)
+## Join from a display QR (`/join`)
 
-The display slide type **`controller_invite`** can open **`/join?api=<display REST>`** on this SPA. That page runs **viewer** adoption (challenge on the kiosk, then confirm). For other roles, use **Manage displays**.
+The display slide type **`controller_invite`** can open **`/join?api=<display REST>`** on this SPA. That page runs **viewer** adoption (challenge on the display, then confirm). For other roles, use **Manage displays**.
 
 Cross-origin calls require the controller origin to pass the display’s **adoption CORS** rules (LAN/private) during pairing; after confirm, the origin is stored on the display. You can also set **`WADDLE_DISPLAY_HTTP_CORS_ORIGINS`** on the display for static seeds.
 
@@ -116,4 +116,4 @@ After adoption, the display remembers your controller origin. Optionally set **`
 - Display backup JSON export/import includes adoption fields for adopted displays.
 - Controller BFF sessions use **httpOnly** cookies; only **password hashes** live in BFF SQLite.
 - Use a dedicated operator browser profile on shared machines.
-- Protect **admin** display API keys; admins can grant new keys without a kiosk challenge.
+- Protect **admin** display API keys; admins can grant new keys without a display challenge.

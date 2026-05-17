@@ -33,7 +33,7 @@ export function formatDisplayTimezoneLabel(id: string): string {
   }
 }
 
-/** All IANA ids supported by the host ICU build (matches typical kiosk `display.timezone` values). */
+/** All IANA ids supported by the host ICU build (matches typical display `display.timezone` values). */
 export function getAllDisplayTimezoneOptions(): DisplayTimezoneOption[] {
   if (!cachedAllOptions) {
     cachedAllOptions = ianaTimezoneIds().map((id) => ({

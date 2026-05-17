@@ -65,8 +65,8 @@ describe('displayProxy', () => {
     });
     upsertUserDisplay(t.db, t.config.sessionSecret, admin.id, {
       displayId: 'd_active',
-      label: 'Kiosk',
-      baseUrl: 'https://kiosk.test:8787',
+      label: 'Display',
+      baseUrl: 'https://display.test:8787',
       clientIdentifier: 'wc',
       adoptedRole: 'admin',
       apiKey: 'secret',
@@ -84,7 +84,7 @@ describe('displayProxy', () => {
     );
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.upstreamUrl).toBe('https://kiosk.test:8787');
+      expect(result.upstreamUrl).toBe('https://display.test:8787');
       expect(result.authorization).toMatch(/^Bearer /);
     }
   });

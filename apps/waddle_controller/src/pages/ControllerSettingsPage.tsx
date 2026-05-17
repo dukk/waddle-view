@@ -40,10 +40,10 @@ export function ControllerSettingsPage() {
     <Stack spacing={2}>
       <Box>
         <Typography variant="h6" fontWeight={600} gutterBottom>
-          Kiosks & operator access
+          Displays & operator access
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Pair and label kiosks in this browser, export or import your display list, and—when BFF
+          Pair and label displays in this browser, export or import your display list, and—when BFF
           authentication is enabled—turn on user management and edit operator accounts.
         </Typography>
       </Box>

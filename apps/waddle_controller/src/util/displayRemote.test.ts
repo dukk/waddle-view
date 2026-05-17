@@ -6,7 +6,7 @@ import { dismissActiveDisplayAlert, postDisplayNavigation } from '@/util/display
 const display: SavedDisplay = {
   id: 'd1',
   baseUrl: 'https://127.0.0.1:8787',
-  label: 'Kiosk',
+  label: 'Display',
 };
 
 describe('displayRemote', () => {

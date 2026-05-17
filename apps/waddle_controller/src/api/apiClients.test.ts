@@ -4,8 +4,8 @@ import type { SavedDisplay } from '@/storage/displays';
 
 const display: SavedDisplay = {
   id: 'd1',
-  baseUrl: 'https://kiosk.test',
-  label: 'Kiosk',
+  baseUrl: 'https://display.test',
+  label: 'Display',
 };
 
 vi.mock('@/api/client', () => ({

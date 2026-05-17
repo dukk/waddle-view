@@ -65,7 +65,7 @@ const _operatorPermissions = <String>{
   WaddlePermission.metaRead,
 };
 
-/// Read-only kiosk program / slide telemetry and related media rows (controller Programs view).
+/// Read-only display program / slide telemetry and related media rows (controller Programs view).
 const _viewerPermissions = <String>{
   WaddlePermission.telemetryRead,
 };

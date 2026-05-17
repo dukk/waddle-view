@@ -16,7 +16,7 @@ export function expectedControllerOrigin(): string | null {
     : null;
 }
 
-/** Challenge is shown on the kiosk only — not returned over HTTP. */
+/** Challenge is shown on the display only — not returned over HTTP. */
 export type AdoptionRequestResult = {
   expires_at_ms: number;
   identifier: string;
@@ -73,7 +73,7 @@ export async function requestAdoption(
     throw new Error(message);
   }
   const result = (await res.json()) as AdoptionRequestResult;
-  adoptionLog('api.request.success', 'challenge issued on kiosk', {
+  adoptionLog('api.request.success', 'challenge issued on display', {
     url: normalized,
     status: res.status,
     identifier: result.identifier,
@@ -133,7 +133,7 @@ export async function confirmAdoption(
   return result;
 }
 
-/** Admin bearer: instant API key for any role (no kiosk challenge). */
+/** Admin bearer: instant API key for any role (no display challenge). */
 export async function grantAdoption(
   baseUrl: string,
   adminApiKey: string,

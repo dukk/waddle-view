@@ -22,7 +22,7 @@ export async function postDisplayNavigation(
   }
 }
 
-/** Dismisses the top active kiosk alert (same as Enter on the display). */
+/** Dismisses the top active display alert (same as Enter on the display). */
 export async function dismissActiveDisplayAlert(active: SavedDisplay): Promise<string | null> {
   let items: DisplayAlertRow[];
   try {

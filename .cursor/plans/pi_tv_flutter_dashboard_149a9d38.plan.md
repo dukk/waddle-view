@@ -110,7 +110,7 @@ flowchart LR
   Build --> Run
 ```
 
-- **Runtime on Pi**: Flutter’s **GTK Linux desktop** embedder (full Raspberry Pi OS desktop or kiosk session), not `flutter-pi` unless you later want DRM/KMS without a desktop — you explicitly picked the desktop-style path.
+- **Runtime on Pi**: Flutter’s **GTK Linux desktop** embedder (full Raspberry Pi OS desktop or fullscreen display session), not `flutter-pi` unless you later want DRM/KMS without a desktop — you explicitly picked the desktop-style path.
 - **Builds**: Flutter does **not** offer a simple “build Linux ARM64 from Windows” path today. Practical options: (1) **`flutter build linux` on the Pi** (or another ARM64 Linux machine), (2) **ARM64 Linux container/CI** (e.g. Docker `--platform linux/arm64`), or (3) **self-hosted ARM64 runner**. The plan should document (1) as the default and mention (2) if builds on the Pi feel slow.
 
 ### Data plane (SQLite + engine loop + dashboard reads)
@@ -229,7 +229,7 @@ flowchart TB
 - **`SecretStore` port**: e.g. `Future<String?> read(String key)`, `Future<void> write(String key, String value)`, `Future<void> delete(String key)` — production Linux impl via **`flutter_secure_storage`** (typically **libsecret** / Secret Service). Tests use **`InMemorySecretStore`** only.
 - **`ProviderConfigResolver`**: given `providerId`, loads Drift row + required secret keys, returns **`ProviderRuntimeConfig`** (immutable DTO). **TDD** merge rules, missing-secret errors, and **per-field redaction** for any debug output.
 - **OAuth / token refresh**: providers update tokens through **`SecretStore.write`**; add tests that **rotation** replaces old values and that failures surface as **provider errors** without printing secrets.
-- **Pi / kiosk**: document that **D-Bus + secret service** (e.g. `gnome-keyring` / compatible service) must run for the default backend; if a headless image **lacks** Secret Service, document a **single explicit fallback** (e.g. encrypted file store with machine-local key — **weaker** model, README callout) rather than silent cleartext.
+- **Pi / display**: document that **D-Bus + secret service** (e.g. `gnome-keyring` / compatible service) must run for the default backend; if a headless image **lacks** Secret Service, document a **single explicit fallback** (e.g. encrypted file store with machine-local key — **weaker** model, README callout) rather than silent cleartext.
 
 ### 3. Data collection engine (TDD)
 
@@ -250,12 +250,12 @@ flowchart TB
   - Until real sources exist, **stub providers** can write **fixture rows** so the UI proves end-to-end **collect → SQLite → watch → render**; **seed ticker fixtures** the same way for ticker demos.
 - File layout sketch: `lib/theme/`, `lib/dashboard/models/`, `lib/dashboard/widgets/`, **`lib/ticker/`**, **`lib/alerts/`** (repository, selector, overlay widgets), `lib/data/providers/`, `lib/data/engine/`, `lib/persistence/` (or `lib/database/`), `lib/window/` — tests mirror under `test/`.
 
-### 5. Fullscreen / kiosk behavior (lightweight first pass, TDD)
+### 5. Fullscreen / display behavior (lightweight first pass, TDD)
 
 - Define **`WindowChromeController`** (interface) with methods like `initialize`, `applyStartupPolicy` (names as you prefer); provide **`NoOpWindowChromeController`** for tests and non-Linux dev runs.
 - **Tests first**: specify policy matrix (debug vs profile, Linux vs non-Linux) as unit tests on a small **`StartupWindowPolicy`** type (pure) plus a mocked controller verifying call order/count.
 - **Implementation**: Linux concrete class uses **`window_manager`** internally; composition root selects impl. Avoid calling `window_manager` from untested static helpers.
-- Document **fallback** without code: Pi OS kiosk autostart (see deployment step).
+- Document **fallback** without code: Pi OS display autostart (see deployment step).
 
 ### 6. Local REST API (Shelf, deployment API key, TDD)
 
@@ -297,7 +297,7 @@ Add **markdown** guides (root **`README.md`** links here prominently):
 
 | Doc | Audience | Contents |
 |-----|----------|----------|
-| **`docs/pi/using-the-image.md`** | End user / installer | What artifact to download (Tier 1 tarball vs Tier 2 `.img` when available); verifying checksum; **flashing** (Raspberry Pi Imager steps for `.img`, or **copying** tarball to Pi); **first boot** (network, user, display); where data lives (SQLite, media dir); enabling autostart; changing default passwords; TV/kiosk tips; troubleshooting (black screen, Secret Service, logs via `journalctl --user -u waddle-view`). |
+| **`docs/pi/using-the-image.md`** | End user / installer | What artifact to download (Tier 1 tarball vs Tier 2 `.img` when available); verifying checksum; **flashing** (Raspberry Pi Imager steps for `.img`, or **copying** tarball to Pi); **first boot** (network, user, display); where data lives (SQLite, media dir); enabling autostart; changing default passwords; TV/display tips; troubleshooting (black screen, Secret Service, logs via `journalctl --user -u waddle-view`). |
 | **`docs/pi/upgrade.md`** | Operator | **In-place upgrade** (stop service → unpack new release over `/opt/...` or versioned dir + symlink flip → restart; **preserve** app data and `SecretStore`); schema migrations on app start; **rollback**; when to **re-flash** OS image; version compatibility notes. |
 | **`docs/pi/development.md`** | Developer | Mono-repo layout; **`cd apps/waddle_view`**; dev on Windows vs Linux; **`flutter run -d windows`** / chrome vs **`linux`**; building on Pi; **tests + coverage** commands; CI expectations; link to **`AGENTS.md`** and **`.cursor/rules`**. |
 | **`docs/pi/api.md`** | Operator / integrator | Base URL, **API key**, **`curl`** examples, **alert create/dismiss** + **QR payload** conventions, ticker/providers, **error codes**, **LAN bind** warning, key **rotation**, optional OpenAPI later. |

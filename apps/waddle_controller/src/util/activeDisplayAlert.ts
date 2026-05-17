@@ -7,7 +7,7 @@ export type DisplayAlertRow = {
   dismissed_at_ms?: number | null;
 };
 
-/** Mirrors `ActiveAlertSelector` on the display kiosk. */
+/** Mirrors `ActiveAlertSelector` on the display. */
 export function pickActiveDisplayAlert(
   rows: DisplayAlertRow[],
   nowMs = Date.now(),

@@ -44,7 +44,7 @@ describe('normalizeBaseUrl', () => {
 
   it('trims trailing slashes', () => {
 
-    expect(normalizeBaseUrl(' https://kiosk.example/ ')).toBe('https://kiosk.example');
+    expect(normalizeBaseUrl(' https://display.example/ ')).toBe('https://display.example');
 
   });
 
@@ -74,11 +74,11 @@ describe('displays storage', () => {
 
   it('updateDisplayLabel changes label and rejects blank', () => {
     const d = addDisplay({ baseUrl: 'https://a.test/', label: 'A' });
-    const updated = updateDisplayLabel(d.id, 'Lab kiosk');
-    expect(updated?.label).toBe('Lab kiosk');
-    expect(loadDisplays()[0]?.label).toBe('Lab kiosk');
+    const updated = updateDisplayLabel(d.id, 'Lab display');
+    expect(updated?.label).toBe('Lab display');
+    expect(loadDisplays()[0]?.label).toBe('Lab display');
     expect(updateDisplayLabel(d.id, '   ')).toBeNull();
-    expect(loadDisplays()[0]?.label).toBe('Lab kiosk');
+    expect(loadDisplays()[0]?.label).toBe('Lab display');
   });
 
   it('updateDisplaySettings changes base URL and rejects invalid URL', () => {

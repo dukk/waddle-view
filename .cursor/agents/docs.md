@@ -21,10 +21,10 @@ You are the waddle-view documentation specialist. You run **after** implementati
 | Change type | Likely docs to update |
 | --- | --- |
 | Display app behavior, env, REST | [apps/waddle_display/README.md](../../apps/waddle_display/README.md), [apps/waddle_display/.env.example](../../apps/waddle_display/.env.example) |
-| New/changed `WADDLE_*` env vars | `.env.example`, [provider_access_token_env.dart](../../packages/waddle_shared/lib/config/provider_access_token_env.dart) comments if applicable |
+| New/changed `WADDLE_DISPLAY_*` env vars | [`.env.example`](../../apps/waddle_display/.env.example), [`display_env.dart`](../../apps/waddle_display/lib/config/display_env.dart) / [`provider_access_token_env.dart`](../../packages/waddle_shared/lib/config/provider_access_token_env.dart), commented `# Environment=` in [`deploy/linux-arm64/waddle-view.service`](../../deploy/linux-arm64/waddle-view.service) |
 | Controller UI / operator flows | [apps/waddle_controller/README.md](../../apps/waddle_controller/README.md) |
 | Schema / migrations / persistence | [AGENTS.md](../../AGENTS.md) commands section if workflow changes; migration notes in display README when operator-visible |
-| Deploy / Pi / Linux kiosk | [deploy/linux-arm64/README.md](../../deploy/linux-arm64/README.md), [deploy/pi-image/README.md](../../deploy/pi-image/README.md) |
+| Deploy / Pi / Linux display | [deploy/linux-arm64/README.md](../../deploy/linux-arm64/README.md), [deploy/pi-image/README.md](../../deploy/pi-image/README.md) |
 | Contributor commands, coverage, CI | [AGENTS.md](../../AGENTS.md), [.cursor/skills/run-waddle-checks/SKILL.md](../skills/run-waddle-checks/SKILL.md) |
 | New repeatable agent workflows | Relevant `.cursor/skills/<name>/SKILL.md` |
 

@@ -18,8 +18,8 @@ void main() {
 
   test('normalizeHttpOrigin adds default https port', () {
     expect(
-      normalizeHttpOrigin('https://kiosk.local'),
-      'https://kiosk.local:443',
+      normalizeHttpOrigin('https://display.local'),
+      'https://display.local:443',
     );
   });
 

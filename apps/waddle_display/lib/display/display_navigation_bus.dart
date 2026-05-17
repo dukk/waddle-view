@@ -2,7 +2,7 @@ import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
 
-/// Queues navigation requests from REST (same semantics as kiosk arrow keys).
+/// Queues navigation requests from REST (same semantics as display arrow keys).
 final class DisplayNavigationBus extends ChangeNotifier {
   final ListQueue<int> _screenDirs = ListQueue<int>();
   final ListQueue<int> _tickerDirs = ListQueue<int>();

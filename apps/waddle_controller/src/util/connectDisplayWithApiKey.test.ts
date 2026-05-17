@@ -9,7 +9,7 @@ vi.mock('@/storage/displays', () => ({
   normalizeBaseUrl: (u: string) => u.replace(/\/+$/, ''),
   addDisplay: vi.fn(() => ({
     id: 'display-1',
-    baseUrl: 'https://kiosk.test',
+    baseUrl: 'https://display.test',
     label: 'Lab',
   })),
 }));
@@ -38,12 +38,12 @@ describe('connectDisplayWithApiKey', () => {
     });
 
     const { display, session } = await connectDisplayWithApiKey({
-      baseUrl: 'https://kiosk.test/',
+      baseUrl: 'https://display.test/',
       apiKey: 'wd_manual_key',
       label: 'Lab',
     });
 
-    expect(fetchAdoptionSession).toHaveBeenCalledWith('https://kiosk.test', 'wd_manual_key');
+    expect(fetchAdoptionSession).toHaveBeenCalledWith('https://display.test', 'wd_manual_key');
     expect(display.id).toBe('display-1');
     expect(session.apiKey).toBe('wd_manual_key');
     expect(session.identifier).toBe('manual-client');
@@ -53,7 +53,7 @@ describe('connectDisplayWithApiKey', () => {
   it('rejects empty api key', async () => {
     await expect(
       connectDisplayWithApiKey({
-        baseUrl: 'https://kiosk.test',
+        baseUrl: 'https://display.test',
         apiKey: '   ',
       }),
     ).rejects.toThrow('API key is required');

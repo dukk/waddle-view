@@ -32,7 +32,7 @@ bool _isChallengeChar(String ch) {
   return (c >= 48 && c <= 57) || (c >= 65 && c <= 90);
 }
 
-/// Human-readable role label for kiosk adoption alerts.
+/// Human-readable role label for display adoption alerts.
 String adoptionRoleDisplayLabel(String role) {
   switch (role) {
     case kUserRoleAdmin:

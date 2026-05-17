@@ -57,7 +57,7 @@ export function AccountPage() {
       </Typography>
       <Typography variant="body2" color="text.secondary">
         Your adopted display session (client id, role, and permissions) and controller appearance.
-        Add or re-adopt kiosks on{' '}
+        Add or re-adopt displays on{' '}
         <RouterLink to="/controller-settings">Controller settings</RouterLink>; API keys stay in
         this browser only and are not included in display-list export.
       </Typography>

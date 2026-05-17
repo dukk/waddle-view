@@ -84,7 +84,7 @@ export function EditDisplayDialog({ display, onClose, onSave }: Props) {
           {error && <Alert severity="error">{error}</Alert>}
           {baseUrlChanged && (
             <Alert severity="warning">
-              Changing the base URL points this saved entry at a different kiosk. Your existing API
+              Changing the base URL points this saved entry at a different display. Your existing API
               key only works if it was issued for that display — verify the URL, or re-adopt if
               requests fail.
             </Alert>

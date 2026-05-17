@@ -6,7 +6,7 @@ import type { SavedDisplay } from '@/storage/displays';
 const display: SavedDisplay = {
   id: 'd_test',
   label: 'Test',
-  baseUrl: 'https://kiosk.example:8787',
+  baseUrl: 'https://display.example:8787',
 };
 
 describe('displayProxy', () => {
@@ -17,7 +17,7 @@ describe('displayProxy', () => {
 
   it('sets display url and id headers', () => {
     const headers = displayProxyHeaders({ display });
-    expect(headers.get(DISPLAY_URL_HEADER)).toBe('https://kiosk.example:8787');
+    expect(headers.get(DISPLAY_URL_HEADER)).toBe('https://display.example:8787');
     expect(headers.get(DISPLAY_ID_HEADER)).toBe('d_test');
   });
 

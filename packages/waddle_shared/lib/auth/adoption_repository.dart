@@ -179,7 +179,7 @@ class AdoptionRepository {
     return result;
   }
 
-  /// Admin-only: issue an API key without a kiosk challenge.
+  /// Admin-only: issue an API key without a display challenge.
   Future<AdoptionConfirmResult> grantInstant({
     required String identifier,
     required String role,

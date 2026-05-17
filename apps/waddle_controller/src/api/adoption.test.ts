@@ -37,7 +37,7 @@ describe('adoption API', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await requestAdoption('https://kiosk.test/', {
+    const result = await requestAdoption('https://display.test/', {
       identifier: 'ctrl-1',
       role: 'operator',
     });
@@ -54,7 +54,7 @@ describe('adoption API', () => {
     );
     const init = fetchMock.mock.calls[0]![1] as RequestInit;
     const headers = init.headers as Headers;
-    expect(headers.get(DISPLAY_URL_HEADER)).toBe('https://kiosk.test');
+    expect(headers.get(DISPLAY_URL_HEADER)).toBe('https://display.test');
     expect(JSON.parse(String(init.body))).toEqual({
       identifier: 'ctrl-1',
       role: 'operator',
@@ -77,7 +77,7 @@ describe('adoption API', () => {
       ),
     );
 
-    const result = await confirmAdoption('https://kiosk.test', {
+    const result = await confirmAdoption('https://display.test', {
       identifier: 'ctrl-1',
       challenge_code: 'ABCD1234',
     });
@@ -100,7 +100,7 @@ describe('adoption API', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    await grantAdoption('https://kiosk.test', 'admin-key', {
+    await grantAdoption('https://display.test', 'admin-key', {
       identifier: 'other',
       role: 'viewer',
     });
@@ -113,7 +113,7 @@ describe('adoption API', () => {
   it('throws on HTTP errors', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('denied', { status: 403 })));
     await expect(
-      requestAdoption('https://kiosk.test', { identifier: 'x', role: 'viewer' }),
+      requestAdoption('https://display.test', { identifier: 'x', role: 'viewer' }),
     ).rejects.toThrow('denied');
   });
 
@@ -137,7 +137,7 @@ describe('adoption API', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    const info = await fetchAdoptionSession('https://kiosk.test', 'wd_provided');
+    const info = await fetchAdoptionSession('https://display.test', 'wd_provided');
     expect(info.identifier).toBe('manual');
     const init = fetchMock.mock.calls[0]![1] as RequestInit;
     const headers = init.headers as Headers;
@@ -147,7 +147,7 @@ describe('adoption API', () => {
   it('sessionFromAdoption builds DisplaySession', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-05-16T12:00:00Z'));
-    const session = sessionFromAdoption('https://kiosk.test/', {
+    const session = sessionFromAdoption('https://display.test/', {
       api_key: 'wk_x',
       identifier: 'ctrl-1',
       role: 'operator',

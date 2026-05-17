@@ -80,7 +80,7 @@ export function LoginDialog() {
           {error && <Alert severity="error">{error}</Alert>}
           <Alert severity="info">
             <Typography variant="body2">
-              Enter the <strong>challenge code</strong> shown on the kiosk security alert
+              Enter the <strong>challenge code</strong> shown on the display security alert
               (format XXXX-XXXX).
             </Typography>
           </Alert>
@@ -110,7 +110,7 @@ export function LoginDialog() {
             onChange={setChallengeCode}
             fullWidth
             required
-            helperText="Must match the code on the kiosk alert."
+            helperText="Must match the code on the display alert."
             onEnter={() => {
               if (canSubmit) void submit();
             }}

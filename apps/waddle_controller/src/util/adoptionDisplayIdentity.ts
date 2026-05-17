@@ -1,6 +1,6 @@
 import { loadDisplays, normalizeBaseUrl } from '@/storage/displays';
 
-/** Saved displays targeting the same kiosk base URL (normalized). */
+/** Saved displays targeting the same display base URL (normalized). */
 export function displaysForBaseUrl(baseUrl: string) {
   const normalized = normalizeBaseUrl(baseUrl);
   return loadDisplays().filter((d) => normalizeBaseUrl(d.baseUrl) === normalized);
@@ -16,7 +16,7 @@ function usedIdentifiersForBaseUrl(baseUrl: string): Set<string> {
 }
 
 /**
- * Picks a client identifier that does not collide with other saved rows for this kiosk.
+ * Picks a client identifier that does not collide with other saved rows for this display.
  * Reuses [stem] for the first adoption on a URL; adds `-{role}` (and numeric suffixes) when needed.
  */
 export function suggestAdoptionIdentifier(

@@ -57,7 +57,7 @@ double _saturation(Color color) {
   return hsl.saturation;
 }
 
-/// Keeps kiosk/TV themes dark even when the Coolors source palette is mostly light.
+/// Keeps display/TV themes dark even when the Coolors source palette is mostly light.
 Color _tvSurfaceColor(Color color) {
   if (color.computeLuminance() <= 0.12) {
     return color;

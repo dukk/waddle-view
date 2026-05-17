@@ -28,7 +28,7 @@ describe('userDisplays', () => {
     const row = upsertUserDisplay(t.db, t.config.sessionSecret, admin.id, {
       displayId: 'd_abc',
       label: 'Lobby',
-      baseUrl: 'https://kiosk.local:8787',
+      baseUrl: 'https://display.local:8787',
       clientIdentifier: 'wc-host',
       adoptedRole: 'admin',
       apiKey: 'plain-api-key',

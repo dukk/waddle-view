@@ -6,7 +6,7 @@ import '../../../theme/display_theme.dart';
 import 'wifi_connection_uri.dart';
 import '../../dashboard_viewport_scope.dart';
 
-/// Primary monospaced font used for the guest Wi‑Fi value cells. The kiosk
+/// Primary monospaced font used for the guest Wi‑Fi value cells. The display
 /// runs on Windows where Consolas is always present; other platforms fall
 /// through [kGuestWifiValueMonospaceFontFamilyFallback].
 const String kGuestWifiValueMonospaceFontFamily = 'Consolas';
