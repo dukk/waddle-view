@@ -10,6 +10,8 @@ workspace:
   - apps/waddlectl
   - packages/waddle_shared
   - packages/waddle_data_providers
+  - packages/waddle_plugin_sdk
+  - packages/waddle_plugin_example
 
 dependency_overrides:
   xml: ^6.5.0

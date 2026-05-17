@@ -6,17 +6,24 @@ import 'sleeper.dart';
 /// Sequential round-robin over providers; never overlaps two collects.
 class DataCollectionEngine {
   DataCollectionEngine({
-    required List<IDataProvider> providers,
+    List<IDataProvider>? providers,
+    Future<List<IDataProvider>> Function()? resolveProviders,
     required DataWriteContext context,
     required this.sleeper,
     required this.idleBetweenCycles,
     this.onCycleComplete,
     CollectDiagnostics diagnostics = const NoOpCollectDiagnostics(),
-  })  : _providers = List.unmodifiable(providers),
+  })  : assert(
+          providers != null || resolveProviders != null,
+          'providers or resolveProviders required',
+        ),
+        _providers = providers == null ? null : List.unmodifiable(providers),
+        _resolveProviders = resolveProviders,
         _context = context,
         _diagnostics = diagnostics;
 
-  final List<IDataProvider> _providers;
+  final List<IDataProvider>? _providers;
+  final Future<List<IDataProvider>> Function()? _resolveProviders;
   final DataWriteContext _context;
   final Sleeper sleeper;
   final Duration idleBetweenCycles;
@@ -33,13 +40,15 @@ class DataCollectionEngine {
   /// Runs until [stop] is called.
   Future<void> start() async {
     _running = true;
+    final initial = await _currentProviders();
     _diagnostics.engine(
-      'start: ${_providers.length} provider(s), '
+      'start: ${initial.length} provider(s), '
       'idleBetweenCycles=${idleBetweenCycles.inSeconds}s',
     );
     while (_running) {
       _diagnostics.engine('cycle begin');
-      for (final p in _providers) {
+      final cycleProviders = await _currentProviders();
+      for (final p in cycleProviders) {
         if (!_running) {
           break;
         }
@@ -82,5 +91,12 @@ class DataCollectionEngine {
       _diagnostics.engine('stop requested');
     }
     _running = false;
+  }
+
+  Future<List<IDataProvider>> _currentProviders() async {
+    if (_resolveProviders != null) {
+      return _resolveProviders();
+    }
+    return _providers!;
   }
 }

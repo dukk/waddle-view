@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../clock.dart';
+import '../../extensions/overlay_widget_registry.dart';
 import 'package:waddle_shared/persistence/database.dart';
-import 'package:waddle_shared/persistence/display_overlay_bouncing_message_settings.dart';
-import 'package:waddle_shared/persistence/display_overlay_confetti_settings.dart';
+import 'package:waddle_shared/runtime/runtime_signal_repository.dart';
 import 'package:waddle_shared/persistence/display_overlay_repository.dart';
 import 'package:waddle_shared/persistence/display_overlay_schedule_row.dart';
 import 'package:waddle_shared/persistence/tables.dart';
-import 'birthday_confetti_overlay.dart';
-import 'bouncing_message_overlay.dart';
-import 'celebration_overlay_schedule.dart';
-import 'hearts_rain_overlay.dart';
 
 /// Shows a translucent festive layer above [child]. Priority alerts wrap outside.
 class CelebrationOverlayHost extends StatelessWidget {
@@ -20,19 +16,20 @@ class CelebrationOverlayHost extends StatelessWidget {
     required this.clock,
     required this.dashboardKv,
     required this.allowedOverlayIds,
+    required this.overlayRegistry,
+    required this.runtimeSignals,
     required this.child,
   });
 
   final AppDatabase db;
   final Clock clock;
   final Map<String, String> dashboardKv;
-
-  /// Union of overlay catalog ids from active curator configs; empty hides all.
   final Set<String> allowedOverlayIds;
-
+  final OverlayWidgetRegistry overlayRegistry;
+  final RuntimeSignalRepository runtimeSignals;
   final Widget child;
 
-  static List<String> _mergePhrases(List<DisplayOverlayScheduleRow> matches) {
+  static List<String> mergePhrases(List<DisplayOverlayScheduleRow> matches) {
     final seen = <String>{};
     final phrases = <String>[];
     for (final row in matches) {
@@ -58,53 +55,17 @@ class CelebrationOverlayHost extends StatelessWidget {
         if (globalOk)
           StreamBuilder<List<DisplayOverlayScheduleRow>>(
             stream: watchDisplayOverlaySchedules(db),
-            builder: (context, snapshot) {
-              final rows = (snapshot.data ?? const <DisplayOverlayScheduleRow>[])
+            builder: (context, overlaySnap) {
+              return StreamBuilder<void>(
+                stream: runtimeSignals.watchChanges(),
+                builder: (context, _) {
+                  return FutureBuilder<Map<String, dynamic>>(
+                    future: runtimeSignals.snapshot(),
+                    builder: (context, signalSnap) {
+              final rows = (overlaySnap.data ?? const <DisplayOverlayScheduleRow>[])
                   .where((r) => allowedOverlayIds.contains(r.id))
                   .toList();
               final now = clock.now();
-              final heartMatches =
-                  rows
-                      .where(
-                        (r) =>
-                            r.overlayType.trim() == kOverlayTypeHeartsRain &&
-                            matchesCelebrationOverlay(r, now),
-                      )
-                      .toList()
-                    ..sort((a, b) => a.id.compareTo(b.id));
-
-              final confettiMatches =
-                  rows
-                      .where(
-                        (r) =>
-                            r.overlayType.trim() ==
-                                kOverlayTypeBirthdayConfetti &&
-                            matchesCelebrationOverlay(r, now),
-                      )
-                      .toList()
-                    ..sort((a, b) => a.id.compareTo(b.id));
-
-              final bouncingMatches =
-                  rows
-                      .where(
-                        (r) =>
-                            r.overlayType.trim() ==
-                                kOverlayTypeBouncingMessage &&
-                            matchesCelebrationOverlay(r, now),
-                      )
-                      .toList()
-                    ..sort((a, b) => a.id.compareTo(b.id));
-
-              if (heartMatches.isEmpty &&
-                  confettiMatches.isEmpty &&
-                  bouncingMatches.isEmpty) {
-                return const SizedBox.shrink();
-              }
-
-              final heartPhrases = _mergePhrases(heartMatches);
-              final confettiPhrases = _mergePhrases(confettiMatches);
-              final bouncePhrases = _mergePhrases(bouncingMatches);
-
               final cs = Theme.of(context).colorScheme;
               final accents = <Color>[
                 cs.secondary,
@@ -112,49 +73,30 @@ class CelebrationOverlayHost extends StatelessWidget {
                 cs.primary,
                 cs.outline,
               ];
-
-              final confettiSettings = confettiMatches.isEmpty
-                  ? null
-                  : BirthdayConfettiScheduleSettings.parse(
-                      confettiMatches.first.configJson,
-                    );
-
-              final bouncingSettings = bouncingMatches.isEmpty
-                  ? null
-                  : BouncingMessageScheduleSettings.parse(
-                      bouncingMatches.first.configJson,
-                    );
-              final bouncingText = bouncePhrases.isEmpty
-                  ? kDefaultBouncingMessageOverlayPhrase
-                  : bouncePhrases.first;
-
+              final layers = overlayRegistry.buildLayers(
+                ctx: CelebrationOverlayBuildContext(
+                  theme: Theme.of(context),
+                  accents: accents,
+                  mergePhrases: mergePhrases,
+                ),
+                rows: rows,
+                now: now,
+                runtimeSignals: signalSnap.data ?? const {},
+              );
+              if (layers.isEmpty) {
+                return const SizedBox.shrink();
+              }
               return Positioned.fill(
                 child: IgnorePointer(
                   child: Stack(
                     fit: StackFit.expand,
-                    children: [
-                      if (confettiSettings != null)
-                        BirthdayConfettiOverlay(
-                          settings: confettiSettings,
-                          messages: confettiPhrases,
-                          fallbackAccents: accents,
-                        ),
-                      if (heartMatches.isNotEmpty)
-                        HeartsRainOverlay(
-                          messages: heartPhrases.isEmpty
-                              ? const ['']
-                              : heartPhrases,
-                          fallbackAccents: accents,
-                        ),
-                      if (bouncingSettings != null)
-                        BouncingMessageOverlay(
-                          settings: bouncingSettings,
-                          text: bouncingText,
-                          fallbackColor: cs.primary,
-                        ),
-                    ],
+                    children: layers,
                   ),
                 ),
+              );
+                    },
+                  );
+                },
               );
             },
           ),

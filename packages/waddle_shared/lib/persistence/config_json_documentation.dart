@@ -640,6 +640,7 @@ const List<String> kScreenLayoutWidgetTypes = [
   'stock_quotes',
   'data_health',
   'web_page',
+  kScreenTypePluginTemplate,
 ];
 
 /// [TickerTapes.tickerType] values for curation and seeds.
@@ -650,6 +651,7 @@ const List<String> kTickerSlotDefinitionTypes = [
   'quote',
   'stocks',
   'custom',
+  kTickerTypePlugin,
 ];
 
 /// Frozen layout-level docs for migration 20 (`layout_json_schema` / `example_layout_json`).
@@ -1307,6 +1309,37 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
         'blockPopups': true,
         'sandbox': ['allow-scripts', 'allow-same-origin', 'allow-forms'],
       },
+    }),
+  ),
+  kScreenTypePluginTemplate: ScreenConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'PluginTemplateScreenConfig',
+        description:
+            'JSON-driven slide for plugin sidecars (`state_json` or inline title/body/metrics).',
+        properties: {
+          'title': {'type': 'string'},
+          'body': {'type': 'string'},
+          'state_json': {'type': 'string'},
+          'metrics': {
+            'type': 'array',
+            'items': {
+              'type': 'object',
+              'properties': {
+                'label': {'type': 'string'},
+                'value': {'type': 'string'},
+              },
+            },
+          },
+        },
+      ),
+    ),
+    example: jsonEncode({
+      'title': 'Plugin status',
+      'body': 'All systems nominal',
+      'metrics': [
+        {'label': 'Motion', 'value': 'off'},
+      ],
     }),
   ),
 };

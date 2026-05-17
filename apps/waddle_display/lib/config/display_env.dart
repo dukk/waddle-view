@@ -19,3 +19,6 @@ const String kDisplayPexelsVideoMaxTexturePixelsEnv =
     'WADDLE_DISPLAY_PEXELS_VIDEO_MAX_TEXTURE_PIXELS';
 const String kDisplayPexelsVideoHwdecEnv = 'WADDLE_DISPLAY_PEXELS_VIDEO_HWDEC';
 const String kDisplayAppleClientIdEnv = 'WADDLE_DISPLAY_APPLE_CLIENT_ID';
+
+/// Directory scanned for drop-in plugin folders (`manifest.json` each).
+const String kDisplayPluginsDirEnv = 'WADDLE_DISPLAY_PLUGINS_DIR';

@@ -92,6 +92,21 @@ const String kDisplayTimezoneKvKey = 'display.timezone';
 /// Default [kDisplayTimezoneKvKey] on first seed (US Eastern, observes DST).
 const String kDefaultDisplayTimezoneIana = 'America/New_York';
 
+/// Plugin screen widget `type` ([Screens.screenType]).
+const String kScreenTypePluginTemplate = 'plugin_template';
+
+/// Plugin HTTP collector ([Integrations.providerType]).
+const String kProviderTypePluginHttp = 'plugin_http';
+
+/// Plugin ticker tape ([TickerTapes.tickerType]).
+const String kTickerTypePlugin = 'plugin';
+
+/// Celebration overlay renderer for plugin template layers.
+const String kOverlayRendererPluginTemplate = 'plugin_template';
+
+/// Celebration overlay renderer for plugin WebView layers.
+const String kOverlayRendererPluginWeb = 'plugin_web';
+
 /// Overlay type stored in `overlays.overlay_type` (semantic id, like `screen_type`).
 const String kOverlayTypeHeartsRain = 'hearts_rain';
 
@@ -741,3 +756,28 @@ class SecretStoreMeta extends Table {
 
 /// [SecretStoreMeta.id] for the single wrapped DEK row.
 const String kSecretStoreDekMetaId = 'dek_v1';
+
+/// Drop-in plugins discovered under the configured plugins directory.
+class InstalledPlugins extends Table {
+  TextColumn get id => text()();
+  TextColumn get version => text()();
+  TextColumn get manifestJson => text()();
+  TextColumn get installPath => text()();
+  BoolColumn get enabled => boolean().withDefault(const Constant(true))();
+  IntColumn get installedAtMs => integer()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Mutable runtime booleans/values for curator predicates and overlay triggers.
+class RuntimeSignals extends Table {
+  TextColumn get id => text()();
+  TextColumn get valueJson => text()();
+  IntColumn get updatedAtMs => integer()();
+  TextColumn get sourcePluginId => text().nullable()();
+  IntColumn get ttlSeconds => integer().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}

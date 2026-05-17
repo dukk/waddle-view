@@ -20,25 +20,16 @@ import 'dashboard_viewport_scope.dart';
 import 'display_navigation_bus.dart';
 import 'viewer_invite_runtime.dart';
 import 'slide_content_preload.dart';
-import 'screens/admin_setup/admin_setup_slide_widget.dart';
-import 'screens/calendar_month/calendar_month_slide_widget.dart';
-import 'screens/clock/analog_clock_slide_widget.dart';
-import 'screens/clock/digital_clock_slide_widget.dart';
 import 'screens/controller_invite/controller_invite_slide_widget.dart';
 import 'screens/data_health/data_health_slide_widget.dart';
-import 'screens/guest_wifi/guest_wifi_slide_widget.dart';
-import 'screens/joke/joke_slide_widget.dart';
-import 'screens/local_api/local_api_slide_widget.dart';
 import 'screens/photo/photo_collage_slide_widget.dart';
 import 'screens/photo/photo_slide_widget.dart';
 import 'screens/photo/video_slide_widget.dart';
 import 'screens/news/news_columns_slide_widget.dart';
 import 'screens/news/news_slide_widget.dart';
 import 'screens/news/news_stack_slide_widget.dart';
-import 'screens/stock_quotes/stock_quotes_slide_widget.dart';
-import 'screens/trivia/trivia_slide_widget.dart';
-import 'screens/weather/weather_slide_widget.dart';
 import 'screens/web_page/web_page_slide_widget.dart';
+import '../extensions/screen_widget_registry.dart';
 
 String screenShownDebugLogLine({
   required String reason,
@@ -1025,168 +1016,24 @@ class _SlideContent extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: widgets.map((w) {
-          switch (w.type) {
-            case 'static_text':
-              final text = w.config['text'] as String? ?? '';
-              return Padding(
-                padding: EdgeInsets.only(bottom: gap),
-                child: Text(
-                  text,
-                  style: theme.textTheme.headlineSmall,
-                  textAlign: TextAlign.center,
-                ),
-              );
-            case 'joke':
-              return JokeSlideWidget(
-                db: db,
-                blobs: blobs,
-                slide: slide,
-                spec: w,
-                theme: theme,
-              );
-            case 'trivia':
-              return TriviaSlideWidget(
-                db: db,
-                blobs: blobs,
-                slide: slide,
-                spec: w,
-                theme: theme,
-              );
-            case 'wifi':
-              return GuestWifiSlideWidget(spec: w, theme: theme);
-            case 'digital_clock':
-              return DigitalClockSlideWidget(spec: w, theme: theme);
-            case 'analog_clock':
-              return AnalogClockSlideWidget(spec: w, theme: theme);
-            case 'calendar_month':
-              return CalendarMonthSlideWidget(
-                db: db,
-                blobs: blobs,
-                spec: w,
-                theme: theme,
-              );
-            case 'photo_random':
-              final key = slide.randomChoices[w.choiceKey];
-              return Padding(
-                padding: EdgeInsets.only(bottom: gap),
-                child: Text(
-                  key != null ? 'Photo: $key' : 'No photo in pool',
-                  style: theme.textTheme.titleMedium,
-                  textAlign: TextAlign.center,
-                ),
-              );
-            case 'news':
-              return NewsSlideWidget(
-                db: db,
-                blobs: blobs,
-                slide: slide,
-                spec: w,
-                theme: theme,
-                onReportDesiredDwell: (ms) =>
-                    onReportDesiredDwell(slideIndex, ms),
-              );
-            case 'news_columns':
-              return NewsColumnsSlideWidget(
-                db: db,
-                blobs: blobs,
-                slide: slide,
-                spec: w,
-                theme: theme,
-                onReportDesiredDwell: (ms) =>
-                    onReportDesiredDwell(slideIndex, ms),
-              );
-            case 'news_stack':
-              return NewsStackSlideWidget(
-                db: db,
-                blobs: blobs,
-                slide: slide,
-                spec: w,
-                theme: theme,
-                onReportDesiredDwell: (ms) =>
-                    onReportDesiredDwell(slideIndex, ms),
-              );
-            case 'local_api':
-              return LocalApiSlideWidget(
-                baseUrl: localRestBaseUrl,
-                spec: w,
-                theme: theme,
-              );
-            case 'admin_setup':
-              return AdminSetupSlideWidget(
-                adminBaseUrl: adminBaseUrl,
-                instanceIdFile: instanceIdFile,
-                spec: w,
-                theme: theme,
-              );
-            case 'controller_invite':
-              return ControllerInviteSlideWidget(
-                displayApiBaseUrl: localRestBaseUrl,
-                viewerInviteRuntime: viewerInviteRuntime,
-                spec: w,
-                theme: theme,
-              );
-            case 'weather':
-              return WeatherSlideWidget(
-                db: db,
-                slide: slide,
-                spec: w,
-                theme: theme,
-              );
-            case 'photo':
-              return PhotoSlideWidget(
-                db: db,
-                blobs: blobs,
-                slide: slide,
-                spec: w,
-                theme: theme,
-              );
-            case 'photo_collage':
-              return PhotoCollageSlideWidget(
-                db: db,
-                blobs: blobs,
-                slide: slide,
-                spec: w,
-                theme: theme,
-              );
-            case 'video':
-              return VideoSlideWidget(
-                db: db,
-                blobs: blobs,
-                slide: slide,
-                spec: w,
-                theme: theme,
-                allowPlayback: allowVideoPlayback,
-              );
-            case 'stock_quotes':
-              return StockQuotesSlideWidget(
-                db: db,
-                slide: slide,
-                spec: w,
-                theme: theme,
-              );
-            case 'data_health':
-              return DataHealthSlideWidget(
-                db: db,
-                slide: slide,
-                spec: w,
-                theme: theme,
-              );
-            case 'web_page':
-              return WebPageSlideWidget(
-                slide: slide,
-                spec: w,
-                onReportDesiredDwell: (ms) =>
-                    onReportDesiredDwell(slideIndex, ms),
-              );
-            default:
-              return Padding(
-                padding: EdgeInsets.only(bottom: gap),
-                child: Text(
-                  'Unknown widget: ${w.type}',
-                  style: theme.textTheme.bodyMedium,
-                ),
-              );
-          }
+          const registry = ScreenWidgetRegistry();
+          return registry.buildInColumn(
+            ScreenWidgetBuildContext(
+              db: db,
+              blobs: blobs,
+              localRestBaseUrl: localRestBaseUrl,
+              adminBaseUrl: adminBaseUrl,
+              instanceIdFile: instanceIdFile,
+              viewerInviteRuntime: viewerInviteRuntime,
+              slide: slide,
+              theme: theme,
+              slideIndex: slideIndex,
+              allowVideoPlayback: allowVideoPlayback,
+              onReportDesiredDwell: onReportDesiredDwell,
+              gap: gap,
+            ),
+            w,
+          );
         }).toList(),
       ),
     );

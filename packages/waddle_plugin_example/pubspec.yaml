@@ -1,0 +1,16 @@
+name: waddle_plugin_example
+description: Reference Waddle View plugin (waddle_demo) demonstrating all capabilities.
+publish_to: none
+version: 1.0.0
+resolution: workspace
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  waddle_plugin_sdk:
+    path: ../waddle_plugin_sdk
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.0

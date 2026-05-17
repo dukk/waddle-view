@@ -32,6 +32,10 @@ import 'cors_policy.dart';
 import 'display_health.dart';
 import 'integration_secrets_rest_routes.dart';
 import 'operator_rest_routes.dart';
+import 'plugin_routes.dart';
+import 'runtime_signal_routes.dart';
+import '../plugins/plugin_loader.dart';
+import 'package:waddle_shared/runtime/runtime_signal_repository.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';
 import 'package:waddle_shared/auth/adoption_repository.dart';
 import 'package:waddle_shared/auth/cors_origin_repository.dart';
@@ -47,6 +51,9 @@ Handler buildProtectedApiRouter({
   required Future<void> Function() onConfigChanged,
   OperatorTelemetryHub? telemetryHub,
   DisplayNavigationBus? navigationBus,
+  RuntimeSignalRepository? runtimeSignals,
+  Future<void> Function()? onSignalsChanged,
+  PluginLoader? pluginLoader,
 }) {
   final r = Router();
   if (adoption != null) {
@@ -582,6 +589,17 @@ Handler buildProtectedApiRouter({
     );
   });
 
+  if (runtimeSignals != null) {
+    registerRuntimeSignalRoutes(
+      r,
+      signals: runtimeSignals,
+      onSignalsChanged: onSignalsChanged,
+    );
+  }
+  if (pluginLoader != null) {
+    registerPluginRoutes(r, loader: pluginLoader);
+  }
+
   registerOperatorRestRoutes(
     r,
     db: db,
@@ -951,6 +969,9 @@ Handler buildRootHandler({
   OperatorTelemetryHub? telemetryHub,
   DisplayNavigationBus? navigationBus,
   CorsPolicy? corsPolicy,
+  RuntimeSignalRepository? runtimeSignals,
+  Future<void> Function()? onSignalsChanged,
+  PluginLoader? pluginLoader,
 }) {
   final effectiveCorsPolicy = corsPolicy ?? CorsPolicy();
   final healthStartedAt = DateTime.now().toUtc();
@@ -988,6 +1009,9 @@ Handler buildRootHandler({
             onConfigChanged: onConfigChanged,
             telemetryHub: telemetryHub,
             navigationBus: navigationBus,
+            runtimeSignals: runtimeSignals,
+            onSignalsChanged: onSignalsChanged,
+            pluginLoader: pluginLoader,
           ),
         );
   } else {

@@ -5,9 +5,13 @@ import 'package:waddle_shared/curation/reject_filter_context.dart';
 
 import '../clock.dart';
 import '../debug/app_debug_log.dart';
+import '../extensions/ticker_source_registry.dart';
 import 'curator_read_port.dart';
 import 'ticker_item.dart';
 import 'ticker_news_candidate.dart';
+
+/// Bound at startup from [registerBuiltinTickerSources].
+TickerSourceRegistry? globalTickerSourceRegistry;
 
 /// Pure mapping from dashboard KV + clock to ordered marquee items.
 List<TickerItem> buildTickerItemsFromKv({
@@ -41,7 +45,7 @@ List<TickerItem> buildTickerItemsFromKv({
   addIfNew(
     TickerItem(
       kind: 'time',
-      body: _formatClock(nowLocal),
+      body: formatTickerClock(nowLocal),
       sourceId: 'clock',
     ),
   );
@@ -89,7 +93,7 @@ String composeTickerNewsBody({
   return '$feedName $title: $sum';
 }
 
-String _formatClock(DateTime now) {
+String formatTickerClock(DateTime now) {
   final h = now.hour.toString().padLeft(2, '0');
   final m = now.minute.toString().padLeft(2, '0');
   final s = now.second.toString().padLeft(2, '0');
@@ -98,7 +102,7 @@ String _formatClock(DateTime now) {
 
 /// Formats [Clock.now] for tests that do not need full curation.
 String formatTickerTime(Clock clock) =>
-    _formatClock(clock.now().toLocal());
+    formatTickerClock(clock.now().toLocal());
 
 const _defaultNewsScrollBudgetSeconds = 300;
 const _defaultNewsPixelsPerSecond = 80;
@@ -304,12 +308,27 @@ String? parseTickerTapeFallbackText(String rawConfigJson) {
   }
 }
 
-String _tapeSourceId(TickerTapeForCuration def) => 'ticker_tape:${def.id}';
+String tapeSourceId(TickerTapeForCuration def) => 'ticker_tape:${def.id}';
+
+String stockMarqueeBody(StockTickerRowForMarquee row) {
+  final label = row.symbol.trim().isEmpty ? row.symbolId : row.symbol.trim();
+  final price = row.currentPrice;
+  final pct = row.percentChange;
+  final priceText = price != null ? '\$${price.toStringAsFixed(2)}' : '\u2014';
+  final pctText = pct != null
+      ? '${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(2)}%'
+      : '\u2014';
+  final dn = row.displayName.trim();
+  if (dn.isNotEmpty) {
+    return '$label ($dn) $priceText $pctText';
+  }
+  return '$label $priceText $pctText';
+}
 
 List<TickerItem> _tickerItemsTimeOnly(DateTime nowLocal) {
   final item = TickerItem(
     kind: 'time',
-    body: _formatClock(nowLocal),
+    body: formatTickerClock(nowLocal),
     sourceId: 'clock',
   );
   final redacted = redactTickerBody(item.body);
@@ -389,7 +408,7 @@ List<TickerItem> _buildTickerItemsForMarqueeLegacy({
     seenBodies,
     TickerItem(
       kind: 'time',
-      body: _formatClock(nowLocal),
+      body: formatTickerClock(nowLocal),
       sourceId: 'clock',
     ),
   );
@@ -446,26 +465,10 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
   List<WeatherGovAlertTickerItem> weatherGovAlerts = const [],
   RejectFilterContext? rejectCtx,
 }) {
-  String stockMarqueeBody(StockTickerRowForMarquee row) {
-    final label = row.symbol.trim().isEmpty ? row.symbolId : row.symbol.trim();
-    final price = row.currentPrice;
-    final pct = row.percentChange;
-    final priceText =
-        price != null ? '\$${price.toStringAsFixed(2)}' : '\u2014';
-    final pctText = pct != null
-        ? '${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(2)}%'
-        : '\u2014';
-    final dn = row.displayName.trim();
-    if (dn.isNotEmpty) {
-      return '$label ($dn) $priceText $pctText';
-    }
-    return '$label $priceText $pctText';
-  }
-
   List<TickerItem> expandTime() => [
     TickerItem(
       kind: 'time',
-      body: _formatClock(nowLocal),
+      body: formatTickerClock(nowLocal),
       sourceId: 'clock',
     ),
   ];
@@ -480,7 +483,7 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
         TickerItem(
           kind: 'weather',
           body: primary,
-          sourceId: _tapeSourceId(def),
+          sourceId: tapeSourceId(def),
         ),
       );
     }
@@ -504,7 +507,7 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
       TickerItem(
         kind: 'news',
         body: rawNews,
-        sourceId: _tapeSourceId(def),
+        sourceId: tapeSourceId(def),
       ),
     ];
   }
@@ -518,7 +521,7 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
       TickerItem(
         kind: 'quote',
         body: rawQuote,
-        sourceId: _tapeSourceId(def),
+        sourceId: tapeSourceId(def),
       ),
     ];
   }
@@ -562,6 +565,22 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
   }
 
   List<TickerItem> itemsForDef(TickerTapeForCuration def) {
+    final expandCtx = TickerExpandContext(
+      kv: kv,
+      nowLocal: nowLocal,
+      rssItems: rssItems,
+      currentWeather: currentWeather,
+      stockRows: stockRows,
+      weatherGovAlerts: weatherGovAlerts,
+      rejectCtx: rejectCtx,
+    );
+    final reg = globalTickerSourceRegistry;
+    if (reg != null) {
+      final custom = reg.lookup(def.tickerType);
+      if (custom != null) {
+        return custom(def, expandCtx);
+      }
+    }
     switch (def.tickerType.trim().toLowerCase()) {
       case 'time':
         return expandTime();

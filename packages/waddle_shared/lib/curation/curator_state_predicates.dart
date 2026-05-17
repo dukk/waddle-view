@@ -38,32 +38,32 @@ const List<CuratorStatePredicateCatalogEntry> kCuratorStatePredicateCatalog = [
   CuratorStatePredicateCatalogEntry(
     id: kCuratorPredicateInternetDown,
     label: 'Internet unreachable',
-    description: 'Reserved for connectivity probe (not wired in v1).',
-    implemented: false,
+    description: 'From runtime_signals (connectivity.internet_reachable).',
+    implemented: true,
   ),
   CuratorStatePredicateCatalogEntry(
     id: kCuratorPredicateServerDown,
     label: 'Display server unreachable',
-    description: 'Reserved for health probe (not wired in v1).',
-    implemented: false,
+    description: 'From runtime_signals (connectivity.server_reachable).',
+    implemented: true,
   ),
   CuratorStatePredicateCatalogEntry(
     id: kCuratorPredicateMotionDetected,
     label: 'Motion detected',
-    description: 'Reserved for room motion sensor (not wired in v1).',
-    implemented: false,
+    description: 'From runtime_signals (room.motion_detected).',
+    implemented: true,
   ),
   CuratorStatePredicateCatalogEntry(
     id: kCuratorPredicateMotionAbsent,
     label: 'No motion',
-    description: 'Reserved for room motion sensor (not wired in v1).',
-    implemented: false,
+    description: 'Inverse of room.motion_detected runtime signal.',
+    implemented: true,
   ),
   CuratorStatePredicateCatalogEntry(
     id: kCuratorPredicateBeaconPresent,
     label: 'Beacon detected',
-    description: 'Reserved for Bluetooth beacon (not wired in v1).',
-    implemented: false,
+    description: 'From runtime_signals (beacon.present).',
+    implemented: true,
   ),
 ];
 

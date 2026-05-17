@@ -13,6 +13,7 @@ import { ScreensPage } from '@/pages/ScreensPage';
 import { TickerPage } from '@/pages/TickerPage';
 import { OverlaysPage } from '@/pages/OverlaysPage';
 import { IntegrationsPage } from '@/pages/IntegrationsPage';
+import { PluginsPage } from '@/pages/PluginsPage';
 import { InterestsPage } from '@/pages/InterestsPage';
 import { DataPage } from '@/pages/DataPage';
 import { ActivityPage } from '@/pages/ActivityPage';
@@ -52,6 +53,7 @@ function MainAppRoutes() {
               <Route path="ticker-tapes" element={<TickerPage />} />
               <Route path="overlays" element={<OverlaysPage />} />
               <Route path="integrations" element={<IntegrationsPage />} />
+              <Route path="plugins" element={<PluginsPage />} />
               <Route path="interests" element={<InterestsPage />} />
               <Route path="data" element={<DataPage />} />
               <Route path="activity" element={<ActivityPage />} />

@@ -46,13 +46,15 @@ part 'database.g.dart';
     CorsAllowedOrigins,
     IntegrationSecrets,
     SecretStoreMeta,
+    InstalledPlugins,
+    RuntimeSignals,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -78,6 +80,13 @@ ORDER BY priority DESC, created_at DESC;
       }
       if (from == 2 && to >= 3) {
         await _migrateV2ToV3IntegrationSecrets(this, m);
+        if (to == 3) {
+          return;
+        }
+        from = 3;
+      }
+      if (from == 3 && to >= 4) {
+        await _migrateV3ToV4PluginRuntime(this, m);
         return;
       }
       throw UnsupportedError(
@@ -125,6 +134,12 @@ Future<void> _migrateV2ToV3IntegrationSecrets(
       [id],
     );
   }
+}
+
+/// Adds plugin install registry and runtime signal KV store (schema 3 → 4).
+Future<void> _migrateV3ToV4PluginRuntime(AppDatabase db, Migrator m) async {
+  await m.createTable(db.installedPlugins);
+  await m.createTable(db.runtimeSignals);
 }
 
 /// Renames legacy interest catalog tables to `interests_*` (schema 1 → 2).

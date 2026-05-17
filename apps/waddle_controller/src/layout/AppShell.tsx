@@ -35,6 +35,7 @@ import { ScreenCarouselIcon } from '@/icons/ScreenCarouselIcon';
 import { TickerTapeIcon } from '@/icons/TickerTapeIcon';
 import LayersIcon from '@mui/icons-material/Layers';
 import StorageIcon from '@mui/icons-material/Storage';
+import ExtensionIcon from '@mui/icons-material/Extension';
 import DatasetIcon from '@mui/icons-material/Dataset';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import SettingsRemoteIcon from '@mui/icons-material/SettingsRemote';
@@ -80,6 +81,7 @@ const configNav: NavItem[] = [
   { to: '/ticker-tapes', label: 'Ticker Tapes', icon: <TickerTapeIcon /> },
   { to: '/overlays', label: 'Overlays', icon: <LayersIcon /> },
   { to: '/integrations', label: 'Integrations', icon: <StorageIcon /> },
+  { to: '/plugins', label: 'Plugins', icon: <ExtensionIcon /> },
   { to: '/interests', label: 'Interests', icon: <FavoriteBorderIcon /> },
   { to: '/data', label: 'Data', icon: <DatasetIcon /> },
 ];

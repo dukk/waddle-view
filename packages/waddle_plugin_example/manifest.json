@@ -1,0 +1,50 @@
+{
+  "id": "waddle_demo",
+  "version": "1.0.0",
+  "min_display_version": "1.0.0",
+  "capabilities": [
+    "integration",
+    "runtime_signal",
+    "ticker_source",
+    "screen",
+    "overlay"
+  ],
+  "integrations": [
+    {
+      "id": "plugin_waddle_demo",
+      "provider_type": "plugin_http"
+    }
+  ],
+  "screen_types": [
+    {
+      "type": "plugin_template",
+      "screen_id": "demo_plugin_status",
+      "state_url": "/screen/state"
+    }
+  ],
+  "ticker_sources": [
+    {
+      "type": "plugin",
+      "endpoint": "/ticker/items"
+    }
+  ],
+  "overlays": [
+    {
+      "overlay_type": "waddle_demo_glow",
+      "layer": "celebration",
+      "renderer": "plugin_template",
+      "config_schema": "schemas/overlay.json"
+    }
+  ],
+  "runtime_signals": [
+    {
+      "predicate_id": "room.motion_detected",
+      "source": "sidecar"
+    }
+  ],
+  "sidecar": {
+    "executable": "bin/sidecar.dart",
+    "health_url": "http://127.0.0.1:9876/health",
+    "port": 9876
+  }
+}

@@ -28,20 +28,25 @@ import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/blob/filesystem_blob_store.dart';
 import 'package:waddle_shared/collect/data_collection_engine.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
-import 'package:waddle_shared/collect/stub_data_provider.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/curation/reject_rescan.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/runtime/runtime_signal_repository.dart';
 import 'package:waddle_shared/secrets/db_encrypted_secret_store.dart';
 import 'package:waddle_shared/secrets/platform/platform_dek_protector.dart';
 import 'package:waddle_shared/seed/initial_seed.dart';
-import 'package:waddle_data_providers/waddle_data_providers.dart';
+import 'extensions/builtin_data_providers.dart';
+import 'extensions/overlay_widget_registry.dart';
+import 'extensions/register_builtin_ticker_sources.dart';
+import 'extensions/ticker_source_registry.dart';
+import 'plugins/plugin_loader.dart';
 import 'curator/active_curator_service.dart';
 import 'curator/curator_membership_filter.dart';
 import 'curator/dashboard_curator.dart';
 import 'curator/default_dashboard_curator.dart';
 import 'curator/drift_curator_read_port.dart';
 import 'curator/gated_dashboard_curator.dart';
+import 'curator/ticker_curation.dart';
 import 'debug/app_debug_log.dart';
 import 'debug/debug_console_disk_logger.dart';
 import 'debug/display_collect_diagnostics.dart';
@@ -145,8 +150,11 @@ Future<void> _waddleBootstrap() async {
     final tickerCurated = MemoryTickerCuratedRepository();
     final marqueeCycleGate = MarqueeCycleGate();
     final curatorMembership = CuratorMembershipFilter();
-    final bootstrapSelection =
-        await ActiveCuratorService(db: db).resolveAt(DateTime.now());
+    final runtimeSignals = RuntimeSignalRepository(db);
+    final bootstrapSelection = await ActiveCuratorService(
+      db: db,
+      runtimeSignals: runtimeSignals,
+    ).resolveAt(DateTime.now());
     curatorMembership.tickerTapeIds =
         bootstrapSelection.primary.configuration.tickerMemberIds;
     final dashboardCuratorInner = DefaultDashboardCurator(
@@ -161,23 +169,21 @@ Future<void> _waddleBootstrap() async {
       inner: dashboardCuratorInner,
       marqueeGate: marqueeCycleGate,
     );
+    final providerRegistry = buildBuiltinDataProviderRegistry();
+    final pluginLoader = PluginLoader(
+      db: db,
+      providerRegistry: providerRegistry,
+    );
+    final pluginsDir = (envMap[kDisplayPluginsDirEnv] ?? '').trim();
+    if (pluginsDir.isNotEmpty) {
+      await pluginLoader.scanDirectory(pluginsDir);
+    }
+    final tickerRegistry = TickerSourceRegistry();
+    registerBuiltinTickerSources(tickerRegistry);
+    globalTickerSourceRegistry = tickerRegistry;
     final engine = DataCollectionEngine(
-      providers: [
-        const StubDataProvider(),
-        RssNewsDataProvider(),
-        JokeDataProvider(),
-        TriviaDataProvider(),
-        OpenTdbTriviaDataProvider(),
-        WeatherDataProvider(),
-        NwsWeatherGovAlertsDataProvider(),
-        PexelsDataProvider(),
-        GoogleCalendarDataProvider(),
-        OutlookCalendarDataProvider(),
-        OneDriveMediaDataProvider(),
-        FlickrMediaDataProvider(),
-        BingImageOfDayDataProvider(),
-        StockQuoteDataProvider(),
-      ],
+      resolveProviders: () =>
+          providerRegistry.providersForEnabledIntegrations(db),
       context: ctx,
       sleeper: SystemSleeper(),
       idleBetweenCycles: kDebugMode
@@ -189,6 +195,7 @@ Future<void> _waddleBootstrap() async {
     unawaited(engine.start());
 
     final alerts = DriftAlertRepository(db);
+    final overlayRegistry = OverlayWidgetRegistry();
     final httpConfig = await resolveHttpBindConfig(
       environment: envMap,
       tlsCertDir: p.join(support.path, 'tls'),
@@ -206,6 +213,9 @@ Future<void> _waddleBootstrap() async {
       env: envMap,
       telemetryHub: telemetryHub,
       navigationBus: navigationBus,
+      runtimeSignals: runtimeSignals,
+      onSignalsChanged: dashboardCurator.refresh,
+      pluginLoader: pluginLoader,
     );
     final server = await LocalRestServer.bind(
       handler: handler,
@@ -234,6 +244,8 @@ Future<void> _waddleBootstrap() async {
         db: db,
         blobs: blobs,
         alerts: alerts,
+        runtimeSignals: runtimeSignals,
+        overlayRegistry: overlayRegistry,
         server: server,
         instanceIdFile: instanceIdFile,
         engine: engine,
@@ -262,6 +274,8 @@ class WaddleRoot extends StatefulWidget {
     required this.db,
     required this.blobs,
     required this.alerts,
+    required this.runtimeSignals,
+    required this.overlayRegistry,
     required this.server,
     required this.instanceIdFile,
     required this.engine,
@@ -277,6 +291,8 @@ class WaddleRoot extends StatefulWidget {
   final AppDatabase db;
   final BlobStore blobs;
   final DriftAlertRepository alerts;
+  final RuntimeSignalRepository runtimeSignals;
+  final OverlayWidgetRegistry overlayRegistry;
   final LocalRestServer server;
   final File instanceIdFile;
   final DataCollectionEngine engine;
@@ -317,6 +333,8 @@ class _WaddleRootState extends State<WaddleRoot> {
             db: widget.db,
             blobs: widget.blobs,
             alerts: widget.alerts,
+            runtimeSignals: widget.runtimeSignals,
+            overlayRegistry: widget.overlayRegistry,
             server: widget.server,
             instanceIdFile: widget.instanceIdFile,
             engine: widget.engine,
@@ -341,6 +359,8 @@ class WaddleHome extends StatefulWidget {
     required this.db,
     required this.blobs,
     required this.alerts,
+    required this.runtimeSignals,
+    required this.overlayRegistry,
     required this.server,
     required this.instanceIdFile,
     required this.engine,
@@ -357,6 +377,8 @@ class WaddleHome extends StatefulWidget {
   final AppDatabase db;
   final BlobStore blobs;
   final AlertRepository alerts;
+  final RuntimeSignalRepository runtimeSignals;
+  final OverlayWidgetRegistry overlayRegistry;
   final LocalRestServer server;
   final File instanceIdFile;
   final DataCollectionEngine engine;
@@ -376,17 +398,23 @@ class WaddleHome extends StatefulWidget {
 class _WaddleHomeState extends State<WaddleHome> {
   final TickerMarqueeNavigationController _tickerNavigationController =
       TickerMarqueeNavigationController();
-  late final ActiveCuratorService _curatorService =
-      ActiveCuratorService(db: widget.db);
+  late final ActiveCuratorService _curatorService = ActiveCuratorService(
+    db: widget.db,
+    runtimeSignals: widget.runtimeSignals,
+  );
   Set<String> _allowedOverlayIds = const {};
   String? _curatorThemeOverride;
   StreamSubscription<List<ApiClient>>? _apiClientsSub;
+  StreamSubscription<void>? _runtimeSignalsSub;
 
   @override
   void initState() {
     super.initState();
     unawaited(_refreshCuratorSelection());
     _apiClientsSub = widget.db.select(widget.db.apiClients).watch().listen((_) {
+      unawaited(_refreshCuratorSelection());
+    });
+    _runtimeSignalsSub = widget.runtimeSignals.watchChanges().listen((_) {
       unawaited(_refreshCuratorSelection());
     });
   }
@@ -412,6 +440,7 @@ class _WaddleHomeState extends State<WaddleHome> {
   @override
   void dispose() {
     unawaited(_apiClientsSub?.cancel());
+    unawaited(_runtimeSignalsSub?.cancel());
     if (kDebugMode) {
       unawaited(DebugConsoleDiskLogger.close());
     }
@@ -479,6 +508,8 @@ class _WaddleHomeState extends State<WaddleHome> {
                 clock: const SystemClock(),
                 dashboardKv: widget.dashboardKv,
                 allowedOverlayIds: _allowedOverlayIds,
+                overlayRegistry: widget.overlayRegistry,
+                runtimeSignals: widget.runtimeSignals,
                 child: DashboardDataBoundShell(
                   overscan: const TvOverscanInsets(),
                   viewportConfig: const DisplayViewportConfig(),
