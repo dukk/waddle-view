@@ -19,9 +19,6 @@ import {
   useTheme,
   Menu,
   MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
   Snackbar,
   Alert,
   Dialog,
@@ -47,32 +44,21 @@ import LoginIcon from '@mui/icons-material/Login';
 import LogoutIcon from '@mui/icons-material/Logout';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import GroupIcon from '@mui/icons-material/Group';
 import { useAuth } from '@/context/AuthContext';
+import { useControllerAuth } from '@/context/ControllerAuthContext';
 import { useDisplay } from '@/context/DisplayContext';
 import { apiFetch, ApiError } from '@/api/client';
 import TheatersIcon from '@mui/icons-material/Theaters';
-import type { AuthUser } from '@/storage/sessions';
 import { PREVIEWABLE_CONTROLLER_ROLES } from '@/auth/rolePermissions';
+import { DisplaySelector } from '@/components/DisplaySelector';
 
 const drawerWidth = 260;
 
-function userInitials(user: AuthUser): string {
-  const name = user.display_name?.trim();
-  if (name) {
-    const parts = name.split(/\s+/).filter(Boolean);
-    if (parts.length >= 2) {
-      const a = parts[0][0];
-      const b = parts[parts.length - 1][0];
-      if (a && b) return `${a}${b}`.toUpperCase();
-    }
-    if (parts.length === 1) {
-      const p = parts[0];
-      return (p.length >= 2 ? p.slice(0, 2) : p[0] ?? '?').toUpperCase();
-    }
-  }
-  const u = user.username?.trim() ?? '';
-  if (u.length >= 2) return u.slice(0, 2).toUpperCase();
-  return (u[0] ?? '?').toUpperCase();
+function clientInitials(identifier: string): string {
+  const id = identifier.trim();
+  if (id.length >= 2) return id.slice(0, 2).toUpperCase();
+  return (id[0] ?? '?').toUpperCase();
 }
 
 const nav = [
@@ -91,9 +77,8 @@ export function AppShell({ children }: { children?: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
   const location = useLocation();
-  const { displays, active, setActiveId } = useDisplay();
+  const { active } = useDisplay();
   const {
-    bootstrapWarning,
     needsLogin,
     session,
     logout,
@@ -105,6 +90,15 @@ export function AppShell({ children }: { children?: ReactNode }) {
     hasPermission,
     isProgramsOnlyControllerUser,
   } = useAuth();
+  const {
+    status: bffStatus,
+    logout: controllerLogout,
+    isControllerAdmin,
+  } = useControllerAuth();
+
+  const signedIn = Boolean(session && !needsLogin);
+  const showUserMenu = Boolean(bffStatus?.authEnabled);
+  const showUsersNav = Boolean(bffStatus?.userManagementEnabled && isControllerAdmin);
 
   const drawerNavItems = isProgramsOnlyControllerUser
     ? nav.filter(
@@ -118,6 +112,12 @@ export function AppShell({ children }: { children?: ReactNode }) {
   const [rolePreviewOpen, setRolePreviewOpen] = useState(false);
   const [rolePreviewChoice, setRolePreviewChoice] =
     useState<(typeof PREVIEWABLE_CONTROLLER_ROLES)[number]>('operator');
+
+  useEffect(() => {
+    if (!signedIn) {
+      setMobileOpen(false);
+    }
+  }, [signedIn]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -167,99 +167,104 @@ export function AppShell({ children }: { children?: ReactNode }) {
           Waddle Controller
         </Typography>
       </Toolbar>
-      <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
-      {displays.length > 1 && (
-        <Box sx={{ px: 2, py: 1.5 }}>
-          <FormControl fullWidth size="small" variant="outlined">
-            <InputLabel id="display-select" sx={{ color: 'grey.400' }}>
-              Display
-            </InputLabel>
-            <Select
-              labelId="display-select"
-              label="Display"
-              value={active?.id ?? ''}
-              onChange={(ev) => setActiveId(ev.target.value as string)}
-              sx={{ color: 'common.white', '.MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.3)' } }}
-            >
-              {displays.map((d) => (
-                <MenuItem key={d.id} value={d.id}>
-                  {d.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
-      )}
-      <List sx={{ flex: 1, px: 1 }}>
-        {drawerNavItems.map((item) => {
-          const selected = location.pathname.startsWith(item.to);
-          return (
-            <ListItemButton
-              key={item.to}
-              component={RouterLink}
-              to={item.to}
-              selected={selected}
-              onClick={() => setMobileOpen(false)}
-              sx={{
-                borderRadius: 2,
-                my: 0.5,
-                '&.Mui-selected': { bgcolor: 'primary.main', color: 'primary.contrastText' },
-              }}
-            >
-              <ListItemIcon sx={{ color: selected ? 'inherit' : 'grey.400', minWidth: 40 }}>
-                {item.icon}
-              </ListItemIcon>
-              <ListItemText primary={item.label} />
-            </ListItemButton>
-          );
-        })}
-      </List>
-      <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
-      {!isProgramsOnlyControllerUser && (
-        <List sx={{ px: 1, py: 1 }}>
-          <ListItemButton
-            component={RouterLink}
-            to="/activity"
-            selected={location.pathname.startsWith('/activity')}
-            onClick={() => setMobileOpen(false)}
-            sx={{
-              borderRadius: 2,
-              my: 0.5,
-              '&.Mui-selected': { bgcolor: 'primary.main', color: 'primary.contrastText' },
-            }}
-          >
-            <ListItemIcon
-              sx={{
-                color: location.pathname.startsWith('/activity') ? 'inherit' : 'grey.400',
-                minWidth: 40,
-              }}
-            >
-              <ListAltIcon />
-            </ListItemIcon>
-            <ListItemText primary="Activity Log" />
-          </ListItemButton>
-          <ListItemButton
-            component={RouterLink}
-            to="/settings"
-            selected={location.pathname.startsWith('/settings')}
-            onClick={() => setMobileOpen(false)}
-            sx={{
-              borderRadius: 2,
-              my: 0.5,
-              '&.Mui-selected': { bgcolor: 'primary.main', color: 'primary.contrastText' },
-            }}
-          >
-            <ListItemIcon
-              sx={{
-                color: location.pathname.startsWith('/settings') ? 'inherit' : 'grey.400',
-                minWidth: 40,
-              }}
-            >
-              <SettingsIcon />
-            </ListItemIcon>
-            <ListItemText primary="Settings" />
-          </ListItemButton>
-        </List>
+      {signedIn && (
+        <>
+          <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
+          <List sx={{ flex: 1, px: 1 }}>
+            {drawerNavItems.map((item) => {
+              const selected = location.pathname.startsWith(item.to);
+              return (
+                <ListItemButton
+                  key={item.to}
+                  component={RouterLink}
+                  to={item.to}
+                  selected={selected}
+                  onClick={() => setMobileOpen(false)}
+                  sx={{
+                    borderRadius: 2,
+                    my: 0.5,
+                    '&.Mui-selected': { bgcolor: 'primary.main', color: 'primary.contrastText' },
+                  }}
+                >
+                  <ListItemIcon sx={{ color: selected ? 'inherit' : 'grey.400', minWidth: 40 }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText primary={item.label} />
+                </ListItemButton>
+              );
+            })}
+          </List>
+          <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
+          {!isProgramsOnlyControllerUser && (
+            <List sx={{ px: 1, py: 1 }}>
+              <ListItemButton
+                component={RouterLink}
+                to="/activity"
+                selected={location.pathname.startsWith('/activity')}
+                onClick={() => setMobileOpen(false)}
+                sx={{
+                  borderRadius: 2,
+                  my: 0.5,
+                  '&.Mui-selected': { bgcolor: 'primary.main', color: 'primary.contrastText' },
+                }}
+              >
+                <ListItemIcon
+                  sx={{
+                    color: location.pathname.startsWith('/activity') ? 'inherit' : 'grey.400',
+                    minWidth: 40,
+                  }}
+                >
+                  <ListAltIcon />
+                </ListItemIcon>
+                <ListItemText primary="Activity Log" />
+              </ListItemButton>
+              <ListItemButton
+                component={RouterLink}
+                to="/settings"
+                selected={location.pathname.startsWith('/settings')}
+                onClick={() => setMobileOpen(false)}
+                sx={{
+                  borderRadius: 2,
+                  my: 0.5,
+                  '&.Mui-selected': { bgcolor: 'primary.main', color: 'primary.contrastText' },
+                }}
+              >
+                <ListItemIcon
+                  sx={{
+                    color: location.pathname.startsWith('/settings') ? 'inherit' : 'grey.400',
+                    minWidth: 40,
+                  }}
+                >
+                  <SettingsIcon />
+                </ListItemIcon>
+                <ListItemText primary="Settings" />
+              </ListItemButton>
+              {showUsersNav && (
+                <ListItemButton
+                  component={RouterLink}
+                  to="/users"
+                  selected={location.pathname.startsWith('/users')}
+                  onClick={() => setMobileOpen(false)}
+                  sx={{
+                    borderRadius: 2,
+                    my: 0.5,
+                    '&.Mui-selected': { bgcolor: 'primary.main', color: 'primary.contrastText' },
+                  }}
+                >
+                  <ListItemIcon
+                    sx={{
+                      color: location.pathname.startsWith('/users') ? 'inherit' : 'grey.400',
+                      minWidth: 40,
+                    }}
+                  >
+                    <GroupIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="Users" />
+                </ListItemButton>
+              )}
+            </List>
+          )}
+        </>
       )}
     </Box>
   );
@@ -274,19 +279,24 @@ export function AppShell({ children }: { children?: ReactNode }) {
           color: 'text.primary',
           borderBottom: 1,
           borderColor: 'divider',
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-          ml: { md: `${drawerWidth}px` },
+          width: { md: signedIn ? `calc(100% - ${drawerWidth}px)` : '100%' },
+          ml: { md: signedIn ? `${drawerWidth}px` : 0 },
         }}
       >
         <Toolbar>
-          {!isMdUp && (
+          {!isMdUp && signedIn && (
             <IconButton edge="start" onClick={() => setMobileOpen(true)} sx={{ mr: 1 }}>
               <MenuIcon />
             </IconButton>
           )}
+          <DisplaySelector  />
           <Typography variant="h6" fontWeight={600} sx={{ flexGrow: 1 }}>
-            {location.pathname.startsWith('/settings')
+          {location.pathname.startsWith('/displays')
+              ? 'Displays'
+              : location.pathname.startsWith('/settings')
               ? 'Settings'
+              : location.pathname.startsWith('/users')
+                ? 'Users'
               : location.pathname.startsWith('/account')
                 ? 'Account'
                 : location.pathname.startsWith('/activity')
@@ -300,6 +310,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
           {active && (
             <>
               {session && !needsLogin ? (
+                showUserMenu ? (
                 <>
                   <Button
                     color="inherit"
@@ -320,14 +331,14 @@ export function AppShell({ children }: { children?: ReactNode }) {
                           color: 'primary.contrastText',
                         }}
                       >
-                        {userInitials(session.user)}
+                        {clientInitials(session.identifier)}
                       </Avatar>
                     }
                     endIcon={<KeyboardArrowDownIcon />}
                     sx={{ fontWeight: 600, textTransform: 'none', maxWidth: { xs: 160, sm: 280 } }}
                   >
                     <Typography component="span" noWrap variant="body1" fontWeight={600}>
-                      {session.user.display_name?.trim() || session.user.username}
+                      {session.identifier}
                     </Typography>
                   </Button>
                   <Menu
@@ -376,6 +387,19 @@ export function AppShell({ children }: { children?: ReactNode }) {
                         <ListItemText>View UI as role…</ListItemText>
                       </MenuItem>
                     )}
+                    {bffStatus?.authEnabled && (
+                      <MenuItem
+                        onClick={() => {
+                          setUserMenuAnchor(null);
+                          void controllerLogout();
+                        }}
+                      >
+                        <ListItemIcon>
+                          <LogoutIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText>Controller sign out</ListItemText>
+                      </MenuItem>
+                    )}
                     <MenuItem
                       onClick={() => {
                         setUserMenuAnchor(null);
@@ -385,7 +409,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
                       <ListItemIcon>
                         <LogoutIcon fontSize="small" />
                       </ListItemIcon>
-                      <ListItemText>Log out</ListItemText>
+                      <ListItemText>Display log out</ListItemText>
                     </MenuItem>
                   </Menu>
                   <Dialog
@@ -426,6 +450,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
                     </DialogActions>
                   </Dialog>
                 </>
+                ) : null
               ) : (
                 <Button
                   color="inherit"
@@ -433,7 +458,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
                   sx={{ fontWeight: 600, textTransform: 'none' }}
                   startIcon={<LoginIcon />}
                 >
-                  Sign in
+                  Adopt display
                 </Button>
               )}
             </>
@@ -441,30 +466,32 @@ export function AppShell({ children }: { children?: ReactNode }) {
         </Toolbar>
       </AppBar>
 
-      <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}>
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={() => setMobileOpen(false)}
-          ModalProps={{ keepMounted: true }}
-          sx={{
-            display: { xs: 'block', md: 'none' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
-          }}
-        >
-          {drawer}
-        </Drawer>
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: 'none', md: 'block' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
-          }}
-          open
-        >
-          {drawer}
-        </Drawer>
-      </Box>
+      {signedIn && (
+        <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}>
+          <Drawer
+            variant="temporary"
+            open={mobileOpen}
+            onClose={() => setMobileOpen(false)}
+            ModalProps={{ keepMounted: true }}
+            sx={{
+              display: { xs: 'block', md: 'none' },
+              '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+            }}
+          >
+            {drawer}
+          </Drawer>
+          <Drawer
+            variant="permanent"
+            sx={{
+              display: { xs: 'none', md: 'block' },
+              '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+            }}
+            open
+          >
+            {drawer}
+          </Drawer>
+        </Box>
+      )}
 
       <Box
         component="main"
@@ -472,21 +499,15 @@ export function AppShell({ children }: { children?: ReactNode }) {
           flexGrow: 1,
           p: 3,
           mt: 8,
-          width: { md: `calc(100% - ${drawerWidth}px)` },
+          width: { md: signedIn ? `calc(100% - ${drawerWidth}px)` : '100%' },
           bgcolor: 'background.default',
           minHeight: '100vh',
         }}
       >
-        {isAdminUser && viewAsRole && !needsLogin && (
+        {isAdminUser && viewAsRole && !needsLogin && showUserMenu && (
           <Alert severity="info" sx={{ mb: 2 }}>
             Previewing the UI with <strong>{viewAsRole}</strong> permissions. Use{' '}
             <strong>Return to admin view</strong> in the user menu when finished.
-          </Alert>
-        )}
-        {bootstrapWarning && !needsLogin && (
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            You are signed in as the bootstrap user <strong>display</strong>. Create a named user
-            account in Settings — the bootstrap account is disabled once another user exists.
           </Alert>
         )}
         {children ?? <Outlet />}
