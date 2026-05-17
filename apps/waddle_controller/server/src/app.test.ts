@@ -34,6 +34,10 @@ describe('controller BFF', () => {
       body: JSON.stringify({ username: 'a', password: 'passwordpassword' }),
     });
     expect(blocked.status).toBe(409);
+    const blockedProxy = await t.app.request('/bff/v1/proxy/v1/screens', {
+      headers: { [DISPLAY_URL_HEADER]: 'https://127.0.0.1:8787' },
+    });
+    expect(blockedProxy.status).toBe(409);
     const bootstrap = await t.app.request('/bff/v1/bootstrap/admin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -43,6 +47,30 @@ describe('controller BFF', () => {
     const status = await t.app.request('/bff/v1/status');
     const statusBody = (await status.json()) as StatusResponse;
     expect(statusBody.needsBootstrap).toBe(false);
+  });
+
+  it('allows adoption proxy during bootstrap before admin exists', async () => {
+    const t = createTestApp();
+    cleanup = t.cleanup;
+    setUserManagementEnabled(t.db, true);
+    const status = await t.app.request('/bff/v1/status');
+    const statusBody = (await status.json()) as StatusResponse;
+    expect(statusBody.needsBootstrap).toBe(true);
+
+    const forward = vi
+      .spyOn(displayProxy, 'forwardDisplayProxy')
+      .mockResolvedValue(new Response('{}', { status: 200 }));
+    const proxy = await t.app.request('/bff/v1/proxy/v1/adoption/request', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        [DISPLAY_URL_HEADER]: 'https://127.0.0.1:8787',
+      },
+      body: JSON.stringify({}),
+    });
+    expect(proxy.status).not.toBe(409);
+    expect(forward).toHaveBeenCalled();
+    forward.mockRestore();
   });
 
   it('login and logout lifecycle', async () => {

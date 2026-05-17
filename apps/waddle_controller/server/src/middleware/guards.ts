@@ -1,6 +1,8 @@
 import { createMiddleware } from 'hono/factory';
 import type { AppVariables } from './context.js';
+import { isAdoptionProxyPath } from '../constants/proxyHeaders.js';
 import { needsBootstrap } from '../services/bootstrap.js';
+import { upstreamPathFromProxyRequest } from '../services/displayProxy.js';
 
 const BOOTSTRAP_ALLOWED = new Set([
   'GET:/status',
@@ -14,14 +16,21 @@ function routeKey(method: string, path: string): string {
   return `${method}:${base}`;
 }
 
+/** Display adoption must work before the first admin account exists. */
+export function isAllowedDuringBootstrap(method: string, path: string): boolean {
+  if (BOOTSTRAP_ALLOWED.has(routeKey(method, path))) {
+    return true;
+  }
+  return isAdoptionProxyPath(upstreamPathFromProxyRequest(path));
+}
+
 export const bootstrapGuard = createMiddleware<{ Variables: AppVariables }>(async (c, next) => {
   const db = c.get('db');
   if (!needsBootstrap(db, c.get('config').authEnabled)) {
     await next();
     return;
   }
-  const key = routeKey(c.req.method, c.req.path);
-  if (BOOTSTRAP_ALLOWED.has(key)) {
+  if (isAllowedDuringBootstrap(c.req.method, c.req.path)) {
     await next();
     return;
   }
