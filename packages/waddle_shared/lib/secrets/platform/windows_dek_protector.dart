@@ -7,9 +7,12 @@ import 'package:win32/win32.dart';
 import '../aes_gcm_secret_cipher.dart';
 import 'dek_protector.dart';
 
+/// `CryptProtectData` / `CryptUnprotectData` flag: any user on this machine.
+const int kCryptProtectLocalMachine = 0x04;
+
 /// Windows DPAPI (`CryptProtectData` / `CryptUnprotectData`) for the DEK.
 class WindowsDekProtector implements DekProtector {
-  WindowsDekProtector({int cryptProtectFlags = CRYPTPROTECT_LOCAL_MACHINE})
+  WindowsDekProtector({int cryptProtectFlags = kCryptProtectLocalMachine})
       : _flags = cryptProtectFlags;
 
   final int _flags;
@@ -28,15 +31,9 @@ class WindowsDekProtector implements DekProtector {
   }
 
   List<int> _protect(Uint8List plain) {
-    final inBlob = calloc<DATA_BLOB>();
-    final outBlob = calloc<DATA_BLOB>();
+    final inBlob = _blobFromBytes(plain);
+    final outBlob = calloc<CRYPT_INTEGER_BLOB>();
     try {
-      inBlob.ref.pbData = calloc<Uint8>(plain.length).cast();
-      inBlob.ref.cbData = plain.length;
-      final pb = inBlob.ref.pbData.cast<Uint8>();
-      for (var i = 0; i < plain.length; i++) {
-        pb[i] = plain[i];
-      }
       final ok = CryptProtectData(
         inBlob,
         nullptr,
@@ -47,33 +44,19 @@ class WindowsDekProtector implements DekProtector {
         outBlob,
       );
       if (ok == 0) {
-        throw WindowsException.fromLastError();
+        throw WindowsException(GetLastError());
       }
-      final len = outBlob.ref.cbData;
-      final data = outBlob.ref.pbData.cast<Uint8>();
-      return List<int>.generate(len, (i) => data[i]);
+      return _bytesFromBlob(outBlob);
     } finally {
-      if (inBlob.ref.pbData.address != 0) {
-        calloc.free(inBlob.ref.pbData);
-      }
-      if (outBlob.ref.pbData.address != 0) {
-        LocalFree(outBlob.ref.pbData);
-      }
-      calloc.free(inBlob);
-      calloc.free(outBlob);
+      _freeBlob(inBlob);
+      _freeBlob(outBlob, releaseWithLocalFree: true);
     }
   }
 
   List<int> _unprotect(Uint8List wrapped) {
-    final inBlob = calloc<DATA_BLOB>();
-    final outBlob = calloc<DATA_BLOB>();
+    final inBlob = _blobFromBytes(wrapped);
+    final outBlob = calloc<CRYPT_INTEGER_BLOB>();
     try {
-      inBlob.ref.pbData = calloc<Uint8>(wrapped.length).cast();
-      inBlob.ref.cbData = wrapped.length;
-      final pb = inBlob.ref.pbData.cast<Uint8>();
-      for (var i = 0; i < wrapped.length; i++) {
-        pb[i] = wrapped[i];
-      }
       final ok = CryptUnprotectData(
         inBlob,
         nullptr,
@@ -84,20 +67,45 @@ class WindowsDekProtector implements DekProtector {
         outBlob,
       );
       if (ok == 0) {
-        throw WindowsException.fromLastError();
+        throw WindowsException(GetLastError());
       }
-      final len = outBlob.ref.cbData;
-      final data = outBlob.ref.pbData.cast<Uint8>();
-      return List<int>.generate(len, (i) => data[i]);
+      return _bytesFromBlob(outBlob);
     } finally {
-      if (inBlob.ref.pbData.address != 0) {
-        calloc.free(inBlob.ref.pbData);
-      }
-      if (outBlob.ref.pbData.address != 0) {
-        LocalFree(outBlob.ref.pbData);
-      }
-      calloc.free(inBlob);
-      calloc.free(outBlob);
+      _freeBlob(inBlob);
+      _freeBlob(outBlob, releaseWithLocalFree: true);
     }
+  }
+
+  Pointer<CRYPT_INTEGER_BLOB> _blobFromBytes(Uint8List data) {
+    final blob = calloc<CRYPT_INTEGER_BLOB>();
+    final bytes = calloc<Uint8>(data.length);
+    bytes.asTypedList(data.length).setAll(0, data);
+    blob.ref
+      ..cbData = data.length
+      ..pbData = bytes;
+    return blob;
+  }
+
+  List<int> _bytesFromBlob(Pointer<CRYPT_INTEGER_BLOB> blob) {
+    final len = blob.ref.cbData;
+    if (len == 0) {
+      return const [];
+    }
+    return blob.ref.pbData.asTypedList(len).toList(growable: false);
+  }
+
+  void _freeBlob(
+    Pointer<CRYPT_INTEGER_BLOB> blob, {
+    bool releaseWithLocalFree = false,
+  }) {
+    final data = blob.ref.pbData;
+    if (data.address != 0) {
+      if (releaseWithLocalFree) {
+        LocalFree(data);
+      } else {
+        calloc.free(data);
+      }
+    }
+    calloc.free(blob);
   }
 }

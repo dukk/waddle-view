@@ -1,4 +1,5 @@
 /// Shared calendar helpers for overlay rows and curator schedule rules.
+library;
 
 DateTime? nthWeekdayOccurrenceInMonth({
   required int year,
@@ -57,10 +58,7 @@ class OverlayCalendarFields {
   final int? nthWeekday;
 }
 
-bool matchesOverlayCalendar(
-  OverlayCalendarFields fields,
-  DateTime localNow,
-) {
+bool matchesOverlayCalendar(OverlayCalendarFields fields, DateTime localNow) {
   final today = DateTime(localNow.year, localNow.month, localNow.day);
 
   if (fields.nthWeekOfMonth != null) {
@@ -175,7 +173,9 @@ bool ruleHasCalendarOrTimeConstraints({
   if (nthWeekOfMonth != null) {
     return true;
   }
-  if (startMonth != null && startDay != null && (startMonth != 0 || startDay != 0)) {
+  if (startMonth != null &&
+      startDay != null &&
+      (startMonth != 0 || startDay != 0)) {
     return true;
   }
   return false;
