@@ -4,4 +4,5 @@ set -e
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 export WADDLE_REPO_ROOT="$ROOT"
+export PYTHONIOENCODING=utf-8
 exec python "$ROOT/scripts/pre_push_checks.py"

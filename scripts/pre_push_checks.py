@@ -111,6 +111,37 @@ def augment_path_for_tooling() -> None:
         os.environ["PATH"] = os.pathsep.join(combined)
 
 
+def _configure_stdio_encoding() -> None:
+    """Git hooks on Windows often default to a legacy console code page (e.g. cp1252)."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(encoding="utf-8", errors="replace")
+        except (OSError, ValueError):
+            pass
+
+
+def _emit_stream(stream, text: str) -> None:
+    """Write subprocess output without crashing on non-ASCII when the console is narrow."""
+    if not text:
+        return
+    payload = text if text.endswith("\n") else f"{text}\n"
+    try:
+        stream.write(payload)
+        stream.flush()
+    except UnicodeEncodeError:
+        encoding = getattr(stream, "encoding", None) or "utf-8"
+        buf = getattr(stream, "buffer", None)
+        if buf is not None:
+            buf.write(payload.encode(encoding, errors="replace"))
+            buf.flush()
+        else:
+            stream.write(payload.encode(encoding, errors="replace").decode(encoding))
+            stream.flush()
+
+
 def resolve_argv(argv: list[str]) -> list[str]:
     """Resolve CLI names to absolute paths (required on Windows for .bat shims)."""
     if not argv:
@@ -143,9 +174,9 @@ def run_step(step: Step) -> tuple[int, str]:
         errors="replace",
     )
     if result.stdout:
-        print(result.stdout, end="" if result.stdout.endswith("\n") else "\n", flush=True)
+        _emit_stream(sys.stdout, result.stdout)
     if result.stderr:
-        print(result.stderr, end="" if result.stderr.endswith("\n") else "\n", file=sys.stderr, flush=True)
+        _emit_stream(sys.stderr, result.stderr)
     combined = f"{result.stdout or ''}{result.stderr or ''}"
     if result.returncode != 0:
         print(f"\nFAILED: {step.label} (exit {result.returncode})", file=sys.stderr)
@@ -335,6 +366,8 @@ def _record_failure(
 
 
 def main() -> int:
+    _configure_stdio_encoding()
+
     if skip_checks():
         print("WADDLE_SKIP_PREPUSH_CHECKS set — skipping pre-push checks.")
         return 0
