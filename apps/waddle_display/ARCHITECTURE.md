@@ -45,7 +45,7 @@ flowchart TB
     DDA[DashboardDataAccess]
     BS[BlobStore]
     SS[SecretStore]
-    Users[UserRepository]
+    Adopt[AdoptionRepository]
   end
 
   subgraph adapters["Adapters (concrete)"]
@@ -55,7 +55,7 @@ flowchart TB
     DDAD[DriftDashboardDataAccess]
     FSB[FileSystemBlobStore]
     FSS[FlutterSecureSecretStore]
-    UR[UserRepository]
+    ARp[AdoptionRepository]
     DB[(AppDatabase / SQLite)]
   end
 
@@ -191,17 +191,17 @@ sequenceDiagram
   participant Ext as External client curl
   participant S as HttpServer Shelf
   participant Auth as apiKeyAuth middleware
-  participant Users as UserRepository
+  participant Adopt as AdoptionRepository
   participant R as Shelf Router
   participant AR as DriftAlertRepository
   participant DB as SQLite Drift streams
   participant Host as AlertOverlayHost StreamBuilder
   participant Op as TV operator
 
-  Ext->>S: POST /v1/auth/login then Bearer session
+  Ext->>S: POST /v1/adoption/confirm then Bearer api_key
   S->>Auth: pipeline
-  Auth->>Keys: load expected key
-  Keys-->>Auth: key material
+  Auth->>Adopt: clientForApiKey hash lookup
+  Adopt-->>Auth: role + identifier
   Auth->>R: forward if valid
   R->>AR: insertAlert(title, body, ...)
   AR->>DB: INSERT alerts

@@ -1,53 +1,92 @@
 import 'dart:convert';
 
-import 'package:drift/drift.dart' show Value;
 import 'package:http/http.dart' as http;
 import 'package:waddle_display/alerts/drift_alert_repository.dart';
 import 'package:waddle_display/api/local_rest_server.dart';
 import 'package:waddle_display/debug/operator_telemetry_hub.dart';
 import 'package:waddle_display/display/display_navigation_bus.dart';
 import 'package:waddle_display/ticker/memory_ticker_curated_repository.dart';
-import 'package:waddle_shared/auth/password_hash.dart';
-import 'package:waddle_shared/auth/user_repository.dart';
+import 'package:waddle_shared/auth/adoption_crypto.dart';
+import 'package:waddle_shared/auth/adoption_repository.dart';
+import 'package:waddle_shared/auth/cors_origin_repository.dart';
+import 'package:waddle_shared/config/adoption.dart';
 import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 
 import 'fake_blob_store.dart';
+import 'adoption_test_helpers.dart';
 import 'memory_database.dart';
 
-/// Boots a REST server with an admin session for integration tests.
+/// Boots a REST server with an adopted API key for integration tests.
 class RestTestHarness {
   RestTestHarness._({
     required this.db,
     required this.server,
-    required this.token,
-    required this.users,
+    required this.apiKey,
+    required this.adoption,
+    required this.corsOrigins,
     required this.blobs,
+    required this.instanceId,
+    required this.identifier,
+    required this.role,
   });
 
   final AppDatabase db;
   final LocalRestServer server;
-  final String token;
-  final UserRepository users;
+  final String apiKey;
+  final AdoptionRepository adoption;
+  final CorsOriginRepository corsOrigins;
   final BlobStore blobs;
+  final String instanceId;
+  final String identifier;
+  final String role;
 
   String get baseUrl => server.baseUrl;
 
   Map<String, String> get authHeaders => {
-    'Authorization': 'Bearer $token',
+    'Authorization': 'Bearer $apiKey',
     'Content-Type': 'application/json',
   };
 
   static Future<RestTestHarness> start({
     String role = kUserRoleAdmin,
-    String password = 'test-password-12',
-    String username = 'testadmin',
+    String identifier = 'test-client',
+    String instanceId = 'test-instance-id-for-rest-harness-012345',
+    String apiKey = 'test-rest-harness-api-key',
     OperatorTelemetryHub? telemetryHub,
     DisplayNavigationBus? navigationBus,
     AppDatabase? database,
     Future<void> Function()? onConfigChanged,
-    List<String> corsAllowedOrigins = const [],
+    List<String> seedCorsOrigins = const [],
+    Map<String, String> env = const {},
+    FakeBlobStore? blobStore,
+  }) async {
+    return startWithApiKey(
+      apiKey: apiKey,
+      role: role,
+      identifier: identifier,
+      instanceId: instanceId,
+      database: database,
+      telemetryHub: telemetryHub,
+      navigationBus: navigationBus,
+      onConfigChanged: onConfigChanged,
+      seedCorsOrigins: seedCorsOrigins,
+      env: env,
+      blobStore: blobStore,
+    );
+  }
+
+  /// Boots a server and completes adoption over HTTP (request + confirm).
+  static Future<RestTestHarness> startViaAdoption({
+    String role = kUserRoleAdmin,
+    String identifier = 'test-client',
+    String instanceId = 'test-instance-id-for-rest-harness-012345',
+    String? adoptionOrigin = 'http://127.0.0.1:5173',
+    OperatorTelemetryHub? telemetryHub,
+    DisplayNavigationBus? navigationBus,
+    AppDatabase? database,
+    Future<void> Function()? onConfigChanged,
     Map<String, String> env = const {},
     FakeBlobStore? blobStore,
   }) async {
@@ -55,23 +94,145 @@ class RestTestHarness {
     if (database == null) {
       await warmDatabase(db);
     }
-    final users = UserRepository(db);
-    final existing = await users.findByUsername(username);
-    if (existing == null) {
-      final now = DateTime.now().millisecondsSinceEpoch;
-      await db.into(db.users).insert(
-        UsersCompanion.insert(
-          id: 'user_test_admin',
-          username: username,
-          usernameLower: username.toLowerCase(),
-          displayName: 'Test Admin',
-          role: role,
-          passwordHash: Value(hashPassword(password)),
-          isBootstrap: const Value(false),
-          createdAtMs: now,
-          updatedAtMs: now,
-        ),
+    final built = await _buildServer(
+      db: db,
+      instanceId: instanceId,
+      env: env,
+      telemetryHub: telemetryHub,
+      navigationBus: navigationBus,
+      onConfigChanged: onConfigChanged,
+      seedCorsOrigins: const [],
+      blobStore: blobStore,
+    );
+
+    final adoptionHeaders = <String, String>{
+      'Content-Type': 'application/json',
+      if (adoptionOrigin != null) ...{
+        'Origin': adoptionOrigin,
+        'Referer': '$adoptionOrigin/',
+      },
+    };
+
+    final requestRes = await http.post(
+      Uri.parse('${built.server.baseUrl}/v1/adoption/request'),
+      headers: adoptionHeaders,
+      body: jsonEncode({'identifier': identifier, 'role': role}),
+    );
+    if (requestRes.statusCode != 200) {
+      throw StateError(
+        'adoption request failed: ${requestRes.statusCode} ${requestRes.body}',
       );
+    }
+    final requestBody = jsonDecode(requestRes.body) as Map<String, dynamic>;
+    if (requestBody.containsKey('challenge_code')) {
+      throw StateError('adoption request must not return challenge_code');
+    }
+    final alerts = await db.select(db.alerts).get();
+    final adoptionAlert = alerts.lastWhere((r) => r.source == kAdoptionAlertSource);
+    final challengeCode = adoptionChallengeFromAlertBody(adoptionAlert.body);
+
+    final confirmRes = await http.post(
+      Uri.parse('${built.server.baseUrl}/v1/adoption/confirm'),
+      headers: adoptionHeaders,
+      body: jsonEncode({
+        'identifier': identifier,
+        'challenge_code': challengeCode,
+      }),
+    );
+    if (confirmRes.statusCode != 200) {
+      throw StateError(
+        'adoption confirm failed: ${confirmRes.statusCode} ${confirmRes.body}',
+      );
+    }
+    final confirmBody = jsonDecode(confirmRes.body) as Map<String, dynamic>;
+    final apiKey = confirmBody['api_key'] as String;
+
+    return RestTestHarness._(
+      db: db,
+      server: built.server,
+      apiKey: apiKey,
+      adoption: built.adoption,
+      corsOrigins: built.corsOrigins,
+      blobs: built.blobs,
+      instanceId: instanceId,
+      identifier: identifier,
+      role: role,
+    );
+  }
+
+  /// Inserts an API client without running the adoption HTTP flow.
+  static Future<RestTestHarness> startWithApiKey({
+    required String apiKey,
+    String role = kUserRoleAdmin,
+    String identifier = 'test-client',
+    String instanceId = 'test-instance-id-for-rest-harness-012345',
+    AppDatabase? database,
+    OperatorTelemetryHub? telemetryHub,
+    DisplayNavigationBus? navigationBus,
+    Future<void> Function()? onConfigChanged,
+    List<String> seedCorsOrigins = const [],
+    Map<String, String> env = const {},
+    FakeBlobStore? blobStore,
+  }) async {
+    final db = database ?? openMemoryDatabase();
+    if (database == null) {
+      await warmDatabase(db);
+    }
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await db.into(db.apiClients).insert(
+      ApiClientsCompanion.insert(
+        id: 'client_test',
+        identifier: identifier,
+        role: role,
+        apiKeyHash: hashAdoptionApiKey(apiKey),
+        createdAtMs: now,
+        updatedAtMs: now,
+      ),
+    );
+    final built = await _buildServer(
+      db: db,
+      instanceId: instanceId,
+      env: env,
+      telemetryHub: telemetryHub,
+      navigationBus: navigationBus,
+      onConfigChanged: onConfigChanged,
+      seedCorsOrigins: seedCorsOrigins,
+      blobStore: blobStore,
+    );
+    return RestTestHarness._(
+      db: db,
+      server: built.server,
+      apiKey: apiKey,
+      adoption: built.adoption,
+      corsOrigins: built.corsOrigins,
+      blobs: built.blobs,
+      instanceId: instanceId,
+      identifier: identifier,
+      role: role,
+    );
+  }
+
+  static Future<
+      ({
+        LocalRestServer server,
+        AdoptionRepository adoption,
+        CorsOriginRepository corsOrigins,
+        BlobStore blobs,
+      })> _buildServer({
+    required AppDatabase db,
+    required String instanceId,
+    required Map<String, String> env,
+    OperatorTelemetryHub? telemetryHub,
+    DisplayNavigationBus? navigationBus,
+    Future<void> Function()? onConfigChanged,
+    required List<String> seedCorsOrigins,
+    FakeBlobStore? blobStore,
+  }) async {
+    final adoption = AdoptionRepository(db, instanceId: instanceId);
+    final corsOrigins = CorsOriginRepository(db);
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (seedCorsOrigins.isNotEmpty) {
+      await corsOrigins.seedEnvOrigins(seedCorsOrigins, nowMs: now);
     }
     final alerts = DriftAlertRepository(db);
     final ticker = MemoryTickerCuratedRepository();
@@ -79,99 +240,21 @@ class RestTestHarness {
     final handler = buildRootHandler(
       db: db,
       alerts: alerts,
-      users: users,
+      adoption: adoption,
+      corsOrigins: corsOrigins,
       ticker: ticker,
       blobs: blobs,
       onConfigChanged: onConfigChanged ?? () async {},
       env: env,
       telemetryHub: telemetryHub,
       navigationBus: navigationBus,
-      corsAllowedOrigins: corsAllowedOrigins,
     );
     final server = await LocalRestServer.bind(handler: handler, port: 0);
-    final loginRes = await http.post(
-      Uri.parse('${server.baseUrl}/v1/auth/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'username': username, 'password': password}),
-    );
-    if (loginRes.statusCode != 200) {
-      throw StateError('login failed: ${loginRes.statusCode} ${loginRes.body}');
-    }
-    final body = jsonDecode(loginRes.body) as Map<String, dynamic>;
-    final token = body['session_token'] as String;
-    return RestTestHarness._(
-      db: db,
+    return (
       server: server,
-      token: token,
-      users: users,
+      adoption: adoption,
+      corsOrigins: corsOrigins,
       blobs: blobs,
-    );
-  }
-
-  Future<void> dispose() async {
-    await server.close();
-    await db.close();
-  }
-}
-
-/// Harness with bootstrap `display` user (instance id password).
-class BootstrapRestTestHarness {
-  BootstrapRestTestHarness._({
-    required this.db,
-    required this.server,
-    required this.token,
-    required this.instanceId,
-    required this.users,
-  });
-
-  final AppDatabase db;
-  final LocalRestServer server;
-  final String token;
-  final String instanceId;
-  final UserRepository users;
-
-  String get baseUrl => server.baseUrl;
-
-  Map<String, String> get authHeaders => {
-    'Authorization': 'Bearer $token',
-  };
-
-  static Future<BootstrapRestTestHarness> start({
-    String instanceId = 'bootstrap-instance-id-hex',
-    Map<String, String> env = const {},
-  }) async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
-    final users = UserRepository(db);
-    await users.ensureBootstrapUser(instanceIdPassword: instanceId);
-    final alerts = DriftAlertRepository(db);
-    final ticker = MemoryTickerCuratedRepository();
-    final blobs = FakeBlobStore();
-    final handler = buildRootHandler(
-      db: db,
-      alerts: alerts,
-      users: users,
-      ticker: ticker,
-      blobs: blobs,
-      onConfigChanged: () async {},
-      env: env,
-    );
-    final server = await LocalRestServer.bind(handler: handler, port: 0);
-    final loginRes = await http.post(
-      Uri.parse('${server.baseUrl}/v1/auth/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'username': kBootstrapUsername,
-        'password': instanceId,
-      }),
-    );
-    final body = jsonDecode(loginRes.body) as Map<String, dynamic>;
-    return BootstrapRestTestHarness._(
-      db: db,
-      server: server,
-      token: body['session_token'] as String,
-      instanceId: instanceId,
-      users: users,
     );
   }
 

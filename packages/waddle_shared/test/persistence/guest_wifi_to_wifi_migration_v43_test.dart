@@ -61,7 +61,7 @@ CREATE TABLE config_key_values (
     expect(cfg.containsKey('kvKey'), isFalse);
 
     final ver = await db.customSelect('PRAGMA user_version').getSingle();
-    expect(ver.read<int>('user_version'), 46);
+    expect(ver.read<int>('user_version'), 48);
 
     await db.close();
   });

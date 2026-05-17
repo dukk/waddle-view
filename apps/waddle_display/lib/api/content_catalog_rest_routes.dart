@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
-import 'package:waddle_display/api/session_auth.dart';
+import 'package:waddle_display/api/api_key_auth.dart';
 import 'package:waddle_shared/auth/role_permissions.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
@@ -99,9 +99,9 @@ Response _jsonCatalogForbidden() => Response(
     );
 
 bool _catalogFullModeration(Request req) {
-  final u = authUser(req);
-  if (u == null) return false;
-  return userHasPermission(u.role, WaddlePermission.contentModerate);
+  final role = apiClientRole(req);
+  if (role == null) return false;
+  return userHasPermission(role, WaddlePermission.contentModerate);
 }
 
 _CatalogParams _catalogParamsActiveOnly(_CatalogParams p) => _CatalogParams(

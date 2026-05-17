@@ -1,20 +1,12 @@
 const SESSION_PREFIX = 'waddle_controller_session_v1:';
 
-export type AuthUser = {
-  id: string;
-  username: string;
-  display_name: string;
-  role: string;
-  is_bootstrap: boolean;
-  disabled: boolean;
-};
-
 export type DisplaySession = {
-  token: string;
-  expiresAtMs: number;
-  user: AuthUser;
+  apiKey: string;
+  identifier: string;
+  role: string;
   permissions: string[];
-  warnings: string[];
+  /** Client-side hint only; display does not expire API keys today. */
+  expiresAtMs: number;
 };
 
 export function loadSession(displayId: string): DisplaySession | null {
@@ -22,7 +14,7 @@ export function loadSession(displayId: string): DisplaySession | null {
     const raw = sessionStorage.getItem(`${SESSION_PREFIX}${displayId}`);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as DisplaySession;
-    if (parsed.expiresAtMs <= Date.now()) {
+    if (!parsed.apiKey || parsed.expiresAtMs <= Date.now()) {
       clearSession(displayId);
       return null;
     }

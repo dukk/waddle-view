@@ -27,8 +27,8 @@ void main() {
 
     expect(find.text('Local REST API'), findsOneWidget);
     expect(find.text('http://127.0.0.1:8787'), findsOneWidget);
-    expect(find.textContaining('/v1/auth/login'), findsOneWidget);
-    expect(find.textContaining('waddle_instance.id'), findsOneWidget);
+    expect(find.textContaining('/v1/adoption/request'), findsOneWidget);
+    expect(find.textContaining('api_key'), findsOneWidget);
     final icon = tester.widget<Icon>(find.byIcon(Icons.api_outlined));
     expect(icon.color, NavyCoralPalette.dustyDenim);
   });

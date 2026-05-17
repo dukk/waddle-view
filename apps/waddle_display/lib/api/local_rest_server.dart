@@ -21,11 +21,14 @@ import 'package:waddle_shared/persistence/display_overlay_schedule_row.dart';
 import 'package:waddle_shared/persistence/reject_term_repository.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import '../ticker/ticker_curated_repository.dart';
-import 'auth_rest_routes.dart';
+import 'adoption_rest_routes.dart';
+import 'api_key_auth.dart';
+import 'caller_origin.dart';
 import 'content_catalog_rest_routes.dart';
+import 'cors_policy.dart';
 import 'operator_rest_routes.dart';
-import 'session_auth.dart';
-import 'package:waddle_shared/auth/user_repository.dart';
+import 'package:waddle_shared/auth/adoption_repository.dart';
+import 'package:waddle_shared/auth/cors_origin_repository.dart';
 
 Handler buildProtectedApiRouter({
   required AppDatabase db,
@@ -916,42 +919,51 @@ bool _isSafeBlobLookupKey(String key) {
 Handler buildRootHandler({
   required AppDatabase db,
   required AlertRepository alerts,
-  required UserRepository users,
+  required AdoptionRepository? adoption,
+  required CorsOriginRepository corsOrigins,
   required TickerCuratedRepository ticker,
   required BlobStore blobs,
   required Future<void> Function() onConfigChanged,
   required Map<String, String> env,
   OperatorTelemetryHub? telemetryHub,
   DisplayNavigationBus? navigationBus,
-  List<String> corsAllowedOrigins = const [],
+  CorsPolicy? corsPolicy,
 }) {
+  final effectiveCorsPolicy = corsPolicy ?? CorsPolicy();
   Response health(Request req) =>
       Response.ok('{"status":"ok"}', headers: {'content-type': 'application/json'});
 
-  final authPublic = Router();
-  registerAuthRoutes(authPublic, users: users, env: env);
+  final adoptionPublic = Router();
+  registerAdoptionRoutes(
+    adoptionPublic,
+    adoption: adoption,
+    alerts: alerts,
+    corsOrigins: corsOrigins,
+  );
 
-  final authSession = Router();
-  registerAuthenticatedAuthRoutes(authSession, users: users);
-  final authProtected = Pipeline()
-      .addMiddleware(sessionAuth(users))
-      .addMiddleware(routePermissionGuard())
-      .addHandler(authSession.call);
-
-  final apiProtected = Pipeline()
-      .addMiddleware(sessionAuth(users))
-      .addMiddleware(routePermissionGuard())
-      .addHandler(
-        buildProtectedApiRouter(
-          db: db,
-          alerts: alerts,
-          ticker: ticker,
-          blobs: blobs,
-          onConfigChanged: onConfigChanged,
-          telemetryHub: telemetryHub,
-          navigationBus: navigationBus,
-        ),
-      );
+  final Handler apiProtected;
+  if (adoption != null) {
+    apiProtected = Pipeline()
+        .addMiddleware(apiKeyAuth(adoption))
+        .addMiddleware(routePermissionGuard())
+        .addHandler(
+          buildProtectedApiRouter(
+            db: db,
+            alerts: alerts,
+            ticker: ticker,
+            blobs: blobs,
+            onConfigChanged: onConfigChanged,
+            telemetryHub: telemetryHub,
+            navigationBus: navigationBus,
+          ),
+        );
+  } else {
+    apiProtected = (Request req) => Response(
+      503,
+      body: '{"error":"api_unavailable"}',
+      headers: {'content-type': 'application/json'},
+    );
+  }
 
   FutureOr<Response> root(Request req) {
     final path = req.requestedUri.path;
@@ -965,40 +977,39 @@ Handler buildRootHandler({
         headers: {'content-type': 'application/json'},
       );
     }
-    if (path.startsWith('/v1/auth') || path.startsWith('v1/auth')) {
-      if (path == '/v1/auth/login' ||
-          path == 'v1/auth/login' ||
-          path == '/v1/auth/register-viewer' ||
-          path == 'v1/auth/register-viewer' ||
-          path.startsWith('/v1/auth/oauth') ||
-          path.startsWith('v1/auth/oauth')) {
-        return authPublic(req);
-      }
-      return authProtected(req);
-    }
-    if (path.startsWith('/v1/users') || path.startsWith('v1/users')) {
-      return authProtected(req);
+    if (path.startsWith('/v1/adoption') || path.startsWith('v1/adoption')) {
+      return adoptionPublic(req);
     }
     return apiProtected(req);
   }
 
-  Handler handler = root;
-  if (corsAllowedOrigins.isNotEmpty) {
-    handler = _corsWrap(handler, corsAllowedOrigins);
-  }
-  return withDebugRequestLogging(handler);
+  final handler = withDebugRequestLogging(
+    _dynamicCorsWrap(
+      root,
+      corsPolicy: effectiveCorsPolicy,
+      corsOrigins: corsOrigins,
+    ),
+  );
+  return handler;
 }
 
-Handler _corsWrap(Handler inner, List<String> allowedOrigins) {
+Handler _dynamicCorsWrap(
+  Handler inner, {
+  required CorsPolicy corsPolicy,
+  required CorsOriginRepository corsOrigins,
+}) {
   return (Request req) async {
-    final origin = req.headers['origin'];
-    final allowed =
-        origin != null && allowedOrigins.contains(origin);
-    if (allowed && req.method == 'OPTIONS') {
+    final origin = callerOriginFromRequest(req);
+    final path = req.requestedUri.path;
+    final allowed = isAdoptionPath(path)
+        ? await corsPolicy.isAdoptionOriginAllowed(origin)
+        : await corsPolicy.isProtectedOriginAllowed(origin, corsOrigins);
+
+    if (allowed && origin != null && req.method == 'OPTIONS') {
       return Response(204, headers: _corsHeaders(origin));
     }
     final res = await inner(req);
-    if (!allowed) {
+    if (!allowed || origin == null) {
       return res;
     }
     return res.change(headers: _corsHeaders(origin));

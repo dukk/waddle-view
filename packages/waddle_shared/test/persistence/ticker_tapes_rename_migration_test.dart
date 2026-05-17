@@ -41,7 +41,7 @@ CREATE TABLE ticker_definitions (
     expect(tableNames.contains('ticker_definitions'), isFalse);
 
     final ver = await db.customSelect('PRAGMA user_version').getSingle();
-    expect(ver.read<int>('user_version'), 46);
+    expect(ver.read<int>('user_version'), 48);
 
     final row = await (db.select(db.tickerTapes)
           ..where((t) => t.id.equals('legacy_row')))

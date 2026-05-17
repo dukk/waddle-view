@@ -8,51 +8,52 @@
 
 ## Authentication
 
-Protected routes require a **user session** from `POST /v1/auth/login`:
+**Public routes:** `GET /v1/health`, `POST /v1/adoption/request`, `POST /v1/adoption/confirm`.
 
-```json
-{"username":"display","password":"<instance-id>"}
-```
+All other `/v1/*` routes require an **adopted API key**:
 
-Response includes `session_token`. Send it on later requests:
+- `Authorization: Bearer <api_key>`
 
-- `Authorization: Bearer <session_token>`
+### Adoption (device-style pairing)
 
-**Bootstrap user:** reserved username `display` with password equal to the display **instance id** (see below). Enabled only until the first **named** user is created via `POST /v1/users` (admin role). After that, bootstrap login returns **403** `bootstrap_admin_disabled`.
+1. **`POST /v1/adoption/request`** (public) — body: `identifier` (required string, caller label), optional `role` (`admin`, `operator`, `power_viewer`, `viewer`; default **`operator`**). Creates a kiosk **security** alert (shield icon) naming the requested role and an **8-character challenge** formatted **`XXXX-XXXX`** (valid **5 minutes**). The challenge is **shown only on the display** — the HTTP response is `{ "expires_at_ms", "identifier", "role" }` (no `challenge_code`). With **`Authorization: Bearer <admin api_key>`** and the same body, an **admin** client is granted instantly (no challenge): response is `{ "api_key", "identifier", "role", "permissions" }`. Non-admin keys → **403**.
+2. Operator reads the challenge on the display (alert overlay) and enters it on the controller in the same **`XXXX-XXXX`** form (hyphens optional on confirm).
+3. **`POST /v1/adoption/confirm`** (public) — body: `identifier`, `challenge_code` (8 Crockford characters; hyphens stripped). On success returns `{ "api_key", "identifier", "role", "permissions" }`. The API key is derived from the display **instance id**, challenge, and identifier; only a **SHA-256 hash** is stored in SQLite (`api_clients`).
+4. Use the API key on protected routes. Re-adopting the same **identifier** **rotates** the key.
 
-**Self-service viewer signup:** `POST /v1/auth/register-viewer` (public) creates a **named** user with role **`viewer`** and returns the same session payload as `POST /v1/auth/login`. It is enabled only when **`WADDLE_VIEWER_REGISTRATION_SECRET`** is set on the display process and at least one named operator account already exists (bootstrap-only installs return **403** `viewer_registration_requires_operator`). The request body must include matching `registration_secret`. Intended for kiosk QR / `waddle_controller` **`/join`** flows; keep the secret off the public internet unless the display HTTP surface is appropriately isolated.
+**503** `adoption_unavailable` when `waddle_instance.id` is missing. **401** `invalid_challenge` on bad/expired confirm.
 
-**Roles:** `admin`, `operator`, `viewer`, `power_viewer` — each maps to a fixed permission set. **`viewer`** has **`telemetry.read`** only (controller **Programs** plus `GET /v1/telemetry/*` + `GET /v1/media/*`). **`power_viewer`** adds **`navigation.control`** and **`content.catalog_read`** (controller **Programs**, read-only **Data** catalog without suppressed rows or `suppressed=true`, plus arrow-key navigation). **`content.moderate`** is required for **`PATCH /v1/content/*`**, full suppression filters, and seeing **`suppressed`** in catalog JSON. Any signed-in user may still **`PATCH /v1/users/{self}`** (display_name only) and **`POST /v1/users/{self}/password`** without `users.manage`. `GET /v1/auth/me` returns `permissions` for the signed-in user.
+**Roles:** same four roles as before; each maps to a fixed permission set on protected routes. **`viewer`** has **`telemetry.read`** only. **`power_viewer`** adds **`navigation.control`** and **`content.catalog_read`**. **`content.moderate`** is required for **`PATCH /v1/content/*`**, suppression filters, and **`suppressed`** in catalog JSON.
 
-**Instance id file** (not a shared API secret):
+**Instance id file** (HMAC secret for adoption; not sent as the API key):
 
 - local/dev: app support `waddle_instance.id` (created on first launch; legacy `waddle_api.key` is renamed on upgrade)
 - packaged install reference: `/etc/waddle-view/instance.id`
 
-Invalid or missing session → **401** `unauthorized`. Authenticated but lacking permission → **403** `forbidden`.
+Invalid or missing API key → **401** `unauthorized`. Authenticated but lacking permission → **403** `forbidden`.
 
-### Auth endpoints
+### Adoption endpoints
 
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
-| POST | `/v1/auth/login` | public | Returns `session_token`, `user`, `permissions`, `warnings` |
-| POST | `/v1/auth/register-viewer` | public | Body: `username`, `password`, `registration_secret`. Creates `viewer` user + session when enabled (see above). **403** `viewer_registration_disabled` / `viewer_registration_requires_operator`; **401** `invalid_registration_secret`; **409** `username_taken` |
-| POST | `/v1/auth/logout` | session | Invalidates token |
-| GET | `/v1/auth/me` | session | Current user + permissions |
-| GET | `/v1/users` | `users.manage` | List users |
-| POST | `/v1/users` | `users.manage` | Create named user (disables bootstrap) |
-| PATCH | `/v1/users/{id}` | `users.manage` | Update role / disable |
-| POST | `/v1/users/{id}/password` | self or `users.manage` | Change password |
-| DELETE | `/v1/users/{id}` | `users.manage` | Soft-disable user |
+| POST | `/v1/adoption/request` | public (or admin bearer) | Start challenge, or instant grant when admin key present |
+| POST | `/v1/adoption/confirm` | public | Exchange code for `api_key` |
+
+Send the controller’s browser origin on adoption calls so the display can allow later API traffic: standard **`Origin`**, or **`Referer`** when the browser omits `Origin`. On successful **confirm** (or admin instant **request**), the normalized origin is stored in SQLite **`cors_allowed_origins`** (`source: adoption`).
 
 ## Cross-origin browser access (CORS)
 
-When a browser-based client (for example the **`waddle_controller`** SPA hosted on another port or host) calls this API, the browser sends an **`Origin`** header. By default the Shelf stack does **not** emit CORS headers, so those fetches fail unless the client uses a same-origin proxy.
+Browser clients (for example **`waddle_controller`**) send an **`Origin`** header (or parsed **`Referer`** as fallback). CORS is **always** evaluated (not gated on env configuration).
 
-Optional allowlist (comma-separated **exact** origins, no wildcards):
+**Adoption routes** (`/v1/adoption/*`): permissive LAN policy — allow origins whose host is loopback, RFC1918/link-local, ends with **`.local`**, or whose DNS lookup (cached ~5 minutes) resolves **only** to private addresses. Public IPs and lookup failures are denied.
 
-- Set environment variable **`WADDLE_HTTP_CORS_ORIGINS`** (for example `http://127.0.0.1:5173,http://localhost:5173`).
-- When the request **`Origin`** matches one of the listed values, responses include **`Access-Control-Allow-Origin`**, **`Access-Control-Allow-Methods`** (`GET,POST,PATCH,PUT,DELETE,OPTIONS`), and **`Access-Control-Allow-Headers`** (`Content-Type`, `Authorization`). **`OPTIONS`** preflight returns **204** for allowed origins.
+**All other `/v1/*` routes**: allow origins in **`cors_allowed_origins`** (adoption + env seed) **or** the static env list below.
+
+Optional env seed (comma-separated **exact** origins, no wildcards):
+
+- **`WADDLE_HTTP_CORS_ORIGINS`** (for example `http://127.0.0.1:5173,http://localhost:5173`) — inserted at startup with `source: env` (idempotent).
+
+Allowed responses include **`Access-Control-Allow-Origin`** (mirrored origin), **`Access-Control-Allow-Methods`** (`GET,POST,PATCH,PUT,DELETE,OPTIONS`), and **`Access-Control-Allow-Headers`** (`Content-Type`, `Authorization`). **`OPTIONS`** preflight returns **204** when allowed.
 
 ## Endpoints (MVP)
 

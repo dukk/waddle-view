@@ -52,9 +52,9 @@ class LocalApiSlideWidget extends StatelessWidget {
           ),
           SizedBox(height: 16 * s),
           Text(
-            'Sign in via waddle_controller (POST /v1/auth/login) using a '
-            'user account, or bootstrap user display with the instance id from '
-            'waddle_instance.id in the application support directory.',
+            'Adopt this display via POST /v1/adoption/request (identifier + role), '
+            'confirm with the challenge shown on screen (POST /v1/adoption/confirm), '
+            'then call protected routes with Authorization: Bearer <api_key>.',
             style: theme.textTheme.bodyMedium,
             textAlign: TextAlign.center,
           ),

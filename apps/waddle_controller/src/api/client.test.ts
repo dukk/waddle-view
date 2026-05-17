@@ -10,18 +10,11 @@ const display: SavedDisplay = {
 };
 
 const session: DisplaySession = {
-  token: 'secret-token',
+  apiKey: 'secret-api-key',
   expiresAtMs: Date.now() + 60_000,
-  user: {
-    id: 'u1',
-    username: 'op',
-    display_name: 'Op',
-    role: 'operator',
-    is_bootstrap: false,
-    disabled: false,
-  },
+  identifier: 'controller-test',
+  role: 'operator',
   permissions: ['telemetry.read', 'navigation.control'],
-  warnings: [],
 };
 
 describe('api client', () => {
@@ -49,7 +42,7 @@ describe('api client', () => {
       }),
     );
     const headers = fetchMock.mock.calls[0]![1]!.headers as Headers;
-    expect(headers.get('Authorization')).toBe('Bearer secret-token');
+    expect(headers.get('Authorization')).toBe('Bearer secret-api-key');
   });
 
   it('apiFetch throws ApiError when not signed in', async () => {

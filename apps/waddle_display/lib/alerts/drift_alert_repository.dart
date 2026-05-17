@@ -20,6 +20,7 @@ class DriftAlertRepository implements AlertRepository {
     String severity = 'info',
     int priority = 0,
     int? expiresAtMs,
+    String source = 'api',
   }) async {
     final id = await _db
         .into(_db.alerts)
@@ -36,6 +37,7 @@ class DriftAlertRepository implements AlertRepository {
                   ? null
                   : DateTime.fromMillisecondsSinceEpoch(expiresAtMs),
             ),
+            source: Value(source),
           ),
         );
     return id;

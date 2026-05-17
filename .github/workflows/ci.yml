@@ -212,7 +212,7 @@ jobs:
           cache-dependency-path: apps/waddle_controller/package-lock.json
       - name: npm ci + lint + test + coverage + build (waddle_controller)
         working-directory: apps/waddle_controller
-        run: npm ci && npm run lint && npm run test:coverage && npm run coverage:check && npm run build
+        run: npm ci && npm run lint && npm run test:coverage && npm run coverage:check && npm run build && npm run build:server
 
   waddle-display-mock-api:
     runs-on: ubuntu-latest

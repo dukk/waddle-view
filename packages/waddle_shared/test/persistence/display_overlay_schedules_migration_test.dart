@@ -10,7 +10,7 @@ void main() {
       await warmDatabase(db);
 
       final ver = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(ver.read<int>('user_version'), 46);
+      expect(ver.read<int>('user_version'), 48);
 
       final check = await db.customSelect(
         "SELECT COUNT(*) AS c FROM sqlite_master WHERE "

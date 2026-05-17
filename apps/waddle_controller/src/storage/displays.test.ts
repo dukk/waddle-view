@@ -27,6 +27,18 @@ describe('displays storage', () => {
     expect(loadDisplays()).toHaveLength(1);
   });
 
+  it('ignores legacy setupMode field on load', () => {
+    localStorage.setItem(
+      'waddle_controller_displays_v1',
+      JSON.stringify([
+        { id: 'legacy', label: 'L', baseUrl: 'https://legacy.test', setupMode: 'new' },
+      ]),
+    );
+    const row = loadDisplays()[0]!;
+    expect(row.baseUrl).toBe('https://legacy.test');
+    expect('setupMode' in row).toBe(false);
+  });
+
   it('upsertDisplayByBaseUrl returns existing row', () => {
     const first = addDisplay({ baseUrl: 'https://dup.test' });
     const second = upsertDisplayByBaseUrl({ baseUrl: 'https://dup.test/' });

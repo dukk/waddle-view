@@ -9,6 +9,7 @@ abstract class AlertRepository {
     String severity,
     int priority,
     int? expiresAtMs,
+    String source = 'api',
   });
 
   Future<void> dismiss(int id);

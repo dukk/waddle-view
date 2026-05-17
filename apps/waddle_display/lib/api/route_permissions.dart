@@ -1,10 +1,7 @@
 import 'package:waddle_shared/auth/role_permissions.dart';
 
 /// Resolves required permission for a protected REST route, or null if unknown.
-///
-/// [actorUserId] is the authenticated user id when known; used so users can
-/// PATCH their own profile (`display_name` only) without [WaddlePermission.usersManage].
-String? permissionForRoute(String method, String path, {String? actorUserId}) {
+String? permissionForRoute(String method, String path) {
   final p = path.startsWith('/') ? path : '/$path';
   final m = method.toUpperCase();
 
@@ -127,27 +124,6 @@ String? permissionForRoute(String method, String path, {String? actorUserId}) {
   }
   if (p == '/v1/meta/ticker-types' && m == 'GET') {
     return WaddlePermission.metaRead;
-  }
-
-  if (p == '/v1/auth/logout' && m == 'POST') {
-    return null;
-  }
-  if (p == '/v1/auth/me' || p == '/v1/auth/permissions') {
-    return null;
-  }
-  if (p.startsWith('/v1/users')) {
-    if (p.contains('/password') && m == 'POST') {
-      return null;
-    }
-    final selfPatch = RegExp(r'^/v1/users/([^/]+)$');
-    final match = selfPatch.firstMatch(p);
-    if (m == 'PATCH' &&
-        match != null &&
-        actorUserId != null &&
-        match.group(1) == actorUserId) {
-      return null;
-    }
-    return WaddlePermission.usersManage;
   }
 
   return null;

@@ -4,8 +4,7 @@ export function NoDisplayPlaceholder() {
   return (
     <Box sx={{ maxWidth: 720 }}>
       <Alert severity="warning">
-        No display is configured. Use <strong>Settings</strong> (or complete the first-run dialog)
-        to add a base URL and API key.
+        No display is adopted yet. Open <strong>Displays</strong> to pair with a kiosk.
       </Alert>
     </Box>
   );

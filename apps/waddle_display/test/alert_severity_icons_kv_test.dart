@@ -26,5 +26,6 @@ void main() {
     expect(resolveAlertSeverityIcon('info', cfg), Icons.egg_outlined);
     expect(resolveAlertSeverityIcon('warning', cfg), Icons.warning_amber_rounded);
     expect(resolveAlertSeverityIcon('auth', cfg), Icons.lock_outline);
+    expect(resolveAlertSeverityIcon('security', cfg), Icons.security);
   });
 }

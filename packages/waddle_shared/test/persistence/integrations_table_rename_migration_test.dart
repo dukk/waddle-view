@@ -38,7 +38,7 @@ CREATE TABLE provider_settings (
     expect(tableNames.contains('provider_settings'), isFalse);
 
     final ver = await db.customSelect('PRAGMA user_version').getSingle();
-    expect(ver.read<int>('user_version'), 46);
+    expect(ver.read<int>('user_version'), 48);
 
     final row = await (db.select(db.integrations)..where((t) => t.id.equals('stub')))
         .getSingle();

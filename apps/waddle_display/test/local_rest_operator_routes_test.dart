@@ -221,7 +221,7 @@ void main() {
       Uri.parse(
         '${h.baseUrl}/v1/media/blob-by-key?key=${Uri.encodeComponent('img_blob_k')}',
       ),
-      headers: {'Authorization': 'Bearer ${h.token}'},
+      headers: h.authHeaders,
     );
     expect(img.statusCode, 200);
     expect(img.bodyBytes, [10, 20, 30]);
@@ -597,7 +597,7 @@ void main() {
   test('CORS preflight and GET with allowlisted origin', () async {
     const origin = 'http://localhost:5199';
     final h = await RestTestHarness.start(
-      corsAllowedOrigins: const [origin],
+      seedCorsOrigins: const [origin],
     );
     addTearDown(h.dispose);
 

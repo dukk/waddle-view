@@ -26,7 +26,7 @@ export async function apiFetch(
   }
   const url = `${display.baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
   const headers = new Headers(init.headers);
-  headers.set('Authorization', `Bearer ${session.token}`);
+  headers.set('Authorization', `Bearer ${session.apiKey}`);
   if (init.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
@@ -49,7 +49,7 @@ export async function fetchBlobObjectUrl(
   }
   const path = `/v1/media/blob-by-key?key=${encodeURIComponent(blobKey)}`;
   const url = `${display.baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${session.token}` } });
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${session.apiKey}` } });
   if (!res.ok) {
     return null;
   }

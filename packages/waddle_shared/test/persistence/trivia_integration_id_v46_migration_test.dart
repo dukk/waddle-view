@@ -46,7 +46,7 @@ CREATE TABLE trivia_questions (
     expect(names, contains('integration_id'));
 
     final ver = await db.customSelect('PRAGMA user_version').getSingle();
-    expect(ver.read<int>('user_version'), 46);
+    expect(ver.read<int>('user_version'), 48);
 
     await db.close();
   });

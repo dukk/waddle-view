@@ -169,9 +169,6 @@ export function IntegrationsPage() {
 
   return (
     <Stack spacing={3}>
-      <Typography variant="h5" fontWeight={600}>
-        Integrations
-      </Typography>
       {error && <Alert severity="error">{error}</Alert>}
 
       <Stack spacing={1}>

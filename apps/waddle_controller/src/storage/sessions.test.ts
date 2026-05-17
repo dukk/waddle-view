@@ -8,18 +8,11 @@ import {
 } from './sessions';
 
 const sampleSession = (expiresAtMs: number): DisplaySession => ({
-  token: 'tok',
+  apiKey: 'wk_test_key',
   expiresAtMs,
-  user: {
-    id: 'u1',
-    username: 'op',
-    display_name: 'Op',
-    role: 'operator',
-    is_bootstrap: false,
-    disabled: false,
-  },
+  identifier: 'controller-host',
+  role: 'operator',
   permissions: ['telemetry.read'],
-  warnings: [],
 });
 
 describe('sessions storage', () => {
@@ -35,7 +28,7 @@ describe('sessions storage', () => {
 
   it('saves and loads a valid session', () => {
     saveSession('d1', sampleSession(Date.now() + 60_000));
-    expect(loadSession('d1')?.token).toBe('tok');
+    expect(loadSession('d1')?.apiKey).toBe('wk_test_key');
   });
 
   it('clears expired sessions on load', () => {
@@ -62,6 +55,14 @@ describe('sessions storage', () => {
 
   it('returns null for corrupt session JSON', () => {
     sessionStorage.setItem('waddle_controller_session_v1:d1', '{');
+    expect(loadSession('d1')).toBeNull();
+  });
+
+  it('returns null when apiKey missing', () => {
+    sessionStorage.setItem(
+      'waddle_controller_session_v1:d1',
+      JSON.stringify({ expiresAtMs: Date.now() + 60_000 }),
+    );
     expect(loadSession('d1')).toBeNull();
   });
 });

@@ -735,9 +735,6 @@ export function OverlaysPage() {
     <Stack spacing={2}>
       <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={2}>
         <Box>
-          <Typography variant="h5" fontWeight={600}>
-            Overlay schedules
-          </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, maxWidth: 720 }}>
             SQLite table <code>overlays</code>: each row is a calendar rule on the display (local
             date) with <code>overlay_type</code> (like <code>screen_type</code>) and{' '}

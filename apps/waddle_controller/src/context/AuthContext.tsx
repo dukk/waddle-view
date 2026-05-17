@@ -7,7 +7,9 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { fetchMe, loginDisplay, logoutDisplay } from '@/api/auth';
+import { confirmAdoption, sessionFromAdoption } from '@/api/adoption';
+import { normalizeAdoptionChallengeCode } from '@/util/adoptionChallengeCode';
+import { adoptionError, adoptionLog } from '@/util/adoptionLog';
 import { useDisplay } from '@/context/DisplayContext';
 import {
   clearSession,
@@ -19,23 +21,17 @@ import { permissionsForRole, PREVIEWABLE_CONTROLLER_ROLES } from '@/auth/rolePer
 
 type AuthCtx = {
   session: DisplaySession | null;
-  login: (username: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  refreshSession: () => Promise<void>;
+  completeAdoption: (identifier: string, challengeCode: string) => Promise<void>;
+  saveAdoptionSession: (session: DisplaySession) => void;
+  logout: () => void;
   hasPermission: (perm: string) => boolean;
-  /** Role for UI + routing (admin “view as” preview overrides actual role). */
   effectiveRole: string | null;
-  /** Viewer or power viewer: operator sidebar is trimmed; allowed routes are enforced in `ProgramsOnlyOutlet`. */
   isProgramsOnlyControllerUser: boolean;
-  bootstrapWarning: boolean;
   needsLogin: boolean;
-  /** Sign-in dialog is open because it is required or the user asked to sign in again. */
   loginDialogOpen: boolean;
   openLoginDialog: () => void;
   closeLoginDialog: () => void;
-  /** Signed-in user is an administrator (not affected by UI preview). */
   isAdminUser: boolean;
-  /** When set, the controller UI treats permissions as this role (admin preview only). */
   viewAsRole: string | null;
   setViewAsRole: (role: string) => void;
   clearViewAsRole: () => void;
@@ -46,10 +42,12 @@ const Ctx = createContext<AuthCtx | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { active } = useDisplay();
   const [loginDialogForced, setLoginDialogForced] = useState(false);
+  const [loginDismissedDisplayId, setLoginDismissedDisplayId] = useState<string | null>(null);
   const [viewAsRole, setViewAsRoleState] = useState<string | null>(null);
   const [session, setSession] = useState<DisplaySession | null>(() =>
     active ? loadSession(active.id) : null,
   );
+
   const syncFromStorage = useCallback(() => {
     if (!active) {
       setSession(null);
@@ -64,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setViewAsRoleState(null);
+    setLoginDismissedDisplayId(null);
   }, [active?.id]);
 
   useEffect(() => {
@@ -72,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [active]);
 
-  const isAdminUser = session?.user.role === 'admin';
+  const isAdminUser = session?.role === 'admin';
 
   useEffect(() => {
     if (!isAdminUser) setViewAsRoleState(null);
@@ -80,62 +79,75 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const openLoginDialog = useCallback(() => {
     if (active) {
+      setLoginDismissedDisplayId(null);
       setLoginDialogForced(true);
     }
   }, [active]);
 
   const closeLoginDialog = useCallback(() => {
     setLoginDialogForced(false);
-  }, []);
+    if (active) {
+      setLoginDismissedDisplayId(active.id);
+    }
+  }, [active]);
 
-  const login = useCallback(
-    async (username: string, password: string) => {
-      if (!active) throw new Error('No display selected');
-      const result = await loginDisplay(active.baseUrl, username, password);
-      const stored: DisplaySession = {
-        token: result.token,
-        expiresAtMs: result.expiresAtMs,
-        user: result.user,
-        permissions: result.permissions,
-        warnings: result.warnings,
-      };
-      saveSession(active.id, stored);
-      setSession(stored);
+  const saveAdoptionSession = useCallback(
+    (next: DisplaySession) => {
+      if (!active) return;
+      saveSession(active.id, next);
+      setSession(next);
       setLoginDialogForced(false);
     },
     [active],
   );
 
-  const logout = useCallback(async () => {
-    if (active && session) {
-      await logoutDisplay(active.baseUrl, session.token);
+  const completeAdoption = useCallback(
+    async (identifier: string, challengeCode: string) => {
+      if (!active) throw new Error('No display selected');
+      adoptionLog('ui.loginDialog.confirm.start', 're-adopting active display', {
+        displayId: active.id,
+        baseUrl: active.baseUrl,
+        identifier,
+        challenge_code: challengeCode,
+      });
+      try {
+        const result = await confirmAdoption(active.baseUrl, {
+          identifier,
+          challenge_code: normalizeAdoptionChallengeCode(challengeCode),
+        });
+        const stored = sessionFromAdoption(active.baseUrl, result);
+        saveSession(active.id, stored);
+        setSession(stored);
+        setLoginDialogForced(false);
+        adoptionLog('ui.loginDialog.confirm.success', 'session updated for display', {
+          displayId: active.id,
+          role: stored.role,
+        });
+      } catch (e) {
+        adoptionError('ui.loginDialog.confirm.failed', 're-adoption failed', {
+          displayId: active.id,
+          error: e instanceof Error ? e.message : String(e),
+        });
+        throw e;
+      }
+    },
+    [active],
+  );
+
+  const logout = useCallback(() => {
+    if (active) {
       clearSession(active.id);
     }
     setSession(null);
     setViewAsRoleState(null);
     setLoginDialogForced(false);
-  }, [active, session]);
-
-  const refreshSession = useCallback(async () => {
-    if (!active) return;
-    const cur = loadSession(active.id);
-    if (!cur) {
-      setSession(null);
-      return;
-    }
-    try {
-      const me = await fetchMe(active.baseUrl, cur.token);
-      const next: DisplaySession = { ...cur, ...me };
-      saveSession(active.id, next);
-      setSession(next);
-    } catch {
-      clearSession(active.id);
-      setSession(null);
-    }
   }, [active]);
 
   const needsLogin = active != null && session == null;
-  const loginDialogOpen = Boolean(active && (needsLogin || loginDialogForced));
+  const loginDialogOpen = Boolean(
+    active &&
+      (loginDialogForced || (needsLogin && loginDismissedDisplayId !== active.id)),
+  );
 
   const previewPermissions = useMemo(() => {
     if (!session || !isAdminUser || !viewAsRole) return null;
@@ -145,7 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const effectiveRole = useMemo(() => {
     if (!session) return null;
     if (isAdminUser && viewAsRole) return viewAsRole;
-    return session.user.role;
+    return session.role;
   }, [session, isAdminUser, viewAsRole]);
 
   const isProgramsOnlyControllerUser =
@@ -167,9 +179,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       session,
-      login,
+      completeAdoption,
+      saveAdoptionSession,
       logout,
-      refreshSession,
       hasPermission: (perm: string) => {
         if (!session) return false;
         if (previewPermissions) return previewPermissions.includes(perm);
@@ -177,7 +189,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       effectiveRole,
       isProgramsOnlyControllerUser,
-      bootstrapWarning: session?.warnings.includes('bootstrap_admin') ?? false,
       needsLogin,
       loginDialogOpen,
       openLoginDialog,
@@ -189,9 +200,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }),
     [
       session,
-      login,
+      completeAdoption,
+      saveAdoptionSession,
       logout,
-      refreshSession,
       previewPermissions,
       effectiveRole,
       isProgramsOnlyControllerUser,

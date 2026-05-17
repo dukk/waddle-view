@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Alert,
   Button,
@@ -8,84 +9,90 @@ import {
   DialogTitle,
   Stack,
   TextField,
+  Typography,
 } from '@mui/material';
+import { AdoptionChallengeCodeField } from '@/components/AdoptionChallengeCodeField';
 import { useAuth } from '@/context/AuthContext';
 import { useDisplay } from '@/context/DisplayContext';
+import { isAdoptionChallengeCodeComplete } from '@/util/adoptionChallengeCode';
+
+function defaultIdentifier(): string {
+  const host =
+    typeof window !== 'undefined' ? window.location.hostname : 'controller';
+  return `controller-${host}`;
+}
 
 export function LoginDialog() {
+  const navigate = useNavigate();
   const { active } = useDisplay();
-  const { needsLogin, login, loginDialogOpen, closeLoginDialog, session } = useAuth();
-  const [username, setUsername] = useState('display');
-  const [password, setPassword] = useState('');
+  const { needsLogin, completeAdoption, loginDialogOpen, closeLoginDialog, session } =
+    useAuth();
+
+  const [identifier, setIdentifier] = useState('');
+  const [challengeCode, setChallengeCode] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const open = loginDialogOpen;
-  const mustCompleteLogin = needsLogin;
 
   useEffect(() => {
-    if (open && !mustCompleteLogin && session) {
-      setUsername(session.user.username);
-    }
-  }, [open, mustCompleteLogin, session]);
+    if (!open || !active) return;
+    setIdentifier(session?.identifier ?? defaultIdentifier());
+    setChallengeCode('');
+    setError(null);
+  }, [open, active, session]);
 
   const submit = async () => {
     setError(null);
     try {
-      await login(username.trim(), password);
-      setPassword('');
+      await completeAdoption(identifier.trim(), challengeCode.trim());
     } catch (e) {
       setError(String(e));
     }
   };
 
-  const handleDialogClose = () => {
-    if (mustCompleteLogin) return;
+  const dismissToDisplays = () => {
     closeLoginDialog();
+    navigate('/displays');
   };
 
+  const canSubmit =
+    identifier.trim().length > 0 && isAdoptionChallengeCodeComplete(challengeCode);
+
   return (
-    <Dialog
-      open={open}
-      fullWidth
-      maxWidth="sm"
-      disableEscapeKeyDown={mustCompleteLogin}
-      onClose={handleDialogClose}
-    >
-      <DialogTitle>Sign in to {active?.label ?? 'display'}</DialogTitle>
+    <Dialog open={open} fullWidth maxWidth="sm" onClose={dismissToDisplays}>
+      <DialogTitle>Adopt {active?.label ?? 'display'}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           {error && <Alert severity="error">{error}</Alert>}
           <Alert severity="info">
-            First-time setup: use username <strong>display</strong> and the instance id from{' '}
-            <code>waddle_instance.id</code> on the display device. Create a named user in Settings
-            afterward.
+            <Typography variant="body2">
+              Enter the <strong>challenge code</strong> shown on the kiosk security alert
+              (format XXXX-XXXX).
+            </Typography>
           </Alert>
           <TextField
-            label="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            label="Client identifier"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
             fullWidth
             required
           />
-          <TextField
-            label="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+          <AdoptionChallengeCodeField
+            label="Challenge code"
+            value={challengeCode}
+            onChange={setChallengeCode}
             fullWidth
             required
-            autoComplete="current-password"
+            helperText="Must match the code on the kiosk alert."
           />
         </Stack>
       </DialogContent>
       <DialogActions>
-        {!mustCompleteLogin && (
-          <Button onClick={closeLoginDialog} color="inherit">
-            Cancel
-          </Button>
-        )}
-        <Button variant="contained" onClick={() => void submit()} disabled={!password.trim()}>
-          Sign in
+        <Button onClick={dismissToDisplays} color="inherit">
+          {needsLogin ? 'Manage displays' : 'Cancel'}
+        </Button>
+        <Button variant="contained" onClick={() => void submit()} disabled={!canSubmit}>
+          Confirm adoption
         </Button>
       </DialogActions>
     </Dialog>

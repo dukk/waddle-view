@@ -13,6 +13,7 @@ import {
   type SavedDisplay,
   saveDisplays,
 } from '@/storage/displays';
+import { clearSession } from '@/storage/sessions';
 
 type DisplayCtx = {
   displays: SavedDisplay[];
@@ -62,6 +63,7 @@ export function DisplayProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const removeDisplay = useCallback((id: string) => {
+    clearSession(id);
     removeStoredDisplay(id);
     const next = loadDisplays();
     setDisplays(next);

@@ -80,9 +80,6 @@ export function TickerPage() {
   return (
     <Stack spacing={2}>
       <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Typography variant="h5" fontWeight={600}>
-          Ticker tapes
-        </Typography>
         <Button variant="contained" onClick={() => setAddOpen(true)} disabled={!meta.length}>
           Add ticker tape
         </Button>

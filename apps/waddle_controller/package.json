@@ -3,9 +3,15 @@
   "private": true,
   "version": "0.0.1",
   "type": "module",
+  "engines": {
+    "node": "^22.0.0 <23"
+  },
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -k -n spa,bff -c blue,magenta \"vite\" \"npm run dev:server\"",
+    "dev:spa": "vite",
+    "dev:server": "tsx watch server/src/index.ts",
     "build": "tsc -b && vite build",
+    "build:server": "tsc -p server/tsconfig.json",
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "vitest run",
@@ -13,10 +19,14 @@
     "test:coverage": "vitest run --coverage",
     "coverage:check": "node tool/coverage_check.mjs --min=80 --target=90",
     "docker:build": "docker build -t waddle-controller .",
-    "docker:run": "docker run --rm -p 8080:80 waddle-controller",
+    "docker:run": "docker run --rm -p 8080:80 -v waddle-controller-data:/var/lib/waddle-controller waddle-controller",
     "docker:up": "docker build -t waddle-controller . && docker run --rm -p 8080:80 waddle-controller"
   },
   "dependencies": {
+    "@hono/node-server": "^1.14.0",
+    "@node-rs/argon2": "^2.0.2",
+    "better-sqlite3": "^11.9.1",
+    "hono": "^4.7.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^6.4.0",
@@ -30,7 +40,10 @@
     "react-router-dom": "^7.6.0"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@eslint/js": "^9.25.0",
+    "concurrently": "^9.1.2",
+    "tsx": "^4.19.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@types/node": "^22.15.3",

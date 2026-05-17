@@ -15,7 +15,8 @@ import 'alerts/alert_severity_icons_kv.dart';
 import 'alerts/drift_alert_repository.dart';
 import 'api/display_instance_id_source.dart';
 import 'api/local_rest_server.dart';
-import 'package:waddle_shared/auth/user_repository.dart';
+import 'package:waddle_shared/auth/adoption_repository.dart';
+import 'package:waddle_shared/auth/cors_origin_repository.dart';
 import 'api/network_addressing.dart';
 import 'bootstrap/app_fatal_error_recovery.dart';
 import 'clock.dart';
@@ -105,15 +106,19 @@ Future<void> _waddleBootstrap() async {
     // added by a previous-running provider before the operator extended the
     // list are caught before the curator picks them.
     unawaited(_rescanRejectListOnStartup(db));
-    final users = UserRepository(db);
     final instanceId = await FileDisplayInstanceIdSource(instanceIdFile).load();
-    if (instanceId != null && instanceId.isNotEmpty) {
-      await users.ensureBootstrapUser(instanceIdPassword: instanceId);
-    }
+    final adoption = instanceId != null && instanceId.isNotEmpty
+        ? AdoptionRepository(db, instanceId: instanceId)
+        : null;
+    final corsOrigins = CorsOriginRepository(db);
     AppDebugLog.startup('SQLite ready (seed applied if first run)');
 
     final secrets = FlutterSecureSecretStore();
     final envMap = mergeBootstrapEnv();
+    await corsOrigins.seedEnvOrigins(
+      parseCorsAllowedOrigins(envMap['WADDLE_HTTP_CORS_ORIGINS']),
+      nowMs: DateTime.now().millisecondsSinceEpoch,
+    );
     final resolver = ProviderConfigResolver(db, envMap);
     final blobs = FileSystemBlobStore(mediaDir);
     final telemetryHub = OperatorTelemetryHub();
@@ -171,18 +176,17 @@ Future<void> _waddleBootstrap() async {
     final alerts = DriftAlertRepository(db);
     final httpConfig = await resolveHttpBindConfig(environment: envMap);
     final navigationBus = DisplayNavigationBus();
-    final corsOrigins = parseCorsAllowedOrigins(envMap['WADDLE_HTTP_CORS_ORIGINS']);
     final handler = buildRootHandler(
       db: db,
       alerts: alerts,
-      users: users,
+      adoption: adoption,
+      corsOrigins: corsOrigins,
       ticker: tickerCurated,
       blobs: blobs,
       onConfigChanged: dashboardCurator.refresh,
       env: envMap,
       telemetryHub: telemetryHub,
       navigationBus: navigationBus,
-      corsAllowedOrigins: corsOrigins,
     );
     final server = await LocalRestServer.bind(
       handler: handler,

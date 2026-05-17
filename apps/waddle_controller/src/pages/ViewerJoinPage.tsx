@@ -9,61 +9,105 @@ import {
   Typography,
 } from '@mui/material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { registerViewerDisplay } from '@/api/auth';
+import {
+  confirmAdoption,
+  requestAdoption,
+  sessionFromAdoption,
+} from '@/api/adoption';
+import { useAuth } from '@/context/AuthContext';
 import { useDisplay } from '@/context/DisplayContext';
 import { normalizeBaseUrl, upsertDisplayByBaseUrl } from '@/storage/displays';
 import { saveSession } from '@/storage/sessions';
+import { AdoptionChallengeCodeField } from '@/components/AdoptionChallengeCodeField';
+import {
+  isAdoptionChallengeCodeComplete,
+  normalizeAdoptionChallengeCode,
+} from '@/util/adoptionChallengeCode';
+import { adoptionError, adoptionLog } from '@/util/adoptionLog';
+
+function defaultViewerIdentifier(): string {
+  const host =
+    typeof window !== 'undefined' ? window.location.hostname : 'viewer';
+  return `viewer-${host}`;
+}
 
 export function ViewerJoinPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { setActiveId, refresh } = useDisplay();
+  const { saveAdoptionSession } = useAuth();
 
   const initialApi = useMemo(() => (params.get('api') ?? '').trim(), [params]);
-  const secretFromQuery = useMemo(() => (params.get('secret') ?? '').trim(), [params]);
   const [apiUrl, setApiUrl] = useState(initialApi || 'http://127.0.0.1:8787');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [identifier, setIdentifier] = useState(defaultViewerIdentifier);
+  const [challengeCode, setChallengeCode] = useState('');
+  const [pendingConfirm, setPendingConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  const canRegister =
-    secretFromQuery.length > 0 &&
-    password.length >= 8 &&
-    username.trim().length > 0;
-
-  const finishWithDisplaySession = (
-    result: Awaited<ReturnType<typeof registerViewerDisplay>>,
-  ) => {
-    const d = upsertDisplayByBaseUrl({ baseUrl: result.baseUrl });
-    saveSession(d.id, {
-      token: result.token,
-      expiresAtMs: result.expiresAtMs,
-      user: result.user,
-      permissions: result.permissions,
-      warnings: result.warnings ?? [],
-    });
-    setActiveId(d.id);
-    refresh();
-    navigate('/');
-  };
-
-  const onRegister = async () => {
+  const onRequest = async () => {
     setError(null);
+    setBusy(true);
+    const api = normalizeBaseUrl(apiUrl);
+    adoptionLog('ui.join.request.start', 'viewer join requested adoption', {
+      baseUrl: api,
+      identifier: identifier.trim(),
+      role: 'viewer',
+    });
     try {
-      const api = normalizeBaseUrl(apiUrl);
       void new URL(api);
-      const result = await registerViewerDisplay(api, {
-        username: username.trim(),
-        password,
-        registrationSecret: secretFromQuery,
+      await requestAdoption(api, {
+        identifier: identifier.trim(),
+        role: 'viewer',
       });
-      finishWithDisplaySession(result);
+      setChallengeCode('');
+      setPendingConfirm(true);
+      adoptionLog('ui.join.request.success', 'viewer join awaiting kiosk code');
     } catch (e) {
+      adoptionError('ui.join.request.failed', 'viewer join request failed', {
+        error: String(e),
+      });
       setError(String(e));
+    } finally {
+      setBusy(false);
     }
   };
 
-  const onSignInInstead = () => {
+  const onConfirm = async () => {
+    setError(null);
+    setBusy(true);
+    const api = normalizeBaseUrl(apiUrl);
+    adoptionLog('ui.join.confirm.start', 'viewer join confirming adoption', {
+      baseUrl: api,
+      identifier: identifier.trim(),
+      challenge_code: challengeCode.trim(),
+    });
+    try {
+      const result = await confirmAdoption(api, {
+        identifier: identifier.trim(),
+        challenge_code: normalizeAdoptionChallengeCode(challengeCode),
+      });
+      const d = upsertDisplayByBaseUrl({ baseUrl: api });
+      const session = sessionFromAdoption(api, result);
+      saveSession(d.id, session);
+      saveAdoptionSession(session);
+      setActiveId(d.id);
+      refresh();
+      adoptionLog('ui.join.confirm.success', 'viewer join complete', {
+        displayId: d.id,
+      });
+      navigate('/');
+    } catch (e) {
+      adoptionError('ui.join.confirm.failed', 'viewer join confirm failed', {
+        error: String(e),
+      });
+      setError(String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onManageDisplays = () => {
     setError(null);
     try {
       const api = normalizeBaseUrl(apiUrl);
@@ -71,7 +115,7 @@ export function ViewerJoinPage() {
       const d = upsertDisplayByBaseUrl({ baseUrl: api });
       setActiveId(d.id);
       refresh();
-      navigate('/');
+      navigate('/displays');
     } catch {
       setError('Enter a valid display API base URL.');
     }
@@ -83,9 +127,8 @@ export function ViewerJoinPage() {
         Join this display
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Connects waddle_controller to the kiosk REST API. When the display enables registration,
-        new accounts are created with the <strong>viewer</strong> role (Programs and Account in this app; the display
-        API grants <code>telemetry.read</code> for program data).
+        Adopt this browser as a <strong>viewer</strong> client. Confirm the challenge code shown on
+        the kiosk alert (same flow as Manage displays).
       </Typography>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -100,36 +143,36 @@ export function ViewerJoinPage() {
           fullWidth
           helperText="Usually pre-filled from the QR link (?api=…)."
         />
-        {secretFromQuery ? (
+        <TextField
+          label="Client identifier"
+          value={identifier}
+          onChange={(e) => setIdentifier(e.target.value)}
+          fullWidth
+        />
+        {!pendingConfirm ? (
+          <Button variant="contained" onClick={() => void onRequest()} disabled={busy}>
+            Request viewer adoption
+          </Button>
+        ) : (
           <>
-            <TextField
-              label="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+            <AdoptionChallengeCodeField
+              label="Challenge code"
+              value={challengeCode}
+              onChange={setChallengeCode}
               fullWidth
+              helperText="Must match the code on the kiosk alert (XXXX-XXXX)."
             />
-            <TextField
-              label="Password (min 8 characters)"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              fullWidth
-              autoComplete="new-password"
-            />
-            <Button variant="contained" onClick={() => void onRegister()} disabled={!canRegister}>
-              Create viewer account and sign in
+            <Button
+              variant="contained"
+              onClick={() => void onConfirm()}
+              disabled={busy || !isAdoptionChallengeCodeComplete(challengeCode)}
+            >
+              Confirm and open Programs
             </Button>
           </>
-        ) : (
-          <Alert severity="info">
-            This link has no registration secret. Configure{' '}
-            <code>WADDLE_VIEWER_REGISTRATION_SECRET</code> on the display to allow self-service viewer
-            signup (and add the controller origin to <code>WADDLE_HTTP_CORS_ORIGINS</code>). You can
-            still sign in below.
-          </Alert>
         )}
-        <Button variant="outlined" onClick={onSignInInstead}>
-          Sign in with an existing account
+        <Button variant="outlined" onClick={onManageDisplays}>
+          Manage displays (other roles)
         </Button>
         <Typography variant="caption" color="text.secondary">
           Operator UI:{' '}

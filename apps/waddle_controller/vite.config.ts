@@ -14,13 +14,15 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
-    include: ['src/**/*.test.{ts,tsx}'],
+    include: ['src/**/*.test.{ts,tsx}', 'server/src/**/*.test.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'json-summary'],
       reportsDirectory: './coverage',
-      include: ['src/**/*.{ts,tsx}'],
+      include: ['src/**/*.{ts,tsx}', 'server/src/**/*.ts'],
       exclude: [
+        'server/src/index.ts',
+        'server/src/testHelpers.ts',
         'src/main.tsx',
         'src/vite-env.d.ts',
         'src/App.tsx',
@@ -37,6 +39,10 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
+      '/bff': {
+        target: 'http://127.0.0.1:5199',
+        changeOrigin: true,
+      },
       '/v1': {
         target: 'http://127.0.0.1:8787',
         changeOrigin: true,

@@ -7,6 +7,7 @@ const String kAlertSeverityIconsKvKey = 'display.alert.severity_icons';
 const Map<String, String> kDefaultAlertSeverityMaterialNames = {
   'info': 'info_outline',
   'auth': 'lock_outline',
+  'security': 'security',
   'warning': 'warning_amber_rounded',
   'error': 'error_outline',
   'critical': 'report_problem_outlined',

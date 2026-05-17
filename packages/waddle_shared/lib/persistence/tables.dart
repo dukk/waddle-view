@@ -591,19 +591,28 @@ const String kUserRoleOperator = 'operator';
 const String kUserRolePowerViewer = 'power_viewer';
 const String kUserRoleViewer = 'viewer';
 
-/// Reserved bootstrap username (password = instance id file when no named users).
-const String kBootstrapUsername = 'display';
-
-/// Display API operator accounts.
-class Users extends Table {
+/// Short-lived adoption challenge state (REST device flow).
+class AdoptionPending extends Table {
   TextColumn get id => text()();
-  TextColumn get username => text()();
-  TextColumn get usernameLower => text()();
-  TextColumn get displayName => text()();
+  TextColumn get identifier => text()();
   TextColumn get role => text()();
-  TextColumn get passwordHash => text().nullable()();
-  BoolColumn get isBootstrap => boolean().withDefault(const Constant(false))();
-  IntColumn get disabledAtMs => integer().nullable()();
+  IntColumn get issuedAtMs => integer()();
+  IntColumn get expiresAtMs => integer()();
+  TextColumn get challengeHash => text()();
+  TextColumn get nonce => text()();
+  IntColumn get alertId => integer().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Adopted REST clients (API key stored as SHA-256 hash only).
+class ApiClients extends Table {
+  TextColumn get id => text()();
+  TextColumn get identifier => text()();
+  TextColumn get role => text()();
+  TextColumn get apiKeyHash => text()();
+  TextColumn get referrerOrigin => text().nullable()();
   IntColumn get createdAtMs => integer()();
   IntColumn get updatedAtMs => integer()();
 
@@ -611,24 +620,18 @@ class Users extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-/// Opaque bearer sessions for operator REST clients.
-class UserSessions extends Table {
-  TextColumn get id => text()();
-  TextColumn get userId => text().references(Users, #id)();
+/// Browser origins allowed on protected REST routes after adoption or env seed.
+class CorsAllowedOrigins extends Table {
+  TextColumn get origin => text()();
   IntColumn get createdAtMs => integer()();
-  IntColumn get expiresAtMs => integer()();
-  TextColumn get clientLabel => text().nullable()();
+  TextColumn get source => text()();
 
   @override
-  Set<Column<Object>> get primaryKey => {id};
+  Set<Column<Object>> get primaryKey => {origin};
 }
 
-/// Links operator users to external IdP subjects (tokens in SecretStore).
-class UserOauthIdentities extends Table {
-  TextColumn get userId => text().references(Users, #id)();
-  TextColumn get provider => text()();
-  TextColumn get subject => text()();
+/// [CorsAllowedOrigins.source] for successful adoption confirm/grant.
+const String kCorsOriginSourceAdoption = 'adoption';
 
-  @override
-  Set<Column<Object>> get primaryKey => {userId, provider};
-}
+/// [CorsAllowedOrigins.source] for [WADDLE_HTTP_CORS_ORIGINS] at startup.
+const String kCorsOriginSourceEnv = 'env';

@@ -37,6 +37,13 @@ function includeSourceFile(sf) {
   if (rel.startsWith('src/storage/')) return true;
   if (rel.startsWith('src/constants/')) return true;
   if (rel.startsWith('src/util/') && rel.endsWith('.ts')) return true;
+  const serverIdx = norm.indexOf('server/src/');
+  if (serverIdx >= 0) {
+    const serverRel = norm.slice(serverIdx);
+    if (serverRel.endsWith('.test.ts')) return false;
+    if (serverRel === 'server/src/index.ts') return false;
+    if (serverRel.startsWith('server/src/')) return true;
+  }
   return false;
 }
 

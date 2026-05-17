@@ -265,7 +265,7 @@ void main() {
   test('CORS adds headers for allowed origin', () async {
     const origin = 'http://localhost:5173';
     final h = await RestTestHarness.start(
-      corsAllowedOrigins: [origin],
+      seedCorsOrigins: [origin],
     );
     addTearDown(h.dispose);
 

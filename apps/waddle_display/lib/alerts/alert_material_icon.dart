@@ -10,6 +10,8 @@ IconData alertMaterialIconFromName(String name) {
       return Icons.info_outline;
     case 'lock_outline':
       return Icons.lock_outline;
+    case 'security':
+      return Icons.security;
     case 'warning_amber_rounded':
       return Icons.warning_amber_rounded;
     case 'error_outline':

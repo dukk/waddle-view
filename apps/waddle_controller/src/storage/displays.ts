@@ -16,7 +16,7 @@ export function loadDisplays(): SavedDisplay[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isDisplay);
+    return parsed.filter(isDisplay).map((x) => toSavedDisplay(x as Record<string, unknown>));
   } catch {
     return [];
   }
@@ -30,7 +30,10 @@ export function normalizeBaseUrl(url: string): string {
   return url.trim().replace(/\/+$/, '');
 }
 
-export function addDisplay(input: { baseUrl: string; label?: string }): SavedDisplay {
+export function addDisplay(input: {
+  baseUrl: string;
+  label?: string;
+}): SavedDisplay {
   const displays = loadDisplays();
   const d: SavedDisplay = {
     id: randomId(),
@@ -43,7 +46,10 @@ export function addDisplay(input: { baseUrl: string; label?: string }): SavedDis
 }
 
 /** Returns an existing display row when [baseUrl] already exists (normalized). */
-export function upsertDisplayByBaseUrl(input: { baseUrl: string; label?: string }): SavedDisplay {
+export function upsertDisplayByBaseUrl(input: {
+  baseUrl: string;
+  label?: string;
+}): SavedDisplay {
   const normalized = normalizeBaseUrl(input.baseUrl);
   const displays = loadDisplays();
   const hit = displays.find((d) => normalizeBaseUrl(d.baseUrl) === normalized);
@@ -64,7 +70,7 @@ export function exportDisplaysJson(): string {
 export function importDisplaysJson(json: string): void {
   const parsed = JSON.parse(json) as unknown;
   if (!Array.isArray(parsed)) throw new Error('Expected array');
-  const next = parsed.filter(isDisplay);
+  const next = parsed.filter(isDisplay).map((x) => toSavedDisplay(x as Record<string, unknown>));
   saveDisplays(next);
 }
 
@@ -77,6 +83,14 @@ function isDisplay(x: unknown): x is SavedDisplay {
     typeof o.baseUrl === 'string' &&
     !('apiKey' in o)
   );
+}
+
+function toSavedDisplay(o: Record<string, unknown>): SavedDisplay {
+  return {
+    id: String(o.id),
+    label: String(o.label),
+    baseUrl: normalizeBaseUrl(String(o.baseUrl)),
+  };
 }
 
 /** Legacy import: strips apiKey from older backups. */
@@ -92,11 +106,7 @@ export function importDisplaysJsonLegacy(json: string): void {
       typeof o.label === 'string' &&
       typeof o.baseUrl === 'string'
     ) {
-      next.push({
-        id: o.id,
-        label: o.label,
-        baseUrl: normalizeBaseUrl(String(o.baseUrl)),
-      });
+      next.push(toSavedDisplay(o));
     }
   }
   saveDisplays(next);
