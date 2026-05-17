@@ -8,6 +8,7 @@ export 'trivia_opentdb/opentdb_trivia_data_provider.dart';
 export 'weather_openweathermap/weather_data_provider.dart';
 export 'weather_nws_alerts/nws_weather_gov_alerts_data_provider.dart';
 export 'stock_finnhub/stock_quote_data_provider.dart';
+export 'home_assistant/home_assistant_data_provider.dart';
 export 'media_pexels/pexels_data_provider.dart';
 export 'media_flickr/flickr_media_data_provider.dart';
 export 'media_onedrive/onedrive_media_data_provider.dart';

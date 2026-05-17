@@ -335,6 +335,18 @@ The **stocks** provider (`id` / `provider_type`: **`stock_finnhub`**) calls [Fin
 
 **Screen:** widget type **`stock_quotes`**. Seed adds a **`stock_quotes`** row in **`screens`** disabled by default; enable after configuring the API key. The slide renders symbol, price, and percent change with up/down trend coloring per enabled symbol.
 
+## Home Assistant
+
+The **`home_assistant`** provider polls your [Home Assistant](https://www.home-assistant.io/) instance REST API (`GET /api/states/{entity_id}`) for every enabled row in **`interests_home_assistant_entities`** and upserts the latest state into **`home_assistant_entity_states`**. Configure a **long-lived access token** and **base URL** (for example `http://192.168.1.10:8123`) in **waddle_controller → Integrations**; credentials are stored encrypted in **`integration_secrets`**, not in SQLite plaintext.
+
+**Entity list:** add rows via REST `POST /v1/interests/home-assistant-entities` with `{ "id": "…", "entity_id": "sensor.example", "display_name": "…", "enabled": true }` (entity ids from Home Assistant **Developer tools → States**). When no enabled interest rows exist, the collector uses **`config_json.defaultEntities`**.
+
+**`config_json`** supports **`maxEntitiesPerCollect`** (default **50**), **`requestTimeoutMs`** (default **15000**), and **`defaultEntities`**: `[{ "entityId": "sensor.example", "displayName": "…" }]`.
+
+**Binary sensors:** each successful collect for `binary_sensor.*` entities also upserts **`runtime_signals`** with signal id equal to the HA **`entity_id`** and boolean value **`true`** when state is **`on`**. Use these ids in curator predicates (for example `binary_sensor.living_room_motion` equals `true`).
+
+**Screen:** widget type **`home_assistant`**. The slide lists every enabled interest row with friendly name, state, and unit when present.
+
 ## NWS weather alerts (api.weather.gov)
 
 The **`weather_nws_alerts`** data provider (`id` / `provider_type`: **`weather_nws_alerts`**; legacy DBs migrated from **`nws_weather_alerts`**) calls the National Weather Service [JSON API](https://www.weather.gov/documentation/services-web-api) **`GET /alerts/active?point=<lat>,<lon>`** for each enabled **`weather_locations`** row with **`include_active_weather_alerts`** true (schema version **29**; default **true**). When no rows are enabled for weather, it uses **`defaultLocation`** from **`config_json`** (same shape as the OpenWeather provider), like the OpenWeather collector. If every enabled location opts out of active alerts, stored **`weather_alerts`** rows are cleared and no NWS requests are made. Responses are stored in **`weather_alerts`** (schema version **25**). **No API key** is required.

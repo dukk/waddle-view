@@ -255,6 +255,40 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       'maxOptionChars': 45,
     }),
   ),
+  'home_assistant': ProviderConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'HomeAssistantProviderConfig',
+        description:
+            'Home Assistant REST collector: default entities (when '
+            'interests_home_assistant_entities has no enabled rows), '
+            'per-tick fetch ceiling, and HTTP timeout.',
+        properties: {
+          'maxEntitiesPerCollect': {'type': 'integer', 'minimum': 1},
+          'requestTimeoutMs': {'type': 'integer', 'minimum': 1000},
+          'defaultEntities': {
+            'type': 'array',
+            'items': {
+              'type': 'object',
+              'properties': {
+                'entityId': {'type': 'string', 'minLength': 1},
+                'displayName': {'type': 'string'},
+              },
+              'required': ['entityId'],
+              'additionalProperties': true,
+            },
+          },
+        },
+      ),
+    ),
+    example: jsonEncode({
+      'maxEntitiesPerCollect': 50,
+      'requestTimeoutMs': 15000,
+      'defaultEntities': [
+        {'entityId': 'sensor.example', 'displayName': 'Example'},
+      ],
+    }),
+  ),
   'stock_finnhub': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
@@ -638,6 +672,7 @@ const List<String> kScreenLayoutWidgetTypes = [
   'photo_collage',
   'video',
   'stock_quotes',
+  'home_assistant',
   'data_health',
   'web_page',
   kScreenTypePluginTemplate,
@@ -1124,6 +1159,18 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
         title: 'StockQuotesScreenConfig',
         description:
             'No per-screen options; the slide lists all enabled interests_stock_symbols rows.',
+        properties: {},
+      ),
+    ),
+    example: jsonEncode({}),
+  ),
+  'home_assistant': ScreenConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'HomeAssistantScreenConfig',
+        description:
+            'No per-screen options; the slide lists all enabled '
+            'interests_home_assistant_entities rows and their latest states.',
         properties: {},
       ),
     ),

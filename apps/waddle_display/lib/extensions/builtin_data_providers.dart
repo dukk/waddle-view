@@ -22,6 +22,7 @@ DataProviderRegistry buildBuiltinDataProviderRegistry() {
       FlickrMediaDataProvider(),
       BingImageOfDayDataProvider(),
       StockQuoteDataProvider(),
+      HomeAssistantDataProvider(),
       PluginHttpDataProvider(),
     ],
   );

@@ -381,6 +381,111 @@ void registerInterestsRestRoutes(
     return _jsonOk({});
   });
 
+  r.get('/v1/interests/home-assistant-entities', (Request req) async {
+    final rows = await (db.select(db.interestsHomeAssistantEntities)
+          ..orderBy([(t) => OrderingTerm.asc(t.entityId)]))
+        .get();
+    return _jsonOk({
+      'items': [
+        for (final row in rows)
+          {
+            'id': row.id,
+            'entity_id': row.entityId,
+            'display_name': row.displayName,
+            'enabled': row.enabled,
+          },
+      ],
+    });
+  });
+
+  r.post('/v1/interests/home-assistant-entities', (Request req) async {
+    final body = await _readJsonObject(req);
+    if (body == null) return _jsonErr(400, 'expected_json_object');
+    final id = '${body['id'] ?? ''}'.trim();
+    final entityId = '${body['entity_id'] ?? ''}'.trim();
+    if (id.isEmpty || entityId.isEmpty) {
+      return _jsonErr(400, 'id_and_entity_id_required');
+    }
+    final existingId = await (db.select(db.interestsHomeAssistantEntities)
+          ..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (existingId != null) return _jsonErr(409, 'id_exists');
+    final existingEntity = await (db.select(db.interestsHomeAssistantEntities)
+          ..where((t) => t.entityId.equals(entityId)))
+        .getSingleOrNull();
+    if (existingEntity != null) return _jsonErr(409, 'entity_id_exists');
+    final displayName = '${body['display_name'] ?? ''}'.trim();
+    final enabled = _parseBool(body['enabled']) ?? true;
+    await db.into(db.interestsHomeAssistantEntities).insert(
+          InterestsHomeAssistantEntitiesCompanion.insert(
+            id: id,
+            entityId: entityId,
+            displayName: Value(displayName),
+            enabled: Value(enabled),
+          ),
+        );
+    await onConfigChanged();
+    return _jsonOk({});
+  });
+
+  r.patch('/v1/interests/home-assistant-entities/<id>', (
+    Request req,
+    String id,
+  ) async {
+    final existing = await (db.select(db.interestsHomeAssistantEntities)
+          ..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (existing == null) return _jsonErr(404, 'not_found');
+    final body = await _readJsonObject(req);
+    if (body == null) return _jsonErr(400, 'expected_json_object');
+    final entityId = body.containsKey('entity_id')
+        ? '${body['entity_id']}'.trim()
+        : existing.entityId;
+    if (entityId.isEmpty) return _jsonErr(400, 'invalid_entity_id');
+    if (entityId != existing.entityId) {
+      final clash = await (db.select(db.interestsHomeAssistantEntities)
+            ..where((t) => t.entityId.equals(entityId)))
+          .getSingleOrNull();
+      if (clash != null) return _jsonErr(409, 'entity_id_exists');
+    }
+    final displayName = body.containsKey('display_name')
+        ? '${body['display_name']}'.trim()
+        : existing.displayName;
+    final enabled = body.containsKey('enabled')
+        ? (_parseBool(body['enabled']) ?? existing.enabled)
+        : existing.enabled;
+    await (db.update(db.interestsHomeAssistantEntities)
+          ..where((t) => t.id.equals(id)))
+        .write(
+      InterestsHomeAssistantEntitiesCompanion(
+        entityId: Value(entityId),
+        displayName: Value(displayName),
+        enabled: Value(enabled),
+      ),
+    );
+    await onConfigChanged();
+    return _jsonOk({});
+  });
+
+  r.delete('/v1/interests/home-assistant-entities/<id>', (
+    Request req,
+    String id,
+  ) async {
+    final row = await (db.select(db.interestsHomeAssistantEntities)
+          ..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (row == null) return _jsonErr(404, 'not_found');
+    await (db.delete(db.homeAssistantEntityStates)
+          ..where((t) => t.entityId.equals(row.entityId)))
+        .go();
+    final n = await (db.delete(db.interestsHomeAssistantEntities)
+          ..where((t) => t.id.equals(id)))
+        .go();
+    if (n == 0) return _jsonErr(404, 'not_found');
+    await onConfigChanged();
+    return _jsonOk({});
+  });
+
   r.get('/v1/interests/joke-categories', (Request req) async {
     final rows = await (db.select(db.interestsJokes)
           ..orderBy([(t) => OrderingTerm.asc(t.label)]))

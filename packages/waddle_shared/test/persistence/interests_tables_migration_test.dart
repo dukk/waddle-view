@@ -106,6 +106,7 @@ CREATE TABLE stock_symbols (
         'interests_jokes',
         'interests_trivia',
         'interests_stock_symbols',
+        'interests_home_assistant_entities',
       },
     );
 

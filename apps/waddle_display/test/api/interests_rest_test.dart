@@ -151,6 +151,60 @@ void main() {
     expect(ok.statusCode, 200);
   });
 
+  test('GET/POST/PATCH/DELETE home assistant entity', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+    final base = h.baseUrl;
+    final auth = h.authHeaders;
+
+    final create = await http.post(
+      Uri.parse('$base/v1/interests/home-assistant-entities'),
+      headers: auth,
+      body: jsonEncode({
+        'id': 'kitchen_temp',
+        'entity_id': 'sensor.kitchen_temperature',
+        'display_name': 'Kitchen',
+        'enabled': true,
+      }),
+    );
+    expect(create.statusCode, 200);
+
+    final list = await http.get(
+      Uri.parse('$base/v1/interests/home-assistant-entities'),
+      headers: auth,
+    );
+    expect(list.statusCode, 200);
+    final items = (jsonDecode(list.body) as Map)['items'] as List;
+    expect(items.length, 1);
+    expect(items.first['entity_id'], 'sensor.kitchen_temperature');
+
+    final patch = await http.patch(
+      Uri.parse('$base/v1/interests/home-assistant-entities/kitchen_temp'),
+      headers: auth,
+      body: jsonEncode({'display_name': 'Kitchen temp'}),
+    );
+    expect(patch.statusCode, 200);
+
+    await db.into(db.homeAssistantEntityStates).insert(
+          HomeAssistantEntityStatesCompanion.insert(
+            entityId: 'sensor.kitchen_temperature',
+            state: '21',
+            attributesJson: '{}',
+            observedAtMs: 1,
+          ),
+        );
+
+    final del = await http.delete(
+      Uri.parse('$base/v1/interests/home-assistant-entities/kitchen_temp'),
+      headers: auth,
+    );
+    expect(del.statusCode, 200);
+
+    expect(await db.select(db.homeAssistantEntityStates).get(), isEmpty);
+  });
+
   test('power_viewer can read interests but not write', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);

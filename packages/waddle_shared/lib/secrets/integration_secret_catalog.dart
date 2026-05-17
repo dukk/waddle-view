@@ -73,6 +73,13 @@ const Map<String, List<IntegrationSecretSlot>> kIntegrationSecretSlotsById = {
       storageKey: 'provider:access_token:stock_finnhub',
     ),
   ],
+  'home_assistant': [
+    IntegrationSecretSlot(
+      id: kIntegrationSecretSlotApiKey,
+      label: 'Home Assistant long-lived access token',
+      storageKey: 'provider:access_token:home_assistant',
+    ),
+  ],
   'calendar_google': [
     IntegrationSecretSlot(
       id: kIntegrationSecretSlotClientId,

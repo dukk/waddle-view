@@ -24,6 +24,8 @@ void main() {
     ('POST', '/v1/interests/rss-feeds', WaddlePermission.interestsWrite),
     ('PATCH', '/v1/interests/weather-locations/x', WaddlePermission.interestsWrite),
     ('DELETE', '/v1/interests/stock-symbols/x', WaddlePermission.interestsWrite),
+    ('GET', '/v1/interests/home-assistant-entities', WaddlePermission.interestsRead),
+    ('POST', '/v1/interests/home-assistant-entities', WaddlePermission.interestsWrite),
     ('GET', '/v1/reject-terms', WaddlePermission.rejectTermsManage),
     ('POST', '/v1/reject-terms/rescan', WaddlePermission.rejectTermsManage),
     ('GET', '/v1/telemetry/programs', WaddlePermission.telemetryRead),

@@ -335,6 +335,32 @@ Future<void> _ensurePexelsProviderRow(AppDatabase db) async {
       );
 }
 
+Future<void> _ensureHomeAssistantProviderRow(AppDatabase db) async {
+  final row =
+      await (db.select(db.integrations)
+            ..where((t) => t.id.equals('home_assistant')))
+          .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  final haDoc = providerConfigJsonDocForType('home_assistant');
+  await db.into(db.integrations).insert(
+        IntegrationsCompanion.insert(
+          id: 'home_assistant',
+          providerType: 'home_assistant',
+          enabled: const Value(false),
+          pollSeconds: const Value(60),
+          baseUrl: const Value('http://homeassistant.local:8123'),
+          configJson: const Value(
+            '{"maxEntitiesPerCollect":50,"requestTimeoutMs":15000,'
+            '"defaultEntities":[]}',
+          ),
+          configJsonSchema: Value(haDoc.schema),
+          exampleConfigJson: Value(haDoc.example),
+        ),
+      );
+}
+
 Future<void> _ensureStocksProviderRow(AppDatabase db) async {
   final row =
       await (db.select(db.integrations)
@@ -393,6 +419,7 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
   await _ensureNwsWeatherAlertsProviderRow(db);
   await _ensurePexelsProviderRow(db);
   await _ensureStocksProviderRow(db);
+  await _ensureHomeAssistantProviderRow(db);
   await _ensureGoogleCalendarProviderRow(db);
   await _ensureOutlookCalendarProviderRow(db);
   await _ensureOneDriveMediaProviderRow(db);

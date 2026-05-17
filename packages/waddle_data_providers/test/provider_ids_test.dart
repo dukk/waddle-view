@@ -7,6 +7,7 @@ import 'package:waddle_data_providers/media_flickr/flickr_media_data_provider.da
 import 'package:waddle_data_providers/media_onedrive/onedrive_media_data_provider.dart';
 import 'package:waddle_data_providers/media_pexels/pexels_data_provider.dart';
 import 'package:waddle_data_providers/news_rss/rss_news_data_provider.dart';
+import 'package:waddle_data_providers/home_assistant/home_assistant_data_provider.dart';
 import 'package:waddle_data_providers/stock_finnhub/stock_quote_data_provider.dart';
 import 'package:waddle_data_providers/trivia_openai/trivia_data_provider.dart';
 import 'package:waddle_data_providers/trivia_opentdb/opentdb_trivia_data_provider.dart';
@@ -22,6 +23,7 @@ void main() {
     expect(WeatherDataProvider().id, 'weather_openweathermap');
     expect(NwsWeatherGovAlertsDataProvider().id, 'weather_nws_alerts');
     expect(StockQuoteDataProvider().id, 'stock_finnhub');
+    expect(HomeAssistantDataProvider().id, 'home_assistant');
     expect(PexelsDataProvider().id, 'media_pexels');
     expect(FlickrMediaDataProvider().id, 'media_flickr');
     expect(OneDriveMediaDataProvider().id, 'media_onedrive');

@@ -46,6 +46,7 @@ const SIMPLE_ICONS_BY_TYPE: Readonly<Record<string, IntegrationSimpleIconsSource
   joke_openai: { kind: 'simpleicons', slug: 'openai' },
   trivia_openai: { kind: 'simpleicons', slug: 'openai' },
   stock_finnhub: { kind: 'simpleicons', slug: 'finnhub', color: '00B98F' },
+  home_assistant: { kind: 'simpleicons', slug: 'homeassistant', color: '18BCF2' },
   news_rss: { kind: 'simpleicons', slug: 'rss', color: 'FFA500' },
 };
 

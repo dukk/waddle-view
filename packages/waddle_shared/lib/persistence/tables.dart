@@ -3,7 +3,7 @@ import 'package:drift/drift.dart';
 /// Operator-configured integrations (collectors); persisted as SQLite `integrations`.
 class Integrations extends Table {
   TextColumn get id => text()();
-  TextColumn get providerType => text()();
+  TextColumn get integrationType => text()();
   BoolColumn get enabled => boolean().withDefault(const Constant(true))();
   IntColumn get pollSeconds => integer().withDefault(const Constant(60))();
   TextColumn get baseUrl => text().nullable()();
@@ -95,7 +95,7 @@ const String kDefaultDisplayTimezoneIana = 'America/New_York';
 /// Plugin screen widget `type` ([Screens.screenType]).
 const String kScreenTypePluginTemplate = 'plugin_template';
 
-/// Plugin HTTP collector ([Integrations.providerType]).
+/// Plugin HTTP collector ([Integrations.integrationType]).
 const String kProviderTypePluginHttp = 'plugin_http';
 
 /// Plugin ticker tape ([TickerTapes.tickerType]).
@@ -517,17 +517,23 @@ class WeatherAlerts extends Table {
   Set<Column<Object>> get primaryKey => {locationId, nwsAlertId};
 }
 
-/// Matches [Integrations.id] for media sourced from that integration.
-const String kMediaDataProviderPexels = 'media_pexels';
+/// Matches [Integrations.integrationType] for Pexels photo ingest.
+const String kMediaDataProviderPhotoPexels = 'photo_pexels';
 
-/// Microsoft Graph OneDrive sync into [Photos] / [Videos].
-const String kMediaDataProviderOneDrive = 'media_onedrive';
+/// Matches [Integrations.integrationType] for Pexels video ingest.
+const String kMediaDataProviderVideoPexels = 'video_pexels';
+
+/// Microsoft Graph OneDrive photo ingest into [Photos].
+const String kMediaDataProviderPhotoOneDrive = 'photo_onedrive';
+
+/// Microsoft Graph OneDrive video ingest into [Videos].
+const String kMediaDataProviderVideoOneDrive = 'video_onedrive';
 
 /// Flickr group photo sync into [Photos].
-const String kMediaDataProviderFlickr = 'media_flickr';
+const String kMediaDataProviderPhotoFlickr = 'photo_flickr';
 
 /// Bing homepage image of the day into [Photos].
-const String kMediaDataProviderBing = 'media_bing_iotd';
+const String kMediaDataProviderPhotoBingIotd = 'photo_bing_image_of_the_day';
 
 @TableIndex(name: 'idx_photos_fetched', columns: {#fetchedAtMs})
 @TableIndex(name: 'idx_photos_category', columns: {#category})
@@ -537,7 +543,7 @@ class Photos extends Table {
   /// Slug matching [ContentCategories.id] (default `pexels`).
   TextColumn get category => text().withDefault(const Constant('pexels'))();
   TextColumn get dataProvider =>
-      text().withDefault(const Constant(kMediaDataProviderPexels))();
+      text().withDefault(const Constant(kMediaDataProviderPhotoPexels))();
   TextColumn get mediaBlobKey => text()();
   TextColumn get photographerName => text()();
   TextColumn get photographerUrl => text()();
@@ -560,7 +566,7 @@ class Videos extends Table {
   /// Slug matching [ContentCategories.id] (default `pexels`).
   TextColumn get category => text().withDefault(const Constant('pexels'))();
   TextColumn get dataProvider =>
-      text().withDefault(const Constant(kMediaDataProviderPexels))();
+      text().withDefault(const Constant(kMediaDataProviderVideoPexels))();
   TextColumn get mediaBlobKey => text()();
   TextColumn get photographerName => text()();
   TextColumn get photographerUrl => text()();
@@ -681,6 +687,33 @@ class StockQuotes extends Table {
 
   @override
   Set<Column<Object>> get primaryKey => {symbolId};
+}
+
+/// Operator-configured Home Assistant entity ids collected by `home_assistant`.
+class InterestsHomeAssistantEntities extends Table {
+  @override
+  String get tableName => 'interests_home_assistant_entities';
+
+  TextColumn get id => text()();
+  TextColumn get entityId => text().unique()();
+  TextColumn get displayName => text().withDefault(const Constant(''))();
+  BoolColumn get enabled => boolean().withDefault(const Constant(true))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Latest state per tracked Home Assistant entity, written by `home_assistant`.
+class HomeAssistantEntityStates extends Table {
+  TextColumn get entityId =>
+      text().references(InterestsHomeAssistantEntities, #entityId)();
+  TextColumn get state => text()();
+  TextColumn get attributesJson => text()();
+  IntColumn get lastUpdatedMs => integer().nullable()();
+  IntColumn get observedAtMs => integer()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {entityId};
 }
 
 /// Built-in operator roles for display REST / controller auth.

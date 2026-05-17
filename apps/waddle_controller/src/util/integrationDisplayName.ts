@@ -12,6 +12,7 @@ const INTEGRATION_TYPE_TITLES: Record<string, string> = {
   trivia_openai: 'OpenAI Trivia',
   trivia_opentdb: 'OpenTDB Trivia',
   stock_finnhub: 'Finnhub Stock',
+  home_assistant: 'Home Assistant',
   calendar_outlook: 'Outlook Calendar',
   calendar_google: 'Google Calendar',
   google_calendar: 'Google Calendar',

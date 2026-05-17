@@ -40,6 +40,8 @@ part 'database.g.dart';
     PexelsFetchBatches,
     InterestsStockSymbols,
     StockQuotes,
+    InterestsHomeAssistantEntities,
+    HomeAssistantEntityStates,
     RejectTerms,
     AdoptionPending,
     ApiClients,
@@ -54,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -87,6 +89,20 @@ ORDER BY priority DESC, created_at DESC;
       }
       if (from == 3 && to >= 4) {
         await _migrateV3ToV4PluginRuntime(this, m);
+        if (to == 4) {
+          return;
+        }
+        from = 4;
+      }
+      if (from == 4 && to >= 5) {
+        await _migrateV4ToV5HomeAssistant(this, m);
+        if (to == 5) {
+          return;
+        }
+        from = 5;
+      }
+      if (from == 5 && to >= 6) {
+        await _migrateV5ToV6IntegrationTypesAndDefaults(this);
         return;
       }
       throw UnsupportedError(
@@ -112,6 +128,27 @@ const kIntegrationsDisabledOnSecretStoreMigration = <String>[
   'calendar_outlook',
   'media_onedrive',
 ];
+
+/// Default integration row ids after schema 6 (seed + migration).
+const String kDefaultNewsRssIntegrationId = 'default_news_rss';
+const String kDefaultJokeOpenAiIntegrationId = 'default_joke_openai';
+const String kDefaultTriviaOpenAiIntegrationId = 'default_trivia_openai';
+const String kDefaultTriviaOpenTdbIntegrationId = 'default_trivia_opentdb';
+const String kDefaultWeatherOpenWeatherMapIntegrationId =
+    'default_weather_openweathermap';
+const String kDefaultWeatherAlertsNwsIntegrationId =
+    'default_weather_alerts_nws';
+const String kDefaultPhotoPexelsIntegrationId = 'default_photo_pexels';
+const String kDefaultVideoPexelsIntegrationId = 'default_video_pexels';
+const String kDefaultStockFinnhubIntegrationId = 'default_stock_finnhub';
+const String kDefaultHomeAssistantIntegrationId = 'default_home_assistant';
+const String kDefaultCalendarGoogleIntegrationId = 'default_calendar_google';
+const String kDefaultCalendarOutlookIntegrationId = 'default_calendar_outlook';
+const String kDefaultPhotoOneDriveIntegrationId = 'default_photo_onedrive';
+const String kDefaultVideoOneDriveIntegrationId = 'default_video_onedrive';
+const String kDefaultPhotoFlickrIntegrationId = 'default_photo_flickr';
+const String kDefaultPhotoBingIotdIntegrationId =
+    'default_photo_bing_image_of_the_day';
 
 /// Adds encrypted secret tables and disables env-dependent integrations.
 Future<void> _migrateV2ToV3IntegrationSecrets(
@@ -140,6 +177,12 @@ Future<void> _migrateV2ToV3IntegrationSecrets(
 Future<void> _migrateV3ToV4PluginRuntime(AppDatabase db, Migrator m) async {
   await m.createTable(db.installedPlugins);
   await m.createTable(db.runtimeSignals);
+}
+
+/// Adds Home Assistant entity interests and state cache (schema 4 → 5).
+Future<void> _migrateV4ToV5HomeAssistant(AppDatabase db, Migrator m) async {
+  await m.createTable(db.interestsHomeAssistantEntities);
+  await m.createTable(db.homeAssistantEntityStates);
 }
 
 /// Renames legacy interest catalog tables to `interests_*` (schema 1 → 2).

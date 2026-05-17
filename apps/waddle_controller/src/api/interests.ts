@@ -30,6 +30,13 @@ export type StockSymbolRow = {
   enabled: boolean;
 };
 
+export type HomeAssistantEntityRow = {
+  id: string;
+  entity_id: string;
+  display_name: string;
+  enabled: boolean;
+};
+
 export type CategoryInterestRow = {
   id: string;
   label: string;
@@ -151,6 +158,55 @@ export async function deleteStockSymbol(display: SavedDisplay, id: string): Prom
   await apiFetch(display, `/v1/interests/stock-symbols/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });
+}
+
+export async function listHomeAssistantEntities(
+  display: SavedDisplay,
+): Promise<HomeAssistantEntityRow[]> {
+  const body = await apiJson<{ items: HomeAssistantEntityRow[] }>(
+    display,
+    '/v1/interests/home-assistant-entities',
+  );
+  return body.items;
+}
+
+export async function createHomeAssistantEntity(
+  display: SavedDisplay,
+  row: Pick<HomeAssistantEntityRow, 'id' | 'entity_id'> &
+    Partial<Pick<HomeAssistantEntityRow, 'display_name' | 'enabled'>>,
+): Promise<void> {
+  await apiFetch(display, '/v1/interests/home-assistant-entities', {
+    method: 'POST',
+    body: JSON.stringify(row),
+  });
+}
+
+export async function patchHomeAssistantEntity(
+  display: SavedDisplay,
+  id: string,
+  patch: Partial<HomeAssistantEntityRow>,
+): Promise<void> {
+  await apiFetch(
+    display,
+    `/v1/interests/home-assistant-entities/${encodeURIComponent(id)}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    },
+  );
+}
+
+export async function deleteHomeAssistantEntity(
+  display: SavedDisplay,
+  id: string,
+): Promise<void> {
+  await apiFetch(
+    display,
+    `/v1/interests/home-assistant-entities/${encodeURIComponent(id)}`,
+    {
+      method: 'DELETE',
+    },
+  );
 }
 
 export async function listJokeCategories(display: SavedDisplay): Promise<CategoryInterestRow[]> {

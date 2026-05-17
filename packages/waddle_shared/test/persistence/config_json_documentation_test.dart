@@ -82,6 +82,7 @@ void main() {
       'weather_nws_alerts',
       'media_pexels',
       'stock_finnhub',
+      'home_assistant',
       'calendar_google',
       'calendar_outlook',
       'media_onedrive',
