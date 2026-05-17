@@ -21,7 +21,7 @@ jobs:
     env:
       LINUX_BUILD_DEPS_FILE: ${{ github.workspace }}/deploy/linux-arm64/build-deps.txt
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.41.9'
@@ -49,7 +49,7 @@ jobs:
           chmod +x "$src/bin/waddlectl"
           rm -rf "$dst"
           cp -a "$src" "$dst"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
@@ -92,7 +92,7 @@ jobs:
           cp -r build/linux/x64/release/bundle "../../dist/${DIST}/"
           cp ../../deploy/linux-arm64/install.sh ../../deploy/linux-arm64/waddle-view.service "../../dist/${DIST}/"
           cd ../../dist && tar czf "${DIST}.tar.gz" "${DIST}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: linux-x64-bundle-${{ inputs.build_number }}
           path: dist/*.tar.gz

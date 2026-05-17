@@ -17,9 +17,9 @@ permissions:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-2025
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.41.9'
@@ -44,7 +44,7 @@ jobs:
           if (Test-Path $dst) { Remove-Item -Recurse -Force $dst }
           New-Item -ItemType Directory -Force $dst | Out-Null
           Copy-Item -Path (Join-Path $src "*") -Destination $dst -Recurse
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
@@ -75,7 +75,7 @@ jobs:
           New-Item -ItemType Directory -Force "../../dist" | Out-Null
           $zip = "../../dist/$distName.zip"
           Compress-Archive -Path "$releaseDir/*" -DestinationPath $zip -Force
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: windows-x64-bundle-${{ inputs.build_number }}
           path: dist/*.zip

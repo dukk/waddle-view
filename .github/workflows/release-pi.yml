@@ -42,7 +42,7 @@ jobs:
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
             binutils ca-certificates curl file git gzip sudo unzip xz-utils zip
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Trust workspace for Git (Flutter / pub)
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Install Flutter SDK (arm64)
@@ -81,7 +81,7 @@ jobs:
           chmod +x "$src/bin/waddlectl"
           rm -rf "$dst"
           cp -a "$src" "$dst"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
@@ -152,7 +152,7 @@ jobs:
           cp -r build/linux/arm64/release/bundle "../../dist/${DIST}/"
           cp -r ../../deploy/linux-arm64/* "../../dist/${DIST}/" 2>/dev/null || true
           cd ../../dist && tar czf "${DIST}.tar.gz" "${DIST}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: ${{ inputs.artifact_name || format('linux-arm64-bundle-{0}', inputs.build_number) }}
           path: dist/*.tar.gz
