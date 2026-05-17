@@ -160,12 +160,12 @@ Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../d
 
 ## Local REST API and admin UI (debug, profile, release)
 
-- Defaults to **`127.0.0.1:8787`**. Set `WADDLE_HTTP_BIND` (and optional `WADDLE_HTTP_PORT`) to expose on LAN.
+- Defaults to **`0.0.0.0:8787`** (all interfaces; QR/adoption URLs use the first non-loopback IPv4). Set `WADDLE_DISPLAY_HTTP_BIND_IP=127.0.0.1` for loopback-only, or optional `WADDLE_DISPLAY_HTTP_PORT`.
 - **Authentication**: adopt via **`POST /v1/adoption/request`** and **`POST /v1/adoption/confirm`** (see [`docs/pi/api.md`](../../docs/pi/api.md)), then send **`Authorization: Bearer <api_key>`** on protected routes. Only **`/v1/health`** and **`/v1/adoption/*`** are public.
 - **Instance id file**: **`waddle_instance.id`** in Flutter’s **application support** directory (`getApplicationSupportDirectory()` in `lib/main.dart`). Created on first launch; legacy **`waddle_api.key`** is renamed on upgrade. Used as the HMAC secret for adoption challenges and API keys (not sent as the bearer token).
 - Protected `/v1/*` routes return **401** without a valid API key, **403** when the adopted client’s role lacks permission.
 - **Operator UI**: **`apps/waddle_controller`** pairs via adoption and stores per-display API keys in the browser. Role semantics (`viewer`, `power_viewer`, `operator`, `admin`) are unchanged on protected routes — see **`docs/pi/api.md`**.
-- **Operator JSON API** (telemetry, navigation, screens, ticker, integrations, curator, catalog): **[`docs/pi/api.md`](../../docs/pi/api.md)**. **CORS**: adoption routes allow LAN/private origins; successful adoption stores the caller origin for protected routes. Optionally seed static origins with **`WADDLE_HTTP_CORS_ORIGINS`** (see **`.env.example`**). The Vite dev proxy avoids CORS during local controller dev.
+- **Operator JSON API** (telemetry, navigation, screens, ticker, integrations, curator, catalog): **[`docs/pi/api.md`](../../docs/pi/api.md)**. **CORS**: adoption routes allow LAN/private origins; successful adoption stores the caller origin for protected routes. Optionally seed static origins with **`WADDLE_DISPLAY_HTTP_CORS_ORIGINS`** (see **`.env.example`**). The Vite dev proxy avoids CORS during local controller dev.
 
 ### Display theme (`config_key_values`)
 
@@ -269,11 +269,11 @@ The **`curator_categories`** table (renamed from **`content_categories`** in sch
 
 The joke and trivia data providers read OpenAI-style API keys from **environment variables** (merged with debug `.env`), not from the **`integrations`** table or other SQLite configuration.
 
-Supported env name: **`WADDLE_OPENAI_API_KEY`** (shared by **`joke_openai`** and **`trivia_openai`** (and **`trivia_opentdb`**); see [`packages/waddle_shared/lib/config/provider_access_token_env.dart`](../../packages/waddle_shared/lib/config/provider_access_token_env.dart)).
+Supported env name: **`WADDLE_DISPLAY_OPENAI_API_KEY`** (shared by **`joke_openai`** and **`trivia_openai`** (and **`trivia_opentdb`**); see [`packages/waddle_shared/lib/config/provider_access_token_env.dart`](../../packages/waddle_shared/lib/config/provider_access_token_env.dart)).
 
-The **`weather_openweathermap`** data provider uses **`WADDLE_OPEN_WEATHER_MAP_API_KEY`**.
+The **`weather_openweathermap`** data provider uses **`WADDLE_DISPLAY_OPEN_WEATHER_MAP_API_KEY`**.
 
-**Local onboarding:** copy **[`.env.example`](.env.example)** to **`.env`** in this directory and set the variables above. In **debug** builds, the app loads that file into the merged env map (see [`lib/config/dev_dotenv_secrets.dart`](lib/config/dev_dotenv_secrets.dart)). **Google / Microsoft Graph** OAuth **tokens** use **`SecretStore`** only (device-code flow or `waddlectl secrets set`); set public **client ids** with **`WADDLE_GOOGLE_CLIENT_ID`** and **`WADDLE_MICROSOFT_GRAPH_CLIENT_ID`** in the environment (or the same debug `.env`). Full detail: **[`docs/pi/development.md`](../../docs/pi/development.md#joke-data-provider-openai-api-key)**.
+**Local onboarding:** copy **[`.env.example`](.env.example)** to **`.env`** in this directory and set the variables above. In **debug** builds, the app loads that file into the merged env map (see [`lib/config/dev_dotenv_secrets.dart`](lib/config/dev_dotenv_secrets.dart)). **Google / Microsoft Graph** OAuth **tokens** use **`SecretStore`** only (device-code flow or `waddlectl secrets set`); set public **client ids** with **`WADDLE_DISPLAY_GOOGLE_CLIENT_ID`** and **`WADDLE_DISPLAY_MICROSOFT_GRAPH_CLIENT_ID`** in the environment (or the same debug `.env`). Full detail: **[`docs/pi/development.md`](../../docs/pi/development.md#joke-data-provider-openai-api-key)**.
 
 OpenTDB trivia does **not** require a token.
 
@@ -309,9 +309,9 @@ Generated text must stay short (enforced in prompts and validation): question **
 
 ## Pexels photos / videos provider
 
-The **Pexels** provider (`id` / `provider_type`: **`media_pexels`**) downloads curated photos (`GET /v1/curated`) and popular videos (`GET /v1/videos/popular` with duration bounds), stores binaries in the **blob** store, and keeps metadata in **`photos`** and **`videos`** (with **`data_provider`** set to the provider id, e.g. **`media_pexels`**). API key: **`WADDLE_PEXELS_API_KEY`** environment variable (never in SQLite).
+The **Pexels** provider (`id` / `provider_type`: **`media_pexels`**) downloads curated photos (`GET /v1/curated`) and popular videos (`GET /v1/videos/popular` with duration bounds), stores binaries in the **blob** store, and keeps metadata in **`photos`** and **`videos`** (with **`data_provider`** set to the provider id, e.g. **`media_pexels`**). API key: **`WADDLE_DISPLAY_PEXELS_API_KEY`** environment variable (never in SQLite).
 
-**Debug `.env`:** **`WADDLE_PEXELS_API_KEY`** (see [`.env.example`](.env.example)).
+**Debug `.env`:** **`WADDLE_DISPLAY_PEXELS_API_KEY`** (see [`.env.example`](.env.example)).
 
 **`integrations.config_json`** (JSON) holds the runtime payload. **`config_json_schema`** and **`example_config_json`** are documentation columns (JSON Schema and sample JSON) populated per row type.
 
@@ -326,9 +326,9 @@ The **Pexels** provider (`id` / `provider_type`: **`media_pexels`**) downloads c
 
 ## Stock quote provider (Finnhub)
 
-The **stocks** provider (`id` / `provider_type`: **`stock_finnhub`**) calls [Finnhub](https://finnhub.io/docs/api/quote) **`GET /api/v1/quote?symbol=...&token=...`** for every enabled row in **`stock_symbols`** and upserts the latest quote into **`stock_quotes`** (one row per symbol). API key: **`WADDLE_FINHUB_API_KEY`** (never in SQLite).
+The **stocks** provider (`id` / `provider_type`: **`stock_finnhub`**) calls [Finnhub](https://finnhub.io/docs/api/quote) **`GET /api/v1/quote?symbol=...&token=...`** for every enabled row in **`stock_symbols`** and upserts the latest quote into **`stock_quotes`** (one row per symbol). API key: **`WADDLE_DISPLAY_FINHUB_API_KEY`** (never in SQLite).
 
-**Debug `.env`:** **`WADDLE_FINHUB_API_KEY`** (see [`.env.example`](.env.example)).
+**Debug `.env`:** **`WADDLE_DISPLAY_FINHUB_API_KEY`** (see [`.env.example`](.env.example)).
 
 **Symbol management:** seed inserts AAPL / MSFT / GOOG / NVDA / AMZN with **AAPL** and **MSFT** enabled by default; toggle [`StockSymbols.enabled`](../../packages/waddle_shared/lib/persistence/tables.dart) to add or remove symbols at runtime. When `stock_symbols` has no enabled rows the provider falls back to **`config_json.defaultSymbols`** and writes those entries into the table on first collect so the slide widget can display them.
 
@@ -363,7 +363,7 @@ The **`weather_nws_alerts`** data provider (`id` / `provider_type`: **`weather_n
 
 The **Outlook calendar** provider (`id` / `provider_type`: **`calendar_outlook`**) reads delegated calendar data via [Microsoft Graph](https://learn.microsoft.com/en-us/graph/api/resources/calendar) `calendarView` and stores events in **`calendar_events`** (shown on the **`calendar_month`** slide). Seed adds the provider **disabled** by default; set **`integrations.enabled`** after configuration.
 
-**App registration (Entra ID):** delegated permissions **`Calendars.Read`**, **`Files.Read`** (for OneDrive media sync), **`User.Read`**, and **`offline_access`**. The shared public **application (client) id** is read from the environment as **`WADDLE_MICROSOFT_GRAPH_CLIENT_ID`** (process env or merged debug `.env`) — not from SQLite. Other Graph-based providers use the same variable. If you already signed in before **`Files.Read`** was added, the next token refresh may fall back to **device code** once so you can re-consent for the broader scope.
+**App registration (Entra ID):** delegated permissions **`Calendars.Read`**, **`Files.Read`** (for OneDrive media sync), **`User.Read`**, and **`offline_access`**. The shared public **application (client) id** is read from the environment as **`WADDLE_DISPLAY_MICROSOFT_GRAPH_CLIENT_ID`** (process env or merged debug `.env`) — not from SQLite. Other Graph-based providers use the same variable. If you already signed in before **`Files.Read`** was added, the next token refresh may fall back to **device code** once so you can re-consent for the broader scope.
 
 **Authentication platform:** turn on **Allow public client flows** (device code). Under **Authentication**, add a **Mobile and desktop applications** redirect URI **`https://login.microsoftonline.com/common/oauth2/nativeclient`** (same value the app sends as `redirect_uri` on token and device-code requests). Without this, Entra may return errors such as a missing **`redirect_uri`** on the request.
 
@@ -384,7 +384,7 @@ The **Outlook calendar** provider (`id` / `provider_type`: **`calendar_outlook`*
 
 **`integrations.poll_seconds`:** default **3600** (one sync per hour when enabled).
 
-**Schema 37** deletes legacy **`microsoft.graph.client_id`** / **`google.client_id`** rows from **`config_key_values`**; use **`WADDLE_MICROSOFT_GRAPH_CLIENT_ID`** / **`WADDLE_GOOGLE_CLIENT_ID`** in the environment instead.
+**Schema 37** deletes legacy **`microsoft.graph.client_id`** / **`google.client_id`** rows from **`config_key_values`**; use **`WADDLE_DISPLAY_MICROSOFT_GRAPH_CLIENT_ID`** / **`WADDLE_DISPLAY_GOOGLE_CLIENT_ID`** in the environment instead.
 
 ## Google Calendar
 
@@ -392,7 +392,7 @@ The **Google Calendar** provider (`id` / `provider_type`: **`calendar_google`**)
 
 Seed adds the provider **disabled** by default. Configure and enable in `integrations` when ready.
 
-**OAuth client id:** set **`WADDLE_GOOGLE_CLIENT_ID`** in the process environment (or merged debug `.env`) to your Google OAuth client id — not in `config_key_values`.
+**OAuth client id:** set **`WADDLE_DISPLAY_GOOGLE_CLIENT_ID`** in the process environment (or merged debug `.env`) to your Google OAuth client id — not in `config_key_values`.
 
 **SecretStore keys (per Google account):**
 
@@ -428,7 +428,7 @@ The **OneDrive media** provider (`id` / `provider_type`: **`media_onedrive`**) k
 
 The **Flickr media** provider (`id` / `provider_type`: **`media_flickr`**) pulls **public** photos from one or more Flickr groups using `flickr.groups.pools.getPhotos`, downloads image bytes, and stores rows in **`photos`** with **`data_provider`** = **`media_flickr`**.
 
-The **Flickr** provider … **API key:** **`WADDLE_FLICKR_API_KEY`** (never in SQLite).
+The **Flickr** provider … **API key:** **`WADDLE_DISPLAY_FLICKR_API_KEY`** (never in SQLite).
 
 **`integrations.config_json`** (JSON):
 
@@ -443,7 +443,7 @@ The **Flickr** provider … **API key:** **`WADDLE_FLICKR_API_KEY`** (never in S
 
 **`integrations.poll_seconds`:** default **3600** when seeded.
 
-**Debug `.env`:** **`WADDLE_FLICKR_API_KEY`** (see [`.env.example`](.env.example)).
+**Debug `.env`:** **`WADDLE_DISPLAY_FLICKR_API_KEY`** (see [`.env.example`](.env.example)).
 
 ## Bing image of the day
 

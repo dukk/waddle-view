@@ -19,10 +19,10 @@ describe('@waddle/node-tls resolveTls', () => {
     dirs.push(dir);
     const tls = resolveTls({
       env: {},
-      tlsEnv: 'WADDLE_HTTP_TLS',
-      certEnv: 'WADDLE_HTTP_TLS_CERT',
-      keyEnv: 'WADDLE_HTTP_TLS_KEY',
-      dirEnv: 'WADDLE_HTTP_TLS_DIR',
+      tlsEnv: 'WADDLE_DISPLAY_HTTP_TLS',
+      certEnv: 'WADDLE_DISPLAY_HTTP_TLS_CERT',
+      keyEnv: 'WADDLE_DISPLAY_HTTP_TLS_KEY',
+      dirEnv: 'WADDLE_DISPLAY_HTTP_TLS_DIR',
       defaultCertDir: dir,
       commonName: 'localhost',
     });
@@ -31,13 +31,13 @@ describe('@waddle/node-tls resolveTls', () => {
     expect(tls.pem?.cert.length).toBeGreaterThan(0);
   });
 
-  it('honors WADDLE_HTTP_TLS=0', () => {
+  it('honors WADDLE_DISPLAY_HTTP_TLS=0', () => {
     const tls = resolveTls({
-      env: { WADDLE_HTTP_TLS: '0' },
-      tlsEnv: 'WADDLE_HTTP_TLS',
-      certEnv: 'WADDLE_HTTP_TLS_CERT',
-      keyEnv: 'WADDLE_HTTP_TLS_KEY',
-      dirEnv: 'WADDLE_HTTP_TLS_DIR',
+      env: { WADDLE_DISPLAY_HTTP_TLS: '0' },
+      tlsEnv: 'WADDLE_DISPLAY_HTTP_TLS',
+      certEnv: 'WADDLE_DISPLAY_HTTP_TLS_CERT',
+      keyEnv: 'WADDLE_DISPLAY_HTTP_TLS_KEY',
+      dirEnv: 'WADDLE_DISPLAY_HTTP_TLS_DIR',
       defaultCertDir: '/tmp/unused',
       commonName: 'localhost',
     });

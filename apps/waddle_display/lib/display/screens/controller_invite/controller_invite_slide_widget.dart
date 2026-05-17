@@ -106,7 +106,7 @@ class ControllerInviteSlideWidget extends StatelessWidget {
               ),
             ] else
               Text(
-                'Set WADDLE_CONTROLLER_PUBLIC_URL on this display (or add '
+                'Set WADDLE_DISPLAY_CONTROLLER_PUBLIC_URL on this display (or add '
                 'controllerUrl to this screen config) so the join link can be generated.',
                 style: theme.textTheme.bodyMedium,
                 textAlign: TextAlign.center,
@@ -115,7 +115,7 @@ class ControllerInviteSlideWidget extends StatelessWidget {
               SizedBox(height: 16 * s),
               Text(
                 'Self-service viewer signup is disabled until '
-                'WADDLE_VIEWER_REGISTRATION_SECRET is set on this display. '
+                'WADDLE_DISPLAY_VIEWER_REGISTRATION_SECRET is set on this display. '
                 'You can still use the link to sign in.',
                 style: theme.textTheme.bodySmall,
                 textAlign: TextAlign.center,

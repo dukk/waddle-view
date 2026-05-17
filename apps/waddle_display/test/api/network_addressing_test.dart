@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_display/api/network_addressing.dart';
+import 'package:waddle_display/config/display_env.dart';
 
 void main() {
   test('parseCorsAllowedOrigins trims and splits', () {
@@ -13,14 +14,15 @@ void main() {
     );
   });
 
-  test('resolveHttpBindConfig defaults to loopback and port 8787', () async {
+  test('resolveHttpBindConfig defaults to all interfaces and port 8787', () async {
     final cfg = await resolveHttpBindConfig(
-      environment: {'WADDLE_HTTP_TLS': '0'},
+      environment: {kDisplayHttpTlsEnv: '0'},
       tlsCertDir: '',
     );
     expect(cfg.port, 8787);
-    expect(cfg.address, InternetAddress.loopbackIPv4);
+    expect(cfg.address, InternetAddress.anyIPv4);
     expect(cfg.displayHost, isNotEmpty);
+    expect(cfg.displayHost, isNot(equals('0.0.0.0')));
     expect(cfg.tls.enabled, isFalse);
   });
 
@@ -34,31 +36,37 @@ void main() {
     expect(cfg.tls.keyPath, isNotNull);
   });
 
-  test('resolveHttpBindConfig honors WADDLE_HTTP_BIND and port', () async {
+  test('resolveHttpBindConfig honors WADDLE_DISPLAY_HTTP_BIND_IP and port', () async {
     final cfg = await resolveHttpBindConfig(
       environment: {
-        'WADDLE_HTTP_BIND': '0.0.0.0',
-        'WADDLE_HTTP_PORT': '9999',
-        'WADDLE_HTTP_TLS': '0',
+        kDisplayHttpBindIpEnv: '127.0.0.1',
+        kDisplayHttpPortEnv: '9999',
+        kDisplayHttpTlsEnv: '0',
       },
       tlsCertDir: '',
     );
     expect(cfg.port, 9999);
-    expect(cfg.address, InternetAddress.anyIPv4);
-    expect(cfg.displayHost, isNot(equals('0.0.0.0')));
+    expect(cfg.address, InternetAddress.loopbackIPv4);
+    expect(cfg.displayHost, isNotEmpty);
   });
 
   test('resolveHttpBindConfig falls back on invalid host', () async {
     final cfg = await resolveHttpBindConfig(
-      environment: {'WADDLE_HTTP_BIND': 'not-an-ip', 'WADDLE_HTTP_TLS': '0'},
+      environment: {
+        kDisplayHttpBindIpEnv: 'not-an-ip',
+        kDisplayHttpTlsEnv: '0',
+      },
       tlsCertDir: '',
     );
-    expect(cfg.address, InternetAddress.loopbackIPv4);
+    expect(cfg.address, InternetAddress.anyIPv4);
   });
 
   test('resolveHttpBindConfig supports IPv6 any bind', () async {
     final cfg = await resolveHttpBindConfig(
-      environment: {'WADDLE_HTTP_BIND': '::', 'WADDLE_HTTP_TLS': '0'},
+      environment: {
+        kDisplayHttpBindIpEnv: '::',
+        kDisplayHttpTlsEnv: '0',
+      },
       tlsCertDir: '',
     );
     expect(cfg.address, InternetAddress.anyIPv6);

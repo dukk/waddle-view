@@ -492,7 +492,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       _baseSchema(
         title: 'FlickrMediaProviderConfig',
         description:
-            'Public Flickr group photo sync. API key comes from environment variable WADDLE_FLICKR_API_KEY.',
+            'Public Flickr group photo sync. API key comes from environment variable WADDLE_DISPLAY_FLICKR_API_KEY.',
         properties: {
           'groupIds': {
             'type': 'array',
@@ -1126,7 +1126,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
         title: 'ControllerInviteScreenConfig',
         description:
             'Promotes the waddle_controller web UI. Optional controllerUrl overrides '
-            'WADDLE_CONTROLLER_PUBLIC_URL on the display device for the QR link.',
+            'WADDLE_DISPLAY_CONTROLLER_PUBLIC_URL on the display device for the QR link.',
         properties: {
           'headline': {'type': 'string'},
           'body': {'type': 'string'},

@@ -14,14 +14,13 @@ Examples::
     python deploy/dev-pi/install_main_to_pi.py --sync-local-dev
     python deploy/dev-pi/install_main_to_pi.py --sync-local-dev --db C:\\path\\waddle_view.sqlite
 
-After a successful upgrade the script also copies ``apps/waddle_display/.env.example`` to
-``~/.local/share/waddle_display/.env.example`` (reference only; not sourced by the shell) and, if it
-exists locally, ``.env.development`` to ``~/.local/share/waddle_display/.env``. It merges a small
-**idempotent** block into ``~/.bashrc`` (or ``~/.bash_profile`` when ``.bashrc`` is absent) so
-interactive SSH sessions ``source`` ``~/.local/share/waddle_display/.env`` when present (``set -a`` exports
-``KEY=value`` assignments).
-Uploaded dotenv files are normalized on the Pi with ``sed`` to strip Windows ``\\r`` line endings
-so ``bash`` does not emit ``$'\\r': command not found``.
+After a successful upgrade the script installs a **systemd user unit** for
+``waddle-view`` under ``~/.config/systemd/user/`` (from ``deploy/linux-arm64/waddle-view.service``),
+merging ``Environment=`` entries from the template with every ``KEY=value`` assignment in local
+``apps/waddle_display/.env.development`` when that file exists (or ``--env-development``). It runs
+``daemon-reload``, ``enable``, and ``restart`` (or ``start`` if not yet running), enables **linger**
+for the SSH user when ``loginctl`` is available, and removes any legacy installer's ``~/.bashrc``
+block that used to ``source`` a remote dotenv file.
 
 ``--sync-local-dev`` copies your desktop **SQLite** file (``waddle_view.sqlite``), the
 **``media/``** tree used by ``FileSystemBlobStore`` (same parent directory as the DB), to the Pi
@@ -46,6 +45,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -57,24 +57,21 @@ REPO_ROOT = DEV_PI_DIR.parent.parent
 APP_PACKAGE_DIR = REPO_ROOT / "apps" / "waddle_display"
 DEFAULT_TARBALL = DEV_PI_DIR / "waddle-view-linux-arm64-main.tar.gz"
 UPGRADE_SCRIPT = DEV_PI_DIR.parent / "pi-remote-upgrade.py"
+UNIT_TEMPLATE = REPO_ROOT / "deploy" / "linux-arm64" / "waddle-view.service"
 DEFAULT_SSH = "dukk@10.2.0.10"
+SYSTEMD_USER_UNIT_NAME = "waddle-view"
 
 REMOTE_APP_SUPPORT_REL = Path(".local/share/com.waddleview.waddle_display")
 REMOTE_SQLITE_NAME = "waddle_view.sqlite"
 REMOTE_BUNDLE_ENV = "/opt/waddle-view/bundle/.env.development"
-# Remote shell dotenv layout under the SSH user's home (absolute paths built at runtime).
-REMOTE_SHELL_DOTENV_DIR_REL = Path(".local/share/waddle_display")
-REMOTE_SHELL_DOTENV_EXAMPLE_NAME = ".env.example"
-REMOTE_SHELL_DOTENV_ENV_NAME = ".env"
 
-# Idempotent markers for ~/.bashrc (or ~/.bash_profile) — safe for sed address ranges.
+# Legacy ~/.bashrc block from older installer versions (removed on each run).
 SHELL_RC_BLOCK_BEGIN = "# WADDLE_VIEW_INSTALL_MAIN_TO_PI_BEGIN"
 SHELL_RC_BLOCK_END = "# WADDLE_VIEW_INSTALL_MAIN_TO_PI_END"
 
-
-def remote_shell_dotenv_dir(remote_home: str) -> str:
-    """Absolute POSIX path to ``~/.local/share/waddle_display`` on the remote."""
-    return str(PurePosixPath(remote_home).joinpath(*REMOTE_SHELL_DOTENV_DIR_REL.parts))
+_DOTENV_LINE_RE = re.compile(
+    r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$"
+)
 
 
 def ssh_user_from_target(target: str) -> str:
@@ -171,14 +168,192 @@ def resolve_local_sqlite_path(
     )
 
 
-def resolve_env_example_path(
+def resolve_unit_template_path(
     *,
-    app_package_dir: Path = APP_PACKAGE_DIR,
+    unit_template: Path = UNIT_TEMPLATE,
 ) -> Path:
-    p = (app_package_dir / ".env.example").resolve()
+    p = unit_template.resolve()
     if not p.is_file():
-        raise SystemExit(f"Missing {p}")
+        raise SystemExit(f"Missing systemd unit template: {p}")
     return p
+
+
+def parse_dotenv_file(path: Path) -> dict[str, str]:
+    """Parse ``KEY=value`` assignments from a dotenv file (comments and blanks skipped)."""
+    text = path.read_text(encoding="utf-8")
+    out: dict[str, str] = {}
+    for raw in text.splitlines():
+        line = raw.strip().rstrip("\r")
+        if not line or line.startswith("#"):
+            continue
+        match = _DOTENV_LINE_RE.match(line)
+        if not match:
+            continue
+        key, value = match.group(1), match.group(2)
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        out[key] = value
+    return out
+
+
+def parse_unit_service_environment(template: str) -> dict[str, str]:
+    """Extract ``Environment=`` / ``Environment="K=V"`` assignments from the unit template."""
+    env: dict[str, str] = {}
+    for line in template.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("Environment="):
+            continue
+        payload = stripped.removeprefix("Environment=").strip()
+        if payload.startswith('"') and payload.endswith('"'):
+            payload = payload[1:-1].replace('\\"', '"').replace("\\\\", "\\")
+        if "=" not in payload:
+            continue
+        key, value = payload.split("=", 1)
+        env[key] = value
+    return env
+
+
+def systemd_environment_line(key: str, value: str) -> str:
+    """One ``Environment=`` directive safe for systemd unit files."""
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
+        raise ValueError(f"invalid environment variable name: {key!r}")
+    if re.search(r'[\s"\\#]', value):
+        escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+        return f'Environment="{key}={escaped}"'
+    return f"Environment={key}={value}"
+
+
+def build_user_unit_content(template: str, dotenv: dict[str, str]) -> str:
+    """Return unit text with merged ``Environment=`` lines (dotenv overrides template keys)."""
+    merged = {**parse_unit_service_environment(template), **dotenv}
+    result: list[str] = []
+    section: Optional[str] = None
+    service_other: list[str] = []
+
+    for line in template.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            if section == "Service":
+                for key in sorted(merged):
+                    result.append(systemd_environment_line(key, merged[key]))
+                result.extend(service_other)
+                service_other = []
+            section = stripped[1:-1]
+            result.append(line)
+            continue
+        if section == "Service":
+            if stripped.startswith("Environment"):
+                continue
+            service_other.append(line)
+        else:
+            result.append(line)
+
+    if section == "Service":
+        for key in sorted(merged):
+            result.append(systemd_environment_line(key, merged[key]))
+        result.extend(service_other)
+
+    text = "\n".join(result)
+    return text if text.endswith("\n") else text + "\n"
+
+
+def remote_remove_legacy_bashrc_block_script(remote_home: str) -> str:
+    """Remove a prior installer's marked block from ``.bashrc`` / ``.bash_profile``."""
+    br = _posix_sh_single_quote(str(PurePosixPath(remote_home) / ".bashrc"))
+    bp = _posix_sh_single_quote(str(PurePosixPath(remote_home) / ".bash_profile"))
+    begin = SHELL_RC_BLOCK_BEGIN.replace("/", "\\/")
+    end = SHELL_RC_BLOCK_END.replace("/", "\\/")
+    return (
+        f"for RC in {br} {bp}; do "
+        f'[ -f "$RC" ] && sed -i "/{begin}/,/{end}/d" "$RC" || true; '
+        "done"
+    )
+
+
+def install_systemd_user_unit_and_restart(
+    target: str,
+    *,
+    env_development: Optional[Path],
+    port: Optional[int],
+    identity: Optional[Path],
+    batch_mode: bool,
+    dry_run: bool,
+) -> None:
+    """Install ``waddle-view.service`` under the SSH user's systemd user dir; enable and restart."""
+    ssh_cmd = _ssh_base_args(
+        target, port=port, identity=identity, batch_mode=batch_mode
+    )
+    remote_home = remote_unix_home_from_ssh_target(target)
+    unit_dir = str(PurePosixPath(remote_home) / ".config/systemd/user")
+    unit_path = str(PurePosixPath(unit_dir) / f"{SYSTEMD_USER_UNIT_NAME}.service")
+    dev_local = optional_local_env_development_path(env_development)
+    dotenv = parse_dotenv_file(dev_local) if dev_local is not None else {}
+    template = resolve_unit_template_path().read_text(encoding="utf-8")
+    unit_body = build_user_unit_content(template, dotenv)
+
+    def maybe_run(cmd: list[str]) -> None:
+        print("+", " ".join(cmd), flush=True)
+        if not dry_run:
+            subprocess.run(cmd, check=True)
+
+    pid = os.getpid()
+    frag_local = Path(tempfile.gettempdir()) / f"waddle-view-unit-{pid}.service"
+    try:
+        frag_local.write_text(unit_body, encoding="utf-8", newline="\n")
+    except OSError as exc:
+        raise SystemExit(f"Could not write local unit fragment: {exc}") from exc
+
+    frag_remote = f"/tmp/waddle-view-unit-{pid}.service"
+    frag_remote_q = _posix_sh_single_quote(frag_remote)
+    unit_dir_q = _posix_sh_single_quote(unit_dir)
+    unit_path_q = _posix_sh_single_quote(unit_path)
+    unit_name_q = _posix_sh_single_quote(SYSTEMD_USER_UNIT_NAME)
+
+    if dry_run:
+        env_src = str(dev_local) if dev_local is not None else "(none)"
+        print(
+            f"Would: install {unit_path} with {len(dotenv)} Environment= entries "
+            f"from {env_src}, remove legacy bashrc block, "
+            f"systemctl --user enable, loginctl enable-linger, restart {SYSTEMD_USER_UNIT_NAME}",
+            flush=True,
+        )
+        frag_local.unlink(missing_ok=True)
+        return
+
+    maybe_run(
+        _scp_push(
+            frag_local,
+            frag_remote,
+            target,
+            port=port,
+            identity=identity,
+            batch_mode=batch_mode,
+        )
+    )
+    frag_local.unlink(missing_ok=True)
+
+    remote_install = (
+        f"set -eu; "
+        f"{remote_remove_legacy_bashrc_block_script(remote_home)}; "
+        f"mkdir -p {unit_dir_q}; "
+        f"mv -f {frag_remote_q} {unit_path_q}; "
+        f"chmod 644 {unit_path_q}; "
+        "systemctl --user daemon-reload; "
+        f"systemctl --user enable {unit_name_q}; "
+        "loginctl enable-linger \"$(id -un)\" 2>/dev/null || true; "
+        f"systemctl --user stop {unit_name_q} 2>/dev/null || true; "
+        "pkill -x waddle_display 2>/dev/null || true; "
+        f"systemctl --user restart {unit_name_q} 2>/dev/null || "
+        f"systemctl --user start {unit_name_q}"
+    )
+    maybe_run(ssh_cmd + [_ssh_remote_bash_lc(remote_install)])
+    if dev_local is None:
+        print(
+            "No local apps/waddle_display/.env.development — systemd unit uses template "
+            "Environment= only (pass --env-development PATH to merge provider keys).",
+            file=sys.stderr,
+            flush=True,
+        )
 
 
 def optional_local_env_development_path(
@@ -194,22 +369,6 @@ def optional_local_env_development_path(
         return p
     p = (app_package_dir / ".env.development").resolve()
     return p if p.is_file() else None
-
-
-def pick_remote_shell_rc_path(
-    remote_home: str,
-    *,
-    bashrc_exists: bool,
-    bash_profile_exists: bool,
-) -> str:
-    """Match remote login-shell practice: prefer ``.bashrc``, else ``.bash_profile``, else ``.bashrc``."""
-    br = str(PurePosixPath(remote_home) / ".bashrc")
-    bp = str(PurePosixPath(remote_home) / ".bash_profile")
-    if bashrc_exists:
-        return br
-    if bash_profile_exists:
-        return bp
-    return br
 
 
 def resolve_dev_env_path(
@@ -263,24 +422,6 @@ def _remote_gnu_sed_strip_cr_inplace(quoted_path: str) -> str:
 def _ssh_remote_bash_lc(script: str) -> str:
     """One ``ssh`` argv after ``user@host``: ``bash -lc '<script>'`` for the remote shell."""
     return "bash -lc " + _posix_sh_single_quote(script)
-
-
-def shell_env_bashrc_block(remote_home: str) -> str:
-    """Lines (with markers) appended to the remote user's rc file; *remote_home* is absolute POSIX."""
-    dev = str(
-        PurePosixPath(remote_shell_dotenv_dir(remote_home)) / REMOTE_SHELL_DOTENV_ENV_NAME
-    )
-    lines = [
-        SHELL_RC_BLOCK_BEGIN,
-        "# Waddle Display dotenv (sourced for ssh sessions; Flutter uses its own paths).",
-        f"if [ -f {_posix_sh_single_quote(dev)} ]; then",
-        "  set -a",
-        f"  . {_posix_sh_single_quote(dev)}",
-        "  set +a",
-        "fi",
-        SHELL_RC_BLOCK_END,
-    ]
-    return "\n".join(lines) + "\n"
 
 
 def _scp_push(
@@ -372,11 +513,13 @@ def sync_local_dev_to_pi(
             ),
         ]
     )
+    unit_q = _posix_sh_single_quote(SYSTEMD_USER_UNIT_NAME)
     maybe_run(
         ssh_cmd
         + [
             _ssh_remote_bash_lc(
-                "systemctl --user stop waddle-view 2>/dev/null || true",
+                f"systemctl --user stop {unit_q} 2>/dev/null || true; "
+                "pkill -x waddle_display 2>/dev/null || true",
             ),
         ]
     )
@@ -459,139 +602,16 @@ def sync_local_dev_to_pi(
     )
     maybe_run(ssh_cmd + [_ssh_remote_bash_lc(remote_install)])
 
+    unit_q = _posix_sh_single_quote(SYSTEMD_USER_UNIT_NAME)
     maybe_run(
         ssh_cmd
         + [
             _ssh_remote_bash_lc(
-                "systemctl --user start waddle-view 2>/dev/null || true",
+                f"systemctl --user restart {unit_q} 2>/dev/null || "
+                f"systemctl --user start {unit_q} 2>/dev/null || true",
             ),
         ]
     )
-
-
-def sync_shell_env_dotfiles_to_pi(
-    target: str,
-    *,
-    env_development: Optional[Path],
-    port: Optional[int],
-    identity: Optional[Path],
-    batch_mode: bool,
-    dry_run: bool,
-) -> None:
-    """Push ``.env.example`` to ``~/.local/share/waddle_display/.env.example`` and dev env to ``~/.local/share/waddle_display/.env``; source only the latter in bash rc."""
-    ssh_cmd = _ssh_base_args(
-        target, port=port, identity=identity, batch_mode=batch_mode
-    )
-    remote_home = remote_unix_home_from_ssh_target(target)
-    config_dir = remote_shell_dotenv_dir(remote_home)
-    config_dir_q = _posix_sh_single_quote(config_dir)
-    dst_example = str(PurePosixPath(config_dir) / REMOTE_SHELL_DOTENV_EXAMPLE_NAME)
-    dst_dev = str(PurePosixPath(config_dir) / REMOTE_SHELL_DOTENV_ENV_NAME)
-    example_local = resolve_env_example_path()
-    dev_local = optional_local_env_development_path(env_development)
-
-    def maybe_run(cmd: list[str]) -> None:
-        print("+", " ".join(cmd), flush=True)
-        if not dry_run:
-            subprocess.run(cmd, check=True)
-
-    maybe_run(ssh_cmd + [_ssh_remote_bash_lc("mkdir -p " + config_dir_q)])
-
-    pid = os.getpid()
-    tmp_ex = f"/tmp/waddle-env-example-{pid}"
-    tmp_ex_q = _posix_sh_single_quote(tmp_ex)
-    dst_ex_q = _posix_sh_single_quote(dst_example)
-    maybe_run(
-        _scp_push(
-            example_local,
-            tmp_ex,
-            target,
-            port=port,
-            identity=identity,
-            batch_mode=batch_mode,
-        )
-    )
-    maybe_run(
-        ssh_cmd
-        + [
-            _ssh_remote_bash_lc(
-                f"mv -f {tmp_ex_q} {dst_ex_q} && chmod 644 {dst_ex_q} && "
-                f"{_remote_gnu_sed_strip_cr_inplace(dst_ex_q)}",
-            ),
-        ],
-    )
-
-    tmp_dev = f"/tmp/waddle-env-development-{pid}"
-    tmp_dev_q = _posix_sh_single_quote(tmp_dev)
-    dst_dev_q = _posix_sh_single_quote(dst_dev)
-    if dev_local is not None:
-        maybe_run(
-            _scp_push(
-                dev_local,
-                tmp_dev,
-                target,
-                port=port,
-                identity=identity,
-                batch_mode=batch_mode,
-            )
-        )
-        maybe_run(
-            ssh_cmd
-            + [
-                _ssh_remote_bash_lc(
-                    f"mv -f {tmp_dev_q} {dst_dev_q} && chmod 600 {dst_dev_q} && "
-                    f"{_remote_gnu_sed_strip_cr_inplace(dst_dev_q)}",
-                ),
-            ],
-        )
-    else:
-        maybe_run(ssh_cmd + [_ssh_remote_bash_lc(f"rm -f {dst_dev_q}")])
-
-    block = shell_env_bashrc_block(remote_home)
-    frag_local = Path(tempfile.gettempdir()) / f"waddle-rc-block-{pid}.txt"
-    try:
-        frag_local.write_text(block, encoding="utf-8", newline="\n")
-    except OSError as exc:
-        raise SystemExit(f"Could not write local rc fragment: {exc}") from exc
-
-    frag_remote = f"/tmp/waddle-rc-block-{pid}.txt"
-    frag_remote_q = _posix_sh_single_quote(frag_remote)
-    maybe_run(
-        _scp_push(
-            frag_local,
-            frag_remote,
-            target,
-            port=port,
-            identity=identity,
-            batch_mode=batch_mode,
-        )
-    )
-    frag_local.unlink(missing_ok=True)
-
-    br = str(PurePosixPath(remote_home) / ".bashrc")
-    bp = str(PurePosixPath(remote_home) / ".bash_profile")
-    br_q = _posix_sh_single_quote(br)
-    bp_q = _posix_sh_single_quote(bp)
-    remote_rc_patch = (
-        f"if [ -f {br_q} ]; then RC={br_q}; "
-        f"elif [ -f {bp_q} ]; then RC={bp_q}; "
-        f"else RC={br_q}; fi && "
-        'touch "$RC" && '
-        "sed -i '/# WADDLE_VIEW_INSTALL_MAIN_TO_PI_BEGIN/,/# WADDLE_VIEW_INSTALL_MAIN_TO_PI_END/d' "
-        '"$RC" && '
-        f"{_remote_gnu_sed_strip_cr_inplace(frag_remote_q)} && "
-        f"cat {frag_remote_q} >> \"$RC\" && "
-        f"rm -f {frag_remote_q}"
-    )
-    maybe_run(ssh_cmd + [_ssh_remote_bash_lc(remote_rc_patch)])
-
-    if dev_local is None:
-        print(
-            "No local apps/waddle_display/.env.development (skipped upload; "
-            "removed remote ~/.local/share/waddle_display/.env if it existed).",
-            file=sys.stderr,
-            flush=True,
-        )
 
 
 def parse_args(argv: Optional[list[str]]) -> argparse.Namespace:
@@ -670,9 +690,8 @@ def parse_args(argv: Optional[list[str]]) -> argparse.Namespace:
         default=None,
         metavar="PATH",
         help=(
-            "Path to .env.development. Used for --sync-local-dev (required file). Also used for "
-            "the post-upgrade ~/.local/share/waddle_display/.env copy when set; otherwise that step looks for "
-            "apps/waddle_display/.env.development and skips the file if absent."
+            "Path to .env.development. Merged into the systemd unit as Environment= lines when "
+            "present. Required for --sync-local-dev (also copies to the bundle for debug builds)."
         ),
     )
     p.add_argument(
@@ -725,15 +744,6 @@ def main(argv: Optional[list[str]] = None) -> None:
     if exit_code != 0:
         raise SystemExit(exit_code)
 
-    sync_shell_env_dotfiles_to_pi(
-        target,
-        env_development=args.env_development,
-        port=args.port,
-        identity=args.identity,
-        batch_mode=batch_mode,
-        dry_run=args.dry_run,
-    )
-
     if args.sync_local_dev:
         local_db = resolve_local_sqlite_path(args.db)
         env_path = resolve_dev_env_path(args.env_development)
@@ -746,6 +756,15 @@ def main(argv: Optional[list[str]] = None) -> None:
             batch_mode=batch_mode,
             dry_run=args.dry_run,
         )
+
+    install_systemd_user_unit_and_restart(
+        target,
+        env_development=args.env_development,
+        port=args.port,
+        identity=args.identity,
+        batch_mode=batch_mode,
+        dry_run=args.dry_run,
+    )
 
 
 if __name__ == "__main__":

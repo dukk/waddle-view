@@ -26,7 +26,7 @@ npm ci
 MOCK_API_KEY=my-secret npm run dev
 ```
 
-Server listens on **`PORT`** (default **3000**) with **HTTPS on by default** (`https://127.0.0.1:3000`). Self-signed certs are stored under `./data/tls` (override with **`WADDLE_HTTP_TLS_DIR`**). Set **`WADDLE_HTTP_TLS=0`** for plain HTTP.
+Server listens on **`PORT`** (default **3000**) with **HTTPS on by default** (`https://127.0.0.1:3000`). Self-signed certs are stored under `./data/tls` (override with **`WADDLE_DISPLAY_HTTP_TLS_DIR`**). Set **`WADDLE_DISPLAY_HTTP_TLS=0`** for plain HTTP.
 
 ## Docker (nginx + Node)
 

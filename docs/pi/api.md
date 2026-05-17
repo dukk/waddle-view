@@ -2,9 +2,9 @@
 
 ## Binding
 
-- Default in development: **`https://127.0.0.1:8787`** (loopback only, **TLS on** with a self-signed cert under app-support `tls/`).
-- Optional bind override: set **`WADDLE_HTTP_BIND`** (for example `0.0.0.0`) and optional **`WADDLE_HTTP_PORT`**.
-- **`WADDLE_HTTP_TLS`**: `1` by default; set `0` for plain HTTP. Override cert paths with **`WADDLE_HTTP_TLS_DIR`**, **`WADDLE_HTTP_TLS_CERT`**, **`WADDLE_HTTP_TLS_KEY`**.
+- Default: listen on **`0.0.0.0:8787`** (all interfaces, **TLS on** with a self-signed cert under app-support `tls/`). Adoption/QR URLs use the first non-loopback IPv4 on the host.
+- Optional bind override: set **`WADDLE_DISPLAY_HTTP_BIND_IP`** (for example `127.0.0.1` for loopback-only) and optional **`WADDLE_DISPLAY_HTTP_PORT`**.
+- **`WADDLE_DISPLAY_HTTP_TLS`**: `1` by default; set `0` for plain HTTP. Override cert paths with **`WADDLE_DISPLAY_HTTP_TLS_DIR`**, **`WADDLE_DISPLAY_HTTP_TLS_CERT`**, **`WADDLE_DISPLAY_HTTP_TLS_KEY`**.
 - For LAN access, bind an explicit address and **firewall** the port. The embedded server can serve HTTPS directly; for untrusted networks you may still prefer a reverse proxy with a publicly trusted certificate.
 
 ## Authentication
@@ -56,7 +56,7 @@ Browser clients (for example **`waddle_controller`**) send an **`Origin`** heade
 
 Optional env seed (comma-separated **exact** origins, no wildcards):
 
-- **`WADDLE_HTTP_CORS_ORIGINS`** (for example `http://127.0.0.1:5173,http://localhost:5173`) — inserted at startup with `source: env` (idempotent).
+- **`WADDLE_DISPLAY_HTTP_CORS_ORIGINS`** (for example `http://127.0.0.1:5173,http://localhost:5173`) — inserted at startup with `source: env` (idempotent).
 
 Allowed responses include **`Access-Control-Allow-Origin`** (mirrored origin), **`Access-Control-Allow-Methods`** (`GET,POST,PATCH,PUT,DELETE,OPTIONS`), and **`Access-Control-Allow-Headers`** (`Content-Type`, `Authorization`). **`OPTIONS`** preflight returns **204** when allowed.
 

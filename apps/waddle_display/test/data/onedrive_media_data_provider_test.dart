@@ -42,7 +42,7 @@ void main() {
     await db.close();
   });
 
-  test('skip when WADDLE_MICROSOFT_GRAPH_CLIENT_ID unset', () async {
+  test('skip when WADDLE_DISPLAY_MICROSOFT_GRAPH_CLIENT_ID unset', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await db.into(db.integrations).insertOnConflictUpdate(

@@ -21,6 +21,7 @@ import 'api/network_addressing.dart';
 import 'bootstrap/app_fatal_error_recovery.dart';
 import 'clock.dart';
 import 'config/dev_dotenv_secrets.dart';
+import 'config/display_env.dart';
 import 'config/display_timezone.dart';
 import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/blob/filesystem_blob_store.dart';
@@ -116,7 +117,7 @@ Future<void> _waddleBootstrap() async {
     final secrets = FlutterSecureSecretStore();
     final envMap = mergeBootstrapEnv();
     await corsOrigins.seedEnvOrigins(
-      parseCorsAllowedOrigins(envMap['WADDLE_HTTP_CORS_ORIGINS']),
+      parseCorsAllowedOrigins(envMap[kDisplayHttpCorsOriginsEnv]),
       nowMs: DateTime.now().millisecondsSinceEpoch,
     );
     final resolver = ProviderConfigResolver(db, envMap);
@@ -226,9 +227,10 @@ Future<void> _waddleBootstrap() async {
         telemetryHub: telemetryHub,
         navigationBus: navigationBus,
         viewerInviteRuntime: ViewerInviteRuntime(
-          controllerPublicUrl: (envMap['WADDLE_CONTROLLER_PUBLIC_URL'] ?? '').trim(),
+          controllerPublicUrl:
+              (envMap[kDisplayControllerPublicUrlEnv] ?? '').trim(),
           viewerRegistrationSecret:
-              (envMap['WADDLE_VIEWER_REGISTRATION_SECRET'] ?? '').trim(),
+              (envMap[kDisplayViewerRegistrationSecretEnv] ?? '').trim(),
         ),
       ),
     );

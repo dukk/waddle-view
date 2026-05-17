@@ -24,7 +24,7 @@ void main() {
     expect(merged['WADDLE_MERGE_TEST_KEY'], 'from_dotenv');
   });
 
-  test('readJokesTokenFromEnvMap reads WADDLE_OPENAI_API_KEY', () {
+  test('readJokesTokenFromEnvMap reads WADDLE_DISPLAY_OPENAI_API_KEY', () {
     expect(
       readJokesTokenFromEnvMap({
         waddleOpenAiApiKeyEnv: '  sk-waddle  ',
@@ -52,7 +52,7 @@ void main() {
     );
   });
 
-  test('readWeatherTokenFromEnvMap reads WADDLE_OPEN_WEATHER_MAP_API_KEY', () {
+  test('readWeatherTokenFromEnvMap reads WADDLE_DISPLAY_OPEN_WEATHER_MAP_API_KEY', () {
     expect(
       readWeatherTokenFromEnvMap({
         waddleOpenWeatherMapApiKeyEnv: ' owm-token ',
@@ -61,7 +61,7 @@ void main() {
     );
   });
 
-  test('readPexelsTokenFromEnvMap reads WADDLE_PEXELS_API_KEY', () {
+  test('readPexelsTokenFromEnvMap reads WADDLE_DISPLAY_PEXELS_API_KEY', () {
     expect(
       readPexelsTokenFromEnvMap({
         waddlePexelsApiKeyEnv: ' pex-a ',
@@ -70,7 +70,7 @@ void main() {
     );
   });
 
-  test('readFlickrTokenFromEnvMap reads WADDLE_FLICKR_API_KEY', () {
+  test('readFlickrTokenFromEnvMap reads WADDLE_DISPLAY_FLICKR_API_KEY', () {
     expect(
       readFlickrTokenFromEnvMap({
         waddleFlickrApiKeyEnv: ' fl-a ',
@@ -79,7 +79,7 @@ void main() {
     );
   });
 
-  test('readStocksTokenFromEnvMap reads WADDLE_FINHUB_API_KEY', () {
+  test('readStocksTokenFromEnvMap reads WADDLE_DISPLAY_FINHUB_API_KEY', () {
     expect(
       readStocksTokenFromEnvMap({waddleFinhubApiKeyEnv: ' fhub-token '}),
       'fhub-token',

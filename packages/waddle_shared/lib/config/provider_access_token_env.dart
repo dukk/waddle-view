@@ -12,26 +12,27 @@
 library;
 
 /// OpenAI-style API key for jokes, trivia, and the OpenTDB path when it shares the resolver.
-const String waddleOpenAiApiKeyEnv = 'WADDLE_OPENAI_API_KEY';
+const String waddleOpenAiApiKeyEnv = 'WADDLE_DISPLAY_OPENAI_API_KEY';
 
 /// OpenWeatherMap API key.
-const String waddleOpenWeatherMapApiKeyEnv = 'WADDLE_OPEN_WEATHER_MAP_API_KEY';
+const String waddleOpenWeatherMapApiKeyEnv = 'WADDLE_DISPLAY_OPEN_WEATHER_MAP_API_KEY';
 
 /// Pexels API key (https://www.pexels.com/api/).
-const String waddlePexelsApiKeyEnv = 'WADDLE_PEXELS_API_KEY';
+const String waddlePexelsApiKeyEnv = 'WADDLE_DISPLAY_PEXELS_API_KEY';
 
 /// Flickr REST API key (https://www.flickr.com/services/api/).
-const String waddleFlickrApiKeyEnv = 'WADDLE_FLICKR_API_KEY';
+const String waddleFlickrApiKeyEnv = 'WADDLE_DISPLAY_FLICKR_API_KEY';
 
 /// Finnhub API key (https://finnhub.io/) for the `stock_finnhub` provider.
-const String waddleFinhubApiKeyEnv = 'WADDLE_FINHUB_API_KEY';
+const String waddleFinhubApiKeyEnv = 'WADDLE_DISPLAY_FINHUB_API_KEY';
 
 /// Microsoft Entra (Azure AD) **application (client) id** for Graph OAuth
 /// (Outlook calendar, OneDrive media). Not stored in SQLite.
-const String waddleMicrosoftGraphClientIdEnv = 'WADDLE_MICROSOFT_GRAPH_CLIENT_ID';
+const String waddleMicrosoftGraphClientIdEnv =
+    'WADDLE_DISPLAY_MICROSOFT_GRAPH_CLIENT_ID';
 
 /// Google OAuth **client id** for Calendar API device flow. Not stored in SQLite.
-const String waddleGoogleClientIdEnv = 'WADDLE_GOOGLE_CLIENT_ID';
+const String waddleGoogleClientIdEnv = 'WADDLE_DISPLAY_GOOGLE_CLIENT_ID';
 
 String? _trimNonEmpty(String? v) {
   final t = v?.trim();

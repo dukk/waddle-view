@@ -36,4 +36,39 @@ void main() {
     expect(pexelsVideoRetryDelay(2), const Duration(milliseconds: 800));
     expect(pexelsVideoRetryDelay(99), const Duration(milliseconds: 1200));
   });
+
+  test('pexelsVideoTextureDimensions caps embedded budget', () {
+    embeddedSignageLinuxHostOverride = true;
+    maxTexturePixelCountOverride = 1920 * 1080;
+    addTearDown(() {
+      embeddedSignageLinuxHostOverride = null;
+      maxTexturePixelCountOverride = null;
+    });
+
+    final dims = pexelsVideoTextureDimensions(
+      layoutWidth: 3840,
+      layoutHeight: 2160,
+    );
+    expect(dims.width * dims.height, lessThanOrEqualTo(1920 * 1080));
+    expect(dims.width, greaterThanOrEqualTo(kPexelsVideoMinLayoutExtent.round()));
+    expect(dims.height, greaterThanOrEqualTo(kPexelsVideoMinLayoutExtent.round()));
+  });
+
+  test('pexelsVideoTextureDimensions unchanged when under cap', () {
+    maxTexturePixelCountOverride = 1920 * 1080;
+    addTearDown(() => maxTexturePixelCountOverride = null);
+
+    final dims = pexelsVideoTextureDimensions(
+      layoutWidth: 1280,
+      layoutHeight: 720,
+    );
+    expect(dims.width, 1280);
+    expect(dims.height, 720);
+  });
+
+  test('pexelsVideoMaxTexturePixelCount reads env override', () {
+    maxTexturePixelCountOverride = 640 * 480;
+    addTearDown(() => maxTexturePixelCountOverride = null);
+    expect(pexelsVideoMaxTexturePixelCount(), 640 * 480);
+  });
 }

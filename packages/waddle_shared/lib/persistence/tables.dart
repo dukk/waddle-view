@@ -633,5 +633,5 @@ class CorsAllowedOrigins extends Table {
 /// [CorsAllowedOrigins.source] for successful adoption confirm/grant.
 const String kCorsOriginSourceAdoption = 'adoption';
 
-/// [CorsAllowedOrigins.source] for [WADDLE_HTTP_CORS_ORIGINS] at startup.
+/// [CorsAllowedOrigins.source] for [WADDLE_DISPLAY_HTTP_CORS_ORIGINS] at startup.
 const String kCorsOriginSourceEnv = 'env';

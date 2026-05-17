@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import '../config/display_env.dart';
 import 'http_tls.dart';
 
 class HttpBindConfig {
@@ -21,8 +22,8 @@ Future<HttpBindConfig> resolveHttpBindConfig({
   String? tlsCertDir,
 }) async {
   final env = environment ?? Platform.environment;
-  final bindHost = (env['WADDLE_HTTP_BIND'] ?? '').trim();
-  final bindPortRaw = (env['WADDLE_HTTP_PORT'] ?? '').trim();
+  final bindHost = (env[kDisplayHttpBindIpEnv] ?? '').trim();
+  final bindPortRaw = (env[kDisplayHttpPortEnv] ?? '').trim();
   final bindPort = int.tryParse(bindPortRaw);
   final port = bindPort != null && bindPort > 0 ? bindPort : 8787;
 
@@ -41,19 +42,17 @@ Future<HttpBindConfig> resolveHttpBindConfig({
 }
 
 Future<InternetAddress> _resolveBindAddress(String bindHost) async {
-  if (bindHost.isEmpty) {
-    return InternetAddress.loopbackIPv4;
-  }
-  if (bindHost == '0.0.0.0') {
+  final host = bindHost.isEmpty ? '0.0.0.0' : bindHost;
+  if (host == '0.0.0.0') {
     return InternetAddress.anyIPv4;
   }
-  if (bindHost == '::') {
+  if (host == '::') {
     return InternetAddress.anyIPv6;
   }
   try {
-    return InternetAddress(bindHost);
+    return InternetAddress(host);
   } catch (_) {
-    return InternetAddress.loopbackIPv4;
+    return InternetAddress.anyIPv4;
   }
 }
 

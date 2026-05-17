@@ -73,7 +73,7 @@ class ScreenRotator extends StatefulWidget {
   final AppDatabase db;
   final BlobStore blobs;
 
-  /// Bound loopback base URL for the in-process REST server (e.g. `https://127.0.0.1:8787`).
+  /// Bound base URL for the in-process REST server (e.g. `https://192.168.1.10:8787`).
   final String localRestBaseUrl;
   final String adminBaseUrl;
   final File instanceIdFile;

@@ -16,6 +16,7 @@ import '../../dashboard_viewport_scope.dart';
 import 'pexels_attribution_overlay.dart';
 import 'pexels_video_materialize.dart';
 import 'pexels_video_playback.dart';
+import 'pexels_video_playback_gate.dart';
 
 Future<Video?> loadPexelsVideoForSlide(
   AppDatabase db,
@@ -110,6 +111,8 @@ class _PexelsVideoSlideWidgetState extends State<PexelsVideoSlideWidget> {
   bool _loading = true;
   String? _error;
   bool _layoutReady = false;
+  double _layoutWidth = 0;
+  double _layoutHeight = 0;
   bool _playbackStarted = false;
   int _playbackRetries = 0;
   int _playbackGeneration = 0;
@@ -179,6 +182,8 @@ class _PexelsVideoSlideWidgetState extends State<PexelsVideoSlideWidget> {
   }
 
   void _reportLayoutSize(double width, double height) {
+    _layoutWidth = width;
+    _layoutHeight = height;
     final ready = pexelsVideoLayoutSizeReady(width, height);
     if (ready == _layoutReady) {
       return;
@@ -220,24 +225,33 @@ class _PexelsVideoSlideWidgetState extends State<PexelsVideoSlideWidget> {
     final generation = ++_playbackGeneration;
     _playbackStarted = true;
     try {
-      final player = Player();
-      final videoController = mkv.VideoController(player);
-      _errorSub?.cancel();
-      _errorSub = player.stream.error.listen(
-        (message) => unawaited(_onPlaybackError(message)),
-      );
-      await player.setPlaylistMode(
-        _loop ? PlaylistMode.single : PlaylistMode.none,
-      );
-      await player.setVolume(_unmuted ? 100.0 : 0.0);
-      await player.open(Media(Uri.file(file.path).toString()));
-      if (!mounted || generation != _playbackGeneration) {
-        await player.dispose();
-        return;
-      }
-      setState(() {
-        _player = player;
-        _videoController = videoController;
+      await PexelsVideoPlaybackGate.instance.run(() async {
+        final player = Player();
+        final videoController = mkv.VideoController(
+          player,
+          configuration: pexelsVideoControllerConfiguration(
+            layoutWidth: _layoutWidth,
+            layoutHeight: _layoutHeight,
+          ),
+        );
+        _errorSub?.cancel();
+        _errorSub = player.stream.error.listen(
+          (message) => unawaited(_onPlaybackError(message)),
+        );
+        await player.setPlaylistMode(
+          _loop ? PlaylistMode.single : PlaylistMode.none,
+        );
+        await player.setVolume(_unmuted ? 100.0 : 0.0);
+        await player.open(Media(Uri.file(file.path).toString()));
+        if (!mounted || generation != _playbackGeneration) {
+          await _disposePlayer(player);
+          _playbackStarted = false;
+          return;
+        }
+        setState(() {
+          _player = player;
+          _videoController = videoController;
+        });
       });
     } on Object catch (e) {
       _playbackStarted = false;
@@ -291,22 +305,28 @@ class _PexelsVideoSlideWidgetState extends State<PexelsVideoSlideWidget> {
     final player = _player;
     _player = null;
     _videoController = null;
-    if (player != null) {
-      try {
-        await player.stop();
-      } on Object {
-        // Best-effort before dispose.
-      }
-      try {
-        await player.dispose();
-      } on Object {
-        // Native teardown may race with texture release during transitions.
-      }
+    if (!disposing && mounted) {
+      setState(() {});
     }
-    if (!disposing && mounted && !keepMedia) {
-      setState(() {});
-    } else if (!disposing && mounted) {
-      setState(() {});
+    if (player == null) {
+      return;
+    }
+    await PexelsVideoPlaybackGate.instance.run(() => _disposePlayer(player));
+  }
+
+  Future<void> _disposePlayer(Player player) async {
+    try {
+      await player.stop();
+    } on Object {
+      // Best-effort before dispose.
+    }
+    try {
+      await player.dispose();
+    } on Object {
+      // Native teardown may race with texture release during transitions.
+    }
+    if (isEmbeddedSignageLinuxHost()) {
+      await Future<void>.delayed(const Duration(milliseconds: 32));
     }
   }
 
@@ -359,12 +379,16 @@ class _PexelsVideoSlideWidgetState extends State<PexelsVideoSlideWidget> {
                 color: widget.theme.colorScheme.surface,
               );
             }
+            final texture = pexelsVideoTextureDimensions(
+              layoutWidth: w,
+              layoutHeight: h,
+            );
             return Center(
               child: mkv.Video(
                 key: const Key('pexels_video_surface'),
                 controller: vc,
-                width: w,
-                height: h,
+                width: texture.width.toDouble(),
+                height: texture.height.toDouble(),
                 fit: BoxFit.cover,
                 controls: null,
               ),

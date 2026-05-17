@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import '../config/display_env.dart';
 import 'bundled_dev_tls.dart';
 
 /// TLS settings for the embedded display REST server.
@@ -18,7 +19,7 @@ class HttpTlsConfig {
 }
 
 bool _envTlsEnabled(Map<String, String> env) {
-  final raw = (env['WADDLE_HTTP_TLS'] ?? '').trim();
+  final raw = (env[kDisplayHttpTlsEnv] ?? '').trim();
   if (raw.isEmpty) return true;
   final lower = raw.toLowerCase();
   if (raw == '0' || lower == 'false' || lower == 'no') return false;
@@ -35,8 +36,8 @@ Future<HttpTlsConfig> resolveHttpTlsConfig({
     return const HttpTlsConfig(enabled: false);
   }
 
-  final certOverride = (env['WADDLE_HTTP_TLS_CERT'] ?? '').trim();
-  final keyOverride = (env['WADDLE_HTTP_TLS_KEY'] ?? '').trim();
+  final certOverride = (env[kDisplayHttpTlsCertEnv] ?? '').trim();
+  final keyOverride = (env[kDisplayHttpTlsKeyEnv] ?? '').trim();
   if (certOverride.isNotEmpty && keyOverride.isNotEmpty) {
     return HttpTlsConfig(
       enabled: true,
@@ -45,13 +46,13 @@ Future<HttpTlsConfig> resolveHttpTlsConfig({
     );
   }
 
-  final dir = (env['WADDLE_HTTP_TLS_DIR'] ?? '').trim().isNotEmpty
-      ? env['WADDLE_HTTP_TLS_DIR']!.trim()
+  final dir = (env[kDisplayHttpTlsDirEnv] ?? '').trim().isNotEmpty
+      ? env[kDisplayHttpTlsDirEnv]!.trim()
       : defaultCertDir;
   if (dir.isEmpty) {
     throw ArgumentError(
       'TLS is enabled but no cert directory was provided '
-      '(set WADDLE_HTTP_TLS_DIR or pass tlsCertDir to resolveHttpBindConfig)',
+      '(set $kDisplayHttpTlsDirEnv or pass tlsCertDir to resolveHttpBindConfig)',
     );
   }
   final paths = await ensureSelfSignedCert(

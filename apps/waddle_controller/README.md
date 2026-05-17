@@ -67,7 +67,7 @@ If a display loses its session, use **Adopt display** in the app bar (or complet
 
 The display slide type **`controller_invite`** can open **`/join?api=<display REST>`** on this SPA. That page runs **viewer** adoption (challenge on the kiosk, then confirm). For other roles, use **Manage displays**.
 
-Cross-origin calls require the controller origin to pass the display’s **adoption CORS** rules (LAN/private) during pairing; after confirm, the origin is stored on the display. You can also set **`WADDLE_HTTP_CORS_ORIGINS`** on the display for static seeds.
+Cross-origin calls require the controller origin to pass the display’s **adoption CORS** rules (LAN/private) during pairing; after confirm, the origin is stored on the display. You can also set **`WADDLE_DISPLAY_HTTP_CORS_ORIGINS`** on the display for static seeds.
 
 ## Tests
 
@@ -108,7 +108,7 @@ docker run --rm -p 8443:443 \
 
 nginx serves the SPA over **HTTPS** (self-signed cert generated on first start) and proxies **`/bff/`** to the embedded Node BFF on loopback HTTP. Persist **`WADDLE_CONTROLLER_DATA_DIR`** with a volume.
 
-After adoption, the display remembers your controller origin. Optionally set **`WADDLE_HTTP_CORS_ORIGINS`** on the display for additional static origins.
+After adoption, the display remembers your controller origin. Optionally set **`WADDLE_DISPLAY_HTTP_CORS_ORIGINS`** on the display for additional static origins.
 
 ## Security
 
