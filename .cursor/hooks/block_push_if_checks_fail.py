@@ -13,6 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from hook_common import read_stdin_json, repo_root
+from prepush_autofix import build_prepush_autofix_message
 
 
 def is_git_push(command: str) -> bool:
@@ -45,20 +46,22 @@ def main() -> None:
         print(json.dumps({"permission": "allow"}))
         sys.exit(0)
 
+    autofix = build_prepush_autofix_message(root)
+    agent_message = autofix or (
+        "git push was blocked because scripts/pre_push_checks.py failed. "
+        "Run the same script locally, fix test/analyze failures, then push. "
+        "Do not use --no-verify unless the user explicitly requests it."
+    )
+
     print(
         json.dumps(
             {
                 "permission": "deny",
                 "user_message": (
-                    "Pre-push checks failed (tests/analyze). Fix failures before "
-                    "pushing, or run git push yourself with --no-verify."
+                    "Pre-push checks failed (tests/analyze). The agent will start fixing "
+                    "automatically—retry git push after checks pass."
                 ),
-                "agent_message": (
-                    "git push was blocked because scripts/pre_push_checks.py "
-                    "failed. Run the same script locally, fix test/analyze failures, "
-                    "then push. Do not use --no-verify unless the user explicitly "
-                    "requests it."
-                ),
+                "agent_message": agent_message,
             }
         )
     )

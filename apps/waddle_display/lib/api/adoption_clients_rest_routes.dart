@@ -5,7 +5,6 @@ import 'package:shelf_router/shelf_router.dart';
 import 'package:waddle_shared/auth/adoption_repository.dart';
 import 'package:waddle_shared/auth/cors_origin_repository.dart';
 import 'package:waddle_shared/auth/role_permissions.dart';
-import 'package:waddle_shared/config/adoption.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 
 import 'api_key_auth.dart';

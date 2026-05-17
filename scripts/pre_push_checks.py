@@ -122,22 +122,34 @@ def resolve_argv(argv: list[str]) -> list[str]:
     return argv
 
 
-def run_step(step: Step) -> int:
+def run_step(step: Step) -> tuple[int, str]:
     argv = resolve_argv(step.argv)
     print(f"\n==> {step.label}", flush=True)
     print(f"    cwd: {step.cwd}", flush=True)
     print(f"    cmd: {' '.join(argv)}", flush=True)
     if argv == step.argv and shutil.which(step.argv[0]) is None:
-        print(
+        msg = (
             f"\nFAILED: command not found on PATH: {step.argv[0]!r}. "
-            "Install it or add it to PATH (Git hooks use a minimal environment).",
-            file=sys.stderr,
+            "Install it or add it to PATH (Git hooks use a minimal environment)."
         )
-        return 127
-    result = subprocess.run(argv, cwd=step.cwd)
+        print(msg, file=sys.stderr)
+        return 127, msg
+    result = subprocess.run(
+        argv,
+        cwd=step.cwd,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if result.stdout:
+        print(result.stdout, end="" if result.stdout.endswith("\n") else "\n", flush=True)
+    if result.stderr:
+        print(result.stderr, end="" if result.stderr.endswith("\n") else "\n", file=sys.stderr, flush=True)
+    combined = f"{result.stdout or ''}{result.stderr or ''}"
     if result.returncode != 0:
         print(f"\nFAILED: {step.label} (exit {result.returncode})", file=sys.stderr)
-    return result.returncode
+    return result.returncode, combined
 
 
 def scoped_paths(changed: list[str] | None) -> set[str]:
@@ -302,6 +314,26 @@ def build_steps(root: Path, scopes: set[str]) -> list[Step]:
     return steps
 
 
+def _record_failure(
+    root: Path,
+    step: Step,
+    exit_code: int,
+    output: str,
+    scopes: set[str],
+) -> None:
+    from prepush_failure_report import write_failure
+
+    write_failure(
+        root,
+        label=step.label,
+        cwd=step.cwd,
+        argv=step.argv,
+        exit_code=exit_code,
+        output=output,
+        scopes=sorted(scopes),
+    )
+
+
 def main() -> int:
     if skip_checks():
         print("WADDLE_SKIP_PREPUSH_CHECKS set — skipping pre-push checks.")
@@ -323,8 +355,9 @@ def main() -> int:
 
     steps = build_steps(root, scopes)
     for step in steps:
-        code = run_step(step)
+        code, output = run_step(step)
         if code != 0:
+            _record_failure(root, step, code, output, scopes)
             print(
                 "\nPush blocked: fix failures or push with --no-verify "
                 "(not recommended).",
@@ -334,7 +367,19 @@ def main() -> int:
                 "To skip locally: set WADDLE_SKIP_PREPUSH_CHECKS=1",
                 file=sys.stderr,
             )
+            print(
+                "Cursor Agent: failure saved to .cursor/hooks/state/prepush-last-failure.json "
+                "(retry git push from agent chat to auto-continue fixes).",
+                file=sys.stderr,
+            )
             return code
+
+    try:
+        from prepush_failure_report import clear_failure
+
+        clear_failure(root)
+    except ImportError:
+        pass
 
     print("\nPre-push checks passed.")
     return 0
