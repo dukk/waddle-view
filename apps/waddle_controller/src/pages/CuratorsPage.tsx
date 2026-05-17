@@ -323,9 +323,6 @@ export function CuratorsPage() {
 
   return (
     <Stack spacing={3} sx={{ maxWidth: 960 }}>
-      <Typography variant="h5" fontWeight={600}>
-        Curator
-      </Typography>
       {error && <Alert severity="error">{error}</Alert>}
       {saved && <Alert severity="success">News photo setting saved.</Alert>}
 

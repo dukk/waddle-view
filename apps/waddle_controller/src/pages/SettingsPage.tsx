@@ -81,10 +81,6 @@ export function SettingsPage() {
 
   return (
     <Stack spacing={2} sx={{ maxWidth: 720 }}>
-      <Typography variant="h5" fontWeight={600}>
-        Settings
-      </Typography>
-
       {msg && (
         <Alert severity={msg.level} onClose={() => setMsg(null)}>
           {msg.text}
