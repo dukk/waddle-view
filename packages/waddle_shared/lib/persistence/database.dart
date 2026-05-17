@@ -42,16 +42,16 @@ part 'database.g.dart';
     StockSymbols,
     StockQuotes,
     RejectTerms,
-    Users,
-    UserSessions,
-    UserOauthIdentities,
+    AdoptionPending,
+    ApiClients,
+    CorsAllowedOrigins,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 46;
+  int get schemaVersion => 48;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -785,9 +785,37 @@ FROM curator_settings WHERE id = 'app';
         }
       }
       if (from < 38) {
-        await m.createTable(users);
-        await m.createTable(userSessions);
-        await m.createTable(userOauthIdentities);
+        await customStatement('''
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT NOT NULL PRIMARY KEY,
+  username TEXT NOT NULL,
+  username_lower TEXT NOT NULL,
+  display_name TEXT NOT NULL,
+  role TEXT NOT NULL,
+  password_hash TEXT,
+  is_bootstrap INTEGER NOT NULL DEFAULT 0,
+  disabled_at_ms INTEGER,
+  created_at_ms INTEGER NOT NULL,
+  updated_at_ms INTEGER NOT NULL
+);
+''');
+        await customStatement('''
+CREATE TABLE IF NOT EXISTS user_sessions (
+  id TEXT NOT NULL PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  created_at_ms INTEGER NOT NULL,
+  expires_at_ms INTEGER NOT NULL,
+  client_label TEXT
+);
+''');
+        await customStatement('''
+CREATE TABLE IF NOT EXISTS user_oauth_identities (
+  user_id TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  PRIMARY KEY (user_id, provider)
+);
+''');
       }
       if (from < 39) {
         final ps = await customSelect(
@@ -844,6 +872,40 @@ FROM curator_settings WHERE id = 'app';
           await customStatement(
             'ALTER TABLE trivia_questions ADD COLUMN integration_id TEXT;',
           );
+        }
+      }
+      if (from < 47) {
+        await m.deleteTable('user_oauth_identities');
+        await m.deleteTable('user_sessions');
+        await m.deleteTable('users');
+        await m.createTable(adoptionPending);
+        await m.createTable(apiClients);
+        await customStatement(
+          'CREATE UNIQUE INDEX IF NOT EXISTS api_clients_identifier '
+          'ON api_clients (identifier);',
+        );
+        await customStatement(
+          'CREATE UNIQUE INDEX IF NOT EXISTS api_clients_api_key_hash '
+          'ON api_clients (api_key_hash);',
+        );
+      }
+      if (from < 48) {
+        await m.createTable(corsAllowedOrigins);
+        final apiClientsTable = await customSelect(
+          "SELECT name FROM sqlite_master WHERE type='table' "
+          "AND name='api_clients' LIMIT 1",
+        ).get();
+        if (apiClientsTable.isNotEmpty) {
+          final apiClientCols = await customSelect(
+            'PRAGMA table_info(api_clients);',
+          ).get();
+          final apiClientColNames =
+              apiClientCols.map((r) => r.read<String>('name')).toSet();
+          if (!apiClientColNames.contains('referrer_origin')) {
+            await customStatement(
+              'ALTER TABLE api_clients ADD COLUMN referrer_origin TEXT;',
+            );
+          }
         }
       }
     },
