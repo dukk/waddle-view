@@ -88,6 +88,10 @@ void main() {
     addTearDown(h.dispose);
     final health = await http.get(Uri.parse('${h.baseUrl}/v1/health'));
     expect(health.statusCode, 200);
+    final healthBody = jsonDecode(health.body) as Map<String, dynamic>;
+    expect(healthBody['status'], 'ok');
+    expect(healthBody['app'], 'waddle_display');
+    expect(healthBody['schema_version'], isA<int>());
 
     final denied = await http.get(Uri.parse('${h.baseUrl}/v1/integrations'));
     expect(denied.statusCode, 401);

@@ -14,7 +14,20 @@ function maybeErr(c: { json: (a: unknown, s: number) => Response }, scenario: Sc
 export function v1Router() {
   const r = new Hono<{ Variables: { scenario: Scenario } }>();
 
-  r.get('/health', (c) => c.json({ status: 'ok' }));
+  r.get('/health', (c) =>
+    c.json({
+      status: 'ok',
+      app: 'waddle_display_mock_api',
+      version: '0.0.0',
+      build: 'mock',
+      schema_version: 48,
+      platform_os: 'linux',
+      platform_os_version: 'mock',
+      hostname: 'mock-display',
+      cpu_count: 1,
+      uptime_seconds: Math.floor(process.uptime()),
+    }),
+  );
 
   r.get('/telemetry/integrations', (c) => {
     const scenario = c.get('scenario');

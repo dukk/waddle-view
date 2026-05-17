@@ -28,6 +28,7 @@ import 'api_key_auth.dart';
 import 'caller_origin.dart';
 import 'content_catalog_rest_routes.dart';
 import 'cors_policy.dart';
+import 'display_health.dart';
 import 'operator_rest_routes.dart';
 import 'package:waddle_shared/auth/adoption_repository.dart';
 import 'package:waddle_shared/auth/cors_origin_repository.dart';
@@ -944,8 +945,14 @@ Handler buildRootHandler({
   CorsPolicy? corsPolicy,
 }) {
   final effectiveCorsPolicy = corsPolicy ?? CorsPolicy();
-  Response health(Request req) =>
-      Response.ok('{"status":"ok"}', headers: {'content-type': 'application/json'});
+  final healthStartedAt = DateTime.now().toUtc();
+  Response health(Request req) => Response.ok(
+    encodeDisplayHealthJson(
+      schemaVersion: db.schemaVersion,
+      serverStartedAt: healthStartedAt,
+    ),
+    headers: {'content-type': 'application/json'},
+  );
 
   final adoptionPublic = Router();
   registerAdoptionRoutes(

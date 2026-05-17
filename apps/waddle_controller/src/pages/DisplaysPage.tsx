@@ -4,6 +4,8 @@ import {
 
   Alert,
 
+  Box,
+
   Button,
 
   Chip,
@@ -24,6 +26,8 @@ import {
 
   TableRow,
 
+  Tooltip,
+
   Typography,
 
 } from '@mui/material';
@@ -41,6 +45,8 @@ import type { SavedDisplay } from '@/storage/displays';
 import { loadSession } from '@/storage/sessions';
 
 import { hasAnyAdoptedDisplay } from '@/util/adoptedDisplays';
+import { formatDisplayHostSummary } from '@/util/displayHealth';
+import { useDisplaysReachability } from '@/util/useDisplaysReachability';
 
 
 
@@ -67,6 +73,7 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
   const [editDisplay, setEditDisplay] = useState<SavedDisplay | null>(null);
 
   const adopted = hasAnyAdoptedDisplay(displays);
+  const reachability = useDisplaysReachability(displays);
 
 
 
@@ -103,7 +110,7 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
         <Stack direction="row" justifyContent="space-between" alignItems="flex-end" gap={2}>
 
           <Typography variant="body2" color="text.secondary">
-            Pair kiosks with this browser, rename them, and switch which display the controller
+            Pair displays with this browser, rename them, and switch which display the controller
             targets. Adopted API keys stay in local storage only—they are not included in backup
             export.
           </Typography>
@@ -166,6 +173,8 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
 
               <TableCell>Display</TableCell>
 
+              <TableCell>Status</TableCell>
+
               <TableCell>Base URL</TableCell>
 
               <TableCell>Adoption</TableCell>
@@ -182,11 +191,11 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
 
               <TableRow>
 
-                <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
 
                   <Typography variant="body2" color="text.secondary">
 
-                    No displays saved yet. Use <strong>Adopt display</strong> to pair with a kiosk.
+                    No displays saved yet. Use <strong>Adopt display</strong> to pair with a display.
 
                   </Typography>
 
@@ -201,6 +210,12 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
                 const session = loadSession(d.id);
 
                 const isActive = active?.id === d.id;
+
+                const status = reachability[d.id] ?? { state: 'checking' as const };
+
+                const hostSummary =
+
+                  status.state === 'online' ? formatDisplayHostSummary(status.health) : null;
 
                 return (
 
@@ -217,6 +232,100 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
                         </Typography>
 
                         {isActive && <Chip label="Active" size="small" color="primary" />}
+
+                      </Stack>
+
+                    </TableCell>
+
+                    <TableCell>
+
+                      <Stack spacing={0.5} useFlexGap>
+
+                        <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap flexWrap="wrap">
+
+                          {status.state === 'checking' && (
+
+                            <Chip label="Checking…" size="small" variant="outlined" />
+
+                          )}
+
+                          {status.state === 'online' && (
+
+                            <Chip label="Online" size="small" color="success" variant="outlined" />
+
+                          )}
+
+                          {status.state === 'offline' && (
+
+                            <Tooltip title={status.message}>
+
+                              <Chip label="Offline" size="small" color="error" variant="outlined" />
+
+                            </Tooltip>
+
+                          )}
+
+                          {isActive && status.state === 'online' && (
+
+                            <Chip label="Reachable" size="small" color="success" />
+
+                          )}
+
+                          {isActive && status.state === 'offline' && (
+
+                            <Chip label="Unreachable" size="small" color="warning" />
+
+                          )}
+
+                        </Stack>
+
+                        {hostSummary && (
+
+                          <Tooltip title={hostSummary}>
+
+                            <Typography
+
+                              variant="caption"
+
+                              color="text.secondary"
+
+                              sx={{
+
+                                display: 'block',
+
+                                maxWidth: 320,
+
+                                overflow: 'hidden',
+
+                                textOverflow: 'ellipsis',
+
+                                whiteSpace: 'nowrap',
+
+                              }}
+
+                            >
+
+                              {hostSummary}
+
+                            </Typography>
+
+                          </Tooltip>
+
+                        )}
+
+                        {status.state === 'offline' && (
+
+                          <Box sx={{ maxWidth: 320 }}>
+
+                            <Typography variant="caption" color="error">
+
+                              {status.message}
+
+                            </Typography>
+
+                          </Box>
+
+                        )}
 
                       </Stack>
 
