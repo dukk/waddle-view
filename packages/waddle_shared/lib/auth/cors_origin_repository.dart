@@ -1,5 +1,3 @@
-import 'package:drift/drift.dart';
-
 import '../persistence/database.dart';
 import '../persistence/tables.dart';
 import 'cors_origin_normalize.dart';

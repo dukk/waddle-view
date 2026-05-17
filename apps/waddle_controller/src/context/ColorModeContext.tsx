@@ -23,6 +23,7 @@ type ColorModeContextValue = {
 
 const ColorModeContext = createContext<ColorModeContextValue | null>(null);
 
+// eslint-disable-next-line react-refresh/only-export-components -- useColorMode is a hook, not a component
 export function useColorMode(): ColorModeContextValue {
   const ctx = useContext(ColorModeContext);
   if (!ctx) {

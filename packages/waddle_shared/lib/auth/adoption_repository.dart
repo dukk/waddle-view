@@ -2,7 +2,6 @@ import 'package:drift/drift.dart';
 
 import '../config/adoption.dart';
 import '../persistence/database.dart';
-import '../persistence/tables.dart';
 import 'adoption_challenge_format.dart';
 import 'adoption_crypto.dart';
 import 'role_permissions.dart';

@@ -51,12 +51,12 @@ String hashAdoptionApiKey(String apiKey) {
 /// Stable masked label for a stored API key hash (plaintext keys are never persisted).
 String maskAdoptionApiKeyHash(String apiKeyHash) {
   if (apiKeyHash.isEmpty) {
-    return '${kAdoptionApiKeyPrefix}****';
+    return '$kAdoptionApiKeyPrefix****';
   }
   final suffix = apiKeyHash.length <= 4
       ? apiKeyHash
       : apiKeyHash.substring(apiKeyHash.length - 4);
-  return '${kAdoptionApiKeyPrefix}••••••••$suffix';
+  return '$kAdoptionApiKeyPrefix••••••••$suffix';
 }
 
 String hashAdoptionChallengeCode(String challengeCode) {

@@ -11,7 +11,7 @@ COPY apps/waddle_controller/ .
 RUN npm run build && npm run build:server && npm prune --omit=dev
 
 FROM node:22-alpine
-RUN apk add --no-cache nginx openssl
+RUN apk add --no-cache nginx openssl wget
 WORKDIR /app
 COPY --from=build /app/package.json ./
 COPY --from=build /app/node_modules ./node_modules

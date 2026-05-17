@@ -150,6 +150,7 @@ export function ControllerAuthProvider({ children }: { children: ReactNode }) {
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- useControllerAuth is a hook, not a component
 export function useControllerAuth(): ControllerAuthCtx {
   const ctx = useContext(Ctx);
   if (!ctx) throw new Error('useControllerAuth requires ControllerAuthProvider');
