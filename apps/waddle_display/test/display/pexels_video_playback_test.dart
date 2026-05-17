@@ -71,4 +71,49 @@ void main() {
     addTearDown(() => maxTexturePixelCountOverride = null);
     expect(pexelsVideoMaxTexturePixelCount(), 640 * 480);
   });
+
+  test('embedded default texture cap is 720p', () {
+    embeddedSignageLinuxHostOverride = true;
+    maxTexturePixelCountOverride = null;
+    addTearDown(() {
+      embeddedSignageLinuxHostOverride = null;
+    });
+    expect(
+      pexelsVideoMaxTexturePixelCount(),
+      kPexelsVideoDefaultEmbeddedMaxTexturePixels,
+    );
+    expect(kPexelsVideoDefaultEmbeddedMaxTexturePixels, 1280 * 720);
+  });
+
+  test('pexelsVideoHwdecForPlayback uses embedded drm default', () {
+    embeddedSignageLinuxHostOverride = true;
+    pexelsVideoHwdecOverride = null;
+    addTearDown(() {
+      embeddedSignageLinuxHostOverride = null;
+      pexelsVideoHwdecOverride = null;
+    });
+    expect(pexelsVideoHwdecForPlayback(), kPexelsVideoDefaultEmbeddedHwdec);
+  });
+
+  test('pexelsVideoHwdecForPlayback honors test override', () {
+    pexelsVideoHwdecOverride = 'no';
+    addTearDown(() => pexelsVideoHwdecOverride = null);
+    expect(pexelsVideoHwdecForPlayback(), 'no');
+  });
+
+  test('pexelsVideoControllerConfiguration passes hwdec on embedded', () {
+    embeddedSignageLinuxHostOverride = true;
+    pexelsVideoHwdecOverride = 'drm';
+    addTearDown(() {
+      embeddedSignageLinuxHostOverride = null;
+      pexelsVideoHwdecOverride = null;
+    });
+    final cfg = pexelsVideoControllerConfiguration(
+      layoutWidth: 1920,
+      layoutHeight: 1080,
+    );
+    expect(cfg.hwdec, 'drm');
+    expect(cfg.width, lessThanOrEqualTo(1920));
+    expect(cfg.height, lessThanOrEqualTo(1080));
+  });
 }

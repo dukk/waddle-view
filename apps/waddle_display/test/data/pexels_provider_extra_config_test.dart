@@ -8,6 +8,7 @@ void main() {
     expect(a.photosPerHour, 2);
     expect(a.minVideoSeconds, 11);
     expect(a.maxVideoSeconds, 29);
+    expect(a.maxVideoDownloadWidth, 1920);
     expect(a.sources, isEmpty);
 
     final b = PexelsProviderExtraConfig.parse('not json');
@@ -16,7 +17,7 @@ void main() {
 
   test('parse reads sources and numeric overrides', () {
     final c = PexelsProviderExtraConfig.parse(
-      '{"maxPhotos":3,"photosPerHour":5,"sources":['
+      '{"maxPhotos":3,"photosPerHour":5,"maxVideoDownloadWidth":1280,"sources":['
       '{"query":"a","category":"b"},'
       '{"invalid":true},'
       '{"query":"","category":"x"}'
@@ -24,6 +25,7 @@ void main() {
     );
     expect(c.maxPhotos, 3);
     expect(c.photosPerHour, 5);
+    expect(c.maxVideoDownloadWidth, 1280);
     expect(c.sources.length, 1);
     expect(c.sources.single.query, 'a');
     expect(c.sources.single.category, 'b');

@@ -59,6 +59,12 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
           'videosPerHour': {'type': 'integer', 'minimum': 1},
           'minVideoSeconds': {'type': 'integer', 'minimum': 1},
           'maxVideoSeconds': {'type': 'integer', 'minimum': 1},
+          'maxVideoDownloadWidth': {
+            'type': 'integer',
+            'minimum': 1,
+            'description':
+                'Prefer the largest Pexels MP4 with width ≤ this value (default 1920). Use 1280 on Raspberry Pi.',
+          },
           'sources': {
             'type': 'array',
             'items': {
@@ -81,6 +87,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       'videosPerHour': 2,
       'minVideoSeconds': 11,
       'maxVideoSeconds': 29,
+      'maxVideoDownloadWidth': 1920,
       'sources': [
         {'query': 'nature', 'category': 'pexels'},
       ],

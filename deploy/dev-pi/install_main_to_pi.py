@@ -69,9 +69,53 @@ REMOTE_BUNDLE_ENV = "/opt/waddle-view/bundle/.env.development"
 SHELL_RC_BLOCK_BEGIN = "# WADDLE_VIEW_INSTALL_MAIN_TO_PI_BEGIN"
 SHELL_RC_BLOCK_END = "# WADDLE_VIEW_INSTALL_MAIN_TO_PI_END"
 
+# Remote shell dotenv layout (legacy bashrc installer; helpers kept for tests and removal).
+REMOTE_SHELL_DOTENV_DIR_REL = Path(".local/share/waddle_display")
+REMOTE_SHELL_DOTENV_EXAMPLE_NAME = ".env.example"
+REMOTE_SHELL_DOTENV_ENV_NAME = ".env"
+
 _DOTENV_LINE_RE = re.compile(
     r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$"
 )
+
+
+def remote_shell_dotenv_dir(remote_home: str) -> str:
+    """Absolute POSIX path to ``~/.local/share/waddle_display`` on the remote."""
+    return str(PurePosixPath(remote_home).joinpath(*REMOTE_SHELL_DOTENV_DIR_REL.parts))
+
+
+def pick_remote_shell_rc_path(
+    remote_home: str,
+    *,
+    bashrc_exists: bool,
+    bash_profile_exists: bool,
+) -> str:
+    """Match remote login-shell practice: prefer ``.bashrc``, else ``.bash_profile``, else ``.bashrc``."""
+    br = str(PurePosixPath(remote_home) / ".bashrc")
+    bp = str(PurePosixPath(remote_home) / ".bash_profile")
+    if bashrc_exists:
+        return br
+    if bash_profile_exists:
+        return bp
+    return br
+
+
+def shell_env_bashrc_block(remote_home: str) -> str:
+    """Lines (with markers) appended to the remote user's rc file; *remote_home* is absolute POSIX."""
+    dev = str(
+        PurePosixPath(remote_shell_dotenv_dir(remote_home)) / REMOTE_SHELL_DOTENV_ENV_NAME
+    )
+    lines = [
+        SHELL_RC_BLOCK_BEGIN,
+        "# Waddle Display dotenv (sourced for ssh sessions; Flutter uses its own paths).",
+        f"if [ -f {_posix_sh_single_quote(dev)} ]; then",
+        "  set -a",
+        f"  . {_posix_sh_single_quote(dev)}",
+        "  set +a",
+        "fi",
+        SHELL_RC_BLOCK_END,
+    ]
+    return "\n".join(lines) + "\n"
 
 
 def ssh_user_from_target(target: str) -> str:
@@ -166,6 +210,16 @@ def resolve_local_sqlite_path(
         "Could not find local waddle_view.sqlite. Run the app once on this machine, "
         f"or pass --db PATH. Searched: {searched}"
     )
+
+
+def resolve_env_example_path(
+    *,
+    app_package_dir: Path = APP_PACKAGE_DIR,
+) -> Path:
+    p = (app_package_dir / ".env.example").resolve()
+    if not p.is_file():
+        raise SystemExit(f"Missing {p}")
+    return p
 
 
 def resolve_unit_template_path(

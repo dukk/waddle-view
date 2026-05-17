@@ -13,8 +13,11 @@ const double kPexelsVideoMinLayoutExtent = 32;
 /// Maximum automatic playback restarts after a [Player.stream.error] event.
 const int kPexelsVideoMaxPlaybackRetries = 3;
 
-/// Default GPU texture budget on embedded Linux signage (1080p).
-const int kPexelsVideoDefaultEmbeddedMaxTexturePixels = 1920 * 1080;
+/// Default GPU texture budget on embedded Linux signage (720p).
+const int kPexelsVideoDefaultEmbeddedMaxTexturePixels = 1280 * 720;
+
+/// Default mpv hardware decoder on embedded Linux (`drm` via Mesa/V3D).
+const String kPexelsVideoDefaultEmbeddedHwdec = 'drm';
 
 /// Whether [width] and [height] from a [LayoutBuilder] are safe for video output.
 bool pexelsVideoLayoutSizeReady(double width, double height) {
@@ -73,6 +76,9 @@ bool isEmbeddedSignageLinuxHost() {
 @visibleForTesting
 int? maxTexturePixelCountOverride;
 
+@visibleForTesting
+String? pexelsVideoHwdecOverride;
+
 /// Max width×height for a media_kit output texture; `null` means layout size only.
 int? pexelsVideoMaxTexturePixelCount() {
   final override = maxTexturePixelCountOverride;
@@ -115,6 +121,22 @@ int? pexelsVideoMaxTexturePixelCount() {
   return (width: w, height: h);
 }
 
+/// mpv `--hwdec` for Pexels playback; embedded Linux defaults to [drm].
+String? pexelsVideoHwdecForPlayback() {
+  final override = pexelsVideoHwdecOverride;
+  if (override != null) {
+    return override.isEmpty ? null : override;
+  }
+  final fromEnv = Platform.environment[kDisplayPexelsVideoHwdecEnv]?.trim();
+  if (fromEnv != null && fromEnv.isNotEmpty) {
+    return fromEnv;
+  }
+  if (isEmbeddedSignageLinuxHost()) {
+    return kPexelsVideoDefaultEmbeddedHwdec;
+  }
+  return null;
+}
+
 /// media_kit [VideoController] options for signage (caps GPU memory on Pi).
 mkv.VideoControllerConfiguration pexelsVideoControllerConfiguration({
   required double layoutWidth,
@@ -124,15 +146,10 @@ mkv.VideoControllerConfiguration pexelsVideoControllerConfiguration({
     layoutWidth: layoutWidth,
     layoutHeight: layoutHeight,
   );
-  if (isEmbeddedSignageLinuxHost()) {
-    return mkv.VideoControllerConfiguration(
-      width: dims.width,
-      height: dims.height,
-      hwdec: 'auto-safe',
-    );
-  }
+  final hwdec = pexelsVideoHwdecForPlayback();
   return mkv.VideoControllerConfiguration(
     width: dims.width,
     height: dims.height,
+    hwdec: hwdec,
   );
 }

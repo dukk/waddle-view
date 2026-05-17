@@ -12,6 +12,7 @@ import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'pexels_provider_extra_config.dart';
+import 'pexels_video_mp4_pick.dart';
 
 const String kPexelsProviderId = 'media_pexels';
 
@@ -355,33 +356,6 @@ class PexelsDataProvider implements IDataProvider {
     return null;
   }
 
-  String? _pickVideoMp4Url(Map<String, dynamic> video) {
-    final files = video['video_files'];
-    if (files is! List<dynamic>) {
-      return null;
-    }
-    var bestW = -1;
-    String? bestLink;
-    for (final f in files) {
-      if (f is! Map) {
-        continue;
-      }
-      final m = Map<String, dynamic>.from(f);
-      final link = m['link'] as String?;
-      final type = m['file_type'] as String? ?? '';
-      if (link == null || !type.toLowerCase().contains('mp4')) {
-        continue;
-      }
-      final w = m['width'];
-      final width = w is int ? w : w is num ? w.toInt() : 0;
-      if (width > bestW) {
-        bestW = width;
-        bestLink = link;
-      }
-    }
-    return bestLink;
-  }
-
   String? _pexelsIdString(Object? raw) {
     if (raw is int) {
       return '$raw';
@@ -526,7 +500,10 @@ class PexelsDataProvider implements IDataProvider {
       return false;
     }
 
-    final url = _pickVideoMp4Url(video);
+    final url = pickPexelsVideoMp4Url(
+      video,
+      maxWidth: resolvePexelsMaxVideoDownloadWidth(extra.maxVideoDownloadWidth),
+    );
     if (url == null || url.isEmpty) {
       return false;
     }

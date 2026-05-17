@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'pexels_video_mp4_pick.dart';
+
 class PexelsSourceSpec {
   const PexelsSourceSpec({required this.query, required this.category});
 
@@ -27,6 +29,7 @@ class PexelsProviderExtraConfig {
     required this.videosPerHour,
     required this.minVideoSeconds,
     required this.maxVideoSeconds,
+    required this.maxVideoDownloadWidth,
     required this.sources,
   });
 
@@ -36,6 +39,9 @@ class PexelsProviderExtraConfig {
   final int videosPerHour;
   final int minVideoSeconds;
   final int maxVideoSeconds;
+
+  /// Prefer the largest Pexels MP4 with width ≤ this value (default 1920 / 1080p).
+  final int maxVideoDownloadWidth;
   final List<PexelsSourceSpec> sources;
 
   static PexelsProviderExtraConfig parse(String? configJson) {
@@ -47,6 +53,7 @@ class PexelsProviderExtraConfig {
         videosPerHour: 2,
         minVideoSeconds: 11,
         maxVideoSeconds: 29,
+        maxVideoDownloadWidth: kPexelsDefaultMaxVideoDownloadWidth,
         sources: [],
       );
     }
@@ -71,6 +78,10 @@ class PexelsProviderExtraConfig {
         videosPerHour: _positiveInt(m['videosPerHour'], 2),
         minVideoSeconds: _positiveInt(m['minVideoSeconds'], 11),
         maxVideoSeconds: _positiveInt(m['maxVideoSeconds'], 29),
+        maxVideoDownloadWidth: _positiveInt(
+          m['maxVideoDownloadWidth'],
+          kPexelsDefaultMaxVideoDownloadWidth,
+        ),
         sources: sources,
       );
     } on Object {

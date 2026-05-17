@@ -17,4 +17,5 @@ const String kDisplayViewerRegistrationSecretEnv =
     'WADDLE_DISPLAY_VIEWER_REGISTRATION_SECRET';
 const String kDisplayPexelsVideoMaxTexturePixelsEnv =
     'WADDLE_DISPLAY_PEXELS_VIDEO_MAX_TEXTURE_PIXELS';
+const String kDisplayPexelsVideoHwdecEnv = 'WADDLE_DISPLAY_PEXELS_VIDEO_HWDEC';
 const String kDisplayAppleClientIdEnv = 'WADDLE_DISPLAY_APPLE_CLIENT_ID';
