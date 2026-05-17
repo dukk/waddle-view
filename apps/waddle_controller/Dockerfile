@@ -5,6 +5,7 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY packages/waddle_node_tls /packages/waddle_node_tls
+RUN npm ci --prefix /packages/waddle_node_tls
 COPY apps/waddle_controller/package.json apps/waddle_controller/package-lock.json ./
 RUN npm ci
 COPY apps/waddle_controller/ .

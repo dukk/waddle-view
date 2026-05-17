@@ -7,6 +7,7 @@
     "node": "^22.0.0 <23"
   },
   "scripts": {
+    "postinstall": "npm ci --prefix ../../packages/waddle_node_tls",
     "dev": "concurrently -k -n spa,bff -c blue,magenta \"vite\" \"npm run dev:server\"",
     "dev:spa": "vite",
     "dev:server": "tsx watch server/src/index.ts",
