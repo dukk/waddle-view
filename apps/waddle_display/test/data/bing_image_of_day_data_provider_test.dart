@@ -54,7 +54,7 @@ Future<void> _insertBingProvider(
   await db.into(db.integrations).insert(
     IntegrationsCompanion.insert(
       id: kBingImageOfDayProviderId,
-      providerType: kBingImageOfDayProviderId,
+      integrationType: kBingImageOfDayProviderId,
       enabled: Value(enabled),
       pollSeconds: Value(pollSeconds),
       baseUrl: Value(baseUrl),

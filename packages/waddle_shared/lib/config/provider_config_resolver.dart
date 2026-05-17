@@ -23,7 +23,7 @@ class ProviderConfigResolver {
     final token = await _secrets.read(providerAccessTokenSecretKey(providerId));
     return ProviderRuntimeConfig(
       providerId: row.id,
-      providerType: row.providerType,
+      integrationType: row.integrationType,
       pollSeconds: row.pollSeconds,
       baseUrl: row.baseUrl,
       configJson: row.configJson,

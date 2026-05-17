@@ -79,8 +79,8 @@ void main() {
 
     await db.into(db.integrations).insert(
       IntegrationsCompanion.insert(
-        id: 'news_rss',
-        providerType: 'news_rss',
+        id: kDefaultNewsRssIntegrationId,
+        integrationType: 'news_rss',
         pollSeconds: const Value(1),
       ),
     );
@@ -121,8 +121,8 @@ void main() {
 
       await db.into(db.integrations).insert(
         IntegrationsCompanion.insert(
-          id: 'news_rss',
-          providerType: 'news_rss',
+          id: kDefaultNewsRssIntegrationId,
+          integrationType: 'news_rss',
           pollSeconds: const Value(1),
         ),
       );

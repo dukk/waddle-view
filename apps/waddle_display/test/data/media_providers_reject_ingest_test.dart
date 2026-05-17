@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
-import 'package:waddle_data_providers/media_pexels/pexels_data_provider.dart';
+import 'package:waddle_data_providers/photo_pexels/pexels_data_provider.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/reject_term_repository.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
@@ -54,8 +54,8 @@ Future<InMemorySecretStore> _secretsWithKey() async => InMemorySecretStore();
 Future<void> _ensurePexels(AppDatabase db) async {
   await db.into(db.integrations).insert(
         IntegrationsCompanion.insert(
-          id: 'media_pexels',
-          providerType: 'media_pexels',
+          id: kDefaultPhotoPexelsIntegrationId,
+          integrationType: 'photo_pexels',
           pollSeconds: const Value(0),
         ),
       );
@@ -107,7 +107,7 @@ void main() {
 
       final client = _CuratedPhotosClient([blocked, clean]);
       final secrets = await _secretsWithKey();
-      await PexelsDataProvider(httpClient: client, nowMs: () => 1)
+      await PexelsPhotosDataProvider(httpClient: client, nowMs: () => 1)
           .collect(await _ctx(db, secrets));
 
       final p1 = await (db.select(db.photos)
@@ -143,7 +143,7 @@ void main() {
     };
     final client = _CuratedPhotosClient([clean]);
     final secrets = await _secretsWithKey();
-    await PexelsDataProvider(httpClient: client, nowMs: () => 1)
+    await PexelsPhotosDataProvider(httpClient: client, nowMs: () => 1)
         .collect(await _ctx(db, secrets));
 
     final p = await (db.select(db.photos)

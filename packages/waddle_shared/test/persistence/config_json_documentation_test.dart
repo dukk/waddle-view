@@ -79,15 +79,17 @@ void main() {
       'trivia_openai',
       'trivia_opentdb',
       'weather_openweathermap',
-      'weather_nws_alerts',
-      'media_pexels',
+      'weather_alerts_nws',
+      'photo_pexels',
+      'video_pexels',
       'stock_finnhub',
       'home_assistant',
       'calendar_google',
       'calendar_outlook',
-      'media_onedrive',
-      'media_flickr',
-      'media_bing_iotd',
+      'photo_onedrive',
+      'video_onedrive',
+      'photo_flickr',
+      'photo_bing_image_of_the_day',
     ];
     for (final t in seededTypes) {
       expect(kProviderConfigJsonMeta.containsKey(t), isTrue);

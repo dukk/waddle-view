@@ -15,7 +15,7 @@ void main() {
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
             id: 'weather_openweathermap',
-            providerType: 'weather_openweathermap',
+            integrationType: 'weather_openweathermap',
             baseUrl: const Value('https://example.com'),
           ),
         );

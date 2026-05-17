@@ -17,25 +17,8 @@ import 'tables/interests_rss_feeds_seed.dart';
 import 'tables/interests_trivia_seed.dart';
 import 'tables/curator_configurations_seed.dart';
 
-/// Idempotent demo rows for stub provider + ticker.
+/// Idempotent demo rows for integrations, screens, ticker tapes, and related defaults.
 Future<void> ensureInitialSeed(AppDatabase db) async {
-  final existing = await (db.select(
-    db.integrations,
-  )..where((t) => t.id.equals('stub'))).getSingleOrNull();
-  if (existing == null) {
-    final stubDoc = providerConfigJsonDocForType('stub');
-    await db
-        .into(db.integrations)
-        .insert(
-          IntegrationsCompanion.insert(
-            id: 'stub',
-            providerType: 'stub',
-            pollSeconds: const Value(60),
-            configJsonSchema: Value(stubDoc.schema),
-            exampleConfigJson: Value(stubDoc.example),
-          ),
-        );
-  }
   await ensureIntegrationsDefaults(db);
   await _ensureDefaultInterestsStockSymbols(db);
   await _ensureDefaultInterestsLocations(db);

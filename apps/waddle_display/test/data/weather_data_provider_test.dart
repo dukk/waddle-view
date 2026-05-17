@@ -110,8 +110,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: 'weather_openweathermap',
-            providerType: 'weather_openweathermap',
+            id: kDefaultWeatherOpenWeatherMapIntegrationId,
+            integrationType: 'weather_openweathermap',
             pollSeconds: const Value(60),
           ),
         );
@@ -133,8 +133,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: 'weather_openweathermap',
-            providerType: 'weather_openweathermap',
+            id: kDefaultWeatherOpenWeatherMapIntegrationId,
+            integrationType: 'weather_openweathermap',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.openweathermap.org'),
             configJson: const Value(
@@ -192,8 +192,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: 'weather_openweathermap',
-            providerType: 'weather_openweathermap',
+            id: kDefaultWeatherOpenWeatherMapIntegrationId,
+            integrationType: 'weather_openweathermap',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.openweathermap.org'),
             configJson: const Value(
@@ -258,8 +258,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: 'weather_openweathermap',
-            providerType: 'weather_openweathermap',
+            id: kDefaultWeatherOpenWeatherMapIntegrationId,
+            integrationType: 'weather_openweathermap',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.openweathermap.org'),
           ),
@@ -302,8 +302,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: 'weather_openweathermap',
-            providerType: 'weather_openweathermap',
+            id: kDefaultWeatherOpenWeatherMapIntegrationId,
+            integrationType: 'weather_openweathermap',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.openweathermap.org'),
           ),

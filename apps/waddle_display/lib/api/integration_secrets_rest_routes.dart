@@ -21,7 +21,10 @@ void registerIntegrationSecretsRestRoutes(
       return Response(404,
           body: '{"error":"not_found"}', headers: _jsonHeaders);
     }
-    final slots = integrationSecretSlotsFor(id);
+    final slots = integrationSecretSlotsForIntegration(
+      id,
+      existing.integrationType,
+    );
     final configuredSlots = <Map<String, dynamic>>[];
     for (final slot in slots) {
       final v = await secrets.read(slot.storageKey);
@@ -46,7 +49,7 @@ void registerIntegrationSecretsRestRoutes(
       return Response(404,
           body: '{"error":"not_found"}', headers: _jsonHeaders);
     }
-    final slot = integrationSecretSlotById(id, slotId);
+    final slot = integrationSecretSlotById(id, existing.integrationType, slotId);
     if (slot == null) {
       return Response(404,
           body: '{"error":"unknown_secret_slot"}', headers: _jsonHeaders);
@@ -86,7 +89,7 @@ void registerIntegrationSecretsRestRoutes(
       return Response(404,
           body: '{"error":"not_found"}', headers: _jsonHeaders);
     }
-    final slot = integrationSecretSlotById(id, slotId);
+    final slot = integrationSecretSlotById(id, existing.integrationType, slotId);
     if (slot == null) {
       return Response(404,
           body: '{"error":"unknown_secret_slot"}', headers: _jsonHeaders);
@@ -100,5 +103,10 @@ void registerIntegrationSecretsRestRoutes(
 Future<bool> integrationSecretsConfigured(
   SecretStore secrets,
   String integrationId,
+  String integrationType,
 ) =>
-    isIntegrationSecretsFullyConfigured(secrets, integrationId);
+    isIntegrationSecretsFullyConfigured(
+      secrets,
+      integrationId,
+      integrationType: integrationType,
+    );

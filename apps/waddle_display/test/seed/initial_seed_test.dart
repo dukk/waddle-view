@@ -4,7 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:waddle_display/alerts/alert_severity_icons_kv.dart';
 import 'package:waddle_display/config/google_kv.dart';
-import 'package:waddle_data_providers/media_pexels/pexels_provider_extra_config.dart';
+import 'package:waddle_data_providers/photo_pexels/pexels_provider_extra_config.dart';
+import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/content_category_defaults.dart';
 import 'package:waddle_shared/persistence/display_overlay_repository.dart';
 import 'package:waddle_shared/persistence/tables.dart';
@@ -21,6 +22,17 @@ void main() {
     await ensureInitialSeed(db);
     final providers2 = await db.select(db.integrations).get();
     expect(providers2.length, providers1.length);
+    await db.close();
+  });
+
+  test('ensureInitialSeed does not seed stub integration', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureInitialSeed(db);
+    final stub = await (db.select(db.integrations)
+          ..where((t) => t.id.equals('stub')))
+        .getSingleOrNull();
+    expect(stub, isNull);
     await db.close();
   });
 
@@ -138,16 +150,16 @@ void main() {
     await ensureInitialSeed(db);
 
     final provider = await (db.select(db.integrations)
-          ..where((t) => t.id.equals('weather_openweathermap')))
+          ..where((t) => t.id.equals(kDefaultWeatherOpenWeatherMapIntegrationId)))
         .getSingleOrNull();
     expect(provider, isNotNull);
-    expect(provider!.providerType, 'weather_openweathermap');
+    expect(provider!.integrationType, 'weather_openweathermap');
 
     final nws = await (db.select(db.integrations)
-          ..where((t) => t.id.equals('weather_nws_alerts')))
+          ..where((t) => t.id.equals(kDefaultWeatherAlertsNwsIntegrationId)))
         .getSingleOrNull();
     expect(nws, isNotNull);
-    expect(nws!.providerType, 'weather_nws_alerts');
+    expect(nws!.integrationType, 'weather_alerts_nws');
     expect(nws.enabled, isTrue);
     expect(nws.baseUrl, 'https://api.weather.gov');
 
@@ -167,18 +179,18 @@ void main() {
     await db.close();
   });
 
-  test('ensureInitialSeed inserts media_onedrive provider disabled', () async {
+  test('ensureInitialSeed inserts photo_onedrive provider disabled', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
 
     await ensureInitialSeed(db);
 
     final row = await (db.select(db.integrations)
-          ..where((t) => t.id.equals('media_onedrive')))
+          ..where((t) => t.id.equals(kDefaultPhotoOneDriveIntegrationId)))
         .getSingleOrNull();
     expect(row, isNotNull);
     expect(row!.enabled, isFalse);
-    expect(row.providerType, 'media_onedrive');
+    expect(row.integrationType, 'photo_onedrive');
     expect(row.configJson, contains('globalPerPollLimit'));
     await db.close();
   });
@@ -190,44 +202,44 @@ void main() {
     await ensureInitialSeed(db);
 
     final row = await (db.select(db.integrations)
-          ..where((t) => t.id.equals('trivia_opentdb')))
+          ..where((t) => t.id.equals(kDefaultTriviaOpenTdbIntegrationId)))
         .getSingleOrNull();
     expect(row, isNotNull);
     expect(row!.enabled, isFalse);
-    expect(row.providerType, 'trivia_opentdb');
+    expect(row.integrationType, 'trivia_opentdb');
     expect(row.baseUrl, 'https://opentdb.com/api.php');
     expect(row.configJson, contains('"amount"'));
     await db.close();
   });
 
-  test('ensureInitialSeed inserts media_flickr provider disabled', () async {
+  test('ensureInitialSeed inserts photo_flickr provider disabled', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
 
     await ensureInitialSeed(db);
 
     final row = await (db.select(db.integrations)
-          ..where((t) => t.id.equals('media_flickr')))
+          ..where((t) => t.id.equals(kDefaultPhotoFlickrIntegrationId)))
         .getSingleOrNull();
     expect(row, isNotNull);
     expect(row!.enabled, isFalse);
-    expect(row.providerType, 'media_flickr');
+    expect(row.integrationType, 'photo_flickr');
     expect(row.configJson, contains('"groupIds"'));
     await db.close();
   });
 
-  test('ensureInitialSeed inserts media_bing_iotd provider enabled', () async {
+  test('ensureInitialSeed inserts photo_bing_image_of_the_day provider enabled', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
 
     await ensureInitialSeed(db);
 
     final row = await (db.select(db.integrations)
-          ..where((t) => t.id.equals('media_bing_iotd')))
+          ..where((t) => t.id.equals(kDefaultPhotoBingIotdIntegrationId)))
         .getSingleOrNull();
     expect(row, isNotNull);
     expect(row!.enabled, isTrue);
-    expect(row.providerType, 'media_bing_iotd');
+    expect(row.integrationType, 'photo_bing_image_of_the_day');
     expect(row.baseUrl, 'https://www.bing.com');
     expect(row.configJson, contains('"resolution":"UHD"'));
     expect(row.configJson, contains('"category":"bing"'));
@@ -240,11 +252,11 @@ void main() {
 
     await ensureInitialSeed(db);
 
-    final provider = await (db.select(db.integrations)
-          ..where((t) => t.id.equals('media_pexels')))
+    final photo = await (db.select(db.integrations)
+          ..where((t) => t.id.equals(kDefaultPhotoPexelsIntegrationId)))
         .getSingleOrNull();
-    expect(provider, isNotNull);
-    final extra = PexelsProviderExtraConfig.parse(provider!.configJson);
+    expect(photo, isNotNull);
+    final extra = PexelsPhotoProviderExtraConfig.parse(photo!.configJson);
     expect(
       extra.sources.map((e) => e.query).toList(),
       [
@@ -278,10 +290,10 @@ void main() {
     await ensureInitialSeed(db);
 
     final provider = await (db.select(db.integrations)
-          ..where((t) => t.id.equals('calendar_google')))
+          ..where((t) => t.id.equals(kDefaultCalendarGoogleIntegrationId)))
         .getSingleOrNull();
     expect(provider, isNotNull);
-    expect(provider!.providerType, 'calendar_google');
+    expect(provider!.integrationType, 'calendar_google');
     expect(provider.enabled, isFalse);
 
     final clientId = await (db.select(db.configKeyValues)
@@ -299,10 +311,10 @@ void main() {
     await ensureInitialSeed(db);
 
     final provider = await (db.select(db.integrations)
-          ..where((t) => t.id.equals('stock_finnhub')))
+          ..where((t) => t.id.equals(kDefaultStockFinnhubIntegrationId)))
         .getSingleOrNull();
     expect(provider, isNotNull);
-    expect(provider!.providerType, 'stock_finnhub');
+    expect(provider!.integrationType, 'stock_finnhub');
     expect(provider.enabled, isTrue);
     expect(provider.baseUrl, 'https://finnhub.io');
 

@@ -11,12 +11,10 @@ import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_shared/integrations/integration_collect.dart';
 import 'bing_image_of_day_extra_config.dart';
 
-const String kBingImageOfDayProviderId = 'media_bing_iotd';
-
-/// Last successful [BingImageOfDayDataProvider.collect] (for [Integration.pollSeconds]).
-const String kBingImageOfDayLastCollectKvKey = 'provider.media_bing_iotd.last_collect_ms';
+const String kPhotoBingIotdIntegrationType = 'photo_bing_image_of_the_day';
 
 /// Desktop UA (matches TimothyYe/bing-wallpaper `wallpaper.go`).
 const String kBingWallpaperUserAgent =
@@ -81,7 +79,7 @@ class BingImageOfDayDataProvider implements IDataProvider {
   final Duration _requestTimeout;
 
   @override
-  String get id => kBingImageOfDayProviderId;
+  String get id => kPhotoBingIotdIntegrationType;
 
   Map<String, String> _bingHeaders(String refererBase) => {
     'Referer': refererBase,
@@ -96,28 +94,29 @@ class BingImageOfDayDataProvider implements IDataProvider {
 
   @override
   Future<void> collect(DataWriteContext ctx) async {
-    final setting =
-        await (ctx.db.select(
-              ctx.db.integrations,
-            )..where((t) => t.id.equals(kBingImageOfDayProviderId)))
-            .getSingleOrNull();
-    if (setting == null || !setting.enabled) {
-      ctx.diagnostics.provider('bing_iotd: skip (disabled)');
-      return;
+    final rows = await enabledIntegrationsForType(ctx.db, id);
+    for (final setting in rows) {
+      await _collectIntegration(ctx, setting);
     }
+  }
 
+  Future<void> _collectIntegration(
+    DataWriteContext ctx,
+    Integration setting,
+  ) async {
+    final integrationId = setting.id;
     final nowMs = _nowMs();
+    final lastCollectKey = integrationLastCollectKvKey(integrationId);
 
     if (setting.pollSeconds > 0) {
       final lastRow =
-          await (ctx.db.select(
-                ctx.db.configKeyValues,
-              )..where((t) => t.key.equals(kBingImageOfDayLastCollectKvKey)))
+          await (ctx.db.select(ctx.db.configKeyValues)
+                ..where((t) => t.key.equals(lastCollectKey)))
               .getSingleOrNull();
       final last = int.tryParse(lastRow?.value ?? '') ?? 0;
       if (nowMs - last < setting.pollSeconds * 1000) {
         ctx.diagnostics.provider(
-          'bing_iotd: skip poll (${setting.pollSeconds}s gate, lastMs=$last)',
+          'bing_iotd: skip poll ($integrationId ${setting.pollSeconds}s gate, lastMs=$last)',
         );
         return;
       }
@@ -125,7 +124,7 @@ class BingImageOfDayDataProvider implements IDataProvider {
 
     late final ProviderRuntimeConfig config;
     try {
-      config = await ctx.resolveConfig(kBingImageOfDayProviderId);
+      config = await ctx.resolveConfig(integrationId);
     } on Object catch (e, st) {
       ctx.diagnostics.providerFail('bing_iotd: resolveConfig', e, st);
       return;
@@ -193,7 +192,7 @@ class BingImageOfDayDataProvider implements IDataProvider {
         ctx.diagnostics.provider('bing_iotd: already have id=$photoId');
         await ctx.db.into(ctx.db.configKeyValues).insertOnConflictUpdate(
           ConfigKeyValuesCompanion.insert(
-            key: kBingImageOfDayLastCollectKvKey,
+            key: lastCollectKey,
             value: '$nowMs',
           ),
         );
@@ -262,7 +261,7 @@ class BingImageOfDayDataProvider implements IDataProvider {
         PhotosCompanion.insert(
           id: photoId,
           category: Value(extra.category),
-          dataProvider: Value(kMediaDataProviderBing),
+          dataProvider: const Value(kMediaDataProviderPhotoBingIotd),
           mediaBlobKey: logicalKey,
           photographerName: photographer,
           photographerUrl: '',
@@ -275,7 +274,7 @@ class BingImageOfDayDataProvider implements IDataProvider {
 
       await ctx.db.into(ctx.db.configKeyValues).insertOnConflictUpdate(
         ConfigKeyValuesCompanion.insert(
-          key: kBingImageOfDayLastCollectKvKey,
+          key: lastCollectKey,
           value: '$nowMs',
         ),
       );
@@ -302,7 +301,7 @@ class BingImageOfDayDataProvider implements IDataProvider {
               ctx.db.photos,
             )..where(
                 (t) =>
-                    t.dataProvider.equals(kMediaDataProviderBing) &
+                    t.dataProvider.equals(kMediaDataProviderPhotoBingIotd) &
                     t.fetchedAtMs.isSmallerThanValue(cutoff),
               ))
             .get();

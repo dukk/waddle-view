@@ -14,14 +14,14 @@ void main() {
     try {
       await harness.db.into(harness.db.integrations).insertOnConflictUpdate(
             IntegrationsCompanion.insert(
-              id: 'joke_openai',
-              providerType: 'joke_openai',
+              id: kDefaultJokeOpenAiIntegrationId,
+              integrationType: 'joke_openai',
             ),
           );
 
       final putRes = await http.put(
         Uri.parse(
-          '${harness.baseUrl}/v1/integrations/joke_openai/secrets/api_key',
+          '${harness.baseUrl}/v1/integrations/$kDefaultJokeOpenAiIntegrationId/secrets/api_key',
         ),
         headers: harness.authHeaders,
         body: jsonEncode({'value': 'sk-test-key'}),
@@ -29,7 +29,9 @@ void main() {
       expect(putRes.statusCode, 200);
 
       final getRes = await http.get(
-        Uri.parse('${harness.baseUrl}/v1/integrations/joke_openai/secrets'),
+        Uri.parse(
+          '${harness.baseUrl}/v1/integrations/$kDefaultJokeOpenAiIntegrationId/secrets',
+        ),
         headers: harness.authHeaders,
       );
       expect(getRes.statusCode, 200);
@@ -41,7 +43,7 @@ void main() {
       expect(body.toString(), isNot(contains('sk-test-key')));
 
       final stored = await harness.secrets.read(
-        providerAccessTokenSecretKey('joke_openai'),
+        providerAccessTokenSecretKey(kDefaultJokeOpenAiIntegrationId),
       );
       expect(stored, 'sk-test-key');
     } finally {
@@ -54,13 +56,15 @@ void main() {
     try {
       await harness.db.into(harness.db.integrations).insertOnConflictUpdate(
             IntegrationsCompanion.insert(
-              id: 'media_pexels',
-              providerType: 'media_pexels',
+              id: kDefaultPhotoPexelsIntegrationId,
+              integrationType: 'photo_pexels',
             ),
           );
 
       final patchRes = await http.patch(
-        Uri.parse('${harness.baseUrl}/v1/integrations/media_pexels'),
+        Uri.parse(
+          '${harness.baseUrl}/v1/integrations/$kDefaultPhotoPexelsIntegrationId',
+        ),
         headers: harness.authHeaders,
         body: jsonEncode({'enabled': true}),
       );

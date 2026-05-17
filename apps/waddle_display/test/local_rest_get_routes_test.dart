@@ -11,8 +11,8 @@ void main() {
     addTearDown(h.dispose);
     await h.db.into(h.db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: 'joke_openai',
-            providerType: 'joke_openai',
+            id: kDefaultJokeOpenAiIntegrationId,
+            integrationType: 'joke_openai',
             pollSeconds: const Value(30),
           ),
         );
@@ -21,7 +21,7 @@ void main() {
       headers: h.authHeaders,
     );
     expect(res.statusCode, 200);
-    expect(res.body, contains('"id":"joke_openai"'));
+    expect(res.body, contains('"id":"default_joke_openai"'));
     expect(res.body, contains('"integration_type":"joke_openai"'));
     expect(res.body, contains('"enabled":true'));
   });
@@ -32,7 +32,7 @@ void main() {
     await h.db.into(h.db.integrations).insert(
           IntegrationsCompanion.insert(
             id: 'loose_json',
-            providerType: 'joke_openai',
+            integrationType: 'joke_openai',
             pollSeconds: const Value(30),
             configJson: const Value('not-valid-json'),
           ),

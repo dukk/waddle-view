@@ -32,8 +32,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: 'trivia_opentdb',
-            providerType: 'trivia_opentdb',
+            id: kDefaultTriviaOpenTdbIntegrationId,
+            integrationType: 'trivia_opentdb',
             enabled: const Value(true),
             pollSeconds: const Value(1),
             configJson: const Value('{"amount":2}'),

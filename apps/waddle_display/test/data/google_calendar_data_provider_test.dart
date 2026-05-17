@@ -185,7 +185,7 @@ Future<void> _seedKvAndProvider(
   await db.into(db.integrations).insertOnConflictUpdate(
         IntegrationsCompanion.insert(
           id: kGoogleCalendarProviderId,
-          providerType: 'calendar_google',
+          integrationType: 'calendar_google',
           enabled: const Value(true),
           pollSeconds: Value(pollSeconds),
           baseUrl: const Value(kDefaultGoogleCalendarBaseUrl),

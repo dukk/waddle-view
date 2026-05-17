@@ -119,7 +119,7 @@ void main() {
         const {},
         tickerDefs: const [
           TickerTapeForCuration(
-            id: 'stock_finnhub',
+            id: kDefaultStockFinnhubIntegrationId,
             tickerType: 'stocks',
             frequencyWeight: 1,
             sortOrder: 0,

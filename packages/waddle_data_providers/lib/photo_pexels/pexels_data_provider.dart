@@ -11,13 +11,11 @@ import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_shared/integrations/integration_collect.dart';
+import 'package:waddle_shared/persistence/tables.dart';
 import 'pexels_provider_extra_config.dart';
-import 'pexels_video_mp4_pick.dart';
 
-const String kPexelsProviderId = 'media_pexels';
-
-/// Last successful [PexelsDataProvider.collect] completion (for [Integration.pollSeconds]).
-const String kPexelsLastCollectKvKey = 'provider.media_pexels.last_collect_ms';
+const String kPhotoPexelsIntegrationType = 'photo_pexels';
 
 const String kDefaultPexelsBaseUrl = 'https://api.pexels.com';
 
@@ -25,8 +23,8 @@ const Duration _rollingHour = Duration(hours: 1);
 
 const Duration _fetchBatchRetention = Duration(hours: 48);
 
-class PexelsDataProvider implements IDataProvider {
-  PexelsDataProvider({http.Client? httpClient, int Function()? nowMs})
+class PexelsPhotosDataProvider implements IDataProvider {
+  PexelsPhotosDataProvider({http.Client? httpClient, int Function()? nowMs})
     : _http = httpClient ?? http.Client(),
       _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
 
@@ -34,32 +32,33 @@ class PexelsDataProvider implements IDataProvider {
   final int Function() _nowMs;
 
   @override
-  String get id => kPexelsProviderId;
+  String get id => kPhotoPexelsIntegrationType;
 
   @override
   Future<void> collect(DataWriteContext ctx) async {
-    final setting =
-        await (ctx.db.select(
-              ctx.db.integrations,
-            )..where((t) => t.id.equals(kPexelsProviderId)))
-            .getSingleOrNull();
-    if (setting == null || !setting.enabled) {
-      ctx.diagnostics.provider('pexels: skip (disabled)');
-      return;
+    final rows = await enabledIntegrationsForType(ctx.db, id);
+    for (final setting in rows) {
+      await _collectIntegration(ctx, setting);
     }
+  }
 
+  Future<void> _collectIntegration(
+    DataWriteContext ctx,
+    Integration setting,
+  ) async {
+    final integrationId = setting.id;
     final nowMs = _nowMs();
+    final lastCollectKey = integrationLastCollectKvKey(integrationId);
 
     if (setting.pollSeconds > 0) {
       final lastRow =
-          await (ctx.db.select(
-                ctx.db.configKeyValues,
-              )..where((t) => t.key.equals(kPexelsLastCollectKvKey)))
+          await (ctx.db.select(ctx.db.configKeyValues)
+                ..where((t) => t.key.equals(lastCollectKey)))
               .getSingleOrNull();
       final last = int.tryParse(lastRow?.value ?? '') ?? 0;
       if (nowMs - last < setting.pollSeconds * 1000) {
         ctx.diagnostics.provider(
-          'pexels: skip poll (${setting.pollSeconds}s gate, lastMs=$last)',
+          'pexels_photo: skip poll ($integrationId ${setting.pollSeconds}s gate, lastMs=$last)',
         );
         return;
       }
@@ -67,40 +66,34 @@ class PexelsDataProvider implements IDataProvider {
 
     late final ProviderRuntimeConfig config;
     try {
-      config = await ctx.resolveConfig(kPexelsProviderId);
+      config = await ctx.resolveConfig(integrationId);
     } on Object catch (e, st) {
-      ctx.diagnostics.providerFail('pexels: resolveConfig', e, st);
+      ctx.diagnostics.providerFail('pexels_photo: resolveConfig', e, st);
       return;
     }
 
     final token = config.accessToken;
     if (token == null || token.isEmpty) {
-      ctx.diagnostics.provider('pexels: skip (no API key)');
+      ctx.diagnostics.provider('pexels_photo: skip (no API key) id=$integrationId');
       return;
     }
 
-    final extra = PexelsProviderExtraConfig.parse(config.configJson);
+    final extra = PexelsPhotoProviderExtraConfig.parse(config.configJson);
     final base = _normalizeBaseUrl(config.baseUrl);
     ctx.diagnostics.provider(
-      'pexels: collect base=${safeHttpUriForLog(Uri.parse(base))} '
-      'photoBudget/h=${extra.photosPerHour} videoBudget/h=${extra.videosPerHour}',
+      'pexels_photo: collect id=$integrationId base=${safeHttpUriForLog(Uri.parse(base))} '
+      'photoBudget/h=${extra.photosPerHour}',
     );
 
     try {
       await _prunePhotos(ctx, extra.maxPhotos);
-      await _pruneVideos(ctx, extra.maxVideos);
       await _pruneOldFetchBatches(ctx.db, nowMs);
 
       final sinceHour = nowMs - _rollingHour.inMilliseconds;
       final photoUsed = await _sumFetchesSince(ctx.db, sinceHour, 'photo');
-      final videoUsed = await _sumFetchesSince(ctx.db, sinceHour, 'video');
       var photoBudget = extra.photosPerHour - photoUsed;
-      var videoBudget = extra.videosPerHour - videoUsed;
       if (photoBudget < 0) {
         photoBudget = 0;
-      }
-      if (videoBudget < 0) {
-        videoBudget = 0;
       }
 
       final rejectCtx = await RejectFilterContext.loadFromDb(ctx.db);
@@ -128,40 +121,17 @@ class PexelsDataProvider implements IDataProvider {
         }
       }
 
-      if (videoBudget > 0) {
-        if (extra.sources.isEmpty) {
-          videoBudget = await _collectPopularVideos(
-            ctx,
-            base: base,
-            token: token,
-            extra: extra,
-            nowMs: nowMs,
-            budget: videoBudget,
-            rejectCtx: rejectCtx,
-          );
-        } else {
-          videoBudget = await _collectSearchVideosRoundRobin(
-            ctx,
-            base: base,
-            token: token,
-            extra: extra,
-            sources: extra.sources,
-            nowMs: nowMs,
-            budget: videoBudget,
-            rejectCtx: rejectCtx,
-          );
-        }
-      }
-
       await ctx.db.into(ctx.db.configKeyValues).insertOnConflictUpdate(
         ConfigKeyValuesCompanion.insert(
-          key: kPexelsLastCollectKvKey,
+          key: lastCollectKey,
           value: '$nowMs',
         ),
       );
-      ctx.diagnostics.provider('pexels: collect finished (last_collect_ms updated)');
+      ctx.diagnostics.provider(
+        'pexels_photo: collect finished id=$integrationId (last_collect_ms updated)',
+      );
     } on Object catch (e, st) {
-      ctx.diagnostics.providerFail('pexels: collect', e, st);
+      ctx.diagnostics.providerFail('pexels_photo: collect', e, st);
     }
   }
 
@@ -190,24 +160,6 @@ class PexelsDataProvider implements IDataProvider {
     }
   }
 
-  Future<void> _pruneVideos(DataWriteContext ctx, int max) async {
-    if (max < 1) {
-      return;
-    }
-    final rows =
-        await (ctx.db.select(
-              ctx.db.videos,
-            )..orderBy([(t) => OrderingTerm.asc(t.fetchedAtMs)]))
-            .get();
-    if (rows.length <= max) {
-      return;
-    }
-    final removeCount = rows.length - max;
-    for (var i = 0; i < removeCount; i++) {
-      await _deletePexelsVideo(ctx, rows[i]);
-    }
-  }
-
   Future<void> _deletePexelsPhoto(DataWriteContext ctx, Photo row) async {
     final key = row.mediaBlobKey;
     final meta =
@@ -224,26 +176,6 @@ class PexelsDataProvider implements IDataProvider {
     }
     await (ctx.db.delete(
           ctx.db.photos,
-        )..where((t) => t.id.equals(row.id)))
-        .go();
-  }
-
-  Future<void> _deletePexelsVideo(DataWriteContext ctx, Video row) async {
-    final key = row.mediaBlobKey;
-    final meta =
-        await (ctx.db.select(
-              ctx.db.blobMetadata,
-            )..where((t) => t.blobKey.equals(key)))
-            .getSingleOrNull();
-    if (meta != null) {
-      await ctx.blobs.delete(BlobRef(meta.relativePath));
-      await (ctx.db.delete(
-            ctx.db.blobMetadata,
-          )..where((t) => t.blobKey.equals(key)))
-          .go();
-    }
-    await (ctx.db.delete(
-          ctx.db.videos,
         )..where((t) => t.id.equals(row.id)))
         .go();
   }
@@ -377,17 +309,6 @@ class PexelsDataProvider implements IDataProvider {
     return null;
   }
 
-  int _videoDurationSeconds(Map<String, dynamic> video) {
-    final d = video['duration'];
-    if (d is int) {
-      return d;
-    }
-    if (d is num) {
-      return d.toInt();
-    }
-    return 0;
-  }
-
   Future<bool> _tryInsertPhoto(
     DataWriteContext ctx, {
     required Map<String, dynamic> photo,
@@ -456,7 +377,7 @@ class PexelsDataProvider implements IDataProvider {
       PhotosCompanion.insert(
         id: id,
         category: Value(category),
-        dataProvider: Value(kPexelsProviderId),
+        dataProvider: const Value(kMediaDataProviderPhotoPexels),
         mediaBlobKey: logicalKey,
         photographerName: photographerName,
         photographerUrl: photographerUrl,
@@ -469,101 +390,6 @@ class PexelsDataProvider implements IDataProvider {
     ctx.diagnostics.provider(
       'pexels: stored photo id=$id category=$category bytes=${bytes.length}'
       '${blocked ? ' (suppressed by reject list)' : ''}',
-    );
-    return true;
-  }
-
-  Future<bool> _tryInsertVideo(
-    DataWriteContext ctx, {
-    required Map<String, dynamic> video,
-    required String category,
-    required PexelsProviderExtraConfig extra,
-    required int nowMs,
-    required RejectFilterContext rejectCtx,
-  }) async {
-    final dur = _videoDurationSeconds(video);
-    if (dur < extra.minVideoSeconds || dur > extra.maxVideoSeconds) {
-      return false;
-    }
-
-    final id = _pexelsIdString(video['id']);
-    if (id == null) {
-      return false;
-    }
-
-    final exists =
-        await (ctx.db.select(
-              ctx.db.videos,
-            )..where((t) => t.id.equals(id)))
-            .getSingleOrNull();
-    if (exists != null) {
-      return false;
-    }
-
-    final url = pickPexelsVideoMp4Url(
-      video,
-      maxWidth: resolvePexelsMaxVideoDownloadWidth(extra.maxVideoDownloadWidth),
-    );
-    if (url == null || url.isEmpty) {
-      return false;
-    }
-
-    final bytes = await _downloadBytes(
-      Uri.parse(url),
-      diagnostics: ctx.diagnostics,
-    );
-    if (bytes == null || bytes.isEmpty) {
-      return false;
-    }
-
-    final logicalKey = 'pexels/video/$id/media';
-    final ref = await ctx.blobs.putBytes(bytes, logicalKey: logicalKey);
-
-    await ctx.db.into(ctx.db.blobMetadata).insertOnConflictUpdate(
-      BlobMetadataCompanion.insert(
-        blobKey: logicalKey,
-        sha256: ref.storageKey.split('/').last,
-        relativePath: ref.storageKey,
-        bytes: bytes.length,
-        mimeType: const Value('video/mp4'),
-        capturedAt: DateTime.fromMillisecondsSinceEpoch(nowMs),
-      ),
-    );
-
-    final userRaw = video['user'];
-    var photographerName = '';
-    var photographerUrl = '';
-    if (userRaw is Map) {
-      final u = Map<String, dynamic>.from(userRaw);
-      photographerName = '${u['name'] ?? ''}';
-      photographerUrl = '${u['url'] ?? ''}';
-    }
-
-    final pageUrl = '${video['url'] ?? ''}';
-    final blocked = rejectCtx.isMediaRejected(
-      photographer: photographerName,
-      altText: '',
-      urls: [photographerUrl, pageUrl],
-    );
-
-    await ctx.db.into(ctx.db.videos).insert(
-      VideosCompanion.insert(
-        id: id,
-        category: Value(category),
-        dataProvider: Value(kPexelsProviderId),
-        mediaBlobKey: logicalKey,
-        photographerName: photographerName,
-        photographerUrl: photographerUrl,
-        pexelsPageUrl: pageUrl,
-        altText: const Value(''),
-        durationSeconds: dur,
-        fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(nowMs),
-        suppressed: Value(blocked),
-      ),
-    );
-    ctx.diagnostics.provider(
-      'pexels: stored video id=$id category=$category bytes=${bytes.length}'
-      ' dur=${dur}s${blocked ? ' (suppressed by reject list)' : ''}',
     );
     return true;
   }
@@ -680,137 +506,6 @@ class PexelsDataProvider implements IDataProvider {
             left--;
             progressed = true;
             await _recordFetch(ctx.db, nowMs, 'photo');
-            break;
-          }
-        }
-      }
-      if (!progressed || sourceDone.every((e) => e)) {
-        break;
-      }
-    }
-    return left;
-  }
-
-  Future<int> _collectPopularVideos(
-    DataWriteContext ctx, {
-    required String base,
-    required String token,
-    required PexelsProviderExtraConfig extra,
-    required int nowMs,
-    required int budget,
-    required RejectFilterContext rejectCtx,
-  }) async {
-    var left = budget;
-    var page = 1;
-    while (left > 0 && page <= 20) {
-      final uri = Uri.parse(
-        '$base/v1/videos/popular?per_page=15&page=$page'
-        '&min_duration=${extra.minVideoSeconds}'
-        '&max_duration=${extra.maxVideoSeconds}',
-      );
-      final map = await _getJson(uri, token, diagnostics: ctx.diagnostics);
-      if (map == null) {
-        break;
-      }
-      final videos = map['videos'] as List<dynamic>?;
-      if (videos == null || videos.isEmpty) {
-        break;
-      }
-      for (final raw in videos) {
-        if (left <= 0) {
-          break;
-        }
-        if (raw is! Map) {
-          continue;
-        }
-        final video = Map<String, dynamic>.from(raw);
-        final inserted = await _tryInsertVideo(
-          ctx,
-          video: video,
-          category: 'pexels',
-          extra: extra,
-          nowMs: nowMs,
-          rejectCtx: rejectCtx,
-        );
-        if (inserted) {
-          left--;
-          await _recordFetch(ctx.db, nowMs, 'video');
-        }
-      }
-      if (map['next_page'] == null) {
-        break;
-      }
-      page++;
-    }
-    return left;
-  }
-
-  Future<int> _collectSearchVideosRoundRobin(
-    DataWriteContext ctx, {
-    required String base,
-    required String token,
-    required PexelsProviderExtraConfig extra,
-    required List<PexelsSourceSpec> sources,
-    required int nowMs,
-    required int budget,
-    required RejectFilterContext rejectCtx,
-  }) async {
-    var left = budget;
-    if (left <= 0 || sources.isEmpty) {
-      return left;
-    }
-    final sourcePage = <int>[for (var i = 0; i < sources.length; i++) 1];
-    final sourceDone = <bool>[for (var i = 0; i < sources.length; i++) false];
-    while (left > 0) {
-      var progressed = false;
-      for (var i = 0; i < sources.length && left > 0; i++) {
-        if (sourceDone[i]) {
-          continue;
-        }
-        final source = sources[i];
-        final page = sourcePage[i];
-        if (page > 15) {
-          sourceDone[i] = true;
-          continue;
-        }
-        final uri = Uri.parse(
-          '$base/v1/videos/search?query=${Uri.encodeComponent(source.query)}'
-          '&per_page=15&page=$page',
-        );
-        final map = await _getJson(uri, token, diagnostics: ctx.diagnostics);
-        sourcePage[i] = page + 1;
-        if (map == null) {
-          sourceDone[i] = true;
-          continue;
-        }
-        final videos = map['videos'] as List<dynamic>?;
-        if (videos == null || videos.isEmpty) {
-          sourceDone[i] = true;
-          continue;
-        }
-        if (map['next_page'] == null) {
-          sourceDone[i] = true;
-        }
-        for (final raw in videos) {
-          if (left <= 0) {
-            break;
-          }
-          if (raw is! Map) {
-            continue;
-          }
-          final video = Map<String, dynamic>.from(raw);
-          final inserted = await _tryInsertVideo(
-            ctx,
-            video: video,
-            category: source.category,
-            extra: extra,
-            nowMs: nowMs,
-            rejectCtx: rejectCtx,
-          );
-          if (inserted) {
-            left--;
-            progressed = true;
-            await _recordFetch(ctx.db, nowMs, 'video');
             break;
           }
         }

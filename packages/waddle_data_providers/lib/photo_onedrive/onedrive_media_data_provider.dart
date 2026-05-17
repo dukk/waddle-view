@@ -15,12 +15,13 @@ import 'package:waddle_shared/secrets/secret_store.dart';
 import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_shared/integrations/integration_collect.dart';
 import '../microsoft_graph/microsoft_graph_base_url.dart';
 import '../microsoft_graph/microsoft_graph_oauth.dart'
     show MicrosoftGraphOAuth, kMicrosoftGraphAccessTokenSkewMs;
 import 'onedrive_media_extra_config.dart';
 
-const String kOneDriveMediaProviderId = 'media_onedrive';
+const String kPhotoOneDriveIntegrationType = 'photo_onedrive';
 
 int? _positivePixelDimension(Object? raw) {
   if (raw is int) {
@@ -120,8 +121,8 @@ void _logOneDriveDeltaPageStats(
 }
 
 /// Syncs photos/videos from OneDrive folders into [Photos] / [Videos] via Graph.
-class OneDriveMediaDataProvider implements IDataProvider {
-  factory OneDriveMediaDataProvider({
+class OneDrivePhotosDataProvider implements IDataProvider {
+  factory OneDrivePhotosDataProvider({
     http.Client? httpClient,
     int Function()? nowMs,
     MicrosoftGraphOAuth? oauth,
@@ -129,25 +130,29 @@ class OneDriveMediaDataProvider implements IDataProvider {
     final client = httpClient ?? http.Client();
     final clock =
         nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
-    return OneDriveMediaDataProvider._(
+    return OneDrivePhotosDataProvider._(
       client,
       clock,
       oauth,
     );
   }
 
-  OneDriveMediaDataProvider._(this._http, this._nowMs, this._oauth);
+  OneDrivePhotosDataProvider._(this._http, this._nowMs, this._oauth);
+
+  bool get _ingestPhotos => true;
+  bool get _ingestVideos => false;
 
   final http.Client _http;
   final int Function() _nowMs;
   final MicrosoftGraphOAuth? _oauth;
 
   @override
-  String get id => kOneDriveMediaProviderId;
+  String get id => kPhotoOneDriveIntegrationType;
 
   Future<bool> _shouldSkipForPollWindowOnly(
     AppDatabase db,
     SecretStore secrets,
+    String integrationId,
     OneDriveMediaExtraConfig extra,
     int nowMs,
     int pollSeconds,
@@ -158,7 +163,9 @@ class OneDriveMediaDataProvider implements IDataProvider {
     }
     final lastRow =
         await (db.select(db.configKeyValues)
-              ..where((t) => t.key.equals(kOneDriveMediaLastCollectKvKey)))
+              ..where(
+                (t) => t.key.equals(integrationLastCollectKvKey(integrationId)),
+              ))
             .getSingleOrNull();
     final last = int.tryParse(lastRow?.value ?? '') ?? 0;
     if (nowMs - last >= pollSeconds * 1000) {
@@ -200,16 +207,17 @@ class OneDriveMediaDataProvider implements IDataProvider {
 
   @override
   Future<void> collect(DataWriteContext ctx) async {
-    final setting =
-        await (ctx.db.select(
-              ctx.db.integrations,
-            )..where((t) => t.id.equals(kOneDriveMediaProviderId)))
-            .getSingleOrNull();
-    if (setting == null || !setting.enabled) {
-      ctx.diagnostics.provider('onedrive_media: skip (disabled)');
-      return;
+    final rows = await enabledIntegrationsForType(ctx.db, id);
+    for (final setting in rows) {
+      await _collectIntegration(ctx, setting);
     }
+  }
 
+  Future<void> _collectIntegration(
+    DataWriteContext ctx,
+    Integration setting,
+  ) async {
+    final integrationId = setting.id;
     final nowMs = _nowMs();
 
     final clientId =
@@ -226,13 +234,14 @@ class OneDriveMediaDataProvider implements IDataProvider {
       ctx.diagnostics.provider(
         'onedrive_media: skip (no accounts in config_json)',
       );
-      await _markCollectDone(ctx.db, nowMs);
+      await _markCollectDone(ctx.db, integrationId, nowMs);
       return;
     }
 
     if (await _shouldSkipForPollWindowOnly(
           ctx.db,
           ctx.secrets,
+          integrationId,
           extra,
           nowMs,
           setting.pollSeconds,
@@ -325,7 +334,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
       }
       if (didSync) {
         ctx.diagnostics.provider('onedrive_media: collect ok, last_collect updated');
-        await _markCollectDone(ctx.db, nowMs);
+        await _markCollectDone(ctx.db, integrationId, nowMs);
       } else {
         ctx.diagnostics.provider(
           'onedrive_media: collect finished (no path synced; check tokens, '
@@ -337,10 +346,14 @@ class OneDriveMediaDataProvider implements IDataProvider {
     }
   }
 
-  Future<void> _markCollectDone(AppDatabase db, int nowMs) async {
+  Future<void> _markCollectDone(
+    AppDatabase db,
+    String integrationId,
+    int nowMs,
+  ) async {
     await db.into(db.configKeyValues).insertOnConflictUpdate(
           ConfigKeyValuesCompanion.insert(
-            key: kOneDriveMediaLastCollectKvKey,
+            key: integrationLastCollectKvKey(integrationId),
             value: '$nowMs',
           ),
         );
@@ -668,7 +681,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
               continue;
             }
             var ok = false;
-            if (_isPhotoMime(mimeLower)) {
+            if (_ingestPhotos && _isPhotoMime(mimeLower)) {
               ok = await _tryIngestPhoto(
                 ctx,
                 rowId: rowId,
@@ -679,7 +692,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
                 rejectCtx: rejectCtx,
                 pageStats: pageStats,
               );
-            } else if (_isVideoMime(mimeLower)) {
+            } else if (_ingestVideos && _isVideoMime(mimeLower)) {
               ok = await _tryIngestVideo(
                 ctx,
                 rowId: rowId,
@@ -730,10 +743,10 @@ class OneDriveMediaDataProvider implements IDataProvider {
     }
 
     for (final s in specs) {
-      if (s.kind == 'photo' || s.kind == 'both') {
+      if (_ingestPhotos && (s.kind == 'photo' || s.kind == 'both')) {
         await _prunePhotos(ctx, s.category, s.maxFiles);
       }
-      if (s.kind == 'video' || s.kind == 'both') {
+      if (_ingestVideos && (s.kind == 'video' || s.kind == 'both')) {
         await _pruneVideos(ctx, s.category, s.maxFiles);
       }
     }
@@ -878,7 +891,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
           PhotosCompanion.insert(
             id: rowId,
             category: Value(category),
-            dataProvider: Value(kMediaDataProviderOneDrive),
+            dataProvider: Value(kMediaDataProviderPhotoOneDrive),
             mediaBlobKey: logicalKey,
             photographerName: photographer,
             photographerUrl: '',
@@ -960,7 +973,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
           VideosCompanion.insert(
             id: rowId,
             category: Value(category),
-            dataProvider: Value(kMediaDataProviderOneDrive),
+            dataProvider: Value(kMediaDataProviderPhotoOneDrive),
             mediaBlobKey: logicalKey,
             photographerName: photographer,
             photographerUrl: '',
@@ -1017,7 +1030,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
             )..where(
                 (t) =>
                     t.category.equals(category) &
-                    t.dataProvider.equals(kMediaDataProviderOneDrive),
+                    t.dataProvider.equals(kMediaDataProviderPhotoOneDrive),
               )
               ..orderBy([(t) => OrderingTerm.asc(t.fetchedAtMs)]))
             .get();
@@ -1048,7 +1061,7 @@ class OneDriveMediaDataProvider implements IDataProvider {
             )..where(
                 (t) =>
                     t.category.equals(category) &
-                    t.dataProvider.equals(kMediaDataProviderOneDrive),
+                    t.dataProvider.equals(kMediaDataProviderPhotoOneDrive),
               )
               ..orderBy([(t) => OrderingTerm.asc(t.fetchedAtMs)]))
             .get();

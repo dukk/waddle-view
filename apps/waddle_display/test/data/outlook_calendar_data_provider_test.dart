@@ -223,7 +223,7 @@ Future<void> _seedKvAndProvider(
   await db.into(db.integrations).insertOnConflictUpdate(
         IntegrationsCompanion.insert(
           id: kOutlookCalendarProviderId,
-          providerType: 'calendar_outlook',
+          integrationType: 'calendar_outlook',
           enabled: const Value(true),
           pollSeconds: Value(pollSeconds),
           baseUrl: const Value('https://graph.microsoft.com/v1.0'),

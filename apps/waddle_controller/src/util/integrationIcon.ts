@@ -38,10 +38,12 @@ const SIMPLE_ICONS_BY_TYPE: Readonly<Record<string, IntegrationSimpleIconsSource
   calendar_google: { kind: 'simpleicons', slug: 'googlecalendar', color: '4285F4' },
   google_calendar: { kind: 'simpleicons', slug: 'googlecalendar', color: '4285F4' },
   calendar_outlook: { kind: 'simpleicons', slug: 'microsoftoutlook', color: '0078D4' },
-  media_onedrive: { kind: 'simpleicons', slug: 'microsoftonedrive', color: '0078D4' },
-  media_pexels: { kind: 'simpleicons', slug: 'pexels', color: '05A081' },
-  media_flickr: { kind: 'simpleicons', slug: 'flickr', color: '0063DC' },
-  media_bing_iotd: { kind: 'simpleicons', slug: 'bing', color: '258FFA' },
+  photo_onedrive: { kind: 'simpleicons', slug: 'microsoftonedrive', color: '0078D4' },
+  video_onedrive: { kind: 'simpleicons', slug: 'microsoftonedrive', color: '0078D4' },
+  photo_pexels: { kind: 'simpleicons', slug: 'pexels', color: '05A081' },
+  video_pexels: { kind: 'simpleicons', slug: 'pexels', color: '05A081' },
+  photo_flickr: { kind: 'simpleicons', slug: 'flickr', color: '0063DC' },
+  photo_bing_image_of_the_day: { kind: 'simpleicons', slug: 'bing', color: '258FFA' },
   weather_openweathermap: { kind: 'simpleicons', slug: 'openweathermap', color: 'FF6600' },
   joke_openai: { kind: 'simpleicons', slug: 'openai' },
   trivia_openai: { kind: 'simpleicons', slug: 'openai' },
@@ -51,7 +53,7 @@ const SIMPLE_ICONS_BY_TYPE: Readonly<Record<string, IntegrationSimpleIconsSource
 };
 
 const FAVICON_HOST_BY_TYPE: Readonly<Record<string, string>> = {
-  weather_nws_alerts: 'weather.gov',
+  weather_alerts_nws: 'weather.gov',
   trivia_opentdb: 'opentdb.com',
 };
 

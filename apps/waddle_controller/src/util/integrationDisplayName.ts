@@ -1,13 +1,14 @@
 /**
  * Human-facing integration titles keyed by API `integration_type`
- * (matches SQLite `integrations.provider_type`).
+ * (matches SQLite `integrations.integration_type`).
  */
 const INTEGRATION_TYPE_TITLES: Record<string, string> = {
   stub: 'Stub',
   news_rss: 'RSS News',
-  media_pexels: 'Pexels Media',
+  photo_pexels: 'Pexels Photos',
+  video_pexels: 'Pexels Videos',
   weather_openweathermap: 'OpenWeatherMap Weather',
-  weather_nws_alerts: 'NWS Weather Alerts',
+  weather_alerts_nws: 'NWS Weather Alerts',
   joke_openai: 'OpenAI Jokes',
   trivia_openai: 'OpenAI Trivia',
   trivia_opentdb: 'OpenTDB Trivia',
@@ -16,9 +17,10 @@ const INTEGRATION_TYPE_TITLES: Record<string, string> = {
   calendar_outlook: 'Outlook Calendar',
   calendar_google: 'Google Calendar',
   google_calendar: 'Google Calendar',
-  media_onedrive: 'OneDrive Media',
-  media_flickr: 'Flickr Media',
-  media_bing_iotd: 'Bing Image of the Day',
+  photo_onedrive: 'OneDrive Photos',
+  video_onedrive: 'OneDrive Videos',
+  photo_flickr: 'Flickr Photos',
+  photo_bing_image_of_the_day: 'Bing Image of the Day',
 };
 
 /** Token segments inside `integration_type` after splitting on `_`. */

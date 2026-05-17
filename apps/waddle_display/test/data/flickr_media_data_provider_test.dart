@@ -169,7 +169,7 @@ Future<void> _seedProvider(
   await db.into(db.integrations).insertOnConflictUpdate(
         IntegrationsCompanion.insert(
           id: kFlickrMediaProviderId,
-          providerType: 'media_flickr',
+          integrationType: 'media_flickr',
           enabled: Value(enabled),
           pollSeconds: Value(pollSeconds),
           baseUrl: const Value('https://api.flickr.com/services/rest'),

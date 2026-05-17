@@ -86,16 +86,19 @@ class PluginManifest {
 class PluginIntegrationManifest {
   const PluginIntegrationManifest({
     required this.id,
-    required this.providerType,
+    required this.integrationType,
   });
 
   final String id;
-  final String providerType;
+  final String integrationType;
 
   factory PluginIntegrationManifest.fromJson(Map<String, dynamic> json) {
     return PluginIntegrationManifest(
       id: (json['id'] as String?)?.trim() ?? '',
-      providerType: (json['provider_type'] as String?)?.trim() ?? 'plugin_http',
+      integrationType:
+          (json['integration_type'] as String? ?? json['provider_type'] as String?)
+              ?.trim() ??
+          'plugin_http',
     );
   }
 }

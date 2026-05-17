@@ -822,8 +822,12 @@ void registerOperatorRestRoutes(
           headers: {'content-type': 'application/json'});
     }
     if (enabled &&
-        requiredSecretSlotsFor(id).isNotEmpty &&
-        !await isIntegrationSecretsFullyConfigured(secrets, id)) {
+        integrationSecretSlotsForType(existing.integrationType).isNotEmpty &&
+        !await isIntegrationSecretsFullyConfigured(
+          secrets,
+          id,
+          integrationType: existing.integrationType,
+        )) {
       return Response(
         400,
         body: '{"error":"secrets_required_before_enable"}',

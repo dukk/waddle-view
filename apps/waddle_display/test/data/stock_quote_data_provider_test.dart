@@ -92,7 +92,7 @@ Future<void> _seedProviderRow(
   await db.into(db.integrations).insert(
         IntegrationsCompanion.insert(
           id: kStockProviderId,
-          providerType: kStockProviderId,
+          integrationType: kStockProviderId,
           pollSeconds: const Value(60),
           enabled: Value(enabled),
           baseUrl: const Value(kDefaultFinnhubBaseUrl),

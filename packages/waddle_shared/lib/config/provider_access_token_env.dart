@@ -88,9 +88,12 @@ String? resolveProviderAccessTokenFromEnv(
     case 'weather_openweathermap':
     case 'weather':
       return readWeatherTokenFromEnvMap(env);
+    case 'photo_pexels':
+    case 'video_pexels':
     case 'media_pexels':
     case 'pexels':
       return readPexelsTokenFromEnvMap(env);
+    case 'photo_flickr':
     case 'media_flickr':
     case 'flickr_media':
       return readFlickrTokenFromEnvMap(env);

@@ -69,7 +69,7 @@ class PluginLoader {
       await db.into(db.integrations).insert(
             IntegrationsCompanion.insert(
               id: i.id,
-              providerType: i.providerType,
+              integrationType: i.integrationType,
               enabled: const Value(false),
               pollSeconds: const Value(60),
               configJson: const Value('{"collect_url":""}'),

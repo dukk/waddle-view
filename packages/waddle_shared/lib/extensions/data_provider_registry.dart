@@ -2,40 +2,43 @@ import '../collect/data_provider.dart';
 import '../persistence/database.dart';
 import '../persistence/tables.dart';
 
-/// Registry of [IDataProvider] instances keyed by integration id.
+/// Registry of [IDataProvider] instances keyed by [Integrations.integrationType].
 class DataProviderRegistry {
   DataProviderRegistry({Iterable<IDataProvider> providers = const []})
-      : _byId = {for (final p in providers) p.id: p};
+      : _byType = {for (final p in providers) p.id: p};
 
-  final Map<String, IDataProvider> _byId;
+  final Map<String, IDataProvider> _byType;
 
   void register(IDataProvider provider) {
-    _byId[provider.id] = provider;
+    _byType[provider.id] = provider;
   }
 
-  IDataProvider? lookup(String id) => _byId[id];
+  IDataProvider? lookupByType(String integrationType) =>
+      _byType[integrationType];
 
   List<IDataProvider> allProviders() =>
-      _byId.values.toList(growable: false);
+      _byType.values.toList(growable: false);
 
-  /// Providers registered and enabled in [integrations], in registration order.
+  /// Providers with at least one enabled integration row, in registration order.
   Future<List<IDataProvider>> providersForEnabledIntegrations(
     AppDatabase db,
   ) async {
     final rows = await db.select(db.integrations).get();
-    final enabled = {
+    final enabledTypes = <String>{
       for (final r in rows)
-        if (r.enabled) r.id.trim(): true,
+        if (r.enabled) r.integrationType.trim(),
     };
     final out = <IDataProvider>[];
-    for (final p in _byId.values) {
-      if (enabled.containsKey(p.id)) {
+    for (final p in _byType.values) {
+      if (enabledTypes.contains(p.id)) {
         out.add(p);
         continue;
       }
       if (p.id == kPluginHttpCollectorId &&
           rows.any(
-            (r) => r.enabled && r.providerType.trim() == kProviderTypePluginHttp,
+            (r) =>
+                r.enabled &&
+                r.integrationType.trim() == kProviderTypePluginHttp,
           )) {
         out.add(p);
       }

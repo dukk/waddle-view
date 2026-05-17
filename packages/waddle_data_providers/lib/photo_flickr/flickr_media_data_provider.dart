@@ -11,14 +11,14 @@ import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_shared/integrations/integration_collect.dart';
 import 'flickr_media_extra_config.dart';
 
-const String kFlickrMediaProviderId = 'media_flickr';
+const String kPhotoFlickrIntegrationType = 'photo_flickr';
 const String kDefaultFlickrBaseUrl = 'https://api.flickr.com/services/rest';
-const String kFlickrLastCollectKvKey = 'provider.media_flickr.last_collect_ms';
 
-class FlickrMediaDataProvider implements IDataProvider {
-  FlickrMediaDataProvider({http.Client? httpClient, int Function()? nowMs})
+class FlickrPhotosDataProvider implements IDataProvider {
+  FlickrPhotosDataProvider({http.Client? httpClient, int Function()? nowMs})
       : _http = httpClient ?? http.Client(),
         _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
 
@@ -26,34 +26,36 @@ class FlickrMediaDataProvider implements IDataProvider {
   final int Function() _nowMs;
 
   @override
-  String get id => kFlickrMediaProviderId;
+  String get id => kPhotoFlickrIntegrationType;
 
   @override
   Future<void> collect(DataWriteContext ctx) async {
-    final setting =
-        await (ctx.db.select(
-              ctx.db.integrations,
-            )..where((t) => t.id.equals(kFlickrMediaProviderId)))
-            .getSingleOrNull();
-    if (setting == null || !setting.enabled) {
-      ctx.diagnostics.provider('flickr_media: skip (disabled)');
-      return;
+    final rows = await enabledIntegrationsForType(ctx.db, id);
+    for (final setting in rows) {
+      await _collectIntegration(ctx, setting);
     }
+  }
+
+  Future<void> _collectIntegration(
+    DataWriteContext ctx,
+    Integration setting,
+  ) async {
+    final integrationId = setting.id;
     final nowMs = _nowMs();
+    final lastCollectKey = integrationLastCollectKvKey(integrationId);
     if (setting.pollSeconds > 0) {
       final lastRow =
-          await (ctx.db.select(
-                ctx.db.configKeyValues,
-              )..where((t) => t.key.equals(kFlickrLastCollectKvKey)))
+          await (ctx.db.select(ctx.db.configKeyValues)
+                ..where((t) => t.key.equals(lastCollectKey)))
               .getSingleOrNull();
       final last = int.tryParse(lastRow?.value ?? '') ?? 0;
       if (nowMs - last < setting.pollSeconds * 1000) {
-        ctx.diagnostics.provider('flickr_media: skip poll gate');
+        ctx.diagnostics.provider('flickr_photo: skip poll gate id=$integrationId');
         return;
       }
     }
 
-    final config = await ctx.resolveConfig(kFlickrMediaProviderId);
+    final config = await ctx.resolveConfig(integrationId);
     final apiKey = config.accessToken;
     if (apiKey == null || apiKey.isEmpty) {
       ctx.diagnostics.provider('flickr_media: skip (no API key)');
@@ -62,7 +64,7 @@ class FlickrMediaDataProvider implements IDataProvider {
     final extra = FlickrMediaExtraConfig.parse(config.configJson);
     if (extra.groupIds.isEmpty) {
       ctx.diagnostics.provider('flickr_media: skip (no groupIds configured)');
-      await _markCollected(ctx, nowMs);
+      await _markCollected(ctx, integrationId, nowMs);
       return;
     }
 
@@ -107,7 +109,7 @@ class FlickrMediaDataProvider implements IDataProvider {
     ctx.diagnostics.provider(
       'flickr_media: collect done inserted=$inserted remainingSlots=$remaining',
     );
-    await _markCollected(ctx, nowMs);
+    await _markCollected(ctx, integrationId, nowMs);
   }
 
   String _normalizeBase(String? raw) {
@@ -117,10 +119,14 @@ class FlickrMediaDataProvider implements IDataProvider {
     return raw.trim().replaceAll(RegExp(r'/$'), '');
   }
 
-  Future<void> _markCollected(DataWriteContext ctx, int nowMs) async {
+  Future<void> _markCollected(
+    DataWriteContext ctx,
+    String integrationId,
+    int nowMs,
+  ) async {
     await ctx.db.into(ctx.db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kFlickrLastCollectKvKey,
+      ConfigKeyValuesCompanion.insert(
+            key: integrationLastCollectKvKey(integrationId),
             value: '$nowMs',
           ),
         );
@@ -299,7 +305,7 @@ class FlickrMediaDataProvider implements IDataProvider {
           PhotosCompanion.insert(
             id: rowId,
             category: Value(category),
-            dataProvider: const Value(kMediaDataProviderFlickr),
+            dataProvider: const Value(kMediaDataProviderPhotoFlickr),
             mediaBlobKey: logicalKey,
             photographerName: owner,
             photographerUrl: photographerUrl,

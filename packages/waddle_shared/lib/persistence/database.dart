@@ -1,5 +1,6 @@
 import 'dart:developer' show log;
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
@@ -183,6 +184,281 @@ Future<void> _migrateV3ToV4PluginRuntime(AppDatabase db, Migrator m) async {
 Future<void> _migrateV4ToV5HomeAssistant(AppDatabase db, Migrator m) async {
   await m.createTable(db.interestsHomeAssistantEntities);
   await m.createTable(db.homeAssistantEntityStates);
+}
+
+/// Renames `provider_type` → `integration_type`, splits media integrations, and
+/// moves legacy row ids to `default_*` slugs.
+Future<void> _migrateV5ToV6IntegrationTypesAndDefaults(AppDatabase db) async {
+  final integrationsPresent = await db
+      .customSelect(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='integrations' LIMIT 1",
+      )
+      .get();
+  if (integrationsPresent.isEmpty) {
+    return;
+  }
+
+  final columns = await db.customSelect('PRAGMA table_info(integrations)').get();
+  final hasProviderType = columns.any((c) => c.read<String>('name') == 'provider_type');
+  final hasIntegrationType =
+      columns.any((c) => c.read<String>('name') == 'integration_type');
+  if (hasProviderType && !hasIntegrationType) {
+    await db.customStatement(
+      'ALTER TABLE integrations RENAME COLUMN provider_type TO integration_type',
+    );
+  }
+
+  const typeRenames = <String, String>{
+    'media_flickr': 'photo_flickr',
+    'media_bing_iotd': 'photo_bing_image_of_the_day',
+    'weather_nws_alerts': 'weather_alerts_nws',
+  };
+  for (final e in typeRenames.entries) {
+    await db.customStatement(
+      'UPDATE integrations SET integration_type = ? WHERE integration_type = ?',
+      [e.value, e.key],
+    );
+  }
+
+  Future<void> updateDataProviderIfTable(String table, String set, String where) async {
+    final present = await db
+        .customSelect(
+          "SELECT 1 FROM sqlite_master WHERE type='table' AND name=? LIMIT 1",
+          variables: [Variable<String>(table)],
+        )
+        .get();
+    if (present.isEmpty) {
+      return;
+    }
+    await db.customStatement(
+      'UPDATE $table SET data_provider = ? WHERE data_provider = ?',
+      [set, where],
+    );
+  }
+
+  await updateDataProviderIfTable('photos', 'photo_pexels', 'media_pexels');
+  await updateDataProviderIfTable('videos', 'video_pexels', 'media_pexels');
+  await updateDataProviderIfTable('photos', 'photo_onedrive', 'media_onedrive');
+  await updateDataProviderIfTable('videos', 'video_onedrive', 'media_onedrive');
+  await updateDataProviderIfTable('photos', 'photo_flickr', 'media_flickr');
+  await updateDataProviderIfTable(
+    'photos',
+    'photo_bing_image_of_the_day',
+    'media_bing_iotd',
+  );
+
+  final pexelsRow = await db.customSelect(
+    'SELECT * FROM integrations WHERE id = ? OR integration_type = ? LIMIT 1',
+    variables: [
+      const Variable<String>('media_pexels'),
+      const Variable<String>('media_pexels'),
+    ],
+  ).getSingleOrNull();
+  if (pexelsRow != null) {
+    final oldId = pexelsRow.read<String>('id');
+    final configJson = pexelsRow.read<String?>('config_json');
+    final schema = pexelsRow.read<String?>('config_json_schema');
+    final example = pexelsRow.read<String?>('example_config_json');
+    final enabled = pexelsRow.read<int>('enabled');
+    final poll = pexelsRow.read<int>('poll_seconds');
+    final baseUrl = pexelsRow.read<String?>('base_url');
+
+    await db.customStatement(
+      'UPDATE integrations SET id = ?, integration_type = ? WHERE id = ?',
+      [kDefaultPhotoPexelsIntegrationId, 'photo_pexels', oldId],
+    );
+    await _migrateIntegrationSecretKeys(db, oldId, kDefaultPhotoPexelsIntegrationId);
+    await _migrateConfigKvPrefix(db, oldId, kDefaultPhotoPexelsIntegrationId);
+
+    final videoExists = await db.customSelect(
+      'SELECT 1 FROM integrations WHERE id = ? LIMIT 1',
+      variables: [Variable<String>(kDefaultVideoPexelsIntegrationId)],
+    ).getSingleOrNull();
+    if (videoExists == null) {
+      await db.customStatement(
+        'INSERT INTO integrations '
+        '(id, integration_type, enabled, poll_seconds, base_url, config_json, '
+        'config_json_schema, example_config_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          kDefaultVideoPexelsIntegrationId,
+          'video_pexels',
+          enabled,
+          poll,
+          baseUrl,
+          configJson,
+          schema,
+          example,
+        ],
+      );
+      await _copyAccessTokenSecret(
+        db,
+        kDefaultPhotoPexelsIntegrationId,
+        kDefaultVideoPexelsIntegrationId,
+      );
+    }
+  }
+
+  final onedriveRow = await db.customSelect(
+    'SELECT * FROM integrations WHERE id = ? OR integration_type = ? LIMIT 1',
+    variables: [
+      const Variable<String>('media_onedrive'),
+      const Variable<String>('media_onedrive'),
+    ],
+  ).getSingleOrNull();
+  if (onedriveRow != null) {
+    final oldId = onedriveRow.read<String>('id');
+    final configJson = onedriveRow.read<String?>('config_json');
+    final schema = onedriveRow.read<String?>('config_json_schema');
+    final example = onedriveRow.read<String?>('example_config_json');
+    final enabled = onedriveRow.read<int>('enabled');
+    final poll = onedriveRow.read<int>('poll_seconds');
+    final baseUrl = onedriveRow.read<String?>('base_url');
+
+    await db.customStatement(
+      'UPDATE integrations SET id = ?, integration_type = ? WHERE id = ?',
+      [kDefaultPhotoOneDriveIntegrationId, 'photo_onedrive', oldId],
+    );
+    await _migrateIntegrationSecretKeys(db, oldId, kDefaultPhotoOneDriveIntegrationId);
+    await _migrateConfigKvPrefix(db, oldId, kDefaultPhotoOneDriveIntegrationId);
+
+    final videoExists = await db.customSelect(
+      'SELECT 1 FROM integrations WHERE id = ? LIMIT 1',
+      variables: [Variable<String>(kDefaultVideoOneDriveIntegrationId)],
+    ).getSingleOrNull();
+    if (videoExists == null) {
+      await db.customStatement(
+        'INSERT INTO integrations '
+        '(id, integration_type, enabled, poll_seconds, base_url, config_json, '
+        'config_json_schema, example_config_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          kDefaultVideoOneDriveIntegrationId,
+          'video_onedrive',
+          enabled,
+          poll,
+          baseUrl,
+          configJson,
+          schema,
+          example,
+        ],
+      );
+    }
+  }
+
+  const idMigrations = <String, String>{
+    'news_rss': kDefaultNewsRssIntegrationId,
+    'joke_openai': kDefaultJokeOpenAiIntegrationId,
+    'trivia_openai': kDefaultTriviaOpenAiIntegrationId,
+    'trivia_opentdb': kDefaultTriviaOpenTdbIntegrationId,
+    'weather_openweathermap': kDefaultWeatherOpenWeatherMapIntegrationId,
+    'weather_nws_alerts': kDefaultWeatherAlertsNwsIntegrationId,
+    'weather_alerts_nws': kDefaultWeatherAlertsNwsIntegrationId,
+    'stock_finnhub': kDefaultStockFinnhubIntegrationId,
+    'home_assistant': kDefaultHomeAssistantIntegrationId,
+    'calendar_google': kDefaultCalendarGoogleIntegrationId,
+    'calendar_outlook': kDefaultCalendarOutlookIntegrationId,
+    'media_flickr': kDefaultPhotoFlickrIntegrationId,
+    'photo_flickr': kDefaultPhotoFlickrIntegrationId,
+    'media_bing_iotd': kDefaultPhotoBingIotdIntegrationId,
+    'photo_bing_image_of_the_day': kDefaultPhotoBingIotdIntegrationId,
+  };
+  for (final e in idMigrations.entries) {
+    final exists = await db.customSelect(
+      'SELECT 1 FROM integrations WHERE id = ? LIMIT 1',
+      variables: [Variable<String>(e.key)],
+    ).getSingleOrNull();
+    if (exists == null) {
+      continue;
+    }
+    final targetTaken = await db.customSelect(
+      'SELECT 1 FROM integrations WHERE id = ? LIMIT 1',
+      variables: [Variable<String>(e.value)],
+    ).getSingleOrNull();
+    if (targetTaken != null) {
+      continue;
+    }
+    await db.customStatement(
+      'UPDATE integrations SET id = ? WHERE id = ?',
+      [e.value, e.key],
+    );
+    await _migrateIntegrationSecretKeys(db, e.key, e.value);
+    await _migrateConfigKvPrefix(db, e.key, e.value);
+  }
+}
+
+Future<void> _migrateIntegrationSecretKeys(
+  AppDatabase db,
+  String oldIntegrationId,
+  String newIntegrationId,
+) async {
+  final secretsPresent = await db
+      .customSelect(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='integration_secrets' LIMIT 1",
+      )
+      .get();
+  if (secretsPresent.isEmpty) {
+    return;
+  }
+  final oldPrefix = 'provider:access_token:$oldIntegrationId';
+  final newPrefix = 'provider:access_token:$newIntegrationId';
+  await db.customStatement(
+    'UPDATE integration_secrets SET key = REPLACE(key, ?, ?) WHERE key = ? OR key LIKE ?',
+    [oldPrefix, newPrefix, oldPrefix, '$oldPrefix:%'],
+  );
+}
+
+Future<void> _migrateConfigKvPrefix(
+  AppDatabase db,
+  String oldIntegrationId,
+  String newIntegrationId,
+) async {
+  final kvPresent = await db
+      .customSelect(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='config_key_values' LIMIT 1",
+      )
+      .get();
+  if (kvPresent.isEmpty) {
+    return;
+  }
+  final oldKey = 'provider.$oldIntegrationId.last_collect_ms';
+  final newKey = 'provider.$newIntegrationId.last_collect_ms';
+  await db.customStatement(
+    'UPDATE config_key_values SET key = ? WHERE key = ?',
+    [newKey, oldKey],
+  );
+}
+
+Future<void> _copyAccessTokenSecret(
+  AppDatabase db,
+  String fromIntegrationId,
+  String toIntegrationId,
+) async {
+  final secretsPresent = await db
+      .customSelect(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='integration_secrets' LIMIT 1",
+      )
+      .get();
+  if (secretsPresent.isEmpty) {
+    return;
+  }
+  final fromKey = 'provider:access_token:$fromIntegrationId';
+  final toKey = 'provider:access_token:$toIntegrationId';
+  final row = await db.customSelect(
+    'SELECT ciphertext, nonce, updated_at_ms FROM integration_secrets WHERE key = ?',
+    variables: [Variable<String>(fromKey)],
+  ).getSingleOrNull();
+  if (row == null) {
+    return;
+  }
+  await db.customStatement(
+    'INSERT OR REPLACE INTO integration_secrets (key, ciphertext, nonce, updated_at_ms) '
+    'VALUES (?, ?, ?, ?)',
+    [
+      toKey,
+      row.read<Uint8List>('ciphertext'),
+      row.read<Uint8List>('nonce'),
+      row.read<int>('updated_at_ms'),
+    ],
+  );
 }
 
 /// Renames legacy interest catalog tables to `interests_*` (schema 1 → 2).

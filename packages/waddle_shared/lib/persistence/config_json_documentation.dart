@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'tables.dart';
 
-/// JSON Schema (draft 2020-12) and example payload for one [provider_type].
+/// JSON Schema (draft 2020-12) and example payload for one [integration_type].
 class ProviderConfigJsonDoc {
   const ProviderConfigJsonDoc({required this.schema, required this.example});
 
@@ -42,20 +42,48 @@ final ProviderConfigJsonDoc kGenericProviderConfigJsonDoc =
       example: '{}',
     );
 
-/// Documentation keyed by [Integrations.providerType] (seeded + built-in).
+/// Documentation keyed by [Integrations.integrationType] (seeded + built-in).
 final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
   'stub': kGenericProviderConfigJsonDoc,
   'news_rss': kGenericProviderConfigJsonDoc,
-  'media_pexels': ProviderConfigJsonDoc(
+  'photo_pexels': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
-        title: 'PexelsProviderConfig',
-        description:
-            'Rate limits, retention, and optional curated search sources.',
+        title: 'PexelsPhotoProviderConfig',
+        description: 'Photo rate limits, retention, and curated search sources.',
         properties: {
           'maxPhotos': {'type': 'integer', 'minimum': 1},
-          'maxVideos': {'type': 'integer', 'minimum': 1},
           'photosPerHour': {'type': 'integer', 'minimum': 1},
+          'sources': {
+            'type': 'array',
+            'items': {
+              'type': 'object',
+              'properties': {
+                'query': {'type': 'string', 'minLength': 1},
+                'category': {'type': 'string', 'minLength': 1},
+              },
+              'required': ['query', 'category'],
+              'additionalProperties': true,
+            },
+          },
+        },
+      ),
+    ),
+    example: jsonEncode({
+      'maxPhotos': 100,
+      'photosPerHour': 2,
+      'sources': [
+        {'query': 'nature', 'category': 'pexels'},
+      ],
+    }),
+  ),
+  'video_pexels': ProviderConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'PexelsVideoProviderConfig',
+        description: 'Video rate limits, retention, and curated search sources.',
+        properties: {
+          'maxVideos': {'type': 'integer', 'minimum': 1},
           'videosPerHour': {'type': 'integer', 'minimum': 1},
           'minVideoSeconds': {'type': 'integer', 'minimum': 1},
           'maxVideoSeconds': {'type': 'integer', 'minimum': 1},
@@ -81,9 +109,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       ),
     ),
     example: jsonEncode({
-      'maxPhotos': 100,
       'maxVideos': 100,
-      'photosPerHour': 2,
       'videosPerHour': 2,
       'minVideoSeconds': 11,
       'maxVideoSeconds': 29,
@@ -123,7 +149,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       'defaultLocation': {'name': 'Default', 'lat': 40.7128, 'lon': -74.006},
     }),
   ),
-  'weather_nws_alerts': ProviderConfigJsonDoc(
+  'weather_alerts_nws': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'NwsWeatherGovAlertsConfig',
@@ -460,10 +486,70 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       'futureDays': 14,
     }),
   ),
-  'media_onedrive': ProviderConfigJsonDoc(
+  'photo_onedrive': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
-        title: 'OneDriveMediaProviderConfig',
+        title: 'OneDrivePhotoProviderConfig',
+        description:
+            'Microsoft Graph OneDrive (read-only): delta sync of photo paths '
+            'into [Photos]; retention and per-poll download caps.',
+        properties: {
+          'globalPerPollLimit': {'type': 'integer', 'minimum': 1},
+          'accounts': {
+            'type': 'array',
+            'items': {
+              'type': 'object',
+              'properties': {
+                'graphAccountKey': {'type': 'string', 'minLength': 1},
+                'sources': {
+                  'type': 'array',
+                  'items': {
+                    'type': 'object',
+                    'properties': {
+                      'path': {'type': 'string', 'minLength': 1},
+                      'folder': {'type': 'string'},
+                      'kind': {
+                        'type': 'string',
+                        'enum': ['photo', 'video', 'both'],
+                      },
+                      'category': {'type': 'string', 'minLength': 1},
+                      'maxFiles': {'type': 'integer', 'minimum': 1},
+                      'perPollLimit': {'type': 'integer', 'minimum': 1},
+                    },
+                    'required': ['kind', 'category'],
+                    'additionalProperties': true,
+                  },
+                },
+              },
+              'required': ['graphAccountKey'],
+              'additionalProperties': true,
+            },
+          },
+        },
+      ),
+    ),
+    example: jsonEncode({
+      'globalPerPollLimit': 50,
+      'accounts': [
+        {
+          'graphAccountKey': 'personal',
+          'sources': [
+            {
+              'path': '/Pictures/Family',
+              'kind': 'photo',
+              'category': 'family_media',
+              'maxFiles': 30,
+              'perPollLimit': 5,
+            },
+          ],
+        },
+      ],
+    }),
+  ),
+  'video_onedrive': ProviderConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'OneDriveVideoProviderConfig',
         description:
             'Microsoft Graph OneDrive (read-only): delta sync of each path '
             'subtree into photo/video categories; retention and per-poll '
@@ -528,7 +614,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       ],
     }),
   ),
-  'media_flickr': ProviderConfigJsonDoc(
+  'photo_flickr': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'FlickrMediaProviderConfig',
@@ -552,7 +638,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       'sort': 'date-posted-desc',
     }),
   ),
-  'media_bing_iotd': ProviderConfigJsonDoc(
+  'photo_bing_image_of_the_day': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'BingImageOfDayProviderConfig',

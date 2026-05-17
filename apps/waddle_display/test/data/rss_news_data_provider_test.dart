@@ -79,8 +79,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: 'news_rss',
-            providerType: 'news_rss',
+            id: kDefaultNewsRssIntegrationId,
+            integrationType: 'news_rss',
             pollSeconds: const Value(1),
           ),
         );
@@ -132,8 +132,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: 'news_rss',
-            providerType: 'news_rss',
+            id: kDefaultNewsRssIntegrationId,
+            integrationType: 'news_rss',
           ),
         );
     await db.into(db.interestsRssFeeds).insert(
@@ -163,7 +163,7 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await db.into(db.integrations).insert(
-          IntegrationsCompanion.insert(id: 'news_rss', providerType: 'news_rss'),
+          IntegrationsCompanion.insert(id: kDefaultNewsRssIntegrationId, integrationType: 'news_rss'),
         );
     await db.into(db.interestsRssFeeds).insert(
           InterestsRssFeedsCompanion.insert(
@@ -203,7 +203,7 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await db.into(db.integrations).insert(
-          IntegrationsCompanion.insert(id: 'news_rss', providerType: 'news_rss'),
+          IntegrationsCompanion.insert(id: kDefaultNewsRssIntegrationId, integrationType: 'news_rss'),
         );
     const last = 1_000_000;
     await db.into(db.interestsRssFeeds).insert(
@@ -237,7 +237,7 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await db.into(db.integrations).insert(
-          IntegrationsCompanion.insert(id: 'news_rss', providerType: 'news_rss'),
+          IntegrationsCompanion.insert(id: kDefaultNewsRssIntegrationId, integrationType: 'news_rss'),
         );
     await db.into(db.interestsRssFeeds).insert(
           InterestsRssFeedsCompanion.insert(

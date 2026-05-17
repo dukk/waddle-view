@@ -80,7 +80,7 @@ Future<void> _seedProvider(
   await db.into(db.integrations).insert(
         IntegrationsCompanion.insert(
           id: kHomeAssistantProviderId,
-          providerType: kHomeAssistantProviderId,
+          integrationType: kHomeAssistantProviderId,
           pollSeconds: const Value(60),
           enabled: Value(enabled),
           baseUrl: const Value('http://ha.local:8123'),

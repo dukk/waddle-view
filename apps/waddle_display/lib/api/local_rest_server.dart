@@ -162,7 +162,7 @@ Handler buildProtectedApiRouter({
     for (final e in rows) {
       list.add({
         'id': e.id,
-        'integration_type': e.providerType,
+        'integration_type': e.integrationType,
         'enabled': e.enabled,
         'poll_seconds': e.pollSeconds,
         'base_url': e.baseUrl,
@@ -170,7 +170,11 @@ Handler buildProtectedApiRouter({
         'config_json_schema': _jsonDecodeLoose(e.configJsonSchema),
         'example_config_json': _jsonDecodeLoose(e.exampleConfigJson),
         'secrets_configured':
-            await integrationSecretsConfigured(secrets, e.id),
+            await integrationSecretsConfigured(
+              secrets,
+              e.id,
+              e.integrationType,
+            ),
       });
     }
     return Response.ok(

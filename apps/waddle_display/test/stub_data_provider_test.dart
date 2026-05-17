@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_shared/collect/stub_data_provider.dart';
-import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/seed/tables/ticker_tapes_seed.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 
@@ -15,9 +14,7 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await ensureTickerTapesSeed(db);
-    await db.into(db.integrations).insert(
-          IntegrationsCompanion.insert(id: 'stub', providerType: 'stub'),
-        );
+    await seedStubIntegrationForTest(db);
     final secrets = InMemorySecretStore();
     final resolver = ProviderConfigResolver(db, secrets);
     final ctx = DataWriteContextImpl(

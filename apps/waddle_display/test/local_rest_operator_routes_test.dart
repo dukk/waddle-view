@@ -427,7 +427,7 @@ void main() {
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
             id: 'stock_test',
-            providerType: 'stock_finnhub',
+            integrationType: 'stock_finnhub',
             pollSeconds: const Value(120),
             enabled: const Value(true),
             baseUrl: const Value('http://example.invalid'),

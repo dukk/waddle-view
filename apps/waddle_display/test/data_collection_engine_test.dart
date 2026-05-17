@@ -27,7 +27,7 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await db.into(db.integrations).insert(
-          IntegrationsCompanion.insert(id: 'c', providerType: 'x'),
+          IntegrationsCompanion.insert(id: 'c', integrationType: 'x'),
         );
     final secrets = InMemorySecretStore();
     final resolver = ProviderConfigResolver(db, secrets);
@@ -54,7 +54,7 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await db.into(db.integrations).insert(
-          IntegrationsCompanion.insert(id: 'c', providerType: 'x'),
+          IntegrationsCompanion.insert(id: 'c', integrationType: 'x'),
         );
     final secrets = InMemorySecretStore();
     final resolver = ProviderConfigResolver(db, secrets);

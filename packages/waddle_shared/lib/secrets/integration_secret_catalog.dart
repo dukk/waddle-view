@@ -29,8 +29,8 @@ const String kMicrosoftGraphClientIdSecretKey =
 String providerAccessTokenSecretKey(String integrationId) =>
     '${ProviderConfigResolver.accessTokenKey}:$integrationId';
 
-/// Slots shown in controller UI per integration id (empty = no secrets).
-const Map<String, List<IntegrationSecretSlot>> kIntegrationSecretSlotsById = {
+/// Slots shown in controller UI per [Integrations.integrationType].
+const Map<String, List<IntegrationSecretSlot>> kIntegrationSecretSlotsByType = {
   'joke_openai': [
     IntegrationSecretSlot(
       id: kIntegrationSecretSlotApiKey,
@@ -52,18 +52,25 @@ const Map<String, List<IntegrationSecretSlot>> kIntegrationSecretSlotsById = {
       storageKey: 'provider:access_token:weather_openweathermap',
     ),
   ],
-  'media_pexels': [
+  'photo_pexels': [
     IntegrationSecretSlot(
       id: kIntegrationSecretSlotApiKey,
       label: 'Pexels API key',
-      storageKey: 'provider:access_token:media_pexels',
+      storageKey: 'provider:access_token:photo_pexels',
     ),
   ],
-  'media_flickr': [
+  'video_pexels': [
+    IntegrationSecretSlot(
+      id: kIntegrationSecretSlotApiKey,
+      label: 'Pexels API key',
+      storageKey: 'provider:access_token:video_pexels',
+    ),
+  ],
+  'photo_flickr': [
     IntegrationSecretSlot(
       id: kIntegrationSecretSlotApiKey,
       label: 'Flickr API key',
-      storageKey: 'provider:access_token:media_flickr',
+      storageKey: 'provider:access_token:photo_flickr',
     ),
   ],
   'stock_finnhub': [
@@ -94,7 +101,14 @@ const Map<String, List<IntegrationSecretSlot>> kIntegrationSecretSlotsById = {
       storageKey: kMicrosoftGraphClientIdSecretKey,
     ),
   ],
-  'media_onedrive': [
+  'photo_onedrive': [
+    IntegrationSecretSlot(
+      id: kIntegrationSecretSlotClientId,
+      label: 'Microsoft Graph client ID',
+      storageKey: kMicrosoftGraphClientIdSecretKey,
+    ),
+  ],
+  'video_onedrive': [
     IntegrationSecretSlot(
       id: kIntegrationSecretSlotClientId,
       label: 'Microsoft Graph client ID',
@@ -103,17 +117,35 @@ const Map<String, List<IntegrationSecretSlot>> kIntegrationSecretSlotsById = {
   ],
 };
 
-List<IntegrationSecretSlot> integrationSecretSlotsFor(String integrationId) =>
-    kIntegrationSecretSlotsById[integrationId] ?? const [];
+List<IntegrationSecretSlot> integrationSecretSlotsForType(String integrationType) =>
+    kIntegrationSecretSlotsByType[integrationType] ?? const [];
 
-List<IntegrationSecretSlot> requiredSecretSlotsFor(String integrationId) =>
-    integrationSecretSlotsFor(integrationId);
+List<IntegrationSecretSlot> integrationSecretSlotsForIntegration(
+  String integrationId,
+  String integrationType,
+) {
+  return [
+    for (final slot in integrationSecretSlotsForType(integrationType))
+      if (slot.id == kIntegrationSecretSlotApiKey)
+        IntegrationSecretSlot(
+          id: slot.id,
+          label: slot.label,
+          storageKey: providerAccessTokenSecretKey(integrationId),
+        )
+      else
+        slot,
+  ];
+}
 
 IntegrationSecretSlot? integrationSecretSlotById(
   String integrationId,
+  String integrationType,
   String slotId,
 ) {
-  for (final slot in integrationSecretSlotsFor(integrationId)) {
+  for (final slot in integrationSecretSlotsForIntegration(
+    integrationId,
+    integrationType,
+  )) {
     if (slot.id == slotId) {
       return slot;
     }
@@ -121,12 +153,12 @@ IntegrationSecretSlot? integrationSecretSlotById(
   return null;
 }
 
-/// Whether every required slot has a non-empty value in [store].
 Future<bool> isIntegrationSecretsFullyConfigured(
   SecretStore store,
-  String integrationId,
-) async {
-  final slots = requiredSecretSlotsFor(integrationId);
+  String integrationId, {
+  required String integrationType,
+}) async {
+  final slots = integrationSecretSlotsForIntegration(integrationId, integrationType);
   if (slots.isEmpty) {
     return true;
   }
@@ -139,7 +171,6 @@ Future<bool> isIntegrationSecretsFullyConfigured(
   return true;
 }
 
-/// Reads Google OAuth client id from [store].
 Future<String?> readGoogleClientIdFromStore(SecretStore store) async {
   final v = await store.read(kGoogleClientIdSecretKey);
   final t = v?.trim();
@@ -149,7 +180,6 @@ Future<String?> readGoogleClientIdFromStore(SecretStore store) async {
   return t;
 }
 
-/// Reads Microsoft Graph OAuth client id from [store].
 Future<String?> readMicrosoftGraphClientIdFromStore(SecretStore store) async {
   final v = await store.read(kMicrosoftGraphClientIdSecretKey);
   final t = v?.trim();

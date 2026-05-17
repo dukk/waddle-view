@@ -23,7 +23,7 @@ class PluginHttpDataProvider implements IDataProvider {
       if (!row.enabled) {
         continue;
       }
-      if (row.providerType.trim() != kProviderTypePluginHttp) {
+      if (row.integrationType.trim() != kProviderTypePluginHttp) {
         continue;
       }
       final config = _parseConfig(row.configJson);

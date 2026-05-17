@@ -44,8 +44,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: 'joke_openai',
-            providerType: 'joke_openai',
+            id: kDefaultJokeOpenAiIntegrationId,
+            integrationType: 'joke_openai',
             pollSeconds: const Value(1),
             configJson: const Value('{"jokesPerDay":2}'),
             baseUrl: const Value('http://api.local/v1'),
@@ -116,8 +116,8 @@ void main() {
 
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: 'joke_openai',
-            providerType: 'joke_openai',
+            id: kDefaultJokeOpenAiIntegrationId,
+            integrationType: 'joke_openai',
             pollSeconds: const Value(1),
             configJson: const Value(
               '{"jokesPerDay":5,"jokeRetentionDays":14}',
@@ -181,8 +181,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: 'joke_openai',
-            providerType: 'joke_openai',
+            id: kDefaultJokeOpenAiIntegrationId,
+            integrationType: 'joke_openai',
             pollSeconds: const Value(1),
             configJson: const Value(
               '{"jokesPerDay":2,"maxJokesPerTwoHours":10}',
@@ -247,8 +247,8 @@ void main() {
     final t = DateTime(2026, 3, 15, 12);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: 'joke_openai',
-            providerType: 'joke_openai',
+            id: kDefaultJokeOpenAiIntegrationId,
+            integrationType: 'joke_openai',
             pollSeconds: const Value(1),
             configJson: const Value('{"jokesPerDay":50}'),
           ),
@@ -294,8 +294,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: 'joke_openai',
-            providerType: 'joke_openai',
+            id: kDefaultJokeOpenAiIntegrationId,
+            integrationType: 'joke_openai',
             pollSeconds: const Value(1),
             configJson: const Value(
               '{"jokesPerDay":50,"maxJokesPerTwoHours":5}',
@@ -340,8 +340,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: 'joke_openai',
-            providerType: 'joke_openai',
+            id: kDefaultJokeOpenAiIntegrationId,
+            integrationType: 'joke_openai',
             pollSeconds: const Value(1),
             configJson: const Value('{"jokesPerDay":5}'),
           ),
@@ -383,8 +383,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: 'joke_openai',
-            providerType: 'joke_openai',
+            id: kDefaultJokeOpenAiIntegrationId,
+            integrationType: 'joke_openai',
             pollSeconds: const Value(1),
           ),
         );
@@ -414,8 +414,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: 'joke_openai',
-            providerType: 'joke_openai',
+            id: kDefaultJokeOpenAiIntegrationId,
+            integrationType: 'joke_openai',
             pollSeconds: const Value(1),
             configJson: const Value('{"jokesPerDay":1}'),
           ),
@@ -464,8 +464,8 @@ void main() {
     await warmDatabase(db);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: 'joke_openai',
-            providerType: 'joke_openai',
+            id: kDefaultJokeOpenAiIntegrationId,
+            integrationType: 'joke_openai',
             pollSeconds: const Value(1),
             configJson: const Value('{"jokesPerDay":5}'),
             baseUrl: const Value('http://api.local/v1'),

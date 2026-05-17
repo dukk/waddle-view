@@ -21,11 +21,9 @@ class PexelsSourceSpec {
   }
 }
 
-class PexelsProviderExtraConfig {
-  const PexelsProviderExtraConfig({
-    required this.maxPhotos,
+class PexelsVideoProviderExtraConfig {
+  const PexelsVideoProviderExtraConfig({
     required this.maxVideos,
-    required this.photosPerHour,
     required this.videosPerHour,
     required this.minVideoSeconds,
     required this.maxVideoSeconds,
@@ -33,23 +31,17 @@ class PexelsProviderExtraConfig {
     required this.sources,
   });
 
-  final int maxPhotos;
   final int maxVideos;
-  final int photosPerHour;
   final int videosPerHour;
   final int minVideoSeconds;
   final int maxVideoSeconds;
-
-  /// Prefer the largest Pexels MP4 with width ≤ this value (default 1920 / 1080p).
   final int maxVideoDownloadWidth;
   final List<PexelsSourceSpec> sources;
 
-  static PexelsProviderExtraConfig parse(String? configJson) {
+  static PexelsVideoProviderExtraConfig parse(String? configJson) {
     if (configJson == null || configJson.trim().isEmpty) {
-      return const PexelsProviderExtraConfig(
-        maxPhotos: 100,
+      return const PexelsVideoProviderExtraConfig(
         maxVideos: 100,
-        photosPerHour: 2,
         videosPerHour: 2,
         minVideoSeconds: 11,
         maxVideoSeconds: 29,
@@ -71,10 +63,8 @@ class PexelsProviderExtraConfig {
           }
         }
       }
-      return PexelsProviderExtraConfig(
-        maxPhotos: _positiveInt(m['maxPhotos'], 100),
+      return PexelsVideoProviderExtraConfig(
         maxVideos: _positiveInt(m['maxVideos'], 100),
-        photosPerHour: _positiveInt(m['photosPerHour'], 2),
         videosPerHour: _positiveInt(m['videosPerHour'], 2),
         minVideoSeconds: _positiveInt(m['minVideoSeconds'], 11),
         maxVideoSeconds: _positiveInt(m['maxVideoSeconds'], 29),

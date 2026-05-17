@@ -14,7 +14,7 @@ void main() {
       protector: InMemoryDekProtector(),
     );
 
-    const key = 'provider:access_token:joke_openai';
+    const key = 'provider:access_token:default_joke_openai';
     await store.write(key, 'sk-test');
     expect(await store.read(key), 'sk-test');
 
@@ -25,12 +25,20 @@ void main() {
     expect(await store.read(key), isNull);
 
     expect(
-      await isIntegrationSecretsFullyConfigured(store, 'joke_openai'),
+      await isIntegrationSecretsFullyConfigured(
+        store,
+        'default_joke_openai',
+        integrationType: 'joke_openai',
+      ),
       isFalse,
     );
     await store.write(key, 'sk-test');
     expect(
-      await isIntegrationSecretsFullyConfigured(store, 'joke_openai'),
+      await isIntegrationSecretsFullyConfigured(
+        store,
+        'default_joke_openai',
+        integrationType: 'joke_openai',
+      ),
       isTrue,
     );
 

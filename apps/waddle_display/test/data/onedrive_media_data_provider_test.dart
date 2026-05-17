@@ -48,7 +48,7 @@ void main() {
     await db.into(db.integrations).insertOnConflictUpdate(
           IntegrationsCompanion.insert(
             id: kOneDriveMediaProviderId,
-            providerType: 'media_onedrive',
+            integrationType: 'photo_onedrive',
             enabled: const Value(true),
             pollSeconds: const Value(0),
             baseUrl: const Value('https://graph.microsoft.com/v1.0'),
@@ -604,7 +604,7 @@ Future<void> _seedProvider(
   await db.into(db.integrations).insertOnConflictUpdate(
         IntegrationsCompanion.insert(
           id: kOneDriveMediaProviderId,
-          providerType: 'media_onedrive',
+          integrationType: 'photo_onedrive',
           enabled: Value(enabled),
           pollSeconds: Value(pollSeconds),
           baseUrl: const Value('https://graph.microsoft.com/v1.0'),

@@ -20,7 +20,7 @@ describe('integrationIconSource', () => {
       slug: 'googlecalendar',
       color: '4285F4',
     });
-    expect(integrationIconSource('media_pexels')).toMatchObject({
+    expect(integrationIconSource('photo_pexels')).toMatchObject({
       kind: 'simpleicons',
       slug: 'pexels',
     });
@@ -28,7 +28,7 @@ describe('integrationIconSource', () => {
   });
 
   it('uses curated favicon hosts for services without Simple Icons entries', () => {
-    expect(integrationIconSource('weather_nws_alerts')).toEqual({
+    expect(integrationIconSource('weather_alerts_nws')).toEqual({
       kind: 'favicon',
       hostname: 'weather.gov',
     });

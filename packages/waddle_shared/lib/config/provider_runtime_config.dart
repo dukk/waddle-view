@@ -5,7 +5,7 @@ import 'package:meta/meta.dart';
 class ProviderRuntimeConfig {
   const ProviderRuntimeConfig({
     required this.providerId,
-    required this.providerType,
+    required this.integrationType,
     required this.pollSeconds,
     this.baseUrl,
     this.configJson,
@@ -13,7 +13,7 @@ class ProviderRuntimeConfig {
   });
 
   final String providerId;
-  final String providerType;
+  final String integrationType;
   final int pollSeconds;
   final String? baseUrl;
   final String? configJson;
@@ -22,7 +22,7 @@ class ProviderRuntimeConfig {
   /// Safe for logs — excludes tokens.
   String describeForLogs() {
     final buf = StringBuffer('ProviderRuntimeConfig(')
-      ..write('id=$providerId type=$providerType poll=$pollSeconds')
+      ..write('id=$providerId type=$integrationType poll=$pollSeconds')
       ..write(baseUrl == null ? '' : ' baseUrl=$baseUrl')
       ..write(configJson == null ? '' : ' config=<redacted len=${configJson!.length}>')
       ..write(' token=${accessToken == null ? 'absent' : '<redacted>'})');

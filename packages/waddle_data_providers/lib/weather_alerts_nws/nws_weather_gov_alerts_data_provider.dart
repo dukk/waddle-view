@@ -7,10 +7,11 @@ import 'package:http/http.dart' as http;
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_shared/integrations/integration_collect.dart';
 import '../weather_openweathermap/weather_locations_for_collect.dart';
 import '../weather_openweathermap/weather_provider_extra_config.dart';
 
-const String kNwsWeatherAlertsProviderId = 'weather_nws_alerts';
+const String kWeatherAlertsNwsIntegrationType = 'weather_alerts_nws';
 const String kDefaultNwsWeatherGovBaseUrl = 'https://api.weather.gov';
 
 /// NWS requires a User-Agent identifying the client; operators should set
@@ -26,19 +27,21 @@ class NwsWeatherGovAlertsDataProvider implements IDataProvider {
   final http.Client _http;
 
   @override
-  String get id => kNwsWeatherAlertsProviderId;
+  String get id => kWeatherAlertsNwsIntegrationType;
 
   @override
   Future<void> collect(DataWriteContext ctx) async {
-    final setting =
-        await (ctx.db.select(ctx.db.integrations)
-              ..where((t) => t.id.equals(kNwsWeatherAlertsProviderId)))
-            .getSingleOrNull();
-    if (setting == null || !setting.enabled) {
-      ctx.diagnostics.provider('nws_alerts: skip (disabled)');
-      return;
+    final rows = await enabledIntegrationsForType(ctx.db, id);
+    for (final setting in rows) {
+      await _collectIntegration(ctx, setting);
     }
-    final config = await ctx.resolveConfig(kNwsWeatherAlertsProviderId);
+  }
+
+  Future<void> _collectIntegration(
+    DataWriteContext ctx,
+    Integration setting,
+  ) async {
+    final config = await ctx.resolveConfig(setting.id);
     final baseUrl = (config.baseUrl != null && config.baseUrl!.trim().isNotEmpty)
         ? config.baseUrl!.trim()
         : kDefaultNwsWeatherGovBaseUrl;

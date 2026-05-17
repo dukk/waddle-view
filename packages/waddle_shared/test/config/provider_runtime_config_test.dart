@@ -6,7 +6,7 @@ void main() {
   test('describeForLogs redacts token', () {
     const c = ProviderRuntimeConfig(
       providerId: 'p',
-      providerType: 't',
+      integrationType: 't',
       pollSeconds: 1,
       accessToken: 'secret',
     );
