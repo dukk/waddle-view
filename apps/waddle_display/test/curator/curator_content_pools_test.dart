@@ -115,11 +115,11 @@ void main() {
     expect(pools['rss:f1'], ['a1']);
     expect(pools['trivia'], contains('q1'));
     expect(pools['trivia:science'], ['q1']);
-    expect(pools['pexels_photo'], unorderedEquals(['p1', 'p2']));
-    expect(pools['pexels_photo:pexels'], ['p1']);
-    expect(pools['pexels_photo:nature'], ['p2']);
-    expect(pools['pexels_video'], ['v1']);
-    expect(pools['pexels_video:pexels'], ['v1']);
+    expect(pools['photo'], unorderedEquals(['p1', 'p2']));
+    expect(pools['photo:pexels'], ['p1']);
+    expect(pools['photo:nature'], ['p2']);
+    expect(pools['video'], ['v1']);
+    expect(pools['video:pexels'], ['v1']);
 
     await db.close();
   });
@@ -281,9 +281,9 @@ void main() {
     expect(loaded.rssArticleMetrics.containsKey('ah'), isFalse);
     expect(loaded.rssArticleMetrics['ash'], isNotNull);
     expect(pools['trivia'], unorderedEquals(['qs']));
-    expect(pools['pexels_photo'], unorderedEquals(['phvis']));
+    expect(pools['photo'], unorderedEquals(['phvis']));
     expect(loaded.photoMetrics.containsKey('phhid'), isFalse);
-    expect(pools['pexels_video'], unorderedEquals(['vvis']));
+    expect(pools['video'], unorderedEquals(['vvis']));
 
     await db.close();
   });

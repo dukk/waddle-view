@@ -39,6 +39,7 @@ import DatasetIcon from '@mui/icons-material/Dataset';
 import SettingsRemoteIcon from '@mui/icons-material/SettingsRemote';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import SettingsIcon from '@mui/icons-material/Settings';
+import TuneIcon from '@mui/icons-material/Tune';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import LoginIcon from '@mui/icons-material/Login';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -60,15 +61,28 @@ function clientInitials(identifier: string): string {
   return (id[0] ?? '?').toUpperCase();
 }
 
-const nav = [
+type NavItem = {
+  to: string;
+  label: string;
+  icon: ReactNode;
+  requiresNavigationControl?: boolean;
+};
+
+const realtimeNav: NavItem[] = [
   { to: '/remote', label: 'Remote', icon: <SettingsRemoteIcon />, requiresNavigationControl: true },
   { to: '/programs', label: 'Programs', icon: <ProgramsPlayoutIcon /> },
+];
+
+const configNav: NavItem[] = [
+  { to: '/curators', label: 'Curators', icon: <TuneIcon /> },
   { to: '/screens', label: 'Screens', icon: <ScreenCarouselIcon /> },
   { to: '/ticker-tapes', label: 'Ticker Tapes', icon: <TickerTapeIcon /> },
   { to: '/overlays', label: 'Overlays', icon: <LayersIcon /> },
   { to: '/integrations', label: 'Integrations', icon: <StorageIcon /> },
   { to: '/data', label: 'Data', icon: <DatasetIcon /> },
 ];
+
+const nav = [...realtimeNav, ...configNav];
 
 export function AppShell({ children }: { children?: ReactNode }) {
   const theme = useTheme();
@@ -94,18 +108,23 @@ export function AppShell({ children }: { children?: ReactNode }) {
   const signedIn = Boolean(session && !needsLogin);
   const showUserMenu = Boolean(bffStatus?.authEnabled);
 
-  const drawerNavItems = nav.filter((item) => {
-    if ('requiresNavigationControl' in item && item.requiresNavigationControl) {
-      if (!hasPermission('navigation.control')) return false;
-    }
-    if (!isProgramsOnlyControllerUser) return true;
-    return (
-      item.to === '/programs' ||
-      item.to === '/remote' ||
-      (item.to === '/data' &&
-        (hasPermission('content.moderate') || hasPermission('content.catalog_read')))
-    );
-  });
+  const filterDrawerNav = (items: NavItem[]) =>
+    items.filter((item) => {
+      if (item.requiresNavigationControl && !hasPermission('navigation.control')) return false;
+      if (!isProgramsOnlyControllerUser) return true;
+      return (
+        item.to === '/programs' ||
+        item.to === '/remote' ||
+        (item.to === '/data' &&
+          (hasPermission('content.moderate') || hasPermission('content.catalog_read')))
+      );
+    });
+
+  const drawerRealtimeNav = filterDrawerNav(realtimeNav);
+  const drawerConfigNav = filterDrawerNav(configNav);
+  const drawerNavItems = [...drawerRealtimeNav, ...drawerConfigNav];
+  const showNavSectionDivider =
+    drawerRealtimeNav.length > 0 && drawerConfigNav.length > 0;
   const [snack, setSnack] = useState<string | null>(null);
   const [rolePreviewOpen, setRolePreviewOpen] = useState(false);
   const [rolePreviewChoice, setRolePreviewChoice] =
@@ -174,7 +193,32 @@ export function AppShell({ children }: { children?: ReactNode }) {
         <>
           <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
           <List sx={{ flex: 1, px: 1 }}>
-            {drawerNavItems.map((item) => {
+            {drawerRealtimeNav.map((item) => {
+              const selected = location.pathname.startsWith(item.to);
+              return (
+                <ListItemButton
+                  key={item.to}
+                  component={RouterLink}
+                  to={item.to}
+                  selected={selected}
+                  onClick={() => setMobileOpen(false)}
+                  sx={{
+                    borderRadius: 2,
+                    my: 0.5,
+                    '&.Mui-selected': { bgcolor: 'primary.main', color: 'primary.contrastText' },
+                  }}
+                >
+                  <ListItemIcon sx={{ color: selected ? 'inherit' : 'grey.400', minWidth: 40 }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText primary={item.label} />
+                </ListItemButton>
+              );
+            })}
+            {showNavSectionDivider && (
+              <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.12)' }} />
+            )}
+            {drawerConfigNav.map((item) => {
               const selected = location.pathname.startsWith(item.to);
               return (
                 <ListItemButton
@@ -282,7 +326,9 @@ export function AppShell({ children }: { children?: ReactNode }) {
               ? 'Controller Settings'
               : location.pathname.startsWith('/display-settings')
                 ? 'Display Settings'
-                : location.pathname.startsWith('/account')
+                : location.pathname.startsWith('/curators')
+                  ? 'Curators'
+                  : location.pathname.startsWith('/account')
                 ? 'Preferences'
                 : location.pathname.startsWith('/activity')
                   ? 'Activity Log'

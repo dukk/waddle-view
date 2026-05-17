@@ -10,7 +10,7 @@ import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import '../../../curator/screen_program_curator.dart';
 import '../../dashboard_viewport_scope.dart';
 import 'package:waddle_shared/persistence/database.dart';
-import 'pexels_slide_media.dart';
+import 'photo_slide_media.dart';
 
 class _CollageCell {
   const _CollageCell({this.row, this.bytes});
@@ -21,8 +21,8 @@ class _CollageCell {
 
 /// Multi-tile Pexels collage; slot images come from
 /// `slide.randomChoices['${spec.choiceKey}_$index']`.
-class PexelsPhotoCollageSlideWidget extends StatefulWidget {
-  const PexelsPhotoCollageSlideWidget({
+class PhotoCollageSlideWidget extends StatefulWidget {
+  const PhotoCollageSlideWidget({
     super.key,
     required this.db,
     required this.blobs,
@@ -38,12 +38,12 @@ class PexelsPhotoCollageSlideWidget extends StatefulWidget {
   final ThemeData theme;
 
   @override
-  State<PexelsPhotoCollageSlideWidget> createState() =>
-      _PexelsPhotoCollageSlideWidgetState();
+  State<PhotoCollageSlideWidget> createState() =>
+      _PhotoCollageSlideWidgetState();
 }
 
-class _PexelsPhotoCollageSlideWidgetState
-    extends State<PexelsPhotoCollageSlideWidget> {
+class _PhotoCollageSlideWidgetState
+    extends State<PhotoCollageSlideWidget> {
   String _templateId = kCollageTemplateNineSquareAsymmetric;
   List<_CollageCell> _cells = const [];
   bool _loading = true;

@@ -74,7 +74,6 @@ class _TickersUpdate extends Command<void> {
   _TickersUpdate(this.globalOptions) : super() {
     argParser
       ..addOption('name')
-      ..addOption('enabled', allowed: ['true', 'false'])
       ..addOption('ticker-type')
       ..addOption('frequency-weight')
       ..addOption('sort-order')
@@ -97,16 +96,10 @@ class _TickersUpdate extends Command<void> {
     }
     final id = rest.first;
     final o = argResults!;
-    bool? enabled;
-    final en = o['enabled'] as String?;
-    if (en != null) {
-      enabled = en == 'true';
-    }
     await withLocalBackend(globalOptions, (b) async {
       await b.updateTicker(
         id: id,
         name: o['name'] as String?,
-        enabled: enabled,
         tickerType: o['ticker-type'] as String?,
         frequencyWeight: int.tryParse(o['frequency-weight'] as String? ?? ''),
         sortOrder: int.tryParse(o['sort-order'] as String? ?? ''),

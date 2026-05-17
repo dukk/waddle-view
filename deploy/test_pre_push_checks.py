@@ -111,7 +111,7 @@ class TestPrePushChecksHelpers(unittest.TestCase):
     def test_build_steps_never_runs_npm_ci_for_controller(self):
         ppc = self.ppc
         root = Path(__file__).resolve().parent.parent
-        steps = ppc.build_steps(root, {"controller"})
+        steps = ppc.build_steps(root, {"controller"}, None)
         labels = [s.label for s in steps]
         self.assertNotIn("npm ci (waddle_controller)", labels)
         self.assertIn("npm run build (waddle_controller)", labels)

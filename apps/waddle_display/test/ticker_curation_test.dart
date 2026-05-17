@@ -56,7 +56,6 @@ void main() {
         TickerTapeForCuration(
           id: 'q',
           tickerType: 'quote',
-          enabled: true,
           frequencyWeight: 1,
           sortOrder: 0,
           configJson: '{"fallbackText":"Inspiration"}',
@@ -187,7 +186,6 @@ void main() {
         TickerTapeForCuration(
           id: 'w',
           tickerType: 'weather',
-          enabled: true,
           frequencyWeight: 1,
           sortOrder: 0,
           configJson: '{"fallbackText":"Fallback Weather"}',
@@ -219,7 +217,6 @@ void main() {
         TickerTapeForCuration(
           id: 'w',
           tickerType: 'weather',
-          enabled: true,
           frequencyWeight: 1,
           sortOrder: 0,
         ),
@@ -237,14 +234,12 @@ void main() {
       const TickerTapeForCuration(
         id: 't1',
         tickerType: 'time',
-        enabled: true,
         frequencyWeight: 1,
         sortOrder: 0,
       ),
       TickerTapeForCuration(
         id: 't2',
         tickerType: 'news',
-        enabled: true,
         frequencyWeight: 1,
         sortOrder: 10,
         configJson: jsonEncode({'fallbackText': 'KV'}),
@@ -278,7 +273,6 @@ void main() {
       const TickerTapeForCuration(
         id: 'n',
         tickerType: 'news',
-        enabled: true,
         frequencyWeight: 1,
         sortOrder: 20,
         configJson: '{"fallbackText":"N"}',
@@ -286,7 +280,6 @@ void main() {
       TickerTapeForCuration(
         id: 'q',
         tickerType: 'quote',
-        enabled: true,
         frequencyWeight: 1,
         sortOrder: 10,
         configJson: '{"fallbackText":"Q"}',
@@ -294,7 +287,6 @@ void main() {
       const TickerTapeForCuration(
         id: 't',
         tickerType: 'time',
-        enabled: true,
         frequencyWeight: 1,
         sortOrder: 0,
       ),
@@ -312,21 +304,12 @@ void main() {
     expect(items.map((e) => e.kind).toList(), ['time', 'quote', 'news']);
   });
 
-  test('buildTickerItemsForMarquee falls back to time when all definitions disabled', () {
-    final defs = [
-      const TickerTapeForCuration(
-        id: 'x',
-        tickerType: 'news',
-        enabled: false,
-        frequencyWeight: 1,
-        sortOrder: 0,
-      ),
-    ];
+  test('buildTickerItemsForMarquee falls back to time when no definitions', () {
     final items = buildTickerItemsForMarquee(
       kv: const {},
       nowLocal: DateTime(2026, 3, 4, 9, 8, 7),
       newsCandidates: const [],
-      definitions: defs,
+      definitions: const [],
     );
     expect(items.map((e) => e.kind).toList(), ['time']);
   });
@@ -336,7 +319,6 @@ void main() {
       const TickerTapeForCuration(
         id: 's',
         tickerType: 'stocks',
-        enabled: true,
         frequencyWeight: 1,
         sortOrder: 0,
       ),
@@ -382,7 +364,6 @@ void main() {
       const TickerTapeForCuration(
         id: 'n',
         tickerType: 'news',
-        enabled: true,
         frequencyWeight: 2,
         sortOrder: 0,
       ),

@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
-import 'package:meta/meta.dart';
 
 /// Application version (keep in sync with [pubspec.yaml] `version` before `+`).
 const kWaddleDisplayAppVersion = '1.0.0';
@@ -73,7 +72,7 @@ Map<String, dynamic> buildDisplayHealthJson({
     if (host.localHostname.isNotEmpty) 'hostname': host.localHostname,
     'cpu_count': host.numberOfProcessors,
     if (host.dartVersion.isNotEmpty) 'dart_version': host.dartVersion,
-    if (uptimeSeconds != null) 'uptime_seconds': uptimeSeconds,
+    'uptime_seconds': ?uptimeSeconds,
   };
 }
 

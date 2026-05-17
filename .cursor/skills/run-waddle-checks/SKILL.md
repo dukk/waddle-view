@@ -13,7 +13,33 @@ disable-model-invocation: true
 
 Mirror of [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) `analyze-test` job. CI fails on **any** `flutter analyze` issue (warnings included) and on coverage **below 85%** (the **90%** line is a target: the checker warns but does not fail between 85% and 90%), so run the same commands locally before pushing.
 
-## Commands (from repo root)
+## Tiered script (recommended)
+
+From repo root:
+
+```bash
+# Inner loop: analyze only (or --from-git / --test for scoped runs)
+python scripts/waddle_checks.py fast
+
+# Git-scoped packages + mapped tests; skips pub get/codegen when unchanged
+python scripts/waddle_checks.py fast --from-git
+
+# Single display test file
+python scripts/waddle_checks.py fast --test apps/waddle_display/test/util/html_entity_decode_test.dart
+
+# CI parity (coverage + optional controller)
+python scripts/waddle_checks.py full
+python scripts/waddle_checks.py full --controller
+```
+
+Environment overrides:
+
+- `WADDLE_TEST_CONCURRENCY` — `flutter test` / `dart test` workers (default `min(4, cpu_count)`).
+- `WADDLE_CHECKS_PARALLEL_ANALYZE=0` — disable parallel `flutter analyze` + display tests (default on).
+
+Pre-push ([`scripts/pre_push_checks.py`](../../../scripts/pre_push_checks.py)) uses the same fast optimizations (no coverage, conditional `pub get` / `build_runner`, test concurrency) but always runs the **full** Dart test suites for each workspace package in scope.
+
+## Full commands (manual CI mirror)
 
 ```bash
 flutter pub get

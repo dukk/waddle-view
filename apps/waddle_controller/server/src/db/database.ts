@@ -18,5 +18,5 @@ export function openDatabase(config: Pick<AppConfig, 'dataDir' | 'dbPath'>): App
 export function openTestDatabase(dir: string): AppDatabase {
   const dataDir = path.join(dir, 'data');
   fs.mkdirSync(dataDir, { recursive: true });
-  return openDatabase({ dataDir, dbPath: path.join(dataDir, 'controller.db') });
+  return openDatabase({ dataDir, dbPath: path.join(dataDir, 'waddle_controller.db') });
 }

@@ -42,7 +42,16 @@ void main() {
     ]);
     final custom =
         rows.singleWhere((r) => r.id == 'ticker_custom');
-    expect(custom.enabled, isFalse);
+    expect(custom.tickerType, 'custom');
+    final bootstrapMembers = await (db.select(db.curatorConfigurationMembers)
+          ..where((t) => t.configurationId.equals('bootstrap')))
+        .get();
+    expect(
+      bootstrapMembers.any(
+        (m) => m.entityType == kCuratorMemberEntityTicker && m.entityId == 'ticker_custom',
+      ),
+      isFalse,
+    );
     for (final r in rows) {
       expect(r.configJsonSchema, isNotNull);
       expect(r.exampleConfigJson, isNotNull);
@@ -80,25 +89,26 @@ void main() {
     expect(stack!.dataKey, 'news');
     expect(left.configJson.contains('"imageOnRight":true'), isFalse);
     expect(right.configJson.contains('"imageOnRight":true'), isTrue);
-    expect(columns.screenType, 'rss_article_columns');
+    expect(columns.screenType, 'news_columns');
     expect(columns.configJson.contains('"columnCount":3'), isTrue);
     expect(columns.configJson.contains('"summaryCapacityCharsPerColumn":220'), isTrue);
     expect(left.configJson.contains('"summaryCapacityChars":1200'), isTrue);
-    expect(stack.screenType, 'rss_article_stack');
+    expect(stack.screenType, 'news_stack');
     await db.close();
   });
 
-  test('ensureInitialSeed seeds curator program keys in config_key_values', () async {
+  test('ensureInitialSeed seeds default curator configurations', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
 
     await ensureInitialSeed(db);
 
+    final configs = await db.select(db.curatorConfigurations).get();
+    expect(configs.isNotEmpty, isTrue);
+    expect(configs.any((c) => c.defaultConfig), isTrue);
+
     final rows = await db.select(db.configKeyValues).get();
     final byKey = {for (final r in rows) r.key: r.value};
-    expect(byKey[kCuratorProgramDurationSecondsKvKey], '180');
-    expect(byKey[kCuratorHistoryDepthKvKey], '5');
-    expect(byKey[kRequireNewsPhotoForScreensKvKey], 'true');
     expect(byKey[kDisplayTimezoneKvKey], kDefaultDisplayTimezoneIana);
     expect(byKey.containsKey('curator.news.require_photo_for_curation'), isFalse);
     expect(byKey[kAlertSeverityIconsKvKey], kDefaultAlertSeverityIconsJson);
@@ -300,8 +310,7 @@ void main() {
           ..where((t) => t.id.equals('stock_quotes')))
         .getSingleOrNull();
     expect(screen, isNotNull);
-    expect(screen!.enabled, isFalse);
-    expect(screen.screenType, 'stock_quotes');
+    expect(screen!.screenType, 'stock_quotes');
     expect(screen.dataKey, 'stocks');
 
     final symbols = await (db.select(db.stockSymbols)
@@ -344,7 +353,7 @@ void main() {
         .toList();
     expect(birthday, isNotEmpty);
     final r = birthday.single;
-    expect(r.enabled, isFalse);
+    expect(r.label, contains('disabled'));
     expect(r.overlayType, kOverlayTypeBirthdayConfetti);
     expect(r.repeatAnnually, isTrue);
     expect(r.startMonth, 5);
@@ -364,7 +373,7 @@ void main() {
         .toList();
     expect(bounce, isNotEmpty);
     final r = bounce.single;
-    expect(r.enabled, isFalse);
+    expect(r.label, contains('disabled'));
     expect(r.overlayType, kOverlayTypeBouncingMessage);
     expect(r.repeatAnnually, isTrue);
     expect(r.startMonth, 5);

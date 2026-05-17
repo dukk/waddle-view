@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_display/curator/screen_program_curator.dart';
-import 'package:waddle_display/display/screens/pexels/pexels_video_slide_widget.dart';
+import 'package:waddle_display/display/screens/photo/video_slide_widget.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 import '../helpers/fake_blob_store.dart';
@@ -30,7 +30,7 @@ void main() {
     await db.into(db.videos).insert(_vid('a', 'c1', 'b1'));
     await db.into(db.videos).insert(_vid('b', 'c1', 'b2'));
     const spec = ParsedWidgetSpec(
-      type: 'pexels_video',
+      type: 'video',
       slot: 'main',
       config: {},
     );
@@ -38,7 +38,7 @@ void main() {
       screenId: 's',
       dwellMs: 1,
       layoutJson: '',
-      randomChoices: const {'main_pexels_video': 'b'},
+      randomChoices: const {'main_video': 'b'},
     );
     final row = await loadPexelsVideoForSlide(db, spec, slide);
     expect(row?.id, 'b');
@@ -51,7 +51,7 @@ void main() {
     await db.into(db.videos).insert(_vid('x', 'nature', 'bx'));
     await db.into(db.videos).insert(_vid('y', 'urban', 'by'));
     const spec = ParsedWidgetSpec(
-      type: 'pexels_video',
+      type: 'video',
       slot: 'main',
       config: {'categoryId': 'urban'},
     );
@@ -81,7 +81,7 @@ void main() {
     await warmDatabase(db);
     final blobs = FakeBlobStore();
     const layout = ParsedWidgetSpec(
-      type: 'pexels_video',
+      type: 'video',
       slot: 'main',
       config: {},
     );
@@ -96,7 +96,7 @@ void main() {
       MaterialApp(
         theme: ThemeData.dark(),
         home: Scaffold(
-          body: PexelsVideoSlideWidget(
+          body: VideoSlideWidget(
             db: db,
             blobs: blobs,
             slide: slide,
@@ -131,7 +131,7 @@ void main() {
           ),
         );
     const layout = ParsedWidgetSpec(
-      type: 'pexels_video',
+      type: 'video',
       slot: 'main',
       config: {'unmuted': '1', 'loop': '0'},
     );
@@ -139,14 +139,14 @@ void main() {
       screenId: 's',
       dwellMs: 5000,
       layoutJson: '',
-      randomChoices: const {'main_pexels_video': 'vx'},
+      randomChoices: const {'main_video': 'vx'},
     );
 
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData.dark(),
         home: Scaffold(
-          body: PexelsVideoSlideWidget(
+          body: VideoSlideWidget(
             db: db,
             blobs: blobs,
             slide: slide,
@@ -191,7 +191,7 @@ void main() {
           ),
         );
     const layout = ParsedWidgetSpec(
-      type: 'pexels_video',
+      type: 'video',
       slot: 'main',
       config: {},
     );
@@ -199,14 +199,14 @@ void main() {
       screenId: 's',
       dwellMs: 5000,
       layoutJson: '',
-      randomChoices: const {'main_pexels_video': 'vok'},
+      randomChoices: const {'main_video': 'vok'},
     );
 
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData.dark(),
         home: Scaffold(
-          body: PexelsVideoSlideWidget(
+          body: VideoSlideWidget(
             db: db,
             blobs: blobs,
             slide: slide,
@@ -251,7 +251,7 @@ void main() {
           ),
         );
     const layout = ParsedWidgetSpec(
-      type: 'pexels_video',
+      type: 'video',
       slot: 'main',
       config: {'unmuted': false, 'loop': true},
     );
@@ -259,14 +259,14 @@ void main() {
       screenId: 's',
       dwellMs: 5000,
       layoutJson: '',
-      randomChoices: const {'main_pexels_video': 've'},
+      randomChoices: const {'main_video': 've'},
     );
 
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData.dark(),
         home: Scaffold(
-          body: PexelsVideoSlideWidget(
+          body: VideoSlideWidget(
             db: db,
             blobs: blobs,
             slide: slide,

@@ -46,13 +46,10 @@ import { useAuth } from '@/context/AuthContext';
 import { useControllerAuth } from '@/context/ControllerAuthContext';
 import { useDisplay } from '@/context/DisplayContext';
 import { apiFetch, apiJson, ApiError } from '@/api/client';
-import { CuratorCategoriesSection } from '@/components/curator/CuratorCategoriesSection';
 import { CuratorSliderField } from '@/components/CuratorSliderField';
 import { DisplayThemePaletteSwatches } from '@/components/DisplayThemePaletteSwatches';
 import { TickerMarqueeSamplePreview } from '@/components/TickerMarqueeSamplePreview';
-import { RejectTermsSection } from '@/components/curator/RejectTermsSection';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
-import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import {
   displayTimezoneSelectOptions,
@@ -71,7 +68,7 @@ import {
   parseAdoptionAllowedRoles,
   type CuratorDisplaySettings,
 } from '@/constants/curatorDisplaySettings';
-type DisplaySettingsTabId = 'general' | 'categories' | 'reject-terms' | 'adoption';
+type DisplaySettingsTabId = 'general' | 'adoption';
 
 function clampNumber(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -96,7 +93,6 @@ export function DisplaySettingsPage() {
   const [kvWriteTick, setKvWriteTick] = useState(0);
   const canCuratorRead = hasPermission('curator.read');
   const canCuratorWrite = hasPermission('curator.write');
-  const canRejectTerms = hasPermission('reject_terms.manage');
   const showDisplaySettings = Boolean(active && canCuratorRead);
   const showAdoptionSettings = Boolean(active && canCuratorWrite);
   const showApiClientManagement = Boolean(active && hasPermission('users.manage'));
@@ -106,15 +102,9 @@ export function DisplaySettingsPage() {
     const tabs: { id: DisplaySettingsTabId; label: string }[] = [
       { id: 'general', label: 'General' },
     ];
-    if (canCuratorRead) {
-      tabs.push({ id: 'categories', label: 'Categories' });
-    }
-    if (canRejectTerms) {
-      tabs.push({ id: 'reject-terms', label: 'Rejected terms' });
-    }
     tabs.push({ id: 'adoption', label: 'Adoption' });
     return tabs;
-  }, [canCuratorRead, canRejectTerms]);
+  }, []);
 
   useEffect(() => {
     if (!visibleTabs.some((t) => t.id === tab)) {
@@ -129,9 +119,9 @@ export function DisplaySettingsPage() {
           Curator & display setup — {displayLabel}
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Theme, program duration, ticker speed, content categories, reject terms, adoption roles,
-          and REST API keys for <strong>{displayLabel}</strong>. Most curator values affect the next
-          program the display builds.
+          Theme, program duration, ticker speed, adoption roles, and REST API keys for{' '}
+          <strong>{displayLabel}</strong>. Layered curator programs and categories live under{' '}
+          <strong>Curators</strong> in the sidebar.
         </Typography>
       </Box>
       <Paper sx={{ px: 2, pt: 1 }}>
@@ -185,34 +175,6 @@ export function DisplaySettingsPage() {
               </>
             )}
           </Stack>
-        )}
-
-        {tab === 'categories' && (
-          <>
-            {!active && <NoDisplayPlaceholder />}
-            {active && !canCuratorRead && (
-              <Alert severity="warning">
-                Your adopted role does not include <strong>curator.read</strong>, so categories are
-                not available.
-              </Alert>
-            )}
-            {active && canCuratorRead && (
-              <CuratorCategoriesSection display={active} canWrite={canCuratorWrite} />
-            )}
-          </>
-        )}
-
-        {tab === 'reject-terms' && (
-          <>
-            {!active && <NoDisplayPlaceholder />}
-            {active && !canRejectTerms && (
-              <Alert severity="warning">
-                Your adopted role does not include <strong>reject_terms.manage</strong>, so rejected
-                terms are not available.
-              </Alert>
-            )}
-            {active && canRejectTerms && <RejectTermsSection display={active} />}
-          </>
         )}
 
         {tab === 'adoption' && (

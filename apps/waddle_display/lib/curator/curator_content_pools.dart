@@ -49,8 +49,8 @@ class RssArticleMetric {
 ///
 /// Pool keys: `joke`, `joke:<categoryId>`, `rss`, `rss:<feedId>`,
 /// `rss_category:<categoryId>`, `trivia`, `trivia:<categoryId>`,
-/// `pexels_photo`, `pexels_photo:<category>`,
-/// `pexels_video`, `pexels_video:<category>`.
+/// `photo`, `photo:<category>`,
+/// `video`, `video:<category>`.
 class CuratorContentPools {
   const CuratorContentPools({
     required this.pools,
@@ -163,9 +163,9 @@ Future<CuratorContentPools> loadCuratorContentPools(
         pixelHeight: meta?.pixelHeight,
       );
     }
-    out['pexels_photo'] = all;
+    out['photo'] = all;
     for (final e in byCat.entries) {
-      out['pexels_photo:${e.key}'] = List<String>.from(e.value);
+      out['photo:${e.key}'] = List<String>.from(e.value);
     }
   }
 
@@ -179,9 +179,9 @@ Future<CuratorContentPools> loadCuratorContentPools(
       all.add(v.id);
       (byCat[v.category] ??= []).add(v.id);
     }
-    out['pexels_video'] = all;
+    out['video'] = all;
     for (final e in byCat.entries) {
-      out['pexels_video:${e.key}'] = List<String>.from(e.value);
+      out['video:${e.key}'] = List<String>.from(e.value);
     }
   }
 

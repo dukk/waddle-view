@@ -1,4 +1,4 @@
-// Layout and retry helpers for PexelsVideoSlideWidget media_kit playback.
+// Layout and retry helpers for VideoSlideWidget media_kit playback.
 
 import 'dart:io';
 import 'dart:math' as math;

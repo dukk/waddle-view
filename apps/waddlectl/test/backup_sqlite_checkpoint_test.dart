@@ -9,7 +9,7 @@ void main() {
   test('walCheckpointFull leaves readable sqlite', () async {
     final tmp = Directory.systemTemp.createTempSync('waddle_bu_ck');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final dbFile = File(p.join(tmp.path, 'waddle_view.sqlite'));
+    final dbFile = File(p.join(tmp.path, 'waddle_display.db'));
     final db = AppDatabase(createQueryExecutorForFile(dbFile));
     await db.customStatement('CREATE TABLE IF NOT EXISTS t (a INTEGER);');
     await db.customStatement('INSERT INTO t VALUES (42);');

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_display/display/screens/pexels/pexels_video_playback_gate.dart';
+import 'package:waddle_display/display/screens/photo/photo_video_playback_gate.dart';
 
 void main() {
   tearDown(PexelsVideoPlaybackGate.instance.resetForTest);

@@ -9,7 +9,7 @@ import '../../../curator/screen_program_curator.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import '../../content_category_slide_header.dart';
 import '../../dashboard_viewport_scope.dart';
-import 'rss_article_load.dart';
+import 'news_load.dart';
 
 int _cfgInt(Map<String, dynamic> c, String key, int def) {
   final v = c[key];
@@ -47,7 +47,7 @@ int _columnCountFromConfig(Map<String, dynamic> c) {
 class _ColumnArticle {
   const _ColumnArticle(this.article, this.imageLoad, this.sourceLabel);
   final RssArticle? article;
-  final RssArticleImageLoad imageLoad;
+  final NewsImageLoad imageLoad;
   final String? sourceLabel;
 }
 
@@ -55,9 +55,9 @@ class _ColumnArticle {
 /// QR placed under it (start-aligned) and the summary beside the QR when
 /// [RssArticle.link] is set.
 /// Curator assigns [ResolvedSlide.randomChoices] keys
-/// `'${slot}_rss_article_columns_0'` … `_2` for three columns.
-class RssArticleColumnsSlideWidget extends StatefulWidget {
-  const RssArticleColumnsSlideWidget({
+/// `'${slot}_news_columns_0'` … `_2` for three columns.
+class NewsColumnsSlideWidget extends StatefulWidget {
+  const NewsColumnsSlideWidget({
     super.key,
     required this.db,
     required this.blobs,
@@ -75,12 +75,12 @@ class RssArticleColumnsSlideWidget extends StatefulWidget {
   final void Function(int desiredDwellMs) onReportDesiredDwell;
 
   @override
-  State<RssArticleColumnsSlideWidget> createState() =>
-      _RssArticleColumnsSlideWidgetState();
+  State<NewsColumnsSlideWidget> createState() =>
+      _NewsColumnsSlideWidgetState();
 }
 
-class _RssArticleColumnsSlideWidgetState
-    extends State<RssArticleColumnsSlideWidget> {
+class _NewsColumnsSlideWidgetState
+    extends State<NewsColumnsSlideWidget> {
   bool _loading = true;
   bool _dwellReported = false;
   late final int _nColumns;
@@ -116,7 +116,7 @@ class _RssArticleColumnsSlideWidgetState
         key,
         exclude,
       );
-      RssArticleImageLoad load = const RssArticleImageLoad.absent();
+      NewsImageLoad load = const NewsImageLoad.absent();
       if (article != null) {
         exclude.add(article.id);
         load = await loadRssArticleImage(widget.db, widget.blobs, article);
@@ -453,7 +453,7 @@ class _ArticleColumnCard extends StatelessWidget {
         child: Padding(
           padding: EdgeInsets.all(innerPad),
           child: QrImageView(
-            key: ValueKey('rss_article_columns_qr_$columnIndex'),
+            key: ValueKey('news_columns_qr_$columnIndex'),
             data: url,
             version: QrVersions.auto,
             size: qrLogical * scale,

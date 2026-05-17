@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 
 import '../../../curator/screen_program_curator.dart';
-import '../rss_article/rss_article_slide_timing.dart';
+import '../news/news_slide_timing.dart';
 import 'web_page_config.dart';
 import 'web_page_session.dart';
 

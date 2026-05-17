@@ -106,9 +106,9 @@ describe('buildSlideCardModel', () => {
         screen_id: 's2',
         dwell_ms: 1000,
         layout_json: {
-          widgets: [{ type: 'rss_article', slot: 'rss', config: { feedId: 'f1' } }],
+          widgets: [{ type: 'news', slot: 'rss', config: { feedId: 'f1' } }],
         },
-        random_choices: { rss_rss_article: 'article-9' },
+        random_choices: { rss_news: 'article-9' },
       },
       1,
     );
@@ -124,11 +124,11 @@ describe('collectSlideContentIds', () => {
         dwell_ms: 1000,
         layout_json: {
           widgets: [
-            { type: 'pexels_photo', slot: 'p', config: {} },
+            { type: 'photo', slot: 'p', config: {} },
             { type: 'joke', slot: 'j', config: {} },
           ],
         },
-        random_choices: { p_pexels_photo: 'photo1', j_joke: 'joke1', j_joke_dup: 'ignored' },
+        random_choices: { p_photo: 'photo1', j_joke: 'joke1', j_joke_dup: 'ignored' },
       },
       0,
     );
@@ -202,9 +202,9 @@ describe('paginateList', () => {
 describe('screenTypePreviewKind', () => {
   it('maps catalog screen types including photo and video', () => {
     expect(screenTypePreviewKind('joke')).toBe('joke');
-    expect(screenTypePreviewKind('pexels_photo')).toBe('photo');
-    expect(screenTypePreviewKind('pexels_video')).toBe('video');
-    expect(screenTypePreviewKind('pexels_photo_collage')).toBe('photo_collage');
+    expect(screenTypePreviewKind('photo')).toBe('photo');
+    expect(screenTypePreviewKind('video')).toBe('video');
+    expect(screenTypePreviewKind('photo_collage')).toBe('photo_collage');
     expect(screenTypePreviewKind('web_page')).toBeNull();
   });
 
@@ -245,9 +245,9 @@ describe('slideScreenPreviewKind', () => {
   it('maps non-media screen types', () => {
     expect(
       slideScreenPreviewKind(
-        buildSlideCardModel({ screen_id: 'd', screen_type: 'rss_article', layout_json: {} }, 0),
+        buildSlideCardModel({ screen_id: 'd', screen_type: 'news', layout_json: {} }, 0),
       ),
-    ).toBe('rss_article');
+    ).toBe('news');
     expect(
       slideScreenPreviewKind(
         buildSlideCardModel({ screen_id: 'e', screen_type: 'wifi', layout_json: {} }, 0),
@@ -258,12 +258,12 @@ describe('slideScreenPreviewKind', () => {
   it('returns null for photo and video screen types', () => {
     expect(
       slideScreenPreviewKind(
-        buildSlideCardModel({ screen_id: 'f', screen_type: 'pexels_photo', layout_json: {} }, 0),
+        buildSlideCardModel({ screen_id: 'f', screen_type: 'photo', layout_json: {} }, 0),
       ),
     ).toBeNull();
     expect(
       slideScreenPreviewKind(
-        buildSlideCardModel({ screen_id: 'g', screen_type: 'pexels_video', layout_json: {} }, 0),
+        buildSlideCardModel({ screen_id: 'g', screen_type: 'video', layout_json: {} }, 0),
       ),
     ).toBeNull();
   });

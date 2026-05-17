@@ -8,7 +8,7 @@ import 'package:waddlectl/global_options.dart';
 void main() {
   test('fromArgResults uses explicit database path', () {
     final tmp = Directory.systemTemp.createTempSync('waddlectl_opts');
-    final db = File(p.join(tmp.path, 'waddle_view.sqlite'));
+    final db = File(p.join(tmp.path, 'waddle_display.db'));
     db.writeAsStringSync('');
     final o = GlobalCliOptions.fromArgResults(
       databasePath: db.path,
@@ -28,6 +28,6 @@ void main() {
     }
     final f = defaultLinuxWaddleSqliteFile();
     expect(f.path, contains('com.waddleview.waddle_display'));
-    expect(f.path, endsWith('waddle_view.sqlite'));
+    expect(f.path, endsWith('waddle_display.db'));
   });
 }

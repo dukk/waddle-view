@@ -28,7 +28,6 @@ int? _readOptionalInt(QueryRow row, String key) {
 class DisplayOverlayScheduleRow {
   const DisplayOverlayScheduleRow({
     required this.id,
-    required this.enabled,
     required this.overlayType,
     required this.label,
     required this.configJson,
@@ -45,7 +44,6 @@ class DisplayOverlayScheduleRow {
   });
 
   final String id;
-  final bool enabled;
   final String overlayType;
   final String label;
   final String configJson;
@@ -63,7 +61,6 @@ class DisplayOverlayScheduleRow {
   static DisplayOverlayScheduleRow fromQueryRow(QueryRow row) {
     return DisplayOverlayScheduleRow(
       id: row.read<String>('id'),
-      enabled: row.read<int>('enabled') != 0,
       overlayType: row.read<String>('overlay_type'),
       label: row.read<String>('label'),
       configJson: _readConfigJson(row),

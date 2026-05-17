@@ -15,7 +15,6 @@ void main() {
     await upsertOverlaySchedule(
       db,
       id: 'h1',
-      enabled: true,
       overlayType: kOverlayTypeHeartsRain,
       label: 'l',
       configJson: '{"messages":["x"],"ignored":1}',
@@ -39,7 +38,6 @@ void main() {
     await upsertOverlaySchedule(
       db,
       id: 'b1',
-      enabled: true,
       overlayType: kOverlayTypeBirthdayConfetti,
       label: 'birthday',
       configJson:
@@ -64,7 +62,6 @@ void main() {
     await upsertOverlaySchedule(
       db,
       id: 'bounce1',
-      enabled: true,
       overlayType: kOverlayTypeBouncingMessage,
       label: 'bounce',
       configJson:
@@ -89,7 +86,6 @@ void main() {
       () => upsertOverlaySchedule(
         db,
         id: 'bad_bounce',
-        enabled: true,
         overlayType: kOverlayTypeBouncingMessage,
         label: 'x',
         configJson: '{"messages":["a"],"font_size":12,"nope":1}',
@@ -115,7 +111,6 @@ void main() {
     await upsertOverlaySchedule(
       db,
       id: 'laser_row',
-      enabled: false,
       overlayType: 'laser_show',
       label: 'future',
       configJson: '{"messages":["peek"],"beam":true}',
@@ -134,7 +129,6 @@ void main() {
   test('overlayScheduleToJson decodes config_json', () {
     final row = DisplayOverlayScheduleRow(
       id: 'j',
-      enabled: true,
       overlayType: kOverlayTypeBirthdayConfetti,
       label: 'lb',
       configJson: '{"shapes":["star"],"messages":["a","b"]}',

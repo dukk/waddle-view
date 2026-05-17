@@ -9,7 +9,7 @@ import '../../../curator/screen_program_curator.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import '../../content_category_slide_header.dart';
 import '../../dashboard_viewport_scope.dart';
-import 'rss_article_load.dart';
+import 'news_load.dart';
 
 double _cfgDouble(Map<String, dynamic> c, String key, double def) {
   final v = c[key];
@@ -36,9 +36,9 @@ int _cfgInt(Map<String, dynamic> c, String key, int def) {
 /// Two RSS articles stacked vertically with each row using a left image panel.
 /// Each row uses a **text column** (title,
 /// then QR under the title with the summary beside it) next to the image.
-/// Curator assigns `'${slot}_rss_article_stack_0'` and `'${slot}_rss_article_stack_1'`.
-class RssArticleStackSlideWidget extends StatefulWidget {
-  const RssArticleStackSlideWidget({
+/// Curator assigns `'${slot}_news_stack_0'` and `'${slot}_news_stack_1'`.
+class NewsStackSlideWidget extends StatefulWidget {
+  const NewsStackSlideWidget({
     super.key,
     required this.db,
     required this.blobs,
@@ -56,11 +56,11 @@ class RssArticleStackSlideWidget extends StatefulWidget {
   final void Function(int desiredDwellMs) onReportDesiredDwell;
 
   @override
-  State<RssArticleStackSlideWidget> createState() =>
-      _RssArticleStackSlideWidgetState();
+  State<NewsStackSlideWidget> createState() =>
+      _NewsStackSlideWidgetState();
 }
 
-class _RssArticleStackSlideWidgetState extends State<RssArticleStackSlideWidget> {
+class _NewsStackSlideWidgetState extends State<NewsStackSlideWidget> {
   bool _loading = true;
   bool _dwellReported = false;
   late final int _minReadMs;
@@ -70,9 +70,9 @@ class _RssArticleStackSlideWidgetState extends State<RssArticleStackSlideWidget>
   final ScrollController _scroll1 = ScrollController();
   final List<RssArticle?> _articles = <RssArticle?>[null, null];
   final List<String?> _sourceLabels = <String?>[null, null];
-  final List<RssArticleImageLoad> _imageLoads = <RssArticleImageLoad>[
-    const RssArticleImageLoad.absent(),
-    const RssArticleImageLoad.absent(),
+  final List<NewsImageLoad> _imageLoads = <NewsImageLoad>[
+    const NewsImageLoad.absent(),
+    const NewsImageLoad.absent(),
   ];
   String? _headerCategoryId;
 
@@ -101,7 +101,7 @@ class _RssArticleStackSlideWidgetState extends State<RssArticleStackSlideWidget>
   Future<void> _bootstrap() async {
     final exclude = <String>{};
     final arts = <RssArticle?>[];
-    final loads = <RssArticleImageLoad>[];
+    final loads = <NewsImageLoad>[];
     final sourceLabels = <String?>[];
     for (var i = 0; i < 2; i++) {
       final key = '${widget.spec.choiceKey}_$i';
@@ -119,7 +119,7 @@ class _RssArticleStackSlideWidgetState extends State<RssArticleStackSlideWidget>
           await loadRssArticleImage(widget.db, widget.blobs, article),
         );
       } else {
-        loads.add(const RssArticleImageLoad.absent());
+        loads.add(const NewsImageLoad.absent());
       }
       sourceLabels.add(await resolveRssArticleSourceLabel(widget.db, article));
     }
@@ -239,7 +239,7 @@ class _RssArticleStackSlideWidgetState extends State<RssArticleStackSlideWidget>
                   children: [
                     Expanded(
                       child: _RssStackArticleRow(
-                        key: const Key('rss_article_stack_row_0'),
+                        key: const Key('news_stack_row_0'),
                         constraints: constraints,
                         article: a0,
                         sourceLabel: _sourceLabels[0],
@@ -259,7 +259,7 @@ class _RssArticleStackSlideWidgetState extends State<RssArticleStackSlideWidget>
                     SizedBox(height: midGap),
                     Expanded(
                       child: _RssStackArticleRow(
-                        key: const Key('rss_article_stack_row_1'),
+                        key: const Key('news_stack_row_1'),
                         constraints: constraints,
                         article: a1,
                         sourceLabel: _sourceLabels[1],
@@ -309,7 +309,7 @@ class _RssStackArticleRow extends StatelessWidget {
   final BoxConstraints constraints;
   final RssArticle? article;
   final String? sourceLabel;
-  final RssArticleImageLoad imageLoad;
+  final NewsImageLoad imageLoad;
   final bool imageOnRight;
   final ThemeData theme;
   final double s;
@@ -347,7 +347,7 @@ class _RssStackArticleRow extends StatelessWidget {
     final gapMain = 14.0 * s;
 
     final imagePanel = SizedBox(
-      key: ValueKey('rss_article_stack_image_$stackIndex'),
+      key: ValueKey('news_stack_image_$stackIndex'),
       width: imageW,
       child: DecoratedBox(
         decoration: BoxDecoration(
@@ -521,7 +521,7 @@ class _RssStackArticleRow extends StatelessWidget {
         child: Padding(
           padding: EdgeInsets.all(innerPad),
           child: QrImageView(
-            key: ValueKey('rss_article_stack_qr_$stackIndex'),
+            key: ValueKey('news_stack_qr_$stackIndex'),
             data: u,
             version: QrVersions.auto,
             size: qrLogical * s,
@@ -547,7 +547,7 @@ class _RssStackArticleRow extends StatelessWidget {
         thumbVisibility: true,
         child: SingleChildScrollView(
           controller: summaryScroll,
-          key: ValueKey('rss_article_stack_summary_$stackIndex'),
+          key: ValueKey('news_stack_summary_$stackIndex'),
           child: Padding(
             padding: EdgeInsets.only(bottom: 4 * s),
             child: Text(

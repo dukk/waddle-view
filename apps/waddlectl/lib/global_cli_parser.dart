@@ -4,11 +4,11 @@ import 'package:args/args.dart';
 ArgParser buildGlobalArgParser() => ArgParser(allowTrailingOptions: true)
   ..addOption(
     'database',
-    help: 'Path to waddle_view.sqlite (overrides default / --support-dir).',
+    help: 'Path to waddle_display.db (overrides default / --support-dir).',
   )
   ..addOption(
     'support-dir',
-    help: 'Application support directory containing waddle_view.sqlite.',
+    help: 'Application support directory containing waddle_display.db.',
   )
   ..addOption(
     'output',

@@ -15,7 +15,7 @@ class WaddleBackupManifest {
     required this.includeSecrets,
     required this.waddlectlVersion,
     required this.createdAtUtcIso,
-    this.sqliteBasename = 'waddle_view.sqlite',
+    this.sqliteBasename = 'waddle_display.db',
   });
 
   final bool includeDatabase;
@@ -58,7 +58,7 @@ class WaddleBackupManifest {
       includeSecrets: m['include_secrets'] == true,
       waddlectlVersion: m['waddlectl_version'] as String? ?? '',
       createdAtUtcIso: m['created_at_utc'] as String? ?? '',
-      sqliteBasename: m['sqlite_basename'] as String? ?? 'waddle_view.sqlite',
+      sqliteBasename: m['sqlite_basename'] as String? ?? 'waddle_display.db',
     );
   }
 }

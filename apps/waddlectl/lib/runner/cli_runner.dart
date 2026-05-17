@@ -106,7 +106,7 @@ class WaddlectlRootRunner extends CommandRunner<void> {
         'Use `waddlectl help <group>` for nested commands (gcloud-style).',
       )
       ..writeln('Examples:')
-      ..writeln('  waddlectl --database=/path/waddle_view.sqlite config list')
+      ..writeln('  waddlectl --database=/path/waddle_display.db config list')
       ..writeln('  waddlectl help screens')
       ..writeln('  waddlectl help screens update')
       ..writeln()

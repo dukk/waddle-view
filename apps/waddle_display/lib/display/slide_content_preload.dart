@@ -3,10 +3,10 @@ import '../curator/photo_collage_curation.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import '../curator/screen_program_curator.dart';
 import 'package:waddle_shared/persistence/database.dart';
-import 'screens/pexels/pexels_slide_media.dart';
-import 'screens/pexels/pexels_video_slide_widget.dart';
-import 'screens/pexels/pexels_video_materialize.dart';
-import 'screens/rss_article/rss_article_load.dart';
+import 'screens/photo/photo_slide_media.dart';
+import 'screens/photo/video_slide_widget.dart';
+import 'screens/photo/photo_video_materialize.dart';
+import 'screens/news/news_load.dart';
 import 'screens/web_page/web_page_session.dart';
 import 'slide_content_joke_trivia.dart';
 
@@ -30,17 +30,17 @@ Future<void> _preloadWidget(
   ParsedWidgetSpec w,
 ) async {
   switch (w.type) {
-    case 'rss_article':
+    case 'news':
       await _preloadRssArticle(db, blobs, slide, w);
-    case 'rss_article_columns':
+    case 'news_columns':
       await _preloadRssColumns(db, blobs, slide, w);
-    case 'rss_article_stack':
+    case 'news_stack':
       await _preloadRssStack(db, blobs, slide, w);
-    case 'pexels_photo':
-      await _preloadPexelsPhoto(db, blobs, slide, w);
-    case 'pexels_photo_collage':
+    case 'photo':
+      await _preloadPhoto(db, blobs, slide, w);
+    case 'photo_collage':
       await _preloadPexelsCollage(db, blobs, slide, w);
-    case 'pexels_video':
+    case 'video':
       await _preloadPexelsVideo(db, blobs, slide, w);
     case 'joke':
       await loadJokeForSlide(db, w, slide);
@@ -135,13 +135,13 @@ Future<void> _preloadRssStack(
   await resolveRssDisplayCategoryId(db, slide, firstForCategory);
 }
 
-Future<void> _preloadPexelsPhoto(
+Future<void> _preloadPhoto(
   AppDatabase db,
   BlobStore blobs,
   ResolvedSlide slide,
   ParsedWidgetSpec w,
 ) async {
-  final row = await loadPexelsPhotoForSlide(db, w, slide);
+  final row = await loadPhotoForSlide(db, w, slide);
   if (row != null) {
     await loadPhotoBlobBytes(db, blobs, row);
   }

@@ -9,8 +9,8 @@ import '../../../curator/screen_program_curator.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import '../../content_category_slide_header.dart';
 import '../../dashboard_viewport_scope.dart';
-import 'rss_article_load.dart';
-import 'rss_article_slide_timing.dart';
+import 'news_load.dart';
+import 'news_slide_timing.dart';
 
 int _cfgInt(Map<String, dynamic> c, String key, int def) {
   final v = c[key];
@@ -56,8 +56,8 @@ bool _cfgBool(Map<String, dynamic> c, String key, bool def) {
 
 /// Random RSS article: image beside title + summary; long summaries scroll
 /// after a delay. Calls [onReportDesiredDwell] once metrics are known.
-class RssArticleSlideWidget extends StatefulWidget {
-  const RssArticleSlideWidget({
+class NewsSlideWidget extends StatefulWidget {
+  const NewsSlideWidget({
     super.key,
     required this.db,
     required this.blobs,
@@ -75,14 +75,14 @@ class RssArticleSlideWidget extends StatefulWidget {
   final void Function(int desiredDwellMs) onReportDesiredDwell;
 
   @override
-  State<RssArticleSlideWidget> createState() => _RssArticleSlideWidgetState();
+  State<NewsSlideWidget> createState() => _NewsSlideWidgetState();
 }
 
-class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
+class _NewsSlideWidgetState extends State<NewsSlideWidget> {
   static const _scrollableEpsilon = 8.0;
 
   RssArticle? _article;
-  RssArticleImageLoad _imageLoad = const RssArticleImageLoad.absent();
+  NewsImageLoad _imageLoad = const NewsImageLoad.absent();
   bool _loading = true;
   final ScrollController _scroll = ScrollController();
   Timer? _scrollDelayTimer;
@@ -128,7 +128,7 @@ class _RssArticleSlideWidgetState extends State<RssArticleSlideWidget> {
       widget.spec.choiceKey,
       const {},
     );
-    RssArticleImageLoad load = const RssArticleImageLoad.absent();
+    NewsImageLoad load = const NewsImageLoad.absent();
     if (article != null) {
       load = await loadRssArticleImage(widget.db, widget.blobs, article);
     }

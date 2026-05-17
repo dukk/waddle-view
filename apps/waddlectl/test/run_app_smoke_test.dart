@@ -24,7 +24,7 @@ void main() {
         // Best-effort; temp dir may be locked or already removed.
       }
     });
-    final dbPath = p.join(tmp.path, 'waddle_view.sqlite');
+    final dbPath = p.join(tmp.path, 'waddle_display.db');
     File(dbPath).writeAsStringSync('');
 
     expect(
@@ -65,7 +65,7 @@ void main() {
         // Best-effort cleanup; locks are acceptable.
       }
     });
-    final dbPath = p.join(tmp.path, 'waddle_view.sqlite');
+    final dbPath = p.join(tmp.path, 'waddle_display.db');
     File(dbPath).writeAsStringSync('');
 
     expect(

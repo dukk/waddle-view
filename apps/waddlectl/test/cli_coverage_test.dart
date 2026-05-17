@@ -10,7 +10,7 @@ void main() {
 
   setUp(() {
     final tmp = Directory.systemTemp.createTempSync('waddlectl_cov');
-    dbPath = p.join(tmp.path, 'waddle_view.sqlite');
+    dbPath = p.join(tmp.path, 'waddle_display.db');
     File(dbPath).writeAsStringSync('');
   });
 

@@ -15,7 +15,7 @@ void main() {
         // Best-effort; temp dir may be locked or already removed.
       }
     });
-    final dbFile = File(p.join(tmp.path, 'waddle_view.sqlite'));
+    final dbFile = File(p.join(tmp.path, 'waddle_display.db'));
     final db = AppDatabase(createQueryExecutorForFile(dbFile));
     final backend = LocalDriftBackend(db);
     addTearDown(() async {
@@ -39,7 +39,7 @@ void main() {
         // Best-effort cleanup of locked temp dirs.
       }
     });
-    final dbFile = File(p.join(tmp.path, 'waddle_view.sqlite'));
+    final dbFile = File(p.join(tmp.path, 'waddle_display.db'));
     final db = AppDatabase(createQueryExecutorForFile(dbFile));
     final backend = LocalDriftBackend(db);
     addTearDown(() async {
@@ -121,7 +121,7 @@ void main() {
         // Best-effort; temp dir may be locked or already removed.
       }
     });
-    final dbFile = File(p.join(tmp.path, 'waddle_view.sqlite'));
+    final dbFile = File(p.join(tmp.path, 'waddle_display.db'));
     final db = AppDatabase(createQueryExecutorForFile(dbFile));
     final backend = LocalDriftBackend(db);
     addTearDown(() async {
@@ -141,10 +141,12 @@ void main() {
     await backend.updateScreen(
       id: 'waddlectl_test_screen',
       name: 'Renamed',
-      dwellSeconds: 12,
+      minDwellSeconds: 10,
+      maxDwellSeconds: 14,
     );
     final row = await backend.describeScreen('waddlectl_test_screen');
     expect(row!['name'], 'Renamed');
-    expect(row['dwell_seconds'], 12);
+    expect(row['min_dwell_seconds'], 10);
+    expect(row['max_dwell_seconds'], 14);
   });
 }

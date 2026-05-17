@@ -114,20 +114,14 @@ void main() {
 }
 
 Future<void> _seedTwoSlideProgram(AppDatabase db) async {
-  await db
-      .into(db.configKeyValues)
-      .insertOnConflictUpdate(
-        const ConfigKeyValuesCompanion(
-          key: Value(kCuratorProgramDurationSecondsKvKey),
-          value: Value('2'),
-        ),
-      );
-  await db
-      .into(db.configKeyValues)
-      .insertOnConflictUpdate(
-        const ConfigKeyValuesCompanion(
-          key: Value(kCuratorHistoryDepthKvKey),
-          value: Value('4'),
+  await db.into(db.curatorConfigurations).insert(
+        CuratorConfigurationsCompanion.insert(
+          id: 'test_nav',
+          name: 'Test nav',
+          layer: kCuratorLayerBase,
+          programDurationSeconds: const Value(2),
+          historyDepth: const Value(4),
+          defaultConfig: const Value(true),
         ),
       );
 
@@ -139,7 +133,8 @@ Future<void> _seedTwoSlideProgram(AppDatabase db) async {
           name: 'Alpha',
           screenType: 'static_text',
           configJson: const Value('{"text":"Alpha"}'),
-          dwellSeconds: const Value(1),
+          minDwellSeconds: const Value(1),
+          maxDwellSeconds: const Value(1),
           frequencyWeight: const Value(100),
           minGapBetweenShowsSeconds: const Value(0),
           minPlacementsPerProgram: const Value(1),
@@ -154,13 +149,24 @@ Future<void> _seedTwoSlideProgram(AppDatabase db) async {
           name: 'Beta',
           screenType: 'static_text',
           configJson: const Value('{"text":"Beta"}'),
-          dwellSeconds: const Value(1),
+          minDwellSeconds: const Value(1),
+          maxDwellSeconds: const Value(1),
           frequencyWeight: const Value(100),
           minGapBetweenShowsSeconds: const Value(0),
           minPlacementsPerProgram: const Value(1),
           maxPlacementsPerProgram: const Value(1),
         ),
       );
+
+  for (final screenId in ['alpha_screen', 'beta_screen']) {
+    await db.into(db.curatorConfigurationMembers).insert(
+          CuratorConfigurationMembersCompanion.insert(
+            configurationId: 'test_nav',
+            entityType: kCuratorMemberEntityScreen,
+            entityId: screenId,
+          ),
+        );
+  }
 }
 
 Future<void> _pumpRotator(WidgetTester tester, AppDatabase db) async {

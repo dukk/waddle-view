@@ -24,8 +24,8 @@ abstract class WaddleAdminBackend {
   Future<void> updateScreen({
     required String id,
     String? name,
-    bool? enabled,
-    int? dwellSeconds,
+    int? minDwellSeconds,
+    int? maxDwellSeconds,
     int? frequencyWeight,
     int? minGapBetweenShowsSeconds,
     String? configJson,
@@ -46,7 +46,6 @@ abstract class WaddleAdminBackend {
   Future<void> updateTicker({
     required String id,
     String? name,
-    bool? enabled,
     String? tickerType,
     int? frequencyWeight,
     int? sortOrder,
@@ -145,10 +144,10 @@ class LocalDriftBackend implements WaddleAdminBackend {
     'id': row.id,
     'name': row.name,
     'description': row.description,
-    'enabled': row.enabled,
     'screen_type': row.screenType,
     'config_json': row.configJson,
-    'dwell_seconds': row.dwellSeconds,
+    'min_dwell_seconds': row.minDwellSeconds,
+    'max_dwell_seconds': row.maxDwellSeconds,
     'frequency_weight': row.frequencyWeight,
     'min_gap_between_shows_seconds': row.minGapBetweenShowsSeconds,
     'min_placements_per_program': row.minPlacementsPerProgram,
@@ -168,8 +167,8 @@ class LocalDriftBackend implements WaddleAdminBackend {
   Future<void> updateScreen({
     required String id,
     String? name,
-    bool? enabled,
-    int? dwellSeconds,
+    int? minDwellSeconds,
+    int? maxDwellSeconds,
     int? frequencyWeight,
     int? minGapBetweenShowsSeconds,
     String? configJson,
@@ -185,10 +184,12 @@ class LocalDriftBackend implements WaddleAdminBackend {
     )..where((t) => t.id.equals(id))).write(
       ScreensCompanion(
         name: name == null ? const Value.absent() : Value(name),
-        enabled: enabled == null ? const Value.absent() : Value(enabled),
-        dwellSeconds: dwellSeconds == null
+        minDwellSeconds: minDwellSeconds == null
             ? const Value.absent()
-            : Value(dwellSeconds),
+            : Value(minDwellSeconds),
+        maxDwellSeconds: maxDwellSeconds == null
+            ? const Value.absent()
+            : Value(maxDwellSeconds),
         frequencyWeight: frequencyWeight == null
             ? const Value.absent()
             : Value(frequencyWeight),
@@ -267,7 +268,6 @@ class LocalDriftBackend implements WaddleAdminBackend {
     'id': row.id,
     'name': row.name,
     'description': row.description,
-    'enabled': row.enabled,
     'ticker_type': row.tickerType,
     'frequency_weight': row.frequencyWeight,
     'sort_order': row.sortOrder,
@@ -288,7 +288,6 @@ class LocalDriftBackend implements WaddleAdminBackend {
   Future<void> updateTicker({
     required String id,
     String? name,
-    bool? enabled,
     String? tickerType,
     int? frequencyWeight,
     int? sortOrder,
@@ -305,7 +304,6 @@ class LocalDriftBackend implements WaddleAdminBackend {
     )..where((t) => t.id.equals(id))).write(
       TickerTapesCompanion(
         name: name == null ? const Value.absent() : Value(name),
-        enabled: enabled == null ? const Value.absent() : Value(enabled),
         tickerType: tickerType == null
             ? const Value.absent()
             : Value(tickerType),
@@ -320,22 +318,31 @@ class LocalDriftBackend implements WaddleAdminBackend {
     );
   }
 
+  Future<CuratorConfiguration?> _defaultCuratorConfiguration() async {
+    final defaults = await (_db.select(_db.curatorConfigurations)
+          ..where((t) => t.defaultConfig.equals(true)))
+        .get();
+    if (defaults.isNotEmpty) {
+      return defaults.first;
+    }
+    return (_db.select(_db.curatorConfigurations)..limit(1))
+        .getSingleOrNull();
+  }
+
   @override
   Future<Map<String, Object?>> describeCuratorProgram() async {
     Future<String> gv(String k, String d) async => (await getConfig(k)) ?? d;
+    final config = await _defaultCuratorConfiguration();
     return {
-      'program_duration_seconds': await gv(
-        kCuratorProgramDurationSecondsKvKey,
-        '180',
-      ),
-      'history_depth': await gv(kCuratorHistoryDepthKvKey, '5'),
+      if (config != null) 'default_configuration_id': config.id,
+      'program_duration_seconds': config?.programDurationSeconds ?? 180,
+      'history_depth': config?.historyDepth ?? 5,
+      'require_news_photo_for_screens':
+          config?.requireNewsPhotoForScreens ?? true,
+      'theme_id_override': config?.themeIdOverride,
       'ticker_pixels_per_second': await gv(
         'curator.ticker.newsPixelsPerSecond',
         '',
-      ),
-      'require_news_photo_for_screens': await gv(
-        kRequireNewsPhotoForScreensKvKey,
-        'false',
       ),
       'display_theme_id': await gv(
         kDisplayThemeIdKvKey,
@@ -362,26 +369,32 @@ class LocalDriftBackend implements WaddleAdminBackend {
     String? displayTextScaleScreen,
     String? displayTextScaleTicker,
   }) async {
-    if (programDurationSeconds != null) {
-      await setConfig(
-        kCuratorProgramDurationSecondsKvKey,
-        '$programDurationSeconds',
+    final config = await _defaultCuratorConfiguration();
+    if (config != null &&
+        (programDurationSeconds != null ||
+            historyDepth != null ||
+            requireNewsPhotoForScreens != null)) {
+      await (_db.update(_db.curatorConfigurations)
+            ..where((t) => t.id.equals(config.id)))
+          .write(
+        CuratorConfigurationsCompanion(
+          programDurationSeconds: programDurationSeconds == null
+              ? const Value.absent()
+              : Value(programDurationSeconds),
+          historyDepth: historyDepth == null
+              ? const Value.absent()
+              : Value(historyDepth),
+          requireNewsPhotoForScreens: requireNewsPhotoForScreens == null
+              ? const Value.absent()
+              : Value(requireNewsPhotoForScreens),
+        ),
       );
-    }
-    if (historyDepth != null) {
-      await setConfig(kCuratorHistoryDepthKvKey, '$historyDepth');
     }
     if (tickerNewsPixelsPerSecond != null) {
       final t = tickerNewsPixelsPerSecond.trim();
       if (t.isNotEmpty) {
         await setConfig('curator.ticker.newsPixelsPerSecond', t);
       }
-    }
-    if (requireNewsPhotoForScreens != null) {
-      await setConfig(
-        kRequireNewsPhotoForScreensKvKey,
-        requireNewsPhotoForScreens ? 'true' : 'false',
-      );
     }
     if (displayThemeId != null) {
       await setConfig(

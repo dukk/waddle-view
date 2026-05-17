@@ -19,25 +19,25 @@ class DataKeyProgramLimit {
 class ScreenCandidate {
   const ScreenCandidate({
     required this.id,
-    required this.dwellMs,
+    required this.minDwellMs,
+    required this.maxDwellMs,
     required this.frequencyWeight,
     required this.minGapBetweenShowsMs,
     this.minPlacementsPerProgram = 0,
     this.maxPlacementsPerProgram,
     this.dataKey = '',
     required this.layoutJson,
-    required this.enabled,
   });
 
   final String id;
-  final int dwellMs;
+  final int minDwellMs;
+  final int maxDwellMs;
   final int frequencyWeight;
   final int minGapBetweenShowsMs;
   final int minPlacementsPerProgram;
   final int? maxPlacementsPerProgram;
   final String dataKey;
   final String layoutJson;
-  final bool enabled;
 }
 
 /// One slide in a curated program (in order).
@@ -112,9 +112,13 @@ class ScreenProgramCurator {
     Map<String, RssArticleMetric> rssArticleMetrics = const {},
     Map<String, PhotoCuratorMetric> photoMetrics = const {},
     bool requirePhotoForRssScreens = true,
+    Map<String, int> lastShownAtMsByScreenId = const {},
+    int nowMs = 0,
   }) {
-    final enabled = screens.where((s) => s.enabled && s.dwellMs > 0).toList();
-    if (enabled.isEmpty || programDurationMs <= 0) {
+    final eligibleScreens = screens
+        .where((s) => s.minDwellMs > 0 && s.maxDwellMs > 0)
+        .toList();
+    if (eligibleScreens.isEmpty || programDurationMs <= 0) {
       return const [];
     }
 
@@ -128,14 +132,20 @@ class ScreenProgramCurator {
 
     while (remaining > 0) {
       final eligible =
-          enabled
+          eligibleScreens
               .where(
-                (s) => _canPlaceScreen(
-                  s,
-                  countByScreenId,
-                  countByDataKey,
-                  dataKeyLimits,
-                ),
+                (s) =>
+                    _canPlaceScreen(
+                      s,
+                      countByScreenId,
+                      countByDataKey,
+                      dataKeyLimits,
+                    ) &&
+                    _respectsMinGap(
+                      s,
+                      lastShownAtMsByScreenId: lastShownAtMsByScreenId,
+                      nowMs: nowMs,
+                    ),
               )
               .toList();
       if (eligible.isEmpty) {
@@ -298,7 +308,11 @@ class ScreenProgramCurator {
         break;
       }
 
-      final dwell = min(pick.dwellMs, remaining);
+      final pickDwell = pick.maxDwellMs >= pick.minDwellMs
+          ? pick.minDwellMs +
+              random.nextInt(pick.maxDwellMs - pick.minDwellMs + 1)
+          : pick.minDwellMs;
+      final dwell = min(pickDwell, remaining);
       out.add(
         ResolvedSlide(
           screenId: pick.id,
@@ -360,14 +374,14 @@ class ScreenProgramCurator {
       if (w.rssSummarySlotCapacities.isEmpty) {
         continue;
       }
-      if (w.type == 'rss_article_columns') {
+      if (w.type == 'news_columns') {
         final n = w.rssSummarySlotCapacities.length;
         for (var i = 0; i < n; i++) {
           if ((choices['${w.choiceKey}_$i'] ?? '').isEmpty) {
             return false;
           }
         }
-      } else if (w.type == 'rss_article_stack') {
+      } else if (w.type == 'news_stack') {
         for (var i = 0; i < 2; i++) {
           if ((choices['${w.choiceKey}_$i'] ?? '').isEmpty) {
             return false;
@@ -538,7 +552,7 @@ class ScreenProgramCurator {
         final len = rssArticleMetrics[id]?.summaryLength ?? 0;
         totalCost += _slotCost(len, cap);
 
-        if (w.type == 'rss_article_columns' || w.type == 'rss_article_stack') {
+        if (w.type == 'news_columns' || w.type == 'news_stack') {
           choices['${w.choiceKey}_$i'] = id;
         } else {
           choices[w.choiceKey] = id;
@@ -547,7 +561,7 @@ class ScreenProgramCurator {
         final hasImage = rssArticleMetrics[id]?.hasImage ?? false;
         if (!hasImage) {
           final modeKey =
-              (w.type == 'rss_article_columns' || w.type == 'rss_article_stack')
+              (w.type == 'news_columns' || w.type == 'news_stack')
               ? '${w.choiceKey}_${i}_imageMode'
               : '${w.choiceKey}_imageMode';
           choices[modeKey] = 'icon';
@@ -633,7 +647,7 @@ class ScreenProgramCurator {
       final n = w.rssSummarySlotCapacities.length;
       for (var i = 0; i < n; i++) {
         final key =
-            (w.type == 'rss_article_columns' || w.type == 'rss_article_stack')
+            (w.type == 'news_columns' || w.type == 'news_stack')
             ? '${w.choiceKey}_$i'
             : w.choiceKey;
         final id = choices[key];
@@ -850,6 +864,21 @@ class ScreenProgramCurator {
     return value;
   }
 
+  static bool _respectsMinGap(
+    ScreenCandidate s, {
+    required Map<String, int> lastShownAtMsByScreenId,
+    required int nowMs,
+  }) {
+    if (s.minGapBetweenShowsMs <= 0 || nowMs <= 0) {
+      return true;
+    }
+    final last = lastShownAtMsByScreenId[s.id];
+    if (last == null) {
+      return true;
+    }
+    return nowMs - last >= s.minGapBetweenShowsMs;
+  }
+
   static int? _normalizedScreenMax(ScreenCandidate s) {
     final min = _normalizedMin(s.minPlacementsPerProgram);
     final max = _normalizedMax(s.maxPlacementsPerProgram);
@@ -860,11 +889,11 @@ class ScreenProgramCurator {
   }
 
   static ScreenCandidate? _weightedPick(
-    List<ScreenCandidate> enabled,
+    List<ScreenCandidate> pool,
     List<String> historyWindow,
     Random random,
   ) {
-    final weights = enabled
+    final weights = pool
         .map((c) => _effectiveWeight(c, historyWindow))
         .toList();
     final total = weights.fold<double>(0, (a, b) => a + b);
@@ -872,13 +901,13 @@ class ScreenProgramCurator {
       return null;
     }
     var t = random.nextDouble() * total;
-    for (var i = 0; i < enabled.length; i++) {
+    for (var i = 0; i < pool.length; i++) {
       t -= weights[i];
       if (t <= 0) {
-        return enabled[i];
+        return pool[i];
       }
     }
-    return enabled.last;
+    return pool.last;
   }
 
   static _PickOption? _weightedPickOption(
@@ -946,9 +975,9 @@ class ScreenProgramCurator {
       case 'joke':
         final c = w.config['categoryId'] as String?;
         return (c != null && c.isNotEmpty) ? 'joke:$c' : 'joke';
-      case 'rss_article':
-      case 'rss_article_columns':
-      case 'rss_article_stack':
+      case 'news':
+      case 'news_columns':
+      case 'news_stack':
         final f = w.config['feedId'] as String?;
         if (f != null && f.isNotEmpty) {
           return 'rss:$f';
@@ -961,15 +990,15 @@ class ScreenProgramCurator {
       case 'trivia':
         final c = w.config['categoryId'] as String?;
         return (c != null && c.isNotEmpty) ? 'trivia:$c' : 'trivia';
-      case 'pexels_photo':
+      case 'photo':
         final c = w.config['categoryId'] as String?;
-        return (c != null && c.isNotEmpty) ? 'pexels_photo:$c' : 'pexels_photo';
-      case 'pexels_photo_collage':
+        return (c != null && c.isNotEmpty) ? 'photo:$c' : 'photo';
+      case 'photo_collage':
         final c2 = w.config['categoryId'] as String?;
-        return (c2 != null && c2.isNotEmpty) ? 'pexels_photo:$c2' : 'pexels_photo';
-      case 'pexels_video':
+        return (c2 != null && c2.isNotEmpty) ? 'photo:$c2' : 'photo';
+      case 'video':
         final c = w.config['categoryId'] as String?;
-        return (c != null && c.isNotEmpty) ? 'pexels_video:$c' : 'pexels_video';
+        return (c != null && c.isNotEmpty) ? 'video:$c' : 'video';
       default:
         return null;
     }
@@ -996,7 +1025,7 @@ class ScreenProgramCurator {
     final specs = parseScreenLayoutWidgets(layoutJson);
     final out = <String, String>{};
     for (final w in specs) {
-      if (w.type == 'pexels_photo_collage') {
+      if (w.type == 'photo_collage') {
         final template =
             (w.config['template'] as String?)?.trim() ??
             kCollageTemplateNineSquareAsymmetric;
@@ -1038,7 +1067,7 @@ class ScreenProgramCurator {
         }
         continue;
       }
-      if (w.type == 'rss_article_columns') {
+      if (w.type == 'news_columns') {
         final poolName = _poolNameForWidget(w);
         if (poolName == null || poolName.isEmpty) {
           continue;
@@ -1056,7 +1085,7 @@ class ScreenProgramCurator {
         }
         continue;
       }
-      if (w.type == 'rss_article_stack') {
+      if (w.type == 'news_stack') {
         final poolName = _poolNameForWidget(w);
         if (poolName == null || poolName.isEmpty) {
           continue;

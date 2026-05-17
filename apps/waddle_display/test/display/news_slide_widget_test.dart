@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_display/curator/screen_program_curator.dart';
-import 'package:waddle_display/display/screens/rss_article/rss_article_slide_timing.dart';
-import 'package:waddle_display/display/screens/rss_article/rss_article_slide_widget.dart';
+import 'package:waddle_display/display/screens/news/news_slide_timing.dart';
+import 'package:waddle_display/display/screens/news/news_slide_widget.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 import '../helpers/fake_blob_store.dart';
@@ -79,7 +79,7 @@ void main() {
       layoutJson: '{}',
     );
     const spec = ParsedWidgetSpec(
-      type: 'rss_article',
+      type: 'news',
       slot: 'main',
       config: {},
     );
@@ -87,7 +87,7 @@ void main() {
       MaterialApp(
         theme: ThemeData.light(),
         home: Scaffold(
-          body: RssArticleSlideWidget(
+          body: NewsSlideWidget(
             db: db,
             blobs: FakeBlobStore(),
             slide: slide,
@@ -149,10 +149,10 @@ void main() {
       screenId: 'news',
       dwellMs: 5000,
       layoutJson: '{}',
-      randomChoices: const {'main_rss_article': 'article_curated'},
+      randomChoices: const {'main_news': 'article_curated'},
     );
     const spec = ParsedWidgetSpec(
-      type: 'rss_article',
+      type: 'news',
       slot: 'main',
       config: {},
     );
@@ -160,7 +160,7 @@ void main() {
       MaterialApp(
         theme: ThemeData.light(),
         home: Scaffold(
-          body: RssArticleSlideWidget(
+          body: NewsSlideWidget(
             db: db,
             blobs: blobs,
             slide: slide,
@@ -207,7 +207,7 @@ void main() {
       layoutJson: '{}',
     );
     const spec = ParsedWidgetSpec(
-      type: 'rss_article',
+      type: 'news',
       slot: 'main',
       config: {'imageOnRight': true},
     );
@@ -219,7 +219,7 @@ void main() {
             child: SizedBox(
               width: 800,
               height: 400,
-              child: RssArticleSlideWidget(
+              child: NewsSlideWidget(
                 db: db,
                 blobs: blobs,
                 slide: slide,
@@ -254,7 +254,7 @@ void main() {
       layoutJson: '{}',
     );
     const spec = ParsedWidgetSpec(
-      type: 'rss_article',
+      type: 'news',
       slot: 'main',
       config: {'minReadMs': 9000},
     );
@@ -262,7 +262,7 @@ void main() {
       MaterialApp(
         theme: ThemeData.light(),
         home: Scaffold(
-          body: RssArticleSlideWidget(
+          body: NewsSlideWidget(
             db: db,
             blobs: FakeBlobStore(),
             slide: slide,
@@ -301,7 +301,7 @@ void main() {
       layoutJson: '{}',
     );
     const spec = ParsedWidgetSpec(
-      type: 'rss_article',
+      type: 'news',
       slot: 'main',
       config: {'minReadMs': 3000},
     );
@@ -309,7 +309,7 @@ void main() {
       MaterialApp(
         theme: ThemeData.light(),
         home: Scaffold(
-          body: RssArticleSlideWidget(
+          body: NewsSlideWidget(
             db: db,
             blobs: blobs,
             slide: slide,
@@ -351,7 +351,7 @@ void main() {
       layoutJson: '{}',
     );
     const spec = ParsedWidgetSpec(
-      type: 'rss_article',
+      type: 'news',
       slot: 'main',
       config: {'minReadMs': 3000},
     );
@@ -359,7 +359,7 @@ void main() {
       MaterialApp(
         theme: ThemeData.light(),
         home: Scaffold(
-          body: RssArticleSlideWidget(
+          body: NewsSlideWidget(
             db: db,
             blobs: FailingReadBlobStore(),
             slide: slide,
@@ -440,7 +440,7 @@ void main() {
       layoutJson: '{}',
     );
     const spec = ParsedWidgetSpec(
-      type: 'rss_article',
+      type: 'news',
       slot: 'main',
       config: {'minReadMs': 3000},
     );
@@ -449,7 +449,7 @@ void main() {
       MaterialApp(
         theme: ThemeData.light(),
         home: Scaffold(
-          body: RssArticleSlideWidget(
+          body: NewsSlideWidget(
             db: db,
             blobs: blobs,
             slide: slide,
@@ -486,7 +486,7 @@ void main() {
       layoutJson: '{}',
     );
     const spec = ParsedWidgetSpec(
-      type: 'rss_article',
+      type: 'news',
       slot: 'main',
       config: {
         'scrollDelayMs': 80,
@@ -500,7 +500,7 @@ void main() {
       MaterialApp(
         theme: ThemeData.light(),
         home: Scaffold(
-          body: RssArticleSlideWidget(
+          body: NewsSlideWidget(
             db: db,
             blobs: FakeBlobStore(),
             slide: slide,
@@ -569,7 +569,7 @@ void main() {
       layoutJson: '{}',
     );
     const spec = ParsedWidgetSpec(
-      type: 'rss_article',
+      type: 'news',
       slot: 'main',
       config: {},
     );
@@ -577,7 +577,7 @@ void main() {
       MaterialApp(
         theme: ThemeData.light(),
         home: Scaffold(
-          body: RssArticleSlideWidget(
+          body: NewsSlideWidget(
             db: db,
             blobs: FakeBlobStore(),
             slide: slide,
@@ -624,7 +624,7 @@ void main() {
       layoutJson: '{}',
     );
     const spec = ParsedWidgetSpec(
-      type: 'rss_article',
+      type: 'news',
       slot: 'main',
       config: {},
     );
@@ -632,7 +632,7 @@ void main() {
       MaterialApp(
         theme: ThemeData.light(),
         home: Scaffold(
-          body: RssArticleSlideWidget(
+          body: NewsSlideWidget(
             db: db,
             blobs: FakeBlobStore(),
             slide: slide,
@@ -682,7 +682,7 @@ void main() {
       layoutJson: '{}',
     );
     const spec = ParsedWidgetSpec(
-      type: 'rss_article',
+      type: 'news',
       slot: 'main',
       config: {},
     );
@@ -690,7 +690,7 @@ void main() {
       MaterialApp(
         theme: ThemeData.light(),
         home: Scaffold(
-          body: RssArticleSlideWidget(
+          body: NewsSlideWidget(
             db: db,
             blobs: FakeBlobStore(),
             slide: slide,

@@ -25,7 +25,7 @@ void main() {
         '{"waddle_backup_version":99,"include_database":true,'
         '"include_blobs":true,"include_secrets":true,'
         '"waddlectl_version":"1","created_at_utc":"",'
-        '"sqlite_basename":"waddle_view.sqlite"}',
+        '"sqlite_basename":"waddle_display.db"}',
       ),
       throwsA(isA<FormatException>()),
     );

@@ -16,6 +16,7 @@ import { IntegrationsPage } from '@/pages/IntegrationsPage';
 import { DataPage } from '@/pages/DataPage';
 import { ActivityPage } from '@/pages/ActivityPage';
 import { DisplaySettingsPage } from '@/pages/DisplaySettingsPage';
+import { CuratorsPage } from '@/pages/CuratorsPage';
 import { ControllerSettingsPage } from '@/pages/ControllerSettingsPage';
 import { AccountPage } from '@/pages/AccountPage';
 import { ViewerJoinPage } from '@/pages/ViewerJoinPage';
@@ -43,7 +44,7 @@ function MainAppRoutes() {
           <Route path="/" element={<AppShell />}>
             <Route element={<ProgramsOnlyOutlet />}>
               <Route index element={<DefaultHomeRedirect />} />
-              <Route path="curators" element={<Navigate to="/display-settings" replace />} />
+              <Route path="curators" element={<CuratorsPage />} />
               <Route path="programs" element={<ProgramsPage />} />
               <Route path="remote" element={<RemoteControlPage />} />
               <Route path="screens" element={<ScreensPage />} />

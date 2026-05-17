@@ -414,7 +414,7 @@ function WidgetDetailBlock({
 }) {
   const choiceKey = `${slot}_${type}`;
 
-  if (type === 'rss_article') {
+  if (type === 'news') {
     const id = model.randomChoices[choiceKey];
     const row = id ? rssById[id] : undefined;
     if (!row) return <Typography variant="body2">Curated article id not resolved yet.</Typography>;
@@ -437,7 +437,7 @@ function WidgetDetailBlock({
     );
   }
 
-  if (type === 'rss_article_columns' || type === 'rss_article_stack') {
+  if (type === 'news_columns' || type === 'news_stack') {
     const slots: { label: string; id: string }[] = [];
     for (let i = 0; i < 12; i++) {
       const id = model.randomChoices[`${choiceKey}_${i}`];
@@ -487,7 +487,7 @@ function WidgetDetailBlock({
     );
   }
 
-  if (type === 'pexels_photo') {
+  if (type === 'photo') {
     const id = model.randomChoices[choiceKey];
     const row = id ? photoById[id] : undefined;
     if (!row) return null;
@@ -514,7 +514,7 @@ function WidgetDetailBlock({
     );
   }
 
-  if (type === 'pexels_photo_collage') {
+  if (type === 'photo_collage') {
     const ids: string[] = [];
     for (let i = 0; i < 12; i++) {
       const pid = model.randomChoices[`${choiceKey}_${i}`];
@@ -546,7 +546,7 @@ function WidgetDetailBlock({
     );
   }
 
-  if (type === 'pexels_video') {
+  if (type === 'video') {
     const id = model.randomChoices[choiceKey];
     const row = id ? videoById[id] : undefined;
     if (!row) return null;

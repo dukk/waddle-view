@@ -11,7 +11,7 @@ import '../debug/app_debug_log.dart';
 QueryExecutor createQueryExecutor() {
   return LazyDatabase(() async {
     final dir = await getApplicationSupportDirectory();
-    final file = File(p.join(dir.path, 'waddle_view.sqlite'));
+    final file = File(p.join(dir.path, 'waddle_display.db'));
     AppDebugLog.startup('SQLite database file: ${file.path}');
     return NativeDatabase.createInBackground(file);
   });

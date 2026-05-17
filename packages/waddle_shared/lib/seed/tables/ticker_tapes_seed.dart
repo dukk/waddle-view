@@ -10,7 +10,6 @@ Future<void> ensureTickerTapesSeed(AppDatabase db) async {
     required String id,
     required String name,
     String description = '',
-    bool enabled = true,
     required String tickerType,
     int frequencyWeight = 100,
     int sortOrder = 0,
@@ -22,7 +21,6 @@ Future<void> ensureTickerTapesSeed(AppDatabase db) async {
             id: id,
             name: name,
             description: Value(description),
-            enabled: Value(enabled),
             tickerType: tickerType,
             frequencyWeight: Value(frequencyWeight),
             sortOrder: Value(sortOrder),
@@ -91,8 +89,7 @@ Future<void> ensureTickerTapesSeed(AppDatabase db) async {
   await upsert(
     id: 'ticker_custom',
     name: 'Custom marquee',
-    description: 'Extra ticker.marquee.* keys in config_key_values (disabled by default)',
-    enabled: false,
+    description: 'Extra ticker.marquee.* keys in config_key_values (not in bootstrap curator)',
     tickerType: 'custom',
     sortOrder: 40,
   );

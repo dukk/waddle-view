@@ -29,12 +29,12 @@ class GlobalCliOptions {
     if (databasePath != null && databasePath.isNotEmpty) {
       dbFile = File(databasePath);
     } else if (supportDirPath != null && supportDirPath.isNotEmpty) {
-      dbFile = File(p.join(supportDirPath, 'waddle_view.sqlite'));
+      dbFile = File(p.join(supportDirPath, 'waddle_display.db'));
     } else if (Platform.isLinux) {
       dbFile = defaultLinuxWaddleSqliteFile();
     } else {
       throw StateError(
-        'Non-Linux host: pass --database=PATH to the waddle_view.sqlite file.',
+        'Non-Linux host: pass --database=PATH to the waddle_display.db file.',
       );
     }
     return GlobalCliOptions(databaseFile: dbFile, outputJson: jsonOut);

@@ -21,7 +21,6 @@ void main() {
       headers: h.authHeaders,
       body: jsonEncode({
         'id': 'x_test_overlay',
-        'enabled': true,
         'overlay_type': kOverlayTypeHeartsRain,
         'label': 'Test',
         'messages_json': ['Hi'],
@@ -44,11 +43,11 @@ void main() {
     final patch = await http.patch(
       Uri.parse('${h.baseUrl}/v1/display/overlays/x_test_overlay'),
       headers: h.authHeaders,
-      body: jsonEncode({'enabled': false}),
+      body: jsonEncode({'label': 'Updated'}),
     );
     expect(patch.statusCode, 200);
     final after = await fetchDisplayOverlaySchedules(db);
-    expect(after.single.enabled, false);
+    expect(after.single.label, 'Updated');
 
     final del = await http.delete(
       Uri.parse('${h.baseUrl}/v1/display/overlays/x_test_overlay'),
@@ -71,7 +70,6 @@ void main() {
       headers: h.authHeaders,
       body: jsonEncode({
         'id': 'bd_test_overlay',
-        'enabled': true,
         'overlay_type': kOverlayTypeBirthdayConfetti,
         'label': 'Birthday',
         'config_json': {
@@ -111,7 +109,6 @@ void main() {
       headers: h.authHeaders,
       body: jsonEncode({
         'id': 'bad_confetti',
-        'enabled': true,
         'overlay_type': kOverlayTypeBirthdayConfetti,
         'label': 'x',
         'config_json': {'messages': [], 'shapes': ['not_a_shape']},
@@ -149,7 +146,7 @@ void main() {
     final patch404 = await http.patch(
       Uri.parse('${h.baseUrl}/v1/display/overlays/ghost'),
       headers: h.authHeaders,
-      body: jsonEncode({'enabled': false}),
+      body: jsonEncode({'label': 'ghost'}),
     );
     expect(patch404.statusCode, 404);
 
@@ -172,7 +169,6 @@ void main() {
       headers: h.authHeaders,
       body: jsonEncode({
         'id': 'bounce_rest_test',
-        'enabled': true,
         'overlay_type': kOverlayTypeBouncingMessage,
         'label': 'Bounce',
         'config_json': {

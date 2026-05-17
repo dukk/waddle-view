@@ -12,17 +12,20 @@ Examples::
     python deploy/dev-pi/install_main_to_pi.py --dry-run
     python deploy/dev-pi/install_main_to_pi.py -y
     python deploy/dev-pi/install_main_to_pi.py --sync-local-dev
-    python deploy/dev-pi/install_main_to_pi.py --sync-local-dev --db C:\\path\\waddle_view.sqlite
+    python deploy/dev-pi/install_main_to_pi.py --sync-local-dev --db C:\\path\\waddle_display.db
 
 After a successful upgrade the script installs a **systemd user unit** for
 ``waddle-view`` under ``~/.config/systemd/user/`` (from ``deploy/linux-arm64/waddle-view.service``),
-merging ``Environment=`` entries from the template with every ``KEY=value`` assignment in local
-``apps/waddle_display/.env.development`` when that file exists (or ``--env-development``). It runs
+merging ``Environment=`` entries from the template, any existing remote user unit, and every
+``KEY=value`` assignment in local ``apps/waddle_display/.env.development`` when that file exists
+(or ``--env-development``). Values already on the Pi unit are kept; local dotenv only adds keys
+the unit does not have yet. Legacy ``WADDLE_*`` names are rewritten to ``WADDLE_DISPLAY_*`` (and
+deprecated keys such as ``WADDLE_HTTP_BIND`` / ``WADDLE_API_KEY_FILE`` are dropped). It runs
 ``daemon-reload``, ``enable``, and ``restart`` (or ``start`` if not yet running), enables **linger**
 for the SSH user when ``loginctl`` is available, and removes any legacy installer's ``~/.bashrc``
 block that used to ``source`` a remote dotenv file.
 
-``--sync-local-dev`` copies your desktop **SQLite** file (``waddle_view.sqlite``), the
+``--sync-local-dev`` copies your desktop **SQLite** file (``waddle_display.db``), the
 **``media/``** tree used by ``FileSystemBlobStore`` (same parent directory as the DB), to the Pi
 under ``/home/<ssh-user>/.local/share/com.waddleview.waddle_display/`` (same layout as Flutter Linux
 ``path_provider`` / ``APPLICATION_ID``) and copies ``apps/waddle_display/.env.development`` to
@@ -62,7 +65,7 @@ DEFAULT_SSH = "dukk@10.2.0.10"
 SYSTEMD_USER_UNIT_NAME = "waddle-view"
 
 REMOTE_APP_SUPPORT_REL = Path(".local/share/com.waddleview.waddle_display")
-REMOTE_SQLITE_NAME = "waddle_view.sqlite"
+REMOTE_SQLITE_NAME = "waddle_display.db"
 REMOTE_BUNDLE_ENV = "/opt/waddle-view/bundle/.env.development"
 
 # Legacy ~/.bashrc block from older installer versions (removed on each run).
@@ -77,6 +80,33 @@ REMOTE_SHELL_DOTENV_ENV_NAME = ".env"
 _DOTENV_LINE_RE = re.compile(
     r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$"
 )
+
+# Legacy waddle_display env names → current ``WADDLE_DISPLAY_*`` (see display_env.dart /
+# provider_access_token_env.dart). Applied when building the systemd unit.
+DISPLAY_ENV_LEGACY_TO_CURRENT: dict[str, str] = {
+    "WADDLE_HTTP_BIND": "WADDLE_DISPLAY_HTTP_BIND_IP",
+    "WADDLE_HTTP_PORT": "WADDLE_DISPLAY_HTTP_PORT",
+    "WADDLE_HTTP_TLS": "WADDLE_DISPLAY_HTTP_TLS",
+    "WADDLE_HTTP_TLS_DIR": "WADDLE_DISPLAY_HTTP_TLS_DIR",
+    "WADDLE_HTTP_TLS_CERT": "WADDLE_DISPLAY_HTTP_TLS_CERT",
+    "WADDLE_HTTP_TLS_KEY": "WADDLE_DISPLAY_HTTP_TLS_KEY",
+    "WADDLE_HTTP_CORS_ORIGINS": "WADDLE_DISPLAY_HTTP_CORS_ORIGINS",
+    "WADDLE_CONTROLLER_PUBLIC_URL": "WADDLE_DISPLAY_CONTROLLER_PUBLIC_URL",
+    "WADDLE_VIEWER_REGISTRATION_SECRET": "WADDLE_DISPLAY_VIEWER_REGISTRATION_SECRET",
+    "WADDLE_PEXELS_VIDEO_MAX_TEXTURE_PIXELS": "WADDLE_DISPLAY_PEXELS_VIDEO_MAX_TEXTURE_PIXELS",
+    "WADDLE_OPENAI_API_KEY": "WADDLE_DISPLAY_OPENAI_API_KEY",
+    "WADDLE_OPEN_WEATHER_MAP_API_KEY": "WADDLE_DISPLAY_OPEN_WEATHER_MAP_API_KEY",
+    "WADDLE_PEXELS_API_KEY": "WADDLE_DISPLAY_PEXELS_API_KEY",
+    "WADDLE_FLICKR_API_KEY": "WADDLE_DISPLAY_FLICKR_API_KEY",
+    "WADDLE_FINHUB_API_KEY": "WADDLE_DISPLAY_FINHUB_API_KEY",
+    "WADDLE_MICROSOFT_GRAPH_CLIENT_ID": "WADDLE_DISPLAY_MICROSOFT_GRAPH_CLIENT_ID",
+    "WADDLE_GOOGLE_CLIENT_ID": "WADDLE_DISPLAY_GOOGLE_CLIENT_ID",
+    "WADDLE_APPLE_CLIENT_ID": "WADDLE_DISPLAY_APPLE_CLIENT_ID",
+    "WADDLE_PEXELS_VIDEO_HWDEC": "WADDLE_DISPLAY_PEXELS_VIDEO_HWDEC",
+    "WADDLE_PEXELS_MAX_VIDEO_DOWNLOAD_WIDTH": "WADDLE_DISPLAY_PEXELS_MAX_VIDEO_DOWNLOAD_WIDTH",
+}
+
+DEPRECATED_DISPLAY_ENV_KEYS = frozenset({"WADDLE_API_KEY_FILE"})
 
 
 def remote_shell_dotenv_dir(remote_home: str) -> str:
@@ -207,7 +237,7 @@ def resolve_local_sqlite_path(
         )
     )
     raise SystemExit(
-        "Could not find local waddle_view.sqlite. Run the app once on this machine, "
+        "Could not find local waddle_display.db. Run the app once on this machine, "
         f"or pass --db PATH. Searched: {searched}"
     )
 
@@ -250,6 +280,47 @@ def parse_dotenv_file(path: Path) -> dict[str, str]:
     return out
 
 
+def normalize_display_environment(
+    env: dict[str, str],
+) -> tuple[dict[str, str], list[str]]:
+    """Rewrite legacy display env keys to ``WADDLE_DISPLAY_*``; drop deprecated entries."""
+    out = dict(env)
+    notes: list[str] = []
+    for old, new in DISPLAY_ENV_LEGACY_TO_CURRENT.items():
+        if old not in out:
+            continue
+        legacy_val = out.pop(old)
+        if new in out and str(out[new]).strip():
+            notes.append(f"dropped legacy {old} ({new} already set)")
+            continue
+        out[new] = legacy_val
+        notes.append(f"{old} -> {new}")
+    for key in DEPRECATED_DISPLAY_ENV_KEYS:
+        if key in out:
+            out.pop(key)
+            notes.append(f"removed deprecated {key}")
+    for key in list(out):
+        if key.startswith("WADDLE_") and not key.startswith("WADDLE_DISPLAY_"):
+            out.pop(key)
+            notes.append(f"removed unrecognized {key}")
+    return out, notes
+
+
+def merge_install_unit_environment(
+    local_dotenv: dict[str, str],
+    remote_dotenv: dict[str, str],
+) -> tuple[dict[str, str], list[str]]:
+    """Merge env for a Pi upgrade: fill gaps from local, never overwrite remote values.
+
+    Each side is normalized (legacy ``WADDLE_*`` → ``WADDLE_DISPLAY_*``) before merge.
+    On duplicate canonical keys, **remote** (existing unit) wins so upgrades keep Pi secrets.
+    """
+    local_norm, local_notes = normalize_display_environment(local_dotenv)
+    remote_norm, remote_notes = normalize_display_environment(remote_dotenv)
+    merged = {**local_norm, **remote_norm}
+    return merged, local_notes + remote_notes
+
+
 def parse_unit_service_environment(template: str) -> dict[str, str]:
     """Extract ``Environment=`` / ``Environment="K=V"`` assignments from the unit template."""
     env: dict[str, str] = {}
@@ -278,8 +349,10 @@ def systemd_environment_line(key: str, value: str) -> str:
 
 
 def build_user_unit_content(template: str, dotenv: dict[str, str]) -> str:
-    """Return unit text with merged ``Environment=`` lines (dotenv overrides template keys)."""
-    merged = {**parse_unit_service_environment(template), **dotenv}
+    """Return unit text with merged ``Environment=`` lines ([dotenv] overrides template defaults)."""
+    merged, _ = normalize_display_environment(
+        {**parse_unit_service_environment(template), **dotenv}
+    )
     result: list[str] = []
     section: Optional[str] = None
     service_other: list[str] = []
@@ -309,6 +382,35 @@ def build_user_unit_content(template: str, dotenv: dict[str, str]) -> str:
 
     text = "\n".join(result)
     return text if text.endswith("\n") else text + "\n"
+
+
+def fetch_remote_unit_environment(
+    target: str,
+    *,
+    remote_home: str,
+    port: Optional[int],
+    identity: Optional[Path],
+    batch_mode: bool,
+    dry_run: bool,
+) -> dict[str, str]:
+    """Read ``Environment=`` from an existing user unit on the Pi (empty when missing)."""
+    if dry_run:
+        return {}
+    unit_path = str(
+        PurePosixPath(remote_home) / ".config/systemd/user" / f"{SYSTEMD_USER_UNIT_NAME}.service"
+    )
+    unit_path_q = _posix_sh_single_quote(unit_path)
+    ssh_cmd = _ssh_base_args(target, port=port, identity=identity, batch_mode=batch_mode)
+    proc = subprocess.run(
+        ssh_cmd + [_ssh_remote_bash_lc(f"cat {unit_path_q} 2>/dev/null || true")],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if proc.returncode != 0 or not proc.stdout.strip():
+        return {}
+    return parse_unit_service_environment(proc.stdout)
 
 
 def remote_remove_legacy_bashrc_block_script(remote_home: str) -> str:
@@ -341,9 +443,23 @@ def install_systemd_user_unit_and_restart(
     unit_dir = str(PurePosixPath(remote_home) / ".config/systemd/user")
     unit_path = str(PurePosixPath(unit_dir) / f"{SYSTEMD_USER_UNIT_NAME}.service")
     dev_local = optional_local_env_development_path(env_development)
-    dotenv = parse_dotenv_file(dev_local) if dev_local is not None else {}
+    local_dotenv = parse_dotenv_file(dev_local) if dev_local is not None else {}
+    remote_dotenv = fetch_remote_unit_environment(
+        target,
+        remote_home=remote_home,
+        port=port,
+        identity=identity,
+        batch_mode=batch_mode,
+        dry_run=dry_run,
+    )
+    # Local fills missing keys only; existing Pi unit values are never overwritten.
+    normalized, migrate_notes = merge_install_unit_environment(local_dotenv, remote_dotenv)
+    if migrate_notes:
+        print("Display environment normalization:", flush=True)
+        for note in migrate_notes:
+            print(f"  {note}", flush=True)
     template = resolve_unit_template_path().read_text(encoding="utf-8")
-    unit_body = build_user_unit_content(template, dotenv)
+    unit_body = build_user_unit_content(template, normalized)
 
     def maybe_run(cmd: list[str]) -> None:
         print("+", " ".join(cmd), flush=True)
@@ -365,9 +481,10 @@ def install_systemd_user_unit_and_restart(
 
     if dry_run:
         env_src = str(dev_local) if dev_local is not None else "(none)"
+        env_count = len(parse_unit_service_environment(unit_body))
         print(
-            f"Would: install {unit_path} with {len(dotenv)} Environment= entries "
-            f"from {env_src}, remove legacy bashrc block, "
+            f"Would: install {unit_path} with {env_count} Environment= entries "
+            f"(remote unit + {env_src}), remove legacy bashrc block, "
             f"systemctl --user enable, loginctl enable-linger, restart {SYSTEMD_USER_UNIT_NAME}",
             flush=True,
         )
@@ -508,7 +625,7 @@ def _sqlite_sidecar_paths(main_db: Path) -> list[Path]:
 
 
 def local_blob_media_dir(sqlite_path: Path) -> Path:
-    """``media/`` next to ``waddle_view.sqlite`` (same layout as ``main.dart`` blob store)."""
+    """``media/`` next to ``waddle_display.db`` (same layout as ``main.dart`` blob store)."""
     return sqlite_path.parent / "media"
 
 
@@ -727,7 +844,7 @@ def parse_args(argv: Optional[list[str]]) -> argparse.Namespace:
         "--sync-local-dev",
         action="store_true",
         help=(
-            "After a successful upgrade, copy local waddle_view.sqlite (+ WAL/SHM if present), "
+            "After a successful upgrade, copy local waddle_display.db (+ WAL/SHM if present), "
             "the sibling media/ blob tree, and apps/waddle_display/.env.development to the Pi "
             "(see module docstring). The dev env file must exist (default path or --env-development)."
         ),

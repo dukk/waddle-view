@@ -10,21 +10,21 @@ void main() {
   final candidates = <ScreenCandidate>[
     const ScreenCandidate(
       id: 'news',
-      dwellMs: 60000,
+      minDwellMs: 60000,
+      maxDwellMs: 60000,
       frequencyWeight: 100,
       minGapBetweenShowsMs: 0,
       layoutJson:
-          '{"v":1,"layout":"single","widgets":[{"type":"rss_article","slot":"main","config":{}}]}',
-      enabled: true,
+          '{"v":1,"layout":"single","widgets":[{"type":"news","slot":"main","config":{}}]}',
     ),
     const ScreenCandidate(
       id: 'welcome',
-      dwellMs: 10000,
+      minDwellMs: 10000,
+      maxDwellMs: 10000,
       frequencyWeight: 100,
       minGapBetweenShowsMs: 0,
       layoutJson:
           '{"v":1,"layout":"single","widgets":[{"type":"static_text","slot":"main","config":{"text":"hello"}}]}',
-      enabled: true,
     ),
   ];
 
@@ -67,7 +67,7 @@ void main() {
       requirePhotoForRssScreens: true,
     );
     expect(slides.single.screenId, 'news');
-    expect(slides.single.randomChoices['main_rss_article'], 'x');
+    expect(slides.single.randomChoices['main_news'], 'x');
   });
 
   test('news slide resolves without images when requirePhoto disabled', () {
@@ -90,16 +90,16 @@ void main() {
     expect(slides.single.screenId, 'news');
   });
 
-  test('rss_article_stack excluded when photos required but unavailable', () {
+  test('news_stack excluded when photos required but unavailable', () {
     final withStack = <ScreenCandidate>[
       const ScreenCandidate(
         id: 'news_stack',
-        dwellMs: 60000,
+        minDwellMs: 60000,
+        maxDwellMs: 60000,
         frequencyWeight: 100,
         minGapBetweenShowsMs: 0,
         layoutJson:
-            '{"v":1,"layout":"single","widgets":[{"type":"rss_article_stack","slot":"main","config":{}}]}',
-        enabled: true,
+            '{"v":1,"layout":"single","widgets":[{"type":"news_stack","slot":"main","config":{}}]}',
       ),
       candidates[1],
     ];

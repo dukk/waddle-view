@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_display/curator/screen_program_curator.dart';
-import 'package:waddle_display/display/screens/rss_article/rss_article_stack_slide_widget.dart';
+import 'package:waddle_display/display/screens/news/news_stack_slide_widget.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 import '../helpers/fake_blob_store.dart';
@@ -69,12 +69,12 @@ void main() {
       dwellMs: 12000,
       layoutJson: '{}',
       randomChoices: const {
-        'main_rss_article_stack_0': 'top',
-        'main_rss_article_stack_1': 'bottom',
+        'main_news_stack_0': 'top',
+        'main_news_stack_1': 'bottom',
       },
     );
     const spec = ParsedWidgetSpec(
-      type: 'rss_article_stack',
+      type: 'news_stack',
       slot: 'main',
       config: {},
     );
@@ -86,7 +86,7 @@ void main() {
           body: SizedBox(
             width: 900,
             height: 560,
-            child: RssArticleStackSlideWidget(
+            child: NewsStackSlideWidget(
               db: db,
               blobs: FakeBlobStore(),
               slide: slide,
@@ -110,14 +110,14 @@ void main() {
       expect(qr.padding, isA<EdgeInsets>());
       expect(qr.padding.left, greaterThan(0));
     }
-    expect(find.byKey(const Key('rss_article_stack_row_0')), findsOneWidget);
-    expect(find.byKey(const Key('rss_article_stack_row_1')), findsOneWidget);
+    expect(find.byKey(const Key('news_stack_row_0')), findsOneWidget);
+    expect(find.byKey(const Key('news_stack_row_1')), findsOneWidget);
     final topImage = tester.getTopLeft(
-      find.byKey(const ValueKey<String>('rss_article_stack_image_0')),
+      find.byKey(const ValueKey<String>('news_stack_image_0')),
     );
     final topTitle = tester.getTopLeft(find.text('Top headline'));
     final bottomImage = tester.getTopLeft(
-      find.byKey(const ValueKey<String>('rss_article_stack_image_1')),
+      find.byKey(const ValueKey<String>('news_stack_image_1')),
     );
     final bottomTitle = tester.getTopLeft(find.text('Bottom headline'));
     expect(topImage.dx, lessThan(topTitle.dx));
@@ -136,7 +136,7 @@ void main() {
       layoutJson: '{}',
     );
     const spec = ParsedWidgetSpec(
-      type: 'rss_article_stack',
+      type: 'news_stack',
       slot: 'main',
       config: {},
     );
@@ -144,7 +144,7 @@ void main() {
       MaterialApp(
         theme: ThemeData.light(),
         home: Scaffold(
-          body: RssArticleStackSlideWidget(
+          body: NewsStackSlideWidget(
             db: db,
             blobs: FakeBlobStore(),
             slide: slide,
@@ -172,11 +172,11 @@ void main() {
       dwellMs: 8000,
       layoutJson: '{}',
       randomChoices: const {
-        'main_rss_article_stack_0': 'only',
+        'main_news_stack_0': 'only',
       },
     );
     const spec = ParsedWidgetSpec(
-      type: 'rss_article_stack',
+      type: 'news_stack',
       slot: 'main',
       config: {},
     );
@@ -187,7 +187,7 @@ void main() {
           body: SizedBox(
             width: 800,
             height: 400,
-            child: RssArticleStackSlideWidget(
+            child: NewsStackSlideWidget(
               db: db,
               blobs: FakeBlobStore(),
               slide: slide,

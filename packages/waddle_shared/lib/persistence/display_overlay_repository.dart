@@ -286,7 +286,6 @@ Object? _decodedJsonOrNull(String? raw) {
 Future<void> upsertOverlaySchedule(
   AppDatabase db, {
   required String id,
-  required bool enabled,
   required String overlayType,
   required String label,
   required String configJson,
@@ -326,18 +325,16 @@ Future<void> upsertOverlaySchedule(
     throw FormatException('invalid_config_json');
   }
   final doc = displayOverlayConfigJsonDocForType(overlayType.trim());
-  final en = enabled ? 1 : 0;
   final ra = repeatAnnually ? 1 : 0;
   await db.customStatement(
     'INSERT OR REPLACE INTO overlays ('
-    'id, enabled, overlay_type, label, '
+    'id, overlay_type, label, '
     'config_json, config_json_schema, example_config_json, '
     'repeat_annually, year_exact, start_month, start_day, '
     'end_month, end_day, nth_week_of_month, nth_weekday) '
-    'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     <Object?>[
       id.trim(),
-      en,
       overlayType.trim(),
       label,
       configNorm,
@@ -397,7 +394,6 @@ Map<String, Object?> overlayScheduleToJson(DisplayOverlayScheduleRow row) {
   }
   return <String, Object?>{
     'id': row.id,
-    'enabled': row.enabled,
     'overlay_type': row.overlayType,
     'label': row.label,
     'config_json': configField,

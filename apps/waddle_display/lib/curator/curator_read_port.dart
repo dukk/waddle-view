@@ -9,7 +9,6 @@ class TickerTapeForCuration {
   const TickerTapeForCuration({
     required this.id,
     required this.tickerType,
-    required this.enabled,
     required this.frequencyWeight,
     required this.sortOrder,
     this.configKey,
@@ -19,7 +18,6 @@ class TickerTapeForCuration {
   final String id;
   /// `time`, `weather`, `news`, `quote`, `stocks`, or `custom`.
   final String tickerType;
-  final bool enabled;
   final int frequencyWeight;
   final int sortOrder;
   /// When [tickerType] is `custom`, optional `ticker.marquee.*` key; when null,

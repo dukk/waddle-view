@@ -11,37 +11,35 @@
 4. **Secrets**: never store provider passwords, API keys, access/refresh tokens, or client secrets in SQLite. **Static provider API keys** and display runtime config use **`WADDLE_DISPLAY_*` environment variable names** (see [`apps/waddle_display/.env.example`](apps/waddle_display/.env.example), [`apps/waddle_display/lib/config/display_env.dart`](apps/waddle_display/lib/config/display_env.dart), and [`packages/waddle_shared/lib/config/provider_access_token_env.dart`](packages/waddle_shared/lib/config/provider_access_token_env.dart)); values are read from the process environment (and merged debug `.env`). **Google and Microsoft Graph OAuth access/refresh tokens** use `SecretStore` / `flutter_secure_storage` only (not environment variables). **Google / Microsoft Graph OAuth public client ids** use **`WADDLE_DISPLAY_GOOGLE_CLIENT_ID`** and **`WADDLE_DISPLAY_MICROSOFT_GRAPH_CLIENT_ID`** in the environment — not `config_key_values`. **Display instance ids** (`waddle_instance.id` / `/etc/waddle-view/instance.id`) are filesystem HMAC secrets for the adoption API — not bearer tokens. **Adopted REST clients** store only **SHA-256 hashes** of derived API keys in SQLite (`api_clients`); plaintext keys are returned once from `POST /v1/adoption/confirm`.
 5. **Project rules**: read [`.cursor/rules/waddle-view-flutter.mdc`](.cursor/rules/waddle-view-flutter.mdc) before large display edits and [`.cursor/rules/waddle-controller.mdc`](.cursor/rules/waddle-controller.mdc) before large controller edits. For git push failures or pre-push hook work, read [`.cursor/rules/waddle-prepush.mdc`](.cursor/rules/waddle-prepush.mdc).
 6. **Sub-agents / delegated tasks**: include explicit **paths**, **deliverable**, and **forbidden paths** in the prompt.
-7. **Documentation freshness**: when behavior, configuration, env vars, public endpoints, or operator workflows change, update the corresponding docs in the same task (for example `apps/waddle_display/README.md`, `.env.example`, and runbooks) or explain why no doc change is needed.
+7. **Documentation freshness**: when behavior, configuration, env vars, public endpoints, or operator workflows change, update the corresponding docs in the same task (for example `apps/waddle_display/README.md`, `.env.example`, and runbooks) or explain why no doc change is needed. New **`WADDLE_DISPLAY_*`** env vars also need a commented `# Environment=` entry in [`deploy/linux-arm64/waddle-view.service`](deploy/linux-arm64/waddle-view.service) (in sync with `.env.example` and `display_env.dart` / `provider_access_token_env.dart`).
 8. **Drift migration discipline**: for any schema/data-shape change in **`packages/waddle_shared/lib/persistence/`**, add/update migration logic and tests in the same task; do not land schema-affecting changes without a migration path and validation coverage.
 
 ## Commands (from repo root)
 
+**Fast inner loop** (no coverage; skips `pub get` / `build_runner` when lockfiles / Drift schema unchanged):
+
 ```bash
-flutter pub get
-cd packages/waddle_shared
-dart run build_runner build --delete-conflicting-outputs
-flutter test
-cd ../waddle_data_providers
-dart test
-cd ../../apps/waddle_display
-flutter analyze
-flutter test --coverage
-dart run tool/coverage_check.dart --min=85 --target=90
-cd ../waddle_controller
-npm ci
-npm run lint
-npm run test:coverage
-npm run coverage:check
-npm run build:server
+python scripts/waddle_checks.py fast
+python scripts/waddle_checks.py fast --from-git
+python scripts/waddle_checks.py fast --test apps/waddle_display/test/<file>_test.dart
 ```
+
+**CI parity** (before merge / PR):
+
+```bash
+python scripts/waddle_checks.py full
+python scripts/waddle_checks.py full --controller
+```
+
+See [`run-waddle-checks`](.cursor/skills/run-waddle-checks/SKILL.md) for manual step-by-step equivalents. Optional: `WADDLE_TEST_CONCURRENCY`, `WADDLE_CHECKS_PARALLEL_ANALYZE=0`.
 
 ## Git pre-push (local)
 
-With [`core.hooksPath=.githooks`](scripts/install-git-hooks.sh), **`git push`** runs [`scripts/pre_push_checks.py`](scripts/pre_push_checks.py) (scoped by changed paths). It does **not** run **`npm ci`** for `apps/waddle_controller/` — a running **`npm run dev`** locks native modules on Windows and caused recurring **`EPERM`** during `npm ci`. Pre-push only runs controller **`npm run build`** and **`npm run lint`**; **CI** runs **`npm ci`** on a clean runner. After changing controller `package.json` / lockfile: stop dev, run **`npm ci`** manually, then use [`run-waddle-checks`](.cursor/skills/run-waddle-checks/SKILL.md) for the full gate. Details: [`.cursor/rules/waddle-prepush.mdc`](.cursor/rules/waddle-prepush.mdc).
+With [`core.hooksPath=.githooks`](scripts/install-git-hooks.sh), **`git push`** runs [`scripts/pre_push_checks.py`](scripts/pre_push_checks.py) (scoped by changed paths). It does **not** run **`npm ci`** for `apps/waddle_controller/` — a running **`npm run dev`** locks native modules on Windows and caused recurring **`EPERM`** during `npm ci`. Pre-push only runs controller **`npm run build`** and **`npm run lint`**; **CI** runs **`npm ci`** on a clean runner. Pre-push uses the same **fast** Dart optimizations as `waddle_checks.py fast` (conditional `pub get` / `build_runner`, test concurrency, no coverage) but still runs **full** test suites per workspace package in scope. After changing controller `package.json` / lockfile: stop dev, run **`npm ci`** manually, then use [`run-waddle-checks`](.cursor/skills/run-waddle-checks/SKILL.md) for the full gate. Details: [`.cursor/rules/waddle-prepush.mdc`](.cursor/rules/waddle-prepush.mdc).
 
 ## Before committing
 
-Run the [`run-waddle-checks`](.cursor/skills/run-waddle-checks/SKILL.md) skill (or the commands above). CI's `flutter analyze` step fails on **any** issue — **warnings count** — and `flutter test` runs the full suite, including drift migration tests. Recurring regressions to check for before pushing:
+Run **`python scripts/waddle_checks.py full`** (and **`--controller`** when that app changed), or the [`run-waddle-checks`](.cursor/skills/run-waddle-checks/SKILL.md) skill. CI's `flutter analyze` step fails on **any** issue — **warnings count** — and `flutter test` runs the full suite, including drift migration tests. Recurring regressions to check for before pushing:
 
 1. **`drift` + `flutter_test` import ambiguity**: both libraries export `isNull`/`isNotNull`. Use `show Value` or `hide isNull, isNotNull` on the drift import.
 2. **Test-fake constructor/field sync**: keep test helper constructors and fields aligned. For test-only defaults, prefer initializing the field inline (`final String folderId = 'folder1';`) over default-valued optional parameters that no caller overrides (avoids `final_not_initialized_constructor` and `unused_element_parameter`).

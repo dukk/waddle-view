@@ -4,10 +4,12 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   flutter_secure_storage_windows
+  fullscreen_window
   media_kit_libs_windows_video
   media_kit_video
   screen_retriever_windows
   url_launcher_windows
+  webview_win_floating
   window_manager
 )
 

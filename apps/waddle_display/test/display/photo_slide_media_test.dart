@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_display/curator/screen_program_curator.dart';
-import 'package:waddle_display/display/screens/pexels/pexels_slide_media.dart';
+import 'package:waddle_display/display/screens/photo/photo_slide_media.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
@@ -119,7 +119,7 @@ void main() {
     await db.close();
   });
 
-  test('loadPexelsPhotoForSlide uses curated id from randomChoices', () async {
+  test('loadPhotoForSlide uses curated id from randomChoices', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await db.into(db.photos).insert(
@@ -133,7 +133,7 @@ void main() {
           ),
         );
     const spec = ParsedWidgetSpec(
-      type: 'pexels_photo',
+      type: 'photo',
       slot: 'main',
       config: {},
     );
@@ -141,15 +141,15 @@ void main() {
       screenId: 'scr',
       dwellMs: 1000,
       layoutJson: '{}',
-      randomChoices: {'main_pexels_photo': 'curated_photo'},
+      randomChoices: {'main_photo': 'curated_photo'},
     );
-    final photo = await loadPexelsPhotoForSlide(db, spec, slide);
+    final photo = await loadPhotoForSlide(db, spec, slide);
     expect(photo, isNotNull);
     expect(photo!.id, 'curated_photo');
     await db.close();
   });
 
-  test('loadPexelsPhotoForSlide filters by categoryId when no curated id', () async {
+  test('loadPhotoForSlide filters by categoryId when no curated id', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await db.into(db.photos).insert(
@@ -175,7 +175,7 @@ void main() {
           ),
         );
     const spec = ParsedWidgetSpec(
-      type: 'pexels_photo',
+      type: 'photo',
       slot: 'hero',
       config: {'categoryId': 'nature'},
     );
@@ -184,13 +184,13 @@ void main() {
       dwellMs: 1000,
       layoutJson: '{}',
     );
-    final photo = await loadPexelsPhotoForSlide(db, spec, slide);
+    final photo = await loadPhotoForSlide(db, spec, slide);
     expect(photo, isNotNull);
     expect(photo!.id, 'cat_a');
     await db.close();
   });
 
-  test('loadPexelsPhotoForSlide picks suppressed=false without category filter',
+  test('loadPhotoForSlide picks suppressed=false without category filter',
       () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
@@ -205,7 +205,7 @@ void main() {
           ),
         );
     const spec = ParsedWidgetSpec(
-      type: 'pexels_photo',
+      type: 'photo',
       slot: 'main',
       config: {},
     );
@@ -214,7 +214,7 @@ void main() {
       dwellMs: 1000,
       layoutJson: '{}',
     );
-    final photo = await loadPexelsPhotoForSlide(db, spec, slide);
+    final photo = await loadPhotoForSlide(db, spec, slide);
     expect(photo, isNotNull);
     expect(photo!.id, 'only_photo');
     await db.close();

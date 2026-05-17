@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_display/curator/photo_collage_curation.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_display/curator/screen_program_curator.dart';
-import 'package:waddle_display/display/screens/pexels/pexels_photo_collage_slide_widget.dart';
+import 'package:waddle_display/display/screens/photo/photo_collage_slide_widget.dart';
 
 import '../helpers/fake_blob_store.dart';
 import '../helpers/memory_database.dart';
@@ -15,7 +15,7 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     const spec = ParsedWidgetSpec(
-      type: 'pexels_photo_collage',
+      type: 'photo_collage',
       slot: 'main',
       config: {},
     );
@@ -29,7 +29,7 @@ void main() {
       MaterialApp(
         theme: ThemeData.dark(),
         home: Scaffold(
-          body: PexelsPhotoCollageSlideWidget(
+          body: PhotoCollageSlideWidget(
             db: db,
             blobs: FakeBlobStore(),
             slide: slide,
@@ -48,7 +48,7 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     const spec = ParsedWidgetSpec(
-      type: 'pexels_photo_collage',
+      type: 'photo_collage',
       slot: 'main',
       config: {'template': 'not-a-real-template-id'},
     );
@@ -62,7 +62,7 @@ void main() {
       MaterialApp(
         theme: ThemeData.dark(),
         home: Scaffold(
-          body: PexelsPhotoCollageSlideWidget(
+          body: PhotoCollageSlideWidget(
             db: db,
             blobs: FakeBlobStore(),
             slide: slide,
@@ -87,7 +87,7 @@ void main() {
       final db = openMemoryDatabase();
       await warmDatabase(db);
       final spec = ParsedWidgetSpec(
-        type: 'pexels_photo_collage',
+        type: 'photo_collage',
         slot: 'main',
         config: {'template': template},
       );
@@ -101,7 +101,7 @@ void main() {
         MaterialApp(
           theme: ThemeData.dark(),
           home: Scaffold(
-            body: PexelsPhotoCollageSlideWidget(
+            body: PhotoCollageSlideWidget(
               db: db,
               blobs: FakeBlobStore(),
               slide: slide,

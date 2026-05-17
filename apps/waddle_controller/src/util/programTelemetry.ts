@@ -79,31 +79,31 @@ function summarizeWidget(
       const loc = str(w.config['locationId'] ?? w.config['location_id']);
       return { headline: loc ? `Weather · ${loc}` : 'Weather', sub: 'Current conditions' };
     }
-    case 'rss_article':
+    case 'news':
       return {
         headline: curated ? `RSS article (${curated})` : 'RSS article · auto pick',
         sub: str(w.config['feedId'] ?? w.config['feed_id'])
           ? `Feed ${str(w.config['feedId'] ?? w.config['feed_id'])}`
           : undefined,
       };
-    case 'rss_article_columns':
+    case 'news_columns':
       return {
         headline: 'RSS columns',
         sub: curated ? `Primary article ${curated}` : undefined,
       };
-    case 'rss_article_stack':
+    case 'news_stack':
       return {
         headline: 'RSS stack',
         sub: curated ? `Article ${curated}` : undefined,
       };
-    case 'pexels_photo':
+    case 'photo':
       return {
         headline: curated ? `Photo · ${curated}` : 'Pexels photo',
         sub: str(w.config['query']) ? `Query: ${str(w.config['query'])}` : undefined,
       };
-    case 'pexels_photo_collage':
+    case 'photo_collage':
       return { headline: 'Photo collage', sub: 'Multiple slots' };
-    case 'pexels_video':
+    case 'video':
       return { headline: curated ? `Video · ${curated}` : 'Pexels video' };
     case 'joke':
       return {
@@ -227,27 +227,27 @@ export function collectSlideContentIds(model: SlideCardModel): {
 
   for (const w of model.widgets) {
     const choiceKey = `${w.slot}_${w.type}`;
-    if (w.type === 'rss_article' || w.type === 'rss_article_columns' || w.type === 'rss_article_stack') {
+    if (w.type === 'news' || w.type === 'news_columns' || w.type === 'news_stack') {
       const id = model.randomChoices[choiceKey];
       if (id) rssArticleIds.push(id);
-      if (w.type === 'rss_article_columns' || w.type === 'rss_article_stack') {
+      if (w.type === 'news_columns' || w.type === 'news_stack') {
         for (let i = 0; i < 12; i++) {
           const slotId = model.randomChoices[`${choiceKey}_${i}`];
           if (slotId) rssArticleIds.push(slotId);
         }
       }
     }
-    if (w.type === 'pexels_photo') {
+    if (w.type === 'photo') {
       const id = model.randomChoices[choiceKey];
       if (id) photoIds.push(id);
     }
-    if (w.type === 'pexels_photo_collage') {
+    if (w.type === 'photo_collage') {
       for (let i = 0; i < 12; i++) {
         const pid = model.randomChoices[`${choiceKey}_${i}`];
         if (pid) photoIds.push(pid);
       }
     }
-    if (w.type === 'pexels_video') {
+    if (w.type === 'video') {
       const id = model.randomChoices[choiceKey];
       if (id) videoIds.push(id);
     }
@@ -290,9 +290,9 @@ export type SlideScreenPreviewKind =
   | 'wifi'
   | 'clock'
   | 'calendar'
-  | 'rss_article'
-  | 'rss_article_columns'
-  | 'rss_article_stack'
+  | 'news'
+  | 'news_columns'
+  | 'news_stack'
   | 'local_api'
   | 'admin_setup'
   | 'controller_invite'
@@ -305,9 +305,9 @@ export type SlideScreenPreviewKind =
 
 /** Screen/widget types that use photo or video previews instead of type icons on program cards. */
 const PHOTO_VIDEO_SCREEN_TYPES = new Set([
-  'pexels_photo',
-  'pexels_photo_collage',
-  'pexels_video',
+  'photo',
+  'photo_collage',
+  'video',
   'photo_random',
   'bing_image_of_day',
 ]);
@@ -320,18 +320,18 @@ const SCREEN_TYPE_PREVIEW_KIND: Record<string, SlideScreenPreviewKind> = {
   digital_clock: 'clock',
   analog_clock: 'clock',
   calendar_month: 'calendar',
-  rss_article: 'rss_article',
-  rss_article_columns: 'rss_article_columns',
-  rss_article_stack: 'rss_article_stack',
+  news: 'news',
+  news_columns: 'news_columns',
+  news_stack: 'news_stack',
   local_api: 'local_api',
   admin_setup: 'admin_setup',
   controller_invite: 'controller_invite',
   weather: 'weather',
   stock_quotes: 'stock',
   data_health: 'data_health',
-  pexels_photo: 'photo',
-  pexels_photo_collage: 'photo_collage',
-  pexels_video: 'video',
+  photo: 'photo',
+  photo_collage: 'photo_collage',
+  video: 'video',
   photo_random: 'photo',
   bing_image_of_day: 'photo',
 };
@@ -342,15 +342,18 @@ const WIDGET_TYPE_PREVIEW_KIND: Record<string, SlideScreenPreviewKind> = {
   trivia: 'trivia',
   wifi: 'wifi',
   calendar_month: 'calendar',
-  rss_article: 'rss_article',
-  rss_article_columns: 'rss_article_columns',
-  rss_article_stack: 'rss_article_stack',
+  news: 'news',
+  news_columns: 'news_columns',
+  news_stack: 'news_stack',
   local_api: 'local_api',
   admin_setup: 'admin_setup',
   controller_invite: 'controller_invite',
   weather: 'weather',
   stock_quotes: 'stock',
   data_health: 'data_health',
+  photo: 'photo',
+  photo_collage: 'photo_collage',
+  video: 'video',
 };
 
 /** Preview icon kind for a `screens.screen_type` row (catalog UI). */

@@ -19,12 +19,17 @@ class CelebrationOverlayHost extends StatelessWidget {
     required this.db,
     required this.clock,
     required this.dashboardKv,
+    required this.allowedOverlayIds,
     required this.child,
   });
 
   final AppDatabase db;
   final Clock clock;
   final Map<String, String> dashboardKv;
+
+  /// Union of overlay catalog ids from active curator configs; empty hides all.
+  final Set<String> allowedOverlayIds;
+
   final Widget child;
 
   static List<String> _mergePhrases(List<DisplayOverlayScheduleRow> matches) {
@@ -54,7 +59,9 @@ class CelebrationOverlayHost extends StatelessWidget {
           StreamBuilder<List<DisplayOverlayScheduleRow>>(
             stream: watchDisplayOverlaySchedules(db),
             builder: (context, snapshot) {
-              final rows = snapshot.data ?? const <DisplayOverlayScheduleRow>[];
+              final rows = (snapshot.data ?? const <DisplayOverlayScheduleRow>[])
+                  .where((r) => allowedOverlayIds.contains(r.id))
+                  .toList();
               final now = clock.now();
               final heartMatches =
                   rows

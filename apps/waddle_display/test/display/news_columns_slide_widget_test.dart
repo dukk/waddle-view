@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_display/curator/screen_program_curator.dart';
-import 'package:waddle_display/display/screens/rss_article/rss_article_columns_slide_widget.dart';
+import 'package:waddle_display/display/screens/news/news_columns_slide_widget.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 import '../helpers/fake_blob_store.dart';
@@ -55,13 +55,13 @@ void main() {
       dwellMs: 12000,
       layoutJson: '{}',
       randomChoices: const {
-        'main_rss_article_columns_0': 'a1',
-        'main_rss_article_columns_1': 'a2',
-        'main_rss_article_columns_2': 'a3',
+        'main_news_columns_0': 'a1',
+        'main_news_columns_1': 'a2',
+        'main_news_columns_2': 'a3',
       },
     );
     const spec = ParsedWidgetSpec(
-      type: 'rss_article_columns',
+      type: 'news_columns',
       slot: 'main',
       config: {'columnCount': 3},
     );
@@ -73,7 +73,7 @@ void main() {
           body: SizedBox(
             width: 900,
             height: 500,
-            child: RssArticleColumnsSlideWidget(
+            child: NewsColumnsSlideWidget(
               db: db,
               blobs: FakeBlobStore(),
               slide: slide,
@@ -96,8 +96,8 @@ void main() {
       expect(qr.padding, isA<EdgeInsets>());
       expect(qr.padding.left, greaterThan(0));
     }
-    expect(find.byKey(const ValueKey('rss_article_columns_qr_0')), findsOneWidget);
-    expect(find.byKey(const ValueKey('rss_article_columns_qr_2')), findsOneWidget);
+    expect(find.byKey(const ValueKey('news_columns_qr_0')), findsOneWidget);
+    expect(find.byKey(const ValueKey('news_columns_qr_2')), findsOneWidget);
     await db.close();
   });
 
@@ -125,13 +125,13 @@ void main() {
       dwellMs: 12000,
       layoutJson: '{}',
       randomChoices: const {
-        'main_rss_article_columns_0': 'no_link',
-        'main_rss_article_columns_1': 'a2',
-        'main_rss_article_columns_2': 'a3',
+        'main_news_columns_0': 'no_link',
+        'main_news_columns_1': 'a2',
+        'main_news_columns_2': 'a3',
       },
     );
     const spec = ParsedWidgetSpec(
-      type: 'rss_article_columns',
+      type: 'news_columns',
       slot: 'main',
       config: {'columnCount': 3},
     );
@@ -143,7 +143,7 @@ void main() {
           body: SizedBox(
             width: 900,
             height: 500,
-            child: RssArticleColumnsSlideWidget(
+            child: NewsColumnsSlideWidget(
               db: db,
               blobs: FakeBlobStore(),
               slide: slide,
@@ -170,7 +170,7 @@ void main() {
       layoutJson: '{}',
     );
     const spec = ParsedWidgetSpec(
-      type: 'rss_article_columns',
+      type: 'news_columns',
       slot: 'main',
       config: {},
     );
@@ -178,7 +178,7 @@ void main() {
       MaterialApp(
         theme: ThemeData.light(),
         home: Scaffold(
-          body: RssArticleColumnsSlideWidget(
+          body: NewsColumnsSlideWidget(
             db: db,
             blobs: FakeBlobStore(),
             slide: slide,

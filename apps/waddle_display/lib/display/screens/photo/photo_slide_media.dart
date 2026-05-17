@@ -9,7 +9,7 @@ import 'package:waddle_display/curator/screen_program_curator.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 /// Loads a [Photo] row chosen for this slide ([spec.choiceKey] in [slide.randomChoices]).
-Future<Photo?> loadPexelsPhotoForSlide(
+Future<Photo?> loadPhotoForSlide(
   AppDatabase db,
   ParsedWidgetSpec spec,
   ResolvedSlide slide,

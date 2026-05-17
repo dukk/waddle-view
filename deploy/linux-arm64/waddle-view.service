@@ -4,10 +4,66 @@ After=graphical-session.target
 
 [Service]
 Type=simple
+# Required for GTK on the local graphical session.
 Environment=DISPLAY=:0
 WorkingDirectory=/opt/waddle-view/bundle
 ExecStart=/opt/waddle-view/bundle/waddle_display
 Restart=on-failure
+
+# --- waddle_display environment (WADDLE_DISPLAY_*)
+# Uncomment and set values below, or merge from apps/waddle_display/.env.development
+# via deploy/dev-pi/install_main_to_pi.py (dotenv overrides these commented defaults).
+# Names must match apps/waddle_display/.env.example and lib/config/display_env.dart.
+
+# Optional operator OAuth (login routes return 501 until implemented):
+# Environment=WADDLE_DISPLAY_APPLE_CLIENT_ID=
+
+# Local REST listen IP (default in app: 0.0.0.0 — all interfaces). Use 127.0.0.1 for loopback-only.
+# Environment=WADDLE_DISPLAY_HTTP_BIND_IP=127.0.0.1
+# Environment=WADDLE_DISPLAY_HTTP_PORT=8787
+
+# HTTPS on by default (self-signed cert under app support tls/). Set 0 for plain HTTP.
+# Environment=WADDLE_DISPLAY_HTTP_TLS=0
+# Environment=WADDLE_DISPLAY_HTTP_TLS_DIR=
+# Environment=WADDLE_DISPLAY_HTTP_TLS_CERT=
+# Environment=WADDLE_DISPLAY_HTTP_TLS_KEY=
+
+# Comma-separated browser origins for CORS (e.g. waddle_controller on Vite :5173).
+# Environment=WADDLE_DISPLAY_HTTP_CORS_ORIGINS=https://127.0.0.1:5173,https://localhost:5173
+
+# Public URL of the waddle_controller SPA (controller_invite slides).
+# Environment=WADDLE_DISPLAY_CONTROLLER_PUBLIC_URL=https://192.168.1.10:5173
+
+# Shared secret for POST /v1/auth/register-viewer (/join QR). Unset disables self-service viewer signup.
+# Environment=WADDLE_DISPLAY_VIEWER_REGISTRATION_SECRET=change-me
+
+# OpenAI (joke_openai, trivia_openai, trivia_opentdb)
+# Environment=WADDLE_DISPLAY_OPENAI_API_KEY=
+
+# OpenWeatherMap (weather_openweathermap)
+# Environment=WADDLE_DISPLAY_OPEN_WEATHER_MAP_API_KEY=
+
+# Pexels (media_pexels)
+# Environment=WADDLE_DISPLAY_PEXELS_API_KEY=
+
+# Pexels video playback (embedded Linux defaults apply when unset)
+# Environment=WADDLE_DISPLAY_PEXELS_VIDEO_MAX_TEXTURE_PIXELS=921600
+# Environment=WADDLE_DISPLAY_PEXELS_VIDEO_HWDEC=drm
+
+# Pexels collect-time MP4 width cap
+# Environment=WADDLE_DISPLAY_PEXELS_MAX_VIDEO_DOWNLOAD_WIDTH=1280
+
+# Flickr (media_flickr)
+# Environment=WADDLE_DISPLAY_FLICKR_API_KEY=
+
+# Finnhub (stock_finnhub)
+# Environment=WADDLE_DISPLAY_FINHUB_API_KEY=
+
+# Microsoft Graph OAuth public client id (Outlook calendar, OneDrive media) — not in SQLite
+# Environment=WADDLE_DISPLAY_MICROSOFT_GRAPH_CLIENT_ID=
+
+# Google Calendar OAuth public client id — not in SQLite
+# Environment=WADDLE_DISPLAY_GOOGLE_CLIENT_ID=
 
 [Install]
 WantedBy=default.target

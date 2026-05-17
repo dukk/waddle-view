@@ -60,7 +60,6 @@ void main() {
         TickerTapeForCuration(
           id: 'q',
           tickerType: 'quote',
-          enabled: true,
           frequencyWeight: 1,
           sortOrder: 0,
           configJson: '{"fallbackText":"That was so damn fast."}',
@@ -68,7 +67,6 @@ void main() {
         TickerTapeForCuration(
           id: 'c',
           tickerType: 'custom',
-          enabled: true,
           frequencyWeight: 1,
           sortOrder: 10,
         ),
@@ -90,7 +88,6 @@ void main() {
         TickerTapeForCuration(
           id: 'q',
           tickerType: 'quote',
-          enabled: true,
           frequencyWeight: 1,
           sortOrder: 0,
           configJson: '{"fallbackText":"A damn quote"}',

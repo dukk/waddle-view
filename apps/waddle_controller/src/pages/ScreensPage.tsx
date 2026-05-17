@@ -17,7 +17,6 @@ import {
   Select,
   Paper,
   Stack,
-  Switch,
   Table,
   TableBody,
   TableCell,
@@ -51,12 +50,12 @@ type ScreenRow = {
   id: string;
   name: string;
   description?: string;
-  enabled: boolean;
   screen_type: string;
   config_json: string;
   config_json_schema?: string;
   example_config_json?: string;
-  dwell_seconds: number;
+  min_dwell_seconds: number;
+  max_dwell_seconds: number;
   frequency_weight: number;
   min_gap_between_shows_seconds: number;
   min_placements_per_program: number;
@@ -105,8 +104,9 @@ function ScreenTable({
             <TableCell>Name</TableCell>
             <TableCell>ID</TableCell>
             <TableCell>Type</TableCell>
-            <TableCell>Dwell</TableCell>
+            <TableCell>Dwell (min–max)</TableCell>
             <TableCell>Weight</TableCell>
+            <TableCell>Gap</TableCell>
             <TableCell>Description</TableCell>
             <TableCell align="right">Actions</TableCell>
           </TableRow>
@@ -119,8 +119,11 @@ function ScreenTable({
                 <TableCell sx={{ fontWeight: row.name.trim() ? 600 : 400 }}>{title}</TableCell>
                 <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.id}</TableCell>
                 <TableCell>{screenTypeLabel(row.screen_type)}</TableCell>
-                <TableCell>{row.dwell_seconds}s</TableCell>
+                <TableCell>
+                  {row.min_dwell_seconds}–{row.max_dwell_seconds}s
+                </TableCell>
                 <TableCell>{row.frequency_weight}</TableCell>
+                <TableCell>{row.min_gap_between_shows_seconds}s</TableCell>
                 <TableCell sx={{ maxWidth: 280, wordBreak: 'break-word' }}>
                   {row.description?.trim() ?? ''}
                 </TableCell>
@@ -188,11 +191,7 @@ export function ScreensPage() {
     [meta],
   );
 
-  const { enabledRows, disabledRows } = useMemo(() => {
-    const enabled = rows.filter((r) => r.enabled).sort(sortById);
-    const disabled = rows.filter((r) => !r.enabled).sort(sortById);
-    return { enabledRows: enabled, disabledRows: disabled };
-  }, [rows]);
+  const sortedRows = useMemo(() => [...rows].sort(sortById), [rows]);
 
   const deleteScreen = useCallback(
     async (id: string) => {
@@ -240,61 +239,28 @@ export function ScreensPage() {
 
       {error && <Alert severity="error">{error}</Alert>}
 
-      <Stack spacing={1.5}>
-        <Typography variant="subtitle1" fontWeight={600}>
-          Enabled
+      {sortedRows.length === 0 ? (
+        <Typography variant="body2" color="text.secondary">
+          No screens in the catalog yet.
         </Typography>
-        {enabledRows.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
-            No screens are enabled.
-          </Typography>
-        ) : layout === 'card' ? (
-          <Box sx={catalogCardGridSx}>
-            {enabledRows.map((r) => (
-              <ScreenCard
-                key={r.id}
-                row={r}
-                onEdit={() => setEditRow(r)}
-                onDelete={() => void deleteScreen(r.id)}
-              />
-            ))}
-          </Box>
-        ) : (
-          <ScreenTable
-            rows={enabledRows}
-            onEdit={setEditRow}
-            onDelete={(id) => void deleteScreen(id)}
-          />
-        )}
-      </Stack>
-
-      <Stack spacing={1.5}>
-        <Typography variant="subtitle1" fontWeight={600}>
-          Disabled
-        </Typography>
-        {disabledRows.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
-            All screens are enabled.
-          </Typography>
-        ) : layout === 'card' ? (
-          <Box sx={catalogCardGridSx}>
-            {disabledRows.map((r) => (
-              <ScreenCard
-                key={r.id}
-                row={r}
-                onEdit={() => setEditRow(r)}
-                onDelete={() => void deleteScreen(r.id)}
-              />
-            ))}
-          </Box>
-        ) : (
-          <ScreenTable
-            rows={disabledRows}
-            onEdit={setEditRow}
-            onDelete={(id) => void deleteScreen(id)}
-          />
-        )}
-      </Stack>
+      ) : layout === 'card' ? (
+        <Box sx={catalogCardGridSx}>
+          {sortedRows.map((r) => (
+            <ScreenCard
+              key={r.id}
+              row={r}
+              onEdit={() => setEditRow(r)}
+              onDelete={() => void deleteScreen(r.id)}
+            />
+          ))}
+        </Box>
+      ) : (
+        <ScreenTable
+          rows={sortedRows}
+          onEdit={setEditRow}
+          onDelete={(id) => void deleteScreen(id)}
+        />
+      )}
 
       {addOpen && (
         <AddScreenDialog
@@ -377,7 +343,8 @@ function ScreenCard({
           ) : null}
           <Chip size="small" label={typeLabel} variant="outlined" sx={{ alignSelf: 'flex-start' }} />
           <Typography variant="caption" color="text.secondary" display="block">
-            Dwell {row.dwell_seconds}s · weight {row.frequency_weight}
+            Dwell {row.min_dwell_seconds}–{row.max_dwell_seconds}s · weight {row.frequency_weight} ·
+            gap {row.min_gap_between_shows_seconds}s
           </Typography>
           {row.description?.trim() ? (
             <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
@@ -507,9 +474,14 @@ function EditScreenDialog({
 }) {
   const { active } = useDisplay();
   const [name, setName] = useState(row.name);
-  const [enabled, setEnabled] = useState(row.enabled);
-  const [dwell, setDwell] = useState(row.dwell_seconds);
+  const [minDwell, setMinDwell] = useState(row.min_dwell_seconds);
+  const [maxDwell, setMaxDwell] = useState(row.max_dwell_seconds);
   const [weight, setWeight] = useState(row.frequency_weight);
+  const [minGap, setMinGap] = useState(row.min_gap_between_shows_seconds);
+  const [minPlacements, setMinPlacements] = useState(row.min_placements_per_program);
+  const [maxPlacements, setMaxPlacements] = useState<number | ''>(
+    row.max_placements_per_program ?? '',
+  );
   const [formData, setFormData] = useState<Record<string, unknown>>(() =>
     parseJsonObject(row.config_json),
   );
@@ -523,9 +495,13 @@ function EditScreenDialog({
         method: 'PATCH',
         body: JSON.stringify({
           name,
-          enabled,
-          dwell_seconds: dwell,
+          min_dwell_seconds: minDwell,
+          max_dwell_seconds: maxDwell,
           frequency_weight: weight,
+          min_gap_between_shows_seconds: minGap,
+          min_placements_per_program: minPlacements,
+          max_placements_per_program:
+            maxPlacements === '' ? null : Number(maxPlacements),
           config_json: formData,
         }),
       });
@@ -542,18 +518,22 @@ function EditScreenDialog({
         <Stack spacing={2} sx={{ mt: 1 }}>
           {err && <Alert severity="error">{err}</Alert>}
           <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} fullWidth />
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <Switch checked={enabled} onChange={(_, v) => setEnabled(v)} />
-            <Typography>Enabled</Typography>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField
+              label="Min dwell seconds"
+              type="number"
+              value={minDwell}
+              onChange={(e) => setMinDwell(Number(e.target.value) || 0)}
+              fullWidth
+            />
+            <TextField
+              label="Max dwell seconds"
+              type="number"
+              value={maxDwell}
+              onChange={(e) => setMaxDwell(Number(e.target.value) || 0)}
+              fullWidth
+            />
           </Stack>
-          <TextField
-            label="Dwell seconds"
-            type="number"
-            value={dwell}
-            onChange={(e) => setDwell(Number(e.target.value) || 0)}
-            fullWidth
-            helperText="Seconds on screen each time this row is placed in a curated program (0 = skip automatic rotation)."
-          />
           <TextField
             label="Frequency weight"
             type="number"
@@ -562,6 +542,33 @@ function EditScreenDialog({
             fullWidth
             helperText="Higher values are chosen more often; recent appearances in the history window reduce effective weight."
           />
+          <TextField
+            label="Min gap between shows (seconds)"
+            type="number"
+            value={minGap}
+            onChange={(e) => setMinGap(Number(e.target.value) || 0)}
+            fullWidth
+            helperText="Minimum time since the last showing before this screen is eligible again."
+          />
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField
+              label="Min placements per program"
+              type="number"
+              value={minPlacements}
+              onChange={(e) => setMinPlacements(Number(e.target.value) || 0)}
+              fullWidth
+            />
+            <TextField
+              label="Max placements per program"
+              type="number"
+              value={maxPlacements}
+              onChange={(e) =>
+                setMaxPlacements(e.target.value === '' ? '' : Number(e.target.value) || 0)
+              }
+              fullWidth
+              helperText="Leave empty for no cap."
+            />
+          </Stack>
           <Typography variant="subtitle2">config.json</Typography>
           <Form
             schema={schema}

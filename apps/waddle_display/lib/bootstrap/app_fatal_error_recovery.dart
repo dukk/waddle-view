@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import '../debug/debug_console_disk_logger.dart';
 
@@ -115,6 +116,17 @@ bool isRecoverableHardwareKeyboardError(FlutterErrorDetails details) {
   );
 }
 
+/// [webview_win_floating] may invoke `init` on its method channel before the
+/// native plugin is registered (import-time static init) or after hot restart.
+/// The web_page slide path surfaces a failed session instead of restarting.
+@visibleForTesting
+bool isRecoverableEmbeddedWebViewPluginError(Object error) {
+  if (error is! MissingPluginException) {
+    return false;
+  }
+  return error.toString().contains('webview_win_floating');
+}
+
 /// media_kit texture resize / platform teardown races during slide transitions
 /// should not restart the display; the slide widget retries or shows an error.
 @visibleForTesting
@@ -198,15 +210,19 @@ void installGlobalFatalErrorHandlers({
 
   PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
     final details = FlutterErrorDetails(exception: error, stack: stack);
-    if (isRecoverableHardwareKeyboardError(details) ||
+    if (isRecoverableEmbeddedWebViewPluginError(error) ||
+        isRecoverableHardwareKeyboardError(details) ||
         isRecoverableMediaKitFlutterError(details)) {
+      final library = isRecoverableEmbeddedWebViewPluginError(error)
+          ? 'webview_win_floating'
+          : isRecoverableMediaKitFlutterError(details)
+              ? 'media_kit'
+              : 'services';
       logRecoverable(
         FlutterErrorDetails(
           exception: error,
           stack: stack,
-          library: isRecoverableMediaKitFlutterError(details)
-              ? 'media_kit'
-              : 'services',
+          library: library,
         ),
       );
       return true;
@@ -223,7 +239,20 @@ void onZoneFatalError(
   StackTrace stack, {
   void Function(String channel, Object error, StackTrace? stack)? logFatal,
   Future<void> Function()? restartProcess,
+  void Function(FlutterErrorDetails details)? logRecoverable,
 }) {
+  if (isRecoverableEmbeddedWebViewPluginError(error)) {
+    final logRecoverableLayout =
+        logRecoverable ?? _defaultLogRecoverableFlutterLayout;
+    logRecoverableLayout(
+      FlutterErrorDetails(
+        exception: error,
+        stack: stack,
+        library: 'webview_win_floating',
+      ),
+    );
+    return;
+  }
   final log = logFatal ?? _defaultLogFatal;
   final restart = restartProcess ?? _defaultRestartProcess;
   reactToFatalAppError('Zone', error, stack, _fatalGate, log, restart);

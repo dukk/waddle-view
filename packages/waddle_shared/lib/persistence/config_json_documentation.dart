@@ -627,16 +627,16 @@ const List<String> kScreenLayoutWidgetTypes = [
   'analog_clock',
   'calendar_month',
   'photo_random',
-  'rss_article',
-  'rss_article_columns',
-  'rss_article_stack',
+  'news',
+  'news_columns',
+  'news_stack',
   'local_api',
   'admin_setup',
   'controller_invite',
   'weather',
-  'pexels_photo',
-  'pexels_photo_collage',
-  'pexels_video',
+  'photo',
+  'photo_collage',
+  'video',
   'stock_quotes',
   'data_health',
   'web_page',
@@ -885,7 +885,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
     ),
     example: jsonEncode({'pool': 'pix'}),
   ),
-  'rss_article': ScreenConfigJsonDoc(
+  'news': ScreenConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'RssArticleScreenConfig',
@@ -930,7 +930,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
       'summaryCapacityChars': 1200,
     }),
   ),
-  'rss_article_columns': ScreenConfigJsonDoc(
+  'news_columns': ScreenConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'RssArticleColumnsScreenConfig',
@@ -968,7 +968,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
       'summaryCapacityCharsPerColumn': 220,
     }),
   ),
-  'rss_article_stack': ScreenConfigJsonDoc(
+  'news_stack': ScreenConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'RssArticleStackScreenConfig',
@@ -1056,7 +1056,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
     ),
     example: jsonEncode({'locationId': 'salt_lake_city_ut'}),
   ),
-  'pexels_photo': ScreenConfigJsonDoc(
+  'photo': ScreenConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'PexelsPhotoScreenConfig',
@@ -1069,7 +1069,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
     ),
     example: jsonEncode({'categoryId': 'nature'}),
   ),
-  'pexels_photo_collage': ScreenConfigJsonDoc(
+  'photo_collage': ScreenConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'PexelsPhotoCollageScreenConfig',
@@ -1092,7 +1092,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
       'categoryId': 'pexels',
     }),
   ),
-  'pexels_video': ScreenConfigJsonDoc(
+  'video': ScreenConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'PexelsVideoScreenConfig',
@@ -1103,7 +1103,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
             'type': 'string',
             'minLength': 1,
             'description':
-                'Restrict to videos in this content_categories id (pool pexels_video:<id>).',
+                'Restrict to videos in this content_categories id (pool video:<id>).',
           },
           'loop': {'type': 'boolean'},
           'unmuted': {'type': 'boolean'},

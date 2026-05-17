@@ -73,8 +73,8 @@ class _ScreensUpdate extends Command<void> {
   _ScreensUpdate(this.globalOptions) : super() {
     argParser
       ..addOption('name')
-      ..addOption('enabled', allowed: ['true', 'false'])
-      ..addOption('dwell-seconds')
+      ..addOption('min-dwell-seconds')
+      ..addOption('max-dwell-seconds')
       ..addOption('frequency-weight')
       ..addOption('min-gap-between-shows-seconds')
       ..addOption(
@@ -99,12 +99,8 @@ class _ScreensUpdate extends Command<void> {
     }
     final id = rest.first;
     final o = argResults!;
-    bool? enabled;
-    final e = o['enabled'] as String?;
-    if (e != null) {
-      enabled = e == 'true';
-    }
-    final dwell = int.tryParse(o['dwell-seconds'] as String? ?? '');
+    final minDwell = int.tryParse(o['min-dwell-seconds'] as String? ?? '');
+    final maxDwell = int.tryParse(o['max-dwell-seconds'] as String? ?? '');
     final weight = int.tryParse(o['frequency-weight'] as String? ?? '');
     final gap = int.tryParse(
       o['min-gap-between-shows-seconds'] as String? ?? '',
@@ -118,8 +114,8 @@ class _ScreensUpdate extends Command<void> {
       await b.updateScreen(
         id: id,
         name: o['name'] as String?,
-        enabled: enabled,
-        dwellSeconds: dwell,
+        minDwellSeconds: minDwell,
+        maxDwellSeconds: maxDwell,
         frequencyWeight: weight,
         minGapBetweenShowsSeconds: gap,
         configJson: configJson,

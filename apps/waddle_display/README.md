@@ -86,7 +86,7 @@ The **`apps/waddlectl`** package is a shell tool against the same **SQLite** dat
 
 - **Create** (timestamped **`.zip`** or **`.tar.gz`** in the current directory, or under `--output`):
 
-  `dart run waddlectl --database=/path/to/waddle_view.sqlite backup create`
+  `dart run waddlectl --database=/path/to/waddle_display.db backup create`
 
   Defaults include **database** and **`media/`** next to the SQLite file. Toggle with `--no-include-database` or `--no-include-blobs`. Use `--format=zip` or `--format=tgz`. The SQLite file is checkpointed (**WAL** merged) before copy so the archive holds a single main DB file.
 
@@ -204,16 +204,16 @@ Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../d
 
 ### Screen program (main carousel)
 
-When the app assembles a timed program from `screens`, [`ScreenProgramCurator`](lib/curator/screen_program_curator.dart) pre-assigns **content ids** on each [`ResolvedSlide`](lib/curator/screen_program_curator.dart) for **jokes**, **RSS articles**, **trivia** (and existing **random photo** pools). Slide widgets read those ids from `randomChoices` first, so the same joke or article is not shown twice in one program when SQLite has enough distinct rows. If every candidate is already used, the slide falls back to the previous random / “best article” selection. Multi-article RSS widgets use suffixed keys, for example **`main_rss_article_columns_0`** … **`_2`**, or **`main_rss_article_stack_0`** / **`_1`** for the two-row stack layout ([`rss_article_stack_slide_widget.dart`](lib/display/screens/rss_article/rss_article_stack_slide_widget.dart)). The **`rss_article_columns`** layout places a **QR code** under each column’s **title** (start-aligned) with the **summary beside it** when that article’s `link` is non-empty; optional widget `config` **`qrLogicalSize`** (default **80**, clamped) scales the code after the viewport multiplier ([`rss_article_columns_slide_widget.dart`](lib/display/screens/rss_article/rss_article_columns_slide_widget.dart)).
+When the app assembles a timed program from `screens`, [`ScreenProgramCurator`](lib/curator/screen_program_curator.dart) pre-assigns **content ids** on each [`ResolvedSlide`](lib/curator/screen_program_curator.dart) for **jokes**, **RSS articles**, **trivia** (and existing **random photo** pools). Slide widgets read those ids from `randomChoices` first, so the same joke or article is not shown twice in one program when SQLite has enough distinct rows. If every candidate is already used, the slide falls back to the previous random / “best article” selection. Multi-article RSS widgets use suffixed keys, for example **`main_news_columns_0`** … **`_2`**, or **`main_news_stack_0`** / **`_1`** for the two-row stack layout ([`news_stack_slide_widget.dart`](lib/display/screens/news/news_stack_slide_widget.dart)). The **`news_columns`** layout places a **QR code** under each column’s **title** (start-aligned) with the **summary beside it** when that article’s `link` is non-empty; optional widget `config` **`qrLogicalSize`** (default **80**, clamped) scales the code after the viewport multiplier ([`news_columns_slide_widget.dart`](lib/display/screens/news/news_columns_slide_widget.dart)).
 
 RSS widget `config` may include **`feedId`** (single feed), **`categoryId`** (slug shared with **`content_categories.id`**, pool key **`rss_category:<id>`**), or neither. With the global **`rss`** pool, the curator assigns articles from **one** category per slide so columns/stack rows do not mix unrelated feeds; it stores that id in **`randomChoices`** under **`rss_screen_category_id`** ([`ScreenProgramCurator.rssScreenCategoryChoiceKey`](lib/curator/screen_program_curator.dart)). **RSS**, **joke**, and **trivia** slides render a **category strip** at the top (label + icon from **`content_categories`**, with fallbacks — [`content_category_slide_header.dart`](lib/display/content_category_slide_header.dart)).
 
-Each **`screens`** row stores **`screen_type`** (widget id, e.g. `weather`, `rss_article`), runtime **`config_json`** (JSON object: the former per-widget `config` in legacy `layout_json`), plus documentation columns **`config_json_schema`** and **`example_config_json`** for that config shape. `GET /v1/screens` includes the schema and example fields.
+Each **`screens`** row stores **`screen_type`** (widget id, e.g. `weather`, `news`), runtime **`config_json`** (JSON object: the former per-widget `config` in legacy `layout_json`), plus documentation columns **`config_json_schema`** and **`example_config_json`** for that config shape. `GET /v1/screens` includes the schema and example fields.
 
 - **Analog clock labels** — optional `analog_clock` widget `config.dialLabels` controls clock-face labels: **`none`** (default), **`numbers`** (1-12), **`roman`** (I-XII), or **`cardinal_numbers`** (12/3/6/9 only).
 - **Analog clock hand accents** — by default, hands use accent colors **1/2/3** for **hour/minute/second**. Optional per-hand config keys can override accent choice: **`hourHandAccent`**, **`minuteHandAccent`**, **`secondHandAccent`** with values **`accent1`**, **`accent2`**, **`accent3`** (or numeric **`1`**, **`2`**, **`3`**).
 - **RSS screen photos** — config key **`curator.news.screens.require_photo`** (default **true** in seed): when true, only RSS rows with a downloaded image are used for **screen** slides; the **ticker** is unchanged. If a news screen must still run (e.g. **min placements** / data-key minimum) and no image-backed article is available, the curator may place a photo-less row and set **`*_imageMode`** = **`icon`** (per slot for columns/stack) so the UI shows a **newspaper** icon instead of a photo.
-- **Summary fit** — optional keys in **`config_json`** for RSS screens: **`summaryCapacityChars`** (single `rss_article`), **`summaryCapacityCharsPerColumn`** (`rss_article_columns`), **`summaryCapacityCharsPerSlot`** (`rss_article_stack`). The curator scores screen+article pairs so summary text length is less likely to be wasted or heavily truncated. Seeded default news screens set these in [`initial_seed.dart`](../../packages/waddle_shared/lib/seed/initial_seed.dart).
+- **Summary fit** — optional keys in **`config_json`** for RSS screens: **`summaryCapacityChars`** (single `news`), **`summaryCapacityCharsPerColumn`** (`news_columns`), **`summaryCapacityCharsPerSlot`** (`news_stack`). The curator scores screen+article pairs so summary text length is less likely to be wasted or heavily truncated. Seeded default news screens set these in [`initial_seed.dart`](../../packages/waddle_shared/lib/seed/initial_seed.dart).
 
 ### Bottom ticker (`ticker_tapes`)
 
@@ -322,7 +322,7 @@ The **Pexels** provider (`id` / `provider_type`: **`media_pexels`**) downloads c
 - **`minVideoSeconds`** / **`maxVideoSeconds`**: inclusive duration window for videos (defaults **11** and **29** seconds).
 - **`sources`**: optional list of `{ "query": "…", "category": "…" }` for `/v1/search` (photos) and `/v1/videos/search` (videos); results use that **category** string (the default curated/popular path uses category **`pexels`**).
 
-**Screens:** widget types **`pexels_photo`**, **`pexels_photo_collage`** (multi-tile layouts; `config.template` picks one of the built-in grids, and the curator matches **native aspect ratio** to each cell when **`blob_metadata.pixel_width` / `pixel_height`** are populated), and **`pexels_video`**. Optional `config.categoryId` selects the curator pool (`pexels_photo` vs `pexels_photo:<category>`). Seed adds **`pexels_photo`**, several collage screens, and **`pexels_video`** rows in **`screens`** disabled by default; enable after configuring the API key. Attribution (photographer name, profile URL, alt text) is shown on the photo slide; videos autoplay **muted** unless `config.unmuted` is true.
+**Screens:** widget types **`photo`**, **`photo_collage`** (multi-tile layouts; `config.template` picks one of the built-in grids, and the curator matches **native aspect ratio** to each cell when **`blob_metadata.pixel_width` / `pixel_height`** are populated), and **`video`**. Optional `config.categoryId` selects the curator pool (`photo` vs `photo:<category>`). Seed adds **`photo`**, several collage screens, and **`video`** rows in **`screens`** disabled by default; enable after configuring the API key. Attribution (photographer name, profile URL, alt text) is shown on the photo slide; videos autoplay **muted** unless `config.unmuted` is true.
 
 ## Stock quote provider (Finnhub)
 
@@ -416,11 +416,11 @@ The **OneDrive media** provider (`id` / `provider_type`: **`media_onedrive`**) k
 **`integrations.config_json`** (JSON):
 
 - **`accounts`**: list of `{ "graphAccountKey": "<id>", "sources": [ ... ] }` (same account keys as Outlook).
-- **`sources`**: list of `{ "path": "/Pictures/MyFolder", "kind": "photo" | "video" | "both", "category": "<slug>", "maxFiles": <n>, "perPollLimit": <optional> }`. **`path`** is root-relative (leading `/` optional). Use **`""`** for the **drive root** (entire default drive—can be large). Multiple sources that share the same **`graphAccountKey`** and normalized **`path`** run **one** delta pass per collect. **`kind`**: **`both`** ingests supported photo and video MIME types into the same **`category`** (photos go to **`photos`**, videos to **`videos`**). **`category`** must match a **`content_categories.id`** (and optional **`config.categoryId`** on **`pexels_photo`** / **`pexels_video`** screens). **`maxFiles`**: retention cap per table for that category—oldest OneDrive-sourced rows in that table may be removed with their blobs **even if the file still exists in OneDrive** (separate from cloud-driven deletes). **`perPollLimit`**: max **new** downloads per collect for that source; omit to use **`maxFiles`**. **`globalPerPollLimit`**: cap on new downloads per engine cycle across all sources (default **50**). The provider persists **`@odata.deltaLink`** in app KV per account and path for incremental sync; if Graph returns **410** / resync, it clears the link and re-enumerates locally (still pull-only).
+- **`sources`**: list of `{ "path": "/Pictures/MyFolder", "kind": "photo" | "video" | "both", "category": "<slug>", "maxFiles": <n>, "perPollLimit": <optional> }`. **`path`** is root-relative (leading `/` optional). Use **`""`** for the **drive root** (entire default drive—can be large). Multiple sources that share the same **`graphAccountKey`** and normalized **`path`** run **one** delta pass per collect. **`kind`**: **`both`** ingests supported photo and video MIME types into the same **`category`** (photos go to **`photos`**, videos to **`videos`**). **`category`** must match a **`content_categories.id`** (and optional **`config.categoryId`** on **`photo`** / **`video`** screens). **`maxFiles`**: retention cap per table for that category—oldest OneDrive-sourced rows in that table may be removed with their blobs **even if the file still exists in OneDrive** (separate from cloud-driven deletes). **`perPollLimit`**: max **new** downloads per collect for that source; omit to use **`maxFiles`**. **`globalPerPollLimit`**: cap on new downloads per engine cycle across all sources (default **50**). The provider persists **`@odata.deltaLink`** in app KV per account and path for incremental sync; if Graph returns **410** / resync, it clears the link and re-enumerates locally (still pull-only).
 
 **MIME types:** photos **`image/jpeg`**, **`image/png`**, **`image/webp`**, **`image/gif`**; videos **`video/mp4`**, **`video/quicktime`**.
 
-**Screens:** use existing **`pexels_photo`** / **`pexels_video`** widgets; set **`config.categoryId`** to the same slug as the folder’s **`category`** so the curator pool includes OneDrive items alongside Pexels (or use a dedicated category for OneDrive-only folders).
+**Screens:** use existing **`photo`** / **`video`** widgets; set **`config.categoryId`** to the same slug as the folder’s **`category`** so the curator pool includes OneDrive items alongside Pexels (or use a dedicated category for OneDrive-only folders).
 
 **`integrations.poll_seconds`:** default **3600** when seeded.
 
@@ -439,7 +439,7 @@ The **Flickr** provider … **API key:** **`WADDLE_DISPLAY_FLICKR_API_KEY`** (ne
 
 **Image URL fallback:** provider prefers `url_o`, then `url_l`, `url_c`, `url_z`, `url_m`.
 
-**Screens:** use **`pexels_photo`** (or collage widgets); set **`config.categoryId`** to the same slug as **`category`** (default **`flickr`**) so the curator pool includes downloaded Flickr rows.
+**Screens:** use **`photo`** (or collage widgets); set **`config.categoryId`** to the same slug as **`category`** (default **`flickr`**) so the curator pool includes downloaded Flickr rows.
 
 **`integrations.poll_seconds`:** default **3600** when seeded.
 
@@ -458,7 +458,7 @@ The **Bing image of the day** provider (`id` / `provider_type`: **`media_bing_io
 - **`resolution`**: suffix before `.jpg` — **`UHD`**, **`1920x1200`**, **`1920x1080`**, **`1366x768`**, **`1080x1920`**, **`768x1280`** (default **`UHD`**).
 - **`category`**: **`content_categories.id`** for new rows (default **`bing`**).
 
-**Screens:** use **`pexels_photo`** or **`photo_random`** with **`config.categoryId`**: **`bing`**.
+**Screens:** use **`photo`** or **`photo_random`** with **`config.categoryId`**: **`bing`**.
 
 Requests send a desktop **`User-Agent`** and **`Referer`** matching the Bing origin (Bing may throttle anonymous clients otherwise). Each HTTP call uses a **5s** timeout.
 

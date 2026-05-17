@@ -9,12 +9,12 @@ import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import '../../../curator/screen_program_curator.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import '../../dashboard_viewport_scope.dart';
-import 'pexels_attribution_overlay.dart';
-import 'pexels_slide_media.dart';
+import 'photo_attribution_overlay.dart';
+import 'photo_slide_media.dart';
 
 /// Full-bleed Pexels still with attribution bar at the bottom.
-class PexelsPhotoSlideWidget extends StatefulWidget {
-  const PexelsPhotoSlideWidget({
+class PhotoSlideWidget extends StatefulWidget {
+  const PhotoSlideWidget({
     super.key,
     required this.db,
     required this.blobs,
@@ -30,10 +30,10 @@ class PexelsPhotoSlideWidget extends StatefulWidget {
   final ThemeData theme;
 
   @override
-  State<PexelsPhotoSlideWidget> createState() => _PexelsPhotoSlideWidgetState();
+  State<PhotoSlideWidget> createState() => _PhotoSlideWidgetState();
 }
 
-class _PexelsPhotoSlideWidgetState extends State<PexelsPhotoSlideWidget> {
+class _PhotoSlideWidgetState extends State<PhotoSlideWidget> {
   Photo? _row;
   Uint8List? _bytes;
   bool _loading = true;
@@ -45,7 +45,7 @@ class _PexelsPhotoSlideWidgetState extends State<PexelsPhotoSlideWidget> {
   }
 
   Future<void> _bootstrap() async {
-    final row = await loadPexelsPhotoForSlide(
+    final row = await loadPhotoForSlide(
       widget.db,
       widget.spec,
       widget.slide,

@@ -75,7 +75,7 @@ void main() {
     await db.close();
   });
 
-  test('preloadResolvedSlideContent warms pexels_photo blob bytes', () async {
+  test('preloadResolvedSlideContent warms photo blob bytes', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     final blobs = FakeBlobStore();
@@ -104,8 +104,8 @@ void main() {
       screenId: 'pex',
       dwellMs: 1000,
       layoutJson:
-          '{"widgets":[{"type":"pexels_photo","slot":"a","config":{}}]}',
-      randomChoices: {'a_pexels_photo': 'photo_preload_1'},
+          '{"widgets":[{"type":"photo","slot":"a","config":{}}]}',
+      randomChoices: {'a_photo': 'photo_preload_1'},
     );
     await preloadResolvedSlideContent(db: db, blobs: blobs, slide: slide);
     await db.close();
@@ -127,7 +127,7 @@ void main() {
     await db.close();
   });
 
-  test('preloadResolvedSlideContent warms rss_article', () async {
+  test('preloadResolvedSlideContent warms news', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await db.into(db.rssFeedSources).insert(
@@ -154,8 +154,8 @@ void main() {
       screenId: 'news',
       dwellMs: 1000,
       layoutJson:
-          '{"widgets":[{"type":"rss_article","slot":"main","config":{}}]}',
-      randomChoices: const {'main_rss_article': 'art_pre'},
+          '{"widgets":[{"type":"news","slot":"main","config":{}}]}',
+      randomChoices: const {'main_news': 'art_pre'},
     );
     await preloadResolvedSlideContent(
       db: db,
@@ -165,7 +165,7 @@ void main() {
     await db.close();
   });
 
-  test('preloadResolvedSlideContent warms rss_article_columns', () async {
+  test('preloadResolvedSlideContent warms news_columns', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await db.into(db.rssFeedSources).insert(
@@ -194,10 +194,10 @@ void main() {
       screenId: 'news',
       dwellMs: 1000,
       layoutJson:
-          '{"widgets":[{"type":"rss_article_columns","slot":"main","config":{"columnCount":2}}]}',
+          '{"widgets":[{"type":"news_columns","slot":"main","config":{"columnCount":2}}]}',
       randomChoices: const {
-        'main_rss_article_columns_0': 'c1',
-        'main_rss_article_columns_1': 'c2',
+        'main_news_columns_0': 'c1',
+        'main_news_columns_1': 'c2',
       },
     );
     await preloadResolvedSlideContent(
@@ -208,7 +208,7 @@ void main() {
     await db.close();
   });
 
-  test('preloadResolvedSlideContent warms rss_article_stack', () async {
+  test('preloadResolvedSlideContent warms news_stack', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await db.into(db.rssFeedSources).insert(
@@ -237,10 +237,10 @@ void main() {
       screenId: 'news',
       dwellMs: 1000,
       layoutJson:
-          '{"widgets":[{"type":"rss_article_stack","slot":"main","config":{}}]}',
+          '{"widgets":[{"type":"news_stack","slot":"main","config":{}}]}',
       randomChoices: const {
-        'main_rss_article_stack_0': 's1',
-        'main_rss_article_stack_1': 's2',
+        'main_news_stack_0': 's1',
+        'main_news_stack_1': 's2',
       },
     );
     await preloadResolvedSlideContent(
@@ -251,14 +251,14 @@ void main() {
     await db.close();
   });
 
-  test('preloadResolvedSlideContent pexels_video no row skips materialize', () async {
+  test('preloadResolvedSlideContent video no row skips materialize', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     final slide = ResolvedSlide(
       screenId: 'vid',
       dwellMs: 1000,
       layoutJson:
-          '{"widgets":[{"type":"pexels_video","slot":"v","config":{}}]}',
+          '{"widgets":[{"type":"video","slot":"v","config":{}}]}',
       randomChoices: const {},
     );
     await preloadResolvedSlideContent(
@@ -270,7 +270,7 @@ void main() {
   });
 
   test(
-    'preloadResolvedSlideContent survives pexels_photo_collage blob read failure',
+    'preloadResolvedSlideContent survives photo_collage blob read failure',
     () async {
       final db = openMemoryDatabase();
       await warmDatabase(db);
@@ -297,8 +297,8 @@ void main() {
         screenId: 'col',
         dwellMs: 1000,
         layoutJson:
-            '{"widgets":[{"type":"pexels_photo_collage","slot":"c","config":{}}]}',
-        randomChoices: const {'c_pexels_photo_collage_0': 'ph_fail'},
+            '{"widgets":[{"type":"photo_collage","slot":"c","config":{}}]}',
+        randomChoices: const {'c_photo_collage_0': 'ph_fail'},
       );
       await preloadResolvedSlideContent(
         db: db,
@@ -309,7 +309,7 @@ void main() {
     },
   );
 
-  test('preloadResolvedSlideContent warms pexels_photo_collage slots', () async {
+  test('preloadResolvedSlideContent warms photo_collage slots', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     final blobs = FakeBlobStore();
@@ -337,8 +337,8 @@ void main() {
       screenId: 'col',
       dwellMs: 1000,
       layoutJson:
-          '{"widgets":[{"type":"pexels_photo_collage","slot":"c","config":{}}]}',
-      randomChoices: const {'c_pexels_photo_collage_0': 'ph0'},
+          '{"widgets":[{"type":"photo_collage","slot":"c","config":{}}]}',
+      randomChoices: const {'c_photo_collage_0': 'ph0'},
     );
     await preloadResolvedSlideContent(db: db, blobs: blobs, slide: slide);
     await db.close();

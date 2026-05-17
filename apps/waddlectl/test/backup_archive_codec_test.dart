@@ -27,7 +27,7 @@ void main() {
     final decoded = decodeWaddleBackupBytes(bytes);
     final m2 = readManifestFromArchive(decoded);
     expect(m2.includeDatabase, isTrue);
-    expect(decoded.find('db/waddle_view.sqlite')!.readBytes(), [1, 2, 3]);
+    expect(decoded.find('db/waddle_display.db')!.readBytes(), [1, 2, 3]);
     expect(decoded.find('media/a.bin')!.readBytes()!.length, 2);
   });
 

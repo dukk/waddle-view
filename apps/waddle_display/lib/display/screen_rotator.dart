@@ -12,11 +12,10 @@ import '../debug/app_debug_log.dart';
 import '../debug/operator_telemetry_hub.dart';
 import '../curator/curator_content_pools.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
+import '../curator/active_curator_service.dart';
 import '../curator/screen_program_curator.dart';
 import 'package:waddle_shared/persistence/database.dart';
-import 'package:waddle_shared/persistence/tables.dart';
 import '../theme/display_theme.dart';
-import 'dashboard_kv_flags.dart';
 import 'dashboard_viewport_scope.dart';
 import 'display_navigation_bus.dart';
 import 'viewer_invite_runtime.dart';
@@ -30,12 +29,12 @@ import 'screens/data_health/data_health_slide_widget.dart';
 import 'screens/guest_wifi/guest_wifi_slide_widget.dart';
 import 'screens/joke/joke_slide_widget.dart';
 import 'screens/local_api/local_api_slide_widget.dart';
-import 'screens/pexels/pexels_photo_collage_slide_widget.dart';
-import 'screens/pexels/pexels_photo_slide_widget.dart';
-import 'screens/pexels/pexels_video_slide_widget.dart';
-import 'screens/rss_article/rss_article_columns_slide_widget.dart';
-import 'screens/rss_article/rss_article_slide_widget.dart';
-import 'screens/rss_article/rss_article_stack_slide_widget.dart';
+import 'screens/photo/photo_collage_slide_widget.dart';
+import 'screens/photo/photo_slide_widget.dart';
+import 'screens/photo/video_slide_widget.dart';
+import 'screens/news/news_columns_slide_widget.dart';
+import 'screens/news/news_slide_widget.dart';
+import 'screens/news/news_stack_slide_widget.dart';
 import 'screens/stock_quotes/stock_quotes_slide_widget.dart';
 import 'screens/trivia/trivia_slide_widget.dart';
 import 'screens/weather/weather_slide_widget.dart';
@@ -103,7 +102,9 @@ class _ScreenRotatorState extends State<ScreenRotator>
   );
 
   final _random = Random();
+  late final ActiveCuratorService _curatorService;
   final List<String> _recentScreenIds = [];
+  final Map<String, int> _lastShownAtMsByScreenId = {};
   final FocusNode _keyboardFocusNode = FocusNode(debugLabel: 'screen-rotator');
 
   final List<_ProgramHistoryEntry> _history = <_ProgramHistoryEntry>[];
@@ -182,6 +183,7 @@ class _ScreenRotatorState extends State<ScreenRotator>
   @override
   void initState() {
     super.initState();
+    _curatorService = ActiveCuratorService(db: widget.db);
     widget.navigationBus?.addListener(_onExternalScreenNavigation);
     unawaited(_bootstrap());
   }
@@ -211,26 +213,32 @@ class _ScreenRotatorState extends State<ScreenRotator>
   }
 
   Future<void> _startNewProgram() async {
+    final selection = await _curatorService.resolveAt(DateTime.now());
+    final primary = selection.primary.configuration;
+    final allowedScreenIds = primary.screenMemberIds;
+
+    if (allowedScreenIds.isEmpty) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _history.clear();
+        _history.add(const _ProgramHistoryEntry(slides: []));
+        _historyCursor = 0;
+        _slideCursor = 0;
+      });
+      return;
+    }
+
     final defs =
         await (widget.db.select(widget.db.screens)
-              ..where((t) => t.enabled.equals(true))
+              ..where((t) => t.id.isIn(allowedScreenIds))
               ..orderBy([(t) => OrderingTerm.asc(t.id)]))
             .get();
-    final kvRows = await widget.db.select(widget.db.configKeyValues).get();
-    final kvByKey = {for (final row in kvRows) row.key: row.value};
-    final programSeconds =
-        int.tryParse(
-          kvByKey[kCuratorProgramDurationSecondsKvKey]?.trim() ?? '',
-        ) ??
-        180;
-    final programMs = programSeconds * 1000;
-    final historyDepth =
-        int.tryParse(kvByKey[kCuratorHistoryDepthKvKey]?.trim() ?? '') ?? 5;
+    final programMs = primary.programDurationSeconds * 1000;
+    final historyDepth = primary.historyDepth;
     _historyDepth = historyDepth;
-    final requireNewsPhotoForScreens = isTruthyDashboardKvFlag(
-      kvByKey[kRequireNewsPhotoForScreensKvKey],
-      defaultValue: true,
-    );
+    final requireNewsPhotoForScreens = primary.requireNewsPhotoForScreens;
 
     final blobs = await widget.db.select(widget.db.blobMetadata).get();
     final loadedPools = await loadCuratorContentPools(widget.db);
@@ -249,11 +257,13 @@ class _ScreenRotatorState extends State<ScreenRotator>
       );
     }
 
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
     final candidates = defs
         .map(
           (r) => ScreenCandidate(
             id: r.id,
-            dwellMs: r.dwellSeconds * 1000,
+            minDwellMs: r.minDwellSeconds * 1000,
+            maxDwellMs: r.maxDwellSeconds * 1000,
             frequencyWeight: r.frequencyWeight,
             minGapBetweenShowsMs: r.minGapBetweenShowsSeconds * 1000,
             minPlacementsPerProgram: r.minPlacementsPerProgram,
@@ -263,7 +273,6 @@ class _ScreenRotatorState extends State<ScreenRotator>
               screenType: r.screenType,
               configJson: r.configJson,
             ),
-            enabled: r.enabled,
           ),
         )
         .toList();
@@ -279,6 +288,8 @@ class _ScreenRotatorState extends State<ScreenRotator>
       rssArticleMetrics: loadedPools.rssArticleMetrics,
       photoMetrics: loadedPools.photoMetrics,
       requirePhotoForRssScreens: requireNewsPhotoForScreens,
+      lastShownAtMsByScreenId: _lastShownAtMsByScreenId,
+      nowMs: nowMs,
     );
 
     final screenTypeById = {for (final r in defs) r.id: r.screenType};
@@ -289,9 +300,10 @@ class _ScreenRotatorState extends State<ScreenRotator>
     );
 
     if (kDebugMode) {
-      final dwellOk = candidates.where((c) => c.dwellMs > 0).length;
+      final dwellOk =
+          candidates.where((c) => c.minDwellMs > 0 && c.maxDwellMs > 0).length;
       AppDebugLog.screen(
-        'screen program: build context screenRows=${defs.length} dwellMs>0=$dwellOk '
+        'screen program: build context screenRows=${defs.length} dwellEligible=$dwellOk '
         'budgetMs=$programMs historyDepth=$historyDepth dataKeyLimits=${dataKeyLimits.length} '
         'randomPoolKeys=${pools.length} rssArticleMetrics=${loadedPools.rssArticleMetrics.length} '
         'photoMetrics=${loadedPools.photoMetrics.length} requireNewsPhoto=$requireNewsPhotoForScreens',
@@ -389,6 +401,8 @@ class _ScreenRotatorState extends State<ScreenRotator>
     }
     final slide = _visibleProgram[_slideCursor];
     _recentScreenIds.add(slide.screenId);
+    _lastShownAtMsByScreenId[slide.screenId] =
+        DateTime.now().millisecondsSinceEpoch;
     while (_recentScreenIds.length > 200) {
       _recentScreenIds.removeAt(0);
     }
@@ -893,13 +907,13 @@ class _SlideContent extends StatelessWidget {
         ),
       );
     }
-    // Single full-bleed widgets (like rss_article) need bounded size
+    // Single full-bleed widgets (like news) need bounded size
     // constraints; putting them in an intrinsic-height Column can pass
     // unbounded height and cause them to render empty.
-    if (widgets.length == 1 && widgets.first.type == 'rss_article') {
+    if (widgets.length == 1 && widgets.first.type == 'news') {
       final w = widgets.first;
       return SizedBox.expand(
-        child: RssArticleSlideWidget(
+        child: NewsSlideWidget(
           db: db,
           blobs: blobs,
           slide: slide,
@@ -909,10 +923,10 @@ class _SlideContent extends StatelessWidget {
         ),
       );
     }
-    if (widgets.length == 1 && widgets.first.type == 'rss_article_columns') {
+    if (widgets.length == 1 && widgets.first.type == 'news_columns') {
       final w = widgets.first;
       return SizedBox.expand(
-        child: RssArticleColumnsSlideWidget(
+        child: NewsColumnsSlideWidget(
           db: db,
           blobs: blobs,
           slide: slide,
@@ -922,10 +936,10 @@ class _SlideContent extends StatelessWidget {
         ),
       );
     }
-    if (widgets.length == 1 && widgets.first.type == 'rss_article_stack') {
+    if (widgets.length == 1 && widgets.first.type == 'news_stack') {
       final w = widgets.first;
       return SizedBox.expand(
-        child: RssArticleStackSlideWidget(
+        child: NewsStackSlideWidget(
           db: db,
           blobs: blobs,
           slide: slide,
@@ -935,10 +949,10 @@ class _SlideContent extends StatelessWidget {
         ),
       );
     }
-    if (widgets.length == 1 && widgets.first.type == 'pexels_photo') {
+    if (widgets.length == 1 && widgets.first.type == 'photo') {
       final w = widgets.first;
       return SizedBox.expand(
-        child: PexelsPhotoSlideWidget(
+        child: PhotoSlideWidget(
           db: db,
           blobs: blobs,
           slide: slide,
@@ -947,10 +961,10 @@ class _SlideContent extends StatelessWidget {
         ),
       );
     }
-    if (widgets.length == 1 && widgets.first.type == 'pexels_photo_collage') {
+    if (widgets.length == 1 && widgets.first.type == 'photo_collage') {
       final w = widgets.first;
       return SizedBox.expand(
-        child: PexelsPhotoCollageSlideWidget(
+        child: PhotoCollageSlideWidget(
           db: db,
           blobs: blobs,
           slide: slide,
@@ -959,10 +973,10 @@ class _SlideContent extends StatelessWidget {
         ),
       );
     }
-    if (widgets.length == 1 && widgets.first.type == 'pexels_video') {
+    if (widgets.length == 1 && widgets.first.type == 'video') {
       final w = widgets.first;
       return SizedBox.expand(
-        child: PexelsVideoSlideWidget(
+        child: VideoSlideWidget(
           db: db,
           blobs: blobs,
           slide: slide,
@@ -1061,8 +1075,8 @@ class _SlideContent extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
               );
-            case 'rss_article':
-              return RssArticleSlideWidget(
+            case 'news':
+              return NewsSlideWidget(
                 db: db,
                 blobs: blobs,
                 slide: slide,
@@ -1071,8 +1085,8 @@ class _SlideContent extends StatelessWidget {
                 onReportDesiredDwell: (ms) =>
                     onReportDesiredDwell(slideIndex, ms),
               );
-            case 'rss_article_columns':
-              return RssArticleColumnsSlideWidget(
+            case 'news_columns':
+              return NewsColumnsSlideWidget(
                 db: db,
                 blobs: blobs,
                 slide: slide,
@@ -1081,8 +1095,8 @@ class _SlideContent extends StatelessWidget {
                 onReportDesiredDwell: (ms) =>
                     onReportDesiredDwell(slideIndex, ms),
               );
-            case 'rss_article_stack':
-              return RssArticleStackSlideWidget(
+            case 'news_stack':
+              return NewsStackSlideWidget(
                 db: db,
                 blobs: blobs,
                 slide: slide,
@@ -1118,24 +1132,24 @@ class _SlideContent extends StatelessWidget {
                 spec: w,
                 theme: theme,
               );
-            case 'pexels_photo':
-              return PexelsPhotoSlideWidget(
+            case 'photo':
+              return PhotoSlideWidget(
                 db: db,
                 blobs: blobs,
                 slide: slide,
                 spec: w,
                 theme: theme,
               );
-            case 'pexels_photo_collage':
-              return PexelsPhotoCollageSlideWidget(
+            case 'photo_collage':
+              return PhotoCollageSlideWidget(
                 db: db,
                 blobs: blobs,
                 slide: slide,
                 spec: w,
                 theme: theme,
               );
-            case 'pexels_video':
-              return PexelsVideoSlideWidget(
+            case 'video':
+              return VideoSlideWidget(
                 db: db,
                 blobs: blobs,
                 slide: slide,

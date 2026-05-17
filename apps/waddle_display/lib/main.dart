@@ -19,6 +19,7 @@ import 'package:waddle_shared/auth/adoption_repository.dart';
 import 'package:waddle_shared/auth/cors_origin_repository.dart';
 import 'api/network_addressing.dart';
 import 'bootstrap/app_fatal_error_recovery.dart';
+import 'bootstrap/webview_platform_bootstrap.dart';
 import 'clock.dart';
 import 'config/dev_dotenv_secrets.dart';
 import 'config/display_env.dart';
@@ -34,6 +35,9 @@ import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/flutter_secure_secret_store.dart';
 import 'package:waddle_shared/seed/initial_seed.dart';
 import 'package:waddle_data_providers/waddle_data_providers.dart';
+import 'curator/active_curator_service.dart';
+import 'curator/curator_membership_filter.dart';
+import 'curator/dashboard_curator.dart';
 import 'curator/default_dashboard_curator.dart';
 import 'curator/drift_curator_read_port.dart';
 import 'curator/gated_dashboard_curator.dart';
@@ -64,6 +68,7 @@ void main() {
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+      await ensureEmbeddedWebViewPlatform();
       if (kDebugMode) {
         await DebugConsoleDiskLogger.install();
       }
@@ -135,8 +140,13 @@ Future<void> _waddleBootstrap() async {
     const clock = SystemClock();
     final tickerCurated = MemoryTickerCuratedRepository();
     final marqueeCycleGate = MarqueeCycleGate();
+    final curatorMembership = CuratorMembershipFilter();
+    final bootstrapSelection =
+        await ActiveCuratorService(db: db).resolveAt(DateTime.now());
+    curatorMembership.tickerTapeIds =
+        bootstrapSelection.primary.configuration.tickerMemberIds;
     final dashboardCuratorInner = DefaultDashboardCurator(
-      read: DriftCuratorReadPort(db),
+      read: DriftCuratorReadPort(db, membershipFilter: curatorMembership),
       tickerStore: tickerCurated,
       clock: clock,
     );
@@ -232,6 +242,8 @@ Future<void> _waddleBootstrap() async {
           viewerRegistrationSecret:
               (envMap[kDisplayViewerRegistrationSecretEnv] ?? '').trim(),
         ),
+        curatorMembership: curatorMembership,
+        dashboardCurator: dashboardCurator,
       ),
     );
   } catch (e, st) {
@@ -253,6 +265,8 @@ class WaddleRoot extends StatefulWidget {
     required this.telemetryHub,
     required this.navigationBus,
     required this.viewerInviteRuntime,
+    required this.curatorMembership,
+    required this.dashboardCurator,
   });
 
   final AppDatabase db;
@@ -266,6 +280,8 @@ class WaddleRoot extends StatefulWidget {
   final OperatorTelemetryHub telemetryHub;
   final DisplayNavigationBus navigationBus;
   final ViewerInviteRuntime viewerInviteRuntime;
+  final CuratorMembershipFilter curatorMembership;
+  final DashboardCurator dashboardCurator;
 
   @override
   State<WaddleRoot> createState() => _WaddleRootState();
@@ -305,6 +321,8 @@ class _WaddleRootState extends State<WaddleRoot> {
             navigationBus: widget.navigationBus,
             dashboardKv: kv,
             viewerInviteRuntime: widget.viewerInviteRuntime,
+            curatorMembership: widget.curatorMembership,
+            dashboardCurator: widget.dashboardCurator,
           ),
         );
       },
@@ -327,6 +345,8 @@ class WaddleHome extends StatefulWidget {
     required this.navigationBus,
     required this.dashboardKv,
     required this.viewerInviteRuntime,
+    required this.curatorMembership,
+    required this.dashboardCurator,
   });
 
   final AppDatabase db;
@@ -341,6 +361,8 @@ class WaddleHome extends StatefulWidget {
   final DisplayNavigationBus navigationBus;
   final Map<String, String> dashboardKv;
   final ViewerInviteRuntime viewerInviteRuntime;
+  final CuratorMembershipFilter curatorMembership;
+  final DashboardCurator dashboardCurator;
 
   @override
   State<WaddleHome> createState() => _WaddleHomeState();
@@ -349,9 +371,42 @@ class WaddleHome extends StatefulWidget {
 class _WaddleHomeState extends State<WaddleHome> {
   final TickerMarqueeNavigationController _tickerNavigationController =
       TickerMarqueeNavigationController();
+  late final ActiveCuratorService _curatorService =
+      ActiveCuratorService(db: widget.db);
+  Set<String> _allowedOverlayIds = const {};
+  String? _curatorThemeOverride;
+  StreamSubscription<List<ApiClient>>? _apiClientsSub;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_refreshCuratorSelection());
+    _apiClientsSub = widget.db.select(widget.db.apiClients).watch().listen((_) {
+      unawaited(_refreshCuratorSelection());
+    });
+  }
+
+  Future<void> _refreshCuratorSelection() async {
+    final selection = await _curatorService.resolveAt(DateTime.now());
+    if (!mounted) {
+      return;
+    }
+    final primary = selection.primary.configuration;
+    widget.curatorMembership.tickerTapeIds = primary.tickerMemberIds;
+    setState(() {
+      _allowedOverlayIds = selection.effectiveOverlayMemberIds;
+      _curatorThemeOverride =
+          selection.primary.configuration.themeIdOverride?.trim();
+      if (_curatorThemeOverride != null && _curatorThemeOverride!.isEmpty) {
+        _curatorThemeOverride = null;
+      }
+    });
+    unawaited(widget.dashboardCurator.refresh());
+  }
 
   @override
   void dispose() {
+    unawaited(_apiClientsSub?.cancel());
     if (kDebugMode) {
       unawaited(DebugConsoleDiskLogger.close());
     }
@@ -383,7 +438,14 @@ class _WaddleHomeState extends State<WaddleHome> {
       baseScaler,
       tickerKv * DisplayTheme.textScale,
     );
-    return Scaffold(
+    final themeOverride = _curatorThemeOverride;
+    final effectiveTheme = themeOverride != null
+        ? DisplayTheme.buildFromKvValue(themeOverride)
+        : Theme.of(context);
+
+    return Theme(
+      data: effectiveTheme,
+      child: Scaffold(
       body: Focus(
         canRequestFocus: false,
         skipTraversal: true,
@@ -411,6 +473,7 @@ class _WaddleHomeState extends State<WaddleHome> {
                 db: widget.db,
                 clock: const SystemClock(),
                 dashboardKv: widget.dashboardKv,
+                allowedOverlayIds: _allowedOverlayIds,
                 child: DashboardDataBoundShell(
                   overscan: const TvOverscanInsets(),
                   viewportConfig: const DisplayViewportConfig(),
@@ -451,6 +514,7 @@ class _WaddleHomeState extends State<WaddleHome> {
               ),
             ),
         ),
+      ),
       ),
     );
   }

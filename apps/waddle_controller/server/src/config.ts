@@ -52,7 +52,7 @@ export function loadConfig(): AppConfig {
     bindHost: process.env.WADDLE_CONTROLLER_BIND?.trim() || '127.0.0.1',
     port: Number(process.env.PORT || process.env.WADDLE_CONTROLLER_PORT || 5199),
     dataDir,
-    dbPath: path.join(dataDir, 'controller.db'),
+    dbPath: path.join(dataDir, 'waddle_controller.db'),
     sessionSecret: sessionSecret || 'dev-insecure-secret',
     clientIdentifier,
     secureCookies,

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_display/display/screens/pexels/pexels_video_playback.dart';
+import 'package:waddle_display/display/screens/photo/photo_video_playback.dart';
 
 void main() {
   test('pexelsVideoLayoutSizeReady rejects zero and tiny sizes', () {

@@ -9,16 +9,16 @@ import 'package:waddle_display/curator/screen_program_curator.dart';
 void main() {
   test('photo requirement drops rss-only program when no images available', () {
     const layout =
-        '{"v":1,"widgets":[{"type":"rss_article","slot":"main","config":{}}]}';
+        '{"v":1,"widgets":[{"type":"news","slot":"main","config":{}}]}';
     final slides = ScreenProgramCurator.buildProgram(
       screens: [
         const ScreenCandidate(
           id: 'rss_only',
-          dwellMs: 60000,
+          minDwellMs: 60000,
+          maxDwellMs: 60000,
           frequencyWeight: 100,
           minGapBetweenShowsMs: 0,
           layoutJson: layout,
-          enabled: true,
         ),
       ],
       programDurationMs: 60000,
@@ -40,16 +40,16 @@ void main() {
 
   test('rss slide plays when article has image under requirePhoto', () {
     const layout =
-        '{"v":1,"widgets":[{"type":"rss_article","slot":"main","config":{}}]}';
+        '{"v":1,"widgets":[{"type":"news","slot":"main","config":{}}]}';
     final slides = ScreenProgramCurator.buildProgram(
       screens: [
         const ScreenCandidate(
           id: 'rss_only',
-          dwellMs: 60000,
+          minDwellMs: 60000,
+          maxDwellMs: 60000,
           frequencyWeight: 100,
           minGapBetweenShowsMs: 0,
           layoutJson: layout,
-          enabled: true,
         ),
       ],
       programDurationMs: 60000,
@@ -67,6 +67,6 @@ void main() {
       requirePhotoForRssScreens: true,
     );
     expect(slides, hasLength(1));
-    expect(slides.single.randomChoices['main_rss_article'], 'x');
+    expect(slides.single.randomChoices['main_news'], 'x');
   });
 }

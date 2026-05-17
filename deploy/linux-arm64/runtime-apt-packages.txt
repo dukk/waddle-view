@@ -5,3 +5,4 @@ libmpv2
 mpv
 libgtk-3-0
 libsecret-1-0
+libwebkit2gtk-4.1-0

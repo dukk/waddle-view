@@ -11,7 +11,6 @@ DisplayOverlayScheduleRow _rowNth({
 }) {
   return DisplayOverlayScheduleRow(
     id: 't',
-    enabled: true,
     overlayType: kOverlayTypeHeartsRain,
     label: '',
     configJson: '{"messages":[]}',
@@ -38,7 +37,6 @@ DisplayOverlayScheduleRow _rowFixed({
 }) {
   return DisplayOverlayScheduleRow(
     id: 'f',
-    enabled: true,
     overlayType: kOverlayTypeHeartsRain,
     label: '',
     configJson: '{"messages":[]}',
@@ -111,24 +109,4 @@ void main() {
     expect(matchesCelebrationOverlay(r, DateTime(2028, 6, 1)), isFalse);
   });
 
-  test('disabled never matches', () {
-    final r = DisplayOverlayScheduleRow(
-      id: 'x',
-      enabled: false,
-      overlayType: kOverlayTypeHeartsRain,
-      label: '',
-      configJson: '{"messages":[]}',
-      configJsonSchema: null,
-      exampleConfigJson: null,
-      repeatAnnually: true,
-      yearExact: null,
-      startMonth: 5,
-      startDay: 10,
-      endMonth: null,
-      endDay: null,
-      nthWeekOfMonth: null,
-      nthWeekday: null,
-    );
-    expect(matchesCelebrationOverlay(r, DateTime(2026, 5, 10)), isFalse);
-  });
 }

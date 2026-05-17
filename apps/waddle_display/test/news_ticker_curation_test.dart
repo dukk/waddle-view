@@ -120,14 +120,12 @@ void main() {
         TickerTapeForCuration(
           id: 'tm',
           tickerType: 'time',
-          enabled: true,
           frequencyWeight: 1,
           sortOrder: 0,
         ),
         TickerTapeForCuration(
           id: 'w',
           tickerType: 'weather',
-          enabled: true,
           frequencyWeight: 1,
           sortOrder: 5,
           configJson: '{"fallbackText":"W"}',
@@ -135,7 +133,6 @@ void main() {
         TickerTapeForCuration(
           id: 'n',
           tickerType: 'news',
-          enabled: true,
           frequencyWeight: 1,
           sortOrder: 10,
           configJson: '{"fallbackText":"KV headline"}',
@@ -204,21 +201,18 @@ void main() {
         TickerTapeForCuration(
           id: 'tm',
           tickerType: 'time',
-          enabled: true,
           frequencyWeight: 1,
           sortOrder: 0,
         ),
         TickerTapeForCuration(
           id: 'nw',
           tickerType: 'news',
-          enabled: true,
           frequencyWeight: 1,
           sortOrder: 10,
         ),
         TickerTapeForCuration(
           id: 'c',
           tickerType: 'custom',
-          enabled: true,
           frequencyWeight: 1,
           sortOrder: 20,
         ),

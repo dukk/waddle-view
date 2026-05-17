@@ -339,7 +339,6 @@ void main() {
             tickerType: 'time',
             sortOrder: const Value(0),
             frequencyWeight: const Value(50),
-            enabled: const Value(true),
           ),
         );
     var configCalls = 0;
@@ -364,7 +363,6 @@ void main() {
       Uri.parse('${h.baseUrl}/v1/ticker/tapes/op_tick'),
       headers: h.authHeaders,
       body: jsonEncode({
-        'enabled': false,
         'frequency_weight': 77,
         'sort_order': 3,
         'config_key': '',
@@ -377,10 +375,7 @@ void main() {
       Uri.parse('${h.baseUrl}/v1/curator/settings'),
       headers: h.authHeaders,
       body: jsonEncode({
-        'program_duration_seconds': 120,
-        'history_depth': 4,
         'ticker_pixels_per_second': '90',
-        'require_news_photo_for_screens': false,
         'display_theme_id': 'graphite_amber',
         'display_text_scale_screen': 'large',
         'display_text_scale_ticker': 'normal',
@@ -394,9 +389,8 @@ void main() {
     );
     expect(cur.statusCode, 200);
     final curBody = jsonDecode(cur.body) as Map<String, dynamic>;
-    expect(curBody['program_duration_seconds'], 120);
-    expect(curBody['history_depth'], 4);
-    expect(curBody['require_news_photo_for_screens'], isFalse);
+    expect(curBody['ticker_pixels_per_second'], '90');
+    expect(curBody['display_theme_id'], 'graphite_amber');
   });
 
   test('PATCH ticker tape 404 and invalid_fields', () async {
@@ -408,7 +402,7 @@ void main() {
     final miss = await http.patch(
       Uri.parse('${h.baseUrl}/v1/ticker/tapes/missing'),
       headers: h.authHeaders,
-      body: jsonEncode({'enabled': true}),
+      body: jsonEncode({'frequency_weight': 1}),
     );
     expect(miss.statusCode, 404);
 
@@ -422,7 +416,7 @@ void main() {
     final bad = await http.patch(
       Uri.parse('${h.baseUrl}/v1/ticker/tapes/bad_tick'),
       headers: h.authHeaders,
-      body: jsonEncode({'enabled': null}),
+      body: jsonEncode({'frequency_weight': null}),
     );
     expect(bad.statusCode, 400);
   });
@@ -581,7 +575,7 @@ void main() {
     final partial = await http.put(
       Uri.parse('${h.baseUrl}/v1/curator/settings'),
       headers: h.authHeaders,
-      body: jsonEncode({'program_duration_seconds': 42}),
+      body: jsonEncode({'ticker_pixels_per_second': '42'}),
     );
     expect(partial.statusCode, 200);
 
@@ -591,7 +585,7 @@ void main() {
     );
     expect(cur.statusCode, 200);
     final curBody = jsonDecode(cur.body) as Map<String, dynamic>;
-    expect(curBody['program_duration_seconds'], 42);
+    expect(curBody['ticker_pixels_per_second'], '42');
   });
 
   test('CORS preflight and GET with allowlisted origin', () async {
@@ -681,8 +675,9 @@ void main() {
     );
     expect(res.statusCode, 200);
     final body = jsonDecode(res.body) as Map<String, dynamic>;
-    expect(body.containsKey('program_duration_seconds'), isTrue);
+    expect(body.containsKey('ticker_pixels_per_second'), isTrue);
     expect(body['display_timezone'], isNotNull);
+    expect(body.containsKey('program_duration_seconds'), isFalse);
   });
 
   test('PUT curator settings display_timezone and config key-values REST', () async {

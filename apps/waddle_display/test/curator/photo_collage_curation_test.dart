@@ -13,14 +13,14 @@ void main() {
     final pool = ['wide', 'tall'];
     final out = assignPhotosToCollageSlots(
       templateId: kCollageTemplateElevenSymmetricHub,
-      choiceKey: 'main_pexels_photo_collage',
+      choiceKey: 'main_photo_collage',
       pool: pool,
       reserved: {},
       photoMetrics: metrics,
       random: Random(0),
     );
     expect(out, isNotNull);
-    expect(out!['main_pexels_photo_collage_5'], 'wide');
+    expect(out!['main_photo_collage_5'], 'wide');
   });
 
   test('assignPhotosToCollageSlots prefers large square heroes on nine-square grid', () {

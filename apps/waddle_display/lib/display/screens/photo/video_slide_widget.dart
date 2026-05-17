@@ -13,10 +13,10 @@ import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import '../../../curator/screen_program_curator.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import '../../dashboard_viewport_scope.dart';
-import 'pexels_attribution_overlay.dart';
-import 'pexels_video_materialize.dart';
-import 'pexels_video_playback.dart';
-import 'pexels_video_playback_gate.dart';
+import 'photo_attribution_overlay.dart';
+import 'photo_video_materialize.dart';
+import 'photo_video_playback.dart';
+import 'photo_video_playback_gate.dart';
 
 Future<Video?> loadPexelsVideoForSlide(
   AppDatabase db,
@@ -75,8 +75,8 @@ bool pexelsVideoSlideConfigBool(Map<String, dynamic> c, String key, bool def) {
 }
 
 /// Full-bleed Pexels video; autoplays (muted by default for signage).
-class PexelsVideoSlideWidget extends StatefulWidget {
-  const PexelsVideoSlideWidget({
+class VideoSlideWidget extends StatefulWidget {
+  const VideoSlideWidget({
     super.key,
     required this.db,
     required this.blobs,
@@ -97,10 +97,10 @@ class PexelsVideoSlideWidget extends StatefulWidget {
   final bool allowPlayback;
 
   @override
-  State<PexelsVideoSlideWidget> createState() => _PexelsVideoSlideWidgetState();
+  State<VideoSlideWidget> createState() => _VideoSlideWidgetState();
 }
 
-class _PexelsVideoSlideWidgetState extends State<PexelsVideoSlideWidget> {
+class _VideoSlideWidgetState extends State<VideoSlideWidget> {
   Video? _row;
   File? _mediaFile;
   bool _loop = true;
@@ -124,7 +124,7 @@ class _PexelsVideoSlideWidgetState extends State<PexelsVideoSlideWidget> {
   }
 
   @override
-  void didUpdateWidget(covariant PexelsVideoSlideWidget oldWidget) {
+  void didUpdateWidget(covariant VideoSlideWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.allowPlayback != widget.allowPlayback) {
       if (widget.allowPlayback) {

@@ -28,7 +28,7 @@ npm run dev:server
 |----------|---------|---------|
 | `WADDLE_CONTROLLER_AUTH_ENABLED` | `0` | Require sign-in before using the SPA |
 | `WADDLE_CONTROLLER_SESSION_SECRET` | — | Required when auth is enabled (session signing) |
-| `WADDLE_CONTROLLER_DATA_DIR` | `./data` | SQLite directory (`controller.db`) |
+| `WADDLE_CONTROLLER_DATA_DIR` | `./data` | SQLite directory (`waddle_controller.db`) |
 | `WADDLE_CONTROLLER_BIND` | `127.0.0.1` | BFF listen host |
 | `PORT` / `WADDLE_CONTROLLER_PORT` | `5199` | BFF listen port |
 | `WADDLE_CONTROLLER_TLS` | `1` | Self-signed HTTPS on the BFF (`0` = plain HTTP) |

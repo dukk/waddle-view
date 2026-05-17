@@ -13,7 +13,7 @@ const String kCollageTemplateNineDynamicHub = 'nine_dynamic_hub';
 /// Twelve-slot band layout with a circular hero and portrait strips.
 const String kCollageTemplateTwelveCircleBand = 'twelve_circle_band';
 
-/// All supported [pexels_photo_collage] `config.template` values.
+/// All supported [photo_collage] `config.template` values.
 const Set<String> kKnownCollageTemplateIds = {
   kCollageTemplateNineSquareAsymmetric,
   kCollageTemplateElevenSymmetricHub,

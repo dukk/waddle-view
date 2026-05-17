@@ -15,6 +15,7 @@ import 'tables/joke_categories_seed.dart';
 import 'tables/integrations_seed.dart';
 import 'tables/rss_feed_sources_seed.dart';
 import 'tables/trivia_categories_seed.dart';
+import 'tables/curator_configurations_seed.dart';
 
 /// Idempotent demo rows for stub provider + ticker.
 Future<void> ensureInitialSeed(AppDatabase db) async {
@@ -29,7 +30,6 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
           IntegrationsCompanion.insert(
             id: 'stub',
             providerType: 'stub',
-            enabled: const Value(true),
             pollSeconds: const Value(60),
             configJsonSchema: Value(stubDoc.schema),
             exampleConfigJson: Value(stubDoc.example),
@@ -43,7 +43,6 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await ensureDefaultJokeCategories(db);
   await ensureDefaultTriviaCategories(db);
   await ensureDefaultRssNewsFeeds(db);
-  await _ensureCuratorSettings(db);
   await _ensureTickerTapes(db);
   await _ensureDisplayThemeKv(db);
   await _ensureDisplayTimezoneKv(db);
@@ -68,10 +67,13 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureDataHealthScreen(db);
   await _ensureAdminSetupScreen(db);
   await _ensureWeatherScreen(db);
-  await _ensurePexelsPhotoScreen(db);
-  await _ensurePexelsVideoScreen(db);
+  await _ensurePhotoScreen(db);
+  await _ensureVideoScreen(db);
   await _ensurePhotoCollageScreens(db);
   await _ensureStockQuotesScreen(db);
+  await _ensureSleepMessageScreen(db);
+  await _ensureControllerInviteScreen(db);
+  await ensureDefaultCuratorConfigurations(db);
 }
 
 Future<void> _ensureDefaultMothersDayOverlay(AppDatabase db) async {
@@ -83,7 +85,6 @@ Future<void> _ensureDefaultMothersDayOverlay(AppDatabase db) async {
   await db.customStatement(
     '''INSERT OR IGNORE INTO overlays (
       id,
-      enabled,
       overlay_type,
       label,
       config_json,
@@ -98,7 +99,7 @@ Future<void> _ensureDefaultMothersDayOverlay(AppDatabase db) async {
       nth_week_of_month,
       nth_weekday
     )
-    VALUES (?, 1, ?, ?, ?, ?, ?, 1,
+    VALUES (?, ?, ?, ?, ?, ?, 1,
       NULL, 5, 1, NULL, NULL,
       2, ?)''',
     <Object?>[
@@ -129,7 +130,6 @@ Future<void> _ensureDefaultBirthdayOverlayExample(AppDatabase db) async {
   await db.customStatement(
     '''INSERT OR IGNORE INTO overlays (
       id,
-      enabled,
       overlay_type,
       label,
       config_json,
@@ -144,7 +144,7 @@ Future<void> _ensureDefaultBirthdayOverlayExample(AppDatabase db) async {
       nth_week_of_month,
       nth_weekday
     )
-    VALUES (?, 0, ?, ?, ?, ?, ?, 1,
+    VALUES (?, ?, ?, ?, ?, ?, 1,
       NULL, 5, 13, NULL, NULL,
       NULL, NULL)''',
     <Object?>[
@@ -173,7 +173,6 @@ Future<void> _ensureDefaultBouncingMessageOverlay(AppDatabase db) async {
   await db.customStatement(
     '''INSERT OR IGNORE INTO overlays (
       id,
-      enabled,
       overlay_type,
       label,
       config_json,
@@ -188,7 +187,7 @@ Future<void> _ensureDefaultBouncingMessageOverlay(AppDatabase db) async {
       nth_week_of_month,
       nth_weekday
     )
-    VALUES (?, 0, ?, ?, ?, ?, ?, 1,
+    VALUES (?, ?, ?, ?, ?, ?, 1,
       NULL, 5, 13, NULL, NULL,
       NULL, NULL)''',
     <Object?>[
@@ -275,7 +274,6 @@ Future<void> _ensureTickerTapes(AppDatabase db) async {
     required String id,
     required String name,
     String description = '',
-    bool enabled = true,
     required String tickerType,
     int frequencyWeight = 100,
     int sortOrder = 0,
@@ -289,7 +287,6 @@ Future<void> _ensureTickerTapes(AppDatabase db) async {
             id: id,
             name: name,
             description: Value(description),
-            enabled: Value(enabled),
             tickerType: tickerType,
             frequencyWeight: Value(frequencyWeight),
             sortOrder: Value(sortOrder),
@@ -358,8 +355,7 @@ Future<void> _ensureTickerTapes(AppDatabase db) async {
   await upsert(
     id: 'ticker_custom',
     name: 'Custom marquee',
-    description: 'Extra ticker.marquee.* keys in config_key_values (disabled by default)',
-    enabled: false,
+    description: 'Extra ticker.marquee.* keys in config_key_values',
     tickerType: 'custom',
     sortOrder: 40,
   );
@@ -370,27 +366,6 @@ Future<void> _ensureTickerTapes(AppDatabase db) async {
     'ticker_quote',
     'Market data updates after each collect',
   );
-}
-
-Future<void> _ensureCuratorSettings(AppDatabase db) async {
-  Future<void> ensureKey(String key, String value) async {
-    final row = await (db.select(
-      db.configKeyValues,
-    )..where((t) => t.key.equals(key))).getSingleOrNull();
-    if (row != null) {
-      return;
-    }
-    await db
-        .into(db.configKeyValues)
-        .insert(ConfigKeyValuesCompanion.insert(key: key, value: value));
-  }
-
-  await ensureKey(kCuratorProgramDurationSecondsKvKey, '180');
-  await ensureKey(kCuratorHistoryDepthKvKey, '5');
-  await ensureKey(kRequireNewsPhotoForScreensKvKey, 'true');
-  await (db.delete(db.configKeyValues)
-        ..where((t) => t.key.equals('curator.news.require_photo_for_curation')))
-      .go();
 }
 
 Future<void> _ensureWelcomeScreen(AppDatabase db) async {
@@ -417,7 +392,8 @@ Future<void> _ensureWelcomeScreen(AppDatabase db) async {
           exampleConfigJson: Value(
             screenConfigJsonDocForType('static_text').example,
           ),
-          dwellSeconds: const Value(10),
+          minDwellSeconds: const Value(8),
+          maxDwellSeconds: const Value(14),
           maxPlacementsPerProgram: const Value(1),
         ),
       );
@@ -445,7 +421,8 @@ Future<void> _ensureJokeScreen(AppDatabase db) async {
           exampleConfigJson: Value(
             screenConfigJsonDocForType('joke').example,
           ),
-          dwellSeconds: const Value(20),
+          minDwellSeconds: const Value(18),
+          maxDwellSeconds: const Value(24),
           dataKey: const Value('jokes'),
         ),
       );
@@ -475,7 +452,8 @@ Future<void> _ensureTriviaScreen(AppDatabase db) async {
           exampleConfigJson: Value(
             screenConfigJsonDocForType('trivia').example,
           ),
-          dwellSeconds: const Value(16),
+          minDwellSeconds: const Value(14),
+          maxDwellSeconds: const Value(20),
           maxPlacementsPerProgram: const Value(1),
           dataKey: const Value('trivia'),
         ),
@@ -504,7 +482,8 @@ Future<void> _ensureGuestWifiScreen(AppDatabase db) async {
           exampleConfigJson: Value(
             screenConfigJsonDocForType('wifi').example,
           ),
-          dwellSeconds: const Value(18),
+          minDwellSeconds: const Value(16),
+          maxDwellSeconds: const Value(22),
           maxPlacementsPerProgram: const Value(1),
           dataKey: const Value('guest_wifi'),
         ),
@@ -523,15 +502,15 @@ Future<void> _ensureNewsScreen(AppDatabase db) async {
         dataKey: const Value('news'),
         maxPlacementsPerProgram: const Value(null),
         minPlacementsPerProgram: const Value(1),
-        screenType: const Value('rss_article'),
+        screenType: const Value('news'),
         configJson: const Value(
           '{"scrollDelayMs":2500,"trailingHoldMs":2000,"scrollPixelsPerSecond":48,"minReadMs":8000,"summaryCapacityChars":1200}',
         ),
         configJsonSchema: Value(
-          screenConfigJsonDocForType('rss_article').schema,
+          screenConfigJsonDocForType('news').schema,
         ),
         exampleConfigJson: Value(
-          screenConfigJsonDocForType('rss_article').example,
+          screenConfigJsonDocForType('news').example,
         ),
       ),
     );
@@ -546,17 +525,18 @@ Future<void> _ensureNewsScreen(AppDatabase db) async {
           description: const Value(
             'RSS story with image and scrolling summary',
           ),
-          screenType: 'rss_article',
+          screenType: 'news',
           configJson: const Value(
             '{"scrollDelayMs":2500,"trailingHoldMs":2000,"scrollPixelsPerSecond":48,"minReadMs":8000,"summaryCapacityChars":1200}',
           ),
           configJsonSchema: Value(
-            screenConfigJsonDocForType('rss_article').schema,
+            screenConfigJsonDocForType('news').schema,
           ),
           exampleConfigJson: Value(
-            screenConfigJsonDocForType('rss_article').example,
+            screenConfigJsonDocForType('news').example,
           ),
-          dwellSeconds: const Value(12),
+          minDwellSeconds: const Value(10),
+          maxDwellSeconds: const Value(16),
           dataKey: const Value('news'),
         ),
       );
@@ -572,15 +552,15 @@ Future<void> _ensureNewsRightImageScreen(AppDatabase db) async {
     )..where((t) => t.id.equals('news_right'))).write(
       ScreensCompanion(
         dataKey: const Value('news'),
-        screenType: const Value('rss_article'),
+        screenType: const Value('news'),
         configJson: const Value(
           '{"scrollDelayMs":2500,"trailingHoldMs":2000,"scrollPixelsPerSecond":48,"minReadMs":8000,"imageOnRight":true,"summaryCapacityChars":1200}',
         ),
         configJsonSchema: Value(
-          screenConfigJsonDocForType('rss_article').schema,
+          screenConfigJsonDocForType('news').schema,
         ),
         exampleConfigJson: Value(
-          screenConfigJsonDocForType('rss_article').example,
+          screenConfigJsonDocForType('news').example,
         ),
       ),
     );
@@ -595,17 +575,18 @@ Future<void> _ensureNewsRightImageScreen(AppDatabase db) async {
           description: const Value(
             'RSS story with image on the right and scrolling summary',
           ),
-          screenType: 'rss_article',
+          screenType: 'news',
           configJson: const Value(
             '{"scrollDelayMs":2500,"trailingHoldMs":2000,"scrollPixelsPerSecond":48,"minReadMs":8000,"imageOnRight":true,"summaryCapacityChars":1200}',
           ),
           configJsonSchema: Value(
-            screenConfigJsonDocForType('rss_article').schema,
+            screenConfigJsonDocForType('news').schema,
           ),
           exampleConfigJson: Value(
-            screenConfigJsonDocForType('rss_article').example,
+            screenConfigJsonDocForType('news').example,
           ),
-          dwellSeconds: const Value(12),
+          minDwellSeconds: const Value(10),
+          maxDwellSeconds: const Value(16),
           dataKey: const Value('news'),
         ),
       );
@@ -621,15 +602,15 @@ Future<void> _ensureNewsColumnsScreen(AppDatabase db) async {
     )..where((t) => t.id.equals('news_columns'))).write(
       ScreensCompanion(
         dataKey: const Value('news'),
-        screenType: const Value('rss_article_columns'),
+        screenType: const Value('news_columns'),
         configJson: const Value(
           '{"columnCount":3,"minReadMs":10000,"summaryCapacityCharsPerColumn":220}',
         ),
         configJsonSchema: Value(
-          screenConfigJsonDocForType('rss_article_columns').schema,
+          screenConfigJsonDocForType('news_columns').schema,
         ),
         exampleConfigJson: Value(
-          screenConfigJsonDocForType('rss_article_columns').example,
+          screenConfigJsonDocForType('news_columns').example,
         ),
       ),
     );
@@ -644,17 +625,18 @@ Future<void> _ensureNewsColumnsScreen(AppDatabase db) async {
           description: const Value(
             'Three RSS stories: image above title and summary in each column',
           ),
-          screenType: 'rss_article_columns',
+          screenType: 'news_columns',
           configJson: const Value(
             '{"columnCount":3,"minReadMs":10000,"summaryCapacityCharsPerColumn":220}',
           ),
           configJsonSchema: Value(
-            screenConfigJsonDocForType('rss_article_columns').schema,
+            screenConfigJsonDocForType('news_columns').schema,
           ),
           exampleConfigJson: Value(
-            screenConfigJsonDocForType('rss_article_columns').example,
+            screenConfigJsonDocForType('news_columns').example,
           ),
-          dwellSeconds: const Value(16),
+          minDwellSeconds: const Value(14),
+          maxDwellSeconds: const Value(20),
           dataKey: const Value('news'),
         ),
       );
@@ -670,15 +652,15 @@ Future<void> _ensureNewsStackScreen(AppDatabase db) async {
     )..where((t) => t.id.equals('news_stack'))).write(
       ScreensCompanion(
         dataKey: const Value('news'),
-        screenType: const Value('rss_article_stack'),
+        screenType: const Value('news_stack'),
         configJson: const Value(
           '{"minReadMs":12000,"imagePanelFraction":0.32,"qrLogicalSize":112,"summaryCapacityCharsPerSlot":320}',
         ),
         configJsonSchema: Value(
-          screenConfigJsonDocForType('rss_article_stack').schema,
+          screenConfigJsonDocForType('news_stack').schema,
         ),
         exampleConfigJson: Value(
-          screenConfigJsonDocForType('rss_article_stack').example,
+          screenConfigJsonDocForType('news_stack').example,
         ),
       ),
     );
@@ -694,17 +676,18 @@ Future<void> _ensureNewsStackScreen(AppDatabase db) async {
             'Two RSS stories stacked: top image right + QR left, '
             'bottom image left + QR right; title and summary between',
           ),
-          screenType: 'rss_article_stack',
+          screenType: 'news_stack',
           configJson: const Value(
             '{"minReadMs":12000,"imagePanelFraction":0.32,"qrLogicalSize":112,"summaryCapacityCharsPerSlot":320}',
           ),
           configJsonSchema: Value(
-            screenConfigJsonDocForType('rss_article_stack').schema,
+            screenConfigJsonDocForType('news_stack').schema,
           ),
           exampleConfigJson: Value(
-            screenConfigJsonDocForType('rss_article_stack').example,
+            screenConfigJsonDocForType('news_stack').example,
           ),
-          dwellSeconds: const Value(16),
+          minDwellSeconds: const Value(14),
+          maxDwellSeconds: const Value(20),
           dataKey: const Value('news'),
         ),
       );
@@ -759,7 +742,8 @@ Future<void> _ensureClockDigitalScreen(AppDatabase db) async {
           exampleConfigJson: Value(
             screenConfigJsonDocForType('digital_clock').example,
           ),
-          dwellSeconds: const Value(16),
+          minDwellSeconds: const Value(14),
+          maxDwellSeconds: const Value(20),
           dataKey: const Value('clock'),
           minPlacementsPerProgram: const Value(0),
           maxPlacementsPerProgram: const Value(1),
@@ -804,7 +788,8 @@ Future<void> _ensureClockAnalogScreen(AppDatabase db) async {
           exampleConfigJson: Value(
             screenConfigJsonDocForType('analog_clock').example,
           ),
-          dwellSeconds: const Value(16),
+          minDwellSeconds: const Value(14),
+          maxDwellSeconds: const Value(20),
           dataKey: const Value('clock'),
           minPlacementsPerProgram: const Value(0),
           maxPlacementsPerProgram: const Value(1),
@@ -836,7 +821,8 @@ Future<void> _ensureCalendarScreen(AppDatabase db) async {
           exampleConfigJson: Value(
             screenConfigJsonDocForType('calendar_month').example,
           ),
-          dwellSeconds: const Value(22),
+          minDwellSeconds: const Value(20),
+          maxDwellSeconds: const Value(26),
           dataKey: const Value('calendar'),
           minPlacementsPerProgram: const Value(1),
           maxPlacementsPerProgram: const Value(1),
@@ -860,7 +846,6 @@ Future<void> _ensureLocalApiScreen(AppDatabase db) async {
           description: const Value(
             'Loopback REST base URL and API key hint; enable when configuring deployments',
           ),
-          enabled: const Value(false),
           screenType: 'local_api',
           configJson: const Value('{}'),
           configJsonSchema: Value(
@@ -869,7 +854,8 @@ Future<void> _ensureLocalApiScreen(AppDatabase db) async {
           exampleConfigJson: Value(
             screenConfigJsonDocForType('local_api').example,
           ),
-          dwellSeconds: const Value(16),
+          minDwellSeconds: const Value(14),
+          maxDwellSeconds: const Value(20),
           dataKey: const Value('dev_local_api'),
           minPlacementsPerProgram: const Value(0),
           maxPlacementsPerProgram: const Value(1),
@@ -894,7 +880,6 @@ Future<void> _ensureDataHealthScreen(AppDatabase db) async {
             'SQLite content totals, category breakdowns, and charts; '
             'enable for operator visibility',
           ),
-          enabled: const Value(false),
           screenType: 'data_health',
           configJson: const Value(
             '{"headline":"Data health","refreshIntervalSeconds":45}',
@@ -905,9 +890,66 @@ Future<void> _ensureDataHealthScreen(AppDatabase db) async {
           exampleConfigJson: Value(
             screenConfigJsonDocForType('data_health').example,
           ),
-          dwellSeconds: const Value(18),
+          minDwellSeconds: const Value(16),
+          maxDwellSeconds: const Value(22),
           dataKey: const Value('dev_data_health'),
           minPlacementsPerProgram: const Value(0),
+          maxPlacementsPerProgram: const Value(1),
+        ),
+      );
+}
+
+Future<void> _ensureSleepMessageScreen(AppDatabase db) async {
+  final row = await (db.select(
+    db.screens,
+  )..where((t) => t.id.equals('sleep_message'))).getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  await db.into(db.screens).insert(
+        ScreensCompanion.insert(
+          id: 'sleep_message',
+          name: 'Sleep reminder',
+          description: const Value('Night-time rest message'),
+          screenType: 'static_text',
+          configJson: const Value(
+            '{"text":"Everyone should get some sleep so you\'ll be rested for tomorrow."}',
+          ),
+          configJsonSchema: Value(
+            screenConfigJsonDocForType('static_text').schema,
+          ),
+          exampleConfigJson: Value(
+            screenConfigJsonDocForType('static_text').example,
+          ),
+          minDwellSeconds: const Value(20),
+          maxDwellSeconds: const Value(30),
+          maxPlacementsPerProgram: const Value(2),
+        ),
+      );
+}
+
+Future<void> _ensureControllerInviteScreen(AppDatabase db) async {
+  final row = await (db.select(
+    db.screens,
+  )..where((t) => t.id.equals('controller_invite'))).getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  await db.into(db.screens).insert(
+        ScreensCompanion.insert(
+          id: 'controller_invite',
+          name: 'Controller invite',
+          description: const Value('Viewer join QR for waddle_controller'),
+          screenType: 'controller_invite',
+          configJson: const Value('{}'),
+          configJsonSchema: Value(
+            screenConfigJsonDocForType('controller_invite').schema,
+          ),
+          exampleConfigJson: Value(
+            screenConfigJsonDocForType('controller_invite').example,
+          ),
+          minDwellSeconds: const Value(25),
+          maxDwellSeconds: const Value(40),
           maxPlacementsPerProgram: const Value(1),
         ),
       );
@@ -929,7 +971,6 @@ Future<void> _ensureAdminSetupScreen(AppDatabase db) async {
           description: const Value(
             'Onboarding URL, QR code, and bootstrap password for first login',
           ),
-          enabled: const Value(true),
           screenType: 'admin_setup',
           configJson: const Value('{}'),
           configJsonSchema: Value(
@@ -938,7 +979,8 @@ Future<void> _ensureAdminSetupScreen(AppDatabase db) async {
           exampleConfigJson: Value(
             screenConfigJsonDocForType('admin_setup').example,
           ),
-          dwellSeconds: const Value(18),
+          minDwellSeconds: const Value(16),
+          maxDwellSeconds: const Value(22),
           frequencyWeight: const Value(200),
           minGapBetweenShowsSeconds: const Value(0),
           dataKey: const Value('admin_setup'),
@@ -970,7 +1012,8 @@ Future<void> _ensureWeatherScreen(AppDatabase db) async {
           exampleConfigJson: Value(
             screenConfigJsonDocForType('weather').example,
           ),
-          dwellSeconds: const Value(14),
+          minDwellSeconds: const Value(12),
+          maxDwellSeconds: const Value(18),
           dataKey: const Value('weather'),
           minPlacementsPerProgram: const Value(1),
           maxPlacementsPerProgram: const Value(1),
@@ -1040,7 +1083,6 @@ Future<void> _ensureStockQuotesScreen(AppDatabase db) async {
           id: 'stock_quotes',
           name: 'Stock quotes',
           description: const Value('Latest Finnhub quotes for enabled symbols'),
-          enabled: const Value(false),
           screenType: 'stock_quotes',
           configJson: const Value('{}'),
           configJsonSchema: Value(
@@ -1049,66 +1091,83 @@ Future<void> _ensureStockQuotesScreen(AppDatabase db) async {
           exampleConfigJson: Value(
             screenConfigJsonDocForType('stock_quotes').example,
           ),
-          dwellSeconds: const Value(14),
+          minDwellSeconds: const Value(12),
+          maxDwellSeconds: const Value(18),
           dataKey: const Value('stocks'),
         ),
       );
 }
 
-Future<void> _ensurePexelsPhotoScreen(AppDatabase db) async {
+Future<void> _ensurePhotoScreen(AppDatabase db) async {
   final row = await (db.select(
     db.screens,
-  )..where((t) => t.id.equals('pexels_photo'))).getSingleOrNull();
+  )..where((t) => t.id.equals('photo'))).getSingleOrNull();
   if (row != null) {
+    await (db.update(db.screens)..where((t) => t.id.equals('photo'))).write(
+      ScreensCompanion(
+        screenType: const Value('photo'),
+        dataKey: const Value('photo'),
+        configJsonSchema: Value(screenConfigJsonDocForType('photo').schema),
+        exampleConfigJson: Value(screenConfigJsonDocForType('photo').example),
+      ),
+    );
     return;
   }
   await db
       .into(db.screens)
       .insert(
         ScreensCompanion.insert(
-          id: 'pexels_photo',
+          id: 'photo',
           name: 'Pexels photo',
           description: const Value('Curated / search photos from Pexels'),
-          enabled: const Value(false),
-          screenType: 'pexels_photo',
+          screenType: 'photo',
           configJson: const Value('{}'),
           configJsonSchema: Value(
-            screenConfigJsonDocForType('pexels_photo').schema,
+            screenConfigJsonDocForType('photo').schema,
           ),
           exampleConfigJson: Value(
-            screenConfigJsonDocForType('pexels_photo').example,
+            screenConfigJsonDocForType('photo').example,
           ),
-          dwellSeconds: const Value(12),
-          dataKey: const Value('pexels_photo'),
+          minDwellSeconds: const Value(10),
+          maxDwellSeconds: const Value(16),
+          dataKey: const Value('photo'),
         ),
       );
 }
 
-Future<void> _ensurePexelsVideoScreen(AppDatabase db) async {
+Future<void> _ensureVideoScreen(AppDatabase db) async {
   final row = await (db.select(
     db.screens,
-  )..where((t) => t.id.equals('pexels_video'))).getSingleOrNull();
+  )..where((t) => t.id.equals('video'))).getSingleOrNull();
   if (row != null) {
+    await (db.update(db.screens)..where((t) => t.id.equals('video'))).write(
+      ScreensCompanion(
+        screenType: const Value('video'),
+        dataKey: const Value('video'),
+        configJsonSchema: Value(screenConfigJsonDocForType('video').schema),
+        exampleConfigJson: Value(screenConfigJsonDocForType('video').example),
+      ),
+    );
     return;
   }
   await db
       .into(db.screens)
       .insert(
         ScreensCompanion.insert(
-          id: 'pexels_video',
+          id: 'video',
           name: 'Pexels video',
           description: const Value('Popular / search videos from Pexels'),
-          enabled: const Value(false),
-          screenType: 'pexels_video',
+          screenType: 'video',
           configJson: const Value('{"loop":true,"unmuted":false}'),
           configJsonSchema: Value(
-            screenConfigJsonDocForType('pexels_video').schema,
+            screenConfigJsonDocForType('video').schema,
           ),
           exampleConfigJson: Value(
-            screenConfigJsonDocForType('pexels_video').example,
+            screenConfigJsonDocForType('video').example,
           ),
-          dwellSeconds: const Value(25),
-          dataKey: const Value('pexels_video'),
+          minDwellSeconds: const Value(23),
+          maxDwellSeconds: const Value(29),
+          dataKey: const Value('video'),
         ),
       );
 }
@@ -1124,9 +1183,18 @@ Future<void> _ensurePhotoCollageScreens(AppDatabase db) async {
       db.screens,
     )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (row != null) {
+      final collageDoc = screenConfigJsonDocForType('photo_collage');
+      await (db.update(db.screens)..where((t) => t.id.equals(id))).write(
+        ScreensCompanion(
+          screenType: const Value('photo_collage'),
+          dataKey: const Value('photo'),
+          configJsonSchema: Value(collageDoc.schema),
+          exampleConfigJson: Value(collageDoc.example),
+        ),
+      );
       return;
     }
-    final collageDoc = screenConfigJsonDocForType('pexels_photo_collage');
+    final collageDoc = screenConfigJsonDocForType('photo_collage');
     await db
         .into(db.screens)
         .insert(
@@ -1136,13 +1204,13 @@ Future<void> _ensurePhotoCollageScreens(AppDatabase db) async {
             description: const Value(
               'Multi-photo collage; curator matches aspect ratio to each tile when dimensions are known',
             ),
-            enabled: const Value(false),
-            screenType: 'pexels_photo_collage',
+            screenType: 'photo_collage',
             configJson: Value('{"template":"$template"}'),
             configJsonSchema: Value(collageDoc.schema),
             exampleConfigJson: Value(collageDoc.example),
-            dwellSeconds: Value(dwellSeconds),
-            dataKey: const Value('pexels_photo'),
+            minDwellSeconds: Value(dwellSeconds),
+            maxDwellSeconds: Value(dwellSeconds),
+            dataKey: const Value('photo'),
           ),
         );
   }
@@ -1183,7 +1251,6 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
           name: 'Salt Lake City, UT',
           latitude: 40.7608,
           longitude: -111.8910,
-          enabled: const Value(true),
         ),
       );
   await db
@@ -1194,7 +1261,6 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
           name: 'Atlanta, GA',
           latitude: 33.7490,
           longitude: -84.3880,
-          enabled: const Value(true),
         ),
       );
   await db
@@ -1205,7 +1271,6 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
           name: 'San Diego, CA',
           latitude: 32.7157,
           longitude: -117.1611,
-          enabled: const Value(false),
         ),
       );
   await db
@@ -1216,7 +1281,6 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
           name: 'Miami, FL',
           latitude: 25.7617,
           longitude: -80.1918,
-          enabled: const Value(false),
         ),
       );
   await db
@@ -1227,7 +1291,6 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
           name: 'Denver, CO',
           latitude: 39.7392,
           longitude: -104.9903,
-          enabled: const Value(false),
         ),
       );
   await db
@@ -1238,7 +1301,6 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
           name: 'Las Vegas, NV',
           latitude: 36.1699,
           longitude: -115.1398,
-          enabled: const Value(false),
         ),
       );
   await db
@@ -1249,7 +1311,6 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
           name: 'Phoenix, AZ',
           latitude: 33.4483,
           longitude: -112.0740,
-          enabled: const Value(false),
         ),
       );
   await db
@@ -1260,7 +1321,6 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
           name: 'Seattle, WA',
           latitude: 47.6062,
           longitude: -122.3321,
-          enabled: const Value(false),
         ),
       );
   await db
@@ -1271,7 +1331,6 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
           name: 'Washington, DC',
           latitude: 38.8951,
           longitude: -77.0369,
-          enabled: const Value(false),
         ),
       );
   await db
@@ -1282,7 +1341,6 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
           name: 'Boston, MA',
           latitude: 42.3601,
           longitude: -71.0589,
-          enabled: const Value(false),
         ),
       );
   await db
@@ -1293,7 +1351,6 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
           name: 'Chicago, IL',
           latitude: 41.8781,
           longitude: -87.6298,
-          enabled: const Value(false),
         ),
       );
   await db
@@ -1304,7 +1361,6 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
           name: 'Houston, TX',
           latitude: 29.7604,
           longitude: -95.3698,
-          enabled: const Value(false),
         ),
       );
   await db
@@ -1315,7 +1371,6 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
           name: 'Austin, TX',
           latitude: 30.2672,
           longitude: -97.7431,
-          enabled: const Value(false),
         ),
       );
   await db
@@ -1326,7 +1381,6 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
           name: 'San Francisco, CA',
           latitude: 37.7749,
           longitude: -122.4194,
-          enabled: const Value(false),
         ),
       );
   await db
@@ -1337,7 +1391,6 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
           name: 'New York, NY',
           latitude: 40.7128,
           longitude: -74.0060,
-          enabled: const Value(false),
         ),
       );
 }

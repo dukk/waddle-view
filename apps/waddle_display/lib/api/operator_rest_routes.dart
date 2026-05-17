@@ -6,6 +6,7 @@ import 'package:shelf_router/shelf_router.dart';
 
 import '../debug/operator_telemetry_hub.dart';
 import '../display/display_navigation_bus.dart';
+import 'curator_configuration_routes.dart';
 import '../theme/display_theme.dart';
 import 'package:waddle_shared/config/adoption.dart';
 import 'package:waddle_shared/config/adoption_allowed_roles.dart';
@@ -178,7 +179,6 @@ void registerOperatorRestRoutes(
               'id': e.id,
               'name': e.name,
               'description': e.description,
-              'enabled': e.enabled,
               'ticker_type': e.tickerType,
               'frequency_weight': e.frequencyWeight,
               'sort_order': e.sortOrder,
@@ -230,7 +230,6 @@ void registerOperatorRestRoutes(
     final doc = tickerSlotConfigJsonDocForType(tickerType);
     final name = (map['name'] as String?)?.trim();
     final description = (map['description'] as String?)?.trim() ?? '';
-    final enabled = map['enabled'] is bool ? map['enabled'] as bool : true;
     final frequencyWeight = (map['frequency_weight'] as num?)?.toInt() ?? 100;
     final sortOrder = (map['sort_order'] as num?)?.toInt() ?? 0;
     final rawCk = map['config_key'];
@@ -255,7 +254,6 @@ void registerOperatorRestRoutes(
             id: id,
             name: resolvedName,
             description: Value(description),
-            enabled: Value(enabled),
             tickerType: tickerType,
             frequencyWeight: Value(frequencyWeight),
             sortOrder: Value(sortOrder),
@@ -294,8 +292,6 @@ void registerOperatorRestRoutes(
           body: '{"error":"invalid_json"}',
           headers: {'content-type': 'application/json'});
     }
-    final enabled =
-        map.containsKey('enabled') ? map['enabled'] as bool? : existing.enabled;
     final weight = map.containsKey('frequency_weight')
         ? (map['frequency_weight'] as num?)?.toInt()
         : existing.frequencyWeight;
@@ -319,7 +315,7 @@ void registerOperatorRestRoutes(
     final tickerType = map.containsKey('ticker_type')
         ? (map['ticker_type'] as String?)?.trim() ?? existing.tickerType
         : existing.tickerType;
-    if (enabled == null || weight == null || sortOrder == null) {
+    if (weight == null || sortOrder == null) {
       return Response(400,
           body: '{"error":"invalid_fields"}',
           headers: {'content-type': 'application/json'});
@@ -348,7 +344,6 @@ void registerOperatorRestRoutes(
       TickerTapesCompanion(
         name: Value(name),
         description: Value(description),
-        enabled: Value(enabled),
         frequencyWeight: Value(weight),
         sortOrder: Value(sortOrder),
         configKey: configKeyVal,
@@ -377,15 +372,7 @@ void registerOperatorRestRoutes(
   r.get('/v1/curator/settings', (Request req) async {
     final kvRows = await db.select(db.configKeyValues).get();
     final kv = {for (final r in kvRows) r.key: r.value};
-    final programDurationSeconds = int.tryParse(
-          kv[kCuratorProgramDurationSecondsKvKey]?.trim() ?? '',
-        ) ??
-        180;
-    final historyDepth =
-        int.tryParse(kv[kCuratorHistoryDepthKvKey]?.trim() ?? '') ?? 5;
     final tickerPx = kv['curator.ticker.newsPixelsPerSecond'] ?? '80';
-    final requireNewsPhotoForScreens =
-        kv[kRequireNewsPhotoForScreensKvKey] ?? 'true';
     final themeId = normalizeDisplayThemeId(kv[kDisplayThemeIdKvKey]);
     final screenTextScale = normalizeDisplayTextScaleOption(
       kv[kDisplayTextScaleScreenKvKey],
@@ -405,10 +392,7 @@ void registerOperatorRestRoutes(
       });
     return Response.ok(
       jsonEncode({
-        'program_duration_seconds': programDurationSeconds,
-        'history_depth': historyDepth,
         'ticker_pixels_per_second': tickerPx,
-        'require_news_photo_for_screens': requireNewsPhotoForScreens != 'false',
         'display_theme_id': themeId,
         'display_text_scale_screen': screenTextScale,
         'display_text_scale_ticker': tickerTextScale,
@@ -602,38 +586,6 @@ void registerOperatorRestRoutes(
           headers: {'content-type': 'application/json'});
     }
     var touched = false;
-    if (body.containsKey('program_duration_seconds')) {
-      final duration = (body['program_duration_seconds'] as num?)?.toInt() ??
-          int.tryParse('${body['program_duration_seconds'] ?? ''}');
-      if (duration == null) {
-        return Response(400,
-            body: '{"error":"invalid_program_duration_seconds"}',
-            headers: {'content-type': 'application/json'});
-      }
-      await db.into(db.configKeyValues).insertOnConflictUpdate(
-            ConfigKeyValuesCompanion.insert(
-              key: kCuratorProgramDurationSecondsKvKey,
-              value: '$duration',
-            ),
-          );
-      touched = true;
-    }
-    if (body.containsKey('history_depth')) {
-      final depth = (body['history_depth'] as num?)?.toInt() ??
-          int.tryParse('${body['history_depth'] ?? ''}');
-      if (depth == null) {
-        return Response(400,
-            body: '{"error":"invalid_history_depth"}',
-            headers: {'content-type': 'application/json'});
-      }
-      await db.into(db.configKeyValues).insertOnConflictUpdate(
-            ConfigKeyValuesCompanion.insert(
-              key: kCuratorHistoryDepthKvKey,
-              value: '$depth',
-            ),
-          );
-      touched = true;
-    }
     final tickerPx = (body['ticker_pixels_per_second'] as String?)?.trim() ??
         (body['ticker_pixels_per_second'] as num?)?.toString();
     if (tickerPx != null && tickerPx.isNotEmpty) {
@@ -641,17 +593,6 @@ void registerOperatorRestRoutes(
             ConfigKeyValuesCompanion.insert(
               key: 'curator.ticker.newsPixelsPerSecond',
               value: tickerPx,
-            ),
-          );
-      touched = true;
-    }
-    if (body.containsKey('require_news_photo_for_screens')) {
-      final v = body['require_news_photo_for_screens'];
-      final flag = v is bool ? v : v?.toString().toLowerCase() == 'true';
-      await db.into(db.configKeyValues).insertOnConflictUpdate(
-            ConfigKeyValuesCompanion.insert(
-              key: kRequireNewsPhotoForScreensKvKey,
-              value: flag ? 'true' : 'false',
             ),
           );
       touched = true;
@@ -967,8 +908,13 @@ void registerOperatorRestRoutes(
     }
     final name = (map['name'] as String?)?.trim();
     final description = (map['description'] as String?)?.trim() ?? '';
-    final enabled = map['enabled'] is bool ? map['enabled'] as bool : true;
-    final dwellSeconds = (map['dwell_seconds'] as num?)?.toInt() ?? 10;
+    final minDwell = (map['min_dwell_seconds'] as num?)?.toInt() ?? 8;
+    final maxDwell = (map['max_dwell_seconds'] as num?)?.toInt() ?? 15;
+    if (minDwell <= 0 || maxDwell <= 0 || minDwell > maxDwell) {
+      return Response(400,
+          body: '{"error":"invalid_dwell_seconds"}',
+          headers: {'content-type': 'application/json'});
+    }
     final frequencyWeight = (map['frequency_weight'] as num?)?.toInt() ?? 100;
     final minGap = (map['min_gap_between_shows_seconds'] as num?)?.toInt() ?? 0;
     final minPlacements =
@@ -981,12 +927,12 @@ void registerOperatorRestRoutes(
             id: id,
             name: resolvedName,
             description: Value(description),
-            enabled: Value(enabled),
             screenType: screenType,
             configJson: Value(configJsonStr),
             configJsonSchema: Value(doc.schema),
             exampleConfigJson: Value(doc.example),
-            dwellSeconds: Value(dwellSeconds),
+            minDwellSeconds: Value(minDwell),
+            maxDwellSeconds: Value(maxDwell),
             frequencyWeight: Value(frequencyWeight),
             minGapBetweenShowsSeconds: Value(minGap),
             minPlacementsPerProgram: Value(minPlacements),
@@ -1057,12 +1003,19 @@ void registerOperatorRestRoutes(
     final description = map.containsKey('description')
         ? ((map['description'] as String?)?.trim() ?? '')
         : existing.description;
-    final enabled = map.containsKey('enabled') && map['enabled'] is bool
-        ? map['enabled'] as bool
-        : existing.enabled;
-    final dwellSeconds = map.containsKey('dwell_seconds')
-        ? ((map['dwell_seconds'] as num?)?.toInt() ?? existing.dwellSeconds)
-        : existing.dwellSeconds;
+    var minDwell = existing.minDwellSeconds;
+    var maxDwell = existing.maxDwellSeconds;
+    if (map.containsKey('min_dwell_seconds')) {
+      minDwell = (map['min_dwell_seconds'] as num?)?.toInt() ?? minDwell;
+    }
+    if (map.containsKey('max_dwell_seconds')) {
+      maxDwell = (map['max_dwell_seconds'] as num?)?.toInt() ?? maxDwell;
+    }
+    if (minDwell <= 0 || maxDwell <= 0 || minDwell > maxDwell) {
+      return Response(400,
+          body: '{"error":"invalid_dwell_seconds"}',
+          headers: {'content-type': 'application/json'});
+    }
     final frequencyWeight = map.containsKey('frequency_weight')
         ? ((map['frequency_weight'] as num?)?.toInt() ?? existing.frequencyWeight)
         : existing.frequencyWeight;
@@ -1084,12 +1037,12 @@ void registerOperatorRestRoutes(
       ScreensCompanion(
         name: Value(name),
         description: Value(description),
-        enabled: Value(enabled),
         screenType: Value(screenType),
         configJson: Value(resolvedConfigJson),
         configJsonSchema: Value(doc.schema),
         exampleConfigJson: Value(doc.example),
-        dwellSeconds: Value(dwellSeconds),
+        minDwellSeconds: Value(minDwell),
+        maxDwellSeconds: Value(maxDwell),
         frequencyWeight: Value(frequencyWeight),
         minGapBetweenShowsSeconds: Value(minGap),
         minPlacementsPerProgram: Value(minPlacements),
@@ -1113,6 +1066,12 @@ void registerOperatorRestRoutes(
     await onConfigChanged();
     return Response.ok('{}', headers: {'content-type': 'application/json'});
   });
+
+  registerCuratorConfigurationRoutes(
+    r,
+    db: db,
+    onConfigChanged: onConfigChanged,
+  );
 }
 
 String _configJsonStringFromBody(dynamic v) {

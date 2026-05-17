@@ -111,7 +111,7 @@ class TestInstallMainToPiHelpers(unittest.TestCase):
             is_darwin=False,
         )
         self.assertIn(
-            home / ".local/share/com.waddleview.waddle_display/waddle_view.sqlite",
+            home / ".local/share/com.waddleview.waddle_display/waddle_display.db",
             paths,
         )
 
@@ -128,7 +128,7 @@ class TestInstallMainToPiHelpers(unittest.TestCase):
         self.assertTrue(
             any(
                 str(p).replace("\\", "/").endswith(
-                    "com.waddleview/waddle_display/waddle_view.sqlite"
+                    "com.waddleview/waddle_display/waddle_display.db"
                 )
                 for p in paths
             )
@@ -145,13 +145,13 @@ class TestInstallMainToPiHelpers(unittest.TestCase):
         )
         self.assertIn(
             home
-            / "Library/Application Support/com.waddleview.waddle_display/waddle_view.sqlite",
+            / "Library/Application Support/com.waddleview.waddle_display/waddle_display.db",
             paths,
         )
 
     def test_local_blob_media_dir(self):
         im = self.im
-        db = Path("/tmp/waddle_view.sqlite")
+        db = Path("/tmp/waddle_display.db")
         self.assertEqual(
             im.local_blob_media_dir(db),
             Path("/tmp/media"),
@@ -205,7 +205,7 @@ class TestInstallMainToPiHelpers(unittest.TestCase):
                 is_windows=False,
                 is_darwin=False,
             )
-        self.assertIn("waddle_view.sqlite", str(ctx.exception))
+        self.assertIn("waddle_display.db", str(ctx.exception))
 
     def test_resolve_dev_env_path_default_under_repo(self):
         im = self.im
@@ -221,6 +221,72 @@ class TestInstallMainToPiHelpers(unittest.TestCase):
                 im.resolve_dev_env_path(explicit=None, app_package_dir=app_dir),
                 env_file,
             )
+
+    def test_normalize_display_environment_migrates_legacy_keys(self):
+        im = self.im
+        normalized, notes = im.normalize_display_environment(
+            {
+                "WADDLE_HTTP_BIND": "0.0.0.0",
+                "WADDLE_OPENAI_API_KEY": "sk-test",
+                "WADDLE_API_KEY_FILE": "/etc/waddle-view/api.key",
+                "DISPLAY": ":0",
+            }
+        )
+        self.assertEqual(normalized["WADDLE_DISPLAY_HTTP_BIND_IP"], "0.0.0.0")
+        self.assertEqual(normalized["WADDLE_DISPLAY_OPENAI_API_KEY"], "sk-test")
+        self.assertEqual(normalized["DISPLAY"], ":0")
+        self.assertNotIn("WADDLE_HTTP_BIND", normalized)
+        self.assertNotIn("WADDLE_OPENAI_API_KEY", normalized)
+        self.assertNotIn("WADDLE_API_KEY_FILE", normalized)
+        self.assertTrue(any("WADDLE_HTTP_BIND" in n for n in notes))
+        self.assertTrue(any("deprecated" in n for n in notes))
+
+    def test_normalize_display_environment_prefers_current_name(self):
+        im = self.im
+        normalized, notes = im.normalize_display_environment(
+            {
+                "WADDLE_HTTP_BIND": "127.0.0.1",
+                "WADDLE_DISPLAY_HTTP_BIND_IP": "0.0.0.0",
+            }
+        )
+        self.assertEqual(normalized["WADDLE_DISPLAY_HTTP_BIND_IP"], "0.0.0.0")
+        self.assertNotIn("WADDLE_HTTP_BIND", normalized)
+        self.assertTrue(any("already set" in n for n in notes))
+
+    def test_merge_install_unit_environment_remote_wins_over_local(self):
+        im = self.im
+        merged, _ = im.merge_install_unit_environment(
+            {
+                "WADDLE_DISPLAY_OPENAI_API_KEY": "local-placeholder",
+                "WADDLE_DISPLAY_PEXELS_API_KEY": "local-pex",
+            },
+            {
+                "WADDLE_OPENAI_API_KEY": "remote-secret",
+                "WADDLE_DISPLAY_HTTP_BIND_IP": "0.0.0.0",
+            },
+        )
+        self.assertEqual(merged["WADDLE_DISPLAY_OPENAI_API_KEY"], "remote-secret")
+        self.assertEqual(merged["WADDLE_DISPLAY_HTTP_BIND_IP"], "0.0.0.0")
+        self.assertEqual(merged["WADDLE_DISPLAY_PEXELS_API_KEY"], "local-pex")
+
+    def test_build_user_unit_content_writes_display_env_names(self):
+        im = self.im
+        template = (
+            "[Unit]\nDescription=test\n\n[Service]\n"
+            "Environment=DISPLAY=:0\n"
+            "Type=simple\nExecStart=/bin/true\n\n[Install]\nWantedBy=default.target\n"
+        )
+        body = im.build_user_unit_content(
+            template,
+            {
+                "WADDLE_PEXELS_API_KEY": "pex-old",
+                "WADDLE_HTTP_BIND": "0.0.0.0",
+            },
+        )
+        self.assertIn("Environment=WADDLE_DISPLAY_PEXELS_API_KEY=pex-old", body)
+        self.assertIn("Environment=WADDLE_DISPLAY_HTTP_BIND_IP=0.0.0.0", body)
+        self.assertNotIn("WADDLE_PEXELS_API_KEY", body)
+        self.assertNotIn("WADDLE_HTTP_BIND", body)
 
 
 if __name__ == "__main__":

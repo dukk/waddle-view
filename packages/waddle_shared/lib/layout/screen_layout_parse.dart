@@ -3,11 +3,11 @@ import 'dart:convert';
 /// Config defaults for summary capacity hints (used by curator + widgets).
 int defaultSummaryCapacityCharsFor(String type, Map<String, dynamic> config) {
   switch (type) {
-    case 'rss_article':
+    case 'news':
       return _cfgInt(config, 'summaryCapacityChars', 1200);
-    case 'rss_article_columns':
+    case 'news_columns':
       return _cfgInt(config, 'summaryCapacityCharsPerColumn', 220);
-    case 'rss_article_stack':
+    case 'news_stack':
       return _cfgInt(config, 'summaryCapacityCharsPerSlot', 320);
     default:
       return 0;
@@ -39,13 +39,13 @@ int _rssArticleColumnCount(Map<String, dynamic> config) {
 /// Per-slot summary capacity for RSS widgets (chars). Empty for non-RSS types.
 List<int> computeRssSummarySlotCapacities(String type, Map<String, dynamic> config) {
   switch (type) {
-    case 'rss_article':
+    case 'news':
       return [defaultSummaryCapacityCharsFor(type, config)];
-    case 'rss_article_columns':
+    case 'news_columns':
       final n = _rssArticleColumnCount(config);
       final per = defaultSummaryCapacityCharsFor(type, config);
       return List<int>.filled(n, per);
-    case 'rss_article_stack':
+    case 'news_stack':
       final per = defaultSummaryCapacityCharsFor(type, config);
       return List<int>.filled(2, per);
     default:
@@ -66,7 +66,7 @@ class ParsedWidgetSpec {
   final String slot;
   final Map<String, dynamic> config;
 
-  /// For `rss_article` / `rss_article_columns` / `rss_article_stack`: capacity
+  /// For `news` / `news_columns` / `news_stack`: capacity
   /// per slot (chars). Empty for other widget types.
   final List<int> rssSummarySlotCapacities;
 

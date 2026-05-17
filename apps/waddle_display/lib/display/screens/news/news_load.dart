@@ -24,8 +24,8 @@ RssArticle _censorArticle(RssArticle article, RejectFilterContext ctx) {
 
 /// Loads an RSS row for [choiceKey] in [slide.randomChoices], or picks the
 /// best-ranked article not in [excludeArticleIds] (same ranking as the single
-/// [rss_article] slide and multi-article layouts such as [rss_article_columns]
-/// / [rss_article_stack]). Title and summary are passed through the curator's
+/// [news] slide and multi-article layouts such as [news_columns]
+/// / [news_stack]). Title and summary are passed through the curator's
 /// [RejectFilterContext] so configured `censor` terms are masked transiently
 /// in memory.
 Future<RssArticle?> loadRssArticleForSlideChoice(
@@ -110,16 +110,16 @@ Future<RssArticle?> loadRssArticleForSlideChoice(
 }
 
 /// Result of loading an RSS article thumbnail from [BlobStore].
-final class RssArticleImageLoad {
+final class NewsImageLoad {
   /// No image reference, missing metadata, or empty file on disk.
-  const RssArticleImageLoad.absent() : bytes = null, blobReadFailed = false;
+  const NewsImageLoad.absent() : bytes = null, blobReadFailed = false;
 
-  const RssArticleImageLoad.ok(Uint8List data)
+  const NewsImageLoad.ok(Uint8List data)
     : bytes = data,
       blobReadFailed = false;
 
   /// [BlobStore.readBytes] threw (for example I/O or missing backing file).
-  const RssArticleImageLoad.blobReadFailed()
+  const NewsImageLoad.blobReadFailed()
     : bytes = null,
       blobReadFailed = true;
 
@@ -127,29 +127,29 @@ final class RssArticleImageLoad {
   final bool blobReadFailed;
 }
 
-Future<RssArticleImageLoad> loadRssArticleImage(
+Future<NewsImageLoad> loadRssArticleImage(
   AppDatabase db,
   BlobStore blobs,
   RssArticle article,
 ) async {
   final key = article.imageBlobKey;
   if (key == null || key.isEmpty) {
-    return const RssArticleImageLoad.absent();
+    return const NewsImageLoad.absent();
   }
   final meta = await (db.select(
     db.blobMetadata,
   )..where((t) => t.blobKey.equals(key))).getSingleOrNull();
   if (meta == null) {
-    return const RssArticleImageLoad.absent();
+    return const NewsImageLoad.absent();
   }
   final read = await readDisplayBlobBytes(blobs, BlobRef(meta.relativePath));
   if (read.isOk) {
-    return RssArticleImageLoad.ok(read.bytes!);
+    return NewsImageLoad.ok(read.bytes!);
   }
   if (read.readFailed) {
-    return const RssArticleImageLoad.blobReadFailed();
+    return const NewsImageLoad.blobReadFailed();
   }
-  return const RssArticleImageLoad.absent();
+  return const NewsImageLoad.absent();
 }
 
 /// Category id for RSS slide chrome: curated program key, else feed category.

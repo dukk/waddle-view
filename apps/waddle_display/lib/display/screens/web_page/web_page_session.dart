@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 
+import '../../../bootstrap/webview_platform_bootstrap.dart';
 import 'web_page_config.dart';
 
 /// Thrown when a web page cannot be prepared for display.
@@ -72,7 +74,7 @@ class WebPagePrepareCache {
       } on Object catch (e) {
         _ready[key] = WebPageFailedSession(
           config: config,
-          message: e is WebPageLoadException ? e.message : e.toString(),
+          message: _webPagePreloadErrorMessage(e),
         );
       }
     } finally {
@@ -95,10 +97,27 @@ class WebPagePrepareCache {
   }
 }
 
+String _webPagePreloadErrorMessage(Object error) {
+  if (error is WebPageLoadException) {
+    return error.message;
+  }
+  if (error is MissingPluginException &&
+      error.toString().contains('webview_win_floating')) {
+    return 'Embedded web view native plugin is not available. '
+        'Stop the app, run `flutter clean`, then rebuild (full restart, not hot restart).';
+  }
+  return error.toString();
+}
+
 Future<WebPagePreparedSession> _loadWithWebView(
   ParsedWidgetSpec spec,
   WebPageConfig config,
 ) async {
+  await ensureEmbeddedWebViewPlatform();
+  if (!isEmbeddedWebViewAvailable) {
+    throw WebPageLoadException(embeddedWebViewUnavailableMessage());
+  }
+
   final uri = config.uri!;
   final loadCompleter = Completer<void>();
   var loadFinished = false;

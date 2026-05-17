@@ -58,14 +58,28 @@ class ConfigKeyValues extends Table {
   Set<Column<Object>> get primaryKey => {key};
 }
 
-const String kCuratorProgramDurationSecondsKvKey =
-    'curator.program.durationSeconds';
-const String kCuratorHistoryDepthKvKey = 'curator.program.historyDepth';
+/// Curator configuration layer: exclusive replaces all; base drives program;
+/// enhancement stacks overlay members on base.
+const String kCuratorLayerExclusive = 'exclusive';
+const String kCuratorLayerBase = 'base';
+const String kCuratorLayerEnhancement = 'enhancement';
 
-/// When true, RSS screens only curate articles that have a downloaded image;
-/// photo-less articles remain ticker-only unless min-placement fallback applies.
-const String kRequireNewsPhotoForScreensKvKey =
-    'curator.news.screens.require_photo';
+const List<String> kCuratorConfigurationLayers = [
+  kCuratorLayerExclusive,
+  kCuratorLayerBase,
+  kCuratorLayerEnhancement,
+];
+
+/// [CuratorConfigurationMembers.entityType] values.
+const String kCuratorMemberEntityScreen = 'screen';
+const String kCuratorMemberEntityTicker = 'ticker';
+const String kCuratorMemberEntityOverlay = 'overlay';
+
+const List<String> kCuratorMemberEntityTypes = [
+  kCuratorMemberEntityScreen,
+  kCuratorMemberEntityTicker,
+  kCuratorMemberEntityOverlay,
+];
 const String kAdminBootstrapDoneKvKey = 'admin.bootstrap_done';
 
 /// Global kill-switch for festive display overlays (`'true'` / `'false'`). Absent = enabled.
@@ -130,16 +144,16 @@ class Screens extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
   TextColumn get description => text().withDefault(const Constant(''))();
-  BoolColumn get enabled => boolean().withDefault(const Constant(true))();
 
-  /// Widget `type` string (e.g. `weather`, `rss_article`); see `kScreenLayoutWidgetTypes`.
+  /// Widget `type` string (e.g. `weather`, `news`); see `kScreenLayoutWidgetTypes`.
   TextColumn get screenType => text()();
 
   /// JSON object: former `widgets[0].config` in legacy `layout_json`.
   TextColumn get configJson => text().withDefault(const Constant('{}'))();
   TextColumn get configJsonSchema => text().nullable()();
   TextColumn get exampleConfigJson => text().nullable()();
-  IntColumn get dwellSeconds => integer().withDefault(const Constant(10))();
+  IntColumn get minDwellSeconds => integer().withDefault(const Constant(8))();
+  IntColumn get maxDwellSeconds => integer().withDefault(const Constant(15))();
   IntColumn get frequencyWeight => integer().withDefault(const Constant(100))();
   IntColumn get minGapBetweenShowsSeconds =>
       integer().withDefault(const Constant(0))();
@@ -163,7 +177,6 @@ class TickerTapes extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
   TextColumn get description => text().withDefault(const Constant(''))();
-  BoolColumn get enabled => boolean().withDefault(const Constant(true))();
 
   /// One of: `time`, `weather`, `news`, `quote`, `stocks`, `custom`.
   TextColumn get tickerType => text()();
@@ -182,6 +195,57 @@ class TickerTapes extends Table {
 
   @override
   Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Operator-defined curator program (screens/ticker/overlays membership + tuning).
+class CuratorConfigurations extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  TextColumn get layer => text()();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+  IntColumn get programDurationSeconds =>
+      integer().withDefault(const Constant(180))();
+  IntColumn get historyDepth => integer().withDefault(const Constant(5))();
+  BoolColumn get requireNewsPhotoForScreens =>
+      boolean().withDefault(const Constant(true))();
+  TextColumn get themeIdOverride => text().nullable()();
+  BoolColumn get defaultConfig => boolean().withDefault(const Constant(false))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// When a configuration is active (calendar, time, and/or runtime state).
+class CuratorScheduleRules extends Table {
+  TextColumn get id => text()();
+  TextColumn get configurationId => text()();
+  IntColumn get priority => integer().withDefault(const Constant(0))();
+  TextColumn get statePredicate => text().nullable()();
+  IntColumn get daysOfWeekMask => integer().nullable()();
+  IntColumn get startTimeMinutes => integer().nullable()();
+  IntColumn get endTimeMinutes => integer().nullable()();
+  IntColumn get startMonth => integer().nullable()();
+  IntColumn get startDay => integer().nullable()();
+  IntColumn get endMonth => integer().nullable()();
+  IntColumn get endDay => integer().nullable()();
+  BoolColumn get repeatAnnually =>
+      boolean().withDefault(const Constant(true))();
+  IntColumn get yearExact => integer().nullable()();
+  IntColumn get nthWeekOfMonth => integer().nullable()();
+  IntColumn get nthWeekday => integer().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Catalog entity ids enabled while a [CuratorConfigurations] row is active.
+class CuratorConfigurationMembers extends Table {
+  TextColumn get configurationId => text()();
+  TextColumn get entityType => text()();
+  TextColumn get entityId => text()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {configurationId, entityType, entityId};
 }
 
 /// Aggregate min/max placements per program for all screens sharing [dataKey].

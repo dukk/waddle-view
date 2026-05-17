@@ -5,45 +5,45 @@ import 'package:waddle_shared/layout/screen_layout_parse.dart';
 
 void main() {
   group('defaultSummaryCapacityCharsFor', () {
-    test('rss_article reads int or double summaryCapacityChars', () {
+    test('news reads int or double summaryCapacityChars', () {
       expect(
-        defaultSummaryCapacityCharsFor('rss_article', {'summaryCapacityChars': 900}),
+        defaultSummaryCapacityCharsFor('news', {'summaryCapacityChars': 900}),
         900,
       );
       expect(
-        defaultSummaryCapacityCharsFor('rss_article', {'summaryCapacityChars': 12.7}),
+        defaultSummaryCapacityCharsFor('news', {'summaryCapacityChars': 12.7}),
         13,
       );
       expect(
-        defaultSummaryCapacityCharsFor('rss_article', <String, dynamic>{}),
+        defaultSummaryCapacityCharsFor('news', <String, dynamic>{}),
         1200,
       );
     });
 
-    test('rss_article_columns uses per-column key', () {
+    test('news_columns uses per-column key', () {
       expect(
         defaultSummaryCapacityCharsFor(
-          'rss_article_columns',
+          'news_columns',
           {'summaryCapacityCharsPerColumn': 100},
         ),
         100,
       );
       expect(
-        defaultSummaryCapacityCharsFor('rss_article_columns', {}),
+        defaultSummaryCapacityCharsFor('news_columns', {}),
         220,
       );
     });
 
-    test('rss_article_stack uses per-slot key', () {
+    test('news_stack uses per-slot key', () {
       expect(
         defaultSummaryCapacityCharsFor(
-          'rss_article_stack',
+          'news_stack',
           {'summaryCapacityCharsPerSlot': 400},
         ),
         400,
       );
       expect(
-        defaultSummaryCapacityCharsFor('rss_article_stack', {}),
+        defaultSummaryCapacityCharsFor('news_stack', {}),
         320,
       );
     });
@@ -54,44 +54,44 @@ void main() {
   });
 
   group('computeRssSummarySlotCapacities', () {
-    test('rss_article returns one slot', () {
+    test('news returns one slot', () {
       expect(
-        computeRssSummarySlotCapacities('rss_article', {'summaryCapacityChars': 500}),
+        computeRssSummarySlotCapacities('news', {'summaryCapacityChars': 500}),
         [500],
       );
     });
 
-    test('rss_article_columns repeats per columnCount clamped 1–6', () {
+    test('news_columns repeats per columnCount clamped 1–6', () {
       expect(
         computeRssSummarySlotCapacities(
-          'rss_article_columns',
+          'news_columns',
           {'columnCount': 1, 'summaryCapacityCharsPerColumn': 50},
         ),
         [50],
       );
       expect(
         computeRssSummarySlotCapacities(
-          'rss_article_columns',
+          'news_columns',
           {'columnCount': 10, 'summaryCapacityCharsPerColumn': 40},
         ),
         List<int>.filled(6, 40),
       );
       expect(
         computeRssSummarySlotCapacities(
-          'rss_article_columns',
+          'news_columns',
           {'columnCount': 3.2, 'summaryCapacityCharsPerColumn': 30},
         ),
         List<int>.filled(3, 30),
       );
       expect(
-        computeRssSummarySlotCapacities('rss_article_columns', {}),
+        computeRssSummarySlotCapacities('news_columns', {}),
         List<int>.filled(3, 220),
       );
     });
 
-    test('rss_article_stack always uses two slots', () {
+    test('news_stack always uses two slots', () {
       expect(
-        computeRssSummarySlotCapacities('rss_article_stack', {'summaryCapacityCharsPerSlot': 111}),
+        computeRssSummarySlotCapacities('news_stack', {'summaryCapacityCharsPerSlot': 111}),
         [111, 111],
       );
     });
@@ -120,7 +120,7 @@ void main() {
         'widgets': [
           {'type': 'clock', 'slot': 'main', 'config': {'tz': 'UTC'}},
           {'type': 1, 'slot': 'x'},
-          {'type': 'rss_article', 'slot': 'side', 'config': {'summaryCapacityChars': 100}},
+          {'type': 'news', 'slot': 'side', 'config': {'summaryCapacityChars': 100}},
         ],
       });
       final specs = parseScreenLayoutWidgets(json);
@@ -131,7 +131,7 @@ void main() {
       expect(specs[0].rssSummarySlotCapacities, isEmpty);
       expect(specs[0].choiceKey, 'main_clock');
 
-      expect(specs[1].type, 'rss_article');
+      expect(specs[1].type, 'news');
       expect(specs[1].rssSummarySlotCapacities, [100]);
     });
 
@@ -168,7 +168,7 @@ void main() {
 
   group('synthesizeLayoutJson', () {
     test('roundtrips object config', () {
-      const screenType = 'rss_article';
+      const screenType = 'news';
       const cfg = '{"feedId":"f1"}';
       final layout = synthesizeLayoutJson(screenType: screenType, configJson: cfg);
       final specs = parseScreenLayoutWidgets(layout);

@@ -175,12 +175,12 @@ Handler buildProtectedApiRouter({
             'id': e.id,
             'name': e.name,
             'description': e.description,
-            'enabled': e.enabled,
             'screen_type': e.screenType,
             'config_json': e.configJson,
             'config_json_schema': e.configJsonSchema,
             'example_config_json': e.exampleConfigJson,
-            'dwell_seconds': e.dwellSeconds,
+            'min_dwell_seconds': e.minDwellSeconds,
+            'max_dwell_seconds': e.maxDwellSeconds,
             'frequency_weight': e.frequencyWeight,
             'min_gap_between_shows_seconds': e.minGapBetweenShowsSeconds,
             'min_placements_per_program': e.minPlacementsPerProgram,
@@ -280,7 +280,6 @@ Handler buildProtectedApiRouter({
       await upsertOverlaySchedule(
         db,
         id: id,
-        enabled: _readBoolOverlay(map['enabled'], defaultIfAbsent: true),
         overlayType: _readOverlayTypeFromMap(map),
         label: map['label'] as String? ?? '',
         configJson: _effectiveOverlayConfigFromBody(map),
@@ -325,9 +324,6 @@ Handler buildProtectedApiRouter({
       await upsertOverlaySchedule(
         db,
         id: pathId,
-        enabled: map.containsKey('enabled')
-            ? _readBoolOverlay(map['enabled'], defaultIfAbsent: true)
-            : existing.enabled,
         overlayType: _patchOverlayType(existing, map),
         label: map.containsKey('label')
             ? map['label'] as String? ?? ''

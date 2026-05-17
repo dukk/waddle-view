@@ -50,24 +50,3 @@ Future<void> ensureAlertSeverityIconsKv(AppDatabase db) async {
         ),
       );
 }
-
-Future<void> ensureCuratorSettingsKvs(AppDatabase db) async {
-  Future<void> ensureKey(String key, String value) async {
-    final row = await (db.select(db.configKeyValues)
-          ..where((t) => t.key.equals(key)))
-        .getSingleOrNull();
-    if (row != null) {
-      return;
-    }
-    await db.into(db.configKeyValues).insert(
-          ConfigKeyValuesCompanion.insert(key: key, value: value),
-        );
-  }
-
-  await ensureKey(kCuratorProgramDurationSecondsKvKey, '180');
-  await ensureKey(kCuratorHistoryDepthKvKey, '5');
-  await ensureKey(kRequireNewsPhotoForScreensKvKey, 'true');
-  await (db.delete(
-    db.configKeyValues,
-  )..where((t) => t.key.equals('curator.news.require_photo_for_curation'))).go();
-}

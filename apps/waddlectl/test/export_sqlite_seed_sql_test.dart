@@ -20,7 +20,7 @@ void main() {
   test('export round trip minimal FK', () {
     final tmp = Directory.systemTemp.createTempSync('wctl_export_seed');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final dbPath = p.join(tmp.path, 'waddle_view.sqlite');
+    final dbPath = p.join(tmp.path, 'waddle_display.db');
 
     final db = sqlite3.open(dbPath, mode: OpenMode.readWriteCreate);
     try {

@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:waddle_shared/curation/reject_filter_context.dart';
 
 import 'package:waddle_shared/persistence/database.dart';
+import 'curator_membership_filter.dart';
 import 'curator_read_port.dart';
 import 'ticker_news_candidate.dart';
 
@@ -32,9 +33,10 @@ String _capTickerAlertBody(String body, int maxLen) {
 }
 
 class DriftCuratorReadPort implements CuratorReadPort {
-  DriftCuratorReadPort(this._db);
+  DriftCuratorReadPort(this._db, {this.membershipFilter});
 
   final AppDatabase _db;
+  final CuratorMembershipFilter? membershipFilter;
 
   @override
   Future<Map<String, String>> loadKeyValuesForCuration() async {
@@ -102,17 +104,18 @@ class DriftCuratorReadPort implements CuratorReadPort {
       (t) => OrderingTerm.asc(t.sortOrder),
       (t) => OrderingTerm.asc(t.id),
     ])).get();
+    final allow = membershipFilter?.tickerTapeIds;
     return [
       for (final r in rows)
-        TickerTapeForCuration(
-          id: r.id,
-          tickerType: r.tickerType,
-          enabled: r.enabled,
-          frequencyWeight: r.frequencyWeight,
-          sortOrder: r.sortOrder,
-          configKey: r.configKey,
-          configJson: r.configJson,
-        ),
+        if (allow == null || allow.isEmpty || allow.contains(r.id))
+          TickerTapeForCuration(
+            id: r.id,
+            tickerType: r.tickerType,
+            frequencyWeight: r.frequencyWeight,
+            sortOrder: r.sortOrder,
+            configKey: r.configKey,
+            configJson: r.configJson,
+          ),
     ];
   }
 

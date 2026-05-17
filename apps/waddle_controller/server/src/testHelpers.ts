@@ -13,7 +13,7 @@ export function testConfig(dir: string, overrides: Partial<AppConfig> = {}): App
     bindHost: '127.0.0.1',
     port: 5199,
     dataDir,
-    dbPath: path.join(dataDir, 'controller.db'),
+    dbPath: path.join(dataDir, 'waddle_controller.db'),
     sessionSecret: 'test-secret',
     clientIdentifier: null,
     secureCookies: false,

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_display/curator/screen_program_curator.dart';
-import 'package:waddle_display/display/screens/pexels/pexels_photo_slide_widget.dart';
+import 'package:waddle_display/display/screens/photo/photo_slide_widget.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 import '../helpers/fake_blob_store.dart';
@@ -48,7 +48,7 @@ void main() {
         );
 
     const layout = ParsedWidgetSpec(
-      type: 'pexels_photo',
+      type: 'photo',
       slot: 'main',
       config: {},
     );
@@ -56,14 +56,14 @@ void main() {
       screenId: 's',
       dwellMs: 5000,
       layoutJson: '',
-      randomChoices: const {'main_pexels_photo': '7'},
+      randomChoices: const {'main_photo': '7'},
     );
 
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData.dark(),
         home: Scaffold(
-          body: PexelsPhotoSlideWidget(
+          body: PhotoSlideWidget(
             db: db,
             blobs: blobs,
             slide: slide,

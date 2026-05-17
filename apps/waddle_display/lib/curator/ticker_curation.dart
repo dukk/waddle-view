@@ -666,7 +666,7 @@ List<TickerItem> buildTickerItemsForMarquee({
     return legacy;
   }
 
-  final enabled = definitions.where((d) => d.enabled).toList()
+  final enabled = definitions.toList()
     ..sort((a, b) {
       final c = a.sortOrder.compareTo(b.sortOrder);
       if (c != 0) {

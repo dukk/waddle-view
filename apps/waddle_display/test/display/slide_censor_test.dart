@@ -2,7 +2,7 @@ import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:waddle_display/curator/screen_program_curator.dart';
-import 'package:waddle_display/display/screens/rss_article/rss_article_load.dart';
+import 'package:waddle_display/display/screens/news/news_load.dart';
 import 'package:waddle_display/display/slide_content_joke_trivia.dart';
 import 'package:waddle_shared/curation/reject_filter_context.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
@@ -151,7 +151,7 @@ void main() {
         ),
       );
 
-      final spec = _spec('rss_article', 'a');
+      final spec = _spec('news', 'a');
       final slide = _slide({spec.choiceKey: 'a1'});
       final ctx = await RejectFilterContext.loadFromDb(db);
       final r = await loadRssArticleForSlideChoice(

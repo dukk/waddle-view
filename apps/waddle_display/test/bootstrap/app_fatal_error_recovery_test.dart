@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:waddle_display/bootstrap/app_fatal_error_recovery.dart';
@@ -542,5 +543,41 @@ void main() {
     final file = logsDir.listSync().whereType<File>().single;
     final text = await file.readAsString();
     expect(text, contains('[Flutter.recoverable]'));
+  });
+
+  test('isRecoverableEmbeddedWebViewPluginError matches webview channel', () {
+    expect(
+      isRecoverableEmbeddedWebViewPluginError(
+        MissingPluginException(
+          'No implementation found for method init on channel webview_win_floating',
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      isRecoverableEmbeddedWebViewPluginError(
+        MissingPluginException('some other channel'),
+      ),
+      isFalse,
+    );
+    expect(
+      isRecoverableEmbeddedWebViewPluginError(StateError('other')),
+      isFalse,
+    );
+  });
+
+  test('onZoneFatalError does not restart on webview MissingPluginException',
+      () async {
+    var restarted = false;
+    onZoneFatalError(
+      MissingPluginException(
+        'No implementation found for method init on channel webview_win_floating',
+      ),
+      StackTrace.current,
+      restartProcess: () async {
+        restarted = true;
+      },
+    );
+    expect(restarted, isFalse);
   });
 }

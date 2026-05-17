@@ -78,14 +78,12 @@ void main() {
           TickerTapeForCuration(
             id: 'ticker_time',
             tickerType: 'time',
-            enabled: true,
             frequencyWeight: 1,
             sortOrder: 0,
           ),
           TickerTapeForCuration(
             id: 'ticker_weather',
             tickerType: 'weather',
-            enabled: true,
             frequencyWeight: 1,
             sortOrder: 10,
             configJson: '{"fallbackText":"Cold"}',
@@ -93,7 +91,6 @@ void main() {
           TickerTapeForCuration(
             id: 'ticker_news',
             tickerType: 'news',
-            enabled: true,
             frequencyWeight: 1,
             sortOrder: 20,
             configJson: '{"fallbackText":"Headline"}',
@@ -124,7 +121,6 @@ void main() {
           TickerTapeForCuration(
             id: 'stock_finnhub',
             tickerType: 'stocks',
-            enabled: true,
             frequencyWeight: 1,
             sortOrder: 0,
           ),
@@ -159,14 +155,12 @@ void main() {
           TickerTapeForCuration(
             id: 'ticker_time',
             tickerType: 'time',
-            enabled: true,
             frequencyWeight: 1,
             sortOrder: 0,
           ),
           TickerTapeForCuration(
             id: 'ticker_weather',
             tickerType: 'weather',
-            enabled: true,
             frequencyWeight: 1,
             sortOrder: 10,
             configJson: '{"fallbackText":"Fallback Weather"}',
@@ -174,7 +168,6 @@ void main() {
           TickerTapeForCuration(
             id: 'ticker_news',
             tickerType: 'news',
-            enabled: true,
             frequencyWeight: 1,
             sortOrder: 20,
             configJson: '{"fallbackText":"Headline"}',
@@ -215,7 +208,6 @@ void main() {
           TickerTapeForCuration(
             id: 'w',
             tickerType: 'weather',
-            enabled: true,
             frequencyWeight: 1,
             sortOrder: 0,
           ),
