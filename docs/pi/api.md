@@ -92,16 +92,33 @@ Allowed responses include **`Access-Control-Allow-Origin`** (mirrored origin), *
 | GET | `/v1/catalog/jokes` | `setup`, `punchline`. Also optional `category` = `category_id`. |
 | GET | `/v1/catalog/trivia` | `question`, `option_a`, `option_b`, `option_c`, `option_d`, `integration_type`. Also optional `category`. |
 | GET | `/v1/catalog/rss-articles` | `title`, `summary`, `link`, `guid`. Optional `feed_id`. |
-| GET | `/v1/catalog/rss-feeds` | Small list of RSS sources (`id`, `url`, `title`, `category`) for filter UI. |
 | GET | `/v1/catalog/photos` | `alt_text`, `photographer_name`, `data_provider`. Optional `category`. |
 | GET | `/v1/catalog/videos` | `alt_text`, `photographer_name`, `data_provider`. Optional `category`. |
 | GET | `/v1/catalog/stock-quotes` | `symbol`, `display_name` (ticker symbol row; both AND when both set). |
 | GET | `/v1/catalog/weather-current` | `description` (current conditions text), `location_name` (matches configured location names). Optional `location_id`. |
 | GET | `/v1/catalog/weather-alerts` | `event`, `headline`, `severity`, `excerpt` (description excerpt), `location_name`. Optional `location_id`. |
 | GET | `/v1/catalog/alerts` | `title`, `body`, `source`, `severity`. |
-| GET | `/v1/catalog/weather-locations` | All configured weather locations (for filter dropdowns). |
 
-Response shape (except `rss-feeds` and `weather-locations`): `{"items":[...], "total": <int>, "limit": <int>, "offset": <int>}`.
+Response shape: `{"items":[...], "total": <int>, "limit": <int>, "offset": <int>}`.
+
+## Interests catalog (operator configuration)
+
+**Access:** `GET /v1/interests/*` requires **`interests.read`** (admin, operator, power_viewer). `POST` / `PATCH` / `DELETE` require **`interests.write`** (admin, operator). SQLite tables: `interests_locations`, `interests_rss_feeds`, `interests_stock_symbols`, `interests_jokes`, `interests_trivia`.
+
+| Method | Path | Notes |
+|--------|------|--------|
+| GET/POST | `/v1/interests/weather-locations` | Location rows: `id`, `name`, `latitude`, `longitude`, `enabled`, `include_active_weather_alerts`. |
+| PATCH/DELETE | `/v1/interests/weather-locations/{id}` | **409** if `weather_current` or `weather_alerts` rows reference the id. |
+| GET/POST | `/v1/interests/rss-feeds` | Feed sources: `id`, `url`, `category`, `poll_seconds`, `max_articles`, `enabled`, optional `title`; list also returns provider fields (`last_fetched_at`, `consecutive_failures`, `next_retry_at`). |
+| PATCH/DELETE | `/v1/interests/rss-feeds/{id}` | **409** if `rss_articles` exist for the feed. |
+| GET/POST | `/v1/interests/stock-symbols` | `id`, `symbol`, `display_name`, `enabled`. |
+| PATCH/DELETE | `/v1/interests/stock-symbols/{id}` | **409** if `stock_quotes` exist for the symbol id. |
+| GET/POST | `/v1/interests/joke-categories` | Category pool config; `id` must match a `curator_categories` row. |
+| PATCH/DELETE | `/v1/interests/joke-categories/{id}` | **409** if `jokes` reference the category. |
+| GET/POST | `/v1/interests/trivia-categories` | Same pattern as joke categories (`min_questions` / `max_questions`). |
+| PATCH/DELETE | `/v1/interests/trivia-categories/{id}` | **409** if `trivia_questions` reference the category. |
+
+List responses: `{"items":[...]}`. Mutators return `{}` on success.
 
 ## Operator JSON API (machine clients / `waddle_controller`)
 
@@ -114,7 +131,7 @@ These routes use the same **Bearer session** auth as other protected `/v1/*` pat
 | GET | `/v1/telemetry/ticker-programs` | Same query shape as programs; `{"items":[{at_ms, items:[...]}, ...]}` for ticker rows. |
 | GET | `/v1/media/blob-by-key` | Query: **`key`** = `blob_metadata.blob_key` (URL-encoded). Returns raw bytes with `Content-Type` from metadata (or `application/octet-stream`). **404** when metadata or backing file is missing. Requires `telemetry.read`. Used by `waddle_controller` Programs view to show cached RSS/photo/video bytes. |
 | GET | `/v1/media/rss-articles/{id}` | JSON: `id`, `feed_id`, `title`, `summary`, `link`, `image_blob_key`, `published_at_ms`. **404** if missing or suppressed. |
-| GET | `/v1/media/weather-at-location/{location_id}` | JSON: `location_id`, `location_name`, `latitude`, `longitude`, `enabled`, optional `observed_at_ms`, `current_temp_c`, `current_description`, `current_icon_blob_key` from `weather_locations` / `weather_current`. **404** if the location row does not exist. Requires `telemetry.read` (Programs slide previews). |
+| GET | `/v1/media/weather-at-location/{location_id}` | JSON: `location_id`, `location_name`, `latitude`, `longitude`, `enabled`, optional `observed_at_ms`, `current_temp_c`, `current_description`, `current_icon_blob_key` from `interests_locations` / `weather_current`. **404** if the location row does not exist. Requires `telemetry.read` (Programs slide previews). |
 | GET | `/v1/media/photos/{id}` | JSON metadata for `photos` row (`media_blob_key`, `alt_text`, photographer + Pexels URLs). **404** if missing or suppressed. |
 | GET | `/v1/media/videos/{id}` | Same shape as photos plus `duration_seconds`. **404** if missing or suppressed. |
 | GET | `/v1/media/jokes/{id}` | JSON: `setup`, `punchline`, `category_id`. **404** if missing or suppressed. |

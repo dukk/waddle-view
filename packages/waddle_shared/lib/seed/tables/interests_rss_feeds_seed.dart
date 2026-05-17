@@ -3,18 +3,18 @@ import 'package:drift/drift.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 /// Default feeds from repo `data/news-data-sources.md` (idempotent inserts).
-Future<void> ensureDefaultRssNewsFeeds(AppDatabase db) async {
+Future<void> ensureDefaultInterestsRssFeeds(AppDatabase db) async {
   for (final f in _defaultRssFeeds) {
     final existing = await (db.select(
-      db.rssFeedSources,
+      db.interestsRssFeeds,
     )..where((t) => t.id.equals(f.id))).getSingleOrNull();
     if (existing != null) {
       continue;
     }
     await db
-        .into(db.rssFeedSources)
+        .into(db.interestsRssFeeds)
         .insert(
-          RssFeedSourcesCompanion.insert(
+          InterestsRssFeedsCompanion.insert(
             id: f.id,
             url: f.url,
             category: Value(f.category),

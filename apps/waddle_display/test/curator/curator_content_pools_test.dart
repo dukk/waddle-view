@@ -2,8 +2,8 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_display/curator/curator_content_pools.dart';
 import 'package:waddle_shared/persistence/database.dart';
-import 'package:waddle_shared/seed/tables/joke_categories_seed.dart';
-import 'package:waddle_shared/seed/tables/trivia_categories_seed.dart';
+import 'package:waddle_shared/seed/tables/interests_jokes_seed.dart';
+import 'package:waddle_shared/seed/tables/interests_trivia_seed.dart';
 
 import '../helpers/memory_database.dart';
 
@@ -11,8 +11,8 @@ void main() {
   test('loadCuratorContentPools groups joke rss and trivia ids', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await ensureDefaultJokeCategories(db);
-    await ensureDefaultTriviaCategories(db);
+    await ensureDefaultInterestsJokes(db);
+    await ensureDefaultInterestsTrivia(db);
 
     await db.into(db.jokes).insert(
           JokesCompanion.insert(
@@ -24,8 +24,8 @@ void main() {
           ),
         );
 
-    await db.into(db.rssFeedSources).insert(
-          RssFeedSourcesCompanion.insert(
+    await db.into(db.interestsRssFeeds).insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'f1',
             url: 'http://a',
           ),
@@ -127,8 +127,8 @@ void main() {
   test('loadCuratorContentPools omits suppressed rows', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await ensureDefaultJokeCategories(db);
-    await ensureDefaultTriviaCategories(db);
+    await ensureDefaultInterestsJokes(db);
+    await ensureDefaultInterestsTrivia(db);
 
     await db.into(db.jokes).insert(
           JokesCompanion.insert(
@@ -150,8 +150,8 @@ void main() {
           ),
         );
 
-    await db.into(db.rssFeedSources).insert(
-          RssFeedSourcesCompanion.insert(id: 'f2', url: 'http://b'),
+    await db.into(db.interestsRssFeeds).insert(
+          InterestsRssFeedsCompanion.insert(id: 'f2', url: 'http://b'),
         );
     await db.into(db.rssArticles).insert(
           RssArticlesCompanion.insert(

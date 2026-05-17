@@ -167,7 +167,7 @@ Future<String?> resolveRssDisplayCategoryId(
     return null;
   }
   final feed = await (db.select(
-    db.rssFeedSources,
+    db.interestsRssFeeds,
   )..where((t) => t.id.equals(article.feedId))).getSingleOrNull();
   final c = feed?.category.trim();
   if (c == null || c.isEmpty) {
@@ -184,7 +184,7 @@ Future<String?> resolveRssArticleSourceLabel(
     return null;
   }
   final feed = await (db.select(
-    db.rssFeedSources,
+    db.interestsRssFeeds,
   )..where((t) => t.id.equals(article.feedId))).getSingleOrNull();
   final feedTitle = feed?.title?.trim();
   if (feedTitle != null && feedTitle.isNotEmpty) {

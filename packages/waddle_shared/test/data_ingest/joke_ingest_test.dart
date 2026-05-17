@@ -10,8 +10,8 @@ void main() {
   test('ingestJokeCandidates inserts and respects stable id', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.jokeCategories).insert(
-          JokeCategoriesCompanion.insert(id: 'c1', label: 'One'),
+    await db.into(db.interestsJokes).insert(
+          InterestsJokesCompanion.insert(id: 'c1', label: 'One'),
         );
     final reject = await RejectFilterContext.loadFromDb(db);
     final n = await ingestJokeCandidates(

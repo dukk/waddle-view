@@ -3,16 +3,16 @@ import 'package:drift/drift.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 /// Idempotent default joke categories (edit rows in DB to tune seasons).
-Future<void> ensureDefaultJokeCategories(AppDatabase db) async {
+Future<void> ensureDefaultInterestsJokes(AppDatabase db) async {
   for (final c in _defaultJokeCategories) {
     final existing =
-        await (db.select(db.jokeCategories)..where((t) => t.id.equals(c.id)))
+        await (db.select(db.interestsJokes)..where((t) => t.id.equals(c.id)))
             .getSingleOrNull();
     if (existing != null) {
       continue;
     }
-    await db.into(db.jokeCategories).insert(
-          JokeCategoriesCompanion.insert(
+    await db.into(db.interestsJokes).insert(
+          InterestsJokesCompanion.insert(
             id: c.id,
             label: c.label,
             isSeasonal: Value(c.isSeasonal),

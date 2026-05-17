@@ -101,6 +101,14 @@ String? permissionForRoute(String method, String path) {
     return WaddlePermission.telemetryRead;
   }
 
+  if (p.startsWith('/v1/interests/') && m == 'GET') {
+    return WaddlePermission.interestsRead;
+  }
+  if (p.startsWith('/v1/interests/') &&
+      (m == 'POST' || m == 'PATCH' || m == 'DELETE')) {
+    return WaddlePermission.interestsWrite;
+  }
+
   if (p.startsWith('/v1/catalog/') && m == 'GET') {
     return WaddlePermission.contentCatalogRead;
   }

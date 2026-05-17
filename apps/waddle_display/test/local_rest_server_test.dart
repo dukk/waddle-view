@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
-import 'package:waddle_shared/seed/tables/joke_categories_seed.dart';
+import 'package:waddle_shared/seed/tables/interests_jokes_seed.dart';
 
 import 'helpers/memory_database.dart';
 import 'helpers/rest_auth_helper.dart';
@@ -15,14 +15,14 @@ Future<void> _seedContentTypes(AppDatabase db) async {
   await db.into(db.contentCategories).insert(
         ContentCategoriesCompanion.insert(id: cat, label: 'General'),
       );
-  await db.into(db.jokeCategories).insert(
-        JokeCategoriesCompanion.insert(id: cat, label: 'General'),
+  await db.into(db.interestsJokes).insert(
+        InterestsJokesCompanion.insert(id: cat, label: 'General'),
       );
-  await db.into(db.triviaCategories).insert(
-        TriviaCategoriesCompanion.insert(id: cat, label: 'General'),
+  await db.into(db.interestsTrivia).insert(
+        InterestsTriviaCompanion.insert(id: cat, label: 'General'),
       );
-  await db.into(db.rssFeedSources).insert(
-        RssFeedSourcesCompanion.insert(id: 'f1', url: 'https://example.com/feed.xml'),
+  await db.into(db.interestsRssFeeds).insert(
+        InterestsRssFeedsCompanion.insert(id: 'f1', url: 'https://example.com/feed.xml'),
       );
   await db.into(db.jokes).insert(
         JokesCompanion.insert(
@@ -106,7 +106,7 @@ void main() {
   test('PATCH content suppression updates row', () async {
     final h = await RestTestHarness.start();
     addTearDown(h.dispose);
-    await ensureDefaultJokeCategories(h.db);
+    await ensureDefaultInterestsJokes(h.db);
     await h.db.into(h.db.jokes).insert(
           JokesCompanion.insert(
             id: 'rest_j1',

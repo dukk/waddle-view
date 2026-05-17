@@ -51,14 +51,14 @@ void main() {
             baseUrl: const Value('http://api.local/v1'),
           ),
         );
-    await db.into(db.jokeCategories).insert(
-          JokeCategoriesCompanion.insert(
+    await db.into(db.interestsJokes).insert(
+          InterestsJokesCompanion.insert(
             id: 'dad',
             label: 'Dad',
           ),
         );
-    await db.into(db.jokeCategories).insert(
-          JokeCategoriesCompanion.insert(
+    await db.into(db.interestsJokes).insert(
+          InterestsJokesCompanion.insert(
             id: 'mom',
             label: 'Mom',
           ),
@@ -123,8 +123,8 @@ void main() {
             ),
           ),
         );
-    await db.into(db.jokeCategories).insert(
-          JokeCategoriesCompanion.insert(
+    await db.into(db.interestsJokes).insert(
+          InterestsJokesCompanion.insert(
             id: 'dad',
             label: 'Dad',
             minJokes: const Value(1),
@@ -187,8 +187,8 @@ void main() {
             ),
           ),
         );
-    await db.into(db.jokeCategories).insert(
-          JokeCategoriesCompanion.insert(
+    await db.into(db.interestsJokes).insert(
+          InterestsJokesCompanion.insert(
             id: 'dad',
             label: 'Dad',
             minJokes: const Value(1),
@@ -250,8 +250,8 @@ void main() {
             configJson: const Value('{"jokesPerDay":50}'),
           ),
         );
-    await db.into(db.jokeCategories).insert(
-          JokeCategoriesCompanion.insert(
+    await db.into(db.interestsJokes).insert(
+          InterestsJokesCompanion.insert(
             id: 'solo',
             label: 'Solo',
             minJokes: const Value(1),
@@ -298,8 +298,8 @@ void main() {
             ),
           ),
         );
-    await db.into(db.jokeCategories).insert(
-          JokeCategoriesCompanion.insert(id: 'dad', label: 'Dad'),
+    await db.into(db.interestsJokes).insert(
+          InterestsJokesCompanion.insert(id: 'dad', label: 'Dad'),
         );
 
     final t0 = DateTime(2026, 6, 1, 12).millisecondsSinceEpoch;
@@ -341,8 +341,8 @@ void main() {
             configJson: const Value('{"jokesPerDay":5}'),
           ),
         );
-    await db.into(db.jokeCategories).insert(
-          JokeCategoriesCompanion.insert(
+    await db.into(db.interestsJokes).insert(
+          InterestsJokesCompanion.insert(
             id: 'christmas',
             label: 'Christmas',
             isSeasonal: const Value(true),
@@ -382,8 +382,8 @@ void main() {
             pollSeconds: const Value(1),
           ),
         );
-    await db.into(db.jokeCategories).insert(
-          JokeCategoriesCompanion.insert(id: 'dad', label: 'Dad'),
+    await db.into(db.interestsJokes).insert(
+          InterestsJokesCompanion.insert(id: 'dad', label: 'Dad'),
         );
 
     final secrets = InMemorySecretStore();
@@ -414,8 +414,8 @@ void main() {
             configJson: const Value('{"jokesPerDay":1}'),
           ),
         );
-    await db.into(db.jokeCategories).insert(
-          JokeCategoriesCompanion.insert(id: 'dad', label: 'Dad'),
+    await db.into(db.interestsJokes).insert(
+          InterestsJokesCompanion.insert(id: 'dad', label: 'Dad'),
         );
 
     final secrets = InMemorySecretStore();
@@ -464,8 +464,8 @@ void main() {
             baseUrl: const Value('http://api.local/v1'),
           ),
         );
-    await db.into(db.jokeCategories).insert(
-          JokeCategoriesCompanion.insert(id: 'dad', label: 'Dad'),
+    await db.into(db.interestsJokes).insert(
+          InterestsJokesCompanion.insert(id: 'dad', label: 'Dad'),
         );
 
     final secrets = InMemorySecretStore();

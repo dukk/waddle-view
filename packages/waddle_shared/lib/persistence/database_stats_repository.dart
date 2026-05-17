@@ -190,19 +190,19 @@ FROM trivia_questions
 SELECT
   SUM(CASE WHEN enabled THEN 1 ELSE 0 END) AS enabled,
   SUM(CASE WHEN NOT enabled THEN 1 ELSE 0 END) AS disabled
-FROM rss_feed_sources
+FROM interests_rss_feeds
 ''',
-          readsFrom: {_db.rssFeedSources},
+          readsFrom: {_db.interestsRssFeeds},
         )
         .getSingle();
 
     final feedsWithFailuresRow = await _db
         .customSelect(
           '''
-SELECT COUNT(*) AS c FROM rss_feed_sources
+SELECT COUNT(*) AS c FROM interests_rss_feeds
 WHERE consecutive_failures > 0
 ''',
-          readsFrom: {_db.rssFeedSources},
+          readsFrom: {_db.interestsRssFeeds},
         )
         .getSingle();
 
@@ -229,12 +229,12 @@ SELECT f.category AS category_id,
        COALESCE(MAX(cc.label), f.category) AS label,
        COUNT(*) AS cnt
 FROM rss_articles a
-INNER JOIN rss_feed_sources f ON f.id = a.feed_id
+INNER JOIN interests_rss_feeds f ON f.id = a.feed_id
 LEFT JOIN curator_categories cc ON cc.id = f.category
 GROUP BY f.category
 ORDER BY cnt DESC, f.category ASC
 ''',
-      readsFrom: {_db.rssArticles, _db.rssFeedSources, _db.contentCategories},
+      readsFrom: {_db.rssArticles, _db.interestsRssFeeds, _db.contentCategories},
     );
 
     final photosByCategory = await _categoryStats(

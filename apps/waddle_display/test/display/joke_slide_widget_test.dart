@@ -5,7 +5,7 @@ import 'package:waddle_display/curator/screen_program_curator.dart';
 import 'package:waddle_display/display/screens/joke/joke_slide_widget.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/seed/tables/content_categories_seed.dart';
-import 'package:waddle_shared/seed/tables/joke_categories_seed.dart';
+import 'package:waddle_shared/seed/tables/interests_jokes_seed.dart';
 
 import '../helpers/fake_blob_store.dart';
 import '../helpers/memory_database.dart';
@@ -14,7 +14,7 @@ void main() {
   testWidgets('shows setup then punchline after half dwellMs', (tester) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await ensureDefaultJokeCategories(db);
+    await ensureDefaultInterestsJokes(db);
     await ensureDefaultContentCategories(db);
     await db.into(db.jokes).insert(
           JokesCompanion.insert(
@@ -84,7 +84,7 @@ void main() {
   testWidgets('uses curated joke id from slide.randomChoices', (tester) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await ensureDefaultJokeCategories(db);
+    await ensureDefaultInterestsJokes(db);
     await ensureDefaultContentCategories(db);
     await db.into(db.jokes).insert(
           JokesCompanion.insert(
@@ -143,7 +143,7 @@ void main() {
   testWidgets('empty jokes shows placeholder', (tester) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await ensureDefaultJokeCategories(db);
+    await ensureDefaultInterestsJokes(db);
     await ensureDefaultContentCategories(db);
 
     final slide = ResolvedSlide(

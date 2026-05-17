@@ -23,14 +23,14 @@ void main() {
     await db.into(db.contentCategories).insert(
       ContentCategoriesCompanion.insert(id: cat, label: 'General'),
     );
-    await db.into(db.jokeCategories).insert(
-      JokeCategoriesCompanion.insert(id: cat, label: 'General'),
+    await db.into(db.interestsJokes).insert(
+      InterestsJokesCompanion.insert(id: cat, label: 'General'),
     );
-    await db.into(db.triviaCategories).insert(
-      TriviaCategoriesCompanion.insert(id: cat, label: 'General'),
+    await db.into(db.interestsTrivia).insert(
+      InterestsTriviaCompanion.insert(id: cat, label: 'General'),
     );
-    await db.into(db.rssFeedSources).insert(
-      RssFeedSourcesCompanion.insert(id: 'f1', url: 'https://x/feed.xml'),
+    await db.into(db.interestsRssFeeds).insert(
+      InterestsRssFeedsCompanion.insert(id: 'f1', url: 'https://x/feed.xml'),
     );
 
     await db.into(db.rssArticles).insert(

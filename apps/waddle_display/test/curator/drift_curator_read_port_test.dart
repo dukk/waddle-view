@@ -25,8 +25,8 @@ void main() {
   test('loadNewsCandidatesForTicker uses feed title for feedName', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.rssFeedSources).insert(
-          RssFeedSourcesCompanion.insert(
+    await db.into(db.interestsRssFeeds).insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'f1',
             url: 'http://x',
             title: const Value('US Top Stories'),
@@ -53,8 +53,8 @@ void main() {
   test('loadNewsCandidatesForTicker falls back to category when title empty', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.rssFeedSources).insert(
-          RssFeedSourcesCompanion.insert(
+    await db.into(db.interestsRssFeeds).insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'f1',
             url: 'http://x',
             category: const Value('world'),
@@ -87,8 +87,8 @@ void main() {
             materialIconName: const Value('public'),
           ),
         );
-    await db.into(db.rssFeedSources).insert(
-          RssFeedSourcesCompanion.insert(
+    await db.into(db.interestsRssFeeds).insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'f1',
             url: 'http://x',
             category: const Value('world'),
@@ -114,8 +114,8 @@ void main() {
   test('loadNewsCandidatesForTicker omits suppressed articles', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.rssFeedSources).insert(
-          RssFeedSourcesCompanion.insert(
+    await db.into(db.interestsRssFeeds).insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'f1',
             url: 'http://x',
             title: const Value('Feed'),
@@ -181,8 +181,8 @@ void main() {
   test('loadStockRowsForTicker returns empty list when no enabled symbols', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(
             id: 'gone',
             symbol: 'GONE',
             enabled: const Value(false),
@@ -197,21 +197,21 @@ void main() {
   test('loadStockRowsForTicker returns enabled symbols ordered by symbol with quotes', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(
             id: 'msft',
             symbol: 'MSFT',
             displayName: const Value('Microsoft'),
           ),
         );
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(
             id: 'aapl',
             symbol: 'AAPL',
           ),
         );
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(
             id: 'gone',
             symbol: 'GONE',
             enabled: const Value(false),
@@ -238,8 +238,8 @@ void main() {
   test('loadCurrentWeatherForTicker returns enabled location weather', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'atlanta',
             name: 'Atlanta, GA',
             latitude: 33.749,
@@ -266,16 +266,16 @@ void main() {
   test('loadWeatherGovAlertsForTicker maps enabled locations and dedupes NWS ids', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'atlanta',
             name: 'Atlanta, GA',
             latitude: 33.749,
             longitude: -84.388,
           ),
         );
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'denver',
             name: 'Denver, CO',
             latitude: 39.7392,

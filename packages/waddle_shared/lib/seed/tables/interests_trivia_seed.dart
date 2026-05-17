@@ -3,16 +3,16 @@ import 'package:drift/drift.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 /// Idempotent default trivia categories (edit rows in DB to tune seasons).
-Future<void> ensureDefaultTriviaCategories(AppDatabase db) async {
+Future<void> ensureDefaultInterestsTrivia(AppDatabase db) async {
   for (final c in _defaultTriviaCategories) {
     final existing =
-        await (db.select(db.triviaCategories)..where((t) => t.id.equals(c.id)))
+        await (db.select(db.interestsTrivia)..where((t) => t.id.equals(c.id)))
             .getSingleOrNull();
     if (existing != null) {
       continue;
     }
-    await db.into(db.triviaCategories).insert(
-          TriviaCategoriesCompanion.insert(
+    await db.into(db.interestsTrivia).insert(
+          InterestsTriviaCompanion.insert(
             id: c.id,
             label: c.label,
             isSeasonal: Value(c.isSeasonal),

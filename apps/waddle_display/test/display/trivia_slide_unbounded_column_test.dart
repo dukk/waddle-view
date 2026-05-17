@@ -4,7 +4,7 @@ import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_display/curator/screen_program_curator.dart';
 import 'package:waddle_display/display/screens/trivia/trivia_slide_widget.dart';
 import 'package:waddle_shared/persistence/database.dart';
-import 'package:waddle_shared/seed/tables/trivia_categories_seed.dart';
+import 'package:waddle_shared/seed/tables/interests_trivia_seed.dart';
 
 import '../helpers/fake_blob_store.dart';
 import '../helpers/memory_database.dart';
@@ -16,7 +16,7 @@ void main() {
   ) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await ensureDefaultTriviaCategories(db);
+    await ensureDefaultInterestsTrivia(db);
     await db.into(db.triviaQuestions).insert(
           TriviaQuestionsCompanion.insert(
             id: 't1',

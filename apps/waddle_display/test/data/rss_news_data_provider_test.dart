@@ -84,8 +84,8 @@ void main() {
             pollSeconds: const Value(1),
           ),
         );
-    await db.into(db.rssFeedSources).insert(
-          RssFeedSourcesCompanion.insert(
+    await db.into(db.interestsRssFeeds).insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'feed1',
             url: 'http://test.local/feed.xml',
             category: const Value('tech'),
@@ -136,8 +136,8 @@ void main() {
             providerType: 'news_rss',
           ),
         );
-    await db.into(db.rssFeedSources).insert(
-          RssFeedSourcesCompanion.insert(
+    await db.into(db.interestsRssFeeds).insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'feed404',
             url: 'http://test.local/missing.xml',
             pollSeconds: const Value(1),
@@ -165,8 +165,8 @@ void main() {
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(id: 'news_rss', providerType: 'news_rss'),
         );
-    await db.into(db.rssFeedSources).insert(
-          RssFeedSourcesCompanion.insert(
+    await db.into(db.interestsRssFeeds).insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'feed2',
             url: 'http://test.local/feed.xml',
             pollSeconds: const Value(1),
@@ -206,8 +206,8 @@ void main() {
           IntegrationsCompanion.insert(id: 'news_rss', providerType: 'news_rss'),
         );
     const last = 1_000_000;
-    await db.into(db.rssFeedSources).insert(
-          RssFeedSourcesCompanion.insert(
+    await db.into(db.interestsRssFeeds).insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'f1',
             url: 'http://test.local/feed.xml',
             pollSeconds: const Value(60),
@@ -239,8 +239,8 @@ void main() {
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(id: 'news_rss', providerType: 'news_rss'),
         );
-    await db.into(db.rssFeedSources).insert(
-          RssFeedSourcesCompanion.insert(
+    await db.into(db.interestsRssFeeds).insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'f1',
             url: 'http://test.local/feed.xml',
             pollSeconds: const Value(1),

@@ -15,22 +15,22 @@ void main() {
   ) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(
             id: 'aapl',
             symbol: 'AAPL',
             displayName: const Value('Apple'),
           ),
         );
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(
             id: 'msft',
             symbol: 'MSFT',
             displayName: const Value('Microsoft'),
           ),
         );
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(
             id: 'goog',
             symbol: 'GOOG',
             displayName: const Value('Alphabet'),
@@ -136,8 +136,8 @@ void main() {
       (tester) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(
             id: 'aapl',
             symbol: 'AAPL',
             displayName: const Value('Apple'),
@@ -182,8 +182,8 @@ void main() {
   ) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(
             id: 'brk',
             symbol: 'BRK.A',
             displayName: const Value('Berkshire'),

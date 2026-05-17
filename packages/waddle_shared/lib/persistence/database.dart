@@ -23,22 +23,22 @@ part 'database.g.dart';
     CuratorScheduleRules,
     CuratorConfigurationMembers,
     CuratorDataKeyProgramLimits,
-    RssFeedSources,
+    InterestsRssFeeds,
     RssArticles,
-    JokeCategories,
+    InterestsJokes,
     Jokes,
     JokeGenerationBatches,
-    TriviaCategories,
+    InterestsTrivia,
     TriviaQuestions,
     TriviaGenerationBatches,
     CalendarEvents,
-    WeatherLocations,
+    InterestsLocations,
     WeatherCurrent,
     WeatherAlerts,
     Photos,
     Videos,
     PexelsFetchBatches,
-    StockSymbols,
+    InterestsStockSymbols,
     StockQuotes,
     RejectTerms,
     AdoptionPending,
@@ -50,7 +50,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -67,14 +67,37 @@ ORDER BY priority DESC, created_at DESC;
       await _seedDefaultRejectTerms(this);
     },
     onUpgrade: (Migrator m, int from, int to) async {
+      if (from == 1 && to == 2) {
+        await _migrateV1ToV2InterestsTableRenames(this);
+        return;
+      }
       throw UnsupportedError(
-        'Database schema reset at version 1. Delete the SQLite file and '
-        'reinstall (fresh seed). Cannot upgrade from version $from.',
+        'Unsupported database upgrade from version $from to $to. '
+        'Delete the SQLite file and reinstall (fresh seed).',
       );
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
     },
+  );
+}
+
+/// Renames legacy interest catalog tables to `interests_*` (schema 1 → 2).
+Future<void> _migrateV1ToV2InterestsTableRenames(AppDatabase db) async {
+  await db.customStatement(
+    'ALTER TABLE weather_locations RENAME TO interests_locations',
+  );
+  await db.customStatement(
+    'ALTER TABLE rss_feed_sources RENAME TO interests_rss_feeds',
+  );
+  await db.customStatement(
+    'ALTER TABLE joke_categories RENAME TO interests_jokes',
+  );
+  await db.customStatement(
+    'ALTER TABLE trivia_categories RENAME TO interests_trivia',
+  );
+  await db.customStatement(
+    'ALTER TABLE stock_symbols RENAME TO interests_stock_symbols',
   );
 }
 

@@ -92,7 +92,7 @@ abstract class CuratorReadPort {
   /// then id.
   Future<List<TickerTapeForCuration>> loadTickerTapesForCuration();
 
-  /// Enabled [StockSymbols] rows with optional [StockQuotes], ordered by symbol.
+  /// Enabled [InterestsStockSymbols] rows with optional [StockQuotes], ordered by symbol.
   Future<List<StockTickerRowForMarquee>> loadStockRowsForTicker();
 
   /// Snapshot of the operator-curated reject list + chosen censor format.

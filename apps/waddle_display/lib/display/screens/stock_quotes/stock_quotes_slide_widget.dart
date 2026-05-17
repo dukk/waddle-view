@@ -6,7 +6,7 @@ import '../../../curator/screen_program_curator.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import '../../dashboard_viewport_scope.dart';
 
-/// Renders the latest [StockQuotes] for every enabled [StockSymbols] row.
+/// Renders the latest [StockQuotes] for every enabled [InterestsStockSymbols] row.
 ///
 /// Watches both tables and joins in memory so freshly inserted symbols (e.g.
 /// from the provider's first run with default symbols) appear immediately,
@@ -27,13 +27,13 @@ class StockQuotesSlideWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final symbolsQuery = db.select(db.stockSymbols)
+    final symbolsQuery = db.select(db.interestsStockSymbols)
       ..where((t) => t.enabled.equals(true))
       ..orderBy([(t) => OrderingTerm.asc(t.symbol)]);
-    return StreamBuilder<List<StockSymbol>>(
+    return StreamBuilder<List<InterestsStockSymbol>>(
       stream: symbolsQuery.watch(),
       builder: (context, symbolsSnap) {
-        final symbols = symbolsSnap.data ?? const <StockSymbol>[];
+        final symbols = symbolsSnap.data ?? const <InterestsStockSymbol>[];
         if (symbols.isEmpty) {
           return _empty('Stock quotes unavailable');
         }
@@ -78,7 +78,7 @@ class StockQuotesSlideWidget extends StatelessWidget {
 
   Widget _quoteTile({
     required BuildContext context,
-    required StockSymbol symbol,
+    required InterestsStockSymbol symbol,
     required StockQuote? quote,
     required double scale,
   }) {

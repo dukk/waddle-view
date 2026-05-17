@@ -3,18 +3,19 @@ import 'package:test/test.dart';
 import '../helpers/memory_database.dart';
 
 void main() {
-  test('opened database includes stock_symbols and stock_quotes tables', () async {
+  test('opened database includes interests_stock_symbols and stock_quotes tables', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     final rows = await db.customSelect(
       "SELECT name FROM sqlite_master WHERE type='table' "
-      "AND name IN ('stock_symbols','stock_quotes')",
+      "AND name IN ('interests_stock_symbols','stock_quotes')",
     ).get();
     final names = rows.map((r) => r.read<String>('name')).toSet();
-    expect(names, {'stock_symbols', 'stock_quotes'});
+    expect(names, {'interests_stock_symbols', 'stock_quotes'});
 
-    final symCols =
-        await db.customSelect('PRAGMA table_info(stock_symbols)').get();
+    final symCols = await db
+        .customSelect('PRAGMA table_info(interests_stock_symbols)')
+        .get();
     final symColNames =
         symCols.map((r) => r.read<String>('name')).toSet();
     expect(symColNames, containsAll({'id', 'symbol', 'display_name', 'enabled'}));

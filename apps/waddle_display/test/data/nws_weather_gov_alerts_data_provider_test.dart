@@ -83,8 +83,8 @@ void main() {
             configJson: const Value('{}'),
           ),
         );
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'nyc',
             name: 'NYC',
             latitude: 40.7128,
@@ -108,8 +108,8 @@ void main() {
   test('collect skips when provider row missing', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'nyc',
             name: 'NYC',
             latitude: 40.7128,
@@ -144,8 +144,8 @@ void main() {
             ),
           ),
         );
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'nyc',
             name: 'NYC',
             latitude: 40.7128,
@@ -192,8 +192,8 @@ void main() {
             configJson: const Value('{}'),
           ),
         );
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'nyc',
             name: 'NYC',
             latitude: 40.7128,
@@ -243,8 +243,8 @@ void main() {
             configJson: const Value('{}'),
           ),
         );
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'nyc',
             name: 'NYC',
             latitude: 40.7128,
@@ -285,8 +285,8 @@ void main() {
             configJson: const Value('{}'),
           ),
         );
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'nyc',
             name: 'NYC',
             latitude: 40.7128,
@@ -330,8 +330,8 @@ void main() {
             configJson: const Value('{}'),
           ),
         );
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'nyc',
             name: 'NYC',
             latitude: 40.7128,
@@ -362,8 +362,8 @@ void main() {
             configJson: const Value('{}'),
           ),
         );
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'nyc',
             name: 'NYC',
             latitude: 40.7128,
@@ -406,8 +406,8 @@ void main() {
             configJson: const Value('{}'),
           ),
         );
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'nyc',
             name: 'NYC',
             latitude: 40.7128,
@@ -451,8 +451,8 @@ void main() {
             configJson: const Value('{}'),
           ),
         );
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'nyc',
             name: 'NYC',
             latitude: 40.7128,
@@ -461,8 +461,8 @@ void main() {
             includeActiveWeatherAlerts: const Value(false),
           ),
         );
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'bos',
             name: 'Boston',
             latitude: 42.3601,

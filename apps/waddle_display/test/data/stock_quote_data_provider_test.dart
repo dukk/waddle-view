@@ -103,8 +103,8 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedProviderRow(db);
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
         );
     final secrets = InMemorySecretStore();
     final ctx = await _ctx(db, secrets);
@@ -124,8 +124,8 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedProviderRow(db, enabled: false);
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
         );
     final secrets = InMemorySecretStore();
     final ctx = await _ctx(db, secrets, env: {waddleFinhubApiKeyEnv: 'finnhub-key'});
@@ -145,22 +145,22 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedProviderRow(db);
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(
             id: 'aapl',
             symbol: 'AAPL',
             displayName: const Value('Apple'),
           ),
         );
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(
             id: 'msft',
             symbol: 'MSFT',
             displayName: const Value('Microsoft'),
           ),
         );
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(
             id: 'goog',
             symbol: 'GOOG',
             enabled: const Value(false),
@@ -214,8 +214,8 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedProviderRow(db);
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
         );
     final secrets = InMemorySecretStore();
     final ctx = await _ctx(db, secrets, env: {waddleFinhubApiKeyEnv: 'finnhub-key'});
@@ -235,7 +235,7 @@ void main() {
     await db.close();
   });
 
-  test('collect falls back to defaultSymbols when stock_symbols empty', () async {
+  test('collect falls back to defaultSymbols when interests_stock_symbols empty', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedProviderRow(
@@ -258,7 +258,7 @@ void main() {
     await provider.collect(ctx);
 
     expect(client.sends, 2);
-    final symbols = await db.select(db.stockSymbols).get();
+    final symbols = await db.select(db.interestsStockSymbols).get();
     expect(symbols.map((r) => r.symbol).toSet(), {'TSLA', 'NFLX'});
     final quotes = await db.select(db.stockQuotes).get();
     expect(quotes, hasLength(2));
@@ -272,11 +272,11 @@ void main() {
       db,
       configJson: jsonEncode({'maxSymbolsPerCollect': 1}),
     );
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
         );
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(id: 'msft', symbol: 'MSFT'),
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(id: 'msft', symbol: 'MSFT'),
         );
     final secrets = InMemorySecretStore();
     final ctx = await _ctx(db, secrets, env: {waddleFinhubApiKeyEnv: 'finnhub-key'});
@@ -296,11 +296,11 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedProviderRow(db);
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(id: 'good', symbol: 'GOOD'),
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(id: 'good', symbol: 'GOOD'),
         );
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(id: 'bad', symbol: 'BAD'),
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(id: 'bad', symbol: 'BAD'),
         );
     final secrets = InMemorySecretStore();
     final ctx = await _ctx(db, secrets, env: {waddleFinhubApiKeyEnv: 'finnhub-key'});
@@ -325,8 +325,8 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedProviderRow(db);
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
         );
     final secrets = InMemorySecretStore();
     final ctx = await _ctx(db, secrets, env: {waddleFinhubApiKeyEnv: 'finnhub-key'});
@@ -346,8 +346,8 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedProviderRow(db);
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
         );
     final secrets = InMemorySecretStore();
     final ctx = await _ctx(db, secrets, env: {waddleFinhubApiKeyEnv: 'finnhub-key'});
@@ -366,8 +366,8 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedProviderRow(db);
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
         );
     final secrets = InMemorySecretStore();
     final ctx = await _ctx(db, secrets, env: {waddleFinhubApiKeyEnv: 'finnhub-key'});
@@ -390,8 +390,8 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedProviderRow(db);
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
         );
     final secrets = InMemorySecretStore();
     final ctx = await _ctx(db, secrets, env: {waddleFinhubApiKeyEnv: 'finnhub-key'});
@@ -411,8 +411,8 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedProviderRow(db);
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
         );
     final secrets = InMemorySecretStore();
     final ctx = await _ctx(db, secrets, env: {waddleFinhubApiKeyEnv: 'finnhub-key'});
@@ -430,11 +430,11 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedProviderRow(db);
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(id: 'first', symbol: 'FIRST'),
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(id: 'first', symbol: 'FIRST'),
         );
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(id: 'second', symbol: 'SECOND'),
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(id: 'second', symbol: 'SECOND'),
         );
     final secrets = InMemorySecretStore();
     final ctx = await _ctx(db, secrets, env: {waddleFinhubApiKeyEnv: 'finnhub-key'});
@@ -443,7 +443,7 @@ void main() {
       if (s == 'FIRST') {
         // Drop the symbol mid-flight so the FK-bound upsert fails for FIRST
         // but the loop must keep going and finish SECOND successfully.
-        db.customStatement('DELETE FROM stock_symbols WHERE id = ?', ['first']);
+        db.customStatement('DELETE FROM interests_stock_symbols WHERE id = ?', ['first']);
       }
       return http.Response(_quotePayload(current: 50), 200);
     });
@@ -470,7 +470,7 @@ void main() {
 
     await provider.collect(ctx);
 
-    final symbols = await db.select(db.stockSymbols).get();
+    final symbols = await db.select(db.interestsStockSymbols).get();
     expect(symbols, isNotEmpty);
     for (final s in symbols) {
       expect(s.enabled, isTrue);

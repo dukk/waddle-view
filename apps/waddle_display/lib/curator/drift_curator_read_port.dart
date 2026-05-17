@@ -53,7 +53,7 @@ class DriftCuratorReadPort implements CuratorReadPort {
     if (articles.isEmpty) {
       return const [];
     }
-    final feeds = await _db.select(_db.rssFeedSources).get();
+    final feeds = await _db.select(_db.interestsRssFeeds).get();
     final feedById = {for (final f in feeds) f.id: f};
     final categories = await _db.select(_db.contentCategories).get();
     final categoryIconById = {
@@ -76,7 +76,7 @@ class DriftCuratorReadPort implements CuratorReadPort {
   @override
   Future<List<StockTickerRowForMarquee>> loadStockRowsForTicker() async {
     final symbols = await (_db.select(
-      _db.stockSymbols,
+      _db.interestsStockSymbols,
     )..where((t) => t.enabled.equals(true))
       ..orderBy([(t) => OrderingTerm.asc(t.symbol)])).get();
     if (symbols.isEmpty) {
@@ -122,7 +122,7 @@ class DriftCuratorReadPort implements CuratorReadPort {
   @override
   Future<CurrentWeatherTickerData?> loadCurrentWeatherForTicker() async {
     final locations = await (_db.select(
-      _db.weatherLocations,
+      _db.interestsLocations,
     )..where((t) => t.enabled.equals(true))).get();
     if (locations.isEmpty) {
       return null;
@@ -148,7 +148,7 @@ class DriftCuratorReadPort implements CuratorReadPort {
   @override
   Future<List<WeatherGovAlertTickerItem>> loadWeatherGovAlertsForTicker() async {
     final locations = await (_db.select(
-      _db.weatherLocations,
+      _db.interestsLocations,
     )..where((t) => t.enabled.equals(true))).get();
     if (locations.isEmpty) {
       return const [];
@@ -196,7 +196,7 @@ class DriftCuratorReadPort implements CuratorReadPort {
     return out;
   }
 
-  String _tickerLabelForFeed(RssFeedSource? feed) {
+  String _tickerLabelForFeed(InterestsRssFeed? feed) {
     if (feed == null) {
       return 'general';
     }

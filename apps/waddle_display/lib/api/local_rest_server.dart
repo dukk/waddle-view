@@ -27,6 +27,7 @@ import 'adoption_rest_routes.dart';
 import 'api_key_auth.dart';
 import 'caller_origin.dart';
 import 'content_catalog_rest_routes.dart';
+import 'interests_rest_routes.dart';
 import 'cors_policy.dart';
 import 'display_health.dart';
 import 'operator_rest_routes.dart';
@@ -77,6 +78,11 @@ Handler buildProtectedApiRouter({
   });
 
   registerContentCatalogRoutes(r, db: db);
+  registerInterestsRestRoutes(
+    r,
+    db: db,
+    onConfigChanged: onConfigChanged,
+  );
 
   final rejectRepo = RejectTermRepository(db);
 
@@ -545,7 +551,7 @@ Handler buildProtectedApiRouter({
   });
 
   r.get('/v1/media/weather-at-location/<id>', (Request req, String id) async {
-    final loc = await (db.select(db.weatherLocations)..where((t) => t.id.equals(id)))
+    final loc = await (db.select(db.interestsLocations)..where((t) => t.id.equals(id)))
         .getSingleOrNull();
     if (loc == null) {
       return Response(

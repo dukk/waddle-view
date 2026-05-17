@@ -1,18 +1,18 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_shared/seed/tables/rss_feed_sources_seed.dart';
+import 'package:waddle_shared/seed/tables/interests_rss_feeds_seed.dart';
 
 import '../helpers/memory_database.dart';
 
 void main() {
-  test('ensureDefaultRssNewsFeeds inserts all sources once', () async {
+  test('ensureDefaultInterestsRssFeeds inserts all sources once', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await ensureDefaultRssNewsFeeds(db);
-    final first = await db.select(db.rssFeedSources).get();
+    await ensureDefaultInterestsRssFeeds(db);
+    final first = await db.select(db.interestsRssFeeds).get();
     expect(first.length, 83);
-    await ensureDefaultRssNewsFeeds(db);
-    final second = await db.select(db.rssFeedSources).get();
+    await ensureDefaultInterestsRssFeeds(db);
+    final second = await db.select(db.interestsRssFeeds).get();
     expect(second.length, 83);
     final world = second.where((r) => r.category == 'world').length;
     final usa = second.where((r) => r.category == 'usa').length;
@@ -33,7 +33,7 @@ void main() {
     expect(wellness, 9);
     expect(entertainment, 10);
     expect(sports, 10);
-    final hn = await (db.select(db.rssFeedSources)
+    final hn = await (db.select(db.interestsRssFeeds)
           ..where((t) => t.id.equals('hacker_news')))
         .getSingleOrNull();
     expect(hn, isNotNull);

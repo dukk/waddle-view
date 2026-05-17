@@ -11,10 +11,10 @@ import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/theme/display_text_scale_kv.dart';
 import 'package:waddle_shared/theme/display_theme_kv.dart';
 import 'tables/content_categories_seed.dart';
-import 'tables/joke_categories_seed.dart';
+import 'tables/interests_jokes_seed.dart';
 import 'tables/integrations_seed.dart';
-import 'tables/rss_feed_sources_seed.dart';
-import 'tables/trivia_categories_seed.dart';
+import 'tables/interests_rss_feeds_seed.dart';
+import 'tables/interests_trivia_seed.dart';
 import 'tables/curator_configurations_seed.dart';
 
 /// Idempotent demo rows for stub provider + ticker.
@@ -37,12 +37,12 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
         );
   }
   await ensureIntegrationsDefaults(db);
-  await _ensureDefaultStockSymbols(db);
-  await _ensureDefaultWeatherLocations(db);
+  await _ensureDefaultInterestsStockSymbols(db);
+  await _ensureDefaultInterestsLocations(db);
   await ensureDefaultContentCategories(db);
-  await ensureDefaultJokeCategories(db);
-  await ensureDefaultTriviaCategories(db);
-  await ensureDefaultRssNewsFeeds(db);
+  await ensureDefaultInterestsJokes(db);
+  await ensureDefaultInterestsTrivia(db);
+  await ensureDefaultInterestsRssFeeds(db);
   await _ensureTickerTapes(db);
   await _ensureDisplayThemeKv(db);
   await _ensureDisplayTimezoneKv(db);
@@ -348,7 +348,7 @@ Future<void> _ensureTickerTapes(AppDatabase db) async {
   await upsert(
     id: 'ticker_stocks',
     name: 'Stocks',
-    description: 'Enabled stock_symbols with latest stock_quotes',
+    description: 'Enabled interests_stock_symbols with latest stock_quotes',
     tickerType: 'stocks',
     sortOrder: 35,
   );
@@ -1025,7 +1025,7 @@ Future<void> _ensureWeatherScreen(AppDatabase db) async {
 /// Idempotent default symbol list (AAPL/MSFT enabled, the rest disabled to
 /// limit API hits). Operators can toggle [StockSymbols.enabled] from the admin
 /// surface without touching the provider config.
-Future<void> _ensureDefaultStockSymbols(AppDatabase db) async {
+Future<void> _ensureDefaultInterestsStockSymbols(AppDatabase db) async {
   Future<void> ensure(
     String id,
     String symbol,
@@ -1033,15 +1033,15 @@ Future<void> _ensureDefaultStockSymbols(AppDatabase db) async {
     required bool enabled,
   }) async {
     final existing = await (db.select(
-      db.stockSymbols,
+      db.interestsStockSymbols,
     )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (existing != null) {
       return;
     }
     await db
-        .into(db.stockSymbols)
+        .into(db.interestsStockSymbols)
         .insert(
-          StockSymbolsCompanion.insert(
+          InterestsStockSymbolsCompanion.insert(
             id: id,
             symbol: symbol,
             displayName: Value(displayName),
@@ -1242,11 +1242,11 @@ Future<void> _ensurePhotoCollageScreens(AppDatabase db) async {
   );
 }
 
-Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
+Future<void> _ensureDefaultInterestsLocations(AppDatabase db) async {
   await db
-      .into(db.weatherLocations)
+      .into(db.interestsLocations)
       .insertOnConflictUpdate(
-        WeatherLocationsCompanion.insert(
+        InterestsLocationsCompanion.insert(
           id: 'salt_lake_city_ut',
           name: 'Salt Lake City, UT',
           latitude: 40.7608,
@@ -1254,9 +1254,9 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
         ),
       );
   await db
-      .into(db.weatherLocations)
+      .into(db.interestsLocations)
       .insertOnConflictUpdate(
-        WeatherLocationsCompanion.insert(
+        InterestsLocationsCompanion.insert(
           id: 'atlanta_ga',
           name: 'Atlanta, GA',
           latitude: 33.7490,
@@ -1264,9 +1264,9 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
         ),
       );
   await db
-      .into(db.weatherLocations)
+      .into(db.interestsLocations)
       .insertOnConflictUpdate(
-        WeatherLocationsCompanion.insert(
+        InterestsLocationsCompanion.insert(
           id: 'sandiego_ca',
           name: 'San Diego, CA',
           latitude: 32.7157,
@@ -1274,9 +1274,9 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
         ),
       );
   await db
-      .into(db.weatherLocations)
+      .into(db.interestsLocations)
       .insertOnConflictUpdate(
-        WeatherLocationsCompanion.insert(
+        InterestsLocationsCompanion.insert(
           id: 'miami_fl',
           name: 'Miami, FL',
           latitude: 25.7617,
@@ -1284,9 +1284,9 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
         ),
       );
   await db
-      .into(db.weatherLocations)
+      .into(db.interestsLocations)
       .insertOnConflictUpdate(
-        WeatherLocationsCompanion.insert(
+        InterestsLocationsCompanion.insert(
           id: 'denver_co',
           name: 'Denver, CO',
           latitude: 39.7392,
@@ -1294,9 +1294,9 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
         ),
       );
   await db
-      .into(db.weatherLocations)
+      .into(db.interestsLocations)
       .insertOnConflictUpdate(
-        WeatherLocationsCompanion.insert(
+        InterestsLocationsCompanion.insert(
           id: 'las_vegas_nv',
           name: 'Las Vegas, NV',
           latitude: 36.1699,
@@ -1304,9 +1304,9 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
         ),
       );
   await db
-      .into(db.weatherLocations)
+      .into(db.interestsLocations)
       .insertOnConflictUpdate(
-        WeatherLocationsCompanion.insert(
+        InterestsLocationsCompanion.insert(
           id: 'phoenix_az',
           name: 'Phoenix, AZ',
           latitude: 33.4483,
@@ -1314,9 +1314,9 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
         ),
       );
   await db
-      .into(db.weatherLocations)
+      .into(db.interestsLocations)
       .insertOnConflictUpdate(
-        WeatherLocationsCompanion.insert(
+        InterestsLocationsCompanion.insert(
           id: 'seattle_wa',
           name: 'Seattle, WA',
           latitude: 47.6062,
@@ -1324,9 +1324,9 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
         ),
       );
   await db
-      .into(db.weatherLocations)
+      .into(db.interestsLocations)
       .insertOnConflictUpdate(
-        WeatherLocationsCompanion.insert(
+        InterestsLocationsCompanion.insert(
           id: 'washington_dc',
           name: 'Washington, DC',
           latitude: 38.8951,
@@ -1334,9 +1334,9 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
         ),
       );
   await db
-      .into(db.weatherLocations)
+      .into(db.interestsLocations)
       .insertOnConflictUpdate(
-        WeatherLocationsCompanion.insert(
+        InterestsLocationsCompanion.insert(
           id: 'boston_ma',
           name: 'Boston, MA',
           latitude: 42.3601,
@@ -1344,9 +1344,9 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
         ),
       );
   await db
-      .into(db.weatherLocations)
+      .into(db.interestsLocations)
       .insertOnConflictUpdate(
-        WeatherLocationsCompanion.insert(
+        InterestsLocationsCompanion.insert(
           id: 'chicago_il',
           name: 'Chicago, IL',
           latitude: 41.8781,
@@ -1354,9 +1354,9 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
         ),
       );
   await db
-      .into(db.weatherLocations)
+      .into(db.interestsLocations)
       .insertOnConflictUpdate(
-        WeatherLocationsCompanion.insert(
+        InterestsLocationsCompanion.insert(
           id: 'houston_tx',
           name: 'Houston, TX',
           latitude: 29.7604,
@@ -1364,9 +1364,9 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
         ),
       );
   await db
-      .into(db.weatherLocations)
+      .into(db.interestsLocations)
       .insertOnConflictUpdate(
-        WeatherLocationsCompanion.insert(
+        InterestsLocationsCompanion.insert(
           id: 'austin_tx',
           name: 'Austin, TX',
           latitude: 30.2672,
@@ -1374,9 +1374,9 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
         ),
       );
   await db
-      .into(db.weatherLocations)
+      .into(db.interestsLocations)
       .insertOnConflictUpdate(
-        WeatherLocationsCompanion.insert(
+        InterestsLocationsCompanion.insert(
           id: 'san_francisco_ca',
           name: 'San Francisco, CA',
           latitude: 37.7749,
@@ -1384,9 +1384,9 @@ Future<void> _ensureDefaultWeatherLocations(AppDatabase db) async {
         ),
       );
   await db
-      .into(db.weatherLocations)
+      .into(db.interestsLocations)
       .insertOnConflictUpdate(
-        WeatherLocationsCompanion.insert(
+        InterestsLocationsCompanion.insert(
           id: 'new_york_ny',
           name: 'New York, NY',
           latitude: 40.7128,

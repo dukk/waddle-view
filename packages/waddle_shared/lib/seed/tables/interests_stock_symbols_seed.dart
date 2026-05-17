@@ -5,21 +5,21 @@ import 'package:waddle_shared/persistence/database.dart';
 /// Idempotent default symbol list (AAPL/MSFT enabled, the rest disabled to
 /// limit API hits). Operators can toggle [StockSymbols.enabled] from the admin
 /// surface without touching the provider config.
-Future<void> ensureStockSymbolsSeed(AppDatabase db) async {
+Future<void> ensureInterestsStockSymbolsSeed(AppDatabase db) async {
   Future<void> ensure(
     String id,
     String symbol,
     String displayName, {
     required bool enabled,
   }) async {
-    final existing = await (db.select(db.stockSymbols)
+    final existing = await (db.select(db.interestsStockSymbols)
           ..where((t) => t.id.equals(id)))
         .getSingleOrNull();
     if (existing != null) {
       return;
     }
-    await db.into(db.stockSymbols).insert(
-          StockSymbolsCompanion.insert(
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(
             id: id,
             symbol: symbol,
             displayName: Value(displayName),

@@ -84,14 +84,14 @@ void main() {
             baseUrl: const Value('http://api.local/v1'),
           ),
         );
-    await db.into(db.triviaCategories).insert(
-          TriviaCategoriesCompanion.insert(
+    await db.into(db.interestsTrivia).insert(
+          InterestsTriviaCompanion.insert(
             id: 'science',
             label: 'Science',
           ),
         );
-    await db.into(db.triviaCategories).insert(
-          TriviaCategoriesCompanion.insert(
+    await db.into(db.interestsTrivia).insert(
+          InterestsTriviaCompanion.insert(
             id: 'history',
             label: 'History',
           ),
@@ -143,8 +143,8 @@ void main() {
             baseUrl: const Value('http://api.local/v1'),
           ),
         );
-    await db.into(db.triviaCategories).insert(
-          TriviaCategoriesCompanion.insert(id: 'science', label: 'Science'),
+    await db.into(db.interestsTrivia).insert(
+          InterestsTriviaCompanion.insert(id: 'science', label: 'Science'),
         );
 
     final secrets = InMemorySecretStore();
@@ -194,8 +194,8 @@ void main() {
             baseUrl: const Value('http://api.local/v1'),
           ),
         );
-    await db.into(db.triviaCategories).insert(
-          TriviaCategoriesCompanion.insert(id: 'ok', label: 'Ok'),
+    await db.into(db.interestsTrivia).insert(
+          InterestsTriviaCompanion.insert(id: 'ok', label: 'Ok'),
         );
 
     final secrets = InMemorySecretStore();
@@ -237,8 +237,8 @@ void main() {
             baseUrl: const Value('http://api.local/v1'),
           ),
         );
-    await db.into(db.triviaCategories).insert(
-          TriviaCategoriesCompanion.insert(id: 'ok', label: 'Ok'),
+    await db.into(db.interestsTrivia).insert(
+          InterestsTriviaCompanion.insert(id: 'ok', label: 'Ok'),
         );
 
     final secrets = InMemorySecretStore();
@@ -280,8 +280,8 @@ void main() {
             ),
           ),
         );
-    await db.into(db.triviaCategories).insert(
-          TriviaCategoriesCompanion.insert(
+    await db.into(db.interestsTrivia).insert(
+          InterestsTriviaCompanion.insert(
             id: 'dad',
             label: 'Dad',
             minQuestions: const Value(1),
@@ -349,8 +349,8 @@ void main() {
             baseUrl: const Value('http://api.local/v1'),
           ),
         );
-    await db.into(db.triviaCategories).insert(
-          TriviaCategoriesCompanion.insert(id: 'dad', label: 'Dad'),
+    await db.into(db.interestsTrivia).insert(
+          InterestsTriviaCompanion.insert(id: 'dad', label: 'Dad'),
         );
 
     final secrets = InMemorySecretStore();
@@ -406,8 +406,8 @@ void main() {
             baseUrl: const Value('http://api.local/v1'),
           ),
         );
-    await db.into(db.triviaCategories).insert(
-          TriviaCategoriesCompanion.insert(id: 'ok', label: 'Ok'),
+    await db.into(db.interestsTrivia).insert(
+          InterestsTriviaCompanion.insert(id: 'ok', label: 'Ok'),
         );
 
     final secrets = InMemorySecretStore();
@@ -449,8 +449,8 @@ void main() {
             baseUrl: const Value('http://api.local/v1'),
           ),
         );
-    await db.into(db.triviaCategories).insert(
-          TriviaCategoriesCompanion.insert(id: 'ok', label: 'Ok'),
+    await db.into(db.interestsTrivia).insert(
+          InterestsTriviaCompanion.insert(id: 'ok', label: 'Ok'),
         );
 
     final secrets = InMemorySecretStore();
@@ -488,8 +488,8 @@ void main() {
             baseUrl: const Value('http://api.local/v1'),
           ),
         );
-    await db.into(db.triviaCategories).insert(
-          TriviaCategoriesCompanion.insert(id: 'ok', label: 'Ok'),
+    await db.into(db.interestsTrivia).insert(
+          InterestsTriviaCompanion.insert(id: 'ok', label: 'Ok'),
         );
 
     final secrets = InMemorySecretStore();
@@ -539,8 +539,8 @@ void main() {
             baseUrl: const Value('http://api.local/v1'),
           ),
         );
-    await db.into(db.triviaCategories).insert(
-          TriviaCategoriesCompanion.insert(id: 'ok', label: 'Ok'),
+    await db.into(db.interestsTrivia).insert(
+          InterestsTriviaCompanion.insert(id: 'ok', label: 'Ok'),
         );
     await db.into(db.triviaQuestions).insert(
           TriviaQuestionsCompanion.insert(

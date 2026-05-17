@@ -4,7 +4,7 @@ import 'package:waddle_shared/persistence/database.dart';
 
 void main() {
   test('returns empty when budget is zero or no categories', () {
-    final dad = const JokeCategory(
+    final dad = const InterestsJoke(
       id: 'dad',
       label: 'Dad',
       isSeasonal: false,
@@ -30,14 +30,14 @@ void main() {
   });
 
   test('prioritizes deficit toward minimum before round-robin growth', () {
-    final dad = const JokeCategory(
+    final dad = const InterestsJoke(
       id: 'dad',
       label: 'Dad',
       isSeasonal: false,
       minJokes: 10,
       maxJokes: 100,
     );
-    final mom = const JokeCategory(
+    final mom = const InterestsJoke(
       id: 'mom',
       label: 'Mom',
       isSeasonal: false,
@@ -53,14 +53,14 @@ void main() {
   });
 
   test('skips categories at max joke inventory', () {
-    final dad = const JokeCategory(
+    final dad = const InterestsJoke(
       id: 'dad',
       label: 'Dad',
       isSeasonal: false,
       minJokes: 1,
       maxJokes: 5,
     );
-    final mom = const JokeCategory(
+    final mom = const InterestsJoke(
       id: 'mom',
       label: 'Mom',
       isSeasonal: false,

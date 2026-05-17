@@ -129,7 +129,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
         title: 'NwsWeatherGovAlertsConfig',
         description:
             'api.weather.gov active alerts. Set userAgent with contact info per NWS API rules. '
-            'Optional defaultLocation when no rows exist in weather_locations.',
+            'Optional defaultLocation when no rows exist in interests_locations.',
         properties: {
           'userAgent': {'type': 'string'},
           'defaultLocation': {
@@ -261,7 +261,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
         title: 'StockQuoteProviderConfig',
         description:
             'Finnhub stock quote provider: default symbols (used when '
-            'stock_symbols has no enabled rows) and per-tick fetch ceiling.',
+            'interests_stock_symbols has no enabled rows) and per-tick fetch ceiling.',
         properties: {
           'maxSymbolsPerCollect': {'type': 'integer', 'minimum': 1},
           'defaultSymbols': {
@@ -1047,7 +1047,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
     schema: jsonEncode(
       _baseSchema(
         title: 'WeatherScreenConfig',
-        description: 'Selects a row from weather_locations.',
+        description: 'Selects a row from interests_locations.',
         properties: {
           'locationId': {'type': 'string', 'minLength': 1},
         },
@@ -1121,7 +1121,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
       _baseSchema(
         title: 'StockQuotesScreenConfig',
         description:
-            'No per-screen options; the slide lists all enabled stock_symbols rows.',
+            'No per-screen options; the slide lists all enabled interests_stock_symbols rows.',
         properties: {},
       ),
     ),
@@ -1337,7 +1337,7 @@ final Map<String, ScreenConfigJsonDoc> kTickerSlotConfigJsonMeta = {
         title: 'TickerWeatherSlotDoc',
         description:
             'Live weather line plus optional NWS active-alert lines when '
-            'weather_locations.include_active_weather_alerts is enabled. When '
+            'interests_locations.include_active_weather_alerts is enabled. When '
             'live data is empty, falls back to [fallbackText] in this tape’s '
             'config_json.',
         properties: {
@@ -1396,7 +1396,7 @@ final Map<String, ScreenConfigJsonDoc> kTickerSlotConfigJsonMeta = {
       _baseSchema(
         title: 'TickerStocksSlotDoc',
         description:
-            'One line per enabled stock_symbols row with latest stock_quotes; '
+            'One line per enabled interests_stock_symbols row with latest stock_quotes; '
             'no ticker.marquee.* keys.',
         properties: {},
       ),

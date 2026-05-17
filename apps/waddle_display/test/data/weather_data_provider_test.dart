@@ -136,8 +136,8 @@ void main() {
             ),
           ),
         );
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'nyc',
             name: 'NYC',
             latitude: 40.7128,
@@ -195,16 +195,16 @@ void main() {
             ),
           ),
         );
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'nyc',
             name: 'NYC',
             latitude: 40.7128,
             longitude: -74.0060,
           ),
         );
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'denver',
             name: 'Denver',
             latitude: 39.7392,
@@ -258,8 +258,8 @@ void main() {
             baseUrl: const Value('https://api.openweathermap.org'),
           ),
         );
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'nyc',
             name: 'NYC',
             latitude: 40.7128,
@@ -302,8 +302,8 @@ void main() {
             baseUrl: const Value('https://api.openweathermap.org'),
           ),
         );
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'nyc',
             name: 'NYC',
             latitude: 40.7128,

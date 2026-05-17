@@ -114,8 +114,8 @@ const String kDefaultMothersDayOverlayId = 'default_mothers_day_us';
 const String kDefaultBirthdayOverlayExampleId = 'default_birthday_example_may_13';
 
 /// Shared category ids for RSS feeds, Pexels photos/videos, jokes, and trivia
-/// ([RssFeedSources.category], [Photos.category], [Videos.category], and category
-/// ids on [JokeCategories] / [TriviaCategories] use the same string keys).
+/// ([InterestsRssFeeds.category], [Photos.category], [Videos.category], and category
+/// ids on [InterestsJokes] / [InterestsTrivia] use the same string keys).
 ///
 /// Icon: set [materialIconName] (resolved in app code) and/or [iconBlobKey] for a
 /// custom image in blob storage.
@@ -259,16 +259,20 @@ class CuratorDataKeyProgramLimits extends Table {
   Set<Column<Object>> get primaryKey => {dataKey};
 }
 
-/// Max consecutive download failures before [RssFeedSources.enabled] is forced
+/// Max consecutive download failures before [InterestsRssFeeds.enabled] is forced
 /// to `false`. Reset to 0 on any successful collect.
 const int kRssMaxConsecutiveFailures = 5;
 
 /// Upper bound on the exponential per-feed retry backoff (24h). Prevents
-/// arbitrarily large `[RssFeedSources.pollSeconds] * 2^(n-1)` values from
+/// arbitrarily large `[InterestsRssFeeds.pollSeconds] * 2^(n-1)` values from
 /// pushing `nextRetryAt` past sensible operator-visible windows.
 const int kRssMaxRetryBackoffSeconds = 86400;
 
-class RssFeedSources extends Table {
+/// Operator-configured RSS feed sources (SQLite `interests_rss_feeds`).
+class InterestsRssFeeds extends Table {
+  @override
+  String get tableName => 'interests_rss_feeds';
+
   TextColumn get id => text()();
   TextColumn get url => text()();
 
@@ -297,7 +301,7 @@ class RssFeedSources extends Table {
 @TableIndex(name: 'idx_rss_articles_by_feed', columns: {#feedId, #publishedAt})
 class RssArticles extends Table {
   TextColumn get id => text()();
-  TextColumn get feedId => text().references(RssFeedSources, #id)();
+  TextColumn get feedId => text().references(InterestsRssFeeds, #id)();
   TextColumn get guid => text()();
   TextColumn get title => text()();
   TextColumn get link => text()();
@@ -313,7 +317,11 @@ class RssArticles extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-class JokeCategories extends Table {
+/// Operator-configured joke categories (SQLite `interests_jokes`).
+class InterestsJokes extends Table {
+  @override
+  String get tableName => 'interests_jokes';
+
   /// Same string as [ContentCategories.id] for icon/label sharing.
   TextColumn get id => text()();
   TextColumn get label => text()();
@@ -342,7 +350,7 @@ class JokeGenerationBatches extends Table {
 @TableIndex(name: 'idx_jokes_by_category', columns: {#categoryId})
 class Jokes extends Table {
   TextColumn get id => text()();
-  TextColumn get categoryId => text().references(JokeCategories, #id)();
+  TextColumn get categoryId => text().references(InterestsJokes, #id)();
   TextColumn get setup => text()();
   TextColumn get punchline => text()();
   DateTimeColumn get createdAtMs => dateTime()();
@@ -354,7 +362,11 @@ class Jokes extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-class TriviaCategories extends Table {
+/// Operator-configured trivia categories (SQLite `interests_trivia`).
+class InterestsTrivia extends Table {
+  @override
+  String get tableName => 'interests_trivia';
+
   /// Same string as [ContentCategories.id] for icon/label sharing.
   TextColumn get id => text()();
   TextColumn get label => text()();
@@ -383,7 +395,7 @@ class TriviaGenerationBatches extends Table {
 @TableIndex(name: 'idx_trivia_questions_by_category', columns: {#categoryId})
 class TriviaQuestions extends Table {
   TextColumn get id => text()();
-  TextColumn get categoryId => text().references(TriviaCategories, #id)();
+  TextColumn get categoryId => text().references(InterestsTrivia, #id)();
   TextColumn get question => text()();
   TextColumn get optionA => text()();
   TextColumn get optionB => text()();
@@ -427,7 +439,11 @@ class CalendarEvents extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-class WeatherLocations extends Table {
+/// Operator-configured weather locations (SQLite `interests_locations`).
+class InterestsLocations extends Table {
+  @override
+  String get tableName => 'interests_locations';
+
   TextColumn get id => text()();
   TextColumn get name => text()();
   RealColumn get latitude => real()();
@@ -449,7 +465,7 @@ class WeatherCurrent extends Table {
   @override
   String get tableName => 'weather_current';
 
-  TextColumn get locationId => text().references(WeatherLocations, #id)();
+  TextColumn get locationId => text().references(InterestsLocations, #id)();
   DateTimeColumn get observedAtMs => dateTime()();
   RealColumn get currentTemp => real().nullable()();
   TextColumn get currentDescription => text().nullable()();
@@ -460,7 +476,7 @@ class WeatherCurrent extends Table {
   Set<Column<Object>> get primaryKey => {locationId};
 }
 
-/// Active NWS (api.weather.gov) alerts for a [WeatherLocations] row, keyed by CAP id.
+/// Active NWS (api.weather.gov) alerts for an [InterestsLocations] row, keyed by CAP id.
 /// SQLite `weather_alerts` (legacy `weather_gov_active_alerts`).
 @TableIndex(
   name: 'idx_weather_alerts_location',
@@ -471,7 +487,7 @@ class WeatherAlerts extends Table {
   @override
   String get tableName => 'weather_alerts';
 
-  TextColumn get locationId => text().references(WeatherLocations, #id)();
+  TextColumn get locationId => text().references(InterestsLocations, #id)();
   TextColumn get nwsAlertId => text()();
   TextColumn get event => text()();
   TextColumn get headline => text().nullable()();
@@ -554,10 +570,13 @@ class PexelsFetchBatches extends Table {
 }
 
 /// User-configurable list of ticker symbols collected by the `stocks` provider.
-/// Mirrors the [WeatherLocations] pattern: rows can be enabled/disabled per
+/// Mirrors the [InterestsLocations] pattern: rows can be enabled/disabled per
 /// symbol and the provider falls back to the seeded `defaultSymbols` from
 /// [Integrations.configJson] when no rows are enabled.
-class StockSymbols extends Table {
+class InterestsStockSymbols extends Table {
+  @override
+  String get tableName => 'interests_stock_symbols';
+
   TextColumn get id => text()();
   TextColumn get symbol => text()();
   TextColumn get displayName => text().withDefault(const Constant(''))();
@@ -630,11 +649,11 @@ const String kRejectCensorFormatFirstLast = 'first_last';
 /// Replace each matched word with the literal token `[censored]`.
 const String kRejectCensorFormatBracketedToken = 'bracketed_token';
 
-/// Latest current quote per [StockSymbols.id], written by `StockQuoteDataProvider`.
+/// Latest current quote per [InterestsStockSymbols.id], written by `StockQuoteDataProvider`.
 /// One row per symbol; provider does an `insertOnConflictUpdate` per collect tick.
 @TableIndex(name: 'idx_stock_quotes_observed', columns: {#observedAtMs})
 class StockQuotes extends Table {
-  TextColumn get symbolId => text().references(StockSymbols, #id)();
+  TextColumn get symbolId => text().references(InterestsStockSymbols, #id)();
   RealColumn get currentPrice => real().nullable()();
   RealColumn get changeAmount => real().nullable()();
   RealColumn get percentChange => real().nullable()();

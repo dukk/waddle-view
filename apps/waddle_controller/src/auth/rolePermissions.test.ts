@@ -25,7 +25,12 @@ describe('permissionsForRole', () => {
   it('returns power_viewer catalog and navigation', () => {
     const perms = permissionsForRole('power_viewer');
     expect(perms).toEqual(
-      ['content.catalog_read', 'navigation.control', 'telemetry.read'].sort(),
+      [
+        'content.catalog_read',
+        'interests.read',
+        'navigation.control',
+        'telemetry.read',
+      ].sort(),
     );
   });
 

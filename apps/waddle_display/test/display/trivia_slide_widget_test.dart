@@ -9,7 +9,7 @@ import 'package:waddle_display/display/screens/trivia/trivia_slide_widget.dart';
 import 'package:waddle_display/display/screens/trivia/trivia_strike_animation.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/seed/tables/content_categories_seed.dart';
-import 'package:waddle_shared/seed/tables/trivia_categories_seed.dart';
+import 'package:waddle_shared/seed/tables/interests_trivia_seed.dart';
 
 import '../helpers/fake_blob_store.dart';
 import '../helpers/memory_database.dart';
@@ -74,7 +74,7 @@ void main() {
   ) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await ensureDefaultTriviaCategories(db);
+    await ensureDefaultInterestsTrivia(db);
     await ensureDefaultContentCategories(db);
     await db.into(db.triviaQuestions).insert(
           TriviaQuestionsCompanion.insert(
@@ -174,7 +174,7 @@ void main() {
   testWidgets('short options use two-column grid key', (tester) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await ensureDefaultTriviaCategories(db);
+    await ensureDefaultInterestsTrivia(db);
     await db.into(db.triviaQuestions).insert(
           TriviaQuestionsCompanion.insert(
             id: 't1',
@@ -231,7 +231,7 @@ void main() {
   testWidgets('long option uses single-column key', (tester) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await ensureDefaultTriviaCategories(db);
+    await ensureDefaultInterestsTrivia(db);
     final long = 'x' * (kTriviaTwoColumnMaxOptionChars + 1);
     await db.into(db.triviaQuestions).insert(
           TriviaQuestionsCompanion.insert(
@@ -289,7 +289,7 @@ void main() {
   testWidgets('shuffled labels match seeded RNG', (tester) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await ensureDefaultTriviaCategories(db);
+    await ensureDefaultInterestsTrivia(db);
     await db.into(db.triviaQuestions).insert(
           TriviaQuestionsCompanion.insert(
             id: 't1',
@@ -346,7 +346,7 @@ void main() {
   testWidgets('empty trivia shows placeholder', (tester) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await ensureDefaultTriviaCategories(db);
+    await ensureDefaultInterestsTrivia(db);
 
     final slide = ResolvedSlide(
       screenId: 'trivia',
@@ -385,7 +385,7 @@ void main() {
   ) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await ensureDefaultTriviaCategories(db);
+    await ensureDefaultInterestsTrivia(db);
     await db.into(db.triviaQuestions).insert(
           TriviaQuestionsCompanion.insert(
             id: 'tf1',
@@ -469,7 +469,7 @@ void main() {
   ) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await ensureDefaultTriviaCategories(db);
+    await ensureDefaultInterestsTrivia(db);
     await ensureDefaultContentCategories(db);
     await db.into(db.triviaQuestions).insert(
           TriviaQuestionsCompanion.insert(
@@ -533,7 +533,7 @@ void main() {
   testWidgets('scribbleOut paints scribble strike overlay', (tester) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await ensureDefaultTriviaCategories(db);
+    await ensureDefaultInterestsTrivia(db);
     await ensureDefaultContentCategories(db);
     await db.into(db.triviaQuestions).insert(
           TriviaQuestionsCompanion.insert(
@@ -602,7 +602,7 @@ void main() {
   ) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await ensureDefaultTriviaCategories(db);
+    await ensureDefaultInterestsTrivia(db);
     await ensureDefaultContentCategories(db);
     await db.into(db.triviaQuestions).insert(
           TriviaQuestionsCompanion.insert(

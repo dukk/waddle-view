@@ -15,9 +15,9 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await db
-        .into(db.rssFeedSources)
+        .into(db.interestsRssFeeds)
         .insert(
-          RssFeedSourcesCompanion.insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'f1',
             url: 'http://t/feed',
             category: const Value('x'),
@@ -51,9 +51,9 @@ void main() {
       final db = openMemoryDatabase();
       await warmDatabase(db);
       await db
-          .into(db.rssFeedSources)
+          .into(db.interestsRssFeeds)
           .insert(
-            RssFeedSourcesCompanion.insert(
+            InterestsRssFeedsCompanion.insert(
               id: 'f1',
               url: 'http://t/feed',
               category: const Value('x'),
@@ -98,9 +98,9 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await db
-        .into(db.rssFeedSources)
+        .into(db.interestsRssFeeds)
         .insert(
-          RssFeedSourcesCompanion.insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'f1',
             url: 'http://t/feed',
             category: const Value('x'),
@@ -148,9 +148,9 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await db
-        .into(db.rssFeedSources)
+        .into(db.interestsRssFeeds)
         .insert(
-          RssFeedSourcesCompanion.insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'f1',
             url: 'http://t/feed',
             category: const Value('usa'),

@@ -40,8 +40,8 @@ void main() {
       RejectTermInput.parse(rawTerm: 'damn', rawAction: 'censor')!,
     );
 
-    await db.into(db.jokeCategories).insert(
-      JokeCategoriesCompanion.insert(id: 'cat', label: 'cat'),
+    await db.into(db.interestsJokes).insert(
+      InterestsJokesCompanion.insert(id: 'cat', label: 'cat'),
     );
     const setup = 'Why was the test so damn loud?';
     const punchline = 'Because it really was damn loud.';
@@ -90,8 +90,8 @@ void main() {
       RejectTermInput.parse(rawTerm: 'damn', rawAction: 'censor')!,
     );
 
-    await db.into(db.triviaCategories).insert(
-      TriviaCategoriesCompanion.insert(id: 'cat', label: 'cat'),
+    await db.into(db.interestsTrivia).insert(
+      InterestsTriviaCompanion.insert(id: 'cat', label: 'cat'),
     );
     await db.into(db.triviaQuestions).insert(
       TriviaQuestionsCompanion.insert(
@@ -133,8 +133,8 @@ void main() {
         RejectTermInput.parse(rawTerm: 'damn', rawAction: 'censor')!,
       );
 
-      await db.into(db.rssFeedSources).insert(
-        RssFeedSourcesCompanion.insert(id: 'f1', url: 'https://x/feed.xml'),
+      await db.into(db.interestsRssFeeds).insert(
+        InterestsRssFeedsCompanion.insert(id: 'f1', url: 'https://x/feed.xml'),
       );
       const title = 'A damn story';
       const summary = 'Today the damn river overflowed.';
@@ -182,8 +182,8 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await db.delete(db.rejectTerms).go();
-    await db.into(db.jokeCategories).insert(
-      JokeCategoriesCompanion.insert(id: 'cat', label: 'cat'),
+    await db.into(db.interestsJokes).insert(
+      InterestsJokesCompanion.insert(id: 'cat', label: 'cat'),
     );
     await db.into(db.jokes).insert(
       JokesCompanion.insert(
@@ -208,8 +208,8 @@ void main() {
   test('loadJokeForSlide random path filters by categoryId', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.jokeCategories).insert(
-          JokeCategoriesCompanion.insert(id: 'c1', label: 'c1'),
+    await db.into(db.interestsJokes).insert(
+          InterestsJokesCompanion.insert(id: 'c1', label: 'c1'),
         );
     await db.into(db.jokes).insert(
           JokesCompanion.insert(
@@ -234,8 +234,8 @@ void main() {
   test('loadJokeForSlide random path without categoryId', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.jokeCategories).insert(
-          JokeCategoriesCompanion.insert(id: 'c2', label: 'c2'),
+    await db.into(db.interestsJokes).insert(
+          InterestsJokesCompanion.insert(id: 'c2', label: 'c2'),
         );
     await db.into(db.jokes).insert(
           JokesCompanion.insert(
@@ -274,8 +274,8 @@ void main() {
   test('loadTriviaForSlide random path filters by categoryId', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.triviaCategories).insert(
-          TriviaCategoriesCompanion.insert(id: 'tc', label: 'tc'),
+    await db.into(db.interestsTrivia).insert(
+          InterestsTriviaCompanion.insert(id: 'tc', label: 'tc'),
         );
     await db.into(db.triviaQuestions).insert(
           TriviaQuestionsCompanion.insert(

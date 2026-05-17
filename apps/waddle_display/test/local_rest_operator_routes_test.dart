@@ -176,8 +176,8 @@ void main() {
   test('GET media rss-articles and blob-by-key', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.rssFeedSources).insert(
-          RssFeedSourcesCompanion.insert(
+    await db.into(db.interestsRssFeeds).insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'f_media_test',
             url: 'https://example.com/feed.xml',
           ),
@@ -270,8 +270,8 @@ void main() {
   test('GET media weather-at-location', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'den',
             name: 'Denver',
             latitude: 39,

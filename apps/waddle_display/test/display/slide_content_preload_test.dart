@@ -6,8 +6,8 @@ import 'package:waddle_display/display/slide_content_preload.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/seed/tables/content_categories_seed.dart';
-import 'package:waddle_shared/seed/tables/joke_categories_seed.dart';
-import 'package:waddle_shared/seed/tables/trivia_categories_seed.dart';
+import 'package:waddle_shared/seed/tables/interests_jokes_seed.dart';
+import 'package:waddle_shared/seed/tables/interests_trivia_seed.dart';
 
 import '../helpers/fake_blob_store.dart';
 import '../helpers/memory_database.dart';
@@ -16,7 +16,7 @@ void main() {
   test('preloadResolvedSlideContent completes for joke layout', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await ensureDefaultJokeCategories(db);
+    await ensureDefaultInterestsJokes(db);
     await ensureDefaultContentCategories(db);
     await db.into(db.jokes).insert(
           JokesCompanion.insert(
@@ -45,7 +45,7 @@ void main() {
   test('preloadResolvedSlideContent completes for trivia layout', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await ensureDefaultTriviaCategories(db);
+    await ensureDefaultInterestsTrivia(db);
     await ensureDefaultContentCategories(db);
     await db.into(db.triviaQuestions).insert(
           TriviaQuestionsCompanion.insert(
@@ -130,8 +130,8 @@ void main() {
   test('preloadResolvedSlideContent warms news', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.rssFeedSources).insert(
-          RssFeedSourcesCompanion.insert(
+    await db.into(db.interestsRssFeeds).insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'feed_pre',
             url: 'http://test.local/feed.xml',
             category: const Value('test'),
@@ -168,8 +168,8 @@ void main() {
   test('preloadResolvedSlideContent warms news_columns', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.rssFeedSources).insert(
-          RssFeedSourcesCompanion.insert(
+    await db.into(db.interestsRssFeeds).insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'feed_pre',
             url: 'http://test.local/feed.xml',
             category: const Value('test'),
@@ -211,8 +211,8 @@ void main() {
   test('preloadResolvedSlideContent warms news_stack', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.rssFeedSources).insert(
-          RssFeedSourcesCompanion.insert(
+    await db.into(db.interestsRssFeeds).insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'feed_pre',
             url: 'http://test.local/feed.xml',
             category: const Value('test'),
@@ -347,7 +347,7 @@ void main() {
   test('preloadResolvedSlideContent runs multiple widgets in parallel', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await ensureDefaultJokeCategories(db);
+    await ensureDefaultInterestsJokes(db);
     await db.into(db.jokes).insert(
           JokesCompanion.insert(
             id: 'j2',

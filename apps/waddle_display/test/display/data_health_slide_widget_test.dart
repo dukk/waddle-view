@@ -15,8 +15,8 @@ void main() {
     await warmDatabase(db);
     await seedContentCategoriesForTest(db, ['general']);
 
-    await db.into(db.rssFeedSources).insert(
-          RssFeedSourcesCompanion.insert(
+    await db.into(db.interestsRssFeeds).insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'f1',
             url: 'https://example.com/feed.xml',
             category: const Value('general'),

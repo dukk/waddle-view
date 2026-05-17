@@ -11,8 +11,8 @@ import '../helpers/fake_blob_store.dart';
 import '../helpers/memory_database.dart';
 
 Future<void> _insertFeed(AppDatabase db) async {
-  await db.into(db.rssFeedSources).insert(
-        RssFeedSourcesCompanion.insert(
+  await db.into(db.interestsRssFeeds).insert(
+        InterestsRssFeedsCompanion.insert(
           id: 'feed_t',
           url: 'http://test.local/feed.xml',
           category: const Value('test'),

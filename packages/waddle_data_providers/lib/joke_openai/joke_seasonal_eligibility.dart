@@ -25,7 +25,7 @@ bool isDateInAnnualSeasonWindow(
 }
 
 /// Whether a category may be used for generation on [now] (local time).
-bool isJokeCategoryEligibleOn(JokeCategory row, DateTime now) {
+bool isJokeCategoryEligibleOn(InterestsJoke row, DateTime now) {
   if (!row.isSeasonal) {
     return true;
   }

@@ -157,7 +157,7 @@ void main() {
     expect(screen, isNotNull);
     expect(screen!.screenType, 'weather');
 
-    final locations = await (db.select(db.weatherLocations)
+    final locations = await (db.select(db.interestsLocations)
           ..orderBy([(t) => OrderingTerm.asc(t.id)]))
         .get();
     expect(locations.map((e) => e.id), containsAll(<String>[
@@ -313,7 +313,7 @@ void main() {
     expect(screen!.screenType, 'stock_quotes');
     expect(screen.dataKey, 'stocks');
 
-    final symbols = await (db.select(db.stockSymbols)
+    final symbols = await (db.select(db.interestsStockSymbols)
           ..orderBy([(t) => OrderingTerm.asc(t.id)]))
         .get();
     expect(

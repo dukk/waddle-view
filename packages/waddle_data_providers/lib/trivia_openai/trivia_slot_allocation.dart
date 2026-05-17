@@ -4,8 +4,8 @@ import 'package:waddle_shared/persistence/database.dart';
 
 /// Builds the ordered list of category slots for one OpenAI request using
 /// round-robin over [eligibleSorted], starting at [roundRobinStartIndex].
-List<TriviaCategory> buildTriviaRequestSlots({
-  required List<TriviaCategory> eligibleSorted,
+List<InterestsTriviaData> buildTriviaRequestSlots({
+  required List<InterestsTriviaData> eligibleSorted,
   required Map<String, int> storedByCategoryId,
   required int budget,
   required int roundRobinStartIndex,
@@ -25,7 +25,7 @@ List<TriviaCategory> buildTriviaRequestSlots({
     headroom[c.id] = math.max(0, hi - stored(c.id));
   }
 
-  final slots = <TriviaCategory>[];
+  final slots = <InterestsTriviaData>[];
 
   while (slots.length < budget) {
     var progressed = false;

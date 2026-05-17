@@ -44,7 +44,7 @@ class NwsWeatherGovAlertsDataProvider implements IDataProvider {
         : kDefaultNwsWeatherGovBaseUrl;
     final extra = WeatherProviderExtraConfig.parse(config.configJson);
     final userAgent = _parseUserAgent(config.configJson);
-    final optedOut = await (ctx.db.select(ctx.db.weatherLocations)
+    final optedOut = await (ctx.db.select(ctx.db.interestsLocations)
           ..where(
             (t) => Expression.and([
               t.enabled.equals(true),

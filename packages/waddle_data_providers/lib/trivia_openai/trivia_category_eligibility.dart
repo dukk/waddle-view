@@ -2,7 +2,7 @@ import 'package:waddle_shared/persistence/database.dart';
 import '../joke_openai/joke_seasonal_eligibility.dart';
 
 /// Whether a trivia category may be used for generation on [now] (local time).
-bool isTriviaCategoryEligibleOn(TriviaCategory row, DateTime now) {
+bool isTriviaCategoryEligibleOn(InterestsTriviaData row, DateTime now) {
   if (!row.isSeasonal) {
     return true;
   }

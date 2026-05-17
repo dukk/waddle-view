@@ -7,6 +7,8 @@ abstract final class WaddlePermission {
   static const screensWrite = 'screens.write';
   static const integrationsRead = 'integrations.read';
   static const integrationsWrite = 'integrations.write';
+  static const interestsRead = 'interests.read';
+  static const interestsWrite = 'interests.write';
   static const curatorRead = 'curator.read';
   static const curatorWrite = 'curator.write';
   static const tickerRead = 'ticker.read';
@@ -30,6 +32,8 @@ const _adminPermissions = <String>{
   WaddlePermission.screensWrite,
   WaddlePermission.integrationsRead,
   WaddlePermission.integrationsWrite,
+  WaddlePermission.interestsRead,
+  WaddlePermission.interestsWrite,
   WaddlePermission.curatorRead,
   WaddlePermission.curatorWrite,
   WaddlePermission.tickerRead,
@@ -50,6 +54,8 @@ const _operatorPermissions = <String>{
   WaddlePermission.screensWrite,
   WaddlePermission.integrationsRead,
   WaddlePermission.integrationsWrite,
+  WaddlePermission.interestsRead,
+  WaddlePermission.interestsWrite,
   WaddlePermission.curatorRead,
   WaddlePermission.curatorWrite,
   WaddlePermission.tickerRead,
@@ -75,6 +81,7 @@ const _powerViewerPermissions = <String>{
   WaddlePermission.telemetryRead,
   WaddlePermission.navigationControl,
   WaddlePermission.contentCatalogRead,
+  WaddlePermission.interestsRead,
 };
 
 const Map<String, Set<String>> kRolePermissions = {

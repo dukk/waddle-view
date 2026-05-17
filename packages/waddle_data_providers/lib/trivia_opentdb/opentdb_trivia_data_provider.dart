@@ -56,7 +56,7 @@ class OpenTdbTriviaDataProvider implements IDataProvider {
       ctx.diagnostics.provider('opentdb_trivia: purged $purged old question(s)');
     }
 
-    final categories = await ctx.db.select(ctx.db.triviaCategories).get();
+    final categories = await ctx.db.select(ctx.db.interestsTrivia).get();
     final eligible = categories
         .where((c) => isTriviaCategoryEligibleOn(c, now))
         .toList();

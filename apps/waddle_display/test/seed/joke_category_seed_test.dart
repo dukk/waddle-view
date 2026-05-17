@@ -1,17 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_shared/seed/tables/joke_categories_seed.dart';
+import 'package:waddle_shared/seed/tables/interests_jokes_seed.dart';
 
 import '../helpers/memory_database.dart';
 
 void main() {
-  test('ensureDefaultJokeCategories inserts all rows once', () async {
+  test('ensureDefaultInterestsJokes inserts all rows once', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await ensureDefaultJokeCategories(db);
-    final first = await db.select(db.jokeCategories).get();
+    await ensureDefaultInterestsJokes(db);
+    final first = await db.select(db.interestsJokes).get();
     expect(first.length, 9);
-    await ensureDefaultJokeCategories(db);
-    final second = await db.select(db.jokeCategories).get();
+    await ensureDefaultInterestsJokes(db);
+    final second = await db.select(db.interestsJokes).get();
     expect(second.length, 9);
   });
 }

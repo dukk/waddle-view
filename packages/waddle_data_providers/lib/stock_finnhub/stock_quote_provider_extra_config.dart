@@ -2,7 +2,7 @@ import 'dart:convert';
 
 const int kDefaultStockMaxSymbolsPerCollect = 25;
 
-/// Symbol entries used by [StockQuoteDataProvider] when `stock_symbols` has
+/// Symbol entries used by [StockQuoteDataProvider] when `interests_stock_symbols` has
 /// no enabled rows. Mirrors the [WeatherProviderExtraConfig.defaultLocation]
 /// pattern but as a list, since stocks are inherently multi-instrument.
 const List<StockSymbolDefault> kDefaultStockSymbols = <StockSymbolDefault>[

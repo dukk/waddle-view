@@ -128,13 +128,13 @@ Future<_CategoryHeaderData> _loadCategoryHeaderData(
     );
   }
   final jokeCat = await (db.select(
-    db.jokeCategories,
+    db.interestsJokes,
   )..where((t) => t.id.equals(categoryId))).getSingleOrNull();
   if (jokeCat != null) {
     return _CategoryHeaderData(label: jokeCat.label);
   }
   final triviaCat = await (db.select(
-    db.triviaCategories,
+    db.interestsTrivia,
   )..where((t) => t.id.equals(categoryId))).getSingleOrNull();
   if (triviaCat != null) {
     return _CategoryHeaderData(label: triviaCat.label);

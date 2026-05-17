@@ -9,11 +9,11 @@ void main() {
   test('non-seasonal category is always eligible', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.triviaCategories).insert(
-          TriviaCategoriesCompanion.insert(id: 'a', label: 'A'),
+    await db.into(db.interestsTrivia).insert(
+          InterestsTriviaCompanion.insert(id: 'a', label: 'A'),
         );
     final row =
-        await (db.select(db.triviaCategories)..where((t) => t.id.equals('a')))
+        await (db.select(db.interestsTrivia)..where((t) => t.id.equals('a')))
             .getSingle();
     expect(isTriviaCategoryEligibleOn(row, DateTime(2026, 7, 4)), isTrue);
     await db.close();
@@ -22,8 +22,8 @@ void main() {
   test('seasonal category with incomplete window is never eligible', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.triviaCategories).insert(
-          TriviaCategoriesCompanion.insert(
+    await db.into(db.interestsTrivia).insert(
+          InterestsTriviaCompanion.insert(
             id: 's',
             label: 'S',
             isSeasonal: const Value(true),
@@ -33,7 +33,7 @@ void main() {
           ),
         );
     final row =
-        await (db.select(db.triviaCategories)..where((t) => t.id.equals('s')))
+        await (db.select(db.interestsTrivia)..where((t) => t.id.equals('s')))
             .getSingle();
     expect(isTriviaCategoryEligibleOn(row, DateTime(2026, 12, 15)), isFalse);
     await db.close();

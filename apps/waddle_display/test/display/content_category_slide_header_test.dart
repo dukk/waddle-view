@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_display/display/content_category_slide_header.dart';
 import 'package:waddle_display/theme/display_theme.dart';
 import 'package:waddle_shared/persistence/database.dart';
-import 'package:waddle_shared/seed/tables/joke_categories_seed.dart';
+import 'package:waddle_shared/seed/tables/interests_jokes_seed.dart';
 
 import '../helpers/fake_blob_store.dart';
 import '../helpers/memory_database.dart';
@@ -85,13 +85,13 @@ void main() {
     expect(find.byType(Image), findsNothing);
   });
 
-  testWidgets('falls back to joke_categories then trivia_categories labels', (tester) async {
+  testWidgets('falls back to interests_jokes then interests_trivia labels', (tester) async {
     final db = openMemoryDatabase();
     addTearDown(db.close);
     await warmDatabase(db);
-    await ensureDefaultJokeCategories(db);
-    await db.into(db.triviaCategories).insert(
-          TriviaCategoriesCompanion.insert(id: 'tr_only', label: 'Trivia only'),
+    await ensureDefaultInterestsJokes(db);
+    await db.into(db.interestsTrivia).insert(
+          InterestsTriviaCompanion.insert(id: 'tr_only', label: 'Trivia only'),
         );
     final theme = DisplayTheme.build();
     final blobs = FakeBlobStore();

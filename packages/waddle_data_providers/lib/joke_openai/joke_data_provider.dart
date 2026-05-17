@@ -107,7 +107,7 @@ class JokeDataProvider implements IDataProvider {
     final budget = remainingDaily < remaining2h ? remainingDaily : remaining2h;
 
     final allCategories =
-        await ctx.db.select(ctx.db.jokeCategories).get();
+        await ctx.db.select(ctx.db.interestsJokes).get();
     final eligible = allCategories
         .where((c) => isJokeCategoryEligibleOn(c, now))
         .toList()
@@ -304,8 +304,8 @@ class JokeDataProvider implements IDataProvider {
   }
 
   static String _buildUserPrompt(
-    List<JokeCategory> slots,
-    Map<String, JokeCategory> categoryById,
+    List<InterestsJoke> slots,
+    Map<String, InterestsJoke> categoryById,
   ) {
     final buf = StringBuffer()
       ..writeln(

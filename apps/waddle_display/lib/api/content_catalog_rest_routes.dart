@@ -16,14 +16,12 @@ void registerContentCatalogRoutes(Router r, {required AppDatabase db}) {
   r.get('/v1/catalog/jokes', (Request req) => _listJokes(db, req));
   r.get('/v1/catalog/trivia', (Request req) => _listTrivia(db, req));
   r.get('/v1/catalog/rss-articles', (Request req) => _listRssArticles(db, req));
-  r.get('/v1/catalog/rss-feeds', (Request req) => _listRssFeeds(db, req));
   r.get('/v1/catalog/photos', (Request req) => _listPhotos(db, req));
   r.get('/v1/catalog/videos', (Request req) => _listVideos(db, req));
   r.get('/v1/catalog/stock-quotes', (Request req) => _listStockQuotes(db, req));
   r.get('/v1/catalog/weather-current', (Request req) => _listWeatherCurrent(db, req));
   r.get('/v1/catalog/weather-alerts', (Request req) => _listWeatherAlerts(db, req));
   r.get('/v1/catalog/alerts', (Request req) => _listOperatorAlerts(db, req));
-  r.get('/v1/catalog/weather-locations', (Request req) => _listWeatherLocations(db, req));
 }
 
 class _CatalogParams {
@@ -122,15 +120,6 @@ _CatalogParams _catalogParamsActiveOnly(_CatalogParams p) => _CatalogParams(
     return (_jsonCatalogForbidden(), parsed, true);
   }
   return (null, _catalogParamsActiveOnly(parsed), true);
-}
-
-Response? _rejectSuppressedQueryForCatalogRead(Request req) {
-  if (_catalogFullModeration(req)) return null;
-  final suppressedRaw = req.url.queryParameters['suppressed']?.trim().toLowerCase();
-  if (suppressedRaw == 'true') {
-    return _jsonCatalogForbidden();
-  }
-  return null;
 }
 
 Response _jsonOk(Object body) => Response.ok(
@@ -421,25 +410,6 @@ Future<int> _countRss(
   return row.read(count) ?? 0;
 }
 
-Future<Response> _listRssFeeds(AppDatabase db, Request req) async {
-  final deny = _rejectSuppressedQueryForCatalogRead(req);
-  if (deny != null) return deny;
-  final rows = await (db.select(db.rssFeedSources)
-        ..orderBy([(t) => OrderingTerm.asc(t.id)]))
-      .get();
-  return _jsonOk({
-    'items': [
-      for (final r in rows)
-        {
-          'id': r.id,
-          'url': r.url,
-          'title': r.title,
-          'category': r.category,
-        },
-    ],
-  });
-}
-
 Future<Response> _listPhotos(AppDatabase db, Request req) async {
   final parsed = _CatalogParams.parse(req);
   final prep = _prepareCatalogList(req, parsed);
@@ -623,7 +593,7 @@ Future<Response> _listStockQuotes(AppDatabase db, Request req) async {
   final displayNameNeedle = _queryNeedle(req, 'display_name');
   List<String>? symbolFilterIds;
   if (symbolNeedle != null || displayNameNeedle != null) {
-    symbolFilterIds = await (db.select(db.stockSymbols)..where((s) {
+    symbolFilterIds = await (db.select(db.interestsStockSymbols)..where((s) {
       Expression<bool> e = const Constant(true);
       if (symbolNeedle != null) {
         e = e & s.symbol.like('%$symbolNeedle%');
@@ -654,7 +624,7 @@ Future<Response> _listStockQuotes(AppDatabase db, Request req) async {
   final symbols = symIds.isEmpty
       ? <String, (String, String)>{}
       : {
-          for (final s in await (db.select(db.stockSymbols)
+          for (final s in await (db.select(db.interestsStockSymbols)
                 ..where((t) => t.id.isIn(symIds)))
               .get())
             s.id: (s.symbol, s.displayName),
@@ -682,27 +652,6 @@ Future<Response> _listStockQuotes(AppDatabase db, Request req) async {
     'total': total,
     'limit': p.limit,
     'offset': p.offset,
-  });
-}
-
-Future<Response> _listWeatherLocations(AppDatabase db, Request req) async {
-  final deny = _rejectSuppressedQueryForCatalogRead(req);
-  if (deny != null) return deny;
-  final rows = await (db.select(db.weatherLocations)
-        ..orderBy([(t) => OrderingTerm.asc(t.name)]))
-      .get();
-  return _jsonOk({
-    'items': [
-      for (final r in rows)
-        {
-          'id': r.id,
-          'name': r.name,
-          'latitude': r.latitude,
-          'longitude': r.longitude,
-          'enabled': r.enabled,
-          'include_active_weather_alerts': r.includeActiveWeatherAlerts,
-        },
-    ],
   });
 }
 
@@ -736,7 +685,7 @@ Future<Response> _listWeatherCurrent(AppDatabase db, Request req) async {
   final locationNameNeedle = _queryNeedle(req, 'location_name');
   Set<String>? locNameMatch;
   if (locationNameNeedle != null) {
-    locNameMatch = (await (db.select(db.weatherLocations)
+    locNameMatch = (await (db.select(db.interestsLocations)
               ..where((l) => l.name.like('%$locationNameNeedle%')))
             .map((l) => l.id)
             .get())
@@ -766,7 +715,7 @@ Future<Response> _listWeatherCurrent(AppDatabase db, Request req) async {
   final names = locIds.isEmpty
       ? <String, String>{}
       : {
-          for (final l in await (db.select(db.weatherLocations)
+          for (final l in await (db.select(db.interestsLocations)
                 ..where((t) => t.id.isIn(locIds)))
               .get())
             l.id: l.name,
@@ -838,7 +787,7 @@ Future<Response> _listWeatherAlerts(AppDatabase db, Request req) async {
   final locationNameNeedle = _queryNeedle(req, 'location_name');
   Set<String>? locNameMatch;
   if (locationNameNeedle != null) {
-    locNameMatch = (await (db.select(db.weatherLocations)
+    locNameMatch = (await (db.select(db.interestsLocations)
               ..where((l) => l.name.like('%$locationNameNeedle%')))
             .map((l) => l.id)
             .get())
@@ -881,7 +830,7 @@ Future<Response> _listWeatherAlerts(AppDatabase db, Request req) async {
   final names = locIds.isEmpty
       ? <String, String>{}
       : {
-          for (final l in await (db.select(db.weatherLocations)
+          for (final l in await (db.select(db.interestsLocations)
                 ..where((t) => t.id.isIn(locIds)))
               .get())
             l.id: l.name,

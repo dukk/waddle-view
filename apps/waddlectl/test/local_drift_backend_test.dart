@@ -50,8 +50,8 @@ void main() {
     await db.delete(db.rejectTerms).go();
 
     // Seed an RSS article that will match a future block term.
-    await db.into(db.rssFeedSources).insert(
-          RssFeedSourcesCompanion.insert(
+    await db.into(db.interestsRssFeeds).insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'rejfeed',
             url: 'https://example.test/rss',
           ),

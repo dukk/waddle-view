@@ -23,8 +23,8 @@ Future<void> _insertFeedAndArticle(
   String? imageBlobKey,
   String link = 'http://test.local/a',
 }) async {
-  await db.into(db.rssFeedSources).insert(
-        RssFeedSourcesCompanion.insert(
+  await db.into(db.interestsRssFeeds).insert(
+        InterestsRssFeedsCompanion.insert(
           id: 'feed_t',
           url: 'http://test.local/feed.xml',
           category: const Value('test'),
@@ -114,8 +114,8 @@ void main() {
       List<int>.filled(8000, 1),
       logicalKey: 'rss/big',
     );
-    await db.into(db.rssFeedSources).insert(
-          RssFeedSourcesCompanion.insert(
+    await db.into(db.interestsRssFeeds).insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'feed_t',
             url: 'http://test.local/feed.xml',
             category: const Value('test'),
@@ -387,8 +387,8 @@ void main() {
     await warmDatabase(db);
     final blobs = FakeBlobStore();
 
-    await db.into(db.rssFeedSources).insert(
-          RssFeedSourcesCompanion.insert(
+    await db.into(db.interestsRssFeeds).insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'feed_t',
             url: 'http://test.local/feed.xml',
             category: const Value('test'),
@@ -543,8 +543,8 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     const articleUrl = 'https://news.example.com/story/42';
-    await db.into(db.rssFeedSources).insert(
-          RssFeedSourcesCompanion.insert(
+    await db.into(db.interestsRssFeeds).insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'feed_t',
             url: 'http://test.local/feed.xml',
             category: const Value('test'),
@@ -598,8 +598,8 @@ void main() {
   testWidgets('omits QR when article link is empty', (tester) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.rssFeedSources).insert(
-          RssFeedSourcesCompanion.insert(
+    await db.into(db.interestsRssFeeds).insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'feed_t',
             url: 'http://test.local/feed.xml',
             category: const Value('test'),
@@ -656,8 +656,8 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     const articleUrl = 'https://news.example.com/only-link';
-    await db.into(db.rssFeedSources).insert(
-          RssFeedSourcesCompanion.insert(
+    await db.into(db.interestsRssFeeds).insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'feed_t',
             url: 'http://test.local/feed.xml',
             category: const Value('test'),

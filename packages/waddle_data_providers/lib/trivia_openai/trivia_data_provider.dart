@@ -118,7 +118,7 @@ class TriviaDataProvider implements IDataProvider {
     final budget = remainingDaily < remainingWindow ? remainingDaily : remainingWindow;
 
     final allCategories =
-        await ctx.db.select(ctx.db.triviaCategories).get();
+        await ctx.db.select(ctx.db.interestsTrivia).get();
     final eligible = allCategories
         .where((c) => isTriviaCategoryEligibleOn(c, now))
         .toList()
@@ -466,8 +466,8 @@ class TriviaDataProvider implements IDataProvider {
   }
 
   static String _buildUserPrompt(
-    List<TriviaCategory> slots,
-    Map<String, TriviaCategory> categoryById,
+    List<InterestsTriviaData> slots,
+    Map<String, InterestsTriviaData> categoryById,
     List<String> recentQuestionsToAvoid,
     int requestNonceMs,
   ) {

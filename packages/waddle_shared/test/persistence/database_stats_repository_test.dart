@@ -9,8 +9,8 @@ void main() {
   Future<void> seed(AppDatabase db) async {
     await seedContentCategoriesForTest(db, ['general', 'news']);
 
-    await db.into(db.rssFeedSources).insert(
-          RssFeedSourcesCompanion.insert(
+    await db.into(db.interestsRssFeeds).insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'f1',
             url: 'https://example.com/a.xml',
             category: const Value('general'),
@@ -18,8 +18,8 @@ void main() {
             consecutiveFailures: const Value(2),
           ),
         );
-    await db.into(db.rssFeedSources).insert(
-          RssFeedSourcesCompanion.insert(
+    await db.into(db.interestsRssFeeds).insert(
+          InterestsRssFeedsCompanion.insert(
             id: 'f2',
             url: 'https://example.com/b.xml',
             category: const Value('news'),
@@ -106,11 +106,11 @@ void main() {
           ),
         );
 
-    await db.into(db.jokeCategories).insert(
-          JokeCategoriesCompanion.insert(id: 'general', label: 'General'),
+    await db.into(db.interestsJokes).insert(
+          InterestsJokesCompanion.insert(id: 'general', label: 'General'),
         );
-    await db.into(db.triviaCategories).insert(
-          TriviaCategoriesCompanion.insert(id: 'general', label: 'General'),
+    await db.into(db.interestsTrivia).insert(
+          InterestsTriviaCompanion.insert(id: 'general', label: 'General'),
         );
 
     await db.into(db.jokes).insert(

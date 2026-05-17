@@ -4,11 +4,11 @@ import 'package:waddle_shared/persistence/database.dart';
 
 /// Builds the ordered list of category slots for one OpenAI request.
 ///
-/// Respects per-category [JokeCategory.minJokes] / [JokeCategory.maxJokes]
+/// Respects per-category [InterestsJoke.minJokes] / [InterestsJoke.maxJokes]
 /// (sanitized if min > max), existing [storedByCategoryId] counts, and
 /// [budget] (caller caps by daily + rolling-window limits).
-List<JokeCategory> buildJokeRequestSlots({
-  required List<JokeCategory> eligibleSorted,
+List<InterestsJoke> buildJokeRequestSlots({
+  required List<InterestsJoke> eligibleSorted,
   required Map<String, int> storedByCategoryId,
   required int budget,
 }) {
@@ -24,9 +24,9 @@ List<JokeCategory> buildJokeRequestSlots({
     headroom[c.id] = math.max(0, hi - stored(c.id));
   }
 
-  final slots = <JokeCategory>[];
+  final slots = <InterestsJoke>[];
 
-  bool addOne(JokeCategory c) {
+  bool addOne(InterestsJoke c) {
     if (slots.length >= budget) {
       return false;
     }

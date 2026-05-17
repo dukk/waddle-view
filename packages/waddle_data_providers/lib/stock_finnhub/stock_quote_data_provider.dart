@@ -22,7 +22,7 @@ class _ResolvedSymbol {
 }
 
 /// Collects current stock quotes from [Finnhub /api/v1/quote](https://finnhub.io/docs/api/quote)
-/// for every enabled row in `stock_symbols` (or the seeded `defaultSymbols`
+/// for every enabled row in `interests_stock_symbols` (or the seeded `defaultSymbols`
 /// when none are present), and upserts one row per symbol into `stock_quotes`.
 class StockQuoteDataProvider implements IDataProvider {
   StockQuoteDataProvider({
@@ -121,7 +121,7 @@ class StockQuoteDataProvider implements IDataProvider {
     AppDatabase db,
     StockQuoteProviderExtraConfig extra,
   ) async {
-    final rows = await (db.select(db.stockSymbols)
+    final rows = await (db.select(db.interestsStockSymbols)
           ..where((t) => t.enabled.equals(true))
           ..orderBy([(t) => OrderingTerm.asc(t.id)]))
         .get();
@@ -134,8 +134,8 @@ class StockQuoteDataProvider implements IDataProvider {
     final out = <_ResolvedSymbol>[];
     for (final entry in extra.defaultSymbols.take(extra.maxSymbolsPerCollect)) {
       final id = entry.symbol.toLowerCase();
-      await db.into(db.stockSymbols).insertOnConflictUpdate(
-            StockSymbolsCompanion.insert(
+      await db.into(db.interestsStockSymbols).insertOnConflictUpdate(
+            InterestsStockSymbolsCompanion.insert(
               id: id,
               symbol: entry.symbol,
               displayName: Value(entry.displayName),

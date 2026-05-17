@@ -9,6 +9,8 @@ const ROLE_PERMISSIONS: Record<string, ReadonlySet<string>> = {
     'screens.write',
     'integrations.read',
     'integrations.write',
+    'interests.read',
+    'interests.write',
     'curator.read',
     'curator.write',
     'ticker.read',
@@ -28,6 +30,8 @@ const ROLE_PERMISSIONS: Record<string, ReadonlySet<string>> = {
     'screens.write',
     'integrations.read',
     'integrations.write',
+    'interests.read',
+    'interests.write',
     'curator.read',
     'curator.write',
     'ticker.read',
@@ -43,7 +47,12 @@ const ROLE_PERMISSIONS: Record<string, ReadonlySet<string>> = {
     'meta.read',
   ]),
   /** Telemetry + remote navigation + read-only catalog (Data, no suppression). */
-  power_viewer: new Set(['telemetry.read', 'navigation.control', 'content.catalog_read']),
+  power_viewer: new Set([
+    'telemetry.read',
+    'navigation.control',
+    'content.catalog_read',
+    'interests.read',
+  ]),
   /** Programs view only (telemetry + media GETs); keep in sync with `_viewerPermissions`. */
   viewer: new Set(['telemetry.read']),
 };

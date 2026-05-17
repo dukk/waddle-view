@@ -63,6 +63,10 @@ When **`WADDLE_CONTROLLER_AUTH_ENABLED=1`**, adopted displays and encrypted API 
 
 If a display loses its session, use **Adopt display** in the app bar (or complete adoption again on **Displays**).
 
+### Interests
+
+Use **Interests** (Config nav, between Integrations and Data) to manage what the display collects: weather locations, RSS feeds, stock symbols, joke categories, and trivia categories. Changes call `GET` / `POST` / `PATCH` / `DELETE` on `/v1/interests/*` on the active display (requires **`interests.write`**; **`interests.read`** for view-only, including power_viewer filter dropdowns on **Data**). Joke and trivia category ids must match an existing **Curators → Categories** slug.
+
 ## Join from a display QR (`/join`)
 
 The display slide type **`controller_invite`** can open **`/join?api=<display REST>`** on this SPA. That page runs **viewer** adoption (challenge on the display, then confirm). For other roles, use **Manage displays**.

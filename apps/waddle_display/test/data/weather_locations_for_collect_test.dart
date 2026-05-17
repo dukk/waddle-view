@@ -28,8 +28,8 @@ void main() {
   test('resolveWeatherLocationsForCollect maps enabled rows in id order', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'b',
             name: 'Beta',
             latitude: 2,
@@ -37,8 +37,8 @@ void main() {
             enabled: const Value(true),
           ),
         );
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'a',
             name: 'Alpha',
             latitude: 1,
@@ -46,8 +46,8 @@ void main() {
             enabled: const Value(true),
           ),
         );
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'off',
             name: 'Off',
             latitude: 0,
@@ -89,8 +89,8 @@ void main() {
     () async {
       final db = openMemoryDatabase();
       await warmDatabase(db);
-      await db.into(db.weatherLocations).insert(
-            WeatherLocationsCompanion.insert(
+      await db.into(db.interestsLocations).insert(
+            InterestsLocationsCompanion.insert(
               id: 'alerts_on',
               name: 'A',
               latitude: 1,
@@ -99,8 +99,8 @@ void main() {
               includeActiveWeatherAlerts: const Value(true),
             ),
           );
-      await db.into(db.weatherLocations).insert(
-            WeatherLocationsCompanion.insert(
+      await db.into(db.interestsLocations).insert(
+            InterestsLocationsCompanion.insert(
               id: 'alerts_off',
               name: 'B',
               latitude: 2,
@@ -122,8 +122,8 @@ void main() {
     () async {
       final db = openMemoryDatabase();
       await warmDatabase(db);
-      await db.into(db.weatherLocations).insert(
-            WeatherLocationsCompanion.insert(
+      await db.into(db.interestsLocations).insert(
+            InterestsLocationsCompanion.insert(
               id: 'only',
               name: 'Only',
               latitude: 2,

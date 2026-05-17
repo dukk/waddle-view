@@ -84,8 +84,8 @@ void main() {
         pollSeconds: const Value(1),
       ),
     );
-    await db.into(db.rssFeedSources).insert(
-      RssFeedSourcesCompanion.insert(
+    await db.into(db.interestsRssFeeds).insert(
+      InterestsRssFeedsCompanion.insert(
         id: 'feed1',
         url: 'http://test.local/feed.xml',
         pollSeconds: const Value(1),
@@ -126,8 +126,8 @@ void main() {
           pollSeconds: const Value(1),
         ),
       );
-      await db.into(db.rssFeedSources).insert(
-        RssFeedSourcesCompanion.insert(
+      await db.into(db.interestsRssFeeds).insert(
+        InterestsRssFeedsCompanion.insert(
           id: 'feed1',
           url: 'http://test.local/feed.xml',
           pollSeconds: const Value(1),

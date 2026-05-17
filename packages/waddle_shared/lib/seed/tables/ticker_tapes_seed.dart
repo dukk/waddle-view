@@ -82,7 +82,7 @@ Future<void> ensureTickerTapesSeed(AppDatabase db) async {
   await upsert(
     id: 'ticker_stocks',
     name: 'Stocks',
-    description: 'Enabled stock_symbols with latest stock_quotes',
+    description: 'Enabled interests_stock_symbols with latest stock_quotes',
     tickerType: 'stocks',
     sortOrder: 35,
   );

@@ -14,14 +14,14 @@ Future<void> _seedCatalogRows(AppDatabase db) async {
   await db.into(db.contentCategories).insert(
         ContentCategoriesCompanion.insert(id: cat, label: 'General'),
       );
-  await db.into(db.jokeCategories).insert(
-        JokeCategoriesCompanion.insert(id: cat, label: 'General'),
+  await db.into(db.interestsJokes).insert(
+        InterestsJokesCompanion.insert(id: cat, label: 'General'),
       );
-  await db.into(db.triviaCategories).insert(
-        TriviaCategoriesCompanion.insert(id: cat, label: 'General'),
+  await db.into(db.interestsTrivia).insert(
+        InterestsTriviaCompanion.insert(id: cat, label: 'General'),
       );
-  await db.into(db.rssFeedSources).insert(
-        RssFeedSourcesCompanion.insert(id: 'f1', url: 'https://example.com/feed.xml'),
+  await db.into(db.interestsRssFeeds).insert(
+        InterestsRssFeedsCompanion.insert(id: 'f1', url: 'https://example.com/feed.xml'),
       );
   await db.into(db.jokes).insert(
         JokesCompanion.insert(
@@ -125,15 +125,15 @@ Future<void> _seedExtendedCatalog(AppDatabase db) async {
           fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(201),
         ),
       );
-  await db.into(db.stockSymbols).insert(
-        StockSymbolsCompanion.insert(
+  await db.into(db.interestsStockSymbols).insert(
+        InterestsStockSymbolsCompanion.insert(
           id: 'sym_aapl',
           symbol: 'AAPL',
           displayName: const Value('Apple Inc'),
         ),
       );
-  await db.into(db.stockSymbols).insert(
-        StockSymbolsCompanion.insert(
+  await db.into(db.interestsStockSymbols).insert(
+        InterestsStockSymbolsCompanion.insert(
           id: 'sym_msft',
           symbol: 'MSFT',
           displayName: const Value('Microsoft'),
@@ -153,16 +153,16 @@ Future<void> _seedExtendedCatalog(AppDatabase db) async {
           observedAtMs: DateTime.fromMillisecondsSinceEpoch(301),
         ),
       );
-  await db.into(db.weatherLocations).insert(
-        WeatherLocationsCompanion.insert(
+  await db.into(db.interestsLocations).insert(
+        InterestsLocationsCompanion.insert(
           id: 'seattle',
           name: 'Seattle, WA',
           latitude: 47.6,
           longitude: -122.3,
         ),
       );
-  await db.into(db.weatherLocations).insert(
-        WeatherLocationsCompanion.insert(
+  await db.into(db.interestsLocations).insert(
+        InterestsLocationsCompanion.insert(
           id: 'denver',
           name: 'Denver, CO',
           latitude: 39.7392,
@@ -245,23 +245,6 @@ void main() {
     final supBody = jsonDecode(suppressed.body) as Map<String, dynamic>;
     expect(supBody['total'], 1);
     expect((supBody['items'] as List).first['id'], 'j2');
-  });
-
-  test('GET /v1/catalog/rss-feeds lists feeds', () async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
-    await _seedCatalogRows(db);
-    final h = await RestTestHarness.start(database: db);
-    addTearDown(h.dispose);
-
-    final res = await http.get(
-      Uri.parse('${h.baseUrl}/v1/catalog/rss-feeds'),
-      headers: h.authHeaders,
-    );
-    expect(res.statusCode, 200);
-    final body = jsonDecode(res.body) as Map<String, dynamic>;
-    expect((body['items'] as List).length, 1);
-    expect((body['items'] as List).first['id'], 'f1');
   });
 
   test('GET /v1/catalog/alerts paginates and filters', () async {
@@ -440,7 +423,7 @@ void main() {
     expect((jsonDecode(stocksMiss.body) as Map<String, dynamic>)['total'], 0);
 
     final wxLoc = await http.get(
-      Uri.parse('$base/v1/catalog/weather-locations'),
+      Uri.parse('$base/v1/interests/weather-locations'),
       headers: auth,
     );
     expect(wxLoc.statusCode, 200);
@@ -538,35 +521,6 @@ void main() {
     expect(items.length, 1);
     expect((items.first as Map)['id'], 'j1');
     expect((items.first as Map).containsKey('suppressed'), isFalse);
-  });
-
-  test('power_viewer cannot use suppressed=true on rss-feeds catalog', () async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
-    await _seedCatalogRows(db);
-    final h = await RestTestHarness.start(database: db, role: kUserRolePowerViewer);
-    addTearDown(h.dispose);
-
-    final res = await http.get(
-      Uri.parse('${h.baseUrl}/v1/catalog/rss-feeds?suppressed=true'),
-      headers: h.authHeaders,
-    );
-    expect(res.statusCode, 403);
-  });
-
-  test('power_viewer cannot use suppressed=true on weather-locations catalog',
-      () async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
-    await _seedCatalogRows(db);
-    final h = await RestTestHarness.start(database: db, role: kUserRolePowerViewer);
-    addTearDown(h.dispose);
-
-    final res = await http.get(
-      Uri.parse('${h.baseUrl}/v1/catalog/weather-locations?suppressed=true'),
-      headers: h.authHeaders,
-    );
-    expect(res.statusCode, 403);
   });
 
   test('power_viewer cannot use suppressed=true on catalog', () async {

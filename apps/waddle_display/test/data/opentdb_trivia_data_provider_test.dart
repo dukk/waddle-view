@@ -39,8 +39,8 @@ void main() {
             configJson: const Value('{"amount":2}'),
           ),
         );
-    await db.into(db.triviaCategories).insert(
-          TriviaCategoriesCompanion.insert(id: 'science', label: 'Science'),
+    await db.into(db.interestsTrivia).insert(
+          InterestsTriviaCompanion.insert(id: 'science', label: 'Science'),
         );
 
     final secrets = InMemorySecretStore();

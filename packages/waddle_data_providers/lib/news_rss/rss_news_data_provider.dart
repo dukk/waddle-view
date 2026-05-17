@@ -34,7 +34,7 @@ class RssNewsDataProvider implements IDataProvider {
     final now = _nowMs();
     final rejectCtx = await RejectFilterContext.loadFromDb(ctx.db);
     final feedRows = await (ctx.db.select(
-      ctx.db.rssFeedSources,
+      ctx.db.interestsRssFeeds,
     )..where((t) => t.enabled.equals(true))).get();
     if (feedRows.isEmpty) {
       ctx.diagnostics.provider('rss: collect skip (no enabled feeds)');
@@ -70,9 +70,9 @@ class RssNewsDataProvider implements IDataProvider {
         final title = parsed.channelTitle;
         if (title != null && title.isNotEmpty) {
           await (ctx.db.update(
-            ctx.db.rssFeedSources,
+            ctx.db.interestsRssFeeds,
           )..where((t) => t.id.equals(feed.id))).write(
-            RssFeedSourcesCompanion(title: Value(title)),
+            InterestsRssFeedsCompanion(title: Value(title)),
           );
         }
         ctx.diagnostics.provider(
@@ -89,9 +89,9 @@ class RssNewsDataProvider implements IDataProvider {
         }
         await _pruneFeedArticles(ctx, feed.id, feed.maxArticles);
         await (ctx.db.update(
-          ctx.db.rssFeedSources,
+          ctx.db.interestsRssFeeds,
         )..where((t) => t.id.equals(feed.id))).write(
-          RssFeedSourcesCompanion(
+          InterestsRssFeedsCompanion(
             lastFetchedAt: Value(DateTime.fromMillisecondsSinceEpoch(now)),
           ),
         );

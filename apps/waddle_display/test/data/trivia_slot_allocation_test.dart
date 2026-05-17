@@ -4,7 +4,7 @@ import 'package:waddle_shared/persistence/database.dart';
 
 void main() {
   test('returns empty when budget is zero or no categories', () {
-    final dad = const TriviaCategory(
+    final dad = const InterestsTriviaData(
       id: 'dad',
       label: 'Dad',
       isSeasonal: false,
@@ -32,14 +32,14 @@ void main() {
   });
 
   test('round-robin fills slots with start index zero', () {
-    final dad = const TriviaCategory(
+    final dad = const InterestsTriviaData(
       id: 'dad',
       label: 'Dad',
       isSeasonal: false,
       minQuestions: 10,
       maxQuestions: 100,
     );
-    final mom = const TriviaCategory(
+    final mom = const InterestsTriviaData(
       id: 'mom',
       label: 'Mom',
       isSeasonal: false,
@@ -56,14 +56,14 @@ void main() {
   });
 
   test('round-robin rotates order when start index is one', () {
-    final dad = const TriviaCategory(
+    final dad = const InterestsTriviaData(
       id: 'dad',
       label: 'Dad',
       isSeasonal: false,
       minQuestions: 10,
       maxQuestions: 100,
     );
-    final mom = const TriviaCategory(
+    final mom = const InterestsTriviaData(
       id: 'mom',
       label: 'Mom',
       isSeasonal: false,
@@ -80,14 +80,14 @@ void main() {
   });
 
   test('skips categories at max question inventory', () {
-    final dad = const TriviaCategory(
+    final dad = const InterestsTriviaData(
       id: 'dad',
       label: 'Dad',
       isSeasonal: false,
       minQuestions: 1,
       maxQuestions: 5,
     );
-    final mom = const TriviaCategory(
+    final mom = const InterestsTriviaData(
       id: 'mom',
       label: 'Mom',
       isSeasonal: false,

@@ -3,7 +3,7 @@ import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:waddle_shared/persistence/database.dart';
 import 'weather_provider_extra_config.dart';
 
-/// Enabled [WeatherLocations] rows, or a single synthetic `default` when none.
+/// Enabled [InterestsLocations] rows, or a single synthetic `default` when none.
 class WeatherCollectLocation {
   const WeatherCollectLocation({
     required this.id,
@@ -22,7 +22,7 @@ Future<List<WeatherCollectLocation>> resolveWeatherLocationsForCollect(
   AppDatabase db,
   WeatherLocationConfig defaultLocation,
 ) async {
-  final rows = await (db.select(db.weatherLocations)
+  final rows = await (db.select(db.interestsLocations)
         ..where((t) => t.enabled.equals(true))
         ..orderBy([(t) => OrderingTerm.asc(t.id)]))
       .get();
@@ -48,7 +48,7 @@ Future<List<WeatherCollectLocation>> resolveWeatherLocationsForCollect(
   ];
 }
 
-/// Enabled [WeatherLocations] rows that should receive NWS active-alert
+/// Enabled [InterestsLocations] rows that should receive NWS active-alert
 /// collection, or a single synthetic `default` when no rows are enabled (same
 /// fallback as [resolveWeatherLocationsForCollect]).
 ///
@@ -59,7 +59,7 @@ Future<List<WeatherCollectLocation>> resolveWeatherLocationsForActiveAlertsColle
   AppDatabase db,
   WeatherLocationConfig defaultLocation,
 ) async {
-  final enabledRows = await (db.select(db.weatherLocations)
+  final enabledRows = await (db.select(db.interestsLocations)
         ..where((t) => t.enabled.equals(true))
         ..orderBy([(t) => OrderingTerm.asc(t.id)]))
       .get();

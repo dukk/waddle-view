@@ -20,6 +20,14 @@ void main() {
       userHasPermission(kUserRolePowerViewer, WaddlePermission.contentCatalogRead),
       isTrue,
     );
+    expect(
+      userHasPermission(kUserRolePowerViewer, WaddlePermission.interestsRead),
+      isTrue,
+    );
+    expect(
+      userHasPermission(kUserRolePowerViewer, WaddlePermission.interestsWrite),
+      isFalse,
+    );
     expect(userHasPermission(kUserRolePowerViewer, WaddlePermission.contentModerate), isFalse);
     expect(userHasPermission(kUserRolePowerViewer, WaddlePermission.screensRead), isFalse);
     expect(userHasPermission(kUserRolePowerViewer, WaddlePermission.usersManage), isFalse);

@@ -66,7 +66,7 @@ void main() {
   });
 
   test('isJokeCategoryEligibleOn: non-seasonal always true', () {
-    const row = JokeCategory(
+    const row = InterestsJoke(
       id: 'dad',
       label: 'Dad',
       isSeasonal: false,
@@ -80,7 +80,7 @@ void main() {
   });
 
   test('isJokeCategoryEligibleOn: seasonal uses window', () {
-    final xmas = JokeCategory(
+    final xmas = InterestsJoke(
       id: 'x',
       label: 'X',
       isSeasonal: true,
@@ -96,7 +96,7 @@ void main() {
   });
 
   test('isJokeCategoryEligibleOn: seasonal with null range is false', () {
-    const row = JokeCategory(
+    const row = InterestsJoke(
       id: 'broken',
       label: 'B',
       isSeasonal: true,

@@ -318,8 +318,14 @@ export function DataPage() {
       try {
         const [catRes, feedRes, locRes] = await Promise.all([
           apiJson<{ items: { id: string; label: string }[] }>(active, '/v1/curator/categories'),
-          apiJson<{ items: { id: string; title: string | null; url: string }[] }>(active, '/v1/catalog/rss-feeds'),
-          apiJson<{ items: { id: string; name: string }[] }>(active, '/v1/catalog/weather-locations'),
+          apiJson<{ items: { id: string; title: string | null; url: string }[] }>(
+            active,
+            '/v1/interests/rss-feeds',
+          ),
+          apiJson<{ items: { id: string; name: string }[] }>(
+            active,
+            '/v1/interests/weather-locations',
+          ),
         ]);
         setCategories(catRes.items ?? []);
         setFeeds(feedRes.items ?? []);

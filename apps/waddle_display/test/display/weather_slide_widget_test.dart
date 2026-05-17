@@ -50,8 +50,8 @@ void main() {
   testWidgets('renders weather from weather tables', (tester) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'salt_lake_city_ut',
             name: 'Salt Lake City, UT',
             latitude: 40.7608,
@@ -72,8 +72,8 @@ void main() {
             ),
           ),
         );
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'atlanta_ga',
             name: 'Atlanta, GA',
             latitude: 33.7490,
@@ -138,8 +138,8 @@ void main() {
   testWidgets('shows NWS active alerts for slide location', (tester) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'atlanta_ga',
             name: 'Atlanta, GA',
             latitude: 33.7490,
@@ -205,8 +205,8 @@ void main() {
   ) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'only',
             name: 'Only City',
             latitude: 1,
@@ -273,8 +273,8 @@ void main() {
   ) async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'only',
             name: 'Compact City',
             latitude: 1,
@@ -341,8 +341,8 @@ void main() {
 
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.weatherLocations).insert(
-          WeatherLocationsCompanion.insert(
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
             id: 'only',
             name: 'Scaler City',
             latitude: 1,

@@ -40,7 +40,7 @@ class RssArticleMetric {
   /// Character length of [RssArticle.summary] (trimmed); 0 if null/empty.
   final int summaryLength;
 
-  /// [RssFeedSources.category] for the article’s feed (slug shared with [ContentCategories.id]).
+  /// [InterestsRssFeeds.category] for the article’s feed (slug shared with [ContentCategories.id]).
   final String categoryId;
 }
 
@@ -89,7 +89,7 @@ Future<CuratorContentPools> loadCuratorContentPools(
     }
   }
 
-  final feeds = await db.select(db.rssFeedSources).get();
+  final feeds = await db.select(db.interestsRssFeeds).get();
   final feedById = {for (final f in feeds) f.id: f};
 
   final articles = await (db.select(db.rssArticles)
