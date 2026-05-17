@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:waddle_display/alerts/drift_alert_repository.dart';
+import 'package:waddle_display/api/http_tls.dart';
 import 'package:waddle_display/api/local_rest_server.dart';
 import 'package:waddle_display/debug/operator_telemetry_hub.dart';
 import 'package:waddle_display/display/display_navigation_bus.dart';
@@ -249,7 +250,11 @@ class RestTestHarness {
       telemetryHub: telemetryHub,
       navigationBus: navigationBus,
     );
-    final server = await LocalRestServer.bind(handler: handler, port: 0);
+    final server = await LocalRestServer.bind(
+      handler: handler,
+      port: 0,
+      tls: const HttpTlsConfig(enabled: false),
+    );
     return (
       server: server,
       adoption: adoption,

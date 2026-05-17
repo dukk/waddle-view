@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { defaultTlsDir, envFlag, resolveTls, type ResolvedTls } from '@waddle/node-tls';
 
 export type AppConfig = {
   authEnabled: boolean;
@@ -8,16 +9,11 @@ export type AppConfig = {
   dbPath: string;
   sessionSecret: string;
   secureCookies: boolean;
+  tls: ResolvedTls;
 };
 
-function envFlag(name: string, defaultValue = false): boolean {
-  const v = process.env[name]?.trim();
-  if (!v) return defaultValue;
-  return v === '1' || v.toLowerCase() === 'true' || v.toLowerCase() === 'yes';
-}
-
 export function loadConfig(): AppConfig {
-  const authEnabled = envFlag('WADDLE_CONTROLLER_AUTH_ENABLED');
+  const authEnabled = envFlag('WADDLE_CONTROLLER_AUTH_ENABLED', process.env, false);
   const dataDir = process.env.WADDLE_CONTROLLER_DATA_DIR?.trim() || './data';
   let sessionSecret = process.env.WADDLE_CONTROLLER_SESSION_SECRET?.trim() ?? '';
   if (authEnabled && !sessionSecret) {
@@ -33,6 +29,21 @@ export function loadConfig(): AppConfig {
         'using a dev-only default. Set WADDLE_CONTROLLER_SESSION_SECRET before production.',
     );
   }
+  const tls = resolveTls({
+    env: process.env,
+    tlsEnv: 'WADDLE_CONTROLLER_TLS',
+    certEnv: 'WADDLE_CONTROLLER_TLS_CERT',
+    keyEnv: 'WADDLE_CONTROLLER_TLS_KEY',
+    dirEnv: 'WADDLE_CONTROLLER_TLS_DIR',
+    defaultCertDir: defaultTlsDir(dataDir),
+    commonName: 'waddle-controller',
+  });
+  const secureCookiesExplicit = process.env.WADDLE_CONTROLLER_SECURE_COOKIES?.trim();
+  const secureCookies =
+    secureCookiesExplicit != null && secureCookiesExplicit !== ''
+      ? envFlag('WADDLE_CONTROLLER_SECURE_COOKIES', process.env, false)
+      : tls.enabled;
+
   return {
     authEnabled,
     bindHost: process.env.WADDLE_CONTROLLER_BIND?.trim() || '127.0.0.1',
@@ -40,6 +51,7 @@ export function loadConfig(): AppConfig {
     dataDir,
     dbPath: path.join(dataDir, 'controller.db'),
     sessionSecret: sessionSecret || 'dev-insecure-secret',
-    secureCookies: envFlag('WADDLE_CONTROLLER_SECURE_COOKIES'),
+    secureCookies,
+    tls,
   };
 }

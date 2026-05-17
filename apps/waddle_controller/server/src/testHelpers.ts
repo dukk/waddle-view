@@ -16,6 +16,7 @@ export function testConfig(dir: string, overrides: Partial<AppConfig> = {}): App
     dbPath: path.join(dataDir, 'controller.db'),
     sessionSecret: 'test-secret',
     secureCookies: false,
+    tls: { enabled: false, paths: null, pem: null },
     ...overrides,
   };
 }

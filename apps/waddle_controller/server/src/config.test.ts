@@ -32,4 +32,18 @@ describe('loadConfig', () => {
     const cfg = loadConfig();
     expect(cfg.sessionSecret).toContain('dev-only');
   });
+
+  it('defaults TLS on and secure cookies when TLS is on', () => {
+    delete process.env.WADDLE_CONTROLLER_TLS;
+    delete process.env.WADDLE_CONTROLLER_SECURE_COOKIES;
+    const cfg = loadConfig();
+    expect(cfg.tls.enabled).toBe(true);
+    expect(cfg.secureCookies).toBe(true);
+  });
+
+  it('disables TLS when WADDLE_CONTROLLER_TLS=0', () => {
+    process.env.WADDLE_CONTROLLER_TLS = '0';
+    const cfg = loadConfig();
+    expect(cfg.tls.enabled).toBe(false);
+  });
 });

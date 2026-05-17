@@ -26,16 +26,15 @@ npm ci
 MOCK_API_KEY=my-secret npm run dev
 ```
 
-Server listens on **`PORT`** (default **3000**).
+Server listens on **`PORT`** (default **3000**) with **HTTPS on by default** (`https://127.0.0.1:3000`). Self-signed certs are stored under `./data/tls` (override with **`WADDLE_HTTP_TLS_DIR`**). Set **`WADDLE_HTTP_TLS=0`** for plain HTTP.
 
 ## Docker (nginx + Node)
 
-Build and run (**public port 80** in the container; map host **8080** → **80**):
+Build from the **repository root** and run (**HTTPS on port 443** in the container; map host **8443** → **443**):
 
 ```bash
-cd apps/waddle_display_mock_api
-docker build -t waddle-display-mock-api .
-docker run --rm -p 8080:80 -e MOCK_API_KEY=dev-mock-key waddle-display-mock-api
+docker build -f apps/waddle_display_mock_api/Dockerfile -t waddle-display-mock-api .
+docker run --rm -p 8443:443 -e MOCK_API_KEY=dev-mock-key waddle-display-mock-api
 ```
 
 Point **`waddle_controller`** at **`http://localhost:8080`** with API key **`dev-mock-key`** (or your **`MOCK_API_KEY`**). No CORS friction when the SPA talks to the same origin you opened in the browser.

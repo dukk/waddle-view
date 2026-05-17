@@ -8,10 +8,11 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "lint": "eslint .",
-    "docker:build": "docker build -t waddle-display-mock-api .",
-    "docker:run": "docker run --rm -p 8080:80 -e MOCK_API_KEY=dev-mock-key waddle-display-mock-api"
+    "docker:build": "docker build -f Dockerfile -t waddle-display-mock-api ../..",
+    "docker:run": "docker run --rm -p 8443:443 -e MOCK_API_KEY=dev-mock-key waddle-display-mock-api"
   },
   "dependencies": {
+    "@waddle/node-tls": "file:../../packages/waddle_node_tls",
     "@hono/node-server": "^1.14.0",
     "hono": "^4.7.0"
   },

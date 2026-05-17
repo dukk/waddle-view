@@ -18,11 +18,12 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "coverage:check": "node tool/coverage_check.mjs --min=80 --target=90",
-    "docker:build": "docker build -t waddle-controller .",
-    "docker:run": "docker run --rm -p 8080:80 -v waddle-controller-data:/var/lib/waddle-controller waddle-controller",
-    "docker:up": "docker build -t waddle-controller . && docker run --rm -p 8080:80 waddle-controller"
+    "docker:build": "docker build -f Dockerfile -t waddle-controller ../..",
+    "docker:run": "docker run --rm -p 8443:443 -v waddle-controller-data:/var/lib/waddle-controller waddle-controller",
+    "docker:up": "npm run docker:build && npm run docker:run"
   },
   "dependencies": {
+    "@waddle/node-tls": "file:../../packages/waddle_node_tls",
     "@hono/node-server": "^1.14.0",
     "@node-rs/argon2": "^2.0.2",
     "better-sqlite3": "^11.9.1",
@@ -49,6 +50,7 @@
     "@types/node": "^22.15.3",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-basic-ssl": "^2.0.0",
     "@vitejs/plugin-react": "^4.4.1",
     "@vitest/coverage-v8": "^3.2.4",
     "eslint": "^9.25.0",

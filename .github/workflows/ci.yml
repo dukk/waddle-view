@@ -11,6 +11,7 @@ on:
       - 'apps/waddlectl/**'
       - 'packages/waddle_shared/**'
       - 'packages/waddle_data_providers/**'
+      - 'packages/waddle_node_tls/**'
       - 'pubspec.yaml'
       - 'deploy/**'
       - 'docs/pi/**'

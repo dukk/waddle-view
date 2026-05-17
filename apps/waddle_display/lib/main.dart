@@ -174,7 +174,10 @@ Future<void> _waddleBootstrap() async {
     unawaited(engine.start());
 
     final alerts = DriftAlertRepository(db);
-    final httpConfig = await resolveHttpBindConfig(environment: envMap);
+    final httpConfig = await resolveHttpBindConfig(
+      environment: envMap,
+      tlsCertDir: p.join(support.path, 'tls'),
+    );
     final navigationBus = DisplayNavigationBus();
     final handler = buildRootHandler(
       db: db,
@@ -193,6 +196,7 @@ Future<void> _waddleBootstrap() async {
       address: httpConfig.address,
       port: httpConfig.port,
       displayHost: httpConfig.displayHost,
+      tls: httpConfig.tls,
     );
     AppDebugLog.startup('REST listening at ${server.baseUrl}');
 

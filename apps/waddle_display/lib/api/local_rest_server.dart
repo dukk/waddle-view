@@ -21,6 +21,7 @@ import 'package:waddle_shared/persistence/display_overlay_schedule_row.dart';
 import 'package:waddle_shared/persistence/reject_term_repository.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import '../ticker/ticker_curated_repository.dart';
+import 'http_tls.dart';
 import 'adoption_rest_routes.dart';
 import 'api_key_auth.dart';
 import 'caller_origin.dart';
@@ -1041,15 +1042,21 @@ Handler withDebugRequestLogging(Handler inner) {
 }
 
 class LocalRestServer {
-  LocalRestServer._(this._server, this._host, this._port);
+  LocalRestServer._(
+    this._server,
+    this._host,
+    this._port, {
+    required bool tlsEnabled,
+  }) : _scheme = httpSchemeForTls(tlsEnabled);
 
   final HttpServer _server;
   final String _host;
   final int _port;
-
-  String get baseUrl => 'http://$_host:$_port';
-  String get displayBaseUrl => 'http://${_displayHost ?? _host}:$_port';
+  final String _scheme;
   String? _displayHost;
+
+  String get baseUrl => '$_scheme://$_host:$_port';
+  String get displayBaseUrl => '$_scheme://${_displayHost ?? _host}:$_port';
 
   Future<void> close() => _server.close(force: true);
 
@@ -1058,14 +1065,28 @@ class LocalRestServer {
     InternetAddress? address,
     int port = 8787,
     String? displayHost,
+    HttpTlsConfig tls = const HttpTlsConfig(enabled: true),
   }) async {
     final addr = address ?? InternetAddress.loopbackIPv4;
-    final server = await shelf_io.serve(
-      handler,
-      addr,
-      port,
+    final HttpServer server;
+    if (tls.enabled) {
+      final certPath = tls.certPath;
+      final keyPath = tls.keyPath;
+      if (certPath == null || keyPath == null) {
+        throw ArgumentError('TLS enabled but cert/key paths are missing');
+      }
+      final ctx = securityContextFromPaths(certPath: certPath, keyPath: keyPath);
+      server = await HttpServer.bindSecure(addr, port, ctx);
+      shelf_io.serveRequests(server, handler);
+    } else {
+      server = await shelf_io.serve(handler, addr, port);
+    }
+    final out = LocalRestServer._(
+      server,
+      server.address.address,
+      server.port,
+      tlsEnabled: tls.enabled,
     );
-    final out = LocalRestServer._(server, server.address.address, server.port);
     out._displayHost = displayHost;
     return out;
   }

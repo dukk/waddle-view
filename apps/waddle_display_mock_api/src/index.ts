@@ -1,10 +1,12 @@
-import { serve } from '@hono/node-server';
+import path from 'node:path';
+import { resolveTls } from '@waddle/node-tls';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { mockAuth, readExpectedKey } from './lib/auth.js';
 import { resolveScenario } from './lib/scenario.js';
 import type { Scenario } from './lib/scenario.js';
 import { v1Router } from './routes/v1.js';
+import { serveWithOptionalTls } from './tlsServe.js';
 
 const app = new Hono<{ Variables: { scenario: Scenario } }>();
 
@@ -40,5 +42,24 @@ app.get('/', (c) =>
 );
 
 const port = Number(process.env.PORT || 3000);
-console.error(`waddle_display_mock_api listening on :${port} (expected X-Api-Key: ${readExpectedKey()})`);
-serve({ fetch: app.fetch, port });
+const bindHost = process.env.WADDLE_HTTP_BIND?.trim() || '127.0.0.1';
+const dataDir = process.env.WADDLE_MOCK_DATA_DIR?.trim() || path.join(process.cwd(), 'data');
+const tls = resolveTls({
+  env: process.env,
+  tlsEnv: 'WADDLE_HTTP_TLS',
+  certEnv: 'WADDLE_HTTP_TLS_CERT',
+  keyEnv: 'WADDLE_HTTP_TLS_KEY',
+  dirEnv: 'WADDLE_HTTP_TLS_DIR',
+  defaultCertDir: path.join(dataDir, 'tls'),
+  commonName: 'waddle-display-mock',
+});
+const scheme = tls.enabled ? 'https' : 'http';
+console.error(
+  `waddle_display_mock_api listening on ${scheme}://${bindHost}:${port} (tls=${tls.enabled}, expected X-Api-Key: ${readExpectedKey()})`,
+);
+serveWithOptionalTls({
+  fetch: app.fetch,
+  hostname: bindHost,
+  port,
+  tls,
+});

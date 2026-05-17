@@ -13,7 +13,7 @@ npm ci
 npm run dev
 ```
 
-`npm run dev` starts **Vite** (default **http://127.0.0.1:5173**) and the **BFF** (**http://127.0.0.1:5199**). Vite proxies `/bff` to the BFF and `/v1` to **http://127.0.0.1:8787** (display REST), so the browser stays same-origin and **CORS is not required** during local dev.
+`npm run dev` starts **Vite** (default **https://127.0.0.1:5173**) and the **BFF** (**https://127.0.0.1:5199**). Both use **self-signed TLS by default** (accept the browser warning once). Vite proxies `/bff` to the BFF and `/v1` to **https://127.0.0.1:8787** (display REST), so the browser stays same-origin and **CORS is not required** during local dev. Set **`WADDLE_CONTROLLER_TLS=0`** (and restart) to use plain HTTP everywhere in dev.
 
 Run only the SPA or only the BFF:
 
@@ -31,7 +31,10 @@ npm run dev:server
 | `WADDLE_CONTROLLER_DATA_DIR` | `./data` | SQLite directory (`controller.db`) |
 | `WADDLE_CONTROLLER_BIND` | `127.0.0.1` | BFF listen host |
 | `PORT` / `WADDLE_CONTROLLER_PORT` | `5199` | BFF listen port |
-| `WADDLE_CONTROLLER_SECURE_COOKIES` | `0` | Set `1` behind HTTPS |
+| `WADDLE_CONTROLLER_TLS` | `1` | Self-signed HTTPS on the BFF (`0` = plain HTTP) |
+| `WADDLE_CONTROLLER_TLS_DIR` | `{data}/tls` | Auto-generated cert storage |
+| `WADDLE_CONTROLLER_TLS_CERT` / `_KEY` | — | Override PEM paths |
+| `WADDLE_CONTROLLER_SECURE_COOKIES` | mirrors TLS | `1` when TLS is on; set explicitly to override |
 
 Example (local):
 
@@ -89,18 +92,18 @@ Static files land in **`dist/`**. The BFF compiles to **`server/dist/`**. Linux/
 
 ## Docker (nginx + BFF)
 
-From **`apps/waddle_controller`**:
+From the **repository root**:
 
 ```bash
-docker build -t waddle-controller .
-docker run --rm -p 8080:80 \
+docker build -f apps/waddle_controller/Dockerfile -t waddle-controller .
+docker run --rm -p 8443:443 \
   -v waddle-controller-data:/var/lib/waddle-controller \
   -e WADDLE_CONTROLLER_AUTH_ENABLED=1 \
   -e WADDLE_CONTROLLER_SESSION_SECRET=change-me \
   waddle-controller
 ```
 
-nginx serves the SPA and proxies **`/bff/`** to the embedded Node BFF. Persist **`WADDLE_CONTROLLER_DATA_DIR`** with a volume.
+nginx serves the SPA over **HTTPS** (self-signed cert generated on first start) and proxies **`/bff/`** to the embedded Node BFF on loopback HTTP. Persist **`WADDLE_CONTROLLER_DATA_DIR`** with a volume.
 
 After adoption, the display remembers your controller origin. Optionally set **`WADDLE_HTTP_CORS_ORIGINS`** on the display for additional static origins.
 

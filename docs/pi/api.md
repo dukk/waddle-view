@@ -2,9 +2,10 @@
 
 ## Binding
 
-- Default in development: **`127.0.0.1:8787`** (loopback only).
+- Default in development: **`https://127.0.0.1:8787`** (loopback only, **TLS on** with a self-signed cert under app-support `tls/`).
 - Optional bind override: set **`WADDLE_HTTP_BIND`** (for example `0.0.0.0`) and optional **`WADDLE_HTTP_PORT`**.
-- For LAN access, bind an explicit address and **firewall** the port; prefer a reverse proxy with TLS for untrusted networks.
+- **`WADDLE_HTTP_TLS`**: `1` by default; set `0` for plain HTTP. Override cert paths with **`WADDLE_HTTP_TLS_DIR`**, **`WADDLE_HTTP_TLS_CERT`**, **`WADDLE_HTTP_TLS_KEY`**.
+- For LAN access, bind an explicit address and **firewall** the port. The embedded server can serve HTTPS directly; for untrusted networks you may still prefer a reverse proxy with a publicly trusted certificate.
 
 ## Authentication
 

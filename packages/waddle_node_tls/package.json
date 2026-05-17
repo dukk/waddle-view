@@ -1,0 +1,10 @@
+{
+  "name": "@waddle/node-tls",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "selfsigned": "^2.4.1"
+  }
+}

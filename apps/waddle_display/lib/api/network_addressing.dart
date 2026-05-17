@@ -1,19 +1,24 @@
 import 'dart:io';
 
+import 'http_tls.dart';
+
 class HttpBindConfig {
   const HttpBindConfig({
     required this.address,
     required this.displayHost,
     required this.port,
+    required this.tls,
   });
 
   final InternetAddress address;
   final String displayHost;
   final int port;
+  final HttpTlsConfig tls;
 }
 
 Future<HttpBindConfig> resolveHttpBindConfig({
   Map<String, String>? environment,
+  String? tlsCertDir,
 }) async {
   final env = environment ?? Platform.environment;
   final bindHost = (env['WADDLE_HTTP_BIND'] ?? '').trim();
@@ -23,7 +28,16 @@ Future<HttpBindConfig> resolveHttpBindConfig({
 
   final address = await _resolveBindAddress(bindHost);
   final displayHost = await _resolveDisplayHost(address);
-  return HttpBindConfig(address: address, displayHost: displayHost, port: port);
+  final tls = await resolveHttpTlsConfig(
+    defaultCertDir: tlsCertDir ?? '',
+    environment: env,
+  );
+  return HttpBindConfig(
+    address: address,
+    displayHost: displayHost,
+    port: port,
+    tls: tls,
+  );
 }
 
 Future<InternetAddress> _resolveBindAddress(String bindHost) async {
