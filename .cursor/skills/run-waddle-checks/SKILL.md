@@ -3,9 +3,9 @@ name: run-waddle-checks
 description: >-
   Runs the full local CI-equivalent check sequence for waddle_display
   (pub get, codegen, analyze, test+coverage, coverage gate) and optionally
-  waddle_controller (lint, vitest coverage, coverage gate, build). Use before
-  committing changes under apps/waddle_display/ or apps/waddle_controller/ or
-  when diagnosing CI failures.
+  waddle_controller (npm ci, lint, vitest coverage, coverage gate, build).
+  Use before committing or when diagnosing CI failures. Git pre-push does NOT
+  run npm ci for waddle_controller (see waddle-prepush.mdc).
 disable-model-invocation: true
 ---
 
@@ -34,13 +34,21 @@ dart run tool/coverage_check.dart --min=85 --target=90 coverage/lcov.info
 
 ## waddle_controller (when that app changed)
 
+Full mirror of CI `analyze-test` for the controller (includes **`npm ci`**). **Git pre-push does not run `npm ci`** — only `build` + `lint` — so dev (`npm run dev`) does not block push with Windows `EPERM`. Run this block manually before merge-quality pushes and after lockfile changes.
+
 ```bash
 cd apps/waddle_controller
+# Stop npm run dev first on Windows (Vite/tsx lock node_modules natives).
 npm ci
 npm run lint
 npm run test:coverage
 npm run coverage:check
 npm run build
+npm run build:server
 ```
+
+- **`npm ci`**: required locally after `package.json` / `package-lock.json` changes; stop **`npm run dev`** first on Windows.
+- **Pre-push only**: `npm run build` && `npm run lint` (see [`waddle-prepush.mdc`](../../../.cursor/rules/waddle-prepush.mdc)).
+- **Node version**: package expects **Node ^22**; CI uses 22.x (Node 24 may warn).
 
 See [`waddle-controller.mdc`](../../../.cursor/rules/waddle-controller.mdc).

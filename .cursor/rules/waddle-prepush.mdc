@@ -1,0 +1,36 @@
+---
+description: Git pre-push hook — scoped checks, no npm ci on controller, Windows EPERM
+globs: scripts/pre_push_checks.py,.githooks/**,apps/waddle_controller/package.json,apps/waddle_controller/package-lock.json
+---
+
+# Pre-push checks (`scripts/pre_push_checks.py`)
+
+- **Hook**: [`.githooks/pre-push`](../../.githooks/pre-push) runs [`scripts/pre_push_checks.py`](../../scripts/pre_push_checks.py). Install once: [`scripts/install-git-hooks.ps1`](../../scripts/install-git-hooks.ps1) or [`install-git-hooks.sh`](../../scripts/install-git-hooks.sh) (`core.hooksPath=.githooks`).
+- **Skip** (discouraged): `WADDLE_SKIP_PREPUSH_CHECKS=1`, or `git push --no-verify`.
+- **Scoped by diff**: only runs suites for changed areas (`dart_workspace`, `controller`, `deploy`). Unknown or new-branch pushes run the full suite.
+
+## waddle_controller — no `npm ci` on push
+
+Pre-push **never** runs `npm ci` in `apps/waddle_controller/`. A running **`npm run dev`** (Vite, `tsx watch`, `concurrently`) keeps native binaries under `node_modules` open; on Windows, `npm ci` then fails with **`EPERM`** when unlinking `esbuild.exe` or `@node-rs/argon2` artifacts.
+
+Pre-push controller steps (when `apps/waddle_controller/**` changed):
+
+- `npm run build`
+- `npm run lint`
+
+**CI** still runs `npm ci` on a clean runner ([`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) `analyze-test` job).
+
+## After dependency / lockfile changes
+
+1. Stop dev (`Ctrl+C` on `npm run dev` in `apps/waddle_controller`).
+2. Run **`npm ci`** there (also refreshes `packages/waddle_node_tls` via `postinstall`).
+3. Run the full controller gate from [`run-waddle-checks`](../skills/run-waddle-checks/SKILL.md) (`lint`, `test:coverage`, `coverage:check`, `build`) before pushing.
+
+If `package-lock.json` is newer than `node_modules/.package-lock.json`, pre-push prints a **non-blocking WARNING** (stronger hint when dev processes are still detected). Do not re-add `npm ci` to pre-push to “fix” EPERM — use manual `npm ci` after stopping dev.
+
+## Agents fixing a blocked push
+
+- **EPERM / `npm ci` in old failure logs**: pre-push should no longer run `npm ci`; pull latest `scripts/pre_push_checks.py` or confirm the hook output says `skipped`.
+- **Build/lint failures**: fix TypeScript/ESLint issues; run the full skill locally.
+- **Stale `node_modules`**: stop dev, `npm ci`, re-run checks.
+- Unit tests for helpers: [`deploy/test_pre_push_checks.py`](../../deploy/test_pre_push_checks.py).
