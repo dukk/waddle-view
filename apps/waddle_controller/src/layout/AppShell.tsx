@@ -53,6 +53,7 @@ import { useDisplay } from '@/context/DisplayContext';
 import { dismissActiveDisplayAlert, postDisplayNavigation } from '@/util/displayRemote';
 import { PREVIEWABLE_CONTROLLER_ROLES } from '@/auth/rolePermissions';
 import { DisplaySelector } from '@/components/DisplaySelector';
+import { isProgramsOnlyNavRouteAllowed } from '@/util/programsOnlyRoutes';
 
 const drawerWidth = 260;
 const appVersion = __APP_VERSION__;
@@ -116,12 +117,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
     items.filter((item) => {
       if (item.requiresNavigationControl && !hasPermission('navigation.control')) return false;
       if (!isProgramsOnlyControllerUser) return true;
-      return (
-        item.to === '/programs' ||
-        item.to === '/remote' ||
-        (item.to === '/data' &&
-          (hasPermission('content.moderate') || hasPermission('content.catalog_read')))
-      );
+      return isProgramsOnlyNavRouteAllowed(item.to, hasPermission);
     });
 
   const drawerRealtimeNav = filterDrawerNav(realtimeNav);
