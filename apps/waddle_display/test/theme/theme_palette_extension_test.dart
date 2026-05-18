@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:waddle_display/theme/config/display_background_fill.dart';
 import 'package:waddle_display/theme/theme_palette_extension.dart';
 
 LinearGradient _g(Color a, Color b) => LinearGradient(colors: [a, b]);
+
+DisplayBackgroundFill _fill(Color a, Color b) => DisplayBackgroundFill(
+      solidColor: a,
+      gradientColors: [a, b],
+    );
 
 const _c1 = Color(0xFF010101);
 const _c2 = Color(0xFF020202);
@@ -22,6 +28,9 @@ PaletteTertiaryLayers _sample({
     accent4: const Color(0xFF666666),
     colorOrder: const [Color(0xFF666666)],
     tertiaryLayersByColor: tertiary,
+    displayBackgroundFill: _fill(_c1, _c2),
+    primaryContainerFill: _fill(_c1, _c2),
+    secondaryContainerFill: _fill(_c3, _c4),
     primaryPairGradient: _g(_c1, _c2),
     secondaryPairGradient: _g(_c3, _c4),
   );

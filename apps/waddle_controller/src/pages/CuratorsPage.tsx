@@ -52,8 +52,16 @@ import {
   type CuratorScheduleRule,
   type CuratorStatePredicateMeta,
 } from '@/api/curatorConfigurations';
+import { CuratorSliderField } from '@/components/CuratorSliderField';
 import { CuratorCategoriesSection } from '@/components/curator/CuratorCategoriesSection';
 import { RejectTermsSection } from '@/components/curator/RejectTermsSection';
+import {
+  CURATOR_HISTORY_DEPTH,
+  CURATOR_PROGRAM_DURATION,
+  CURATOR_TICKER_PROGRAM_DURATION,
+} from '@/constants/curatorDisplaySettings';
+import { curatorConfigurationIdFromName } from '@/util/interestSlug';
+import { formatProgramDurationWithSeconds } from '@/util/programDurationFormat';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
@@ -341,7 +349,10 @@ function CuratorConfigurationsSection({
                   />
                 </TableCell>
                 <TableCell>{row.sort_order}</TableCell>
-                <TableCell>{row.program_duration_seconds}s · depth {row.history_depth}</TableCell>
+                <TableCell>
+                  {row.program_duration_seconds}s / {row.ticker_program_duration_seconds}s · depth{' '}
+                  {row.history_depth}
+                </TableCell>
                 <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
                   <Button size="small" onClick={() => setEditId(row.id)}>
                     Edit
@@ -362,6 +373,7 @@ function CuratorConfigurationsSection({
         <CuratorConfigurationDialog
           display={display}
           canWrite={canWrite}
+          existingConfigurationIds={rows.map((r) => r.id)}
           onClose={() => setAddOpen(false)}
           onSaved={async () => {
             setAddOpen(false);
@@ -387,28 +399,43 @@ function CuratorConfigurationsSection({
 
 type CatalogOption = { id: string; label: string };
 
+type ConfigDialogTabId = 'screens' | 'ticker' | 'schedule' | 'overlay' | 'advanced';
+
+/** Operator-facing label for catalog members (name only; id fallback when unnamed). */
+function catalogMemberDisplayLabel(name: string | undefined | null, id: string): string {
+  const trimmed = name?.trim();
+  return trimmed ? trimmed : id;
+}
+
 function CuratorConfigurationDialog({
   display,
   canWrite,
   configurationId,
+  existingConfigurationIds = [],
   onClose,
   onSaved,
 }: {
   display: SavedDisplay;
   canWrite: boolean;
   configurationId?: string;
+  existingConfigurationIds?: string[];
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
   const isNew = configurationId == null;
   const [loading, setLoading] = useState(!isNew);
   const [err, setErr] = useState<string | null>(null);
-  const [id, setId] = useState(configurationId ?? '');
   const [name, setName] = useState('');
   const [layer, setLayer] = useState<CuratorLayer>('base');
   const [sortOrder, setSortOrder] = useState(0);
-  const [programDuration, setProgramDuration] = useState(180);
-  const [historyDepth, setHistoryDepth] = useState(5);
+  const [programDuration, setProgramDuration] = useState<number>(
+    CURATOR_PROGRAM_DURATION.default,
+  );
+  const [tickerProgramDuration, setTickerProgramDuration] = useState<number>(
+    CURATOR_TICKER_PROGRAM_DURATION.default,
+  );
+  const [historyDepth, setHistoryDepth] = useState<number>(CURATOR_HISTORY_DEPTH.default);
+  const [dialogTab, setDialogTab] = useState<ConfigDialogTabId>('screens');
   const [requireNewsPhoto, setRequireNewsPhoto] = useState(true);
   const [tickerEnabled, setTickerEnabled] = useState(true);
   const [defaultConfig, setDefaultConfig] = useState(false);
@@ -437,13 +464,13 @@ function CuratorConfigurationDialog({
         setScreenOptions(
           (screens.items ?? []).map((s) => ({
             id: s.id,
-            label: s.name?.trim() ? `${s.name} (${s.id})` : s.id,
+            label: catalogMemberDisplayLabel(s.name, s.id),
           })),
         );
         setTickerOptions(
           (tickers.items ?? []).map((t) => ({
             id: t.id,
-            label: t.name?.trim() ? `${t.name} (${t.id})` : t.id,
+            label: catalogMemberDisplayLabel(t.name, t.id),
           })),
         );
         setOverlayOptions(
@@ -462,6 +489,7 @@ function CuratorConfigurationDialog({
           setLayer(detail.layer);
           setSortOrder(detail.sort_order);
           setProgramDuration(detail.program_duration_seconds);
+          setTickerProgramDuration(detail.ticker_program_duration_seconds);
           setHistoryDepth(detail.history_depth);
           setRequireNewsPhoto(detail.require_news_photo_for_screens);
           setTickerEnabled(detail.ticker_enabled);
@@ -504,11 +532,12 @@ function CuratorConfigurationDialog({
   const showProgramFields = layer === 'base' || layer === 'exclusive';
   const membersOverlayOnly = layer === 'enhancement';
 
-  const buildBody = (): CuratorConfigurationWriteBody => ({
+  const buildBody = (configId: string): CuratorConfigurationWriteBody => ({
     name: name.trim(),
     layer,
     sort_order: sortOrder,
     program_duration_seconds: programDuration,
+    ticker_program_duration_seconds: tickerProgramDuration,
     history_depth: historyDepth,
     require_news_photo_for_screens: requireNewsPhoto,
     ticker_enabled: tickerEnabled,
@@ -516,7 +545,7 @@ function CuratorConfigurationDialog({
     rules: rules.map((r) => ({
       ...r,
       id: r.id.trim(),
-      configuration_id: configurationId ?? id.trim(),
+      configuration_id: configId,
     })),
     members: membersOverlayOnly
       ? { screens: [], tickers: [], overlays: overlayIds }
@@ -526,20 +555,23 @@ function CuratorConfigurationDialog({
   const save = async () => {
     if (!canWrite) return;
     setErr(null);
-    const tid = id.trim();
-    if (isNew && !tid) {
-      setErr('Configuration id is required.');
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setErr('Name is required.');
       return;
     }
-    if (!name.trim()) {
-      setErr('Name is required.');
+    const configId = isNew
+      ? curatorConfigurationIdFromName(trimmedName, existingConfigurationIds)
+      : configurationId!;
+    if (isNew && !configId) {
+      setErr('Name must contain at least one letter or digit.');
       return;
     }
     try {
       if (isNew) {
-        await createCuratorConfiguration(display, { id: tid, ...buildBody() });
+        await createCuratorConfiguration(display, { id: configId, ...buildBody(configId) });
       } else {
-        await updateCuratorConfiguration(display, configurationId!, buildBody());
+        await updateCuratorConfiguration(display, configurationId!, buildBody(configId));
       }
       await onSaved();
     } catch (e) {
@@ -564,95 +596,122 @@ function CuratorConfigurationDialog({
             <Typography color="text.secondary">Loading…</Typography>
           ) : (
             <>
-              {isNew && (
-                <TextField
-                  label="Configuration id"
-                  value={id}
-                  onChange={(e) => setId(e.target.value)}
-                  required
-                  fullWidth
-                  helperText="Lowercase slug, e.g. morning or weekend_party"
-                />
-              )}
-              <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} fullWidth />
-              <FormControl fullWidth>
-                <InputLabel id="curator-layer">Layer</InputLabel>
-                <Select
-                  labelId="curator-layer"
-                  label="Layer"
-                  value={layer}
-                  onChange={(e) => setLayer(e.target.value as CuratorLayer)}
-                  disabled={!canWrite}
-                >
-                  {CURATOR_LAYERS.map((l) => (
-                    <MenuItem key={l} value={l}>
-                      {layerLabel(l)}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
               <TextField
-                label="Sort order"
-                type="number"
-                value={sortOrder}
-                onChange={(e) => setSortOrder(Number(e.target.value) || 0)}
+                label="Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 fullWidth
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={defaultConfig}
-                    onChange={(_, v) => setDefaultConfig(v)}
-                    disabled={!canWrite}
-                  />
+                required
+                helperText={
+                  isNew
+                    ? 'Configuration id is derived from this name (e.g. "Weekend Party" → weekend_party).'
+                    : undefined
                 }
-                label="Default fallback (when no schedule rule matches)"
               />
-              {showProgramFields && (
-                <>
-                  <Typography variant="subtitle2" fontWeight={600}>
-                    Program settings
-                  </Typography>
-                  <TextField
-                    label="Program duration (seconds)"
-                    type="number"
-                    value={programDuration}
-                    onChange={(e) => setProgramDuration(Number(e.target.value) || 0)}
-                    fullWidth
-                  />
-                  <TextField
-                    label="History depth"
-                    type="number"
-                    value={historyDepth}
-                    onChange={(e) => setHistoryDepth(Number(e.target.value) || 0)}
-                    fullWidth
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={requireNewsPhoto}
-                        onChange={(_, v) => setRequireNewsPhoto(v)}
+              <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                <Tabs
+                  value={dialogTab}
+                  onChange={(_, v) => setDialogTab(v as ConfigDialogTabId)}
+                  variant="scrollable"
+                  scrollButtons="auto"
+                >
+                  <Tab label="Screens" value="screens" />
+                  <Tab label="Ticker" value="ticker" />
+                  <Tab label="Schedule" value="schedule" />
+                  <Tab label="Overlay" value="overlay" />
+                  <Tab label="Advanced" value="advanced" />
+                </Tabs>
+              </Box>
+              {dialogTab === 'screens' && (
+                <Stack spacing={2}>
+                  {membersOverlayOnly ? (
+                    <Typography variant="body2" color="text.secondary">
+                      Enhancement layer configurations only add overlays. Screen program settings
+                      apply to base and exclusive layers.
+                    </Typography>
+                  ) : showProgramFields ? (
+                    <>
+                      <CuratorSliderField
+                        label="Screen program duration"
+                        value={programDuration}
+                        onChange={setProgramDuration}
+                        min={CURATOR_PROGRAM_DURATION.min}
+                        max={CURATOR_PROGRAM_DURATION.max}
+                        step={CURATOR_PROGRAM_DURATION.step}
+                        disabled={!canWrite}
+                        formatValue={formatProgramDurationWithSeconds}
+                      />
+                      <CuratorSliderField
+                        label="History depth"
+                        value={historyDepth}
+                        onChange={setHistoryDepth}
+                        min={CURATOR_HISTORY_DEPTH.min}
+                        max={CURATOR_HISTORY_DEPTH.max}
+                        step={CURATOR_HISTORY_DEPTH.step}
                         disabled={!canWrite}
                       />
-                    }
-                    label="Require news photo for RSS screens"
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={tickerEnabled}
-                        onChange={(_, v) => setTickerEnabled(v)}
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={requireNewsPhoto}
+                            onChange={(_, v) => setRequireNewsPhoto(v)}
+                            disabled={!canWrite}
+                          />
+                        }
+                        label="Require news photo for RSS screens"
+                      />
+                      <MemberAutocomplete
+                        label="Screens"
+                        options={screenOptions}
+                        value={screenIds}
+                        onChange={setScreenIds}
                         disabled={!canWrite}
                       />
-                    }
-                    label="Show ticker marquee (screens use full height when off)"
-                  />
-                </>
+                    </>
+                  ) : null}
+                </Stack>
               )}
-              <Typography variant="subtitle2" fontWeight={600}>
-                {membersOverlayOnly ? 'Overlay members' : 'Catalog members'}
-              </Typography>
-              {membersOverlayOnly ? (
+              {dialogTab === 'ticker' && (
+                <Stack spacing={2}>
+                  {membersOverlayOnly ? (
+                    <Typography variant="body2" color="text.secondary">
+                      Enhancement layer configurations only add overlays. Ticker settings apply to
+                      base and exclusive layers.
+                    </Typography>
+                  ) : showProgramFields ? (
+                    <>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={tickerEnabled}
+                            onChange={(_, v) => setTickerEnabled(v)}
+                            disabled={!canWrite}
+                          />
+                        }
+                        label="Show ticker marquee (screens use full height when off)"
+                      />
+                      <CuratorSliderField
+                        label="Ticker program duration"
+                        value={tickerProgramDuration}
+                        onChange={setTickerProgramDuration}
+                        min={CURATOR_TICKER_PROGRAM_DURATION.min}
+                        max={CURATOR_TICKER_PROGRAM_DURATION.max}
+                        step={CURATOR_TICKER_PROGRAM_DURATION.step}
+                        disabled={!canWrite || !tickerEnabled}
+                        formatValue={formatProgramDurationWithSeconds}
+                      />
+                      <MemberAutocomplete
+                        label="Ticker tapes"
+                        options={tickerOptions}
+                        value={tickerIds}
+                        onChange={setTickerIds}
+                        disabled={!canWrite || !tickerEnabled}
+                      />
+                    </>
+                  ) : null}
+                </Stack>
+              )}
+              {dialogTab === 'overlay' && (
                 <MemberAutocomplete
                   label="Overlays"
                   options={overlayOptions}
@@ -660,55 +719,71 @@ function CuratorConfigurationDialog({
                   onChange={setOverlayIds}
                   disabled={!canWrite}
                 />
-              ) : (
-                <Stack spacing={1.5}>
-                  <MemberAutocomplete
-                    label="Screens"
-                    options={screenOptions}
-                    value={screenIds}
-                    onChange={setScreenIds}
+              )}
+              {dialogTab === 'advanced' && (
+                <Stack spacing={2}>
+                  <FormControl fullWidth>
+                    <InputLabel id="curator-layer">Layer</InputLabel>
+                    <Select
+                      labelId="curator-layer"
+                      label="Layer"
+                      value={layer}
+                      onChange={(e) => setLayer(e.target.value as CuratorLayer)}
+                      disabled={!canWrite}
+                    >
+                      {CURATOR_LAYERS.map((l) => (
+                        <MenuItem key={l} value={l}>
+                          {layerLabel(l)}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <TextField
+                    label="Sort order"
+                    type="number"
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(Number(e.target.value) || 0)}
+                    fullWidth
                     disabled={!canWrite}
                   />
-                  <MemberAutocomplete
-                    label="Ticker tapes"
-                    options={tickerOptions}
-                    value={tickerIds}
-                    onChange={setTickerIds}
-                    disabled={!canWrite || !tickerEnabled}
-                  />
-                  <MemberAutocomplete
-                    label="Overlays"
-                    options={overlayOptions}
-                    value={overlayIds}
-                    onChange={setOverlayIds}
-                    disabled={!canWrite}
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={defaultConfig}
+                        onChange={(_, v) => setDefaultConfig(v)}
+                        disabled={!canWrite}
+                      />
+                    }
+                    label="Default fallback (when no schedule rule matches)"
                   />
                 </Stack>
               )}
-              <Stack direction="row" alignItems="center" justifyContent="space-between">
-                <Typography variant="subtitle2" fontWeight={600}>
-                  Schedule rules
-                </Typography>
-                {canWrite && (
-                  <Button
-                    size="small"
-                    onClick={() =>
-                      setRules((prev) => [
-                        ...prev,
-                        { ...emptyRule(), id: `rule_${prev.length + 1}` },
-                      ])
-                    }
-                  >
-                    Add rule
-                  </Button>
-                )}
-              </Stack>
-              {rules.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  No rules — configuration matches only when marked default fallback.
-                </Typography>
-              ) : (
-                rules.map((rule, index) => (
+              {dialogTab === 'schedule' && (
+                <>
+                  <Stack direction="row" alignItems="center" justifyContent="space-between">
+                    <Typography variant="subtitle2" fontWeight={600}>
+                      Schedule rules
+                    </Typography>
+                    {canWrite && (
+                      <Button
+                        size="small"
+                        onClick={() =>
+                          setRules((prev) => [
+                            ...prev,
+                            { ...emptyRule(), id: `rule_${prev.length + 1}` },
+                          ])
+                        }
+                      >
+                        Add rule
+                      </Button>
+                    )}
+                  </Stack>
+                  {rules.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary">
+                      No rules — configuration matches only when marked default fallback.
+                    </Typography>
+                  ) : (
+                    rules.map((rule, index) => (
                   <Paper key={index} variant="outlined" sx={{ p: 2 }}>
                     <Stack spacing={1.5}>
                       <Stack direction="row" spacing={1} alignItems="center">
@@ -864,6 +939,8 @@ function CuratorConfigurationDialog({
                     </Stack>
                   </Paper>
                 ))
+                  )}
+                </>
               )}
             </>
           )}

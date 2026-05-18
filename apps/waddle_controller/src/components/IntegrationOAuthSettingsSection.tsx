@@ -23,11 +23,32 @@ import {
   Typography,
 } from '@mui/material';
 import { ApiError } from '@/api/client';
-import { listOAuthProviders, putOAuthProviderClientId, type OAuthProviderStatus } from '@/api/oauthProviders';
+import {
+  listOAuthProviders,
+  putOAuthProviderClientId,
+  type OAuthProviderStatus,
+} from '@/api/oauthProviders';
 import type { SavedDisplay } from '@/storage/displays';
 
 function errMsg(e: unknown): string {
   return e instanceof ApiError ? `${e.status}: ${e.message}` : String(e);
+}
+
+function addClientIdDisabledReason(
+  providers: OAuthProviderStatus[],
+  unconfiguredCount: number,
+  loading: boolean,
+): string | null {
+  if (loading) {
+    return 'Loading account providers…';
+  }
+  if (providers.length === 0) {
+    return 'No OAuth account providers are available on this display.';
+  }
+  if (unconfiguredCount === 0) {
+    return 'Every supported account provider already has a client ID. Use Replace on a row to change one.';
+  }
+  return null;
 }
 
 export function IntegrationOAuthSettingsSection({
@@ -38,17 +59,21 @@ export function IntegrationOAuthSettingsSection({
   canWrite: boolean;
 }) {
   const [providers, setProviders] = useState<OAuthProviderStatus[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [replaceProvider, setReplaceProvider] = useState<OAuthProviderStatus | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
+    setLoading(true);
     try {
       const items = await listOAuthProviders(display);
       setProviders(items);
     } catch (e) {
       setError(errMsg(e));
+    } finally {
+      setLoading(false);
     }
   }, [display]);
 
@@ -66,17 +91,23 @@ export function IntegrationOAuthSettingsSection({
     [providers],
   );
 
+  const addDisabledReason = addClientIdDisabledReason(
+    providers,
+    unconfiguredProviders.length,
+    loading,
+  );
+
   return (
     <Stack spacing={1.5}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
         <Typography variant="subtitle1" fontWeight={600}>
-          OAuth client IDs
+          Account provider client IDs
         </Typography>
         {canWrite ? (
           <Button
             size="small"
             variant="contained"
-            disabled={unconfiguredProviders.length === 0}
+            disabled={addDisabledReason != null}
             onClick={() => setAddOpen(true)}
           >
             Add client ID
@@ -86,12 +117,21 @@ export function IntegrationOAuthSettingsSection({
       <Typography variant="body2" color="text.secondary">
         Some account providers (Google, Microsoft) require an OAuth app client ID before you can add
         a matching account below. Values are stored encrypted on the display and are never shown after
-        saving.
+        saving. Application name and owner are looked up from the provider when possible.
       </Typography>
+      {canWrite && addDisabledReason ? (
+        <Typography variant="caption" color="text.secondary" display="block">
+          {addDisabledReason}
+        </Typography>
+      ) : null}
       {error ? <Alert severity="error">{error}</Alert> : null}
-      {configuredProviders.length === 0 ? (
+      {loading ? (
         <Typography variant="body2" color="text.secondary">
-          No OAuth client IDs have been configured yet.
+          Loading account provider client IDs…
+        </Typography>
+      ) : configuredProviders.length === 0 ? (
+        <Typography variant="body2" color="text.secondary">
+          No account provider client IDs have been configured yet.
         </Typography>
       ) : (
         <TableContainer component={Paper} variant="outlined">
@@ -99,26 +139,56 @@ export function IntegrationOAuthSettingsSection({
             <TableHead>
               <TableRow>
                 <TableCell>Provider</TableCell>
+                <TableCell>Application</TableCell>
+                <TableCell>Owner</TableCell>
                 <TableCell>Status</TableCell>
                 {canWrite ? <TableCell align="right">Actions</TableCell> : null}
               </TableRow>
             </TableHead>
             <TableBody>
-              {configuredProviders.map((provider) => (
-                <TableRow key={provider.id} hover>
-                  <TableCell sx={{ fontWeight: 600 }}>{provider.label}</TableCell>
-                  <TableCell>
-                    <Chip size="small" color="success" label="Configured" />
-                  </TableCell>
-                  {canWrite ? (
-                    <TableCell align="right">
-                      <Button size="small" onClick={() => setReplaceProvider(provider)}>
-                        Replace
-                      </Button>
+              {configuredProviders.map((provider) => {
+                const meta = provider.client_id_metadata;
+                return (
+                  <TableRow key={provider.id} hover>
+                    <TableCell sx={{ fontWeight: 600 }}>{provider.label}</TableCell>
+                    <TableCell>
+                      {meta?.application_name ?? (
+                        <Typography variant="body2" color="text.secondary">
+                          {meta?.lookup_status === 'error'
+                            ? 'Lookup failed'
+                            : meta?.lookup_status === 'unavailable'
+                              ? 'Not available from provider'
+                              : '—'}
+                        </Typography>
+                      )}
                     </TableCell>
-                  ) : null}
-                </TableRow>
-              ))}
+                    <TableCell>
+                      {meta?.owner ?? (
+                        <Typography variant="body2" color="text.secondary">
+                          —
+                        </Typography>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Stack spacing={0.5}>
+                        <Chip size="small" color="success" label="Configured" />
+                        {meta?.lookup_status === 'error' && meta.lookup_error ? (
+                          <Typography variant="caption" color="warning.main">
+                            {meta.lookup_error}
+                          </Typography>
+                        ) : null}
+                      </Stack>
+                    </TableCell>
+                    {canWrite ? (
+                      <TableCell align="right">
+                        <Button size="small" onClick={() => setReplaceProvider(provider)}>
+                          Replace
+                        </Button>
+                      </TableCell>
+                    ) : null}
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </TableContainer>
@@ -206,7 +276,7 @@ function ClientIdDialog({
       <DialogContent>
         <Stack spacing={2} sx={{ pt: 1 }}>
           {providers.length === 0 ? (
-            <Alert severity="info">All OAuth client IDs are already configured.</Alert>
+            <Alert severity="info">All account provider client IDs are already configured.</Alert>
           ) : (
             <>
               {showProviderPicker ? (
@@ -238,6 +308,10 @@ function ClientIdDialog({
                 autoFocus
                 placeholder="Paste client ID from your cloud app registration"
               />
+              <Typography variant="caption" color="text.secondary">
+                After saving, the display will try to resolve the application name and owner from
+                the provider.
+              </Typography>
             </>
           )}
         </Stack>

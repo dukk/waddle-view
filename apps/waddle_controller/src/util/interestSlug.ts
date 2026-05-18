@@ -39,3 +39,11 @@ export function rssFeedInterestId(feedName: string, existingIds: Iterable<string
 export function stockSymbolInterestId(symbol: string, existingIds: Iterable<string>): string {
   return uniqueInterestSlug(slugifyInterestSource(symbol), existingIds);
 }
+
+/** Derives a curator configuration id slug from an operator-entered name. */
+export function curatorConfigurationIdFromName(
+  name: string,
+  existingIds: Iterable<string>,
+): string {
+  return uniqueInterestSlug(slugifyInterestSource(name), existingIds);
+}

@@ -19,11 +19,7 @@ class LocalApiSlideWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = theme.extension<PaletteTertiaryLayers>();
-    final iconColor =
-        palette?.iconColor ??
-        theme.iconTheme.color ??
-        theme.colorScheme.onSurfaceVariant;
+    final iconColor = theme.defaultIconColor;
     final headline =
         spec.config['headline'] as String? ?? 'Local REST API';
     final s = DashboardViewportScope.scaleOf(context);

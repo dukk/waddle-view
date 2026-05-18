@@ -2,31 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_display/display/overlay/birthday_confetti_overlay.dart'
     show BirthdayConfettiOverlay, birthdayConfettiCycleDuration;
+import '../../helpers/sample_palette_layers.dart';
 import 'package:waddle_display/theme/theme_palette_extension.dart';
 import 'package:waddle_shared/persistence/display_overlay_confetti_settings.dart'
     show BirthdayConfettiScheduleSettings, kBirthdayConfettiFallSpeedMin;
 
-LinearGradient _g(Color a, Color b) => LinearGradient(colors: [a, b]);
-
-const _c1 = Color(0xFF010101);
-const _c2 = Color(0xFF020202);
-const _c3 = Color(0xFF030303);
-const _c4 = Color(0xFF040404);
-
-PaletteTertiaryLayers _samplePalette() {
-  return PaletteTertiaryLayers(
-    primary: const Color(0xFF111111),
-    iconColor: const Color(0xFF222222),
-    accent1: const Color(0xFF333333),
-    accent2: const Color(0xFF444444),
-    accent3: const Color(0xFF555555),
-    accent4: const Color(0xFF666666),
-    colorOrder: const [Color(0xFF666666)],
-    tertiaryLayersByColor: const {},
-    primaryPairGradient: _g(_c1, _c2),
-    secondaryPairGradient: _g(_c3, _c4),
-  );
-}
+PaletteTertiaryLayers _samplePalette() => samplePaletteTertiaryLayers();
 
 Future<void> _pumpFrames(WidgetTester tester, {int frames = 60}) async {
   for (var i = 0; i < frames; i++) {

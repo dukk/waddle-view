@@ -749,7 +749,9 @@ class _ScreenNavigationOverlay extends StatelessWidget {
           child: DecoratedBox(
             key: timelineKey,
             decoration: BoxDecoration(
-              color: theme.colorScheme.surface.withValues(alpha: 0.86),
+              color: theme.displayBackgroundFill.resolveColor().withValues(
+                alpha: 0.86,
+              ),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Padding(
@@ -771,8 +773,10 @@ class _ScreenNavigationOverlay extends StatelessWidget {
                             child: DecoratedBox(
                               decoration: BoxDecoration(
                                 color: i == currentIndex
-                                    ? theme.colorScheme.primaryContainer
-                                    : theme.colorScheme.surfaceContainerHighest,
+                                    ? theme.slidePanelColor
+                                    : theme.slidePanelColor.withValues(
+                                        alpha: 0.45,
+                                      ),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Padding(
@@ -812,7 +816,9 @@ class _ScreenNavigationOverlay extends StatelessWidget {
                 ? const Key('screen_nav_end_history_message')
                 : null,
             decoration: BoxDecoration(
-              color: theme.colorScheme.surface.withValues(alpha: 0.9),
+              color: theme.displayBackgroundFill.resolveColor().withValues(
+                alpha: 0.9,
+              ),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Padding(
@@ -856,13 +862,13 @@ class _SlideContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final widgets = parseScreenLayoutWidgets(slide.layoutJson);
-    final palette = theme.extension<PaletteTertiaryLayers>();
+    final slideFill = theme.slideChromeFill;
     return Container(
       decoration: BoxDecoration(
-        gradient: palette?.primaryPairGradient,
-        color: palette == null
-            ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35)
-            : null,
+        gradient: slideFill.toGradient(),
+        color: slideFill.hasGradient
+            ? null
+            : slideFill.resolveColor().withValues(alpha: 0.35),
       ),
       padding: EdgeInsets.zero,
       child: Center(

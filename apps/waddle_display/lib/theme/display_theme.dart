@@ -35,6 +35,10 @@ export 'package:waddle_shared/theme/display_text_scale_kv.dart'
         normalizeDisplayTextScaleOption;
 export 'package:waddle_shared/theme/display_theme_kv.dart'
     show kDefaultDisplayThemeId, kDisplayThemeIdKvKey;
+export 'config/display_background_fill.dart'
+    show DisplayBackgroundFill, DisplayGradientPattern;
+export 'display_theme_semantics.dart'
+    show DisplayThemeSemantics, DisplayThemeSemanticsContext;
 export 'theme_palette_extension.dart' show PaletteTertiaryLayers;
 
 /// Applies [DisplayTheme.textScale] on top of the platform [TextScaler] (accessibility, etc.).

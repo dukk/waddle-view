@@ -214,7 +214,7 @@ class _AnalogClockSlideWidgetState extends State<AnalogClockSlideWidget> {
               angles: angles,
               layoutScale: s,
               dialColor: scheme.onSurface,
-              faceColor: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              faceColor: widget.theme.slidePanelColor.withValues(alpha: 0.5),
               handHour: _resolveAccentColor(
                 palette: palette,
                 choice: _hourHandAccentChoice,

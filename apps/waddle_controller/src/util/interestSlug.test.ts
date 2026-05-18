@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  curatorConfigurationIdFromName,
   rssFeedInterestId,
   slugifyInterestSource,
   stockSymbolInterestId,
@@ -50,5 +51,15 @@ describe('rssFeedInterestId', () => {
 describe('stockSymbolInterestId', () => {
   it('lowercases ticker symbol', () => {
     expect(stockSymbolInterestId('AAPL', [])).toBe('aapl');
+  });
+});
+
+describe('curatorConfigurationIdFromName', () => {
+  it('builds slug from configuration name', () => {
+    expect(curatorConfigurationIdFromName('Weekend Party', [])).toBe('weekend_party');
+  });
+
+  it('appends suffix when id already exists', () => {
+    expect(curatorConfigurationIdFromName('Morning', ['morning'])).toBe('morning_2');
   });
 });

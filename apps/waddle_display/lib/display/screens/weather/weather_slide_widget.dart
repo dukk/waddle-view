@@ -97,12 +97,8 @@ class WeatherSlideWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = theme.extension<PaletteTertiaryLayers>();
-    final iconColor =
-        palette?.iconColor ??
-        theme.iconTheme.color ??
-        theme.colorScheme.onSurfaceVariant;
-    final primaryAccent = palette?.accent1 ?? theme.colorScheme.secondary;
+    final iconColor = theme.defaultIconColor;
+    final primaryAccent = theme.accent(1);
     final configuredLocationId = weatherLocationIdForSpec(spec);
     final locationQuery = db.select(db.interestsLocations)
       ..where((t) => t.includeWeather.equals(true))
@@ -295,9 +291,7 @@ class WeatherSlideWidget extends StatelessWidget {
                                           width: tileW,
                                           child: DecoratedBox(
                                             decoration: BoxDecoration(
-                                              color: theme
-                                                  .colorScheme
-                                                  .surfaceContainerHighest,
+                                              color: theme.slidePanelColor,
                                               borderRadius:
                                                   BorderRadius.circular(12 * s),
                                             ),
@@ -398,7 +392,7 @@ class WeatherSlideWidget extends StatelessWidget {
     final headline = (alert.headline ?? '').trim();
     final expiry = alert.expiresAt;
     return Material(
-      color: theme.colorScheme.surfaceContainerHigh,
+      color: theme.slidePanelColor,
       borderRadius: BorderRadius.circular(12 * scale),
       child: Padding(
         padding: EdgeInsets.symmetric(

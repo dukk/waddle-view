@@ -34,6 +34,7 @@ export type CuratorConfigurationSummary = {
   layer: CuratorLayer;
   sort_order: number;
   program_duration_seconds: number;
+  ticker_program_duration_seconds: number;
   history_depth: number;
   require_news_photo_for_screens: boolean;
   ticker_enabled: boolean;
@@ -72,6 +73,7 @@ export type CuratorConfigurationWriteBody = {
   layer?: CuratorLayer;
   sort_order?: number;
   program_duration_seconds?: number;
+  ticker_program_duration_seconds?: number;
   history_depth?: number;
   require_news_photo_for_screens?: boolean;
   ticker_enabled?: boolean;

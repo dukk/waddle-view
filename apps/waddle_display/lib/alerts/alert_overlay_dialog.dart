@@ -5,6 +5,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../clock.dart';
 import '../display/dashboard_viewport_scope.dart';
+import '../theme/display_theme.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'alert_material_icon.dart';
 
@@ -88,7 +89,7 @@ class _AlertOverlayDialogState extends State<AlertOverlayDialog> {
     final h = 7 * s;
     final trackColor =
         theme.colorScheme.secondaryContainer.withValues(alpha: 0.55);
-    final fillColor = theme.colorScheme.secondary.withValues(alpha: 0.5);
+    final fillColor = theme.accent(1).withValues(alpha: 0.5);
     return Padding(
       padding: EdgeInsets.only(top: 16 * s, left: 16 * s, right: 16 * s),
       child: Align(
@@ -138,9 +139,10 @@ class _AlertOverlayDialogState extends State<AlertOverlayDialog> {
     final hasQr = (alert.qrPayload ?? '').isNotEmpty;
     final icon = resolveAlertSeverityIcon(alert.severity, widget.severityIconNames);
 
-    final cardFill = scheme.surface.withValues(alpha: 0.88);
-    final headerFill = scheme.surfaceContainerHigh.withValues(alpha: 0.92);
-    final borderColor = scheme.surfaceContainerHigh.withValues(alpha: 0.95);
+    final cardFill =
+        theme.displayBackgroundFill.resolveColor().withValues(alpha: 0.88);
+    final headerFill = theme.slidePanelColor.withValues(alpha: 0.92);
+    final borderColor = theme.slidePanelColor.withValues(alpha: 0.95);
 
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 900),
@@ -162,7 +164,7 @@ class _AlertOverlayDialogState extends State<AlertOverlayDialog> {
                 color: headerFill,
                 border: Border(
                   bottom: BorderSide(
-                    color: scheme.surfaceContainerHigh.withValues(alpha: 0.45),
+                    color: theme.slidePanelColor.withValues(alpha: 0.45),
                   ),
                 ),
               ),

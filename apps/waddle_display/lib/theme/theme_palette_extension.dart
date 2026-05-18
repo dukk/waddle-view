@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'config/display_background_fill.dart';
+
 @immutable
 class PaletteTertiaryLayers extends ThemeExtension<PaletteTertiaryLayers> {
   const PaletteTertiaryLayers({
@@ -11,6 +13,9 @@ class PaletteTertiaryLayers extends ThemeExtension<PaletteTertiaryLayers> {
     required this.accent4,
     required this.colorOrder,
     required this.tertiaryLayersByColor,
+    required this.displayBackgroundFill,
+    required this.primaryContainerFill,
+    required this.secondaryContainerFill,
     required this.primaryPairGradient,
     required this.secondaryPairGradient,
   });
@@ -23,13 +28,21 @@ class PaletteTertiaryLayers extends ThemeExtension<PaletteTertiaryLayers> {
   final Color accent4;
   final List<Color> colorOrder;
   final Map<Color, List<Color>> tertiaryLayersByColor;
+  final DisplayBackgroundFill displayBackgroundFill;
+  final DisplayBackgroundFill primaryContainerFill;
+  final DisplayBackgroundFill secondaryContainerFill;
   final LinearGradient primaryPairGradient;
   final LinearGradient secondaryPairGradient;
 
   List<Color> tertiaryLayersFor(Color color) {
     final layers = tertiaryLayersByColor[color];
     if (layers == null || layers.isEmpty) {
-      return const [Colors.transparent, Colors.transparent, Colors.transparent, Colors.transparent];
+      return const [
+        Colors.transparent,
+        Colors.transparent,
+        Colors.transparent,
+        Colors.transparent,
+      ];
     }
     return layers;
   }
@@ -44,6 +57,9 @@ class PaletteTertiaryLayers extends ThemeExtension<PaletteTertiaryLayers> {
     Color? accent4,
     List<Color>? colorOrder,
     Map<Color, List<Color>>? tertiaryLayersByColor,
+    DisplayBackgroundFill? displayBackgroundFill,
+    DisplayBackgroundFill? primaryContainerFill,
+    DisplayBackgroundFill? secondaryContainerFill,
     LinearGradient? primaryPairGradient,
     LinearGradient? secondaryPairGradient,
   }) {
@@ -55,9 +71,16 @@ class PaletteTertiaryLayers extends ThemeExtension<PaletteTertiaryLayers> {
       accent3: accent3 ?? this.accent3,
       accent4: accent4 ?? this.accent4,
       colorOrder: colorOrder ?? this.colorOrder,
-      tertiaryLayersByColor: tertiaryLayersByColor ?? this.tertiaryLayersByColor,
+      tertiaryLayersByColor:
+          tertiaryLayersByColor ?? this.tertiaryLayersByColor,
+      displayBackgroundFill:
+          displayBackgroundFill ?? this.displayBackgroundFill,
+      primaryContainerFill: primaryContainerFill ?? this.primaryContainerFill,
+      secondaryContainerFill:
+          secondaryContainerFill ?? this.secondaryContainerFill,
       primaryPairGradient: primaryPairGradient ?? this.primaryPairGradient,
-      secondaryPairGradient: secondaryPairGradient ?? this.secondaryPairGradient,
+      secondaryPairGradient:
+          secondaryPairGradient ?? this.secondaryPairGradient,
     );
   }
 
@@ -77,13 +100,18 @@ class PaletteTertiaryLayers extends ThemeExtension<PaletteTertiaryLayers> {
       accent3: Color.lerp(accent3, other.accent3, t) ?? accent3,
       accent4: Color.lerp(accent4, other.accent4, t) ?? accent4,
       colorOrder: t < 0.5 ? colorOrder : other.colorOrder,
-      tertiaryLayersByColor: t < 0.5 ? tertiaryLayersByColor : other.tertiaryLayersByColor,
-      primaryPairGradient: t < 0.5
-          ? primaryPairGradient
-          : other.primaryPairGradient,
-      secondaryPairGradient: t < 0.5
-          ? secondaryPairGradient
-          : other.secondaryPairGradient,
+      tertiaryLayersByColor:
+          t < 0.5 ? tertiaryLayersByColor : other.tertiaryLayersByColor,
+      displayBackgroundFill:
+          t < 0.5 ? displayBackgroundFill : other.displayBackgroundFill,
+      primaryContainerFill:
+          t < 0.5 ? primaryContainerFill : other.primaryContainerFill,
+      secondaryContainerFill:
+          t < 0.5 ? secondaryContainerFill : other.secondaryContainerFill,
+      primaryPairGradient:
+          t < 0.5 ? primaryPairGradient : other.primaryPairGradient,
+      secondaryPairGradient:
+          t < 0.5 ? secondaryPairGradient : other.secondaryPairGradient,
     );
   }
 }

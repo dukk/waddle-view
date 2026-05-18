@@ -334,8 +334,17 @@ class _WaddleRootState extends State<WaddleRoot> {
         return MaterialApp(
           title: 'Waddle View',
           theme: theme,
-          builder: (context, child) =>
-              child ?? const SizedBox.shrink(),
+          builder: (context, child) {
+            final body = child ?? const SizedBox.shrink();
+            final gradient = theme.displayBackgroundFill.toGradient();
+            if (gradient == null) {
+              return body;
+            }
+            return DecoratedBox(
+              decoration: BoxDecoration(gradient: gradient),
+              child: body,
+            );
+          },
           home: WaddleHome(
             db: widget.db,
             blobs: widget.blobs,
@@ -574,6 +583,8 @@ void _applyCuratorTickerMembership(
   filter.tickerCurationEnabled = configuration.tickerEnabled;
   filter.tickerTapeIds =
       configuration.tickerEnabled ? configuration.tickerMemberIds : const {};
+  filter.tickerProgramDurationSeconds =
+      configuration.tickerProgramDurationSeconds;
 }
 
 Future<void> _rescanRejectListOnStartup(AppDatabase db) async {

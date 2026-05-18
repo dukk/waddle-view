@@ -15,6 +15,12 @@ void main() {
     expect(palette.orderedPalette, hasLength(9));
     expect(palette.accents, hasLength(4));
     expect(palette.background.computeLuminance(), lessThan(0.12));
+    expect(palette.primaryContainerFill.gradientColors, hasLength(2));
+    expect(palette.secondaryContainerFill.gradientColors, hasLength(3));
+    expect(
+      palette.primaryContainerBackground,
+      palette.neutrals[1],
+    );
   });
 
   test('light Coolors palettes are darkened for TV surfaces', () {

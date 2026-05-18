@@ -36,11 +36,7 @@ class GuestWifiSlideWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = theme.extension<PaletteTertiaryLayers>();
-    final iconColor =
-        palette?.iconColor ??
-        theme.iconTheme.color ??
-        theme.colorScheme.onSurfaceVariant;
+    final iconColor = theme.defaultIconColor;
     final headline = spec.config['headline'] as String? ?? 'Guest WiFi';
     final raw = spec.config['connection'] as String?;
     final parsed = parseWifiConnectionUri(raw);

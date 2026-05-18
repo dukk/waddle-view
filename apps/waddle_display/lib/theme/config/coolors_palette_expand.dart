@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'nine_color_tv_palette.dart';
+import 'display_theme_palette.dart';
 
-/// Builds a [NineColorTvPalette] from a Coolors-style 5-color list (dark → light).
-NineColorTvPalette nineColorTvPaletteFromCoolorsFive(List<Color> colors) {
+/// Builds a [DisplayThemePalette] from a Coolors-style 5-color list (dark → light).
+DisplayThemePalette displayThemePaletteFromCoolorsFive(List<Color> colors) {
   if (colors.length != 5) {
     throw ArgumentError.value(colors.length, 'colors', 'expected exactly 5 colors');
   }
@@ -22,12 +22,17 @@ NineColorTvPalette nineColorTvPaletteFromCoolorsFive(List<Color> colors) {
       : const Color(0xFFE8E6E3);
 
   final accents = _fourAccentColors(colors, primaryText);
+  final neutrals = [background, footerBar, midDark, mid, primaryText];
 
-  return NineColorTvPalette(
-    neutrals: [background, footerBar, midDark, mid, primaryText],
+  return DisplayThemePalette.fromNeutralsAndAccents(
+    neutrals: neutrals,
     accents: accents,
   );
 }
+
+/// @deprecated Use [displayThemePaletteFromCoolorsFive].
+NineColorTvPalette nineColorTvPaletteFromCoolorsFive(List<Color> colors) =>
+    displayThemePaletteFromCoolorsFive(colors);
 
 List<Color> _fourAccentColors(List<Color> colors, Color primaryText) {
   final ranked = List<Color>.from(colors)
@@ -57,7 +62,6 @@ double _saturation(Color color) {
   return hsl.saturation;
 }
 
-/// Keeps display/TV themes dark even when the Coolors source palette is mostly light.
 Color _tvSurfaceColor(Color color) {
   if (color.computeLuminance() <= 0.12) {
     return color;

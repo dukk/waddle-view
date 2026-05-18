@@ -7,7 +7,7 @@ import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import '../../../curator/screen_program_curator.dart';
 import 'package:waddle_shared/persistence/database.dart';
-import '../../../theme/theme_palette_extension.dart';
+import '../../../theme/display_theme.dart';
 import '../../content_category_slide_header.dart';
 import '../../dashboard_viewport_scope.dart';
 import '../../slide_content_joke_trivia.dart';
@@ -338,8 +338,7 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     if (_eliminationEndMs <= 0) {
       return const SizedBox.shrink();
     }
-    final palette = theme.extension<PaletteTertiaryLayers>();
-    final coral = palette?.accent2 ?? theme.colorScheme.tertiary;
+    final coral = theme.accent(2);
     return Padding(
       padding: EdgeInsets.only(top: 24 * s, bottom: 32 * s),
       child: Align(
@@ -450,13 +449,11 @@ class _TriviaSlideWidgetState extends State<TriviaSlideWidget> {
     final fadeStrikeOnly =
         struck && _strikeAnimationKind == TriviaStrikeAnimationKind.fadeOut;
     final useStruckPalette = fadeStrikeOnly;
-    final cs = theme.colorScheme;
-    final palette = theme.extension<PaletteTertiaryLayers>();
     final accentColors = [
-      palette?.accent1 ?? cs.secondary,
-      palette?.accent2 ?? cs.tertiary,
-      palette?.accent3 ?? cs.primary,
-      palette?.accent4 ?? cs.outline,
+      theme.accent(1),
+      theme.accent(2),
+      theme.accent(3),
+      theme.accent(4),
     ];
     final accentColor = accentColors[slot % accentColors.length];
     final text = _optionText(row, sourceLetter);

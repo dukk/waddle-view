@@ -2,34 +2,51 @@ import 'package:flutter/material.dart';
 
 import '../ticker_marquee_style.dart';
 import '../theme_palette_extension.dart';
-import 'nine_color_tv_palette.dart';
+import 'display_theme_palette.dart';
 
-ThemeData buildNineColorDisplayTheme(NineColorTvPalette palette) {
+ThemeData buildNineColorDisplayTheme(DisplayThemePalette palette) {
+  final surfaceContainerHigh = Color.lerp(
+    palette.primaryContainerBackground,
+    palette.secondaryContainerBackground,
+    0.5,
+  )!;
+
   final baseScheme = ColorScheme.fromSeed(
     seedColor: palette.primary,
     brightness: Brightness.dark,
   );
   final colorScheme = baseScheme.copyWith(
-    surface: palette.background,
+    surface: palette.displayBackground,
     onSurface: palette.primaryText,
     primary: palette.primary,
     onPrimary: palette.primaryText,
+    primaryContainer: palette.primaryContainerBackground,
+    onPrimaryContainer: palette.primaryContainerForeground,
     secondary: palette.accents[0],
-    onSecondary: palette.background,
+    onSecondary: palette.displayBackground,
+    secondaryContainer: palette.secondaryContainerBackground,
+    onSecondaryContainer: palette.secondaryContainerForeground,
     tertiary: palette.accents[1],
     onTertiary: palette.primaryText,
     tertiaryContainer: palette.accents[3],
     onTertiaryContainer: palette.primaryText,
+    surfaceContainer: palette.primaryContainerBackground,
+    surfaceContainerHigh: surfaceContainerHigh,
     surfaceContainerHighest: palette.footerBar,
     onSurfaceVariant: palette.mutedText,
     outline: palette.accents[2],
     outlineVariant: palette.mutedText,
   );
 
+  final primaryGradient = palette.primaryContainerFill.toLinearGradient() ??
+      palette.primaryPairGradient;
+  final secondaryGradient = palette.secondaryContainerFill.toLinearGradient() ??
+      palette.secondaryPairGradient;
+
   final base = ThemeData(
     useMaterial3: true,
     colorScheme: colorScheme,
-    scaffoldBackgroundColor: palette.background,
+    scaffoldBackgroundColor: palette.displayBackgroundFill.resolveColor(),
     iconTheme: IconThemeData(color: palette.iconColor),
     extensions: [
       PaletteTertiaryLayers(
@@ -44,8 +61,11 @@ ThemeData buildNineColorDisplayTheme(NineColorTvPalette palette) {
           for (final color in palette.orderedPalette)
             color: _tertiaryLayersFor(color),
         },
-        primaryPairGradient: palette.primaryPairGradient,
-        secondaryPairGradient: palette.secondaryPairGradient,
+        displayBackgroundFill: palette.displayBackgroundFill,
+        primaryContainerFill: palette.primaryContainerFill,
+        secondaryContainerFill: palette.secondaryContainerFill,
+        primaryPairGradient: primaryGradient,
+        secondaryPairGradient: secondaryGradient,
       ),
     ],
   );

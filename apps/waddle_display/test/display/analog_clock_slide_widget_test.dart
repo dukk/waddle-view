@@ -4,7 +4,7 @@ import 'package:waddle_display/clock.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_display/display/screens/clock/analog_clock_slide_widget.dart';
 import 'package:waddle_display/display/screens/clock/clock_hand_angles.dart';
-import 'package:waddle_display/theme/theme_palette_extension.dart';
+import '../helpers/sample_palette_layers.dart';
 
 void main() {
   testWidgets('shows date and CustomPaint dial', (tester) async {
@@ -68,17 +68,10 @@ void main() {
     const accent3 = Color(0xFF333333);
     final theme = ThemeData.light().copyWith(
       extensions: <ThemeExtension<dynamic>>[
-        const PaletteTertiaryLayers(
-          primary: Colors.black,
-          iconColor: Colors.white,
+        samplePaletteTertiaryLayers(
           accent1: accent1,
           accent2: accent2,
           accent3: accent3,
-          accent4: Color(0xFF444444),
-          colorOrder: <Color>[Colors.black],
-          tertiaryLayersByColor: <Color, List<Color>>{},
-          primaryPairGradient: LinearGradient(colors: <Color>[Colors.black, Colors.white]),
-          secondaryPairGradient: LinearGradient(colors: <Color>[Colors.white, Colors.black]),
         ),
       ],
     );
@@ -117,17 +110,10 @@ void main() {
     const accent3 = Color(0xFF333333);
     final theme = ThemeData.light().copyWith(
       extensions: <ThemeExtension<dynamic>>[
-        const PaletteTertiaryLayers(
-          primary: Colors.black,
-          iconColor: Colors.white,
+        samplePaletteTertiaryLayers(
           accent1: accent1,
           accent2: accent2,
           accent3: accent3,
-          accent4: Color(0xFF444444),
-          colorOrder: <Color>[Colors.black],
-          tertiaryLayersByColor: <Color, List<Color>>{},
-          primaryPairGradient: LinearGradient(colors: <Color>[Colors.black, Colors.white]),
-          secondaryPairGradient: LinearGradient(colors: <Color>[Colors.white, Colors.black]),
         ),
       ],
     );

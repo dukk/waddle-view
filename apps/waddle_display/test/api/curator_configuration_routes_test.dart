@@ -58,6 +58,7 @@ void main() {
     expect(detailBody['members'], isA<Map>());
     expect(detailBody['rules'], isA<List>());
     expect(detailBody['ticker_enabled'], isTrue);
+    expect(detailBody['ticker_program_duration_seconds'], 300);
   });
 
   test('POST PATCH DELETE curator configuration lifecycle', () async {
@@ -72,6 +73,7 @@ void main() {
         'name': 'Test',
         'layer': 'enhancement',
         'sort_order': 50,
+        'ticker_program_duration_seconds': 420,
         'rules': [
           {
             'id': 'r1',
@@ -105,6 +107,7 @@ void main() {
     final detailBody = jsonDecode(detail.body) as Map<String, dynamic>;
     expect(detailBody['name'], 'Renamed');
     expect(detailBody['ticker_enabled'], isFalse);
+    expect(detailBody['ticker_program_duration_seconds'], 420);
 
     final del = await http.delete(
       Uri.parse('${h.baseUrl}/v1/curator/configurations/test_enhancement'),

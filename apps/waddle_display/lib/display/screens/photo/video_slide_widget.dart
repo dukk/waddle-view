@@ -12,6 +12,7 @@ import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import '../../../curator/screen_program_curator.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import '../../../theme/display_theme.dart';
 import '../../dashboard_viewport_scope.dart';
 import 'photo_attribution_overlay.dart';
 import 'photo_video_materialize.dart';
@@ -348,7 +349,7 @@ class _VideoSlideWidgetState extends State<VideoSlideWidget> {
           height: 36 * s,
           child: CircularProgressIndicator(
             strokeWidth: 3 * s,
-            color: widget.theme.colorScheme.primary,
+            color: widget.theme.progressIndicatorColor,
           ),
         ),
       );

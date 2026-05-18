@@ -11,6 +11,7 @@ class CuratorConfigurationInput {
     required this.layer,
     required this.sortOrder,
     required this.programDurationSeconds,
+    required this.tickerProgramDurationSeconds,
     required this.historyDepth,
     required this.requireNewsPhotoForScreens,
     required this.tickerEnabled,
@@ -27,6 +28,7 @@ class CuratorConfigurationInput {
   final String layer;
   final int sortOrder;
   final int programDurationSeconds;
+  final int tickerProgramDurationSeconds;
   final int historyDepth;
   final bool requireNewsPhotoForScreens;
   final bool tickerEnabled;

@@ -8,6 +8,7 @@ import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import '../../../curator/screen_program_curator.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import '../../content_category_slide_header.dart';
+import '../../../theme/display_theme.dart';
 import '../../dashboard_viewport_scope.dart';
 import 'news_load.dart';
 
@@ -297,7 +298,7 @@ class _ArticleColumnCard extends StatelessWidget {
               border: Border.all(
                 color: theme.colorScheme.outline.withValues(alpha: 0.35),
               ),
-              color: theme.colorScheme.surfaceContainerHigh,
+              color: theme.slidePanelColor,
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(9 * scale),
@@ -472,7 +473,7 @@ class _ArticleColumnCard extends StatelessWidget {
     bool useNewsIcon = false,
   }) {
     return ColoredBox(
-      color: theme.colorScheme.surfaceContainerHighest,
+      color: theme.slidePanelColor,
       child: Center(
         child: Icon(
           blobReadFailed

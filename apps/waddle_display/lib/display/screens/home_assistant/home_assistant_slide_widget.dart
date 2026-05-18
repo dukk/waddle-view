@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import '../../../curator/screen_program_curator.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import '../../../theme/display_theme.dart';
 import '../../dashboard_viewport_scope.dart';
 
 /// Renders the latest [HomeAssistantEntityStates] for enabled interest rows.
@@ -95,7 +96,7 @@ class HomeAssistantSlideWidget extends StatelessWidget {
       width: 280 * scale,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest,
+          color: theme.slidePanelColor,
           borderRadius: BorderRadius.circular(14 * scale),
         ),
         child: Padding(

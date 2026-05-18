@@ -338,6 +338,8 @@ class LocalDriftBackend implements WaddleAdminBackend {
     return {
       if (config != null) 'default_configuration_id': config.id,
       'program_duration_seconds': config?.programDurationSeconds ?? 180,
+      'ticker_program_duration_seconds':
+          config?.tickerProgramDurationSeconds ?? 300,
       'history_depth': config?.historyDepth ?? 5,
       'require_news_photo_for_screens':
           config?.requireNewsPhotoForScreens ?? true,

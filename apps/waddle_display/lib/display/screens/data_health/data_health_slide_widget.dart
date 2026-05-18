@@ -68,7 +68,6 @@ class _DataHealthSlideWidgetState extends State<DataHealthSlideWidget> {
   @override
   Widget build(BuildContext context) {
     final s = DashboardViewportScope.scaleOf(context);
-    final palette = widget.theme.extension<PaletteTertiaryLayers>();
     final headline =
         widget.spec.config['headline'] as String? ?? 'Data health';
     final pad = EdgeInsets.symmetric(horizontal: 20 * s, vertical: 12 * s);
@@ -83,7 +82,7 @@ class _DataHealthSlideWidgetState extends State<DataHealthSlideWidget> {
               height: 48 * s,
               child: CircularProgressIndicator(
                 strokeWidth: 3 * s,
-                color: palette?.accent2 ?? widget.theme.colorScheme.primary,
+                color: widget.theme.accent(2),
               ),
             ),
           );
@@ -178,7 +177,7 @@ class _DataHealthSlideWidgetState extends State<DataHealthSlideWidget> {
     DatabaseHealthSnapshot d,
     double s,
   ) {
-    final surface = widget.theme.colorScheme.surfaceContainerHighest;
+    final surface = widget.theme.slidePanelColor;
     final chips = <Widget>[
       _statChip(
         surface,
@@ -230,27 +229,27 @@ class _DataHealthSlideWidgetState extends State<DataHealthSlideWidget> {
   }
 
   List<Color> _familyTypeColors() {
-    final palette = widget.theme.extension<PaletteTertiaryLayers>();
+    final t = widget.theme;
     return [
-      palette?.accent1 ?? widget.theme.colorScheme.primary,
-      palette?.accent2 ?? widget.theme.colorScheme.secondary,
-      palette?.accent3 ?? widget.theme.colorScheme.tertiary,
-      palette?.accent4 ?? widget.theme.colorScheme.primaryContainer,
-      palette?.iconColor ?? widget.theme.colorScheme.outline,
+      t.accent(1),
+      t.accent(2),
+      t.accent(3),
+      t.accent(4),
+      t.defaultIconColor,
     ];
   }
 
   /// Distinct colors for category wedges (reused for photos and videos pies).
   List<Color> _categoryColors(int n) {
-    final palette = widget.theme.extension<PaletteTertiaryLayers>();
+    final t = widget.theme;
     final base = <Color>[
-      palette?.accent2 ?? widget.theme.colorScheme.secondary,
-      palette?.accent3 ?? widget.theme.colorScheme.tertiary,
-      palette?.accent1 ?? widget.theme.colorScheme.primary,
-      palette?.accent4 ?? widget.theme.colorScheme.primaryContainer,
-      palette?.iconColor ?? widget.theme.colorScheme.outline,
-      widget.theme.colorScheme.secondaryContainer,
-      widget.theme.colorScheme.tertiaryContainer,
+      t.accent(2),
+      t.accent(3),
+      t.accent(1),
+      t.accent(4),
+      t.defaultIconColor,
+      t.colorScheme.secondaryContainer,
+      t.colorScheme.tertiaryContainer,
     ];
     return List<Color>.generate(
       n,
@@ -483,11 +482,8 @@ class _DataHealthSlideWidgetState extends State<DataHealthSlideWidget> {
   }
 
   Widget _rssSuppressedPie(DatabaseHealthSnapshot d, double s) {
-    final palette = widget.theme.extension<PaletteTertiaryLayers>();
-    final activeC =
-        palette?.accent1 ?? widget.theme.colorScheme.primary;
-    final hiddenC =
-        palette?.accent4 ?? widget.theme.colorScheme.errorContainer;
+    final activeC = widget.theme.accent(1);
+    final hiddenC = widget.theme.accent(4);
 
     final active = d.rssArticleActive.toDouble();
     final hidden = d.rssArticleSuppressed.toDouble();

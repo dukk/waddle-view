@@ -19,6 +19,7 @@ CuratorConfigurationInput _config({
     layer: layer,
     sortOrder: sortOrder,
     programDurationSeconds: 180,
+    tickerProgramDurationSeconds: 300,
     historyDepth: 5,
     requireNewsPhotoForScreens: true,
     tickerEnabled: true,

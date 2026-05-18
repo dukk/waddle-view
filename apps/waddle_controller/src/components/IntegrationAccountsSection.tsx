@@ -3,6 +3,7 @@ import {
   Alert,
   Button,
   Chip,
+  Link,
   Dialog,
   DialogActions,
   DialogContent,
@@ -332,9 +333,13 @@ function AddAccountDialog({
                 <>
                   {selected?.signup_url ? (
                     <Typography variant="body2">
-                      <a href={selected.signup_url} target="_blank" rel="noopener noreferrer">
+                      <Link
+                        href={selected.signup_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         Get an API key
-                      </a>
+                      </Link>
                     </Typography>
                   ) : null}
                   <TextField
@@ -486,9 +491,9 @@ function ConfigureAccountDialog({
               </Typography>
               {account.signup_url ? (
                 <Typography variant="body2">
-                  <a href={account.signup_url} target="_blank" rel="noopener noreferrer">
+                  <Link href={account.signup_url} target="_blank" rel="noopener noreferrer">
                     Create an account
-                  </a>
+                  </Link>
                 </Typography>
               ) : null}
               {account.configured ? (
@@ -509,9 +514,9 @@ function ConfigureAccountDialog({
               </Typography>
               {account.signup_url ? (
                 <Typography variant="body2">
-                  <a href={account.signup_url} target="_blank" rel="noopener noreferrer">
+                  <Link href={account.signup_url} target="_blank" rel="noopener noreferrer">
                     Get an API key
-                  </a>
+                  </Link>
                 </Typography>
               ) : null}
               <TextField

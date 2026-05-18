@@ -5,7 +5,7 @@ export type CuratorThemeOption = {
   colors: readonly string[];
 };
 
-/** Preview swatches mirror `apps/waddle_display/lib/theme/config/palettes/`. */
+/** Preview swatches mirror base palette colors; runtime themes also define container fills and gradients. */
 export const curatorThemeIds: readonly CuratorThemeOption[] = [
   {
     id: 'navy_coral',
@@ -85,6 +85,13 @@ export const CURATOR_PROGRAM_DURATION = {
   max: 600,
   step: 15,
   default: 180,
+} as const;
+
+export const CURATOR_TICKER_PROGRAM_DURATION = {
+  min: 30,
+  max: 600,
+  step: 15,
+  default: 300,
 } as const;
 
 export const CURATOR_HISTORY_DEPTH = {

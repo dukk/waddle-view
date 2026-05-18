@@ -30,7 +30,12 @@ class DefaultDashboardCurator implements DashboardCurator {
       return;
     }
     AppDebugLog.curator('ticker refresh: begin');
-    final kv = await _read.loadKeyValuesForCuration();
+    final loadedKv = await _read.loadKeyValuesForCuration();
+    final kv = Map<String, String>.from(loadedKv);
+    final tickerDuration = _membershipFilter?.tickerProgramDurationSeconds;
+    if (tickerDuration != null) {
+      kv['curator.ticker.newsScrollBudgetSeconds'] = '$tickerDuration';
+    }
     final news = await _read.loadNewsCandidatesForTicker();
     final currentWeather = await _read.loadCurrentWeatherForTicker();
     final weatherGovAlerts = await _read.loadWeatherGovAlertsForTicker();

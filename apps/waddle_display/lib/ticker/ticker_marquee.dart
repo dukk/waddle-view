@@ -515,12 +515,11 @@ class _TickerMarqueeState extends State<TickerMarquee>
   Widget build(BuildContext context) {
     final s = DashboardViewportScope.scaleOf(context);
     final radius = BorderRadius.circular(8 * s);
-    final palette = Theme.of(context).extension<PaletteTertiaryLayers>();
+    final theme = Theme.of(context);
+    final tickerFill = theme.tickerChromeFill;
     final tickerBackground = BoxDecoration(
-      gradient: palette?.secondaryPairGradient,
-      color: palette == null
-          ? Theme.of(context).colorScheme.surfaceContainerHighest
-          : null,
+      gradient: tickerFill.toGradient(),
+      color: tickerFill.hasGradient ? null : theme.colorScheme.secondaryContainer,
       borderRadius: radius,
     );
     return LayoutBuilder(
@@ -661,7 +660,7 @@ class _TickerNavigationOverlay extends StatelessWidget {
     final theme = Theme.of(context);
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface.withValues(alpha: 0.9),
+        color: theme.displayBackgroundFill.resolveColor().withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Padding(
@@ -680,8 +679,10 @@ class _TickerNavigationOverlay extends StatelessWidget {
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           color: i == currentIndex
-                              ? theme.colorScheme.primaryContainer
-                              : theme.colorScheme.surfaceContainerHighest,
+                              ? theme.colorScheme.secondaryContainer
+                              : theme.colorScheme.secondaryContainer.withValues(
+                                  alpha: 0.45,
+                                ),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Padding(

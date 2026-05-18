@@ -65,7 +65,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -182,6 +182,13 @@ ORDER BY priority DESC, created_at DESC;
       }
       if (from == 15 && to >= 16) {
         await _migrateV15ToV16IntegrationsConfigColumns(this);
+        if (to == 16) {
+          return;
+        }
+        from = 16;
+      }
+      if (from == 16 && to >= 17) {
+        await _migrateV16ToV17CuratorTickerProgramDuration(this);
         return;
       }
       throw UnsupportedError(
@@ -778,6 +785,29 @@ Future<void> _ensureCuratorConfigurationsTickerEnabled(AppDatabase db) async {
     'UPDATE curator_configurations SET ticker_enabled = 1 '
     'WHERE ticker_enabled IS NULL',
   );
+}
+
+Future<void> _migrateV16ToV17CuratorTickerProgramDuration(AppDatabase db) async {
+  await _ensureCuratorConfigurationsTickerProgramDuration(db);
+}
+
+/// Ensures [CuratorConfigurations.tickerProgramDurationSeconds] is present.
+Future<void> _ensureCuratorConfigurationsTickerProgramDuration(
+  AppDatabase db,
+) async {
+  if (!await _sqliteTableExists(db, 'curator_configurations')) {
+    return;
+  }
+  if (!await _sqliteColumnExists(
+    db,
+    'curator_configurations',
+    'ticker_program_duration_seconds',
+  )) {
+    await db.customStatement(
+      'ALTER TABLE curator_configurations ADD COLUMN '
+      'ticker_program_duration_seconds INTEGER NOT NULL DEFAULT 300',
+    );
+  }
 }
 
 /// Moves `base_url` into `config_json.baseUrl` and drops `example_config_json`.

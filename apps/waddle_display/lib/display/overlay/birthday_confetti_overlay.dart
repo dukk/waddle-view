@@ -4,7 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:waddle_shared/persistence/display_overlay_confetti_settings.dart';
 
-import '../../theme/theme_palette_extension.dart';
+import '../../theme/display_theme.dart';
 
 /// One full vertical drift cycle at [fallSpeed] `1.0` matches the historical
 /// ~5s tick; lower [fallSpeed] stretches the cycle (slower fall), down to
@@ -209,7 +209,7 @@ class _OccasionalMessageLayerState extends State<_OccasionalMessageLayer> {
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.4,
-                    color: Theme.of(context).colorScheme.primary.withValues(
+                    color: Theme.of(context).accent(1).withValues(
                       alpha: 0.42,
                     ),
                     shadows: const [

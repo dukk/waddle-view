@@ -12,7 +12,10 @@ void registerIntegrationOAuthProvidersRestRoutes(
   required SecretStore secrets,
 }) {
   r.get('/v1/oauth-providers', (Request req) async {
-    final items = await oauthProvidersStatusJson(secrets);
+    final items = await oauthProvidersStatusJson(
+      secrets,
+      lookupClientIdMetadata: true,
+    );
     return Response.ok(
       jsonEncode({'items': items}),
       headers: _jsonHeaders,

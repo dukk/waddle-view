@@ -8,6 +8,7 @@ import 'package:waddle_shared/blob/blob_store.dart';
 import '../../../curator/photo_collage_curation.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import '../../../curator/screen_program_curator.dart';
+import '../../../theme/display_theme.dart';
 import '../../dashboard_viewport_scope.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'photo_slide_media.dart';
@@ -102,7 +103,7 @@ class _PhotoCollageSlideWidgetState
           height: 36 * s,
           child: CircularProgressIndicator(
             strokeWidth: 3 * s,
-            color: widget.theme.colorScheme.primary,
+            color: widget.theme.progressIndicatorColor,
           ),
         ),
       );
@@ -157,7 +158,7 @@ class _PhotoCollageSlideWidgetState
     final bytes = cell.bytes;
     if (row == null || bytes == null) {
       return ColoredBox(
-        color: widget.theme.colorScheme.surfaceContainerHighest,
+        color: widget.theme.slidePanelColor,
         child: Center(
           child: Icon(
             Icons.image_not_supported_outlined,

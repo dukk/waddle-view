@@ -5,5 +5,9 @@ class CuratorMembershipFilter {
 
   /// Null until the first [ActiveCuratorService] resolve (then a possibly empty set).
   Set<String>? tickerTapeIds;
+
+  /// Per-active-configuration RSS marquee scroll budget (seconds).
+  int? tickerProgramDurationSeconds;
+
   Set<String> overlayIds = {};
 }

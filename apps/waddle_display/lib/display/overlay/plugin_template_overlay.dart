@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:waddle_shared/persistence/display_overlay_schedule_row.dart';
 
+import '../../theme/display_theme.dart';
+
 /// Generic celebration overlay driven by schedule [config_json] and optional sidecar.
 class PluginTemplateOverlay extends StatelessWidget {
   const PluginTemplateOverlay({
@@ -19,7 +21,8 @@ class PluginTemplateOverlay extends StatelessWidget {
     final config = _parseConfig(row.configJson);
     final opacity = (config['opacity'] as num?)?.toDouble().clamp(0.0, 1.0) ?? 0.35;
     final messages = _messages(config);
-    final color = accents.isNotEmpty ? accents.first : Theme.of(context).colorScheme.primary;
+    final color =
+        accents.isNotEmpty ? accents.first : Theme.of(context).accent(1);
 
     return IgnorePointer(
       child: Container(

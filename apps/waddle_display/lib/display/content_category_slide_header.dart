@@ -27,11 +27,7 @@ class ContentCategorySlideHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = theme.extension<PaletteTertiaryLayers>();
-    final iconColor =
-        palette?.iconColor ??
-        theme.iconTheme.color ??
-        theme.colorScheme.onSurfaceVariant;
+    final iconColor = theme.defaultIconColor;
     final id = categoryId?.trim();
     if (id == null || id.isEmpty) {
       return const SizedBox.shrink();

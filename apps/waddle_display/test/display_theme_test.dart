@@ -9,9 +9,25 @@ void main() {
     final t = DisplayTheme.build();
     final palette = t.extension<PaletteTertiaryLayers>();
     expect(t.brightness, Brightness.dark);
-    expect(t.scaffoldBackgroundColor, NavyCoralPalette.background);
+    expect(t.scaffoldBackgroundColor, NavyCoralPalette.displayBackgroundFill.resolveColor());
     expect(t.colorScheme.surface, NavyCoralPalette.background);
     expect(t.colorScheme.onSurface, NavyCoralPalette.primaryText);
+    expect(
+      t.colorScheme.primaryContainer,
+      NavyCoralPalette.primaryContainerBackground,
+    );
+    expect(
+      t.colorScheme.onPrimaryContainer,
+      NavyCoralPalette.primaryContainerForeground,
+    );
+    expect(
+      t.colorScheme.secondaryContainer,
+      NavyCoralPalette.secondaryContainerBackground,
+    );
+    expect(
+      t.colorScheme.onSecondaryContainer,
+      NavyCoralPalette.secondaryContainerForeground,
+    );
     expect(
       t.colorScheme.surfaceContainerHighest,
       NavyCoralPalette.footerBar,
@@ -31,11 +47,15 @@ void main() {
     expect(palette.accent4, NavyCoralPalette.accents[3]);
     expect(
       palette.primaryPairGradient.colors,
-      [NavyCoralPalette.inkBlack, NavyCoralPalette.prussianBlue],
+      NavyCoralPalette.primaryContainerFill.gradientColors,
     );
     expect(
       palette.secondaryPairGradient.colors,
-      [NavyCoralPalette.duskBlue, NavyCoralPalette.dustyDenim],
+      NavyCoralPalette.secondaryContainerFill.gradientColors,
+    );
+    expect(
+      palette.displayBackgroundFill.gradientColors,
+      NavyCoralPalette.displayBackgroundFill.gradientColors,
     );
     expect(t.iconTheme.color, NavyCoralPalette.dustyDenim);
     for (final color in NavyCoralPalette.orderedPalette) {
@@ -43,6 +63,12 @@ void main() {
     }
     expect(t.textTheme.bodyLarge?.fontSize, greaterThanOrEqualTo(18));
     expect(t.extension<TickerMarqueeStyle>(), isA<TickerMarqueeStyle>());
+  });
+
+  test('slidePanelColor matches primaryContainer', () {
+    final t = DisplayTheme.build();
+    expect(t.slidePanelColor, t.colorScheme.primaryContainer);
+    expect(t.slidePanelOnColor, t.colorScheme.onPrimaryContainer);
   });
 
   test('DisplayTextScaler composes with platform TextScaler', () {
@@ -60,7 +86,7 @@ void main() {
     expect(graphite.brightness, Brightness.dark);
     expect(graphitePalette, isNotNull);
     expect(graphitePalette!.primaryPairGradient.colors, hasLength(2));
-    expect(graphitePalette.secondaryPairGradient.colors, hasLength(2));
+    expect(graphitePalette.secondaryPairGradient.colors, hasLength(3));
     expect(
       DisplayTheme.buildFromKvValue(kDisplayThemeNavyCoral).brightness,
       Brightness.dark,
@@ -78,6 +104,7 @@ void main() {
     expect(palette, isNotNull);
     expect(palette!.colorOrder, hasLength(9));
     expect(palette.accent1, isNot(equals(palette.accent2)));
+    expect(palette.primaryContainerFill.gradientColors.length, greaterThanOrEqualTo(2));
   });
 
   test('DisplayTextScaler equality and deprecated textScaleFactor', () {
