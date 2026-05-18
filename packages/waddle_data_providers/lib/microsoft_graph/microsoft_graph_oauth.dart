@@ -54,11 +54,15 @@ class MicrosoftGraphOAuth {
   Uri _loginBase(String host) => Uri(scheme: 'https', host: host);
 
   /// Returns a usable access token, or `null` if none could be obtained.
+  ///
+  /// When [pollDeviceCode] is false, a device-code flow may still start and insert
+  /// a sign-in alert, but token polling stops immediately so callers can return.
   Future<String?> ensureAccessToken({
     required AppDatabase db,
     required SecretStore secrets,
     required String clientId,
     required String graphAccountKey,
+    bool pollDeviceCode = true,
   }) async {
     final accessKey = microsoftGraphAccessTokenSecret(graphAccountKey);
     final refreshKey = microsoftGraphRefreshTokenSecret(graphAccountKey);
@@ -118,6 +122,7 @@ class MicrosoftGraphOAuth {
       secrets: secrets,
       clientId: clientId,
       graphAccountKey: graphAccountKey,
+      pollDeviceCode: pollDeviceCode,
     );
   }
 
@@ -233,6 +238,7 @@ class MicrosoftGraphOAuth {
     required SecretStore secrets,
     required String clientId,
     required String graphAccountKey,
+    bool pollDeviceCode = true,
   }) async {
     final promptKv = kOutlookCalendarLastDevicePromptKvKey(graphAccountKey);
     final lastPromptRow =
@@ -327,6 +333,14 @@ class MicrosoftGraphOAuth {
       await db.into(db.configKeyValues).insertOnConflictUpdate(
             ConfigKeyValuesCompanion.insert(key: promptKv, value: '$now'),
           );
+
+      if (!pollDeviceCode) {
+        diagnostics.engine(
+          'MicrosoftGraphOAuth: device code alert id=$alertId account=$graphAccountKey '
+          '(poll skipped)',
+        );
+        return null;
+      }
 
       final tokenUri = _loginBase(
         'login.microsoftonline.com',

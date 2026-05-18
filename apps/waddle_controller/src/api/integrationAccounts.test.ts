@@ -5,6 +5,7 @@ import {
   fetchIntegrationAccounts,
   patchIntegrationAccount,
   putIntegrationAccountSecret,
+  probeIntegrationAccountOAuth,
   requestIntegrationAccountSignIn,
 } from './integrationAccounts';
 
@@ -58,5 +59,19 @@ describe('integrationAccounts api', () => {
     await putIntegrationAccountSecret(display, 'pexels', 'key');
     await requestIntegrationAccountSignIn(display, 'work');
     expect(apiFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('probes oauth on display', async () => {
+    vi.mocked(apiJson).mockResolvedValue({
+      configured: false,
+      status: 'sign_in_required',
+    });
+    const res = await probeIntegrationAccountOAuth(display, 'work');
+    expect(res.status).toBe('sign_in_required');
+    expect(apiJson).toHaveBeenCalledWith(
+      display,
+      '/v1/integration-accounts/work/oauth-probe',
+      expect.objectContaining({ method: 'POST' }),
+    );
   });
 });

@@ -40,7 +40,7 @@ import {
   fetchIntegrationAccounts,
   patchIntegrationAccount,
   putIntegrationAccountSecret,
-  requestIntegrationAccountSignIn,
+  probeIntegrationAccountOAuth,
 } from '@/api/integrationAccounts';
 import { integrationAccountIdFromName } from '@/util/integrationAccountSlug';
 import { listOAuthProviders, type OAuthProviderStatus } from '@/api/oauthProviders';
@@ -972,7 +972,7 @@ function AddAccountDialog({
         label: trimmedName,
       });
       if (selected.supports_oauth_sign_in) {
-        await requestIntegrationAccountSignIn(display, account_id);
+        await probeIntegrationAccountOAuth(display, account_id);
       } else {
         const key = apiKey.trim();
         if (!key) {
@@ -1129,7 +1129,7 @@ function ConfigureAccountDialog({
   const requestSignIn = async () => {
     setBusy(true);
     try {
-      await requestIntegrationAccountSignIn(display, account.id);
+      await probeIntegrationAccountOAuth(display, account.id);
       await onSaved();
     } catch (e) {
       onError(errMsg(e));

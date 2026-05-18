@@ -60,6 +60,21 @@ export async function requestIntegrationAccountSignIn(
   );
 }
 
+/** Starts OAuth on the display (device-code alert) and fetches profile when already signed in. */
+export async function probeIntegrationAccountOAuth(
+  display: SavedDisplay,
+  accountId: string,
+): Promise<{
+  configured: boolean;
+  status?: string;
+  sign_in_alert_active?: boolean;
+  profile?: Record<string, unknown>;
+}> {
+  return apiJson(display, `/v1/integration-accounts/${encodeURIComponent(accountId)}/oauth-probe`, {
+    method: 'POST',
+  });
+}
+
 export async function fetchIntegrationAccountsDetail(
   display: SavedDisplay,
   integrationId: string,

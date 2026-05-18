@@ -11,6 +11,7 @@ import 'package:waddle_shared/persistence/database.dart'
         IntegrationsCompanion,
         kDefaultCalendarGoogleIntegrationId,
         kDefaultPhotoPexelsIntegrationId;
+import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 
 import '../helpers/rest_auth_helper.dart';
 
@@ -191,6 +192,85 @@ void main() {
         items.cast<Map<String, dynamic>>().any((e) => e['id'] == 'work'),
         isTrue,
       );
+    } finally {
+      await harness.dispose();
+    }
+  });
+
+  test('GET microsoft-graph calendars requires configured token', () async {
+    final harness = await RestTestHarness.start();
+    try {
+      await harness.secrets.write(kMicrosoftGraphClientIdSecretKey, 'ms-client');
+      await harness.db.into(harness.db.integrationAccounts).insertOnConflictUpdate(
+            IntegrationAccountsCompanion.insert(
+              id: 'work',
+              accountType: kIntegrationAccountTypeMicrosoftGraph,
+              label: const Value('Work'),
+              createdAtMs: DateTime.now().millisecondsSinceEpoch,
+            ),
+          );
+
+      final res = await http.get(
+        Uri.parse(
+          '${harness.baseUrl}/v1/integration-accounts/work/microsoft-graph/calendars',
+        ),
+        headers: harness.authHeaders,
+      );
+      expect(res.statusCode, 503);
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      expect(body['error'], 'access_token_unavailable');
+    } finally {
+      await harness.dispose();
+    }
+  });
+
+  test('POST oauth-probe rejects non-oauth account types', () async {
+    final harness = await RestTestHarness.start();
+    try {
+      await harness.db.into(harness.db.integrationAccounts).insertOnConflictUpdate(
+            IntegrationAccountsCompanion.insert(
+              id: 'pexels_home',
+              accountType: kIntegrationAccountTypeApiKeyPexels,
+              label: const Value('Home'),
+              createdAtMs: DateTime.now().millisecondsSinceEpoch,
+            ),
+          );
+
+      final res = await http.post(
+        Uri.parse(
+          '${harness.baseUrl}/v1/integration-accounts/pexels_home/oauth-probe',
+        ),
+        headers: harness.authHeaders,
+      );
+      expect(res.statusCode, 400);
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      expect(body['error'], 'oauth_sign_in_not_supported');
+    } finally {
+      await harness.dispose();
+    }
+  });
+
+  test('GET microsoft-graph calendars rejects non-Microsoft accounts', () async {
+    final harness = await RestTestHarness.start();
+    try {
+      await harness.db.into(harness.db.integrationAccounts).insertOnConflictUpdate(
+            IntegrationAccountsCompanion.insert(
+              id: 'personal',
+              accountType: kIntegrationAccountTypeGoogle,
+              label: const Value('Personal'),
+              createdAtMs: DateTime.now().millisecondsSinceEpoch,
+            ),
+          );
+
+      final res = await http.get(
+        Uri.parse(
+          '${harness.baseUrl}/v1/integration-accounts/personal/microsoft-graph/calendars',
+        ),
+        headers: harness.authHeaders,
+      );
+      expect(res.statusCode, 400);
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      expect(body['error'], 'not_microsoft_graph_account');
     } finally {
       await harness.dispose();
     }

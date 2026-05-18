@@ -36,6 +36,15 @@ String? permissionForRoute(String method, String path) {
       m == 'POST') {
     return WaddlePermission.integrationsWrite;
   }
+  if (RegExp(r'^/v1/integration-accounts/[^/]+/oauth-probe$').hasMatch(p) &&
+      m == 'POST') {
+    return WaddlePermission.integrationsWrite;
+  }
+  if (RegExp(r'^/v1/integration-accounts/[^/]+/microsoft-graph/calendars$')
+          .hasMatch(p) &&
+      m == 'GET') {
+    return WaddlePermission.integrationsRead;
+  }
   if (RegExp(r'^/v1/integrations/[^/]+/accounts$').hasMatch(p) && m == 'GET') {
     return WaddlePermission.integrationsRead;
   }

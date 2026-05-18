@@ -74,7 +74,7 @@ export function IntegrationAccountChips({
       try {
         await apiFetch(
           display,
-          `/v1/integration-accounts/${encodeURIComponent(accountId)}/request-sign-in`,
+          `/v1/integration-accounts/${encodeURIComponent(accountId)}/oauth-probe`,
           { method: 'POST' },
         );
         setConfigure(null);

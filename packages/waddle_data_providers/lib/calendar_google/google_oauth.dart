@@ -35,11 +35,14 @@ class GoogleOAuth {
   final Future<void> Function(Duration duration) _sleep;
   final CollectDiagnostics diagnostics;
 
+  /// When [pollDeviceCode] is false, a device-code flow may still start and insert
+  /// a sign-in alert, but token polling stops immediately so callers can return.
   Future<String?> ensureAccessToken({
     required AppDatabase db,
     required SecretStore secrets,
     required String clientId,
     required String googleAccountKey,
+    bool pollDeviceCode = true,
   }) async {
     final accessKey = googleAccessTokenSecret(googleAccountKey);
     final refreshKey = googleRefreshTokenSecret(googleAccountKey);
@@ -76,6 +79,7 @@ class GoogleOAuth {
       secrets: secrets,
       clientId: clientId,
       googleAccountKey: googleAccountKey,
+      pollDeviceCode: pollDeviceCode,
     );
   }
 
@@ -128,6 +132,7 @@ class GoogleOAuth {
     required SecretStore secrets,
     required String clientId,
     required String googleAccountKey,
+    bool pollDeviceCode = true,
   }) async {
     final promptKv = kGoogleCalendarLastDevicePromptKvKey(googleAccountKey);
     final lastPromptRow = await (db.select(db.configKeyValues)
@@ -185,6 +190,10 @@ class GoogleOAuth {
       await db.into(db.configKeyValues).insertOnConflictUpdate(
             ConfigKeyValuesCompanion.insert(key: promptKv, value: '$now'),
           );
+
+      if (!pollDeviceCode) {
+        return null;
+      }
 
       final deadline = now + (expiresIn > 0 ? expiresIn * 1000 : 900 * 1000);
       var polled = false;

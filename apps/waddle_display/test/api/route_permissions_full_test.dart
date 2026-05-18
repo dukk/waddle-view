@@ -6,6 +6,16 @@ void main() {
   final cases = <(String, String, String)>[
     ('GET', '/v1/integrations', WaddlePermission.integrationsRead),
     ('GET', '/v1/integration-accounts', WaddlePermission.integrationsRead),
+    (
+      'GET',
+      '/v1/integration-accounts/work/microsoft-graph/calendars',
+      WaddlePermission.integrationsRead,
+    ),
+    (
+      'POST',
+      '/v1/integration-accounts/work/oauth-probe',
+      WaddlePermission.integrationsWrite,
+    ),
     ('PATCH', '/v1/integrations/p1', WaddlePermission.integrationsWrite),
     ('GET', '/v1/alerts', WaddlePermission.alertsRead),
     ('POST', '/v1/alerts', WaddlePermission.alertsWrite),
