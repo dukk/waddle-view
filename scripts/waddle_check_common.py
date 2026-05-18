@@ -493,10 +493,27 @@ def build_dart_workspace_steps(
                 dart_test_argv(
                     concurrency=concurrency,
                     test_paths=test_paths_for("integrations"),
+                    coverage=include_coverage,
                 ),
                 integrations,
             )
         )
+        if include_coverage:
+            steps.append(
+                Step(
+                    "format_coverage (waddle_integrations)",
+                    [
+                        "dart",
+                        "run",
+                        "coverage:format_coverage",
+                        "--lcov",
+                        "--in=coverage",
+                        "--out=coverage/lcov.info",
+                        "--report-on=lib",
+                    ],
+                    integrations,
+                ),
+            )
 
     if package_enabled("plugin_sdk"):
         steps.append(
@@ -562,6 +579,7 @@ def build_dart_workspace_steps(
         )
 
     if include_coverage:
+        integrations_lcov = integrations / "coverage" / "lcov.info"
         plugin_lcov = plugin_sdk / "coverage" / "lcov.info"
         steps.append(
             Step(
@@ -573,6 +591,7 @@ def build_dart_workspace_steps(
                     "--min=80",
                     "--target=90",
                     "coverage/lcov.info",
+                    str(integrations_lcov),
                     str(plugin_lcov),
                 ],
                 display,

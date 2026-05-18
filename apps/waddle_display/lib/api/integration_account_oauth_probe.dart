@@ -10,6 +10,7 @@ import 'package:waddle_integrations/microsoft_graph/microsoft_graph_profile.dart
 import 'package:waddle_shared/config/google_kv.dart';
 import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/config/microsoft_graph_kv.dart';
+import 'package:waddle_shared/integration_accounts/integration_account_alert_label.dart';
 import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
 import 'package:waddle_shared/integration_accounts/integration_accounts_service.dart';
 import 'package:waddle_shared/persistence/database.dart'
@@ -193,6 +194,7 @@ Future<bool> _hasActiveOAuthSignInAlert(
   required String source,
   required String accountId,
 }) async {
+  final accountLabel = await integrationAccountAlertLabel(db, accountId);
   final now = DateTime.now();
   final rows = await (db.select(db.alerts)
         ..where((t) => t.source.equals(source))
@@ -202,9 +204,21 @@ Future<bool> _hasActiveOAuthSignInAlert(
     if (row.expiresAt != null && !row.expiresAt!.isAfter(now)) {
       continue;
     }
-    if (row.title.contains(accountId) || row.body.contains(accountId)) {
+    if (_oauthAlertMatchesAccount(row.title, accountId, accountLabel) ||
+        _oauthAlertMatchesAccount(row.body, accountId, accountLabel)) {
       return true;
     }
   }
   return false;
+}
+
+bool _oauthAlertMatchesAccount(
+  String text,
+  String accountId,
+  String accountLabel,
+) {
+  if (text.contains(accountLabel)) {
+    return true;
+  }
+  return accountLabel != accountId && text.contains(accountId);
 }

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/config/google_kv.dart';
+import 'package:waddle_shared/integration_accounts/integration_account_alert_label.dart';
 import 'package:waddle_shared/integrations/integration_kv_repository.dart';
 import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import 'package:waddle_shared/persistence/database.dart';
@@ -173,11 +174,14 @@ class GoogleOAuth {
         return null;
       }
 
+      final accountLabel =
+          await integrationAccountAlertLabel(db, googleAccountKey);
+
       final alertId = await db.into(db.alerts).insert(
             AlertsCompanion.insert(
-              title: '$kGoogleDeviceSignInTitle ($googleAccountKey)',
+              title: '$kGoogleDeviceSignInTitle ($accountLabel)',
               body:
-                  'Account: $googleAccountKey\nCode: $userCode\nOpen: $verificationUrl\n'
+                  'Account: $accountLabel\nCode: $userCode\nOpen: $verificationUrl\n'
                   'Sign in with your Google account, then approve access.',
               qrPayload: Value(verificationUrl),
               severity: const Value('auth'),

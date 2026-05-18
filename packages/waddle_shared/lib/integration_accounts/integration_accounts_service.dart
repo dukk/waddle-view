@@ -7,9 +7,6 @@ import '../integrations/integration_kv_types.dart';
 import '../persistence/database.dart';
 import '../secrets/secret_store.dart';
 import 'integration_account_catalog.dart';
-import 'package:http/http.dart' as http;
-
-import 'oauth_client_id_metadata.dart';
 import 'oauth_provider_catalog.dart';
 
 /// Parses account keys referenced in integration [configJson] for OAuth types.
@@ -680,29 +677,18 @@ Future<void> updateOperatorIntegrationAccountLabel(
 }
 
 Future<List<Map<String, dynamic>>> oauthProvidersStatusJson(
-  SecretStore secrets, {
-  http.Client? httpClient,
-  bool lookupClientIdMetadata = false,
-}) async {
+  SecretStore secrets,
+) async {
   final out = <Map<String, dynamic>>[];
   for (final provider in kOAuthProviders) {
     final stored = await secrets.read(provider.clientIdStorageKey);
     final configured = stored != null && stored.trim().isNotEmpty;
-    final row = <String, dynamic>{
+    out.add({
       'id': provider.id,
       'label': provider.label,
       'account_type': provider.accountTypeId,
       'client_id_configured': configured,
-    };
-    if (configured && lookupClientIdMetadata) {
-      final metadata = await lookupOAuthClientIdMetadata(
-        providerId: provider.id,
-        clientId: stored,
-        httpClient: httpClient,
-      );
-      row['client_id_metadata'] = metadata.toJson();
-    }
-    out.add(row);
+    });
   }
   return out;
 }

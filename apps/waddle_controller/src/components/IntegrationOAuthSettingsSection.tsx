@@ -18,6 +18,7 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  Link,
   TableRow,
   TextField,
   Typography,
@@ -30,6 +31,7 @@ import {
 } from '@/api/oauthProviders';
 import type { SavedDisplay } from '@/storage/displays';
 import { completeDialogSave } from '@/util/dialogSave';
+import { oauthClientIdRegistrationGuide } from '@/util/oauthClientIdRegistration';
 
 function errMsg(e: unknown): string {
   return e instanceof ApiError ? `${e.status}: ${e.message}` : String(e);
@@ -118,8 +120,7 @@ export function IntegrationOAuthSettingsSection({
       <Typography variant="body2" color="text.secondary">
         OAuth account providers (Google, Microsoft, Facebook, X, LinkedIn) require an app client ID
         before you can add a matching account below. Values are stored encrypted on the display and are
-        never shown after saving. Application name and owner are looked up from the provider when
-        possible (Google and Microsoft only today).
+        never shown after saving.
       </Typography>
       {canWrite && addDisabledReason ? (
         <Typography variant="caption" color="text.secondary" display="block">
@@ -141,56 +142,26 @@ export function IntegrationOAuthSettingsSection({
             <TableHead>
               <TableRow>
                 <TableCell>Provider</TableCell>
-                <TableCell>Application</TableCell>
-                <TableCell>Owner</TableCell>
                 <TableCell>Status</TableCell>
                 {canWrite ? <TableCell align="right">Actions</TableCell> : null}
               </TableRow>
             </TableHead>
             <TableBody>
-              {configuredProviders.map((provider) => {
-                const meta = provider.client_id_metadata;
-                return (
-                  <TableRow key={provider.id} hover>
-                    <TableCell sx={{ fontWeight: 600 }}>{provider.label}</TableCell>
-                    <TableCell>
-                      {meta?.application_name ?? (
-                        <Typography variant="body2" color="text.secondary">
-                          {meta?.lookup_status === 'error'
-                            ? 'Lookup failed'
-                            : meta?.lookup_status === 'unavailable'
-                              ? 'Not available from provider'
-                              : '—'}
-                        </Typography>
-                      )}
+              {configuredProviders.map((provider) => (
+                <TableRow key={provider.id} hover>
+                  <TableCell sx={{ fontWeight: 600 }}>{provider.label}</TableCell>
+                  <TableCell>
+                    <Chip size="small" color="success" label="Configured" />
+                  </TableCell>
+                  {canWrite ? (
+                    <TableCell align="right">
+                      <Button size="small" onClick={() => setReplaceProvider(provider)}>
+                        Replace
+                      </Button>
                     </TableCell>
-                    <TableCell>
-                      {meta?.owner ?? (
-                        <Typography variant="body2" color="text.secondary">
-                          —
-                        </Typography>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Stack spacing={0.5}>
-                        <Chip size="small" color="success" label="Configured" />
-                        {meta?.lookup_status === 'error' && meta.lookup_error ? (
-                          <Typography variant="caption" color="warning.main">
-                            {meta.lookup_error}
-                          </Typography>
-                        ) : null}
-                      </Stack>
-                    </TableCell>
-                    {canWrite ? (
-                      <TableCell align="right">
-                        <Button size="small" onClick={() => setReplaceProvider(provider)}>
-                          Replace
-                        </Button>
-                      </TableCell>
-                    ) : null}
-                  </TableRow>
-                );
-              })}
+                  ) : null}
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </TableContainer>
@@ -246,6 +217,9 @@ function ClientIdDialog({
   const [busy, setBusy] = useState(false);
 
   const selected = providers.find((p) => p.id === providerId);
+  const registrationGuide = selected
+    ? oauthClientIdRegistrationGuide(selected.id)
+    : undefined;
   const showProviderPicker = providers.length > 1;
 
   useEffect(() => {
@@ -302,6 +276,18 @@ function ClientIdDialog({
                   Provider: <strong>{selected.label}</strong>
                 </Typography>
               ) : null}
+              {registrationGuide ? (
+                <Typography variant="body2" color="text.secondary">
+                  {registrationGuide.message}{' '}
+                  <Link
+                    href={registrationGuide.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {registrationGuide.linkLabel}
+                  </Link>
+                </Typography>
+              ) : null}
               <TextField
                 label={`${selected?.label ?? 'OAuth'} client ID`}
                 value={clientId}
@@ -310,10 +296,6 @@ function ClientIdDialog({
                 autoFocus
                 placeholder="Paste client ID from your cloud app registration"
               />
-              <Typography variant="caption" color="text.secondary">
-                After saving, the display will try to resolve the application name and owner from
-                the provider.
-              </Typography>
             </>
           )}
         </Stack>

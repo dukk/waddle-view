@@ -125,7 +125,10 @@ void main() {
     final alerts = await db.select(db.alerts).get();
     expect(alerts.length, 1);
     expect(alerts.single.source, kMicrosoftGraphOAuthAlertSource);
+    expect(alerts.single.title, contains('Work'));
+    expect(alerts.single.body, contains('Account: Work'));
     expect(alerts.single.body, contains('ABCD-1234'));
+    expect(alerts.single.body, isNot(contains('Account: work')));
     await db.close();
   });
 }

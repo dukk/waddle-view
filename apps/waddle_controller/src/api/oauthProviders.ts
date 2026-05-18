@@ -1,19 +1,11 @@
 import { apiFetch, apiJson } from '@/api/client';
 import type { SavedDisplay } from '@/storage/displays';
 
-export type OAuthClientIdMetadata = {
-  application_name?: string;
-  owner?: string;
-  lookup_status: 'ok' | 'unavailable' | 'error';
-  lookup_error?: string;
-};
-
 export type OAuthProviderStatus = {
   id: string;
   label: string;
   account_type: string;
   client_id_configured: boolean;
-  client_id_metadata?: OAuthClientIdMetadata;
 };
 
 export async function listOAuthProviders(

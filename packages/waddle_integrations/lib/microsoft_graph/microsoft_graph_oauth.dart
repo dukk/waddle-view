@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/config/microsoft_graph_kv.dart';
+import 'package:waddle_shared/integration_accounts/integration_account_alert_label.dart';
 import 'package:waddle_shared/integrations/integration_kv_repository.dart';
 import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import 'package:waddle_shared/persistence/database.dart';
@@ -306,8 +307,11 @@ class MicrosoftGraphOAuth {
           ? verificationComplete.trim()
           : verificationUri;
 
+      final accountLabel =
+          await integrationAccountAlertLabel(db, graphAccountKey);
+
       final bodyText = StringBuffer()
-        ..writeln('Account: $graphAccountKey')
+        ..writeln('Account: $accountLabel')
         ..writeln('Code: $userCode')
         ..writeln('Open: $verificationUri')
         ..writeln('Sign in with your Microsoft account, then approve access.');
@@ -321,7 +325,7 @@ class MicrosoftGraphOAuth {
 
       final alertId = await db.into(db.alerts).insert(
             AlertsCompanion.insert(
-              title: '$kMicrosoftGraphDeviceSignInTitle ($graphAccountKey)',
+              title: '$kMicrosoftGraphDeviceSignInTitle ($accountLabel)',
               body: bodyText.toString(),
               qrPayload: Value(qrUrl),
               severity: const Value('auth'),

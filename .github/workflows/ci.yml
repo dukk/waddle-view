@@ -69,7 +69,9 @@ jobs:
         working-directory: ${{ github.workspace }}/packages/waddle_shared
       - run: flutter test
         working-directory: ${{ github.workspace }}/packages/waddle_shared
-      - run: dart test
+      - run: dart test --coverage=coverage
+        working-directory: ${{ github.workspace }}/packages/waddle_integrations
+      - run: dart run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib
         working-directory: ${{ github.workspace }}/packages/waddle_integrations
       - run: dart test --coverage=coverage
         working-directory: ${{ github.workspace }}/packages/waddle_plugin_sdk
@@ -81,6 +83,7 @@ jobs:
         run: >
           dart run tool/coverage_check.dart --min=80 --target=90
           coverage/lcov.info
+          ${{ github.workspace }}/packages/waddle_integrations/coverage/lcov.info
           ${{ github.workspace }}/packages/waddle_plugin_sdk/coverage/lcov.info
       - run: flutter test
         working-directory: ${{ github.workspace }}/apps/waddlectl

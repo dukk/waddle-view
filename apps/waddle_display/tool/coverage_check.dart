@@ -89,7 +89,8 @@ void main(List<String> args) {
     stderr.writeln(
       'No LF entries found for waddle_display/lib, waddle_shared/lib, '
       'waddle_integrations/lib, or waddle_plugin_sdk/lib (did you run '
-      'flutter test --coverage and dart test --coverage on waddle_plugin_sdk?)',
+      'flutter test --coverage, dart test --coverage on waddle_integrations, '
+      'and dart test --coverage on waddle_plugin_sdk?)',
     );
     exitCode = 1;
     return;
