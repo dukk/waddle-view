@@ -56,6 +56,15 @@ import { parseJsonObject } from '@/util/json';
 import { prepareRjsfSchema } from '@/util/rjsfSchema';
 import { fetchIntegrationAccountsDetail } from '@/api/integrationAccounts';
 import { IntegrationAccountChips } from '@/components/IntegrationAccountChips';
+import {
+  OutlookCalendarConfigSection,
+  type ContentCategoryOption,
+} from '@/components/OutlookCalendarConfigSection';
+import {
+  buildOutlookCalendarConfigJson,
+  parseOutlookCalendarConfig,
+  type OutlookCalendarConfigState,
+} from '@/util/outlookCalendarConfig';
 import type { SavedDisplay } from '@/storage/displays';
 import type {
   IntegrationAccountRow,
@@ -526,6 +535,7 @@ export function IntegrationsPage() {
           row={edit}
           intent={dialogIntent}
           oauthProviders={oauthProviders}
+          microsoftAccounts={accounts.filter((a) => a.account_type === 'microsoft_graph')}
           onClose={() => setEdit(null)}
           onSaved={async () => {
             setEdit(null);
@@ -628,20 +638,25 @@ function IntegrationCard({
   );
 }
 
+const kOutlookCalendarIntegrationType = 'calendar_outlook';
+
 function EditIntegrationDialog({
   row,
   intent,
   oauthProviders,
+  microsoftAccounts,
   onClose,
   onSaved,
 }: {
   row: IntegrationRow;
   intent: 'edit' | 'enable';
   oauthProviders: OAuthProviderStatus[];
+  microsoftAccounts: IntegrationAccountRow[];
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
   const { active } = useDisplay();
+  const isOutlookCalendar = row.integration_type === kOutlookCalendarIntegrationType;
   const schema = useMemo(() => integrationConfigSchema(row), [row]);
   const [enabled, setEnabled] = useState(() => (intent === 'enable' ? true : row.enabled));
   const [poll, setPoll] = useState(row.poll_seconds);
@@ -649,6 +664,10 @@ function EditIntegrationDialog({
   const [formData, setFormData] = useState<Record<string, unknown>>(() =>
     parseJsonObject(row.config_json),
   );
+  const [outlookConfig, setOutlookConfig] = useState<OutlookCalendarConfigState>(() =>
+    parseOutlookCalendarConfig(parseJsonObject(row.config_json)),
+  );
+  const [curatorCategories, setCuratorCategories] = useState<ContentCategoryOption[]>([]);
   const [secretSlots, setSecretSlots] = useState<IntegrationSecretSlot[]>([]);
   const [secretDrafts, setSecretDrafts] = useState<Record<string, string>>({});
   const [secretsLoading, setSecretsLoading] = useState(true);
@@ -674,6 +693,29 @@ function EditIntegrationDialog({
   useEffect(() => {
     void reloadAccounts();
   }, [reloadAccounts]);
+
+  useEffect(() => {
+    if (!active || !isOutlookCalendar) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await apiJson<{ items: ContentCategoryOption[] }>(
+          active,
+          '/v1/curator/categories',
+        );
+        if (!cancelled) {
+          setCuratorCategories(res.items ?? []);
+        }
+      } catch {
+        if (!cancelled) {
+          setCuratorCategories([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [active, isOutlookCalendar]);
 
   useEffect(() => {
     if (!active) return;
@@ -722,10 +764,27 @@ function EditIntegrationDialog({
     [oauthClientIdsReady, secretSlots, secretDrafts],
   );
 
-  const accountsReady = useMemo(
-    () => integrationAccountsSatisfiedForEnable(accountDetail),
-    [accountDetail],
-  );
+  const outlookConfigReady = useMemo(() => {
+    if (!isOutlookCalendar) return true;
+    if (!outlookConfig.graphAccountKey) return false;
+    const account = microsoftAccounts.find((a) => a.id === outlookConfig.graphAccountKey);
+    if (!account?.configured) return false;
+    return outlookConfig.calendars.some((c) => c.selected);
+  }, [isOutlookCalendar, outlookConfig, microsoftAccounts]);
+
+  const accountsReady = useMemo(() => {
+    if (isOutlookCalendar) {
+      return outlookConfigReady;
+    }
+    return integrationAccountsSatisfiedForEnable(accountDetail);
+  }, [isOutlookCalendar, accountDetail, outlookConfigReady]);
+
+  const configForSave = useMemo(() => {
+    if (isOutlookCalendar) {
+      return buildOutlookCalendarConfigJson(outlookConfig);
+    }
+    return formData;
+  }, [isOutlookCalendar, outlookConfig, formData]);
 
   const displayName = useMemo(
     () => integrationDisplayName(row.integration_type),
@@ -736,9 +795,13 @@ function EditIntegrationDialog({
     if (!active) return;
     setErr(null);
     if (enabled) {
-      const { errors } = validator.validateFormData(formData, schema);
+      const { errors } = validator.validateFormData(configForSave, schema);
       if (errors.length > 0) {
         setErr(errors.map((e) => e.stack ?? e.message ?? 'Invalid field').join('\n'));
+        return;
+      }
+      if (isOutlookCalendar && !outlookConfigReady) {
+        setErr('Choose a signed-in Microsoft account and at least one calendar to sync.');
         return;
       }
     }
@@ -779,8 +842,8 @@ function EditIntegrationDialog({
         body: JSON.stringify({
           enabled,
           poll_seconds: poll,
-          base_url: baseUrl.trim() || null,
-          config_json: formData,
+          base_url: isOutlookCalendar ? row.base_url : baseUrl.trim() || null,
+          config_json: configForSave,
         }),
       });
       await reloadAccounts();
@@ -828,17 +891,23 @@ function EditIntegrationDialog({
             <Typography variant="body2" color="text.secondary">
               Loading accounts…
             </Typography>
-          ) : active && accountDetail ? (
+          ) : active && accountDetail && !isOutlookCalendar ? (
             <IntegrationAccountChips
               display={active}
               detail={accountDetail}
               onChanged={reloadAccounts}
             />
           ) : null}
-          {!accountsReady && accountDetail ? (
+          {!accountsReady && accountDetail && !isOutlookCalendar ? (
             <Alert severity="info">
               Add accounts in the section above, or link account keys in Configuration below, then
               complete sign-in or API keys.
+            </Alert>
+          ) : null}
+          {!outlookConfigReady && isOutlookCalendar ? (
+            <Alert severity="info">
+              Choose a Microsoft account and at least one calendar below. Add accounts under{' '}
+              <strong>Accounts &amp; API keys</strong> if none appear.
             </Alert>
           ) : null}
           {secretsLoading ? (
@@ -882,25 +951,43 @@ function EditIntegrationDialog({
             onChange={(e) => setPoll(Number(e.target.value) || 0)}
             fullWidth
           />
-          <TextField
-            label="Base URL"
-            value={baseUrl}
-            onChange={(e) => setBaseUrl(e.target.value)}
-            fullWidth
-          />
-          <Typography variant="subtitle2">Configuration (config_json)</Typography>
-          <Box sx={{ '& .MuiFormControl-root': { mb: 1 } }}>
-            <Form
-              schema={schema}
-              formData={formData}
-              validator={validator}
-              onChange={(e) => setFormData(e.formData as Record<string, unknown>)}
-            >
-              <Box sx={{ display: 'none' }}>
-                <button type="submit" />
+          {!isOutlookCalendar ? (
+            <TextField
+              label="Base URL"
+              value={baseUrl}
+              onChange={(e) => setBaseUrl(e.target.value)}
+              fullWidth
+            />
+          ) : row.base_url ? (
+            <Typography variant="caption" color="text.secondary" display="block">
+              Microsoft Graph endpoint: {row.base_url}
+            </Typography>
+          ) : null}
+          {isOutlookCalendar && active ? (
+            <OutlookCalendarConfigSection
+              display={active}
+              value={outlookConfig}
+              onChange={setOutlookConfig}
+              microsoftAccounts={microsoftAccounts}
+              categories={curatorCategories}
+            />
+          ) : (
+            <>
+              <Typography variant="subtitle2">Configuration</Typography>
+              <Box sx={{ '& .MuiFormControl-root': { mb: 1 } }}>
+                <Form
+                  schema={schema}
+                  formData={formData}
+                  validator={validator}
+                  onChange={(e) => setFormData(e.formData as Record<string, unknown>)}
+                >
+                  <Box sx={{ display: 'none' }}>
+                    <button type="submit" />
+                  </Box>
+                </Form>
               </Box>
-            </Form>
-          </Box>
+            </>
+          )}
         </Stack>
       </DialogContent>
       <DialogActions>
