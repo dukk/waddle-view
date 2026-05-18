@@ -111,6 +111,7 @@ export function InterestsPage() {
   const [expandedLocationCategories, setExpandedLocationCategories] = useState<
     string[]
   >([]);
+  const [expandedNewsCategories, setExpandedNewsCategories] = useState<string[]>([]);
 
   const [weather, setWeather] = useState<WeatherLocationRow[]>([]);
   const [rss, setRss] = useState<RssFeedRow[]>([]);
@@ -200,7 +201,7 @@ export function InterestsPage() {
 
   const dialogTitle = useMemo(() => {
     if (tab === 'locations') return editingWeather ? 'Edit location' : 'Add location';
-    if (tab === 'rss') return editingRss ? 'Edit RSS feed' : 'Add RSS feed';
+    if (tab === 'rss') return editingRss ? 'Edit news feed' : 'Add news feed';
     if (tab === 'stocks') return editingStock ? 'Edit stock symbol' : 'Add stock symbol';
     if (tab === 'jokes') return editingJoke ? 'Edit joke category' : 'Add joke category';
     return editingTrivia ? 'Edit trivia category' : 'Add trivia category';
@@ -210,11 +211,6 @@ export function InterestsPage() {
     if (filterCategory == null) return weather;
     return weather.filter((r) => (r.category || 'general') === filterCategory);
   }, [weather, filterCategory]);
-
-  const filteredRss = useMemo(() => {
-    if (filterCategory == null) return rss;
-    return rss.filter((r) => (r.category || 'general') === filterCategory);
-  }, [rss, filterCategory]);
 
   const filteredJokes = useMemo(() => {
     if (filterCategory == null) return jokes;
@@ -226,7 +222,6 @@ export function InterestsPage() {
     return trivia.filter((r) => r.id === filterCategory);
   }, [trivia, filterCategory]);
 
-  const rssCategoryOptions = useMemo(() => categoryCounts(rss, (r) => r.category), [rss]);
   const jokeCategoryOptions = useMemo(() => categoryCounts(jokes, (r) => r.id), [jokes]);
   const triviaCategoryOptions = useMemo(
     () => categoryCounts(trivia, (r) => r.id),
@@ -248,24 +243,24 @@ export function InterestsPage() {
       }))
       .sort((a, b) => categoryLabel(a.id).localeCompare(categoryLabel(b.id)));
   }, [filteredWeather, categoryLabel]);
-  const rssInterested = useMemo(
-    () =>
-      filteredRss
-        .filter((r) => r.enabled)
-        .sort((a, b) =>
-          (a.title?.trim() || a.url).localeCompare(b.title?.trim() || b.url),
-        ),
-    [filteredRss],
-  );
-  const rssNotInterested = useMemo(
-    () =>
-      filteredRss
-        .filter((r) => !r.enabled)
-        .sort((a, b) =>
-          (a.title?.trim() || a.url).localeCompare(b.title?.trim() || b.url),
-        ),
-    [filteredRss],
-  );
+
+  const newsGroups = useMemo(() => {
+    const byCategory = new Map<string, RssFeedRow[]>();
+    for (const row of rss) {
+      const category = row.category || 'general';
+      const list = byCategory.get(category) ?? [];
+      list.push(row);
+      byCategory.set(category, list);
+    }
+    const feedLabel = (row: RssFeedRow) => row.title?.trim() || row.url;
+    return [...byCategory.entries()]
+      .map(([id, rows]) => ({
+        id,
+        rows: [...rows].sort((a, b) => feedLabel(a).localeCompare(feedLabel(b))),
+      }))
+      .sort((a, b) => categoryLabel(a.id).localeCompare(categoryLabel(b.id)));
+  }, [rss, categoryLabel]);
+
   const stocksInterested = useMemo(
     () => stocks.filter((r) => r.enabled).sort((a, b) => a.symbol.localeCompare(b.symbol)),
     [stocks],
@@ -355,6 +350,16 @@ export function InterestsPage() {
     [active, load],
   );
 
+  const patchRssCategory = useCallback(
+    async (categoryId: string, enabled: boolean) => {
+      if (!active) return;
+      const rows = rss.filter((r) => (r.category || 'general') === categoryId);
+      await Promise.all(rows.map((row) => patchRssFeed(active, row.id, { enabled })));
+      await load();
+    },
+    [active, load, rss],
+  );
+
   const patchStock = useCallback(
     async (id: string, patch: Parameters<typeof patchStockSymbol>[2]) => {
       if (!active) return;
@@ -428,7 +433,7 @@ export function InterestsPage() {
 
       <Tabs value={tab} onChange={(_, v: TabId) => setTab(v)} variant="scrollable">
         <Tab value="locations" label="Locations" />
-        <Tab value="rss" label="RSS" />
+        <Tab value="rss" label="News" />
         <Tab value="stocks" label="Stocks" />
         <Tab value="jokes" label="Jokes" />
         <Tab value="trivia" label="Trivia" />
@@ -442,14 +447,6 @@ export function InterestsPage() {
         )}
       </CatalogPageToolbar>
 
-      {tab === 'rss' && rssCategoryOptions.length > 0 && (
-        <InterestCategoryFilter
-          categories={rssCategoryOptions}
-          filterCategory={filterCategory}
-          onFilterChange={setFilterCategory}
-          labelForCategory={categoryLabel}
-        />
-      )}
       {tab === 'jokes' && jokeCategoryOptions.length > 0 && (
         <InterestCategoryFilter
           categories={jokeCategoryOptions}
@@ -518,57 +515,40 @@ export function InterestsPage() {
       )}
 
       {tab === 'rss' && (
-        <Stack spacing={3}>
-          <CatalogSection
-            title="Interested"
-            empty="No RSS feeds are marked interested."
-            layout={layout}
-            isEmpty={rssInterested.length === 0}
-            cards={rssInterested.map((row) => (
-              <RssInterestCard
-                key={row.id}
-                row={row}
-                canWrite={canWrite}
-                onEdit={() => openEditRss(row)}
-                onDelete={() => void deleteRss(row.id)}
-                onPatch={(patch) => patchRss(row.id, patch).catch((e) => setError(errMsg(e)))}
-              />
-            ))}
-            table={
-              <RssInterestTable
-                rows={rssInterested}
-                canWrite={canWrite}
-                onEdit={openEditRss}
-                onDelete={(id) => void deleteRss(id)}
-                onPatch={(id, patch) => patchRss(id, patch).catch((e) => setError(errMsg(e)))}
-              />
-            }
-          />
-          <CatalogSection
-            title="Not interested"
-            empty="All RSS feeds are marked interested."
-            layout={layout}
-            isEmpty={rssNotInterested.length === 0}
-            cards={rssNotInterested.map((row) => (
-              <RssInterestCard
-                key={row.id}
-                row={row}
-                canWrite={canWrite}
-                onEdit={() => openEditRss(row)}
-                onDelete={() => void deleteRss(row.id)}
-                onPatch={(patch) => patchRss(row.id, patch).catch((e) => setError(errMsg(e)))}
-              />
-            ))}
-            table={
-              <RssInterestTable
-                rows={rssNotInterested}
+        <Stack spacing={2}>
+          {newsGroups.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              No news feeds configured.
+            </Typography>
+          ) : (
+            newsGroups.map((group) => (
+              <NewsCategoryAccordion
+                key={group.id}
+                title={categoryLabel(group.id)}
+                rows={group.rows}
+                layout={layout}
+                expanded={expandedNewsCategories.includes(group.id)}
+                onExpandedChange={(expanded) => {
+                  setExpandedNewsCategories((prev) =>
+                    expanded
+                      ? prev.includes(group.id)
+                        ? prev
+                        : [...prev, group.id]
+                      : prev.filter((id) => id !== group.id),
+                  );
+                }}
                 canWrite={canWrite}
                 onEdit={openEditRss}
                 onDelete={(id) => void deleteRss(id)}
-                onPatch={(id, patch) => patchRss(id, patch).catch((e) => setError(errMsg(e)))}
+                onPatch={(id, patch) =>
+                  patchRss(id, patch).catch((e) => setError(errMsg(e)))
+                }
+                onCategoryPatch={(enabled) =>
+                  patchRssCategory(group.id, enabled).catch((e) => setError(errMsg(e)))
+                }
               />
-            }
-          />
+            ))
+          )}
         </Stack>
       )}
 
@@ -896,6 +876,99 @@ function categoryToggleState(rows: WeatherLocationRow[], field: LocationInterest
   return { checked: false, indeterminate: true };
 }
 
+function rssCategoryToggleState(rows: RssFeedRow[]) {
+  const on = rows.filter((r) => r.enabled).length;
+  if (on === 0) return { checked: false, indeterminate: false };
+  if (on === rows.length) return { checked: true, indeterminate: false };
+  return { checked: false, indeterminate: true };
+}
+
+function NewsCategoryAccordion({
+  title,
+  rows,
+  layout,
+  expanded,
+  onExpandedChange,
+  canWrite,
+  onEdit,
+  onDelete,
+  onPatch,
+  onCategoryPatch,
+}: {
+  title: string;
+  rows: RssFeedRow[];
+  layout: ListLayoutMode;
+  expanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
+  canWrite: boolean;
+  onEdit: (row: RssFeedRow) => void;
+  onDelete: (id: string) => void;
+  onPatch: (id: string, patch: Partial<RssFeedRow>) => void;
+  onCategoryPatch: (enabled: boolean) => void;
+}) {
+  const interestedState = rssCategoryToggleState(rows);
+
+  return (
+    <Accordion
+      expanded={expanded}
+      onChange={(_, isExpanded) => onExpandedChange(isExpanded)}
+      disableGutters
+      variant="outlined"
+    >
+      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1}
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+          sx={{ width: '100%', pr: 1 }}
+        >
+          <Typography variant="subtitle1" fontWeight={600} sx={{ flexGrow: 1 }}>
+            {title} ({rows.length})
+          </Typography>
+          <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap onClick={(e) => e.stopPropagation()}>
+            <FormControlLabel
+              control={
+                <Switch
+                  size="small"
+                  checked={interestedState.checked}
+                  indeterminate={interestedState.indeterminate}
+                  disabled={!canWrite}
+                  onChange={(_, checked) => onCategoryPatch(checked)}
+                />
+              }
+              label="Interested"
+            />
+          </Stack>
+        </Stack>
+      </AccordionSummary>
+      <AccordionDetails sx={{ pt: 0 }}>
+        {layout === 'card' ? (
+          <Box sx={catalogCardGridSx}>
+            {rows.map((row) => (
+              <RssInterestCard
+                key={row.id}
+                row={row}
+                canWrite={canWrite}
+                onEdit={() => onEdit(row)}
+                onDelete={() => onDelete(row.id)}
+                onPatch={(patch) => onPatch(row.id, patch)}
+              />
+            ))}
+          </Box>
+        ) : (
+          <RssInterestTable
+            rows={rows}
+            canWrite={canWrite}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onPatch={onPatch}
+          />
+        )}
+      </AccordionDetails>
+    </Accordion>
+  );
+}
+
 function LocationCategoryAccordion({
   title,
   rows,
@@ -996,6 +1069,99 @@ function LocationCategoryAccordion({
           </Box>
         ) : (
           <WeatherInterestTable
+            rows={rows}
+            canWrite={canWrite}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onPatch={onPatch}
+          />
+        )}
+      </AccordionDetails>
+    </Accordion>
+  );
+}
+
+function rssCategoryToggleState(rows: RssFeedRow[]) {
+  const on = rows.filter((r) => r.enabled).length;
+  if (on === 0) return { checked: false, indeterminate: false };
+  if (on === rows.length) return { checked: true, indeterminate: false };
+  return { checked: false, indeterminate: true };
+}
+
+function NewsCategoryAccordion({
+  title,
+  rows,
+  layout,
+  expanded,
+  onExpandedChange,
+  canWrite,
+  onEdit,
+  onDelete,
+  onPatch,
+  onCategoryPatch,
+}: {
+  title: string;
+  rows: RssFeedRow[];
+  layout: ListLayoutMode;
+  expanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
+  canWrite: boolean;
+  onEdit: (row: RssFeedRow) => void;
+  onDelete: (id: string) => void;
+  onPatch: (id: string, patch: Partial<RssFeedRow>) => void;
+  onCategoryPatch: (enabled: boolean) => void;
+}) {
+  const interestedState = rssCategoryToggleState(rows);
+
+  return (
+    <Accordion
+      expanded={expanded}
+      onChange={(_, isExpanded) => onExpandedChange(isExpanded)}
+      disableGutters
+      variant="outlined"
+    >
+      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1}
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+          sx={{ width: '100%', pr: 1 }}
+        >
+          <Typography variant="subtitle1" fontWeight={600} sx={{ flexGrow: 1 }}>
+            {title} ({rows.length})
+          </Typography>
+          <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap onClick={(e) => e.stopPropagation()}>
+            <FormControlLabel
+              control={
+                <Switch
+                  size="small"
+                  checked={interestedState.checked}
+                  indeterminate={interestedState.indeterminate}
+                  disabled={!canWrite}
+                  onChange={(_, checked) => onCategoryPatch(checked)}
+                />
+              }
+              label="Interested"
+            />
+          </Stack>
+        </Stack>
+      </AccordionSummary>
+      <AccordionDetails sx={{ pt: 0 }}>
+        {layout === 'card' ? (
+          <Box sx={catalogCardGridSx}>
+            {rows.map((row) => (
+              <RssInterestCard
+                key={row.id}
+                row={row}
+                canWrite={canWrite}
+                onEdit={() => onEdit(row)}
+                onDelete={() => onDelete(row.id)}
+                onPatch={(patch) => onPatch(row.id, patch)}
+              />
+            ))}
+          </Box>
+        ) : (
+          <RssInterestTable
             rows={rows}
             canWrite={canWrite}
             onEdit={onEdit}
@@ -1159,7 +1325,6 @@ function RssInterestTable({
           <TableRow>
             <TableCell>Feed name</TableCell>
             <TableCell>URL</TableCell>
-            <TableCell>Category</TableCell>
             <TableCell>Poll (s)</TableCell>
             <TableCell>Max</TableCell>
             <TableCell>Interested</TableCell>
@@ -1173,13 +1338,12 @@ function RssInterestTable({
               <TableRow key={row.id} hover>
                 <TableCell sx={{ fontWeight: feedName !== '—' ? 600 : 400 }}>{feedName}</TableCell>
                 <TableCell sx={{ maxWidth: 280, wordBreak: 'break-all' }}>{row.url}</TableCell>
-                <TableCell>{row.category}</TableCell>
                 <TableCell>{row.poll_seconds}</TableCell>
                 <TableCell>{row.max_articles}</TableCell>
                 <InterestedToggleCell
                   checked={row.enabled}
                   disabled={!canWrite}
-                  ariaLabel={`Interested in RSS feed ${feedName}`}
+                  ariaLabel={`Interested in news feed ${feedName}`}
                   onToggle={(enabled) => onPatch(row.id, { enabled })}
                 />
                 <CatalogRowActions
@@ -1217,7 +1381,6 @@ function RssInterestCard({
           <Typography variant="subtitle1" fontWeight={600} sx={{ wordBreak: 'break-word' }}>
             {feedName}
           </Typography>
-          <Chip size="small" label={row.category} variant="outlined" sx={{ alignSelf: 'flex-start' }} />
           <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
             {row.url}
           </Typography>
