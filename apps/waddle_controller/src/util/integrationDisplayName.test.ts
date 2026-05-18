@@ -5,6 +5,7 @@ describe('integrationDisplayName', () => {
   it('maps known integration types', () => {
     expect(integrationDisplayName('news_rss')).toBe('RSS News');
     expect(integrationDisplayName('calendar_google')).toBe('Google Calendar');
+    expect(integrationDisplayName('calendar_ical')).toBe('iCal / ICS Calendar');
   });
 
   it('returns Integration for blank input', () => {

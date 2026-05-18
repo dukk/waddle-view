@@ -185,6 +185,7 @@ const String kDefaultStockFinnhubIntegrationId = 'default_stock_finnhub';
 const String kDefaultHomeAssistantIntegrationId = 'default_home_assistant';
 const String kDefaultCalendarGoogleIntegrationId = 'default_calendar_google';
 const String kDefaultCalendarOutlookIntegrationId = 'default_calendar_outlook';
+const String kDefaultCalendarIcalIntegrationId = 'default_calendar_ical';
 const String kDefaultPhotoOneDriveIntegrationId = 'default_photo_onedrive';
 const String kDefaultVideoOneDriveIntegrationId = 'default_video_onedrive';
 const String kDefaultPhotoFlickrIntegrationId = 'default_photo_flickr';
@@ -396,6 +397,7 @@ Future<void> _migrateV5ToV6IntegrationTypesAndDefaults(AppDatabase db) async {
     'home_assistant': kDefaultHomeAssistantIntegrationId,
     'calendar_google': kDefaultCalendarGoogleIntegrationId,
     'calendar_outlook': kDefaultCalendarOutlookIntegrationId,
+    'calendar_ical': kDefaultCalendarIcalIntegrationId,
     'media_flickr': kDefaultPhotoFlickrIntegrationId,
     'photo_flickr': kDefaultPhotoFlickrIntegrationId,
     'media_bing_iotd': kDefaultPhotoBingIotdIntegrationId,

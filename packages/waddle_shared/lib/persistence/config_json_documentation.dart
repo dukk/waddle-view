@@ -486,6 +486,48 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       'futureDays': 14,
     }),
   ),
+  'calendar_ical': ProviderConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'IcalCalendarProviderConfig',
+        description:
+            'Subscribe to iCalendar (.ics) feeds by URL; sync window and per-feed category.',
+        properties: {
+          'pastDays': {'type': 'integer', 'minimum': 1},
+          'futureDays': {'type': 'integer', 'minimum': 1},
+          'feeds': {
+            'type': 'array',
+            'items': {
+              'type': 'object',
+              'properties': {
+                'id': {'type': 'string', 'minLength': 1},
+                'url': {'type': 'string', 'minLength': 1},
+                'label': {'type': 'string'},
+                'categoryId': {'type': 'string'},
+                'category': {'type': 'string'},
+                'enabled': {'type': 'boolean'},
+              },
+              'required': ['id', 'url'],
+              'additionalProperties': true,
+            },
+          },
+        },
+      ),
+    ),
+    example: jsonEncode({
+      'feeds': [
+        {
+          'id': 'work',
+          'url': 'https://calendar.example.com/public/work.ics',
+          'label': 'Work',
+          'categoryId': 'work',
+          'enabled': true,
+        },
+      ],
+      'pastDays': 14,
+      'futureDays': 14,
+    }),
+  ),
   'photo_onedrive': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(

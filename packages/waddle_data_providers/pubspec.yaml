@@ -16,6 +16,7 @@ dependencies:
   webfeed: ^0.7.0
   crypto: ^3.0.6
   meta: ^1.17.0
+  icalendar_parser: ^2.1.0
 
 dev_dependencies:
   lints: ^6.0.0

@@ -195,6 +195,15 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
 
   await _ensureIntegrationRow(
     db,
+    id: kDefaultCalendarIcalIntegrationId,
+    integrationType: 'calendar_ical',
+    pollSeconds: 3600,
+    enabled: false,
+    configJson: '{"feeds":[],"pastDays":14,"futureDays":14}',
+  );
+
+  await _ensureIntegrationRow(
+    db,
     id: kDefaultPhotoOneDriveIntegrationId,
     integrationType: 'photo_onedrive',
     pollSeconds: 3600,
