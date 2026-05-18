@@ -29,6 +29,7 @@ import {
   type OAuthProviderStatus,
 } from '@/api/oauthProviders';
 import type { SavedDisplay } from '@/storage/displays';
+import { completeDialogSave } from '@/util/dialogSave';
 
 function errMsg(e: unknown): string {
   return e instanceof ApiError ? `${e.status}: ${e.message}` : String(e);
@@ -263,7 +264,7 @@ function ClientIdDialog({
     setBusy(true);
     try {
       await putOAuthProviderClientId(display, selected.id, value);
-      await onSaved();
+      await completeDialogSave(onSaved, onClose);
     } catch (e) {
       onError(errMsg(e));
     } finally {

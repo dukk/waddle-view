@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart';
 
-import '../config/google_kv.dart';
-import '../config/microsoft_graph_kv.dart';
+import '../integrations/integration_kv_repository.dart';
+import '../integrations/integration_kv_types.dart';
 import '../persistence/database.dart';
 import '../secrets/secret_store.dart';
 import 'integration_account_catalog.dart';
@@ -593,20 +593,11 @@ Future<void> _clearOAuthSignInKvForAccount(
   String accountId,
   String accountTypeId,
 ) async {
+  final kv = IntegrationKvRepository(db);
   switch (accountTypeId) {
     case kIntegrationAccountTypeGoogle:
-      await (db.delete(db.configKeyValues)
-            ..where(
-              (t) => t.key.equals(kGoogleCalendarLastDevicePromptKvKey(accountId)),
-            ))
-          .go();
     case kIntegrationAccountTypeMicrosoftGraph:
-      await (db.delete(db.configKeyValues)
-            ..where(
-              (t) =>
-                  t.key.equals(kOutlookCalendarLastDevicePromptKvKey(accountId)),
-            ))
-          .go();
+      await kv.deleteAccountKey(accountId, kIntegrationLastDevicePromptKey);
     default:
       break;
   }
@@ -743,20 +734,15 @@ Future<void> requestOAuthSignInForAccount(
   if (account == null) {
     return;
   }
+  final kv = IntegrationKvRepository(db);
   switch (account.accountType) {
     case kIntegrationAccountTypeGoogle:
-      await db.into(db.configKeyValues).insertOnConflictUpdate(
-        ConfigKeyValuesCompanion.insert(
-          key: kGoogleCalendarLastDevicePromptKvKey(accountId),
-          value: '0',
-        ),
-      );
     case kIntegrationAccountTypeMicrosoftGraph:
-      await db.into(db.configKeyValues).insertOnConflictUpdate(
-        ConfigKeyValuesCompanion.insert(
-          key: kOutlookCalendarLastDevicePromptKvKey(accountId),
-          value: '0',
-        ),
+      await kv.upsertAccount(
+        accountId: accountId,
+        key: kIntegrationLastDevicePromptKey,
+        value: '0',
+        valueType: kIntegrationKvTypeIntMs,
       );
     default:
       break;

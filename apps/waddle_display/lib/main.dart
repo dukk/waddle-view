@@ -36,6 +36,7 @@ import 'package:waddle_shared/runtime/runtime_signal_repository.dart';
 import 'package:waddle_shared/secrets/db_encrypted_secret_store.dart';
 import 'package:waddle_shared/secrets/platform/platform_dek_protector.dart';
 import 'package:waddle_shared/seed/initial_seed.dart';
+import 'package:waddle_shared/seed/tables/overlay_blobs_seed.dart';
 import 'extensions/builtin_data_providers.dart';
 import 'extensions/overlay_widget_registry.dart';
 import 'extensions/register_builtin_ticker_sources.dart';
@@ -114,7 +115,9 @@ Future<void> _waddleBootstrap() async {
     }
 
     final db = AppDatabase(createQueryExecutor());
+    final blobs = FileSystemBlobStore(mediaDir);
     await ensureInitialSeed(db);
+    await ensureOverlayBlobSeed(db: db, blobs: blobs);
     // Rescan content against the current reject list on startup so any rows
     // added by a previous-running provider before the operator extended the
     // list are caught before the curator picks them.
@@ -136,7 +139,6 @@ Future<void> _waddleBootstrap() async {
       nowMs: DateTime.now().millisecondsSinceEpoch,
     );
     final resolver = ProviderConfigResolver(db, secrets);
-    final blobs = FileSystemBlobStore(mediaDir);
     final telemetryHub = OperatorTelemetryHub();
     final collectDiag = defaultDisplayCollectDiagnostics(telemetryHub: telemetryHub);
     final ctx = DataWriteContextImpl(
@@ -423,6 +425,7 @@ class _WaddleHomeState extends State<WaddleHome> {
   String? _curatorThemeOverride;
   StreamSubscription<List<ApiClient>>? _apiClientsSub;
   StreamSubscription<void>? _runtimeSignalsSub;
+  StreamSubscription<List<CuratorConfigurationMember>>? _curatorMembersSub;
 
   @override
   void initState() {
@@ -432,6 +435,12 @@ class _WaddleHomeState extends State<WaddleHome> {
       unawaited(_refreshCuratorSelection());
     });
     _runtimeSignalsSub = widget.runtimeSignals.watchChanges().listen((_) {
+      unawaited(_refreshCuratorSelection());
+    });
+    _curatorMembersSub = widget.db
+        .select(widget.db.curatorConfigurationMembers)
+        .watch()
+        .listen((_) {
       unawaited(_refreshCuratorSelection());
     });
   }
@@ -459,6 +468,7 @@ class _WaddleHomeState extends State<WaddleHome> {
   void dispose() {
     unawaited(_apiClientsSub?.cancel());
     unawaited(_runtimeSignalsSub?.cancel());
+    unawaited(_curatorMembersSub?.cancel());
     if (kDebugMode) {
       unawaited(DebugConsoleDiskLogger.close());
     }

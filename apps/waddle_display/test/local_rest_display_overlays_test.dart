@@ -21,7 +21,7 @@ void main() {
       headers: h.authHeaders,
       body: jsonEncode({
         'id': 'x_test_overlay',
-        'overlay_type': kOverlayTypeHeartsRain,
+        'overlay_type': kOverlayTypeShapeRain,
         'name': 'Test',
         'messages_json': ['Hi'],
       }),
@@ -67,7 +67,7 @@ void main() {
       headers: h.authHeaders,
       body: jsonEncode({
         'name': "Mother's Day hearts",
-        'overlay_type': kOverlayTypeHeartsRain,
+        'overlay_type': kOverlayTypeShapeRain,
         'config_json': {'messages': ['Hi']},
       }),
     );
@@ -145,7 +145,7 @@ void main() {
     final noName = await http.post(
       Uri.parse('${h.baseUrl}/v1/display/overlays'),
       headers: h.authHeaders,
-      body: jsonEncode({'overlay_type': kOverlayTypeHeartsRain}),
+      body: jsonEncode({'overlay_type': kOverlayTypeShapeRain}),
     );
     expect(noName.statusCode, 400);
     expect(noName.body, contains('name_required'));

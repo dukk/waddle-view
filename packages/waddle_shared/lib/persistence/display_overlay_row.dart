@@ -24,7 +24,6 @@ class DisplayOverlayRow {
     required this.name,
     required this.configJson,
     required this.configJsonSchema,
-    required this.exampleConfigJson,
   });
 
   final String id;
@@ -32,7 +31,6 @@ class DisplayOverlayRow {
   final String name;
   final String configJson;
   final String? configJsonSchema;
-  final String? exampleConfigJson;
 
   static DisplayOverlayRow fromQueryRow(QueryRow row) {
     return DisplayOverlayRow(
@@ -41,7 +39,6 @@ class DisplayOverlayRow {
       name: row.read<String>('name'),
       configJson: _readConfigJson(row),
       configJsonSchema: _readOptionalString(row, 'config_json_schema'),
-      exampleConfigJson: _readOptionalString(row, 'example_config_json'),
     );
   }
 }

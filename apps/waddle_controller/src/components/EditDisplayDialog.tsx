@@ -13,6 +13,7 @@ import {
 import type { SavedDisplay } from '@/storage/displays';
 import { normalizeBaseUrl } from '@/storage/displays';
 import { loadSession } from '@/storage/sessions';
+import { completeDialogSave } from '@/util/dialogSave';
 
 export type EditDisplayInput = {
   label: string;
@@ -67,8 +68,10 @@ export function EditDisplayDialog({ display, onClose, onSave }: Props) {
     setBusy(true);
     setError(null);
     try {
-      await onSave({ label: trimmedLabel, baseUrl: trimmedUrl });
-      onClose();
+      await completeDialogSave(
+        () => onSave({ label: trimmedLabel, baseUrl: trimmedUrl }),
+        onClose,
+      );
     } catch (e) {
       setError(String(e));
     } finally {

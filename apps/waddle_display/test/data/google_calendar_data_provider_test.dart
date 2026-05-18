@@ -4,6 +4,8 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_display/config/google_kv.dart';
+import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
+import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
@@ -68,12 +70,13 @@ void main() {
     );
     final secrets = InMemorySecretStore();
     await secrets.write(googleAccessTokenSecret('u'), 'tok');
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kGoogleAccessTokenExpiresAtKvKey('u'),
-            value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
-          ),
-        );
+    await seedIntegrationKvForTest(
+      db,
+      accountId: 'u',
+      key: kIntegrationAccessTokenExpiresAtKey,
+      value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
+      accountType: kIntegrationAccountTypeGoogle,
+    );
     var clock = 10_000_000_000;
     final http = _CountingClient();
     final p = GoogleCalendarDataProvider(httpClient: http, nowMs: () => clock);
@@ -101,12 +104,13 @@ void main() {
     final secrets = InMemorySecretStore();
     await secrets.write(googleRefreshTokenSecret('u'), 'my_refresh');
     await secrets.write(googleAccessTokenSecret('u'), 'old');
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kGoogleAccessTokenExpiresAtKvKey('u'),
-            value: '1',
-          ),
-        );
+    await seedIntegrationKvForTest(
+      db,
+      accountId: 'u',
+      key: kIntegrationAccessTokenExpiresAtKey,
+      value: '1',
+      accountType: kIntegrationAccountTypeGoogle,
+    );
     final http = _RefreshThenGoogleClient();
     final p = GoogleCalendarDataProvider(httpClient: http);
     await p.collect(await _ctx(db, secrets));
@@ -131,6 +135,13 @@ void main() {
       extraAccountsJson:
           '[{"googleAccountKey":"u","sources":[{"calendars":["primary"]}]}]',
     );
+    await db.into(db.integrationAccounts).insertOnConflictUpdate(
+          IntegrationAccountsCompanion.insert(
+            id: 'u',
+            accountType: kIntegrationAccountTypeGoogle,
+            createdAtMs: DateTime.now().millisecondsSinceEpoch,
+          ),
+        );
     final secrets = InMemorySecretStore();
     final http = _DeviceThenGoogleClient();
     var clock = 0;
@@ -189,7 +200,7 @@ Future<void> _seedKvAndProvider(
           enabled: const Value(true),
           pollSeconds: Value(pollSeconds),
           configJson: integrationConfigJsonValue(
-            configJson: '{"accounts":$extraAccountsJson,"pastDays":14,"futureDays":14}',,
+            configJson: '{"accounts":$extraAccountsJson,"pastDays":14,"futureDays":14}',
             baseUrl: kDefaultGoogleCalendarBaseUrl,
           ),
         ),

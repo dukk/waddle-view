@@ -1,5 +1,7 @@
 import '../persistence/database.dart';
 
+export 'integration_kv_types.dart' show kIntegrationLastCollectKey;
+
 /// Enabled [Integrations] rows for one [integrationType].
 Future<List<Integration>> enabledIntegrationsForType(
   AppDatabase db,
@@ -12,6 +14,7 @@ Future<List<Integration>> enabledIntegrationsForType(
   return rows.where((r) => r.enabled).toList(growable: false);
 }
 
-/// Last-collect KV key scoped to one integration row id.
+/// @deprecated Use [kIntegrationLastCollectKey] with [IntegrationKvRepository].
+@Deprecated('Use kIntegrationLastCollectKey with IntegrationKvRepository')
 String integrationLastCollectKvKey(String integrationId) =>
     'provider.$integrationId.last_collect_ms';

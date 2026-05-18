@@ -33,6 +33,7 @@ import {
   putIntegrationAccountSecret,
 } from '@/api/integrationAccounts';
 import { listOAuthProviders, type OAuthProviderStatus } from '@/api/oauthProviders';
+import { completeDialogSave } from '@/util/dialogSave';
 import { integrationAccountIdFromName } from '@/util/integrationAccountSlug';
 import type { SavedDisplay } from '@/storage/displays';
 import type {
@@ -277,7 +278,7 @@ function AddAccountDialog({
         }
         await putIntegrationAccountSecret(display, account_id, key);
       }
-      await onSaved();
+      await completeDialogSave(onSaved, onClose);
     } catch (e) {
       onError(errMsg(e));
     } finally {
@@ -428,7 +429,7 @@ function ConfigureAccountDialog({
           await putIntegrationAccountSecret(display, account.id, key);
         }
       }
-      await onSaved();
+      await completeDialogSave(onSaved, onClose);
     } catch (e) {
       onError(errMsg(e));
     } finally {
@@ -440,7 +441,7 @@ function ConfigureAccountDialog({
     setBusy(true);
     try {
       await probeIntegrationAccountOAuth(display, account.id);
-      await onSaved();
+      await completeDialogSave(onSaved, onClose);
     } catch (e) {
       onError(errMsg(e));
     } finally {
@@ -465,7 +466,7 @@ function ConfigureAccountDialog({
       await deleteIntegrationAccount(display, account.id, {
         confirm: inUseIds.length > 0,
       });
-      await onSaved();
+      await completeDialogSave(onSaved, onClose);
     } catch (e) {
       onError(errMsg(e));
     } finally {

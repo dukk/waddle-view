@@ -10,7 +10,7 @@ import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_integrations/photo_pexels/pexels_data_provider.dart';
 import 'package:waddle_integrations/video_pexels/pexels_data_provider.dart';
-import 'package:waddle_shared/integrations/integration_collect.dart';
+import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';
@@ -237,12 +237,12 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _ensurePexelsProvider(db, pollSeconds: 60);
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: integrationLastCollectKvKey(kDefaultPhotoPexelsIntegrationId),
-            value: '100000',
-          ),
-        );
+    await seedIntegrationKvForTest(
+      db,
+      integrationId: kDefaultPhotoPexelsIntegrationId,
+      key: kIntegrationLastCollectKey,
+      value: '100000',
+    );
     final httpClient = _FakePexelsHttp(
       curatedPhotos: [_photoJson(1)],
       popularVideos: [],

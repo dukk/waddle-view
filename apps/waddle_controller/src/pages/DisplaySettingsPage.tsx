@@ -767,7 +767,7 @@ function DisplayOperatorSettingsSection({
                   <Box component="span" sx={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {theme.label}
                   </Box>
-                  <DisplayThemePaletteSwatches colors={theme.colors} />
+                  <DisplayThemePaletteSwatches groups={theme.preview} />
                 </Stack>
               );
             }}
@@ -777,10 +777,14 @@ function DisplayOperatorSettingsSection({
                 <Box component="span" sx={{ flex: 1 }}>
                   {t.label}
                 </Box>
-                <DisplayThemePaletteSwatches colors={t.colors} />
+                <DisplayThemePaletteSwatches groups={t.preview} />
               </MenuItem>
             ))}
           </Select>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75, display: 'block' }}>
+            Swatches (left to right): display background gradient, primary container (slide),
+            secondary container (ticker), then four accents.
+          </Typography>
         </FormControl>
         <FormControl fullWidth disabled={!canWrite}>
           <InputLabel id="screen-scale">Screen text scale</InputLabel>

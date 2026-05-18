@@ -44,6 +44,7 @@ import { useDisplay } from '@/context/DisplayContext';
 import { apiFetch, apiJson, ApiError } from '@/api/client';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { parseJsonObject } from '@/util/json';
+import { completeDialogSave } from '@/util/dialogSave';
 import { prepareRjsfSchema } from '@/util/rjsfSchema';
 
 type ScreenRow = {
@@ -404,7 +405,7 @@ function AddScreenDialog({
           config_json: fd,
         }),
       });
-      await onSaved();
+      await completeDialogSave(onSaved, onClose);
     } catch (e) {
       setErr(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
     }
@@ -500,7 +501,7 @@ function EditScreenDialog({
           config_json: formData,
         }),
       });
-      await onSaved();
+      await completeDialogSave(onSaved, onClose);
     } catch (e) {
       setErr(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
     }

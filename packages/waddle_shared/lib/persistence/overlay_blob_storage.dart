@@ -13,6 +13,7 @@ const Set<String> kOverlayBlobUploadMimeTypes = {
   'image/png',
   'image/webp',
   'image/gif',
+  'image/svg+xml',
 };
 
 /// Stores [bytes] in [blobs] and registers [blobMetadata] under [blobKey].

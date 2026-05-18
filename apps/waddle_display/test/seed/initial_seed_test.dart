@@ -373,12 +373,27 @@ void main() {
     await ensureInitialSeed(db);
     final rows = await fetchDisplayOverlays(db);
     final birthday = rows
-        .where((r) => r.id == kDefaultBirthdayOverlayExampleId)
+        .where((r) => r.id == kDefaultBirthdayConfettiOverlayId)
         .toList();
     expect(birthday, isNotEmpty);
     final r = birthday.single;
-    expect(r.name, contains('birthday'));
+    expect(r.name, 'Default Birthday Confetti');
     expect(r.overlayType, kOverlayTypeBirthdayConfetti);
+    await db.close();
+  });
+
+  test('ensureInitialSeed inserts default falling ducks overlay', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureInitialSeed(db);
+    final rows = await fetchDisplayOverlays(db);
+    final ducks = rows.where((r) => r.id == kDefaultFallingDucksOverlayId).toList();
+    expect(ducks, isNotEmpty);
+    final r = ducks.single;
+    expect(r.name, 'Default Falling Ducks');
+    expect(r.overlayType, kOverlayTypeFallingImages);
+    final cfg = jsonDecode(r.configJson) as Map<String, dynamic>;
+    expect(cfg['image_blob_keys'], kSeededDuckOverlayBlobKeys);
     await db.close();
   });
 
@@ -388,11 +403,11 @@ void main() {
     await ensureInitialSeed(db);
     final rows = await fetchDisplayOverlays(db);
     final bounce = rows
-        .where((r) => r.id == kDefaultBouncingMessageOverlayId)
+        .where((r) => r.id == kDefaultWattleViewsBirthdayMessageOverlayId)
         .toList();
     expect(bounce, isNotEmpty);
     final r = bounce.single;
-    expect(r.name, contains('bouncing'));
+    expect(r.name, contains('Wattle View'));
     expect(r.overlayType, kOverlayTypeBouncingMessage);
     expect(
       (jsonDecode(r.configJson) as Map<String, dynamic>)['messages'],

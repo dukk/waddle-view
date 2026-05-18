@@ -37,6 +37,7 @@ import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { TickerTapesHelpContent } from '@/components/help/TickerTapesHelpContent';
+import { completeDialogSave } from '@/util/dialogSave';
 
 type TickerTapeRow = {
   id: string;
@@ -182,7 +183,6 @@ export function TickerPage() {
 
   return (
     <Stack spacing={3}>
-      <DisplayRefreshIndicator loading={loading} />
       <Box>
         <Stack direction="row" alignItems="center" spacing={0.25} sx={{ mb: 0.5 }}>
           <Typography variant="h6" fontWeight={600}>
@@ -209,7 +209,8 @@ export function TickerPage() {
         <Typography variant="subtitle1" fontWeight={600}>
           Enabled
         </Typography>
-        {enabledRows.length === 0 ? (
+        <DisplayRefreshIndicator loading={loading} />
+        {enabledRows.length === 0 && !loading ? (
           <Typography variant="body2" color="text.secondary">
             No ticker tapes are enabled.
           </Typography>
@@ -237,7 +238,8 @@ export function TickerPage() {
         <Typography variant="subtitle1" fontWeight={600}>
           Disabled
         </Typography>
-        {disabledRows.length === 0 ? (
+        <DisplayRefreshIndicator loading={loading} />
+        {disabledRows.length === 0 && !loading ? (
           <Typography variant="body2" color="text.secondary">
             All ticker tapes are enabled.
           </Typography>
@@ -416,7 +418,7 @@ function AddTickerTapeDialog({
           config_json: configJson,
         }),
       });
-      await onSaved();
+      await completeDialogSave(onSaved, onClose);
     } catch (e) {
       setErr(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
     }
@@ -556,7 +558,7 @@ function EditTickerTapeDialog({
           config_json: configJson,
         }),
       });
-      await onSaved();
+      await completeDialogSave(onSaved, onClose);
     } catch (e) {
       setErr(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
     }

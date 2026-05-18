@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 
 /// Legacy [AppDatabase.configKeyValues] key for Google OAuth client id
-/// (removed in schema **37**; use [waddleGoogleClientIdEnv] in
+/// (use [waddleGoogleClientIdEnv] in
 /// `package:waddle_shared/config/provider_access_token_env.dart` instead).
 const String kGoogleClientIdKvKey = 'google.client_id';
 
@@ -14,15 +14,20 @@ const String kGoogleOAuthAlertSource = 'google_calendar';
 const String kGoogleCalendarOAuthScopes =
     'openid email https://www.googleapis.com/auth/calendar.readonly';
 
-/// Last successful Google Calendar collect (poll gate).
+/// Legacy config_key_values key for Google Calendar poll gate (schema 21+ uses
+/// [IntegrationsKeyValue] with [kIntegrationLastCollectKey] per integration id).
+@Deprecated('Migrated to integrations_key_value in schema 21')
 const String kGoogleCalendarLastCollectKvKey =
     'provider.calendar_google.last_collect_ms';
 
-/// Milliseconds since epoch when the Google access token expires.
+/// Legacy config_key_values key (schema 21+ uses [kIntegrationAccessTokenExpiresAtKey]
+/// in [IntegrationsKeyValue] scoped by account id).
+@Deprecated('Migrated to integrations_key_value in schema 21')
 String kGoogleAccessTokenExpiresAtKvKey(String googleAccountKey) =>
     'google.access_token_expires_at_ms.$googleAccountKey';
 
-/// Throttle device-code prompts per account.
+/// Legacy config_key_values key (schema 21+ uses [kIntegrationLastDevicePromptKey]).
+@Deprecated('Migrated to integrations_key_value in schema 21')
 String kGoogleCalendarLastDevicePromptKvKey(String googleAccountKey) =>
     'provider.calendar_google.last_device_prompt_ms.$googleAccountKey';
 

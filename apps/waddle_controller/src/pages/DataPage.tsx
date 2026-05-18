@@ -275,7 +275,8 @@ export function DataPage() {
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const { loading, wrapRefresh } = useDisplayRefresh();
+  const { loading: metadataLoading, wrapRefresh: wrapMetadataRefresh } = useDisplayRefresh();
+  const { loading: catalogLoading, wrapRefresh: wrapCatalogRefresh } = useDisplayRefresh();
 
   const [categories, setCategories] = useState<{ id: string; label: string }[]>([]);
   const [feeds, setFeeds] = useState<{ id: string; title: string | null; url: string }[]>([]);
@@ -314,9 +315,9 @@ export function DataPage() {
     setPage(0);
   }, [suppressed, categoryId, feedId, locationId, columnFilters, rowsPerPage, kind]);
 
-  useEffect(() => {
+  const loadMetadata = useCallback(async () => {
     if (!active || !canBrowseData) return;
-    void wrapRefresh(async () => {
+    await wrapMetadataRefresh(async () => {
       try {
         const [catRes, feedRes, locRes] = await Promise.all([
           apiJson<{ items: { id: string; label: string }[] }>(active, '/v1/curator/categories'),
@@ -336,7 +337,11 @@ export function DataPage() {
         /* optional metadata */
       }
     });
-  }, [active, canBrowseData, wrapRefresh]);
+  }, [active, canBrowseData, wrapMetadataRefresh]);
+
+  useEffect(() => {
+    void loadMetadata();
+  }, [loadMetadata]);
 
   const offset = page * rowsPerPage;
 
@@ -366,14 +371,14 @@ export function DataPage() {
     setTotal(0);
   }, [kind]);
 
-  const load = useCallback(async () => {
+  const loadCatalog = useCallback(async () => {
     if (!active || !canBrowseData) return;
     catalogFetchAbortRef.current?.abort();
     const controller = new AbortController();
     catalogFetchAbortRef.current = controller;
     const myGen = ++catalogLoadGenerationRef.current;
     setError(null);
-    await wrapRefresh(async () => {
+    await wrapCatalogRefresh(async () => {
       try {
         const path = `${catalogPath(kind)}${querySuffix}`;
         const data = await apiJson<Paginated<Record<string, unknown>>>(active, path, {
@@ -391,15 +396,15 @@ export function DataPage() {
         setTotal(0);
       }
     });
-  }, [active, canBrowseData, kind, querySuffix, wrapRefresh]);
+  }, [active, canBrowseData, kind, querySuffix, wrapCatalogRefresh]);
 
   useEffect(() => {
-    void load();
+    void loadCatalog();
     return () => {
       catalogFetchAbortRef.current?.abort();
       catalogLoadGenerationRef.current += 1;
     };
-  }, [load]);
+  }, [loadCatalog]);
 
   const patchSuppressed = async (id: string, next: boolean) => {
     if (!canModerate || !active) return;
@@ -410,7 +415,7 @@ export function DataPage() {
         method: 'PATCH',
         body: JSON.stringify({ suppressed: next }),
       });
-      await load();
+      await loadCatalog();
     } catch (e) {
       const msg = e instanceof ApiError ? `${e.status}: ${e.message}` : String(e);
       setError(msg);
@@ -440,9 +445,18 @@ export function DataPage() {
     );
   }
 
+  const metadataFiltersBusy =
+    metadataLoading &&
+    (kind === 'jokes' ||
+      kind === 'trivia' ||
+      kind === 'photos' ||
+      kind === 'videos' ||
+      kind === 'news' ||
+      kind === 'weather' ||
+      kind === 'weather_alerts');
+
   return (
     <Stack spacing={2}>
-      <DisplayRefreshIndicator loading={loading} />
       <Box>
         <Typography variant="h6" fontWeight={600} gutterBottom>
           Collected content browser
@@ -513,6 +527,7 @@ export function DataPage() {
               labelId="cat-filter"
               label="Category"
               value={categoryId}
+              disabled={metadataFiltersBusy}
               onChange={(e) => setCategoryId(e.target.value as string)}
             >
               <MenuItem value="">Any</MenuItem>
@@ -531,6 +546,7 @@ export function DataPage() {
               labelId="feed-filter"
               label="Feed"
               value={feedId}
+              disabled={metadataFiltersBusy}
               onChange={(e) => setFeedId(e.target.value as string)}
             >
               <MenuItem value="">Any</MenuItem>
@@ -549,6 +565,7 @@ export function DataPage() {
               labelId="loc-filter"
               label="Location"
               value={locationId}
+              disabled={metadataFiltersBusy}
               onChange={(e) => setLocationId(e.target.value as string)}
             >
               <MenuItem value="">Any</MenuItem>
@@ -562,6 +579,7 @@ export function DataPage() {
         )}
       </Stack>
 
+      <DisplayRefreshIndicator loading={catalogLoading} />
       <TableContainer component={Paper}>
         <Table size="small" stickyHeader>
           <TableHead>
@@ -652,7 +670,7 @@ export function DataPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {loading ? (
+            {catalogLoading ? (
               <TableRow>
                 <TableCell colSpan={12}>
                   <Typography variant="body2" color="text.secondary">
@@ -661,7 +679,7 @@ export function DataPage() {
                 </TableCell>
               </TableRow>
             ) : null}
-            {!loading &&
+            {!catalogLoading &&
               rows.map((row, index) => {
                 const id = String(row.id ?? '');
                 const sup = Boolean(row.suppressed);
@@ -839,7 +857,7 @@ export function DataPage() {
                   </TableRow>
                 );
               })}
-            {!loading && rows.length === 0 && (
+            {!catalogLoading && rows.length === 0 && (
               <TableRow>
                 <TableCell colSpan={12}>
                   <Typography variant="body2" color="text.secondary">

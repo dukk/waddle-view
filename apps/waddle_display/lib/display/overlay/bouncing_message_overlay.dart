@@ -2,7 +2,62 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:meta/meta.dart';
 import 'package:waddle_shared/persistence/display_overlay_bouncing_message_settings.dart';
+
+/// Reads layout [Size] from a laid-out [RenderBox], if available.
+@visibleForTesting
+Size? bouncingMessageRenderedSize(RenderBox? box) {
+  if (box == null || !box.hasSize) {
+    return null;
+  }
+  return box.size;
+}
+
+/// Integrates position and reflects velocity off layout walls (testable).
+@visibleForTesting
+({double x, double y, double vx, double vy}) integrateBouncingMessagePosition({
+  required double x,
+  required double y,
+  required double vx,
+  required double vy,
+  required double dt,
+  required double speed,
+  required double areaW,
+  required double areaH,
+  required double textW,
+  required double textH,
+}) {
+  if (areaW <= 1 || areaH <= 1 || textW <= 0 || textH <= 0) {
+    return (x: x, y: y, vx: vx, vy: vy);
+  }
+  final maxX = (areaW - textW).clamp(0.0, double.infinity);
+  final maxY = (areaH - textH).clamp(0.0, double.infinity);
+  if (maxX <= 0 || maxY <= 0) {
+    return (x: x, y: y, vx: vx, vy: vy);
+  }
+
+  var nx = x + vx * speed * dt;
+  var ny = y + vy * speed * dt;
+  var nvx = vx;
+  var nvy = vy;
+
+  if (nx < 0) {
+    nx = 0;
+    nvx = nvx.abs();
+  } else if (nx > maxX) {
+    nx = maxX;
+    nvx = -nvx.abs();
+  }
+  if (ny < 0) {
+    ny = 0;
+    nvy = nvy.abs();
+  } else if (ny > maxY) {
+    ny = maxY;
+    nvy = -nvy.abs();
+  }
+  return (x: nx, y: ny, vx: nvx, vy: nvy);
+}
 
 Color? _colorFromHex(String hex) {
   final s = hex.trim();
@@ -57,6 +112,7 @@ class BouncingMessageOverlay extends StatefulWidget {
 
 class _BouncingMessageOverlayState extends State<BouncingMessageOverlay>
     with SingleTickerProviderStateMixin {
+  final GlobalKey _textKey = GlobalKey();
   late final Ticker _ticker;
   Duration? _lastElapsed;
   double _x = 32;
@@ -66,6 +122,8 @@ class _BouncingMessageOverlayState extends State<BouncingMessageOverlay>
   Size _textSize = Size.zero;
   double _areaW = 0;
   double _areaH = 0;
+  Object? _measureToken;
+  bool _measurePending = false;
 
   @override
   void initState() {
@@ -74,12 +132,66 @@ class _BouncingMessageOverlayState extends State<BouncingMessageOverlay>
     _vx = (r.nextBool() ? 1 : -1) * (78 + r.nextDouble() * 40);
     _vy = (r.nextBool() ? 1 : -1) * (56 + r.nextDouble() * 36);
     _ticker = createTicker(_onTick)..start();
+    _scheduleMeasure();
+  }
+
+  @override
+  void didUpdateWidget(covariant BouncingMessageOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.text != widget.text ||
+        oldWidget.settings != widget.settings ||
+        oldWidget.fallbackColor != widget.fallbackColor) {
+      _textSize = Size.zero;
+      _measureToken = null;
+      _scheduleMeasure();
+    }
   }
 
   @override
   void dispose() {
     _ticker.dispose();
     super.dispose();
+  }
+
+  void _scheduleMeasure() {
+    if (_measurePending) {
+      return;
+    }
+    _measurePending = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _measurePending = false;
+      _syncTextSizeFromRender();
+    });
+  }
+
+  void _syncTextSizeFromRender() {
+    if (!mounted) {
+      return;
+    }
+    final box = _textKey.currentContext?.findRenderObject();
+    final size = bouncingMessageRenderedSize(
+      box is RenderBox ? box : null,
+    );
+    if (size == null || size.isEmpty) {
+      return;
+    }
+    if (size == _textSize) {
+      return;
+    }
+    setState(() {
+      _textSize = size;
+      _clampPosition();
+    });
+  }
+
+  void _clampPosition() {
+    if (_textSize.isEmpty || _areaW <= 0 || _areaH <= 0) {
+      return;
+    }
+    final maxX = (_areaW - _textSize.width).clamp(0.0, double.infinity);
+    final maxY = (_areaH - _textSize.height).clamp(0.0, double.infinity);
+    _x = _x.clamp(0.0, maxX);
+    _y = _y.clamp(0.0, maxY);
   }
 
   void _onTick(Duration elapsed) {
@@ -98,33 +210,25 @@ class _BouncingMessageOverlayState extends State<BouncingMessageOverlay>
   }
 
   void _integrate(double dt) {
-    final sp = widget.settings.speed;
-    if (_areaW <= 1 || _areaH <= 1 || _textSize.isEmpty) {
+    if (_textSize.isEmpty) {
       return;
     }
-    final maxX = (_areaW - _textSize.width).clamp(0.0, double.infinity);
-    final maxY = (_areaH - _textSize.height).clamp(0.0, double.infinity);
-    if (maxX <= 0 || maxY <= 0) {
-      return;
-    }
-
-    _x += _vx * sp * dt;
-    _y += _vy * sp * dt;
-
-    if (_x < 0) {
-      _x = 0;
-      _vx = _vx.abs();
-    } else if (_x > maxX) {
-      _x = maxX;
-      _vx = -_vx.abs();
-    }
-    if (_y < 0) {
-      _y = 0;
-      _vy = _vy.abs();
-    } else if (_y > maxY) {
-      _y = maxY;
-      _vy = -_vy.abs();
-    }
+    final out = integrateBouncingMessagePosition(
+      x: _x,
+      y: _y,
+      vx: _vx,
+      vy: _vy,
+      dt: dt,
+      speed: widget.settings.speed,
+      areaW: _areaW,
+      areaH: _areaH,
+      textW: _textSize.width,
+      textH: _textSize.height,
+    );
+    _x = out.x;
+    _y = out.y;
+    _vx = out.vx;
+    _vy = out.vy;
   }
 
   TextStyle _textStyle(BuildContext context) {
@@ -164,15 +268,26 @@ class _BouncingMessageOverlayState extends State<BouncingMessageOverlay>
         _areaW = c.maxWidth;
         _areaH = c.maxHeight;
         final style = _textStyle(context);
-        final tp = TextPainter(
-          text: TextSpan(text: display, style: style),
-          textDirection: TextDirection.ltr,
-          maxLines: 3,
-        )..layout(maxWidth: c.maxWidth * 0.92);
-        _textSize = Size(tp.width, tp.height);
+        final token = Object.hash(
+          display,
+          style.fontSize,
+          style.fontWeight,
+          style.letterSpacing,
+          style.fontFamily,
+          style.shadows,
+          style.color,
+          c.maxWidth,
+          c.maxHeight,
+          MediaQuery.textScalerOf(context),
+        );
+        if (token != _measureToken) {
+          _measureToken = token;
+          _scheduleMeasure();
+        }
 
         return Stack(
           fit: StackFit.expand,
+          clipBehavior: Clip.none,
           children: [
             Positioned(
               key: const Key('bouncing_message_positioned'),
@@ -180,9 +295,9 @@ class _BouncingMessageOverlayState extends State<BouncingMessageOverlay>
               top: _y,
               child: IgnorePointer(
                 child: Text.rich(
+                  key: _textKey,
                   TextSpan(text: display, style: style),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
             ),

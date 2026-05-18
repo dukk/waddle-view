@@ -1,82 +1,44 @@
+import {
+  displayThemePreviewById,
+  flattenDisplayThemePreview,
+  type DisplayThemePreviewGroups,
+} from './displayThemePreview';
+
 export type CuratorThemeOption = {
   id: string;
   label: string;
-  /** Hex colors shown in the theme picker (source palette order). */
+  /** Flat hex list (deduped preview colors). */
   colors: readonly string[];
+  /** Grouped swatches: display → slide → ticker → accents. */
+  preview: DisplayThemePreviewGroups;
 };
 
-/** Preview swatches mirror base palette colors; runtime themes also define container fills and gradients. */
+function themeOption(id: string, label: string): CuratorThemeOption {
+  const preview = displayThemePreviewById[id];
+  if (!preview) {
+    throw new Error(`Missing displayThemePreviewById for ${id}`);
+  }
+  return {
+    id,
+    label,
+    preview,
+    colors: flattenDisplayThemePreview(preview),
+  };
+}
+
 export const curatorThemeIds: readonly CuratorThemeOption[] = [
-  {
-    id: 'navy_coral',
-    label: 'Navy / coral (default)',
-    colors: [
-      '#0D1B2A',
-      '#1B263B',
-      '#415A77',
-      '#778DA9',
-      '#E0E1DD',
-      '#83AF84',
-      '#E05C6C',
-      '#FFE356',
-      '#966CB3',
-    ],
-  },
-  {
-    id: 'graphite_amber',
-    label: 'Graphite / amber',
-    colors: ['#121214', '#2A2A2E', '#78716C', '#F59E0B', '#F5F5F4'],
-  },
-  {
-    id: 'teal_gold_sunset',
-    label: 'Teal & gold sunset',
-    colors: ['#264653', '#2A9D8F', '#E9C46A', '#F4A261', '#E76F51'],
-  },
-  {
-    id: 'ocean_depth',
-    label: 'Ocean depth',
-    colors: ['#03045E', '#0077B6', '#00B4D8', '#90E0EF', '#CAF0F8'],
-  },
-  {
-    id: 'forest_cream',
-    label: 'Forest & cream',
-    colors: ['#606C38', '#283618', '#FEFAE0', '#DDA15E', '#BC6C25'],
-  },
-  {
-    id: 'heritage_coast',
-    label: 'Heritage coast',
-    colors: ['#780000', '#C1121F', '#FDF0D5', '#003049', '#669BBC'],
-  },
-  {
-    id: 'plum_ember',
-    label: 'Plum ember',
-    colors: ['#5F0F40', '#9A031E', '#FB8B24', '#E36414', '#0F4C5C'],
-  },
-  {
-    id: 'slate_crimson',
-    label: 'Slate & crimson',
-    colors: ['#2B2D42', '#8D99AE', '#EDF2F4', '#EF233C', '#D90429'],
-  },
-  {
-    id: 'wine_ember',
-    label: 'Wine ember',
-    colors: ['#03071E', '#370617', '#6A040F', '#9D0208', '#D00000'],
-  },
-  {
-    id: 'dopamine_pop',
-    label: 'Dopamine pop',
-    colors: ['#FF006E', '#FB5607', '#FFBE0B', '#8338EC', '#3A86FF'],
-  },
-  {
-    id: 'sage_wellness',
-    label: 'Sage wellness',
-    colors: ['#9CAF88', '#CDD5AE', '#FEFEE3', '#F2E8C6', '#BBC2A0'],
-  },
-  {
-    id: 'warm_minimal',
-    label: 'Warm minimal',
-    colors: ['#F7F1E8', '#E8B577', '#D2691E', '#8B4513', '#2F1B14'],
-  },
+  themeOption('navy_coral', 'Navy / coral (default)'),
+  themeOption('graphite_amber', 'Graphite / amber'),
+  themeOption('teal_gold_sunset', 'Teal & gold sunset'),
+  themeOption('ocean_depth', 'Ocean depth'),
+  themeOption('forest_cream', 'Forest & cream'),
+  themeOption('heritage_coast', 'Heritage coast'),
+  themeOption('plum_ember', 'Plum ember'),
+  themeOption('slate_crimson', 'Slate & crimson'),
+  themeOption('wine_ember', 'Wine ember'),
+  themeOption('dopamine_pop', 'Dopamine pop'),
+  themeOption('sage_wellness', 'Sage wellness'),
+  themeOption('warm_minimal', 'Warm minimal'),
 ];
 
 /** UI slider bounds for curator timing fields (defaults match display seed). */

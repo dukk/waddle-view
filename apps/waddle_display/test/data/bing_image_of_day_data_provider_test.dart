@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:drift/drift.dart' show Value;
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_integrations/photo_bing_image_of_the_day/bing_image_of_day_data_provider.dart';
-import 'package:waddle_shared/integrations/integration_collect.dart';
+import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import 'package:waddle_shared/persistence/config_json_documentation.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
@@ -109,11 +109,11 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _insertBingProvider(db, pollSeconds: 3600);
-    await db.into(db.configKeyValues).insert(
-      ConfigKeyValuesCompanion.insert(
-        key: integrationLastCollectKvKey(kDefaultPhotoBingIotdIntegrationId),
-        value: '1000000',
-      ),
+    await seedIntegrationKvForTest(
+      db,
+      integrationId: kDefaultPhotoBingIotdIntegrationId,
+      key: kIntegrationLastCollectKey,
+      value: '1000000',
     );
     final requests = <http.BaseRequest>[];
     final provider = BingImageOfDayDataProvider(
@@ -175,8 +175,12 @@ void main() {
     expect(row.photographerName, 'Cam Example/Getty Images');
     expect(row.photographerUrl, '');
 
-    final kv = await (db.select(db.configKeyValues)
-          ..where((t) => t.key.equals(integrationLastCollectKvKey(kDefaultPhotoBingIotdIntegrationId))))
+    final kv = await (db.select(db.integrationsKeyValue)
+          ..where(
+            (t) =>
+                t.integrationId.equals(kDefaultPhotoBingIotdIntegrationId) &
+                t.key.equals(kIntegrationLastCollectKey),
+          ))
         .getSingleOrNull();
     expect(kv, isNotNull);
     expect(kv!.value.isNotEmpty, isTrue);

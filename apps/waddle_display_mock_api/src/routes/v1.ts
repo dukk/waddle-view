@@ -318,11 +318,12 @@ export function v1Router() {
       items: [
         {
           id: 'mock_overlay',
-          overlay_type: 'hearts_rain',
-          name: 'Mock hearts',
-          config_json: { messages: ['Hi'] },
+          overlay_type: 'shape_rain',
+          name: 'Raining Hearts',
+          config_json: {
+            shapes: ['heart', 'raindrop', 'cat', 'dog'],
+          },
           config_json_schema: {},
-          example_config_json: { messages: ['Hi'] },
         },
       ],
     });
@@ -332,14 +333,23 @@ export function v1Router() {
     c.json({
       items: [
         {
-          overlay_type: 'hearts_rain',
+          overlay_type: 'shape_rain',
           config_json_schema: {
             type: 'object',
             properties: {
+              shapes: {
+                type: 'array',
+                items: {
+                  type: 'string',
+                  enum: ['heart', 'raindrop', 'cat', 'dog', 'mix'],
+                },
+              },
               messages: { type: 'array', items: { type: 'string' } },
             },
           },
-          example_config_json: { messages: ['Hello'] },
+          example_config_json: {
+            shapes: ['heart', 'raindrop', 'cat', 'dog'],
+          },
         },
         {
           overlay_type: 'birthday_confetti',
@@ -360,14 +370,63 @@ export function v1Router() {
           overlay_type: 'falling_images',
           config_json_schema: {
             type: 'object',
+            title: 'Falling images',
             properties: {
               image_blob_keys: {
                 type: 'array',
+                title: 'Images',
                 items: { type: 'string', format: 'waddle-overlay-blob-key' },
+              },
+              drop_interval_sec: {
+                type: 'integer',
+                title: 'Drop interval',
+                minimum: 15,
+                maximum: 180,
+              },
+              fall_speed: {
+                type: 'number',
+                title: 'Fall speed',
+                minimum: 0.05,
+                maximum: 1,
+              },
+              image_scale: {
+                type: 'number',
+                title: 'Image scale',
+                minimum: 0.04,
+                maximum: 0.35,
+              },
+              scale_jitter: {
+                type: 'number',
+                title: 'Random size variation',
+                minimum: 0,
+                maximum: 1,
               },
             },
           },
-          example_config_json: { image_blob_keys: [], drop_interval_sec: 45, fall_speed: 0.12 },
+          example_config_json: {
+            image_blob_keys: [],
+            drop_interval_sec: 45,
+            fall_speed: 0.12,
+            image_scale: 0.12,
+            scale_jitter: 0.33,
+          },
+        },
+        {
+          overlay_type: 'matrix_rain',
+          config_json_schema: { type: 'object', additionalProperties: true },
+          example_config_json: {
+            opacity: 0.35,
+            fall_speed: 0.45,
+          },
+        },
+        {
+          overlay_type: 'edge_glow',
+          config_json_schema: { type: 'object', additionalProperties: true },
+          example_config_json: {
+            color: '#FF3B30',
+            intensity: 0.65,
+            pulse_speed: 1.0,
+          },
         },
       ],
     }),

@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'display_overlay_falling_images_settings.dart';
+import 'display_overlay_edge_glow_settings.dart';
+import 'display_overlay_matrix_rain_settings.dart';
 import 'tables.dart';
 
 /// JSON Schema (draft 2020-12) and example payload for one [integration_type].
@@ -1693,25 +1695,28 @@ ScreenConfigJsonDoc tickerSlotConfigJsonDocForType(String tickerType) {
 /// JSON Schema + example for [overlays.config_json] by [overlayType].
 ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
   final k = overlayType.trim();
-  if (k == kOverlayTypeHeartsRain) {
+  if (k == kOverlayTypeShapeRain || k == kOverlayTypeHeartsRain) {
     return ProviderConfigJsonDoc(
       schema: jsonEncode(
         _baseSchema(
-          title: 'HeartsRainOverlayConfig',
+          title: 'Shape rain',
           description:
-              'Floating hearts use the theme accent palette. Phrases come from '
-              'the messages array.',
+              'Falling glyphs tinted from the theme accent palette. Pick which '
+              'shapes drift across the screen.',
           properties: {
-            'messages': {
+            'shapes': {
               'type': 'array',
-              'items': {'type': 'string', 'minLength': 1},
-              'description': 'Short phrases occasionally shown with the hearts.',
+              'items': {
+                'type': 'string',
+                'enum': ['heart', 'raindrop', 'cat', 'dog', 'mix'],
+              },
+              'description': 'Glyphs to drift across the screen.',
             },
           },
         ),
       ),
       example: jsonEncode({
-        'messages': ['Happy Day!'],
+        'shapes': ['heart', 'raindrop', 'cat', 'dog'],
       }),
     );
   }
@@ -1719,7 +1724,7 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
     return ProviderConfigJsonDoc(
       schema: jsonEncode(
         _baseSchema(
-          title: 'BirthdayConfettiOverlayConfig',
+          title: 'Birthday confetti',
           description:
               'Optional shapes, hex colors, density, fall speed, and opacity.',
           properties: {
@@ -1775,14 +1780,15 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
     return ProviderConfigJsonDoc(
       schema: jsonEncode(
         _baseSchema(
-          title: 'FallingImagesOverlayConfig',
+          title: 'Falling images',
           description:
               'Upload images via the controller (stored as overlay blob keys). '
               'The display occasionally drops a random image and rocks it while '
-              'it falls. Tune drop_interval_sec and fall_speed.',
+              'it falls.',
           properties: {
             'image_blob_keys': {
               'type': 'array',
+              'title': 'Images',
               'items': {
                 'type': 'string',
                 'format': 'waddle-overlay-blob-key',
@@ -1793,6 +1799,7 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
             },
             'drop_interval_sec': {
               'type': 'integer',
+              'title': 'Drop interval',
               'minimum': kFallingImagesDropIntervalSecMin,
               'maximum': kFallingImagesDropIntervalSecMax,
               'x-waddle-widget': 'slider',
@@ -1801,19 +1808,120 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
             },
             'fall_speed': {
               'type': 'number',
+              'title': 'Fall speed',
               'minimum': kFallingImagesFallSpeedMin,
               'maximum': kFallingImagesFallSpeedMax,
               'x-waddle-widget': 'slider',
               'description':
                   'Vertical speed as screen-heights per second (lower = slower).',
             },
+            'image_scale': {
+              'type': 'number',
+              'title': 'Image scale',
+              'minimum': kFallingImagesImageScaleMin,
+              'maximum': kFallingImagesImageScaleMax,
+              'x-waddle-widget': 'slider',
+              'description':
+                  'Base sprite size as a fraction of the viewport shortest side.',
+            },
+            'scale_jitter': {
+              'type': 'number',
+              'title': 'Random size variation',
+              'minimum': 0,
+              'maximum': kFallingImagesScaleJitterMax,
+              'x-waddle-widget': 'slider',
+              'description':
+                  'Per-sprite random size spread (0 = fixed size at image scale).',
+            },
           },
         ),
       ),
       example: jsonEncode({
-        'image_blob_keys': ['overlay/pool/example'],
+        'image_blob_keys': [
+          'overlay/pool/duck_mascot',
+          'overlay/pool/duck_headshot_1',
+          'overlay/pool/duck_headshot_2',
+        ],
         'drop_interval_sec': 45,
         'fall_speed': 0.12,
+        'image_scale': 0.12,
+        'scale_jitter': 0.33,
+      }),
+    );
+  }
+  if (k == kOverlayTypeMatrixRain) {
+    return ProviderConfigJsonDoc(
+      schema: jsonEncode(
+        _baseSchema(
+          title: 'Matrix rain',
+          description:
+              'Falling green character columns in a Matrix-movie style. '
+              'Opacity controls how strongly the effect covers underlying slides.',
+          properties: {
+            'opacity': {
+              'type': 'number',
+              'minimum': kMatrixRainOpacityMin,
+              'maximum': kMatrixRainOpacityMax,
+              'x-waddle-widget': 'slider',
+              'description':
+                  'Upper bound for glyph alpha; lower values keep slides more visible.',
+            },
+            'fall_speed': {
+              'type': 'number',
+              'minimum': kMatrixRainFallSpeedMin,
+              'maximum': kMatrixRainFallSpeedMax,
+              'x-waddle-widget': 'slider',
+              'description':
+                  'Relative vertical drift speed; lower is slower (about 5s per '
+                  'full cycle at 1.0).',
+            },
+          },
+        ),
+      ),
+      example: jsonEncode({
+        'opacity': 0.35,
+        'fall_speed': 0.45,
+      }),
+    );
+  }
+  if (k == kOverlayTypeEdgeGlow) {
+    return ProviderConfigJsonDoc(
+      schema: jsonEncode(
+        _baseSchema(
+          title: 'Edge glow',
+          description:
+              'Pulsing colored glow along the screen edges. Useful for alarms '
+              'when assigned on an active curator.',
+          properties: {
+            'color': {
+              'type': 'string',
+              'pattern': r'^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$',
+              'description': 'Glow tint as a hex color.',
+            },
+            'intensity': {
+              'type': 'number',
+              'minimum': kEdgeGlowIntensityMin,
+              'maximum': kEdgeGlowIntensityMax,
+              'x-waddle-widget': 'slider',
+              'description':
+                  'Peak edge glow brightness; higher values are more visible.',
+            },
+            'pulse_speed': {
+              'type': 'number',
+              'minimum': kEdgeGlowPulseSpeedMin,
+              'maximum': kEdgeGlowPulseSpeedMax,
+              'x-waddle-widget': 'slider',
+              'description':
+                  'Relative fade in/out speed; higher is faster (about 3s per '
+                  'full pulse at 1.0).',
+            },
+          },
+        ),
+      ),
+      example: jsonEncode({
+        'color': kEdgeGlowDefaultColorHex,
+        'intensity': 0.65,
+        'pulse_speed': 1.0,
       }),
     );
   }

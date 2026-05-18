@@ -18,6 +18,8 @@ import 'package:waddle_integrations/microsoft_graph/microsoft_graph_oauth.dart'
     show kMicrosoftGraphOAuthScopes, MicrosoftGraphOAuth;
 import 'package:waddle_integrations/calendar_outlook/outlook_calendar_data_provider.dart';
 import 'package:waddle_integrations/calendar_outlook/outlook_calendar_extra_config.dart';
+import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
+import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 
@@ -79,12 +81,12 @@ void main() {
     );
     final secrets = InMemorySecretStore();
     await secrets.write(microsoftGraphAccessTokenSecret('u'), 'tok');
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kMicrosoftGraphAccessTokenExpiresAtKvKey('u'),
-            value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
-          ),
-        );
+    await seedIntegrationKvForTest(
+      db,
+      accountId: 'u',
+      key: kIntegrationAccessTokenExpiresAtKey,
+      value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
+    );
     var clock = 10_000_000_000;
     final http = _CountingClient();
     final ctx = await _ctx(db, secrets);
@@ -114,12 +116,12 @@ void main() {
     final secrets = InMemorySecretStore();
     await secrets.write(microsoftGraphRefreshTokenSecret('u'), 'my_refresh');
     await secrets.write(microsoftGraphAccessTokenSecret('u'), 'old');
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kMicrosoftGraphAccessTokenExpiresAtKvKey('u'),
-            value: '1',
-          ),
-        );
+    await seedIntegrationKvForTest(
+      db,
+      accountId: 'u',
+      key: kIntegrationAccessTokenExpiresAtKey,
+      value: '1',
+    );
     final http = _RefreshThenGraphClient();
     final ctx = await _ctx(db, secrets);
     final p = OutlookCalendarDataProvider(httpClient: http);
@@ -152,6 +154,13 @@ void main() {
       extraAccountsJson:
           '[{"graphAccountKey":"u","sources":[{"mailbox":"me","calendars":[]}]}]',
     );
+    await db.into(db.integrationAccounts).insertOnConflictUpdate(
+          IntegrationAccountsCompanion.insert(
+            id: 'u',
+            accountType: kIntegrationAccountTypeMicrosoftGraph,
+            createdAtMs: DateTime.now().millisecondsSinceEpoch,
+          ),
+        );
     final secrets = InMemorySecretStore();
     final http = _DeviceThenGraphClient();
     var clock = 0;
@@ -227,7 +236,7 @@ Future<void> _seedKvAndProvider(
           enabled: const Value(true),
           pollSeconds: Value(pollSeconds),
           configJson: integrationConfigJsonValue(
-            configJson: '{"accounts":$extraAccountsJson,"pastDays":14,"futureDays":14}',,
+            configJson: '{"accounts":$extraAccountsJson,"pastDays":14,"futureDays":14}',
             baseUrl: 'https://graph.microsoft.com/v1.0',
           ),
         ),

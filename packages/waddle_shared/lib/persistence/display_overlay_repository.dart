@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/drift.dart' hide isNull, isNotNull;
@@ -7,10 +8,26 @@ import 'database.dart';
 import 'display_overlay_bouncing_message_settings.dart';
 import 'display_overlay_confetti_settings.dart';
 import 'display_overlay_falling_images_settings.dart';
+import 'display_overlay_edge_glow_settings.dart';
+import 'display_overlay_matrix_rain_settings.dart';
+import 'display_overlay_shape_rain_settings.dart';
 import 'display_overlay_row.dart';
 import 'display_overlay_sql.dart';
 import 'overlay_id_allocation.dart';
 import 'tables.dart';
+
+/// Broadcast when `overlays` rows change (`upsertOverlay` / `deleteOverlay`).
+///
+/// The table is managed via custom SQL (not a generated Drift table), so writes
+/// must notify explicitly for [watchDisplayOverlaySchedules] subscribers.
+final StreamController<void> _overlayTableChanges =
+    StreamController<void>.broadcast();
+
+void _notifyOverlayTableChanged() {
+  if (!_overlayTableChanges.isClosed) {
+    _overlayTableChanges.add(null);
+  }
+}
 
 Selectable<DisplayOverlayRow> _overlaySelectable(AppDatabase db) {
   return db.customSelect(
@@ -25,14 +42,25 @@ Future<List<DisplayOverlayRow>> fetchDisplayOverlays(AppDatabase db) =>
 Future<List<DisplayOverlayRow>> fetchDisplayOverlaySchedules(AppDatabase db) =>
     fetchDisplayOverlays(db);
 
-/// Periodically polls the table so REST changes appear without restarting the UI isolate.
-Stream<List<DisplayOverlayRow>> watchDisplayOverlaySchedules(
-  AppDatabase db,
-) async* {
-  yield await fetchDisplayOverlays(db);
-  await for (final _ in Stream.periodic(const Duration(seconds: 15))) {
-    yield await fetchDisplayOverlays(db);
-  }
+/// Emits whenever overlay rows change (REST upserts/deletes via [upsertOverlay]).
+Stream<List<DisplayOverlayRow>> watchDisplayOverlaySchedules(AppDatabase db) {
+  StreamSubscription<void>? tableSub;
+  return Stream<List<DisplayOverlayRow>>.multi((controller) async {
+    Future<void> emitRows() async {
+      if (controller.isClosed) {
+        return;
+      }
+      controller.add(await fetchDisplayOverlays(db));
+    }
+
+    await emitRows();
+    tableSub = _overlayTableChanges.stream.listen((_) {
+      unawaited(emitRows());
+    });
+    controller.onCancel = () {
+      unawaited(tableSub?.cancel());
+    };
+  });
 }
 
 Future<void> ensureOverlaysTableExists(AppDatabase db) async {
@@ -157,7 +185,9 @@ String normalizeOverlayConfigForUpsert({
   final split = _splitOverlayConfigForNormalize(configJson);
   final restJson = jsonEncode(split.rest);
   return switch (trimmedType) {
-    kOverlayTypeHeartsRain => jsonEncode(<String, Object?>{'messages': split.messages}),
+    kOverlayTypeShapeRain || kOverlayTypeHeartsRain =>
+        normalizeShapeRainSettingsJsonString(restJson) ??
+            (throw FormatException('invalid_config_json')),
     kOverlayTypeBirthdayConfetti =>
         normalizeBirthdayConfettiSettingsJsonString(restJson) ??
             (throw FormatException('invalid_config_json')),
@@ -167,12 +197,15 @@ String normalizeOverlayConfigForUpsert({
                 (throw FormatException('invalid_config_json'));
         return _mergeMessagesIntoConfigJsonString(normalizedInner, split.messages);
       }(),
-    kOverlayTypeFallingImages => () {
-        final normalizedInner =
-            normalizeFallingImagesConfigJsonString(restJson) ??
-                (throw FormatException('invalid_config_json'));
-        return _mergeMessagesIntoConfigJsonString(normalizedInner, split.messages);
-      }(),
+    kOverlayTypeFallingImages =>
+        normalizeFallingImagesConfigJsonString(restJson) ??
+            (throw FormatException('invalid_config_json')),
+    kOverlayTypeMatrixRain =>
+        normalizeMatrixRainSettingsJsonString(restJson) ??
+            (throw FormatException('invalid_config_json')),
+    kOverlayTypeEdgeGlow =>
+        normalizeEdgeGlowSettingsJsonString(restJson) ??
+            (throw FormatException('invalid_config_json')),
     _ => _normalizeUnknownOverlayConfigJson(split.rest, split.messages),
   };
 }
@@ -253,18 +286,17 @@ Future<String> upsertOverlay(
   final trimmedId = id.trim();
   await db.customStatement(
     'INSERT OR REPLACE INTO overlays ('
-    'id, overlay_type, name, '
-    'config_json, config_json_schema, example_config_json) '
-    'VALUES (?, ?, ?, ?, ?, ?)',
+    'id, overlay_type, name, config_json, config_json_schema) '
+    'VALUES (?, ?, ?, ?, ?)',
     <Object?>[
       trimmedId,
       overlayType.trim(),
       name,
       configNorm,
       doc.schema,
-      doc.example,
     ],
   );
+  _notifyOverlayTableChanged();
   return trimmedId;
 }
 
@@ -297,6 +329,7 @@ Future<void> deleteOverlay(AppDatabase db, String id) async {
     'DELETE FROM overlays WHERE id = ?',
     <Object?>[id.trim()],
   );
+  _notifyOverlayTableChanged();
 }
 
 /// Back-compat alias.
@@ -343,7 +376,6 @@ Map<String, Object?> overlayToJson(DisplayOverlayRow row) {
     'name': row.name,
     'config_json': configField,
     'config_json_schema': _decodedJsonOrNull(row.configJsonSchema),
-    'example_config_json': _decodedJsonOrNull(row.exampleConfigJson),
   };
 }
 

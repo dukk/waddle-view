@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import { CssBaseline, ThemeProvider, useMediaQuery } from '@mui/material';
+import { ModalFocusGuard } from '@/components/ModalFocusGuard';
 import { createAppTheme } from '@/theme';
 import {
   readColorModePreference,
@@ -56,6 +57,7 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
     <ColorModeContext.Provider value={value}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
+        <ModalFocusGuard />
         {children}
       </ThemeProvider>
     </ColorModeContext.Provider>

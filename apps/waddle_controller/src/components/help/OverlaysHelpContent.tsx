@@ -15,10 +15,12 @@ export function OverlaysHelpContent() {
         includes it. A global overlay toggle in SQLite can still suppress all overlays.
       </Typography>
       <Typography variant="body2" sx={{ mt: 1 }}>
-        <strong>Overlay type</strong> selects the renderer (hearts rain, birthday confetti, bouncing
-        message, falling images). Birthday confetti is visual-only (shapes, colors, density, fall
-        speed, opacity); use hearts rain or bouncing message for on-screen phrases. Edit
-        configuration here; delete removes the row from SQLite.
+        <strong>Overlay type</strong> selects the renderer (shape rain, birthday confetti, bouncing
+        message, falling images, matrix rain, edge glow). Shape rain drifts hearts, raindrops, cats,
+        and dogs. Birthday confetti is visual-only (shapes, density, fall speed, opacity). Matrix
+        rain shows translucent falling green characters; lower opacity keeps slides more visible. Edge
+        glow pulses a colored vignette along the screen borders — useful for alarms when assigned on
+        an active curator. Edit configuration here; delete removes the row from SQLite.
       </Typography>
     </>
   );

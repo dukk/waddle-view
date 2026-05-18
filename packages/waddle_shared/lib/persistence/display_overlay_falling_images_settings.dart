@@ -15,6 +15,15 @@ const double kFallingImagesFallSpeedMin = 0.05;
 /// Maximum vertical speed (screen-heights per second).
 const double kFallingImagesFallSpeedMax = 1.0;
 
+/// Minimum base image size as a fraction of viewport shortest side.
+const double kFallingImagesImageScaleMin = 0.04;
+
+/// Maximum base image size as a fraction of viewport shortest side.
+const double kFallingImagesImageScaleMax = 0.35;
+
+/// Maximum per-sprite random size multiplier spread (0 = fixed size).
+const double kFallingImagesScaleJitterMax = 1.0;
+
 final RegExp overlayBlobKeyPattern = RegExp(r'^overlay/[a-z0-9][a-z0-9_/.-]*$');
 
 bool isValidOverlayBlobKey(String key) => overlayBlobKeyPattern.hasMatch(key.trim());
@@ -25,6 +34,8 @@ class FallingImagesScheduleSettings {
     required this.imageBlobKeys,
     required this.dropIntervalSec,
     required this.fallSpeed,
+    required this.imageScale,
+    required this.scaleJitter,
   });
 
   static const FallingImagesScheduleSettings defaults =
@@ -32,6 +43,8 @@ class FallingImagesScheduleSettings {
         imageBlobKeys: <String>[],
         dropIntervalSec: 45,
         fallSpeed: 0.12,
+        imageScale: 0.12,
+        scaleJitter: 0.33,
       );
 
   final List<String> imageBlobKeys;
@@ -41,6 +54,12 @@ class FallingImagesScheduleSettings {
 
   /// Vertical speed as screen-heights per second (lower = slower fall).
   final double fallSpeed;
+
+  /// Base sprite size as a fraction of viewport shortest side.
+  final double imageScale;
+
+  /// Per-sprite random size spread (0 = fixed size at [imageScale]).
+  final double scaleJitter;
 
   static FallingImagesScheduleSettings parse(String raw) {
     dynamic decoded;
@@ -86,10 +105,27 @@ class FallingImagesScheduleSettings {
       );
     }
 
+    var imageScale = FallingImagesScheduleSettings.defaults.imageScale;
+    final rawImageScale = map['image_scale'];
+    if (rawImageScale is num) {
+      imageScale = rawImageScale.toDouble().clamp(
+        kFallingImagesImageScaleMin,
+        kFallingImagesImageScaleMax,
+      );
+    }
+
+    var scaleJitter = FallingImagesScheduleSettings.defaults.scaleJitter;
+    final rawScaleJitter = map['scale_jitter'];
+    if (rawScaleJitter is num) {
+      scaleJitter = rawScaleJitter.toDouble().clamp(0, kFallingImagesScaleJitterMax);
+    }
+
     return FallingImagesScheduleSettings(
       imageBlobKeys: keys,
       dropIntervalSec: dropIntervalSec,
       fallSpeed: fallSpeed,
+      imageScale: imageScale,
+      scaleJitter: scaleJitter,
     );
   }
 }
@@ -133,6 +169,18 @@ String? normalizeFallingImagesConfigJsonString(String raw) {
       kFallingImagesFallSpeedMax,
     );
   }
+  if (map.containsKey('image_scale') && map['image_scale'] is num) {
+    out['image_scale'] = (map['image_scale'] as num).toDouble().clamp(
+      kFallingImagesImageScaleMin,
+      kFallingImagesImageScaleMax,
+    );
+  }
+  if (map.containsKey('scale_jitter') && map['scale_jitter'] is num) {
+    out['scale_jitter'] = (map['scale_jitter'] as num).toDouble().clamp(
+      0,
+      kFallingImagesScaleJitterMax,
+    );
+  }
   return jsonEncode(out);
 }
 
@@ -142,6 +190,8 @@ bool _fallingImagesConfigMapValid(Map<String, dynamic> map) {
       'image_blob_keys',
       'drop_interval_sec',
       'fall_speed',
+      'image_scale',
+      'scale_jitter',
     }.contains(key)) {
       return false;
     }
@@ -161,6 +211,12 @@ bool _fallingImagesConfigMapValid(Map<String, dynamic> map) {
     return false;
   }
   if (map.containsKey('fall_speed') && map['fall_speed'] is! num) {
+    return false;
+  }
+  if (map.containsKey('image_scale') && map['image_scale'] is! num) {
+    return false;
+  }
+  if (map.containsKey('scale_jitter') && map['scale_jitter'] is! num) {
     return false;
   }
   return true;

@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/config/ical_kv.dart';
+import 'package:waddle_shared/integrations/integration_kv_repository.dart';
+import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import 'package:waddle_shared/net/http_debug_uri.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
@@ -41,12 +43,17 @@ class IcalCalendarDataProvider implements IDataProvider {
     final enabledFeeds = extra.feeds.where((f) => f.enabled).toList();
     if (enabledFeeds.isEmpty) {
       ctx.diagnostics.provider('calendar_ical: no enabled feeds');
-      await _markCollectDone(ctx.db, _nowMs());
+      await _markCollectDone(ctx.db, setting.id, _nowMs());
       return;
     }
 
     final nowMs = _nowMs();
-    if (await _shouldSkipForPollWindow(ctx.db, nowMs, setting.pollSeconds)) {
+    if (await _shouldSkipForPollWindow(
+      ctx.db,
+      setting.id,
+      nowMs,
+      setting.pollSeconds,
+    )) {
       ctx.diagnostics.provider(
         'calendar_ical: skip poll gate pollSeconds=${setting.pollSeconds}',
       );
@@ -122,7 +129,7 @@ class IcalCalendarDataProvider implements IDataProvider {
     }
 
     if (didSync) {
-      await _markCollectDone(ctx.db, nowMs);
+      await _markCollectDone(ctx.db, setting.id, nowMs);
       ctx.diagnostics.provider('calendar_ical: collect ok, last_collect updated');
     } else {
       ctx.diagnostics.provider('calendar_ical: collect finished (no writes)');
@@ -131,16 +138,18 @@ class IcalCalendarDataProvider implements IDataProvider {
 
   Future<bool> _shouldSkipForPollWindow(
     AppDatabase db,
+    String integrationId,
     int nowMs,
     int pollSeconds,
   ) async {
     if (pollSeconds <= 0) {
       return false;
     }
-    final lastRow = await (db.select(db.configKeyValues)
-          ..where((t) => t.key.equals(kIcalCalendarLastCollectKvKey)))
-        .getSingleOrNull();
-    final last = int.tryParse(lastRow?.value ?? '') ?? 0;
+    final lastValue = await IntegrationKvRepository(db).getIntegrationValue(
+      integrationId,
+      kIntegrationLastCollectKey,
+    );
+    final last = int.tryParse(lastValue ?? '') ?? 0;
     return nowMs - last < pollSeconds * 1000;
   }
 
@@ -152,12 +161,16 @@ class IcalCalendarDataProvider implements IDataProvider {
     return (start, endExclusive);
   }
 
-  Future<void> _markCollectDone(AppDatabase db, int nowMs) async {
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-      ConfigKeyValuesCompanion.insert(
-        key: kIcalCalendarLastCollectKvKey,
-        value: '$nowMs',
-      ),
+  Future<void> _markCollectDone(
+    AppDatabase db,
+    String integrationId,
+    int nowMs,
+  ) async {
+    await IntegrationKvRepository(db).upsertIntegration(
+      integrationId: integrationId,
+      key: kIntegrationLastCollectKey,
+      value: '$nowMs',
+      valueType: kIntegrationKvTypeIntMs,
     );
   }
 

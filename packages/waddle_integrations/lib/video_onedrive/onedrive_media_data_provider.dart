@@ -17,6 +17,8 @@ import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_shared/integrations/integration_collect.dart';
+import 'package:waddle_shared/integrations/integration_kv_repository.dart';
+import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import '../microsoft_graph/microsoft_graph_base_url.dart';
 import '../microsoft_graph/microsoft_graph_oauth.dart'
     show MicrosoftGraphOAuth, kMicrosoftGraphAccessTokenSkewMs;
@@ -162,13 +164,10 @@ class OneDriveVideosDataProvider implements IDataProvider {
     if (pollSeconds <= 0) {
       return false;
     }
-    final lastRow =
-        await (db.select(db.configKeyValues)
-              ..where(
-                (t) => t.key.equals(integrationLastCollectKvKey(integrationId)),
-              ))
-            .getSingleOrNull();
-    final last = int.tryParse(lastRow?.value ?? '') ?? 0;
+    final kv = IntegrationKvRepository(db);
+    final lastValue =
+        await kv.getIntegrationValue(integrationId, kIntegrationLastCollectKey);
+    final last = int.tryParse(lastValue ?? '') ?? 0;
     if (nowMs - last >= pollSeconds * 1000) {
       return false;
     }
@@ -179,15 +178,11 @@ class OneDriveVideosDataProvider implements IDataProvider {
       }
       final access =
           await secrets.read(microsoftGraphAccessTokenSecret(a.graphAccountKey));
-      final expiresRow =
-          await (db.select(db.configKeyValues)
-                ..where(
-                  (t) => t.key.equals(
-                    kMicrosoftGraphAccessTokenExpiresAtKvKey(a.graphAccountKey),
-                  ),
-                ))
-              .getSingleOrNull();
-      final expiresAt = int.tryParse(expiresRow?.value ?? '') ?? 0;
+      final expiresValue = await kv.getAccountValue(
+        a.graphAccountKey,
+        kIntegrationAccessTokenExpiresAtKey,
+      );
+      final expiresAt = int.tryParse(expiresValue ?? '') ?? 0;
       final fresh = access != null &&
           access.isNotEmpty &&
           expiresAt > nowMs + kMicrosoftGraphAccessTokenSkewMs;
@@ -319,6 +314,7 @@ class OneDriveVideosDataProvider implements IDataProvider {
           }
           final outcome = await _syncPathGroup(
             ctx,
+            integrationId: integrationId,
             graphBase: graphBase,
             accessToken: token,
             graphAccountKey: account.graphAccountKey,
@@ -354,12 +350,12 @@ class OneDriveVideosDataProvider implements IDataProvider {
     String integrationId,
     int nowMs,
   ) async {
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: integrationLastCollectKvKey(integrationId),
-            value: '$nowMs',
-          ),
-        );
+    await IntegrationKvRepository(db).upsertIntegration(
+      integrationId: integrationId,
+      key: kIntegrationLastCollectKey,
+      value: '$nowMs',
+      valueType: kIntegrationKvTypeIntMs,
+    );
   }
 
   String _normalizeGraphBase(String? raw) {
@@ -398,23 +394,26 @@ class OneDriveVideosDataProvider implements IDataProvider {
         .toString();
   }
 
-  Future<void> _clearDeltaKv(AppDatabase db, String deltaKey) async {
-    await (db.delete(
-      db.configKeyValues,
-    )..where((t) => t.key.equals(deltaKey))).go();
+  Future<void> _clearDeltaKv(
+    AppDatabase db,
+    String integrationId,
+    String deltaKey,
+  ) async {
+    await IntegrationKvRepository(db).deleteIntegrationKey(integrationId, deltaKey);
   }
 
   Future<void> _persistDeltaLink(
     AppDatabase db,
+    String integrationId,
     String deltaKey,
     String deltaLink,
   ) async {
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: deltaKey,
-            value: deltaLink,
-          ),
-        );
+    await IntegrationKvRepository(db).upsertIntegration(
+      integrationId: integrationId,
+      key: deltaKey,
+      value: deltaLink,
+      valueType: kIntegrationKvTypeDeltaLink,
+    );
   }
 
   Future<String?> _resolveFolderId(
@@ -509,6 +508,7 @@ class OneDriveVideosDataProvider implements IDataProvider {
   /// updated [globalRemaining] after downloads.
   Future<({int downloads, int globalRemaining})> _syncPathGroup(
     DataWriteContext ctx, {
+    required String integrationId,
     required String graphBase,
     required String accessToken,
     required String graphAccountKey,
@@ -518,16 +518,12 @@ class OneDriveVideosDataProvider implements IDataProvider {
     required int globalRemaining,
     required RejectFilterContext rejectCtx,
   }) async {
-    final deltaKey = kOneDriveMediaDeltaLinkKvKey(
-      graphAccountKey,
-      normalizedPath,
+    final deltaKey = oneDriveMediaDeltaLinkKey(normalizedPath);
+    final storedValue = await IntegrationKvRepository(ctx.db).getIntegrationValue(
+      integrationId,
+      deltaKey,
     );
-    final storedRow =
-        await (ctx.db.select(
-              ctx.db.configKeyValues,
-            )..where((t) => t.key.equals(deltaKey)))
-            .getSingleOrNull();
-    var url = storedRow?.value.trim();
+    var url = storedValue?.trim();
     var downloaded = 0;
     var globalR = globalRemaining;
     final perSpecLeft = specs.map((s) => s.effectivePerPollLimit).toList();
@@ -554,7 +550,7 @@ class OneDriveVideosDataProvider implements IDataProvider {
       }
     }
 
-    final hadStoredDelta = storedRow?.value.trim().isNotEmpty == true;
+    final hadStoredDelta = storedValue?.trim().isNotEmpty == true;
     ctx.diagnostics.provider(
       'onedrive_media: sync begin account=$graphAccountKey '
       'path="${normalizedPath.isEmpty ? '(drive root)' : normalizedPath}" '
@@ -579,7 +575,7 @@ class OneDriveVideosDataProvider implements IDataProvider {
 
       if (res.statusCode == 410) {
         goneRetries++;
-        await _clearDeltaKv(ctx.db, deltaKey);
+        await _clearDeltaKv(ctx.db, integrationId, deltaKey);
         final loc = res.headers['location']?.trim();
         ctx.diagnostics.provider(
           'onedrive_media: delta 410 Gone page=$deltaPage retry=$goneRetries '
@@ -738,7 +734,7 @@ class OneDriveVideosDataProvider implements IDataProvider {
     }
 
     if (deltaLinkToPersist != null && deltaLinkToPersist.isNotEmpty) {
-      await _persistDeltaLink(ctx.db, deltaKey, deltaLinkToPersist);
+      await _persistDeltaLink(ctx.db, integrationId, deltaKey, deltaLinkToPersist);
       ctx.diagnostics.provider(
         'onedrive_media: delta checkpoint saved account=$graphAccountKey '
         'path="${normalizedPath.isEmpty ? '(drive root)' : normalizedPath}"',

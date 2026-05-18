@@ -12,6 +12,8 @@ import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_shared/integrations/integration_collect.dart';
+import 'package:waddle_shared/integrations/integration_kv_repository.dart';
+import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'pexels_provider_extra_config.dart';
 
@@ -48,14 +50,12 @@ class PexelsPhotosDataProvider implements IDataProvider {
   ) async {
     final integrationId = setting.id;
     final nowMs = _nowMs();
-    final lastCollectKey = integrationLastCollectKvKey(integrationId);
+    final kv = IntegrationKvRepository(ctx.db);
 
     if (setting.pollSeconds > 0) {
-      final lastRow =
-          await (ctx.db.select(ctx.db.configKeyValues)
-                ..where((t) => t.key.equals(lastCollectKey)))
-              .getSingleOrNull();
-      final last = int.tryParse(lastRow?.value ?? '') ?? 0;
+      final lastValue =
+          await kv.getIntegrationValue(integrationId, kIntegrationLastCollectKey);
+      final last = int.tryParse(lastValue ?? '') ?? 0;
       if (nowMs - last < setting.pollSeconds * 1000) {
         ctx.diagnostics.provider(
           'pexels_photo: skip poll ($integrationId ${setting.pollSeconds}s gate, lastMs=$last)',
@@ -121,11 +121,11 @@ class PexelsPhotosDataProvider implements IDataProvider {
         }
       }
 
-      await ctx.db.into(ctx.db.configKeyValues).insertOnConflictUpdate(
-        ConfigKeyValuesCompanion.insert(
-          key: lastCollectKey,
-          value: '$nowMs',
-        ),
+      await kv.upsertIntegration(
+        integrationId: integrationId,
+        key: kIntegrationLastCollectKey,
+        value: '$nowMs',
+        valueType: kIntegrationKvTypeIntMs,
       );
       ctx.diagnostics.provider(
         'pexels_photo: collect finished id=$integrationId (last_collect_ms updated)',

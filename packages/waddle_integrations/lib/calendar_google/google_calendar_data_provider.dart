@@ -6,13 +6,15 @@ import 'package:http/http.dart' as http;
 
 import 'package:waddle_shared/config/google_kv.dart';
 import 'package:waddle_shared/config/integration_config_json.dart';
+import 'package:waddle_shared/integrations/integration_collect.dart';
+import 'package:waddle_shared/integrations/integration_kv_repository.dart';
+import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';
 import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
-import 'package:waddle_shared/integrations/integration_collect.dart';
 import '../shared/calendar_provider_calendar_entry.dart';
 import '../shared/provider_calendar_date_time.dart';
 import 'google_calendar_extra_config.dart';
@@ -67,7 +69,7 @@ class GoogleCalendarDataProvider implements IDataProvider {
     final extra = GoogleCalendarExtraConfig.parse(setting.configJson);
     if (extra.accounts.isEmpty) {
       ctx.diagnostics.provider('google_calendar: no accounts, mark collect done');
-      await _markCollectDone(ctx.db, nowMs);
+      await _markCollectDone(ctx.db, setting.id, nowMs);
       return;
     }
 
@@ -77,6 +79,7 @@ class GoogleCalendarDataProvider implements IDataProvider {
       extra,
       nowMs,
       setting.pollSeconds,
+      setting.id,
     )) {
       ctx.diagnostics.provider(
         'google_calendar: skip poll gate pollSeconds=${setting.pollSeconds}',
@@ -159,7 +162,7 @@ class GoogleCalendarDataProvider implements IDataProvider {
     }
     if (didSync) {
       ctx.diagnostics.provider('google_calendar: collect ok, last_collect updated');
-      await _markCollectDone(ctx.db, nowMs);
+      await _markCollectDone(ctx.db, setting.id, nowMs);
     } else {
       ctx.diagnostics.provider('google_calendar: collect finished (no sync writes)');
     }
@@ -171,14 +174,15 @@ class GoogleCalendarDataProvider implements IDataProvider {
     GoogleCalendarExtraConfig extra,
     int nowMs,
     int pollSeconds,
+    String integrationId,
   ) async {
     if (pollSeconds <= 0) {
       return false;
     }
-    final lastRow = await (db.select(db.configKeyValues)
-          ..where((t) => t.key.equals(kGoogleCalendarLastCollectKvKey)))
-        .getSingleOrNull();
-    final last = int.tryParse(lastRow?.value ?? '') ?? 0;
+    final kv = IntegrationKvRepository(db);
+    final lastValue =
+        await kv.getIntegrationValue(integrationId, kIntegrationLastCollectKey);
+    final last = int.tryParse(lastValue ?? '') ?? 0;
     if (nowMs - last >= pollSeconds * 1000) {
       return false;
     }
@@ -187,13 +191,11 @@ class GoogleCalendarDataProvider implements IDataProvider {
         continue;
       }
       final access = await secrets.read(googleAccessTokenSecret(a.googleAccountKey));
-      final expiresRow = await (db.select(db.configKeyValues)
-            ..where(
-              (t) =>
-                  t.key.equals(kGoogleAccessTokenExpiresAtKvKey(a.googleAccountKey)),
-            ))
-          .getSingleOrNull();
-      final expiresAt = int.tryParse(expiresRow?.value ?? '') ?? 0;
+      final expiresValue = await kv.getAccountValue(
+        a.googleAccountKey,
+        kIntegrationAccessTokenExpiresAtKey,
+      );
+      final expiresAt = int.tryParse(expiresValue ?? '') ?? 0;
       final fresh =
           access != null && access.isNotEmpty && expiresAt > nowMs + kGoogleAccessTokenSkewMs;
       if (!fresh) {
@@ -218,13 +220,17 @@ class GoogleCalendarDataProvider implements IDataProvider {
     return (start, endExclusive);
   }
 
-  Future<void> _markCollectDone(AppDatabase db, int nowMs) async {
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kGoogleCalendarLastCollectKvKey,
-            value: '$nowMs',
-          ),
-        );
+  Future<void> _markCollectDone(
+    AppDatabase db,
+    String integrationId,
+    int nowMs,
+  ) async {
+    await IntegrationKvRepository(db).upsertIntegration(
+      integrationId: integrationId,
+      key: kIntegrationLastCollectKey,
+      value: '$nowMs',
+      valueType: kIntegrationKvTypeIntMs,
+    );
   }
 
   Future<void> _purgeWindow(

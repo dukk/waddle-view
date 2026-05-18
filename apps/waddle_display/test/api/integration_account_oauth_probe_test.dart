@@ -8,8 +8,9 @@ import 'package:waddle_display/config/microsoft_graph_kv.dart'
     show kMicrosoftGraphOAuthAlertSource, kMicrosoftGraphOAuthRedirectUri;
 import 'package:waddle_shared/config/google_kv.dart';
 import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
+import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import 'package:waddle_shared/persistence/database.dart'
-    show ConfigKeyValuesCompanion, IntegrationAccountsCompanion;
+    show IntegrationAccountsCompanion;
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 
@@ -22,12 +23,13 @@ void main() {
     final secrets = InMemorySecretStore();
     await secrets.write('provider:client_id:google', 'google-client');
     await secrets.write(googleAccessTokenSecret('personal'), 'access-tok');
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kGoogleAccessTokenExpiresAtKvKey('personal'),
-            value: '${DateTime.now().millisecondsSinceEpoch + 86400000}',
-          ),
-        );
+    await seedIntegrationKvForTest(
+      db,
+      accountId: 'personal',
+      key: kIntegrationAccessTokenExpiresAtKey,
+      value: '${DateTime.now().millisecondsSinceEpoch + 86400000}',
+      accountType: kIntegrationAccountTypeGoogle,
+    );
     await db.into(db.integrationAccounts).insertOnConflictUpdate(
           IntegrationAccountsCompanion.insert(
             id: 'personal',

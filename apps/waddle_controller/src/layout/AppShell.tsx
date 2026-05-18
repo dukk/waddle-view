@@ -128,6 +128,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
     drawerRealtimeNav.length > 0 && drawerConfigNav.length > 0;
   const [snack, setSnack] = useState<string | null>(null);
   const [rolePreviewOpen, setRolePreviewOpen] = useState(false);
+  const [rolePreviewPending, setRolePreviewPending] = useState(false);
   const [rolePreviewChoice, setRolePreviewChoice] =
     useState<(typeof PREVIEWABLE_CONTROLLER_ROLES)[number]>('operator');
 
@@ -188,7 +189,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
         <WaddleBrandMark variant="headshot" size="sm" />
         <Box sx={{ minWidth: 0 }}>
           <Typography variant="subtitle1" fontWeight={700} lineHeight={1.2} noWrap>
-            Waddle
+            Waddle View
           </Typography>
           <Typography variant="caption" color="grey.400" lineHeight={1.2} noWrap>
             Controller
@@ -385,9 +386,19 @@ export function AppShell({ children }: { children?: ReactNode }) {
                     anchorEl={userMenuAnchor}
                     open={Boolean(userMenuAnchor)}
                     onClose={() => setUserMenuAnchor(null)}
+                    disableRestoreFocus={rolePreviewPending}
                     anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
                     transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-                    slotProps={{ list: { 'aria-labelledby': 'user-menu-button' } }}
+                    slotProps={{
+                      list: { 'aria-labelledby': 'user-menu-button' },
+                      transition: {
+                        onExited: () => {
+                          if (!rolePreviewPending) return;
+                          setRolePreviewOpen(true);
+                          setRolePreviewPending(false);
+                        },
+                      },
+                    }}
                   >
                     {isAdminUser && viewAsRole && (
                       <MenuItem
@@ -405,9 +416,9 @@ export function AppShell({ children }: { children?: ReactNode }) {
                     {isAdminUser && !viewAsRole && (
                       <MenuItem
                         onClick={() => {
-                          setUserMenuAnchor(null);
                           setRolePreviewChoice('operator');
-                          setRolePreviewOpen(true);
+                          setRolePreviewPending(true);
+                          setUserMenuAnchor(null);
                         }}
                       >
                         <ListItemIcon>
@@ -441,43 +452,6 @@ export function AppShell({ children }: { children?: ReactNode }) {
                       <ListItemText>Display log out</ListItemText>
                     </MenuItem>
                   </Menu>
-                  <Dialog
-                    open={rolePreviewOpen}
-                    onClose={() => setRolePreviewOpen(false)}
-                    aria-labelledby="role-preview-title"
-                    maxWidth="xs"
-                    fullWidth
-                  >
-                    <DialogTitle id="role-preview-title">View UI as role</DialogTitle>
-                    <DialogContent>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                        The controller hides controls you would not have with that role. API calls still
-                        use your signed-in session and server permission checks still apply.
-                      </Typography>
-                      <RadioGroup
-                        value={rolePreviewChoice}
-                        onChange={(e) =>
-                          setRolePreviewChoice(e.target.value as (typeof PREVIEWABLE_CONTROLLER_ROLES)[number])
-                        }
-                      >
-                        {PREVIEWABLE_CONTROLLER_ROLES.map((r) => (
-                          <FormControlLabel key={r} value={r} control={<Radio />} label={r} />
-                        ))}
-                      </RadioGroup>
-                    </DialogContent>
-                    <DialogActions>
-                      <Button onClick={() => setRolePreviewOpen(false)}>Cancel</Button>
-                      <Button
-                        variant="contained"
-                        onClick={() => {
-                          setViewAsRole(rolePreviewChoice);
-                          setRolePreviewOpen(false);
-                        }}
-                      >
-                        Apply
-                      </Button>
-                    </DialogActions>
-                  </Dialog>
                 </>
                 ) : null
               ) : (
@@ -547,6 +521,44 @@ export function AppShell({ children }: { children?: ReactNode }) {
           {snack}
         </Alert>
       </Snackbar>
+
+      <Dialog
+        open={rolePreviewOpen}
+        onClose={() => setRolePreviewOpen(false)}
+        aria-labelledby="role-preview-title"
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle id="role-preview-title">View UI as role</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            The controller hides controls you would not have with that role. API calls still use your
+            signed-in session and server permission checks still apply.
+          </Typography>
+          <RadioGroup
+            value={rolePreviewChoice}
+            onChange={(e) =>
+              setRolePreviewChoice(e.target.value as (typeof PREVIEWABLE_CONTROLLER_ROLES)[number])
+            }
+          >
+            {PREVIEWABLE_CONTROLLER_ROLES.map((r) => (
+              <FormControlLabel key={r} value={r} control={<Radio />} label={r} />
+            ))}
+          </RadioGroup>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRolePreviewOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              setViewAsRole(rolePreviewChoice);
+              setRolePreviewOpen(false);
+            }}
+          >
+            Apply
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

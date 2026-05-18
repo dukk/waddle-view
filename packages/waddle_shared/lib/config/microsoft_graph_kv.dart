@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 
 /// Legacy [AppDatabase.configKeyValues] key for the Graph app client id
-/// (removed in schema **37**; use [waddleMicrosoftGraphClientIdEnv] in
+/// (use [waddleMicrosoftGraphClientIdEnv] in
 /// `package:waddle_shared/config/provider_access_token_env.dart` instead).
 const String kMicrosoftGraphClientIdKvKey = 'microsoft.graph.client_id';
 
@@ -21,15 +21,23 @@ const String kMicrosoftGraphOAuthAlertSource = 'microsoft_graph';
 const String kOneDriveMediaLastCollectKvKey =
     'provider.media_onedrive.last_collect_ms';
 
-/// [AppDatabase.configKeyValues] key for persisted Graph `@odata.deltaLink` per
-/// account and normalized folder path (empty path = whole default drive).
+/// Path tag for a normalized OneDrive folder (empty path = whole default drive).
+String oneDriveMediaDeltaLinkPathTag(String normalizedPath) =>
+    normalizedPath.isEmpty
+        ? '_root_'
+        : sha256.convert(utf8.encode(normalizedPath)).toString();
+
+/// Logical [IntegrationsKeyValue.key] for a Graph delta link on an integration row.
+String oneDriveMediaDeltaLinkKey(String normalizedPath) =>
+    'delta_link.${oneDriveMediaDeltaLinkPathTag(normalizedPath)}';
+
+/// Legacy config_key_values key (schema 21+ uses [oneDriveMediaDeltaLinkKey]).
+@Deprecated('Migrated to integrations_key_value in schema 21')
 String kOneDriveMediaDeltaLinkKvKey(
   String graphAccountKey,
   String normalizedPath,
 ) {
-  final pathTag = normalizedPath.isEmpty
-      ? '_root_'
-      : sha256.convert(utf8.encode(normalizedPath)).toString();
+  final pathTag = oneDriveMediaDeltaLinkPathTag(normalizedPath);
   return 'provider.media_onedrive.delta_link.$graphAccountKey.$pathTag';
 }
 
@@ -41,8 +49,8 @@ String kOneDriveMediaItemRowId(String graphAccountKey, String driveItemId) {
   return sha256.convert(bytes).toString();
 }
 
-/// Milliseconds since epoch when the Graph access token stops being valid
-/// (used to decide when to refresh). One row per `graphAccountKey`.
+/// Legacy config_key_values key (schema 21+ uses [kIntegrationAccessTokenExpiresAtKey]).
+@Deprecated('Migrated to integrations_key_value in schema 21')
 String kMicrosoftGraphAccessTokenExpiresAtKvKey(String graphAccountKey) =>
     'microsoft.graph.access_token_expires_at_ms.$graphAccountKey';
 
@@ -54,11 +62,13 @@ String microsoftGraphAccessTokenSecret(String graphAccountKey) =>
 String microsoftGraphRefreshTokenSecret(String graphAccountKey) =>
     'provider:refresh_token:microsoft_graph:$graphAccountKey';
 
-/// Last successful Outlook calendar provider collect (poll gate).
+/// Legacy config_key_values poll gate (schema 21+ uses [kIntegrationLastCollectKey]).
+@Deprecated('Migrated to integrations_key_value in schema 21')
 const String kOutlookCalendarLastCollectKvKey =
     'provider.calendar_outlook.last_collect_ms';
 
-/// Throttle device-code prompts per Graph account.
+/// Legacy config_key_values key (schema 21+ uses [kIntegrationLastDevicePromptKey]).
+@Deprecated('Migrated to integrations_key_value in schema 21')
 String kOutlookCalendarLastDevicePromptKvKey(String graphAccountKey) =>
     'provider.calendar_outlook.last_device_prompt_ms.$graphAccountKey';
 

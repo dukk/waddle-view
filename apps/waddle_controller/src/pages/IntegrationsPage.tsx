@@ -50,6 +50,7 @@ import { catalogCardGridSx } from '@/constants/catalogLayout';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import { IntegrationBrandIcon } from '@/components/IntegrationBrandIcon';
+import { completeDialogSave } from '@/util/dialogSave';
 import { parseJsonObject } from '@/util/json';
 import { prepareRjsfSchema } from '@/util/rjsfSchema';
 import { fetchIntegrationAccountsDetail } from '@/api/integrationAccounts';
@@ -229,7 +230,9 @@ function errMsg(e: unknown): string {
 
 export function IntegrationsPage() {
   const { active } = useDisplay();
-  const { loading, wrapRefresh } = useDisplayRefresh();
+  const { loading: enabledLoading, wrapRefresh: wrapEnabledRefresh } = useDisplayRefresh();
+  const { loading: availableLoading, wrapRefresh: wrapAvailableRefresh } = useDisplayRefresh();
+  const { wrapRefresh: wrapAuxRefresh } = useDisplayRefresh();
   const { layout, setLayout } = useListLayoutPreference('integrations');
   const [enabledRows, setEnabledRows] = useState<IntegrationRow[]>([]);
   const [availableRows, setAvailableRows] = useState<IntegrationRow[]>([]);
@@ -251,8 +254,12 @@ export function IntegrationsPage() {
   const [sortField, setSortField] = useState<IntegrationsSortField>('id');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
-  const listFetchAbortRef = useRef<AbortController | null>(null);
-  const listLoadGenerationRef = useRef(0);
+  const enabledFetchAbortRef = useRef<AbortController | null>(null);
+  const enabledLoadGenerationRef = useRef(0);
+  const availableFetchAbortRef = useRef<AbortController | null>(null);
+  const availableLoadGenerationRef = useRef(0);
+  const enabledFacetsRef = useRef<Record<string, number> | undefined>(undefined);
+  const availableFacetsRef = useRef<Record<string, number> | undefined>(undefined);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
@@ -290,14 +297,13 @@ export function IntegrationsPage() {
   const enabledOffset = enabledPage * rowsPerPage;
   const availableOffset = availablePage * rowsPerPage;
 
-  const load = useCallback(async () => {
+  const loadEnabled = useCallback(async () => {
     if (!active) return;
-    listFetchAbortRef.current?.abort();
+    enabledFetchAbortRef.current?.abort();
     const controller = new AbortController();
-    listFetchAbortRef.current = controller;
-    const myGen = ++listLoadGenerationRef.current;
-    setError(null);
-    await wrapRefresh(async () => {
+    enabledFetchAbortRef.current = controller;
+    const myGen = ++enabledLoadGenerationRef.current;
+    await wrapEnabledRefresh(async () => {
       try {
         const enabledParams = listParamsBase(
           true,
@@ -309,6 +315,48 @@ export function IntegrationsPage() {
           searchQ,
           setupFilter,
         );
+        const enabledRes = await listIntegrations(active, enabledParams, {
+          signal: controller.signal,
+        });
+        if (myGen !== enabledLoadGenerationRef.current || controller.signal.aborted) return;
+        setEnabledRows(enabledRes.items ?? []);
+        setEnabledTotal(typeof enabledRes.total === 'number' ? enabledRes.total : 0);
+        enabledFacetsRef.current = enabledRes.facets?.family;
+        setFamilyFacetCounts(
+          mergeFamilyFacets(enabledFacetsRef.current, availableFacetsRef.current),
+        );
+        setError(null);
+      } catch (e) {
+        if (controller.signal.aborted || myGen !== enabledLoadGenerationRef.current) return;
+        setError(errMsg(e));
+        setEnabledRows([]);
+        setEnabledTotal(0);
+        enabledFacetsRef.current = undefined;
+        setFamilyFacetCounts(
+          mergeFamilyFacets(enabledFacetsRef.current, availableFacetsRef.current),
+        );
+      }
+    });
+  }, [
+    active,
+    enabledOffset,
+    filterFamily,
+    rowsPerPage,
+    searchQ,
+    setupFilter,
+    sortField,
+    sortOrder,
+    wrapEnabledRefresh,
+  ]);
+
+  const loadAvailable = useCallback(async () => {
+    if (!active) return;
+    availableFetchAbortRef.current?.abort();
+    const controller = new AbortController();
+    availableFetchAbortRef.current = controller;
+    const myGen = ++availableLoadGenerationRef.current;
+    await wrapAvailableRefresh(async () => {
+      try {
         const availableParams = listParamsBase(
           false,
           availableOffset,
@@ -319,57 +367,87 @@ export function IntegrationsPage() {
           searchQ,
           setupFilter,
         );
-        const [enabledRes, availableRes, accountsRes, providers] = await Promise.all([
-          listIntegrations(active, enabledParams, { signal: controller.signal }),
-          listIntegrations(active, availableParams, { signal: controller.signal }),
-          fetchIntegrationAccounts(active),
-          listOAuthProviders(active),
-        ]);
-        if (myGen !== listLoadGenerationRef.current || controller.signal.aborted) return;
-        setEnabledRows(enabledRes.items ?? []);
-        setEnabledTotal(typeof enabledRes.total === 'number' ? enabledRes.total : 0);
+        const availableRes = await listIntegrations(active, availableParams, {
+          signal: controller.signal,
+        });
+        if (myGen !== availableLoadGenerationRef.current || controller.signal.aborted) return;
         setAvailableRows(availableRes.items ?? []);
         setAvailableTotal(typeof availableRes.total === 'number' ? availableRes.total : 0);
+        availableFacetsRef.current = availableRes.facets?.family;
         setFamilyFacetCounts(
-          mergeFamilyFacets(enabledRes.facets?.family, availableRes.facets?.family),
+          mergeFamilyFacets(enabledFacetsRef.current, availableFacetsRef.current),
         );
-        setAccounts(accountsRes.items ?? []);
-        setOauthProviders(providers);
+        setError(null);
       } catch (e) {
-        if (controller.signal.aborted || myGen !== listLoadGenerationRef.current) return;
+        if (controller.signal.aborted || myGen !== availableLoadGenerationRef.current) return;
         setError(errMsg(e));
-        setEnabledRows([]);
         setAvailableRows([]);
-        setEnabledTotal(0);
         setAvailableTotal(0);
-        setFamilyFacetCounts(new Map());
+        availableFacetsRef.current = undefined;
+        setFamilyFacetCounts(
+          mergeFamilyFacets(enabledFacetsRef.current, availableFacetsRef.current),
+        );
       }
     });
   }, [
     active,
     availableOffset,
-    enabledOffset,
     filterFamily,
     rowsPerPage,
     searchQ,
     setupFilter,
     sortField,
     sortOrder,
-    wrapRefresh,
+    wrapAvailableRefresh,
   ]);
 
+  const loadAux = useCallback(async () => {
+    if (!active) return;
+    await wrapAuxRefresh(async () => {
+      try {
+        const [accountsRes, providers] = await Promise.all([
+          fetchIntegrationAccounts(active),
+          listOAuthProviders(active),
+        ]);
+        setAccounts(accountsRes.items ?? []);
+        setOauthProviders(providers);
+      } catch {
+        /* optional metadata for cards/dialog */
+      }
+    });
+  }, [active, wrapAuxRefresh]);
+
+  const reloadAll = useCallback(async () => {
+    await Promise.all([loadEnabled(), loadAvailable(), loadAux()]);
+  }, [loadEnabled, loadAvailable, loadAux]);
+
   useEffect(() => {
-    void load();
+    void loadEnabled();
     return () => {
-      listFetchAbortRef.current?.abort();
-      listLoadGenerationRef.current += 1;
+      enabledFetchAbortRef.current?.abort();
+      enabledLoadGenerationRef.current += 1;
     };
-  }, [load]);
+  }, [loadEnabled]);
+
+  useEffect(() => {
+    void loadAvailable();
+    return () => {
+      availableFetchAbortRef.current?.abort();
+      availableLoadGenerationRef.current += 1;
+    };
+  }, [loadAvailable]);
+
+  useEffect(() => {
+    void loadAux();
+  }, [loadAux]);
 
   useLayoutEffect(() => {
     setEnabledRows([]);
+  }, [filterFamily, setupFilter, searchQ, sortField, sortOrder, rowsPerPage]);
+
+  useLayoutEffect(() => {
     setAvailableRows([]);
-  }, [filterFamily, setupFilter, searchQ, sortField, sortOrder]);
+  }, [filterFamily, setupFilter, searchQ, sortField, sortOrder, rowsPerPage]);
 
   if (!active) {
     return <NoDisplayPlaceholder />;
@@ -377,7 +455,6 @@ export function IntegrationsPage() {
 
   return (
     <Stack spacing={3}>
-      <DisplayRefreshIndicator loading={loading} />
       <Box>
         <Typography variant="h6" fontWeight={600} gutterBottom>
           External data sources
@@ -489,7 +566,10 @@ export function IntegrationsPage() {
         </Stack>
       </Stack>
 
-      {!loading && enabledTotal === 0 && availableTotal === 0 ? (
+      {!enabledLoading &&
+      !availableLoading &&
+      enabledTotal === 0 &&
+      availableTotal === 0 ? (
         <Typography variant="body2" color="text.secondary">
           No integrations match the current filters.
         </Typography>
@@ -499,7 +579,8 @@ export function IntegrationsPage() {
         <Typography variant="subtitle1" fontWeight={600}>
           Enabled
         </Typography>
-        {enabledRows.length === 0 && !loading ? (
+        <DisplayRefreshIndicator loading={enabledLoading} />
+        {enabledRows.length === 0 && !enabledLoading ? (
           <Typography variant="body2" color="text.secondary">
             {filterFamily != null || searchQ || setupFilter !== 'all'
               ? 'No enabled integrations match this filter.'
@@ -512,7 +593,7 @@ export function IntegrationsPage() {
                 key={r.id}
                 row={r}
                 actionLabel="Edit"
-                onAccountsChanged={load}
+                onAccountsChanged={reloadAll}
                 onAction={() => {
                   setDialogIntent('edit');
                   setEdit(r);
@@ -549,7 +630,8 @@ export function IntegrationsPage() {
         <Typography variant="subtitle1" fontWeight={600}>
           Available to enable
         </Typography>
-        {availableRows.length === 0 && !loading ? (
+        <DisplayRefreshIndicator loading={availableLoading} />
+        {availableRows.length === 0 && !availableLoading ? (
           <Typography variant="body2" color="text.secondary">
             {filterFamily != null || searchQ || setupFilter !== 'all'
               ? 'No disabled integrations match this filter.'
@@ -562,7 +644,7 @@ export function IntegrationsPage() {
                 key={r.id}
                 row={r}
                 actionLabel="Enable"
-                onAccountsChanged={load}
+                onAccountsChanged={reloadAll}
                 onAction={() => {
                   setDialogIntent('enable');
                   setEdit(r);
@@ -604,7 +686,7 @@ export function IntegrationsPage() {
           onClose={() => setEdit(null)}
           onSaved={async () => {
             setEdit(null);
-            await load();
+            await reloadAll();
           }}
         />
       )}
@@ -883,7 +965,7 @@ function EditIntegrationDialog({
         }),
       });
       await reloadAccounts();
-      await onSaved();
+      await completeDialogSave(onSaved, onClose);
     } catch (e) {
       setErr(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
     }

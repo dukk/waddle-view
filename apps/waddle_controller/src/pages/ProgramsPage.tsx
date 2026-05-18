@@ -747,7 +747,8 @@ function tickerItemHeadline(kind: string, item: Record<string, unknown>): string
 export function ProgramsPage() {
   const { active } = useDisplay();
   const { formatTime } = useDisplayFormat();
-  const { loading, wrapRefresh } = useDisplayRefresh();
+  const { loading: screenLoading, wrapRefresh: wrapScreenRefresh } = useDisplayRefresh();
+  const { loading: tickerLoading, wrapRefresh: wrapTickerRefresh } = useDisplayRefresh();
   const { layout, setLayout } = useListLayoutPreference('programs');
   const [screen, setScreen] = useState<Record<string, unknown>[]>([]);
   const [ticker, setTicker] = useState<Record<string, unknown>[]>([]);
@@ -767,22 +768,35 @@ export function ProgramsPage() {
     setTickerPage(0);
   }, [active?.id]);
 
-  const load = useCallback(async () => {
+  const loadScreen = useCallback(async () => {
     if (!active) return;
-    await wrapRefresh(async () => {
+    await wrapScreenRefresh(async () => {
       try {
-        const [s, t] = await Promise.all([
-          apiJson<Items<Record<string, unknown>>>(active, '/v1/telemetry/programs'),
-          apiJson<Items<Record<string, unknown>>>(active, '/v1/telemetry/ticker-programs'),
-        ]);
+        const s = await apiJson<Items<Record<string, unknown>>>(active, '/v1/telemetry/programs');
         const nextScreen = s.items ?? [];
-        const nextTicker = t.items ?? [];
         const screenJson = JSON.stringify(nextScreen);
-        const tickerJson = JSON.stringify(nextTicker);
         if (lastScreenJson.current !== screenJson) {
           lastScreenJson.current = screenJson;
           setScreen(nextScreen);
         }
+        setError((prev) => (prev != null ? null : prev));
+      } catch (e) {
+        const msg = e instanceof ApiError ? `${e.status}: ${e.message}` : String(e);
+        setError((prev) => (prev === msg ? prev : msg));
+      }
+    });
+  }, [active, wrapScreenRefresh]);
+
+  const loadTicker = useCallback(async () => {
+    if (!active) return;
+    await wrapTickerRefresh(async () => {
+      try {
+        const t = await apiJson<Items<Record<string, unknown>>>(
+          active,
+          '/v1/telemetry/ticker-programs',
+        );
+        const nextTicker = t.items ?? [];
+        const tickerJson = JSON.stringify(nextTicker);
         if (lastTickerJson.current !== tickerJson) {
           lastTickerJson.current = tickerJson;
           setTicker(nextTicker);
@@ -793,13 +807,19 @@ export function ProgramsPage() {
         setError((prev) => (prev === msg ? prev : msg));
       }
     });
-  }, [active, wrapRefresh]);
+  }, [active, wrapTickerRefresh]);
 
   useEffect(() => {
-    void load();
-    const id = window.setInterval(() => void load(), 5000);
+    void loadScreen();
+    const id = window.setInterval(() => void loadScreen(), 5000);
     return () => window.clearInterval(id);
-  }, [load]);
+  }, [loadScreen]);
+
+  useEffect(() => {
+    void loadTicker();
+    const id = window.setInterval(() => void loadTicker(), 5000);
+    return () => window.clearInterval(id);
+  }, [loadTicker]);
 
   const screenProgramsDesc = useMemo(() => sortProgramsByAtMsDesc(screen), [screen]);
   const tickerProgramsDesc = useMemo(() => sortProgramsByAtMsDesc(ticker), [ticker]);
@@ -856,7 +876,6 @@ export function ProgramsPage() {
 
   return (
     <Stack spacing={3}>
-      <DisplayRefreshIndicator loading={loading} />
       {error && <Alert severity="error">{error}</Alert>}
 
       <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={2} flexWrap="wrap">
@@ -872,6 +891,10 @@ export function ProgramsPage() {
         </Box>
         <ListLayoutToggle value={layout} onChange={setLayout} />
       </Stack>
+      <Typography variant="subtitle1" fontWeight={600}>
+        Screen programs
+      </Typography>
+      <DisplayRefreshIndicator loading={screenLoading} />
       <Stack spacing={2}>
         {layout === 'card' &&
           screenProgramsPage.items.map((row, localPi) => {
@@ -990,7 +1013,7 @@ export function ProgramsPage() {
             </Table>
           </TableContainer>
         )}
-        {screen.length === 0 && (
+        {screen.length === 0 && !screenLoading && (
           <Typography variant="body2" color="text.secondary">
             No samples yet (wait for the display to build a program).
           </Typography>
@@ -1010,6 +1033,7 @@ export function ProgramsPage() {
       <Typography variant="subtitle1" fontWeight={600}>
         Ticker programs
       </Typography>
+      <DisplayRefreshIndicator loading={tickerLoading} />
       <Stack spacing={2}>
         {layout === 'card' &&
           tickerProgramsPage.items.map((row, localPi) => {
@@ -1107,7 +1131,7 @@ export function ProgramsPage() {
             </Table>
           </TableContainer>
         )}
-        {ticker.length === 0 && (
+        {ticker.length === 0 && !tickerLoading && (
           <Typography variant="body2" color="text.secondary">
             No ticker program snapshots yet.
           </Typography>

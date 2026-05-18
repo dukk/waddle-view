@@ -5,13 +5,18 @@ import 'package:waddle_shared/persistence/display_overlay_bouncing_message_setti
 import 'package:waddle_shared/persistence/display_overlay_confetti_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_falling_images_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_row.dart';
+import 'package:waddle_shared/persistence/display_overlay_edge_glow_settings.dart';
+import 'package:waddle_shared/persistence/display_overlay_matrix_rain_settings.dart';
+import 'package:waddle_shared/persistence/display_overlay_shape_rain_settings.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 
 import '../display/overlay/birthday_confetti_overlay.dart';
 import '../display/overlay/bouncing_message_overlay.dart';
 import '../display/overlay/celebration_overlay_schedule.dart';
 import '../display/overlay/falling_images_overlay.dart';
-import '../display/overlay/hearts_rain_overlay.dart';
+import '../display/overlay/edge_glow_overlay.dart';
+import '../display/overlay/matrix_rain_overlay.dart';
+import '../display/overlay/shape_rain_overlay.dart';
 import '../display/overlay/plugin_template_overlay.dart';
 import '../display/overlay/plugin_web_overlay.dart';
 
@@ -73,11 +78,22 @@ class OverlayWidgetRegistry {
       }
       final w = builder(ctx, entry.value);
       if (w != null) {
-        layers.add(w);
+        layers.add(
+          KeyedSubtree(
+            key: ValueKey(_overlayLayerIdentity(entry.key, entry.value)),
+            child: w,
+          ),
+        );
       }
     }
     return layers;
   }
+}
+
+/// Stable identity for overlay layer state when rows or `config_json` change.
+String _overlayLayerIdentity(String overlayType, List<DisplayOverlayRow> rows) {
+  final parts = rows.map((r) => '${r.id}\u0000${r.configJson}').join('\u0001');
+  return '$overlayType\u0002$parts';
 }
 
 void registerBuiltins(OverlayWidgetRegistry registry) {
@@ -94,15 +110,36 @@ void registerBuiltins(OverlayWidgetRegistry registry) {
     );
   });
 
-  registry.register(kOverlayTypeHeartsRain, (ctx, matches) {
+  void registerShapeRain(CelebrationOverlayLayerBuilder builder) {
+    registry.register(kOverlayTypeShapeRain, builder);
+    registry.register(kOverlayTypeHeartsRain, builder);
+  }
+
+  registerShapeRain((ctx, matches) {
     if (matches.isEmpty) {
       return null;
     }
-    final phrases = ctx.mergePhrases(matches);
-    return HeartsRainOverlay(
-      messages: phrases.isEmpty ? const [''] : phrases,
+    final settings = ShapeRainScheduleSettings.parse(matches.first.configJson);
+    return ShapeRainOverlay(
+      settings: settings,
       fallbackAccents: ctx.accents,
     );
+  });
+
+  registry.register(kOverlayTypeMatrixRain, (ctx, matches) {
+    if (matches.isEmpty) {
+      return null;
+    }
+    final settings = MatrixRainScheduleSettings.parse(matches.first.configJson);
+    return MatrixRainOverlay(settings: settings);
+  });
+
+  registry.register(kOverlayTypeEdgeGlow, (ctx, matches) {
+    if (matches.isEmpty) {
+      return null;
+    }
+    final settings = EdgeGlowScheduleSettings.parse(matches.first.configJson);
+    return EdgeGlowOverlay(settings: settings);
   });
 
   registry.register(kOverlayTypeFallingImages, (ctx, matches) {

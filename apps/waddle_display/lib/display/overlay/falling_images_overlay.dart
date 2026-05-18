@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/blob/display_blob_read.dart';
 import 'package:waddle_shared/persistence/database.dart';
@@ -48,6 +49,7 @@ class _FallingImagesOverlayState extends State<FallingImagesOverlay>
   late final AnimationController _ticker;
   final _sprites = <_FallingSprite>[];
   final _imageBytes = <String, Uint8List>{};
+  final _imageMimeTypes = <String, String>{};
   final _pendingLoads = <String>{};
   final _rand = math.Random();
   Timer? _spawnTimer;
@@ -111,7 +113,12 @@ class _FallingImagesOverlayState extends State<FallingImagesOverlay>
       return;
     }
     final key = keys[_rand.nextInt(keys.length)];
-    final size = _viewport.shortestSide * (0.08 + _rand.nextDouble() * 0.08);
+    final base = _viewport.shortestSide * widget.settings.imageScale;
+    final jitter = widget.settings.scaleJitter;
+    final factor = jitter <= 0
+        ? 1.0
+        : 1.0 - jitter + 2 * jitter * _rand.nextDouble();
+    final size = (base * factor).clamp(48.0, 220.0);
     _sprites.add(
       _FallingSprite(
         id: _nextSpriteId++,
@@ -165,6 +172,7 @@ class _FallingImagesOverlayState extends State<FallingImagesOverlay>
     if (read.isOk && mounted) {
       setState(() {
         _imageBytes[blobKey] = read.bytes!;
+        _imageMimeTypes[blobKey] = row.mimeType ?? '';
       });
     }
     _pendingLoads.remove(blobKey);
@@ -206,6 +214,7 @@ class _FallingImagesOverlayState extends State<FallingImagesOverlay>
     final rock = math.sin(elapsed * 2.4 + sprite.rockPhase) * sprite.size * 0.22;
     final x = sprite.startXFraction * _viewport.width + rock - sprite.size / 2;
     final tilt = math.sin(elapsed * 3.1 + sprite.rockPhase) * 0.18;
+    final mime = _imageMimeTypes[sprite.blobKey] ?? '';
 
     return Positioned(
       key: ValueKey('falling_sprite_${sprite.id}'),
@@ -215,13 +224,25 @@ class _FallingImagesOverlayState extends State<FallingImagesOverlay>
       height: sprite.size,
       child: Transform.rotate(
         angle: tilt,
-        child: Image.memory(
-          bytes,
-          fit: BoxFit.contain,
-          gaplessPlayback: true,
-          filterQuality: FilterQuality.medium,
-        ),
+        child: _buildImageWidget(bytes, mime),
       ),
+    );
+  }
+
+  Widget _buildImageWidget(Uint8List bytes, String mime) {
+    if (mime == 'image/svg+xml') {
+      return SvgPicture.memory(
+        bytes,
+        fit: BoxFit.contain,
+        key: const Key('falling_image_svg'),
+      );
+    }
+    return Image.memory(
+      bytes,
+      fit: BoxFit.contain,
+      gaplessPlayback: true,
+      filterQuality: FilterQuality.medium,
+      key: const Key('falling_image_raster'),
     );
   }
 }

@@ -5,8 +5,7 @@ CREATE TABLE IF NOT EXISTS overlays (
   overlay_type TEXT NOT NULL,
   name TEXT NOT NULL DEFAULT '',
   config_json TEXT NOT NULL DEFAULT '{}',
-  config_json_schema TEXT,
-  example_config_json TEXT
+  config_json_schema TEXT
 );
 ''';
 
@@ -21,6 +20,16 @@ CREATE TABLE overlays_new (
 );
 ''';
 
+const String kCreateOverlaysWithoutExampleTableSql = '''
+CREATE TABLE overlays_new (
+  id TEXT NOT NULL PRIMARY KEY,
+  overlay_type TEXT NOT NULL,
+  name TEXT NOT NULL DEFAULT '',
+  config_json TEXT NOT NULL DEFAULT '{}',
+  config_json_schema TEXT
+);
+''';
+
 const String kCopyOverlaysToNewFromLegacySql = '''
 INSERT INTO overlays_new (
   id, overlay_type, name, config_json, config_json_schema, example_config_json
@@ -32,6 +41,12 @@ SELECT
   config_json,
   config_json_schema,
   example_config_json
+FROM overlays
+''';
+
+const String kCopyOverlaysWithoutExampleSql = '''
+INSERT INTO overlays_new (id, overlay_type, name, config_json, config_json_schema)
+SELECT id, overlay_type, name, config_json, config_json_schema
 FROM overlays
 ''';
 

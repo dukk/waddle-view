@@ -37,6 +37,28 @@ class IntegrationAccountLinks extends Table {
   Set<Column<Object>> get primaryKey => {integrationId, accountId};
 }
 
+/// Integration- or account-scoped key–value state (poll gates, OAuth expiry, delta links).
+///
+/// Exactly one of [integrationId] or [accountId] is set per row (enforced in
+/// [IntegrationKvRepository] and migration SQL). Uniqueness is via partial indexes
+/// on `(integration_id, key)` and `(account_id, key)`.
+class IntegrationsKeyValue extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  TextColumn get integrationId =>
+      text().nullable().references(Integrations, #id, onDelete: KeyAction.cascade)();
+
+  TextColumn get accountId => text()
+      .nullable()
+      .references(IntegrationAccounts, #id, onDelete: KeyAction.cascade)();
+
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+  TextColumn get valueType => text().nullable()();
+  IntColumn get createdAtMs => integer()();
+  IntColumn get updatedAtMs => integer()();
+}
+
 class BlobMetadata extends Table {
   TextColumn get blobKey => text()();
   TextColumn get sha256 => text()();
@@ -130,6 +152,9 @@ const String kOverlayRendererPluginTemplate = 'plugin_template';
 const String kOverlayRendererPluginWeb = 'plugin_web';
 
 /// Overlay type stored in `overlays.overlay_type` (semantic id, like `screen_type`).
+const String kOverlayTypeShapeRain = 'shape_rain';
+
+/// Legacy overlay type slug; migrated to [kOverlayTypeShapeRain] in schema 20.
 const String kOverlayTypeHeartsRain = 'hearts_rain';
 
 /// Subtle falling confetti + optional sparse messages.
@@ -141,16 +166,25 @@ const String kOverlayTypeBouncingMessage = 'bouncing_message';
 /// Occasionally drops uploaded images that rock while falling.
 const String kOverlayTypeFallingImages = 'falling_images';
 
+/// Matrix-style falling green character columns (translucent).
+const String kOverlayTypeMatrixRain = 'matrix_rain';
+
+/// Pulsing colored vignette along screen edges (e.g. alarms).
+const String kOverlayTypeEdgeGlow = 'edge_glow';
+
 /// Built-in overlay types exposed via `GET /v1/meta/overlay-types`.
 const List<String> kBuiltinOverlayTypes = [
-  kOverlayTypeHeartsRain,
+  kOverlayTypeShapeRain,
   kOverlayTypeBirthdayConfetti,
   kOverlayTypeBouncingMessage,
   kOverlayTypeFallingImages,
+  kOverlayTypeMatrixRain,
+  kOverlayTypeEdgeGlow,
 ];
 
-/// Seed row id for the example May 13 bouncing message overlay (installed disabled).
-const String kDefaultBouncingMessageOverlayId = 'default_bouncing_message_may_13';
+/// Seed row id for Wattle View's birthday bouncing message overlay.
+const String kDefaultWattleViewsBirthdayMessageOverlayId =
+    'wattle_views_birthday_message';
 
 /// Default phrase for [kOverlayTypeBouncingMessage] when `config_json.messages` is empty.
 const String kDefaultBouncingMessageOverlayPhrase = 'Happy Birthday Waddle!!';
@@ -158,8 +192,23 @@ const String kDefaultBouncingMessageOverlayPhrase = 'Happy Birthday Waddle!!';
 /// Seed row id for the US Mother's Day `[overlays]` preset.
 const String kDefaultMothersDayOverlayId = 'default_mothers_day_us';
 
-/// Seed row id for the example May 13 birthday confetti overlay (installed disabled).
-const String kDefaultBirthdayOverlayExampleId = 'default_birthday_example_may_13';
+/// Seed row id for the default birthday confetti overlay definition.
+const String kDefaultBirthdayConfettiOverlayId = 'default_birthday_confetti';
+
+/// Seed row id for the default falling duck images overlay.
+const String kDefaultFallingDucksOverlayId = 'default_falling_ducks';
+
+/// Blob keys for seeded duck SVG assets used by [kDefaultFallingDucksOverlayId].
+const String kOverlayBlobKeyDuckMascot = 'overlay/pool/duck_mascot';
+const String kOverlayBlobKeyDuckHeadshot1 = 'overlay/pool/duck_headshot_1';
+const String kOverlayBlobKeyDuckHeadshot2 = 'overlay/pool/duck_headshot_2';
+
+/// All seeded duck overlay blob keys (stable paths under [kOverlayBlobKeyPrefix]).
+const List<String> kSeededDuckOverlayBlobKeys = [
+  kOverlayBlobKeyDuckMascot,
+  kOverlayBlobKeyDuckHeadshot1,
+  kOverlayBlobKeyDuckHeadshot2,
+];
 
 /// Shared category ids for RSS feeds, Pexels photos/videos, jokes, and trivia
 /// ([InterestsRssFeeds.category], [Photos.category], [Videos.category], and category

@@ -6,13 +6,15 @@ import 'package:http/http.dart' as http;
 
 import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/config/microsoft_graph_kv.dart';
+import 'package:waddle_shared/integrations/integration_collect.dart';
+import 'package:waddle_shared/integrations/integration_kv_repository.dart';
+import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';
 import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
-import 'package:waddle_shared/integrations/integration_collect.dart';
 import '../microsoft_graph/microsoft_graph_base_url.dart';
 import '../microsoft_graph/microsoft_graph_oauth.dart';
 import 'outlook_calendar_extra_config.dart';
@@ -91,16 +93,16 @@ class OutlookCalendarDataProvider implements IDataProvider {
     OutlookCalendarExtraConfig extra,
     int nowMs,
     int pollSeconds,
+    String integrationId,
     CollectDiagnostics diagnostics,
   ) async {
     if (pollSeconds <= 0) {
       return false;
     }
-    final lastRow =
-        await (db.select(db.configKeyValues)
-              ..where((t) => t.key.equals(kOutlookCalendarLastCollectKvKey)))
-            .getSingleOrNull();
-    final last = int.tryParse(lastRow?.value ?? '') ?? 0;
+    final kv = IntegrationKvRepository(db);
+    final lastValue =
+        await kv.getIntegrationValue(integrationId, kIntegrationLastCollectKey);
+    final last = int.tryParse(lastValue ?? '') ?? 0;
     if (nowMs - last >= pollSeconds * 1000) {
       return false;
     }
@@ -111,15 +113,11 @@ class OutlookCalendarDataProvider implements IDataProvider {
       }
       final access =
           await secrets.read(microsoftGraphAccessTokenSecret(a.graphAccountKey));
-      final expiresRow =
-          await (db.select(db.configKeyValues)
-                ..where(
-                  (t) => t.key.equals(
-                    kMicrosoftGraphAccessTokenExpiresAtKvKey(a.graphAccountKey),
-                  ),
-                ))
-              .getSingleOrNull();
-      final expiresAt = int.tryParse(expiresRow?.value ?? '') ?? 0;
+      final expiresValue = await kv.getAccountValue(
+        a.graphAccountKey,
+        kIntegrationAccessTokenExpiresAtKey,
+      );
+      final expiresAt = int.tryParse(expiresValue ?? '') ?? 0;
       final fresh = access != null &&
           access.isNotEmpty &&
           expiresAt > nowMs + kMicrosoftGraphAccessTokenSkewMs;
@@ -172,7 +170,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
       _collectDiag!.provider(
         'outlook_calendar: skip (no accounts in config_json)',
       );
-      await _markCollectDone(ctx.db, nowMs);
+      await _markCollectDone(ctx.db, setting.id, nowMs);
       return;
     }
 
@@ -182,6 +180,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
           extra,
           nowMs,
           setting.pollSeconds,
+          setting.id,
           _collectDiag!,
         )) {
       return;
@@ -257,7 +256,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
       }
       if (didSync) {
         _collectDiag!.provider('outlook_calendar: collect finished, marking last_collect');
-        await _markCollectDone(ctx.db, nowMs);
+        await _markCollectDone(ctx.db, setting.id, nowMs);
       } else {
         _collectDiag!.provider(
           'outlook_calendar: collect finished with no successful sync',
@@ -271,13 +270,17 @@ class OutlookCalendarDataProvider implements IDataProvider {
     }
   }
 
-  Future<void> _markCollectDone(AppDatabase db, int nowMs) async {
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kOutlookCalendarLastCollectKvKey,
-            value: '$nowMs',
-          ),
-        );
+  Future<void> _markCollectDone(
+    AppDatabase db,
+    String integrationId,
+    int nowMs,
+  ) async {
+    await IntegrationKvRepository(db).upsertIntegration(
+      integrationId: integrationId,
+      key: kIntegrationLastCollectKey,
+      value: '$nowMs',
+      valueType: kIntegrationKvTypeIntMs,
+    );
   }
 
   (DateTime, DateTime) _syncWindowUtc(OutlookCalendarExtraConfig extra) {

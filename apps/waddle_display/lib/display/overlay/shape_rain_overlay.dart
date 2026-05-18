@@ -1,29 +1,30 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:waddle_shared/persistence/display_overlay_shape_rain_settings.dart';
 
 import '../../theme/theme_palette_extension.dart';
 
-/// Subtle repeating hearts / short phrases tinted from [PaletteTertiaryLayers].
-class HeartsRainOverlay extends StatefulWidget {
-  const HeartsRainOverlay({
+/// Falling theme-tinted glyphs (hearts, raindrops, cats, dogs).
+class ShapeRainOverlay extends StatefulWidget {
+  const ShapeRainOverlay({
     super.key,
-    required this.messages,
+    required this.settings,
     required this.fallbackAccents,
     this.suppressBottomBias = true,
     this.biasHeightFraction = 0.85,
   });
 
-  final List<String> messages;
+  final ShapeRainScheduleSettings settings;
   final List<Color> fallbackAccents;
   final bool suppressBottomBias;
   final double biasHeightFraction;
 
   @override
-  State<HeartsRainOverlay> createState() => _HeartsRainOverlayState();
+  State<ShapeRainOverlay> createState() => _ShapeRainOverlayState();
 }
 
-class _HeartsRainOverlayState extends State<HeartsRainOverlay>
+class _ShapeRainOverlayState extends State<ShapeRainOverlay>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl = AnimationController(
     vsync: this,
@@ -54,10 +55,11 @@ class _HeartsRainOverlayState extends State<HeartsRainOverlay>
           animation: _ctrl,
           builder: (_, _) {
             return CustomPaint(
+              key: const Key('shape_rain_custom_paint'),
               size: Size(c.maxWidth, c.maxHeight),
-              painter: _HeartsRainPainter(
+              painter: _ShapeRainPainter(
                 accents: accents,
-                messages: widget.messages.isEmpty ? const [''] : widget.messages,
+                shapeTokens: widget.settings.shapeTokens,
                 progress: (_ctrl.value * 104729) % 1.0,
                 suppressBandStart: widget.biasHeightFraction.clamp(0.5, 1.0),
                 suppressBottomBias: widget.suppressBottomBias,
@@ -70,17 +72,38 @@ class _HeartsRainOverlayState extends State<HeartsRainOverlay>
   }
 }
 
-class _HeartsRainPainter extends CustomPainter {
-  _HeartsRainPainter({
+List<String> _expandedShapeGlyphs(List<String> tokens) {
+  const concrete = <String, String>{
+    'heart': '\u2665',
+    'raindrop': '\u{1F4A7}',
+    'cat': '\u{1F431}',
+    'dog': '\u{1F436}',
+  };
+  final out = <String>[];
+  for (final t in tokens) {
+    if (t == 'mix') {
+      out.addAll(concrete.values);
+    } else {
+      final g = concrete[t];
+      if (g != null) {
+        out.add(g);
+      }
+    }
+  }
+  return out.isEmpty ? concrete.values.toList() : out;
+}
+
+class _ShapeRainPainter extends CustomPainter {
+  _ShapeRainPainter({
     required this.accents,
-    required this.messages,
+    required this.shapeTokens,
     required this.progress,
     required this.suppressBandStart,
     required this.suppressBottomBias,
   });
 
   final List<Color> accents;
-  final List<String> messages;
+  final List<String> shapeTokens;
   final double progress;
   final double suppressBandStart;
   final bool suppressBottomBias;
@@ -88,6 +111,7 @@ class _HeartsRainPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rand = math.Random((progress * 1e9).toInt());
+    final glyphs = _expandedShapeGlyphs(shapeTokens);
     final nSprites = math.min(
       accents.isEmpty ? 10 : accents.length + 12,
       20,
@@ -117,88 +141,51 @@ class _HeartsRainPainter extends CustomPainter {
       final bottomFactor = 1.0 - suppressionT * 0.55;
 
       final alphaBase = bottomFactor *
-          ((i.isEven ? 0.11 : 0.18) +
+          (0.14 +
               rand.nextDouble() *
-                  ((i.isEven ? 0.07 : 0.08) *
-                      math.max(bottomFactor, 0.65)));
+                  (0.1 * math.max(bottomFactor, 0.65)));
 
       final color = base.withValues(
         alpha: alphaBase.clamp(0.035, 0.22),
       );
 
-      if (i.isEven) {
-        final scale = spriteSize *
-            ((0.7 + rand.nextDouble() * 0.95) *
-                math.max(bottomFactor * 1.08, 0.55));
+      final glyph = glyphs[rand.nextInt(glyphs.length)];
+      final scale = spriteSize *
+          ((0.7 + rand.nextDouble() * 0.95) *
+              math.max(bottomFactor * 1.08, 0.55));
 
-        canvas.save();
-        canvas.translate(xPx, yPx);
-        canvas.rotate(progress * math.pi * 2 * 0.22 + i * 0.3);
-        final heartTp = TextPainter(
-          textDirection: TextDirection.ltr,
-          text: TextSpan(
-            text: '\u2665',
-            style: TextStyle(
-              color: color,
-              fontSize: scale * 2.2,
-              height: 1,
-              shadows: const [
-                Shadow(
-                  blurRadius: 14,
-                  color: Color.fromRGBO(0, 0, 0, 0.18),
-                  offset: Offset(0, 1),
-                ),
-              ],
-            ),
+      canvas.save();
+      canvas.translate(xPx, yPx);
+      canvas.rotate(progress * math.pi * 2 * 0.22 + i * 0.3);
+      final shapeTp = TextPainter(
+        textDirection: TextDirection.ltr,
+        text: TextSpan(
+          text: glyph,
+          style: TextStyle(
+            color: color,
+            fontSize: scale * 2.2,
+            height: 1,
+            shadows: const [
+              Shadow(
+                blurRadius: 14,
+                color: Color.fromRGBO(0, 0, 0, 0.18),
+                offset: Offset(0, 1),
+              ),
+            ],
           ),
-        )..layout();
-        heartTp.paint(
-          canvas,
-          Offset(-heartTp.width / 2, -heartTp.height / 2),
-        );
-        canvas.restore();
-      } else {
-        final txt = messages[i % messages.length].trim().isEmpty
-            ? ''
-            : messages[i % messages.length];
-        if (txt.isEmpty) {
-          continue;
-        }
-        final tp = TextPainter(
-          textDirection: TextDirection.ltr,
-          text: TextSpan(
-            style: TextStyle(
-              fontSize: (spriteSize * (0.9 + rand.nextDouble() * 0.45))
-                  .clamp(9, 20),
-              color:
-                  color.withValues(alpha: color.a.clamp(0.04, 0.21)),
-              fontWeight: FontWeight.w500,
-              letterSpacing: 0.35,
-              shadows: const [
-                Shadow(
-                  blurRadius: 10,
-                  color: Color.fromRGBO(0, 0, 0, 0.22),
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            text: txt,
-          ),
-        )..layout(maxWidth: size.width * 0.45);
-
-        canvas.save();
-        canvas.translate(xPx + math.sin(progress * math.pi + i) * 6, yPx);
-        canvas.rotate(math.sin(progress * math.pi + i * 0.51) * 0.08);
-        tp.paint(canvas, Offset.zero);
-        canvas.restore();
-      }
+        ),
+      )..layout();
+      shapeTp.paint(
+        canvas,
+        Offset(-shapeTp.width / 2, -shapeTp.height / 2),
+      );
+      canvas.restore();
     }
   }
 
   @override
-  bool shouldRepaint(covariant _HeartsRainPainter oldDelegate) =>
+  bool shouldRepaint(covariant _ShapeRainPainter oldDelegate) =>
       oldDelegate.progress != progress ||
       oldDelegate.accents.length != accents.length ||
-      oldDelegate.messages.join('\u241e') !=
-          messages.join('\u241e');
+      oldDelegate.shapeTokens.join() != shapeTokens.join();
 }

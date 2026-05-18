@@ -41,10 +41,12 @@ import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { catalogCardGridSx } from '@/constants/catalogLayout';
 import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import { OverlaysHelpContent } from '@/components/help/OverlaysHelpContent';
-import { SchemaConfigForm } from '@/components/config/SchemaConfigForm';
+import { OverlayConfigPanel } from '@/components/config/OverlayConfigPanel';
+import { completeDialogSave } from '@/util/dialogSave';
 import { parseJsonObject } from '@/util/json';
 import { prepareRjsfSchema } from '@/util/rjsfSchema';
 import { validateConfigAgainstSchema } from '@/util/rjsfSchema';
+import { OverlayTypeIcon } from '@/util/overlayTypeIcon';
 import type { SavedDisplay } from '@/storage/displays';
 
 type OverlayRow = {
@@ -63,10 +65,13 @@ type OverlayTypeMeta = {
 };
 
 const OVERLAY_TYPE_LABELS: Record<string, string> = {
-  hearts_rain: 'Hearts rain',
+  shape_rain: 'Shape rain',
+  hearts_rain: 'Shape rain (legacy)',
   birthday_confetti: 'Birthday confetti',
   bouncing_message: 'Bouncing message',
   falling_images: 'Falling images',
+  matrix_rain: 'Matrix rain',
+  edge_glow: 'Edge glow',
 };
 
 function overlayTypeLabel(t: string): string {
@@ -118,6 +123,18 @@ function schemaForType(meta: OverlayTypeMeta[], type: string): unknown {
 
 function configPreview(row: OverlayRow): string {
   const cfg = parseJsonObject(row.config_json);
+  if (row.overlay_type === 'edge_glow') {
+    const color = typeof cfg.color === 'string' ? cfg.color : '';
+    const intensity = typeof cfg.intensity === 'number' ? cfg.intensity : null;
+    const parts = [color, intensity != null ? `intensity ${intensity.toFixed(2)}` : ''].filter(
+      Boolean,
+    );
+    return parts.length > 0 ? parts.join(' · ') : '—';
+  }
+  const shapes = cfg.shapes;
+  if (Array.isArray(shapes) && shapes.length > 0) {
+    return shapes.filter((s) => typeof s === 'string').join(', ');
+  }
   const messages = cfg.messages;
   if (Array.isArray(messages) && messages.length > 0) {
     const first = messages.find((m) => typeof m === 'string' && m.trim());
@@ -127,6 +144,64 @@ function configPreview(row: OverlayRow): string {
   if (keys.length === 0) return '—';
   return keys.slice(0, 3).join(', ');
 }
+
+const FALLING_IMAGES_CONFIG_KEYS = [
+  'image_blob_keys',
+  'drop_interval_sec',
+  'fall_speed',
+  'image_scale',
+  'scale_jitter',
+] as const;
+
+function fallingImagesConfigFromForm(form: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const key of FALLING_IMAGES_CONFIG_KEYS) {
+    if (key in form) {
+      out[key] = form[key];
+    }
+  }
+  return out;
+}
+
+function stripMessagesFromConfig(form: Record<string, unknown>): Record<string, unknown> {
+  const { messages: _messages, ...rest } = form;
+  return rest;
+}
+
+function overlayConfigForSubmit(
+  overlayType: string,
+  form: Record<string, unknown>,
+): Record<string, unknown> {
+  const t = overlayType.trim();
+  if (t === 'shape_rain' || t === 'hearts_rain') {
+    const shapes = form.shapes;
+    return {
+      shapes: Array.isArray(shapes)
+        ? shapes.filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
+        : [],
+    };
+  }
+  if (t === 'falling_images') {
+    return fallingImagesConfigFromForm(stripMessagesFromConfig(form));
+  }
+  return form;
+}
+
+function overlayConfigForForm(overlayType: string, raw: Record<string, unknown>): Record<string, unknown> {
+  if (overlayType.trim() === 'falling_images') {
+    return stripMessagesFromConfig(raw);
+  }
+  return raw;
+}
+
+const overlayCardPreviewSx = {
+  borderRadius: 1,
+  bgcolor: 'action.hover',
+  minHeight: 88,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+} as const;
 
 type OverlayDialogMode = 'create' | 'edit';
 
@@ -150,7 +225,7 @@ function OverlayDialog({
   const [saving, setSaving] = useState(false);
   const [localErr, setLocalErr] = useState<string | null>(null);
   const [name, setName] = useState('');
-  const [overlayType, setOverlayType] = useState(meta[0]?.overlay_type ?? 'hearts_rain');
+  const [overlayType, setOverlayType] = useState(meta[0]?.overlay_type ?? 'shape_rain');
   const [configForm, setConfigForm] = useState<Record<string, unknown>>({});
 
   const exampleFor = useMemo(() => exampleForType(meta), [meta]);
@@ -161,11 +236,13 @@ function OverlayDialog({
     if (initial) {
       setName(initial.name);
       setOverlayType(initial.overlay_type);
-      setConfigForm(parseJsonObject(initial.config_json));
+      setConfigForm(
+        overlayConfigForForm(initial.overlay_type, parseJsonObject(initial.config_json)),
+      );
     } else {
       setName('');
-      setOverlayType(meta[0]?.overlay_type ?? 'hearts_rain');
-      setConfigForm(exampleFor(meta[0]?.overlay_type ?? 'hearts_rain'));
+      setOverlayType(meta[0]?.overlay_type ?? 'shape_rain');
+      setConfigForm(exampleFor(meta[0]?.overlay_type ?? 'shape_rain'));
     }
   }, [open, initial, meta, exampleFor]);
 
@@ -177,7 +254,7 @@ function OverlayDialog({
   const handleTypeChange = (next: string) => {
     setOverlayType(next);
     if (mode === 'create') {
-      setConfigForm(exampleFor(next));
+      setConfigForm(overlayConfigForForm(next, exampleFor(next)));
     }
   };
 
@@ -188,9 +265,17 @@ function OverlayDialog({
       setLocalErr('Name is required.');
       return;
     }
-    const validationErrors = validateConfigAgainstSchema(configForm, configSchema);
+    const configPayload = overlayConfigForSubmit(overlayType, configForm);
+    const validationErrors = validateConfigAgainstSchema(configPayload, configSchema);
     if (validationErrors.length > 0) {
       setLocalErr(validationErrors[0] ?? 'Invalid configuration.');
+      return;
+    }
+    if (
+      (overlayType === 'shape_rain' || overlayType === 'hearts_rain') &&
+      (!Array.isArray(configPayload.shapes) || configPayload.shapes.length === 0)
+    ) {
+      setLocalErr('Select at least one shape.');
       return;
     }
     setSaving(true);
@@ -201,7 +286,7 @@ function OverlayDialog({
           body: JSON.stringify({
             name: nameTrim,
             overlay_type: overlayType.trim(),
-            config_json: configForm,
+            config_json: configPayload,
           }),
         });
       } else if (initial) {
@@ -210,12 +295,11 @@ function OverlayDialog({
           body: JSON.stringify({
             name: nameTrim,
             overlay_type: overlayType.trim(),
-            config_json: configForm,
+            config_json: configPayload,
           }),
         });
       }
-      onSaved();
-      onClose();
+      await completeDialogSave(onSaved, onClose);
     } catch (e) {
       setLocalErr(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
     } finally {
@@ -259,8 +343,9 @@ function OverlayDialog({
               types.
             </Typography>
           ) : null}
-          <SchemaConfigForm
+          <OverlayConfigPanel
             display={active}
+            overlayType={overlayType}
             schema={configSchema}
             formData={configForm}
             onChange={setConfigForm}
@@ -304,7 +389,11 @@ function OverlayTable({
             <TableRow key={row.id} hover>
               <TableCell sx={{ fontWeight: 600 }}>{row.name.trim() || row.id}</TableCell>
               <TableCell>
-                <Chip size="small" label={overlayTypeLabel(row.overlay_type)} />
+                <Chip
+                  size="small"
+                  icon={<OverlayTypeIcon overlayType={row.overlay_type} />}
+                  label={overlayTypeLabel(row.overlay_type)}
+                />
               </TableCell>
               <TableCell sx={{ maxWidth: 280 }}>{configPreview(row)}</TableCell>
               {canWrite ? (
@@ -337,15 +426,29 @@ function OverlayCard({
   onDelete: () => void;
 }) {
   return (
-    <Card variant="outlined">
-      <CardContent>
-        <Typography variant="subtitle1" fontWeight={600}>
-          {row.name.trim() || row.id}
-        </Typography>
-        <Chip size="small" label={overlayTypeLabel(row.overlay_type)} sx={{ mt: 1 }} />
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          {configPreview(row)}
-        </Typography>
+    <Card variant="outlined" sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <CardContent sx={{ flexGrow: 1 }}>
+        <Stack spacing={1}>
+          <Box sx={overlayCardPreviewSx}>
+            <OverlayTypeIcon
+              overlayType={row.overlay_type}
+              sx={{ fontSize: 56, color: 'primary.main', opacity: 0.72 }}
+            />
+          </Box>
+          <Typography variant="subtitle1" fontWeight={600}>
+            {row.name.trim() || row.id}
+          </Typography>
+          <Chip
+            size="small"
+            variant="outlined"
+            icon={<OverlayTypeIcon overlayType={row.overlay_type} />}
+            label={overlayTypeLabel(row.overlay_type)}
+            sx={{ alignSelf: 'flex-start' }}
+          />
+          <Typography variant="body2" color="text.secondary">
+            {configPreview(row)}
+          </Typography>
+        </Stack>
       </CardContent>
       {canWrite ? (
         <CardActions>

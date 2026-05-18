@@ -62,6 +62,7 @@ import {
   CURATOR_TICKER_PROGRAM_DURATION,
 } from '@/constants/curatorDisplaySettings';
 import { TickerPixelsPerSecondField } from '@/components/TickerPixelsPerSecondField';
+import { completeDialogSave } from '@/util/dialogSave';
 import { curatorConfigurationIdFromName } from '@/util/interestSlug';
 import { formatProgramDurationWithSeconds } from '@/util/programDurationFormat';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
@@ -580,7 +581,7 @@ function CuratorConfigurationDialog({
       } else {
         await updateCuratorConfiguration(display, configurationId!, buildBody(configId));
       }
-      await onSaved();
+      await completeDialogSave(onSaved, onClose);
     } catch (e) {
       setErr(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
     }

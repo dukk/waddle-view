@@ -60,7 +60,7 @@ void main() {
   });
 
   test('display overlay schedule config meta decodes', () {
-    final hearts = displayOverlayConfigJsonDocForType('hearts_rain');
+    final hearts = displayOverlayConfigJsonDocForType('shape_rain');
     expect(jsonDecode(hearts.schema), isA<Map<String, dynamic>>());
     expect(jsonDecode(hearts.example), isA<Object>());
     final confetti = displayOverlayConfigJsonDocForType('birthday_confetti');
@@ -69,6 +69,12 @@ void main() {
     final bounce = displayOverlayConfigJsonDocForType('bouncing_message');
     expect(jsonDecode(bounce.schema), isA<Map<String, dynamic>>());
     expect(jsonDecode(bounce.example), isA<Map<String, dynamic>>());
+    final matrix = displayOverlayConfigJsonDocForType('matrix_rain');
+    expect(jsonDecode(matrix.schema), isA<Map<String, dynamic>>());
+    expect(jsonDecode(matrix.example), isA<Map<String, dynamic>>());
+    final edgeGlow = displayOverlayConfigJsonDocForType('edge_glow');
+    expect(jsonDecode(edgeGlow.schema), isA<Map<String, dynamic>>());
+    expect(jsonDecode(edgeGlow.example), isA<Map<String, dynamic>>());
   });
 
   test('seeded provider types have explicit meta entries', () {

@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 
 import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/config/microsoft_graph_kv.dart';
+import 'package:waddle_shared/integrations/integration_kv_repository.dart';
+import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';
 
@@ -66,15 +68,15 @@ class MicrosoftGraphOAuth {
   }) async {
     final accessKey = microsoftGraphAccessTokenSecret(graphAccountKey);
     final refreshKey = microsoftGraphRefreshTokenSecret(graphAccountKey);
-    final expiresKv = kMicrosoftGraphAccessTokenExpiresAtKvKey(graphAccountKey);
+    final kv = IntegrationKvRepository(db);
     final now = _nowMs();
 
     final existing = await secrets.read(accessKey);
-    final expiresRow =
-        await (db.select(db.configKeyValues)
-              ..where((t) => t.key.equals(expiresKv)))
-            .getSingleOrNull();
-    final expiresAt = int.tryParse(expiresRow?.value ?? '') ?? 0;
+    final expiresValue = await kv.getAccountValue(
+      graphAccountKey,
+      kIntegrationAccessTokenExpiresAtKey,
+    );
+    final expiresAt = int.tryParse(expiresValue ?? '') ?? 0;
 
     if (existing != null &&
         existing.isNotEmpty &&
@@ -225,12 +227,12 @@ class MicrosoftGraphOAuth {
       microsoftGraphRefreshTokenSecret(graphAccountKey),
       refreshToken,
     );
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kMicrosoftGraphAccessTokenExpiresAtKvKey(graphAccountKey),
-            value: '$expiresAt',
-          ),
-        );
+    await IntegrationKvRepository(db).upsertAccount(
+      accountId: graphAccountKey,
+      key: kIntegrationAccessTokenExpiresAtKey,
+      value: '$expiresAt',
+      valueType: kIntegrationKvTypeIntMs,
+    );
   }
 
   Future<String?> _deviceCodeFlow({
@@ -240,14 +242,14 @@ class MicrosoftGraphOAuth {
     required String graphAccountKey,
     bool pollDeviceCode = true,
   }) async {
-    final promptKv = kOutlookCalendarLastDevicePromptKvKey(graphAccountKey);
-    final lastPromptRow =
-        await (db.select(db.configKeyValues)
-              ..where((t) => t.key.equals(promptKv)))
-            .getSingleOrNull();
+    final kv = IntegrationKvRepository(db);
+    final lastPromptValue = await kv.getAccountValue(
+      graphAccountKey,
+      kIntegrationLastDevicePromptKey,
+    );
     final now = _nowMs();
-    if (lastPromptRow != null) {
-      final lastPrompt = int.tryParse(lastPromptRow.value) ?? 0;
+    if (lastPromptValue != null) {
+      final lastPrompt = int.tryParse(lastPromptValue) ?? 0;
       if (now - lastPrompt < kMicrosoftGraphDevicePromptCooldownMs) {
         diagnostics.engine(
           'MicrosoftGraphOAuth: skip device code (cooldown) account=$graphAccountKey',
@@ -330,9 +332,12 @@ class MicrosoftGraphOAuth {
             ),
           );
 
-      await db.into(db.configKeyValues).insertOnConflictUpdate(
-            ConfigKeyValuesCompanion.insert(key: promptKv, value: '$now'),
-          );
+      await kv.upsertAccount(
+        accountId: graphAccountKey,
+        key: kIntegrationLastDevicePromptKey,
+        value: '$now',
+        valueType: kIntegrationKvTypeIntMs,
+      );
 
       if (!pollDeviceCode) {
         diagnostics.engine(

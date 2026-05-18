@@ -6,11 +6,10 @@ import 'package:waddle_shared/persistence/tables.dart';
 DisplayOverlayRow _row({String configJson = '{}'}) {
   return DisplayOverlayRow(
     id: 'test',
-    overlayType: kOverlayTypeHeartsRain,
+    overlayType: kOverlayTypeShapeRain,
     name: 'Test',
     configJson: configJson,
     configJsonSchema: null,
-    exampleConfigJson: null,
   );
 }
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
 import {
@@ -79,6 +79,7 @@ import {
   weatherLocationInterestId,
 } from '@/util/interestSlug';
 import { categorySeasonPayload, formatCategorySeason } from '@/util/categorySeason';
+import { completeDialogSave } from '@/util/dialogSave';
 import { findNearestWeatherLocation } from '@/util/nearestLocation';
 import {
   interestCategoryLabel,
@@ -102,8 +103,14 @@ export function InterestsPage() {
   const { active } = useDisplay();
   const { hasPermission } = useAuth();
   const canWrite = hasPermission('interests.write');
-  const { loading, wrapRefresh } = useDisplayRefresh();
+  const { loading: locationsLoading, wrapRefresh: wrapLocationsRefresh } = useDisplayRefresh();
+  const { loading: rssLoading, wrapRefresh: wrapRssRefresh } = useDisplayRefresh();
+  const { loading: stocksLoading, wrapRefresh: wrapStocksRefresh } = useDisplayRefresh();
+  const { loading: jokesLoading, wrapRefresh: wrapJokesRefresh } = useDisplayRefresh();
+  const { loading: triviaLoading, wrapRefresh: wrapTriviaRefresh } = useDisplayRefresh();
+  const { wrapRefresh: wrapCategoriesRefresh } = useDisplayRefresh();
   const { layout, setLayout } = useListLayoutPreference('interests');
+  const loadedTabsRef = useRef<Set<TabId>>(new Set());
 
   const [tab, setTab] = useState<TabId>('locations');
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
@@ -128,34 +135,134 @@ export function InterestsPage() {
   const [editingJoke, setEditingJoke] = useState<CategoryInterestRow | null>(null);
   const [editingTrivia, setEditingTrivia] = useState<CategoryInterestRow | null>(null);
 
-  const load = useCallback(async () => {
+  const loadCategories = useCallback(async () => {
     if (!active) return;
-    await wrapRefresh(async () => {
+    await wrapCategoriesRefresh(async () => {
+      try {
+        const cats = await apiJson<{ items: CuratorCategoryOption[] }>(
+          active,
+          '/v1/curator/categories',
+        );
+        setCuratorCategories(cats.items.map((c) => ({ id: c.id, label: c.label })));
+      } catch {
+        /* optional labels for filters */
+      }
+    });
+  }, [active, wrapCategoriesRefresh]);
+
+  const loadLocations = useCallback(async () => {
+    if (!active) return;
+    await wrapLocationsRefresh(async () => {
       setError(null);
       try {
-        const [w, r, s, j, t, cats] = await Promise.all([
-          listWeatherLocations(active),
-          listRssFeeds(active),
-          listStockSymbols(active),
-          listJokeCategories(active),
-          listTriviaCategories(active),
-          apiJson<{ items: CuratorCategoryOption[] }>(active, '/v1/curator/categories'),
-        ]);
-        setWeather(w);
-        setRss(r);
-        setStocks(s);
-        setJokes(j);
-        setTrivia(t);
-        setCuratorCategories(cats.items.map((c) => ({ id: c.id, label: c.label })));
+        setWeather(await listWeatherLocations(active));
+        loadedTabsRef.current.add('locations');
       } catch (e) {
         setError(errMsg(e));
       }
     });
-  }, [active, wrapRefresh]);
+  }, [active, wrapLocationsRefresh]);
+
+  const loadRss = useCallback(async () => {
+    if (!active) return;
+    await wrapRssRefresh(async () => {
+      setError(null);
+      try {
+        setRss(await listRssFeeds(active));
+        loadedTabsRef.current.add('rss');
+      } catch (e) {
+        setError(errMsg(e));
+      }
+    });
+  }, [active, wrapRssRefresh]);
+
+  const loadStocks = useCallback(async () => {
+    if (!active) return;
+    await wrapStocksRefresh(async () => {
+      setError(null);
+      try {
+        setStocks(await listStockSymbols(active));
+        loadedTabsRef.current.add('stocks');
+      } catch (e) {
+        setError(errMsg(e));
+      }
+    });
+  }, [active, wrapStocksRefresh]);
+
+  const loadJokes = useCallback(async () => {
+    if (!active) return;
+    await wrapJokesRefresh(async () => {
+      setError(null);
+      try {
+        setJokes(await listJokeCategories(active));
+        loadedTabsRef.current.add('jokes');
+      } catch (e) {
+        setError(errMsg(e));
+      }
+    });
+  }, [active, wrapJokesRefresh]);
+
+  const loadTrivia = useCallback(async () => {
+    if (!active) return;
+    await wrapTriviaRefresh(async () => {
+      setError(null);
+      try {
+        setTrivia(await listTriviaCategories(active));
+        loadedTabsRef.current.add('trivia');
+      } catch (e) {
+        setError(errMsg(e));
+      }
+    });
+  }, [active, wrapTriviaRefresh]);
+
+  const reloadTab = useCallback(
+    async (t: TabId) => {
+      switch (t) {
+        case 'locations':
+          await loadLocations();
+          break;
+        case 'rss':
+          await loadRss();
+          break;
+        case 'stocks':
+          await loadStocks();
+          break;
+        case 'jokes':
+          await loadJokes();
+          break;
+        case 'trivia':
+          await loadTrivia();
+          break;
+      }
+    },
+    [loadLocations, loadRss, loadStocks, loadJokes, loadTrivia],
+  );
+
+  const reloadActiveTab = useCallback(async () => {
+    await reloadTab(tab);
+    if (tab === 'jokes' || tab === 'trivia' || tab === 'locations') {
+      await loadCategories();
+    }
+  }, [reloadTab, tab, loadCategories]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    loadedTabsRef.current = new Set();
+    setWeather([]);
+    setRss([]);
+    setStocks([]);
+    setJokes([]);
+    setTrivia([]);
+    setCuratorCategories([]);
+  }, [active?.id]);
+
+  useEffect(() => {
+    void loadCategories();
+  }, [loadCategories]);
+
+  useEffect(() => {
+    if (!active || loadedTabsRef.current.has(tab)) return;
+    void reloadTab(tab);
+  }, [active, tab, reloadTab]);
 
   useEffect(() => {
     setFilterCategory(null);
@@ -283,9 +390,9 @@ export function InterestsPage() {
     async (id: string, patch: Parameters<typeof patchWeatherLocation>[2]) => {
       if (!active) return;
       await patchWeatherLocation(active, id, patch);
-      await load();
+      await loadLocations();
     },
-    [active, load],
+    [active, loadLocations],
   );
 
   const patchLocationCategory = useCallback(
@@ -295,9 +402,9 @@ export function InterestsPage() {
       await Promise.all(
         rows.map((row) => patchWeatherLocation(active, row.id, { [field]: enabled })),
       );
-      await load();
+      await loadLocations();
     },
-    [active, load, weather],
+    [active, loadLocations, weather],
   );
 
   const detectMyLocation = useCallback(async () => {
@@ -334,21 +441,21 @@ export function InterestsPage() {
       setExpandedLocationCategories((prev) =>
         prev.includes(category) ? prev : [...prev, category],
       );
-      await load();
+      await loadLocations();
     } catch (e) {
       setError(errMsg(e));
     } finally {
       setDetectingLocation(false);
     }
-  }, [active, canWrite, weather, load]);
+  }, [active, canWrite, weather, loadLocations]);
 
   const patchRss = useCallback(
     async (id: string, patch: Parameters<typeof patchRssFeed>[2]) => {
       if (!active) return;
       await patchRssFeed(active, id, patch);
-      await load();
+      await loadRss();
     },
-    [active, load],
+    [active, loadRss],
   );
 
   const patchRssCategory = useCallback(
@@ -356,18 +463,18 @@ export function InterestsPage() {
       if (!active) return;
       const rows = rss.filter((r) => (r.category || 'general') === categoryId);
       await Promise.all(rows.map((row) => patchRssFeed(active, row.id, { enabled })));
-      await load();
+      await loadRss();
     },
-    [active, load, rss],
+    [active, loadRss, rss],
   );
 
   const patchStock = useCallback(
     async (id: string, patch: Parameters<typeof patchStockSymbol>[2]) => {
       if (!active) return;
       await patchStockSymbol(active, id, patch);
-      await load();
+      await loadStocks();
     },
-    [active, load],
+    [active, loadStocks],
   );
 
   const deleteWeather = useCallback(
@@ -375,12 +482,12 @@ export function InterestsPage() {
       if (!active) return;
       try {
         await deleteWeatherLocation(active, id);
-        await load();
+        await loadLocations();
       } catch (e) {
         setError(errMsg(e));
       }
     },
-    [active, load],
+    [active, loadLocations],
   );
 
   const deleteRss = useCallback(
@@ -388,12 +495,12 @@ export function InterestsPage() {
       if (!active) return;
       try {
         await deleteRssFeed(active, id);
-        await load();
+        await loadRss();
       } catch (e) {
         setError(errMsg(e));
       }
     },
-    [active, load],
+    [active, loadRss],
   );
 
   const deleteStock = useCallback(
@@ -401,12 +508,12 @@ export function InterestsPage() {
       if (!active) return;
       try {
         await deleteStockSymbol(active, id);
-        await load();
+        await loadStocks();
       } catch (e) {
         setError(errMsg(e));
       }
     },
-    [active, load],
+    [active, loadStocks],
   );
 
   if (!active) {
@@ -415,7 +522,6 @@ export function InterestsPage() {
 
   return (
     <Stack spacing={3}>
-      <DisplayRefreshIndicator loading={loading} />
       <Box>
         <Typography variant="h6" fontWeight={600} gutterBottom>
           Interests
@@ -467,6 +573,7 @@ export function InterestsPage() {
 
       {tab === 'locations' && (
         <Stack spacing={2}>
+          <DisplayRefreshIndicator loading={locationsLoading} />
           {canWrite && (
             <Button
               variant="outlined"
@@ -477,11 +584,11 @@ export function InterestsPage() {
               {detectingLocation ? 'Detecting…' : 'Use my location'}
             </Button>
           )}
-          {locationGroups.length === 0 ? (
+          {locationGroups.length === 0 && !locationsLoading ? (
             <Typography variant="body2" color="text.secondary">
               No locations match the current filter.
             </Typography>
-          ) : (
+          ) : locationGroups.length > 0 ? (
             locationGroups.map((group) => (
               <LocationCategoryAccordion
                 key={group.id}
@@ -511,17 +618,18 @@ export function InterestsPage() {
                 }
               />
             ))
-          )}
+          ) : null}
         </Stack>
       )}
 
       {tab === 'rss' && (
         <Stack spacing={2}>
-          {newsGroups.length === 0 ? (
+          <DisplayRefreshIndicator loading={rssLoading} />
+          {newsGroups.length === 0 && !rssLoading ? (
             <Typography variant="body2" color="text.secondary">
               No news feeds configured.
             </Typography>
-          ) : (
+          ) : newsGroups.length > 0 ? (
             newsGroups.map((group) => (
               <NewsCategoryAccordion
                 key={group.id}
@@ -549,12 +657,13 @@ export function InterestsPage() {
                 }
               />
             ))
-          )}
+          ) : null}
         </Stack>
       )}
 
       {tab === 'stocks' && (
         <Stack spacing={3}>
+          <DisplayRefreshIndicator loading={stocksLoading} />
           <CatalogSection
             title="Interested"
             empty="No stock symbols are marked interested."
@@ -609,7 +718,9 @@ export function InterestsPage() {
       )}
 
       {tab === 'jokes' && (
-        <CatalogSection
+        <Stack spacing={1.5}>
+          <DisplayRefreshIndicator loading={jokesLoading} />
+          <CatalogSection
           title="Joke categories"
           empty="No joke categories configured."
           layout={layout}
@@ -623,7 +734,7 @@ export function InterestsPage() {
               onDelete={async () => {
                 try {
                   await deleteJokeCategory(active, row.id);
-                  await load();
+                  await loadJokes();
                 } catch (e) {
                   setError(errMsg(e));
                 }
@@ -638,7 +749,7 @@ export function InterestsPage() {
               onDelete={async (id) => {
                 try {
                   await deleteJokeCategory(active, id);
-                  await load();
+                  await loadJokes();
                 } catch (e) {
                   setError(errMsg(e));
                 }
@@ -646,10 +757,13 @@ export function InterestsPage() {
             />
           }
         />
+        </Stack>
       )}
 
       {tab === 'trivia' && (
-        <CatalogSection
+        <Stack spacing={1.5}>
+          <DisplayRefreshIndicator loading={triviaLoading} />
+          <CatalogSection
           title="Trivia categories"
           empty="No trivia categories configured."
           layout={layout}
@@ -663,7 +777,7 @@ export function InterestsPage() {
               onDelete={async () => {
                 try {
                   await deleteTriviaCategory(active, row.id);
-                  await load();
+                  await loadTrivia();
                 } catch (e) {
                   setError(errMsg(e));
                 }
@@ -678,7 +792,7 @@ export function InterestsPage() {
               onDelete={async (id) => {
                 try {
                   await deleteTriviaCategory(active, id);
-                  await load();
+                  await loadTrivia();
                 } catch (e) {
                   setError(errMsg(e));
                 }
@@ -686,6 +800,7 @@ export function InterestsPage() {
             />
           }
         />
+        </Stack>
       )}
 
       <InterestDialog
@@ -705,7 +820,7 @@ export function InterestsPage() {
         onClose={() => setDialogOpen(false)}
         onSaved={async () => {
           setDialogOpen(false);
-          await load();
+          await reloadActiveTab();
         }}
         onError={setError}
         display={active}
@@ -1776,7 +1891,7 @@ function InterestDialog({
           }
         }
       }
-      await onSaved();
+      await completeDialogSave(onSaved, onClose);
     } catch (e) {
       onError(errMsg(e));
     }

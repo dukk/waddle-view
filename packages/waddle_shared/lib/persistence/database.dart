@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:developer' show log;
 import 'dart:io';
 
@@ -20,6 +21,7 @@ part 'database.g.dart';
     Integrations,
     IntegrationAccounts,
     IntegrationAccountLinks,
+    IntegrationsKeyValue,
     BlobMetadata,
     Alerts,
     ConfigKeyValues,
@@ -65,7 +67,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 19;
+  int get schemaVersion => 21;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -79,6 +81,7 @@ WHERE dismissed_at IS NULL
 ORDER BY priority DESC, created_at DESC;
 ''');
       await customStatement(kEnsureOverlaysTableSql);
+      await _ensureIntegrationsKeyValueIndexes(this);
       await _seedDefaultRejectTerms(this);
     },
     onUpgrade: (Migrator m, int from, int to) async {
@@ -203,6 +206,20 @@ ORDER BY priority DESC, created_at DESC;
       }
       if (from == 18 && to >= 19) {
         await _migrateV18ToV19CuratorTickerPixelsPerSecond(this);
+        if (to == 19) {
+          return;
+        }
+        from = 19;
+      }
+      if (from == 19 && to >= 20) {
+        await _migrateV19ToV20OverlaysShapeRainAndDropExample(this);
+        if (to == 20) {
+          return;
+        }
+        from = 20;
+      }
+      if (from == 20 && to >= 21) {
+        await _migrateV20ToV21IntegrationsKeyValue(this, m);
         return;
       }
       throw UnsupportedError(
@@ -824,6 +841,73 @@ Future<void> _migrateV17ToV18OverlaysDefinitionOnly(AppDatabase db) async {
   await db.customStatement('ALTER TABLE overlays_new RENAME TO overlays');
 }
 
+/// Renames default overlay seeds, migrates `hearts_rain` → `shape_rain`, drops
+/// per-row `example_config_json`.
+Future<void> _migrateV19ToV20OverlaysShapeRainAndDropExample(
+  AppDatabase db,
+) async {
+  if (!await _sqliteTableExists(db, 'overlays')) {
+    await db.customStatement(kEnsureOverlaysTableSql);
+    return;
+  }
+
+  await db.customStatement(
+    "UPDATE overlays SET overlay_type = 'shape_rain' "
+    "WHERE overlay_type = 'hearts_rain'",
+  );
+  await db.customStatement(
+    'UPDATE overlays SET overlay_type = ?, name = ?, config_json = ? '
+    'WHERE id = ?',
+    <Object?>[
+      kOverlayTypeShapeRain,
+      'Raining Hearts',
+      jsonEncode(<String, Object?>{
+        'shapes': <String>['heart', 'raindrop', 'cat', 'dog'],
+      }),
+      kDefaultMothersDayOverlayId,
+    ],
+  );
+  await db.customStatement(
+    'UPDATE curator_configuration_members SET entity_id = ? '
+    "WHERE entity_type = ? AND entity_id = 'default_birthday_example_may_13'",
+    <Object?>[
+      kDefaultBirthdayConfettiOverlayId,
+      kCuratorMemberEntityOverlay,
+    ],
+  );
+  await db.customStatement(
+    'UPDATE overlays SET id = ?, name = ? WHERE id = ?',
+    <Object?>[
+      kDefaultBirthdayConfettiOverlayId,
+      'Default Birthday Confetti',
+      'default_birthday_example_may_13',
+    ],
+  );
+  await db.customStatement(
+    'UPDATE curator_configuration_members SET entity_id = ? '
+    "WHERE entity_type = ? AND entity_id = 'default_bouncing_message_may_13'",
+    <Object?>[
+      kDefaultWattleViewsBirthdayMessageOverlayId,
+      kCuratorMemberEntityOverlay,
+    ],
+  );
+  await db.customStatement(
+    'UPDATE overlays SET id = ?, name = ? WHERE id = ?',
+    <Object?>[
+      kDefaultWattleViewsBirthdayMessageOverlayId,
+      "Wattle View's Birthday Message!",
+      'default_bouncing_message_may_13',
+    ],
+  );
+
+  if (await _sqliteColumnExists(db, 'overlays', 'example_config_json')) {
+    await db.customStatement(kCreateOverlaysWithoutExampleTableSql);
+    await db.customStatement(kCopyOverlaysWithoutExampleSql);
+    await db.customStatement('DROP TABLE overlays');
+    await db.customStatement('ALTER TABLE overlays_new RENAME TO overlays');
+  }
+}
+
 /// Ensures [CuratorConfigurations.tickerProgramDurationSeconds] is present.
 Future<void> _ensureCuratorConfigurationsTickerProgramDuration(
   AppDatabase db,
@@ -961,6 +1045,242 @@ Future<void> _seedDefaultRejectTerms(AppDatabase db) async {
             updatedAtMs: nowMs,
           ),
         );
+  }
+}
+
+Future<void> _ensureIntegrationsKeyValueIndexes(AppDatabase db) async {
+  await db.customStatement('''
+CREATE UNIQUE INDEX IF NOT EXISTS idx_integrations_kv_integration_key
+ON integrations_key_value (integration_id, key)
+WHERE integration_id IS NOT NULL
+''');
+  await db.customStatement('''
+CREATE UNIQUE INDEX IF NOT EXISTS idx_integrations_kv_account_key
+ON integrations_key_value (account_id, key)
+WHERE account_id IS NOT NULL
+''');
+}
+
+class _LegacyIntegrationKvMapping {
+  const _LegacyIntegrationKvMapping({
+    this.integrationId,
+    this.accountId,
+    required this.key,
+    required this.valueType,
+  });
+
+  final String? integrationId;
+  final String? accountId;
+  final String key;
+  final String valueType;
+}
+
+Future<String?> _resolveOnedriveIntegrationIdForAccount(
+  AppDatabase db,
+  String accountKey,
+) async {
+  final links = await db.customSelect(
+    '''
+SELECT l.integration_id AS integration_id
+FROM integration_account_links l
+INNER JOIN integrations i ON i.id = l.integration_id
+WHERE l.account_id = ?
+  AND i.integration_type IN ('photo_onedrive', 'video_onedrive')
+''',
+    variables: [Variable<String>(accountKey)],
+  ).get();
+  if (links.isEmpty) {
+    return null;
+  }
+  final ids = links.map((r) => r.read<String>('integration_id')).toList();
+  if (ids.contains(kDefaultPhotoOneDriveIntegrationId)) {
+    return kDefaultPhotoOneDriveIntegrationId;
+  }
+  if (ids.contains(kDefaultVideoOneDriveIntegrationId)) {
+    return kDefaultVideoOneDriveIntegrationId;
+  }
+  return ids.first;
+}
+
+Future<_LegacyIntegrationKvMapping?> _mapLegacyIntegrationKvKey(
+  AppDatabase db,
+  String legacyKey,
+) async {
+  const lastCollectSuffix = '.last_collect_ms';
+  if (legacyKey.startsWith('provider.') &&
+      legacyKey.endsWith(lastCollectSuffix)) {
+    final mid = legacyKey.substring(
+      'provider.'.length,
+      legacyKey.length - lastCollectSuffix.length,
+    );
+    final integrationId = switch (mid) {
+      'calendar_google' => kDefaultCalendarGoogleIntegrationId,
+      'calendar_outlook' => kDefaultCalendarOutlookIntegrationId,
+      'calendar_ical' => kDefaultCalendarIcalIntegrationId,
+      _ => mid,
+    };
+    return _LegacyIntegrationKvMapping(
+      integrationId: integrationId,
+      key: 'last_collect_ms',
+      valueType: 'int_ms',
+    );
+  }
+
+  const googleExpiresPrefix = 'google.access_token_expires_at_ms.';
+  if (legacyKey.startsWith(googleExpiresPrefix)) {
+    return _LegacyIntegrationKvMapping(
+      accountId: legacyKey.substring(googleExpiresPrefix.length),
+      key: 'access_token_expires_at_ms',
+      valueType: 'int_ms',
+    );
+  }
+
+  const googlePromptPrefix = 'provider.calendar_google.last_device_prompt_ms.';
+  if (legacyKey.startsWith(googlePromptPrefix)) {
+    return _LegacyIntegrationKvMapping(
+      accountId: legacyKey.substring(googlePromptPrefix.length),
+      key: 'last_device_prompt_ms',
+      valueType: 'int_ms',
+    );
+  }
+
+  const graphExpiresPrefix = 'microsoft.graph.access_token_expires_at_ms.';
+  if (legacyKey.startsWith(graphExpiresPrefix)) {
+    return _LegacyIntegrationKvMapping(
+      accountId: legacyKey.substring(graphExpiresPrefix.length),
+      key: 'access_token_expires_at_ms',
+      valueType: 'int_ms',
+    );
+  }
+
+  const outlookPromptPrefix = 'provider.calendar_outlook.last_device_prompt_ms.';
+  if (legacyKey.startsWith(outlookPromptPrefix)) {
+    return _LegacyIntegrationKvMapping(
+      accountId: legacyKey.substring(outlookPromptPrefix.length),
+      key: 'last_device_prompt_ms',
+      valueType: 'int_ms',
+    );
+  }
+
+  const deltaPrefix = 'provider.media_onedrive.delta_link.';
+  if (legacyKey.startsWith(deltaPrefix)) {
+    final rest = legacyKey.substring(deltaPrefix.length);
+    final dot = rest.indexOf('.');
+    if (dot <= 0) {
+      return null;
+    }
+    final accountKey = rest.substring(0, dot);
+    final pathTag = rest.substring(dot + 1);
+    final integrationId =
+        await _resolveOnedriveIntegrationIdForAccount(db, accountKey);
+    if (integrationId == null) {
+      return null;
+    }
+    return _LegacyIntegrationKvMapping(
+      integrationId: integrationId,
+      key: 'delta_link.$pathTag',
+      valueType: 'delta_link',
+    );
+  }
+
+  return null;
+}
+
+Future<void> _migrateV20ToV21IntegrationsKeyValue(
+  AppDatabase db,
+  Migrator m,
+) async {
+  if (!await _sqliteTableExists(db, 'integrations_key_value')) {
+    await m.createTable(db.integrationsKeyValue);
+  }
+  await _ensureIntegrationsKeyValueIndexes(db);
+
+  if (!await _sqliteTableExists(db, 'config_key_values')) {
+    return;
+  }
+
+  final nowMs = DateTime.now().millisecondsSinceEpoch;
+  final legacyRows =
+      await db.customSelect('SELECT key, value FROM config_key_values').get();
+  final keysToDelete = <String>[];
+
+  for (final row in legacyRows) {
+    final legacyKey = row.read<String>('key');
+    final value = row.read<String>('value');
+    final mapped = await _mapLegacyIntegrationKvKey(db, legacyKey);
+    if (mapped == null) {
+      continue;
+    }
+
+    final integrationId = mapped.integrationId;
+    final accountId = mapped.accountId;
+    if (integrationId != null) {
+      final exists = await db.customSelect(
+        'SELECT 1 FROM integrations WHERE id = ? LIMIT 1',
+        variables: [Variable<String>(integrationId)],
+      ).getSingleOrNull();
+      if (exists == null) {
+        continue;
+      }
+    }
+    if (accountId != null) {
+      final exists = await db.customSelect(
+        'SELECT 1 FROM integration_accounts WHERE id = ? LIMIT 1',
+        variables: [Variable<String>(accountId)],
+      ).getSingleOrNull();
+      if (exists == null) {
+        continue;
+      }
+    }
+
+    keysToDelete.add(legacyKey);
+
+    final IntegrationsKeyValueData? existing;
+    if (integrationId != null) {
+      existing = await (db.select(db.integrationsKeyValue)
+            ..where(
+              (t) => t.integrationId.equals(integrationId) & t.key.equals(mapped.key),
+            ))
+          .getSingleOrNull();
+    } else {
+      existing = await (db.select(db.integrationsKeyValue)
+            ..where(
+              (t) => t.accountId.equals(accountId!) & t.key.equals(mapped.key),
+            ))
+          .getSingleOrNull();
+    }
+
+    if (existing != null) {
+      final existingId = existing.id;
+      await (db.update(db.integrationsKeyValue)
+            ..where((t) => t.id.equals(existingId)))
+          .write(
+        IntegrationsKeyValueCompanion(
+          value: Value(value),
+          valueType: Value(mapped.valueType),
+          updatedAtMs: Value(nowMs),
+        ),
+      );
+    } else {
+      await db.into(db.integrationsKeyValue).insert(
+            IntegrationsKeyValueCompanion.insert(
+              integrationId: Value(integrationId),
+              accountId: Value(accountId),
+              key: mapped.key,
+              value: value,
+              valueType: Value(mapped.valueType),
+              createdAtMs: nowMs,
+              updatedAtMs: nowMs,
+            ),
+          );
+    }
+  }
+
+  for (final k in keysToDelete) {
+    await db.customStatement(
+      'DELETE FROM config_key_values WHERE key = ?',
+      [k],
+    );
   }
 }
 

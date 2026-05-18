@@ -5,7 +5,8 @@ import 'package:crypto/crypto.dart';
 /// Integration type for subscribe-by-URL iCalendar / ICS feeds.
 const String kIcalCalendarProviderId = 'calendar_ical';
 
-/// Last successful iCal calendar collect (poll gate).
+/// Legacy config_key_values poll gate (schema 21+ uses [kIntegrationLastCollectKey]).
+@Deprecated('Migrated to integrations_key_value in schema 21')
 const String kIcalCalendarLastCollectKvKey =
     'provider.calendar_ical.last_collect_ms';
 

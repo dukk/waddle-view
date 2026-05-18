@@ -34,9 +34,10 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureDisplayTextScaleKv(db);
   await ensureControllerDatetimeFormatKvs(db);
   await _ensureAlertSeverityIconsKv(db);
-  await _ensureDefaultMothersDayOverlay(db);
-  await _ensureDefaultBirthdayOverlayExample(db);
-  await _ensureDefaultBouncingMessageOverlay(db);
+  await _ensureDefaultRainingHeartsOverlay(db);
+  await _ensureDefaultBirthdayConfettiOverlay(db);
+  await _ensureDefaultWattleViewsBirthdayMessageOverlay(db);
+  await _ensureDefaultFallingDucksOverlay(db);
   await _ensureWelcomeScreen(db);
   await _ensureJokeScreen(db);
   await _ensureTriviaScreen(db);
@@ -62,34 +63,32 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await ensureDefaultCuratorConfigurations(db);
 }
 
-Future<void> _ensureDefaultMothersDayOverlay(AppDatabase db) async {
+Future<void> _ensureDefaultRainingHeartsOverlay(AppDatabase db) async {
   await db.customStatement(kEnsureOverlaysTableSql);
   final configJson = jsonEncode(<String, Object?>{
-    'messages': <String>["Happy Mother's Day!"],
+    'shapes': <String>['heart', 'raindrop', 'cat', 'dog'],
   });
-  final heartsDoc = displayOverlayConfigJsonDocForType(kOverlayTypeHeartsRain);
+  final shapeRainDoc = displayOverlayConfigJsonDocForType(kOverlayTypeShapeRain);
   await db.customStatement(
     '''INSERT OR IGNORE INTO overlays (
       id,
       overlay_type,
       name,
       config_json,
-      config_json_schema,
-      example_config_json
+      config_json_schema
     )
-    VALUES (?, ?, ?, ?, ?, ?)''',
+    VALUES (?, ?, ?, ?, ?)''',
     <Object?>[
       kDefaultMothersDayOverlayId,
-      kOverlayTypeHeartsRain,
-      "Mother's Day (US: 2nd Sunday in May)",
+      kOverlayTypeShapeRain,
+      'Raining Hearts',
       configJson,
-      heartsDoc.schema,
-      heartsDoc.example,
+      shapeRainDoc.schema,
     ],
   );
 }
 
-Future<void> _ensureDefaultBirthdayOverlayExample(AppDatabase db) async {
+Future<void> _ensureDefaultBirthdayConfettiOverlay(AppDatabase db) async {
   await db.customStatement(kEnsureOverlaysTableSql);
   final configJson = jsonEncode(<String, Object?>{
     'shapes': <String>['rect', 'circle', 'mix'],
@@ -106,22 +105,49 @@ Future<void> _ensureDefaultBirthdayOverlayExample(AppDatabase db) async {
       overlay_type,
       name,
       config_json,
-      config_json_schema,
-      example_config_json
+      config_json_schema
     )
-    VALUES (?, ?, ?, ?, ?, ?)''',
+    VALUES (?, ?, ?, ?, ?)''',
     <Object?>[
-      kDefaultBirthdayOverlayExampleId,
+      kDefaultBirthdayConfettiOverlayId,
       kOverlayTypeBirthdayConfetti,
-      'Example: May 13 birthday confetti',
+      'Default Birthday Confetti',
       configJson,
       confettiDoc.schema,
-      confettiDoc.example,
     ],
   );
 }
 
-Future<void> _ensureDefaultBouncingMessageOverlay(AppDatabase db) async {
+Future<void> _ensureDefaultFallingDucksOverlay(AppDatabase db) async {
+  await db.customStatement(kEnsureOverlaysTableSql);
+  final configJson = jsonEncode(<String, Object?>{
+    'image_blob_keys': kSeededDuckOverlayBlobKeys,
+    'drop_interval_sec': 45,
+    'fall_speed': 0.18,
+    'image_scale': 0.12,
+    'scale_jitter': 0.33,
+  });
+  final doc = displayOverlayConfigJsonDocForType(kOverlayTypeFallingImages);
+  await db.customStatement(
+    '''INSERT OR IGNORE INTO overlays (
+      id,
+      overlay_type,
+      name,
+      config_json,
+      config_json_schema
+    )
+    VALUES (?, ?, ?, ?, ?)''',
+    <Object?>[
+      kDefaultFallingDucksOverlayId,
+      kOverlayTypeFallingImages,
+      'Default Falling Ducks',
+      configJson,
+      doc.schema,
+    ],
+  );
+}
+
+Future<void> _ensureDefaultWattleViewsBirthdayMessageOverlay(AppDatabase db) async {
   await db.customStatement(kEnsureOverlaysTableSql);
   final configJson = jsonEncode(<String, Object?>{
     'messages': <String>[kDefaultBouncingMessageOverlayPhrase],
@@ -139,17 +165,15 @@ Future<void> _ensureDefaultBouncingMessageOverlay(AppDatabase db) async {
       overlay_type,
       name,
       config_json,
-      config_json_schema,
-      example_config_json
+      config_json_schema
     )
-    VALUES (?, ?, ?, ?, ?, ?)''',
+    VALUES (?, ?, ?, ?, ?)''',
     <Object?>[
-      kDefaultBouncingMessageOverlayId,
+      kDefaultWattleViewsBirthdayMessageOverlayId,
       kOverlayTypeBouncingMessage,
-      'Example: May 13 bouncing message',
+      "Wattle View's Birthday Message!",
       configJson,
       doc.schema,
-      doc.example,
     ],
   );
 }

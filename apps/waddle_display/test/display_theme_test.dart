@@ -1,8 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:waddle_display/theme/config/display_theme_registry.dart';
 import 'package:waddle_display/theme/display_theme.dart';
+import 'package:waddle_display/theme/theme_palette_extension.dart';
 import 'package:waddle_display/theme/ticker_marquee_style.dart';
+
+String _hex(Color c) {
+  final v = c.toARGB32() & 0xFFFFFF;
+  return '#${v.toRadixString(16).padLeft(6, '0').toUpperCase()}';
+}
+
+List<String> _controllerPreviewHex(ThemeData theme, PaletteTertiaryLayers ext) {
+  final seen = <String>{};
+  final out = <String>[];
+  void add(Color c) {
+    final h = _hex(c);
+    if (seen.add(h)) out.add(h);
+  }
+
+  for (final c in ext.displayBackgroundFill.gradientColors) {
+    add(c);
+  }
+  add(theme.colorScheme.onPrimaryContainer);
+  for (final c in ext.primaryContainerFill.gradientColors) {
+    add(c);
+  }
+  add(theme.colorScheme.onSecondaryContainer);
+  for (final c in ext.secondaryContainerFill.gradientColors) {
+    add(c);
+  }
+  add(ext.accent1);
+  add(ext.accent2);
+  add(ext.accent3);
+  add(ext.accent4);
+  return out;
+}
 
 void main() {
   test('DisplayTheme matches calendar-style dark palette', () {
@@ -105,6 +138,28 @@ void main() {
     expect(palette!.colorOrder, hasLength(9));
     expect(palette.accent1, isNot(equals(palette.accent2)));
     expect(palette.primaryContainerFill.gradientColors.length, greaterThanOrEqualTo(2));
+  });
+
+  test('controller preview includes fills and four accents', () {
+    for (final id in registeredDisplayThemeIds) {
+      final theme = DisplayTheme.buildForId(id);
+      final palette = theme.extension<PaletteTertiaryLayers>();
+      expect(palette, isNotNull);
+      expect(
+        palette!.displayBackgroundFill.gradientColors.length,
+        greaterThanOrEqualTo(2),
+      );
+      expect(
+        palette.primaryContainerFill.gradientColors.length,
+        greaterThanOrEqualTo(2),
+      );
+      expect(
+        palette.secondaryContainerFill.gradientColors.length,
+        greaterThanOrEqualTo(2),
+      );
+      final colors = _controllerPreviewHex(theme, palette);
+      expect(colors.length, greaterThanOrEqualTo(6));
+    }
   });
 
   test('DisplayTextScaler equality and deprecated textScaleFactor', () {

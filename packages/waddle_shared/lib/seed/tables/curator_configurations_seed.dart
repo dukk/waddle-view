@@ -198,8 +198,8 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
     db,
     'waddle_birthday',
     overlays: [
-      kDefaultBirthdayOverlayExampleId,
-      kDefaultBouncingMessageOverlayId,
+      kDefaultBirthdayConfettiOverlayId,
+      kDefaultWattleViewsBirthdayMessageOverlayId,
     ],
   );
 

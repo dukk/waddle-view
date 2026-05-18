@@ -1,15 +1,13 @@
 import 'dart:convert';
 
-import 'package:drift/drift.dart' show Value;
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_display/config/microsoft_graph_kv.dart'
-    show
-        kMicrosoftGraphAccessTokenExpiresAtKvKey,
-        kOneDriveMediaDeltaLinkKvKey,
-        kOneDriveMediaItemRowId,
-        kOneDriveMediaLastCollectKvKey,
-        microsoftGraphAccessTokenSecret;
+    show kOneDriveMediaItemRowId, microsoftGraphAccessTokenSecret;
+import 'package:waddle_shared/config/microsoft_graph_kv.dart'
+    show oneDriveMediaDeltaLinkKey;
+import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
@@ -52,7 +50,7 @@ void main() {
             enabled: const Value(true),
             pollSeconds: const Value(0),
             configJson: integrationConfigJsonValue(
-              configJson: '{"accounts":[{"graphAccountKey":"u","sources":[{"path":"/a","kind":"photo","category":"c","maxFiles":10}]}],"globalPerPollLimit":50}',,
+              configJson: '{"accounts":[{"graphAccountKey":"u","sources":[{"path":"/a","kind":"photo","category":"c","maxFiles":10}]}],"globalPerPollLimit":50}',
               baseUrl: 'https://graph.microsoft.com/v1.0',
             ),
           ),
@@ -106,18 +104,18 @@ void main() {
     );
     final secrets = InMemorySecretStore();
     await secrets.write(microsoftGraphAccessTokenSecret('u'), 'tok');
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kMicrosoftGraphAccessTokenExpiresAtKvKey('u'),
-            value: '1',
-          ),
-        );
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kOneDriveMediaLastCollectKvKey,
-            value: '${DateTime.now().millisecondsSinceEpoch}',
-          ),
-        );
+    await seedIntegrationKvForTest(
+      db,
+      accountId: 'u',
+      key: kIntegrationAccessTokenExpiresAtKey,
+      value: '1',
+    );
+    await seedIntegrationKvForTest(
+      db,
+      integrationId: kDefaultPhotoOneDriveIntegrationId,
+      key: kIntegrationLastCollectKey,
+      value: '${DateTime.now().millisecondsSinceEpoch}',
+    );
     final http = _GraphAndDownloadClient(
       deltaPages: [
         _deltaPage([_drivePhoto('x', 'https://dl.example.com/x')]),
@@ -140,12 +138,12 @@ void main() {
     );
     final secrets = InMemorySecretStore();
     await secrets.write(microsoftGraphAccessTokenSecret('u'), 'tok');
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kMicrosoftGraphAccessTokenExpiresAtKvKey('u'),
-            value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
-          ),
-        );
+    await seedIntegrationKvForTest(
+      db,
+      accountId: 'u',
+      key: kIntegrationAccessTokenExpiresAtKey,
+      value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
+    );
     final http = _ErrorJsonGraphClient();
     final ctx = await _ctx(db, secrets);
     await OneDrivePhotosDataProvider(httpClient: http).collect(ctx);
@@ -164,12 +162,12 @@ void main() {
     );
     final secrets = InMemorySecretStore();
     await secrets.write(microsoftGraphAccessTokenSecret('u'), 'tok');
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kMicrosoftGraphAccessTokenExpiresAtKvKey('u'),
-            value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
-          ),
-        );
+    await seedIntegrationKvForTest(
+      db,
+      accountId: 'u',
+      key: kIntegrationAccessTokenExpiresAtKey,
+      value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
+    );
     final http = _PagingGraphClient();
     final ctx = await _ctx(db, secrets);
     await OneDrivePhotosDataProvider(httpClient: http).collect(ctx);
@@ -188,12 +186,12 @@ void main() {
     );
     final secrets = InMemorySecretStore();
     await secrets.write(microsoftGraphAccessTokenSecret('u'), 'tok');
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kMicrosoftGraphAccessTokenExpiresAtKvKey('u'),
-            value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
-          ),
-        );
+    await seedIntegrationKvForTest(
+      db,
+      accountId: 'u',
+      key: kIntegrationAccessTokenExpiresAtKey,
+      value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
+    );
     final http = _GraphAndDownloadClient(
       deltaPages: [
         _deltaPage([
@@ -235,12 +233,12 @@ void main() {
     );
     final secrets = InMemorySecretStore();
     await secrets.write(microsoftGraphAccessTokenSecret('u'), 'tok');
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kMicrosoftGraphAccessTokenExpiresAtKvKey('u'),
-            value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
-          ),
-        );
+    await seedIntegrationKvForTest(
+      db,
+      accountId: 'u',
+      key: kIntegrationAccessTokenExpiresAtKey,
+      value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
+    );
     final http = _TwoFolderGraphClient();
     final ctx = await _ctx(db, secrets);
     await OneDrivePhotosDataProvider(httpClient: http).collect(ctx);
@@ -272,12 +270,12 @@ void main() {
     );
     final secrets = InMemorySecretStore();
     await secrets.write(microsoftGraphAccessTokenSecret('u'), 'tok');
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kMicrosoftGraphAccessTokenExpiresAtKvKey('u'),
-            value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
-          ),
-        );
+    await seedIntegrationKvForTest(
+      db,
+      accountId: 'u',
+      key: kIntegrationAccessTokenExpiresAtKey,
+      value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
+    );
     var clock = 10_000_000_000;
     final httpClient = _CountingClient();
     final ctx = await _ctx(db, secrets);
@@ -304,12 +302,12 @@ void main() {
     );
     final secrets = InMemorySecretStore();
     await secrets.write(microsoftGraphAccessTokenSecret('u'), 'tok');
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kMicrosoftGraphAccessTokenExpiresAtKvKey('u'),
-            value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
-          ),
-        );
+    await seedIntegrationKvForTest(
+      db,
+      accountId: 'u',
+      key: kIntegrationAccessTokenExpiresAtKey,
+      value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
+    );
     final httpClient = _GraphAndDownloadClient(
       deltaPages: [
         _deltaPage([
@@ -340,12 +338,12 @@ void main() {
     );
     final secrets = InMemorySecretStore();
     await secrets.write(microsoftGraphAccessTokenSecret('u'), 'tok');
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kMicrosoftGraphAccessTokenExpiresAtKvKey('u'),
-            value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
-          ),
-        );
+    await seedIntegrationKvForTest(
+      db,
+      accountId: 'u',
+      key: kIntegrationAccessTokenExpiresAtKey,
+      value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
+    );
     final httpClient = _GraphAndDownloadClient(
       deltaPages: [
         _deltaPage([
@@ -373,12 +371,12 @@ void main() {
     );
     final secrets = InMemorySecretStore();
     await secrets.write(microsoftGraphAccessTokenSecret('u'), 'tok');
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kMicrosoftGraphAccessTokenExpiresAtKvKey('u'),
-            value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
-          ),
-        );
+    await seedIntegrationKvForTest(
+      db,
+      accountId: 'u',
+      key: kIntegrationAccessTokenExpiresAtKey,
+      value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
+    );
 
     Future<void> insertPhoto(String graphItemId, DateTime fetched) async {
       final id = kOneDriveMediaItemRowId('u', graphItemId);
@@ -426,12 +424,12 @@ void main() {
     );
     final secrets = InMemorySecretStore();
     await secrets.write(microsoftGraphAccessTokenSecret('u'), 'tok');
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kMicrosoftGraphAccessTokenExpiresAtKvKey('u'),
-            value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
-          ),
-        );
+    await seedIntegrationKvForTest(
+      db,
+      accountId: 'u',
+      key: kIntegrationAccessTokenExpiresAtKey,
+      value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
+    );
     final httpClient = _GraphAndDownloadClient(
       deltaPages: [
         _deltaPage([_drivePhoto('x', 'https://dl.example.com/x')]),
@@ -454,12 +452,12 @@ void main() {
     await _seedVideoProvider(db, accountsJson: accountsJson);
     final secrets = InMemorySecretStore();
     await secrets.write(microsoftGraphAccessTokenSecret('u'), 'tok');
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kMicrosoftGraphAccessTokenExpiresAtKvKey('u'),
-            value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
-          ),
-        );
+    await seedIntegrationKvForTest(
+      db,
+      accountId: 'u',
+      key: kIntegrationAccessTokenExpiresAtKey,
+      value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
+    );
     final httpClient = _GraphAndDownloadClient(
       deltaPages: [
         _deltaPage([
@@ -481,11 +479,11 @@ void main() {
     final ctx = await _ctx(db, secrets);
     await OneDriveVideosDataProvider(httpClient: httpClient).collect(ctx);
     // Delta links and mock delta page index are shared across providers.
-    final deltaRows = await db.select(db.configKeyValues).get();
+    final deltaRows = await db.select(db.integrationsKeyValue).get();
     for (final row in deltaRows) {
-      if (row.key.startsWith('provider.media_onedrive.delta_link.')) {
-        await (db.delete(db.configKeyValues)
-              ..where((t) => t.key.equals(row.key)))
+      if (row.key.startsWith('delta_link.')) {
+        await (db.delete(db.integrationsKeyValue)
+              ..where((t) => t.id.equals(row.id)))
             .go();
       }
     }
@@ -507,12 +505,12 @@ void main() {
     );
     final secrets = InMemorySecretStore();
     await secrets.write(microsoftGraphAccessTokenSecret('u'), 'tok');
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kMicrosoftGraphAccessTokenExpiresAtKvKey('u'),
-            value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
-          ),
-        );
+    await seedIntegrationKvForTest(
+      db,
+      accountId: 'u',
+      key: kIntegrationAccessTokenExpiresAtKey,
+      value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
+    );
     final goneId = kOneDriveMediaItemRowId('u', 'gone');
     await db.into(db.photos).insert(
           PhotosCompanion.insert(
@@ -550,12 +548,12 @@ void main() {
     );
     final secrets = InMemorySecretStore();
     await secrets.write(microsoftGraphAccessTokenSecret('u'), 'tok');
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kMicrosoftGraphAccessTokenExpiresAtKvKey('u'),
-            value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
-          ),
-        );
+    await seedIntegrationKvForTest(
+      db,
+      accountId: 'u',
+      key: kIntegrationAccessTokenExpiresAtKey,
+      value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
+    );
     const persistedLink = 'https://graph.microsoft.com/v1.0/delta?token=persisted';
     final httpClient = _GraphAndDownloadClient(
       deltaPages: [
@@ -567,10 +565,14 @@ void main() {
     );
     final ctx = await _ctx(db, secrets);
     await OneDrivePhotosDataProvider(httpClient: httpClient).collect(ctx);
-    final key = kOneDriveMediaDeltaLinkKvKey('u', 'z');
-    final row =
-        await (db.select(db.configKeyValues)..where((t) => t.key.equals(key)))
-            .getSingleOrNull();
+    final key = oneDriveMediaDeltaLinkKey('z');
+    final row = await (db.select(db.integrationsKeyValue)
+          ..where(
+            (t) =>
+                t.integrationId.equals(kDefaultPhotoOneDriveIntegrationId) &
+                t.key.equals(key),
+          ))
+        .getSingleOrNull();
     expect(row?.value, persistedLink);
     await db.close();
   });
@@ -618,7 +620,7 @@ Future<void> _seedProvider(
           enabled: Value(enabled),
           pollSeconds: Value(pollSeconds),
           configJson: integrationConfigJsonValue(
-            configJson: '{"accounts":$accountsJson,"globalPerPollLimit":$globalPerPoll}',,
+            configJson: '{"accounts":$accountsJson,"globalPerPollLimit":$globalPerPoll}',
             baseUrl: 'https://graph.microsoft.com/v1.0',
           ),
         ),
@@ -639,7 +641,7 @@ Future<void> _seedVideoProvider(
           enabled: Value(enabled),
           pollSeconds: Value(pollSeconds),
           configJson: integrationConfigJsonValue(
-            configJson: '{"accounts":$accountsJson,"globalPerPollLimit":$globalPerPoll}',,
+            configJson: '{"accounts":$accountsJson,"globalPerPollLimit":$globalPerPoll}',
             baseUrl: 'https://graph.microsoft.com/v1.0',
           ),
         ),

@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 
 import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/config/google_kv.dart';
+import 'package:waddle_shared/integrations/integration_kv_repository.dart';
+import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';
 
@@ -46,14 +48,15 @@ class GoogleOAuth {
   }) async {
     final accessKey = googleAccessTokenSecret(googleAccountKey);
     final refreshKey = googleRefreshTokenSecret(googleAccountKey);
-    final expiresKv = kGoogleAccessTokenExpiresAtKvKey(googleAccountKey);
+    final kv = IntegrationKvRepository(db);
     final now = _nowMs();
 
     final existing = await secrets.read(accessKey);
-    final expiresRow = await (db.select(db.configKeyValues)
-          ..where((t) => t.key.equals(expiresKv)))
-        .getSingleOrNull();
-    final expiresAt = int.tryParse(expiresRow?.value ?? '') ?? 0;
+    final expiresValue = await kv.getAccountValue(
+      googleAccountKey,
+      kIntegrationAccessTokenExpiresAtKey,
+    );
+    final expiresAt = int.tryParse(expiresValue ?? '') ?? 0;
     if (existing != null &&
         existing.isNotEmpty &&
         expiresAt > now + kGoogleAccessTokenSkewMs) {
@@ -134,13 +137,14 @@ class GoogleOAuth {
     required String googleAccountKey,
     bool pollDeviceCode = true,
   }) async {
-    final promptKv = kGoogleCalendarLastDevicePromptKvKey(googleAccountKey);
-    final lastPromptRow = await (db.select(db.configKeyValues)
-          ..where((t) => t.key.equals(promptKv)))
-        .getSingleOrNull();
+    final kv = IntegrationKvRepository(db);
+    final lastPromptValue = await kv.getAccountValue(
+      googleAccountKey,
+      kIntegrationLastDevicePromptKey,
+    );
     final now = _nowMs();
-    if (lastPromptRow != null) {
-      final lastPrompt = int.tryParse(lastPromptRow.value) ?? 0;
+    if (lastPromptValue != null) {
+      final lastPrompt = int.tryParse(lastPromptValue) ?? 0;
       if (now - lastPrompt < kGoogleDevicePromptCooldownMs) {
         return null;
       }
@@ -187,9 +191,12 @@ class GoogleOAuth {
               source: const Value(kGoogleOAuthAlertSource),
             ),
           );
-      await db.into(db.configKeyValues).insertOnConflictUpdate(
-            ConfigKeyValuesCompanion.insert(key: promptKv, value: '$now'),
-          );
+      await kv.upsertAccount(
+        accountId: googleAccountKey,
+        key: kIntegrationLastDevicePromptKey,
+        value: '$now',
+        valueType: kIntegrationKvTypeIntMs,
+      );
 
       if (!pollDeviceCode) {
         return null;
@@ -265,12 +272,12 @@ class GoogleOAuth {
     final expiresAt = now + (expiresInSec > 0 ? expiresInSec * 1000 : 3600 * 1000);
     await secrets.write(googleAccessTokenSecret(googleAccountKey), accessToken);
     await secrets.write(googleRefreshTokenSecret(googleAccountKey), refreshToken);
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: kGoogleAccessTokenExpiresAtKvKey(googleAccountKey),
-            value: '$expiresAt',
-          ),
-        );
+    await IntegrationKvRepository(db).upsertAccount(
+      accountId: googleAccountKey,
+      key: kIntegrationAccessTokenExpiresAtKey,
+      value: '$expiresAt',
+      valueType: kIntegrationKvTypeIntMs,
+    );
   }
 }
 
