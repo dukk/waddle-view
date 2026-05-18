@@ -94,11 +94,10 @@ void main() {
         'overlay_type': kOverlayTypeBirthdayConfetti,
         'name': 'Birthday',
         'config_json': {
-          'messages': ['Happy birthday!'],
           'shapes': ['circle', 'rect'],
           'colors': ['#FF00AA'],
           'density': 0.55,
-          'message_interval_sec': 33,
+          'fall_speed': 0.2,
         },
       }),
     );
@@ -129,7 +128,7 @@ void main() {
         'id': 'bad_confetti',
         'overlay_type': kOverlayTypeBirthdayConfetti,
         'name': 'x',
-        'config_json': {'messages': [], 'shapes': ['not_a_shape']},
+        'config_json': {'shapes': ['not_a_shape']},
       }),
     );
     expect(post.statusCode, 400);

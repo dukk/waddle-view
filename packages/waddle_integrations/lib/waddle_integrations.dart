@@ -1,4 +1,4 @@
-/// Concrete data collectors for Waddle View.
+/// Built-in integration collectors for Waddle View.
 
 library;
 

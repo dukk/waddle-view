@@ -65,7 +65,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 18;
+  int get schemaVersion => 19;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -196,6 +196,13 @@ ORDER BY priority DESC, created_at DESC;
       }
       if (from == 17 && to >= 18) {
         await _migrateV17ToV18OverlaysDefinitionOnly(this);
+        if (to == 18) {
+          return;
+        }
+        from = 18;
+      }
+      if (from == 18 && to >= 19) {
+        await _migrateV18ToV19CuratorTickerPixelsPerSecond(this);
         return;
       }
       throw UnsupportedError(
@@ -206,6 +213,8 @@ ORDER BY priority DESC, created_at DESC;
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
       await _ensureCuratorConfigurationsTickerEnabled(this);
+      await _ensureCuratorConfigurationsTickerProgramDuration(this);
+      await _ensureCuratorConfigurationsTickerPixelsPerSecond(this);
     },
   );
 }
@@ -832,6 +841,57 @@ Future<void> _ensureCuratorConfigurationsTickerProgramDuration(
       'ticker_program_duration_seconds INTEGER NOT NULL DEFAULT 300',
     );
   }
+}
+
+const _kCuratorTickerPixelsPerSecondMin = 20;
+const _kCuratorTickerPixelsPerSecondMax = 140;
+const _kCuratorTickerPixelsPerSecondDefault = 80;
+
+int _clampCuratorTickerPixelsPerSecond(int value) {
+  if (value < _kCuratorTickerPixelsPerSecondMin) {
+    return _kCuratorTickerPixelsPerSecondMin;
+  }
+  if (value > _kCuratorTickerPixelsPerSecondMax) {
+    return _kCuratorTickerPixelsPerSecondMax;
+  }
+  return value;
+}
+
+/// Ensures [CuratorConfigurations.tickerPixelsPerSecond] is present.
+Future<void> _ensureCuratorConfigurationsTickerPixelsPerSecond(
+  AppDatabase db,
+) async {
+  if (!await _sqliteTableExists(db, 'curator_configurations')) {
+    return;
+  }
+  if (!await _sqliteColumnExists(
+    db,
+    'curator_configurations',
+    'ticker_pixels_per_second',
+  )) {
+    await db.customStatement(
+      'ALTER TABLE curator_configurations ADD COLUMN '
+      'ticker_pixels_per_second INTEGER NOT NULL DEFAULT $_kCuratorTickerPixelsPerSecondDefault',
+    );
+  }
+}
+
+Future<void> _migrateV18ToV19CuratorTickerPixelsPerSecond(AppDatabase db) async {
+  await _ensureCuratorConfigurationsTickerPixelsPerSecond(db);
+  var migratedPx = _kCuratorTickerPixelsPerSecondDefault;
+  if (await _sqliteTableExists(db, 'config_key_values')) {
+    final kvRow = await db.customSelect(
+      "SELECT value FROM config_key_values WHERE key = 'curator.ticker.newsPixelsPerSecond' LIMIT 1",
+    ).getSingleOrNull();
+    final raw = kvRow?.read<String?>('value')?.trim();
+    if (raw != null && raw.isNotEmpty) {
+      migratedPx = _clampCuratorTickerPixelsPerSecond(int.tryParse(raw) ?? migratedPx);
+    }
+  }
+  await db.customStatement(
+    'UPDATE curator_configurations SET ticker_pixels_per_second = ?',
+    <Object?>[migratedPx],
+  );
 }
 
 /// Moves `base_url` into `config_json.baseUrl` and drops `example_config_json`.

@@ -8,6 +8,7 @@ import 'package:waddle_display/curator/ticker_item.dart';
 import 'package:waddle_display/debug/operator_telemetry_hub.dart';
 import 'package:waddle_display/display/display_navigation_bus.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/seed/initial_seed.dart';
 
 import 'helpers/fake_blob_store.dart';
 import 'helpers/memory_database.dart';
@@ -330,9 +331,10 @@ void main() {
     expect(badSurf.statusCode, 400);
   });
 
-  test('PUT curator settings and PATCH ticker tape', () async {
+  test('PATCH curator configuration and PATCH ticker tape', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
+    await ensureInitialSeed(db);
     await db.into(db.tickerTapes).insert(
           TickerTapesCompanion.insert(
             id: 'op_tick',
@@ -372,26 +374,39 @@ void main() {
     expect(patchTick.statusCode, 200);
     expect(configCalls, greaterThan(0));
 
-    final put = await http.put(
-      Uri.parse('${h.baseUrl}/v1/curator/settings'),
+    final patchEvening = await http.patch(
+      Uri.parse('${h.baseUrl}/v1/curator/configurations/evening'),
+      headers: h.authHeaders,
+      body: jsonEncode({'ticker_pixels_per_second': 90}),
+    );
+    expect(patchEvening.statusCode, 200);
+
+    final putDisplay = await http.put(
+      Uri.parse('${h.baseUrl}/v1/display/settings'),
       headers: h.authHeaders,
       body: jsonEncode({
-        'ticker_pixels_per_second': '90',
         'display_theme_id': 'graphite_amber',
         'display_text_scale_screen': 'large',
         'display_text_scale_ticker': 'normal',
       }),
     );
-    expect(put.statusCode, 200);
+    expect(putDisplay.statusCode, 200);
 
     final cur = await http.get(
-      Uri.parse('${h.baseUrl}/v1/curator/settings'),
+      Uri.parse('${h.baseUrl}/v1/curator/configurations/evening'),
       headers: h.authHeaders,
     );
     expect(cur.statusCode, 200);
     final curBody = jsonDecode(cur.body) as Map<String, dynamic>;
-    expect(curBody['ticker_pixels_per_second'], '90');
-    expect(curBody['display_theme_id'], 'graphite_amber');
+    expect(curBody['ticker_pixels_per_second'], 90);
+
+    final disp = await http.get(
+      Uri.parse('${h.baseUrl}/v1/display/settings'),
+      headers: h.authHeaders,
+    );
+    expect(disp.statusCode, 200);
+    final dispBody = jsonDecode(disp.body) as Map<String, dynamic>;
+    expect(dispBody['display_theme_id'], 'graphite_amber');
   });
 
   test('PATCH ticker tape 404 and invalid_fields', () async {
@@ -551,43 +566,27 @@ void main() {
     expect(delMiss.statusCode, 404);
   });
 
-  test('PUT curator settings rejects empty update', () async {
-    final h = await RestTestHarness.start();
+  test('PATCH curator configuration ticker_pixels_per_second clamps and persists', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureInitialSeed(db);
+    final h = await RestTestHarness.start(database: db);
     addTearDown(h.dispose);
 
-    final empty = await http.put(
-      Uri.parse('${h.baseUrl}/v1/curator/settings'),
+    final patch = await http.patch(
+      Uri.parse('${h.baseUrl}/v1/curator/configurations/evening'),
       headers: h.authHeaders,
-      body: jsonEncode({}),
+      body: jsonEncode({'ticker_pixels_per_second': 200}),
     );
-    expect(empty.statusCode, 400);
+    expect(patch.statusCode, 200);
 
-    final badJson = await http.put(
-      Uri.parse('${h.baseUrl}/v1/curator/settings'),
-      headers: h.authHeaders,
-      body: '[]',
-    );
-    expect(badJson.statusCode, 400);
-  });
-
-  test('PUT curator settings allows partial updates', () async {
-    final h = await RestTestHarness.start();
-    addTearDown(h.dispose);
-
-    final partial = await http.put(
-      Uri.parse('${h.baseUrl}/v1/curator/settings'),
-      headers: h.authHeaders,
-      body: jsonEncode({'ticker_pixels_per_second': '42'}),
-    );
-    expect(partial.statusCode, 200);
-
-    final cur = await http.get(
-      Uri.parse('${h.baseUrl}/v1/curator/settings'),
+    final detail = await http.get(
+      Uri.parse('${h.baseUrl}/v1/curator/configurations/evening'),
       headers: h.authHeaders,
     );
-    expect(cur.statusCode, 200);
-    final curBody = jsonDecode(cur.body) as Map<String, dynamic>;
-    expect(curBody['ticker_pixels_per_second'], '42');
+    expect(detail.statusCode, 200);
+    final body = jsonDecode(detail.body) as Map<String, dynamic>;
+    expect(body['ticker_pixels_per_second'], 140);
   });
 
   test('CORS preflight and GET with allowlisted origin', () async {
@@ -667,41 +666,26 @@ void main() {
     expect(del.statusCode, 200);
   });
 
-  test('GET curator settings', () async {
-    final h = await RestTestHarness.start();
-    addTearDown(h.dispose);
-
-    final res = await http.get(
-      Uri.parse('${h.baseUrl}/v1/curator/settings'),
-      headers: h.authHeaders,
-    );
-    expect(res.statusCode, 200);
-    final body = jsonDecode(res.body) as Map<String, dynamic>;
-    expect(body.containsKey('ticker_pixels_per_second'), isTrue);
-    expect(body['display_timezone'], isNotNull);
-    expect(body.containsKey('program_duration_seconds'), isFalse);
-  });
-
-  test('PUT curator settings display_timezone and config key-values REST', () async {
+  test('PUT display settings display_timezone and config key-values REST', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     final h = await RestTestHarness.start(database: db);
     addTearDown(h.dispose);
 
     final putTz = await http.put(
-      Uri.parse('${h.baseUrl}/v1/curator/settings'),
+      Uri.parse('${h.baseUrl}/v1/display/settings'),
       headers: h.authHeaders,
       body: jsonEncode({'display_timezone': 'America/Chicago'}),
     );
     expect(putTz.statusCode, 200);
 
-    final cur = await http.get(
-      Uri.parse('${h.baseUrl}/v1/curator/settings'),
+    final disp = await http.get(
+      Uri.parse('${h.baseUrl}/v1/display/settings'),
       headers: h.authHeaders,
     );
-    expect(cur.statusCode, 200);
+    expect(disp.statusCode, 200);
     expect(
-      (jsonDecode(cur.body) as Map<String, dynamic>)['display_timezone'],
+      (jsonDecode(disp.body) as Map<String, dynamic>)['display_timezone'],
       'America/Chicago',
     );
 

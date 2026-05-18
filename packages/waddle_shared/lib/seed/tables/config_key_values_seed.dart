@@ -1,4 +1,5 @@
 import 'package:waddle_shared/alerts/alert_severity_icons_kv.dart';
+import 'package:waddle_shared/config/controller_datetime_format_kv.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/theme/display_text_scale_kv.dart';
 import 'package:waddle_shared/theme/display_theme_kv.dart';
@@ -35,6 +36,23 @@ Future<void> ensureDisplayTextScaleKvs(AppDatabase db) async {
 
   await ensureKey(kDisplayTextScaleScreenKvKey, kDisplayTextScaleNormal);
   await ensureKey(kDisplayTextScaleTickerKvKey, kDisplayTextScaleNormal);
+}
+
+Future<void> ensureControllerDatetimeFormatKvs(AppDatabase db) async {
+  Future<void> ensureKey(String key, String value) async {
+    final row = await (db.select(
+      db.configKeyValues,
+    )..where((t) => t.key.equals(key))).getSingleOrNull();
+    if (row != null) {
+      return;
+    }
+    await db
+        .into(db.configKeyValues)
+        .insert(ConfigKeyValuesCompanion.insert(key: key, value: value));
+  }
+
+  await ensureKey(kControllerTimeFormatKvKey, kDefaultControllerTimeFormat);
+  await ensureKey(kControllerDateOrderKvKey, kDefaultControllerDateOrder);
 }
 
 Future<void> ensureAlertSeverityIconsKv(AppDatabase db) async {

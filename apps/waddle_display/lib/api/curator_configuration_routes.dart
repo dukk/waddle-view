@@ -139,6 +139,9 @@ void registerCuratorConfigurationRoutes(
             tickerProgramDurationSeconds: Value(
               _readInt(map['ticker_program_duration_seconds']) ?? 300,
             ),
+            tickerPixelsPerSecond: Value(
+              _readTickerPixelsPerSecond(map['ticker_pixels_per_second']) ?? 80,
+            ),
             themeIdOverride: Value(_readOptionalTrimmedString(map['theme_id_override'])),
             defaultConfig: Value(_readBool(map['default_config'], defaultValue: false)),
           ),
@@ -228,6 +231,12 @@ void registerCuratorConfigurationRoutes(
                         existing.tickerProgramDurationSeconds,
                   )
                 : const Value.absent(),
+        tickerPixelsPerSecond: map.containsKey('ticker_pixels_per_second')
+            ? Value(
+                _readTickerPixelsPerSecond(map['ticker_pixels_per_second']) ??
+                    existing.tickerPixelsPerSecond,
+              )
+            : const Value.absent(),
         themeIdOverride: map.containsKey('theme_id_override')
             ? Value(_readOptionalTrimmedString(map['theme_id_override']))
             : const Value.absent(),
@@ -447,6 +456,7 @@ Map<String, Object?> _configurationSummaryJson(CuratorConfiguration c) {
     'require_news_photo_for_screens': c.requireNewsPhotoForScreens,
     'ticker_enabled': c.tickerEnabled,
     'ticker_program_duration_seconds': c.tickerProgramDurationSeconds,
+    'ticker_pixels_per_second': c.tickerPixelsPerSecond,
     'theme_id_override': c.themeIdOverride,
     'default_config': c.defaultConfig,
   };
@@ -681,4 +691,21 @@ String? _readOptionalTrimmedString(dynamic v) {
   }
   final s = '$v'.trim();
   return s.isEmpty ? null : s;
+}
+
+const _kTickerPixelsPerSecondMin = 20;
+const _kTickerPixelsPerSecondMax = 140;
+
+int? _readTickerPixelsPerSecond(dynamic v) {
+  final parsed = _readInt(v);
+  if (parsed == null) {
+    return null;
+  }
+  if (parsed < _kTickerPixelsPerSecondMin) {
+    return _kTickerPixelsPerSecondMin;
+  }
+  if (parsed > _kTickerPixelsPerSecondMax) {
+    return _kTickerPixelsPerSecondMax;
+  }
+  return parsed;
 }

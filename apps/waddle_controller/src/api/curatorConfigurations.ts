@@ -35,6 +35,7 @@ export type CuratorConfigurationSummary = {
   sort_order: number;
   program_duration_seconds: number;
   ticker_program_duration_seconds: number;
+  ticker_pixels_per_second: number;
   history_depth: number;
   require_news_photo_for_screens: boolean;
   ticker_enabled: boolean;
@@ -74,6 +75,7 @@ export type CuratorConfigurationWriteBody = {
   sort_order?: number;
   program_duration_seconds?: number;
   ticker_program_duration_seconds?: number;
+  ticker_pixels_per_second?: number;
   history_depth?: number;
   require_news_photo_for_screens?: boolean;
   ticker_enabled?: boolean;

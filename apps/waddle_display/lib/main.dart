@@ -549,12 +549,8 @@ class _WaddleHomeState extends State<WaddleHome> {
                       builder: (context) {
                         final s = DashboardViewportScope.scaleOf(context);
                         final px =
-                            double.tryParse(
-                              widget.dashboardKv['curator.ticker.newsPixelsPerSecond']
-                                      ?.trim() ??
-                                  '',
-                            ) ??
-                            80;
+                            (widget.curatorMembership.tickerPixelsPerSecond ?? 80)
+                                .toDouble();
                         return TickerMarquee(
                           repository: widget.tickerCurated,
                           pixelsPerSecond: px * s,
@@ -585,6 +581,7 @@ void _applyCuratorTickerMembership(
       configuration.tickerEnabled ? configuration.tickerMemberIds : const {};
   filter.tickerProgramDurationSeconds =
       configuration.tickerProgramDurationSeconds;
+  filter.tickerPixelsPerSecond = configuration.tickerPixelsPerSecond;
 }
 
 Future<void> _rescanRejectListOnStartup(AppDatabase db) async {

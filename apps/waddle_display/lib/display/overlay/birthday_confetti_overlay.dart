@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -18,17 +17,15 @@ Duration birthdayConfettiCycleDuration(double fallSpeed) {
   return Duration(milliseconds: (s * 1000).round());
 }
 
-/// Translucent falling confetti with optional sparse [messages] banners.
+/// Translucent falling confetti (no overlay text).
 class BirthdayConfettiOverlay extends StatefulWidget {
   const BirthdayConfettiOverlay({
     super.key,
     required this.settings,
-    required this.messages,
     required this.fallbackAccents,
   });
 
   final BirthdayConfettiScheduleSettings settings;
-  final List<String> messages;
   final List<Color> fallbackAccents;
 
   @override
@@ -86,33 +83,23 @@ class _BirthdayConfettiOverlayState extends State<BirthdayConfettiOverlay>
       accents = <Color>[Colors.blueGrey.shade300];
     }
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        LayoutBuilder(
-          builder: (context, c) {
-            return AnimatedBuilder(
-              animation: _ctrl,
-              builder: (_, _) {
-                return CustomPaint(
-                  key: const Key('birthday_confetti_custom_paint'),
-                  size: Size(c.maxWidth, c.maxHeight),
-                  painter: _ConfettiPainter(
-                    accents: accents,
-                    settings: widget.settings,
-                    progress: (_ctrl.value * 97103) % 1.0,
-                  ),
-                );
-              },
+    return LayoutBuilder(
+      builder: (context, c) {
+        return AnimatedBuilder(
+          animation: _ctrl,
+          builder: (_, _) {
+            return CustomPaint(
+              key: const Key('birthday_confetti_custom_paint'),
+              size: Size(c.maxWidth, c.maxHeight),
+              painter: _ConfettiPainter(
+                accents: accents,
+                settings: widget.settings,
+                progress: (_ctrl.value * 97103) % 1.0,
+              ),
             );
           },
-        ),
-        if (widget.messages.isNotEmpty)
-          _OccasionalMessageLayer(
-            messages: widget.messages,
-            interval: Duration(seconds: widget.settings.messageIntervalSec),
-          ),
-      ],
+        );
+      },
     );
   }
 }
@@ -137,98 +124,6 @@ Color? _colorFromHex(String hex) {
 }
 
 enum _ConfettiShapeKind { rect, circle, star, streamer }
-
-class _OccasionalMessageLayer extends StatefulWidget {
-  const _OccasionalMessageLayer({
-    required this.messages,
-    required this.interval,
-  });
-
-  final List<String> messages;
-  final Duration interval;
-
-  @override
-  State<_OccasionalMessageLayer> createState() => _OccasionalMessageLayerState();
-}
-
-class _OccasionalMessageLayerState extends State<_OccasionalMessageLayer> {
-  Timer? _timer;
-  Timer? _fadeTimer;
-  String _text = '';
-  double _opacity = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(widget.interval, (_) => _flash());
-  }
-
-  void _flash() {
-    if (!mounted || widget.messages.isEmpty) {
-      return;
-    }
-    final r = math.Random();
-    _fadeTimer?.cancel();
-    setState(() {
-      _text = widget.messages[r.nextInt(widget.messages.length)];
-      _opacity = 1;
-    });
-    _fadeTimer = Timer(const Duration(milliseconds: 2800), () {
-      if (!mounted) {
-        return;
-      }
-      setState(() => _opacity = 0);
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _fadeTimer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, c) {
-        return Align(
-          alignment: const Alignment(0, -0.72),
-          child: AnimatedOpacity(
-            opacity: _opacity,
-            duration: const Duration(milliseconds: 900),
-            curve: Curves.easeInOut,
-            child: IgnorePointer(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: c.maxWidth * 0.72),
-                child: Text(
-                  _text,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.4,
-                    color: Theme.of(context).accent(1).withValues(
-                      alpha: 0.42,
-                    ),
-                    shadows: const [
-                      Shadow(
-                        blurRadius: 18,
-                        color: Color.fromRGBO(0, 0, 0, 0.2),
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
 
 List<_ConfettiShapeKind> _expandedKinds(List<String> tokens) {
   const concrete = <_ConfettiShapeKind>[

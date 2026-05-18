@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
-import 'package:waddle_data_providers/news_rss/rss_news_data_provider.dart';
+import 'package:waddle_integrations/news_rss/rss_news_data_provider.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 

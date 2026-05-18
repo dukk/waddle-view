@@ -11,7 +11,7 @@ disable-model-invocation: true
 
 # Run waddle_display CI checks locally
 
-Mirror of [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) `analyze-test` job. CI fails on **any** `flutter analyze` issue (warnings included) and on coverage **below 80%** on gated libs (display, shared, data_providers, plugin_sdk; **not** `waddle_plugin_example`). The **90%** line is a target: the checker warns but does not fail between 80% and 90%.
+Mirror of [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) `analyze-test` job. CI fails on **any** `flutter analyze` issue (warnings included) and on coverage **below 80%** on gated libs (display, shared, integrations, plugin_sdk; **not** `waddle_plugin_example`). The **90%** line is a target: the checker warns but does not fail between 80% and 90%.
 
 ## Tiered script (recommended)
 
@@ -45,6 +45,7 @@ Pre-push ([`scripts/pre_push_checks.py`](../../../scripts/pre_push_checks.py)) u
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs -C packages/waddle_shared
 flutter test -C packages/waddle_shared
+dart test -C packages/waddle_integrations
 cd apps/waddle_display
 flutter analyze
 flutter test --coverage --timeout=60s

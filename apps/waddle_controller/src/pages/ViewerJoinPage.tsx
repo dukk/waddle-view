@@ -4,14 +4,17 @@ import {
   AccordionDetails,
   AccordionSummary,
   Alert,
+  alpha,
   Box,
   Button,
   Link,
+  Paper,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { WaddleBrandMark } from '@/components/brand/WaddleBrandMark';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   confirmAdoption,
@@ -139,21 +142,36 @@ export function ViewerJoinPage() {
   };
 
   return (
-    <Box sx={{ p: 3, maxWidth: 520, mx: 'auto' }}>
-      <Typography variant="h5" fontWeight={600} gutterBottom>
-        Viewer pairing
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Pair this browser as a <strong>viewer</strong> client with read-focused permissions. Enter
-        the challenge code from the display alert—the same adoption flow as Controller settings, but
-        the display issues a viewer role instead of operator or admin.
-      </Typography>
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-      <Stack spacing={2}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        p: 3,
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'center',
+        background: (theme) =>
+          `linear-gradient(165deg, ${alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.14 : 0.08)} 0%, ${theme.palette.background.default} 55%)`,
+      }}
+    >
+      <Paper elevation={2} sx={{ width: '100%', maxWidth: 520, p: { xs: 2.5, sm: 3 } }}>
+        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
+          <WaddleBrandMark variant="headshot" size="sm" />
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="h5" fontWeight={600}>
+              Viewer pairing
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              Pair as a <strong>viewer</strong> with read-focused permissions using the challenge code
+              from the display alert.
+            </Typography>
+          </Box>
+        </Stack>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+        <Stack spacing={2}>
         <TextField
           label="Display API base URL"
           value={apiUrl}
@@ -216,7 +234,8 @@ export function ViewerJoinPage() {
             waddle_controller
           </Link>
         </Typography>
-      </Stack>
+        </Stack>
+      </Paper>
     </Box>
   );
 }

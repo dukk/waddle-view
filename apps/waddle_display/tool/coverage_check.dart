@@ -1,6 +1,6 @@
 // Parses one or more lcov.info files and enforces a **CI floor** line hit ratio on
 // Dart sources under `apps/waddle_display/lib/`, `packages/waddle_shared/lib/`,
-// `packages/waddle_data_providers/lib/`, and `packages/waddle_plugin_sdk/lib/`.
+// `packages/waddle_integrations/lib/`, and `packages/waddle_plugin_sdk/lib/`.
 // `packages/waddle_plugin_example/` is never counted (reference plugin only).
 //
 // Also compares against an optional **aspirational target** (default 90%): falling
@@ -25,9 +25,9 @@ bool _includeSourceFile(String sf) {
   final isDisplayLib =
       norm.startsWith('lib/') || norm.contains('/apps/waddle_display/lib/');
   final isSharedLib = norm.contains('packages/waddle_shared/lib/');
-  final isDataProvidersLib = norm.contains('packages/waddle_data_providers/lib/');
+  final isIntegrationsLib = norm.contains('packages/waddle_integrations/lib/');
   final isPluginSdkLib = norm.contains('packages/waddle_plugin_sdk/lib/');
-  if (!isDisplayLib && !isSharedLib && !isDataProvidersLib && !isPluginSdkLib) {
+  if (!isDisplayLib && !isSharedLib && !isIntegrationsLib && !isPluginSdkLib) {
     return false;
   }
   // Declarative Drift table definitions (no executable lines in practice).
@@ -88,7 +88,7 @@ void main(List<String> args) {
   if (totalLf == 0) {
     stderr.writeln(
       'No LF entries found for waddle_display/lib, waddle_shared/lib, '
-      'waddle_data_providers/lib, or waddle_plugin_sdk/lib (did you run '
+      'waddle_integrations/lib, or waddle_plugin_sdk/lib (did you run '
       'flutter test --coverage and dart test --coverage on waddle_plugin_sdk?)',
     );
     exitCode = 1;
@@ -97,7 +97,7 @@ void main(List<String> args) {
   final pct = 100.0 * totalLh / totalLf;
   stdout.writeln(
     'Coverage (waddle_display/lib + waddle_shared/lib + '
-    'waddle_data_providers/lib + waddle_plugin_sdk/lib; excluding '
+    'waddle_integrations/lib + waddle_plugin_sdk/lib; excluding '
     'waddle_plugin_example, *.g.dart, persistence/tables.dart, main.dart, '
     'display/screen_rotator.dart): '
     '${pct.toStringAsFixed(2)}% ($totalLh / $totalLf lines)',

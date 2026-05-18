@@ -47,9 +47,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useControllerAuth } from '@/context/ControllerAuthContext';
 import { useDisplay } from '@/context/DisplayContext';
 import { apiFetch, apiJson, ApiError } from '@/api/client';
-import { CuratorSliderField } from '@/components/CuratorSliderField';
 import { DisplayThemePaletteSwatches } from '@/components/DisplayThemePaletteSwatches';
-import { TickerMarqueeSamplePreview } from '@/components/TickerMarqueeSamplePreview';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import {
@@ -57,18 +55,20 @@ import {
   filterDisplayTimezoneOptions,
   type DisplayTimezoneOption,
 } from '@/constants/displayTimezoneOptions';
-import { formatProgramDurationWithSeconds } from '@/util/programDurationFormat';
+import { putDisplaySettings, fetchDisplaySettings } from '@/api/displaySettings';
 import {
   ADOPTION_ROLES,
-  CURATOR_HISTORY_DEPTH,
-  CURATOR_PROGRAM_DURATION,
-  CURATOR_TICKER_PIXELS_PER_SECOND,
+  CONTROLLER_DATE_ORDER_OPTIONS,
+  CONTROLLER_TIME_FORMAT_OPTIONS,
+  parseAdoptionAllowedRoles,
+  type DisplaySettings,
+} from '@/constants/displaySettings';
+import {
   curatorThemeById,
   curatorThemeIds,
   curatorTextScaleIds,
-  parseAdoptionAllowedRoles,
-  type CuratorDisplaySettings,
 } from '@/constants/curatorDisplaySettings';
+import { useDisplayFormat } from '@/context/DisplayFormatContext';
 import { IntegrationAccountsSection } from '@/components/IntegrationAccountsSection';
 import { IntegrationOAuthSettingsSection } from '@/components/IntegrationOAuthSettingsSection';
 import {
@@ -77,22 +77,6 @@ import {
   DISPLAY_SETTINGS_TAB_GENERAL,
   type DisplaySettingsTabId,
 } from '@/constants/displaySettingsTabs';
-
-function clampNumber(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
-
-function parseTickerPixelsPerSecond(raw: string): number {
-  const parsed = Number.parseInt(raw.trim(), 10);
-  if (!Number.isFinite(parsed)) {
-    return CURATOR_TICKER_PIXELS_PER_SECOND.default;
-  }
-  return clampNumber(
-    parsed,
-    CURATOR_TICKER_PIXELS_PER_SECOND.min,
-    CURATOR_TICKER_PIXELS_PER_SECOND.max,
-  );
-}
 
 export function DisplaySettingsPage() {
   const { active } = useDisplay();
@@ -179,7 +163,7 @@ export function DisplaySettingsPage() {
             )}
             {showDisplaySettings && active && (
               <>
-                <CuratorDisplaySettingsSection
+                <DisplayOperatorSettingsSection
                   display={active}
                   canWrite={canCuratorWrite}
                   kvWriteTick={kvWriteTick}
@@ -259,11 +243,6 @@ const API_CLIENT_ROLES = [
   { value: 'viewer', label: 'Viewer' },
 ] as const;
 
-function formatIssueDate(ms: number): string {
-  if (!Number.isFinite(ms) || ms <= 0) return '—';
-  return new Date(ms).toLocaleString();
-}
-
 function ApiClientsManagementSection({
   display,
   sessionIdentifier,
@@ -273,6 +252,7 @@ function ApiClientsManagementSection({
 }) {
   const { status } = useControllerAuth();
   const clientId = resolveClientIdentifier(status, 'controller');
+  const { formatDateTime } = useDisplayFormat();
   const { loading, wrapRefresh } = useDisplayRefresh();
   const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -405,7 +385,11 @@ function ApiClientsManagementSection({
                   </TableCell>
                   <TableCell>{client.role}</TableCell>
                   <TableCell>{client.identifier}</TableCell>
-                  <TableCell>{formatIssueDate(client.created_at_ms)}</TableCell>
+                  <TableCell>
+                    {Number.isFinite(client.created_at_ms) && client.created_at_ms > 0
+                      ? formatDateTime(new Date(client.created_at_ms))
+                      : '—'}
+                  </TableCell>
                   <TableCell align="right">
                     <Button
                       size="small"
@@ -497,7 +481,7 @@ function DisplayAdoptionSettingsSection({ display }: { display: SavedDisplay }) 
     await wrapRefresh(async () => {
       setError(null);
       try {
-        const data = await apiJson<CuratorDisplaySettings>(display, '/v1/curator/settings');
+        const data = await fetchDisplaySettings(display);
         setAllowedRoles(parseAdoptionAllowedRoles(data));
         setInitialized(true);
       } catch (e) {
@@ -527,13 +511,10 @@ function DisplayAdoptionSettingsSection({ display }: { display: SavedDisplay }) 
     setSaved(false);
     setBusy(true);
     try {
-      await apiJson(display, '/v1/curator/settings', {
-        method: 'PUT',
-        body: JSON.stringify({
-          adoption_allowed_roles: ADOPTION_ROLES.map((r) => r.value).filter((role) =>
-            allowedRoles.has(role),
-          ),
-        }),
+      await putDisplaySettings(display, {
+        adoption_allowed_roles: ADOPTION_ROLES.map((r) => r.value).filter((role) =>
+          allowedRoles.has(role),
+        ),
       });
       setSaved(true);
     } catch (e) {
@@ -599,7 +580,7 @@ function DisplayAdoptionSettingsSection({ display }: { display: SavedDisplay }) 
   );
 }
 
-function CuratorDisplaySettingsSection({
+function DisplayOperatorSettingsSection({
   display,
   canWrite,
   kvWriteTick,
@@ -608,12 +589,12 @@ function CuratorDisplaySettingsSection({
   canWrite: boolean;
   kvWriteTick: number;
 }) {
+  const { refresh: refreshFormat } = useDisplayFormat();
   const { loading, wrapRefresh } = useDisplayRefresh();
   const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  const [form, setForm] = useState<CuratorDisplaySettings | null>(null);
-  const [tickerSampleActive, setTickerSampleActive] = useState(false);
+  const [form, setForm] = useState<DisplaySettings | null>(null);
 
   const timezoneOptions = useMemo(
     () => (form ? displayTimezoneSelectOptions(form.display_timezone) : []),
@@ -634,29 +615,12 @@ function CuratorDisplaySettingsSection({
     await wrapRefresh(async () => {
       setError(null);
       try {
-        const data = await apiJson<CuratorDisplaySettings>(display, '/v1/curator/settings');
+        const data = await fetchDisplaySettings(display);
         const tz =
           typeof data.display_timezone === 'string' && data.display_timezone.trim() !== ''
             ? data.display_timezone.trim()
             : 'America/New_York';
-        const duration = clampNumber(
-          data.program_duration_seconds ?? CURATOR_PROGRAM_DURATION.default,
-          CURATOR_PROGRAM_DURATION.min,
-          CURATOR_PROGRAM_DURATION.max,
-        );
-        const depth = clampNumber(
-          data.history_depth ?? CURATOR_HISTORY_DEPTH.default,
-          CURATOR_HISTORY_DEPTH.min,
-          CURATOR_HISTORY_DEPTH.max,
-        );
-        const tickerPx = String(parseTickerPixelsPerSecond(data.ticker_pixels_per_second ?? ''));
-        setForm({
-          ...data,
-          display_timezone: tz,
-          program_duration_seconds: duration,
-          history_depth: depth,
-          ticker_pixels_per_second: tickerPx,
-        });
+        setForm({ ...data, display_timezone: tz });
         setInitialized(true);
       } catch (e) {
         setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
@@ -673,18 +637,15 @@ function CuratorDisplaySettingsSection({
     setError(null);
     setSaved(false);
     try {
-      await apiJson(display, '/v1/curator/settings', {
-        method: 'PUT',
-        body: JSON.stringify({
-          program_duration_seconds: form.program_duration_seconds,
-          history_depth: form.history_depth,
-          ticker_pixels_per_second: form.ticker_pixels_per_second,
-          display_theme_id: form.display_theme_id,
-          display_text_scale_screen: form.display_text_scale_screen,
-          display_text_scale_ticker: form.display_text_scale_ticker,
-          display_timezone: form.display_timezone,
-        }),
+      await putDisplaySettings(display, {
+        display_theme_id: form.display_theme_id,
+        display_text_scale_screen: form.display_text_scale_screen,
+        display_text_scale_ticker: form.display_text_scale_ticker,
+        display_timezone: form.display_timezone,
+        controller_time_format: form.controller_time_format,
+        controller_date_order: form.controller_date_order,
       });
+      await refreshFormat();
       setSaved(true);
     } catch (e) {
       setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
@@ -696,7 +657,7 @@ function CuratorDisplaySettingsSection({
       <Stack spacing={1}>
         <DisplayRefreshIndicator loading={loading} />
         <Typography variant="body2" color="text.secondary">
-          Loading display and curator tuning…
+          Loading display settings…
         </Typography>
       </Stack>
     );
@@ -706,11 +667,11 @@ function CuratorDisplaySettingsSection({
     <Box>
       <DisplayRefreshIndicator loading={loading} />
       <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-        Display and curator tuning
+        Display settings
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Program timing, ticker speed, typography, and wall-clock timezone for calendars. News photo
-        requirement is on the <strong>Categories</strong> tab.
+        Theme, typography, wall-clock timezone, and how timestamps appear in this controller for
+        this display.
       </Typography>
       {error && (
         <Alert severity="error" sx={{ mb: 1 }}>
@@ -723,56 +684,46 @@ function CuratorDisplaySettingsSection({
         </Alert>
       )}
       <Stack spacing={2.5}>
-        <CuratorSliderField
-          label="Program duration"
-          value={form.program_duration_seconds}
-          min={CURATOR_PROGRAM_DURATION.min}
-          max={CURATOR_PROGRAM_DURATION.max}
-          step={CURATOR_PROGRAM_DURATION.step}
-          disabled={!canWrite}
-          formatValue={formatProgramDurationWithSeconds}
-          onChange={(program_duration_seconds) => setForm({ ...form, program_duration_seconds })}
-        />
-        <CuratorSliderField
-          label="History depth"
-          value={form.history_depth}
-          min={CURATOR_HISTORY_DEPTH.min}
-          max={CURATOR_HISTORY_DEPTH.max}
-          step={CURATOR_HISTORY_DEPTH.step}
-          disabled={!canWrite}
-          onChange={(history_depth) => setForm({ ...form, history_depth })}
-        />
-        <Box>
-          <Stack direction="row" spacing={1} alignItems="flex-start">
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <CuratorSliderField
-                label="Ticker pixels per second"
-                value={parseTickerPixelsPerSecond(form.ticker_pixels_per_second)}
-                min={CURATOR_TICKER_PIXELS_PER_SECOND.min}
-                max={CURATOR_TICKER_PIXELS_PER_SECOND.max}
-                step={CURATOR_TICKER_PIXELS_PER_SECOND.step}
-                disabled={!canWrite}
-                formatValue={(v) => `${v} px/s`}
-                onChange={(v) =>
-                  setForm({ ...form, ticker_pixels_per_second: String(v) })
-                }
-              />
-            </Box>
-            <Button
-              variant={tickerSampleActive ? 'contained' : 'outlined'}
-              size="small"
-              sx={{ mt: 3.25, flexShrink: 0 }}
-              onClick={() => setTickerSampleActive((active) => !active)}
-            >
-              {tickerSampleActive ? 'Stop sample' : 'Play sample'}
-            </Button>
-          </Stack>
-          {tickerSampleActive && (
-            <TickerMarqueeSamplePreview
-              pixelsPerSecond={parseTickerPixelsPerSecond(form.ticker_pixels_per_second)}
-            />
-          )}
-        </Box>
+        <FormControl fullWidth disabled={!canWrite}>
+          <InputLabel id="time-format-label">Time format</InputLabel>
+          <Select
+            labelId="time-format-label"
+            label="Time format"
+            value={form.controller_time_format}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                controller_time_format: e.target.value as DisplaySettings['controller_time_format'],
+              })
+            }
+          >
+            {CONTROLLER_TIME_FORMAT_OPTIONS.map((o) => (
+              <MenuItem key={o.value} value={o.value}>
+                {o.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <FormControl fullWidth disabled={!canWrite}>
+          <InputLabel id="date-order-label">Date format</InputLabel>
+          <Select
+            labelId="date-order-label"
+            label="Date format"
+            value={form.controller_date_order}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                controller_date_order: e.target.value as DisplaySettings['controller_date_order'],
+              })
+            }
+          >
+            {CONTROLLER_DATE_ORDER_OPTIONS.map((o) => (
+              <MenuItem key={o.value} value={o.value}>
+                {o.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
         <Box>
           <Autocomplete
             fullWidth
@@ -863,7 +814,7 @@ function CuratorDisplaySettingsSection({
         </FormControl>
         {canWrite && (
           <Button variant="contained" onClick={() => void save()}>
-            Save display and curator tuning
+            Save display settings
           </Button>
         )}
       </Stack>

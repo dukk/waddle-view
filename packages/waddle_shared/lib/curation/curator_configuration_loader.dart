@@ -62,6 +62,7 @@ Future<List<CuratorConfigurationInput>> loadCuratorConfigurationInputs(
         sortOrder: c.sortOrder,
         programDurationSeconds: c.programDurationSeconds,
         tickerProgramDurationSeconds: c.tickerProgramDurationSeconds,
+        tickerPixelsPerSecond: c.tickerPixelsPerSecond,
         historyDepth: c.historyDepth,
         requireNewsPhotoForScreens: c.requireNewsPhotoForScreens,
         tickerEnabled: c.tickerEnabled,

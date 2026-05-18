@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
-import 'package:waddle_data_providers/photo_pexels/pexels_data_provider.dart';
+import 'package:waddle_integrations/photo_pexels/pexels_data_provider.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/reject_term_repository.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';

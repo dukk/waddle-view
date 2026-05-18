@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
-import 'package:waddle_data_providers/microsoft_graph/microsoft_graph_profile.dart';
+import 'package:waddle_integrations/microsoft_graph/microsoft_graph_profile.dart';
 
 void main() {
   test('fetchMicrosoftGraphUserProfile parses me', () async {

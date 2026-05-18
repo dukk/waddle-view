@@ -91,10 +91,10 @@ String? permissionForRoute(String method, String path) {
     return WaddlePermission.tickerWrite;
   }
 
-  if (p == '/v1/curator/settings' && m == 'GET') {
+  if (p == '/v1/display/settings' && m == 'GET') {
     return WaddlePermission.curatorRead;
   }
-  if (p == '/v1/curator/settings' && m == 'PUT') {
+  if (p == '/v1/display/settings' && m == 'PUT') {
     return WaddlePermission.curatorWrite;
   }
 

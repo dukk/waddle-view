@@ -20,8 +20,8 @@ dependencies:
     sdk: flutter
   waddle_shared:
     path: ../../packages/waddle_shared
-  waddle_data_providers:
-    path: ../../packages/waddle_data_providers
+  waddle_integrations:
+    path: ../../packages/waddle_integrations
   meta: ^1.17.0
   cupertino_icons: ^1.0.8
   drift: ^2.33.0

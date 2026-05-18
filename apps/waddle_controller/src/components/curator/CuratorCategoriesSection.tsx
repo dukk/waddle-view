@@ -20,6 +20,10 @@ import {
 } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import type { SavedDisplay } from '@/storage/displays';
+import {
+  listCuratorConfigurations,
+  updateCuratorConfiguration,
+} from '@/api/curatorConfigurations';
 import { apiJson, ApiError } from '@/api/client';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
@@ -51,6 +55,7 @@ export function CuratorCategoriesSection({
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [photoForm, setPhotoForm] = useState<CuratorSettings | null>(null);
+  const [defaultConfigId, setDefaultConfigId] = useState<string | null>(null);
 
   const [categories, setCategories] = useState<CuratorCategoryRow[]>([]);
   const [catEdits, setCatEdits] = useState<Record<string, { label: string; material: string }>>({});
@@ -63,10 +68,14 @@ export function CuratorCategoriesSection({
     await wrapRefresh(async () => {
       setError(null);
       try {
-        const settings = await apiJson<{
-          require_news_photo_for_screens: boolean;
-        }>(display, '/v1/curator/settings');
-        setPhotoForm({ require_news_photo_for_screens: settings.require_news_photo_for_screens });
+        const configs = await listCuratorConfigurations(display);
+        const defaultConfig =
+          configs.find((c) => c.default_config) ?? configs[0] ?? null;
+        setDefaultConfigId(defaultConfig?.id ?? null);
+        setPhotoForm({
+          require_news_photo_for_screens:
+            defaultConfig?.require_news_photo_for_screens ?? true,
+        });
 
         const catBody = await apiJson<{ items: CuratorCategoryRow[] }>(display, '/v1/curator/categories');
         setCategories(catBody.items);
@@ -119,15 +128,12 @@ export function CuratorCategoriesSection({
   }, [filteredCategories.length, catRowsPerPage, catPage]);
 
   const saveNewsPhoto = async () => {
-    if (!photoForm || !canWrite) return;
+    if (!photoForm || !canWrite || !defaultConfigId) return;
     setError(null);
     setSaved(false);
     try {
-      await apiJson(display, '/v1/curator/settings', {
-        method: 'PUT',
-        body: JSON.stringify({
-          require_news_photo_for_screens: photoForm.require_news_photo_for_screens,
-        }),
+      await updateCuratorConfiguration(display, defaultConfigId, {
+        require_news_photo_for_screens: photoForm.require_news_photo_for_screens,
       });
       setSaved(true);
     } catch (e) {

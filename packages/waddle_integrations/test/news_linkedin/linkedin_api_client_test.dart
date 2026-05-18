@@ -1,5 +1,5 @@
 import 'package:test/test.dart';
-import 'package:waddle_data_providers/news_linkedin/linkedin_api_client.dart';
+import 'package:waddle_integrations/news_linkedin/linkedin_api_client.dart';
 
 void main() {
   test('parseLinkedInPostsJson maps posts', () {

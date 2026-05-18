@@ -4,7 +4,7 @@ import 'package:drift/drift.dart' hide isNotNull;
 import 'package:drift/native.dart';
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
-import 'package:waddle_data_providers/calendar_ical/ical_calendar_data_provider.dart';
+import 'package:waddle_integrations/calendar_ical/ical_calendar_data_provider.dart';
 import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/config/ical_kv.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';

@@ -259,6 +259,8 @@ class CuratorConfigurations extends Table {
   BoolColumn get tickerEnabled => boolean().withDefault(const Constant(true))();
   IntColumn get tickerProgramDurationSeconds =>
       integer().withDefault(const Constant(300))();
+  IntColumn get tickerPixelsPerSecond =>
+      integer().withDefault(const Constant(80))();
   TextColumn get themeIdOverride => text().nullable()();
   BoolColumn get defaultConfig => boolean().withDefault(const Constant(false))();
 

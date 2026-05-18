@@ -155,26 +155,26 @@ export function v1Router() {
     });
   });
 
-  r.get('/curator/settings', (c) => {
+  r.get('/display/settings', (c) => {
     const scenario = c.get('scenario');
     const bad = maybeErr(c, scenario);
     if (bad) return bad;
     const display_timezone = mockConfigKv.get('display.timezone') ?? 'America/New_York';
+    const controller_time_format = mockConfigKv.get('controller.time_format') ?? '12h';
+    const controller_date_order = mockConfigKv.get('controller.date_order') ?? 'mdy';
     return c.json({
-      program_duration_seconds: 180,
-      history_depth: 5,
-      ticker_pixels_per_second: '80',
-      require_news_photo_for_screens: true,
-      display_theme_id: 'navy_coral',
-      display_text_scale_screen: 'normal',
-      display_text_scale_ticker: 'normal',
+      display_theme_id: mockConfigKv.get('display.theme.id') ?? 'navy_coral',
+      display_text_scale_screen: mockConfigKv.get('display.text_scale.screen') ?? 'normal',
+      display_text_scale_ticker: mockConfigKv.get('display.text_scale.ticker') ?? 'normal',
       display_timezone,
+      controller_time_format,
+      controller_date_order,
       adoption_allowed_roles: ['viewer', 'power_viewer', 'operator', 'admin'],
       adoption_allow_new_requests: true,
     });
   });
 
-  r.put('/curator/settings', async (c) => {
+  r.put('/display/settings', async (c) => {
     const scenario = c.get('scenario');
     const bad = maybeErr(c, scenario);
     if (bad) return bad;
@@ -184,6 +184,21 @@ export function v1Router() {
         const t = body.display_timezone.trim();
         if (t) mockConfigKv.set('display.timezone', t);
         else mockConfigKv.delete('display.timezone');
+      }
+      if (typeof body.display_theme_id === 'string') {
+        mockConfigKv.set('display.theme.id', body.display_theme_id);
+      }
+      if (typeof body.display_text_scale_screen === 'string') {
+        mockConfigKv.set('display.text_scale.screen', body.display_text_scale_screen);
+      }
+      if (typeof body.display_text_scale_ticker === 'string') {
+        mockConfigKv.set('display.text_scale.ticker', body.display_text_scale_ticker);
+      }
+      if (typeof body.controller_time_format === 'string') {
+        mockConfigKv.set('controller.time_format', body.controller_time_format);
+      }
+      if (typeof body.controller_date_order === 'string') {
+        mockConfigKv.set('controller.date_order', body.controller_date_order);
       }
     } catch {
       /* ignore malformed body */
@@ -329,7 +344,12 @@ export function v1Router() {
         {
           overlay_type: 'birthday_confetti',
           config_json_schema: { type: 'object', additionalProperties: true },
-          example_config_json: { messages: ['Happy birthday!'] },
+          example_config_json: {
+            shapes: ['rect', 'circle', 'mix'],
+            density: 0.36,
+            fall_speed: 0.14,
+            opacity: 0.46,
+          },
         },
         {
           overlay_type: 'bouncing_message',

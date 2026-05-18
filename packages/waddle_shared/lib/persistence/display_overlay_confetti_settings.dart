@@ -27,7 +27,6 @@ class BirthdayConfettiScheduleSettings {
     required this.shapeTokens,
     required this.colorHexes,
     required this.density,
-    required this.messageIntervalSec,
     required this.fallSpeed,
     required this.opacity,
   });
@@ -43,7 +42,6 @@ class BirthdayConfettiScheduleSettings {
         shapeTokens: <String>['mix'],
         colorHexes: <String>[],
         density: 0.36,
-        messageIntervalSec: 36,
         fallSpeed: 0.14,
         opacity: 0.46,
       );
@@ -51,7 +49,6 @@ class BirthdayConfettiScheduleSettings {
   final List<String> shapeTokens;
   final List<String> colorHexes;
   final double density;
-  final int messageIntervalSec;
 
   /// Vertical scroll speed factor; lower values move confetti more slowly.
   final double fallSpeed;
@@ -108,12 +105,6 @@ class BirthdayConfettiScheduleSettings {
       density = rawDensity.toDouble().clamp(0.25, 0.65);
     }
 
-    var interval = BirthdayConfettiScheduleSettings.defaults.messageIntervalSec;
-    final rawInterval = map['message_interval_sec'];
-    if (rawInterval is num) {
-      interval = rawInterval.round().clamp(12, 90);
-    }
-
     var fallSpeed = BirthdayConfettiScheduleSettings.defaults.fallSpeed;
     final rawFall = map['fall_speed'];
     if (rawFall is num) {
@@ -133,7 +124,6 @@ class BirthdayConfettiScheduleSettings {
       shapeTokens: shapes,
       colorHexes: colors,
       density: density,
-      messageIntervalSec: interval,
       fallSpeed: fallSpeed,
       opacity: opacity,
     );
@@ -156,6 +146,8 @@ String? normalizeBirthdayConfettiSettingsJsonString(String raw) {
     return null;
   }
   final map = decoded.cast<String, dynamic>();
+  map.remove('messages');
+  map.remove('message_interval_sec');
   if (!_confettiSettingsMapValid(map)) {
     return null;
   }
@@ -195,10 +187,6 @@ String? normalizeBirthdayConfettiSettingsJsonString(String raw) {
     final d = (map['density'] as num).toDouble().clamp(0.15, 0.9);
     out['density'] = d;
   }
-  if (map.containsKey('message_interval_sec') && map['message_interval_sec'] is num) {
-    final s = (map['message_interval_sec'] as num).round().clamp(8, 120);
-    out['message_interval_sec'] = s;
-  }
   if (map.containsKey('fall_speed') && map['fall_speed'] is num) {
     final v = (map['fall_speed'] as num).toDouble().clamp(
       kBirthdayConfettiFallSpeedMin,
@@ -210,28 +198,10 @@ String? normalizeBirthdayConfettiSettingsJsonString(String raw) {
     final v = (map['opacity'] as num).toDouble().clamp(0.12, 0.72);
     out['opacity'] = v;
   }
-  if (map.containsKey('messages') && map['messages'] is List) {
-    final list = <String>[
-      for (final e in map['messages'] as List)
-        if (e is String && e.trim().isNotEmpty) e.trim(),
-    ];
-    out['messages'] = list;
-  }
   return jsonEncode(out);
 }
 
 bool _confettiSettingsMapValid(Map<String, dynamic> map) {
-  if (map.containsKey('messages')) {
-    final raw = map['messages'];
-    if (raw is! List) {
-      return false;
-    }
-    for (final e in raw) {
-      if (e is! String || e.trim().isEmpty) {
-        return false;
-      }
-    }
-  }
   if (map.containsKey('shapes')) {
     final raw = map['shapes'];
     if (raw != null && raw is! List) {
@@ -271,10 +241,6 @@ bool _confettiSettingsMapValid(Map<String, dynamic> map) {
     }
   }
   if (map.containsKey('density') && map['density'] is! num) {
-    return false;
-  }
-  if (map.containsKey('message_interval_sec') &&
-      map['message_interval_sec'] is! num) {
     return false;
   }
   if (map.containsKey('fall_speed') && map['fall_speed'] is! num) {

@@ -22,6 +22,16 @@ npm run dev:spa
 npm run dev:server
 ```
 
+### Mascot assets (favicons and in-app branding)
+
+Favicons under `public/` and SVGs under `public/brand/` (`headshot.svg`, `mascot.svg`) are generated from the repo root `assets/` sources. After changing mascot artwork, regenerate from the repository root:
+
+```bash
+python tool/generate_app_icons.py --web-root apps/waddle_controller
+```
+
+Commit the updated files under `public/` so Docker builds (which only copy this app directory) include the latest branding.
+
 ### Optional controller authentication (BFF)
 
 | Variable | Default | Purpose |

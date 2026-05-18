@@ -12,6 +12,7 @@ class CuratorConfigurationInput {
     required this.sortOrder,
     required this.programDurationSeconds,
     required this.tickerProgramDurationSeconds,
+    required this.tickerPixelsPerSecond,
     required this.historyDepth,
     required this.requireNewsPhotoForScreens,
     required this.tickerEnabled,
@@ -29,6 +30,7 @@ class CuratorConfigurationInput {
   final int sortOrder;
   final int programDurationSeconds;
   final int tickerProgramDurationSeconds;
+  final int tickerPixelsPerSecond;
   final int historyDepth;
   final bool requireNewsPhotoForScreens;
   final bool tickerEnabled;

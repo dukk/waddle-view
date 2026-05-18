@@ -90,7 +90,6 @@ void registerBuiltins(OverlayWidgetRegistry registry) {
     );
     return BirthdayConfettiOverlay(
       settings: settings,
-      messages: ctx.mergePhrases(matches),
       fallbackAccents: ctx.accents,
     );
   });

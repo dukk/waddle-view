@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
-import 'package:waddle_data_providers/calendar_google/google_user_profile.dart';
+import 'package:waddle_integrations/calendar_google/google_user_profile.dart';
 
 void main() {
   test('fetchGoogleUserProfile parses userinfo', () async {

@@ -344,10 +344,7 @@ class LocalDriftBackend implements WaddleAdminBackend {
       'require_news_photo_for_screens':
           config?.requireNewsPhotoForScreens ?? true,
       'theme_id_override': config?.themeIdOverride,
-      'ticker_pixels_per_second': await gv(
-        'curator.ticker.newsPixelsPerSecond',
-        '',
-      ),
+      'ticker_pixels_per_second': config?.tickerPixelsPerSecond ?? 80,
       'display_theme_id': await gv(
         kDisplayThemeIdKvKey,
         kDefaultDisplayThemeId,
@@ -377,7 +374,18 @@ class LocalDriftBackend implements WaddleAdminBackend {
     if (config != null &&
         (programDurationSeconds != null ||
             historyDepth != null ||
-            requireNewsPhotoForScreens != null)) {
+            requireNewsPhotoForScreens != null ||
+            tickerNewsPixelsPerSecond != null)) {
+      int? tickerPx;
+      if (tickerNewsPixelsPerSecond != null) {
+        final t = tickerNewsPixelsPerSecond.trim();
+        if (t.isNotEmpty) {
+          final parsed = int.tryParse(t);
+          if (parsed != null) {
+            tickerPx = parsed.clamp(20, 140);
+          }
+        }
+      }
       await (_db.update(_db.curatorConfigurations)
             ..where((t) => t.id.equals(config.id)))
           .write(
@@ -391,14 +399,11 @@ class LocalDriftBackend implements WaddleAdminBackend {
           requireNewsPhotoForScreens: requireNewsPhotoForScreens == null
               ? const Value.absent()
               : Value(requireNewsPhotoForScreens),
+          tickerPixelsPerSecond: tickerPx == null
+              ? const Value.absent()
+              : Value(tickerPx),
         ),
       );
-    }
-    if (tickerNewsPixelsPerSecond != null) {
-      final t = tickerNewsPixelsPerSecond.trim();
-      if (t.isNotEmpty) {
-        await setConfig('curator.ticker.newsPixelsPerSecond', t);
-      }
     }
     if (displayThemeId != null) {
       await setConfig(

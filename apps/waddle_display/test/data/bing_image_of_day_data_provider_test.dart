@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
-import 'package:waddle_data_providers/photo_bing_image_of_the_day/bing_image_of_day_data_provider.dart';
+import 'package:waddle_integrations/photo_bing_image_of_the_day/bing_image_of_day_data_provider.dart';
 import 'package:waddle_shared/integrations/integration_collect.dart';
 import 'package:waddle_shared/persistence/config_json_documentation.dart';
 import 'package:waddle_shared/persistence/database.dart';

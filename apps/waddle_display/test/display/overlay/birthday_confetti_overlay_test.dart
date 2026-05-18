@@ -44,7 +44,6 @@ void main() {
         home: Scaffold(
           body: BirthdayConfettiOverlay(
             settings: BirthdayConfettiScheduleSettings.defaults,
-            messages: const <String>[],
             fallbackAccents: const <Color>[Colors.pink, Colors.amber],
           ),
         ),
@@ -69,7 +68,6 @@ void main() {
         home: Scaffold(
           body: BirthdayConfettiOverlay(
             settings: BirthdayConfettiScheduleSettings.parse('{}'),
-            messages: const <String>[],
             fallbackAccents: const <Color>[Colors.red],
           ),
         ),
@@ -96,7 +94,6 @@ void main() {
         home: Scaffold(
           body: BirthdayConfettiOverlay(
             settings: settings,
-            messages: const <String>[],
             fallbackAccents: const <Color>[Colors.grey],
           ),
         ),
@@ -108,48 +105,5 @@ void main() {
       find.byKey(const Key('birthday_confetti_custom_paint')),
       findsOneWidget,
     );
-  });
-
-  testWidgets('shows occasional message after interval', (tester) async {
-    final settings = BirthdayConfettiScheduleSettings.parse(
-      '{"message_interval_sec":12}',
-    );
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: BirthdayConfettiOverlay(
-            settings: settings,
-            messages: const ['Hello overlay'],
-            fallbackAccents: const <Color>[Colors.blue],
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 13));
-    expect(find.text('Hello overlay'), findsOneWidget);
-    await tester.pump(const Duration(seconds: 3));
-    await tester.pumpWidget(MaterialApp(home: Scaffold(body: Container())));
-    await tester.pump();
-  });
-
-  testWidgets('replacing overlay disposes timers', (tester) async {
-    final settings = BirthdayConfettiScheduleSettings.parse(
-      '{"message_interval_sec":12}',
-    );
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: BirthdayConfettiOverlay(
-            settings: settings,
-            messages: const ['Hi'],
-            fallbackAccents: const <Color>[Colors.green],
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
-    await tester.pumpWidget(MaterialApp(home: Scaffold(body: Container())));
-    await tester.pump();
   });
 }

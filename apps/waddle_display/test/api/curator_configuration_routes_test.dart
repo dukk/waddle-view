@@ -59,6 +59,7 @@ void main() {
     expect(detailBody['rules'], isA<List>());
     expect(detailBody['ticker_enabled'], isTrue);
     expect(detailBody['ticker_program_duration_seconds'], 300);
+    expect(detailBody['ticker_pixels_per_second'], 80);
   });
 
   test('POST PATCH DELETE curator configuration lifecycle', () async {
@@ -74,6 +75,7 @@ void main() {
         'layer': 'enhancement',
         'sort_order': 50,
         'ticker_program_duration_seconds': 420,
+        'ticker_pixels_per_second': 95,
         'rules': [
           {
             'id': 'r1',
@@ -108,6 +110,7 @@ void main() {
     expect(detailBody['name'], 'Renamed');
     expect(detailBody['ticker_enabled'], isFalse);
     expect(detailBody['ticker_program_duration_seconds'], 420);
+    expect(detailBody['ticker_pixels_per_second'], 95);
 
     final del = await http.delete(
       Uri.parse('${h.baseUrl}/v1/curator/configurations/test_enhancement'),

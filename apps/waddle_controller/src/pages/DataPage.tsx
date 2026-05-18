@@ -23,6 +23,7 @@ import {
 } from '@mui/material';
 import { useAuth } from '@/context/AuthContext';
 import { useDisplay } from '@/context/DisplayContext';
+import { useDisplayFormat } from '@/context/DisplayFormatContext';
 import { apiFetch, apiJson, ApiError, fetchBlobObjectUrl } from '@/api/client';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
@@ -256,6 +257,7 @@ function BlobMedia({
 
 export function DataPage() {
   const { active } = useDisplay();
+  const { formatDateTime } = useDisplayFormat();
   const { hasPermission } = useAuth();
   const canModerate = hasPermission('content.moderate');
   const canBrowseData = canModerate || hasPermission('content.catalog_read');
@@ -774,7 +776,7 @@ export function DataPage() {
                         </TableCell>
                         <TableCell>
                           {row.observed_at_ms != null
-                            ? new Date(Number(row.observed_at_ms)).toLocaleString()
+                            ? formatDateTime(new Date(Number(row.observed_at_ms)))
                             : '—'}
                         </TableCell>
                         <TableCell>{integrationCell(row)}</TableCell>
@@ -798,7 +800,7 @@ export function DataPage() {
                         </TableCell>
                         <TableCell>
                           {row.observed_at_ms != null
-                            ? new Date(Number(row.observed_at_ms)).toLocaleString()
+                            ? formatDateTime(new Date(Number(row.observed_at_ms)))
                             : '—'}
                         </TableCell>
                         <TableCell>{integrationCell(row)}</TableCell>
@@ -828,7 +830,7 @@ export function DataPage() {
                         <TableCell>{String(row.source ?? '')}</TableCell>
                         <TableCell>
                           {row.created_at_ms != null
-                            ? new Date(Number(row.created_at_ms)).toLocaleString()
+                            ? formatDateTime(new Date(Number(row.created_at_ms)))
                             : '—'}
                         </TableCell>
                         <TableCell>{integrationCell(row)}</TableCell>

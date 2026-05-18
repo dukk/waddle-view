@@ -1,3 +1,8 @@
+import {
+  dateTimeFormatPrefsFromDisplaySettings,
+  formatControllerTimestamp,
+} from '@/util/dateTimeFormat';
+
 export type RandomChoices = Record<string, string>;
 
 export type LayoutWidget = {
@@ -51,13 +56,11 @@ export function formatDwell(ms: unknown): string {
   return `${m}m ${rs < 10 ? '0' : ''}${Math.round(rs)}s`;
 }
 
-export function programTimestamp(atMs: unknown): string {
-  const n = typeof atMs === 'number' ? atMs : Number(atMs);
-  if (!Number.isFinite(n)) return 'Unknown time';
-  return new Date(n).toLocaleString(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'medium',
-  });
+export function programTimestamp(
+  atMs: unknown,
+  prefs = dateTimeFormatPrefsFromDisplaySettings(null),
+): string {
+  return formatControllerTimestamp(atMs, prefs);
 }
 
 function str(v: unknown): string {

@@ -36,6 +36,10 @@ class DefaultDashboardCurator implements DashboardCurator {
     if (tickerDuration != null) {
       kv['curator.ticker.newsScrollBudgetSeconds'] = '$tickerDuration';
     }
+    final tickerPx = _membershipFilter?.tickerPixelsPerSecond;
+    if (tickerPx != null) {
+      kv['curator.ticker.newsPixelsPerSecond'] = '$tickerPx';
+    }
     final news = await _read.loadNewsCandidatesForTicker();
     final currentWeather = await _read.loadCurrentWeatherForTicker();
     final weatherGovAlerts = await _read.loadWeatherGovAlertsForTicker();

@@ -185,4 +185,96 @@ CREATE TABLE curator_configurations (
       await db.close();
     },
   );
+
+  test(
+    'schema 18 to 19 adds curator_configurations.ticker_pixels_per_second default 80',
+    () async {
+      final executor = NativeDatabase.memory(setup: (raw) {
+        raw.execute('''
+CREATE TABLE curator_configurations (
+  id TEXT NOT NULL PRIMARY KEY,
+  name TEXT NOT NULL,
+  layer TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  program_duration_seconds INTEGER NOT NULL DEFAULT 180,
+  history_depth INTEGER NOT NULL DEFAULT 5,
+  require_news_photo_for_screens INTEGER NOT NULL DEFAULT 1,
+  ticker_enabled INTEGER NOT NULL DEFAULT 1,
+  ticker_program_duration_seconds INTEGER NOT NULL DEFAULT 300,
+  theme_id_override TEXT,
+  default_config INTEGER NOT NULL DEFAULT 0
+);
+''');
+        raw.execute(
+          "INSERT INTO curator_configurations (id, name, layer) "
+          "VALUES ('evening', 'Evening', 'base')",
+        );
+        raw.execute('PRAGMA user_version = 18');
+      });
+      final db = AppDatabase(
+        DatabaseConnection(executor, closeStreamsSynchronously: true),
+      );
+      await db.customStatement('SELECT 1');
+
+      final row = await db.customSelect(
+        'SELECT ticker_pixels_per_second FROM curator_configurations WHERE id = ?',
+        variables: [Variable<String>('evening')],
+      ).getSingle();
+      expect(row.read<int>('ticker_pixels_per_second'), 80);
+
+      await db.close();
+    },
+  );
+
+  test(
+    'schema 18 to 19 migrates curator.ticker.newsPixelsPerSecond KV to all configs',
+    () async {
+      final executor = NativeDatabase.memory(setup: (raw) {
+        raw.execute('''
+CREATE TABLE curator_configurations (
+  id TEXT NOT NULL PRIMARY KEY,
+  name TEXT NOT NULL,
+  layer TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  program_duration_seconds INTEGER NOT NULL DEFAULT 180,
+  history_depth INTEGER NOT NULL DEFAULT 5,
+  require_news_photo_for_screens INTEGER NOT NULL DEFAULT 1,
+  ticker_enabled INTEGER NOT NULL DEFAULT 1,
+  ticker_program_duration_seconds INTEGER NOT NULL DEFAULT 300,
+  theme_id_override TEXT,
+  default_config INTEGER NOT NULL DEFAULT 0
+);
+''');
+        raw.execute(
+          "INSERT INTO curator_configurations (id, name, layer) "
+          "VALUES ('evening', 'Evening', 'base'), ('morning', 'Morning', 'base')",
+        );
+        raw.execute('''
+CREATE TABLE config_key_values (
+  key TEXT NOT NULL PRIMARY KEY,
+  value TEXT NOT NULL
+);
+''');
+        raw.execute(
+          "INSERT INTO config_key_values (key, value) "
+          "VALUES ('curator.ticker.newsPixelsPerSecond', '95')",
+        );
+        raw.execute('PRAGMA user_version = 18');
+      });
+      final db = AppDatabase(
+        DatabaseConnection(executor, closeStreamsSynchronously: true),
+      );
+      await db.customStatement('SELECT 1');
+
+      final rows = await db.customSelect(
+        'SELECT id, ticker_pixels_per_second FROM curator_configurations ORDER BY id',
+      ).get();
+      expect(rows, hasLength(2));
+      for (final row in rows) {
+        expect(row.read<int>('ticker_pixels_per_second'), 95);
+      }
+
+      await db.close();
+    },
+  );
 }

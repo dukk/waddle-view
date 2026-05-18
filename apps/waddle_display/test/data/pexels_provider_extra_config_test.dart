@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_data_providers/photo_pexels/pexels_provider_extra_config.dart';
+import 'package:waddle_integrations/photo_pexels/pexels_provider_extra_config.dart';
 
 void main() {
   test('parse uses defaults for null or invalid json', () {

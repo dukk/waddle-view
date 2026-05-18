@@ -1,5 +1,5 @@
 import 'package:test/test.dart';
-import 'package:waddle_data_providers/calendar_ical/ical_feed_url.dart';
+import 'package:waddle_integrations/calendar_ical/ical_feed_url.dart';
 
 void main() {
   test('normalizeIcalFeedUri accepts https and maps webcal', () {

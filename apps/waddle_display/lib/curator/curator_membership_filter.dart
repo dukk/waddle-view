@@ -9,5 +9,8 @@ class CuratorMembershipFilter {
   /// Per-active-configuration RSS marquee scroll budget (seconds).
   int? tickerProgramDurationSeconds;
 
+  /// Per-active-configuration ticker marquee scroll speed (pixels per second).
+  int? tickerPixelsPerSecond;
+
   Set<String> overlayIds = {};
 }

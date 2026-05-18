@@ -20,6 +20,7 @@ CuratorConfigurationInput _config({
     sortOrder: sortOrder,
     programDurationSeconds: 180,
     tickerProgramDurationSeconds: 300,
+    tickerPixelsPerSecond: 80,
     historyDepth: 5,
     requireNewsPhotoForScreens: true,
     tickerEnabled: true,

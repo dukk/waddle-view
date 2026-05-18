@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Alert, Box, Button, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Button, Stack, TextField } from '@mui/material';
+import { AuthPageShell } from '@/components/brand/AuthPageShell';
 import { useControllerAuth } from '@/context/ControllerAuthContext';
 import { BffError } from '@/api/bffClient';
 
@@ -29,23 +30,12 @@ export function ControllerBootstrapPage() {
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        p: 3,
-      }}
+    <AuthPageShell
+      title="First administrator account"
+      subtitle="User management was enabled but no accounts exist yet. Create the first administrator to continue."
+      maxWidth={480}
     >
-      <Stack component="form" onSubmit={submit} spacing={2} sx={{ width: '100%', maxWidth: 440 }}>
-        <Typography variant="h5" fontWeight={600}>
-          First administrator account
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          User management was enabled but no accounts exist yet. Create the first administrator
-          to continue.
-        </Typography>
+      <Stack component="form" onSubmit={submit} spacing={2}>
         {error && <Alert severity="error">{error}</Alert>}
         <TextField
           label="Admin username"
@@ -75,6 +65,6 @@ export function ControllerBootstrapPage() {
           Create admin
         </Button>
       </Stack>
-    </Box>
+    </AuthPageShell>
   );
 }

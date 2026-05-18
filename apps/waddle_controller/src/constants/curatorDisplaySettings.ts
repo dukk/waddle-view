@@ -108,6 +108,23 @@ export const CURATOR_TICKER_PIXELS_PER_SECOND = {
   default: 80,
 } as const;
 
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+export function parseTickerPixelsPerSecond(raw: string | number): number {
+  const parsed =
+    typeof raw === 'number' ? raw : Number.parseInt(String(raw).trim(), 10);
+  if (!Number.isFinite(parsed)) {
+    return CURATOR_TICKER_PIXELS_PER_SECOND.default;
+  }
+  return clampNumber(
+    parsed,
+    CURATOR_TICKER_PIXELS_PER_SECOND.min,
+    CURATOR_TICKER_PIXELS_PER_SECOND.max,
+  );
+}
+
 export const curatorTextScaleIds = [
   'xxx-small',
   'xx-small',
@@ -122,42 +139,13 @@ export const curatorTextScaleIds = [
   'xxx-large',
 ];
 
+/** @deprecated Legacy combined curator + display settings shape. */
 export type CuratorDisplaySettings = {
-  program_duration_seconds: number;
-  history_depth: number;
-  ticker_pixels_per_second: string;
-  require_news_photo_for_screens: boolean;
-  display_theme_id: string;
-  display_text_scale_screen: string;
-  display_text_scale_ticker: string;
-  /** IANA id from `display.timezone` (e.g. `America/Chicago`). */
-  display_timezone: string;
-  /** Roles that may start adoption challenges (`viewer`, `power_viewer`, `operator`, `admin`). */
-  adoption_allowed_roles?: string[];
-  /** @deprecated Use `adoption_allowed_roles`; true when that list is non-empty. */
-  adoption_allow_new_requests?: boolean;
+  program_duration_seconds?: number;
+  history_depth?: number;
+  ticker_pixels_per_second?: number;
+  require_news_photo_for_screens?: boolean;
 };
-
-export const ADOPTION_ROLES = [
-  { value: 'viewer', label: 'Viewer' },
-  { value: 'power_viewer', label: 'Power viewer' },
-  { value: 'operator', label: 'Operator' },
-  { value: 'admin', label: 'Admin' },
-] as const;
-
-export function parseAdoptionAllowedRoles(settings: CuratorDisplaySettings): Set<string> {
-  if (Array.isArray(settings.adoption_allowed_roles)) {
-    return new Set(
-      settings.adoption_allowed_roles.filter(
-        (r): r is string => typeof r === 'string' && r.trim() !== '',
-      ),
-    );
-  }
-  if (settings.adoption_allow_new_requests === false) {
-    return new Set();
-  }
-  return new Set(ADOPTION_ROLES.map((r) => r.value));
-}
 
 export function curatorThemeById(id: string): CuratorThemeOption | undefined {
   return curatorThemeIds.find((t) => t.id === id);

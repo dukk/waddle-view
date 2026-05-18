@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
-import 'package:waddle_data_providers/microsoft_graph/microsoft_graph_calendars.dart';
+import 'package:waddle_integrations/microsoft_graph/microsoft_graph_calendars.dart';
 
 void main() {
   test('listMicrosoftGraphCalendars parses calendar pages', () async {

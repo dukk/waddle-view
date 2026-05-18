@@ -2,11 +2,11 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:shelf/shelf.dart';
-import 'package:waddle_data_providers/calendar_google/google_oauth.dart';
-import 'package:waddle_data_providers/calendar_google/google_user_profile.dart';
-import 'package:waddle_data_providers/microsoft_graph/microsoft_graph_base_url.dart';
-import 'package:waddle_data_providers/microsoft_graph/microsoft_graph_oauth.dart';
-import 'package:waddle_data_providers/microsoft_graph/microsoft_graph_profile.dart';
+import 'package:waddle_integrations/calendar_google/google_oauth.dart';
+import 'package:waddle_integrations/calendar_google/google_user_profile.dart';
+import 'package:waddle_integrations/microsoft_graph/microsoft_graph_base_url.dart';
+import 'package:waddle_integrations/microsoft_graph/microsoft_graph_oauth.dart';
+import 'package:waddle_integrations/microsoft_graph/microsoft_graph_profile.dart';
 import 'package:waddle_shared/config/google_kv.dart';
 import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/config/microsoft_graph_kv.dart';

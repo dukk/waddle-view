@@ -58,8 +58,10 @@ import { RejectTermsSection } from '@/components/curator/RejectTermsSection';
 import {
   CURATOR_HISTORY_DEPTH,
   CURATOR_PROGRAM_DURATION,
+  CURATOR_TICKER_PIXELS_PER_SECOND,
   CURATOR_TICKER_PROGRAM_DURATION,
 } from '@/constants/curatorDisplaySettings';
+import { TickerPixelsPerSecondField } from '@/components/TickerPixelsPerSecondField';
 import { curatorConfigurationIdFromName } from '@/util/interestSlug';
 import { formatProgramDurationWithSeconds } from '@/util/programDurationFormat';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
@@ -434,6 +436,9 @@ function CuratorConfigurationDialog({
   const [tickerProgramDuration, setTickerProgramDuration] = useState<number>(
     CURATOR_TICKER_PROGRAM_DURATION.default,
   );
+  const [tickerPixelsPerSecond, setTickerPixelsPerSecond] = useState<number>(
+    CURATOR_TICKER_PIXELS_PER_SECOND.default,
+  );
   const [historyDepth, setHistoryDepth] = useState<number>(CURATOR_HISTORY_DEPTH.default);
   const [dialogTab, setDialogTab] = useState<ConfigDialogTabId>('screens');
   const [requireNewsPhoto, setRequireNewsPhoto] = useState(true);
@@ -490,6 +495,7 @@ function CuratorConfigurationDialog({
           setSortOrder(detail.sort_order);
           setProgramDuration(detail.program_duration_seconds);
           setTickerProgramDuration(detail.ticker_program_duration_seconds);
+          setTickerPixelsPerSecond(detail.ticker_pixels_per_second);
           setHistoryDepth(detail.history_depth);
           setRequireNewsPhoto(detail.require_news_photo_for_screens);
           setTickerEnabled(detail.ticker_enabled);
@@ -538,6 +544,7 @@ function CuratorConfigurationDialog({
     sort_order: sortOrder,
     program_duration_seconds: programDuration,
     ticker_program_duration_seconds: tickerProgramDuration,
+    ticker_pixels_per_second: tickerPixelsPerSecond,
     history_depth: historyDepth,
     require_news_photo_for_screens: requireNewsPhoto,
     ticker_enabled: tickerEnabled,
@@ -699,6 +706,11 @@ function CuratorConfigurationDialog({
                         step={CURATOR_TICKER_PROGRAM_DURATION.step}
                         disabled={!canWrite || !tickerEnabled}
                         formatValue={formatProgramDurationWithSeconds}
+                      />
+                      <TickerPixelsPerSecondField
+                        value={tickerPixelsPerSecond}
+                        onChange={setTickerPixelsPerSecond}
+                        disabled={!canWrite || !tickerEnabled}
                       />
                       <MemberAutocomplete
                         label="Ticker tapes"

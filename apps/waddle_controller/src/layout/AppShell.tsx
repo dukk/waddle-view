@@ -52,6 +52,7 @@ import { useControllerAuth } from '@/context/ControllerAuthContext';
 import { useDisplay } from '@/context/DisplayContext';
 import { dismissActiveDisplayAlert, postDisplayNavigation } from '@/util/displayRemote';
 import { PREVIEWABLE_CONTROLLER_ROLES } from '@/auth/rolePermissions';
+import { WaddleBrandMark } from '@/components/brand/WaddleBrandMark';
 import { DisplaySelector } from '@/components/DisplaySelector';
 import { isProgramsOnlyNavRouteAllowed } from '@/util/programsOnlyRoutes';
 
@@ -183,10 +184,16 @@ export function AppShell({ children }: { children?: ReactNode }) {
 
   const drawer = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Toolbar>
-        <Typography variant="h6" fontWeight={700}>
-          Waddle Controller
-        </Typography>
+      <Toolbar sx={{ gap: 1.25, minHeight: { xs: 56, sm: 64 } }}>
+        <WaddleBrandMark variant="headshot" size="sm" />
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="subtitle1" fontWeight={700} lineHeight={1.2} noWrap>
+            Waddle
+          </Typography>
+          <Typography variant="caption" color="grey.400" lineHeight={1.2} noWrap>
+            Controller
+          </Typography>
+        </Box>
       </Toolbar>
 
       {signedIn && (

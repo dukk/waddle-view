@@ -1,5 +1,5 @@
 import 'package:test/test.dart';
-import 'package:waddle_data_providers/calendar_ical/ical_event_parse.dart';
+import 'package:waddle_integrations/calendar_ical/ical_event_parse.dart';
 
 void main() {
   group('parseIcalFeedEvents', () {

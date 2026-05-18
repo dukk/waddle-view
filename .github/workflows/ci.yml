@@ -10,7 +10,7 @@ on:
       - 'apps/waddle_controller/**'
       - 'apps/waddlectl/**'
       - 'packages/waddle_shared/**'
-      - 'packages/waddle_data_providers/**'
+      - 'packages/waddle_integrations/**'
       - 'packages/waddle_plugin_sdk/**'
       - 'packages/waddle_node_tls/**'
       - 'pubspec.yaml'
@@ -70,7 +70,7 @@ jobs:
       - run: flutter test
         working-directory: ${{ github.workspace }}/packages/waddle_shared
       - run: dart test
-        working-directory: ${{ github.workspace }}/packages/waddle_data_providers
+        working-directory: ${{ github.workspace }}/packages/waddle_integrations
       - run: dart test --coverage=coverage
         working-directory: ${{ github.workspace }}/packages/waddle_plugin_sdk
       - run: dart run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib

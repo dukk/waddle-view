@@ -1,5 +1,5 @@
 import 'package:test/test.dart';
-import 'package:waddle_data_providers/home_assistant/home_assistant_state_parser.dart';
+import 'package:waddle_integrations/home_assistant/home_assistant_state_parser.dart';
 
 void main() {
   test('parseHomeAssistantStatePayload extracts state and attributes', () {

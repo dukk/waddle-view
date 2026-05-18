@@ -158,12 +158,9 @@ String normalizeOverlayConfigForUpsert({
   final restJson = jsonEncode(split.rest);
   return switch (trimmedType) {
     kOverlayTypeHeartsRain => jsonEncode(<String, Object?>{'messages': split.messages}),
-    kOverlayTypeBirthdayConfetti => () {
-        final normalizedInner =
-            normalizeBirthdayConfettiSettingsJsonString(restJson) ??
-                (throw FormatException('invalid_config_json'));
-        return _mergeMessagesIntoConfigJsonString(normalizedInner, split.messages);
-      }(),
+    kOverlayTypeBirthdayConfetti =>
+        normalizeBirthdayConfettiSettingsJsonString(restJson) ??
+            (throw FormatException('invalid_config_json')),
     kOverlayTypeBouncingMessage => () {
         final normalizedInner =
             normalizeBouncingMessageConfigJsonString(restJson) ??

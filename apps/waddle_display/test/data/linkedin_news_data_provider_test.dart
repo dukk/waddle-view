@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_data_providers/news_linkedin/linkedin_api_client.dart';
-import 'package:waddle_data_providers/news_linkedin/linkedin_news_data_provider.dart';
+import 'package:waddle_integrations/news_linkedin/linkedin_api_client.dart';
+import 'package:waddle_integrations/news_linkedin/linkedin_news_data_provider.dart';
 import 'package:waddle_shared/config/linkedin_kv.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';

@@ -1,5 +1,5 @@
 import 'package:test/test.dart';
-import 'package:waddle_data_providers/news_facebook/facebook_graph_client.dart';
+import 'package:waddle_integrations/news_facebook/facebook_graph_client.dart';
 
 void main() {
   test('parseFacebookFeedPostsJson maps posts', () {

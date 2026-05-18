@@ -28,7 +28,7 @@ void main() {
     await db.close();
   });
 
-  test('upsert birthday_confetti stores normalized config_json with messages', () async {
+  test('upsert birthday_confetti stores normalized config_json without messages', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await ensureOverlaysTableExists(db);
@@ -42,9 +42,11 @@ void main() {
           '"density":0.2,"message_interval_sec":15}',
     );
     final rows = await fetchDisplayOverlays(db);
-    expect(rows.single.configJson, contains('"rect"'));
-    expect(rows.single.configJson, contains('#ABCDEF'));
-    expect(rows.single.configJson, contains('"Party"'));
+    final cfg = jsonDecode(rows.single.configJson) as Map<String, dynamic>;
+    expect(cfg['shapes'], ['rect']);
+    expect(cfg['colors'], ['#ABCDEF']);
+    expect(cfg.containsKey('messages'), isFalse);
+    expect(cfg.containsKey('message_interval_sec'), isFalse);
     expect(rows.single.configJsonSchema, contains('BirthdayConfettiOverlayConfig'));
     await db.close();
   });
@@ -135,7 +137,7 @@ void main() {
       id: 'j',
       overlayType: kOverlayTypeBirthdayConfetti,
       name: 'Confetti',
-      configJson: '{"shapes":["star"],"messages":["a","b"]}',
+      configJson: '{"shapes":["star"],"fall_speed":0.2}',
       configJsonSchema: '{"type":"object"}',
       exampleConfigJson: '{"shapes":["mix"]}',
     );
@@ -144,7 +146,7 @@ void main() {
     expect(j['name'], 'Confetti');
     expect(j['config_json'], {
       'shapes': ['star'],
-      'messages': ['a', 'b'],
+      'fall_speed': 0.2,
     });
     expect(j['config_json_schema'], {'type': 'object'});
     expect(j['example_config_json'], {'shapes': ['mix']});

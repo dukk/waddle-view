@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_data_providers/news_facebook/facebook_graph_client.dart';
-import 'package:waddle_data_providers/news_facebook/facebook_news_data_provider.dart';
+import 'package:waddle_integrations/news_facebook/facebook_graph_client.dart';
+import 'package:waddle_integrations/news_facebook/facebook_news_data_provider.dart';
 import 'package:waddle_shared/config/facebook_kv.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';

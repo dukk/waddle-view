@@ -7,9 +7,9 @@ import 'package:waddle_display/config/google_kv.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
-import 'package:waddle_data_providers/calendar_google/google_calendar_data_provider.dart';
-import 'package:waddle_data_providers/calendar_google/google_calendar_extra_config.dart';
-import 'package:waddle_data_providers/calendar_google/google_oauth.dart';
+import 'package:waddle_integrations/calendar_google/google_calendar_data_provider.dart';
+import 'package:waddle_integrations/calendar_google/google_calendar_extra_config.dart';
+import 'package:waddle_integrations/calendar_google/google_oauth.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 

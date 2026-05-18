@@ -336,11 +336,6 @@ function ScreenCard({
           <Typography variant="subtitle1" fontWeight={600} sx={{ wordBreak: 'break-word' }}>
             {title}
           </Typography>
-          {row.name.trim() ? (
-            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-              {row.id}
-            </Typography>
-          ) : null}
           <Chip size="small" label={typeLabel} variant="outlined" sx={{ alignSelf: 'flex-start' }} />
           <Typography variant="caption" color="text.secondary" display="block">
             Dwell {row.min_dwell_seconds}–{row.max_dwell_seconds}s · weight {row.frequency_weight} ·

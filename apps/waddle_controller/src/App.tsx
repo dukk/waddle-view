@@ -4,6 +4,7 @@ import { useDisplay } from '@/context/DisplayContext';
 import { defaultHomePath } from '@/util/defaultHomePath';
 import { ControllerAuthProvider, ControllerAuthGate } from '@/context/ControllerAuthContext';
 import { DisplayProvider } from '@/context/DisplayContext';
+import { DisplayFormatProvider } from '@/context/DisplayFormatContext';
 import { LoginDialog } from '@/components/LoginDialog';
 import { AppShell } from '@/layout/AppShell';
 import { ProgramsOnlyOutlet } from '@/layout/ProgramsOnlyOutlet';
@@ -40,6 +41,7 @@ function MainAppRoutes() {
   return (
     <DisplayProvider>
       <AuthProvider>
+        <DisplayFormatProvider>
         <LoginDialog />
         <Routes>
           <Route path="/join" element={<ViewerJoinPage />} />
@@ -69,6 +71,7 @@ function MainAppRoutes() {
             </Route>
           </Route>
         </Routes>
+        </DisplayFormatProvider>
       </AuthProvider>
     </DisplayProvider>
   );

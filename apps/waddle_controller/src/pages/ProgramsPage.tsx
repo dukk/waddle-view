@@ -26,6 +26,7 @@ import {
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { ListLayoutToggle } from '@/components/ListLayoutToggle';
 import { useDisplay } from '@/context/DisplayContext';
+import { useDisplayFormat } from '@/context/DisplayFormatContext';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import { apiJson, ApiError, fetchBlobObjectUrl } from '@/api/client';
@@ -39,7 +40,6 @@ import {
   collectWeatherLocationIds,
   paginateList,
   programAtMs,
-  programTimestamp,
   sortProgramsByAtMsDesc,
   type SlideCardModel,
 } from '@/util/programTelemetry';
@@ -659,6 +659,7 @@ function TickerItemDetailDialog({
   onPrev: () => void;
   onNext: () => void;
 }) {
+  const { formatTimestamp } = useDisplayFormat();
   const item = items[index] ?? {};
   const kind = String(item['kind'] ?? '');
   const body = String(item['body'] ?? '');
@@ -670,7 +671,7 @@ function TickerItemDetailDialog({
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>
-        Ticker item {index + 1} of {total} · {programTimestamp(atMs)}
+        Ticker item {index + 1} of {total} · {formatTimestamp(atMs)}
       </DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
@@ -745,6 +746,7 @@ function tickerItemHeadline(kind: string, item: Record<string, unknown>): string
 
 export function ProgramsPage() {
   const { active } = useDisplay();
+  const { formatTime } = useDisplayFormat();
   const { loading, wrapRefresh } = useDisplayRefresh();
   const { layout, setLayout } = useListLayoutPreference('programs');
   const [screen, setScreen] = useState<Record<string, unknown>[]>([]);
@@ -888,7 +890,7 @@ export function ProgramsPage() {
                 >
                   <div>
                     <Typography variant="subtitle1" fontWeight={600}>
-                      Curated {new Date(atMs).toLocaleTimeString(undefined, { timeStyle: 'short' })}
+                      Curated {formatTime(new Date(atMs))}
                     </Typography>
                     {reason && (
                       <Typography variant="body2" color="text.secondary">
@@ -940,9 +942,7 @@ export function ProgramsPage() {
                   const slides = asRecordArray(row['slides']);
                   const atMs = programAtMs(row);
                   const reason = String(row['reason'] ?? '');
-                  const timeLabel = new Date(atMs).toLocaleTimeString(undefined, {
-                    timeStyle: 'short',
-                  });
+                  const timeLabel = formatTime(new Date(atMs));
                   if (slides.length === 0) {
                     return [
                       <TableRow key={`${atMs}-sp-empty-${pi}`} hover>
@@ -1027,7 +1027,7 @@ export function ProgramsPage() {
                 >
                   <div>
                     <Typography variant="subtitle1" fontWeight={600}>
-                      Curated {new Date(atMs).toLocaleTimeString(undefined, { timeStyle: 'short' })}
+                      Curated {formatTime(new Date(atMs))}
                     </Typography>
                   </div>
                   <Chip label={`${items.length} tape${items.length === 1 ? '' : 's'}`} size="small" />
@@ -1071,9 +1071,7 @@ export function ProgramsPage() {
                   const pi = tickerProgramsPage.page * tickerProgramsPage.pageSize + localPi;
                   const items = asRecordArray(row['items']);
                   const atMs = programAtMs(row);
-                  const timeLabel = new Date(atMs).toLocaleTimeString(undefined, {
-                    timeStyle: 'short',
-                  });
+                  const timeLabel = formatTime(new Date(atMs));
                   if (items.length === 0) {
                     return [
                       <TableRow key={`${atMs}-tp-empty-${pi}`} hover>

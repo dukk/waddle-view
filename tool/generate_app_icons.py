@@ -456,10 +456,47 @@ def write_display_icons(
     return src1024
 
 
+def _resolve_svg_source(source: Path, fallback: Path) -> Path | None:
+    src = source.resolve()
+    if src.suffix.lower() == ".svg" and src.is_file():
+        return src
+    sibling = src.with_suffix(".svg")
+    if sibling.is_file():
+        return sibling
+    fb = fallback.resolve()
+    if fb.is_file() and fb.suffix.lower() == ".svg":
+        return fb
+    return None
+
+
+def write_web_brand_assets(
+    portrait_source: Path,
+    fullbody_source: Path,
+    web_root: Path,
+) -> None:
+    """Copy mascot SVGs into <web-root>/public/brand/ for in-app branding."""
+    brand_dir = web_root / "public" / "brand"
+    brand_dir.mkdir(parents=True, exist_ok=True)
+
+    headshot_svg = _resolve_svg_source(portrait_source, _DEFAULT_PORTRAIT)
+    if headshot_svg is not None:
+        shutil.copy2(headshot_svg, brand_dir / "headshot.svg")
+    else:
+        print("Note: no SVG for public/brand/headshot.svg.", file=sys.stderr)
+
+    mascot_svg = _resolve_svg_source(fullbody_source, _DEFAULT_FULL_BODY)
+    if mascot_svg is not None:
+        shutil.copy2(mascot_svg, brand_dir / "mascot.svg")
+    else:
+        print("Note: no SVG for public/brand/mascot.svg.", file=sys.stderr)
+
+
 def write_web_favicons(
     portrait1024: Image.Image,
     portrait_source: Path,
     web_root: Path,
+    *,
+    fullbody_source: Path | None = None,
 ) -> None:
     public = web_root / "public"
     public.mkdir(parents=True, exist_ok=True)
@@ -468,16 +505,17 @@ def write_web_favicons(
     resize_png(portrait1024, public / "apple-touch-icon.png", 180)
     write_windows_ico(portrait1024, public / "favicon.ico")
 
-    src = portrait_source.resolve()
-    if src.suffix.lower() == ".svg":
-        svg_src = src
-    else:
-        sibling = src.with_suffix(".svg")
-        svg_src = sibling if sibling.is_file() else _DEFAULT_PORTRAIT
-    if svg_src.is_file() and svg_src.suffix.lower() == ".svg":
+    svg_src = _resolve_svg_source(portrait_source, _DEFAULT_PORTRAIT)
+    if svg_src is not None:
         shutil.copy2(svg_src, public / "favicon.svg")
     else:
         print("Note: no SVG available for favicon.svg; raster favicons only.", file=sys.stderr)
+
+    write_web_brand_assets(
+        portrait_source,
+        fullbody_source or _DEFAULT_FULL_BODY,
+        web_root,
+    )
 
 
 def refresh_assets_png(
@@ -520,6 +558,7 @@ def _run_sheet_mode(args: argparse.Namespace) -> int:
             portrait1024,
             args.portrait if args.portrait is not None else _DEFAULT_PORTRAIT,
             args.web_root.resolve(),
+            fullbody_source=args.full_body or _DEFAULT_FULL_BODY,
         )
 
     print(f"Wrote icons under {app} (assets/icons, windows/.../app_icon.ico, macOS, iOS).")
@@ -542,14 +581,20 @@ def _run_source_mode(args: argparse.Namespace) -> int:
     portrait1024 = write_display_icons(portrait_master, fullbody_master, app, do_backup=do_backup)
 
     if args.web_root is not None:
-        write_web_favicons(portrait1024, portrait_path, args.web_root.resolve())
+        write_web_favicons(
+            portrait1024,
+            portrait_path,
+            args.web_root.resolve(),
+            fullbody_source=fullbody_path,
+        )
 
     if args.refresh_assets_png:
         refresh_assets_png(portrait_path, fullbody_path, portrait1024, fullbody_master)
 
     lines = [f"Wrote icons under {app} (assets/icons, windows/.../app_icon.ico, macOS, iOS)."]
     if args.web_root is not None:
-        lines.append(f"Wrote web favicons under {args.web_root.resolve() / 'public'}.")
+        web_public = args.web_root.resolve() / "public"
+        lines.append(f"Wrote web favicons and brand SVGs under {web_public}.")
     if args.refresh_assets_png:
         lines.append(f"Refreshed PNG fallbacks for {portrait_path.with_suffix('.png')} and "
                       f"{fullbody_path.with_suffix('.png')}.")

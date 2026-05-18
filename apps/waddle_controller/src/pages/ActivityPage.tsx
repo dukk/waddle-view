@@ -21,32 +21,14 @@ import { useDisplay } from '@/context/DisplayContext';
 import { apiJson, ApiError } from '@/api/client';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
+import { useDisplayFormat } from '@/context/DisplayFormatContext';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 
 type Line = { at_ms: number; channel: string; message: string };
 
-function formatAtMs(atMs: number): string {
-  const d = new Date(atMs);
-  if (Number.isNaN(d.getTime())) {
-    return String(atMs);
-  }
-  try {
-    return new Intl.DateTimeFormat(undefined, {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      fractionalSecondDigits: 3,
-    }).format(d);
-  } catch {
-    return d.toLocaleString();
-  }
-}
-
 export function ActivityPage() {
   const { active } = useDisplay();
+  const { formatDateTimeWithMs } = useDisplayFormat();
   const { loading, wrapRefresh } = useDisplayRefresh();
   const [items, setItems] = useState<Line[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -67,7 +49,10 @@ export function ActivityPage() {
     return newestFirst.filter((row) => {
       if (channelFilter && row.channel !== channelFilter) return false;
       if (!q) return true;
-      const timeStr = formatAtMs(row.at_ms).toLowerCase();
+      const d = new Date(row.at_ms);
+      const timeStr = Number.isNaN(d.getTime())
+        ? String(row.at_ms)
+        : formatDateTimeWithMs(d).toLowerCase();
       return (
         row.message.toLowerCase().includes(q) ||
         row.channel.toLowerCase().includes(q) ||
@@ -75,7 +60,7 @@ export function ActivityPage() {
         timeStr.includes(q)
       );
     });
-  }, [items, filterText, channelFilter]);
+  }, [items, filterText, channelFilter, formatDateTimeWithMs]);
 
   useEffect(() => {
     if (channelFilter && !channels.includes(channelFilter)) {
@@ -160,7 +145,11 @@ export function ActivityPage() {
                 key={`${row.at_ms}-${row.channel}-${i}-${row.message.slice(0, 48)}`}
                 title={String(row.at_ms)}
               >
-                <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatAtMs(row.at_ms)}</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                  {Number.isNaN(new Date(row.at_ms).getTime())
+                    ? String(row.at_ms)
+                    : formatDateTimeWithMs(new Date(row.at_ms))}
+                </TableCell>
                 <TableCell>{row.channel}</TableCell>
                 <TableCell sx={{ fontFamily: 'monospace', fontSize: 12, whiteSpace: 'pre-wrap' }}>
                   {row.message}

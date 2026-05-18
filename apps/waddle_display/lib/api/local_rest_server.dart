@@ -29,12 +29,10 @@ import 'adoption_rest_routes.dart';
 import 'api_key_auth.dart';
 import 'caller_origin.dart';
 import 'content_catalog_rest_routes.dart';
+import 'integrations_list_rest_routes.dart';
 import 'interests_rest_routes.dart';
 import 'cors_policy.dart';
 import 'display_health.dart';
-import 'integration_secrets_rest_routes.dart';
-import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
-import 'package:waddle_shared/integration_accounts/integration_accounts_service.dart';
 import 'operator_rest_routes.dart';
 import 'plugin_routes.dart';
 import 'runtime_signal_routes.dart';
@@ -92,6 +90,7 @@ Handler buildProtectedApiRouter({
   });
 
   registerContentCatalogRoutes(r, db: db);
+  registerIntegrationsListRestRoutes(r, db: db, secrets: secrets);
   registerInterestsRestRoutes(
     r,
     db: db,
@@ -156,56 +155,6 @@ Handler buildProtectedApiRouter({
         'videos_marked': result.videosMarked,
         'total_marked': result.totalMarked,
       }),
-      headers: {'content-type': 'application/json'},
-    );
-  });
-
-  r.get('/v1/integrations', (Request req) async {
-    final rows = await db.select(db.integrations).get();
-    final list = <Map<String, dynamic>>[];
-    for (final e in rows) {
-      final requiredAccountTypes =
-          integrationAccountTypesRequiredForIntegration(e.integrationType);
-      list.add({
-        'id': e.id,
-        'integration_type': e.integrationType,
-        'enabled': e.enabled,
-        'poll_seconds': e.pollSeconds,
-        'config_json': _jsonDecodeLoose(e.configJson),
-        'config_json_schema': _jsonDecodeLoose(e.configJsonSchema),
-        'secrets_configured':
-            await integrationSecretsConfigured(
-              secrets,
-              e.id,
-              e.integrationType,
-            ),
-        'accounts_configured': await integrationAccountsSatisfiedForEnable(
-          secrets,
-          db,
-          e.id,
-          e.integrationType,
-        ),
-        'linked_accounts': await listAccountsForIntegrationJson(
-          db,
-          secrets,
-          e.id,
-        ),
-        'required_account_types': [
-          for (final typeId in requiredAccountTypes)
-            {
-              'account_type': typeId,
-              'account_type_label':
-                  kIntegrationAccountTypes[typeId]?.label ?? typeId,
-              'signup_url': kIntegrationAccountTypes[typeId]?.signupUrl ?? '',
-              'supports_oauth_sign_in':
-                  kIntegrationAccountTypes[typeId]?.supportsOAuthSignIn ??
-                      false,
-            },
-        ],
-      });
-    }
-    return Response.ok(
-      jsonEncode({'items': list}),
       headers: {'content-type': 'application/json'},
     );
   });
@@ -701,17 +650,6 @@ Handler buildProtectedApiRouter({
   );
 
   return r.call;
-}
-
-dynamic _jsonDecodeLoose(String? raw) {
-  if (raw == null || raw.trim().isEmpty) {
-    return null;
-  }
-  try {
-    return jsonDecode(raw);
-  } catch (_) {
-    return raw;
-  }
 }
 
 Map<String, dynamic> _alertJson(DashboardAlert a) => {

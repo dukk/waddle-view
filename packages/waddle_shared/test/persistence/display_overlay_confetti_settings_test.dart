@@ -12,17 +12,24 @@ void main() {
   test('normalizeBirthdayConfettiSettingsJsonString preserves valid keys', () {
     final raw =
         '{"shapes":["rect","mix"],"colors":["#FF00AA"],"density":0.4,'
-        '"message_interval_sec":40,"fall_speed":0.5,"opacity":0.55}';
+        '"fall_speed":0.5,"opacity":0.55}';
     final out = normalizeBirthdayConfettiSettingsJsonString(raw);
     expect(out, isNotNull);
     expect(jsonDecode(out!), {
       'shapes': ['rect', 'mix'],
       'colors': ['#FF00AA'],
       'density': 0.4,
-      'message_interval_sec': 40,
       'fall_speed': 0.5,
       'opacity': 0.55,
     });
+  });
+
+  test('normalizeBirthdayConfettiSettingsJsonString strips legacy message keys', () {
+    final out = normalizeBirthdayConfettiSettingsJsonString(
+      '{"messages":["Hi"],"message_interval_sec":40,"fall_speed":0.5}',
+    );
+    expect(out, isNotNull);
+    expect(jsonDecode(out!), {'fall_speed': 0.5});
   });
 
   test('normalize clamps extreme fall_speed into range', () {
@@ -50,7 +57,6 @@ void main() {
     expect(s.shapeTokens, BirthdayConfettiScheduleSettings.defaults.shapeTokens);
     expect(s.colorHexes, isEmpty);
     expect(s.density, BirthdayConfettiScheduleSettings.defaults.density);
-    expect(s.messageIntervalSec, BirthdayConfettiScheduleSettings.defaults.messageIntervalSec);
     expect(s.fallSpeed, BirthdayConfettiScheduleSettings.defaults.fallSpeed);
     expect(s.opacity, BirthdayConfettiScheduleSettings.defaults.opacity);
   });
@@ -58,12 +64,11 @@ void main() {
   test('BirthdayConfettiScheduleSettings.parse honors settings', () {
     final s = BirthdayConfettiScheduleSettings.parse(
       '{"shapes":["star","streamer"],"colors":["#112233","#AABBCCDD"],'
-      '"density":0.6,"message_interval_sec":50,"fall_speed":0.9,"opacity":0.6}',
+      '"density":0.6,"fall_speed":0.9,"opacity":0.6}',
     );
     expect(s.shapeTokens, ['star', 'streamer']);
     expect(s.colorHexes, ['#112233', '#AABBCCDD']);
     expect(s.density, 0.6);
-    expect(s.messageIntervalSec, 50);
     expect(s.fallSpeed, 0.9);
     expect(s.opacity, 0.6);
   });

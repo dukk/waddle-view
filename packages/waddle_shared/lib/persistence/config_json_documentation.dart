@@ -1595,7 +1595,9 @@ final Map<String, ScreenConfigJsonDoc> kTickerSlotConfigJsonMeta = {
             '[fallbackText] in this tape’s config_json. Curator KV keys in '
             'config_key_values (curator.ticker.*) tune scroll width and cadence '
             '(string values, parsed as numbers/bools). '
-            'Operator UI may also set display_text_scale_ticker for ticker font scale.',
+            'Operator UI may also set display_text_scale_ticker for ticker font scale. '
+            'Controller date/time display uses controller.time_format (12h|24h) and '
+            'controller.date_order (mdy|dmy|ymd) via GET/PUT /v1/display/settings.',
         properties: {
           'fallbackText': {
             'type': 'string',
@@ -1719,14 +1721,8 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
         _baseSchema(
           title: 'BirthdayConfettiOverlayConfig',
           description:
-              'Optional shapes, hex colors, density, message interval, fall '
-              'speed, opacity, and sparse overlay phrases in messages.',
+              'Optional shapes, hex colors, density, fall speed, and opacity.',
           properties: {
-            'messages': {
-              'type': 'array',
-              'items': {'type': 'string', 'minLength': 1},
-              'description': 'Sparse phrases shown among confetti pieces.',
-            },
             'shapes': {
               'type': 'array',
               'items': {
@@ -1745,12 +1741,6 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
               'type': 'number',
               'minimum': 0.15,
               'maximum': 0.9,
-              'x-waddle-widget': 'slider',
-            },
-            'message_interval_sec': {
-              'type': 'integer',
-              'minimum': 8,
-              'maximum': 120,
               'x-waddle-widget': 'slider',
             },
             'fall_speed': {
@@ -1773,11 +1763,9 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
         ),
       ),
       example: jsonEncode({
-        'messages': ['Happy birthday!'],
         'shapes': ['rect', 'circle', 'mix'],
         'colors': ['#E05C6C', '#FFE356'],
         'density': 0.36,
-        'message_interval_sec': 36,
         'fall_speed': 0.14,
         'opacity': 0.46,
       }),

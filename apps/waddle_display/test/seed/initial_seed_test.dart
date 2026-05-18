@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:waddle_display/alerts/alert_severity_icons_kv.dart';
 import 'package:waddle_display/config/google_kv.dart';
-import 'package:waddle_data_providers/photo_pexels/pexels_provider_extra_config.dart';
+import 'package:waddle_integrations/photo_pexels/pexels_provider_extra_config.dart';
 import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/content_category_defaults.dart';

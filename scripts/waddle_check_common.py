@@ -36,7 +36,7 @@ PUBSPEC_MARKERS = ("pubspec.yaml", "pubspec.lock")
 
 DART_PACKAGE_PREFIXES: tuple[tuple[str, str], ...] = (
     ("packages/waddle_shared/", "shared"),
-    ("packages/waddle_data_providers/", "providers"),
+    ("packages/waddle_integrations/", "integrations"),
     ("packages/waddle_plugin_sdk/", "plugin_sdk"),
     ("apps/waddle_display/", "display"),
     ("apps/waddlectl/", "waddlectl"),
@@ -407,7 +407,7 @@ def git_worktree_changed_files(root: Path) -> list[str]:
 def package_dirs(root: Path) -> dict[str, Path]:
     return {
         "shared": root / "packages" / "waddle_shared",
-        "providers": root / "packages" / "waddle_data_providers",
+        "integrations": root / "packages" / "waddle_integrations",
         "plugin_sdk": root / "packages" / "waddle_plugin_sdk",
         "display": root / "apps" / "waddle_display",
         "waddlectl": root / "apps" / "waddlectl",
@@ -424,7 +424,7 @@ def build_dart_workspace_steps(
     """Build Dart workspace check steps for pre-push, fast, or full tiers."""
     dirs = package_dirs(root)
     shared = dirs["shared"]
-    providers = dirs["providers"]
+    integrations = dirs["integrations"]
     plugin_sdk = dirs["plugin_sdk"]
     display = dirs["display"]
     waddlectl = dirs["waddlectl"]
@@ -486,15 +486,15 @@ def build_dart_workspace_steps(
             )
         )
 
-    if package_enabled("providers"):
+    if package_enabled("integrations"):
         steps.append(
             Step(
-                "dart test (waddle_data_providers)",
+                "dart test (waddle_integrations)",
                 dart_test_argv(
                     concurrency=concurrency,
-                    test_paths=test_paths_for("providers"),
+                    test_paths=test_paths_for("integrations"),
                 ),
-                providers,
+                integrations,
             )
         )
 

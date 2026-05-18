@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_data_providers/trivia_opentdb/opentdb_trivia_extra_config.dart';
+import 'package:waddle_integrations/trivia_opentdb/opentdb_trivia_extra_config.dart';
 
 void main() {
   test('parse uses defaults for empty config', () {

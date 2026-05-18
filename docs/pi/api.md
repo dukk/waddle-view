@@ -17,7 +17,7 @@ All other `/v1/*` routes require an **adopted API key**:
 
 ### Adoption (device-style pairing)
 
-1. **`POST /v1/adoption/request`** (public) — body: `identifier` (required string, caller label), optional `role` (`admin`, `operator`, `power_viewer`, `viewer`; default **`operator`**). Creates a display **security** alert (shield icon) naming the requested role and an **8-character challenge** formatted **`XXXX-XXXX`** (valid **5 minutes**). The challenge is **shown only on the display** — the HTTP response is `{ "expires_at_ms", "identifier", "role" }` (no `challenge_code`). With **`Authorization: Bearer <admin api_key>`** and the same body, an **admin** client is granted instantly (no challenge): response is `{ "api_key", "identifier", "role", "permissions" }`. Non-admin keys → **403**. **403** `adoption_role_not_allowed` when the requested role is not in curator `adoption_allowed_roles` (see **`GET /v1/curator/settings`**).
+1. **`POST /v1/adoption/request`** (public) — body: `identifier` (required string, caller label), optional `role` (`admin`, `operator`, `power_viewer`, `viewer`; default **`operator`**). Creates a display **security** alert (shield icon) naming the requested role and an **8-character challenge** formatted **`XXXX-XXXX`** (valid **5 minutes**). The challenge is **shown only on the display** — the HTTP response is `{ "expires_at_ms", "identifier", "role" }` (no `challenge_code`). With **`Authorization: Bearer <admin api_key>`** and the same body, an **admin** client is granted instantly (no challenge): response is `{ "api_key", "identifier", "role", "permissions" }`. Non-admin keys → **403**. **403** `adoption_role_not_allowed` when the requested role is not in `adoption_allowed_roles` (see **`GET /v1/display/settings`**).
 2. Operator reads the challenge on the display (alert overlay) and enters it on the controller in the same **`XXXX-XXXX`** form (hyphens optional on confirm).
 3. **`POST /v1/adoption/confirm`** (public) — body: `identifier`, `challenge_code` (8 Crockford characters; hyphens stripped). On success returns `{ "api_key", "identifier", "role", "permissions" }`. The API key is derived from the display **instance id**, challenge, and identifier, prefixed with **`wd_`**; only a **SHA-256 hash** of the full key (including the prefix) is stored in SQLite (`api_clients`).
 4. Use the API key on protected routes. Re-adopting the same **identifier** **rotates** the key.
@@ -65,7 +65,7 @@ Allowed responses include **`Access-Control-Allow-Origin`** (mirrored origin), *
 | Method | Path | Notes |
 |--------|------|--------|
 | GET | `/v1/health` | No auth required. |
-| GET | `/v1/integrations` | Lists non-secret integration settings (`id`, `integration_type`, `enabled`, `poll_seconds`, decoded `config_json` / `config_json_schema` when stored). Optional HTTP root URL lives in `config_json.baseUrl`. |
+| GET | `/v1/integrations` | Lists non-secret integration settings. Without query parameters returns `{"items":[...]}` (full catalog). With `enabled` and/or `limit`, returns paginated `{"items":[...], "total", "limit", "offset"}` — see **Integrations list** below. |
 | GET | `/v1/screens` | Display screen definitions from SQLite table **`screens`** (`screen_type`, `config_json`, `dwell_seconds`, scheduling hints, optional `config_json_schema` / `example_config_json`). |
 | GET | `/v1/ticker/items` | Current bottom-marquee items (`ordinal`, `kind`, `body`) — in-process snapshot; read-only. |
 | GET | `/v1/alerts` | All operator alerts from SQLite **`alerts`** (no redaction of bodies in MVP; do not store secrets in alerts). |
@@ -143,8 +143,8 @@ These routes use the same **Bearer session** auth as other protected `/v1/*` pat
 | POST | `/v1/ticker/tapes` | Create tape: `id`, `ticker_type`, optional `name`, `description`, `enabled`, `frequency_weight`, `sort_order`, `config_key`, `config_json`. **400** on unknown type; **409** if `id` exists. |
 | PATCH | `/v1/ticker/tapes/{id}` | JSON body may include `enabled`, `frequency_weight`, `sort_order`, `config_key`, `config_json`, `name`, `description`, `ticker_type`. |
 | DELETE | `/v1/ticker/tapes/{id}` | Deletes row; **404** if missing. |
-| GET | `/v1/curator/settings` | Aggregated curator/display tuning (program duration, history depth, ticker speed, theme, text scales, RSS photo requirement, resolved `display_timezone`, `adoption_allowed_roles`, etc.). |
-| PUT | `/v1/curator/settings` | Partial update: include only keys to change among `program_duration_seconds`, `history_depth`, `ticker_pixels_per_second`, `require_news_photo_for_screens`, `display_theme_id`, `display_text_scale_screen`, `display_text_scale_ticker`, `display_timezone` (IANA id for SQLite `display.timezone`; empty string removes the row so the display falls back to its default), `adoption_allowed_roles` (JSON array of role ids; empty array blocks all public adoption requests). Legacy `adoption_allow_new_requests` (`true` → all roles, `false` → none) is still accepted. **400** `no_curator_settings_fields` if the body is empty or has no recognized keys. |
+| GET | `/v1/display/settings` | Display-level operator settings from `config_key_values`: `display_theme_id`, `display_text_scale_screen`, `display_text_scale_ticker`, `display_timezone`, `controller_time_format` (`12h` \| `24h`), `controller_date_order` (`mdy` \| `dmy` \| `ymd`), `adoption_allowed_roles`, `adoption_allow_new_requests`. |
+| PUT | `/v1/display/settings` | Partial update of the same keys. `display_timezone` empty string removes the row (display falls back to default). `adoption_allowed_roles` is a JSON array of role ids (empty blocks public adoption). Legacy `adoption_allow_new_requests` (`true` → all roles, `false` → none) is still accepted. **400** `no_display_settings_fields` if the body is empty or has no recognized keys. |
 | GET | `/v1/config/key-values` | `{"items":[{key,value},...]}` — all rows in SQLite `config_key_values`, sorted by `key`. |
 | PUT | `/v1/config/key-values` | Upsert one row: JSON `{"key":"...","value":"..."}`. **400** `key_required` / `key_too_long` / `value_too_long` when out of range. |
 | DELETE | `/v1/config/key-values` | Query **`key`** (required): deletes that row. **404** `not_found` when absent. |
@@ -157,7 +157,29 @@ These routes use the same **Bearer session** auth as other protected `/v1/*` pat
 | PATCH | `/v1/screens/{id}` | Partial update; `config_json` re-validates layout. |
 | DELETE | `/v1/screens/{id}` | Deletes row; **404** if missing. |
 
-**Expanded read shape:** `GET /v1/integrations` includes decoded `config_json` and `config_json_schema` when stored (omit secrets in client logs). Service base URLs are in `config_json.baseUrl`.
+**Expanded read shape:** each integration item includes decoded `config_json` and `config_json_schema` when stored (omit secrets in client logs), `secrets_configured`, `accounts_configured`, `linked_accounts`, and `required_account_types`. Service base URLs are in `config_json.baseUrl`.
+
+## Integrations list (paginated browse)
+
+**Access:** `GET /v1/integrations` requires **`integrations.read`**.
+
+**Backward compatibility:** a request with **no** query parameters returns every row as `{"items":[...]}` only (no `total` / `limit` / `offset`).
+
+**Paginated mode:** set **`enabled`** (`true` \| `false`) and/or **`limit`** (default **25** when `enabled` is set, max **100**). Response adds `total`, `limit`, and `offset`.
+
+| Query | Purpose |
+|-------|---------|
+| `enabled` | `true` = enabled integrations; `false` = available to enable |
+| `limit` | Page size (1–100) |
+| `offset` | Skip rows (default **0**) |
+| `sort` | `id` (default), `integration_type`, `poll_seconds`, `enabled` |
+| `order` | `asc` (default) or `desc` |
+| `family` | Data-family prefix of `integration_type` (text before the first `_`, e.g. `news` matches `news_rss`) |
+| `integration_type` | Exact `integration_type` match |
+| `q` | Substring on `id` and `integration_type` (`%` / `_` stripped from needle) |
+| `secrets_configured` | `true` / `false` — applied after enrichment |
+| `accounts_configured` | `true` / `false` — applied after enrichment |
+| `facets` | `family` — adds `facets.family` counts (respects filters except `family`) |
 
 ## Examples
 

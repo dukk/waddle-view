@@ -1,7 +1,7 @@
 import 'package:test/test.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart';
-import 'package:waddle_data_providers/shared/provider_calendar_date_time.dart';
+import 'package:waddle_integrations/shared/provider_calendar_date_time.dart';
 
 void main() {
   setUpAll(tz_data.initializeTimeZones);

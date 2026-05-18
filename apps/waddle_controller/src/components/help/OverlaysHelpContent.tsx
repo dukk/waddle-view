@@ -16,7 +16,9 @@ export function OverlaysHelpContent() {
       </Typography>
       <Typography variant="body2" sx={{ mt: 1 }}>
         <strong>Overlay type</strong> selects the renderer (hearts rain, birthday confetti, bouncing
-        message, falling images). Edit configuration here; delete removes the row from SQLite.
+        message, falling images). Birthday confetti is visual-only (shapes, colors, density, fall
+        speed, opacity); use hearts rain or bouncing message for on-screen phrases. Edit
+        configuration here; delete removes the row from SQLite.
       </Typography>
     </>
   );

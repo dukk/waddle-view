@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Alert, Box, Button, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Button, Stack, TextField } from '@mui/material';
+import { AuthPageShell } from '@/components/brand/AuthPageShell';
 import { useControllerAuth } from '@/context/ControllerAuthContext';
 import { BffError } from '@/api/bffClient';
 
@@ -24,22 +25,11 @@ export function ControllerLoginPage() {
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        p: 3,
-      }}
+    <AuthPageShell
+      title="Sign in to this controller"
+      subtitle="Sign in to use the operator UI. Display adoption is separate and unchanged."
     >
-      <Stack component="form" onSubmit={submit} spacing={2} sx={{ width: '100%', maxWidth: 400 }}>
-        <Typography variant="h5" fontWeight={600}>
-          Sign in to this controller
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Sign in to use the operator UI. Display adoption is separate and unchanged.
-        </Typography>
+      <Stack component="form" onSubmit={submit} spacing={2}>
         {error && <Alert severity="error">{error}</Alert>}
         <TextField
           label="Username"
@@ -60,6 +50,6 @@ export function ControllerLoginPage() {
           Sign in
         </Button>
       </Stack>
-    </Box>
+    </AuthPageShell>
   );
 }

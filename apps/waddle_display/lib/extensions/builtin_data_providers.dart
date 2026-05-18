@@ -2,7 +2,7 @@ import 'package:waddle_shared/collect/stub_data_provider.dart';
 
 import 'package:waddle_shared/extensions/data_provider_registry.dart';
 
-import 'package:waddle_data_providers/waddle_data_providers.dart';
+import 'package:waddle_integrations/waddle_integrations.dart';
 
 
 

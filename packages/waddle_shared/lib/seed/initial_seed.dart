@@ -8,6 +8,7 @@ import 'package:waddle_shared/persistence/config_json_documentation.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/display_overlay_sql.dart';
 import 'package:waddle_shared/persistence/tables.dart';
+import 'package:waddle_shared/seed/tables/config_key_values_seed.dart';
 import 'package:waddle_shared/theme/display_text_scale_kv.dart';
 import 'package:waddle_shared/theme/display_theme_kv.dart';
 import 'tables/content_categories_seed.dart';
@@ -31,6 +32,7 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureDisplayThemeKv(db);
   await _ensureDisplayTimezoneKv(db);
   await _ensureDisplayTextScaleKv(db);
+  await ensureControllerDatetimeFormatKvs(db);
   await _ensureAlertSeverityIconsKv(db);
   await _ensureDefaultMothersDayOverlay(db);
   await _ensureDefaultBirthdayOverlayExample(db);
@@ -90,12 +92,10 @@ Future<void> _ensureDefaultMothersDayOverlay(AppDatabase db) async {
 Future<void> _ensureDefaultBirthdayOverlayExample(AppDatabase db) async {
   await db.customStatement(kEnsureOverlaysTableSql);
   final configJson = jsonEncode(<String, Object?>{
-    'messages': <String>['Happy birthday!'],
     'shapes': <String>['rect', 'circle', 'mix'],
     'density': 0.36,
     'fall_speed': 0.12,
     'opacity': 0.48,
-    'message_interval_sec': 38,
   });
   final confettiDoc = displayOverlayConfigJsonDocForType(
     kOverlayTypeBirthdayConfetti,

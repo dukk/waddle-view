@@ -1,5 +1,5 @@
-name: waddle_data_providers
-description: Concrete data collectors (HTTP → SQLite) for Waddle View and future cloud engines.
+name: waddle_integrations
+description: Built-in integration collectors (HTTP → SQLite) for Waddle View and future cloud engines.
 publish_to: none
 version: 1.0.0
 resolution: workspace
