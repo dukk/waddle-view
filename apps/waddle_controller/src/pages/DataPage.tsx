@@ -650,7 +650,7 @@ export function DataPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {loading && rows.length === 0 ? (
+            {loading ? (
               <TableRow>
                 <TableCell colSpan={12}>
                   <Typography variant="body2" color="text.secondary">
@@ -659,7 +659,8 @@ export function DataPage() {
                 </TableCell>
               </TableRow>
             ) : null}
-            {rows.map((row, index) => {
+            {!loading &&
+              rows.map((row, index) => {
                 const id = String(row.id ?? '');
                 const sup = Boolean(row.suppressed);
                 const rowKey = catalogRowKey(kind, row, index);
