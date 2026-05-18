@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:test/test.dart';
@@ -17,7 +19,16 @@ CREATE TABLE integrations (
   config_json_schema TEXT,
   example_config_json TEXT
 );
+CREATE TABLE integration_secrets (
+  secret_key TEXT NOT NULL PRIMARY KEY,
+  ciphertext BLOB NOT NULL,
+  updated_at_ms INTEGER NOT NULL
+);
 ''');
+      raw.execute(
+        "INSERT INTO integration_secrets (secret_key, ciphertext, updated_at_ms) "
+        "VALUES ('provider:access_token:media_pexels', X'010203', 1000)",
+      );
       raw.execute(
         "INSERT INTO integrations (id, provider_type, enabled, config_json) "
         "VALUES ('media_pexels', 'media_pexels', 1, "
@@ -53,6 +64,29 @@ CREATE TABLE integrations (
       variables: [Variable<String>(kDefaultWeatherAlertsNwsIntegrationId)],
     ).getSingle();
     expect(nws.read<String>('integration_type'), 'weather_alerts_nws');
+
+    final photoSecret = await db.customSelect(
+      'SELECT secret_key, ciphertext, updated_at_ms FROM integration_secrets '
+      'WHERE secret_key = ?',
+      variables: [
+        Variable<String>(
+          'provider:access_token:$kDefaultPhotoPexelsIntegrationId',
+        ),
+      ],
+    ).getSingleOrNull();
+    expect(photoSecret, isNotNull);
+    expect(photoSecret!.read<Uint8List>('ciphertext'), [1, 2, 3]);
+    expect(photoSecret.read<int>('updated_at_ms'), 1000);
+
+    final videoSecret = await db.customSelect(
+      'SELECT secret_key FROM integration_secrets WHERE secret_key = ?',
+      variables: [
+        Variable<String>(
+          'provider:access_token:$kDefaultVideoPexelsIntegrationId',
+        ),
+      ],
+    ).getSingleOrNull();
+    expect(videoSecret, isNotNull);
 
     final version = await db.customSelect('PRAGMA user_version').getSingle();
     expect(version.read<int>('user_version'), 6);

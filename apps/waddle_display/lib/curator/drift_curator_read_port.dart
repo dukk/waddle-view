@@ -123,7 +123,7 @@ class DriftCuratorReadPort implements CuratorReadPort {
   Future<CurrentWeatherTickerData?> loadCurrentWeatherForTicker() async {
     final locations = await (_db.select(
       _db.interestsLocations,
-    )..where((t) => t.enabled.equals(true))).get();
+    )..where((t) => t.includeWeather.equals(true))).get();
     if (locations.isEmpty) {
       return null;
     }
@@ -149,7 +149,10 @@ class DriftCuratorReadPort implements CuratorReadPort {
   Future<List<WeatherGovAlertTickerItem>> loadWeatherGovAlertsForTicker() async {
     final locations = await (_db.select(
       _db.interestsLocations,
-    )..where((t) => t.enabled.equals(true))).get();
+    )..where(
+      (t) =>
+          t.includeWeather.equals(true) & t.includeWeatherAlerts.equals(true),
+    )).get();
     if (locations.isEmpty) {
       return const [];
     }

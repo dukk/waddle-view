@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
-import 'package:waddle_data_providers/weather_nws_alerts/nws_weather_gov_alerts_data_provider.dart';
+import 'package:waddle_data_providers/weather_alerts_nws/nws_weather_gov_alerts_data_provider.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 
@@ -75,7 +75,7 @@ void main() {
     await warmDatabase(db);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: kNwsWeatherAlertsProviderId,
+            id: kDefaultWeatherAlertsNwsIntegrationId,
             integrationType: 'weather_alerts_nws',
             enabled: const Value(false),
             pollSeconds: const Value(60),
@@ -89,6 +89,8 @@ void main() {
             name: 'NYC',
             latitude: 40.7128,
             longitude: -74.0060,
+            includeWeather: const Value(true),
+            includeWeatherAlerts: const Value(true),
           ),
         );
     final ctx = await _ctx(db, InMemorySecretStore());
@@ -114,6 +116,8 @@ void main() {
             name: 'NYC',
             latitude: 40.7128,
             longitude: -74.0060,
+            includeWeather: const Value(true),
+            includeWeatherAlerts: const Value(true),
           ),
         );
     final ctx = await _ctx(db, InMemorySecretStore());
@@ -135,7 +139,7 @@ void main() {
     await warmDatabase(db);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: kNwsWeatherAlertsProviderId,
+            id: kDefaultWeatherAlertsNwsIntegrationId,
             integrationType: 'weather_alerts_nws',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.weather.gov'),
@@ -150,6 +154,8 @@ void main() {
             name: 'NYC',
             latitude: 40.7128,
             longitude: -74.0060,
+            includeWeather: const Value(true),
+            includeWeatherAlerts: const Value(true),
           ),
         );
     final ctx = await _ctx(db, InMemorySecretStore());
@@ -185,7 +191,7 @@ void main() {
     await warmDatabase(db);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: kNwsWeatherAlertsProviderId,
+            id: kDefaultWeatherAlertsNwsIntegrationId,
             integrationType: 'weather_alerts_nws',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.weather.gov'),
@@ -198,6 +204,8 @@ void main() {
             name: 'NYC',
             latitude: 40.7128,
             longitude: -74.0060,
+            includeWeather: const Value(true),
+            includeWeatherAlerts: const Value(true),
           ),
         );
     final ctx = await _ctx(db, InMemorySecretStore());
@@ -236,7 +244,7 @@ void main() {
     await warmDatabase(db);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: kNwsWeatherAlertsProviderId,
+            id: kDefaultWeatherAlertsNwsIntegrationId,
             integrationType: 'weather_alerts_nws',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.weather.gov'),
@@ -249,6 +257,8 @@ void main() {
             name: 'NYC',
             latitude: 40.7128,
             longitude: -74.0060,
+            includeWeather: const Value(true),
+            includeWeatherAlerts: const Value(true),
           ),
         );
     await db.into(db.weatherAlerts).insert(
@@ -278,7 +288,7 @@ void main() {
     await warmDatabase(db);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: kNwsWeatherAlertsProviderId,
+            id: kDefaultWeatherAlertsNwsIntegrationId,
             integrationType: 'weather_alerts_nws',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.weather.gov'),
@@ -291,6 +301,8 @@ void main() {
             name: 'NYC',
             latitude: 40.7128,
             longitude: -74.0060,
+            includeWeather: const Value(true),
+            includeWeatherAlerts: const Value(true),
           ),
         );
     await db.into(db.weatherAlerts).insert(
@@ -323,7 +335,7 @@ void main() {
     await warmDatabase(db);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: kNwsWeatherAlertsProviderId,
+            id: kDefaultWeatherAlertsNwsIntegrationId,
             integrationType: 'weather_alerts_nws',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.weather.gov'),
@@ -336,6 +348,8 @@ void main() {
             name: 'NYC',
             latitude: 40.7128,
             longitude: -74.0060,
+            includeWeather: const Value(true),
+            includeWeatherAlerts: const Value(true),
           ),
         );
     final ctx = await _ctx(db, InMemorySecretStore());
@@ -355,7 +369,7 @@ void main() {
     await warmDatabase(db);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: kNwsWeatherAlertsProviderId,
+            id: kDefaultWeatherAlertsNwsIntegrationId,
             integrationType: 'weather_alerts_nws',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.weather.gov'),
@@ -368,6 +382,8 @@ void main() {
             name: 'NYC',
             latitude: 40.7128,
             longitude: -74.0060,
+            includeWeather: const Value(true),
+            includeWeatherAlerts: const Value(true),
           ),
         );
     final longDesc = List.filled(500, 'x').join();
@@ -393,13 +409,13 @@ void main() {
     await db.close();
   });
 
-  test('collect skips HTTP and clears alerts when include_active_weather_alerts is false',
+  test('collect skips HTTP and clears alerts when include_weather_alerts is false',
       () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: kNwsWeatherAlertsProviderId,
+            id: kDefaultWeatherAlertsNwsIntegrationId,
             integrationType: 'weather_alerts_nws',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.weather.gov'),
@@ -412,8 +428,8 @@ void main() {
             name: 'NYC',
             latitude: 40.7128,
             longitude: -74.0060,
-            enabled: const Value(true),
-            includeActiveWeatherAlerts: const Value(false),
+            includeWeather: const Value(true),
+            includeWeatherAlerts: const Value(false),
           ),
         );
     await db.into(db.weatherAlerts).insert(
@@ -438,13 +454,13 @@ void main() {
     await db.close();
   });
 
-  test('collect requests only locations with include_active_weather_alerts true',
+  test('collect requests only locations with include_weather_alerts true',
       () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: kNwsWeatherAlertsProviderId,
+            id: kDefaultWeatherAlertsNwsIntegrationId,
             integrationType: 'weather_alerts_nws',
             pollSeconds: const Value(60),
             baseUrl: const Value('https://api.weather.gov'),
@@ -457,8 +473,8 @@ void main() {
             name: 'NYC',
             latitude: 40.7128,
             longitude: -74.0060,
-            enabled: const Value(true),
-            includeActiveWeatherAlerts: const Value(false),
+            includeWeather: const Value(true),
+            includeWeatherAlerts: const Value(false),
           ),
         );
     await db.into(db.interestsLocations).insert(
@@ -467,8 +483,8 @@ void main() {
             name: 'Boston',
             latitude: 42.3601,
             longitude: -71.0589,
-            enabled: const Value(true),
-            includeActiveWeatherAlerts: const Value(true),
+            includeWeather: const Value(true),
+            includeWeatherAlerts: const Value(true),
           ),
         );
     final ctx = await _ctx(db, InMemorySecretStore());

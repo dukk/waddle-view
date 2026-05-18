@@ -56,6 +56,7 @@ void main() {
             name: 'Salt Lake City, UT',
             latitude: 40.7608,
             longitude: -111.8910,
+            includeWeather: const Value(true),
           ),
         );
     await db.into(db.weatherCurrent).insert(
@@ -78,6 +79,7 @@ void main() {
             name: 'Atlanta, GA',
             latitude: 33.7490,
             longitude: -84.3880,
+            includeWeather: const Value(true),
           ),
         );
     await db.into(db.weatherCurrent).insert(
@@ -144,6 +146,7 @@ void main() {
             name: 'Atlanta, GA',
             latitude: 33.7490,
             longitude: -84.3880,
+            includeWeather: const Value(true),
           ),
         );
     await db.into(db.weatherCurrent).insert(
@@ -211,6 +214,7 @@ void main() {
             name: 'Only City',
             latitude: 1,
             longitude: 2,
+            includeWeather: const Value(true),
           ),
         );
     await db.into(db.weatherCurrent).insert(
@@ -279,6 +283,7 @@ void main() {
             name: 'Compact City',
             latitude: 1,
             longitude: 2,
+            includeWeather: const Value(true),
           ),
         );
     await db.into(db.weatherCurrent).insert(
@@ -347,6 +352,7 @@ void main() {
             name: 'Scaler City',
             latitude: 1,
             longitude: 2,
+            includeWeather: const Value(true),
           ),
         );
     await db.into(db.weatherCurrent).insert(

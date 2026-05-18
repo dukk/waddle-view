@@ -1503,7 +1503,7 @@ final Map<String, ScreenConfigJsonDoc> kTickerSlotConfigJsonMeta = {
         title: 'TickerWeatherSlotDoc',
         description:
             'Live weather line plus optional NWS active-alert lines when '
-            'interests_locations.include_active_weather_alerts is enabled. When '
+            'interests_locations.include_weather_alerts is enabled. When '
             'live data is empty, falls back to [fallbackText] in this tape’s '
             'config_json.',
         properties: {

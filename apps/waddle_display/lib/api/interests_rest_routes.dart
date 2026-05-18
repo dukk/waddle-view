@@ -4,6 +4,7 @@ import 'package:drift/drift.dart' show OrderingTerm, Value;
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/weather_location_category.dart';
 
 bool _isValidInterestCategoryId(String id) {
   return RegExp(r'^[a-z][a-z0-9_]{0,62}$').hasMatch(id);
@@ -39,6 +40,20 @@ bool? _parseBool(dynamic raw) {
   final s = '$raw'.trim().toLowerCase();
   if (s == 'true' || s == '1') return true;
   if (s == 'false' || s == '0') return false;
+  return null;
+}
+
+bool? _parseLocationInterestBool(
+  Map<String, dynamic> body,
+  String key,
+  String? legacyKey,
+) {
+  if (body.containsKey(key)) {
+    return _parseBool(body[key]);
+  }
+  if (legacyKey != null && body.containsKey(legacyKey)) {
+    return _parseBool(body[legacyKey]);
+  }
   return null;
 }
 
@@ -80,8 +95,10 @@ void registerInterestsRestRoutes(
             'name': row.name,
             'latitude': row.latitude,
             'longitude': row.longitude,
-            'enabled': row.enabled,
-            'include_active_weather_alerts': row.includeActiveWeatherAlerts,
+            'category': row.category,
+            'include_weather': row.includeWeather,
+            'include_weather_alerts': row.includeWeatherAlerts,
+            'include_local_news': row.includeLocalNews,
           },
       ],
     });
@@ -97,20 +114,38 @@ void registerInterestsRestRoutes(
     if (id.isEmpty || name.isEmpty || lat == null || lon == null) {
       return _jsonErr(400, 'id_name_latitude_longitude_required');
     }
+    final categoryRaw = '${body['category'] ?? ''}'.trim();
+    final category = categoryRaw.isEmpty
+        ? weatherLocationCategoryFromName(name)
+        : categoryRaw;
     final existing = await (db.select(db.interestsLocations)
           ..where((t) => t.id.equals(id)))
         .getSingleOrNull();
     if (existing != null) return _jsonErr(409, 'id_exists');
-    final enabled = _parseBool(body['enabled']) ?? true;
-    final alerts = _parseBool(body['include_active_weather_alerts']) ?? true;
+    final includeWeather = _parseLocationInterestBool(
+          body,
+          'include_weather',
+          'enabled',
+        ) ??
+        false;
+    final includeWeatherAlerts = _parseLocationInterestBool(
+          body,
+          'include_weather_alerts',
+          'include_active_weather_alerts',
+        ) ??
+        false;
+    final includeLocalNews =
+        _parseLocationInterestBool(body, 'include_local_news', null) ?? false;
     await db.into(db.interestsLocations).insert(
           InterestsLocationsCompanion.insert(
             id: id,
             name: name,
             latitude: lat,
             longitude: lon,
-            enabled: Value(enabled),
-            includeActiveWeatherAlerts: Value(alerts),
+            category: Value(category),
+            includeWeather: Value(includeWeather),
+            includeWeatherAlerts: Value(includeWeatherAlerts),
+            includeLocalNews: Value(includeLocalNews),
           ),
         );
     await onConfigChanged();
@@ -135,20 +170,39 @@ void registerInterestsRestRoutes(
         ? _parseDouble(body['longitude'])
         : existing.longitude;
     if (lat == null || lon == null) return _jsonErr(400, 'invalid_coordinates');
-    final enabled = body.containsKey('enabled')
-        ? (_parseBool(body['enabled']) ?? existing.enabled)
-        : existing.enabled;
-    final alerts = body.containsKey('include_active_weather_alerts')
-        ? (_parseBool(body['include_active_weather_alerts']) ??
-            existing.includeActiveWeatherAlerts)
-        : existing.includeActiveWeatherAlerts;
+    final category = body.containsKey('category')
+        ? '${body['category']}'.trim()
+        : (body.containsKey('name')
+            ? weatherLocationCategoryFromName(name)
+            : existing.category);
+    if (category.isEmpty) return _jsonErr(400, 'invalid_category');
+    final includeWeather = _parseLocationInterestBool(
+          body,
+          'include_weather',
+          'enabled',
+        ) ??
+        existing.includeWeather;
+    final includeWeatherAlerts = _parseLocationInterestBool(
+          body,
+          'include_weather_alerts',
+          'include_active_weather_alerts',
+        ) ??
+        existing.includeWeatherAlerts;
+    final includeLocalNews = _parseLocationInterestBool(
+          body,
+          'include_local_news',
+          null,
+        ) ??
+        existing.includeLocalNews;
     await (db.update(db.interestsLocations)..where((t) => t.id.equals(id))).write(
       InterestsLocationsCompanion(
         name: Value(name),
         latitude: Value(lat),
         longitude: Value(lon),
-        enabled: Value(enabled),
-        includeActiveWeatherAlerts: Value(alerts),
+        category: Value(category),
+        includeWeather: Value(includeWeather),
+        includeWeatherAlerts: Value(includeWeatherAlerts),
+        includeLocalNews: Value(includeLocalNews),
       ),
     );
     await onConfigChanged();

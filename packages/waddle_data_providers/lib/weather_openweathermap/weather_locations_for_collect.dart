@@ -3,7 +3,8 @@ import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:waddle_shared/persistence/database.dart';
 import 'weather_provider_extra_config.dart';
 
-/// Enabled [InterestsLocations] rows, or a single synthetic `default` when none.
+/// [InterestsLocations] rows with [InterestsLocation.includeWeather], or a
+/// single synthetic `default` when none.
 class WeatherCollectLocation {
   const WeatherCollectLocation({
     required this.id,
@@ -23,7 +24,7 @@ Future<List<WeatherCollectLocation>> resolveWeatherLocationsForCollect(
   WeatherLocationConfig defaultLocation,
 ) async {
   final rows = await (db.select(db.interestsLocations)
-        ..where((t) => t.enabled.equals(true))
+        ..where((t) => t.includeWeather.equals(true))
         ..orderBy([(t) => OrderingTerm.asc(t.id)]))
       .get();
   if (rows.isNotEmpty) {
@@ -48,22 +49,22 @@ Future<List<WeatherCollectLocation>> resolveWeatherLocationsForCollect(
   ];
 }
 
-/// Enabled [InterestsLocations] rows that should receive NWS active-alert
-/// collection, or a single synthetic `default` when no rows are enabled (same
-/// fallback as [resolveWeatherLocationsForCollect]).
+/// [InterestsLocations] rows that should receive NWS active-alert collection,
+/// or a single synthetic `default` when no rows have [InterestsLocation.includeWeather]
+/// (same fallback as [resolveWeatherLocationsForCollect]).
 ///
-/// When at least one row is enabled, only rows with
-/// [WeatherLocations.includeActiveWeatherAlerts] true are included (the list
-/// may be empty if every enabled row opts out).
+/// When at least one row has weather enabled, only rows with
+/// [InterestsLocation.includeWeatherAlerts] true are included (the list may be
+/// empty if every weather-enabled row opts out).
 Future<List<WeatherCollectLocation>> resolveWeatherLocationsForActiveAlertsCollect(
   AppDatabase db,
   WeatherLocationConfig defaultLocation,
 ) async {
-  final enabledRows = await (db.select(db.interestsLocations)
-        ..where((t) => t.enabled.equals(true))
+  final weatherRows = await (db.select(db.interestsLocations)
+        ..where((t) => t.includeWeather.equals(true))
         ..orderBy([(t) => OrderingTerm.asc(t.id)]))
       .get();
-  if (enabledRows.isEmpty) {
+  if (weatherRows.isEmpty) {
     return [
       WeatherCollectLocation(
         id: 'default',
@@ -73,8 +74,8 @@ Future<List<WeatherCollectLocation>> resolveWeatherLocationsForActiveAlertsColle
       ),
     ];
   }
-  return enabledRows
-      .where((r) => r.includeActiveWeatherAlerts)
+  return weatherRows
+      .where((r) => r.includeWeatherAlerts)
       .map(
         (r) => WeatherCollectLocation(
           id: r.id,

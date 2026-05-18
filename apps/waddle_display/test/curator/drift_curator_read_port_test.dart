@@ -185,7 +185,7 @@ void main() {
           InterestsStockSymbolsCompanion.insert(
             id: 'gone',
             symbol: 'GONE',
-            enabled: const Value(false),
+            includeWeather: const Value(false),
           ),
         );
     final port = DriftCuratorReadPort(db);
@@ -214,7 +214,7 @@ void main() {
           InterestsStockSymbolsCompanion.insert(
             id: 'gone',
             symbol: 'GONE',
-            enabled: const Value(false),
+            includeWeather: const Value(false),
           ),
         );
     await db.into(db.stockQuotes).insert(
@@ -244,6 +244,7 @@ void main() {
             name: 'Atlanta, GA',
             latitude: 33.749,
             longitude: -84.388,
+            includeWeather: const Value(true),
           ),
         );
     await db.into(db.weatherCurrent).insert(
@@ -272,6 +273,7 @@ void main() {
             name: 'Atlanta, GA',
             latitude: 33.749,
             longitude: -84.388,
+            includeWeather: const Value(true),
           ),
         );
     await db.into(db.interestsLocations).insert(
@@ -280,6 +282,7 @@ void main() {
             name: 'Denver, CO',
             latitude: 39.7392,
             longitude: -104.9903,
+            includeWeather: const Value(true),
           ),
         );
     await db.into(db.weatherAlerts).insert(

@@ -34,7 +34,7 @@ void main() {
             name: 'Beta',
             latitude: 2,
             longitude: 2,
-            enabled: const Value(true),
+            includeWeather: const Value(true),
           ),
         );
     await db.into(db.interestsLocations).insert(
@@ -43,7 +43,7 @@ void main() {
             name: 'Alpha',
             latitude: 1,
             longitude: -1,
-            enabled: const Value(true),
+            includeWeather: const Value(true),
           ),
         );
     await db.into(db.interestsLocations).insert(
@@ -52,7 +52,7 @@ void main() {
             name: 'Off',
             latitude: 0,
             longitude: 0,
-            enabled: const Value(false),
+            includeWeather: const Value(false),
           ),
         );
     const def = WeatherLocationConfig(
@@ -85,7 +85,7 @@ void main() {
 
   test(
     'resolveWeatherLocationsForActiveAlertsCollect omits rows with '
-    'include_active_weather_alerts false',
+    'include_weather_alerts false',
     () async {
       final db = openMemoryDatabase();
       await warmDatabase(db);
@@ -95,8 +95,8 @@ void main() {
               name: 'A',
               latitude: 1,
               longitude: 1,
-              enabled: const Value(true),
-              includeActiveWeatherAlerts: const Value(true),
+              includeWeather: const Value(true),
+              includeWeatherAlerts: const Value(true),
             ),
           );
       await db.into(db.interestsLocations).insert(
@@ -105,8 +105,8 @@ void main() {
               name: 'B',
               latitude: 2,
               longitude: 2,
-              enabled: const Value(true),
-              includeActiveWeatherAlerts: const Value(false),
+              includeWeather: const Value(true),
+              includeWeatherAlerts: const Value(false),
             ),
           );
       const def = WeatherLocationConfig(name: 'X', latitude: 0, longitude: 0);
@@ -128,8 +128,8 @@ void main() {
               name: 'Only',
               latitude: 2,
               longitude: 2,
-              enabled: const Value(true),
-              includeActiveWeatherAlerts: const Value(false),
+              includeWeather: const Value(true),
+              includeWeatherAlerts: const Value(false),
             ),
           );
       const def = WeatherLocationConfig(name: 'X', latitude: 0, longitude: 0);

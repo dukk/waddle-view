@@ -148,6 +148,7 @@ void main() {
             name: 'NYC',
             latitude: 40.7128,
             longitude: -74.0060,
+            includeWeather: const Value(true),
           ),
         );
     final secrets = InMemorySecretStore();
@@ -207,6 +208,7 @@ void main() {
             name: 'NYC',
             latitude: 40.7128,
             longitude: -74.0060,
+            includeWeather: const Value(true),
           ),
         );
     await db.into(db.interestsLocations).insert(
@@ -215,6 +217,7 @@ void main() {
             name: 'Denver',
             latitude: 39.7392,
             longitude: -104.9903,
+            includeWeather: const Value(true),
           ),
         );
     final secrets = InMemorySecretStore();
@@ -270,6 +273,7 @@ void main() {
             name: 'NYC',
             latitude: 40.7128,
             longitude: -74.0060,
+            includeWeather: const Value(true),
           ),
         );
     final secrets = InMemorySecretStore();
@@ -314,6 +318,7 @@ void main() {
             name: 'NYC',
             latitude: 40.7128,
             longitude: -74.0060,
+            includeWeather: const Value(true),
           ),
         );
     final secrets = InMemorySecretStore();

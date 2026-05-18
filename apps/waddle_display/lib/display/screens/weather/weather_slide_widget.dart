@@ -105,7 +105,7 @@ class WeatherSlideWidget extends StatelessWidget {
     final primaryAccent = palette?.accent1 ?? theme.colorScheme.secondary;
     final configuredLocationId = weatherLocationIdForSpec(spec);
     final locationQuery = db.select(db.interestsLocations)
-      ..where((t) => t.enabled.equals(true))
+      ..where((t) => t.includeWeather.equals(true))
       ..orderBy([(t) => OrderingTerm.asc(t.id)]);
     return StreamBuilder<List<dynamic>>(
       stream: locationQuery.watch(),

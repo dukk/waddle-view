@@ -6,8 +6,10 @@ export type WeatherLocationRow = {
   name: string;
   latitude: number;
   longitude: number;
-  enabled: boolean;
-  include_active_weather_alerts: boolean;
+  category: string;
+  include_weather: boolean;
+  include_weather_alerts: boolean;
+  include_local_news: boolean;
 };
 
 export type RssFeedRow = {
@@ -64,9 +66,14 @@ export async function listWeatherLocations(
 
 export async function createWeatherLocation(
   display: SavedDisplay,
-  row: Omit<WeatherLocationRow, 'enabled' | 'include_active_weather_alerts'> & {
-    enabled?: boolean;
-    include_active_weather_alerts?: boolean;
+  row: Omit<
+    WeatherLocationRow,
+    'include_weather' | 'include_weather_alerts' | 'include_local_news'
+  > & {
+    category?: string;
+    include_weather?: boolean;
+    include_weather_alerts?: boolean;
+    include_local_news?: boolean;
   },
 ): Promise<void> {
   await apiFetch(display, '/v1/interests/weather-locations', {

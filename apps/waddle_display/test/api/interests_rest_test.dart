@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/persistence/database.dart';
@@ -25,8 +26,9 @@ void main() {
         'name': 'Seattle',
         'latitude': 47.6,
         'longitude': -122.3,
-        'enabled': true,
-        'include_active_weather_alerts': false,
+        'include_weather': true,
+        'include_weather_alerts': false,
+        'include_local_news': false,
       }),
     );
     expect(create.statusCode, 200);
@@ -39,6 +41,7 @@ void main() {
     final items = (jsonDecode(list.body) as Map)['items'] as List;
     expect(items.length, 1);
     expect(items.first['id'], 'sea');
+    expect(items.first['category'], 'general');
 
     final patch = await http.patch(
       Uri.parse('$base/v1/interests/weather-locations/sea'),
@@ -46,6 +49,14 @@ void main() {
       body: jsonEncode({'name': 'Seattle, WA'}),
     );
     expect(patch.statusCode, 200);
+
+    final listAfterPatch = await http.get(
+      Uri.parse('$base/v1/interests/weather-locations'),
+      headers: auth,
+    );
+    final patched = ((jsonDecode(listAfterPatch.body) as Map)['items'] as List).first
+        as Map<String, dynamic>;
+    expect(patched['category'], 'north_america');
 
     final del = await http.delete(
       Uri.parse('$base/v1/interests/weather-locations/sea'),
@@ -72,6 +83,7 @@ void main() {
             name: 'X',
             latitude: 1,
             longitude: 2,
+            includeWeather: const Value(true),
           ),
         );
     await db.into(db.weatherCurrent).insert(

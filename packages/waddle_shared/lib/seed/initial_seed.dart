@@ -13,6 +13,7 @@ import 'package:waddle_shared/theme/display_theme_kv.dart';
 import 'tables/content_categories_seed.dart';
 import 'tables/interests_jokes_seed.dart';
 import 'tables/integrations_seed.dart';
+import 'tables/interests_locations_seed.dart';
 import 'tables/interests_rss_feeds_seed.dart';
 import 'tables/interests_trivia_seed.dart';
 import 'tables/curator_configurations_seed.dart';
@@ -21,7 +22,7 @@ import 'tables/curator_configurations_seed.dart';
 Future<void> ensureInitialSeed(AppDatabase db) async {
   await ensureIntegrationsDefaults(db);
   await _ensureDefaultInterestsStockSymbols(db);
-  await _ensureDefaultInterestsLocations(db);
+  await ensureDefaultInterestsLocations(db);
   await ensureDefaultContentCategories(db);
   await ensureDefaultInterestsJokes(db);
   await ensureDefaultInterestsTrivia(db);
@@ -1225,155 +1226,3 @@ Future<void> _ensurePhotoCollageScreens(AppDatabase db) async {
   );
 }
 
-Future<void> _ensureDefaultInterestsLocations(AppDatabase db) async {
-  await db
-      .into(db.interestsLocations)
-      .insertOnConflictUpdate(
-        InterestsLocationsCompanion.insert(
-          id: 'salt_lake_city_ut',
-          name: 'Salt Lake City, UT',
-          latitude: 40.7608,
-          longitude: -111.8910,
-        ),
-      );
-  await db
-      .into(db.interestsLocations)
-      .insertOnConflictUpdate(
-        InterestsLocationsCompanion.insert(
-          id: 'atlanta_ga',
-          name: 'Atlanta, GA',
-          latitude: 33.7490,
-          longitude: -84.3880,
-        ),
-      );
-  await db
-      .into(db.interestsLocations)
-      .insertOnConflictUpdate(
-        InterestsLocationsCompanion.insert(
-          id: 'sandiego_ca',
-          name: 'San Diego, CA',
-          latitude: 32.7157,
-          longitude: -117.1611,
-        ),
-      );
-  await db
-      .into(db.interestsLocations)
-      .insertOnConflictUpdate(
-        InterestsLocationsCompanion.insert(
-          id: 'miami_fl',
-          name: 'Miami, FL',
-          latitude: 25.7617,
-          longitude: -80.1918,
-        ),
-      );
-  await db
-      .into(db.interestsLocations)
-      .insertOnConflictUpdate(
-        InterestsLocationsCompanion.insert(
-          id: 'denver_co',
-          name: 'Denver, CO',
-          latitude: 39.7392,
-          longitude: -104.9903,
-        ),
-      );
-  await db
-      .into(db.interestsLocations)
-      .insertOnConflictUpdate(
-        InterestsLocationsCompanion.insert(
-          id: 'las_vegas_nv',
-          name: 'Las Vegas, NV',
-          latitude: 36.1699,
-          longitude: -115.1398,
-        ),
-      );
-  await db
-      .into(db.interestsLocations)
-      .insertOnConflictUpdate(
-        InterestsLocationsCompanion.insert(
-          id: 'phoenix_az',
-          name: 'Phoenix, AZ',
-          latitude: 33.4483,
-          longitude: -112.0740,
-        ),
-      );
-  await db
-      .into(db.interestsLocations)
-      .insertOnConflictUpdate(
-        InterestsLocationsCompanion.insert(
-          id: 'seattle_wa',
-          name: 'Seattle, WA',
-          latitude: 47.6062,
-          longitude: -122.3321,
-        ),
-      );
-  await db
-      .into(db.interestsLocations)
-      .insertOnConflictUpdate(
-        InterestsLocationsCompanion.insert(
-          id: 'washington_dc',
-          name: 'Washington, DC',
-          latitude: 38.8951,
-          longitude: -77.0369,
-        ),
-      );
-  await db
-      .into(db.interestsLocations)
-      .insertOnConflictUpdate(
-        InterestsLocationsCompanion.insert(
-          id: 'boston_ma',
-          name: 'Boston, MA',
-          latitude: 42.3601,
-          longitude: -71.0589,
-        ),
-      );
-  await db
-      .into(db.interestsLocations)
-      .insertOnConflictUpdate(
-        InterestsLocationsCompanion.insert(
-          id: 'chicago_il',
-          name: 'Chicago, IL',
-          latitude: 41.8781,
-          longitude: -87.6298,
-        ),
-      );
-  await db
-      .into(db.interestsLocations)
-      .insertOnConflictUpdate(
-        InterestsLocationsCompanion.insert(
-          id: 'houston_tx',
-          name: 'Houston, TX',
-          latitude: 29.7604,
-          longitude: -95.3698,
-        ),
-      );
-  await db
-      .into(db.interestsLocations)
-      .insertOnConflictUpdate(
-        InterestsLocationsCompanion.insert(
-          id: 'austin_tx',
-          name: 'Austin, TX',
-          latitude: 30.2672,
-          longitude: -97.7431,
-        ),
-      );
-  await db
-      .into(db.interestsLocations)
-      .insertOnConflictUpdate(
-        InterestsLocationsCompanion.insert(
-          id: 'san_francisco_ca',
-          name: 'San Francisco, CA',
-          latitude: 37.7749,
-          longitude: -122.4194,
-        ),
-      );
-  await db
-      .into(db.interestsLocations)
-      .insertOnConflictUpdate(
-        InterestsLocationsCompanion.insert(
-          id: 'new_york_ny',
-          name: 'New York, NY',
-          latitude: 40.7128,
-          longitude: -74.0060,
-        ),
-      );
-}

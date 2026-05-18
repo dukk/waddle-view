@@ -50,8 +50,8 @@ class NwsWeatherGovAlertsDataProvider implements IDataProvider {
     final optedOut = await (ctx.db.select(ctx.db.interestsLocations)
           ..where(
             (t) => Expression.and([
-              t.enabled.equals(true),
-              t.includeActiveWeatherAlerts.equals(false),
+              t.includeWeather.equals(true),
+              t.includeWeatherAlerts.equals(false),
             ]),
           ))
         .get();
@@ -72,7 +72,7 @@ class NwsWeatherGovAlertsDataProvider implements IDataProvider {
 
     if (locations.isEmpty) {
       ctx.diagnostics.provider(
-        'nws_alerts: no locations with include_active_weather_alerts; '
+        'nws_alerts: no locations with include_weather_alerts; '
         'cleared stored alerts',
       );
       await ctx.db.delete(ctx.db.weatherAlerts).go();

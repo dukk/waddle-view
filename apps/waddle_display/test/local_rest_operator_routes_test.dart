@@ -276,6 +276,7 @@ void main() {
             name: 'Denver',
             latitude: 39,
             longitude: -105,
+            includeWeather: const Value(true),
           ),
         );
     await db.into(db.weatherCurrent).insert(
@@ -429,7 +430,7 @@ void main() {
             id: 'stock_test',
             integrationType: 'stock_finnhub',
             pollSeconds: const Value(120),
-            enabled: const Value(true),
+            includeWeather: const Value(true),
             baseUrl: const Value('http://example.invalid'),
             configJson: const Value('{"sym":"AAPL"}'),
           ),

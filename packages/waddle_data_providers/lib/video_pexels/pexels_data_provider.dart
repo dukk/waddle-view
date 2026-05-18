@@ -18,7 +18,7 @@ import 'pexels_video_mp4_pick.dart';
 
 const String kVideoPexelsIntegrationType = 'video_pexels';
 
-const String kDefaultPexelsBaseUrl = 'https://api.pexels.com';
+const String _kDefaultPexelsBaseUrl = 'https://api.pexels.com';
 
 const Duration _rollingHour = Duration(hours: 1);
 
@@ -140,7 +140,7 @@ class PexelsVideosDataProvider implements IDataProvider {
 
   String _normalizeBaseUrl(String? raw) {
     if (raw == null || raw.trim().isEmpty) {
-      return kDefaultPexelsBaseUrl;
+      return _kDefaultPexelsBaseUrl;
     }
     return raw.trim().replaceAll(RegExp(r'/$'), '');
   }

@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import MyLocationIcon from '@mui/icons-material/MyLocation';
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -72,8 +77,19 @@ import {
   stockSymbolInterestId,
   weatherLocationInterestId,
 } from '@/util/interestSlug';
+import { categorySeasonPayload, formatCategorySeason } from '@/util/categorySeason';
+import { findNearestWeatherLocation } from '@/util/nearestLocation';
+import {
+  interestCategoryLabel,
+  weatherLocationCategoryFromName,
+} from '@/util/weatherLocationCategory';
 
-type TabId = 'weather' | 'rss' | 'stocks' | 'jokes' | 'trivia';
+type TabId = 'locations' | 'rss' | 'stocks' | 'jokes' | 'trivia';
+
+type LocationInterestField =
+  | 'include_weather'
+  | 'include_weather_alerts'
+  | 'include_local_news';
 
 type CuratorCategoryOption = { id: string; label: string };
 
@@ -88,8 +104,13 @@ export function InterestsPage() {
   const { loading, wrapRefresh } = useDisplayRefresh();
   const { layout, setLayout } = useListLayoutPreference('interests');
 
-  const [tab, setTab] = useState<TabId>('weather');
+  const [tab, setTab] = useState<TabId>('locations');
+  const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [detectingLocation, setDetectingLocation] = useState(false);
+  const [expandedLocationCategories, setExpandedLocationCategories] = useState<
+    string[]
+  >([]);
 
   const [weather, setWeather] = useState<WeatherLocationRow[]>([]);
   const [rss, setRss] = useState<RssFeedRow[]>([]);
@@ -134,6 +155,15 @@ export function InterestsPage() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    setFilterCategory(null);
+  }, [tab]);
+
+  const categoryLabel = useCallback(
+    (categoryId: string) => interestCategoryLabel(categoryId, curatorCategories),
+    [curatorCategories],
+  );
+
   const openAdd = () => {
     setEditingWeather(null);
     setEditingRss(null);
@@ -169,38 +199,72 @@ export function InterestsPage() {
   };
 
   const dialogTitle = useMemo(() => {
-    if (tab === 'weather') return editingWeather ? 'Edit weather location' : 'Add weather location';
+    if (tab === 'locations') return editingWeather ? 'Edit location' : 'Add location';
     if (tab === 'rss') return editingRss ? 'Edit RSS feed' : 'Add RSS feed';
     if (tab === 'stocks') return editingStock ? 'Edit stock symbol' : 'Add stock symbol';
     if (tab === 'jokes') return editingJoke ? 'Edit joke category' : 'Add joke category';
     return editingTrivia ? 'Edit trivia category' : 'Add trivia category';
   }, [tab, editingWeather, editingRss, editingStock, editingJoke, editingTrivia]);
 
-  const weatherInterested = useMemo(
-    () => weather.filter((r) => r.enabled).sort((a, b) => a.name.localeCompare(b.name)),
-    [weather],
+  const filteredWeather = useMemo(() => {
+    if (filterCategory == null) return weather;
+    return weather.filter((r) => (r.category || 'general') === filterCategory);
+  }, [weather, filterCategory]);
+
+  const filteredRss = useMemo(() => {
+    if (filterCategory == null) return rss;
+    return rss.filter((r) => (r.category || 'general') === filterCategory);
+  }, [rss, filterCategory]);
+
+  const filteredJokes = useMemo(() => {
+    if (filterCategory == null) return jokes;
+    return jokes.filter((r) => r.id === filterCategory);
+  }, [jokes, filterCategory]);
+
+  const filteredTrivia = useMemo(() => {
+    if (filterCategory == null) return trivia;
+    return trivia.filter((r) => r.id === filterCategory);
+  }, [trivia, filterCategory]);
+
+  const rssCategoryOptions = useMemo(() => categoryCounts(rss, (r) => r.category), [rss]);
+  const jokeCategoryOptions = useMemo(() => categoryCounts(jokes, (r) => r.id), [jokes]);
+  const triviaCategoryOptions = useMemo(
+    () => categoryCounts(trivia, (r) => r.id),
+    [trivia],
   );
-  const weatherNotInterested = useMemo(
-    () => weather.filter((r) => !r.enabled).sort((a, b) => a.name.localeCompare(b.name)),
-    [weather],
-  );
+
+  const locationGroups = useMemo(() => {
+    const byCategory = new Map<string, WeatherLocationRow[]>();
+    for (const row of filteredWeather) {
+      const category = row.category || 'general';
+      const list = byCategory.get(category) ?? [];
+      list.push(row);
+      byCategory.set(category, list);
+    }
+    return [...byCategory.entries()]
+      .map(([id, rows]) => ({
+        id,
+        rows: [...rows].sort((a, b) => a.name.localeCompare(b.name)),
+      }))
+      .sort((a, b) => categoryLabel(a.id).localeCompare(categoryLabel(b.id)));
+  }, [filteredWeather, categoryLabel]);
   const rssInterested = useMemo(
     () =>
-      rss
+      filteredRss
         .filter((r) => r.enabled)
         .sort((a, b) =>
           (a.title?.trim() || a.url).localeCompare(b.title?.trim() || b.url),
         ),
-    [rss],
+    [filteredRss],
   );
   const rssNotInterested = useMemo(
     () =>
-      rss
+      filteredRss
         .filter((r) => !r.enabled)
         .sort((a, b) =>
           (a.title?.trim() || a.url).localeCompare(b.title?.trim() || b.url),
         ),
-    [rss],
+    [filteredRss],
   );
   const stocksInterested = useMemo(
     () => stocks.filter((r) => r.enabled).sort((a, b) => a.symbol.localeCompare(b.symbol)),
@@ -211,12 +275,12 @@ export function InterestsPage() {
     [stocks],
   );
   const sortedJokes = useMemo(
-    () => [...jokes].sort((a, b) => a.label.localeCompare(b.label)),
-    [jokes],
+    () => [...filteredJokes].sort((a, b) => a.label.localeCompare(b.label)),
+    [filteredJokes],
   );
   const sortedTrivia = useMemo(
-    () => [...trivia].sort((a, b) => a.label.localeCompare(b.label)),
-    [trivia],
+    () => [...filteredTrivia].sort((a, b) => a.label.localeCompare(b.label)),
+    [filteredTrivia],
   );
 
   const patchWeather = useCallback(
@@ -227,6 +291,60 @@ export function InterestsPage() {
     },
     [active, load],
   );
+
+  const patchLocationCategory = useCallback(
+    async (categoryId: string, field: LocationInterestField, enabled: boolean) => {
+      if (!active) return;
+      const rows = weather.filter((r) => (r.category || 'general') === categoryId);
+      await Promise.all(
+        rows.map((row) => patchWeatherLocation(active, row.id, { [field]: enabled })),
+      );
+      await load();
+    },
+    [active, load, weather],
+  );
+
+  const detectMyLocation = useCallback(async () => {
+    if (!active || !canWrite) return;
+    if (!navigator.geolocation) {
+      setError('Geolocation is not available in this browser');
+      return;
+    }
+    setDetectingLocation(true);
+    setError(null);
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 60_000,
+        });
+      });
+      const nearest = findNearestWeatherLocation(
+        weather,
+        position.coords.latitude,
+        position.coords.longitude,
+      );
+      if (!nearest) {
+        setError('No catalog location is close enough to your position');
+        return;
+      }
+      await patchWeatherLocation(active, nearest.id, {
+        include_weather: true,
+        include_weather_alerts: true,
+        include_local_news: true,
+      });
+      const category = nearest.category || 'general';
+      setExpandedLocationCategories((prev) =>
+        prev.includes(category) ? prev : [...prev, category],
+      );
+      await load();
+    } catch (e) {
+      setError(errMsg(e));
+    } finally {
+      setDetectingLocation(false);
+    }
+  }, [active, canWrite, weather, load]);
 
   const patchRss = useCallback(
     async (id: string, patch: Parameters<typeof patchRssFeed>[2]) => {
@@ -297,8 +415,8 @@ export function InterestsPage() {
           Interests
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Configure what weather locations, news feeds, stocks, joke categories, and trivia
-          categories the display collects.
+          Configure locations, news feeds, stocks, joke categories, and trivia categories the
+          display collects.
         </Typography>
       </Box>
 
@@ -309,7 +427,7 @@ export function InterestsPage() {
       )}
 
       <Tabs value={tab} onChange={(_, v: TabId) => setTab(v)} variant="scrollable">
-        <Tab value="weather" label="Weather" />
+        <Tab value="locations" label="Locations" />
         <Tab value="rss" label="RSS" />
         <Tab value="stocks" label="Stocks" />
         <Tab value="jokes" label="Jokes" />
@@ -324,62 +442,78 @@ export function InterestsPage() {
         )}
       </CatalogPageToolbar>
 
-      {tab === 'weather' && (
-        <Stack spacing={3}>
-          <CatalogSection
-            title="Interested"
-            empty="No weather locations are marked interested."
-            layout={layout}
-            isEmpty={weatherInterested.length === 0}
-            cards={weatherInterested.map((row) => (
-              <WeatherInterestCard
-                key={row.id}
-                row={row}
-                canWrite={canWrite}
-                onEdit={() => openEditWeather(row)}
-                onDelete={() => void deleteWeather(row.id)}
-                onPatch={(patch) => patchWeather(row.id, patch).catch((e) => setError(errMsg(e)))}
-              />
-            ))}
-            table={
-              <WeatherInterestTable
-                rows={weatherInterested}
+      {tab === 'rss' && rssCategoryOptions.length > 0 && (
+        <InterestCategoryFilter
+          categories={rssCategoryOptions}
+          filterCategory={filterCategory}
+          onFilterChange={setFilterCategory}
+          labelForCategory={categoryLabel}
+        />
+      )}
+      {tab === 'jokes' && jokeCategoryOptions.length > 0 && (
+        <InterestCategoryFilter
+          categories={jokeCategoryOptions}
+          filterCategory={filterCategory}
+          onFilterChange={setFilterCategory}
+          labelForCategory={categoryLabel}
+        />
+      )}
+      {tab === 'trivia' && triviaCategoryOptions.length > 0 && (
+        <InterestCategoryFilter
+          categories={triviaCategoryOptions}
+          filterCategory={filterCategory}
+          onFilterChange={setFilterCategory}
+          labelForCategory={categoryLabel}
+        />
+      )}
+
+      {tab === 'locations' && (
+        <Stack spacing={2}>
+          {canWrite && (
+            <Button
+              variant="outlined"
+              startIcon={<MyLocationIcon />}
+              disabled={detectingLocation || weather.length === 0}
+              onClick={() => void detectMyLocation()}
+            >
+              {detectingLocation ? 'Detecting…' : 'Use my location'}
+            </Button>
+          )}
+          {locationGroups.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              No locations match the current filter.
+            </Typography>
+          ) : (
+            locationGroups.map((group) => (
+              <LocationCategoryAccordion
+                key={group.id}
+                title={categoryLabel(group.id)}
+                rows={group.rows}
+                layout={layout}
+                expanded={expandedLocationCategories.includes(group.id)}
+                onExpandedChange={(expanded) => {
+                  setExpandedLocationCategories((prev) =>
+                    expanded
+                      ? prev.includes(group.id)
+                        ? prev
+                        : [...prev, group.id]
+                      : prev.filter((id) => id !== group.id),
+                  );
+                }}
                 canWrite={canWrite}
                 onEdit={openEditWeather}
                 onDelete={(id) => void deleteWeather(id)}
                 onPatch={(id, patch) =>
                   patchWeather(id, patch).catch((e) => setError(errMsg(e)))
                 }
-              />
-            }
-          />
-          <CatalogSection
-            title="Not interested"
-            empty="All weather locations are marked interested."
-            layout={layout}
-            isEmpty={weatherNotInterested.length === 0}
-            cards={weatherNotInterested.map((row) => (
-              <WeatherInterestCard
-                key={row.id}
-                row={row}
-                canWrite={canWrite}
-                onEdit={() => openEditWeather(row)}
-                onDelete={() => void deleteWeather(row.id)}
-                onPatch={(patch) => patchWeather(row.id, patch).catch((e) => setError(errMsg(e)))}
-              />
-            ))}
-            table={
-              <WeatherInterestTable
-                rows={weatherNotInterested}
-                canWrite={canWrite}
-                onEdit={openEditWeather}
-                onDelete={(id) => void deleteWeather(id)}
-                onPatch={(id, patch) =>
-                  patchWeather(id, patch).catch((e) => setError(errMsg(e)))
+                onCategoryPatch={(field, enabled) =>
+                  patchLocationCategory(group.id, field, enabled).catch((e) =>
+                    setError(errMsg(e)),
+                  )
                 }
               />
-            }
-          />
+            ))
+          )}
         </Stack>
       )}
 
@@ -599,6 +733,61 @@ export function InterestsPage() {
   );
 }
 
+function categoryCounts<T>(rows: T[], getCategory: (row: T) => string): { id: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const id = getCategory(row) || 'general';
+    counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+  return [...counts.entries()].map(([id, count]) => ({ id, count }));
+}
+
+function InterestCategoryFilter({
+  categories,
+  filterCategory,
+  onFilterChange,
+  labelForCategory,
+}: {
+  categories: { id: string; count: number }[];
+  filterCategory: string | null;
+  onFilterChange: (id: string | null) => void;
+  labelForCategory: (id: string) => string;
+}) {
+  const total = categories.reduce((sum, c) => sum + c.count, 0);
+  const sorted = [...categories].sort((a, b) =>
+    labelForCategory(a.id).localeCompare(labelForCategory(b.id)),
+  );
+  return (
+    <Stack spacing={1}>
+      <Typography variant="subtitle2" color="text.secondary">
+        Filter by category
+      </Typography>
+      <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1}>
+        <Chip
+          label={`All (${total})`}
+          onClick={() => onFilterChange(null)}
+          color={filterCategory === null ? 'primary' : 'default'}
+          variant={filterCategory === null ? 'filled' : 'outlined'}
+          clickable
+        />
+        {sorted.map(({ id, count }) => {
+          const selected = filterCategory === id;
+          return (
+            <Chip
+              key={id}
+              label={`${labelForCategory(id)} (${count})`}
+              onClick={() => onFilterChange(id)}
+              color={selected ? 'primary' : 'default'}
+              variant={selected ? 'filled' : 'outlined'}
+              clickable
+            />
+          );
+        })}
+      </Stack>
+    </Stack>
+  );
+}
+
 function CatalogSection({
   title,
   empty,
@@ -700,6 +889,125 @@ function CatalogCardActions({
   );
 }
 
+function categoryToggleState(rows: WeatherLocationRow[], field: LocationInterestField) {
+  const on = rows.filter((r) => r[field]).length;
+  if (on === 0) return { checked: false, indeterminate: false };
+  if (on === rows.length) return { checked: true, indeterminate: false };
+  return { checked: false, indeterminate: true };
+}
+
+function LocationCategoryAccordion({
+  title,
+  rows,
+  layout,
+  expanded,
+  onExpandedChange,
+  canWrite,
+  onEdit,
+  onDelete,
+  onPatch,
+  onCategoryPatch,
+}: {
+  title: string;
+  rows: WeatherLocationRow[];
+  layout: ListLayoutMode;
+  expanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
+  canWrite: boolean;
+  onEdit: (row: WeatherLocationRow) => void;
+  onDelete: (id: string) => void;
+  onPatch: (id: string, patch: Partial<WeatherLocationRow>) => void;
+  onCategoryPatch: (field: LocationInterestField, enabled: boolean) => void;
+}) {
+  const weatherState = categoryToggleState(rows, 'include_weather');
+  const alertsState = categoryToggleState(rows, 'include_weather_alerts');
+  const newsState = categoryToggleState(rows, 'include_local_news');
+
+  return (
+    <Accordion
+      expanded={expanded}
+      onChange={(_, isExpanded) => onExpandedChange(isExpanded)}
+      disableGutters
+      variant="outlined"
+    >
+      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1}
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+          sx={{ width: '100%', pr: 1 }}
+        >
+          <Typography variant="subtitle1" fontWeight={600} sx={{ flexGrow: 1 }}>
+            {title} ({rows.length})
+          </Typography>
+          <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap onClick={(e) => e.stopPropagation()}>
+            <FormControlLabel
+              control={
+                <Switch
+                  size="small"
+                  checked={weatherState.checked}
+                  indeterminate={weatherState.indeterminate}
+                  disabled={!canWrite}
+                  onChange={(_, checked) => onCategoryPatch('include_weather', checked)}
+                />
+              }
+              label="Weather"
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  size="small"
+                  checked={alertsState.checked}
+                  indeterminate={alertsState.indeterminate}
+                  disabled={!canWrite}
+                  onChange={(_, checked) => onCategoryPatch('include_weather_alerts', checked)}
+                />
+              }
+              label="Weather Alerts"
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  size="small"
+                  checked={newsState.checked}
+                  indeterminate={newsState.indeterminate}
+                  disabled={!canWrite}
+                  onChange={(_, checked) => onCategoryPatch('include_local_news', checked)}
+                />
+              }
+              label="Local News"
+            />
+          </Stack>
+        </Stack>
+      </AccordionSummary>
+      <AccordionDetails sx={{ pt: 0 }}>
+        {layout === 'card' ? (
+          <Box sx={catalogCardGridSx}>
+            {rows.map((row) => (
+              <WeatherInterestCard
+                key={row.id}
+                row={row}
+                canWrite={canWrite}
+                onEdit={() => onEdit(row)}
+                onDelete={() => onDelete(row.id)}
+                onPatch={(patch) => onPatch(row.id, patch)}
+              />
+            ))}
+          </Box>
+        ) : (
+          <WeatherInterestTable
+            rows={rows}
+            canWrite={canWrite}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onPatch={onPatch}
+          />
+        )}
+      </AccordionDetails>
+    </Accordion>
+  );
+}
+
 function WeatherInterestTable({
   rows,
   canWrite,
@@ -721,8 +1029,9 @@ function WeatherInterestTable({
             <TableCell>Name</TableCell>
             <TableCell>Lat</TableCell>
             <TableCell>Lon</TableCell>
-            <TableCell>Interested</TableCell>
-            <TableCell>Alerts</TableCell>
+            <TableCell>Weather</TableCell>
+            <TableCell>Weather Alerts</TableCell>
+            <TableCell>Local News</TableCell>
             {canWrite ? <TableCell align="right">Actions</TableCell> : null}
           </TableRow>
         </TableHead>
@@ -733,18 +1042,24 @@ function WeatherInterestTable({
               <TableCell>{row.latitude}</TableCell>
               <TableCell>{row.longitude}</TableCell>
               <InterestedToggleCell
-                checked={row.enabled}
+                checked={row.include_weather}
                 disabled={!canWrite}
-                ariaLabel={`Interested in weather for ${row.name}`}
-                onToggle={(enabled) => onPatch(row.id, { enabled })}
+                ariaLabel={`Weather for ${row.name}`}
+                onToggle={(include_weather) => onPatch(row.id, { include_weather })}
               />
               <InterestedToggleCell
-                checked={row.include_active_weather_alerts}
+                checked={row.include_weather_alerts}
                 disabled={!canWrite}
-                ariaLabel={`Include active weather alerts for ${row.name}`}
-                onToggle={(include_active_weather_alerts) =>
-                  onPatch(row.id, { include_active_weather_alerts })
+                ariaLabel={`Weather alerts for ${row.name}`}
+                onToggle={(include_weather_alerts) =>
+                  onPatch(row.id, { include_weather_alerts })
                 }
+              />
+              <InterestedToggleCell
+                checked={row.include_local_news}
+                disabled={!canWrite}
+                ariaLabel={`Local news for ${row.name}`}
+                onToggle={(include_local_news) => onPatch(row.id, { include_local_news })}
               />
               <CatalogRowActions
                 canWrite={canWrite}
@@ -786,25 +1101,36 @@ function WeatherInterestCard({
             control={
               <Switch
                 size="small"
-                checked={row.enabled}
+                checked={row.include_weather}
                 disabled={!canWrite}
-                onChange={(_, enabled) => onPatch({ enabled })}
+                onChange={(_, include_weather) => onPatch({ include_weather })}
               />
             }
-            label="Interested"
+            label="Weather"
           />
           <FormControlLabel
             control={
               <Switch
                 size="small"
-                checked={row.include_active_weather_alerts}
+                checked={row.include_weather_alerts}
                 disabled={!canWrite}
-                onChange={(_, include_active_weather_alerts) =>
-                  onPatch({ include_active_weather_alerts })
+                onChange={(_, include_weather_alerts) =>
+                  onPatch({ include_weather_alerts })
                 }
               />
             }
-            label="Alerts"
+            label="Weather Alerts"
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                size="small"
+                checked={row.include_local_news}
+                disabled={!canWrite}
+                onChange={(_, include_local_news) => onPatch({ include_local_news })}
+              />
+            }
+            label="Local News"
           />
         </Stack>
       </CardContent>
@@ -1025,6 +1351,7 @@ function CategoryInterestTable({
           <TableRow>
             <TableCell>Label</TableCell>
             <TableCell>Seasonal</TableCell>
+            <TableCell>Season</TableCell>
             <TableCell>Min</TableCell>
             <TableCell>Max</TableCell>
             {canWrite ? <TableCell align="right">Actions</TableCell> : null}
@@ -1035,6 +1362,7 @@ function CategoryInterestTable({
             <TableRow key={row.id} hover>
               <TableCell sx={{ fontWeight: 600 }}>{row.label}</TableCell>
               <TableCell>{row.is_seasonal ? 'Yes' : 'No'}</TableCell>
+              <TableCell>{formatCategorySeason(row)}</TableCell>
               <TableCell>{row.min_jokes ?? row.min_questions ?? '—'}</TableCell>
               <TableCell>{row.max_jokes ?? row.max_questions ?? '—'}</TableCell>
               <CatalogRowActions
@@ -1071,7 +1399,12 @@ function CategoryInterestCard({
             {row.label}
           </Typography>
           {row.is_seasonal ? (
-            <Chip size="small" label="Seasonal" variant="outlined" sx={{ alignSelf: 'flex-start' }} />
+            <Chip
+              size="small"
+              label={formatCategorySeason(row)}
+              variant="outlined"
+              sx={{ alignSelf: 'flex-start' }}
+            />
           ) : null}
           <Typography variant="caption" color="text.secondary">
             Pool {minPool ?? '—'}–{maxPool ?? '—'}
@@ -1124,8 +1457,9 @@ function InterestDialog({
     name: '',
     latitude: '',
     longitude: '',
-    enabled: true,
-    include_active_weather_alerts: true,
+    include_weather: false,
+    include_weather_alerts: false,
+    include_local_news: false,
   });
   const [rssForm, setRssForm] = useState({
     feedName: '',
@@ -1144,6 +1478,10 @@ function InterestDialog({
     curatorCategoryId: '',
     label: '',
     is_seasonal: false,
+    start_month: '',
+    start_day: '',
+    end_month: '',
+    end_day: '',
     category_prompt: '',
     min_pool: '10',
     max_pool: '100',
@@ -1156,16 +1494,18 @@ function InterestDialog({
         name: editingWeather.name,
         latitude: String(editingWeather.latitude),
         longitude: String(editingWeather.longitude),
-        enabled: editingWeather.enabled,
-        include_active_weather_alerts: editingWeather.include_active_weather_alerts,
+        include_weather: editingWeather.include_weather,
+        include_weather_alerts: editingWeather.include_weather_alerts,
+        include_local_news: editingWeather.include_local_news,
       });
-    } else if (tab === 'weather') {
+    } else if (tab === 'locations') {
       setWeatherForm({
         name: '',
         latitude: '',
         longitude: '',
-        enabled: true,
-        include_active_weather_alerts: true,
+        include_weather: false,
+        include_weather_alerts: false,
+        include_local_news: false,
       });
     }
     if (editingRss) {
@@ -1202,6 +1542,10 @@ function InterestDialog({
         curatorCategoryId: cat.id,
         label: cat.label,
         is_seasonal: cat.is_seasonal,
+        start_month: cat.start_month != null ? String(cat.start_month) : '',
+        start_day: cat.start_day != null ? String(cat.start_day) : '',
+        end_month: cat.end_month != null ? String(cat.end_month) : '',
+        end_day: cat.end_day != null ? String(cat.end_day) : '',
         category_prompt: cat.category_prompt ?? '',
         min_pool: String(cat.min_jokes ?? cat.min_questions ?? 10),
         max_pool: String(cat.max_jokes ?? cat.max_questions ?? 100),
@@ -1212,6 +1556,10 @@ function InterestDialog({
         curatorCategoryId: first?.id ?? '',
         label: first?.label ?? '',
         is_seasonal: false,
+        start_month: '',
+        start_day: '',
+        end_month: '',
+        end_day: '',
         category_prompt: '',
         min_pool: '10',
         max_pool: '100',
@@ -1231,19 +1579,22 @@ function InterestDialog({
   const save = async () => {
     if (!canWrite) return;
     try {
-      if (tab === 'weather') {
+      if (tab === 'locations') {
         const lat = Number.parseFloat(weatherForm.latitude);
         const lon = Number.parseFloat(weatherForm.longitude);
+        const name = weatherForm.name.trim();
+        const category = weatherLocationCategoryFromName(name);
         if (editingWeather) {
           await patchWeatherLocation(display, editingWeather.id, {
-            name: weatherForm.name,
+            name,
             latitude: lat,
             longitude: lon,
-            enabled: weatherForm.enabled,
-            include_active_weather_alerts: weatherForm.include_active_weather_alerts,
+            category,
+            include_weather: weatherForm.include_weather,
+            include_weather_alerts: weatherForm.include_weather_alerts,
+            include_local_news: weatherForm.include_local_news,
           });
         } else {
-          const name = weatherForm.name.trim();
           if (!name) {
             onError('Name is required');
             return;
@@ -1258,8 +1609,10 @@ function InterestDialog({
             name,
             latitude: lat,
             longitude: lon,
-            enabled: weatherForm.enabled,
-            include_active_weather_alerts: weatherForm.include_active_weather_alerts,
+            category,
+            include_weather: weatherForm.include_weather,
+            include_weather_alerts: weatherForm.include_weather_alerts,
+            include_local_news: weatherForm.include_local_news,
           });
         }
       } else if (tab === 'rss') {
@@ -1311,41 +1664,45 @@ function InterestDialog({
             enabled: stockForm.enabled,
           });
         }
-      } else if (tab === 'jokes') {
+      } else if (tab === 'jokes' || tab === 'trivia') {
         const categoryId = categoryForm.curatorCategoryId.trim();
         if (!categoryId) {
           onError('Select a curator category');
           return;
         }
-        const pool = {
-          label: categoryForm.label,
-          is_seasonal: categoryForm.is_seasonal,
-          category_prompt: categoryForm.category_prompt || null,
-          min_jokes: Number.parseInt(categoryForm.min_pool, 10),
-          max_jokes: Number.parseInt(categoryForm.max_pool, 10),
-        };
-        if (editingJoke) {
-          await patchJokeCategory(display, editingJoke.id, pool);
-        } else {
-          await createJokeCategory(display, { id: categoryId, ...pool });
-        }
-      } else if (tab === 'trivia') {
-        const categoryId = categoryForm.curatorCategoryId.trim();
-        if (!categoryId) {
-          onError('Select a curator category');
+        const season = categorySeasonPayload(categoryForm);
+        if (typeof season === 'string') {
+          onError(season);
           return;
         }
         const pool = {
           label: categoryForm.label,
           is_seasonal: categoryForm.is_seasonal,
+          ...season,
           category_prompt: categoryForm.category_prompt || null,
-          min_questions: Number.parseInt(categoryForm.min_pool, 10),
-          max_questions: Number.parseInt(categoryForm.max_pool, 10),
         };
-        if (editingTrivia) {
-          await patchTriviaCategory(display, editingTrivia.id, pool);
+        if (tab === 'jokes') {
+          const jokePool = {
+            ...pool,
+            min_jokes: Number.parseInt(categoryForm.min_pool, 10),
+            max_jokes: Number.parseInt(categoryForm.max_pool, 10),
+          };
+          if (editingJoke) {
+            await patchJokeCategory(display, editingJoke.id, jokePool);
+          } else {
+            await createJokeCategory(display, { id: categoryId, ...jokePool });
+          }
         } else {
-          await createTriviaCategory(display, { id: categoryId, ...pool });
+          const triviaPool = {
+            ...pool,
+            min_questions: Number.parseInt(categoryForm.min_pool, 10),
+            max_questions: Number.parseInt(categoryForm.max_pool, 10),
+          };
+          if (editingTrivia) {
+            await patchTriviaCategory(display, editingTrivia.id, triviaPool);
+          } else {
+            await createTriviaCategory(display, { id: categoryId, ...triviaPool });
+          }
         }
       }
       await onSaved();
@@ -1359,12 +1716,13 @@ function InterestDialog({
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ pt: 1 }}>
-          {tab === 'weather' && (
+          {tab === 'locations' && (
             <>
               <TextField
                 label="Name"
                 value={weatherForm.name}
                 onChange={(e) => setWeatherForm((f) => ({ ...f, name: e.target.value }))}
+                helperText='Use "City, ST" for US or "City, Country" — category is assigned from the country.'
                 fullWidth
               />
               <TextField
@@ -1382,27 +1740,41 @@ function InterestDialog({
               <FormControlLabel
                 control={
                   <Switch
-                    checked={weatherForm.enabled}
+                    checked={weatherForm.include_weather}
                     onChange={(e) =>
-                      setWeatherForm((f) => ({ ...f, enabled: e.target.checked }))
+                      setWeatherForm((f) => ({ ...f, include_weather: e.target.checked }))
                     }
                   />
                 }
-                label="Interested"
+                label="Weather"
               />
               <FormControlLabel
                 control={
                   <Switch
-                    checked={weatherForm.include_active_weather_alerts}
+                    checked={weatherForm.include_weather_alerts}
                     onChange={(e) =>
                       setWeatherForm((f) => ({
                         ...f,
-                        include_active_weather_alerts: e.target.checked,
+                        include_weather_alerts: e.target.checked,
                       }))
                     }
                   />
                 }
-                label="Include active weather alerts"
+                label="Weather Alerts"
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={weatherForm.include_local_news}
+                    onChange={(e) =>
+                      setWeatherForm((f) => ({
+                        ...f,
+                        include_local_news: e.target.checked,
+                      }))
+                    }
+                  />
+                }
+                label="Local News"
               />
             </>
           )}
@@ -1545,13 +1917,76 @@ function InterestDialog({
                 control={
                   <Switch
                     checked={categoryForm.is_seasonal}
-                    onChange={(e) =>
-                      setCategoryForm((f) => ({ ...f, is_seasonal: e.target.checked }))
-                    }
+                    onChange={(e) => {
+                      const is_seasonal = e.target.checked;
+                      setCategoryForm((f) => ({
+                        ...f,
+                        is_seasonal,
+                        ...(is_seasonal
+                          ? {}
+                          : {
+                              start_month: '',
+                              start_day: '',
+                              end_month: '',
+                              end_day: '',
+                            }),
+                      }));
+                    }}
                   />
                 }
                 label="Seasonal"
               />
+              {categoryForm.is_seasonal && (
+                <Stack spacing={1}>
+                  <Typography variant="caption" color="text.secondary">
+                    Active between these calendar dates each year (month 1–12).
+                  </Typography>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                    <TextField
+                      label="Start month"
+                      type="number"
+                      inputProps={{ min: 1, max: 12 }}
+                      value={categoryForm.start_month}
+                      onChange={(e) =>
+                        setCategoryForm((f) => ({ ...f, start_month: e.target.value }))
+                      }
+                      fullWidth
+                    />
+                    <TextField
+                      label="Start day"
+                      type="number"
+                      inputProps={{ min: 1, max: 31 }}
+                      value={categoryForm.start_day}
+                      onChange={(e) =>
+                        setCategoryForm((f) => ({ ...f, start_day: e.target.value }))
+                      }
+                      fullWidth
+                    />
+                  </Stack>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                    <TextField
+                      label="End month"
+                      type="number"
+                      inputProps={{ min: 1, max: 12 }}
+                      value={categoryForm.end_month}
+                      onChange={(e) =>
+                        setCategoryForm((f) => ({ ...f, end_month: e.target.value }))
+                      }
+                      fullWidth
+                    />
+                    <TextField
+                      label="End day"
+                      type="number"
+                      inputProps={{ min: 1, max: 31 }}
+                      value={categoryForm.end_day}
+                      onChange={(e) =>
+                        setCategoryForm((f) => ({ ...f, end_day: e.target.value }))
+                      }
+                      fullWidth
+                    />
+                  </Stack>
+                </Stack>
+              )}
             </>
           )}
         </Stack>

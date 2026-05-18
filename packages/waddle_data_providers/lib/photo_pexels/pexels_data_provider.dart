@@ -17,7 +17,7 @@ import 'pexels_provider_extra_config.dart';
 
 const String kPhotoPexelsIntegrationType = 'photo_pexels';
 
-const String kDefaultPexelsBaseUrl = 'https://api.pexels.com';
+const String _kDefaultPexelsBaseUrl = 'https://api.pexels.com';
 
 const Duration _rollingHour = Duration(hours: 1);
 
@@ -137,7 +137,7 @@ class PexelsPhotosDataProvider implements IDataProvider {
 
   String _normalizeBaseUrl(String? raw) {
     if (raw == null || raw.trim().isEmpty) {
-      return kDefaultPexelsBaseUrl;
+      return _kDefaultPexelsBaseUrl;
     }
     return raw.trim().replaceAll(RegExp(r'/$'), '');
   }

@@ -159,6 +159,7 @@ Future<void> _seedExtendedCatalog(AppDatabase db) async {
           name: 'Seattle, WA',
           latitude: 47.6,
           longitude: -122.3,
+          includeWeather: const Value(true),
         ),
       );
   await db.into(db.interestsLocations).insert(
@@ -167,6 +168,7 @@ Future<void> _seedExtendedCatalog(AppDatabase db) async {
           name: 'Denver, CO',
           latitude: 39.7392,
           longitude: -104.9903,
+          includeWeather: const Value(true),
         ),
       );
   await db.into(db.weatherCurrent).insert(
