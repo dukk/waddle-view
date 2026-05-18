@@ -1,20 +1,21 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import AddIcon from '@mui/icons-material/Add';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import EditIcon from '@mui/icons-material/Edit';
 import {
   Alert,
   Box,
   Button,
+  Card,
+  CardActions,
+  CardContent,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControl,
   FormControlLabel,
-  IconButton,
   InputLabel,
   MenuItem,
+  Paper,
   Select,
   Stack,
   Switch,
@@ -58,9 +59,19 @@ import {
   type StockSymbolRow,
   type WeatherLocationRow,
 } from '@/api/interests';
+import { CatalogPageToolbar } from '@/components/CatalogPageToolbar';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
+import { catalogCardGridSx } from '@/constants/catalogLayout';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
+import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
+import type { ListLayoutMode } from '@/storage/listLayoutPreference';
+import type { SavedDisplay } from '@/storage/displays';
+import {
+  rssFeedInterestId,
+  stockSymbolInterestId,
+  weatherLocationInterestId,
+} from '@/util/interestSlug';
 
 type TabId = 'weather' | 'rss' | 'stocks' | 'jokes' | 'trivia';
 
@@ -75,6 +86,7 @@ export function InterestsPage() {
   const { hasPermission } = useAuth();
   const canWrite = hasPermission('interests.write');
   const { loading, wrapRefresh } = useDisplayRefresh();
+  const { layout, setLayout } = useListLayoutPreference('interests');
 
   const [tab, setTab] = useState<TabId>('weather');
   const [error, setError] = useState<string | null>(null);
@@ -164,30 +176,131 @@ export function InterestsPage() {
     return editingTrivia ? 'Edit trivia category' : 'Add trivia category';
   }, [tab, editingWeather, editingRss, editingStock, editingJoke, editingTrivia]);
 
+  const weatherInterested = useMemo(
+    () => weather.filter((r) => r.enabled).sort((a, b) => a.name.localeCompare(b.name)),
+    [weather],
+  );
+  const weatherNotInterested = useMemo(
+    () => weather.filter((r) => !r.enabled).sort((a, b) => a.name.localeCompare(b.name)),
+    [weather],
+  );
+  const rssInterested = useMemo(
+    () =>
+      rss
+        .filter((r) => r.enabled)
+        .sort((a, b) =>
+          (a.title?.trim() || a.url).localeCompare(b.title?.trim() || b.url),
+        ),
+    [rss],
+  );
+  const rssNotInterested = useMemo(
+    () =>
+      rss
+        .filter((r) => !r.enabled)
+        .sort((a, b) =>
+          (a.title?.trim() || a.url).localeCompare(b.title?.trim() || b.url),
+        ),
+    [rss],
+  );
+  const stocksInterested = useMemo(
+    () => stocks.filter((r) => r.enabled).sort((a, b) => a.symbol.localeCompare(b.symbol)),
+    [stocks],
+  );
+  const stocksNotInterested = useMemo(
+    () => stocks.filter((r) => !r.enabled).sort((a, b) => a.symbol.localeCompare(b.symbol)),
+    [stocks],
+  );
+  const sortedJokes = useMemo(
+    () => [...jokes].sort((a, b) => a.label.localeCompare(b.label)),
+    [jokes],
+  );
+  const sortedTrivia = useMemo(
+    () => [...trivia].sort((a, b) => a.label.localeCompare(b.label)),
+    [trivia],
+  );
+
+  const patchWeather = useCallback(
+    async (id: string, patch: Parameters<typeof patchWeatherLocation>[2]) => {
+      if (!active) return;
+      await patchWeatherLocation(active, id, patch);
+      await load();
+    },
+    [active, load],
+  );
+
+  const patchRss = useCallback(
+    async (id: string, patch: Parameters<typeof patchRssFeed>[2]) => {
+      if (!active) return;
+      await patchRssFeed(active, id, patch);
+      await load();
+    },
+    [active, load],
+  );
+
+  const patchStock = useCallback(
+    async (id: string, patch: Parameters<typeof patchStockSymbol>[2]) => {
+      if (!active) return;
+      await patchStockSymbol(active, id, patch);
+      await load();
+    },
+    [active, load],
+  );
+
+  const deleteWeather = useCallback(
+    async (id: string) => {
+      if (!active) return;
+      try {
+        await deleteWeatherLocation(active, id);
+        await load();
+      } catch (e) {
+        setError(errMsg(e));
+      }
+    },
+    [active, load],
+  );
+
+  const deleteRss = useCallback(
+    async (id: string) => {
+      if (!active) return;
+      try {
+        await deleteRssFeed(active, id);
+        await load();
+      } catch (e) {
+        setError(errMsg(e));
+      }
+    },
+    [active, load],
+  );
+
+  const deleteStock = useCallback(
+    async (id: string) => {
+      if (!active) return;
+      try {
+        await deleteStockSymbol(active, id);
+        await load();
+      } catch (e) {
+        setError(errMsg(e));
+      }
+    },
+    [active, load],
+  );
+
   if (!active) {
     return <NoDisplayPlaceholder title="Interests" />;
   }
 
   return (
-    <Stack spacing={2}>
-      <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1}>
-        <Box>
-          <Typography variant="h5">Interests</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Configure what weather locations, news feeds, stocks, joke categories, and trivia categories
-            the display collects.
-          </Typography>
-        </Box>
-        <Stack direction="row" alignItems="center" spacing={1}>
-          {canWrite && (
-            <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}>
-              Add
-            </Button>
-          )}
-        </Stack>
-      </Stack>
-
+    <Stack spacing={3}>
       <DisplayRefreshIndicator loading={loading} />
+      <Box>
+        <Typography variant="h6" fontWeight={600} gutterBottom>
+          Interests
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Configure what weather locations, news feeds, stocks, joke categories, and trivia
+          categories the display collects.
+        </Typography>
+      </Box>
 
       {error && (
         <Alert severity="error" onClose={() => setError(null)}>
@@ -203,122 +316,260 @@ export function InterestsPage() {
         <Tab value="trivia" label="Trivia" />
       </Tabs>
 
+      <CatalogPageToolbar layout={layout} onLayoutChange={setLayout}>
+        {canWrite && (
+          <Button variant="contained" onClick={openAdd}>
+            Add
+          </Button>
+        )}
+      </CatalogPageToolbar>
+
       {tab === 'weather' && (
-        <InterestTable
-          columns={['ID', 'Name', 'Lat', 'Lon', 'Enabled', 'Alerts', '']}
-          rows={weather.map((row) => (
-            <TableRow key={row.id}>
-              <TableCell>{row.id}</TableCell>
-              <TableCell>{row.name}</TableCell>
-              <TableCell>{row.latitude}</TableCell>
-              <TableCell>{row.longitude}</TableCell>
-              <TableCell>{row.enabled ? 'Yes' : 'No'}</TableCell>
-              <TableCell>{row.include_active_weather_alerts ? 'Yes' : 'No'}</TableCell>
-              <TableCell align="right">
-                {canWrite && (
-                  <RowActions
-                    onEdit={() => openEditWeather(row)}
-                    onDelete={async () => {
-                      try {
-                        await deleteWeatherLocation(active, row.id);
-                        await load();
-                      } catch (e) {
-                        setError(errMsg(e));
-                      }
-                    }}
-                  />
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
-        />
+        <Stack spacing={3}>
+          <CatalogSection
+            title="Interested"
+            empty="No weather locations are marked interested."
+            layout={layout}
+            isEmpty={weatherInterested.length === 0}
+            cards={weatherInterested.map((row) => (
+              <WeatherInterestCard
+                key={row.id}
+                row={row}
+                canWrite={canWrite}
+                onEdit={() => openEditWeather(row)}
+                onDelete={() => void deleteWeather(row.id)}
+                onPatch={(patch) => patchWeather(row.id, patch).catch((e) => setError(errMsg(e)))}
+              />
+            ))}
+            table={
+              <WeatherInterestTable
+                rows={weatherInterested}
+                canWrite={canWrite}
+                onEdit={openEditWeather}
+                onDelete={(id) => void deleteWeather(id)}
+                onPatch={(id, patch) =>
+                  patchWeather(id, patch).catch((e) => setError(errMsg(e)))
+                }
+              />
+            }
+          />
+          <CatalogSection
+            title="Not interested"
+            empty="All weather locations are marked interested."
+            layout={layout}
+            isEmpty={weatherNotInterested.length === 0}
+            cards={weatherNotInterested.map((row) => (
+              <WeatherInterestCard
+                key={row.id}
+                row={row}
+                canWrite={canWrite}
+                onEdit={() => openEditWeather(row)}
+                onDelete={() => void deleteWeather(row.id)}
+                onPatch={(patch) => patchWeather(row.id, patch).catch((e) => setError(errMsg(e)))}
+              />
+            ))}
+            table={
+              <WeatherInterestTable
+                rows={weatherNotInterested}
+                canWrite={canWrite}
+                onEdit={openEditWeather}
+                onDelete={(id) => void deleteWeather(id)}
+                onPatch={(id, patch) =>
+                  patchWeather(id, patch).catch((e) => setError(errMsg(e)))
+                }
+              />
+            }
+          />
+        </Stack>
       )}
 
       {tab === 'rss' && (
-        <InterestTable
-          columns={['ID', 'URL', 'Category', 'Poll (s)', 'Max', 'Enabled', '']}
-          rows={rss.map((row) => (
-            <TableRow key={row.id}>
-              <TableCell>{row.id}</TableCell>
-              <TableCell sx={{ maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {row.url}
-              </TableCell>
-              <TableCell>{row.category}</TableCell>
-              <TableCell>{row.poll_seconds}</TableCell>
-              <TableCell>{row.max_articles}</TableCell>
-              <TableCell>{row.enabled ? 'Yes' : 'No'}</TableCell>
-              <TableCell align="right">
-                {canWrite && (
-                  <RowActions
-                    onEdit={() => openEditRss(row)}
-                    onDelete={async () => {
-                      try {
-                        await deleteRssFeed(active, row.id);
-                        await load();
-                      } catch (e) {
-                        setError(errMsg(e));
-                      }
-                    }}
-                  />
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
-        />
+        <Stack spacing={3}>
+          <CatalogSection
+            title="Interested"
+            empty="No RSS feeds are marked interested."
+            layout={layout}
+            isEmpty={rssInterested.length === 0}
+            cards={rssInterested.map((row) => (
+              <RssInterestCard
+                key={row.id}
+                row={row}
+                canWrite={canWrite}
+                onEdit={() => openEditRss(row)}
+                onDelete={() => void deleteRss(row.id)}
+                onPatch={(patch) => patchRss(row.id, patch).catch((e) => setError(errMsg(e)))}
+              />
+            ))}
+            table={
+              <RssInterestTable
+                rows={rssInterested}
+                canWrite={canWrite}
+                onEdit={openEditRss}
+                onDelete={(id) => void deleteRss(id)}
+                onPatch={(id, patch) => patchRss(id, patch).catch((e) => setError(errMsg(e)))}
+              />
+            }
+          />
+          <CatalogSection
+            title="Not interested"
+            empty="All RSS feeds are marked interested."
+            layout={layout}
+            isEmpty={rssNotInterested.length === 0}
+            cards={rssNotInterested.map((row) => (
+              <RssInterestCard
+                key={row.id}
+                row={row}
+                canWrite={canWrite}
+                onEdit={() => openEditRss(row)}
+                onDelete={() => void deleteRss(row.id)}
+                onPatch={(patch) => patchRss(row.id, patch).catch((e) => setError(errMsg(e)))}
+              />
+            ))}
+            table={
+              <RssInterestTable
+                rows={rssNotInterested}
+                canWrite={canWrite}
+                onEdit={openEditRss}
+                onDelete={(id) => void deleteRss(id)}
+                onPatch={(id, patch) => patchRss(id, patch).catch((e) => setError(errMsg(e)))}
+              />
+            }
+          />
+        </Stack>
       )}
 
       {tab === 'stocks' && (
-        <InterestTable
-          columns={['ID', 'Symbol', 'Display name', 'Enabled', '']}
-          rows={stocks.map((row) => (
-            <TableRow key={row.id}>
-              <TableCell>{row.id}</TableCell>
-              <TableCell>{row.symbol}</TableCell>
-              <TableCell>{row.display_name}</TableCell>
-              <TableCell>{row.enabled ? 'Yes' : 'No'}</TableCell>
-              <TableCell align="right">
-                {canWrite && (
-                  <RowActions
-                    onEdit={() => openEditStock(row)}
-                    onDelete={async () => {
-                      try {
-                        await deleteStockSymbol(active, row.id);
-                        await load();
-                      } catch (e) {
-                        setError(errMsg(e));
-                      }
-                    }}
-                  />
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
-        />
+        <Stack spacing={3}>
+          <CatalogSection
+            title="Interested"
+            empty="No stock symbols are marked interested."
+            layout={layout}
+            isEmpty={stocksInterested.length === 0}
+            cards={stocksInterested.map((row) => (
+              <StockInterestCard
+                key={row.id}
+                row={row}
+                canWrite={canWrite}
+                onEdit={() => openEditStock(row)}
+                onDelete={() => void deleteStock(row.id)}
+                onPatch={(patch) => patchStock(row.id, patch).catch((e) => setError(errMsg(e)))}
+              />
+            ))}
+            table={
+              <StockInterestTable
+                rows={stocksInterested}
+                canWrite={canWrite}
+                onEdit={openEditStock}
+                onDelete={(id) => void deleteStock(id)}
+                onPatch={(id, patch) => patchStock(id, patch).catch((e) => setError(errMsg(e)))}
+              />
+            }
+          />
+          <CatalogSection
+            title="Not interested"
+            empty="All stock symbols are marked interested."
+            layout={layout}
+            isEmpty={stocksNotInterested.length === 0}
+            cards={stocksNotInterested.map((row) => (
+              <StockInterestCard
+                key={row.id}
+                row={row}
+                canWrite={canWrite}
+                onEdit={() => openEditStock(row)}
+                onDelete={() => void deleteStock(row.id)}
+                onPatch={(patch) => patchStock(row.id, patch).catch((e) => setError(errMsg(e)))}
+              />
+            ))}
+            table={
+              <StockInterestTable
+                rows={stocksNotInterested}
+                canWrite={canWrite}
+                onEdit={openEditStock}
+                onDelete={(id) => void deleteStock(id)}
+                onPatch={(id, patch) => patchStock(id, patch).catch((e) => setError(errMsg(e)))}
+              />
+            }
+          />
+        </Stack>
       )}
 
       {tab === 'jokes' && (
-        <CategoryTable
-          rows={jokes}
-          canWrite={canWrite}
-          onEdit={openEditJoke}
-          onDelete={async (id) => {
-            await deleteJokeCategory(active, id);
-            await load();
-          }}
-          onError={setError}
+        <CatalogSection
+          title="Joke categories"
+          empty="No joke categories configured."
+          layout={layout}
+          isEmpty={sortedJokes.length === 0}
+          cards={sortedJokes.map((row) => (
+            <CategoryInterestCard
+              key={row.id}
+              row={row}
+              canWrite={canWrite}
+              onEdit={() => openEditJoke(row)}
+              onDelete={async () => {
+                try {
+                  await deleteJokeCategory(active, row.id);
+                  await load();
+                } catch (e) {
+                  setError(errMsg(e));
+                }
+              }}
+            />
+          ))}
+          table={
+            <CategoryInterestTable
+              rows={sortedJokes}
+              canWrite={canWrite}
+              onEdit={openEditJoke}
+              onDelete={async (id) => {
+                try {
+                  await deleteJokeCategory(active, id);
+                  await load();
+                } catch (e) {
+                  setError(errMsg(e));
+                }
+              }}
+            />
+          }
         />
       )}
 
       {tab === 'trivia' && (
-        <CategoryTable
-          rows={trivia}
-          canWrite={canWrite}
-          onEdit={openEditTrivia}
-          onDelete={async (id) => {
-            await deleteTriviaCategory(active, id);
-            await load();
-          }}
-          onError={setError}
+        <CatalogSection
+          title="Trivia categories"
+          empty="No trivia categories configured."
+          layout={layout}
+          isEmpty={sortedTrivia.length === 0}
+          cards={sortedTrivia.map((row) => (
+            <CategoryInterestCard
+              key={row.id}
+              row={row}
+              canWrite={canWrite}
+              onEdit={() => openEditTrivia(row)}
+              onDelete={async () => {
+                try {
+                  await deleteTriviaCategory(active, row.id);
+                  await load();
+                } catch (e) {
+                  setError(errMsg(e));
+                }
+              }}
+            />
+          ))}
+          table={
+            <CategoryInterestTable
+              rows={sortedTrivia}
+              canWrite={canWrite}
+              onEdit={openEditTrivia}
+              onDelete={async (id) => {
+                try {
+                  await deleteTriviaCategory(active, id);
+                  await load();
+                } catch (e) {
+                  setError(errMsg(e));
+                }
+              }}
+            />
+          }
         />
       )}
 
@@ -328,6 +579,9 @@ export function InterestsPage() {
         tab={tab}
         canWrite={canWrite}
         curatorCategories={curatorCategories}
+        weatherIds={weather.map((w) => w.id)}
+        rssIds={rss.map((r) => r.id)}
+        stockIds={stocks.map((s) => s.id)}
         editingWeather={editingWeather}
         editingRss={editingRss}
         editingStock={editingStock}
@@ -345,88 +599,487 @@ export function InterestsPage() {
   );
 }
 
-function InterestTable({
-  columns,
-  rows,
+function CatalogSection({
+  title,
+  empty,
+  layout,
+  isEmpty,
+  cards,
+  table,
 }: {
-  columns: string[];
-  rows: ReactNode[];
+  title: string;
+  empty: string;
+  layout: ListLayoutMode;
+  isEmpty: boolean;
+  cards: ReactNode;
+  table: ReactNode;
 }) {
   return (
-    <TableContainer>
+    <Stack spacing={1.5}>
+      <Typography variant="subtitle1" fontWeight={600}>
+        {title}
+      </Typography>
+      {isEmpty ? (
+        <Typography variant="body2" color="text.secondary">
+          {empty}
+        </Typography>
+      ) : layout === 'card' ? (
+        <Box sx={catalogCardGridSx}>{cards}</Box>
+      ) : (
+        table
+      )}
+    </Stack>
+  );
+}
+
+function InterestedToggleCell({
+  checked,
+  disabled,
+  ariaLabel,
+  onToggle,
+}: {
+  checked: boolean;
+  disabled?: boolean;
+  ariaLabel: string;
+  onToggle: (enabled: boolean) => void;
+}) {
+  return (
+    <TableCell>
+      <Switch
+        size="small"
+        checked={checked}
+        disabled={disabled}
+        onChange={(_, enabled) => onToggle(enabled)}
+        inputProps={{ 'aria-label': ariaLabel }}
+      />
+    </TableCell>
+  );
+}
+
+function CatalogRowActions({
+  canWrite,
+  onEdit,
+  onDelete,
+}: {
+  canWrite: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  if (!canWrite) return null;
+  return (
+    <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+      <Button size="small" onClick={onEdit}>
+        Edit
+      </Button>
+      <Button size="small" color="error" onClick={onDelete}>
+        Delete
+      </Button>
+    </TableCell>
+  );
+}
+
+function CatalogCardActions({
+  canWrite,
+  onEdit,
+  onDelete,
+}: {
+  canWrite: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  if (!canWrite) return null;
+  return (
+    <CardActions sx={{ justifyContent: 'flex-end', px: 2, pb: 2 }}>
+      <Button size="small" variant="outlined" onClick={onEdit}>
+        Edit
+      </Button>
+      <Button size="small" variant="outlined" color="error" onClick={onDelete}>
+        Delete
+      </Button>
+    </CardActions>
+  );
+}
+
+function WeatherInterestTable({
+  rows,
+  canWrite,
+  onEdit,
+  onDelete,
+  onPatch,
+}: {
+  rows: WeatherLocationRow[];
+  canWrite: boolean;
+  onEdit: (row: WeatherLocationRow) => void;
+  onDelete: (id: string) => void;
+  onPatch: (id: string, patch: Partial<WeatherLocationRow>) => void;
+}) {
+  return (
+    <TableContainer component={Paper} variant="outlined">
       <Table size="small">
         <TableHead>
           <TableRow>
-            {columns.map((c) => (
-              <TableCell key={c}>{c}</TableCell>
-            ))}
+            <TableCell>Name</TableCell>
+            <TableCell>Lat</TableCell>
+            <TableCell>Lon</TableCell>
+            <TableCell>Interested</TableCell>
+            <TableCell>Alerts</TableCell>
+            {canWrite ? <TableCell align="right">Actions</TableCell> : null}
           </TableRow>
         </TableHead>
-        <TableBody>{rows}</TableBody>
+        <TableBody>
+          {rows.map((row) => (
+            <TableRow key={row.id} hover>
+              <TableCell sx={{ fontWeight: 600 }}>{row.name}</TableCell>
+              <TableCell>{row.latitude}</TableCell>
+              <TableCell>{row.longitude}</TableCell>
+              <InterestedToggleCell
+                checked={row.enabled}
+                disabled={!canWrite}
+                ariaLabel={`Interested in weather for ${row.name}`}
+                onToggle={(enabled) => onPatch(row.id, { enabled })}
+              />
+              <InterestedToggleCell
+                checked={row.include_active_weather_alerts}
+                disabled={!canWrite}
+                ariaLabel={`Include active weather alerts for ${row.name}`}
+                onToggle={(include_active_weather_alerts) =>
+                  onPatch(row.id, { include_active_weather_alerts })
+                }
+              />
+              <CatalogRowActions
+                canWrite={canWrite}
+                onEdit={() => onEdit(row)}
+                onDelete={() => onDelete(row.id)}
+              />
+            </TableRow>
+          ))}
+        </TableBody>
       </Table>
     </TableContainer>
   );
 }
 
-function RowActions({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => Promise<void> }) {
+function WeatherInterestCard({
+  row,
+  canWrite,
+  onEdit,
+  onDelete,
+  onPatch,
+}: {
+  row: WeatherLocationRow;
+  canWrite: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  onPatch: (patch: Partial<WeatherLocationRow>) => void;
+}) {
   return (
-    <>
-      <IconButton size="small" aria-label="Edit" onClick={onEdit}>
-        <EditIcon fontSize="small" />
-      </IconButton>
-      <IconButton
-        size="small"
-        aria-label="Delete"
-        onClick={() => {
-          void onDelete();
-        }}
-      >
-        <DeleteOutlineIcon fontSize="small" />
-      </IconButton>
-    </>
+    <Card variant="outlined" sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <CardContent sx={{ flexGrow: 1 }}>
+        <Stack spacing={1}>
+          <Typography variant="subtitle1" fontWeight={600}>
+            {row.name}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {row.latitude}, {row.longitude}
+          </Typography>
+          <FormControlLabel
+            control={
+              <Switch
+                size="small"
+                checked={row.enabled}
+                disabled={!canWrite}
+                onChange={(_, enabled) => onPatch({ enabled })}
+              />
+            }
+            label="Interested"
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                size="small"
+                checked={row.include_active_weather_alerts}
+                disabled={!canWrite}
+                onChange={(_, include_active_weather_alerts) =>
+                  onPatch({ include_active_weather_alerts })
+                }
+              />
+            }
+            label="Alerts"
+          />
+        </Stack>
+      </CardContent>
+      <CatalogCardActions canWrite={canWrite} onEdit={onEdit} onDelete={onDelete} />
+    </Card>
   );
 }
 
-function CategoryTable({
+function RssInterestTable({
   rows,
   canWrite,
   onEdit,
   onDelete,
-  onError,
+  onPatch,
+}: {
+  rows: RssFeedRow[];
+  canWrite: boolean;
+  onEdit: (row: RssFeedRow) => void;
+  onDelete: (id: string) => void;
+  onPatch: (id: string, patch: Partial<RssFeedRow>) => void;
+}) {
+  return (
+    <TableContainer component={Paper} variant="outlined">
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell>Feed name</TableCell>
+            <TableCell>URL</TableCell>
+            <TableCell>Category</TableCell>
+            <TableCell>Poll (s)</TableCell>
+            <TableCell>Max</TableCell>
+            <TableCell>Interested</TableCell>
+            {canWrite ? <TableCell align="right">Actions</TableCell> : null}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {rows.map((row) => {
+            const feedName = row.title?.trim() || '—';
+            return (
+              <TableRow key={row.id} hover>
+                <TableCell sx={{ fontWeight: feedName !== '—' ? 600 : 400 }}>{feedName}</TableCell>
+                <TableCell sx={{ maxWidth: 280, wordBreak: 'break-all' }}>{row.url}</TableCell>
+                <TableCell>{row.category}</TableCell>
+                <TableCell>{row.poll_seconds}</TableCell>
+                <TableCell>{row.max_articles}</TableCell>
+                <InterestedToggleCell
+                  checked={row.enabled}
+                  disabled={!canWrite}
+                  ariaLabel={`Interested in RSS feed ${feedName}`}
+                  onToggle={(enabled) => onPatch(row.id, { enabled })}
+                />
+                <CatalogRowActions
+                  canWrite={canWrite}
+                  onEdit={() => onEdit(row)}
+                  onDelete={() => onDelete(row.id)}
+                />
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+}
+
+function RssInterestCard({
+  row,
+  canWrite,
+  onEdit,
+  onDelete,
+  onPatch,
+}: {
+  row: RssFeedRow;
+  canWrite: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  onPatch: (patch: Partial<RssFeedRow>) => void;
+}) {
+  const feedName = row.title?.trim() || 'Untitled feed';
+  return (
+    <Card variant="outlined" sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <CardContent sx={{ flexGrow: 1 }}>
+        <Stack spacing={1}>
+          <Typography variant="subtitle1" fontWeight={600} sx={{ wordBreak: 'break-word' }}>
+            {feedName}
+          </Typography>
+          <Chip size="small" label={row.category} variant="outlined" sx={{ alignSelf: 'flex-start' }} />
+          <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
+            {row.url}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Poll {row.poll_seconds}s · max {row.max_articles} articles
+          </Typography>
+          <FormControlLabel
+            control={
+              <Switch
+                size="small"
+                checked={row.enabled}
+                disabled={!canWrite}
+                onChange={(_, enabled) => onPatch({ enabled })}
+              />
+            }
+            label="Interested"
+          />
+        </Stack>
+      </CardContent>
+      <CatalogCardActions canWrite={canWrite} onEdit={onEdit} onDelete={onDelete} />
+    </Card>
+  );
+}
+
+function StockInterestTable({
+  rows,
+  canWrite,
+  onEdit,
+  onDelete,
+  onPatch,
+}: {
+  rows: StockSymbolRow[];
+  canWrite: boolean;
+  onEdit: (row: StockSymbolRow) => void;
+  onDelete: (id: string) => void;
+  onPatch: (id: string, patch: Partial<StockSymbolRow>) => void;
+}) {
+  return (
+    <TableContainer component={Paper} variant="outlined">
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell>Symbol</TableCell>
+            <TableCell>Display name</TableCell>
+            <TableCell>Interested</TableCell>
+            {canWrite ? <TableCell align="right">Actions</TableCell> : null}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {rows.map((row) => (
+            <TableRow key={row.id} hover>
+              <TableCell sx={{ fontWeight: 600 }}>{row.symbol}</TableCell>
+              <TableCell>{row.display_name}</TableCell>
+              <InterestedToggleCell
+                checked={row.enabled}
+                disabled={!canWrite}
+                ariaLabel={`Interested in stock ${row.symbol}`}
+                onToggle={(enabled) => onPatch(row.id, { enabled })}
+              />
+              <CatalogRowActions
+                canWrite={canWrite}
+                onEdit={() => onEdit(row)}
+                onDelete={() => onDelete(row.id)}
+              />
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+}
+
+function StockInterestCard({
+  row,
+  canWrite,
+  onEdit,
+  onDelete,
+  onPatch,
+}: {
+  row: StockSymbolRow;
+  canWrite: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  onPatch: (patch: Partial<StockSymbolRow>) => void;
+}) {
+  return (
+    <Card variant="outlined" sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <CardContent sx={{ flexGrow: 1 }}>
+        <Stack spacing={1}>
+          <Typography variant="subtitle1" fontWeight={600}>
+            {row.symbol}
+          </Typography>
+          {row.display_name.trim() ? (
+            <Typography variant="body2" color="text.secondary">
+              {row.display_name}
+            </Typography>
+          ) : null}
+          <FormControlLabel
+            control={
+              <Switch
+                size="small"
+                checked={row.enabled}
+                disabled={!canWrite}
+                onChange={(_, enabled) => onPatch({ enabled })}
+              />
+            }
+            label="Interested"
+          />
+        </Stack>
+      </CardContent>
+      <CatalogCardActions canWrite={canWrite} onEdit={onEdit} onDelete={onDelete} />
+    </Card>
+  );
+}
+
+function CategoryInterestTable({
+  rows,
+  canWrite,
+  onEdit,
+  onDelete,
 }: {
   rows: CategoryInterestRow[];
   canWrite: boolean;
   onEdit: (row: CategoryInterestRow) => void;
   onDelete: (id: string) => Promise<void>;
-  onError: (msg: string) => void;
 }) {
   return (
-    <InterestTable
-      columns={['ID', 'Label', 'Seasonal', 'Min', 'Max', '']}
-      rows={rows.map((row) => (
-        <TableRow key={row.id}>
-          <TableCell>{row.id}</TableCell>
-          <TableCell>{row.label}</TableCell>
-          <TableCell>{row.is_seasonal ? 'Yes' : 'No'}</TableCell>
-          <TableCell>{row.min_jokes ?? row.min_questions ?? '—'}</TableCell>
-          <TableCell>{row.max_jokes ?? row.max_questions ?? '—'}</TableCell>
-          <TableCell align="right">
-            {canWrite && (
-              <RowActions
+    <TableContainer component={Paper} variant="outlined">
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell>Label</TableCell>
+            <TableCell>Seasonal</TableCell>
+            <TableCell>Min</TableCell>
+            <TableCell>Max</TableCell>
+            {canWrite ? <TableCell align="right">Actions</TableCell> : null}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {rows.map((row) => (
+            <TableRow key={row.id} hover>
+              <TableCell sx={{ fontWeight: 600 }}>{row.label}</TableCell>
+              <TableCell>{row.is_seasonal ? 'Yes' : 'No'}</TableCell>
+              <TableCell>{row.min_jokes ?? row.min_questions ?? '—'}</TableCell>
+              <TableCell>{row.max_jokes ?? row.max_questions ?? '—'}</TableCell>
+              <CatalogRowActions
+                canWrite={canWrite}
                 onEdit={() => onEdit(row)}
-                onDelete={async () => {
-                  try {
-                    await onDelete(row.id);
-                  } catch (e) {
-                    onError(errMsg(e));
-                  }
-                }}
+                onDelete={() => void onDelete(row.id)}
               />
-            )}
-          </TableCell>
-        </TableRow>
-      ))}
-    />
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+}
+
+function CategoryInterestCard({
+  row,
+  canWrite,
+  onEdit,
+  onDelete,
+}: {
+  row: CategoryInterestRow;
+  canWrite: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const minPool = row.min_jokes ?? row.min_questions;
+  const maxPool = row.max_jokes ?? row.max_questions;
+  return (
+    <Card variant="outlined" sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <CardContent sx={{ flexGrow: 1 }}>
+        <Stack spacing={1}>
+          <Typography variant="subtitle1" fontWeight={600}>
+            {row.label}
+          </Typography>
+          {row.is_seasonal ? (
+            <Chip size="small" label="Seasonal" variant="outlined" sx={{ alignSelf: 'flex-start' }} />
+          ) : null}
+          <Typography variant="caption" color="text.secondary">
+            Pool {minPool ?? '—'}–{maxPool ?? '—'}
+          </Typography>
+        </Stack>
+      </CardContent>
+      <CatalogCardActions canWrite={canWrite} onEdit={onEdit} onDelete={onDelete} />
+    </Card>
   );
 }
 
@@ -445,6 +1098,9 @@ function InterestDialog({
   onSaved,
   onError,
   display,
+  weatherIds,
+  rssIds,
+  stockIds,
 }: {
   open: boolean;
   title: string;
@@ -459,10 +1115,12 @@ function InterestDialog({
   onClose: () => void;
   onSaved: () => Promise<void>;
   onError: (msg: string) => void;
-  display: NonNullable<ReturnType<typeof useDisplay>['active']>;
+  display: SavedDisplay;
+  weatherIds: string[];
+  rssIds: string[];
+  stockIds: string[];
 }) {
   const [weatherForm, setWeatherForm] = useState({
-    id: '',
     name: '',
     latitude: '',
     longitude: '',
@@ -470,22 +1128,20 @@ function InterestDialog({
     include_active_weather_alerts: true,
   });
   const [rssForm, setRssForm] = useState({
-    id: '',
+    feedName: '',
     url: '',
     category: 'general',
     poll_seconds: '3600',
     max_articles: '3',
     enabled: true,
-    title: '',
   });
   const [stockForm, setStockForm] = useState({
-    id: '',
     symbol: '',
     display_name: '',
     enabled: true,
   });
   const [categoryForm, setCategoryForm] = useState({
-    id: '',
+    curatorCategoryId: '',
     label: '',
     is_seasonal: false,
     category_prompt: '',
@@ -497,7 +1153,6 @@ function InterestDialog({
     if (!open) return;
     if (editingWeather) {
       setWeatherForm({
-        id: editingWeather.id,
         name: editingWeather.name,
         latitude: String(editingWeather.latitude),
         longitude: String(editingWeather.longitude),
@@ -506,7 +1161,6 @@ function InterestDialog({
       });
     } else if (tab === 'weather') {
       setWeatherForm({
-        id: '',
         name: '',
         latitude: '',
         longitude: '',
@@ -516,39 +1170,36 @@ function InterestDialog({
     }
     if (editingRss) {
       setRssForm({
-        id: editingRss.id,
+        feedName: editingRss.title?.trim() ?? '',
         url: editingRss.url,
         category: editingRss.category,
         poll_seconds: String(editingRss.poll_seconds),
         max_articles: String(editingRss.max_articles),
         enabled: editingRss.enabled,
-        title: editingRss.title ?? '',
       });
     } else if (tab === 'rss') {
       setRssForm({
-        id: '',
+        feedName: '',
         url: '',
         category: curatorCategories[0]?.id ?? 'general',
         poll_seconds: '3600',
         max_articles: '3',
         enabled: true,
-        title: '',
       });
     }
     if (editingStock) {
       setStockForm({
-        id: editingStock.id,
         symbol: editingStock.symbol,
         display_name: editingStock.display_name,
         enabled: editingStock.enabled,
       });
     } else if (tab === 'stocks') {
-      setStockForm({ id: '', symbol: '', display_name: '', enabled: true });
+      setStockForm({ symbol: '', display_name: '', enabled: true });
     }
     const cat = editingJoke ?? editingTrivia;
     if (cat) {
       setCategoryForm({
-        id: cat.id,
+        curatorCategoryId: cat.id,
         label: cat.label,
         is_seasonal: cat.is_seasonal,
         category_prompt: cat.category_prompt ?? '',
@@ -556,9 +1207,10 @@ function InterestDialog({
         max_pool: String(cat.max_jokes ?? cat.max_questions ?? 100),
       });
     } else if (tab === 'jokes' || tab === 'trivia') {
+      const first = curatorCategories[0];
       setCategoryForm({
-        id: '',
-        label: '',
+        curatorCategoryId: first?.id ?? '',
+        label: first?.label ?? '',
         is_seasonal: false,
         category_prompt: '',
         min_pool: '10',
@@ -591,9 +1243,19 @@ function InterestDialog({
             include_active_weather_alerts: weatherForm.include_active_weather_alerts,
           });
         } else {
+          const name = weatherForm.name.trim();
+          if (!name) {
+            onError('Name is required');
+            return;
+          }
+          const id = weatherLocationInterestId(name, weatherIds);
+          if (!id) {
+            onError('Could not derive an id from the location name');
+            return;
+          }
           await createWeatherLocation(display, {
-            id: weatherForm.id,
-            name: weatherForm.name,
+            id,
+            name,
             latitude: lat,
             longitude: lon,
             enabled: weatherForm.enabled,
@@ -601,35 +1263,60 @@ function InterestDialog({
           });
         }
       } else if (tab === 'rss') {
+        const feedName = rssForm.feedName.trim();
+        if (!feedName) {
+          onError('Feed name is required');
+          return;
+        }
         const body = {
           url: rssForm.url,
           category: rssForm.category,
           poll_seconds: Number.parseInt(rssForm.poll_seconds, 10),
           max_articles: Number.parseInt(rssForm.max_articles, 10),
           enabled: rssForm.enabled,
-          title: rssForm.title.trim() || null,
+          title: feedName,
         };
         if (editingRss) {
           await patchRssFeed(display, editingRss.id, body);
         } else {
-          await createRssFeed(display, { id: rssForm.id, ...body });
+          const id = rssFeedInterestId(feedName, rssIds);
+          if (!id) {
+            onError('Could not derive an id from the feed name');
+            return;
+          }
+          await createRssFeed(display, { id, ...body });
         }
       } else if (tab === 'stocks') {
+        const symbol = stockForm.symbol.trim();
+        if (!symbol) {
+          onError('Symbol is required');
+          return;
+        }
         if (editingStock) {
           await patchStockSymbol(display, editingStock.id, {
-            symbol: stockForm.symbol,
+            symbol,
             display_name: stockForm.display_name,
             enabled: stockForm.enabled,
           });
         } else {
+          const id = stockSymbolInterestId(symbol, stockIds);
+          if (!id) {
+            onError('Could not derive an id from the symbol');
+            return;
+          }
           await createStockSymbol(display, {
-            id: stockForm.id,
-            symbol: stockForm.symbol,
+            id,
+            symbol,
             display_name: stockForm.display_name,
             enabled: stockForm.enabled,
           });
         }
       } else if (tab === 'jokes') {
+        const categoryId = categoryForm.curatorCategoryId.trim();
+        if (!categoryId) {
+          onError('Select a curator category');
+          return;
+        }
         const pool = {
           label: categoryForm.label,
           is_seasonal: categoryForm.is_seasonal,
@@ -640,9 +1327,14 @@ function InterestDialog({
         if (editingJoke) {
           await patchJokeCategory(display, editingJoke.id, pool);
         } else {
-          await createJokeCategory(display, { id: categoryForm.id, ...pool });
+          await createJokeCategory(display, { id: categoryId, ...pool });
         }
       } else if (tab === 'trivia') {
+        const categoryId = categoryForm.curatorCategoryId.trim();
+        if (!categoryId) {
+          onError('Select a curator category');
+          return;
+        }
         const pool = {
           label: categoryForm.label,
           is_seasonal: categoryForm.is_seasonal,
@@ -653,7 +1345,7 @@ function InterestDialog({
         if (editingTrivia) {
           await patchTriviaCategory(display, editingTrivia.id, pool);
         } else {
-          await createTriviaCategory(display, { id: categoryForm.id, ...pool });
+          await createTriviaCategory(display, { id: categoryId, ...pool });
         }
       }
       await onSaved();
@@ -669,13 +1361,6 @@ function InterestDialog({
         <Stack spacing={2} sx={{ pt: 1 }}>
           {tab === 'weather' && (
             <>
-              <TextField
-                label="ID"
-                value={weatherForm.id}
-                disabled={Boolean(editingWeather)}
-                onChange={(e) => setWeatherForm((f) => ({ ...f, id: e.target.value }))}
-                fullWidth
-              />
               <TextField
                 label="Name"
                 value={weatherForm.name}
@@ -703,7 +1388,7 @@ function InterestDialog({
                     }
                   />
                 }
-                label="Enabled"
+                label="Interested"
               />
               <FormControlLabel
                 control={
@@ -724,11 +1409,11 @@ function InterestDialog({
           {tab === 'rss' && (
             <>
               <TextField
-                label="ID"
-                value={rssForm.id}
-                disabled={Boolean(editingRss)}
-                onChange={(e) => setRssForm((f) => ({ ...f, id: e.target.value }))}
+                label="Feed name"
+                value={rssForm.feedName}
+                onChange={(e) => setRssForm((f) => ({ ...f, feedName: e.target.value }))}
                 fullWidth
+                required
               />
               <TextField
                 label="URL"
@@ -746,7 +1431,7 @@ function InterestDialog({
                 >
                   {curatorCategories.map((c) => (
                     <MenuItem key={c.id} value={c.id}>
-                      {c.label} ({c.id})
+                      {c.label}
                     </MenuItem>
                   ))}
                 </Select>
@@ -763,12 +1448,6 @@ function InterestDialog({
                 onChange={(e) => setRssForm((f) => ({ ...f, max_articles: e.target.value }))}
                 fullWidth
               />
-              <TextField
-                label="Title (optional)"
-                value={rssForm.title}
-                onChange={(e) => setRssForm((f) => ({ ...f, title: e.target.value }))}
-                fullWidth
-              />
               <FormControlLabel
                 control={
                   <Switch
@@ -776,19 +1455,12 @@ function InterestDialog({
                     onChange={(e) => setRssForm((f) => ({ ...f, enabled: e.target.checked }))}
                   />
                 }
-                label="Enabled"
+                label="Interested"
               />
             </>
           )}
           {tab === 'stocks' && (
             <>
-              <TextField
-                label="ID"
-                value={stockForm.id}
-                disabled={Boolean(editingStock)}
-                onChange={(e) => setStockForm((f) => ({ ...f, id: e.target.value }))}
-                fullWidth
-              />
               <TextField
                 label="Symbol"
                 value={stockForm.symbol}
@@ -808,22 +1480,39 @@ function InterestDialog({
                     onChange={(e) => setStockForm((f) => ({ ...f, enabled: e.target.checked }))}
                   />
                 }
-                label="Enabled"
+                label="Interested"
               />
             </>
           )}
           {(tab === 'jokes' || tab === 'trivia') && (
             <>
               <Typography variant="caption" color="text.secondary">
-                Category id must match a curator category (for icons and labels).
+                Pick a curator category; its slug is used as the interest id (for icons and labels).
               </Typography>
-              <TextField
-                label="ID (curator category slug)"
-                value={categoryForm.id}
-                disabled={Boolean(editingJoke || editingTrivia)}
-                onChange={(e) => setCategoryForm((f) => ({ ...f, id: e.target.value }))}
-                fullWidth
-              />
+              <FormControl fullWidth>
+                <InputLabel id="interest-cat-label">Curator category</InputLabel>
+                <Select
+                  labelId="interest-cat-label"
+                  label="Curator category"
+                  value={categoryForm.curatorCategoryId}
+                  disabled={Boolean(editingJoke || editingTrivia)}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    const match = curatorCategories.find((c) => c.id === id);
+                    setCategoryForm((f) => ({
+                      ...f,
+                      curatorCategoryId: id,
+                      label: match?.label ?? f.label,
+                    }));
+                  }}
+                >
+                  {curatorCategories.map((c) => (
+                    <MenuItem key={c.id} value={c.id}>
+                      {c.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
               <TextField
                 label="Label"
                 value={categoryForm.label}

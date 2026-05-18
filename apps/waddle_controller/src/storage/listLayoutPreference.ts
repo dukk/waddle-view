@@ -7,6 +7,7 @@ export const LIST_LAYOUT_PAGE_KEYS = [
   'overlays',
   'integrations',
   'displays',
+  'interests',
 ] as const;
 
 export type ListLayoutPageKey = (typeof LIST_LAYOUT_PAGE_KEYS)[number];

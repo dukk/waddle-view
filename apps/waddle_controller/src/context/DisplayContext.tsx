@@ -16,6 +16,10 @@ import {
   saveDisplays,
   updateDisplaySettings,
 } from '@/storage/displays';
+import {
+  resolveActiveDisplayId,
+  writeActiveDisplayPreference,
+} from '@/storage/activeDisplayPreference';
 import { clearSession, loadSession } from '@/storage/sessions';
 import { syncUserDisplayToServer } from '@/storage/userDisplaysSync';
 import { setActiveUserDisplay } from '@/api/bffUserDisplays';
@@ -40,17 +44,18 @@ const Ctx = createContext<DisplayCtx | null>(null);
 
 export function DisplayProvider({ children }: { children: ReactNode }) {
   const [displays, setDisplays] = useState<SavedDisplay[]>(() => loadDisplays());
-  const [activeId, setActiveId] = useState<string | null>(() => displays[0]?.id ?? null);
+  const [activeId, setActiveId] = useState<string | null>(() =>
+    resolveActiveDisplayId(loadDisplays()),
+  );
 
   const refresh = useCallback(() => {
     const next = loadDisplays();
     setDisplays(next);
     setActiveId((cur) => {
-      if (!cur || !next.some((d) => d.id === cur)) {
-        const activeRemote = next[0]?.id ?? null;
-        return activeRemote;
+      if (cur && next.some((d) => d.id === cur)) {
+        return cur;
       }
-      return cur;
+      return resolveActiveDisplayId(next);
     });
   }, []);
 
@@ -59,6 +64,10 @@ export function DisplayProvider({ children }: { children: ReactNode }) {
     window.addEventListener(DISPLAYS_CHANGED_EVENT, onChanged);
     return () => window.removeEventListener(DISPLAYS_CHANGED_EVENT, onChanged);
   }, [refresh]);
+
+  useEffect(() => {
+    writeActiveDisplayPreference(activeId);
+  }, [activeId]);
 
   const active = useMemo(
     () => displays.find((d) => d.id === activeId) ?? null,
@@ -77,7 +86,7 @@ export function DisplayProvider({ children }: { children: ReactNode }) {
   const replaceDisplays = useCallback((next: SavedDisplay[]) => {
     saveDisplays(next);
     setDisplays(next);
-    setActiveId(next[0]?.id ?? null);
+    setActiveId(resolveActiveDisplayId(next));
   }, []);
 
   const removeDisplay = useCallback((id: string) => {
@@ -86,11 +95,10 @@ export function DisplayProvider({ children }: { children: ReactNode }) {
     const next = loadDisplays();
     setDisplays(next);
     setActiveId((cur) => {
-      const still = cur != null && next.some((d) => d.id === cur);
-      if (still) {
+      if (cur && next.some((d) => d.id === cur)) {
         return cur;
       }
-      return next[0]?.id ?? null;
+      return resolveActiveDisplayId(next);
     });
   }, []);
 
