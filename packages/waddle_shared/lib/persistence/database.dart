@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 
+import '../integration_accounts/integration_accounts_service.dart';
 import 'display_overlay_sql.dart';
 import 'reject_term_defaults.dart';
 import 'tables.dart';
@@ -15,6 +16,7 @@ part 'database.g.dart';
   tables: [
     ContentCategories,
     Integrations,
+    IntegrationAccounts,
     BlobMetadata,
     Alerts,
     ConfigKeyValues,
@@ -57,7 +59,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -104,6 +106,13 @@ ORDER BY priority DESC, created_at DESC;
       }
       if (from == 5 && to >= 6) {
         await _migrateV5ToV6IntegrationTypesAndDefaults(this);
+        if (to == 6) {
+          return;
+        }
+        from = 6;
+      }
+      if (from == 6 && to >= 7) {
+        await _migrateV6ToV7IntegrationAccounts(this, m);
         return;
       }
       throw UnsupportedError(
@@ -385,6 +394,18 @@ Future<void> _migrateV5ToV6IntegrationTypesAndDefaults(AppDatabase db) async {
   }
 }
 
+Future<String?> _integrationSecretsStorageKeyColumn(AppDatabase db) async {
+  final columns =
+      await db.customSelect('PRAGMA table_info(integration_secrets)').get();
+  if (columns.any((c) => c.read<String>('name') == 'secret_key')) {
+    return 'secret_key';
+  }
+  if (columns.any((c) => c.read<String>('name') == 'key')) {
+    return 'key';
+  }
+  return null;
+}
+
 Future<void> _migrateIntegrationSecretKeys(
   AppDatabase db,
   String oldIntegrationId,
@@ -398,10 +419,15 @@ Future<void> _migrateIntegrationSecretKeys(
   if (secretsPresent.isEmpty) {
     return;
   }
+  final keyColumn = await _integrationSecretsStorageKeyColumn(db);
+  if (keyColumn == null) {
+    return;
+  }
   final oldPrefix = 'provider:access_token:$oldIntegrationId';
   final newPrefix = 'provider:access_token:$newIntegrationId';
   await db.customStatement(
-    'UPDATE integration_secrets SET key = REPLACE(key, ?, ?) WHERE key = ? OR key LIKE ?',
+    'UPDATE integration_secrets SET $keyColumn = REPLACE($keyColumn, ?, ?) '
+    'WHERE $keyColumn = ? OR $keyColumn LIKE ?',
     [oldPrefix, newPrefix, oldPrefix, '$oldPrefix:%'],
   );
 }
@@ -440,22 +466,49 @@ Future<void> _copyAccessTokenSecret(
   if (secretsPresent.isEmpty) {
     return;
   }
+  final keyColumn = await _integrationSecretsStorageKeyColumn(db);
+  if (keyColumn == null) {
+    return;
+  }
   final fromKey = 'provider:access_token:$fromIntegrationId';
   final toKey = 'provider:access_token:$toIntegrationId';
+  final columns =
+      await db.customSelect('PRAGMA table_info(integration_secrets)').get();
+  final hasNonce = columns.any((c) => c.read<String>('name') == 'nonce');
+  if (hasNonce) {
+    final row = await db.customSelect(
+      'SELECT ciphertext, nonce, updated_at_ms FROM integration_secrets '
+      'WHERE $keyColumn = ?',
+      variables: [Variable<String>(fromKey)],
+    ).getSingleOrNull();
+    if (row == null) {
+      return;
+    }
+    await db.customStatement(
+      'INSERT OR REPLACE INTO integration_secrets '
+      '($keyColumn, ciphertext, nonce, updated_at_ms) VALUES (?, ?, ?, ?)',
+      [
+        toKey,
+        row.read<Uint8List>('ciphertext'),
+        row.read<Uint8List>('nonce'),
+        row.read<int>('updated_at_ms'),
+      ],
+    );
+    return;
+  }
   final row = await db.customSelect(
-    'SELECT ciphertext, nonce, updated_at_ms FROM integration_secrets WHERE key = ?',
+    'SELECT ciphertext, updated_at_ms FROM integration_secrets WHERE $keyColumn = ?',
     variables: [Variable<String>(fromKey)],
   ).getSingleOrNull();
   if (row == null) {
     return;
   }
   await db.customStatement(
-    'INSERT OR REPLACE INTO integration_secrets (key, ciphertext, nonce, updated_at_ms) '
-    'VALUES (?, ?, ?, ?)',
+    'INSERT OR REPLACE INTO integration_secrets '
+    '($keyColumn, ciphertext, updated_at_ms) VALUES (?, ?, ?)',
     [
       toKey,
       row.read<Uint8List>('ciphertext'),
-      row.read<Uint8List>('nonce'),
       row.read<int>('updated_at_ms'),
     ],
   );
@@ -478,6 +531,14 @@ Future<void> _migrateV1ToV2InterestsTableRenames(AppDatabase db) async {
   await db.customStatement(
     'ALTER TABLE stock_symbols RENAME TO interests_stock_symbols',
   );
+}
+
+Future<void> _migrateV6ToV7IntegrationAccounts(
+  AppDatabase db,
+  Migrator m,
+) async {
+  await m.createTable(db.integrationAccounts);
+  await syncIntegrationAccountsFromIntegrationConfigs(db);
 }
 
 Future<void> _seedDefaultRejectTerms(AppDatabase db) async {

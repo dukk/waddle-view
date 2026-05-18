@@ -8,6 +8,9 @@ String? permissionForRoute(String method, String path) {
   if (p == '/v1/integrations' && m == 'GET') {
     return WaddlePermission.integrationsRead;
   }
+  if (p == '/v1/integration-accounts' && m == 'GET') {
+    return WaddlePermission.integrationsRead;
+  }
   final integrationSecrets = RegExp(r'^/v1/integrations/[^/]+/secrets(?:/[^/]+)?$');
   if (integrationSecrets.hasMatch(p)) {
     if (m == 'GET') {

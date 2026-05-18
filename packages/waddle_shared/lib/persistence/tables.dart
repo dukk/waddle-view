@@ -15,6 +15,17 @@ class Integrations extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// Shared sign-in identities (Google, Microsoft) used by multiple integrations.
+class IntegrationAccounts extends Table {
+  TextColumn get id => text()();
+  TextColumn get accountType => text()();
+  TextColumn get label => text().nullable()();
+  IntColumn get createdAtMs => integer()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 class BlobMetadata extends Table {
   TextColumn get blobKey => text()();
   TextColumn get sha256 => text()();

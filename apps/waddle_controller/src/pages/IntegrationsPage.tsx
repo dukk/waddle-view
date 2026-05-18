@@ -38,9 +38,20 @@ import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import { IntegrationBrandIcon } from '@/components/IntegrationBrandIcon';
 import { integrationDataFamily } from '@/util/integrationIcon';
-import { integrationDisplayName } from '@/util/integrationDisplayName';
 import { parseJsonObject } from '@/util/json';
 import { prepareRjsfSchema } from '@/util/rjsfSchema';
+import type {
+  IntegrationAccountRow,
+  IntegrationAccountType,
+  IntegrationAccountsResponse,
+} from '@/util/integrationAccounts';
+import { integrationDisplayName } from '@/util/integrationDisplayName';
+
+type IntegrationRequiredAccountType = {
+  account_type: string;
+  account_type_label: string;
+  signup_url: string;
+};
 
 type IntegrationRow = {
   id: string;
@@ -52,6 +63,7 @@ type IntegrationRow = {
   config_json_schema?: unknown;
   example_config_json?: unknown;
   secrets_configured?: boolean;
+  required_account_types?: IntegrationRequiredAccountType[];
 };
 
 function integrationConfigSchema(row: IntegrationRow): RJSFSchema {
@@ -93,6 +105,90 @@ function compareFamilies(a: string, b: string): number {
   if (ai >= 0) return -1;
   if (bi >= 0) return 1;
   return a.localeCompare(b);
+}
+
+function IntegrationAccountsSection({
+  accounts,
+  accountTypes,
+}: {
+  accounts: IntegrationAccountRow[];
+  accountTypes: IntegrationAccountType[];
+}) {
+  return (
+    <Stack spacing={1.5}>
+      <Typography variant="subtitle1" fontWeight={600}>
+        Accounts
+      </Typography>
+      <Typography variant="body2" color="text.secondary">
+        Shared identities used by calendar and cloud integrations. Outlook and OneDrive both use the
+        same Microsoft account type.
+      </Typography>
+      {accountTypes.length > 0 ? (
+        <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1}>
+          {accountTypes.map((t) => (
+            <Chip
+              key={t.id}
+              size="small"
+              variant="outlined"
+              label={t.label}
+              component="a"
+              href={t.signup_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              clickable
+            />
+          ))}
+        </Stack>
+      ) : null}
+      {accounts.length === 0 ? (
+        <Typography variant="body2" color="text.secondary">
+          No accounts configured yet. Add an account key under an integration&apos;s{' '}
+          <code>config_json</code> (for example <code>googleAccountKey</code> or{' '}
+          <code>graphAccountKey</code>), save, then complete sign-in when the display prompts you.
+        </Typography>
+      ) : (
+        <TableContainer component={Paper} variant="outlined">
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Account</TableCell>
+                <TableCell>Type</TableCell>
+                <TableCell>Used by</TableCell>
+                <TableCell>Sign-in</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {accounts.map((a) => (
+                <TableRow key={`${a.account_type}:${a.id}`} hover>
+                  <TableCell sx={{ fontWeight: 600 }}>{a.label}</TableCell>
+                  <TableCell>{a.account_type_label}</TableCell>
+                  <TableCell>
+                    <Stack direction="row" flexWrap="wrap" useFlexGap spacing={0.5}>
+                      {a.integration_types.map((t) => (
+                        <Chip
+                          key={t}
+                          size="small"
+                          label={integrationDisplayName(t)}
+                          variant="outlined"
+                        />
+                      ))}
+                    </Stack>
+                  </TableCell>
+                  <TableCell>
+                    {a.configured ? (
+                      <Chip size="small" color="success" label="Signed in" />
+                    ) : (
+                      <Chip size="small" color="warning" label="Pending sign-in" />
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+    </Stack>
+  );
 }
 
 function IntegrationTable({
@@ -156,6 +252,8 @@ export function IntegrationsPage() {
   const { loading, wrapRefresh } = useDisplayRefresh();
   const { layout, setLayout } = useListLayoutPreference('integrations');
   const [rows, setRows] = useState<IntegrationRow[]>([]);
+  const [accounts, setAccounts] = useState<IntegrationAccountRow[]>([]);
+  const [accountTypes, setAccountTypes] = useState<IntegrationAccountType[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [edit, setEdit] = useState<IntegrationRow | null>(null);
   const [dialogIntent, setDialogIntent] = useState<'edit' | 'enable'>('edit');
@@ -166,8 +264,13 @@ export function IntegrationsPage() {
     await wrapRefresh(async () => {
       setError(null);
       try {
-        const res = await apiJson<{ items: IntegrationRow[] }>(active, '/v1/integrations');
-        setRows(res.items ?? []);
+        const [integrationsRes, accountsRes] = await Promise.all([
+          apiJson<{ items: IntegrationRow[] }>(active, '/v1/integrations'),
+          apiJson<IntegrationAccountsResponse>(active, '/v1/integration-accounts'),
+        ]);
+        setRows(integrationsRes.items ?? []);
+        setAccounts(accountsRes.items ?? []);
+        setAccountTypes(accountsRes.account_types ?? []);
       } catch (e) {
         setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
       }
@@ -222,12 +325,14 @@ export function IntegrationsPage() {
         </Typography>
         <Typography variant="body2" color="text.secondary">
           Connect external data sources—calendars, news, weather, stocks, and more—that collectors
-          poll into the display database. Set API keys and OAuth client IDs in the secrets section
-          below (stored encrypted on the display), then enable the provider and complete{' '}
-          <code>config_json</code> so scheduled fetches succeed.
+          poll into the display database. Shared sign-in accounts (Google, Microsoft) are listed
+          first; set API keys and OAuth client IDs per integration (stored encrypted on the display),
+          then enable the provider and complete <code>config_json</code> so scheduled fetches succeed.
         </Typography>
       </Box>
       {error && <Alert severity="error">{error}</Alert>}
+
+      <IntegrationAccountsSection accounts={accounts} accountTypes={accountTypes} />
 
       <CatalogPageToolbar layout={layout} onLayoutChange={setLayout} />
 
@@ -553,6 +658,20 @@ function EditIntegrationDialog({
           {secretSlots.length > 0 && !secretsReady ? (
             <Alert severity="info">
               Enter API keys or OAuth client IDs in the secrets section before enabling.
+            </Alert>
+          ) : null}
+          {(row.required_account_types?.length ?? 0) > 0 ? (
+            <Alert severity="info">
+              This integration uses shared accounts. Configure account keys in{' '}
+              <code>config_json</code> and complete sign-in when prompted. Need an account?{' '}
+              {row.required_account_types!.map((a, i) => (
+                <span key={a.account_type}>
+                  {i > 0 ? ' · ' : null}
+                  <a href={a.signup_url} target="_blank" rel="noopener noreferrer">
+                    {a.account_type_label}
+                  </a>
+                </span>
+              ))}
             </Alert>
           ) : null}
           {secretsLoading ? (

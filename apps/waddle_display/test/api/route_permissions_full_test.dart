@@ -5,6 +5,7 @@ import 'package:waddle_shared/auth/role_permissions.dart';
 void main() {
   final cases = <(String, String, String)>[
     ('GET', '/v1/integrations', WaddlePermission.integrationsRead),
+    ('GET', '/v1/integration-accounts', WaddlePermission.integrationsRead),
     ('PATCH', '/v1/integrations/p1', WaddlePermission.integrationsWrite),
     ('GET', '/v1/alerts', WaddlePermission.alertsRead),
     ('POST', '/v1/alerts', WaddlePermission.alertsWrite),

@@ -31,6 +31,7 @@ import 'interests_rest_routes.dart';
 import 'cors_policy.dart';
 import 'display_health.dart';
 import 'integration_secrets_rest_routes.dart';
+import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
 import 'operator_rest_routes.dart';
 import 'plugin_routes.dart';
 import 'runtime_signal_routes.dart';
@@ -160,6 +161,8 @@ Handler buildProtectedApiRouter({
     final rows = await db.select(db.integrations).get();
     final list = <Map<String, dynamic>>[];
     for (final e in rows) {
+      final requiredAccountTypes =
+          integrationAccountTypesRequiredForIntegration(e.integrationType);
       list.add({
         'id': e.id,
         'integration_type': e.integrationType,
@@ -175,6 +178,15 @@ Handler buildProtectedApiRouter({
               e.id,
               e.integrationType,
             ),
+        'required_account_types': [
+          for (final typeId in requiredAccountTypes)
+            {
+              'account_type': typeId,
+              'account_type_label':
+                  kIntegrationAccountTypes[typeId]?.label ?? typeId,
+              'signup_url': kIntegrationAccountTypes[typeId]?.signupUrl ?? '',
+            },
+        ],
       });
     }
     return Response.ok(
