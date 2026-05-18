@@ -13,6 +13,7 @@ class CuratorConfigurationInput {
     required this.programDurationSeconds,
     required this.historyDepth,
     required this.requireNewsPhotoForScreens,
+    required this.tickerEnabled,
     this.themeIdOverride,
     required this.defaultConfig,
     required this.rules,
@@ -28,6 +29,7 @@ class CuratorConfigurationInput {
   final int programDurationSeconds;
   final int historyDepth;
   final bool requireNewsPhotoForScreens;
+  final bool tickerEnabled;
   final String? themeIdOverride;
   final bool defaultConfig;
   final List<CuratorScheduleRuleInput> rules;

@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 void main() {
-  test('schema 12 to 13 adds twitter and linkedin source tables', () async {
+  test('schema 13 to 14 adds twitter and linkedin source tables', () async {
     final executor = NativeDatabase.memory(setup: (raw) {
       raw.execute('''
 CREATE TABLE news (
@@ -36,7 +36,7 @@ CREATE TABLE interests_facebook_sources (
   next_retry_at INTEGER
 );
 ''');
-      raw.execute('PRAGMA user_version = 12');
+      raw.execute('PRAGMA user_version = 13');
     });
     final db = AppDatabase(
       DatabaseConnection(executor, closeStreamsSynchronously: true),

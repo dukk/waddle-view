@@ -14,8 +14,8 @@ class ContentSuppressionRepository {
   }
 
   Future<int> setRssArticleSuppressed(String id, bool suppressed) {
-    return (_db.update(_db.rssArticles)..where((t) => t.id.equals(id)))
-        .write(RssArticlesCompanion(suppressed: Value(suppressed)));
+    return (_db.update(_db.news)..where((t) => t.id.equals(id)))
+        .write(NewsCompanion(suppressed: Value(suppressed)));
   }
 
   Future<int> setPhotoSuppressed(String id, bool suppressed) {

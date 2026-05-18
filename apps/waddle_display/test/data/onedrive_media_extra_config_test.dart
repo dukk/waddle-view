@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_data_providers/media_onedrive/onedrive_media_extra_config.dart';
+import 'package:waddle_data_providers/photo_onedrive/onedrive_media_extra_config.dart';
 
 void main() {
   test('defaults when null or empty', () {

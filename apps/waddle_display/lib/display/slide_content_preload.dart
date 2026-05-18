@@ -81,7 +81,7 @@ Future<void> _preloadRssColumns(
 ) async {
   final n = w.rssSummarySlotCapacities.length.clamp(1, 6);
   final exclude = <String>{};
-  RssArticle? firstArticle;
+  NewsArticle? firstArticle;
   for (var i = 0; i < n; i++) {
     final key = '${w.choiceKey}_$i';
     final article = await loadRssArticleForSlideChoice(
@@ -108,7 +108,7 @@ Future<void> _preloadRssStack(
   ParsedWidgetSpec w,
 ) async {
   final exclude = <String>{};
-  final arts = <RssArticle?>[];
+  final arts = <NewsArticle?>[];
   for (var i = 0; i < 2; i++) {
     final key = '${w.choiceKey}_$i';
     final article = await loadRssArticleForSlideChoice(
@@ -125,7 +125,7 @@ Future<void> _preloadRssStack(
     }
     await resolveRssArticleSourceLabel(db, article);
   }
-  RssArticle? firstForCategory;
+  NewsArticle? firstForCategory;
   for (final a in arts) {
     if (a != null) {
       firstForCategory = a;

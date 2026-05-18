@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:test/test.dart';
 import 'package:path/path.dart' as p;
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddlectl/local_drift_backend.dart';
 
 void main() {
@@ -56,10 +57,11 @@ void main() {
             url: 'https://example.test/rss',
           ),
         );
-    await db.into(db.rssArticles).insert(
-          RssArticlesCompanion.insert(
+    await db.into(db.news).insert(
+          NewsCompanion.insert(
             id: 'reject_a1',
-            feedId: 'rejfeed',
+            sourceType: kNewsSourceTypeRss,
+            sourceId: 'rejfeed',
             guid: 'g1',
             title: 'CussWord in the headline',
             link: 'https://x.test',

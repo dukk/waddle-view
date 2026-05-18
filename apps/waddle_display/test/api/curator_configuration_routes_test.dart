@@ -57,6 +57,7 @@ void main() {
     expect(detailBody['id'], 'evening');
     expect(detailBody['members'], isA<Map>());
     expect(detailBody['rules'], isA<List>());
+    expect(detailBody['ticker_enabled'], isTrue);
   });
 
   test('POST PATCH DELETE curator configuration lifecycle', () async {
@@ -92,7 +93,7 @@ void main() {
     final patch = await http.patch(
       Uri.parse('${h.baseUrl}/v1/curator/configurations/test_enhancement'),
       headers: h.authHeaders,
-      body: jsonEncode({'name': 'Renamed'}),
+      body: jsonEncode({'name': 'Renamed', 'ticker_enabled': false}),
     );
     expect(patch.statusCode, 200);
 
@@ -101,10 +102,9 @@ void main() {
       headers: h.authHeaders,
     );
     expect(detail.statusCode, 200);
-    expect(
-      (jsonDecode(detail.body) as Map<String, dynamic>)['name'],
-      'Renamed',
-    );
+    final detailBody = jsonDecode(detail.body) as Map<String, dynamic>;
+    expect(detailBody['name'], 'Renamed');
+    expect(detailBody['ticker_enabled'], isFalse);
 
     final del = await http.delete(
       Uri.parse('${h.baseUrl}/v1/curator/configurations/test_enhancement'),

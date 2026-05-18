@@ -1,6 +1,7 @@
 import '../clock.dart';
 import '../debug/app_debug_log.dart';
 import '../ticker/ticker_curated_repository.dart';
+import 'curator_membership_filter.dart';
 import 'curator_read_port.dart';
 import 'dashboard_curator.dart';
 import 'ticker_curation.dart';
@@ -10,16 +11,24 @@ class DefaultDashboardCurator implements DashboardCurator {
     required CuratorReadPort read,
     required TickerCuratedRepository tickerStore,
     required Clock clock,
+    CuratorMembershipFilter? membershipFilter,
   }) : _read = read,
        _tickerStore = tickerStore,
-       _clock = clock;
+       _clock = clock,
+       _membershipFilter = membershipFilter;
 
   final CuratorReadPort _read;
   final TickerCuratedRepository _tickerStore;
   final Clock _clock;
+  final CuratorMembershipFilter? _membershipFilter;
 
   @override
   Future<void> refresh() async {
+    if (_membershipFilter?.tickerCurationEnabled == false) {
+      AppDebugLog.curator('ticker refresh: skipped (disabled by curator)');
+      await _tickerStore.replaceAll(const []);
+      return;
+    }
     AppDebugLog.curator('ticker refresh: begin');
     final kv = await _read.loadKeyValuesForCuration();
     final news = await _read.loadNewsCandidatesForTicker();

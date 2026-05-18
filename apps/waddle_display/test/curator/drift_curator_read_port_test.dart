@@ -33,10 +33,11 @@ void main() {
             category: const Value('usa'),
           ),
         );
-    await db.into(db.rssArticles).insert(
-          RssArticlesCompanion.insert(
+    await db.into(db.news).insert(
+          NewsCompanion.insert(
             id: 'a1',
-            feedId: 'f1',
+            sourceType: kNewsSourceTypeRss,
+            sourceId: 'f1',
             guid: 'g1',
             title: 'Headline',
             link: 'http://l',
@@ -60,10 +61,11 @@ void main() {
             category: const Value('world'),
           ),
         );
-    await db.into(db.rssArticles).insert(
-          RssArticlesCompanion.insert(
+    await db.into(db.news).insert(
+          NewsCompanion.insert(
             id: 'a1',
-            feedId: 'f1',
+            sourceType: kNewsSourceTypeRss,
+            sourceId: 'f1',
             guid: 'g1',
             title: 'Headline',
             link: 'http://l',
@@ -94,10 +96,11 @@ void main() {
             category: const Value('world'),
           ),
         );
-    await db.into(db.rssArticles).insert(
-          RssArticlesCompanion.insert(
+    await db.into(db.news).insert(
+          NewsCompanion.insert(
             id: 'a1',
-            feedId: 'f1',
+            sourceType: kNewsSourceTypeRss,
+            sourceId: 'f1',
             guid: 'g1',
             title: 'Headline',
             link: 'http://l',
@@ -121,10 +124,11 @@ void main() {
             title: const Value('Feed'),
           ),
         );
-    await db.into(db.rssArticles).insert(
-          RssArticlesCompanion.insert(
+    await db.into(db.news).insert(
+          NewsCompanion.insert(
             id: 'hid',
-            feedId: 'f1',
+            sourceType: kNewsSourceTypeRss,
+            sourceId: 'f1',
             guid: 'g0',
             title: 'Bad',
             link: 'http://a',
@@ -133,10 +137,11 @@ void main() {
             suppressed: const Value(true),
           ),
         );
-    await db.into(db.rssArticles).insert(
-          RssArticlesCompanion.insert(
+    await db.into(db.news).insert(
+          NewsCompanion.insert(
             id: 'vis',
-            feedId: 'f1',
+            sourceType: kNewsSourceTypeRss,
+            sourceId: 'f1',
             guid: 'g1',
             title: 'Ok',
             link: 'http://b',
@@ -185,7 +190,7 @@ void main() {
           InterestsStockSymbolsCompanion.insert(
             id: 'gone',
             symbol: 'GONE',
-            includeWeather: const Value(false),
+            enabled: const Value(false),
           ),
         );
     final port = DriftCuratorReadPort(db);
@@ -214,7 +219,7 @@ void main() {
           InterestsStockSymbolsCompanion.insert(
             id: 'gone',
             symbol: 'GONE',
-            includeWeather: const Value(false),
+            enabled: const Value(false),
           ),
         );
     await db.into(db.stockQuotes).insert(

@@ -12,12 +12,14 @@ class DashboardDataBoundShell extends StatelessWidget {
     this.viewportConfig = const DisplayViewportConfig(),
     required this.body,
     required this.ticker,
+    this.showTicker = true,
   });
 
   final TvOverscanInsets overscan;
   final DisplayViewportConfig viewportConfig;
   final Widget body;
   final Widget ticker;
+  final bool showTicker;
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +28,7 @@ class DashboardDataBoundShell extends StatelessWidget {
       viewportConfig: viewportConfig,
       body: body,
       ticker: ticker,
+      showTicker: showTicker,
     );
   }
 }

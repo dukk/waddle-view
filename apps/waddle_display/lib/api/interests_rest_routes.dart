@@ -1,6 +1,7 @@
 import 'dart:convert';
 
-import 'package:drift/drift.dart' show OrderingTerm, Value;
+import 'package:drift/drift.dart' hide isNull, isNotNull;
+import 'package:waddle_shared/persistence/tables.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:waddle_shared/persistence/database.dart';
@@ -342,8 +343,8 @@ void registerInterestsRestRoutes(
   });
 
   r.delete('/v1/interests/rss-feeds/<id>', (Request req, String id) async {
-    final articles = await (db.select(db.rssArticles)
-          ..where((t) => t.feedId.equals(id)))
+    final articles = await (db.select(db.news)
+          ..where((t) => t.sourceType.equals(kNewsSourceTypeRss) & t.sourceId.equals(id)))
         .get();
     if (articles.isNotEmpty) return _jsonErr(409, 'feed_in_use_articles');
     final n =

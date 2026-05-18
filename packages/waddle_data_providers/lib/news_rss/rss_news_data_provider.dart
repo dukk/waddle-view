@@ -1,8 +1,9 @@
 import 'package:waddle_shared/net/http_debug_uri.dart';
 import 'dart:convert';
 
-import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
+import 'package:waddle_shared/news/news_article_id.dart';
+import 'package:waddle_shared/persistence/tables.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/curation/reject_filter_context.dart';
 
@@ -12,11 +13,6 @@ import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'rss_feed_parsing.dart';
 import 'rss_http_response_body_decode.dart';
-
-String rssArticleId(String feedId, String stableItemKey) {
-  final h = sha256.convert(utf8.encode('$feedId\x00$stableItemKey'));
-  return h.toString();
-}
 
 class RssNewsDataProvider implements IDataProvider {
   RssNewsDataProvider({http.Client? httpClient, int Function()? nowMs})
@@ -110,7 +106,7 @@ class RssNewsDataProvider implements IDataProvider {
   }) async {
     final articleId = rssArticleId(feedId, entry.stableKey);
     final existing = await (ctx.db.select(
-      ctx.db.rssArticles,
+      ctx.db.news,
     )..where((t) => t.id.equals(articleId))).getSingleOrNull();
     var imageKey = existing?.imageBlobKey;
     if (entry.imageUrl != null &&
@@ -131,10 +127,11 @@ class RssNewsDataProvider implements IDataProvider {
     final isBlocked = rejectCtx.isBlockedAny([entry.title, entry.summary]);
     final suppressedForInsert = (existing?.suppressed ?? false) || isBlocked;
 
-    await ctx.db.into(ctx.db.rssArticles).insert(
-          RssArticlesCompanion.insert(
+    await ctx.db.into(ctx.db.news).insert(
+          NewsCompanion.insert(
             id: articleId,
-            feedId: feedId,
+            sourceType: kNewsSourceTypeRss,
+            sourceId: feedId,
             guid: entry.stableKey,
             title: entry.title,
             link: entry.link,
@@ -148,8 +145,8 @@ class RssNewsDataProvider implements IDataProvider {
             suppressed: Value(suppressedForInsert),
           ),
           onConflict: DoUpdate(
-            (old) => RssArticlesCompanion(
-              feedId: Value(feedId),
+            (old) => NewsCompanion(
+              sourceId: Value(feedId),
               guid: Value(entry.stableKey),
               title: Value(entry.title),
               link: Value(entry.link),
@@ -226,8 +223,8 @@ class RssNewsDataProvider implements IDataProvider {
       return;
     }
     final rows =
-        await (ctx.db.select(ctx.db.rssArticles)
-              ..where((t) => t.feedId.equals(feedId))
+        await (ctx.db.select(ctx.db.news)
+              ..where((t) => t.sourceType.equals(kNewsSourceTypeRss) & t.sourceId.equals(feedId))
               ..orderBy([
                 (t) => OrderingTerm.desc(t.publishedAt),
               ]))
@@ -241,7 +238,7 @@ class RssNewsDataProvider implements IDataProvider {
     }
   }
 
-  Future<void> _deleteArticle(DataWriteContext ctx, RssArticle a) async {
+  Future<void> _deleteArticle(DataWriteContext ctx, NewsArticle a) async {
     final key = a.imageBlobKey;
     if (key != null && key.isNotEmpty) {
       final meta = await (ctx.db.select(
@@ -255,7 +252,7 @@ class RssNewsDataProvider implements IDataProvider {
       }
     }
     await (ctx.db.delete(
-      ctx.db.rssArticles,
+      ctx.db.news,
     )..where((t) => t.id.equals(a.id))).go();
   }
 }

@@ -2,11 +2,13 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:waddle_display/clock.dart';
 import 'package:waddle_display/curator/curator_read_port.dart';
+import 'package:waddle_display/curator/curator_membership_filter.dart';
 import 'package:waddle_display/curator/default_dashboard_curator.dart';
 import 'package:waddle_display/curator/ticker_item.dart';
 import 'package:waddle_display/curator/ticker_news_candidate.dart';
 import 'package:waddle_display/ticker/ticker_curated_repository.dart';
 import 'package:waddle_shared/curation/reject_filter_context.dart';
+import 'package:waddle_shared/persistence/database.dart';
 
 class _MapRead implements CuratorReadPort {
   _MapRead(
@@ -69,6 +71,30 @@ class _RecordingTickerStore implements TickerCuratedRepository {
 }
 
 void main() {
+  test('refresh clears ticker when curator disables ticker', () async {
+    final store = _RecordingTickerStore();
+    final membership = CuratorMembershipFilter()..tickerCurationEnabled = false;
+    final curator = DefaultDashboardCurator(
+      read: _MapRead(
+        const {},
+        tickerDefs: const [
+          TickerTapeForCuration(
+            id: 'ticker_time',
+            tickerType: 'time',
+            frequencyWeight: 1,
+            sortOrder: 0,
+          ),
+        ],
+      ),
+      tickerStore: store,
+      clock: FakeClock(DateTime(2026, 1, 2, 15, 0, 0)),
+      membershipFilter: membership,
+    );
+    await curator.refresh();
+    expect(store.last, isNotNull);
+    expect(store.last, isEmpty);
+  });
+
   test('refresh writes curated ticker list', () async {
     final store = _RecordingTickerStore();
     final curator = DefaultDashboardCurator(

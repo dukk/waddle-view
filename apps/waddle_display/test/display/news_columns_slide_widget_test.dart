@@ -27,10 +27,11 @@ Future<void> _insertArticle(
   required String title,
   String summary = 'Summary text.',
 }) async {
-  await db.into(db.rssArticles).insert(
-        RssArticlesCompanion.insert(
+  await db.into(db.news).insert(
+        NewsCompanion.insert(
           id: id,
-          feedId: 'feed_t',
+          sourceType: kNewsSourceTypeRss,
+          sourceId: 'feed_t',
           guid: 'guid_$id',
           title: title,
           link: 'http://test.local/$id',
@@ -105,10 +106,11 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _insertFeed(db);
-    await db.into(db.rssArticles).insert(
-          RssArticlesCompanion.insert(
+    await db.into(db.news).insert(
+          NewsCompanion.insert(
             id: 'no_link',
-            feedId: 'feed_t',
+            sourceType: kNewsSourceTypeRss,
+            sourceId: 'feed_t',
             guid: 'g_nl',
             title: 'No link story',
             link: '',

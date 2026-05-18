@@ -211,7 +211,7 @@ class LocalDriftBackend implements WaddleAdminBackend {
 
   Map<String, Object?> _integrationToMap(Integration row) => {
     'id': row.id,
-    'integration_type': row.providerType,
+    'integration_type': row.integrationType,
     'enabled': row.enabled,
     'poll_seconds': row.pollSeconds,
     'base_url': row.baseUrl,

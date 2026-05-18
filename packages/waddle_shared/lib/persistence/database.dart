@@ -30,7 +30,10 @@ part 'database.g.dart';
     CuratorConfigurationMembers,
     CuratorDataKeyProgramLimits,
     InterestsRssFeeds,
-    RssArticles,
+    News,
+    InterestsFacebookSources,
+    InterestsTwitterSources,
+    InterestsLinkedinSources,
     InterestsJokes,
     Jokes,
     JokeGenerationBatches,
@@ -62,7 +65,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -144,6 +147,27 @@ ORDER BY priority DESC, created_at DESC;
       }
       if (from == 10 && to >= 11) {
         await _migrateV10ToV11LocationRegions(this);
+        if (to == 11) {
+          return;
+        }
+        from = 11;
+      }
+      if (from == 11 && to >= 12) {
+        await _migrateV11ToV12CuratorTickerEnabled(this);
+        if (to == 12) {
+          return;
+        }
+        from = 12;
+      }
+      if (from == 12 && to >= 13) {
+        await _migrateV12ToV13NewsAndFacebookSources(this, m);
+        if (to == 13) {
+          return;
+        }
+        from = 13;
+      }
+      if (from == 13 && to >= 14) {
+        await _migrateV13ToV14SocialNewsSources(this, m);
         return;
       }
       throw UnsupportedError(
@@ -172,6 +196,9 @@ const kIntegrationsDisabledOnSecretStoreMigration = <String>[
 
 /// Default integration row ids after schema 6 (seed + migration).
 const String kDefaultNewsRssIntegrationId = 'default_news_rss';
+const String kDefaultNewsFacebookIntegrationId = 'default_news_facebook';
+const String kDefaultNewsTwitterIntegrationId = 'default_news_twitter';
+const String kDefaultNewsLinkedinIntegrationId = 'default_news_linkedin';
 const String kDefaultJokeOpenAiIntegrationId = 'default_joke_openai';
 const String kDefaultTriviaOpenAiIntegrationId = 'default_trivia_openai';
 const String kDefaultTriviaOpenTdbIntegrationId = 'default_trivia_opentdb';
@@ -618,6 +645,52 @@ Future<void> _migrateV8ToV9LocationInterestFlags(AppDatabase db) async {
 /// Refreshes default location catalog rows (continental categories and new cities).
 Future<void> _migrateV10ToV11LocationRegions(AppDatabase db) async {
   await ensureDefaultInterestsLocations(db);
+}
+
+/// Renames `rss_articles` → `news` and adds Facebook interest sources (12 → 13).
+Future<void> _migrateV12ToV13NewsAndFacebookSources(
+  AppDatabase db,
+  Migrator m,
+) async {
+  final rssTable = await db
+      .customSelect(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='rss_articles' LIMIT 1",
+      )
+      .getSingleOrNull();
+  if (rssTable != null) {
+    await db.customStatement('ALTER TABLE rss_articles RENAME TO news');
+    await db.customStatement(
+      "ALTER TABLE news ADD COLUMN source_type TEXT NOT NULL DEFAULT '${kNewsSourceTypeRss}'",
+    );
+    await db.customStatement(
+      'ALTER TABLE news RENAME COLUMN feed_id TO source_id',
+    );
+  }
+  final fbTable = await db
+      .customSelect(
+        "SELECT 1 FROM sqlite_master WHERE type='table' "
+        "AND name='interests_facebook_sources' LIMIT 1",
+      )
+      .getSingleOrNull();
+  if (fbTable == null) {
+    await m.createTable(db.interestsFacebookSources);
+  }
+}
+
+/// Adds Twitter and LinkedIn interest source tables (13 → 14).
+Future<void> _migrateV13ToV14SocialNewsSources(
+  AppDatabase db,
+  Migrator m,
+) async {
+  await m.createTable(db.interestsTwitterSources);
+  await m.createTable(db.interestsLinkedinSources);
+}
+
+Future<void> _migrateV11ToV12CuratorTickerEnabled(AppDatabase db) async {
+  await db.customStatement(
+    'ALTER TABLE curator_configurations ADD COLUMN ticker_enabled '
+    'INTEGER NOT NULL DEFAULT 1',
+  );
 }
 
 Future<void> _seedDefaultRejectTerms(AppDatabase db) async {

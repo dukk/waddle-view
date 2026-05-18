@@ -68,7 +68,7 @@ class _NewsStackSlideWidgetState extends State<NewsStackSlideWidget> {
   late final double _qrLogical;
   final ScrollController _scroll0 = ScrollController();
   final ScrollController _scroll1 = ScrollController();
-  final List<RssArticle?> _articles = <RssArticle?>[null, null];
+  final List<NewsArticle?> _articles = <NewsArticle?>[null, null];
   final List<String?> _sourceLabels = <String?>[null, null];
   final List<NewsImageLoad> _imageLoads = <NewsImageLoad>[
     const NewsImageLoad.absent(),
@@ -100,7 +100,7 @@ class _NewsStackSlideWidgetState extends State<NewsStackSlideWidget> {
 
   Future<void> _bootstrap() async {
     final exclude = <String>{};
-    final arts = <RssArticle?>[];
+    final arts = <NewsArticle?>[];
     final loads = <NewsImageLoad>[];
     final sourceLabels = <String?>[];
     for (var i = 0; i < 2; i++) {
@@ -307,7 +307,7 @@ class _RssStackArticleRow extends StatelessWidget {
   });
 
   final BoxConstraints constraints;
-  final RssArticle? article;
+  final NewsArticle? article;
   final String? sourceLabel;
   final NewsImageLoad imageLoad;
   final bool imageOnRight;

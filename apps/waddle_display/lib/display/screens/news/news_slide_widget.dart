@@ -81,7 +81,7 @@ class NewsSlideWidget extends StatefulWidget {
 class _NewsSlideWidgetState extends State<NewsSlideWidget> {
   static const _scrollableEpsilon = 8.0;
 
-  RssArticle? _article;
+  NewsArticle? _article;
   NewsImageLoad _imageLoad = const NewsImageLoad.absent();
   bool _loading = true;
   final ScrollController _scroll = ScrollController();
@@ -386,7 +386,7 @@ class _NewsSlideWidgetState extends State<NewsSlideWidget> {
     required double s,
     required double w,
     required double h,
-    required RssArticle article,
+    required NewsArticle article,
     required String summary,
     required String title,
     required String? sourceLabel,

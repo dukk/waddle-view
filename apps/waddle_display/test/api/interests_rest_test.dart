@@ -122,10 +122,11 @@ void main() {
     );
     expect(create.statusCode, 200);
 
-    await db.into(db.rssArticles).insert(
-          RssArticlesCompanion.insert(
+    await db.into(db.news).insert(
+          NewsCompanion.insert(
             id: 'a1',
-            feedId: 'f1',
+            sourceType: kNewsSourceTypeRss,
+            sourceId: 'f1',
             guid: 'g1',
             title: 'T',
             link: 'https://example.com/a',

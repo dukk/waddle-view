@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
-import 'package:waddle_data_providers/media_flickr/flickr_media_data_provider.dart';
+import 'package:waddle_data_providers/photo_flickr/flickr_media_data_provider.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
@@ -20,7 +20,7 @@ void main() {
     await warmDatabase(db);
     await _seedProvider(db, enabled: false);
     final client = _FlickrClient();
-    await FlickrMediaDataProvider(httpClient: client).collect(
+    await FlickrPhotosDataProvider(httpClient: client).collect(
       await _ctx(db, InMemorySecretStore(), apiKey: null),
     );
     expect(client.listCalls, 0);
@@ -32,7 +32,7 @@ void main() {
     await warmDatabase(db);
     await _seedProvider(db);
     final client = _FlickrClient();
-    await FlickrMediaDataProvider(httpClient: client).collect(
+    await FlickrPhotosDataProvider(httpClient: client).collect(
       await _ctx(db, InMemorySecretStore(), apiKey: null),
     );
     expect(client.listCalls, 0);
@@ -59,13 +59,13 @@ void main() {
         ],
       },
     );
-    await FlickrMediaDataProvider(httpClient: client, nowMs: () => 1000).collect(
+    await FlickrPhotosDataProvider(httpClient: client, nowMs: () => 1000).collect(
       await _ctx(db, secrets),
     );
     final photos = await db.select(db.photos).get();
     expect(photos.length, 1);
     expect(photos.single.id, 'flickr:123');
-    expect(photos.single.dataProvider, kMediaDataProviderFlickr);
+    expect(photos.single.dataProvider, kMediaDataProviderPhotoFlickr);
     expect(photos.single.category, 'flickr');
     expect(photos.single.photographerName, 'Pat');
     final blobs = await db.select(db.blobMetadata).get();
@@ -106,7 +106,7 @@ void main() {
         ],
       },
     );
-    await FlickrMediaDataProvider(httpClient: client).collect(await _ctx(db, secrets));
+    await FlickrPhotosDataProvider(httpClient: client).collect(await _ctx(db, secrets));
     expect((await db.select(db.photos).get()).length, 1);
     await db.close();
   });
@@ -134,7 +134,7 @@ void main() {
         ],
       },
     );
-    final provider = FlickrMediaDataProvider(httpClient: client, nowMs: () => 2000);
+    final provider = FlickrPhotosDataProvider(httpClient: client, nowMs: () => 2000);
     await provider.collect(await _ctx(db, secrets));
     await provider.collect(await _ctx(db, secrets));
     expect((await db.select(db.photos).get()).length, 1);
@@ -168,8 +168,8 @@ Future<void> _seedProvider(
 }) async {
   await db.into(db.integrations).insertOnConflictUpdate(
         IntegrationsCompanion.insert(
-          id: kFlickrMediaProviderId,
-          integrationType: 'media_flickr',
+          id: kDefaultPhotoFlickrIntegrationId,
+          integrationType: kPhotoFlickrIntegrationType,
           enabled: Value(enabled),
           pollSeconds: Value(pollSeconds),
           baseUrl: const Value('https://api.flickr.com/services/rest'),

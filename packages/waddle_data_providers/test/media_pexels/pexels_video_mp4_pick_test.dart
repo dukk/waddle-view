@@ -1,5 +1,5 @@
 import 'package:test/test.dart';
-import 'package:waddle_data_providers/media_pexels/pexels_video_mp4_pick.dart';
+import 'package:waddle_data_providers/video_pexels/pexels_video_mp4_pick.dart';
 
 Map<String, dynamic> _videoWithFiles(List<Map<String, Object>> files) => {
       'video_files': files,

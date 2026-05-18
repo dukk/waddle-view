@@ -1,6 +1,9 @@
+import '../config/facebook_kv.dart';
 import '../config/google_kv.dart';
+import '../config/linkedin_kv.dart';
 import '../config/microsoft_graph_kv.dart';
 import '../config/provider_config_resolver.dart';
+import '../config/twitter_kv.dart';
 
 /// Stable id for a shared sign-in identity type (e.g. Google, Microsoft, API key).
 class IntegrationAccountTypeDefinition {
@@ -38,6 +41,9 @@ const String kIntegrationAccountTypeApiKeyFlickr = 'api_key_flickr';
 const String kIntegrationAccountTypeApiKeyFinnhub = 'api_key_finnhub';
 const String kIntegrationAccountTypeApiKeyHomeAssistant =
     'api_key_home_assistant';
+const String kIntegrationAccountTypeFacebook = 'facebook';
+const String kIntegrationAccountTypeTwitter = 'twitter';
+const String kIntegrationAccountTypeLinkedin = 'linkedin';
 
 String _apiKeyAccessTokenSecret(String accountKey) =>
     '${ProviderConfigResolver.accessTokenKey}:$accountKey';
@@ -95,6 +101,30 @@ const Map<String, IntegrationAccountTypeDefinition> kIntegrationAccountTypes = {
     label: 'Home Assistant token',
     accessTokenSecretKey: _apiKeyAccessTokenSecret,
   ),
+  kIntegrationAccountTypeFacebook: IntegrationAccountTypeDefinition(
+    id: kIntegrationAccountTypeFacebook,
+    label: 'Facebook account',
+    signupUrl: 'https://www.facebook.com/',
+    accountKeyField: 'facebookAccountKey',
+    accessTokenSecretKey: facebookAccessTokenSecret,
+    supportsOAuthSignIn: true,
+  ),
+  kIntegrationAccountTypeTwitter: IntegrationAccountTypeDefinition(
+    id: kIntegrationAccountTypeTwitter,
+    label: 'X (Twitter) account',
+    signupUrl: 'https://x.com/i/flow/signup',
+    accountKeyField: 'twitterAccountKey',
+    accessTokenSecretKey: twitterAccessTokenSecret,
+    supportsOAuthSignIn: true,
+  ),
+  kIntegrationAccountTypeLinkedin: IntegrationAccountTypeDefinition(
+    id: kIntegrationAccountTypeLinkedin,
+    label: 'LinkedIn account',
+    signupUrl: 'https://www.linkedin.com/signup',
+    accountKeyField: 'linkedInAccountKey',
+    accessTokenSecretKey: linkedInAccessTokenSecret,
+    supportsOAuthSignIn: true,
+  ),
 };
 
 /// Integration types that authenticate via a shared [IntegrationAccountTypeDefinition].
@@ -111,6 +141,9 @@ const Map<String, List<String>> kIntegrationAccountRequirementsByType = {
   'photo_flickr': [kIntegrationAccountTypeApiKeyFlickr],
   'stock_finnhub': [kIntegrationAccountTypeApiKeyFinnhub],
   'home_assistant': [kIntegrationAccountTypeApiKeyHomeAssistant],
+  'news_facebook': [kIntegrationAccountTypeFacebook],
+  'news_twitter': [kIntegrationAccountTypeTwitter],
+  'news_linkedin': [kIntegrationAccountTypeLinkedin],
 };
 
 List<String> integrationAccountTypesRequiredForIntegration(String integrationType) =>

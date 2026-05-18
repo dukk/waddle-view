@@ -21,6 +21,7 @@ CuratorConfigurationInput _config({
     programDurationSeconds: 180,
     historyDepth: 5,
     requireNewsPhotoForScreens: true,
+    tickerEnabled: true,
     defaultConfig: defaultConfig,
     rules: rules,
     screenMemberIds: screens,

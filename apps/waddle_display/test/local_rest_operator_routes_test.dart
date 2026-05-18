@@ -182,10 +182,11 @@ void main() {
             url: 'https://example.com/feed.xml',
           ),
         );
-    await db.into(db.rssArticles).insert(
-          RssArticlesCompanion.insert(
+    await db.into(db.news).insert(
+          NewsCompanion.insert(
             id: 'art_media_test',
-            feedId: 'f_media_test',
+            sourceType: kNewsSourceTypeRss,
+            sourceId: 'f_media_test',
             guid: 'g_media',
             title: 'Headline',
             link: 'https://example.com/a',
@@ -430,7 +431,7 @@ void main() {
             id: 'stock_test',
             integrationType: 'stock_finnhub',
             pollSeconds: const Value(120),
-            includeWeather: const Value(true),
+            enabled: const Value(true),
             baseUrl: const Value('http://example.invalid'),
             configJson: const Value('{"sym":"AAPL"}'),
           ),

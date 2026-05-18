@@ -63,6 +63,7 @@ Future<List<CuratorConfigurationInput>> loadCuratorConfigurationInputs(
         programDurationSeconds: c.programDurationSeconds,
         historyDepth: c.historyDepth,
         requireNewsPhotoForScreens: c.requireNewsPhotoForScreens,
+        tickerEnabled: c.tickerEnabled,
         themeIdOverride: c.themeIdOverride,
         defaultConfig: c.defaultConfig,
         rules: rulesByConfig[c.id] ?? const [],

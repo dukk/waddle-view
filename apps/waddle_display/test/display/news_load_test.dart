@@ -24,11 +24,12 @@ void main() {
           ),
         );
     await db
-        .into(db.rssArticles)
+        .into(db.news)
         .insert(
-          RssArticlesCompanion.insert(
+          NewsCompanion.insert(
             id: 'a1',
-            feedId: 'f1',
+            sourceType: kNewsSourceTypeRss,
+            sourceId: 'f1',
             guid: 'g',
             title: 't',
             link: 'http://t',
@@ -37,7 +38,7 @@ void main() {
           ),
         );
     final article = await (db.select(
-      db.rssArticles,
+      db.news,
     )..where((t) => t.id.equals('a1'))).getSingle();
     final load = await loadRssArticleImage(db, FailingReadBlobStore(), article);
     expect(load.bytes, equals(null));
@@ -71,11 +72,12 @@ void main() {
             ),
           );
       await db
-          .into(db.rssArticles)
+          .into(db.news)
           .insert(
-            RssArticlesCompanion.insert(
+            NewsCompanion.insert(
               id: 'a1',
-              feedId: 'f1',
+              sourceType: kNewsSourceTypeRss,
+              sourceId: 'f1',
               guid: 'g',
               title: 't',
               link: 'http://t',
@@ -85,7 +87,7 @@ void main() {
             ),
           );
       final article = await (db.select(
-        db.rssArticles,
+        db.news,
       )..where((t) => t.id.equals('a1'))).getSingle();
       final load = await loadRssArticleImage(db, FailingReadBlobStore(), article);
       expect(load.bytes, equals(null));
@@ -118,11 +120,12 @@ void main() {
           ),
         );
     await db
-        .into(db.rssArticles)
+        .into(db.news)
         .insert(
-          RssArticlesCompanion.insert(
+          NewsCompanion.insert(
             id: 'a1',
-            feedId: 'f1',
+            sourceType: kNewsSourceTypeRss,
+            sourceId: 'f1',
             guid: 'g',
             title: 't',
             link: 'http://t',
@@ -132,7 +135,7 @@ void main() {
           ),
         );
     final article = await (db.select(
-      db.rssArticles,
+      db.news,
     )..where((t) => t.id.equals('a1'))).getSingle();
 
     final blobs = _OkBlobStore({
@@ -157,11 +160,12 @@ void main() {
           ),
         );
     await db
-        .into(db.rssArticles)
+        .into(db.news)
         .insert(
-          RssArticlesCompanion.insert(
+          NewsCompanion.insert(
             id: 'a1',
-            feedId: 'f1',
+            sourceType: kNewsSourceTypeRss,
+            sourceId: 'f1',
             guid: 'g',
             title: 't',
             link: 'http://t',
@@ -170,7 +174,7 @@ void main() {
           ),
         );
     final article = await (db.select(
-      db.rssArticles,
+      db.news,
     )..where((t) => t.id.equals('a1'))).getSingle();
     final slideCurated = ResolvedSlide(
       screenId: 'n',

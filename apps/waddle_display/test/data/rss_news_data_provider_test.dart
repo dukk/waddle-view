@@ -113,7 +113,7 @@ void main() {
       nowMs: () => 1_000_000,
     ).collect(ctx);
 
-    final rows = await (db.select(db.rssArticles)
+    final rows = await (db.select(db.news)
           ..orderBy([(t) => OrderingTerm.desc(t.publishedAt)]))
         .get();
     expect(rows.length, 3);
@@ -154,7 +154,7 @@ void main() {
     );
     final client = _FixedStatusClient(404);
     await RssNewsDataProvider(httpClient: client, nowMs: () => 1).collect(ctx);
-    final n = await ctx.db.select(ctx.db.rssArticles).get();
+    final n = await ctx.db.select(ctx.db.news).get();
     expect(n, isEmpty);
     await db.close();
   });
@@ -193,7 +193,7 @@ void main() {
       },
     );
     await RssNewsDataProvider(httpClient: client, nowMs: () => 1).collect(ctx);
-    final rows = await ctx.db.select(ctx.db.rssArticles).get();
+    final rows = await ctx.db.select(ctx.db.news).get();
     expect(rows.length, 1);
     expect(rows.single.imageBlobKey, isNull);
     await db.close();
@@ -259,7 +259,7 @@ void main() {
       httpClient: _ThrowClient(),
       nowMs: () => 1,
     ).collect(ctx);
-    final n = await ctx.db.select(ctx.db.rssArticles).get();
+    final n = await ctx.db.select(ctx.db.news).get();
     expect(n, isEmpty);
     await db.close();
   });

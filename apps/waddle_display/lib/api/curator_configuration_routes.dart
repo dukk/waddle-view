@@ -133,6 +133,9 @@ void registerCuratorConfigurationRoutes(
             requireNewsPhotoForScreens: Value(
               _readBool(map['require_news_photo_for_screens'], defaultValue: true),
             ),
+            tickerEnabled: Value(
+              _readBool(map['ticker_enabled'], defaultValue: true),
+            ),
             themeIdOverride: Value(_readOptionalTrimmedString(map['theme_id_override'])),
             defaultConfig: Value(_readBool(map['default_config'], defaultValue: false)),
           ),
@@ -204,6 +207,14 @@ void registerCuratorConfigurationRoutes(
                 _readBool(
                   map['require_news_photo_for_screens'],
                   defaultValue: existing.requireNewsPhotoForScreens,
+                ),
+              )
+            : const Value.absent(),
+        tickerEnabled: map.containsKey('ticker_enabled')
+            ? Value(
+                _readBool(
+                  map['ticker_enabled'],
+                  defaultValue: existing.tickerEnabled,
                 ),
               )
             : const Value.absent(),
@@ -424,6 +435,7 @@ Map<String, Object?> _configurationSummaryJson(CuratorConfiguration c) {
     'program_duration_seconds': c.programDurationSeconds,
     'history_depth': c.historyDepth,
     'require_news_photo_for_screens': c.requireNewsPhotoForScreens,
+    'ticker_enabled': c.tickerEnabled,
     'theme_id_override': c.themeIdOverride,
     'default_config': c.defaultConfig,
   };

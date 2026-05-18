@@ -33,10 +33,11 @@ Future<void> _seedContentTypes(AppDatabase db) async {
           createdAtMs: DateTime.fromMillisecondsSinceEpoch(1),
         ),
       );
-  await db.into(db.rssArticles).insert(
-        RssArticlesCompanion.insert(
+  await db.into(db.news).insert(
+        NewsCompanion.insert(
           id: 'rest_a1',
-          feedId: 'f1',
+          sourceType: kNewsSourceTypeRss,
+          sourceId: 'f1',
           guid: 'g1',
           title: 't',
           link: 'https://x/1',

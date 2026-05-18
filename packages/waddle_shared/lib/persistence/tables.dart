@@ -1,5 +1,7 @@
 import 'package:drift/drift.dart';
 
+export '../news/news_source_types.dart';
+
 /// Operator-configured integrations (collectors); persisted as SQLite `integrations`.
 class Integrations extends Table {
   TextColumn get id => text()();
@@ -245,6 +247,7 @@ class CuratorConfigurations extends Table {
   IntColumn get historyDepth => integer().withDefault(const Constant(5))();
   BoolColumn get requireNewsPhotoForScreens =>
       boolean().withDefault(const Constant(true))();
+  BoolColumn get tickerEnabled => boolean().withDefault(const Constant(true))();
   TextColumn get themeIdOverride => text().nullable()();
   BoolColumn get defaultConfig => boolean().withDefault(const Constant(false))();
 
@@ -335,10 +338,19 @@ class InterestsRssFeeds extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-@TableIndex(name: 'idx_rss_articles_by_feed', columns: {#feedId, #publishedAt})
-class RssArticles extends Table {
+/// Unified news articles (RSS + social). SQLite `news` (legacy `rss_articles`).
+@TableIndex(
+  name: 'idx_news_by_source',
+  columns: {#sourceType, #sourceId, #publishedAt},
+)
+@DataClassName('NewsArticle')
+class News extends Table {
+  @override
+  String get tableName => 'news';
+
   TextColumn get id => text()();
-  TextColumn get feedId => text().references(InterestsRssFeeds, #id)();
+  TextColumn get sourceType => text()();
+  TextColumn get sourceId => text()();
   TextColumn get guid => text()();
   TextColumn get title => text()();
   TextColumn get link => text()();
@@ -349,6 +361,72 @@ class RssArticles extends Table {
 
   /// When true, excluded from slides and news ticker; row kept for stable ids.
   BoolColumn get suppressed => boolean().withDefault(const Constant(false))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Operator-configured Facebook page/group sources (SQLite `interests_facebook_sources`).
+class InterestsFacebookSources extends Table {
+  @override
+  String get tableName => 'interests_facebook_sources';
+
+  TextColumn get id => text()();
+  TextColumn get targetType => text()();
+  TextColumn get targetId => text()();
+  TextColumn get accountId => text()();
+  IntColumn get pollSeconds => integer().withDefault(const Constant(3600))();
+  IntColumn get maxArticles => integer().withDefault(const Constant(3))();
+  BoolColumn get enabled => boolean().withDefault(const Constant(true))();
+  DateTimeColumn get lastFetchedAt => dateTime().nullable()();
+  TextColumn get title => text().nullable()();
+  IntColumn get consecutiveFailures =>
+      integer().withDefault(const Constant(0))();
+  DateTimeColumn get nextRetryAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Operator-configured X (Twitter) user sources (SQLite `interests_twitter_sources`).
+class InterestsTwitterSources extends Table {
+  @override
+  String get tableName => 'interests_twitter_sources';
+
+  TextColumn get id => text()();
+  TextColumn get targetType => text()();
+  TextColumn get targetId => text()();
+  TextColumn get accountId => text()();
+  IntColumn get pollSeconds => integer().withDefault(const Constant(3600))();
+  IntColumn get maxArticles => integer().withDefault(const Constant(3))();
+  BoolColumn get enabled => boolean().withDefault(const Constant(true))();
+  DateTimeColumn get lastFetchedAt => dateTime().nullable()();
+  TextColumn get title => text().nullable()();
+  IntColumn get consecutiveFailures =>
+      integer().withDefault(const Constant(0))();
+  DateTimeColumn get nextRetryAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Operator-configured LinkedIn sources (SQLite `interests_linkedin_sources`).
+class InterestsLinkedinSources extends Table {
+  @override
+  String get tableName => 'interests_linkedin_sources';
+
+  TextColumn get id => text()();
+  TextColumn get targetType => text()();
+  TextColumn get targetId => text()();
+  TextColumn get accountId => text()();
+  IntColumn get pollSeconds => integer().withDefault(const Constant(3600))();
+  IntColumn get maxArticles => integer().withDefault(const Constant(3))();
+  BoolColumn get enabled => boolean().withDefault(const Constant(true))();
+  DateTimeColumn get lastFetchedAt => dateTime().nullable()();
+  TextColumn get title => text().nullable()();
+  IntColumn get consecutiveFailures =>
+      integer().withDefault(const Constant(0))();
+  DateTimeColumn get nextRetryAt => dateTime().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};

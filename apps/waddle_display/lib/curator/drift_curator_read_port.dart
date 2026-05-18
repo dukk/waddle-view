@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:waddle_shared/curation/reject_filter_context.dart';
 
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/tables.dart';
 import 'curator_membership_filter.dart';
 import 'curator_read_port.dart';
 import 'ticker_news_candidate.dart';
@@ -46,8 +47,12 @@ class DriftCuratorReadPort implements CuratorReadPort {
 
   @override
   Future<List<TickerNewsCandidate>> loadNewsCandidatesForTicker() async {
-    final articles = await (_db.select(_db.rssArticles)
-          ..where((t) => t.suppressed.equals(false))
+    final articles = await (_db.select(_db.news)
+          ..where(
+            (t) =>
+                t.sourceType.equals(kNewsSourceTypeRss) &
+                t.suppressed.equals(false),
+          )
           ..orderBy([(t) => OrderingTerm.desc(t.publishedAt)]))
         .get();
     if (articles.isEmpty) {
@@ -62,11 +67,11 @@ class DriftCuratorReadPort implements CuratorReadPort {
     return [
       for (final a in articles)
         TickerNewsCandidate(
-          feedId: a.feedId,
-          feedName: _tickerLabelForFeed(feedById[a.feedId]),
+          feedId: a.sourceId,
+          feedName: _tickerLabelForFeed(feedById[a.sourceId]),
           title: a.title,
           summary: a.summary,
-          categoryIconName: categoryIconById[feedById[a.feedId]?.category],
+          categoryIconName: categoryIconById[feedById[a.sourceId]?.category],
           publishedAtMs: a.publishedAt.millisecondsSinceEpoch,
           articleId: a.id,
         ),

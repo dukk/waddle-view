@@ -29,6 +29,7 @@ import 'package:waddle_shared/blob/filesystem_blob_store.dart';
 import 'package:waddle_shared/collect/data_collection_engine.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
+import 'package:waddle_shared/curation/curator_schedule_resolver.dart';
 import 'package:waddle_shared/curation/reject_rescan.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/runtime/runtime_signal_repository.dart';
@@ -155,19 +156,25 @@ Future<void> _waddleBootstrap() async {
       db: db,
       runtimeSignals: runtimeSignals,
     ).resolveAt(DateTime.now());
-    curatorMembership.tickerTapeIds =
-        bootstrapSelection.primary.configuration.tickerMemberIds;
+    _applyCuratorTickerMembership(
+      curatorMembership,
+      bootstrapSelection.primary.configuration,
+    );
     final dashboardCuratorInner = DefaultDashboardCurator(
       read: DriftCuratorReadPort(db, membershipFilter: curatorMembership),
       tickerStore: tickerCurated,
       clock: clock,
+      membershipFilter: curatorMembership,
     );
     await dashboardCuratorInner.refresh();
-    marqueeCycleGate.onCurationWrittenExpectMarqueeLoop();
+    if (curatorMembership.tickerCurationEnabled) {
+      marqueeCycleGate.onCurationWrittenExpectMarqueeLoop();
+    }
     AppDebugLog.startup('initial curator refresh done');
     final dashboardCurator = GatedDashboardCurator(
       inner: dashboardCuratorInner,
       marqueeGate: marqueeCycleGate,
+      membershipFilter: curatorMembership,
     );
     final providerRegistry = buildBuiltinDataProviderRegistry();
     final pluginLoader = PluginLoader(
@@ -403,6 +410,7 @@ class _WaddleHomeState extends State<WaddleHome> {
     runtimeSignals: widget.runtimeSignals,
   );
   Set<String> _allowedOverlayIds = const {};
+  bool _tickerEnabled = true;
   String? _curatorThemeOverride;
   StreamSubscription<List<ApiClient>>? _apiClientsSub;
   StreamSubscription<void>? _runtimeSignalsSub;
@@ -425,8 +433,9 @@ class _WaddleHomeState extends State<WaddleHome> {
       return;
     }
     final primary = selection.primary.configuration;
-    widget.curatorMembership.tickerTapeIds = primary.tickerMemberIds;
+    _applyCuratorTickerMembership(widget.curatorMembership, primary);
     setState(() {
+      _tickerEnabled = primary.tickerEnabled;
       _allowedOverlayIds = selection.effectiveOverlayMemberIds;
       _curatorThemeOverride =
           selection.primary.configuration.themeIdOverride?.trim();
@@ -513,6 +522,7 @@ class _WaddleHomeState extends State<WaddleHome> {
                 child: DashboardDataBoundShell(
                   overscan: const TvOverscanInsets(),
                   viewportConfig: const DisplayViewportConfig(),
+                  showTicker: _tickerEnabled,
                   body: ScreenRotator(
                     db: widget.db,
                     blobs: widget.blobs,
@@ -554,6 +564,15 @@ class _WaddleHomeState extends State<WaddleHome> {
       ),
     );
   }
+}
+
+void _applyCuratorTickerMembership(
+  CuratorMembershipFilter filter,
+  CuratorConfigurationInput configuration,
+) {
+  filter.tickerCurationEnabled = configuration.tickerEnabled;
+  filter.tickerTapeIds =
+      configuration.tickerEnabled ? configuration.tickerMemberIds : const {};
 }
 
 Future<void> _rescanRejectListOnStartup(AppDatabase db) async {

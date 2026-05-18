@@ -37,7 +37,7 @@ class RssArticleMetric {
   /// True when [imageBlobKey] is non-empty on the article row.
   final bool hasImage;
 
-  /// Character length of [RssArticle.summary] (trimmed); 0 if null/empty.
+  /// Character length of [NewsArticle.summary] (trimmed); 0 if null/empty.
   final int summaryLength;
 
   /// [InterestsRssFeeds.category] for the article’s feed (slug shared with [ContentCategories.id]).
@@ -92,7 +92,7 @@ Future<CuratorContentPools> loadCuratorContentPools(
   final feeds = await db.select(db.interestsRssFeeds).get();
   final feedById = {for (final f in feeds) f.id: f};
 
-  final articles = await (db.select(db.rssArticles)
+  final articles = await (db.select(db.news)
         ..where((t) => t.suppressed.equals(false)))
       .get();
   if (articles.isNotEmpty) {
@@ -101,8 +101,8 @@ Future<CuratorContentPools> loadCuratorContentPools(
     final byContentCategory = <String, List<String>>{};
     for (final a in articles) {
       all.add(a.id);
-      (byFeed[a.feedId] ??= []).add(a.id);
-      final feed = feedById[a.feedId];
+      (byFeed[a.sourceId] ??= []).add(a.id);
+      final feed = feedById[a.sourceId];
       final cat = (feed?.category ?? 'general').trim();
       final categoryKey = cat.isEmpty ? 'general' : cat;
       (byContentCategory[categoryKey] ??= []).add(a.id);

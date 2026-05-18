@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_data_providers/media_bing_iotd/bing_image_of_day_extra_config.dart';
+import 'package:waddle_data_providers/photo_bing_image_of_the_day/bing_image_of_day_extra_config.dart';
 
 void main() {
   test('parse returns defaults for null, empty, and invalid JSON', () {

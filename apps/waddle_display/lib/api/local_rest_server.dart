@@ -472,7 +472,7 @@ Handler buildProtectedApiRouter({
   });
 
   r.get('/v1/media/rss-articles/<id>', (Request req, String id) async {
-    final row = await (db.select(db.rssArticles)..where((t) => t.id.equals(id)))
+    final row = await (db.select(db.news)..where((t) => t.id.equals(id)))
         .getSingleOrNull();
     if (row == null || row.suppressed) {
       return Response(
@@ -484,7 +484,7 @@ Handler buildProtectedApiRouter({
     return Response.ok(
       jsonEncode({
         'id': row.id,
-        'feed_id': row.feedId,
+        'feed_id': row.sourceId,
         'title': row.title,
         'summary': row.summary,
         'link': row.link,

@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:test/test.dart';
 import 'package:waddle_shared/persistence/content_suppression_repository.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/tables.dart';
 
 import '../helpers/memory_database.dart';
 
@@ -30,10 +31,11 @@ void main() {
             createdAtMs: DateTime.fromMillisecondsSinceEpoch(1),
           ),
         );
-    await db.into(db.rssArticles).insert(
-          RssArticlesCompanion.insert(
+    await db.into(db.news).insert(
+          NewsCompanion.insert(
             id: 'a1',
-            feedId: 'f1',
+            sourceType: kNewsSourceTypeRss,
+            sourceId: 'f1',
             guid: 'g1',
             title: 't',
             link: 'https://x/1',
@@ -109,7 +111,7 @@ void main() {
 
     expect(await repo.setRssArticleSuppressed('a1', true), 1);
     final row =
-        await (db.select(db.rssArticles)..where((t) => t.id.equals('a1')))
+        await (db.select(db.news)..where((t) => t.id.equals('a1')))
             .getSingle();
     expect(row.suppressed, isTrue);
 

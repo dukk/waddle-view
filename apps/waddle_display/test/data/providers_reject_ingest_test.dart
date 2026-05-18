@@ -99,7 +99,7 @@ void main() {
     });
     await RssNewsDataProvider(httpClient: client, nowMs: () => 1).collect(ctx);
 
-    final rows = await db.select(db.rssArticles).get();
+    final rows = await db.select(db.news).get();
     expect(rows.length, 2);
     final bad = rows.firstWhere((r) => r.title.contains('damn'));
     final good = rows.firstWhere((r) => !r.title.contains('damn'));
@@ -141,7 +141,7 @@ void main() {
       });
       await RssNewsDataProvider(httpClient: client, nowMs: () => 1)
           .collect(ctx);
-      final rows = await db.select(db.rssArticles).get();
+      final rows = await db.select(db.news).get();
       expect(rows.every((r) => r.suppressed == false), isTrue);
       await db.close();
     },

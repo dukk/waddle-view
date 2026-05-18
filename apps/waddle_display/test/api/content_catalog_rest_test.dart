@@ -46,10 +46,11 @@ Future<void> _seedCatalogRows(AppDatabase db) async {
 
 Future<void> _seedExtendedCatalog(AppDatabase db) async {
   await _seedCatalogRows(db);
-  await db.into(db.rssArticles).insert(
-        RssArticlesCompanion.insert(
+  await db.into(db.news).insert(
+        NewsCompanion.insert(
           id: 'art2',
-          feedId: 'f1',
+          sourceType: kNewsSourceTypeRss,
+          sourceId: 'f1',
           guid: 'guid-two',
           title: 'Other headline',
           link: 'https://example.com/other',
@@ -58,10 +59,11 @@ Future<void> _seedExtendedCatalog(AppDatabase db) async {
           fetchedAt: DateTime.fromMillisecondsSinceEpoch(101),
         ),
       );
-  await db.into(db.rssArticles).insert(
-        RssArticlesCompanion.insert(
+  await db.into(db.news).insert(
+        NewsCompanion.insert(
           id: 'art3',
-          feedId: 'f1',
+          sourceType: kNewsSourceTypeRss,
+          sourceId: 'f1',
           guid: 'g3',
           title: 'Sans summary',
           link: 'https://example.com/3',
@@ -102,7 +104,7 @@ Future<void> _seedExtendedCatalog(AppDatabase db) async {
         PhotosCompanion.insert(
           id: 'ph1',
           category: const Value('general'),
-          dataProvider: const Value(kMediaDataProviderPexels),
+          dataProvider: const Value(kMediaDataProviderPhotoPexels),
           mediaBlobKey: 'blob-photo-1',
           photographerName: 'Pat Photo',
           photographerUrl: 'https://pexels.com/u',
@@ -115,7 +117,7 @@ Future<void> _seedExtendedCatalog(AppDatabase db) async {
         VideosCompanion.insert(
           id: 'vid1',
           category: const Value('general'),
-          dataProvider: const Value(kMediaDataProviderPexels),
+          dataProvider: const Value(kMediaDataProviderVideoPexels),
           mediaBlobKey: 'blob-video-1',
           photographerName: 'Pat Video',
           photographerUrl: 'https://pexels.com/vu',

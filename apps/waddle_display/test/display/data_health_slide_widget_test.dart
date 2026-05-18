@@ -22,10 +22,11 @@ void main() {
             category: const Value('general'),
           ),
         );
-    await db.into(db.rssArticles).insert(
-          RssArticlesCompanion.insert(
+    await db.into(db.news).insert(
+          NewsCompanion.insert(
             id: 'a1',
-            feedId: 'f1',
+            sourceType: kNewsSourceTypeRss,
+            sourceId: 'f1',
             guid: 'g1',
             title: 'Hello',
             link: 'https://x/1',

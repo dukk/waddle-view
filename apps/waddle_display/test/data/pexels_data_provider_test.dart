@@ -9,6 +9,7 @@ import 'package:waddle_shared/config/provider_runtime_config.dart';
 import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_data_providers/photo_pexels/pexels_data_provider.dart';
+import 'package:waddle_shared/integrations/integration_collect.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';
@@ -204,7 +205,7 @@ void main() {
     await _ensurePexelsProvider(db, pollSeconds: 60);
     await db.into(db.configKeyValues).insertOnConflictUpdate(
           ConfigKeyValuesCompanion.insert(
-            key: kPexelsLastCollectKvKey,
+            key: integrationLastCollectKvKey(kDefaultPhotoPexelsIntegrationId),
             value: '100000',
           ),
         );
@@ -660,7 +661,7 @@ void main() {
 
   test('provider id and default http client construction', () {
     final p = PexelsPhotosDataProvider(nowMs: () => 0);
-    expect(p.id, kPexelsProviderId);
+    expect(p.id, kPhotoPexelsIntegrationType);
   });
 
   test('collect returns when resolveConfig throws', () async {
@@ -726,7 +727,7 @@ void main() {
             ),
           );
     }
-    await secrets.write(providerAccessTokenSecretKey('media_pexels'), 'k');
+    await secrets.write(providerAccessTokenSecretKey(kDefaultPhotoPexelsIntegrationId), 'k');
     await PexelsPhotosDataProvider(
       httpClient: _FakePexelsHttp(curatedPhotos: [], popularVideos: []),
       nowMs: () => 300,
@@ -872,7 +873,7 @@ Future<DataWriteContext> _ctx(
   String? apiKey = 'k',
 }) async {
   if (apiKey != null) {
-    await secrets.write(providerAccessTokenSecretKey('media_pexels'), apiKey);
+    await secrets.write(providerAccessTokenSecretKey(kDefaultPhotoPexelsIntegrationId), apiKey);
   }
   final resolver = ProviderConfigResolver(db, secrets);
   return DataWriteContextImpl(

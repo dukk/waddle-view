@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import 'database.dart';
+import 'tables.dart';
 
 /// One bucket for grouped counts (e.g. RSS articles per feed category).
 class CategoryStat {
@@ -126,9 +127,10 @@ SELECT
       AND LENGTH(TRIM(image_blob_key)) > 0 THEN 1 ELSE 0 END) AS with_image,
   SUM(CASE WHEN image_blob_key IS NULL
       OR LENGTH(TRIM(COALESCE(image_blob_key, ''))) = 0 THEN 1 ELSE 0 END) AS without_image
-FROM rss_articles
+FROM news
+WHERE source_type = '${kNewsSourceTypeRss}'
 ''',
-          readsFrom: {_db.rssArticles},
+          readsFrom: {_db.news},
         )
         .getSingle();
 
@@ -228,13 +230,14 @@ FROM blob_metadata
 SELECT f.category AS category_id,
        COALESCE(MAX(cc.label), f.category) AS label,
        COUNT(*) AS cnt
-FROM rss_articles a
-INNER JOIN interests_rss_feeds f ON f.id = a.feed_id
+FROM news a
+INNER JOIN interests_rss_feeds f
+  ON f.id = a.source_id AND a.source_type = '${kNewsSourceTypeRss}'
 LEFT JOIN curator_categories cc ON cc.id = f.category
 GROUP BY f.category
 ORDER BY cnt DESC, f.category ASC
 ''',
-      readsFrom: {_db.rssArticles, _db.interestsRssFeeds, _db.contentCategories},
+      readsFrom: {_db.news, _db.interestsRssFeeds, _db.contentCategories},
     );
 
     final photosByCategory = await _categoryStats(

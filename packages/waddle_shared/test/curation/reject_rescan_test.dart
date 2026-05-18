@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:test/test.dart';
 import 'package:waddle_shared/curation/reject_rescan.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/persistence/reject_term_repository.dart';
 
 import '../helpers/memory_database.dart';
@@ -33,10 +34,11 @@ void main() {
       InterestsRssFeedsCompanion.insert(id: 'f1', url: 'https://x/feed.xml'),
     );
 
-    await db.into(db.rssArticles).insert(
-      RssArticlesCompanion.insert(
+    await db.into(db.news).insert(
+      NewsCompanion.insert(
         id: 'a_bad',
-        feedId: 'f1',
+        sourceType: kNewsSourceTypeRss,
+        sourceId: 'f1',
         guid: 'g1',
         title: 'A forbidden tale',
         link: 'https://x/1',
@@ -45,10 +47,11 @@ void main() {
         fetchedAt: DateTime.fromMillisecondsSinceEpoch(2),
       ),
     );
-    await db.into(db.rssArticles).insert(
-      RssArticlesCompanion.insert(
+    await db.into(db.news).insert(
+      NewsCompanion.insert(
         id: 'a_ok',
-        feedId: 'f1',
+        sourceType: kNewsSourceTypeRss,
+        sourceId: 'f1',
         guid: 'g2',
         title: 'A mild tale',
         link: 'https://x/2',
@@ -94,11 +97,11 @@ void main() {
     expect(result.jokesMarked, 1);
     expect(result.triviaQuestionsMarked, 1);
 
-    final aBad = await (db.select(db.rssArticles)
+    final aBad = await (db.select(db.news)
           ..where((t) => t.id.equals('a_bad')))
         .getSingle();
     expect(aBad.suppressed, isTrue);
-    final aOk = await (db.select(db.rssArticles)
+    final aOk = await (db.select(db.news)
           ..where((t) => t.id.equals('a_ok')))
         .getSingle();
     expect(aOk.suppressed, isFalse, reason: 'censor terms do not block');

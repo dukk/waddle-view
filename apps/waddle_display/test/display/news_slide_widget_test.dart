@@ -31,10 +31,11 @@ Future<void> _insertFeedAndArticle(
           title: const Value('Test Feed'),
         ),
       );
-  await db.into(db.rssArticles).insert(
-        RssArticlesCompanion.insert(
+  await db.into(db.news).insert(
+        NewsCompanion.insert(
           id: 'article_t_1',
-          feedId: 'feed_t',
+          sourceType: kNewsSourceTypeRss,
+          sourceId: 'feed_t',
           guid: 'g1',
           title: 'Breaking: widgets work',
           link: link,
@@ -53,10 +54,11 @@ Future<void> _insertArticle(
   int publishedAt = 1,
   String? imageBlobKey,
 }) async {
-  await db.into(db.rssArticles).insert(
-        RssArticlesCompanion.insert(
+  await db.into(db.news).insert(
+        NewsCompanion.insert(
           id: id,
-          feedId: 'feed_t',
+          sourceType: kNewsSourceTypeRss,
+          sourceId: 'feed_t',
           guid: 'guid_$id',
           title: title,
           link: 'http://test.local/$id',
@@ -550,10 +552,11 @@ void main() {
             category: const Value('test'),
           ),
         );
-    await db.into(db.rssArticles).insert(
-          RssArticlesCompanion.insert(
+    await db.into(db.news).insert(
+          NewsCompanion.insert(
             id: 'article_qr',
-            feedId: 'feed_t',
+            sourceType: kNewsSourceTypeRss,
+            sourceId: 'feed_t',
             guid: 'gq',
             title: 'Headline',
             link: articleUrl,
@@ -605,10 +608,11 @@ void main() {
             category: const Value('test'),
           ),
         );
-    await db.into(db.rssArticles).insert(
-          RssArticlesCompanion.insert(
+    await db.into(db.news).insert(
+          NewsCompanion.insert(
             id: 'article_no_link',
-            feedId: 'feed_t',
+            sourceType: kNewsSourceTypeRss,
+            sourceId: 'feed_t',
             guid: 'gnl',
             title: 'Headline',
             link: '',
@@ -663,10 +667,11 @@ void main() {
             category: const Value('test'),
           ),
         );
-    await db.into(db.rssArticles).insert(
-          RssArticlesCompanion.insert(
+    await db.into(db.news).insert(
+          NewsCompanion.insert(
             id: 'article_blank',
-            feedId: 'feed_t',
+            sourceType: kNewsSourceTypeRss,
+            sourceId: 'feed_t',
             guid: 'gb',
             title: '',
             link: articleUrl,

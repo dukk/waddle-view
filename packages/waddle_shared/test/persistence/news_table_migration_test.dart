@@ -5,7 +5,7 @@ import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 
 void main() {
-  test('schema 11 to 12 renames rss_articles to news and adds facebook sources',
+  test('schema 12 to 13 renames rss_articles to news and adds facebook sources',
       () async {
     final executor = NativeDatabase.memory(setup: (raw) {
       raw.execute('''
@@ -26,7 +26,7 @@ CREATE TABLE rss_articles (
         "INSERT INTO rss_articles (id, feed_id, guid, title, link, published_at, fetched_at) "
         "VALUES ('a1', 'bbc', 'g1', 'Headline', 'https://example.com/1', 1000, 2000)",
       );
-      raw.execute('PRAGMA user_version = 11');
+      raw.execute('PRAGMA user_version = 12');
     });
     final db = AppDatabase(
       DatabaseConnection(executor, closeStreamsSynchronously: true),

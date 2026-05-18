@@ -138,10 +138,11 @@ void main() {
             title: const Value('TF'),
           ),
         );
-    await db.into(db.rssArticles).insert(
-          RssArticlesCompanion.insert(
+    await db.into(db.news).insert(
+          NewsCompanion.insert(
             id: 'art_pre',
-            feedId: 'feed_pre',
+            sourceType: kNewsSourceTypeRss,
+            sourceId: 'feed_pre',
             guid: 'g1',
             title: 'T',
             link: 'http://test.local/a',
@@ -177,10 +178,11 @@ void main() {
           ),
         );
     for (final id in ['c1', 'c2']) {
-      await db.into(db.rssArticles).insert(
-            RssArticlesCompanion.insert(
+      await db.into(db.news).insert(
+            NewsCompanion.insert(
               id: id,
-              feedId: 'feed_pre',
+              sourceType: kNewsSourceTypeRss,
+              sourceId: 'feed_pre',
               guid: 'g_$id',
               title: 'T',
               link: 'http://test.local/$id',
@@ -220,10 +222,11 @@ void main() {
           ),
         );
     for (final id in ['s1', 's2']) {
-      await db.into(db.rssArticles).insert(
-            RssArticlesCompanion.insert(
+      await db.into(db.news).insert(
+            NewsCompanion.insert(
               id: id,
-              feedId: 'feed_pre',
+              sourceType: kNewsSourceTypeRss,
+              sourceId: 'feed_pre',
               guid: 'g_$id',
               title: 'T',
               link: 'http://test.local/$id',

@@ -28,10 +28,11 @@ Future<void> _insertArticle(
   String summary = 'Summary text.',
   String link = 'http://test.local/story',
 }) async {
-  await db.into(db.rssArticles).insert(
-        RssArticlesCompanion.insert(
+  await db.into(db.news).insert(
+        NewsCompanion.insert(
           id: id,
-          feedId: 'feed_t',
+          sourceType: kNewsSourceTypeRss,
+          sourceId: 'feed_t',
           guid: 'guid_$id',
           title: title,
           link: link,

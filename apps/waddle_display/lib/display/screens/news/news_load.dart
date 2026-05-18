@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:drift/drift.dart' show Expression, OrderingTerm, Value;
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 
 import 'package:waddle_shared/curation/reject_filter_context.dart';
 
@@ -9,8 +9,9 @@ import 'package:waddle_shared/blob/display_blob_read.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import '../../../curator/screen_program_curator.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/tables.dart';
 
-RssArticle _censorArticle(RssArticle article, RejectFilterContext ctx) {
+NewsArticle _censorArticle(NewsArticle article, RejectFilterContext ctx) {
   if (ctx.isEmpty) {
     return article;
   }
@@ -28,7 +29,7 @@ RssArticle _censorArticle(RssArticle article, RejectFilterContext ctx) {
 /// / [news_stack]). Title and summary are passed through the curator's
 /// [RejectFilterContext] so configured `censor` terms are masked transiently
 /// in memory.
-Future<RssArticle?> loadRssArticleForSlideChoice(
+Future<NewsArticle?> loadRssArticleForSlideChoice(
   AppDatabase db,
   ParsedWidgetSpec spec,
   ResolvedSlide slide,
@@ -42,7 +43,7 @@ Future<RssArticle?> loadRssArticleForSlideChoice(
       curatedId.isNotEmpty &&
       !excludeArticleIds.contains(curatedId)) {
     final row = await (db.select(
-      db.rssArticles,
+      db.news,
     )..where(
           (t) => Expression.and([
             t.id.equals(curatedId),
@@ -53,11 +54,11 @@ Future<RssArticle?> loadRssArticleForSlideChoice(
     return row == null ? null : _censorArticle(row, ctx);
   }
   final feedId = spec.config['feedId'] as String?;
-  final q = db.select(db.rssArticles);
+  final q = db.select(db.news);
   if (feedId != null && feedId.isNotEmpty) {
     q.where(
       (t) => Expression.and([
-        t.feedId.equals(feedId),
+        t.sourceType.equals(kNewsSourceTypeRss) & t.sourceId.equals(feedId),
         t.suppressed.equals(false),
       ]),
     );
@@ -130,7 +131,7 @@ final class NewsImageLoad {
 Future<NewsImageLoad> loadRssArticleImage(
   AppDatabase db,
   BlobStore blobs,
-  RssArticle article,
+  NewsArticle article,
 ) async {
   final key = article.imageBlobKey;
   if (key == null || key.isEmpty) {
@@ -156,7 +157,7 @@ Future<NewsImageLoad> loadRssArticleImage(
 Future<String?> resolveRssDisplayCategoryId(
   AppDatabase db,
   ResolvedSlide slide,
-  RssArticle? article,
+  NewsArticle? article,
 ) async {
   final fromSlide =
       slide.randomChoices[ScreenProgramCurator.rssScreenCategoryChoiceKey];
@@ -168,7 +169,7 @@ Future<String?> resolveRssDisplayCategoryId(
   }
   final feed = await (db.select(
     db.interestsRssFeeds,
-  )..where((t) => t.id.equals(article.feedId))).getSingleOrNull();
+  )..where((t) => t.id.equals(article.sourceId))).getSingleOrNull();
   final c = feed?.category.trim();
   if (c == null || c.isEmpty) {
     return 'general';
@@ -178,14 +179,14 @@ Future<String?> resolveRssDisplayCategoryId(
 
 Future<String?> resolveRssArticleSourceLabel(
   AppDatabase db,
-  RssArticle? article,
+  NewsArticle? article,
 ) async {
   if (article == null) {
     return null;
   }
   final feed = await (db.select(
     db.interestsRssFeeds,
-  )..where((t) => t.id.equals(article.feedId))).getSingleOrNull();
+  )..where((t) => t.id.equals(article.sourceId))).getSingleOrNull();
   final feedTitle = feed?.title?.trim();
   if (feedTitle != null && feedTitle.isNotEmpty) {
     return feedTitle;
@@ -197,7 +198,7 @@ Future<String?> resolveRssArticleSourceLabel(
       return host;
     }
   }
-  final feedId = article.feedId.trim();
+  final feedId = article.sourceId.trim();
   if (feedId.isNotEmpty) {
     return feedId;
   }

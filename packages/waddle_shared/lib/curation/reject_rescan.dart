@@ -53,13 +53,13 @@ Future<RejectRescanResult> rescanContentForBlockTerms(AppDatabase db) async {
   }
 
   var rssN = 0;
-  final articles = await (db.select(db.rssArticles)
+  final articles = await (db.select(db.news)
         ..where((t) => t.suppressed.equals(false)))
       .get();
   for (final a in articles) {
     if (ctx.isBlockedAny([a.title, a.summary])) {
-      await (db.update(db.rssArticles)..where((t) => t.id.equals(a.id)))
-          .write(const RssArticlesCompanion(suppressed: Value(true)));
+      await (db.update(db.news)..where((t) => t.id.equals(a.id)))
+          .write(const NewsCompanion(suppressed: Value(true)));
       rssN++;
     }
   }

@@ -13,12 +13,14 @@ class DashboardShell extends StatelessWidget {
     this.viewportConfig = const DisplayViewportConfig(),
     required this.body,
     required this.ticker,
+    this.showTicker = true,
   });
 
   final TvOverscanInsets overscan;
   final DisplayViewportConfig viewportConfig;
   final Widget body;
   final Widget ticker;
+  final bool showTicker;
 
   @override
   Widget build(BuildContext context) {
@@ -74,14 +76,16 @@ class DashboardShell extends StatelessWidget {
                               child: body,
                             ),
                           ),
-                          SizedBox(height: metrics.gapHeight),
-                          SizedBox(
-                            height: metrics.tickerHeight,
-                            child: DashboardViewportScope(
-                              scale: viewport.scale,
-                              child: ticker,
+                          if (showTicker) ...[
+                            SizedBox(height: metrics.gapHeight),
+                            SizedBox(
+                              height: metrics.tickerHeight,
+                              child: DashboardViewportScope(
+                                scale: viewport.scale,
+                                child: ticker,
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     );

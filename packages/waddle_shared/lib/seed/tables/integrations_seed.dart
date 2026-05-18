@@ -44,6 +44,36 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
 
   await _ensureIntegrationRow(
     db,
+    id: kDefaultNewsFacebookIntegrationId,
+    integrationType: 'news_facebook',
+    pollSeconds: 3600,
+    enabled: false,
+    baseUrl: 'https://graph.facebook.com',
+    configJson: '{"accounts":[]}',
+  );
+
+  await _ensureIntegrationRow(
+    db,
+    id: kDefaultNewsTwitterIntegrationId,
+    integrationType: 'news_twitter',
+    pollSeconds: 3600,
+    enabled: false,
+    baseUrl: 'https://api.twitter.com',
+    configJson: '{"accounts":[]}',
+  );
+
+  await _ensureIntegrationRow(
+    db,
+    id: kDefaultNewsLinkedinIntegrationId,
+    integrationType: 'news_linkedin',
+    pollSeconds: 3600,
+    enabled: false,
+    baseUrl: 'https://api.linkedin.com',
+    configJson: '{"accounts":[]}',
+  );
+
+  await _ensureIntegrationRow(
+    db,
     id: kDefaultJokeOpenAiIntegrationId,
     integrationType: 'joke_openai',
     pollSeconds: 3600,

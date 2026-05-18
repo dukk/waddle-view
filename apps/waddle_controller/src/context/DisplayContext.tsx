@@ -24,7 +24,7 @@ import { clearSession, loadSession } from '@/storage/sessions';
 import { syncUserDisplayToServer } from '@/storage/userDisplaysSync';
 import { setActiveUserDisplay } from '@/api/bffUserDisplays';
 import { BffError } from '@/api/bffClient';
-import { isDisplayProxyAuthEnabled } from '@/api/displayAuthMode';
+import { useControllerAuth } from '@/context/ControllerAuthContext';
 
 type DisplayCtx = {
   displays: SavedDisplay[];
@@ -43,6 +43,9 @@ type DisplayCtx = {
 const Ctx = createContext<DisplayCtx | null>(null);
 
 export function DisplayProvider({ children }: { children: ReactNode }) {
+  const { status: controllerStatus } = useControllerAuth();
+  const proxyAuthEnabled = controllerStatus?.authEnabled ?? false;
+
   const [displays, setDisplays] = useState<SavedDisplay[]>(() => loadDisplays());
   const [activeId, setActiveId] = useState<string | null>(() =>
     resolveActiveDisplayId(loadDisplays()),
@@ -102,14 +105,17 @@ export function DisplayProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const selectActiveId = useCallback((id: string) => {
-    setActiveId(id);
-    if (isDisplayProxyAuthEnabled()) {
-      void setActiveUserDisplay(id).catch((e) => {
-        if (e instanceof BffError && (e.status === 401 || e.status === 403)) return;
-      });
-    }
-  }, []);
+  const selectActiveId = useCallback(
+    (id: string) => {
+      setActiveId(id);
+      if (proxyAuthEnabled) {
+        void setActiveUserDisplay(id).catch((e) => {
+          if (e instanceof BffError && (e.status === 401 || e.status === 403)) return;
+        });
+      }
+    },
+    [proxyAuthEnabled],
+  );
 
   const updateDisplay = useCallback(
     async (id: string, input: { label: string; baseUrl: string }) => {

@@ -138,10 +138,11 @@ void main() {
       );
       const title = 'A damn story';
       const summary = 'Today the damn river overflowed.';
-      await db.into(db.rssArticles).insert(
-        RssArticlesCompanion.insert(
+      await db.into(db.news).insert(
+        NewsCompanion.insert(
           id: 'a1',
-          feedId: 'f1',
+          sourceType: kNewsSourceTypeRss,
+          sourceId: 'f1',
           guid: 'g1',
           title: title,
           link: 'https://x/1',
@@ -169,7 +170,7 @@ void main() {
       expect(r.summary!.contains('damn'), isFalse);
 
       final row =
-          await (db.select(db.rssArticles)..where((t) => t.id.equals('a1')))
+          await (db.select(db.news)..where((t) => t.id.equals('a1')))
               .getSingle();
       expect(row.title, title, reason: 'db row untouched');
       expect(row.summary, summary);

@@ -14,7 +14,7 @@ import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_data_providers/microsoft_graph/microsoft_graph_oauth.dart';
-import 'package:waddle_data_providers/media_onedrive/onedrive_media_data_provider.dart';
+import 'package:waddle_data_providers/photo_onedrive/onedrive_media_data_provider.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
@@ -37,7 +37,7 @@ void main() {
     await _seedProvider(db, accountsJson: '[]', enabled: false);
     final httpClient = _CountingClient();
     final ctx = await _ctx(db, InMemorySecretStore());
-    await OneDriveMediaDataProvider(httpClient: httpClient).collect(ctx);
+    await OneDrivePhotosDataProvider(httpClient: httpClient).collect(ctx);
     expect(httpClient.requests, 0);
     await db.close();
   });
@@ -47,7 +47,7 @@ void main() {
     await warmDatabase(db);
     await db.into(db.integrations).insertOnConflictUpdate(
           IntegrationsCompanion.insert(
-            id: kOneDriveMediaProviderId,
+            id: kDefaultPhotoOneDriveIntegrationId,
             integrationType: 'photo_onedrive',
             enabled: const Value(true),
             pollSeconds: const Value(0),
@@ -59,7 +59,7 @@ void main() {
         );
     final httpClient = _CountingClient();
     final ctx = await _ctx(db, InMemorySecretStore(), clientId: null);
-    await OneDriveMediaDataProvider(httpClient: httpClient).collect(ctx);
+    await OneDrivePhotosDataProvider(httpClient: httpClient).collect(ctx);
     expect(httpClient.requests, 0);
     await db.close();
   });
@@ -75,7 +75,7 @@ void main() {
     final http = _CountingClient();
     final oauth = _NullGraphOAuth(httpClient: http, nowMs: () => 0);
     final ctx = await _ctx(db, InMemorySecretStore());
-    await OneDriveMediaDataProvider(httpClient: http, oauth: oauth).collect(ctx);
+    await OneDrivePhotosDataProvider(httpClient: http, oauth: oauth).collect(ctx);
     expect(http.requests, 0);
     await db.close();
   });
@@ -90,7 +90,7 @@ void main() {
     final http = _CountingClient();
     final oauth = _ThrowingOAuth();
     final ctx = await _ctx(db, InMemorySecretStore());
-    await OneDriveMediaDataProvider(httpClient: http, oauth: oauth).collect(ctx);
+    await OneDrivePhotosDataProvider(httpClient: http, oauth: oauth).collect(ctx);
     expect(http.requests, 0);
     await db.close();
   });
@@ -125,7 +125,7 @@ void main() {
     );
     final ctx = await _ctx(db, secrets);
     final oauth = _FixedTokenOAuth(httpClient: http, nowMs: () => 0);
-    await OneDriveMediaDataProvider(httpClient: http, oauth: oauth).collect(ctx);
+    await OneDrivePhotosDataProvider(httpClient: http, oauth: oauth).collect(ctx);
     expect(http.graphGets, greaterThan(0));
     await db.close();
   });
@@ -148,7 +148,7 @@ void main() {
         );
     final http = _ErrorJsonGraphClient();
     final ctx = await _ctx(db, secrets);
-    await OneDriveMediaDataProvider(httpClient: http).collect(ctx);
+    await OneDrivePhotosDataProvider(httpClient: http).collect(ctx);
     expect(http.graphGets, 1);
     expect(await db.select(db.photos).get(), isEmpty);
     await db.close();
@@ -172,7 +172,7 @@ void main() {
         );
     final http = _PagingGraphClient();
     final ctx = await _ctx(db, secrets);
-    await OneDriveMediaDataProvider(httpClient: http).collect(ctx);
+    await OneDrivePhotosDataProvider(httpClient: http).collect(ctx);
     expect(http.graphGets, 3);
     expect((await db.select(db.photos).get()).length, 2);
     await db.close();
@@ -212,10 +212,10 @@ void main() {
       ],
     );
     final ctx = await _ctx(db, secrets);
-    await OneDriveMediaDataProvider(httpClient: http).collect(ctx);
+    await OneDrivePhotosDataProvider(httpClient: http).collect(ctx);
     final vids = await db.select(db.videos).get();
     expect(vids.length, 1);
-    expect(vids.single.dataProvider, kMediaDataProviderOneDrive);
+    expect(vids.single.dataProvider, kMediaDataProviderPhotoOneDrive);
     expect(vids.single.durationSeconds, 12);
     expect(vids.single.photographerName, 'Alex');
     await db.close();
@@ -243,7 +243,7 @@ void main() {
         );
     final http = _TwoFolderGraphClient();
     final ctx = await _ctx(db, secrets);
-    await OneDriveMediaDataProvider(httpClient: http).collect(ctx);
+    await OneDrivePhotosDataProvider(httpClient: http).collect(ctx);
     expect(http.graphGets, 2);
     expect((await db.select(db.photos).get()).length, 1);
     await db.close();
@@ -255,7 +255,7 @@ void main() {
     await _seedProvider(db, accountsJson: '[]');
     final httpClient = _CountingClient();
     final ctx = await _ctx(db, InMemorySecretStore());
-    final p = OneDriveMediaDataProvider(httpClient: httpClient);
+    final p = OneDrivePhotosDataProvider(httpClient: httpClient);
     await p.collect(ctx);
     expect(httpClient.requests, 0);
     await db.close();
@@ -281,7 +281,7 @@ void main() {
     var clock = 10_000_000_000;
     final httpClient = _CountingClient();
     final ctx = await _ctx(db, secrets);
-    final p = OneDriveMediaDataProvider(httpClient: httpClient, nowMs: () => clock);
+    final p = OneDrivePhotosDataProvider(httpClient: httpClient, nowMs: () => clock);
     await p.collect(ctx);
     expect(httpClient.requests, greaterThan(0));
     final n1 = httpClient.requests;
@@ -319,12 +319,12 @@ void main() {
       ],
     );
     final ctx = await _ctx(db, secrets);
-    final p = OneDriveMediaDataProvider(httpClient: httpClient);
+    final p = OneDrivePhotosDataProvider(httpClient: httpClient);
     await p.collect(ctx);
     expect(httpClient.downloadGets, 2);
     final photos = await db.select(db.photos).get();
     expect(photos.length, 2);
-    expect(photos.every((e) => e.dataProvider == kMediaDataProviderOneDrive), isTrue);
+    expect(photos.every((e) => e.dataProvider == kMediaDataProviderPhotoOneDrive), isTrue);
     expect(photos.every((e) => e.category == 'fam'), isTrue);
     expect(photos.every((e) => e.photographerName == 'Pat'), isTrue);
     await db.close();
@@ -355,7 +355,7 @@ void main() {
       ],
     );
     final ctx = await _ctx(db, secrets);
-    final p = OneDriveMediaDataProvider(httpClient: httpClient);
+    final p = OneDrivePhotosDataProvider(httpClient: httpClient);
     await p.collect(ctx);
     expect(httpClient.downloadGets, 1);
     final photos = await db.select(db.photos).get();
@@ -386,7 +386,7 @@ void main() {
             PhotosCompanion.insert(
               id: id,
               category: const Value('c'),
-              dataProvider: const Value(kMediaDataProviderOneDrive),
+              dataProvider: const Value(kMediaDataProviderPhotoOneDrive),
               mediaBlobKey: 'onedrive/photo/$id/media',
               photographerName: '',
               photographerUrl: '',
@@ -404,7 +404,7 @@ void main() {
       deltaPages: [_deltaPage([])],
     );
     final ctx = await _ctx(db, secrets);
-    final p = OneDriveMediaDataProvider(httpClient: httpClient);
+    final p = OneDrivePhotosDataProvider(httpClient: httpClient);
     await p.collect(ctx);
 
     final photos = await db.select(db.photos).get();
@@ -438,7 +438,7 @@ void main() {
       ],
     );
     final ctx = await _ctx(db, secrets);
-    final p = OneDriveMediaDataProvider(httpClient: httpClient);
+    final p = OneDrivePhotosDataProvider(httpClient: httpClient);
     await p.collect(ctx);
     expect(httpClient.downloadGets, 0);
     expect(await db.select(db.videos).get(), isEmpty);
@@ -480,7 +480,7 @@ void main() {
       ],
     );
     final ctx = await _ctx(db, secrets);
-    await OneDriveMediaDataProvider(httpClient: httpClient).collect(ctx);
+    await OneDrivePhotosDataProvider(httpClient: httpClient).collect(ctx);
     expect(httpClient.downloadGets, 2);
     expect((await db.select(db.photos).get()).length, 1);
     expect((await db.select(db.videos).get()).length, 1);
@@ -508,7 +508,7 @@ void main() {
           PhotosCompanion.insert(
             id: goneId,
             category: const Value('c'),
-            dataProvider: const Value(kMediaDataProviderOneDrive),
+            dataProvider: const Value(kMediaDataProviderPhotoOneDrive),
             mediaBlobKey: 'onedrive/photo/$goneId/media',
             photographerName: '',
             photographerUrl: '',
@@ -525,7 +525,7 @@ void main() {
       ],
     );
     final ctx = await _ctx(db, secrets);
-    await OneDriveMediaDataProvider(httpClient: httpClient).collect(ctx);
+    await OneDrivePhotosDataProvider(httpClient: httpClient).collect(ctx);
     expect(await db.select(db.photos).get(), isEmpty);
     await db.close();
   });
@@ -556,7 +556,7 @@ void main() {
       ],
     );
     final ctx = await _ctx(db, secrets);
-    await OneDriveMediaDataProvider(httpClient: httpClient).collect(ctx);
+    await OneDrivePhotosDataProvider(httpClient: httpClient).collect(ctx);
     final key = kOneDriveMediaDeltaLinkKvKey('u', 'z');
     final row =
         await (db.select(db.configKeyValues)..where((t) => t.key.equals(key)))
@@ -603,7 +603,7 @@ Future<void> _seedProvider(
 }) async {
   await db.into(db.integrations).insertOnConflictUpdate(
         IntegrationsCompanion.insert(
-          id: kOneDriveMediaProviderId,
+          id: kDefaultPhotoOneDriveIntegrationId,
           integrationType: 'photo_onedrive',
           enabled: Value(enabled),
           pollSeconds: Value(pollSeconds),
@@ -624,6 +624,7 @@ class _NullGraphOAuth extends MicrosoftGraphOAuth {
     required SecretStore secrets,
     required String clientId,
     required String graphAccountKey,
+    bool pollDeviceCode = false,
   }) async => null;
 }
 
@@ -636,6 +637,7 @@ class _FixedTokenOAuth extends MicrosoftGraphOAuth {
     required SecretStore secrets,
     required String clientId,
     required String graphAccountKey,
+    bool pollDeviceCode = false,
   }) async => 'tok';
 }
 
@@ -648,6 +650,7 @@ class _ThrowingOAuth extends MicrosoftGraphOAuth {
     required SecretStore secrets,
     required String clientId,
     required String graphAccountKey,
+    bool pollDeviceCode = false,
   }) async {
     throw StateError('ensureAccessToken should not run');
   }

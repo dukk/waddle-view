@@ -30,10 +30,11 @@ void main() {
             url: 'http://a',
           ),
         );
-    await db.into(db.rssArticles).insert(
-          RssArticlesCompanion.insert(
+    await db.into(db.news).insert(
+          NewsCompanion.insert(
             id: 'a1',
-            feedId: 'f1',
+            sourceType: kNewsSourceTypeRss,
+            sourceId: 'f1',
             guid: 'g',
             title: 't',
             link: 'http://l',
@@ -153,10 +154,11 @@ void main() {
     await db.into(db.interestsRssFeeds).insert(
           InterestsRssFeedsCompanion.insert(id: 'f2', url: 'http://b'),
         );
-    await db.into(db.rssArticles).insert(
-          RssArticlesCompanion.insert(
+    await db.into(db.news).insert(
+          NewsCompanion.insert(
             id: 'ah',
-            feedId: 'f2',
+            sourceType: kNewsSourceTypeRss,
+            sourceId: 'f2',
             guid: 'h',
             title: 'hid',
             link: 'http://x',
@@ -165,10 +167,11 @@ void main() {
             suppressed: const Value(true),
           ),
         );
-    await db.into(db.rssArticles).insert(
-          RssArticlesCompanion.insert(
+    await db.into(db.news).insert(
+          NewsCompanion.insert(
             id: 'ash',
-            feedId: 'f2',
+            sourceType: kNewsSourceTypeRss,
+            sourceId: 'f2',
             guid: 's',
             title: 'shown',
             link: 'http://y',

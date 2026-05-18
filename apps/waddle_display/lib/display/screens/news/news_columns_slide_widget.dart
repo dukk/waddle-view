@@ -46,14 +46,14 @@ int _columnCountFromConfig(Map<String, dynamic> c) {
 
 class _ColumnArticle {
   const _ColumnArticle(this.article, this.imageLoad, this.sourceLabel);
-  final RssArticle? article;
+  final NewsArticle? article;
   final NewsImageLoad imageLoad;
   final String? sourceLabel;
 }
 
 /// [columnCount] RSS articles in a row: image on top, then title with a link
 /// QR placed under it (start-aligned) and the summary beside the QR when
-/// [RssArticle.link] is set.
+/// [NewsArticle.link] is set.
 /// Curator assigns [ResolvedSlide.randomChoices] keys
 /// `'${slot}_news_columns_0'` … `_2` for three columns.
 class NewsColumnsSlideWidget extends StatefulWidget {

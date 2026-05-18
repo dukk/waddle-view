@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:test/test.dart';
 import 'package:waddle_shared/persistence/database_stats_repository.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/tables.dart';
 
 import '../helpers/memory_database.dart';
 
@@ -27,10 +28,11 @@ void main() {
           ),
         );
 
-    await db.into(db.rssArticles).insert(
-          RssArticlesCompanion.insert(
+    await db.into(db.news).insert(
+          NewsCompanion.insert(
             id: 'a1',
-            feedId: 'f1',
+            sourceType: kNewsSourceTypeRss,
+            sourceId: 'f1',
             guid: 'g1',
             title: 't1',
             link: 'https://x/1',
@@ -40,10 +42,11 @@ void main() {
             imageBlobKey: const Value('img/a1'),
           ),
         );
-    await db.into(db.rssArticles).insert(
-          RssArticlesCompanion.insert(
+    await db.into(db.news).insert(
+          NewsCompanion.insert(
             id: 'a2',
-            feedId: 'f1',
+            sourceType: kNewsSourceTypeRss,
+            sourceId: 'f1',
             guid: 'g2',
             title: 't2',
             link: 'https://x/2',
@@ -52,10 +55,11 @@ void main() {
             fetchedAt: DateTime.fromMillisecondsSinceEpoch(4),
           ),
         );
-    await db.into(db.rssArticles).insert(
-          RssArticlesCompanion.insert(
+    await db.into(db.news).insert(
+          NewsCompanion.insert(
             id: 'a3',
-            feedId: 'f2',
+            sourceType: kNewsSourceTypeRss,
+            sourceId: 'f2',
             guid: 'g3',
             title: 't3',
             link: 'https://x/3',

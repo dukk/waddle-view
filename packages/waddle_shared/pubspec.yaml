@@ -8,6 +8,7 @@ environment:
   sdk: ^3.11.5
 
 dependencies:
+  http: ^1.2.2
   crypto: ^3.0.6
   cryptography: ^2.7.0
   ffi: ^2.1.4

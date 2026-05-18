@@ -6,7 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
-import 'package:waddle_data_providers/media_bing_iotd/bing_image_of_day_data_provider.dart';
+import 'package:waddle_data_providers/photo_bing_image_of_the_day/bing_image_of_day_data_provider.dart';
+import 'package:waddle_shared/integrations/integration_collect.dart';
 import 'package:waddle_shared/persistence/config_json_documentation.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
@@ -50,11 +51,11 @@ Future<void> _insertBingProvider(
   String configJson = '{"retentionDays":1,"market":"en-US","resolution":"UHD","category":"bing"}',
   String baseUrl = 'https://www.bing.com',
 }) async {
-  final doc = providerConfigJsonDocForType('media_bing_iotd');
+  final doc = providerConfigJsonDocForType(kPhotoBingIotdIntegrationType);
   await db.into(db.integrations).insert(
     IntegrationsCompanion.insert(
-      id: kBingImageOfDayProviderId,
-      integrationType: kBingImageOfDayProviderId,
+      id: kDefaultPhotoBingIotdIntegrationId,
+      integrationType: kPhotoBingIotdIntegrationType,
       enabled: Value(enabled),
       pollSeconds: Value(pollSeconds),
       baseUrl: Value(baseUrl),
@@ -110,7 +111,7 @@ void main() {
     await _insertBingProvider(db, pollSeconds: 3600);
     await db.into(db.configKeyValues).insert(
       ConfigKeyValuesCompanion.insert(
-        key: kBingImageOfDayLastCollectKvKey,
+        key: integrationLastCollectKvKey(kDefaultPhotoBingIotdIntegrationId),
         value: '1000000',
       ),
     );
@@ -167,7 +168,7 @@ void main() {
           ..where((t) => t.id.equals('bing_20260507_en-US')))
         .getSingleOrNull();
     expect(row, isNotNull);
-    expect(row!.dataProvider, kMediaDataProviderBing);
+    expect(row!.dataProvider, kMediaDataProviderPhotoBingIotd);
     expect(row.category, 'bing');
     expect(row.pexelsPageUrl, 'https://www.bing.com/search?q=test');
     expect(row.altText, 'Desert wide');
@@ -175,7 +176,7 @@ void main() {
     expect(row.photographerUrl, '');
 
     final kv = await (db.select(db.configKeyValues)
-          ..where((t) => t.key.equals(kBingImageOfDayLastCollectKvKey)))
+          ..where((t) => t.key.equals(integrationLastCollectKvKey(kDefaultPhotoBingIotdIntegrationId))))
         .getSingleOrNull();
     expect(kv, isNotNull);
     expect(kv!.value.isNotEmpty, isTrue);
@@ -234,7 +235,7 @@ void main() {
       PhotosCompanion.insert(
         id: 'bing_20200101_en-US',
         category: const Value('bing'),
-        dataProvider: const Value(kMediaDataProviderBing),
+        dataProvider: const Value(kMediaDataProviderPhotoBingIotd),
         mediaBlobKey: oldKey,
         photographerName: 'x',
         photographerUrl: '',
@@ -373,7 +374,7 @@ void main() {
       requestTimeout: const Duration(milliseconds: 50),
     ).collect(ctx);
     final rows = await db.select(db.photos).get();
-    expect(rows.where((r) => r.dataProvider == kMediaDataProviderBing), isEmpty);
+    expect(rows.where((r) => r.dataProvider == kMediaDataProviderPhotoBingIotd), isEmpty);
     await db.close();
   });
 }

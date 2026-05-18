@@ -410,6 +410,7 @@ function CuratorConfigurationDialog({
   const [programDuration, setProgramDuration] = useState(180);
   const [historyDepth, setHistoryDepth] = useState(5);
   const [requireNewsPhoto, setRequireNewsPhoto] = useState(true);
+  const [tickerEnabled, setTickerEnabled] = useState(true);
   const [defaultConfig, setDefaultConfig] = useState(false);
   const [rules, setRules] = useState<Omit<CuratorScheduleRule, 'configuration_id'>[]>([]);
   const [screenIds, setScreenIds] = useState<string[]>([]);
@@ -463,6 +464,7 @@ function CuratorConfigurationDialog({
           setProgramDuration(detail.program_duration_seconds);
           setHistoryDepth(detail.history_depth);
           setRequireNewsPhoto(detail.require_news_photo_for_screens);
+          setTickerEnabled(detail.ticker_enabled);
           setDefaultConfig(detail.default_config);
           setRules(
             detail.rules.map((r) => ({
@@ -509,6 +511,7 @@ function CuratorConfigurationDialog({
     program_duration_seconds: programDuration,
     history_depth: historyDepth,
     require_news_photo_for_screens: requireNewsPhoto,
+    ticker_enabled: tickerEnabled,
     default_config: defaultConfig,
     rules: rules.map((r) => ({
       ...r,
@@ -634,6 +637,16 @@ function CuratorConfigurationDialog({
                     }
                     label="Require news photo for RSS screens"
                   />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={tickerEnabled}
+                        onChange={(_, v) => setTickerEnabled(v)}
+                        disabled={!canWrite}
+                      />
+                    }
+                    label="Show ticker marquee (screens use full height when off)"
+                  />
                 </>
               )}
               <Typography variant="subtitle2" fontWeight={600}>
@@ -661,7 +674,7 @@ function CuratorConfigurationDialog({
                     options={tickerOptions}
                     value={tickerIds}
                     onChange={setTickerIds}
-                    disabled={!canWrite}
+                    disabled={!canWrite || !tickerEnabled}
                   />
                   <MemberAutocomplete
                     label="Overlays"

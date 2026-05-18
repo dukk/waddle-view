@@ -6,6 +6,7 @@ import 'package:shelf_router/shelf_router.dart';
 import 'package:waddle_display/api/api_key_auth.dart';
 import 'package:waddle_shared/auth/role_permissions.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/tables.dart';
 
 /// Paginated operator catalog for ingested content (`GET /v1/catalog/*`).
 ///
@@ -334,7 +335,7 @@ Future<Response> _listRssArticles(AppDatabase db, Request req) async {
   final summaryNeedle = _queryNeedle(req, 'summary');
   final linkNeedle = _queryNeedle(req, 'link');
   final guidNeedle = _queryNeedle(req, 'guid');
-  final rows = await (db.select(db.rssArticles)
+  final rows = await (db.select(db.news)
         ..where((t) => _rssWhere(t, p, titleNeedle, summaryNeedle, linkNeedle, guidNeedle))
         ..orderBy([(t) => OrderingTerm.desc(t.publishedAt)])
         ..limit(p.limit, offset: p.offset))
@@ -345,7 +346,7 @@ Future<Response> _listRssArticles(AppDatabase db, Request req) async {
       for (final r in rows)
         {
           'id': r.id,
-          'feed_id': r.feedId,
+          'feed_id': r.sourceId,
           'guid': r.guid,
           'title': r.title,
           'link': r.link,
@@ -364,7 +365,7 @@ Future<Response> _listRssArticles(AppDatabase db, Request req) async {
 }
 
 Expression<bool> _rssWhere(
-  $RssArticlesTable t,
+  $NewsTable t,
   _CatalogParams p,
   String? titleNeedle,
   String? summaryNeedle,
@@ -376,7 +377,9 @@ Expression<bool> _rssWhere(
     e = e & t.suppressed.equals(p.suppressed!);
   }
   if (p.feedId != null) {
-    e = e & t.feedId.equals(p.feedId!);
+    e = e &
+        t.sourceType.equals(kNewsSourceTypeRss) &
+        t.sourceId.equals(p.feedId!);
   }
   if (titleNeedle != null) {
     e = e & t.title.like('%$titleNeedle%');
@@ -402,10 +405,10 @@ Future<int> _countRss(
   String? linkNeedle,
   String? guidNeedle,
 ) async {
-  final count = db.rssArticles.id.count();
-  final row = await (db.selectOnly(db.rssArticles)
+  final count = db.news.id.count();
+  final row = await (db.selectOnly(db.news)
         ..addColumns([count])
-        ..where(_rssWhere(db.rssArticles, p, titleNeedle, summaryNeedle, linkNeedle, guidNeedle)))
+        ..where(_rssWhere(db.news, p, titleNeedle, summaryNeedle, linkNeedle, guidNeedle)))
       .getSingle();
   return row.read(count) ?? 0;
 }

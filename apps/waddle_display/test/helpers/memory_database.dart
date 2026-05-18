@@ -4,6 +4,8 @@ import 'package:waddle_shared/persistence/config_json_documentation.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 
+export 'package:waddle_shared/persistence/tables.dart';
+
 AppDatabase openMemoryDatabase() {
   return AppDatabase(
     DatabaseConnection(
