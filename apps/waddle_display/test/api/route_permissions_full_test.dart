@@ -16,6 +16,11 @@ void main() {
       '/v1/integration-accounts/work/oauth-probe',
       WaddlePermission.integrationsWrite,
     ),
+    (
+      'DELETE',
+      '/v1/integration-accounts/work',
+      WaddlePermission.integrationsWrite,
+    ),
     ('PATCH', '/v1/integrations/p1', WaddlePermission.integrationsWrite),
     ('GET', '/v1/alerts', WaddlePermission.alertsRead),
     ('POST', '/v1/alerts', WaddlePermission.alertsWrite),

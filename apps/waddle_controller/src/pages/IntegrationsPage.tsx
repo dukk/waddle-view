@@ -37,6 +37,7 @@ import { useDisplay } from '@/context/DisplayContext';
 import { apiFetch, apiJson, ApiError } from '@/api/client';
 import {
   createIntegrationAccount,
+  deleteIntegrationAccount,
   fetchIntegrationAccounts,
   patchIntegrationAccount,
   putIntegrationAccountSecret,
@@ -561,6 +562,7 @@ export function IntegrationsPage() {
           <ConfigureAccountDialog
             open={configureAccount != null}
             account={configureAccount}
+            integrationRows={rows}
             onClose={() => setConfigureAccount(null)}
             onSaved={async () => {
               setConfigureAccount(null);
@@ -1158,9 +1160,18 @@ function AddAccountDialog({
   );
 }
 
+function integrationLabelForRowId(
+  integrationId: string,
+  integrationRows: IntegrationRow[],
+): string {
+  const row = integrationRows.find((r) => r.id === integrationId);
+  return row ? integrationDisplayName(row.integration_type) : integrationId;
+}
+
 function ConfigureAccountDialog({
   open,
   account,
+  integrationRows,
   onClose,
   onSaved,
   onError,
@@ -1168,6 +1179,7 @@ function ConfigureAccountDialog({
 }: {
   open: boolean;
   account: IntegrationAccountRow | null;
+  integrationRows: IntegrationRow[];
   onClose: () => void;
   onSaved: () => Promise<void>;
   onError: (msg: string) => void;
@@ -1217,6 +1229,33 @@ function ConfigureAccountDialog({
     setBusy(true);
     try {
       await probeIntegrationAccountOAuth(display, account.id);
+      await onSaved();
+    } catch (e) {
+      onError(errMsg(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const deleteAccount = async () => {
+    const inUseIds = account.integration_ids ?? [];
+    let message = `Delete account "${account.label}"? This cannot be undone.`;
+    if (inUseIds.length > 0) {
+      const labels = inUseIds.map((id) =>
+        integrationLabelForRowId(id, integrationRows),
+      );
+      message =
+        `This account is used by: ${labels.join(', ')}.\n\n` +
+        'Those integrations will be disabled. Delete anyway?';
+    }
+    if (!window.confirm(message)) {
+      return;
+    }
+    setBusy(true);
+    try {
+      await deleteIntegrationAccount(display, account.id, {
+        confirm: inUseIds.length > 0,
+      });
       await onSaved();
     } catch (e) {
       onError(errMsg(e));
@@ -1284,15 +1323,20 @@ function ConfigureAccountDialog({
           )}
         </Stack>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Close</Button>
-        <Button
-          variant="contained"
-          disabled={busy || name.trim().length === 0}
-          onClick={() => void saveDetails()}
-        >
-          {account.supports_oauth_sign_in ? 'Save' : 'Save'}
+      <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2 }}>
+        <Button color="error" disabled={busy} onClick={() => void deleteAccount()}>
+          Delete account
         </Button>
+        <Stack direction="row" spacing={1}>
+          <Button onClick={onClose}>Close</Button>
+          <Button
+            variant="contained"
+            disabled={busy || name.trim().length === 0}
+            onClick={() => void saveDetails()}
+          >
+            Save
+          </Button>
+        </Stack>
       </DialogActions>
     </Dialog>
   );

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SavedDisplay } from '@/storage/displays';
 import {
   createIntegrationAccount,
+  deleteIntegrationAccount,
   fetchIntegrationAccounts,
   patchIntegrationAccount,
   putIntegrationAccountSecret,
@@ -59,6 +60,17 @@ describe('integrationAccounts api', () => {
     await putIntegrationAccountSecret(display, 'pexels', 'key');
     await requestIntegrationAccountSignIn(display, 'work');
     expect(apiFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('deletes integration account with confirm query', async () => {
+    vi.mocked(apiJson).mockResolvedValue({ disabled_integration_ids: ['calendar_google'] });
+    const res = await deleteIntegrationAccount(display, 'personal', { confirm: true });
+    expect(res.disabled_integration_ids).toEqual(['calendar_google']);
+    expect(apiJson).toHaveBeenCalledWith(
+      display,
+      '/v1/integration-accounts/personal?confirm=true',
+      expect.objectContaining({ method: 'DELETE' }),
+    );
   });
 
   it('probes oauth on display', async () => {

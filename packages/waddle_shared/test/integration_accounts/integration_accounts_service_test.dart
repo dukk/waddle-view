@@ -5,6 +5,7 @@ import 'package:waddle_shared/integration_accounts/integration_accounts_service.
 import 'package:waddle_shared/integration_accounts/oauth_provider_catalog.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
+import 'package:waddle_shared/config/google_kv.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 
 import '../helpers/memory_database.dart';
@@ -135,6 +136,109 @@ void main() {
           ..where((t) => t.id.equals('personal')))
         .getSingle();
     expect(row.accountType, kIntegrationAccountTypeGoogle);
+  });
+
+  test('deleteOperatorIntegrationAccount blocks when linked without confirm',
+      () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final secrets = InMemorySecretStore();
+    addTearDown(db.close);
+    await secrets.write(kGoogleClientIdSecretKey, 'google-client');
+    await db.into(db.integrations).insertOnConflictUpdate(
+      IntegrationsCompanion.insert(
+        id: 'calendar_google_home',
+        integrationType: 'calendar_google',
+        enabled: const Value(true),
+        configJson: Value(
+          '{"accounts":[{"googleAccountKey":"personal","sources":[]}]}',
+        ),
+      ),
+    );
+    await createOperatorIntegrationAccount(
+      db,
+      secrets,
+      accountTypeId: kIntegrationAccountTypeGoogle,
+      accountKey: 'personal',
+    );
+    expect(
+      () => deleteOperatorIntegrationAccount(db, secrets, accountId: 'personal'),
+      throwsA(isA<IntegrationAccountInUseException>()),
+    );
+  });
+
+  test('deleteOperatorIntegrationAccount removes oauth account and disables integrations',
+      () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final secrets = InMemorySecretStore();
+    addTearDown(db.close);
+    await secrets.write(kGoogleClientIdSecretKey, 'google-client');
+    const integrationId = 'calendar_google_home';
+    await db.into(db.integrations).insertOnConflictUpdate(
+      IntegrationsCompanion.insert(
+        id: integrationId,
+        integrationType: 'calendar_google',
+        enabled: const Value(true),
+        configJson: Value(
+          '{"accounts":[{"googleAccountKey":"personal","sources":[]}]}',
+        ),
+      ),
+    );
+    await createOperatorIntegrationAccount(
+      db,
+      secrets,
+      accountTypeId: kIntegrationAccountTypeGoogle,
+      accountKey: 'personal',
+    );
+    await secrets.write(googleAccessTokenSecret('personal'), 'token');
+    final result = await deleteOperatorIntegrationAccount(
+      db,
+      secrets,
+      accountId: 'personal',
+      confirm: true,
+    );
+    expect(result.disabledIntegrationIds, [integrationId]);
+    expect(
+      await (db.select(db.integrationAccounts)
+            ..where((t) => t.id.equals('personal')))
+          .get(),
+      isEmpty,
+    );
+    final row = await (db.select(db.integrations)
+          ..where((t) => t.id.equals(integrationId)))
+        .getSingle();
+    expect(row.enabled, isFalse);
+    expect(
+      accountKeysInIntegrationConfig(row.integrationType, row.configJson).toList(),
+      isEmpty,
+    );
+    expect(await secrets.read(googleAccessTokenSecret('personal')), isNull);
+  });
+
+  test('deleteOperatorIntegrationAccount allows unused account without confirm',
+      () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final secrets = InMemorySecretStore();
+    addTearDown(db.close);
+    await createOperatorIntegrationAccount(
+      db,
+      secrets,
+      accountTypeId: kIntegrationAccountTypeApiKeyPexels,
+      accountKey: 'unused_pexels',
+    );
+    await deleteOperatorIntegrationAccount(
+      db,
+      secrets,
+      accountId: 'unused_pexels',
+    );
+    expect(
+      await (db.select(db.integrationAccounts)
+            ..where((t) => t.id.equals('unused_pexels')))
+          .get(),
+      isEmpty,
+    );
   });
 
   test('updateOperatorIntegrationAccountLabel changes display name', () async {

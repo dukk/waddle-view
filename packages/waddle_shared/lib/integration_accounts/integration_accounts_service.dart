@@ -502,6 +502,172 @@ Future<String> createOperatorIntegrationAccount(
   return accountId;
 }
 
+/// Thrown when [deleteOperatorIntegrationAccount] is called without [confirm]
+/// while [integrationIds] integrations still reference the account.
+class IntegrationAccountInUseException implements Exception {
+  IntegrationAccountInUseException(this.integrationIds);
+
+  final List<String> integrationIds;
+
+  @override
+  String toString() => 'IntegrationAccountInUseException($integrationIds)';
+}
+
+/// Outcome of a successful operator account delete.
+class DeleteOperatorIntegrationAccountResult {
+  const DeleteOperatorIntegrationAccountResult({
+    required this.disabledIntegrationIds,
+  });
+
+  final List<String> disabledIntegrationIds;
+}
+
+String? _removeOAuthAccountKeyFromConfig(
+  String? configJson,
+  String accountKeyField,
+  String accountKey,
+) {
+  if (configJson == null || configJson.trim().isEmpty) {
+    return configJson;
+  }
+  Map<String, dynamic> root;
+  try {
+    final decoded = jsonDecode(configJson);
+    if (decoded is! Map<String, dynamic>) {
+      return configJson;
+    }
+    root = decoded;
+  } on Object {
+    return configJson;
+  }
+  final accountsRaw = root['accounts'];
+  if (accountsRaw is! List<dynamic>) {
+    return configJson;
+  }
+  final accounts = <dynamic>[];
+  var changed = false;
+  for (final a in accountsRaw) {
+    if (a is! Map<String, dynamic>) {
+      accounts.add(a);
+      continue;
+    }
+    if ((a[accountKeyField] as String?)?.trim() == accountKey) {
+      changed = true;
+      continue;
+    }
+    accounts.add(a);
+  }
+  if (!changed) {
+    return configJson;
+  }
+  root['accounts'] = accounts;
+  return jsonEncode(root);
+}
+
+Future<void> _removeOAuthAccountKeyFromIntegrations(
+  AppDatabase db,
+  String accountKeyField,
+  String accountKey,
+) async {
+  final rows = await db.select(db.integrations).get();
+  for (final row in rows) {
+    final merged = _removeOAuthAccountKeyFromConfig(
+      row.configJson,
+      accountKeyField,
+      accountKey,
+    );
+    if (merged == null || merged == row.configJson) {
+      continue;
+    }
+    await (db.update(db.integrations)..where((t) => t.id.equals(row.id))).write(
+      IntegrationsCompanion(configJson: Value(merged)),
+    );
+  }
+}
+
+Future<void> _clearOAuthSignInKvForAccount(
+  AppDatabase db,
+  String accountId,
+  String accountTypeId,
+) async {
+  switch (accountTypeId) {
+    case kIntegrationAccountTypeGoogle:
+      await (db.delete(db.configKeyValues)
+            ..where(
+              (t) => t.key.equals(kGoogleCalendarLastDevicePromptKvKey(accountId)),
+            ))
+          .go();
+    case kIntegrationAccountTypeMicrosoftGraph:
+      await (db.delete(db.configKeyValues)
+            ..where(
+              (t) =>
+                  t.key.equals(kOutlookCalendarLastDevicePromptKvKey(accountId)),
+            ))
+          .go();
+    default:
+      break;
+  }
+}
+
+/// Deletes a shared account, clears its secrets, and disables integrations that
+/// depended on it. Pass [confirm] when [IntegrationAccountInUseException] would
+/// otherwise be thrown.
+Future<DeleteOperatorIntegrationAccountResult> deleteOperatorIntegrationAccount(
+  AppDatabase db,
+  SecretStore secrets, {
+  required String accountId,
+  bool confirm = false,
+}) async {
+  await syncIntegrationAccountLinks(db);
+  final account = await (db.select(db.integrationAccounts)
+        ..where((t) => t.id.equals(accountId)))
+      .getSingleOrNull();
+  if (account == null) {
+    throw ArgumentError('not_found');
+  }
+  final linkRows = await (db.select(db.integrationAccountLinks)
+        ..where((t) => t.accountId.equals(accountId)))
+      .get();
+  final integrationIds = linkRows.map((l) => l.integrationId).toList()..sort();
+  if (integrationIds.isNotEmpty && !confirm) {
+    throw IntegrationAccountInUseException(integrationIds);
+  }
+
+  final def = kIntegrationAccountTypes[account.accountType];
+  final accountKeyField = def?.accountKeyField;
+  if (accountKeyField != null) {
+    await _removeOAuthAccountKeyFromIntegrations(
+      db,
+      accountKeyField,
+      accountId,
+    );
+  }
+  if (def != null) {
+    await secrets.delete(def.accessTokenSecretKey(accountId));
+  }
+  await _clearOAuthSignInKvForAccount(db, accountId, account.accountType);
+
+  await (db.delete(db.integrationAccounts)..where((t) => t.id.equals(accountId)))
+      .go();
+
+  final disabled = <String>[];
+  for (final integrationId in integrationIds) {
+    final row = await (db.select(db.integrations)
+          ..where((t) => t.id.equals(integrationId)))
+        .getSingleOrNull();
+    if (row == null || !row.enabled) {
+      continue;
+    }
+    await (db.update(db.integrations)..where((t) => t.id.equals(integrationId)))
+        .write(const IntegrationsCompanion(enabled: Value(false)));
+    disabled.add(integrationId);
+  }
+  disabled.sort();
+  return DeleteOperatorIntegrationAccountResult(
+    disabledIntegrationIds: disabled,
+  );
+}
+
 Future<void> updateOperatorIntegrationAccountLabel(
   AppDatabase db,
   String accountId, {

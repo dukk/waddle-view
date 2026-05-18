@@ -409,7 +409,7 @@ export function InterestsPage() {
   );
 
   if (!active) {
-    return <NoDisplayPlaceholder title="Interests" />;
+    return <NoDisplayPlaceholder />;
   }
 
   return (

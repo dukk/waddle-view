@@ -7,6 +7,7 @@ import 'package:waddle_shared/config/google_kv.dart';
 import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
 import 'package:waddle_shared/persistence/database.dart'
     show
+        IntegrationAccountLinksCompanion,
         IntegrationAccountsCompanion,
         IntegrationsCompanion,
         kDefaultCalendarGoogleIntegrationId,
@@ -245,6 +246,114 @@ void main() {
       expect(res.statusCode, 400);
       final body = jsonDecode(res.body) as Map<String, dynamic>;
       expect(body['error'], 'oauth_sign_in_not_supported');
+    } finally {
+      await harness.dispose();
+    }
+  });
+
+  test('DELETE integration-accounts returns 409 when account is in use', () async {
+    final harness = await RestTestHarness.start();
+    try {
+      await harness.secrets.write(
+        'provider:client_id:google',
+        'google-client-id.apps.googleusercontent.com',
+      );
+      await harness.db.into(harness.db.integrations).insertOnConflictUpdate(
+            IntegrationsCompanion.insert(
+              id: kDefaultCalendarGoogleIntegrationId,
+              integrationType: 'calendar_google',
+              enabled: const Value(true),
+              configJson: Value(
+                '{"accounts":[{"googleAccountKey":"personal","sources":[]}]}',
+              ),
+            ),
+          );
+      await harness.db.into(harness.db.integrationAccounts).insertOnConflictUpdate(
+            IntegrationAccountsCompanion.insert(
+              id: 'personal',
+              accountType: kIntegrationAccountTypeGoogle,
+              label: const Value('Personal'),
+              createdAtMs: DateTime.now().millisecondsSinceEpoch,
+            ),
+          );
+      await harness.db.into(harness.db.integrationAccountLinks).insertOnConflictUpdate(
+            IntegrationAccountLinksCompanion.insert(
+              integrationId: kDefaultCalendarGoogleIntegrationId,
+              accountId: 'personal',
+            ),
+          );
+
+      final res = await http.delete(
+        Uri.parse(
+          '${harness.baseUrl}/v1/integration-accounts/personal',
+        ),
+        headers: harness.authHeaders,
+      );
+      expect(res.statusCode, 409);
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      expect(body['error'], 'account_in_use');
+      expect(body['integration_ids'], contains(kDefaultCalendarGoogleIntegrationId));
+    } finally {
+      await harness.dispose();
+    }
+  });
+
+  test('DELETE integration-accounts with confirm removes account and disables integrations',
+      () async {
+    final harness = await RestTestHarness.start();
+    try {
+      await harness.secrets.write(
+        'provider:client_id:google',
+        'google-client-id.apps.googleusercontent.com',
+      );
+      await harness.secrets.write(googleAccessTokenSecret('personal'), 'tok');
+      await harness.db.into(harness.db.integrations).insertOnConflictUpdate(
+            IntegrationsCompanion.insert(
+              id: kDefaultCalendarGoogleIntegrationId,
+              integrationType: 'calendar_google',
+              enabled: const Value(true),
+              configJson: Value(
+                '{"accounts":[{"googleAccountKey":"personal","sources":[]}]}',
+              ),
+            ),
+          );
+      await harness.db.into(harness.db.integrationAccounts).insertOnConflictUpdate(
+            IntegrationAccountsCompanion.insert(
+              id: 'personal',
+              accountType: kIntegrationAccountTypeGoogle,
+              label: const Value('Personal'),
+              createdAtMs: DateTime.now().millisecondsSinceEpoch,
+            ),
+          );
+      await harness.db.into(harness.db.integrationAccountLinks).insertOnConflictUpdate(
+            IntegrationAccountLinksCompanion.insert(
+              integrationId: kDefaultCalendarGoogleIntegrationId,
+              accountId: 'personal',
+            ),
+          );
+
+      final res = await http.delete(
+        Uri.parse(
+          '${harness.baseUrl}/v1/integration-accounts/personal?confirm=true',
+        ),
+        headers: harness.authHeaders,
+      );
+      expect(res.statusCode, 200);
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      expect(
+        body['disabled_integration_ids'],
+        [kDefaultCalendarGoogleIntegrationId],
+      );
+      expect(
+        await (harness.db.select(harness.db.integrationAccounts)
+              ..where((t) => t.id.equals('personal')))
+            .get(),
+        isEmpty,
+      );
+      final row = await (harness.db.select(harness.db.integrations)
+            ..where((t) => t.id.equals(kDefaultCalendarGoogleIntegrationId)))
+          .getSingle();
+      expect(row.enabled, isFalse);
     } finally {
       await harness.dispose();
     }

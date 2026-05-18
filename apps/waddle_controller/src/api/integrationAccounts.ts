@@ -75,6 +75,24 @@ export async function probeIntegrationAccountOAuth(
   });
 }
 
+export type DeleteIntegrationAccountResult = {
+  disabled_integration_ids: string[];
+};
+
+export async function deleteIntegrationAccount(
+  display: SavedDisplay,
+  accountId: string,
+  options?: { confirm?: boolean },
+): Promise<DeleteIntegrationAccountResult> {
+  const confirm = options?.confirm === true;
+  const query = confirm ? '?confirm=true' : '';
+  return apiJson<DeleteIntegrationAccountResult>(
+    display,
+    `/v1/integration-accounts/${encodeURIComponent(accountId)}${query}`,
+    { method: 'DELETE' },
+  );
+}
+
 export async function fetchIntegrationAccountsDetail(
   display: SavedDisplay,
   integrationId: string,

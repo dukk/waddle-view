@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
+  Alert,
   Box,
   Card,
   CardContent,
@@ -10,7 +11,6 @@ import {
 import ExtensionIcon from '@mui/icons-material/Extension';
 import { useDisplay } from '@/context/DisplayContext';
 import { apiJson, ApiError } from '@/api/client';
-import { CatalogPageToolbar } from '@/components/CatalogPageToolbar';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
@@ -23,44 +23,50 @@ type PluginRow = {
 };
 
 export function PluginsPage() {
-  const { activeDisplay } = useDisplay();
+  const { active } = useDisplay();
+  const { loading, wrapRefresh } = useDisplayRefresh();
   const [items, setItems] = useState<PluginRow[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!activeDisplay) {
-      return;
-    }
-    try {
-      const data = await apiJson<{ items: PluginRow[] }>('/v1/plugins');
-      setItems(data.items ?? []);
+    if (!active) return;
+    await wrapRefresh(async () => {
       setError(null);
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : String(e));
-    }
-  }, [activeDisplay]);
-
-  const refresh = useDisplayRefresh(load);
+      try {
+        const data = await apiJson<{ items: PluginRow[] }>(active, '/v1/plugins');
+        setItems(data.items ?? []);
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : String(e));
+      }
+    });
+  }, [active, wrapRefresh]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  if (!activeDisplay) {
+  if (!active) {
     return <NoDisplayPlaceholder />;
   }
 
   return (
-    <Box>
-      <CatalogPageToolbar
-        title="Plugins"
-        icon={<ExtensionIcon />}
-        actions={<DisplayRefreshIndicator refresh={refresh} />}
-      />
-      {error ? (
-        <Typography color="error" sx={{ mb: 2 }}>
-          {error}
+    <Stack spacing={3}>
+      <DisplayRefreshIndicator loading={loading} />
+      <Box>
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+          <ExtensionIcon color="action" />
+          <Typography variant="h6" fontWeight={600}>
+            Plugins
+          </Typography>
+        </Stack>
+        <Typography variant="body2" color="text.secondary">
+          Extensions loaded on the active display (see WADDLE_DISPLAY_PLUGINS_DIR).
         </Typography>
+      </Box>
+      {error ? (
+        <Alert severity="error" onClose={() => setError(null)}>
+          {error}
+        </Alert>
       ) : null}
       <Stack spacing={2}>
         {items.length === 0 ? (
@@ -85,6 +91,6 @@ export function PluginsPage() {
           ))
         )}
       </Stack>
-    </Box>
+    </Stack>
   );
 }

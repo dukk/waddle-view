@@ -78,6 +78,39 @@ void registerIntegrationAccountsRestRoutes(
     }
   });
 
+  r.delete('/v1/integration-accounts/<accountId>',
+      (Request req, String accountId) async {
+    final confirmParam = req.url.queryParameters['confirm']?.trim().toLowerCase();
+    final confirm = confirmParam == 'true' || confirmParam == '1';
+    try {
+      final result = await deleteOperatorIntegrationAccount(
+        db,
+        secrets,
+        accountId: accountId,
+        confirm: confirm,
+      );
+      return Response.ok(
+        jsonEncode({
+          'disabled_integration_ids': result.disabledIntegrationIds,
+        }),
+        headers: _jsonHeaders,
+      );
+    } on IntegrationAccountInUseException catch (e) {
+      return Response(
+        409,
+        body: jsonEncode({
+          'error': 'account_in_use',
+          'integration_ids': e.integrationIds,
+        }),
+        headers: _jsonHeaders,
+      );
+    } on ArgumentError catch (e) {
+      final code = e.message?.toString() ?? 'invalid_request';
+      final status = code == 'not_found' ? 404 : 400;
+      return Response(status, body: '{"error":"$code"}', headers: _jsonHeaders);
+    }
+  });
+
   r.patch('/v1/integration-accounts/<accountId>', (Request req, String accountId) async {
     Map<String, dynamic> map;
     try {
