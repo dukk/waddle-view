@@ -38,3 +38,13 @@ target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
 
 # Run the Flutter tool portions of the build. This must not be removed.
 add_dependencies(${BINARY_NAME} flutter_assemble)
+
+# webview_win_floating copies WebView2Loader.dll next to the exe; a still-running
+# debug session locks that file and MSBuild fails with MSB3021/MSB3027.
+if(WIN32)
+  add_custom_command(
+    TARGET ${BINARY_NAME} PRE_BUILD
+    COMMAND cmd /c "taskkill /F /IM ${BINARY_NAME}.exe /T >nul 2>&1 & exit /b 0"
+    COMMENT "Stop running ${BINARY_NAME} to unlock WebView2Loader.dll"
+  )
+endif()

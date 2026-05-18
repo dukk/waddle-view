@@ -24,6 +24,7 @@ For module boundaries, startup order, and **Mermaid** sequence diagrams (startup
 | `Building with plugins requires symlink support` | Turn on **Developer Mode**, open a new terminal, run `flutter clean`, then build again. |
 | `fatal error C1083: ... 'atlstr.h': No such file or directory` | Install the **C++ ATL** individual component (see above), restart the terminal, then `flutter clean` and `flutter run -d windows`. |
 | `Failed to decode advisories ... advisoriesUpdated must be a String` during `flutter pub get` | Usually a **pub.dev / Dart SDK** mismatch; if dependencies still resolve (`Got dependencies!`), you can ignore it. If `pub get` aborts, run **`flutter upgrade`** so `dart` / `pub` match current pub.dev. |
+| `MSB3021` / `MSB3027` … `WebView2Loader.dll` … used by another process (`waddle_display`) | Stop the running app (or let the Windows **pre-build** step in `windows/runner/CMakeLists.txt` end it), then rebuild. A stray process after **Stop** in the IDE can still lock the DLL until you kill it in Task Manager. |
 
 ## First-time setup
 

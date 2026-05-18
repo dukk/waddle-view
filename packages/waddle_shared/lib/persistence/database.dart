@@ -64,7 +64,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -167,6 +167,13 @@ ORDER BY priority DESC, created_at DESC;
       }
       if (from == 13 && to >= 14) {
         await _migrateV13ToV14SocialNewsSources(this, m);
+        if (to == 14) {
+          return;
+        }
+        from = 14;
+      }
+      if (from == 14 && to >= 15) {
+        await _ensureCuratorConfigurationsTickerEnabled(this);
         return;
       }
       throw UnsupportedError(
@@ -741,15 +748,27 @@ Future<void> _migrateV13ToV14SocialNewsSources(
 }
 
 Future<void> _migrateV11ToV12CuratorTickerEnabled(AppDatabase db) async {
+  await _ensureCuratorConfigurationsTickerEnabled(db);
+}
+
+/// Ensures [CuratorConfigurations.tickerEnabled] is present and non-null.
+///
+/// Databases that reached schema 14 before this column existed in [onCreate]
+/// can have NULL values and crash Drift reads during seed/bootstrap.
+Future<void> _ensureCuratorConfigurationsTickerEnabled(AppDatabase db) async {
   if (!await _sqliteTableExists(db, 'curator_configurations')) {
     return;
   }
-  if (await _sqliteColumnExists(db, 'curator_configurations', 'ticker_enabled')) {
+  if (!await _sqliteColumnExists(db, 'curator_configurations', 'ticker_enabled')) {
+    await db.customStatement(
+      'ALTER TABLE curator_configurations ADD COLUMN ticker_enabled '
+      'INTEGER NOT NULL DEFAULT 1',
+    );
     return;
   }
   await db.customStatement(
-    'ALTER TABLE curator_configurations ADD COLUMN ticker_enabled '
-    'INTEGER NOT NULL DEFAULT 1',
+    'UPDATE curator_configurations SET ticker_enabled = 1 '
+    'WHERE ticker_enabled IS NULL',
   );
 }
 
