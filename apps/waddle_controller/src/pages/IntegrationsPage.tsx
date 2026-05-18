@@ -40,18 +40,20 @@ import { IntegrationBrandIcon } from '@/components/IntegrationBrandIcon';
 import { integrationDataFamily } from '@/util/integrationIcon';
 import { parseJsonObject } from '@/util/json';
 import { prepareRjsfSchema } from '@/util/rjsfSchema';
+import { fetchIntegrationAccountsDetail } from '@/api/integrationAccounts';
+import { IntegrationAccountChips } from '@/components/IntegrationAccountChips';
 import type {
   IntegrationAccountRow,
   IntegrationAccountType,
   IntegrationAccountsResponse,
+  IntegrationRequiredAccountType,
 } from '@/util/integrationAccounts';
+import {
+  integrationAccountsSatisfiedForEnable,
+  type IntegrationAccountsDetail,
+  type IntegrationLinkedAccount,
+} from '@/util/integrationAccountStatus';
 import { integrationDisplayName } from '@/util/integrationDisplayName';
-
-type IntegrationRequiredAccountType = {
-  account_type: string;
-  account_type_label: string;
-  signup_url: string;
-};
 
 type IntegrationRow = {
   id: string;
@@ -63,8 +65,21 @@ type IntegrationRow = {
   config_json_schema?: unknown;
   example_config_json?: unknown;
   secrets_configured?: boolean;
+  accounts_configured?: boolean;
   required_account_types?: IntegrationRequiredAccountType[];
+  linked_accounts?: IntegrationLinkedAccount[];
 };
+
+function accountsDetailFromRow(row: IntegrationRow): IntegrationAccountsDetail | null {
+  if ((row.required_account_types?.length ?? 0) === 0) {
+    return null;
+  }
+  return {
+    required_account_types: row.required_account_types ?? [],
+    linked_accounts: row.linked_accounts ?? [],
+    accounts_configured: row.accounts_configured ?? false,
+  };
+}
 
 function integrationConfigSchema(row: IntegrationRow): RJSFSchema {
   return prepareRjsfSchema(row.config_json_schema);
@@ -176,9 +191,11 @@ function IntegrationAccountsSection({
                   </TableCell>
                   <TableCell>
                     {a.configured ? (
-                      <Chip size="small" color="success" label="Signed in" />
-                    ) : (
+                      <Chip size="small" color="success" label="Configured" />
+                    ) : a.supports_oauth_sign_in ? (
                       <Chip size="small" color="warning" label="Pending sign-in" />
+                    ) : (
+                      <Chip size="small" color="warning" label="API key needed" />
                     )}
                   </TableCell>
                 </TableRow>
@@ -388,6 +405,7 @@ export function IntegrationsPage() {
                 key={r.id}
                 row={r}
                 actionLabel="Edit"
+                onAccountsChanged={load}
                 onAction={() => {
                   setDialogIntent('edit');
                   setEdit(r);
@@ -422,12 +440,14 @@ export function IntegrationsPage() {
             {disabledRows.map((r) => {
               const configOk = configJsonSatisfiesSchema(r);
               const secretsOk = r.secrets_configured !== false;
+              const accountsOk = r.accounts_configured !== false;
               return (
                 <IntegrationCard
                   key={r.id}
                   row={r}
                   actionLabel="Enable"
-                  configSatisfied={configOk && secretsOk}
+                  configSatisfied={configOk && secretsOk && accountsOk}
+                  onAccountsChanged={load}
                   onAction={() => {
                     setDialogIntent('enable');
                     setEdit(r);
@@ -468,15 +488,19 @@ function IntegrationCard({
   actionLabel,
   onAction,
   configSatisfied,
+  onAccountsChanged,
 }: {
   row: IntegrationRow;
   actionLabel: string;
   onAction: () => void;
   /** When false on an Enable card, turning the integration on is blocked until config_json validates. */
   configSatisfied?: boolean;
+  onAccountsChanged?: () => Promise<void>;
 }) {
+  const { active } = useDisplay();
   const showConfigHint = actionLabel === 'Enable' && configSatisfied === false;
   const displayName = integrationDisplayName(row.integration_type);
+  const accountDetail = accountsDetailFromRow(row);
 
   return (
     <Card
@@ -508,7 +532,15 @@ function IntegrationCard({
             </Typography>
           ) : null}
           {showConfigHint ? (
-            <Chip size="small" color="warning" label="Configuration does not match schema" />
+            <Chip size="small" color="warning" label="Configuration incomplete" />
+          ) : null}
+          {active && accountDetail ? (
+            <IntegrationAccountChips
+              display={active}
+              detail={accountDetail}
+              onChanged={onAccountsChanged ?? (async () => {})}
+              compact
+            />
           ) : null}
         </Stack>
       </CardContent>
@@ -543,7 +575,28 @@ function EditIntegrationDialog({
   const [secretSlots, setSecretSlots] = useState<IntegrationSecretSlot[]>([]);
   const [secretDrafts, setSecretDrafts] = useState<Record<string, string>>({});
   const [secretsLoading, setSecretsLoading] = useState(true);
+  const [accountDetail, setAccountDetail] = useState<IntegrationAccountsDetail | null>(
+    () => accountsDetailFromRow(row),
+  );
+  const [accountsLoading, setAccountsLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+
+  const reloadAccounts = useCallback(async () => {
+    if (!active) return;
+    setAccountsLoading(true);
+    try {
+      const detail = await fetchIntegrationAccountsDetail(active, row.id);
+      setAccountDetail(detail);
+    } catch {
+      setAccountDetail(accountsDetailFromRow(row));
+    } finally {
+      setAccountsLoading(false);
+    }
+  }, [active, row]);
+
+  useEffect(() => {
+    void reloadAccounts();
+  }, [reloadAccounts]);
 
   useEffect(() => {
     if (!active) return;
@@ -578,6 +631,11 @@ function EditIntegrationDialog({
     [secretSlots, secretDrafts],
   );
 
+  const accountsReady = useMemo(
+    () => integrationAccountsSatisfiedForEnable(accountDetail),
+    [accountDetail],
+  );
+
   const displayName = useMemo(
     () => integrationDisplayName(row.integration_type),
     [row.integration_type],
@@ -598,7 +656,11 @@ function EditIntegrationDialog({
       return;
     }
     if (enabled && !secretsReady) {
-      setErr('Configure all required secrets before enabling this integration.');
+      setErr('Configure all required OAuth client IDs before enabling this integration.');
+      return;
+    }
+    if (enabled && !accountsReady) {
+      setErr('Configure all required accounts before enabling this integration.');
       return;
     }
     try {
@@ -624,6 +686,7 @@ function EditIntegrationDialog({
           config_json: formData,
         }),
       });
+      await reloadAccounts();
       await onSaved();
     } catch (e) {
       setErr(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
@@ -651,27 +714,33 @@ function EditIntegrationDialog({
             <Switch
               checked={enabled}
               onChange={(_, v) => setEnabled(v)}
-              disabled={enabled === false && secretSlots.length > 0 && !secretsReady}
+              disabled={
+                enabled === false &&
+                ((secretSlots.length > 0 && !secretsReady) || !accountsReady)
+              }
             />
             <Typography>Enabled</Typography>
           </Stack>
           {secretSlots.length > 0 && !secretsReady ? (
             <Alert severity="info">
-              Enter API keys or OAuth client IDs in the secrets section before enabling.
+              Enter OAuth client IDs in the secrets section before enabling.
             </Alert>
           ) : null}
-          {(row.required_account_types?.length ?? 0) > 0 ? (
+          {accountsLoading ? (
+            <Typography variant="body2" color="text.secondary">
+              Loading accounts…
+            </Typography>
+          ) : active && accountDetail ? (
+            <IntegrationAccountChips
+              display={active}
+              detail={accountDetail}
+              onChanged={reloadAccounts}
+            />
+          ) : null}
+          {!accountsReady && accountDetail ? (
             <Alert severity="info">
-              This integration uses shared accounts. Configure account keys in{' '}
-              <code>config_json</code> and complete sign-in when prompted. Need an account?{' '}
-              {row.required_account_types!.map((a, i) => (
-                <span key={a.account_type}>
-                  {i > 0 ? ' · ' : null}
-                  <a href={a.signup_url} target="_blank" rel="noopener noreferrer">
-                    {a.account_type_label}
-                  </a>
-                </span>
-              ))}
+              For OAuth integrations, add account keys in Configuration below, save, then use the
+              account chips to sign in or enter API keys.
             </Alert>
           ) : null}
           {secretsLoading ? (
@@ -741,7 +810,7 @@ function EditIntegrationDialog({
         <Button
           variant="contained"
           onClick={() => void save()}
-          disabled={poll <= 0 || (enabled && !secretsReady)}
+          disabled={poll <= 0 || (enabled && (!secretsReady || !accountsReady))}
         >
           Save
         </Button>

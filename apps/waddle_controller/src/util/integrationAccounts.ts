@@ -1,7 +1,8 @@
 export type IntegrationAccountType = {
   id: string;
   label: string;
-  signup_url: string;
+  signup_url?: string;
+  supports_oauth_sign_in?: boolean;
   integration_types: string[];
 };
 
@@ -10,6 +11,7 @@ export type IntegrationAccountRequirement = {
   account_type: string;
   account_type_label: string;
   signup_url: string;
+  supports_oauth_sign_in?: boolean;
 };
 
 export type IntegrationAccountRow = {
@@ -18,8 +20,10 @@ export type IntegrationAccountRow = {
   account_type_label: string;
   label: string;
   signup_url?: string;
+  supports_oauth_sign_in?: boolean;
   configured: boolean;
   integration_types: string[];
+  integration_ids?: string[];
 };
 
 export type IntegrationAccountsResponse = {
@@ -32,4 +36,5 @@ export type IntegrationRequiredAccountType = {
   account_type: string;
   account_type_label: string;
   signup_url: string;
+  supports_oauth_sign_in?: boolean;
 };

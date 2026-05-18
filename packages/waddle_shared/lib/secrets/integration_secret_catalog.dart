@@ -30,63 +30,10 @@ String providerAccessTokenSecretKey(String integrationId) =>
     '${ProviderConfigResolver.accessTokenKey}:$integrationId';
 
 /// Slots shown in controller UI per [Integrations.integrationType].
+///
+/// API keys are stored on linked [IntegrationAccounts] (see integration account
+/// REST routes). OAuth client IDs remain integration-level slots here.
 const Map<String, List<IntegrationSecretSlot>> kIntegrationSecretSlotsByType = {
-  'joke_openai': [
-    IntegrationSecretSlot(
-      id: kIntegrationSecretSlotApiKey,
-      label: 'OpenAI API key',
-      storageKey: 'provider:access_token:joke_openai',
-    ),
-  ],
-  'trivia_openai': [
-    IntegrationSecretSlot(
-      id: kIntegrationSecretSlotApiKey,
-      label: 'OpenAI API key',
-      storageKey: 'provider:access_token:trivia_openai',
-    ),
-  ],
-  'weather_openweathermap': [
-    IntegrationSecretSlot(
-      id: kIntegrationSecretSlotApiKey,
-      label: 'OpenWeatherMap API key',
-      storageKey: 'provider:access_token:weather_openweathermap',
-    ),
-  ],
-  'photo_pexels': [
-    IntegrationSecretSlot(
-      id: kIntegrationSecretSlotApiKey,
-      label: 'Pexels API key',
-      storageKey: 'provider:access_token:photo_pexels',
-    ),
-  ],
-  'video_pexels': [
-    IntegrationSecretSlot(
-      id: kIntegrationSecretSlotApiKey,
-      label: 'Pexels API key',
-      storageKey: 'provider:access_token:video_pexels',
-    ),
-  ],
-  'photo_flickr': [
-    IntegrationSecretSlot(
-      id: kIntegrationSecretSlotApiKey,
-      label: 'Flickr API key',
-      storageKey: 'provider:access_token:photo_flickr',
-    ),
-  ],
-  'stock_finnhub': [
-    IntegrationSecretSlot(
-      id: kIntegrationSecretSlotApiKey,
-      label: 'Finnhub API key',
-      storageKey: 'provider:access_token:stock_finnhub',
-    ),
-  ],
-  'home_assistant': [
-    IntegrationSecretSlot(
-      id: kIntegrationSecretSlotApiKey,
-      label: 'Home Assistant long-lived access token',
-      storageKey: 'provider:access_token:home_assistant',
-    ),
-  ],
   'calendar_google': [
     IntegrationSecretSlot(
       id: kIntegrationSecretSlotClientId,

@@ -5,7 +5,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/config/google_kv.dart';
 import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
-import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/database.dart'
+    show
+        IntegrationsCompanion,
+        kDefaultCalendarGoogleIntegrationId,
+        kDefaultPhotoPexelsIntegrationId;
 
 import '../helpers/rest_auth_helper.dart';
 
@@ -62,6 +66,51 @@ void main() {
       final required = googleRow['required_account_types'] as List<dynamic>;
       expect(required, isNotEmpty);
       expect(required.single['account_type'], kIntegrationAccountTypeGoogle);
+    } finally {
+      await harness.dispose();
+    }
+  });
+
+  test('PUT integration account secret stores api key', () async {
+    final harness = await RestTestHarness.start();
+    try {
+      await harness.db.into(harness.db.integrations).insertOnConflictUpdate(
+            IntegrationsCompanion.insert(
+              id: kDefaultPhotoPexelsIntegrationId,
+              integrationType: 'photo_pexels',
+            ),
+          );
+
+      final accountsRes = await http.get(
+        Uri.parse(
+          '${harness.baseUrl}/v1/integrations/'
+          '${Uri.encodeComponent(kDefaultPhotoPexelsIntegrationId)}/accounts',
+        ),
+        headers: harness.authHeaders,
+      );
+      expect(accountsRes.statusCode, 200);
+      final accountsBody = jsonDecode(accountsRes.body) as Map<String, dynamic>;
+      final linked = accountsBody['linked_accounts'] as List<dynamic>;
+      expect(linked, isNotEmpty);
+      final accountId = linked.first['account_id'] as String;
+
+      final putRes = await http.put(
+        Uri.parse(
+          '${harness.baseUrl}/v1/integration-accounts/'
+          '${Uri.encodeComponent(accountId)}/secrets/access_token',
+        ),
+        headers: {
+          ...harness.authHeaders,
+          'content-type': 'application/json',
+        },
+        body: jsonEncode({'value': 'pexels-test-key'}),
+      );
+      expect(putRes.statusCode, 200);
+
+      final stored = await harness.secrets.read(
+        'provider:access_token:$accountId',
+      );
+      expect(stored, 'pexels-test-key');
     } finally {
       await harness.dispose();
     }

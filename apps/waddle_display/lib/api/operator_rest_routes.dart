@@ -16,6 +16,7 @@ import 'package:waddle_shared/persistence/config_json_documentation.dart';
 import 'package:waddle_shared/persistence/content_category_defaults.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
+import 'package:waddle_shared/integration_accounts/integration_accounts_service.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';
 
@@ -823,18 +824,31 @@ void registerOperatorRestRoutes(
           body: '{"error":"invalid_enabled"}',
           headers: {'content-type': 'application/json'});
     }
-    if (enabled &&
-        integrationSecretSlotsForType(existing.integrationType).isNotEmpty &&
-        !await isIntegrationSecretsFullyConfigured(
-          secrets,
-          id,
-          integrationType: existing.integrationType,
-        )) {
-      return Response(
-        400,
-        body: '{"error":"secrets_required_before_enable"}',
-        headers: {'content-type': 'application/json'},
-      );
+    if (enabled) {
+      if (integrationSecretSlotsForType(existing.integrationType).isNotEmpty &&
+          !await isIntegrationSecretsFullyConfigured(
+            secrets,
+            id,
+            integrationType: existing.integrationType,
+          )) {
+        return Response(
+          400,
+          body: '{"error":"secrets_required_before_enable"}',
+          headers: {'content-type': 'application/json'},
+        );
+      }
+      if (!await integrationAccountsSatisfiedForEnable(
+        secrets,
+        db,
+        id,
+        existing.integrationType,
+      )) {
+        return Response(
+          400,
+          body: '{"error":"accounts_required_before_enable"}',
+          headers: {'content-type': 'application/json'},
+        );
+      }
     }
     String? baseUrl = existing.baseUrl;
     if (map.containsKey('base_url')) {
@@ -870,6 +884,7 @@ void registerOperatorRestRoutes(
         configJson: Value(configJson),
       ),
     );
+    await syncIntegrationAccountLinks(db);
     await onConfigChanged();
     return Response.ok('{}', headers: {'content-type': 'application/json'});
   });

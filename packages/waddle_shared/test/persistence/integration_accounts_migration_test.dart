@@ -5,7 +5,7 @@ import 'package:waddle_shared/integration_accounts/integration_account_catalog.d
 import 'package:waddle_shared/persistence/database.dart';
 
 void main() {
-  test('schema 6 to 7 creates integration_accounts from config_json', () async {
+  test('schema 9 to 10 creates integration_account_links', () async {
     final executor = NativeDatabase.memory(setup: (raw) {
       raw.execute('''
 CREATE TABLE integrations (
@@ -19,6 +19,26 @@ CREATE TABLE integrations (
   example_config_json TEXT
 );
 ''');
+      raw.execute('''
+CREATE TABLE integration_accounts (
+  id TEXT NOT NULL PRIMARY KEY,
+  account_type TEXT NOT NULL,
+  label TEXT,
+  created_at_ms INTEGER NOT NULL
+);
+''');
+      raw.execute('''
+CREATE TABLE interests_locations (
+  id TEXT NOT NULL PRIMARY KEY,
+  name TEXT NOT NULL,
+  latitude REAL NOT NULL,
+  longitude REAL NOT NULL,
+  include_weather INTEGER NOT NULL DEFAULT 1,
+  include_weather_alerts INTEGER NOT NULL DEFAULT 0,
+  include_local_news INTEGER NOT NULL DEFAULT 0,
+  category TEXT NOT NULL DEFAULT 'general'
+);
+''');
       raw.execute(
         "INSERT INTO integrations (id, integration_type, enabled, config_json) "
         "VALUES ('$kDefaultCalendarGoogleIntegrationId', 'calendar_google', 1, "
@@ -26,31 +46,44 @@ CREATE TABLE integrations (
       );
       raw.execute(
         "INSERT INTO integrations (id, integration_type, enabled, config_json) "
-        "VALUES ('$kDefaultPhotoOneDriveIntegrationId', 'photo_onedrive', 1, "
-        "'{\"accounts\":[{\"graphAccountKey\":\"work\",\"sources\":[]}]}')",
+        "VALUES ('$kDefaultPhotoPexelsIntegrationId', 'photo_pexels', 1, '{}')",
       );
-      raw.execute('PRAGMA user_version = 6');
+      raw.execute('PRAGMA user_version = 9');
     });
     final db = AppDatabase(
       DatabaseConnection(executor, closeStreamsSynchronously: true),
     );
     await db.customStatement('SELECT 1');
 
-    final google = await db.customSelect(
-      'SELECT id, account_type, label FROM integration_accounts WHERE id = ?',
+    final googleLink = await db.customSelect(
+      'SELECT account_id FROM integration_account_links '
+      'WHERE integration_id = ?',
+      variables: [Variable<String>(kDefaultCalendarGoogleIntegrationId)],
+    ).getSingleOrNull();
+    expect(googleLink, isNotNull);
+    expect(googleLink!.read<String>('account_id'), 'home');
+
+    final googleAccount = await db.customSelect(
+      'SELECT account_type FROM integration_accounts WHERE id = ?',
       variables: [const Variable<String>('home')],
     ).getSingleOrNull();
-    expect(google, isNotNull);
-    expect(google!.read<String>('account_type'), kIntegrationAccountTypeGoogle);
+    expect(googleAccount!.read<String>('account_type'), kIntegrationAccountTypeGoogle);
 
-    final microsoft = await db.customSelect(
-      'SELECT id, account_type FROM integration_accounts WHERE id = ?',
-      variables: [const Variable<String>('work')],
+    final pexelsLink = await db.customSelect(
+      'SELECT account_id FROM integration_account_links '
+      'WHERE integration_id = ?',
+      variables: [Variable<String>(kDefaultPhotoPexelsIntegrationId)],
     ).getSingleOrNull();
-    expect(microsoft, isNotNull);
+    expect(pexelsLink, isNotNull);
+    expect(pexelsLink!.read<String>('account_id'), kDefaultPhotoPexelsIntegrationId);
+
+    final pexelsAccount = await db.customSelect(
+      'SELECT account_type FROM integration_accounts WHERE id = ?',
+      variables: [Variable<String>(kDefaultPhotoPexelsIntegrationId)],
+    ).getSingleOrNull();
     expect(
-      microsoft!.read<String>('account_type'),
-      kIntegrationAccountTypeMicrosoftGraph,
+      pexelsAccount!.read<String>('account_type'),
+      kIntegrationAccountTypeApiKeyPexels,
     );
 
     await db.close();

@@ -1,5 +1,5 @@
+import '../integration_accounts/integration_accounts_service.dart';
 import '../persistence/database.dart';
-import '../secrets/integration_secret_catalog.dart';
 import '../secrets/secret_store.dart';
 import 'provider_runtime_config.dart';
 
@@ -20,7 +20,11 @@ class ProviderConfigResolver {
     if (row == null) {
       throw StateError('Unknown provider $providerId');
     }
-    final token = await _secrets.read(providerAccessTokenSecretKey(providerId));
+    final token = await readAccessTokenForIntegration(
+      _secrets,
+      _db,
+      providerId,
+    );
     return ProviderRuntimeConfig(
       providerId: row.id,
       integrationType: row.integrationType,

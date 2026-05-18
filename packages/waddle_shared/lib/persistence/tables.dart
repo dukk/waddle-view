@@ -15,7 +15,7 @@ class Integrations extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-/// Shared sign-in identities (Google, Microsoft) used by multiple integrations.
+/// Shared sign-in identities (Google, Microsoft, API keys) used by integrations.
 class IntegrationAccounts extends Table {
   TextColumn get id => text()();
   TextColumn get accountType => text()();
@@ -24,6 +24,17 @@ class IntegrationAccounts extends Table {
 
   @override
   Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Links an [Integrations] row to one or more [IntegrationAccounts].
+class IntegrationAccountLinks extends Table {
+  TextColumn get integrationId =>
+      text().references(Integrations, #id, onDelete: KeyAction.cascade)();
+  TextColumn get accountId =>
+      text().references(IntegrationAccounts, #id, onDelete: KeyAction.cascade)();
+
+  @override
+  Set<Column<Object>> get primaryKey => {integrationId, accountId};
 }
 
 class BlobMetadata extends Table {
@@ -474,12 +485,11 @@ class InterestsLocations extends Table {
   TextColumn get name => text()();
   RealColumn get latitude => real()();
   RealColumn get longitude => real()();
-  BoolColumn get enabled => boolean().withDefault(const Constant(true))();
-
-  /// When true, the NWS active-alerts provider may fetch and store alerts for
-  /// this row (must also be [enabled]).
-  BoolColumn get includeActiveWeatherAlerts =>
-      boolean().withDefault(const Constant(true))();
+  TextColumn get category => text().withDefault(const Constant('general'))();
+  BoolColumn get includeWeather => boolean().withDefault(const Constant(false))();
+  BoolColumn get includeWeatherAlerts =>
+      boolean().withDefault(const Constant(false))();
+  BoolColumn get includeLocalNews => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};

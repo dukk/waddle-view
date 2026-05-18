@@ -11,6 +11,23 @@ String? permissionForRoute(String method, String path) {
   if (p == '/v1/integration-accounts' && m == 'GET') {
     return WaddlePermission.integrationsRead;
   }
+  final integrationAccountSecrets =
+      RegExp(r'^/v1/integration-accounts/[^/]+/secrets(?:/[^/]+)?$');
+  if (integrationAccountSecrets.hasMatch(p)) {
+    if (m == 'GET') {
+      return WaddlePermission.integrationsRead;
+    }
+    if (m == 'PUT' || m == 'DELETE') {
+      return WaddlePermission.integrationsWrite;
+    }
+  }
+  if (RegExp(r'^/v1/integration-accounts/[^/]+/request-sign-in$').hasMatch(p) &&
+      m == 'POST') {
+    return WaddlePermission.integrationsWrite;
+  }
+  if (RegExp(r'^/v1/integrations/[^/]+/accounts$').hasMatch(p) && m == 'GET') {
+    return WaddlePermission.integrationsRead;
+  }
   final integrationSecrets = RegExp(r'^/v1/integrations/[^/]+/secrets(?:/[^/]+)?$');
   if (integrationSecrets.hasMatch(p)) {
     if (m == 'GET') {

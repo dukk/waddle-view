@@ -8,29 +8,30 @@ import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import '../helpers/rest_auth_helper.dart';
 
 void main() {
-  test('PUT secret then GET slots shows configured without returning value',
-      () async {
+  test('PUT OAuth client_id secret then GET slots shows configured', () async {
     final harness = await RestTestHarness.start();
     try {
       await harness.db.into(harness.db.integrations).insertOnConflictUpdate(
             IntegrationsCompanion.insert(
-              id: kDefaultJokeOpenAiIntegrationId,
-              integrationType: 'joke_openai',
+              id: kDefaultCalendarGoogleIntegrationId,
+              integrationType: 'calendar_google',
             ),
           );
 
       final putRes = await http.put(
         Uri.parse(
-          '${harness.baseUrl}/v1/integrations/$kDefaultJokeOpenAiIntegrationId/secrets/api_key',
+          '${harness.baseUrl}/v1/integrations/'
+          '$kDefaultCalendarGoogleIntegrationId/secrets/client_id',
         ),
         headers: harness.authHeaders,
-        body: jsonEncode({'value': 'sk-test-key'}),
+        body: jsonEncode({'value': 'google-client-id.apps.googleusercontent.com'}),
       );
       expect(putRes.statusCode, 200);
 
       final getRes = await http.get(
         Uri.parse(
-          '${harness.baseUrl}/v1/integrations/$kDefaultJokeOpenAiIntegrationId/secrets',
+          '${harness.baseUrl}/v1/integrations/'
+          '$kDefaultCalendarGoogleIntegrationId/secrets',
         ),
         headers: harness.authHeaders,
       );
@@ -40,18 +41,16 @@ void main() {
       expect(slots.length, 1);
       expect(slots.single['configured'], isTrue);
       expect(slots.single.containsKey('value'), isFalse);
-      expect(body.toString(), isNot(contains('sk-test-key')));
+      expect(body.toString(), isNot(contains('google-client-id')));
 
-      final stored = await harness.secrets.read(
-        providerAccessTokenSecretKey(kDefaultJokeOpenAiIntegrationId),
-      );
-      expect(stored, 'sk-test-key');
+      final stored = await harness.secrets.read(kGoogleClientIdSecretKey);
+      expect(stored, 'google-client-id.apps.googleusercontent.com');
     } finally {
       await harness.dispose();
     }
   });
 
-  test('PATCH enable fails when required secrets missing', () async {
+  test('PATCH enable fails when required accounts missing', () async {
     final harness = await RestTestHarness.start();
     try {
       await harness.db.into(harness.db.integrations).insertOnConflictUpdate(
@@ -69,7 +68,7 @@ void main() {
         body: jsonEncode({'enabled': true}),
       );
       expect(patchRes.statusCode, 400);
-      expect(patchRes.body, contains('secrets_required_before_enable'));
+      expect(patchRes.body, contains('accounts_required_before_enable'));
     } finally {
       await harness.dispose();
     }

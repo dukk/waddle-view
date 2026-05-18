@@ -6,9 +6,11 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 
 import '../integration_accounts/integration_accounts_service.dart';
+import '../seed/tables/interests_locations_seed.dart';
 import 'display_overlay_sql.dart';
 import 'reject_term_defaults.dart';
 import 'tables.dart';
+import 'weather_location_category.dart';
 
 part 'database.g.dart';
 
@@ -17,6 +19,7 @@ part 'database.g.dart';
     ContentCategories,
     Integrations,
     IntegrationAccounts,
+    IntegrationAccountLinks,
     BlobMetadata,
     Alerts,
     ConfigKeyValues,
@@ -59,7 +62,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -113,6 +116,34 @@ ORDER BY priority DESC, created_at DESC;
       }
       if (from == 6 && to >= 7) {
         await _migrateV6ToV7IntegrationAccounts(this, m);
+        if (to == 7) {
+          return;
+        }
+        from = 7;
+      }
+      if (from == 7 && to >= 8) {
+        await _migrateV7ToV8WeatherLocationCategories(this);
+        if (to == 8) {
+          return;
+        }
+        from = 8;
+      }
+      if (from == 8 && to >= 9) {
+        await _migrateV8ToV9LocationInterestFlags(this);
+        if (to == 9) {
+          return;
+        }
+        from = 9;
+      }
+      if (from == 9 && to >= 10) {
+        await _migrateV9ToV10IntegrationAccountLinks(this, m);
+        if (to == 10) {
+          return;
+        }
+        from = 10;
+      }
+      if (from == 10 && to >= 11) {
+        await _migrateV10ToV11LocationRegions(this);
         return;
       }
       throw UnsupportedError(
@@ -539,6 +570,52 @@ Future<void> _migrateV6ToV7IntegrationAccounts(
 ) async {
   await m.createTable(db.integrationAccounts);
   await syncIntegrationAccountsFromIntegrationConfigs(db);
+}
+
+Future<void> _migrateV9ToV10IntegrationAccountLinks(
+  AppDatabase db,
+  Migrator m,
+) async {
+  await m.createTable(db.integrationAccountLinks);
+  await syncIntegrationAccountsFromIntegrationConfigs(db);
+  await syncIntegrationAccountLinks(db);
+}
+
+Future<void> _migrateV7ToV8WeatherLocationCategories(AppDatabase db) async {
+  await db.customStatement(
+    "ALTER TABLE interests_locations ADD COLUMN category TEXT NOT NULL DEFAULT 'general'",
+  );
+  final rows = await db.customSelect(
+    'SELECT id, name FROM interests_locations',
+  ).get();
+  for (final row in rows) {
+    final category = weatherLocationCategoryFromName(row.read<String>('name'));
+    await db.customStatement(
+      'UPDATE interests_locations SET category = ? WHERE id = ?',
+      [category, row.read<String>('id')],
+    );
+  }
+}
+
+/// Renames location interest flags and adds [InterestsLocations.includeLocalNews].
+Future<void> _migrateV8ToV9LocationInterestFlags(AppDatabase db) async {
+  await db.customStatement(
+    'ALTER TABLE interests_locations RENAME COLUMN enabled TO include_weather',
+  );
+  await db.customStatement(
+    'ALTER TABLE interests_locations RENAME COLUMN '
+    'include_active_weather_alerts TO include_weather_alerts',
+  );
+  await db.customStatement(
+    'ALTER TABLE interests_locations ADD COLUMN include_local_news '
+    'INTEGER NOT NULL DEFAULT 0',
+  );
+  await ensureDefaultInterestsLocations(db);
+}
+
+/// Refreshes default location catalog rows (continental categories and new cities).
+Future<void> _migrateV10ToV11LocationRegions(AppDatabase db) async {
+  await ensureDefaultInterestsLocations(db);
 }
 
 Future<void> _seedDefaultRejectTerms(AppDatabase db) async {

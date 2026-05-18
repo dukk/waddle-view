@@ -32,6 +32,7 @@ import 'cors_policy.dart';
 import 'display_health.dart';
 import 'integration_secrets_rest_routes.dart';
 import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
+import 'package:waddle_shared/integration_accounts/integration_accounts_service.dart';
 import 'operator_rest_routes.dart';
 import 'plugin_routes.dart';
 import 'runtime_signal_routes.dart';
@@ -178,6 +179,17 @@ Handler buildProtectedApiRouter({
               e.id,
               e.integrationType,
             ),
+        'accounts_configured': await integrationAccountsSatisfiedForEnable(
+          secrets,
+          db,
+          e.id,
+          e.integrationType,
+        ),
+        'linked_accounts': await listAccountsForIntegrationJson(
+          db,
+          secrets,
+          e.id,
+        ),
         'required_account_types': [
           for (final typeId in requiredAccountTypes)
             {
@@ -185,6 +197,9 @@ Handler buildProtectedApiRouter({
               'account_type_label':
                   kIntegrationAccountTypes[typeId]?.label ?? typeId,
               'signup_url': kIntegrationAccountTypes[typeId]?.signupUrl ?? '',
+              'supports_oauth_sign_in':
+                  kIntegrationAccountTypes[typeId]?.supportsOAuthSignIn ??
+                      false,
             },
         ],
       });
@@ -595,7 +610,9 @@ Handler buildProtectedApiRouter({
         'location_name': loc.name,
         'latitude': loc.latitude,
         'longitude': loc.longitude,
-        'enabled': loc.enabled,
+        'include_weather': loc.includeWeather,
+        'include_weather_alerts': loc.includeWeatherAlerts,
+        'include_local_news': loc.includeLocalNews,
         'observed_at_ms': cur?.observedAtMs.millisecondsSinceEpoch,
         'current_temp_c': cur?.currentTemp,
         'current_description': cur?.currentDescription,
