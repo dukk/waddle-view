@@ -16,7 +16,6 @@ import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_data_providers/microsoft_graph/microsoft_graph_oauth.dart';
 import 'package:waddle_data_providers/photo_onedrive/onedrive_media_data_provider.dart';
 import 'package:waddle_shared/persistence/database.dart';
-import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';
 

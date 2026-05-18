@@ -128,7 +128,7 @@ SELECT
   SUM(CASE WHEN image_blob_key IS NULL
       OR LENGTH(TRIM(COALESCE(image_blob_key, ''))) = 0 THEN 1 ELSE 0 END) AS without_image
 FROM news
-WHERE source_type = '${kNewsSourceTypeRss}'
+WHERE source_type = '$kNewsSourceTypeRss'
 ''',
           readsFrom: {_db.news},
         )
@@ -232,7 +232,7 @@ SELECT f.category AS category_id,
        COUNT(*) AS cnt
 FROM news a
 INNER JOIN interests_rss_feeds f
-  ON f.id = a.source_id AND a.source_type = '${kNewsSourceTypeRss}'
+  ON f.id = a.source_id AND a.source_type = '$kNewsSourceTypeRss'
 LEFT JOIN curator_categories cc ON cc.id = f.category
 GROUP BY f.category
 ORDER BY cnt DESC, f.category ASC

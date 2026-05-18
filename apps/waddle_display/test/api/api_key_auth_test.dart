@@ -4,7 +4,6 @@ import 'package:waddle_display/api/api_key_auth.dart';
 import 'package:waddle_shared/auth/adoption_crypto.dart';
 import 'package:waddle_shared/auth/adoption_repository.dart';
 import 'package:waddle_shared/persistence/database.dart';
-import 'package:waddle_shared/persistence/tables.dart';
 
 import '../helpers/memory_database.dart';
 

@@ -1,6 +1,5 @@
 import 'dart:developer' show log;
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
@@ -660,7 +659,7 @@ Future<void> _migrateV12ToV13NewsAndFacebookSources(
   if (rssTable != null) {
     await db.customStatement('ALTER TABLE rss_articles RENAME TO news');
     await db.customStatement(
-      "ALTER TABLE news ADD COLUMN source_type TEXT NOT NULL DEFAULT '${kNewsSourceTypeRss}'",
+      "ALTER TABLE news ADD COLUMN source_type TEXT NOT NULL DEFAULT '$kNewsSourceTypeRss'",
     );
     await db.customStatement(
       'ALTER TABLE news RENAME COLUMN feed_id TO source_id',

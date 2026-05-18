@@ -7,7 +7,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_display/display/screen_rotator.dart';
 import 'package:waddle_display/display/viewer_invite_runtime.dart';
 import 'package:waddle_shared/persistence/database.dart';
-import 'package:waddle_shared/persistence/tables.dart';
 
 import '../helpers/fake_blob_store.dart';
 import '../helpers/memory_database.dart';

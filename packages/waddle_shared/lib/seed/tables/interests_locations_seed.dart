@@ -1,7 +1,6 @@
 import 'package:drift/drift.dart';
 
 import 'package:waddle_shared/persistence/database.dart';
-import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/persistence/weather_location_category.dart';
 
 /// Default catalog locations (idempotent; refreshes name/coords/category on conflict).

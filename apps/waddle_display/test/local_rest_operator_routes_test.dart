@@ -8,7 +8,6 @@ import 'package:waddle_display/curator/ticker_item.dart';
 import 'package:waddle_display/debug/operator_telemetry_hub.dart';
 import 'package:waddle_display/display/display_navigation_bus.dart';
 import 'package:waddle_shared/persistence/database.dart';
-import 'package:waddle_shared/persistence/tables.dart';
 
 import 'helpers/fake_blob_store.dart';
 import 'helpers/memory_database.dart';

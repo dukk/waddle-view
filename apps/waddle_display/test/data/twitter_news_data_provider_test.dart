@@ -8,7 +8,6 @@ import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
 import 'package:waddle_shared/news/social_news_post.dart';
 import 'package:waddle_shared/persistence/database.dart';
-import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 
 import '../helpers/fake_blob_store.dart';

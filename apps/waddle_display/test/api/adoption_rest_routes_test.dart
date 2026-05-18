@@ -5,7 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_shared/config/adoption.dart';
 import 'package:waddle_shared/config/adoption_allowed_roles.dart';
 import 'package:waddle_shared/persistence/database.dart';
-import 'package:waddle_shared/persistence/tables.dart';
 
 import '../helpers/adoption_test_helpers.dart';
 import '../helpers/memory_database.dart';

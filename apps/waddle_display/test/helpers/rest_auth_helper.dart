@@ -13,7 +13,6 @@ import 'package:waddle_shared/auth/cors_origin_repository.dart';
 import 'package:waddle_shared/config/adoption.dart';
 import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/persistence/database.dart';
-import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/secrets/db_encrypted_secret_store.dart';
 import 'package:waddle_shared/secrets/platform/in_memory_dek_protector.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';

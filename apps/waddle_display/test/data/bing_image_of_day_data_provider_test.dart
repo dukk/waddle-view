@@ -10,7 +10,6 @@ import 'package:waddle_data_providers/photo_bing_image_of_the_day/bing_image_of_
 import 'package:waddle_shared/integrations/integration_collect.dart';
 import 'package:waddle_shared/persistence/config_json_documentation.dart';
 import 'package:waddle_shared/persistence/database.dart';
-import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 
 import '../helpers/fake_blob_store.dart';
