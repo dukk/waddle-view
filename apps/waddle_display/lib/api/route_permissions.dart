@@ -8,8 +8,16 @@ String? permissionForRoute(String method, String path) {
   if (p == '/v1/integrations' && m == 'GET') {
     return WaddlePermission.integrationsRead;
   }
-  if (p == '/v1/integration-accounts' && m == 'GET') {
+  if (p == '/v1/integration-accounts' && (m == 'GET' || m == 'POST')) {
+    return m == 'GET'
+        ? WaddlePermission.integrationsRead
+        : WaddlePermission.integrationsWrite;
+  }
+  if (p == '/v1/oauth-providers' && m == 'GET') {
     return WaddlePermission.integrationsRead;
+  }
+  if (RegExp(r'^/v1/oauth-providers/[^/]+/client-id$').hasMatch(p) && m == 'PUT') {
+    return WaddlePermission.integrationsWrite;
   }
   final integrationAccountSecrets =
       RegExp(r'^/v1/integration-accounts/[^/]+/secrets(?:/[^/]+)?$');

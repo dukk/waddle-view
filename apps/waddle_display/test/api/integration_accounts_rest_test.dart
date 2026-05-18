@@ -115,4 +115,49 @@ void main() {
       await harness.dispose();
     }
   });
+
+  test('POST integration-accounts creates oauth account when client id set', () async {
+    final harness = await RestTestHarness.start();
+    try {
+      await harness.secrets.write(
+        'provider:client_id:google',
+        'google-client-id.apps.googleusercontent.com',
+      );
+      await harness.db.into(harness.db.integrations).insertOnConflictUpdate(
+            IntegrationsCompanion.insert(
+              id: kDefaultCalendarGoogleIntegrationId,
+              integrationType: 'calendar_google',
+            ),
+          );
+
+      final postRes = await http.post(
+        Uri.parse('${harness.baseUrl}/v1/integration-accounts'),
+        headers: {
+          ...harness.authHeaders,
+          'content-type': 'application/json',
+        },
+        body: jsonEncode({
+          'account_type': kIntegrationAccountTypeGoogle,
+          'account_key': 'work',
+          'label': 'Work Google',
+        }),
+      );
+      expect(postRes.statusCode, 200);
+      final postBody = jsonDecode(postRes.body) as Map<String, dynamic>;
+      expect(postBody['account_id'], 'work');
+
+      final listRes = await http.get(
+        Uri.parse('${harness.baseUrl}/v1/integration-accounts'),
+        headers: harness.authHeaders,
+      );
+      final listBody = jsonDecode(listRes.body) as Map<String, dynamic>;
+      final items = listBody['items'] as List<dynamic>;
+      expect(
+        items.cast<Map<String, dynamic>>().any((e) => e['id'] == 'work'),
+        isTrue,
+      );
+    } finally {
+      await harness.dispose();
+    }
+  });
 }

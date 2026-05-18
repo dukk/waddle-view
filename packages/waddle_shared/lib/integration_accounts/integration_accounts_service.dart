@@ -7,6 +7,7 @@ import '../config/microsoft_graph_kv.dart';
 import '../persistence/database.dart';
 import '../secrets/secret_store.dart';
 import 'integration_account_catalog.dart';
+import 'oauth_provider_catalog.dart';
 
 /// Parses account keys referenced in integration [configJson] for OAuth types.
 Iterable<String> accountKeysInIntegrationConfig(
@@ -262,6 +263,14 @@ Future<List<Map<String, dynamic>>> listIntegrationAccountsJson(
   final items = <Map<String, dynamic>>[];
   for (final row in rows) {
     final def = kIntegrationAccountTypes[row.accountType];
+    final configured = await isIntegrationAccountConfigured(
+      secrets,
+      row.accountType,
+      row.id,
+    );
+    if (!_includeAccountInOperatorList(row.accountType, configured)) {
+      continue;
+    }
     final linkedIntegrationIds = integrationsByAccount[row.id] ?? const [];
     items.add({
       'id': row.id,
@@ -270,11 +279,7 @@ Future<List<Map<String, dynamic>>> listIntegrationAccountsJson(
       'label': row.label ?? row.id,
       'signup_url': def?.signupUrl,
       'supports_oauth_sign_in': def?.supportsOAuthSignIn ?? false,
-      'configured': await isIntegrationAccountConfigured(
-        secrets,
-        row.accountType,
-        row.id,
-      ),
+      'configured': configured,
       'integration_types': integrationTypesForAccountType(row.accountType),
       'integration_ids': linkedIntegrationIds,
     });
@@ -357,6 +362,176 @@ List<Map<String, dynamic>> integrationAccountRequirementsCatalogJson() {
     ),
   );
   return out;
+}
+
+bool _includeAccountInOperatorList(String accountTypeId, bool configured) {
+  final def = kIntegrationAccountTypes[accountTypeId];
+  if (def == null) {
+    return false;
+  }
+  if (def.supportsOAuthSignIn) {
+    return true;
+  }
+  return configured;
+}
+
+String? _mergeOAuthAccountKeyIntoConfig(
+  String? configJson,
+  String accountKeyField,
+  String accountKey,
+) {
+  Map<String, dynamic> root;
+  try {
+    if (configJson == null || configJson.trim().isEmpty) {
+      root = <String, dynamic>{};
+    } else {
+      final decoded = jsonDecode(configJson);
+      if (decoded is! Map<String, dynamic>) {
+        root = <String, dynamic>{};
+      } else {
+        root = decoded;
+      }
+    }
+  } on Object {
+    root = <String, dynamic>{};
+  }
+  final accountsRaw = root['accounts'];
+  final accounts = accountsRaw is List<dynamic>
+      ? List<dynamic>.from(accountsRaw)
+      : <dynamic>[];
+  final exists = accounts.any((a) {
+    if (a is! Map<String, dynamic>) {
+      return false;
+    }
+    return (a[accountKeyField] as String?)?.trim() == accountKey;
+  });
+  if (exists) {
+    return configJson;
+  }
+  accounts.add({accountKeyField: accountKey, 'sources': <dynamic>[]});
+  root['accounts'] = accounts;
+  return jsonEncode(root);
+}
+
+Future<void> _appendOAuthAccountKeyToIntegrations(
+  AppDatabase db,
+  String accountTypeId,
+  String accountKey,
+) async {
+  final def = kIntegrationAccountTypes[accountTypeId];
+  final field = def?.accountKeyField;
+  if (field == null) {
+    return;
+  }
+  for (final integrationType in integrationTypesForAccountType(accountTypeId)) {
+    final rows = await (db.select(db.integrations)
+          ..where((t) => t.integrationType.equals(integrationType)))
+        .get();
+    for (final row in rows) {
+      final merged = _mergeOAuthAccountKeyIntoConfig(
+        row.configJson,
+        field,
+        accountKey,
+      );
+      if (merged == null || merged == row.configJson) {
+        continue;
+      }
+      await (db.update(db.integrations)..where((t) => t.id.equals(row.id))).write(
+        IntegrationsCompanion(configJson: Value(merged)),
+      );
+    }
+  }
+}
+
+/// Creates or updates a shared account and links integrations that use [accountTypeId].
+Future<String> createOperatorIntegrationAccount(
+  AppDatabase db,
+  SecretStore secrets, {
+  required String accountTypeId,
+  String? accountKey,
+  String? label,
+}) async {
+  final def = kIntegrationAccountTypes[accountTypeId];
+  if (def == null) {
+    throw ArgumentError('unknown_account_type');
+  }
+  final oauthProvider = oauthProviderForAccountType(accountTypeId);
+  if (oauthProvider != null) {
+    final clientId = await secrets.read(oauthProvider.clientIdStorageKey);
+    if (clientId == null || clientId.trim().isEmpty) {
+      throw StateError('oauth_client_id_required');
+    }
+  }
+  final nowMs = DateTime.now().millisecondsSinceEpoch;
+  late final String accountId;
+  if (def.supportsOAuthSignIn) {
+    final key = accountKey?.trim() ?? '';
+    if (key.isEmpty) {
+      throw ArgumentError('account_key_required');
+    }
+    accountId = key;
+  } else {
+    final key = accountKey?.trim() ?? '';
+    accountId = key.isNotEmpty ? key : accountTypeId;
+  }
+  final displayLabel =
+      (label?.trim().isNotEmpty == true) ? label!.trim() : accountId;
+  await _upsertIntegrationAccount(
+    db,
+    accountId: accountId,
+    accountTypeId: accountTypeId,
+    label: displayLabel,
+    nowMs: nowMs,
+  );
+  for (final integrationType in integrationTypesForAccountType(accountTypeId)) {
+    final rows = await (db.select(db.integrations)
+          ..where((t) => t.integrationType.equals(integrationType)))
+        .get();
+    for (final row in rows) {
+      await _linkIntegrationAccount(
+        db,
+        integrationId: row.id,
+        accountId: accountId,
+      );
+    }
+  }
+  if (def.supportsOAuthSignIn) {
+    await _appendOAuthAccountKeyToIntegrations(db, accountTypeId, accountId);
+    await syncIntegrationAccountLinks(db);
+  }
+  return accountId;
+}
+
+Future<List<Map<String, dynamic>>> oauthProvidersStatusJson(
+  SecretStore secrets,
+) async {
+  final out = <Map<String, dynamic>>[];
+  for (final provider in kOAuthProviders) {
+    final stored = await secrets.read(provider.clientIdStorageKey);
+    out.add({
+      'id': provider.id,
+      'label': provider.label,
+      'account_type': provider.accountTypeId,
+      'client_id_configured': stored != null && stored.trim().isNotEmpty,
+    });
+  }
+  return out;
+}
+
+Future<void> putOAuthProviderClientId(
+  SecretStore secrets,
+  String providerId,
+  String value,
+) async {
+  final provider = oauthProviderById(providerId);
+  if (provider == null) {
+    throw ArgumentError('unknown_provider');
+  }
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) {
+    throw ArgumentError('value_must_be_non_empty');
+  }
+  await secrets.write(provider.clientIdStorageKey, trimmed);
 }
 
 /// Clears OAuth device-code cooldown so the next collect can prompt sign-in.

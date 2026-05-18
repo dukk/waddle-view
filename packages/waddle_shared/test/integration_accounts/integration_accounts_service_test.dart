@@ -2,8 +2,10 @@ import 'package:drift/drift.dart' show Value;
 import 'package:test/test.dart';
 import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
 import 'package:waddle_shared/integration_accounts/integration_accounts_service.dart';
+import 'package:waddle_shared/integration_accounts/oauth_provider_catalog.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
+import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 
 import '../helpers/memory_database.dart';
 
@@ -76,5 +78,62 @@ void main() {
       await readAccessTokenForIntegration(secrets, db, 'pexels_home'),
       'key-123',
     );
+  });
+
+  test('createOperatorIntegrationAccount stores api key account and links integrations',
+      () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final secrets = InMemorySecretStore();
+    addTearDown(db.close);
+    await db.into(db.integrations).insertOnConflictUpdate(
+      IntegrationsCompanion.insert(
+        id: 'pexels_home',
+        integrationType: 'photo_pexels',
+      ),
+    );
+    final accountId = await createOperatorIntegrationAccount(
+      db,
+      secrets,
+      accountTypeId: kIntegrationAccountTypeApiKeyPexels,
+    );
+    expect(accountId, kIntegrationAccountTypeApiKeyPexels);
+    await secrets.write(
+      'provider:access_token:$accountId',
+      'pexels-key',
+    );
+    final items = await listIntegrationAccountsJson(db, secrets);
+    expect(items, hasLength(1));
+    expect(items.single['id'], accountId);
+    expect(items.single['configured'], isTrue);
+  });
+
+  test('createOperatorIntegrationAccount requires oauth client id', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final secrets = InMemorySecretStore();
+    addTearDown(db.close);
+    expect(
+      () => createOperatorIntegrationAccount(
+        db,
+        secrets,
+        accountTypeId: kIntegrationAccountTypeGoogle,
+        accountKey: 'personal',
+      ),
+      throwsStateError,
+    );
+    await secrets.write(kGoogleClientIdSecretKey, 'google-client');
+    final accountId = await createOperatorIntegrationAccount(
+      db,
+      secrets,
+      accountTypeId: kIntegrationAccountTypeGoogle,
+      accountKey: 'personal',
+      label: 'Personal',
+    );
+    expect(accountId, 'personal');
+    final row = await (db.select(db.integrationAccounts)
+          ..where((t) => t.id.equals('personal')))
+        .getSingle();
+    expect(row.accountType, kIntegrationAccountTypeGoogle);
   });
 }

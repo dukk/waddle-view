@@ -68,7 +68,8 @@ import {
   parseAdoptionAllowedRoles,
   type CuratorDisplaySettings,
 } from '@/constants/curatorDisplaySettings';
-type DisplaySettingsTabId = 'general' | 'adoption';
+import { IntegrationOAuthSettingsSection } from '@/components/IntegrationOAuthSettingsSection';
+type DisplaySettingsTabId = 'general' | 'integrations' | 'adoption';
 
 function clampNumber(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -93,7 +94,10 @@ export function DisplaySettingsPage() {
   const [kvWriteTick, setKvWriteTick] = useState(0);
   const canCuratorRead = hasPermission('curator.read');
   const canCuratorWrite = hasPermission('curator.write');
+  const canIntegrationsRead = hasPermission('integrations.read');
+  const canIntegrationsWrite = hasPermission('integrations.write');
   const showDisplaySettings = Boolean(active && canCuratorRead);
+  const showIntegrationSettings = Boolean(active && canIntegrationsRead);
   const showAdoptionSettings = Boolean(active && canCuratorWrite);
   const showApiClientManagement = Boolean(active && hasPermission('users.manage'));
   const displayLabel = active?.label ?? 'Display';
@@ -102,9 +106,12 @@ export function DisplaySettingsPage() {
     const tabs: { id: DisplaySettingsTabId; label: string }[] = [
       { id: 'general', label: 'General' },
     ];
+    if (showIntegrationSettings) {
+      tabs.push({ id: 'integrations', label: 'Integrations' });
+    }
     tabs.push({ id: 'adoption', label: 'Adoption' });
     return tabs;
-  }, []);
+  }, [showIntegrationSettings]);
 
   useEffect(() => {
     if (!visibleTabs.some((t) => t.id === tab)) {
@@ -173,6 +180,22 @@ export function DisplaySettingsPage() {
                   </AccordionDetails>
                 </Accordion>
               </>
+            )}
+          </Stack>
+        )}
+
+        {tab === 'integrations' && (
+          <Stack spacing={2}>
+            {!active && (
+              <Alert severity="info">Select a display in the toolbar to edit integration settings.</Alert>
+            )}
+            {active && !canIntegrationsRead && (
+              <Alert severity="warning">
+                Your adopted role does not include <strong>integrations.read</strong>.
+              </Alert>
+            )}
+            {showIntegrationSettings && active && (
+              <IntegrationOAuthSettingsSection display={active} canWrite={canIntegrationsWrite} />
             )}
           </Stack>
         )}

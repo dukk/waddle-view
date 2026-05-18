@@ -28,6 +28,47 @@ void registerIntegrationAccountsRestRoutes(
     );
   });
 
+  r.post('/v1/integration-accounts', (Request req) async {
+    Map<String, dynamic> map;
+    try {
+      final decoded = jsonDecode(await req.readAsString());
+      if (decoded is! Map<String, dynamic>) {
+        return Response(400,
+            body: '{"error":"expected_json_object"}', headers: _jsonHeaders);
+      }
+      map = decoded;
+    } catch (_) {
+      return Response(400,
+          body: '{"error":"invalid_json"}', headers: _jsonHeaders);
+    }
+    final accountType = (map['account_type'] as String?)?.trim() ?? '';
+    if (accountType.isEmpty) {
+      return Response(400,
+          body: '{"error":"account_type_required"}', headers: _jsonHeaders);
+    }
+    final accountKey = (map['account_key'] as String?)?.trim();
+    final label = (map['label'] as String?)?.trim();
+    try {
+      final accountId = await createOperatorIntegrationAccount(
+        db,
+        secrets,
+        accountTypeId: accountType,
+        accountKey: accountKey?.isNotEmpty == true ? accountKey : null,
+        label: label?.isNotEmpty == true ? label : null,
+      );
+      return Response.ok(
+        jsonEncode({'account_id': accountId}),
+        headers: _jsonHeaders,
+      );
+    } on ArgumentError catch (e) {
+      final code = e.message?.toString() ?? 'invalid_request';
+      return Response(400, body: '{"error":"$code"}', headers: _jsonHeaders);
+    } on StateError catch (e) {
+      final code = e.message?.toString() ?? 'invalid_state';
+      return Response(400, body: '{"error":"$code"}', headers: _jsonHeaders);
+    }
+  });
+
   r.get('/v1/integration-accounts/<accountId>/secrets',
       (Request req, String accountId) async {
     final account = await (db.select(db.integrationAccounts)
