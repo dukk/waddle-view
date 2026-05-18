@@ -573,23 +573,50 @@ Future<void> _copyAccessTokenSecret(
   );
 }
 
+Future<bool> _sqliteTableExists(AppDatabase db, String tableName) async {
+  final row = await db.customSelect(
+    "SELECT 1 FROM sqlite_master WHERE type='table' AND name=? LIMIT 1",
+    variables: [Variable<String>(tableName)],
+  ).getSingleOrNull();
+  return row != null;
+}
+
+Future<bool> _sqliteColumnExists(
+  AppDatabase db,
+  String tableName,
+  String columnName,
+) async {
+  final rows = await db.customSelect('PRAGMA table_info($tableName)').get();
+  return rows.any((r) => r.read<String>('name') == columnName);
+}
+
 /// Renames legacy interest catalog tables to `interests_*` (schema 1 → 2).
 Future<void> _migrateV1ToV2InterestsTableRenames(AppDatabase db) async {
-  await db.customStatement(
-    'ALTER TABLE weather_locations RENAME TO interests_locations',
-  );
-  await db.customStatement(
-    'ALTER TABLE rss_feed_sources RENAME TO interests_rss_feeds',
-  );
-  await db.customStatement(
-    'ALTER TABLE joke_categories RENAME TO interests_jokes',
-  );
-  await db.customStatement(
-    'ALTER TABLE trivia_categories RENAME TO interests_trivia',
-  );
-  await db.customStatement(
-    'ALTER TABLE stock_symbols RENAME TO interests_stock_symbols',
-  );
+  if (await _sqliteTableExists(db, 'weather_locations')) {
+    await db.customStatement(
+      'ALTER TABLE weather_locations RENAME TO interests_locations',
+    );
+  }
+  if (await _sqliteTableExists(db, 'rss_feed_sources')) {
+    await db.customStatement(
+      'ALTER TABLE rss_feed_sources RENAME TO interests_rss_feeds',
+    );
+  }
+  if (await _sqliteTableExists(db, 'joke_categories')) {
+    await db.customStatement(
+      'ALTER TABLE joke_categories RENAME TO interests_jokes',
+    );
+  }
+  if (await _sqliteTableExists(db, 'trivia_categories')) {
+    await db.customStatement(
+      'ALTER TABLE trivia_categories RENAME TO interests_trivia',
+    );
+  }
+  if (await _sqliteTableExists(db, 'stock_symbols')) {
+    await db.customStatement(
+      'ALTER TABLE stock_symbols RENAME TO interests_stock_symbols',
+    );
+  }
 }
 
 Future<void> _migrateV6ToV7IntegrationAccounts(
@@ -597,6 +624,9 @@ Future<void> _migrateV6ToV7IntegrationAccounts(
   Migrator m,
 ) async {
   await m.createTable(db.integrationAccounts);
+  if (!await _sqliteTableExists(db, 'integrations')) {
+    return;
+  }
   await syncIntegrationAccountsFromIntegrationConfigs(db);
 }
 
@@ -605,11 +635,20 @@ Future<void> _migrateV9ToV10IntegrationAccountLinks(
   Migrator m,
 ) async {
   await m.createTable(db.integrationAccountLinks);
+  if (!await _sqliteTableExists(db, 'integrations')) {
+    return;
+  }
   await syncIntegrationAccountsFromIntegrationConfigs(db);
   await syncIntegrationAccountLinks(db);
 }
 
 Future<void> _migrateV7ToV8WeatherLocationCategories(AppDatabase db) async {
+  if (!await _sqliteTableExists(db, 'interests_locations')) {
+    return;
+  }
+  if (await _sqliteColumnExists(db, 'interests_locations', 'category')) {
+    return;
+  }
   await db.customStatement(
     "ALTER TABLE interests_locations ADD COLUMN category TEXT NOT NULL DEFAULT 'general'",
   );
@@ -627,22 +666,38 @@ Future<void> _migrateV7ToV8WeatherLocationCategories(AppDatabase db) async {
 
 /// Renames location interest flags and adds [InterestsLocations.includeLocalNews].
 Future<void> _migrateV8ToV9LocationInterestFlags(AppDatabase db) async {
-  await db.customStatement(
-    'ALTER TABLE interests_locations RENAME COLUMN enabled TO include_weather',
-  );
-  await db.customStatement(
-    'ALTER TABLE interests_locations RENAME COLUMN '
-    'include_active_weather_alerts TO include_weather_alerts',
-  );
-  await db.customStatement(
-    'ALTER TABLE interests_locations ADD COLUMN include_local_news '
-    'INTEGER NOT NULL DEFAULT 0',
-  );
+  if (!await _sqliteTableExists(db, 'interests_locations')) {
+    return;
+  }
+  if (await _sqliteColumnExists(db, 'interests_locations', 'enabled')) {
+    await db.customStatement(
+      'ALTER TABLE interests_locations RENAME COLUMN enabled TO include_weather',
+    );
+  }
+  if (await _sqliteColumnExists(
+    db,
+    'interests_locations',
+    'include_active_weather_alerts',
+  )) {
+    await db.customStatement(
+      'ALTER TABLE interests_locations RENAME COLUMN '
+      'include_active_weather_alerts TO include_weather_alerts',
+    );
+  }
+  if (!await _sqliteColumnExists(db, 'interests_locations', 'include_local_news')) {
+    await db.customStatement(
+      'ALTER TABLE interests_locations ADD COLUMN include_local_news '
+      'INTEGER NOT NULL DEFAULT 0',
+    );
+  }
   await ensureDefaultInterestsLocations(db);
 }
 
 /// Refreshes default location catalog rows (continental categories and new cities).
 Future<void> _migrateV10ToV11LocationRegions(AppDatabase db) async {
+  if (!await _sqliteTableExists(db, 'interests_locations')) {
+    return;
+  }
   await ensureDefaultInterestsLocations(db);
 }
 
@@ -686,6 +741,12 @@ Future<void> _migrateV13ToV14SocialNewsSources(
 }
 
 Future<void> _migrateV11ToV12CuratorTickerEnabled(AppDatabase db) async {
+  if (!await _sqliteTableExists(db, 'curator_configurations')) {
+    return;
+  }
+  if (await _sqliteColumnExists(db, 'curator_configurations', 'ticker_enabled')) {
+    return;
+  }
   await db.customStatement(
     'ALTER TABLE curator_configurations ADD COLUMN ticker_enabled '
     'INTEGER NOT NULL DEFAULT 1',

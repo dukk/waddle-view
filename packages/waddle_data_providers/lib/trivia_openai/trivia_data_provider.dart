@@ -10,6 +10,7 @@ import 'package:waddle_shared/text/html_entity_decode.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_shared/integrations/integration_collect.dart';
 import 'trivia_category_eligibility.dart';
 import 'trivia_id.dart';
 import 'trivia_provider_extra_config.dart'
@@ -43,18 +44,16 @@ class TriviaDataProvider implements IDataProvider {
 
   @override
   Future<void> collect(DataWriteContext ctx) async {
-    final setting =
-        await (ctx.db.select(ctx.db.integrations)
-              ..where((t) => t.id.equals(kTriviaProviderId)))
-            .getSingleOrNull();
-    if (setting == null || !setting.enabled) {
+    final settings = await enabledIntegrationsForType(ctx.db, id);
+    if (settings.isEmpty) {
       ctx.diagnostics.provider('trivia: skip (disabled)');
       return;
     }
+    final setting = settings.first;
 
     late final ProviderRuntimeConfig config;
     try {
-      config = await ctx.resolveConfig(kTriviaProviderId);
+      config = await ctx.resolveConfig(setting.id);
     } on Object catch (e, st) {
       ctx.diagnostics.providerFail('trivia: resolveConfig', e, st);
       return;

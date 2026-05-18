@@ -140,6 +140,9 @@ const String kOverlayTypeBirthdayConfetti = 'birthday_confetti';
 /// Single phrase bouncing off screen edges (DVD-style).
 const String kOverlayTypeBouncingMessage = 'bouncing_message';
 
+/// Occasionally drops uploaded images that rock while falling.
+const String kOverlayTypeFallingImages = 'falling_images';
+
 /// Seed row id for the example May 13 bouncing message overlay (installed disabled).
 const String kDefaultBouncingMessageOverlayId = 'default_bouncing_message_may_13';
 

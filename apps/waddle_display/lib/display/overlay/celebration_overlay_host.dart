@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:waddle_shared/blob/blob_store.dart';
 
 import '../../clock.dart';
 import '../../extensions/overlay_widget_registry.dart';
@@ -13,6 +14,7 @@ class CelebrationOverlayHost extends StatelessWidget {
   const CelebrationOverlayHost({
     super.key,
     required this.db,
+    required this.blobs,
     required this.clock,
     required this.dashboardKv,
     required this.allowedOverlayIds,
@@ -22,6 +24,7 @@ class CelebrationOverlayHost extends StatelessWidget {
   });
 
   final AppDatabase db;
+  final BlobStore blobs;
   final Clock clock;
   final Map<String, String> dashboardKv;
   final Set<String> allowedOverlayIds;
@@ -78,6 +81,8 @@ class CelebrationOverlayHost extends StatelessWidget {
                   theme: Theme.of(context),
                   accents: accents,
                   mergePhrases: mergePhrases,
+                  blobs: blobs,
+                  db: db,
                 ),
                 rows: rows,
                 now: now,

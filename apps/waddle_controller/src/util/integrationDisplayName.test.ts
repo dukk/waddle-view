@@ -19,6 +19,6 @@ describe('integrationDisplayName', () => {
   });
 
   it('applies acronym tokens for unknown types', () => {
-    expect(integrationDisplayName('weather_nws_alerts')).toBe('NWS Weather Alerts');
+    expect(integrationDisplayName('weather_alerts_nws')).toBe('NWS Weather Alerts');
   });
 });

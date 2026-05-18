@@ -147,7 +147,10 @@ Future<DataWriteContext> _ctx(
   String? apiKey = 'k',
 }) async {
   if (apiKey != null) {
-    await secrets.write(providerAccessTokenSecretKey('media_flickr'), apiKey);
+    await secrets.write(
+      providerAccessTokenSecretKey(kDefaultPhotoFlickrIntegrationId),
+      apiKey,
+    );
   }
   final resolver = ProviderConfigResolver(db, secrets);
   return DataWriteContextImpl(

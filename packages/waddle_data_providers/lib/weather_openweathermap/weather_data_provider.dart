@@ -9,6 +9,7 @@ import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_shared/integrations/integration_collect.dart';
 import 'weather_locations_for_collect.dart';
 import 'weather_provider_extra_config.dart';
 
@@ -30,15 +31,13 @@ class WeatherDataProvider implements IDataProvider {
 
   @override
   Future<void> collect(DataWriteContext ctx) async {
-    final setting =
-        await (ctx.db.select(ctx.db.integrations)
-              ..where((t) => t.id.equals(kWeatherProviderId)))
-            .getSingleOrNull();
-    if (setting == null || !setting.enabled) {
+    final settings = await enabledIntegrationsForType(ctx.db, id);
+    if (settings.isEmpty) {
       ctx.diagnostics.provider('weather: skip (disabled)');
       return;
     }
-    final config = await ctx.resolveConfig(kWeatherProviderId);
+    final setting = settings.first;
+    final config = await ctx.resolveConfig(setting.id);
     final token = config.accessToken;
     if (token == null || token.isEmpty) {
       ctx.diagnostics.provider('weather: skip (no API token)');

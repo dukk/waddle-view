@@ -65,7 +65,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    await secrets.write(providerAccessTokenSecretKey('joke_openai'), 't');
+    await secrets.write(providerAccessTokenSecretKey(kDefaultJokeOpenAiIntegrationId), 't');
     final resolver = ProviderConfigResolver(db, secrets);
     final ctx = DataWriteContextImpl(
       db: db,
@@ -156,7 +156,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    await secrets.write(providerAccessTokenSecretKey('joke_openai'), 't');
+    await secrets.write(providerAccessTokenSecretKey(kDefaultJokeOpenAiIntegrationId), 't');
     final resolver = ProviderConfigResolver(db, secrets);
     final ctx = DataWriteContextImpl(
       db: db,
@@ -209,7 +209,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    await secrets.write(providerAccessTokenSecretKey('joke_openai'), 't');
+    await secrets.write(providerAccessTokenSecretKey(kDefaultJokeOpenAiIntegrationId), 't');
     final resolver = ProviderConfigResolver(db, secrets);
     final ctx = DataWriteContextImpl(
       db: db,
@@ -272,7 +272,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    await secrets.write(providerAccessTokenSecretKey('joke_openai'), 't');
+    await secrets.write(providerAccessTokenSecretKey(kDefaultJokeOpenAiIntegrationId), 't');
     final resolver = ProviderConfigResolver(db, secrets);
     final ctx = DataWriteContextImpl(
       db: db,
@@ -315,7 +315,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    await secrets.write(providerAccessTokenSecretKey('joke_openai'), 't');
+    await secrets.write(providerAccessTokenSecretKey(kDefaultJokeOpenAiIntegrationId), 't');
     final resolver = ProviderConfigResolver(db, secrets);
     final ctx = DataWriteContextImpl(
       db: db,
@@ -359,7 +359,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    await secrets.write(providerAccessTokenSecretKey('joke_openai'), 't');
+    await secrets.write(providerAccessTokenSecretKey(kDefaultJokeOpenAiIntegrationId), 't');
     final resolver = ProviderConfigResolver(db, secrets);
     final ctx = DataWriteContextImpl(
       db: db,
@@ -425,7 +425,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    await secrets.write(providerAccessTokenSecretKey('joke_openai'), 't');
+    await secrets.write(providerAccessTokenSecretKey(kDefaultJokeOpenAiIntegrationId), 't');
     final resolver = ProviderConfigResolver(db, secrets);
     final ctx = DataWriteContextImpl(
       db: db,
@@ -476,7 +476,7 @@ void main() {
         );
 
     final secrets = InMemorySecretStore();
-    await secrets.write(providerAccessTokenSecretKey('joke_openai'), 't');
+    await secrets.write(providerAccessTokenSecretKey(kDefaultJokeOpenAiIntegrationId), 't');
     final resolver = ProviderConfigResolver(db, secrets);
     final ctx = DataWriteContextImpl(
       db: db,

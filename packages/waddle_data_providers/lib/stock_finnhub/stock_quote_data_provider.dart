@@ -9,6 +9,7 @@ import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_shared/integrations/integration_collect.dart';
 import 'stock_quote_provider_extra_config.dart';
 
 const String kStockProviderId = 'stock_finnhub';
@@ -39,14 +40,13 @@ class StockQuoteDataProvider implements IDataProvider {
 
   @override
   Future<void> collect(DataWriteContext ctx) async {
-    final setting = await (ctx.db.select(ctx.db.integrations)
-          ..where((t) => t.id.equals(kStockProviderId)))
-        .getSingleOrNull();
-    if (setting == null || !setting.enabled) {
+    final settings = await enabledIntegrationsForType(ctx.db, id);
+    if (settings.isEmpty) {
       ctx.diagnostics.provider('stocks: skip (disabled)');
       return;
     }
-    final config = await ctx.resolveConfig(kStockProviderId);
+    final setting = settings.first;
+    final config = await ctx.resolveConfig(setting.id);
     final token = config.accessToken;
     if (token == null || token.isEmpty) {
       ctx.diagnostics.provider('stocks: skip (no API token)');

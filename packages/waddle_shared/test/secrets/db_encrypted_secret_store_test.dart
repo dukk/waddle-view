@@ -1,4 +1,5 @@
 import 'package:test/test.dart';
+import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/db_encrypted_secret_store.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/secrets/platform/in_memory_dek_protector.dart';
@@ -24,15 +25,7 @@ void main() {
     await store.delete(key);
     expect(await store.read(key), isNull);
 
-    expect(
-      await isIntegrationSecretsFullyConfigured(
-        store,
-        'default_joke_openai',
-        integrationType: 'joke_openai',
-      ),
-      isFalse,
-    );
-    await store.write(key, 'sk-test');
+    // API-key integrations have no integration-level secret slots.
     expect(
       await isIntegrationSecretsFullyConfigured(
         store,
@@ -40,6 +33,25 @@ void main() {
         integrationType: 'joke_openai',
       ),
       isTrue,
+    );
+
+    await store.write(kGoogleClientIdSecretKey, 'oauth-client-id');
+    expect(
+      await isIntegrationSecretsFullyConfigured(
+        store,
+        kDefaultCalendarGoogleIntegrationId,
+        integrationType: 'calendar_google',
+      ),
+      isTrue,
+    );
+    await store.delete(kGoogleClientIdSecretKey);
+    expect(
+      await isIntegrationSecretsFullyConfigured(
+        store,
+        kDefaultCalendarGoogleIntegrationId,
+        integrationType: 'calendar_google',
+      ),
+      isFalse,
     );
 
     await db.close();

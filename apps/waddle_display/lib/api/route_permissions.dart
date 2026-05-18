@@ -147,6 +147,9 @@ String? permissionForRoute(String method, String path) {
   if (p == '/v1/display/overlays' && m == 'POST') {
     return WaddlePermission.overlaysWrite;
   }
+  if (p == '/v1/display/overlays/blobs' && m == 'POST') {
+    return WaddlePermission.overlaysWrite;
+  }
   if (p.startsWith('/v1/display/overlays/') && m == 'PATCH') {
     return WaddlePermission.overlaysWrite;
   }

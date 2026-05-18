@@ -9,6 +9,7 @@ import 'package:waddle_shared/config/provider_runtime_config.dart';
 import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_data_providers/photo_pexels/pexels_data_provider.dart';
+import 'package:waddle_data_providers/video_pexels/pexels_data_provider.dart';
 import 'package:waddle_shared/integrations/integration_collect.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
@@ -159,6 +160,33 @@ Future<void> _ensurePexelsProvider(
       );
 }
 
+Future<void> _ensureVideoPexelsProvider(
+  AppDatabase db, {
+  String extra = '{"maxVideos":100,"videosPerHour":2,'
+      '"minVideoSeconds":11,"maxVideoSeconds":29,"sources":[]}',
+  int pollSeconds = 0,
+}) async {
+  await db.into(db.integrations).insertOnConflictUpdate(
+        IntegrationsCompanion.insert(
+          id: kDefaultVideoPexelsIntegrationId,
+          integrationType: 'video_pexels',
+          pollSeconds: Value(pollSeconds),
+          baseUrl: const Value('http://api.pexels.test'),
+          configJson: Value(extra),
+        ),
+      );
+}
+
+Future<void> _collectPexelsVideos(
+  DataWriteContext ctx, {
+  required _FakePexelsHttp httpClient,
+  required int nowMs,
+}) =>
+    PexelsVideosDataProvider(
+      httpClient: httpClient,
+      nowMs: () => nowMs,
+    ).collect(ctx);
+
 void main() {
   test('collect is a no-op when provider disabled', () async {
     final db = openMemoryDatabase();
@@ -224,6 +252,7 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _ensurePexelsProvider(db);
+    await _ensureVideoPexelsProvider(db);
 
     final secrets = InMemorySecretStore();
     final ctx = await _ctx(db, secrets);
@@ -237,6 +266,11 @@ void main() {
       nowMs: () => 1_000_000,
     );
     await provider.collect(ctx);
+    await _collectPexelsVideos(
+      ctx,
+      httpClient: httpClient,
+      nowMs: 1_000_000,
+    );
 
     final photos = await db.select(db.photos).get();
     final videos = await db.select(db.videos).get();
@@ -365,10 +399,9 @@ void main() {
   test('extra sources hit search endpoints', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await _ensurePexelsProvider(
-      db,
-      extra: '{"sources":[{"query":"trees","category":"nature"}]}',
-    );
+    const extra = '{"sources":[{"query":"trees","category":"nature"}]}';
+    await _ensurePexelsProvider(db, extra: extra);
+    await _ensureVideoPexelsProvider(db, extra: extra);
 
     final secrets = InMemorySecretStore();
     final ctx = await _ctx(db, secrets);
@@ -387,6 +420,11 @@ void main() {
       httpClient: httpClient,
       nowMs: () => 5_000_000,
     ).collect(ctx);
+    await _collectPexelsVideos(
+      ctx,
+      httpClient: httpClient,
+      nowMs: 5_000_000,
+    );
 
     expect(
       httpClient.requests.any(
@@ -416,14 +454,13 @@ void main() {
   test('search sources are fetched in round-robin under shared budgets', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await _ensurePexelsProvider(
-      db,
-      extra: '{"photosPerHour":2,"videosPerHour":2,'
-          '"sources":['
-          '{"query":"q1","category":"cat1"},'
-          '{"query":"q2","category":"cat2"}'
-          ']}',
-    );
+    const extra = '{"photosPerHour":2,"videosPerHour":2,'
+        '"sources":['
+        '{"query":"q1","category":"cat1"},'
+        '{"query":"q2","category":"cat2"}'
+        ']}';
+    await _ensurePexelsProvider(db, extra: extra);
+    await _ensureVideoPexelsProvider(db, extra: extra);
 
     final secrets = InMemorySecretStore();
     final ctx = await _ctx(db, secrets);
@@ -444,6 +481,11 @@ void main() {
       httpClient: httpClient,
       nowMs: () => 9_000_000,
     ).collect(ctx);
+    await _collectPexelsVideos(
+      ctx,
+      httpClient: httpClient,
+      nowMs: 9_000_000,
+    );
 
     final photos = await db.select(db.photos).get();
     final videos = await db.select(db.videos).get();
@@ -476,9 +518,9 @@ void main() {
   test('prune removes oldest videos above maxVideos', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await _ensurePexelsProvider(
+    await _ensureVideoPexelsProvider(
       db,
-      extra: '{"maxPhotos":100,"maxVideos":2,"photosPerHour":2,"videosPerHour":2,'
+      extra: '{"maxVideos":2,"videosPerHour":2,'
           '"minVideoSeconds":11,"maxVideoSeconds":29,"sources":[]}',
     );
 
@@ -501,10 +543,12 @@ void main() {
           );
     }
 
-    await PexelsPhotosDataProvider(
+    final ctx = await _ctx(db, InMemorySecretStore());
+    await _collectPexelsVideos(
+      ctx,
       httpClient: _FakePexelsHttp(curatedPhotos: [], popularVideos: []),
-      nowMs: () => 200_000,
-    ).collect(await _ctx(db, InMemorySecretStore()));
+      nowMs: 200_000,
+    );
 
     final ids =
         (await db.select(db.videos).get()).map((v) => v.id).toList()..sort();
@@ -636,14 +680,13 @@ void main() {
   test('video search skips duration outside configured window', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await _ensurePexelsProvider(
-      db,
-      extra: '{"sources":[{"query":"x","category":"misc"}]}',
-    );
+    const extra = '{"sources":[{"query":"x","category":"misc"}]}';
+    await _ensureVideoPexelsProvider(db, extra: extra);
 
     final secrets = InMemorySecretStore();
     final ctx = await _ctx(db, secrets);
-    await PexelsPhotosDataProvider(
+    await _collectPexelsVideos(
+      ctx,
       httpClient: _FakePexelsHttp(
         curatedPhotos: [],
         popularVideos: [],
@@ -651,8 +694,8 @@ void main() {
           'x': [_videoJson(601, 5), _videoJson(602, 35), _videoJson(603, 18)],
         },
       ),
-      nowMs: () => 8_000_000,
-    ).collect(ctx);
+      nowMs: 8_000_000,
+    );
 
     final rows = await db.select(db.videos).get();
     expect(rows.map((e) => e.id).toList(), ['603']);
@@ -778,13 +821,15 @@ void main() {
   test('video duration as double is accepted', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await _ensurePexelsProvider(db);
+    await _ensureVideoPexelsProvider(db);
     final v = Map<String, dynamic>.from(_videoJson(707, 20));
     v['duration'] = 20.0;
-    await PexelsPhotosDataProvider(
+    final ctx = await _ctx(db, InMemorySecretStore());
+    await _collectPexelsVideos(
+      ctx,
       httpClient: _FakePexelsHttp(curatedPhotos: [], popularVideos: [v]),
-      nowMs: () => 1,
-    ).collect(await _ctx(db, InMemorySecretStore()));
+      nowMs: 1,
+    );
     expect((await db.select(db.videos).get()).single.id, '707');
     await db.close();
   });
@@ -873,7 +918,14 @@ Future<DataWriteContext> _ctx(
   String? apiKey = 'k',
 }) async {
   if (apiKey != null) {
-    await secrets.write(providerAccessTokenSecretKey(kDefaultPhotoPexelsIntegrationId), apiKey);
+    await secrets.write(
+      providerAccessTokenSecretKey(kDefaultPhotoPexelsIntegrationId),
+      apiKey,
+    );
+    await secrets.write(
+      providerAccessTokenSecretKey(kDefaultVideoPexelsIntegrationId),
+      apiKey,
+    );
   }
   final resolver = ProviderConfigResolver(db, secrets);
   return DataWriteContextImpl(

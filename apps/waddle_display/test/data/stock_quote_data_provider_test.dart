@@ -73,7 +73,7 @@ Future<DataWriteContextImpl> _ctx(
   String? apiKey,
 }) async {
   if (apiKey != null) {
-    await secrets.write(providerAccessTokenSecretKey('stock_finnhub'), apiKey);
+    await secrets.write(providerAccessTokenSecretKey(kDefaultStockFinnhubIntegrationId), apiKey);
   }
   final resolver = ProviderConfigResolver(db, secrets);
   return DataWriteContextImpl(
@@ -91,7 +91,7 @@ Future<void> _seedProviderRow(
 }) async {
   await db.into(db.integrations).insert(
         IntegrationsCompanion.insert(
-          id: kStockProviderId,
+          id: kDefaultStockFinnhubIntegrationId,
           integrationType: kStockProviderId,
           pollSeconds: const Value(60),
           enabled: Value(enabled),

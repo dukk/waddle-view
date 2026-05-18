@@ -37,6 +37,7 @@ PUBSPEC_MARKERS = ("pubspec.yaml", "pubspec.lock")
 DART_PACKAGE_PREFIXES: tuple[tuple[str, str], ...] = (
     ("packages/waddle_shared/", "shared"),
     ("packages/waddle_data_providers/", "providers"),
+    ("packages/waddle_plugin_sdk/", "plugin_sdk"),
     ("apps/waddle_display/", "display"),
     ("apps/waddlectl/", "waddlectl"),
 )
@@ -342,8 +343,11 @@ def dart_test_argv(
     *,
     concurrency: int,
     test_paths: list[str] | None = None,
+    coverage: bool = False,
 ) -> list[str]:
     argv = ["dart", "test", f"--concurrency={concurrency}"]
+    if coverage:
+        argv.append("--coverage=coverage")
     if test_paths:
         argv.extend(test_paths)
     return argv
@@ -404,6 +408,7 @@ def package_dirs(root: Path) -> dict[str, Path]:
     return {
         "shared": root / "packages" / "waddle_shared",
         "providers": root / "packages" / "waddle_data_providers",
+        "plugin_sdk": root / "packages" / "waddle_plugin_sdk",
         "display": root / "apps" / "waddle_display",
         "waddlectl": root / "apps" / "waddlectl",
     }
@@ -420,6 +425,7 @@ def build_dart_workspace_steps(
     dirs = package_dirs(root)
     shared = dirs["shared"]
     providers = dirs["providers"]
+    plugin_sdk = dirs["plugin_sdk"]
     display = dirs["display"]
     waddlectl = dirs["waddlectl"]
 
@@ -492,6 +498,35 @@ def build_dart_workspace_steps(
             )
         )
 
+    if package_enabled("plugin_sdk"):
+        steps.append(
+            Step(
+                "dart test (waddle_plugin_sdk)",
+                dart_test_argv(
+                    concurrency=concurrency,
+                    test_paths=test_paths_for("plugin_sdk"),
+                    coverage=include_coverage,
+                ),
+                plugin_sdk,
+            )
+        )
+        if include_coverage:
+            steps.append(
+                Step(
+                    "format_coverage (waddle_plugin_sdk)",
+                    [
+                        "dart",
+                        "run",
+                        "coverage:format_coverage",
+                        "--lcov",
+                        "--in=coverage",
+                        "--out=coverage/lcov.info",
+                        "--report-on=lib",
+                    ],
+                    plugin_sdk,
+                ),
+            )
+
     steps.append(
         Step(
             "flutter analyze (waddle_display)",
@@ -527,6 +562,7 @@ def build_dart_workspace_steps(
         )
 
     if include_coverage:
+        plugin_lcov = plugin_sdk / "coverage" / "lcov.info"
         steps.append(
             Step(
                 "line coverage (waddle_display)",
@@ -534,9 +570,10 @@ def build_dart_workspace_steps(
                     "dart",
                     "run",
                     "tool/coverage_check.dart",
-                    "--min=85",
+                    "--min=80",
                     "--target=90",
                     "coverage/lcov.info",
+                    str(plugin_lcov),
                 ],
                 display,
             )

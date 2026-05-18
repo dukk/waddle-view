@@ -87,7 +87,7 @@ CREATE TABLE integration_secrets (
     expect(videoSecret, isNotNull);
 
     final version = await db.customSelect('PRAGMA user_version').getSingle();
-    expect(version.read<int>('user_version'), 6);
+    expect(version.read<int>('user_version'), db.schemaVersion);
 
     await db.close();
   });

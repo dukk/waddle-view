@@ -45,19 +45,32 @@ CREATE TABLE integrations (
     ).get();
     expect(secretTables.length, 2);
 
-    for (final id in kIntegrationsDisabledOnSecretStoreMigration) {
-      final row = await db.customSelect(
-        'SELECT enabled FROM integrations WHERE id = ?',
-        variables: [Variable<String>(id)],
-      ).getSingle();
-      expect(row.read<int>('enabled'), 0);
+    Future<void> expectAllRowsDisabled(String integrationType) async {
+      final rows = await (db.select(db.integrations)
+            ..where((t) => t.integrationType.equals(integrationType)))
+          .get();
+      expect(rows, isNotEmpty, reason: integrationType);
+      for (final row in rows) {
+        expect(row.enabled, isFalse);
+      }
     }
 
-    final rss = await db.customSelect(
-      'SELECT enabled FROM integrations WHERE id = ?',
-      variables: [Variable<String>('news_rss')],
-    ).getSingle();
-    expect(rss.read<int>('enabled'), 1);
+    await expectAllRowsDisabled('joke_openai');
+    await expectAllRowsDisabled('trivia_openai');
+    await expectAllRowsDisabled('weather_openweathermap');
+    await expectAllRowsDisabled('photo_pexels');
+    await expectAllRowsDisabled('video_pexels');
+    await expectAllRowsDisabled('photo_flickr');
+    await expectAllRowsDisabled('stock_finnhub');
+    await expectAllRowsDisabled('calendar_google');
+    await expectAllRowsDisabled('calendar_outlook');
+    await expectAllRowsDisabled('photo_onedrive');
+    await expectAllRowsDisabled('video_onedrive');
+
+    final rss = await (db.select(db.integrations)
+          ..where((t) => t.integrationType.equals('news_rss')))
+        .getSingle();
+    expect(rss.enabled, isTrue);
 
     final version = await db.customSelect('PRAGMA user_version').getSingle();
     expect(version.read<int>('user_version'), greaterThanOrEqualTo(3));

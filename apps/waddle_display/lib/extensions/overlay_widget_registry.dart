@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:waddle_shared/blob/blob_store.dart';
+import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/display_overlay_bouncing_message_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_confetti_settings.dart';
+import 'package:waddle_shared/persistence/display_overlay_falling_images_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_schedule_row.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 
 import '../display/overlay/birthday_confetti_overlay.dart';
 import '../display/overlay/bouncing_message_overlay.dart';
 import '../display/overlay/celebration_overlay_schedule.dart';
+import '../display/overlay/falling_images_overlay.dart';
 import '../display/overlay/hearts_rain_overlay.dart';
 import '../display/overlay/plugin_template_overlay.dart';
 import '../display/overlay/plugin_web_overlay.dart';
@@ -21,11 +25,15 @@ class CelebrationOverlayBuildContext {
     required this.theme,
     required this.accents,
     required this.mergePhrases,
+    required this.blobs,
+    required this.db,
   });
 
   final ThemeData theme;
   final List<Color> accents;
   final List<String> Function(List<DisplayOverlayScheduleRow>) mergePhrases;
+  final BlobStore blobs;
+  final AppDatabase db;
 }
 
 class OverlayWidgetRegistry {
@@ -95,6 +103,23 @@ void registerBuiltins(OverlayWidgetRegistry registry) {
     return HeartsRainOverlay(
       messages: phrases.isEmpty ? const [''] : phrases,
       fallbackAccents: ctx.accents,
+    );
+  });
+
+  registry.register(kOverlayTypeFallingImages, (ctx, matches) {
+    if (matches.isEmpty) {
+      return null;
+    }
+    final settings = FallingImagesScheduleSettings.parse(
+      matches.first.configJson,
+    );
+    if (settings.imageBlobKeys.isEmpty) {
+      return null;
+    }
+    return FallingImagesOverlay(
+      settings: settings,
+      blobs: ctx.blobs,
+      db: ctx.db,
     );
   });
 

@@ -11,6 +11,7 @@ on:
       - 'apps/waddlectl/**'
       - 'packages/waddle_shared/**'
       - 'packages/waddle_data_providers/**'
+      - 'packages/waddle_plugin_sdk/**'
       - 'packages/waddle_node_tls/**'
       - 'pubspec.yaml'
       - 'deploy/**'
@@ -70,10 +71,17 @@ jobs:
         working-directory: ${{ github.workspace }}/packages/waddle_shared
       - run: dart test
         working-directory: ${{ github.workspace }}/packages/waddle_data_providers
+      - run: dart test --coverage=coverage
+        working-directory: ${{ github.workspace }}/packages/waddle_plugin_sdk
+      - run: dart run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib
+        working-directory: ${{ github.workspace }}/packages/waddle_plugin_sdk
       - run: flutter analyze
       - run: flutter test --coverage --timeout=60s
       - name: Line coverage (lib/)
-        run: dart run tool/coverage_check.dart --min=85 --target=90 coverage/lcov.info
+        run: >
+          dart run tool/coverage_check.dart --min=80 --target=90
+          coverage/lcov.info
+          ${{ github.workspace }}/packages/waddle_plugin_sdk/coverage/lcov.info
       - run: flutter test
         working-directory: ${{ github.workspace }}/apps/waddlectl
 

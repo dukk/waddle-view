@@ -11,6 +11,7 @@ import 'package:waddle_shared/secrets/secret_store.dart';
 import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_shared/integrations/integration_collect.dart';
 import '../microsoft_graph/microsoft_graph_base_url.dart';
 import '../microsoft_graph/microsoft_graph_oauth.dart';
 import 'outlook_calendar_extra_config.dart';
@@ -143,15 +144,12 @@ class OutlookCalendarDataProvider implements IDataProvider {
   Future<void> collect(DataWriteContext ctx) async {
     _collectDiag = ctx.diagnostics;
     try {
-    final setting =
-        await (ctx.db.select(
-              ctx.db.integrations,
-            )..where((t) => t.id.equals(kOutlookCalendarProviderId)))
-            .getSingleOrNull();
-    if (setting == null || !setting.enabled) {
+    final settings = await enabledIntegrationsForType(ctx.db, id);
+    if (settings.isEmpty) {
       _collectDiag!.provider('outlook_calendar: skip (disabled)');
       return;
     }
+    final setting = settings.first;
 
     _collectDiag!.provider(
       'outlook_calendar: collect start pollSeconds=${setting.pollSeconds}',

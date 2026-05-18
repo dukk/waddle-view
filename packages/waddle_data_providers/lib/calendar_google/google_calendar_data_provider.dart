@@ -11,6 +11,7 @@ import 'package:waddle_shared/secrets/secret_store.dart';
 import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_shared/integrations/integration_collect.dart';
 import '../shared/calendar_provider_calendar_entry.dart';
 import '../shared/provider_calendar_date_time.dart';
 import 'google_calendar_extra_config.dart';
@@ -45,13 +46,12 @@ class GoogleCalendarDataProvider implements IDataProvider {
 
   @override
   Future<void> collect(DataWriteContext ctx) async {
-    final setting = await (ctx.db.select(ctx.db.integrations)
-          ..where((t) => t.id.equals(kGoogleCalendarProviderId)))
-        .getSingleOrNull();
-    if (setting == null || !setting.enabled) {
+    final settings = await enabledIntegrationsForType(ctx.db, id);
+    if (settings.isEmpty) {
       ctx.diagnostics.provider('google_calendar: skip (disabled)');
       return;
     }
+    final setting = settings.first;
 
     final nowMs = _nowMs();
     final clientId =

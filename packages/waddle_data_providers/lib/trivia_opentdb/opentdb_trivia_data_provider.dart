@@ -10,6 +10,7 @@ import 'package:waddle_shared/text/html_entity_decode.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_shared/integrations/integration_collect.dart';
 import '../trivia_openai/trivia_category_eligibility.dart';
 import '../trivia_openai/trivia_id.dart';
 import 'opentdb_trivia_extra_config.dart';
@@ -35,14 +36,13 @@ class OpenTdbTriviaDataProvider implements IDataProvider {
 
   @override
   Future<void> collect(DataWriteContext ctx) async {
-    final setting = await (ctx.db.select(ctx.db.integrations)
-          ..where((t) => t.id.equals(kOpenTdbTriviaProviderId)))
-        .getSingleOrNull();
-    if (setting == null || !setting.enabled) {
+    final settings = await enabledIntegrationsForType(ctx.db, id);
+    if (settings.isEmpty) {
       ctx.diagnostics.provider('opentdb_trivia: skip (disabled)');
       return;
     }
-    final config = await ctx.resolveConfig(kOpenTdbTriviaProviderId);
+    final setting = settings.first;
+    final config = await ctx.resolveConfig(setting.id);
     final extra = OpenTdbTriviaExtraConfig.parse(config.configJson);
     final now = _now();
     final nowMs = now.millisecondsSinceEpoch;

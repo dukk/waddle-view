@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_shared/integrations/integration_collect.dart';
 import 'package:waddle_shared/net/http_debug_uri.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/runtime/runtime_signal_repository.dart';
@@ -41,14 +42,13 @@ class HomeAssistantDataProvider implements IDataProvider {
 
   @override
   Future<void> collect(DataWriteContext ctx) async {
-    final setting = await (ctx.db.select(ctx.db.integrations)
-          ..where((t) => t.id.equals(kHomeAssistantProviderId)))
-        .getSingleOrNull();
-    if (setting == null || !setting.enabled) {
+    final settings = await enabledIntegrationsForType(ctx.db, id);
+    if (settings.isEmpty) {
       ctx.diagnostics.provider('home_assistant: skip (disabled)');
       return;
     }
-    final config = await ctx.resolveConfig(kHomeAssistantProviderId);
+    final setting = settings.first;
+    final config = await ctx.resolveConfig(setting.id);
     final token = config.accessToken;
     if (token == null || token.isEmpty) {
       ctx.diagnostics.provider('home_assistant: skip (no access token)');

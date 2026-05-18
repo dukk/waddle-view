@@ -51,6 +51,7 @@ void main() {
     ('POST', '/v1/display/navigation', WaddlePermission.navigationControl),
     ('GET', '/v1/display/overlays', WaddlePermission.overlaysRead),
     ('POST', '/v1/display/overlays', WaddlePermission.overlaysWrite),
+    ('POST', '/v1/display/overlays/blobs', WaddlePermission.overlaysWrite),
     ('GET', '/v1/ticker/tapes', WaddlePermission.tickerRead),
     ('POST', '/v1/ticker/tapes', WaddlePermission.tickerWrite),
     ('PATCH', '/v1/ticker/tapes/t1', WaddlePermission.tickerWrite),

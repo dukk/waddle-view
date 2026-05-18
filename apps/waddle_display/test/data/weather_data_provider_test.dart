@@ -91,7 +91,7 @@ Future<DataWriteContextImpl> _ctx(
 }) async {
   if (apiKey != null) {
     await secrets.write(
-      providerAccessTokenSecretKey('weather_openweathermap'),
+      providerAccessTokenSecretKey(kDefaultWeatherOpenWeatherMapIntegrationId),
       apiKey,
     );
   }

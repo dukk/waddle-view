@@ -107,6 +107,9 @@ CREATE TABLE stock_symbols (
         'interests_trivia',
         'interests_stock_symbols',
         'interests_home_assistant_entities',
+        'interests_facebook_sources',
+        'interests_twitter_sources',
+        'interests_linkedin_sources',
       },
     );
 

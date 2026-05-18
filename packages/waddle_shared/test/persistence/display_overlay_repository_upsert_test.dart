@@ -55,6 +55,28 @@ void main() {
     await db.close();
   });
 
+  test('upsert falling_images stores normalized config_json', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureOverlaysTableExists(db);
+    await upsertOverlaySchedule(
+      db,
+      id: 'fall1',
+      overlayType: kOverlayTypeFallingImages,
+      label: 'drops',
+      configJson:
+          '{"image_blob_keys":["overlay/pool/a"],"drop_interval_sec":90,'
+          '"fall_speed":0.25}',
+      repeatAnnually: true,
+      startMonth: 12,
+      startDay: 25,
+    );
+    final rows = await fetchDisplayOverlaySchedules(db);
+    expect(rows.single.configJson, contains('overlay/pool/a'));
+    expect(rows.single.configJsonSchema, contains('FallingImagesOverlayConfig'));
+    await db.close();
+  });
+
   test('upsert bouncing_message stores normalized config_json with messages', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);

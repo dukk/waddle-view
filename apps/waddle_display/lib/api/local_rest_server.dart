@@ -18,6 +18,7 @@ import 'package:waddle_shared/persistence/content_suppression_repository.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/display_overlay_repository.dart';
 import 'package:waddle_shared/persistence/display_overlay_schedule_row.dart';
+import 'package:waddle_shared/persistence/overlay_blob_storage.dart';
 import 'package:waddle_shared/persistence/reject_term_repository.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import '../ticker/ticker_curated_repository.dart';
@@ -348,6 +349,81 @@ Handler buildProtectedApiRouter({
       );
     }
     return Response.ok('{}', headers: {'content-type': 'application/json'});
+  });
+
+  r.post('/v1/display/overlays/blobs', (Request req) async {
+    final map = await _readOverlayJson(req);
+    if (map == null) {
+      return Response(
+        400,
+        body: '{"error":"invalid_json_body"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    final rawB64 = map['bytes_base64'];
+    if (rawB64 is! String || rawB64.trim().isEmpty) {
+      return Response(
+        400,
+        body: '{"error":"bytes_base64_required"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    List<int> bytes;
+    try {
+      bytes = base64Decode(rawB64.trim());
+    } on Object {
+      return Response(
+        400,
+        body: '{"error":"invalid_base64"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    if (bytes.isEmpty) {
+      return Response(
+        400,
+        body: '{"error":"empty_image"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    if (bytes.length > kOverlayBlobUploadMaxBytes) {
+      return Response(
+        400,
+        body: '{"error":"image_too_large"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    var mime = 'image/png';
+    final rawMime = map['content_type'];
+    if (rawMime is String && rawMime.trim().isNotEmpty) {
+      mime = rawMime.split(';').first.trim().toLowerCase();
+    }
+    if (!kOverlayBlobUploadMimeTypes.contains(mime)) {
+      return Response(
+        400,
+        body: '{"error":"unsupported_content_type"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    final blobKey = allocateOverlayPoolBlobKey();
+    try {
+      await registerOverlayBlob(
+        db: db,
+        blobs: blobs,
+        blobKey: blobKey,
+        bytes: bytes,
+        mimeType: mime,
+      );
+    } on FormatException catch (e) {
+      return Response(
+        400,
+        body: jsonEncode({'error': e.message}),
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    return Response.ok(
+      jsonEncode({'blob_key': blobKey}),
+      headers: {'content-type': 'application/json'},
+    );
   });
 
   r.patch('/v1/display/overlays/<id>', (Request req, String pathId) async {

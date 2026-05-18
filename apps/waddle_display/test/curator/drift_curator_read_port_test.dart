@@ -279,6 +279,7 @@ void main() {
             latitude: 33.749,
             longitude: -84.388,
             includeWeather: const Value(true),
+            includeWeatherAlerts: const Value(true),
           ),
         );
     await db.into(db.interestsLocations).insert(
@@ -288,6 +289,7 @@ void main() {
             latitude: 39.7392,
             longitude: -104.9903,
             includeWeather: const Value(true),
+            includeWeatherAlerts: const Value(true),
           ),
         );
     await db.into(db.weatherAlerts).insert(

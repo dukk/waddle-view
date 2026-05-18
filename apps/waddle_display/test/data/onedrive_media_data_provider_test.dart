@@ -15,6 +15,7 @@ import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_data_providers/microsoft_graph/microsoft_graph_oauth.dart';
 import 'package:waddle_data_providers/photo_onedrive/onedrive_media_data_provider.dart';
+import 'package:waddle_data_providers/video_onedrive/onedrive_media_data_provider.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';
@@ -180,7 +181,7 @@ void main() {
   test('downloads mp4 into videos', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await _seedProvider(
+    await _seedVideoProvider(
       db,
       accountsJson:
           '[{"graphAccountKey":"u","sources":[{"path":"/v","kind":"video","category":"vcat","maxFiles":10}]}]',
@@ -211,10 +212,10 @@ void main() {
       ],
     );
     final ctx = await _ctx(db, secrets);
-    await OneDrivePhotosDataProvider(httpClient: http).collect(ctx);
+    await OneDriveVideosDataProvider(httpClient: http).collect(ctx);
     final vids = await db.select(db.videos).get();
     expect(vids.length, 1);
-    expect(vids.single.dataProvider, kMediaDataProviderPhotoOneDrive);
+    expect(vids.single.dataProvider, kMediaDataProviderVideoOneDrive);
     expect(vids.single.durationSeconds, 12);
     expect(vids.single.photographerName, 'Alex');
     await db.close();
@@ -447,11 +448,10 @@ void main() {
   test('kind both downloads photo and video', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await _seedProvider(
-      db,
-      accountsJson:
-          '[{"graphAccountKey":"u","sources":[{"path":"/m","kind":"both","category":"mix","maxFiles":10}]}]',
-    );
+    const accountsJson =
+        '[{"graphAccountKey":"u","sources":[{"path":"/m","kind":"both","category":"mix","maxFiles":10}]}]';
+    await _seedProvider(db, accountsJson: accountsJson);
+    await _seedVideoProvider(db, accountsJson: accountsJson);
     final secrets = InMemorySecretStore();
     await secrets.write(microsoftGraphAccessTokenSecret('u'), 'tok');
     await db.into(db.configKeyValues).insertOnConflictUpdate(
@@ -479,10 +479,21 @@ void main() {
       ],
     );
     final ctx = await _ctx(db, secrets);
+    await OneDriveVideosDataProvider(httpClient: httpClient).collect(ctx);
+    // Delta links and mock delta page index are shared across providers.
+    final deltaRows = await db.select(db.configKeyValues).get();
+    for (final row in deltaRows) {
+      if (row.key.startsWith('provider.media_onedrive.delta_link.')) {
+        await (db.delete(db.configKeyValues)
+              ..where((t) => t.key.equals(row.key)))
+            .go();
+      }
+    }
+    httpClient.deltaGets = 0;
     await OneDrivePhotosDataProvider(httpClient: httpClient).collect(ctx);
-    expect(httpClient.downloadGets, 2);
     expect((await db.select(db.photos).get()).length, 1);
     expect((await db.select(db.videos).get()).length, 1);
+    expect(httpClient.downloadGets, 2);
     await db.close();
   });
 
@@ -604,6 +615,27 @@ Future<void> _seedProvider(
         IntegrationsCompanion.insert(
           id: kDefaultPhotoOneDriveIntegrationId,
           integrationType: 'photo_onedrive',
+          enabled: Value(enabled),
+          pollSeconds: Value(pollSeconds),
+          baseUrl: const Value('https://graph.microsoft.com/v1.0'),
+          configJson: Value(
+            '{"accounts":$accountsJson,"globalPerPollLimit":$globalPerPoll}',
+          ),
+        ),
+      );
+}
+
+Future<void> _seedVideoProvider(
+  AppDatabase db, {
+  required String accountsJson,
+  int pollSeconds = 0,
+  int globalPerPoll = 50,
+  bool enabled = true,
+}) async {
+  await db.into(db.integrations).insertOnConflictUpdate(
+        IntegrationsCompanion.insert(
+          id: kDefaultVideoOneDriveIntegrationId,
+          integrationType: 'video_onedrive',
           enabled: Value(enabled),
           pollSeconds: Value(pollSeconds),
           baseUrl: const Value('https://graph.microsoft.com/v1.0'),

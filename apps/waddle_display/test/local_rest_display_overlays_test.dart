@@ -184,4 +184,46 @@ void main() {
     );
     expect(post.statusCode, 200);
   });
+
+  test('display overlays REST uploads image blob', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureOverlaysTableExists(db);
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+
+    const pngB64 =
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    final upload = await http.post(
+      Uri.parse('${h.baseUrl}/v1/display/overlays/blobs'),
+      headers: h.authHeaders,
+      body: jsonEncode({
+        'bytes_base64': pngB64,
+        'content_type': 'image/png',
+      }),
+    );
+    expect(upload.statusCode, 200, reason: upload.body);
+    final decoded = jsonDecode(upload.body) as Map<String, dynamic>;
+    final blobKey = decoded['blob_key'] as String;
+    expect(blobKey, startsWith('overlay/pool/'));
+
+    final post = await http.post(
+      Uri.parse('${h.baseUrl}/v1/display/overlays'),
+      headers: h.authHeaders,
+      body: jsonEncode({
+        'id': 'fall_rest_test',
+        'overlay_type': kOverlayTypeFallingImages,
+        'label': 'Falling',
+        'config_json': {
+          'image_blob_keys': [blobKey],
+          'drop_interval_sec': 45,
+          'fall_speed': 0.12,
+        },
+        'repeat_annually': true,
+        'start_month': 7,
+        'start_day': 4,
+      }),
+    );
+    expect(post.statusCode, 200);
+  });
 }

@@ -47,6 +47,7 @@ import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { catalogCardGridSx } from '@/constants/catalogLayout';
 import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import { OverlaysHelpContent } from '@/components/help/OverlaysHelpContent';
+import { FallingImagesOverlayConfig } from '@/components/overlay/FallingImagesOverlayConfig';
 import { parseJsonObject } from '@/util/json';
 import { prepareRjsfSchema } from '@/util/rjsfSchema';
 import type { SavedDisplay } from '@/storage/displays';
@@ -73,6 +74,7 @@ const BUILTIN_OVERLAY_TYPES = [
   'hearts_rain',
   'birthday_confetti',
   'bouncing_message',
+  'falling_images',
 ] as const;
 
 const MONTH_NAMES = [
@@ -106,6 +108,7 @@ const OVERLAY_TYPE_LABELS: Record<string, string> = {
   hearts_rain: 'Hearts rain',
   birthday_confetti: 'Birthday confetti',
   bouncing_message: 'Bouncing message',
+  falling_images: 'Falling images',
 };
 
 function readBool(v: unknown, defaultValue: boolean): boolean {
@@ -351,6 +354,13 @@ function defaultConfigForOverlayType(t: string): Record<string, unknown> {
       font_size: 38,
       shadow: true,
       speed: 1.0,
+    };
+  }
+  if (ty === 'falling_images') {
+    return {
+      image_blob_keys: [] as string[],
+      drop_interval_sec: 45,
+      fall_speed: 0.12,
     };
   }
   return { messages: [] as string[] };
@@ -613,23 +623,34 @@ function OverlayScheduleDialog({
             />
           </Stack>
           <Typography variant="subtitle2">config_json</Typography>
-          <Typography variant="caption" color="text.secondary">
-            Phrases live in <code>messages</code> (array of strings). Schema below comes from an
-            existing row of the same overlay_type when available; otherwise permissive JSON.
-          </Typography>
-          <Box sx={{ '& .MuiFormControl-root': { mb: 1 } }}>
-            <Form
-              schema={configSchema}
-              formData={configForm}
-              validator={validator}
-              onChange={(e) => setConfigForm(e.formData as Record<string, unknown>)}
-              liveValidate
-            >
-              <Box sx={{ display: 'none' }}>
-                <button type="submit" />
+          {overlayType.trim() === 'falling_images' ? (
+            <FallingImagesOverlayConfig
+              display={active}
+              config={configForm}
+              disabled={saving}
+              onChange={setConfigForm}
+            />
+          ) : (
+            <>
+              <Typography variant="caption" color="text.secondary">
+                Phrases live in <code>messages</code> (array of strings). Schema below comes from
+                an existing row of the same overlay_type when available; otherwise permissive JSON.
+              </Typography>
+              <Box sx={{ '& .MuiFormControl-root': { mb: 1 } }}>
+                <Form
+                  schema={configSchema}
+                  formData={configForm}
+                  validator={validator}
+                  onChange={(e) => setConfigForm(e.formData as Record<string, unknown>)}
+                  liveValidate
+                >
+                  <Box sx={{ display: 'none' }}>
+                    <button type="submit" />
+                  </Box>
+                </Form>
               </Box>
-            </Form>
-          </Box>
+            </>
+          )}
         </Stack>
       </DialogContent>
       <DialogActions>

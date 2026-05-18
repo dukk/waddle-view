@@ -14,7 +14,7 @@ void main() {
     await warmDatabase(db);
     await db.into(db.integrations).insert(
           IntegrationsCompanion.insert(
-            id: 'weather_openweathermap',
+            id: kDefaultWeatherOpenWeatherMapIntegrationId,
             integrationType: 'weather_openweathermap',
             baseUrl: const Value('https://example.com'),
           ),
@@ -22,11 +22,11 @@ void main() {
     final secrets = InMemorySecretStore();
     await seedIntegrationApiKeyForTest(
       secrets,
-      'weather_openweathermap',
+      kDefaultWeatherOpenWeatherMapIntegrationId,
       'tok',
     );
     final resolver = ProviderConfigResolver(db, secrets);
-    final cfg = await resolver.resolve('weather_openweathermap');
+    final cfg = await resolver.resolve(kDefaultWeatherOpenWeatherMapIntegrationId);
     expect(cfg.accessToken, 'tok');
     expect(cfg.baseUrl, 'https://example.com');
     expect(cfg.describeForLogs(), contains('<redacted>'));

@@ -6,6 +6,7 @@ import 'config_json_documentation.dart';
 import 'database.dart';
 import 'display_overlay_bouncing_message_settings.dart';
 import 'display_overlay_confetti_settings.dart';
+import 'display_overlay_falling_images_settings.dart';
 import 'display_overlay_schedule_row.dart';
 import 'display_overlay_sql.dart';
 import 'tables.dart';
@@ -163,6 +164,12 @@ String normalizeOverlayConfigForUpsert({
     kOverlayTypeBouncingMessage => () {
         final normalizedInner =
             normalizeBouncingMessageConfigJsonString(restJson) ??
+                (throw FormatException('invalid_config_json'));
+        return _mergeMessagesIntoConfigJsonString(normalizedInner, split.messages);
+      }(),
+    kOverlayTypeFallingImages => () {
+        final normalizedInner =
+            normalizeFallingImagesConfigJsonString(restJson) ??
                 (throw FormatException('invalid_config_json'));
         return _mergeMessagesIntoConfigJsonString(normalizedInner, split.messages);
       }(),

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'display_overlay_falling_images_settings.dart';
 import 'tables.dart';
 
 /// JSON Schema (draft 2020-12) and example payload for one [integration_type].
@@ -1632,6 +1633,31 @@ final Map<String, ScreenConfigJsonDoc> kTickerSlotConfigJsonMeta = {
     ),
     example: jsonEncode({'ticker.marquee.welcome': 'Thanks for visiting'}),
   ),
+  kTickerTypePlugin: ScreenConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'TickerPluginSlotDoc',
+        description:
+            'Plugin ticker slot: [pluginId] names an installed_plugins row; '
+            'optional [fallbackText] when the plugin returns no lines.',
+        properties: {
+          'pluginId': {
+            'type': 'string',
+            'description': 'Installed plugin id (installed_plugins.id).',
+          },
+          'fallbackText': {
+            'type': 'string',
+            'description':
+                'Fallback marquee text when the plugin yields no ticker lines.',
+          },
+        },
+      ),
+    ),
+    example: jsonEncode({
+      'pluginId': 'example_ticker_plugin',
+      'fallbackText': 'Plugin ticker unavailable',
+    }),
+  ),
 };
 
 ScreenConfigJsonDoc tickerSlotConfigJsonDocForType(String tickerType) {
@@ -1726,6 +1752,49 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
         'message_interval_sec': 36,
         'fall_speed': 0.14,
         'opacity': 0.46,
+      }),
+    );
+  }
+  if (k == kOverlayTypeFallingImages) {
+    return ProviderConfigJsonDoc(
+      schema: jsonEncode(
+        _baseSchema(
+          title: 'FallingImagesOverlayConfig',
+          description:
+              'Upload images via the controller (stored as overlay blob keys). '
+              'The display occasionally drops a random image and rocks it while '
+              'it falls. Tune drop_interval_sec and fall_speed.',
+          properties: {
+            'image_blob_keys': {
+              'type': 'array',
+              'items': {
+                'type': 'string',
+                'pattern': r'^overlay/[a-z0-9][a-z0-9_/.-]*$',
+              },
+              'description':
+                  'Blob keys returned from POST /v1/display/overlays/blobs.',
+            },
+            'drop_interval_sec': {
+              'type': 'integer',
+              'minimum': kFallingImagesDropIntervalSecMin,
+              'maximum': kFallingImagesDropIntervalSecMax,
+              'description':
+                  'Average seconds between image drops (higher = less frequent).',
+            },
+            'fall_speed': {
+              'type': 'number',
+              'minimum': kFallingImagesFallSpeedMin,
+              'maximum': kFallingImagesFallSpeedMax,
+              'description':
+                  'Vertical speed as screen-heights per second (lower = slower).',
+            },
+          },
+        ),
+      ),
+      example: jsonEncode({
+        'image_blob_keys': ['overlay/pool/example'],
+        'drop_interval_sec': 45,
+        'fall_speed': 0.12,
       }),
     );
   }

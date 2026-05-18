@@ -62,7 +62,7 @@ Future<void> _ensurePexels(AppDatabase db) async {
 }
 
 Future<DataWriteContext> _ctx(AppDatabase db, InMemorySecretStore secrets) async {
-  await secrets.write(providerAccessTokenSecretKey('media_pexels'), 'k');
+  await secrets.write(providerAccessTokenSecretKey(kDefaultPhotoPexelsIntegrationId), 'k');
   final resolver = ProviderConfigResolver(db, secrets);
   return DataWriteContextImpl(
     db: db,

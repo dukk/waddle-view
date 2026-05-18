@@ -12,6 +12,7 @@ import 'package:waddle_shared/text/html_entity_decode.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_shared/integrations/integration_collect.dart';
 import 'joke_provider_extra_config.dart'
     show
         JokeProviderExtraConfig,
@@ -38,18 +39,16 @@ class JokeDataProvider implements IDataProvider {
 
   @override
   Future<void> collect(DataWriteContext ctx) async {
-    final setting =
-        await (ctx.db.select(ctx.db.integrations)
-              ..where((t) => t.id.equals(kJokeProviderId)))
-            .getSingleOrNull();
-    if (setting == null || !setting.enabled) {
+    final settings = await enabledIntegrationsForType(ctx.db, id);
+    if (settings.isEmpty) {
       ctx.diagnostics.provider('jokes: skip (disabled)');
       return;
     }
+    final setting = settings.first;
 
     late final ProviderRuntimeConfig config;
     try {
-      config = await ctx.resolveConfig(kJokeProviderId);
+      config = await ctx.resolveConfig(setting.id);
     } on Object catch (e, st) {
       ctx.diagnostics.providerFail('jokes: resolveConfig', e, st);
       return;

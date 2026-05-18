@@ -514,6 +514,7 @@ class _WaddleHomeState extends State<WaddleHome> {
               severityIconsKv: widget.dashboardKv[kAlertSeverityIconsKvKey],
               child: CelebrationOverlayHost(
                 db: widget.db,
+                blobs: widget.blobs,
                 clock: const SystemClock(),
                 dashboardKv: widget.dashboardKv,
                 allowedOverlayIds: _allowedOverlayIds,
