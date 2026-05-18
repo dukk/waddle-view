@@ -7,6 +7,7 @@ import 'package:waddle_shared/config/google_kv.dart';
 import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
 import 'package:waddle_shared/persistence/database.dart'
     show
+        IntegrationAccountsCompanion,
         IntegrationsCompanion,
         kDefaultCalendarGoogleIntegrationId,
         kDefaultPhotoPexelsIntegrationId;
@@ -111,6 +112,40 @@ void main() {
         'provider:access_token:$accountId',
       );
       expect(stored, 'pexels-test-key');
+    } finally {
+      await harness.dispose();
+    }
+  });
+
+  test('PATCH integration-accounts updates account label', () async {
+    final harness = await RestTestHarness.start();
+    try {
+      await harness.db.into(harness.db.integrationAccounts).insertOnConflictUpdate(
+            IntegrationAccountsCompanion.insert(
+              id: 'pexels_home',
+              accountType: kIntegrationAccountTypeApiKeyPexels,
+              label: const Value('Old label'),
+              createdAtMs: DateTime.now().millisecondsSinceEpoch,
+            ),
+          );
+
+      final patchRes = await http.patch(
+        Uri.parse(
+          '${harness.baseUrl}/v1/integration-accounts/'
+          '${Uri.encodeComponent('pexels_home')}',
+        ),
+        headers: {
+          ...harness.authHeaders,
+          'content-type': 'application/json',
+        },
+        body: jsonEncode({'label': 'Pexels home'}),
+      );
+      expect(patchRes.statusCode, 200);
+
+      final row = await (harness.db.select(harness.db.integrationAccounts)
+            ..where((t) => t.id.equals('pexels_home')))
+          .getSingle();
+      expect(row.label, 'Pexels home');
     } finally {
       await harness.dispose();
     }

@@ -136,4 +136,23 @@ void main() {
         .getSingle();
     expect(row.accountType, kIntegrationAccountTypeGoogle);
   });
+
+  test('updateOperatorIntegrationAccountLabel changes display name', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    addTearDown(db.close);
+    final secrets = InMemorySecretStore();
+    await createOperatorIntegrationAccount(
+      db,
+      secrets,
+      accountTypeId: kIntegrationAccountTypeApiKeyPexels,
+      accountKey: 'pexels_home',
+      label: 'Old',
+    );
+    await updateOperatorIntegrationAccountLabel(db, 'pexels_home', label: 'Pexels home');
+    final row = await (db.select(db.integrationAccounts)
+          ..where((t) => t.id.equals('pexels_home')))
+        .getSingle();
+    expect(row.label, 'Pexels home');
+  });
 }

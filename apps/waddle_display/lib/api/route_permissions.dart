@@ -13,6 +13,9 @@ String? permissionForRoute(String method, String path) {
         ? WaddlePermission.integrationsRead
         : WaddlePermission.integrationsWrite;
   }
+  if (RegExp(r'^/v1/integration-accounts/[^/]+$').hasMatch(p) && m == 'PATCH') {
+    return WaddlePermission.integrationsWrite;
+  }
   if (p == '/v1/oauth-providers' && m == 'GET') {
     return WaddlePermission.integrationsRead;
   }

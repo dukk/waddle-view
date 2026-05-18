@@ -3,6 +3,7 @@ import type { SavedDisplay } from '@/storage/displays';
 import {
   createIntegrationAccount,
   fetchIntegrationAccounts,
+  patchIntegrationAccount,
   putIntegrationAccountSecret,
   requestIntegrationAccountSignIn,
 } from './integrationAccounts';
@@ -39,6 +40,16 @@ describe('integrationAccounts api', () => {
       display,
       '/v1/integration-accounts',
       expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
+  it('patches integration account label', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(new Response('{}'));
+    await patchIntegrationAccount(display, 'openweather_home', { label: 'OpenWeather Home' });
+    expect(apiFetch).toHaveBeenCalledWith(
+      display,
+      '/v1/integration-accounts/openweather_home',
+      expect.objectContaining({ method: 'PATCH' }),
     );
   });
 

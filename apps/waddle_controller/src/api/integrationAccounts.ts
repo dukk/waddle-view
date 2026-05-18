@@ -9,6 +9,17 @@ export async function fetchIntegrationAccounts(
   return apiJson<IntegrationAccountsResponse>(display, '/v1/integration-accounts');
 }
 
+export async function patchIntegrationAccount(
+  display: SavedDisplay,
+  accountId: string,
+  body: { label: string },
+): Promise<void> {
+  await apiFetch(display, `/v1/integration-accounts/${encodeURIComponent(accountId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
 export async function createIntegrationAccount(
   display: SavedDisplay,
   body: {

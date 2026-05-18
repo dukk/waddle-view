@@ -502,6 +502,23 @@ Future<String> createOperatorIntegrationAccount(
   return accountId;
 }
 
+Future<void> updateOperatorIntegrationAccountLabel(
+  AppDatabase db,
+  String accountId, {
+  required String label,
+}) async {
+  final trimmed = label.trim();
+  if (trimmed.isEmpty) {
+    throw ArgumentError('label_required');
+  }
+  final updated = await (db.update(db.integrationAccounts)
+        ..where((t) => t.id.equals(accountId)))
+      .write(IntegrationAccountsCompanion(label: Value(trimmed)));
+  if (updated == 0) {
+    throw ArgumentError('not_found');
+  }
+}
+
 Future<List<Map<String, dynamic>>> oauthProvidersStatusJson(
   SecretStore secrets,
 ) async {

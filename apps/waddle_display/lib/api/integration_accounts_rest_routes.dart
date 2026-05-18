@@ -69,6 +69,34 @@ void registerIntegrationAccountsRestRoutes(
     }
   });
 
+  r.patch('/v1/integration-accounts/<accountId>', (Request req, String accountId) async {
+    Map<String, dynamic> map;
+    try {
+      final decoded = jsonDecode(await req.readAsString());
+      if (decoded is! Map<String, dynamic>) {
+        return Response(400,
+            body: '{"error":"expected_json_object"}', headers: _jsonHeaders);
+      }
+      map = decoded;
+    } catch (_) {
+      return Response(400,
+          body: '{"error":"invalid_json"}', headers: _jsonHeaders);
+    }
+    final label = (map['label'] as String?)?.trim() ?? '';
+    if (label.isEmpty) {
+      return Response(400,
+          body: '{"error":"label_required"}', headers: _jsonHeaders);
+    }
+    try {
+      await updateOperatorIntegrationAccountLabel(db, accountId, label: label);
+    } on ArgumentError catch (e) {
+      final code = e.message?.toString() ?? 'invalid_request';
+      final status = code == 'not_found' ? 404 : 400;
+      return Response(status, body: '{"error":"$code"}', headers: _jsonHeaders);
+    }
+    return Response.ok('{}', headers: _jsonHeaders);
+  });
+
   r.get('/v1/integration-accounts/<accountId>/secrets',
       (Request req, String accountId) async {
     final account = await (db.select(db.integrationAccounts)
