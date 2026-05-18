@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:test/test.dart';
 import 'package:waddle_shared/persistence/display_overlay_repository.dart';
-import 'package:waddle_shared/persistence/display_overlay_schedule_row.dart';
+import 'package:waddle_shared/persistence/display_overlay_row.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 
 import '../helpers/memory_database.dart';
@@ -12,17 +12,14 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await ensureOverlaysTableExists(db);
-    await upsertOverlaySchedule(
+    await upsertOverlay(
       db,
       id: 'h1',
       overlayType: kOverlayTypeHeartsRain,
-      label: 'l',
+      name: 'Hearts',
       configJson: '{"messages":["x"],"ignored":1}',
-      repeatAnnually: true,
-      startMonth: 3,
-      startDay: 1,
     );
-    final rows = await fetchDisplayOverlaySchedules(db);
+    final rows = await fetchDisplayOverlays(db);
     final cfg = jsonDecode(rows.single.configJson) as Map<String, dynamic>;
     expect(cfg['messages'], ['x']);
     expect(cfg.containsKey('ignored'), isFalse);
@@ -35,19 +32,16 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await ensureOverlaysTableExists(db);
-    await upsertOverlaySchedule(
+    await upsertOverlay(
       db,
       id: 'b1',
       overlayType: kOverlayTypeBirthdayConfetti,
-      label: 'birthday',
+      name: 'birthday',
       configJson:
           '{"messages":["Party"],"shapes":["rect"],"colors":["#ABCDEF"],'
           '"density":0.2,"message_interval_sec":15}',
-      repeatAnnually: true,
-      startMonth: 8,
-      startDay: 15,
     );
-    final rows = await fetchDisplayOverlaySchedules(db);
+    final rows = await fetchDisplayOverlays(db);
     expect(rows.single.configJson, contains('"rect"'));
     expect(rows.single.configJson, contains('#ABCDEF'));
     expect(rows.single.configJson, contains('"Party"'));
@@ -59,19 +53,16 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await ensureOverlaysTableExists(db);
-    await upsertOverlaySchedule(
+    await upsertOverlay(
       db,
       id: 'fall1',
       overlayType: kOverlayTypeFallingImages,
-      label: 'drops',
+      name: 'drops',
       configJson:
           '{"image_blob_keys":["overlay/pool/a"],"drop_interval_sec":90,'
           '"fall_speed":0.25}',
-      repeatAnnually: true,
-      startMonth: 12,
-      startDay: 25,
     );
-    final rows = await fetchDisplayOverlaySchedules(db);
+    final rows = await fetchDisplayOverlays(db);
     expect(rows.single.configJson, contains('overlay/pool/a'));
     expect(rows.single.configJsonSchema, contains('FallingImagesOverlayConfig'));
     await db.close();
@@ -81,19 +72,16 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await ensureOverlaysTableExists(db);
-    await upsertOverlaySchedule(
+    await upsertOverlay(
       db,
       id: 'bounce1',
       overlayType: kOverlayTypeBouncingMessage,
-      label: 'bounce',
+      name: 'bounce',
       configJson:
           '{"messages":["Hi there"],"color":"#ABCDEF","font_size":28,'
           '"font_weight":"700","speed":1.2}',
-      repeatAnnually: true,
-      startMonth: 3,
-      startDay: 20,
     );
-    final rows = await fetchDisplayOverlaySchedules(db);
+    final rows = await fetchDisplayOverlays(db);
     expect(rows.single.configJson, contains('#ABCDEF'));
     expect(rows.single.configJson, contains('"Hi there"'));
     expect(rows.single.configJsonSchema, contains('BouncingMessageOverlayConfig'));
@@ -105,15 +93,12 @@ void main() {
     await warmDatabase(db);
     await ensureOverlaysTableExists(db);
     expect(
-      () => upsertOverlaySchedule(
+      () => upsertOverlay(
         db,
         id: 'bad_bounce',
         overlayType: kOverlayTypeBouncingMessage,
-        label: 'x',
+        name: 'x',
         configJson: '{"messages":["a"],"font_size":12,"nope":1}',
-        repeatAnnually: true,
-        startMonth: 4,
-        startDay: 1,
       ),
       throwsA(
         isA<FormatException>().having(
@@ -126,21 +111,18 @@ void main() {
     await db.close();
   });
 
-  test('upsertOverlaySchedule accepts custom overlay_type slug', () async {
+  test('upsertOverlay accepts custom overlay_type slug', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await ensureOverlaysTableExists(db);
-    await upsertOverlaySchedule(
+    await upsertOverlay(
       db,
       id: 'laser_row',
       overlayType: 'laser_show',
-      label: 'future',
+      name: 'future',
       configJson: '{"messages":["peek"],"beam":true}',
-      repeatAnnually: true,
-      startMonth: 1,
-      startDay: 2,
     );
-    final rows = await fetchDisplayOverlaySchedules(db);
+    final rows = await fetchDisplayOverlays(db);
     expect(rows.single.overlayType, 'laser_show');
     final cfg = jsonDecode(rows.single.configJson) as Map<String, dynamic>;
     expect(cfg['messages'], ['peek']);
@@ -148,25 +130,18 @@ void main() {
     await db.close();
   });
 
-  test('overlayScheduleToJson decodes config_json', () {
-    final row = DisplayOverlayScheduleRow(
+  test('overlayToJson decodes config_json', () {
+    final row = DisplayOverlayRow(
       id: 'j',
       overlayType: kOverlayTypeBirthdayConfetti,
-      label: 'lb',
+      name: 'Confetti',
       configJson: '{"shapes":["star"],"messages":["a","b"]}',
       configJsonSchema: '{"type":"object"}',
       exampleConfigJson: '{"shapes":["mix"]}',
-      repeatAnnually: true,
-      yearExact: null,
-      startMonth: 1,
-      startDay: 2,
-      endMonth: null,
-      endDay: null,
-      nthWeekOfMonth: null,
-      nthWeekday: null,
     );
-    final j = overlayScheduleToJson(row);
+    final j = overlayToJson(row);
     expect(j['overlay_type'], kOverlayTypeBirthdayConfetti);
+    expect(j['name'], 'Confetti');
     expect(j['config_json'], {
       'shapes': ['star'],
       'messages': ['a', 'b'],

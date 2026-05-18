@@ -1,14 +1,14 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:waddle_shared/persistence/display_overlay_schedule_row.dart';
+import 'package:waddle_shared/persistence/display_overlay_row.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 /// Transparent web layer for plugin overlays (`config_json.url`).
 class PluginWebOverlay extends StatefulWidget {
   const PluginWebOverlay({super.key, required this.row});
 
-  final DisplayOverlayScheduleRow row;
+  final DisplayOverlayRow row;
 
   @override
   State<PluginWebOverlay> createState() => _PluginWebOverlayState();

@@ -69,6 +69,10 @@ Future<OAuthClientIdMetadata> lookupOAuthClientIdMetadata({
       return _lookupGoogle(trimmed, httpClient: httpClient);
     case kOAuthProviderIdMicrosoftGraph:
       return _lookupMicrosoft(trimmed, httpClient: httpClient);
+    case kOAuthProviderIdFacebook:
+    case kOAuthProviderIdTwitter:
+    case kOAuthProviderIdLinkedin:
+      return OAuthClientIdMetadata.unavailable('provider_lookup_not_available');
     default:
       return OAuthClientIdMetadata.unavailable('unsupported_provider');
   }

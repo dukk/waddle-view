@@ -1,3 +1,6 @@
+import '../config/facebook_kv.dart';
+import '../config/linkedin_kv.dart';
+import '../config/twitter_kv.dart';
 import '../secrets/integration_secret_catalog.dart';
 import 'integration_account_catalog.dart';
 
@@ -18,6 +21,9 @@ class OAuthProviderDefinition {
 
 const String kOAuthProviderIdGoogle = 'google';
 const String kOAuthProviderIdMicrosoftGraph = 'microsoft_graph';
+const String kOAuthProviderIdFacebook = 'facebook';
+const String kOAuthProviderIdTwitter = 'twitter';
+const String kOAuthProviderIdLinkedin = 'linkedin';
 
 const List<OAuthProviderDefinition> kOAuthProviders = [
   OAuthProviderDefinition(
@@ -31,6 +37,24 @@ const List<OAuthProviderDefinition> kOAuthProviders = [
     label: 'Microsoft',
     clientIdStorageKey: kMicrosoftGraphClientIdSecretKey,
     accountTypeId: kIntegrationAccountTypeMicrosoftGraph,
+  ),
+  OAuthProviderDefinition(
+    id: kOAuthProviderIdFacebook,
+    label: 'Facebook',
+    clientIdStorageKey: kFacebookClientIdSecretKey,
+    accountTypeId: kIntegrationAccountTypeFacebook,
+  ),
+  OAuthProviderDefinition(
+    id: kOAuthProviderIdTwitter,
+    label: 'X (Twitter)',
+    clientIdStorageKey: kTwitterClientIdSecretKey,
+    accountTypeId: kIntegrationAccountTypeTwitter,
+  ),
+  OAuthProviderDefinition(
+    id: kOAuthProviderIdLinkedin,
+    label: 'LinkedIn',
+    clientIdStorageKey: kLinkedInClientIdSecretKey,
+    accountTypeId: kIntegrationAccountTypeLinkedin,
   ),
 ];
 

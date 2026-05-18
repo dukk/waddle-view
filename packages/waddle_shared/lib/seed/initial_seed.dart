@@ -70,22 +70,12 @@ Future<void> _ensureDefaultMothersDayOverlay(AppDatabase db) async {
     '''INSERT OR IGNORE INTO overlays (
       id,
       overlay_type,
-      label,
+      name,
       config_json,
       config_json_schema,
-      example_config_json,
-      repeat_annually,
-      year_exact,
-      start_month,
-      start_day,
-      end_month,
-      end_day,
-      nth_week_of_month,
-      nth_weekday
+      example_config_json
     )
-    VALUES (?, ?, ?, ?, ?, ?, 1,
-      NULL, 5, 1, NULL, NULL,
-      2, ?)''',
+    VALUES (?, ?, ?, ?, ?, ?)''',
     <Object?>[
       kDefaultMothersDayOverlayId,
       kOverlayTypeHeartsRain,
@@ -93,7 +83,6 @@ Future<void> _ensureDefaultMothersDayOverlay(AppDatabase db) async {
       configJson,
       heartsDoc.schema,
       heartsDoc.example,
-      DateTime.sunday,
     ],
   );
 }
@@ -115,26 +104,16 @@ Future<void> _ensureDefaultBirthdayOverlayExample(AppDatabase db) async {
     '''INSERT OR IGNORE INTO overlays (
       id,
       overlay_type,
-      label,
+      name,
       config_json,
       config_json_schema,
-      example_config_json,
-      repeat_annually,
-      year_exact,
-      start_month,
-      start_day,
-      end_month,
-      end_day,
-      nth_week_of_month,
-      nth_weekday
+      example_config_json
     )
-    VALUES (?, ?, ?, ?, ?, ?, 1,
-      NULL, 5, 13, NULL, NULL,
-      NULL, NULL)''',
+    VALUES (?, ?, ?, ?, ?, ?)''',
     <Object?>[
       kDefaultBirthdayOverlayExampleId,
       kOverlayTypeBirthdayConfetti,
-      'Example: May 13 birthday (disabled)',
+      'Example: May 13 birthday confetti',
       configJson,
       confettiDoc.schema,
       confettiDoc.example,
@@ -158,26 +137,16 @@ Future<void> _ensureDefaultBouncingMessageOverlay(AppDatabase db) async {
     '''INSERT OR IGNORE INTO overlays (
       id,
       overlay_type,
-      label,
+      name,
       config_json,
       config_json_schema,
-      example_config_json,
-      repeat_annually,
-      year_exact,
-      start_month,
-      start_day,
-      end_month,
-      end_day,
-      nth_week_of_month,
-      nth_weekday
+      example_config_json
     )
-    VALUES (?, ?, ?, ?, ?, ?, 1,
-      NULL, 5, 13, NULL, NULL,
-      NULL, NULL)''',
+    VALUES (?, ?, ?, ?, ?, ?)''',
     <Object?>[
       kDefaultBouncingMessageOverlayId,
       kOverlayTypeBouncingMessage,
-      'Example: May 13 bouncing message (disabled)',
+      'Example: May 13 bouncing message',
       configJson,
       doc.schema,
       doc.example,

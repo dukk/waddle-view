@@ -104,7 +104,7 @@ const Map<String, IntegrationAccountTypeDefinition> kIntegrationAccountTypes = {
   kIntegrationAccountTypeFacebook: IntegrationAccountTypeDefinition(
     id: kIntegrationAccountTypeFacebook,
     label: 'Facebook account',
-    signupUrl: 'https://www.facebook.com/',
+    signupUrl: 'https://developers.facebook.com/apps/',
     accountKeyField: 'facebookAccountKey',
     accessTokenSecretKey: facebookAccessTokenSecret,
     supportsOAuthSignIn: true,
@@ -112,7 +112,7 @@ const Map<String, IntegrationAccountTypeDefinition> kIntegrationAccountTypes = {
   kIntegrationAccountTypeTwitter: IntegrationAccountTypeDefinition(
     id: kIntegrationAccountTypeTwitter,
     label: 'X (Twitter) account',
-    signupUrl: 'https://x.com/i/flow/signup',
+    signupUrl: 'https://developer.x.com/en/portal/dashboard',
     accountKeyField: 'twitterAccountKey',
     accessTokenSecretKey: twitterAccessTokenSecret,
     supportsOAuthSignIn: true,
@@ -120,7 +120,7 @@ const Map<String, IntegrationAccountTypeDefinition> kIntegrationAccountTypes = {
   kIntegrationAccountTypeLinkedin: IntegrationAccountTypeDefinition(
     id: kIntegrationAccountTypeLinkedin,
     label: 'LinkedIn account',
-    signupUrl: 'https://www.linkedin.com/signup',
+    signupUrl: 'https://www.linkedin.com/developers/apps',
     accountKeyField: 'linkedInAccountKey',
     accessTokenSecretKey: linkedInAccessTokenSecret,
     supportsOAuthSignIn: true,

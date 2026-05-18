@@ -6,7 +6,7 @@ import '../../extensions/overlay_widget_registry.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/runtime/runtime_signal_repository.dart';
 import 'package:waddle_shared/persistence/display_overlay_repository.dart';
-import 'package:waddle_shared/persistence/display_overlay_schedule_row.dart';
+import 'package:waddle_shared/persistence/display_overlay_row.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 
 /// Shows a translucent festive layer above [child]. Priority alerts wrap outside.
@@ -32,7 +32,7 @@ class CelebrationOverlayHost extends StatelessWidget {
   final RuntimeSignalRepository runtimeSignals;
   final Widget child;
 
-  static List<String> mergePhrases(List<DisplayOverlayScheduleRow> matches) {
+  static List<String> mergePhrases(List<DisplayOverlayRow> matches) {
     final seen = <String>{};
     final phrases = <String>[];
     for (final row in matches) {
@@ -56,7 +56,7 @@ class CelebrationOverlayHost extends StatelessWidget {
       children: [
         child,
         if (globalOk)
-          StreamBuilder<List<DisplayOverlayScheduleRow>>(
+          StreamBuilder<List<DisplayOverlayRow>>(
             stream: watchDisplayOverlaySchedules(db),
             builder: (context, overlaySnap) {
               return StreamBuilder<void>(
@@ -65,7 +65,7 @@ class CelebrationOverlayHost extends StatelessWidget {
                   return FutureBuilder<Map<String, dynamic>>(
                     future: runtimeSignals.snapshot(),
                     builder: (context, signalSnap) {
-              final rows = (overlaySnap.data ?? const <DisplayOverlayScheduleRow>[])
+              final rows = (overlaySnap.data ?? const <DisplayOverlayRow>[])
                   .where((r) => allowedOverlayIds.contains(r.id))
                   .toList();
               final now = clock.now();

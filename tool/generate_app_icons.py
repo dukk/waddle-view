@@ -1,20 +1,29 @@
 #!/usr/bin/env python3
 """
-Extract portrait / full-body preview cards from the composite icon sheet PNG,
-then emit Flutter platform launcher assets (Windows .ico, iOS/macOS PNG sets).
+Generate Waddle launcher icons and web favicons from mascot SVG/PNG sources.
 
-Near-white pixels that connect to the image edge (card background and padding)
-are made transparent; opaque platform outputs are preserved under
-``<app-root>/branding/generated_icons_backup_white_opaque/`` the first time each
-file would be overwritten (use ``--no-backup`` to skip).
+Portrait (headshot) drives launcher sizes and web favicons; full-body uses a
+separate source (typically the full mascot SVG). Raster outputs remove only
+edge-connected near-white padding (the blue/teal headshot disc is kept).
+Shared files are always copied with ``shutil.copy2`` (never symlinks).
 
 Requires Pillow: pip install pillow
 
-Example (from repo root):
+Rasterize SVG via the first available CLI: resvg, rsvg-convert, magick, inkscape.
+If SVG rasterization fails, a same-stem ``.png`` next to the SVG is used when
+present.
 
-  python tool/generate_app_icons.py ^
-    --sheet apps/waddle_display/branding/icon_sheet.png ^
+Examples (from repo root):
+
+  python tool/generate_app_icons.py \\
+    --app-root apps/waddle_display \\
+    --web-root apps/waddle_controller
+
+  python tool/generate_app_icons.py \\
+    --sheet apps/waddle_display/branding/icon_sheet.png \\
     --app-root apps/waddle_display
+
+Legacy sheet mode extracts portrait/full-body cards from the composite PNG.
 """
 
 from __future__ import annotations
@@ -22,12 +31,21 @@ from __future__ import annotations
 import argparse
 from collections import deque
 import shutil
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 from PIL import Image
 
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_DEFAULT_PORTRAIT = _REPO_ROOT / "assets" / "waddle-view-mascot-headshot-2.svg"
+_DEFAULT_FULL_BODY = _REPO_ROOT / "assets" / "waddle-view-mascot.svg"
 _BACKUP_DIR = Path("branding") / "generated_icons_backup_white_opaque"
+_RASTER_SIZE = 1024
+_MASTER_SIDE = 512
+# Below teal disc channels (~116, 177, 182) but clears near-white export padding.
+_WHITE_BG_THRESHOLD = 240
 
 
 def _maybe_backup(app: Path, dest: Path, *, enable: bool) -> None:
@@ -88,7 +106,7 @@ def _transparent_edge_connected_white(im: Image.Image, threshold: int = 245) -> 
     return out
 
 
-def _white_mask(im: Image.Image, threshold: int = 245) -> tuple[int, int, list[list[bool]]]:
+def _white_mask(im: Image.Image, threshold: int = _WHITE_BG_THRESHOLD) -> tuple[int, int, list[list[bool]]]:
     rgb = im.convert("RGB")
     w, h = rgb.size
     mask = [[False for _ in range(w)] for _ in range(h)]
@@ -101,10 +119,6 @@ def _white_mask(im: Image.Image, threshold: int = 245) -> tuple[int, int, list[l
 
 
 def _connected_components(mask: list[list[bool]]) -> list[tuple[int, int, int, int, int]]:
-    """
-    Return (minx, miny, maxx, maxy, area) per white connected component.
-    Coordinates are mask-local and max bounds are inclusive.
-    """
     h = len(mask)
     w = len(mask[0]) if h else 0
     seen = [[False for _ in range(w)] for _ in range(h)]
@@ -142,12 +156,7 @@ def _connected_components(mask: list[list[bool]]) -> list[tuple[int, int, int, i
 
 
 def _find_master_card_bboxes(im: Image.Image) -> tuple[tuple[int, int, int, int], tuple[int, int, int, int]]:
-    """
-    Detect the first-row master portrait/full-body white icon cards.
-    Returns two absolute bboxes (x0, y0, x1, y1), with x1/y1 exclusive.
-    """
     w, h = im.size
-    # Ignore ruler strip and focus on the left panel where master cards live.
     roi = (0, max(20, h // 25), min(max(460, w // 2), w), min(max(360, h - 1), h))
     sub = im.crop(roi)
     _, _, mask = _white_mask(sub, threshold=245)
@@ -169,13 +178,11 @@ def _find_master_card_bboxes(im: Image.Image) -> tuple[tuple[int, int, int, int]
     if not candidates:
         raise ValueError("Could not detect master portrait icon card from sheet")
 
-    # Portrait card is the left-most large white square in the top row.
     candidates.sort(key=lambda c: (c[0], c[1]))
     p = candidates[0]
     rx0, ry0, _, _ = roi
     portrait_bbox = (rx0 + p[0], ry0 + p[1], rx0 + p[2] + 1, ry0 + p[3] + 1)
 
-    # Full-body card can be non-white inside, so detect by "not background" near portrait.
     rgb = im.convert("RGB")
     bg_samples: list[tuple[int, int, int]] = []
     for yy in range(max(0, h // 50), max(0, h // 12)):
@@ -201,7 +208,6 @@ def _find_master_card_bboxes(im: Image.Image) -> tuple[tuple[int, int, int, int]
     for y2 in range(sh):
         for x2 in range(sw):
             r, g, b = sub2.getpixel((x2, y2))
-            # Sum absolute difference from sampled page background.
             if abs(r - bg_r) + abs(g - bg_g) + abs(b - bg_b) > 30:
                 diff_mask[y2][x2] = True
 
@@ -217,11 +223,9 @@ def _find_master_card_bboxes(im: Image.Image) -> tuple[tuple[int, int, int, int]
         if best is None or area > best[4]:
             best = (minx, miny, maxx, maxy, area)
 
-    # Keep full-body crop in the same top-row card band as portrait so label text is excluded.
     pw = px1 - px0
     ph = py1 - py0
     if best is None:
-        # Fallback to fixed offset if the non-background detect fails.
         fullbody_bbox = (px1 + 20, py0, min(w, px1 + 20 + pw), min(h, py0 + ph))
     else:
         minx, _, maxx, _, _ = best
@@ -230,7 +234,6 @@ def _find_master_card_bboxes(im: Image.Image) -> tuple[tuple[int, int, int, int]
         cx = (bx0 + bx1) // 2
         fx0 = max(0, cx - pw // 2)
         fx1 = min(w, fx0 + pw)
-        # If clamped at right edge, keep width stable.
         fx0 = max(0, fx1 - pw)
         fullbody_bbox = (fx0, py0, fx1, min(h, py0 + ph))
     return portrait_bbox, fullbody_bbox
@@ -246,12 +249,112 @@ def _square_paste(src: Image.Image, side: int, fill: tuple[int, int, int, int]) 
 
 
 def extract_square_card(im: Image.Image, bbox: tuple[int, int, int, int]) -> Image.Image:
-    """Crop rounded-rect card in `bbox` (x0,y0,x1,y1) and return a square RGBA with transparent surround."""
     card = im.crop(bbox).convert("RGBA")
     cw, ch = card.size
     side = max(cw, ch)
     sq = _square_paste(card, side, (0, 0, 0, 0))
     return _transparent_edge_connected_white(sq)
+
+
+def _square_master(im: Image.Image, side: int = _MASTER_SIDE) -> Image.Image:
+    rgba = im.convert("RGBA")
+    w, h = rgba.size
+    if w == h:
+        sq = rgba
+    else:
+        sq = _square_paste(rgba, max(w, h), (0, 0, 0, 0))
+    if sq.size != (side, side):
+        sq = sq.resize((side, side), Image.Resampling.LANCZOS)
+    return sq
+
+
+def _png_fallback_for(path: Path) -> Path | None:
+    if path.suffix.lower() != ".svg":
+        return None
+    candidate = path.with_suffix(".png")
+    return candidate if candidate.is_file() else None
+
+
+def _rasterize_svg_cli(svg: Path, out_png: Path, size: int) -> bool:
+    attempts: list[list[str]] = [
+        ["resvg", str(svg), "-w", str(size), "-h", str(size), "-o", str(out_png)],
+        [
+            "rsvg-convert",
+            "-w",
+            str(size),
+            "-h",
+            str(size),
+            "-o",
+            str(out_png),
+            str(svg),
+        ],
+        [
+            "magick",
+            "-background",
+            "none",
+            "-density",
+            "288",
+            str(svg),
+            "-resize",
+            f"{size}x{size}",
+            str(out_png),
+        ],
+        [
+            "inkscape",
+            str(svg),
+            "--export-type=png",
+            f"--export-filename={out_png}",
+            f"--export-width={size}",
+            f"--export-height={size}",
+            "--export-background-opacity=0",
+        ],
+    ]
+    for cmd in attempts:
+        try:
+            proc = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except FileNotFoundError:
+            continue
+        if proc.returncode == 0 and out_png.is_file():
+            return True
+    return False
+
+
+def load_raster_source(path: Path, *, size: int = _RASTER_SIZE) -> Image.Image:
+    """Load PNG or rasterize SVG to a square RGBA image."""
+    path = path.resolve()
+    if not path.is_file():
+        raise FileNotFoundError(f"Missing source: {path}")
+
+    suffix = path.suffix.lower()
+    if suffix == ".png":
+        im = Image.open(path).convert("RGBA")
+    elif suffix == ".svg":
+        with tempfile.TemporaryDirectory() as tmp:
+            out_png = Path(tmp) / "raster.png"
+            if not _rasterize_svg_cli(path, out_png, size):
+                fallback = _png_fallback_for(path)
+                if fallback is None:
+                    raise RuntimeError(
+                        f"Could not rasterize {path}. Install resvg, rsvg-convert, "
+                        "ImageMagick (magick), or Inkscape, or provide a same-stem .png file."
+                    )
+                print(
+                    f"Note: using PNG fallback {fallback} (no SVG rasterizer found).",
+                    file=sys.stderr,
+                )
+                im = Image.open(fallback).convert("RGBA")
+            else:
+                im = Image.open(out_png).convert("RGBA")
+    else:
+        raise ValueError(f"Unsupported source type: {path}")
+
+    squared = _square_master(im.resize((size, size), Image.Resampling.LANCZOS), side=size)
+    return _transparent_edge_connected_white(squared, threshold=_WHITE_BG_THRESHOLD)
 
 
 def resize_png(src: Image.Image, path: Path, size: int) -> None:
@@ -265,7 +368,6 @@ def resize_png(src: Image.Image, path: Path, size: int) -> None:
 def write_windows_ico(src1024: Image.Image, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     base = src1024.convert("RGBA")
-    # Pillow resizes from `base` for each entry in `sizes` (see ICO format docs).
     base.save(
         path,
         format="ICO",
@@ -273,46 +375,17 @@ def write_windows_ico(src1024: Image.Image, path: Path) -> None:
     )
 
 
-def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--sheet", type=Path, required=True, help="Composite PNG (1024-wide sheet).")
-    p.add_argument(
-        "--app-root",
-        type=Path,
-        default=Path("apps/waddle_display"),
-        help="Path to the Flutter app package root.",
-    )
-    p.add_argument(
-        "--no-backup",
-        action="store_true",
-        help="Do not copy existing outputs to branding/generated_icons_backup_white_opaque/.",
-    )
-    args = p.parse_args()
-
-    if not args.sheet.is_file():
-        print(f"Missing sheet: {args.sheet}", file=sys.stderr)
-        return 1
-
-    app = args.app_root.resolve()
-    sheet = Image.open(args.sheet).convert("RGBA")
-    w, h = sheet.size
-    if w < 512 or h < 400:
-        print(f"Unexpected sheet size {w}x{h}; expected the 1024-wide reference.", file=sys.stderr)
-        return 1
-
-    # Detect master portrait / full-body cards from the sheet itself.
-    portrait_bbox, fullbody_bbox = _find_master_card_bboxes(sheet)
-    portrait_sq = extract_square_card(sheet, portrait_bbox)
-    fullbody_sq = extract_square_card(sheet, fullbody_bbox)
-
-    master_side = 512
-    portrait_master = portrait_sq.resize((master_side, master_side), Image.Resampling.LANCZOS)
-    fullbody_master = fullbody_sq.resize((master_side, master_side), Image.Resampling.LANCZOS)
-
-    do_backup = not args.no_backup
+def write_display_icons(
+    portrait_master: Image.Image,
+    fullbody_master: Image.Image,
+    app: Path,
+    *,
+    do_backup: bool,
+) -> Image.Image:
+    """Write Flutter assets and platform icons; return 1024 portrait for web."""
     icons_dir = app / "assets" / "icons"
     icons_dir.mkdir(parents=True, exist_ok=True)
-    for out in (
+    outputs = [
         icons_dir / "master_portrait.png",
         icons_dir / "master_full_body.png",
         icons_dir / "icon_256x256.png",
@@ -321,8 +394,10 @@ def main() -> int:
         icons_dir / "icon_48x48.png",
         icons_dir / "icon_32x32.png",
         icons_dir / "icon_16x16.png",
-    ):
+    ]
+    for out in outputs:
         _maybe_backup(app, out, enable=do_backup)
+
     portrait_master.save(icons_dir / "master_portrait.png", format="PNG")
     fullbody_master.save(icons_dir / "master_full_body.png", format="PNG")
     for name, side in [
@@ -335,14 +410,12 @@ def main() -> int:
     ]:
         resize_png(portrait_master, icons_dir / name, side)
 
-    src1024 = portrait_master.resize((1024, 1024), Image.Resampling.LANCZOS)
+    src1024 = portrait_master.resize((_RASTER_SIZE, _RASTER_SIZE), Image.Resampling.LANCZOS)
 
-    # Windows
     win_ico = app / "windows" / "runner" / "resources" / "app_icon.ico"
     _maybe_backup(app, win_ico, enable=do_backup)
     write_windows_ico(src1024, win_ico)
 
-    # macOS (see AppIcon.appiconset/Contents.json)
     mac = app / "macos" / "Runner" / "Assets.xcassets" / "AppIcon.appiconset"
     for side, name in [
         (16, "app_icon_16.png"),
@@ -357,7 +430,6 @@ def main() -> int:
         _maybe_backup(app, mac_path, enable=do_backup)
         resize_png(src1024, mac_path, side)
 
-    # iOS (see AppIcon.appiconset/Contents.json; shared filenames between idiom entries).
     ios = app / "ios" / "Runner" / "Assets.xcassets" / "AppIcon.appiconset"
     ios_side_by_file: dict[str, int] = {
         "Icon-App-20x20@1x.png": 20,
@@ -381,10 +453,157 @@ def main() -> int:
         _maybe_backup(app, ios_path, enable=do_backup)
         resize_png(src1024, ios_path, side)
 
+    return src1024
+
+
+def write_web_favicons(
+    portrait1024: Image.Image,
+    portrait_source: Path,
+    web_root: Path,
+) -> None:
+    public = web_root / "public"
+    public.mkdir(parents=True, exist_ok=True)
+
+    resize_png(portrait1024, public / "favicon-32x32.png", 32)
+    resize_png(portrait1024, public / "apple-touch-icon.png", 180)
+    write_windows_ico(portrait1024, public / "favicon.ico")
+
+    src = portrait_source.resolve()
+    if src.suffix.lower() == ".svg":
+        svg_src = src
+    else:
+        sibling = src.with_suffix(".svg")
+        svg_src = sibling if sibling.is_file() else _DEFAULT_PORTRAIT
+    if svg_src.is_file() and svg_src.suffix.lower() == ".svg":
+        shutil.copy2(svg_src, public / "favicon.svg")
+    else:
+        print("Note: no SVG available for favicon.svg; raster favicons only.", file=sys.stderr)
+
+
+def refresh_assets_png(
+    portrait_source: Path,
+    fullbody_source: Path,
+    portrait1024: Image.Image,
+    fullbody_master: Image.Image,
+) -> None:
+    """Update committed PNG fallbacks under assets/ from generated masters."""
+    portrait_png = portrait_source.with_suffix(".png")
+    fullbody_png = fullbody_source.with_suffix(".png")
+    portrait1024.save(portrait_png, format="PNG")
+    fullbody1024 = fullbody_master.resize((_RASTER_SIZE, _RASTER_SIZE), Image.Resampling.LANCZOS)
+    fullbody1024.save(fullbody_png, format="PNG")
+
+
+def _run_sheet_mode(args: argparse.Namespace) -> int:
+    if not args.sheet.is_file():
+        print(f"Missing sheet: {args.sheet}", file=sys.stderr)
+        return 1
+
+    app = args.app_root.resolve()
+    sheet = Image.open(args.sheet).convert("RGBA")
+    w, h = sheet.size
+    if w < 512 or h < 400:
+        print(f"Unexpected sheet size {w}x{h}; expected the 1024-wide reference.", file=sys.stderr)
+        return 1
+
+    portrait_bbox, fullbody_bbox = _find_master_card_bboxes(sheet)
+    portrait_sq = extract_square_card(sheet, portrait_bbox)
+    fullbody_sq = extract_square_card(sheet, fullbody_bbox)
+    portrait_master = portrait_sq.resize((_MASTER_SIDE, _MASTER_SIDE), Image.Resampling.LANCZOS)
+    fullbody_master = fullbody_sq.resize((_MASTER_SIDE, _MASTER_SIDE), Image.Resampling.LANCZOS)
+
+    do_backup = not args.no_backup
+    portrait1024 = write_display_icons(portrait_master, fullbody_master, app, do_backup=do_backup)
+
+    if args.web_root is not None:
+        write_web_favicons(
+            portrait1024,
+            args.portrait if args.portrait is not None else _DEFAULT_PORTRAIT,
+            args.web_root.resolve(),
+        )
+
     print(f"Wrote icons under {app} (assets/icons, windows/.../app_icon.ico, macOS, iOS).")
     if do_backup:
         print(f"Prior opaque outputs (if any) copied once to {app / _BACKUP_DIR}.")
     return 0
+
+
+def _run_source_mode(args: argparse.Namespace) -> int:
+    portrait_path = (args.portrait or _DEFAULT_PORTRAIT).resolve()
+    fullbody_path = (args.full_body or _DEFAULT_FULL_BODY).resolve()
+
+    portrait_raster = load_raster_source(portrait_path)
+    fullbody_raster = load_raster_source(fullbody_path)
+    portrait_master = _square_master(portrait_raster, side=_MASTER_SIDE)
+    fullbody_master = _square_master(fullbody_raster, side=_MASTER_SIDE)
+
+    app = args.app_root.resolve()
+    do_backup = not args.no_backup
+    portrait1024 = write_display_icons(portrait_master, fullbody_master, app, do_backup=do_backup)
+
+    if args.web_root is not None:
+        write_web_favicons(portrait1024, portrait_path, args.web_root.resolve())
+
+    if args.refresh_assets_png:
+        refresh_assets_png(portrait_path, fullbody_path, portrait1024, fullbody_master)
+
+    lines = [f"Wrote icons under {app} (assets/icons, windows/.../app_icon.ico, macOS, iOS)."]
+    if args.web_root is not None:
+        lines.append(f"Wrote web favicons under {args.web_root.resolve() / 'public'}.")
+    if args.refresh_assets_png:
+        lines.append(f"Refreshed PNG fallbacks for {portrait_path.with_suffix('.png')} and "
+                      f"{fullbody_path.with_suffix('.png')}.")
+    print("\n".join(lines))
+    if do_backup:
+        print(f"Prior opaque outputs (if any) copied once to {app / _BACKUP_DIR}.")
+    return 0
+
+
+def main() -> int:
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument(
+        "--sheet",
+        type=Path,
+        help="Legacy composite PNG (1024-wide sheet); mutually exclusive with default source mode.",
+    )
+    p.add_argument(
+        "--portrait",
+        type=Path,
+        help=f"Headshot SVG/PNG (default: {_DEFAULT_PORTRAIT}).",
+    )
+    p.add_argument(
+        "--full-body",
+        type=Path,
+        help=f"Full mascot SVG/PNG (default: {_DEFAULT_FULL_BODY}).",
+    )
+    p.add_argument(
+        "--app-root",
+        type=Path,
+        default=Path("apps/waddle_display"),
+        help="Path to the Flutter app package root.",
+    )
+    p.add_argument(
+        "--web-root",
+        type=Path,
+        help="Emit favicons into <web-root>/public/ (e.g. apps/waddle_controller).",
+    )
+    p.add_argument(
+        "--refresh-assets-png",
+        action="store_true",
+        help="Write 1024 PNG fallbacks next to portrait/full-body sources under assets/.",
+    )
+    p.add_argument(
+        "--no-backup",
+        action="store_true",
+        help="Do not copy existing outputs to branding/generated_icons_backup_white_opaque/.",
+    )
+    args = p.parse_args()
+
+    if args.sheet is not None:
+        return _run_sheet_mode(args)
+    if not args.refresh_assets_png:
+        args.refresh_assets_png = True
+    return _run_source_mode(args)
 
 
 if __name__ == "__main__":

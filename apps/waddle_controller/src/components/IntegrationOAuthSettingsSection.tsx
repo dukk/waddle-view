@@ -115,9 +115,10 @@ export function IntegrationOAuthSettingsSection({
         ) : null}
       </Stack>
       <Typography variant="body2" color="text.secondary">
-        Some account providers (Google, Microsoft) require an OAuth app client ID before you can add
-        a matching account below. Values are stored encrypted on the display and are never shown after
-        saving. Application name and owner are looked up from the provider when possible.
+        OAuth account providers (Google, Microsoft, Facebook, X, LinkedIn) require an app client ID
+        before you can add a matching account below. Values are stored encrypted on the display and are
+        never shown after saving. Application name and owner are looked up from the provider when
+        possible (Google and Microsoft only today).
       </Typography>
       {canWrite && addDisabledReason ? (
         <Typography variant="caption" color="text.secondary" display="block">

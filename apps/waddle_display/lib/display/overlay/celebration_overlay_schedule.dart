@@ -1,62 +1,27 @@
 import 'dart:convert';
 
-import 'package:waddle_shared/curation/overlay_calendar_match.dart';
-import 'package:waddle_shared/persistence/display_overlay_schedule_row.dart';
-
-export 'package:waddle_shared/curation/overlay_calendar_match.dart'
-    show nthWeekdayOccurrenceInMonth;
+import 'package:waddle_shared/persistence/display_overlay_row.dart';
 
 bool matchesCelebrationOverlay(
-  DisplayOverlayScheduleRow row,
+  DisplayOverlayRow row,
   DateTime localNow, {
   Map<String, dynamic> runtimeSignals = const {},
 }) {
   final trigger = _parseOverlayTrigger(row.configJson);
-  if (trigger != null) {
-    final signalOk = _evaluateOverlayTrigger(trigger, runtimeSignals);
-    if (trigger.calendarIgnored) {
-      return signalOk;
-    }
-    return signalOk &&
-        matchesOverlayCalendar(
-          OverlayCalendarFields(
-            repeatAnnually: row.repeatAnnually,
-            yearExact: row.yearExact,
-            startMonth: row.startMonth,
-            startDay: row.startDay,
-            endMonth: row.endMonth,
-            endDay: row.endDay,
-            nthWeekOfMonth: row.nthWeekOfMonth,
-            nthWeekday: row.nthWeekday,
-          ),
-          localNow,
-        );
+  if (trigger == null) {
+    return true;
   }
-  return matchesOverlayCalendar(
-    OverlayCalendarFields(
-      repeatAnnually: row.repeatAnnually,
-      yearExact: row.yearExact,
-      startMonth: row.startMonth,
-      startDay: row.startDay,
-      endMonth: row.endMonth,
-      endDay: row.endDay,
-      nthWeekOfMonth: row.nthWeekOfMonth,
-      nthWeekday: row.nthWeekday,
-    ),
-    localNow,
-  );
+  return _evaluateOverlayTrigger(trigger, runtimeSignals);
 }
 
 class _OverlayTrigger {
   const _OverlayTrigger({
     required this.signalId,
     required this.when,
-    required this.calendarIgnored,
   });
 
   final String signalId;
   final bool when;
-  final bool calendarIgnored;
 }
 
 _OverlayTrigger? _parseOverlayTrigger(String configJson) {
@@ -79,7 +44,6 @@ _OverlayTrigger? _parseOverlayTrigger(String configJson) {
     return _OverlayTrigger(
       signalId: signal,
       when: t['when'] as bool? ?? true,
-      calendarIgnored: t['calendar_ignored'] as bool? ?? false,
     );
   } on Object {
     return null;

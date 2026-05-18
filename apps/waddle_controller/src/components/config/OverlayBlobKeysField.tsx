@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { FieldProps } from '@rjsf/utils';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import {
   Box,
   Button,
   CircularProgress,
+  FormControl,
+  FormHelperText,
+  FormLabel,
   IconButton,
-  Slider,
   Stack,
   Typography,
 } from '@mui/material';
@@ -14,43 +17,28 @@ import { fetchBlobObjectUrl } from '@/api/client';
 import { uploadOverlayImageBlob } from '@/api/overlayBlobs';
 import type { SavedDisplay } from '@/storage/displays';
 
-function readBlobKeys(config: Record<string, unknown>): string[] {
-  const raw = config.image_blob_keys;
-  if (!Array.isArray(raw)) return [];
+function readKeys(formData: unknown): string[] {
+  if (!Array.isArray(formData)) return [];
   const out: string[] = [];
-  for (const e of raw) {
+  for (const e of formData) {
     if (typeof e === 'string' && e.trim()) out.push(e.trim());
   }
   return out;
 }
 
-function readNumber(config: Record<string, unknown>, key: string, fallback: number): number {
-  const v = config[key];
-  if (typeof v === 'number' && Number.isFinite(v)) return v;
-  return fallback;
-}
-
-type Props = {
+type Props = FieldProps & {
   display: SavedDisplay;
-  config: Record<string, unknown>;
-  onChange: (next: Record<string, unknown>) => void;
-  disabled?: boolean;
 };
 
-export function FallingImagesOverlayConfig({
-  display,
-  config,
-  onChange,
-  disabled = false,
-}: Props) {
+export function OverlayBlobKeysField(props: Props) {
+  const { display, formData, onChange, disabled, schema, rawErrors } = props;
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const [uploadErr, setUploadErr] = useState<string | null>(null);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
 
-  const keys = readBlobKeys(config);
-  const dropIntervalSec = readNumber(config, 'drop_interval_sec', 45);
-  const fallSpeed = readNumber(config, 'fall_speed', 0.12);
+  const keys = readKeys(formData);
+  const label = (schema.title as string | undefined) ?? 'Images';
 
   useEffect(() => {
     let cancelled = false;
@@ -85,16 +73,16 @@ export function FallingImagesOverlayConfig({
     [previewUrls],
   );
 
-  const patch = useCallback(
-    (partial: Record<string, unknown>) => {
-      onChange({ ...config, ...partial });
+  const setKeys = useCallback(
+    (next: string[]) => {
+      onChange(next);
     },
-    [config, onChange],
+    [onChange],
   );
 
   const onPickFiles = async (files: FileList | null) => {
     if (!files?.length) return;
-    setErr(null);
+    setUploadErr(null);
     setUploading(true);
     try {
       const nextKeys = [...keys];
@@ -102,9 +90,9 @@ export function FallingImagesOverlayConfig({
         const { blob_key } = await uploadOverlayImageBlob(display, file);
         if (!nextKeys.includes(blob_key)) nextKeys.push(blob_key);
       }
-      patch({ image_blob_keys: nextKeys });
+      setKeys(nextKeys);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Upload failed');
+      setUploadErr(e instanceof Error ? e.message : 'Upload failed');
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -112,7 +100,7 @@ export function FallingImagesOverlayConfig({
   };
 
   const removeKey = (key: string) => {
-    patch({ image_blob_keys: keys.filter((k) => k !== key) });
+    setKeys(keys.filter((k) => k !== key));
     setPreviewUrls((prev) => {
       const u = prev[key];
       if (u) URL.revokeObjectURL(u);
@@ -123,12 +111,13 @@ export function FallingImagesOverlayConfig({
   };
 
   return (
-    <Stack spacing={2}>
-      <Typography variant="subtitle2">Falling images</Typography>
-      <Typography variant="caption" color="text.secondary">
-        Upload images to the display blob store. The overlay randomly picks one and drops it
-        occasionally, rocking side to side as it falls.
-      </Typography>
+    <FormControl fullWidth margin="normal" error={Boolean(rawErrors?.length)}>
+      <FormLabel>{label}</FormLabel>
+      {schema.description ? (
+        <Typography variant="caption" color="text.secondary" sx={{ mb: 1 }}>
+          {String(schema.description)}
+        </Typography>
+      ) : null}
       <input
         ref={fileRef}
         type="file"
@@ -140,15 +129,17 @@ export function FallingImagesOverlayConfig({
       />
       <Button
         variant="outlined"
+        size="small"
         startIcon={uploading ? <CircularProgress size={18} /> : <UploadFileIcon />}
         disabled={disabled || uploading}
         onClick={() => fileRef.current?.click()}
+        sx={{ alignSelf: 'flex-start', mb: 1 }}
       >
         {uploading ? 'Uploading…' : 'Upload images'}
       </Button>
-      {err ? (
+      {uploadErr ? (
         <Typography variant="body2" color="error">
-          {err}
+          {uploadErr}
         </Typography>
       ) : null}
       {keys.length > 0 ? (
@@ -206,33 +197,10 @@ export function FallingImagesOverlayConfig({
         </Stack>
       ) : (
         <Typography variant="body2" color="text.secondary">
-          No images yet — upload at least one for the overlay to show anything.
+          No images uploaded yet.
         </Typography>
       )}
-      <Typography gutterBottom>
-        Drop interval: {dropIntervalSec}s (average time between drops)
-      </Typography>
-      <Slider
-        value={dropIntervalSec}
-        min={15}
-        max={180}
-        step={5}
-        disabled={disabled}
-        valueLabelDisplay="auto"
-        onChange={(_, v) => patch({ drop_interval_sec: v as number })}
-      />
-      <Typography gutterBottom>
-        Fall speed: {fallSpeed.toFixed(2)} (screen-heights per second; lower = slower)
-      </Typography>
-      <Slider
-        value={fallSpeed}
-        min={0.05}
-        max={1}
-        step={0.01}
-        disabled={disabled}
-        valueLabelDisplay="auto"
-        onChange={(_, v) => patch({ fall_speed: v as number })}
-      />
-    </Stack>
+      {rawErrors?.length ? <FormHelperText>{rawErrors.join(', ')}</FormHelperText> : null}
+    </FormControl>
   );
 }

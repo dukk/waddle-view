@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:waddle_shared/persistence/display_overlay_schedule_row.dart';
+import 'package:waddle_shared/persistence/display_overlay_row.dart';
 
 import '../../theme/display_theme.dart';
 
@@ -13,7 +13,7 @@ class PluginTemplateOverlay extends StatelessWidget {
     required this.accents,
   });
 
-  final DisplayOverlayScheduleRow row;
+  final DisplayOverlayRow row;
   final List<Color> accents;
 
   @override

@@ -303,16 +303,55 @@ export function v1Router() {
       items: [
         {
           id: 'mock_overlay',
-          enabled: false,
           overlay_type: 'hearts_rain',
-          label: 'Mock',
+          name: 'Mock hearts',
           config_json: { messages: ['Hi'] },
           config_json_schema: {},
-          example_config_json: {},
+          example_config_json: { messages: ['Hi'] },
         },
       ],
     });
   });
+
+  r.get('/meta/overlay-types', (c) =>
+    c.json({
+      items: [
+        {
+          overlay_type: 'hearts_rain',
+          config_json_schema: {
+            type: 'object',
+            properties: {
+              messages: { type: 'array', items: { type: 'string' } },
+            },
+          },
+          example_config_json: { messages: ['Hello'] },
+        },
+        {
+          overlay_type: 'birthday_confetti',
+          config_json_schema: { type: 'object', additionalProperties: true },
+          example_config_json: { messages: ['Happy birthday!'] },
+        },
+        {
+          overlay_type: 'bouncing_message',
+          config_json_schema: { type: 'object', additionalProperties: true },
+          example_config_json: { messages: ['Happy Birthday Waddle!!'] },
+        },
+        {
+          overlay_type: 'falling_images',
+          config_json_schema: {
+            type: 'object',
+            properties: {
+              image_blob_keys: {
+                type: 'array',
+                items: { type: 'string', format: 'waddle-overlay-blob-key' },
+              },
+            },
+          },
+          example_config_json: { image_blob_keys: [], drop_interval_sec: 45, fall_speed: 0.12 },
+        },
+      ],
+    }),
+  );
 
   r.get('/alerts', (c) => c.json({ items: [] }));
 

@@ -1745,16 +1745,19 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
               'type': 'number',
               'minimum': 0.15,
               'maximum': 0.9,
+              'x-waddle-widget': 'slider',
             },
             'message_interval_sec': {
               'type': 'integer',
               'minimum': 8,
               'maximum': 120,
+              'x-waddle-widget': 'slider',
             },
             'fall_speed': {
               'type': 'number',
               'minimum': 0.02,
               'maximum': 1.8,
+              'x-waddle-widget': 'slider',
               'description':
                   'Relative vertical drift speed; lower is slower (about 5s per '
                   'full cycle at 1.0; the minimum 0.02 yields about 250s per cycle).',
@@ -1763,6 +1766,7 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
               'type': 'number',
               'minimum': 0.12,
               'maximum': 0.72,
+              'x-waddle-widget': 'slider',
               'description': 'Upper bound for confetti piece alpha (visibility).',
             },
           },
@@ -1793,6 +1797,7 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
               'type': 'array',
               'items': {
                 'type': 'string',
+                'format': 'waddle-overlay-blob-key',
                 'pattern': r'^overlay/[a-z0-9][a-z0-9_/.-]*$',
               },
               'description':
@@ -1802,6 +1807,7 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
               'type': 'integer',
               'minimum': kFallingImagesDropIntervalSecMin,
               'maximum': kFallingImagesDropIntervalSecMax,
+              'x-waddle-widget': 'slider',
               'description':
                   'Average seconds between image drops (higher = less frequent).',
             },
@@ -1809,6 +1815,7 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
               'type': 'number',
               'minimum': kFallingImagesFallSpeedMin,
               'maximum': kFallingImagesFallSpeedMax,
+              'x-waddle-widget': 'slider',
               'description':
                   'Vertical speed as screen-heights per second (lower = slower).',
             },
@@ -1851,6 +1858,7 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
               'type': 'number',
               'minimum': 14,
               'maximum': 96,
+              'x-waddle-widget': 'slider',
             },
             'font_weight': {
               'oneOf': [
@@ -1863,12 +1871,14 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
               'type': 'number',
               'minimum': -1.5,
               'maximum': 6,
+              'x-waddle-widget': 'slider',
             },
             'shadow': {'type': 'boolean'},
             'speed': {
               'type': 'number',
               'minimum': 0.25,
               'maximum': 2.5,
+              'x-waddle-widget': 'slider',
               'description': 'Velocity multiplier for the bounce motion.',
             },
           },

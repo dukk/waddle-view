@@ -176,6 +176,22 @@ void registerOperatorRestRoutes(
     );
   });
 
+  r.get('/v1/meta/overlay-types', (Request req) async {
+    final items = <Map<String, Object?>>[];
+    for (final t in kBuiltinOverlayTypes) {
+      final doc = displayOverlayConfigJsonDocForType(t);
+      items.add({
+        'overlay_type': t,
+        'config_json_schema': _jsonFieldDecode(doc.schema),
+        'example_config_json': _jsonFieldDecode(doc.example),
+      });
+    }
+    return Response.ok(
+      jsonEncode({'items': items}),
+      headers: {'content-type': 'application/json'},
+    );
+  });
+
   r.get('/v1/ticker/tapes', (Request req) async {
     final rows = await (db.select(db.tickerTapes)
           ..orderBy([

@@ -17,7 +17,8 @@ import 'package:waddle_shared/curation/reject_rescan.dart';
 import 'package:waddle_shared/persistence/content_suppression_repository.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/display_overlay_repository.dart';
-import 'package:waddle_shared/persistence/display_overlay_schedule_row.dart';
+import 'package:waddle_shared/persistence/display_overlay_row.dart';
+import 'package:waddle_shared/persistence/overlay_id_allocation.dart';
 import 'package:waddle_shared/persistence/overlay_blob_storage.dart';
 import 'package:waddle_shared/persistence/reject_term_repository.dart';
 import 'package:waddle_shared/persistence/tables.dart';
@@ -299,14 +300,15 @@ Handler buildProtectedApiRouter({
 
   r.get('/v1/display/overlays', (Request req) async {
     await ensureOverlaysTableExists(db);
-    final rows = await fetchDisplayOverlaySchedules(db);
+    final rows = await fetchDisplayOverlays(db);
     return Response.ok(
-      jsonEncode({'items': rows.map(overlayScheduleToJson).toList()}),
+      jsonEncode({'items': rows.map(overlayToJson).toList()}),
       headers: {'content-type': 'application/json'},
     );
   });
 
   r.post('/v1/display/overlays', (Request req) async {
+    await ensureOverlaysTableExists(db);
     final map = await _readOverlayJson(req);
     if (map == null) {
       return Response(
@@ -315,29 +317,45 @@ Handler buildProtectedApiRouter({
         headers: {'content-type': 'application/json'},
       );
     }
-    final id = map['id'] as String?;
-    if (id == null || id.trim().isEmpty) {
+    final overlayType = _readOverlayTypeFromMap(map);
+    if (overlayType.isEmpty) {
       return Response(
         400,
-        body: '{"error":"id_required"}',
+        body: '{"error":"overlay_type_required"}',
         headers: {'content-type': 'application/json'},
       );
     }
+    final name = _readOverlayNameFromMap(map);
+    if (name.isEmpty) {
+      return Response(
+        400,
+        body: '{"error":"name_required"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    var id = (map['id'] as String?)?.trim() ?? '';
+    if (id.isEmpty) {
+      final existing = await fetchDisplayOverlays(db);
+      id = allocateOverlayIdFromName(name, existing.map((r) => r.id));
+      if (id.isEmpty) {
+        return Response(
+          400,
+          body: '{"error":"invalid_name"}',
+          headers: {'content-type': 'application/json'},
+        );
+      }
+    }
     try {
-      await upsertOverlaySchedule(
+      final storedId = await upsertOverlay(
         db,
         id: id,
-        overlayType: _readOverlayTypeFromMap(map),
-        label: map['label'] as String? ?? '',
+        overlayType: overlayType,
+        name: name,
         configJson: _effectiveOverlayConfigFromBody(map),
-        repeatAnnually: _readBoolOverlay(map['repeat_annually'], defaultIfAbsent: true),
-        yearExact: _readNullableIntOverlay(map['year_exact']),
-        startMonth: _readIntOverlay(map['start_month']),
-        startDay: _readIntOverlay(map['start_day']),
-        endMonth: _readNullableIntOverlay(map['end_month']),
-        endDay: _readNullableIntOverlay(map['end_day']),
-        nthWeekOfMonth: _readNullableIntOverlay(map['nth_week_of_month']),
-        nthWeekday: _readNullableIntOverlay(map['nth_weekday']),
+      );
+      return Response.ok(
+        jsonEncode({'id': storedId}),
+        headers: {'content-type': 'application/json'},
       );
     } on FormatException catch (e) {
       return Response(
@@ -346,7 +364,6 @@ Handler buildProtectedApiRouter({
         headers: {'content-type': 'application/json'},
       );
     }
-    return Response.ok('{}', headers: {'content-type': 'application/json'});
   });
 
   r.post('/v1/display/overlays/blobs', (Request req) async {
@@ -426,7 +443,7 @@ Handler buildProtectedApiRouter({
 
   r.patch('/v1/display/overlays/<id>', (Request req, String pathId) async {
     await ensureOverlaysTableExists(db);
-    final existing = await overlayScheduleById(db, pathId);
+    final existing = await overlayById(db, pathId);
     if (existing == null) {
       return Response(
         404,
@@ -443,45 +460,12 @@ Handler buildProtectedApiRouter({
       );
     }
     try {
-      await upsertOverlaySchedule(
+      await upsertOverlay(
         db,
         id: pathId,
         overlayType: _patchOverlayType(existing, map),
-        label: map.containsKey('label')
-            ? map['label'] as String? ?? ''
-            : existing.label,
+        name: _patchOverlayName(existing, map),
         configJson: _patchOverlayConfigJson(existing, map),
-        repeatAnnually: map.containsKey('repeat_annually')
-            ? _readBoolOverlay(map['repeat_annually'], defaultIfAbsent: true)
-            : existing.repeatAnnually,
-        yearExact:
-            map.containsKey('year_exact')
-                ? _readNullableIntOverlay(map['year_exact'])
-                : existing.yearExact,
-        startMonth:
-            map.containsKey('start_month')
-                ? _readIntOverlay(map['start_month'])
-                : existing.startMonth,
-        startDay:
-            map.containsKey('start_day')
-                ? _readIntOverlay(map['start_day'])
-                : existing.startDay,
-        endMonth:
-            map.containsKey('end_month')
-                ? _readNullableIntOverlay(map['end_month'])
-                : existing.endMonth,
-        endDay:
-            map.containsKey('end_day')
-                ? _readNullableIntOverlay(map['end_day'])
-                : existing.endDay,
-        nthWeekOfMonth:
-            map.containsKey('nth_week_of_month')
-                ? _readNullableIntOverlay(map['nth_week_of_month'])
-                : existing.nthWeekOfMonth,
-        nthWeekday:
-            map.containsKey('nth_weekday')
-                ? _readNullableIntOverlay(map['nth_weekday'])
-                : existing.nthWeekday,
       );
     } on FormatException catch (e) {
       return Response(
@@ -495,7 +479,7 @@ Handler buildProtectedApiRouter({
 
   r.delete('/v1/display/overlays/<id>', (Request req, String id) async {
     await ensureOverlaysTableExists(db);
-    final row = await overlayScheduleById(db, id);
+    final row = await overlayById(db, id);
     if (row == null) {
       return Response(
         404,
@@ -503,7 +487,7 @@ Handler buildProtectedApiRouter({
         headers: {'content-type': 'application/json'},
       );
     }
-    await deleteOverlaySchedule(db, id);
+    await deleteOverlay(db, id);
     return Response.ok('{}', headers: {'content-type': 'application/json'});
   });
 
@@ -822,8 +806,30 @@ String _shallowMergeOverlayConfigJson(String existing, String patch) {
   return jsonEncode(<String, dynamic>{...e, ...p});
 }
 
+String _readOverlayNameFromMap(Map<String, dynamic> map) {
+  final name = map['name'];
+  if (name is String && name.trim().isNotEmpty) {
+    return name.trim();
+  }
+  final label = map['label'];
+  if (label is String && label.trim().isNotEmpty) {
+    return label.trim();
+  }
+  return '';
+}
+
+String _patchOverlayName(DisplayOverlayRow existing, Map<String, dynamic> map) {
+  if (map.containsKey('name')) {
+    return (map['name'] as String?)?.trim() ?? '';
+  }
+  if (map.containsKey('label')) {
+    return (map['label'] as String?)?.trim() ?? '';
+  }
+  return existing.name;
+}
+
 String _patchOverlayType(
-  DisplayOverlayScheduleRow existing,
+  DisplayOverlayRow existing,
   Map<String, dynamic> map,
 ) {
   if (map.containsKey('overlay_type')) {
@@ -836,7 +842,7 @@ String _patchOverlayType(
 }
 
 String _patchOverlayConfigJson(
-  DisplayOverlayScheduleRow existing,
+  DisplayOverlayRow existing,
   Map<String, dynamic> map,
 ) {
   if (!map.containsKey('config_json') && !map.containsKey('messages_json')) {
@@ -877,54 +883,6 @@ String _configJsonArg(Map<String, dynamic> map) {
     return jsonEncode(v);
   }
   return '{}';
-}
-
-bool _readBoolOverlay(Object? v, {required bool defaultIfAbsent}) {
-  if (v == null) {
-    return defaultIfAbsent;
-  }
-  if (v is bool) {
-    return v;
-  }
-  if (v is String) {
-    switch (v.trim().toLowerCase()) {
-      case '1':
-      case 'true':
-      case 'yes':
-        return true;
-      case '0':
-      case 'false':
-      case 'no':
-        return false;
-      default:
-        return defaultIfAbsent;
-    }
-  }
-  if (v is num) {
-    return v != 0;
-  }
-  return defaultIfAbsent;
-}
-
-int? _readNullableIntOverlay(Object? v) {
-  if (v == null) {
-    return null;
-  }
-  if (v is int) {
-    return v;
-  }
-  if (v is num) {
-    return v.toInt();
-  }
-  return null;
-}
-
-int _readIntOverlay(Object? v, {String missingError = 'numeric_field_required'}) {
-  final n = _readNullableIntOverlay(v);
-  if (n == null) {
-    throw FormatException(missingError);
-  }
-  return n;
 }
 
 Future<Response> _upsertRejectTerm(

@@ -65,7 +65,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 18;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -189,6 +189,13 @@ ORDER BY priority DESC, created_at DESC;
       }
       if (from == 16 && to >= 17) {
         await _migrateV16ToV17CuratorTickerProgramDuration(this);
+        if (to == 17) {
+          return;
+        }
+        from = 17;
+      }
+      if (from == 17 && to >= 18) {
+        await _migrateV17ToV18OverlaysDefinitionOnly(this);
         return;
       }
       throw UnsupportedError(
@@ -198,6 +205,7 @@ ORDER BY priority DESC, created_at DESC;
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
+      await _ensureCuratorConfigurationsTickerEnabled(this);
     },
   );
 }
@@ -779,7 +787,6 @@ Future<void> _ensureCuratorConfigurationsTickerEnabled(AppDatabase db) async {
       'ALTER TABLE curator_configurations ADD COLUMN ticker_enabled '
       'INTEGER NOT NULL DEFAULT 1',
     );
-    return;
   }
   await db.customStatement(
     'UPDATE curator_configurations SET ticker_enabled = 1 '
@@ -789,6 +796,23 @@ Future<void> _ensureCuratorConfigurationsTickerEnabled(AppDatabase db) async {
 
 Future<void> _migrateV16ToV17CuratorTickerProgramDuration(AppDatabase db) async {
   await _ensureCuratorConfigurationsTickerProgramDuration(db);
+}
+
+/// Drops per-row overlay calendar columns; renames `label` → `name`.
+Future<void> _migrateV17ToV18OverlaysDefinitionOnly(AppDatabase db) async {
+  if (!await _sqliteTableExists(db, 'overlays')) {
+    return;
+  }
+  if (await _sqliteColumnExists(db, 'overlays', 'name')) {
+    return;
+  }
+  if (!await _sqliteColumnExists(db, 'overlays', 'label')) {
+    return;
+  }
+  await db.customStatement(kCreateOverlaysNewTableSql);
+  await db.customStatement(kCopyOverlaysToNewFromLegacySql);
+  await db.customStatement('DROP TABLE overlays');
+  await db.customStatement('ALTER TABLE overlays_new RENAME TO overlays');
 }
 
 /// Ensures [CuratorConfigurations.tickerProgramDurationSeconds] is present.

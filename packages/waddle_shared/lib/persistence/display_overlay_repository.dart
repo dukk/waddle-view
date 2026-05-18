@@ -7,28 +7,31 @@ import 'database.dart';
 import 'display_overlay_bouncing_message_settings.dart';
 import 'display_overlay_confetti_settings.dart';
 import 'display_overlay_falling_images_settings.dart';
-import 'display_overlay_schedule_row.dart';
+import 'display_overlay_row.dart';
 import 'display_overlay_sql.dart';
+import 'overlay_id_allocation.dart';
 import 'tables.dart';
 
-Selectable<DisplayOverlayScheduleRow> _overlaySelectable(AppDatabase db) {
+Selectable<DisplayOverlayRow> _overlaySelectable(AppDatabase db) {
   return db.customSelect(
     'SELECT * FROM overlays ORDER BY id ASC',
-  ).map(DisplayOverlayScheduleRow.fromQueryRow);
+  ).map(DisplayOverlayRow.fromQueryRow);
 }
 
-Future<List<DisplayOverlayScheduleRow>> fetchDisplayOverlaySchedules(
-  AppDatabase db,
-) =>
+Future<List<DisplayOverlayRow>> fetchDisplayOverlays(AppDatabase db) =>
     _overlaySelectable(db).get();
 
+/// Back-compat alias for display runtime polling.
+Future<List<DisplayOverlayRow>> fetchDisplayOverlaySchedules(AppDatabase db) =>
+    fetchDisplayOverlays(db);
+
 /// Periodically polls the table so REST changes appear without restarting the UI isolate.
-Stream<List<DisplayOverlayScheduleRow>> watchDisplayOverlaySchedules(
+Stream<List<DisplayOverlayRow>> watchDisplayOverlaySchedules(
   AppDatabase db,
 ) async* {
-  yield await fetchDisplayOverlaySchedules(db);
+  yield await fetchDisplayOverlays(db);
   await for (final _ in Stream.periodic(const Duration(seconds: 15))) {
-    yield await fetchDisplayOverlaySchedules(db);
+    yield await fetchDisplayOverlays(db);
   }
 }
 
@@ -177,7 +180,7 @@ String normalizeOverlayConfigForUpsert({
   };
 }
 
-List<String> decodeMessagesNonEmpty(DisplayOverlayScheduleRow row) {
+List<String> decodeMessagesNonEmpty(DisplayOverlayRow row) {
   try {
     final decoded = jsonDecode(row.configJson);
     if (decoded is! Map) {
@@ -199,17 +202,9 @@ List<String> decodeMessagesNonEmpty(DisplayOverlayScheduleRow row) {
 
 final RegExp _slug = RegExp(r'^[a-z0-9][a-z0-9_.-]*$');
 
-String? validateUpsertDraft({
+String? validateOverlayUpsertDraft({
   required String id,
   required String overlayType,
-  required bool repeatAnnually,
-  required int? yearExact,
-  required int startMonth,
-  required int startDay,
-  required int? endMonth,
-  required int? endDay,
-  required int? nthWeekOfMonth,
-  required int? nthWeekday,
 }) {
   if (!_slug.hasMatch(id.trim())) {
     return 'invalid_id_slug';
@@ -218,65 +213,7 @@ String? validateUpsertDraft({
   if (!_slug.hasMatch(trimmedType)) {
     return 'invalid_overlay_type';
   }
-
-  final nthSet = nthWeekOfMonth != null || nthWeekday != null;
-  if (nthSet && (nthWeekOfMonth == null || nthWeekday == null)) {
-    return 'nth_fields_both_required';
-  }
-  if (nthWeekday != null &&
-      (nthWeekday < DateTime.monday || nthWeekday > DateTime.sunday)) {
-    return 'invalid_nth_weekday';
-  }
-  if (nthWeekOfMonth != null && (nthWeekOfMonth < 1 || nthWeekOfMonth > 5)) {
-    return 'invalid_nth_week_of_month';
-  }
-
-  if (!repeatAnnually && yearExact == null) {
-    return 'year_exact_required_when_not_repeating';
-  }
-
-  final sampleYear =
-      repeatAnnually ? DateTime.now().year : (yearExact ?? DateTime.now().year);
-
-  if (nthWeekOfMonth != null) {
-    if (startMonth < 1 || startMonth > 12) {
-      return 'invalid_start_month';
-    }
-    try {
-      DateTime(sampleYear, startMonth, 1);
-    } on Object {
-      return 'invalid_calendar_month_anchor';
-    }
-    return null;
-  }
-
-  if (!_validYmd(sampleYear, startMonth, startDay)) {
-    return 'invalid_fixed_start_date';
-  }
-  final endM = endMonth ?? startMonth;
-  final endD = endDay ?? startDay;
-  if (!_validYmd(sampleYear, endM, endD)) {
-    return 'invalid_fixed_end_date';
-  }
-  try {
-    final s = DateTime(sampleYear, startMonth, startDay);
-    final e = DateTime(sampleYear, endM, endD);
-    if (s.isAfter(e)) {
-      return 'fixed_range_invalid';
-    }
-  } on Object {
-    return 'fixed_range_invalid';
-  }
   return null;
-}
-
-bool _validYmd(int y, int m, int d) {
-  try {
-    final dt = DateTime(y, m, d);
-    return dt.year == y && dt.month == m && dt.day == d;
-  } on Object {
-    return false;
-  }
 }
 
 Object? _decodedJsonOrNull(String? raw) {
@@ -290,32 +227,16 @@ Object? _decodedJsonOrNull(String? raw) {
   }
 }
 
-Future<void> upsertOverlaySchedule(
+Future<String> upsertOverlay(
   AppDatabase db, {
   required String id,
   required String overlayType,
-  required String label,
+  required String name,
   required String configJson,
-  required bool repeatAnnually,
-  int? yearExact,
-  required int startMonth,
-  required int startDay,
-  int? endMonth,
-  int? endDay,
-  int? nthWeekOfMonth,
-  int? nthWeekday,
 }) async {
-  final err = validateUpsertDraft(
+  final err = validateOverlayUpsertDraft(
     id: id,
     overlayType: overlayType,
-    repeatAnnually: repeatAnnually,
-    yearExact: yearExact,
-    startMonth: startMonth,
-    startDay: startDay,
-    endMonth: endMonth,
-    endDay: endDay,
-    nthWeekOfMonth: nthWeekOfMonth,
-    nthWeekday: nthWeekday,
   );
   if (err != null) {
     throw FormatException(err);
@@ -332,44 +253,60 @@ Future<void> upsertOverlaySchedule(
     throw FormatException('invalid_config_json');
   }
   final doc = displayOverlayConfigJsonDocForType(overlayType.trim());
-  final ra = repeatAnnually ? 1 : 0;
+  final trimmedId = id.trim();
   await db.customStatement(
     'INSERT OR REPLACE INTO overlays ('
-    'id, overlay_type, label, '
-    'config_json, config_json_schema, example_config_json, '
-    'repeat_annually, year_exact, start_month, start_day, '
-    'end_month, end_day, nth_week_of_month, nth_weekday) '
-    'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    'id, overlay_type, name, '
+    'config_json, config_json_schema, example_config_json) '
+    'VALUES (?, ?, ?, ?, ?, ?)',
     <Object?>[
-      id.trim(),
+      trimmedId,
       overlayType.trim(),
-      label,
+      name,
       configNorm,
       doc.schema,
       doc.example,
-      ra,
-      yearExact,
-      startMonth,
-      startDay,
-      endMonth,
-      endDay,
-      nthWeekOfMonth,
-      nthWeekday,
     ],
   );
+  return trimmedId;
 }
 
-Future<void> deleteOverlaySchedule(AppDatabase db, String id) async {
+/// Back-compat alias.
+Future<void> upsertOverlaySchedule(
+  AppDatabase db, {
+  required String id,
+  required String overlayType,
+  required String label,
+  required String configJson,
+  required bool repeatAnnually,
+  int? yearExact,
+  required int startMonth,
+  required int startDay,
+  int? endMonth,
+  int? endDay,
+  int? nthWeekOfMonth,
+  int? nthWeekday,
+}) =>
+    upsertOverlay(
+      db,
+      id: id,
+      overlayType: overlayType,
+      name: label,
+      configJson: configJson,
+    );
+
+Future<void> deleteOverlay(AppDatabase db, String id) async {
   await db.customStatement(
     'DELETE FROM overlays WHERE id = ?',
     <Object?>[id.trim()],
   );
 }
 
-Future<DisplayOverlayScheduleRow?> overlayScheduleById(
-  AppDatabase db,
-  String id,
-) async {
+/// Back-compat alias.
+Future<void> deleteOverlaySchedule(AppDatabase db, String id) =>
+    deleteOverlay(db, id);
+
+Future<DisplayOverlayRow?> overlayById(AppDatabase db, String id) async {
   final trimmed = id.trim();
   final rows =
       await db
@@ -377,7 +314,7 @@ Future<DisplayOverlayScheduleRow?> overlayScheduleById(
             'SELECT * FROM overlays WHERE id = ? LIMIT 1',
             variables: [Variable<String>(trimmed)],
           )
-          .map(DisplayOverlayScheduleRow.fromQueryRow)
+          .map(DisplayOverlayRow.fromQueryRow)
           .get();
   if (rows.isEmpty) {
     return null;
@@ -385,7 +322,11 @@ Future<DisplayOverlayScheduleRow?> overlayScheduleById(
   return rows.first;
 }
 
-Map<String, Object?> overlayScheduleToJson(DisplayOverlayScheduleRow row) {
+/// Back-compat alias.
+Future<DisplayOverlayRow?> overlayScheduleById(AppDatabase db, String id) =>
+    overlayById(db, id);
+
+Map<String, Object?> overlayToJson(DisplayOverlayRow row) {
   Object? configField;
   try {
     final d = jsonDecode(row.configJson);
@@ -402,17 +343,13 @@ Map<String, Object?> overlayScheduleToJson(DisplayOverlayScheduleRow row) {
   return <String, Object?>{
     'id': row.id,
     'overlay_type': row.overlayType,
-    'label': row.label,
+    'name': row.name,
     'config_json': configField,
     'config_json_schema': _decodedJsonOrNull(row.configJsonSchema),
     'example_config_json': _decodedJsonOrNull(row.exampleConfigJson),
-    'repeat_annually': row.repeatAnnually,
-    'year_exact': row.yearExact,
-    'start_month': row.startMonth,
-    'start_day': row.startDay,
-    'end_month': row.endMonth,
-    'end_day': row.endDay,
-    'nth_week_of_month': row.nthWeekOfMonth,
-    'nth_weekday': row.nthWeekday,
   };
 }
+
+/// Back-compat alias.
+Map<String, Object?> overlayScheduleToJson(DisplayOverlayRow row) =>
+    overlayToJson(row);

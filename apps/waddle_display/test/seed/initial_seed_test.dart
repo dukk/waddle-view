@@ -367,41 +367,33 @@ void main() {
     await db.close();
   });
 
-  test('ensureInitialSeed inserts disabled May 13 birthday confetti example', () async {
+  test('ensureInitialSeed inserts May 13 birthday confetti example overlay', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await ensureInitialSeed(db);
-    final rows = await fetchDisplayOverlaySchedules(db);
+    final rows = await fetchDisplayOverlays(db);
     final birthday = rows
         .where((r) => r.id == kDefaultBirthdayOverlayExampleId)
         .toList();
     expect(birthday, isNotEmpty);
     final r = birthday.single;
-    expect(r.label, contains('disabled'));
+    expect(r.name, contains('birthday'));
     expect(r.overlayType, kOverlayTypeBirthdayConfetti);
-    expect(r.repeatAnnually, isTrue);
-    expect(r.startMonth, 5);
-    expect(r.startDay, 13);
-    expect(r.nthWeekOfMonth, isNull);
-    expect(r.nthWeekday, isNull);
     await db.close();
   });
 
-  test('ensureInitialSeed inserts disabled May 13 bouncing message overlay', () async {
+  test('ensureInitialSeed inserts May 13 bouncing message overlay', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await ensureInitialSeed(db);
-    final rows = await fetchDisplayOverlaySchedules(db);
+    final rows = await fetchDisplayOverlays(db);
     final bounce = rows
         .where((r) => r.id == kDefaultBouncingMessageOverlayId)
         .toList();
     expect(bounce, isNotEmpty);
     final r = bounce.single;
-    expect(r.label, contains('disabled'));
+    expect(r.name, contains('bouncing'));
     expect(r.overlayType, kOverlayTypeBouncingMessage);
-    expect(r.repeatAnnually, isTrue);
-    expect(r.startMonth, 5);
-    expect(r.startDay, 13);
     expect(
       (jsonDecode(r.configJson) as Map<String, dynamic>)['messages'],
       [kDefaultBouncingMessageOverlayPhrase],

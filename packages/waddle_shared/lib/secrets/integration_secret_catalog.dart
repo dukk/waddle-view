@@ -1,4 +1,7 @@
+import '../config/facebook_kv.dart';
+import '../config/linkedin_kv.dart';
 import '../config/provider_config_resolver.dart';
+import '../config/twitter_kv.dart';
 import 'secret_store.dart';
 
 /// UI / REST slot id for one operator-facing secret field.
@@ -129,6 +132,33 @@ Future<String?> readGoogleClientIdFromStore(SecretStore store) async {
 
 Future<String?> readMicrosoftGraphClientIdFromStore(SecretStore store) async {
   final v = await store.read(kMicrosoftGraphClientIdSecretKey);
+  final t = v?.trim();
+  if (t == null || t.isEmpty) {
+    return null;
+  }
+  return t;
+}
+
+Future<String?> readFacebookClientIdFromStore(SecretStore store) async {
+  final v = await store.read(kFacebookClientIdSecretKey);
+  final t = v?.trim();
+  if (t == null || t.isEmpty) {
+    return null;
+  }
+  return t;
+}
+
+Future<String?> readTwitterClientIdFromStore(SecretStore store) async {
+  final v = await store.read(kTwitterClientIdSecretKey);
+  final t = v?.trim();
+  if (t == null || t.isEmpty) {
+    return null;
+  }
+  return t;
+}
+
+Future<String?> readLinkedInClientIdFromStore(SecretStore store) async {
+  final v = await store.read(kLinkedInClientIdSecretKey);
   final t = v?.trim();
   if (t == null || t.isEmpty) {
     return null;

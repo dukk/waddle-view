@@ -4,6 +4,7 @@ import 'package:waddle_shared/integration_accounts/integration_account_catalog.d
 import 'package:waddle_shared/integration_accounts/integration_accounts_service.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
+import 'package:waddle_shared/config/facebook_kv.dart';
 import 'package:waddle_shared/config/google_kv.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 
@@ -106,6 +107,31 @@ void main() {
     expect(items, hasLength(1));
     expect(items.single['id'], accountId);
     expect(items.single['configured'], isTrue);
+  });
+
+  test('createOperatorIntegrationAccount requires facebook oauth client id', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final secrets = InMemorySecretStore();
+    addTearDown(db.close);
+    expect(
+      () => createOperatorIntegrationAccount(
+        db,
+        secrets,
+        accountTypeId: kIntegrationAccountTypeFacebook,
+        accountKey: 'page1',
+      ),
+      throwsStateError,
+    );
+    await secrets.write(kFacebookClientIdSecretKey, 'fb-app-id');
+    final accountId = await createOperatorIntegrationAccount(
+      db,
+      secrets,
+      accountTypeId: kIntegrationAccountTypeFacebook,
+      accountKey: 'page1',
+      label: 'Main page',
+    );
+    expect(accountId, 'page1');
   });
 
   test('createOperatorIntegrationAccount requires oauth client id', () async {

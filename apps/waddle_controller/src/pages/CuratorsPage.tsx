@@ -457,7 +457,7 @@ function CuratorConfigurationDialog({
           fetchCuratorStatePredicates(display),
           apiJson<{ items: { id: string; name: string }[] }>(display, '/v1/screens'),
           apiJson<{ items: { id: string; name: string }[] }>(display, '/v1/ticker/tapes'),
-          apiJson<{ items: { id: string; label: string }[] }>(display, '/v1/display/overlays'),
+          apiJson<{ items: { id: string; name: string }[] }>(display, '/v1/display/overlays'),
         ]);
         if (cancelled) return;
         setPredicates(preds);
@@ -476,7 +476,7 @@ function CuratorConfigurationDialog({
         setOverlayOptions(
           (overlays.items ?? []).map((o) => ({
             id: o.id,
-            label: o.label?.trim() ? `${o.label} (${o.id})` : o.id,
+            label: catalogMemberDisplayLabel(o.name, o.id),
           })),
         );
         if (configurationId) {

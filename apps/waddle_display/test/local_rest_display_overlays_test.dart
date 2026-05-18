@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/persistence/display_overlay_repository.dart';
+import 'package:waddle_shared/persistence/tables.dart';
 
 import 'helpers/memory_database.dart';
 import 'helpers/rest_auth_helper.dart';
@@ -21,11 +22,8 @@ void main() {
       body: jsonEncode({
         'id': 'x_test_overlay',
         'overlay_type': kOverlayTypeHeartsRain,
-        'label': 'Test',
+        'name': 'Test',
         'messages_json': ['Hi'],
-        'repeat_annually': true,
-        'start_month': 7,
-        'start_day': 4,
       }),
     );
     expect(post.statusCode, 200);
@@ -42,19 +40,43 @@ void main() {
     final patch = await http.patch(
       Uri.parse('${h.baseUrl}/v1/display/overlays/x_test_overlay'),
       headers: h.authHeaders,
-      body: jsonEncode({'label': 'Updated'}),
+      body: jsonEncode({'name': 'Updated'}),
     );
     expect(patch.statusCode, 200);
-    final after = await fetchDisplayOverlaySchedules(db);
-    expect(after.single.label, 'Updated');
+    final after = await fetchDisplayOverlays(db);
+    expect(after.single.name, 'Updated');
 
     final del = await http.delete(
       Uri.parse('${h.baseUrl}/v1/display/overlays/x_test_overlay'),
       headers: h.authHeaders,
     );
     expect(del.statusCode, 200);
-    final empty = await fetchDisplayOverlaySchedules(db);
+    final empty = await fetchDisplayOverlays(db);
     expect(empty, isEmpty);
+  });
+
+  test('display overlays REST allocates id from name', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureOverlaysTableExists(db);
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+
+    final post = await http.post(
+      Uri.parse('${h.baseUrl}/v1/display/overlays'),
+      headers: h.authHeaders,
+      body: jsonEncode({
+        'name': "Mother's Day hearts",
+        'overlay_type': kOverlayTypeHeartsRain,
+        'config_json': {'messages': ['Hi']},
+      }),
+    );
+    expect(post.statusCode, 200);
+    final body = jsonDecode(post.body) as Map<String, dynamic>;
+    expect(body['id'], 'mother_s_day_hearts');
+
+    final rows = await fetchDisplayOverlays(db);
+    expect(rows.single.name, "Mother's Day hearts");
   });
 
   test('display overlays REST birthday confetti config_json', () async {
@@ -70,7 +92,7 @@ void main() {
       body: jsonEncode({
         'id': 'bd_test_overlay',
         'overlay_type': kOverlayTypeBirthdayConfetti,
-        'label': 'Birthday',
+        'name': 'Birthday',
         'config_json': {
           'messages': ['Happy birthday!'],
           'shapes': ['circle', 'rect'],
@@ -78,9 +100,6 @@ void main() {
           'density': 0.55,
           'message_interval_sec': 33,
         },
-        'repeat_annually': true,
-        'start_month': 4,
-        'start_day': 2,
       }),
     );
     expect(post.statusCode, 200);
@@ -109,11 +128,8 @@ void main() {
       body: jsonEncode({
         'id': 'bad_confetti',
         'overlay_type': kOverlayTypeBirthdayConfetti,
-        'label': 'x',
+        'name': 'x',
         'config_json': {'messages': [], 'shapes': ['not_a_shape']},
-        'repeat_annually': true,
-        'start_month': 1,
-        'start_day': 2,
       }),
     );
     expect(post.statusCode, 400);
@@ -127,12 +143,13 @@ void main() {
     final h = await RestTestHarness.start(database: db);
     addTearDown(h.dispose);
 
-    final noId = await http.post(
+    final noName = await http.post(
       Uri.parse('${h.baseUrl}/v1/display/overlays'),
       headers: h.authHeaders,
       body: jsonEncode({'overlay_type': kOverlayTypeHeartsRain}),
     );
-    expect(noId.statusCode, 400);
+    expect(noName.statusCode, 400);
+    expect(noName.body, contains('name_required'));
 
     final badJson = await http.post(
       Uri.parse('${h.baseUrl}/v1/display/overlays'),
@@ -145,7 +162,7 @@ void main() {
     final patch404 = await http.patch(
       Uri.parse('${h.baseUrl}/v1/display/overlays/ghost'),
       headers: h.authHeaders,
-      body: jsonEncode({'label': 'ghost'}),
+      body: jsonEncode({'name': 'ghost'}),
     );
     expect(patch404.statusCode, 404);
 
@@ -169,7 +186,7 @@ void main() {
       body: jsonEncode({
         'id': 'bounce_rest_test',
         'overlay_type': kOverlayTypeBouncingMessage,
-        'label': 'Bounce',
+        'name': 'Bounce',
         'config_json': {
           'messages': ['Ping'],
           'color': '#00AAFF',
@@ -177,9 +194,6 @@ void main() {
           'font_weight': 500,
           'speed': 0.8,
         },
-        'repeat_annually': true,
-        'start_month': 7,
-        'start_day': 4,
       }),
     );
     expect(post.statusCode, 200);
@@ -213,15 +227,12 @@ void main() {
       body: jsonEncode({
         'id': 'fall_rest_test',
         'overlay_type': kOverlayTypeFallingImages,
-        'label': 'Falling',
+        'name': 'Falling',
         'config_json': {
           'image_blob_keys': [blobKey],
           'drop_interval_sec': 45,
           'fall_speed': 0.12,
         },
-        'repeat_annually': true,
-        'start_month': 7,
-        'start_day': 4,
       }),
     );
     expect(post.statusCode, 200);

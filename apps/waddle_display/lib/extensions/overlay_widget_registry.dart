@@ -4,7 +4,7 @@ import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/display_overlay_bouncing_message_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_confetti_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_falling_images_settings.dart';
-import 'package:waddle_shared/persistence/display_overlay_schedule_row.dart';
+import 'package:waddle_shared/persistence/display_overlay_row.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 
 import '../display/overlay/birthday_confetti_overlay.dart';
@@ -17,7 +17,7 @@ import '../display/overlay/plugin_web_overlay.dart';
 
 typedef CelebrationOverlayLayerBuilder = Widget? Function(
   CelebrationOverlayBuildContext ctx,
-  List<DisplayOverlayScheduleRow> matches,
+  List<DisplayOverlayRow> matches,
 );
 
 class CelebrationOverlayBuildContext {
@@ -31,7 +31,7 @@ class CelebrationOverlayBuildContext {
 
   final ThemeData theme;
   final List<Color> accents;
-  final List<String> Function(List<DisplayOverlayScheduleRow>) mergePhrases;
+  final List<String> Function(List<DisplayOverlayRow>) mergePhrases;
   final BlobStore blobs;
   final AppDatabase db;
 }
@@ -52,11 +52,11 @@ class OverlayWidgetRegistry {
 
   List<Widget> buildLayers({
     required CelebrationOverlayBuildContext ctx,
-    required List<DisplayOverlayScheduleRow> rows,
+    required List<DisplayOverlayRow> rows,
     required DateTime now,
     Map<String, dynamic> runtimeSignals = const {},
   }) {
-    final byType = <String, List<DisplayOverlayScheduleRow>>{};
+    final byType = <String, List<DisplayOverlayRow>>{};
     for (final row in rows) {
       if (!matchesCelebrationOverlay(row, now, runtimeSignals: runtimeSignals)) {
         continue;
