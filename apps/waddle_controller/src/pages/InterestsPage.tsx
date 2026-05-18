@@ -11,6 +11,7 @@ import {
   Card,
   CardActions,
   CardContent,
+  Checkbox,
   Chip,
   Dialog,
   DialogActions,
@@ -928,7 +929,7 @@ function NewsCategoryAccordion({
           <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap onClick={(e) => e.stopPropagation()}>
             <FormControlLabel
               control={
-                <Switch
+                <Checkbox
                   size="small"
                   checked={interestedState.checked}
                   indeterminate={interestedState.indeterminate}
@@ -1016,7 +1017,7 @@ function LocationCategoryAccordion({
           <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap onClick={(e) => e.stopPropagation()}>
             <FormControlLabel
               control={
-                <Switch
+                <Checkbox
                   size="small"
                   checked={weatherState.checked}
                   indeterminate={weatherState.indeterminate}
@@ -1028,7 +1029,7 @@ function LocationCategoryAccordion({
             />
             <FormControlLabel
               control={
-                <Switch
+                <Checkbox
                   size="small"
                   checked={alertsState.checked}
                   indeterminate={alertsState.indeterminate}
@@ -1040,7 +1041,7 @@ function LocationCategoryAccordion({
             />
             <FormControlLabel
               control={
-                <Switch
+                <Checkbox
                   size="small"
                   checked={newsState.checked}
                   indeterminate={newsState.indeterminate}

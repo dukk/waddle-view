@@ -28,7 +28,8 @@ export async function uploadOverlayImageBlob(
   const bytesBase64 = btoa(binary);
   return apiJson<OverlayBlobUploadResult>(display, '/v1/display/overlays/blobs', {
     method: 'POST',
-    body: { bytes_base64: bytesBase64, content_type: mime },
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bytes_base64: bytesBase64, content_type: mime }),
   });
 }
 

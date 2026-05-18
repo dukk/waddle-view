@@ -32,11 +32,16 @@ describe('uploadOverlayImageBlob', () => {
       '/v1/display/overlays/blobs',
       expect.objectContaining({
         method: 'POST',
-        body: expect.objectContaining({
-          content_type: 'image/png',
-          bytes_base64: expect.any(String),
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: expect.any(String),
       }),
     );
+    const init = vi.mocked(apiJson).mock.calls[0]![2] as RequestInit;
+    const body = JSON.parse(String(init.body)) as {
+      content_type: string;
+      bytes_base64: string;
+    };
+    expect(body.content_type).toBe('image/png');
+    expect(body.bytes_base64).toEqual(expect.any(String));
   });
 });

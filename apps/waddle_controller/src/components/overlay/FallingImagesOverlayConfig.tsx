@@ -63,7 +63,7 @@ export function FallingImagesOverlayConfig({
         }
         try {
           const u = await fetchBlobObjectUrl(display, key);
-          if (!cancelled) urls[key] = u;
+          if (!cancelled && u) urls[key] = u;
         } catch {
           /* preview optional */
         }
