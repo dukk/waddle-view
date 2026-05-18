@@ -1,3 +1,9 @@
+# Has machine specific values for now that are not nessisary for others... WIll fix this later...
+waddle-view.*.code-workspace
+
+# Per-machine junction to waddle_display application support (see scripts/link_waddle_display_appdata.*)
+.local/waddle-display-appdata/
+
 # Mono-repo — nested Flutter / Dart
 .flutter-sdk/
 
@@ -32,6 +38,8 @@ dist/
 
 # Cursor hook runtime state (QA edit tracking)
 .cursor/hooks/state/
+
+
 
 deploy/dev-pi/*.tar.gz
 

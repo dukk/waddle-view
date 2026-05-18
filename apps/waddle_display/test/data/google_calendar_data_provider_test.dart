@@ -188,9 +188,9 @@ Future<void> _seedKvAndProvider(
           integrationType: 'calendar_google',
           enabled: const Value(true),
           pollSeconds: Value(pollSeconds),
-          baseUrl: const Value(kDefaultGoogleCalendarBaseUrl),
-          configJson: Value(
-            '{"accounts":$extraAccountsJson,"pastDays":14,"futureDays":14}',
+          configJson: integrationConfigJsonValue(
+            configJson: '{"accounts":$extraAccountsJson,"pastDays":14,"futureDays":14}',,
+            baseUrl: kDefaultGoogleCalendarBaseUrl,
           ),
         ),
       );

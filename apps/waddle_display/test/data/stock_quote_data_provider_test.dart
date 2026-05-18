@@ -95,8 +95,10 @@ Future<void> _seedProviderRow(
           integrationType: kStockProviderId,
           pollSeconds: const Value(60),
           enabled: Value(enabled),
-          baseUrl: const Value(kDefaultFinnhubBaseUrl),
-          configJson: Value(configJson),
+          configJson: integrationConfigJsonValue(
+            configJson: configJson,
+            baseUrl: kDefaultFinnhubBaseUrl,
+          ),
         ),
       );
 }

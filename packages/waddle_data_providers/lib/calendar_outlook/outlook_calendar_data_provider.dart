@@ -4,6 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 
+import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/config/microsoft_graph_kv.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/persistence/database.dart';
@@ -186,7 +187,9 @@ class OutlookCalendarDataProvider implements IDataProvider {
       return;
     }
 
-    final graphBase = _normalizeGraphBase(setting.baseUrl);
+    final graphBase = _normalizeGraphBase(
+      integrationBaseUrlFromConfigJson(setting.configJson),
+    );
     final range = _syncWindowUtc(extra);
     final graphOAuth = _oauth ??
         MicrosoftGraphOAuth(

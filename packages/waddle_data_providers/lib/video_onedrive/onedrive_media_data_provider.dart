@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:waddle_shared/curation/reject_filter_context.dart';
 
 import 'package:waddle_shared/blob/blob_store.dart';
+import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/config/microsoft_graph_kv.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/persistence/database.dart';
@@ -253,7 +254,9 @@ class OneDriveVideosDataProvider implements IDataProvider {
       return;
     }
 
-    final graphBase = _normalizeGraphBase(setting.baseUrl);
+    final graphBase = _normalizeGraphBase(
+      integrationBaseUrlFromConfigJson(setting.configJson),
+    );
     ctx.diagnostics.provider(
       'onedrive_media: collect graphBase=$graphBase accounts=${extra.accounts.length} '
       'globalLimit=${extra.globalPerPollLimit}',

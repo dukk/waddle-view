@@ -10,6 +10,7 @@ import 'curator_configuration_routes.dart';
 import '../theme/display_theme.dart';
 import 'package:waddle_shared/config/adoption.dart';
 import 'package:waddle_shared/config/adoption_allowed_roles.dart';
+import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/auth/role_permissions.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_shared/persistence/config_json_documentation.dart';
@@ -852,16 +853,6 @@ void registerOperatorRestRoutes(
         );
       }
     }
-    String? baseUrl = existing.baseUrl;
-    if (map.containsKey('base_url')) {
-      final raw = map['base_url'];
-      if (raw == null) {
-        baseUrl = null;
-      } else {
-        final s = '$raw'.trim();
-        baseUrl = s.isEmpty ? null : s;
-      }
-    }
     String? configJson = existing.configJson;
     if (map.containsKey('config_json')) {
       final v = map['config_json'];
@@ -878,11 +869,17 @@ void registerOperatorRestRoutes(
             headers: {'content-type': 'application/json'});
       }
     }
+    if (map.containsKey('base_url')) {
+      final raw = map['base_url'];
+      final baseUrl = raw == null
+          ? null
+          : ('$raw'.trim().isEmpty ? null : '$raw'.trim());
+      configJson = setBaseUrlInIntegrationConfig(configJson, baseUrl);
+    }
     await (db.update(db.integrations)..where((t) => t.id.equals(id))).write(
       IntegrationsCompanion(
         enabled: Value(enabled),
         pollSeconds: Value(poll),
-        baseUrl: Value(baseUrl),
         configJson: Value(configJson),
       ),
     );

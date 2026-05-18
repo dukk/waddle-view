@@ -80,8 +80,10 @@ void main() {
             id: kDefaultTriviaOpenAiIntegrationId,
             integrationType: 'trivia_openai',
             pollSeconds: const Value(1),
-            configJson: const Value('{"questionsPerDay":2}'),
-            baseUrl: const Value('http://api.local/v1'),
+            configJson: integrationConfigJsonValue(
+              configJson: '{"questionsPerDay":2}',
+              baseUrl: 'http://api.local/v1',
+            ),
           ),
         );
     await db.into(db.interestsTrivia).insert(
@@ -140,8 +142,10 @@ void main() {
             id: kDefaultTriviaOpenAiIntegrationId,
             integrationType: 'trivia_openai',
             pollSeconds: const Value(1),
-            configJson: const Value('{"questionsPerDay":5}'),
-            baseUrl: const Value('http://api.local/v1'),
+            configJson: integrationConfigJsonValue(
+              configJson: '{"questionsPerDay":5}',
+              baseUrl: 'http://api.local/v1',
+            ),
           ),
         );
     await db.into(db.interestsTrivia).insert(
@@ -192,8 +196,10 @@ void main() {
             id: kDefaultTriviaOpenAiIntegrationId,
             integrationType: 'trivia_openai',
             pollSeconds: const Value(1),
-            configJson: const Value('{"questionsPerDay":5}'),
-            baseUrl: const Value('http://api.local/v1'),
+            configJson: integrationConfigJsonValue(
+              configJson: '{"questionsPerDay":5}',
+              baseUrl: 'http://api.local/v1',
+            ),
           ),
         );
     await db.into(db.interestsTrivia).insert(
@@ -236,8 +242,10 @@ void main() {
             id: kDefaultTriviaOpenAiIntegrationId,
             integrationType: 'trivia_openai',
             pollSeconds: const Value(1),
-            configJson: const Value('{"questionsPerDay":5}'),
-            baseUrl: const Value('http://api.local/v1'),
+            configJson: integrationConfigJsonValue(
+              configJson: '{"questionsPerDay":5}',
+              baseUrl: 'http://api.local/v1',
+            ),
           ),
         );
     await db.into(db.interestsTrivia).insert(
@@ -350,8 +358,10 @@ void main() {
             id: kDefaultTriviaOpenAiIntegrationId,
             integrationType: 'trivia_openai',
             pollSeconds: const Value(1),
-            configJson: const Value('{"questionsPerDay":1}'),
-            baseUrl: const Value('http://api.local/v1'),
+            configJson: integrationConfigJsonValue(
+              configJson: '{"questionsPerDay":1}',
+              baseUrl: 'http://api.local/v1',
+            ),
           ),
         );
     await db.into(db.interestsTrivia).insert(
@@ -405,11 +415,11 @@ void main() {
             id: kDefaultTriviaOpenAiIntegrationId,
             integrationType: 'trivia_openai',
             pollSeconds: const Value(1),
-            configJson: const Value(
-              '{"maxQuestionPerDay":5,"maxQuestionPerHour":20,'
-              '"twoHourWindowMs":3600000}',
+            configJson: integrationConfigJsonValue(
+              configJson: '{"maxQuestionPerDay":5,"maxQuestionPerHour":20,'
+              '"twoHourWindowMs":3600000}',,
+              baseUrl: 'http://api.local/v1',
             ),
-            baseUrl: const Value('http://api.local/v1'),
           ),
         );
     await db.into(db.interestsTrivia).insert(
@@ -449,11 +459,11 @@ void main() {
             id: kDefaultTriviaOpenAiIntegrationId,
             integrationType: 'trivia_openai',
             pollSeconds: const Value(1),
-            configJson: const Value(
-              '{"maxQuestionPerDay":5,"maxQuestionPerHour":20,'
-              '"twoHourWindowMs":3600000}',
+            configJson: integrationConfigJsonValue(
+              configJson: '{"maxQuestionPerDay":5,"maxQuestionPerHour":20,'
+              '"twoHourWindowMs":3600000}',,
+              baseUrl: 'http://api.local/v1',
             ),
-            baseUrl: const Value('http://api.local/v1'),
           ),
         );
     await db.into(db.interestsTrivia).insert(
@@ -492,8 +502,10 @@ void main() {
             id: kDefaultTriviaOpenAiIntegrationId,
             integrationType: 'trivia_openai',
             pollSeconds: const Value(1),
-            configJson: const Value('{"maxQuestionPerDay":5}'),
-            baseUrl: const Value('http://api.local/v1'),
+            configJson: integrationConfigJsonValue(
+              configJson: '{"maxQuestionPerDay":5}',
+              baseUrl: 'http://api.local/v1',
+            ),
           ),
         );
     await db.into(db.interestsTrivia).insert(
@@ -541,11 +553,11 @@ void main() {
             id: kDefaultTriviaOpenAiIntegrationId,
             integrationType: 'trivia_openai',
             pollSeconds: const Value(1),
-            configJson: const Value(
-              '{"maxQuestionPerDay":5,"maxQuestionPerHour":20,'
-              '"twoHourWindowMs":3600000}',
+            configJson: integrationConfigJsonValue(
+              configJson: '{"maxQuestionPerDay":5,"maxQuestionPerHour":20,'
+              '"twoHourWindowMs":3600000}',,
+              baseUrl: 'http://api.local/v1',
             ),
-            baseUrl: const Value('http://api.local/v1'),
           ),
         );
     await db.into(db.interestsTrivia).insert(

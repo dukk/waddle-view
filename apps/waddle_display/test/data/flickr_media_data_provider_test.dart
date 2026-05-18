@@ -174,8 +174,10 @@ Future<void> _seedProvider(
           integrationType: kPhotoFlickrIntegrationType,
           enabled: Value(enabled),
           pollSeconds: Value(pollSeconds),
-          baseUrl: const Value('https://api.flickr.com/services/rest'),
-          configJson: Value(configJson),
+          configJson: integrationConfigJsonValue(
+            configJson: configJson,
+            baseUrl: 'https://api.flickr.com/services/rest',
+          ),
         ),
       );
 }

@@ -65,7 +65,7 @@ Allowed responses include **`Access-Control-Allow-Origin`** (mirrored origin), *
 | Method | Path | Notes |
 |--------|------|--------|
 | GET | `/v1/health` | No auth required. |
-| GET | `/v1/integrations` | Lists non-secret integration settings (`id`, `integration_type`, `enabled`, `poll_seconds`, `base_url`, decoded `config_json` / `config_json_schema` / `example_config_json` when stored). |
+| GET | `/v1/integrations` | Lists non-secret integration settings (`id`, `integration_type`, `enabled`, `poll_seconds`, decoded `config_json` / `config_json_schema` when stored). Optional HTTP root URL lives in `config_json.baseUrl`. |
 | GET | `/v1/screens` | Display screen definitions from SQLite table **`screens`** (`screen_type`, `config_json`, `dwell_seconds`, scheduling hints, optional `config_json_schema` / `example_config_json`). |
 | GET | `/v1/ticker/items` | Current bottom-marquee items (`ordinal`, `kind`, `body`) — in-process snapshot; read-only. |
 | GET | `/v1/alerts` | All operator alerts from SQLite **`alerts`** (no redaction of bodies in MVP; do not store secrets in alerts). |
@@ -157,7 +157,7 @@ These routes use the same **Bearer session** auth as other protected `/v1/*` pat
 | PATCH | `/v1/screens/{id}` | Partial update; `config_json` re-validates layout. |
 | DELETE | `/v1/screens/{id}` | Deletes row; **404** if missing. |
 
-**Expanded read shape:** `GET /v1/integrations` includes `base_url`, decoded `config_json`, `config_json_schema`, and `example_config_json` when stored (omit secrets in client logs).
+**Expanded read shape:** `GET /v1/integrations` includes decoded `config_json` and `config_json_schema` when stored (omit secrets in client logs). Service base URLs are in `config_json.baseUrl`.
 
 ## Examples
 

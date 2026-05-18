@@ -1,6 +1,7 @@
 import '../integration_accounts/integration_accounts_service.dart';
 import '../persistence/database.dart';
 import '../secrets/secret_store.dart';
+import 'integration_config_json.dart';
 import 'provider_runtime_config.dart';
 
 class ProviderConfigResolver {
@@ -29,7 +30,7 @@ class ProviderConfigResolver {
       providerId: row.id,
       integrationType: row.integrationType,
       pollSeconds: row.pollSeconds,
-      baseUrl: row.baseUrl,
+      baseUrl: integrationBaseUrlFromConfigJson(row.configJson),
       configJson: row.configJson,
       accessToken: token,
     );

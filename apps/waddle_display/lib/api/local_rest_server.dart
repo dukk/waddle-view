@@ -170,10 +170,8 @@ Handler buildProtectedApiRouter({
         'integration_type': e.integrationType,
         'enabled': e.enabled,
         'poll_seconds': e.pollSeconds,
-        'base_url': e.baseUrl,
         'config_json': _jsonDecodeLoose(e.configJson),
         'config_json_schema': _jsonDecodeLoose(e.configJsonSchema),
-        'example_config_json': _jsonDecodeLoose(e.exampleConfigJson),
         'secrets_configured':
             await integrationSecretsConfigured(
               secrets,

@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart' show Value;
+import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/curation/reject_rescan.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/reject_term_repository.dart';
@@ -214,7 +215,6 @@ class LocalDriftBackend implements WaddleAdminBackend {
     'integration_type': row.integrationType,
     'enabled': row.enabled,
     'poll_seconds': row.pollSeconds,
-    'base_url': row.baseUrl,
     'config_json': row.configJson,
   };
 
@@ -248,12 +248,14 @@ class LocalDriftBackend implements WaddleAdminBackend {
         pollSeconds: pollSeconds == null
             ? const Value.absent()
             : Value(pollSeconds),
-        baseUrl: baseUrl == null
+        configJson: configJson == null && baseUrl == null
             ? const Value.absent()
-            : Value(baseUrl.isEmpty ? null : baseUrl),
-        configJson: configJson == null
-            ? const Value.absent()
-            : Value(configJson.isEmpty ? null : configJson),
+            : Value(
+                setBaseUrlInIntegrationConfig(
+                  configJson ?? existing.configJson,
+                  baseUrl,
+                ),
+              ),
       ),
     );
   }

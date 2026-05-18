@@ -79,8 +79,10 @@ void main() {
             integrationType: 'weather_alerts_nws',
             enabled: const Value(false),
             pollSeconds: const Value(60),
-            baseUrl: const Value('https://api.weather.gov'),
-            configJson: const Value('{}'),
+            configJson: integrationConfigJsonValue(
+              configJson: '{}',
+              baseUrl: 'https://api.weather.gov',
+            ),
           ),
         );
     await db.into(db.interestsLocations).insert(
@@ -142,9 +144,10 @@ void main() {
             id: kDefaultWeatherAlertsNwsIntegrationId,
             integrationType: 'weather_alerts_nws',
             pollSeconds: const Value(60),
-            baseUrl: const Value('https://api.weather.gov'),
-            configJson: const Value(
-              '{"userAgent":"(test, test@example.com)","defaultLocation":{"name":"X","lat":0,"lon":0}}',
+            configJson: integrationConfigJsonValue(
+              configJson:
+                  '{"userAgent":"(test, test@example.com)","defaultLocation":{"name":"X","lat":0,"lon":0}}',
+              baseUrl: 'https://api.weather.gov',
             ),
           ),
         );
@@ -194,8 +197,10 @@ void main() {
             id: kDefaultWeatherAlertsNwsIntegrationId,
             integrationType: 'weather_alerts_nws',
             pollSeconds: const Value(60),
-            baseUrl: const Value('https://api.weather.gov'),
-            configJson: const Value('{}'),
+            configJson: integrationConfigJsonValue(
+              configJson: '{}',
+              baseUrl: 'https://api.weather.gov',
+            ),
           ),
         );
     await db.into(db.interestsLocations).insert(
@@ -247,8 +252,10 @@ void main() {
             id: kDefaultWeatherAlertsNwsIntegrationId,
             integrationType: 'weather_alerts_nws',
             pollSeconds: const Value(60),
-            baseUrl: const Value('https://api.weather.gov'),
-            configJson: const Value('{}'),
+            configJson: integrationConfigJsonValue(
+              configJson: '{}',
+              baseUrl: 'https://api.weather.gov',
+            ),
           ),
         );
     await db.into(db.interestsLocations).insert(
@@ -291,8 +298,10 @@ void main() {
             id: kDefaultWeatherAlertsNwsIntegrationId,
             integrationType: 'weather_alerts_nws',
             pollSeconds: const Value(60),
-            baseUrl: const Value('https://api.weather.gov'),
-            configJson: const Value('{}'),
+            configJson: integrationConfigJsonValue(
+              configJson: '{}',
+              baseUrl: 'https://api.weather.gov',
+            ),
           ),
         );
     await db.into(db.interestsLocations).insert(
@@ -338,8 +347,10 @@ void main() {
             id: kDefaultWeatherAlertsNwsIntegrationId,
             integrationType: 'weather_alerts_nws',
             pollSeconds: const Value(60),
-            baseUrl: const Value('https://api.weather.gov'),
-            configJson: const Value('{}'),
+            configJson: integrationConfigJsonValue(
+              configJson: '{}',
+              baseUrl: 'https://api.weather.gov',
+            ),
           ),
         );
     await db.into(db.interestsLocations).insert(
@@ -372,8 +383,10 @@ void main() {
             id: kDefaultWeatherAlertsNwsIntegrationId,
             integrationType: 'weather_alerts_nws',
             pollSeconds: const Value(60),
-            baseUrl: const Value('https://api.weather.gov'),
-            configJson: const Value('{}'),
+            configJson: integrationConfigJsonValue(
+              configJson: '{}',
+              baseUrl: 'https://api.weather.gov',
+            ),
           ),
         );
     await db.into(db.interestsLocations).insert(
@@ -418,8 +431,10 @@ void main() {
             id: kDefaultWeatherAlertsNwsIntegrationId,
             integrationType: 'weather_alerts_nws',
             pollSeconds: const Value(60),
-            baseUrl: const Value('https://api.weather.gov'),
-            configJson: const Value('{}'),
+            configJson: integrationConfigJsonValue(
+              configJson: '{}',
+              baseUrl: 'https://api.weather.gov',
+            ),
           ),
         );
     await db.into(db.interestsLocations).insert(
@@ -463,8 +478,10 @@ void main() {
             id: kDefaultWeatherAlertsNwsIntegrationId,
             integrationType: 'weather_alerts_nws',
             pollSeconds: const Value(60),
-            baseUrl: const Value('https://api.weather.gov'),
-            configJson: const Value('{}'),
+            configJson: integrationConfigJsonValue(
+              configJson: '{}',
+              baseUrl: 'https://api.weather.gov',
+            ),
           ),
         );
     await db.into(db.interestsLocations).insert(

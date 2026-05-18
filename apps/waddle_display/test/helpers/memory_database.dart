@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/persistence/config_json_documentation.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
@@ -43,7 +44,6 @@ Future<void> seedStubIntegrationForTest(AppDatabase db) async {
           enabled: const Value(true),
           pollSeconds: const Value(60),
           configJsonSchema: Value(stubDoc.schema),
-          exampleConfigJson: Value(stubDoc.example),
         ),
       );
 }
@@ -51,6 +51,18 @@ Future<void> seedStubIntegrationForTest(AppDatabase db) async {
 /// Seed ad-hoc curator category rows (`curator_categories`) so tests can reference category ids
 /// (FK target of e.g. `calendar_events.category_id`) without depending on
 /// `ensureInitialSeed`. Pass each id you intend to use; label defaults to id.
+/// Merges [baseUrl] into integration `config_json` for test inserts.
+Value<String?> integrationConfigJsonValue({
+  String? configJson,
+  String? baseUrl,
+}) {
+  final merged = mergeBaseUrlIntoIntegrationConfig(configJson, baseUrl);
+  if (merged == null) {
+    return const Value.absent();
+  }
+  return Value(merged);
+}
+
 Future<void> seedContentCategoriesForTest(
   AppDatabase db,
   Iterable<String> ids, {

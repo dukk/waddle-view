@@ -8,6 +8,7 @@ import 'package:test/test.dart';
 import 'package:waddle_data_providers/home_assistant/home_assistant_data_provider.dart';
 import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
@@ -83,7 +84,9 @@ Future<void> _seedProvider(
           integrationType: kHomeAssistantProviderId,
           pollSeconds: const Value(60),
           enabled: Value(enabled),
-          baseUrl: const Value('http://ha.local:8123'),
+          configJson: Value(
+            mergeBaseUrlIntoIntegrationConfig(null, 'http://ha.local:8123'),
+          ),
         ),
       );
 }

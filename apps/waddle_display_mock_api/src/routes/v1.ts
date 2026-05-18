@@ -240,10 +240,11 @@ export function v1Router() {
           integration_type: 'mock',
           enabled: true,
           poll_seconds: 60,
-          base_url: 'https://example.invalid',
-          config_json: { note: 'mock' },
+          config_json: {
+            note: 'mock',
+            baseUrl: 'https://example.invalid',
+          },
           config_json_schema: { type: 'object' },
-          example_config_json: {},
         },
       ],
     });

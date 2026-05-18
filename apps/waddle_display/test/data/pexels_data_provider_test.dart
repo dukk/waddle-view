@@ -154,8 +154,10 @@ Future<void> _ensurePexelsProvider(
           id: kDefaultPhotoPexelsIntegrationId,
           integrationType: 'photo_pexels',
           pollSeconds: Value(pollSeconds),
-          baseUrl: const Value('http://api.pexels.test'),
-          configJson: Value(extra),
+          configJson: integrationConfigJsonValue(
+            configJson: extra,
+            baseUrl: 'http://api.pexels.test',
+          ),
         ),
       );
 }
@@ -171,8 +173,10 @@ Future<void> _ensureVideoPexelsProvider(
           id: kDefaultVideoPexelsIntegrationId,
           integrationType: 'video_pexels',
           pollSeconds: Value(pollSeconds),
-          baseUrl: const Value('http://api.pexels.test'),
-          configJson: Value(extra),
+          configJson: integrationConfigJsonValue(
+            configJson: extra,
+            baseUrl: 'http://api.pexels.test',
+          ),
         ),
       );
 }
@@ -197,7 +201,9 @@ void main() {
             integrationType: 'photo_pexels',
             enabled: const Value(false),
             pollSeconds: const Value(0),
-            baseUrl: const Value('http://api.pexels.test'),
+            configJson: integrationConfigJsonValue(
+              baseUrl: 'http://api.pexels.test',
+            ),
           ),
         );
     final httpClient = _FakePexelsHttp(
@@ -564,8 +570,10 @@ void main() {
             id: kDefaultPhotoPexelsIntegrationId,
             integrationType: 'photo_pexels',
             pollSeconds: const Value(0),
-            baseUrl: const Value('http://api.pexels.test/'),
-            configJson: const Value('{}'),
+            configJson: integrationConfigJsonValue(
+              configJson: '{}',
+              baseUrl: 'http://api.pexels.test/',
+            ),
           ),
         );
     final httpClient = _FakePexelsHttp(

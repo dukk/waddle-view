@@ -57,10 +57,11 @@ Future<void> _insertBingProvider(
       integrationType: kPhotoBingIotdIntegrationType,
       enabled: Value(enabled),
       pollSeconds: Value(pollSeconds),
-      baseUrl: Value(baseUrl),
-      configJson: Value(configJson),
+      configJson: integrationConfigJsonValue(
+        configJson: configJson,
+        baseUrl: baseUrl,
+      ),
       configJsonSchema: Value(doc.schema),
-      exampleConfigJson: Value(doc.example),
     ),
   );
 }

@@ -8,10 +8,8 @@ class Integrations extends Table {
   TextColumn get integrationType => text()();
   BoolColumn get enabled => boolean().withDefault(const Constant(true))();
   IntColumn get pollSeconds => integer().withDefault(const Constant(60))();
-  TextColumn get baseUrl => text().nullable()();
   TextColumn get configJson => text().nullable()();
   TextColumn get configJsonSchema => text().nullable()();
-  TextColumn get exampleConfigJson => text().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};

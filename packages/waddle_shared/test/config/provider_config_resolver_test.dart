@@ -16,7 +16,7 @@ void main() {
           IntegrationsCompanion.insert(
             id: kDefaultWeatherOpenWeatherMapIntegrationId,
             integrationType: 'weather_openweathermap',
-            baseUrl: const Value('https://example.com'),
+            configJson: const Value('{"baseUrl":"https://example.com"}'),
           ),
         );
     final secrets = InMemorySecretStore();

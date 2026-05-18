@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 
+import '../config/integration_config_json.dart';
 import '../integration_accounts/integration_accounts_service.dart';
 import '../seed/tables/interests_locations_seed.dart';
 import 'display_overlay_sql.dart';
@@ -64,7 +65,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -174,6 +175,13 @@ ORDER BY priority DESC, created_at DESC;
       }
       if (from == 14 && to >= 15) {
         await _ensureCuratorConfigurationsTickerEnabled(this);
+        if (to == 15) {
+          return;
+        }
+        from = 15;
+      }
+      if (from == 15 && to >= 16) {
+        await _migrateV15ToV16IntegrationsConfigColumns(this);
         return;
       }
       throw UnsupportedError(
@@ -770,6 +778,55 @@ Future<void> _ensureCuratorConfigurationsTickerEnabled(AppDatabase db) async {
     'UPDATE curator_configurations SET ticker_enabled = 1 '
     'WHERE ticker_enabled IS NULL',
   );
+}
+
+/// Moves `base_url` into `config_json.baseUrl` and drops `example_config_json`.
+Future<void> _migrateV15ToV16IntegrationsConfigColumns(AppDatabase db) async {
+  if (!await _sqliteTableExists(db, 'integrations')) {
+    return;
+  }
+  final hasBaseUrl =
+      await _sqliteColumnExists(db, 'integrations', 'base_url');
+  final hasExample =
+      await _sqliteColumnExists(db, 'integrations', 'example_config_json');
+  if (!hasBaseUrl && !hasExample) {
+    return;
+  }
+
+  final rows = await db.customSelect('SELECT * FROM integrations').get();
+  await db.customStatement('PRAGMA foreign_keys = OFF');
+  await db.customStatement('''
+CREATE TABLE integrations_new (
+  id TEXT NOT NULL PRIMARY KEY,
+  integration_type TEXT NOT NULL,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  poll_seconds INTEGER NOT NULL DEFAULT 60,
+  config_json TEXT,
+  config_json_schema TEXT
+)
+''');
+  for (final row in rows) {
+    final configJson = mergeBaseUrlIntoIntegrationConfig(
+      row.read<String?>('config_json'),
+      row.read<String?>('base_url'),
+    );
+    await db.customStatement(
+      'INSERT INTO integrations_new '
+      '(id, integration_type, enabled, poll_seconds, config_json, config_json_schema) '
+      'VALUES (?, ?, ?, ?, ?, ?)',
+      [
+        row.read<String>('id'),
+        row.read<String>('integration_type'),
+        row.read<int>('enabled'),
+        row.read<int>('poll_seconds'),
+        configJson,
+        row.read<String?>('config_json_schema'),
+      ],
+    );
+  }
+  await db.customStatement('DROP TABLE integrations');
+  await db.customStatement('ALTER TABLE integrations_new RENAME TO integrations');
+  await db.customStatement('PRAGMA foreign_keys = ON');
 }
 
 Future<void> _seedDefaultRejectTerms(AppDatabase db) async {

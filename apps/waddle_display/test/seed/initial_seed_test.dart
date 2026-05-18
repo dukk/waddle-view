@@ -5,6 +5,7 @@ import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:waddle_display/alerts/alert_severity_icons_kv.dart';
 import 'package:waddle_display/config/google_kv.dart';
 import 'package:waddle_data_providers/photo_pexels/pexels_provider_extra_config.dart';
+import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/content_category_defaults.dart';
 import 'package:waddle_shared/persistence/display_overlay_repository.dart';
@@ -160,7 +161,10 @@ void main() {
     expect(nws, isNotNull);
     expect(nws!.integrationType, 'weather_alerts_nws');
     expect(nws.enabled, isTrue);
-    expect(nws.baseUrl, 'https://api.weather.gov');
+    expect(
+      integrationBaseUrlFromConfigJson(nws.configJson),
+      'https://api.weather.gov',
+    );
 
     final screen = await (db.select(db.screens)
           ..where((t) => t.id.equals('weather')))
@@ -206,7 +210,10 @@ void main() {
     expect(row, isNotNull);
     expect(row!.enabled, isFalse);
     expect(row.integrationType, 'trivia_opentdb');
-    expect(row.baseUrl, 'https://opentdb.com/api.php');
+    expect(
+      integrationBaseUrlFromConfigJson(row.configJson),
+      'https://opentdb.com/api.php',
+    );
     expect(row.configJson, contains('"amount"'));
     await db.close();
   });
@@ -239,7 +246,10 @@ void main() {
     expect(row, isNotNull);
     expect(row!.enabled, isTrue);
     expect(row.integrationType, 'photo_bing_image_of_the_day');
-    expect(row.baseUrl, 'https://www.bing.com');
+    expect(
+      integrationBaseUrlFromConfigJson(row.configJson),
+      'https://www.bing.com',
+    );
     expect(row.configJson, contains('"resolution":"UHD"'));
     expect(row.configJson, contains('"category":"bing"'));
     await db.close();
@@ -315,7 +325,10 @@ void main() {
     expect(provider, isNotNull);
     expect(provider!.integrationType, 'stock_finnhub');
     expect(provider.enabled, isTrue);
-    expect(provider.baseUrl, 'https://finnhub.io');
+    expect(
+      integrationBaseUrlFromConfigJson(provider.configJson),
+      'https://finnhub.io',
+    );
 
     final screen = await (db.select(db.screens)
           ..where((t) => t.id.equals('stock_quotes')))

@@ -30,6 +30,17 @@ Map<String, Object?> _baseSchema({
   };
 }
 
+Map<String, Object?> _integrationConfigProperties(
+  Map<String, Object?> properties,
+) =>
+    {
+      ...properties,
+      'baseUrl': {
+        'type': 'string',
+        'description': 'HTTP API or service root URL for this collector.',
+      },
+    };
+
 /// Permissive schema for unknown provider types.
 final ProviderConfigJsonDoc kGenericProviderConfigJsonDoc =
     ProviderConfigJsonDoc(
@@ -37,7 +48,7 @@ final ProviderConfigJsonDoc kGenericProviderConfigJsonDoc =
         _baseSchema(
           title: 'GenericProviderConfig',
           description: 'Arbitrary JSON; no parser-specific shape.',
-          properties: {},
+          properties: _integrationConfigProperties({}),
         ),
       ),
       example: '{}',
@@ -52,7 +63,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       _baseSchema(
         title: 'PexelsPhotoProviderConfig',
         description: 'Photo rate limits, retention, and curated search sources.',
-        properties: {
+        properties: _integrationConfigProperties({
           'maxPhotos': {'type': 'integer', 'minimum': 1},
           'photosPerHour': {'type': 'integer', 'minimum': 1},
           'sources': {
@@ -67,10 +78,11 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
               'additionalProperties': true,
             },
           },
-        },
+        }),
       ),
     ),
     example: jsonEncode({
+      'baseUrl': 'https://api.pexels.com',
       'maxPhotos': 100,
       'photosPerHour': 2,
       'sources': [
@@ -83,7 +95,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       _baseSchema(
         title: 'PexelsVideoProviderConfig',
         description: 'Video rate limits, retention, and curated search sources.',
-        properties: {
+        properties: _integrationConfigProperties({
           'maxVideos': {'type': 'integer', 'minimum': 1},
           'videosPerHour': {'type': 'integer', 'minimum': 1},
           'minVideoSeconds': {'type': 'integer', 'minimum': 1},
@@ -106,10 +118,11 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
               'additionalProperties': true,
             },
           },
-        },
+        }),
       ),
     ),
     example: jsonEncode({
+      'baseUrl': 'https://api.pexels.com',
       'maxVideos': 100,
       'videosPerHour': 2,
       'minVideoSeconds': 11,
@@ -126,7 +139,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
         title: 'WeatherProviderConfig',
         description:
             'OpenWeather units, language, hourly columns, default map.',
-        properties: {
+        properties: _integrationConfigProperties({
           'units': {'type': 'string'},
           'lang': {'type': 'string'},
           'hourlyCount': {'type': 'integer', 'minimum': 0},
@@ -140,10 +153,11 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
             'required': ['lat', 'lon'],
             'additionalProperties': true,
           },
-        },
+        }),
       ),
     ),
     example: jsonEncode({
+      'baseUrl': 'https://api.openweathermap.org',
       'units': 'imperial',
       'lang': 'en',
       'hourlyCount': 6,
@@ -157,7 +171,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
         description:
             'api.weather.gov active alerts. Set userAgent with contact info per NWS API rules. '
             'Optional defaultLocation when no rows exist in interests_locations.',
-        properties: {
+        properties: _integrationConfigProperties({
           'userAgent': {'type': 'string'},
           'defaultLocation': {
             'type': 'object',
@@ -169,10 +183,11 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
             'required': ['lat', 'lon'],
             'additionalProperties': true,
           },
-        },
+        }),
       ),
     ),
     example: jsonEncode({
+      'baseUrl': 'https://api.weather.gov',
       'userAgent': '(example.org, ops@example.org)',
       'defaultLocation': {'name': 'Default', 'lat': 40.7128, 'lon': -74.006},
     }),
@@ -252,7 +267,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
         description:
             'Open Trivia DB fetch settings. categoryMap maps local trivia category ids '
             'to OpenTDB numeric category ids.',
-        properties: {
+        properties: _integrationConfigProperties({
           'amount': {'type': 'integer', 'minimum': 1, 'maximum': 50},
           'difficulty': {
             'type': 'string',
@@ -269,10 +284,11 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
           'questionRetentionDays': {'type': 'integer'},
           'maxQuestionChars': {'type': 'integer', 'minimum': 20},
           'maxOptionChars': {'type': 'integer', 'minimum': 10},
-        },
+        }),
       ),
     ),
     example: jsonEncode({
+      'baseUrl': 'https://opentdb.com/api.php',
       'amount': 10,
       'difficulty': 'easy',
       'questionType': 'multiple',
@@ -290,7 +306,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
             'Home Assistant REST collector: default entities (when '
             'interests_home_assistant_entities has no enabled rows), '
             'per-tick fetch ceiling, and HTTP timeout.',
-        properties: {
+        properties: _integrationConfigProperties({
           'maxEntitiesPerCollect': {'type': 'integer', 'minimum': 1},
           'requestTimeoutMs': {'type': 'integer', 'minimum': 1000},
           'defaultEntities': {
@@ -305,10 +321,11 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
               'additionalProperties': true,
             },
           },
-        },
+        }),
       ),
     ),
     example: jsonEncode({
+      'baseUrl': 'http://homeassistant.local:8123',
       'maxEntitiesPerCollect': 50,
       'requestTimeoutMs': 15000,
       'defaultEntities': [
@@ -323,7 +340,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
         description:
             'Finnhub stock quote provider: default symbols (used when '
             'interests_stock_symbols has no enabled rows) and per-tick fetch ceiling.',
-        properties: {
+        properties: _integrationConfigProperties({
           'maxSymbolsPerCollect': {'type': 'integer', 'minimum': 1},
           'defaultSymbols': {
             'type': 'array',
@@ -337,10 +354,11 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
               'additionalProperties': true,
             },
           },
-        },
+        }),
       ),
     ),
     example: jsonEncode({
+      'baseUrl': 'https://finnhub.io',
       'maxSymbolsPerCollect': 25,
       'defaultSymbols': [
         {'symbol': 'AAPL', 'displayName': 'Apple'},
@@ -354,7 +372,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
         title: 'OutlookCalendarProviderConfig',
         description:
             'Microsoft Graph calendar sync: accounts, mailboxes, sync window.',
-        properties: {
+        properties: _integrationConfigProperties({
           'pastDays': {'type': 'integer', 'minimum': 1},
           'futureDays': {'type': 'integer', 'minimum': 1},
           'accounts': {
@@ -405,10 +423,11 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
               'additionalProperties': true,
             },
           },
-        },
+        }),
       ),
     ),
     example: jsonEncode({
+      'baseUrl': 'https://graph.microsoft.com/v1.0',
       'accounts': [
         {
           'graphAccountKey': 'primary',
@@ -427,7 +446,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
         title: 'GoogleCalendarProviderConfig',
         description:
             'Google Calendar sync: accounts, calendar filters, window.',
-        properties: {
+        properties: _integrationConfigProperties({
           'pastDays': {'type': 'integer', 'minimum': 1},
           'futureDays': {'type': 'integer', 'minimum': 1},
           'accounts': {
@@ -471,10 +490,11 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
               'additionalProperties': true,
             },
           },
-        },
+        }),
       ),
     ),
     example: jsonEncode({
+      'baseUrl': 'https://www.googleapis.com/calendar/v3',
       'accounts': [
         {
           'googleAccountKey': 'primary',
@@ -493,7 +513,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
         title: 'IcalCalendarProviderConfig',
         description:
             'Subscribe to iCalendar (.ics) feeds by URL; sync window and per-feed category.',
-        properties: {
+        properties: _integrationConfigProperties({
           'pastDays': {'type': 'integer', 'minimum': 1},
           'futureDays': {'type': 'integer', 'minimum': 1},
           'feeds': {
@@ -512,7 +532,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
               'additionalProperties': true,
             },
           },
-        },
+        }),
       ),
     ),
     example: jsonEncode({
@@ -536,7 +556,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
         description:
             'Microsoft Graph OneDrive (read-only): delta sync of photo paths '
             'into [Photos]; retention and per-poll download caps.',
-        properties: {
+        properties: _integrationConfigProperties({
           'globalPerPollLimit': {'type': 'integer', 'minimum': 1},
           'accounts': {
             'type': 'array',
@@ -568,10 +588,11 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
               'additionalProperties': true,
             },
           },
-        },
+        }),
       ),
     ),
     example: jsonEncode({
+      'baseUrl': 'https://graph.microsoft.com/v1.0',
       'globalPerPollLimit': 50,
       'accounts': [
         {
@@ -597,7 +618,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
             'Microsoft Graph OneDrive (read-only): delta sync of each path '
             'subtree into photo/video categories; retention and per-poll '
             'download caps. Remote deletes remove local rows.',
-        properties: {
+        properties: _integrationConfigProperties({
           'globalPerPollLimit': {'type': 'integer', 'minimum': 1},
           'accounts': {
             'type': 'array',
@@ -629,10 +650,11 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
               'additionalProperties': true,
             },
           },
-        },
+        }),
       ),
     ),
     example: jsonEncode({
+      'baseUrl': 'https://graph.microsoft.com/v1.0',
       'globalPerPollLimit': 50,
       'accounts': [
         {
@@ -663,7 +685,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
         title: 'FlickrMediaProviderConfig',
         description:
             'Public Flickr group photo sync. API key comes from environment variable WADDLE_DISPLAY_FLICKR_API_KEY.',
-        properties: {
+        properties: _integrationConfigProperties({
           'groupIds': {
             'type': 'array',
             'items': {'type': 'string', 'minLength': 1},
@@ -671,10 +693,11 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
           'category': {'type': 'string', 'minLength': 1},
           'perPollLimit': {'type': 'integer', 'minimum': 1},
           'sort': {'type': 'string'},
-        },
+        }),
       ),
     ),
     example: jsonEncode({
+      'baseUrl': 'https://api.flickr.com/services/rest',
       'groupIds': ['34427469792@N01'],
       'category': 'flickr',
       'perPollLimit': 20,
@@ -688,7 +711,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
         description:
             'Bing homepage image of the day. Fetches HPImageArchive JSON then '
             'downloads {baseUrl}{urlbase}_{resolution}.jpg. No API key.',
-        properties: {
+        properties: _integrationConfigProperties({
           'retentionDays': {
             'type': 'integer',
             'description': 'Age-based prune; <=0 disables pruning.',
@@ -710,10 +733,11 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
             'minLength': 1,
             'description': 'ContentCategories id for Photos.category',
           },
-        },
+        }),
       ),
     ),
     example: jsonEncode({
+      'baseUrl': 'https://www.bing.com',
       'retentionDays': 1,
       'market': 'en-US',
       'resolution': 'UHD',

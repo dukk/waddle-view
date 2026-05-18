@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:waddle_shared/config/google_kv.dart';
+import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';
@@ -83,7 +84,9 @@ class GoogleCalendarDataProvider implements IDataProvider {
       return;
     }
 
-    final base = _normalizeBase(setting.baseUrl);
+    final base = _normalizeBase(
+      integrationBaseUrlFromConfigJson(setting.configJson),
+    );
     final window = _syncWindowUtc(extra);
     final googleOAuth = _oauth ??
         GoogleOAuth(

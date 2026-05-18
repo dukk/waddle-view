@@ -13,11 +13,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  FormControl,
-  InputLabel,
-  MenuItem,
   Paper,
-  Select,
   Stack,
   Switch,
   Table,
@@ -32,18 +28,9 @@ import {
 import Form from '@rjsf/mui';
 import validator from '@rjsf/validator-ajv8';
 import type { RJSFSchema } from '@rjsf/utils';
-import { useAuth } from '@/context/AuthContext';
 import { useDisplay } from '@/context/DisplayContext';
 import { apiFetch, apiJson, ApiError } from '@/api/client';
-import {
-  createIntegrationAccount,
-  deleteIntegrationAccount,
-  fetchIntegrationAccounts,
-  patchIntegrationAccount,
-  putIntegrationAccountSecret,
-  probeIntegrationAccountOAuth,
-} from '@/api/integrationAccounts';
-import { integrationAccountIdFromName } from '@/util/integrationAccountSlug';
+import { fetchIntegrationAccounts } from '@/api/integrationAccounts';
 import { listOAuthProviders, type OAuthProviderStatus } from '@/api/oauthProviders';
 import { CatalogPageToolbar } from '@/components/CatalogPageToolbar';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
@@ -56,6 +43,7 @@ import { integrationDataFamily } from '@/util/integrationIcon';
 import { parseJsonObject } from '@/util/json';
 import { prepareRjsfSchema } from '@/util/rjsfSchema';
 import { fetchIntegrationAccountsDetail } from '@/api/integrationAccounts';
+import { AccountsSetupNotice } from '@/components/AccountsSetupNotice';
 import { IntegrationAccountChips } from '@/components/IntegrationAccountChips';
 import {
   OutlookCalendarConfigSection,
@@ -66,28 +54,22 @@ import {
   parseOutlookCalendarConfig,
   type OutlookCalendarConfigState,
 } from '@/util/outlookCalendarConfig';
-import type { SavedDisplay } from '@/storage/displays';
-import type {
-  IntegrationAccountRow,
-  IntegrationAccountType,
-  IntegrationRequiredAccountType,
-} from '@/util/integrationAccounts';
+import type { IntegrationAccountRow, IntegrationRequiredAccountType } from '@/util/integrationAccounts';
 import {
   integrationAccountsSatisfiedForEnable,
   type IntegrationAccountsDetail,
   type IntegrationLinkedAccount,
 } from '@/util/integrationAccountStatus';
 import { integrationDisplayName } from '@/util/integrationDisplayName';
+import { integrationConfigBaseUrl } from '@/util/integrationConfig';
 
 type IntegrationRow = {
   id: string;
   integration_type: string;
   enabled: boolean;
   poll_seconds: number;
-  base_url: string | null;
   config_json: unknown;
   config_json_schema?: unknown;
-  example_config_json?: unknown;
   secrets_configured?: boolean;
   accounts_configured?: boolean;
   required_account_types?: IntegrationRequiredAccountType[];
@@ -146,96 +128,6 @@ function compareFamilies(a: string, b: string): number {
   return a.localeCompare(b);
 }
 
-type AddableAccountType = IntegrationAccountType & {
-  oauthProvider?: OAuthProviderStatus;
-};
-
-function OperatorAccountsSection({
-  accounts,
-  canWrite,
-  onAdd,
-  onConfigure,
-}: {
-  accounts: IntegrationAccountRow[];
-  canWrite: boolean;
-  onAdd: () => void;
-  onConfigure: (account: IntegrationAccountRow) => void;
-}) {
-  return (
-    <Stack spacing={1.5}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
-        <Typography variant="subtitle1" fontWeight={600}>
-          Accounts & API keys
-        </Typography>
-        {canWrite ? (
-          <Button size="small" variant="contained" onClick={onAdd}>
-            Add account
-          </Button>
-        ) : null}
-      </Stack>
-      <Typography variant="body2" color="text.secondary">
-        Shared sign-in identities and provider API keys. Set Google and Microsoft OAuth client IDs
-        under <strong>Display settings → Integrations</strong> before adding those account types.
-      </Typography>
-      {accounts.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
-          No accounts or API keys have been added yet.
-        </Typography>
-      ) : (
-        <TableContainer component={Paper} variant="outlined">
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Account</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Used by</TableCell>
-                <TableCell>Status</TableCell>
-                {canWrite ? <TableCell align="right">Actions</TableCell> : null}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {accounts.map((account) => (
-                <TableRow key={`${account.account_type}:${account.id}`} hover>
-                  <TableCell sx={{ fontWeight: 600 }}>{account.label}</TableCell>
-                  <TableCell>{account.account_type_label}</TableCell>
-                  <TableCell>
-                    <Stack direction="row" flexWrap="wrap" useFlexGap spacing={0.5}>
-                      {account.integration_types.map((t) => (
-                        <Chip
-                          key={t}
-                          size="small"
-                          label={integrationDisplayName(t)}
-                          variant="outlined"
-                        />
-                      ))}
-                    </Stack>
-                  </TableCell>
-                  <TableCell>
-                    {account.configured ? (
-                      <Chip size="small" color="success" label="Ready" />
-                    ) : account.supports_oauth_sign_in ? (
-                      <Chip size="small" color="warning" label="Sign-in pending" />
-                    ) : (
-                      <Chip size="small" color="warning" label="Key needed" />
-                    )}
-                  </TableCell>
-                  {canWrite ? (
-                    <TableCell align="right">
-                      <Button size="small" onClick={() => onConfigure(account)}>
-                        {account.configured ? 'Manage' : 'Configure'}
-                      </Button>
-                    </TableCell>
-                  ) : null}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
-    </Stack>
-  );
-}
-
 function IntegrationTable({
   rows,
   actionLabel,
@@ -252,7 +144,6 @@ function IntegrationTable({
           <TableRow>
             <TableCell>Integration</TableCell>
             <TableCell>Poll interval</TableCell>
-            <TableCell>Base URL</TableCell>
             <TableCell>Config</TableCell>
             <TableCell align="right">Actions</TableCell>
           </TableRow>
@@ -266,9 +157,6 @@ function IntegrationTable({
               <TableRow key={row.id} hover>
                 <TableCell sx={{ fontWeight: 600 }}>{displayName}</TableCell>
                 <TableCell>{row.poll_seconds}s</TableCell>
-                <TableCell sx={{ maxWidth: 280, wordBreak: 'break-all', fontSize: '0.85rem' }}>
-                  {row.base_url ?? ''}
-                </TableCell>
                 <TableCell>
                   {showConfigHint ? (
                     <Chip size="small" color="warning" label="Schema mismatch" />
@@ -298,20 +186,15 @@ function errMsg(e: unknown): string {
 
 export function IntegrationsPage() {
   const { active } = useDisplay();
-  const { hasPermission } = useAuth();
-  const canWrite = hasPermission('integrations.write');
   const { loading, wrapRefresh } = useDisplayRefresh();
   const { layout, setLayout } = useListLayoutPreference('integrations');
   const [rows, setRows] = useState<IntegrationRow[]>([]);
   const [accounts, setAccounts] = useState<IntegrationAccountRow[]>([]);
-  const [accountTypes, setAccountTypes] = useState<IntegrationAccountType[]>([]);
   const [oauthProviders, setOauthProviders] = useState<OAuthProviderStatus[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [edit, setEdit] = useState<IntegrationRow | null>(null);
   const [dialogIntent, setDialogIntent] = useState<'edit' | 'enable'>('edit');
   const [filterFamily, setFilterFamily] = useState<string | null>(null);
-  const [addAccountOpen, setAddAccountOpen] = useState(false);
-  const [configureAccount, setConfigureAccount] = useState<IntegrationAccountRow | null>(null);
 
   const load = useCallback(async () => {
     if (!active) return;
@@ -325,35 +208,12 @@ export function IntegrationsPage() {
         ]);
         setRows(integrationsRes.items ?? []);
         setAccounts(accountsRes.items ?? []);
-        setAccountTypes(accountsRes.account_types ?? []);
         setOauthProviders(providers);
       } catch (e) {
         setError(errMsg(e));
       }
     });
   }, [active, wrapRefresh]);
-
-  const oauthConfiguredByAccountType = useMemo(() => {
-    const map = new Map<string, boolean>();
-    for (const p of oauthProviders) {
-      map.set(p.account_type, p.client_id_configured);
-    }
-    return map;
-  }, [oauthProviders]);
-
-  const addableAccountTypes = useMemo((): AddableAccountType[] => {
-    return accountTypes
-      .filter((t) => {
-        if (t.supports_oauth_sign_in) {
-          return oauthConfiguredByAccountType.get(t.id) === true;
-        }
-        return true;
-      })
-      .map((t) => ({
-        ...t,
-        oauthProvider: oauthProviders.find((p) => p.account_type === t.id),
-      }));
-  }, [accountTypes, oauthConfiguredByAccountType, oauthProviders]);
 
   useEffect(() => {
     void load();
@@ -403,8 +263,8 @@ export function IntegrationsPage() {
         </Typography>
         <Typography variant="body2" color="text.secondary">
           Connect external data sources—calendars, news, weather, stocks, and more—that collectors
-          poll into the display database. Add shared accounts and API keys below, then enable
-          providers and complete each integration&apos;s configuration.
+          poll into the display database. Enable providers and complete each integration&apos;s
+          configuration.
         </Typography>
       </Box>
       {error && (
@@ -413,12 +273,7 @@ export function IntegrationsPage() {
         </Alert>
       )}
 
-      <OperatorAccountsSection
-        accounts={accounts}
-        canWrite={canWrite}
-        onAdd={() => setAddAccountOpen(true)}
-        onConfigure={setConfigureAccount}
-      />
+      <AccountsSetupNotice />
 
       <CatalogPageToolbar layout={layout} onLayoutChange={setLayout} />
 
@@ -545,34 +400,6 @@ export function IntegrationsPage() {
         />
       )}
 
-      {active && (
-        <>
-          <AddAccountDialog
-            open={addAccountOpen}
-            accountTypes={addableAccountTypes}
-            existingAccountIds={accounts.map((a) => a.id)}
-            onClose={() => setAddAccountOpen(false)}
-            onSaved={async () => {
-              setAddAccountOpen(false);
-              await load();
-            }}
-            onError={setError}
-            display={active}
-          />
-          <ConfigureAccountDialog
-            open={configureAccount != null}
-            account={configureAccount}
-            integrationRows={rows}
-            onClose={() => setConfigureAccount(null)}
-            onSaved={async () => {
-              setConfigureAccount(null);
-              await load();
-            }}
-            onError={setError}
-            display={active}
-          />
-        </>
-      )}
     </Stack>
   );
 }
@@ -603,7 +430,7 @@ function IntegrationCard({
           <Stack direction="row" spacing={1.5} alignItems="flex-start">
             <IntegrationBrandIcon
               integrationType={row.integration_type}
-              baseUrl={row.base_url}
+              baseUrl={integrationConfigBaseUrl(row.config_json)}
             />
             <Typography
               variant="subtitle1"
@@ -616,9 +443,9 @@ function IntegrationCard({
           <Typography variant="caption" color="text.secondary" display="block">
             Poll every {row.poll_seconds}s
           </Typography>
-          {row.base_url ? (
+          {integrationConfigBaseUrl(row.config_json) ? (
             <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
-              {row.base_url}
+              {integrationConfigBaseUrl(row.config_json)}
             </Typography>
           ) : null}
           {active && accountDetail ? (
@@ -662,7 +489,6 @@ function EditIntegrationDialog({
   const schema = useMemo(() => integrationConfigSchema(row), [row]);
   const [enabled, setEnabled] = useState(() => (intent === 'enable' ? true : row.enabled));
   const [poll, setPoll] = useState(row.poll_seconds);
-  const [baseUrl, setBaseUrl] = useState(row.base_url ?? '');
   const [formData, setFormData] = useState<Record<string, unknown>>(() =>
     parseJsonObject(row.config_json),
   );
@@ -813,7 +639,7 @@ function EditIntegrationDialog({
     }
     if (enabled && !oauthClientIdsReady) {
       setErr(
-        'Configure required OAuth client IDs under Display settings → Integrations before enabling.',
+        'Configure required OAuth client IDs under Display settings → Accounts before enabling.',
       );
       return;
     }
@@ -844,7 +670,6 @@ function EditIntegrationDialog({
         body: JSON.stringify({
           enabled,
           poll_seconds: poll,
-          base_url: isOutlookCalendar ? row.base_url : baseUrl.trim() || null,
           config_json: configForSave,
         }),
       });
@@ -863,7 +688,7 @@ function EditIntegrationDialog({
         <Stack direction="row" spacing={1.5} alignItems="center">
           <IntegrationBrandIcon
             integrationType={row.integration_type}
-            baseUrl={row.base_url}
+            baseUrl={integrationConfigBaseUrl(row.config_json)}
             size={32}
           />
           <span>{title}</span>
@@ -885,7 +710,7 @@ function EditIntegrationDialog({
           </Stack>
           {!oauthClientIdsReady ? (
             <Alert severity="info">
-              Set OAuth client IDs under <strong>Display settings → Integrations</strong> before
+              Set OAuth client IDs under <strong>Display settings → Accounts</strong> before
               enabling.
             </Alert>
           ) : null}
@@ -902,14 +727,14 @@ function EditIntegrationDialog({
           ) : null}
           {!accountsReady && accountDetail && !isOutlookCalendar ? (
             <Alert severity="info">
-              Add accounts in the section above, or link account keys in Configuration below, then
-              complete sign-in or API keys.
+              Add accounts under <strong>Display settings → Accounts</strong>, or link account keys in
+              Configuration below, then complete sign-in or API keys.
             </Alert>
           ) : null}
           {!outlookConfigReady && isOutlookCalendar ? (
             <Alert severity="info">
               Choose a Microsoft account and at least one calendar below. Add accounts under{' '}
-              <strong>Accounts &amp; API keys</strong> if none appear.
+              <strong>Display settings → Accounts</strong> if none appear.
             </Alert>
           ) : null}
           {secretsLoading ? (
@@ -953,16 +778,9 @@ function EditIntegrationDialog({
             onChange={(e) => setPoll(Number(e.target.value) || 0)}
             fullWidth
           />
-          {!isOutlookCalendar ? (
-            <TextField
-              label="Base URL"
-              value={baseUrl}
-              onChange={(e) => setBaseUrl(e.target.value)}
-              fullWidth
-            />
-          ) : row.base_url ? (
+          {isOutlookCalendar && integrationConfigBaseUrl(row.config_json) ? (
             <Typography variant="caption" color="text.secondary" display="block">
-              Microsoft Graph endpoint: {row.base_url}
+              Microsoft Graph endpoint: {integrationConfigBaseUrl(row.config_json)}
             </Typography>
           ) : null}
           {isOutlookCalendar && active ? (
@@ -1001,342 +819,6 @@ function EditIntegrationDialog({
         >
           Save
         </Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
-function AddAccountDialog({
-  open,
-  accountTypes,
-  existingAccountIds,
-  onClose,
-  onSaved,
-  onError,
-  display,
-}: {
-  open: boolean;
-  accountTypes: AddableAccountType[];
-  existingAccountIds: string[];
-  onClose: () => void;
-  onSaved: () => Promise<void>;
-  onError: (msg: string) => void;
-  display: SavedDisplay;
-}) {
-  const [accountTypeId, setAccountTypeId] = useState('');
-  const [name, setName] = useState('');
-  const [apiKey, setApiKey] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  const selected = accountTypes.find((t) => t.id === accountTypeId);
-  const accountSlug = useMemo(
-    () => integrationAccountIdFromName(name, existingAccountIds),
-    [name, existingAccountIds],
-  );
-
-  useEffect(() => {
-    if (!open) return;
-    const first = accountTypes[0];
-    setAccountTypeId(first?.id ?? '');
-    setName('');
-    setApiKey('');
-  }, [open, accountTypes]);
-
-  const save = async () => {
-    if (!selected) return;
-    const trimmedName = name.trim();
-    if (!trimmedName) {
-      onError('Enter an account name.');
-      return;
-    }
-    if (!accountSlug) {
-      onError('Could not derive an account id from that name.');
-      return;
-    }
-    setBusy(true);
-    try {
-      const { account_id } = await createIntegrationAccount(display, {
-        account_type: selected.id,
-        account_key: accountSlug,
-        label: trimmedName,
-      });
-      if (selected.supports_oauth_sign_in) {
-        await probeIntegrationAccountOAuth(display, account_id);
-      } else {
-        const key = apiKey.trim();
-        if (!key) {
-          onError('Enter an API key before saving.');
-          return;
-        }
-        await putIntegrationAccountSecret(display, account_id, key);
-      }
-      await onSaved();
-    } catch (e) {
-      onError(errMsg(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const canSubmit =
-    selected != null &&
-    name.trim().length > 0 &&
-    accountSlug.length > 0 &&
-    (selected.supports_oauth_sign_in || apiKey.trim().length > 0);
-
-  return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Add account</DialogTitle>
-      <DialogContent>
-        <Stack spacing={2} sx={{ pt: 1 }}>
-          {accountTypes.length === 0 ? (
-            <Alert severity="info">
-              No account types are available. Configure OAuth client IDs under Display settings →
-              Integrations, or ensure integrations are seeded on the display.
-            </Alert>
-          ) : (
-            <>
-              <FormControl fullWidth>
-                <InputLabel id="add-account-type-label">Account type</InputLabel>
-                <Select
-                  labelId="add-account-type-label"
-                  label="Account type"
-                  value={accountTypeId}
-                  onChange={(e) => setAccountTypeId(e.target.value)}
-                >
-                  {accountTypes.map((t) => (
-                    <MenuItem key={t.id} value={t.id}>
-                      {t.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <TextField
-                label="Account name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                fullWidth
-                required
-              />
-              {selected?.supports_oauth_sign_in ? (
-                <Alert severity="info">
-                  After saving, complete sign-in on the display when the device-code alert appears.
-                </Alert>
-              ) : (
-                <>
-                  {selected?.signup_url ? (
-                    <Typography variant="body2">
-                      <a href={selected.signup_url} target="_blank" rel="noopener noreferrer">
-                        Get an API key
-                      </a>
-                    </Typography>
-                  ) : null}
-                  <TextField
-                    type="password"
-                    autoComplete="new-password"
-                    label={selected?.label ?? 'API key'}
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    fullWidth
-                    required
-                  />
-                </>
-              )}
-            </>
-          )}
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button
-          variant="contained"
-          disabled={busy || !canSubmit || accountTypes.length === 0}
-          onClick={() => void save()}
-        >
-          {selected?.supports_oauth_sign_in ? 'Add & request sign-in' : 'Save'}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
-function integrationLabelForRowId(
-  integrationId: string,
-  integrationRows: IntegrationRow[],
-): string {
-  const row = integrationRows.find((r) => r.id === integrationId);
-  return row ? integrationDisplayName(row.integration_type) : integrationId;
-}
-
-function ConfigureAccountDialog({
-  open,
-  account,
-  integrationRows,
-  onClose,
-  onSaved,
-  onError,
-  display,
-}: {
-  open: boolean;
-  account: IntegrationAccountRow | null;
-  integrationRows: IntegrationRow[];
-  onClose: () => void;
-  onSaved: () => Promise<void>;
-  onError: (msg: string) => void;
-  display: SavedDisplay;
-}) {
-  const [name, setName] = useState('');
-  const [apiKeyDraft, setApiKeyDraft] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    if (open && account) {
-      setName(account.label);
-      setApiKeyDraft('');
-    }
-  }, [open, account]);
-
-  if (!account) {
-    return null;
-  }
-
-  const saveDetails = async () => {
-    const trimmedName = name.trim();
-    if (!trimmedName) {
-      onError('Enter an account name.');
-      return;
-    }
-    setBusy(true);
-    try {
-      if (trimmedName !== account.label) {
-        await patchIntegrationAccount(display, account.id, { label: trimmedName });
-      }
-      if (!account.supports_oauth_sign_in) {
-        const key = apiKeyDraft.trim();
-        if (key.length > 0) {
-          await putIntegrationAccountSecret(display, account.id, key);
-        }
-      }
-      await onSaved();
-    } catch (e) {
-      onError(errMsg(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const requestSignIn = async () => {
-    setBusy(true);
-    try {
-      await probeIntegrationAccountOAuth(display, account.id);
-      await onSaved();
-    } catch (e) {
-      onError(errMsg(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const deleteAccount = async () => {
-    const inUseIds = account.integration_ids ?? [];
-    let message = `Delete account "${account.label}"? This cannot be undone.`;
-    if (inUseIds.length > 0) {
-      const labels = inUseIds.map((id) =>
-        integrationLabelForRowId(id, integrationRows),
-      );
-      message =
-        `This account is used by: ${labels.join(', ')}.\n\n` +
-        'Those integrations will be disabled. Delete anyway?';
-    }
-    if (!window.confirm(message)) {
-      return;
-    }
-    setBusy(true);
-    try {
-      await deleteIntegrationAccount(display, account.id, {
-        confirm: inUseIds.length > 0,
-      });
-      await onSaved();
-    } catch (e) {
-      onError(errMsg(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>{account.account_type_label}</DialogTitle>
-      <DialogContent>
-        <Stack spacing={2} sx={{ pt: 1 }}>
-          <TextField
-            label="Account name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            fullWidth
-          />
-          {account.supports_oauth_sign_in ? (
-            <>
-              <Typography variant="body2" color="text.secondary">
-                Complete sign-in on the display (device code alert), or request a new prompt.
-              </Typography>
-              {account.signup_url ? (
-                <Typography variant="body2">
-                  <a href={account.signup_url} target="_blank" rel="noopener noreferrer">
-                    Create an account
-                  </a>
-                </Typography>
-              ) : null}
-              {account.configured ? (
-                <Alert severity="success">This account is signed in.</Alert>
-              ) : null}
-              <Button
-                variant="contained"
-                disabled={busy || account.configured}
-                onClick={() => void requestSignIn()}
-              >
-                Request sign-in on display
-              </Button>
-            </>
-          ) : (
-            <>
-              <Typography variant="body2" color="text.secondary">
-                Enter the API key or token. It is stored encrypted on the display.
-              </Typography>
-              {account.signup_url ? (
-                <Typography variant="body2">
-                  <a href={account.signup_url} target="_blank" rel="noopener noreferrer">
-                    Get an API key
-                  </a>
-                </Typography>
-              ) : null}
-              <TextField
-                type="password"
-                autoComplete="new-password"
-                label={account.account_type_label}
-                value={apiKeyDraft}
-                onChange={(e) => setApiKeyDraft(e.target.value)}
-                fullWidth
-                size="small"
-              />
-            </>
-          )}
-        </Stack>
-      </DialogContent>
-      <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2 }}>
-        <Button color="error" disabled={busy} onClick={() => void deleteAccount()}>
-          Delete account
-        </Button>
-        <Stack direction="row" spacing={1}>
-          <Button onClick={onClose}>Close</Button>
-          <Button
-            variant="contained"
-            disabled={busy || name.trim().length === 0}
-            onClick={() => void saveDetails()}
-          >
-            Save
-          </Button>
-        </Stack>
       </DialogActions>
     </Dialog>
   );

@@ -32,7 +32,6 @@ Future<void> seedStubIntegrationForTest(AppDatabase db) async {
           enabled: const Value(true),
           pollSeconds: const Value(60),
           configJsonSchema: Value(stubDoc.schema),
-          exampleConfigJson: Value(stubDoc.example),
         ),
       );
 }

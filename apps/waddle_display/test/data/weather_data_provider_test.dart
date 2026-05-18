@@ -136,9 +136,9 @@ void main() {
             id: kDefaultWeatherOpenWeatherMapIntegrationId,
             integrationType: 'weather_openweathermap',
             pollSeconds: const Value(60),
-            baseUrl: const Value('https://api.openweathermap.org'),
-            configJson: const Value(
-              '{"defaultLocation":{"name":"NYC","lat":40.7128,"lon":-74.0060},"hourlyCount":2}',
+            configJson: integrationConfigJsonValue(
+              configJson: '{"defaultLocation":{"name":"NYC","lat":40.7128,"lon":-74.0060},"hourlyCount":2}',,
+              baseUrl: 'https://api.openweathermap.org',
             ),
           ),
         );
@@ -196,9 +196,9 @@ void main() {
             id: kDefaultWeatherOpenWeatherMapIntegrationId,
             integrationType: 'weather_openweathermap',
             pollSeconds: const Value(60),
-            baseUrl: const Value('https://api.openweathermap.org'),
-            configJson: const Value(
-              '{"defaultLocation":{"name":"NYC","lat":40.7128,"lon":-74.0060},"hourlyCount":2}',
+            configJson: integrationConfigJsonValue(
+              configJson: '{"defaultLocation":{"name":"NYC","lat":40.7128,"lon":-74.0060},"hourlyCount":2}',,
+              baseUrl: 'https://api.openweathermap.org',
             ),
           ),
         );
@@ -264,7 +264,9 @@ void main() {
             id: kDefaultWeatherOpenWeatherMapIntegrationId,
             integrationType: 'weather_openweathermap',
             pollSeconds: const Value(60),
-            baseUrl: const Value('https://api.openweathermap.org'),
+            configJson: integrationConfigJsonValue(
+              baseUrl: 'https://api.openweathermap.org',
+            ),
           ),
         );
     await db.into(db.interestsLocations).insert(
@@ -309,7 +311,9 @@ void main() {
             id: kDefaultWeatherOpenWeatherMapIntegrationId,
             integrationType: 'weather_openweathermap',
             pollSeconds: const Value(60),
-            baseUrl: const Value('https://api.openweathermap.org'),
+            configJson: integrationConfigJsonValue(
+              baseUrl: 'https://api.openweathermap.org',
+            ),
           ),
         );
     await db.into(db.interestsLocations).insert(

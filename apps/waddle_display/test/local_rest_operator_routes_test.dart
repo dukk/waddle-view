@@ -431,8 +431,10 @@ void main() {
             integrationType: 'stock_finnhub',
             pollSeconds: const Value(120),
             enabled: const Value(true),
-            baseUrl: const Value('http://example.invalid'),
-            configJson: const Value('{"sym":"AAPL"}'),
+            configJson: integrationConfigJsonValue(
+              configJson: '{"sym":"AAPL"}',
+              baseUrl: 'http://example.invalid',
+            ),
           ),
         );
     var calls = 0;
@@ -459,7 +461,6 @@ void main() {
       body: jsonEncode({
         'enabled': false,
         'poll_seconds': 999,
-        'base_url': null,
         'config_json': {'sym': 'MSFT'},
       }),
     );

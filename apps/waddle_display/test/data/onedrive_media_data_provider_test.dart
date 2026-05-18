@@ -51,9 +51,9 @@ void main() {
             integrationType: 'photo_onedrive',
             enabled: const Value(true),
             pollSeconds: const Value(0),
-            baseUrl: const Value('https://graph.microsoft.com/v1.0'),
-            configJson: const Value(
-              '{"accounts":[{"graphAccountKey":"u","sources":[{"path":"/a","kind":"photo","category":"c","maxFiles":10}]}],"globalPerPollLimit":50}',
+            configJson: integrationConfigJsonValue(
+              configJson: '{"accounts":[{"graphAccountKey":"u","sources":[{"path":"/a","kind":"photo","category":"c","maxFiles":10}]}],"globalPerPollLimit":50}',,
+              baseUrl: 'https://graph.microsoft.com/v1.0',
             ),
           ),
         );
@@ -617,9 +617,9 @@ Future<void> _seedProvider(
           integrationType: 'photo_onedrive',
           enabled: Value(enabled),
           pollSeconds: Value(pollSeconds),
-          baseUrl: const Value('https://graph.microsoft.com/v1.0'),
-          configJson: Value(
-            '{"accounts":$accountsJson,"globalPerPollLimit":$globalPerPoll}',
+          configJson: integrationConfigJsonValue(
+            configJson: '{"accounts":$accountsJson,"globalPerPollLimit":$globalPerPoll}',,
+            baseUrl: 'https://graph.microsoft.com/v1.0',
           ),
         ),
       );
@@ -638,9 +638,9 @@ Future<void> _seedVideoProvider(
           integrationType: 'video_onedrive',
           enabled: Value(enabled),
           pollSeconds: Value(pollSeconds),
-          baseUrl: const Value('https://graph.microsoft.com/v1.0'),
-          configJson: Value(
-            '{"accounts":$accountsJson,"globalPerPollLimit":$globalPerPoll}',
+          configJson: integrationConfigJsonValue(
+            configJson: '{"accounts":$accountsJson,"globalPerPollLimit":$globalPerPoll}',,
+            baseUrl: 'https://graph.microsoft.com/v1.0',
           ),
         ),
       );

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
@@ -68,8 +69,14 @@ import {
   parseAdoptionAllowedRoles,
   type CuratorDisplaySettings,
 } from '@/constants/curatorDisplaySettings';
+import { IntegrationAccountsSection } from '@/components/IntegrationAccountsSection';
 import { IntegrationOAuthSettingsSection } from '@/components/IntegrationOAuthSettingsSection';
-type DisplaySettingsTabId = 'general' | 'integrations' | 'adoption';
+import {
+  DISPLAY_SETTINGS_TAB_ACCOUNTS,
+  DISPLAY_SETTINGS_TAB_ADOPTION,
+  DISPLAY_SETTINGS_TAB_GENERAL,
+  type DisplaySettingsTabId,
+} from '@/constants/displaySettingsTabs';
 
 function clampNumber(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -90,7 +97,7 @@ function parseTickerPixelsPerSecond(raw: string): number {
 export function DisplaySettingsPage() {
   const { active } = useDisplay();
   const { hasPermission, session } = useAuth();
-  const [tab, setTab] = useState<DisplaySettingsTabId>('general');
+  const [searchParams, setSearchParams] = useSearchParams();
   const [kvWriteTick, setKvWriteTick] = useState(0);
   const canCuratorRead = hasPermission('curator.read');
   const canCuratorWrite = hasPermission('curator.write');
@@ -104,20 +111,33 @@ export function DisplaySettingsPage() {
 
   const visibleTabs = useMemo(() => {
     const tabs: { id: DisplaySettingsTabId; label: string }[] = [
-      { id: 'general', label: 'General' },
+      { id: DISPLAY_SETTINGS_TAB_GENERAL, label: 'General' },
     ];
     if (showIntegrationSettings) {
-      tabs.push({ id: 'integrations', label: 'Integrations' });
+      tabs.push({ id: DISPLAY_SETTINGS_TAB_ACCOUNTS, label: 'Accounts' });
     }
-    tabs.push({ id: 'adoption', label: 'Adoption' });
+    tabs.push({ id: DISPLAY_SETTINGS_TAB_ADOPTION, label: 'Adoption' });
     return tabs;
   }, [showIntegrationSettings]);
 
-  useEffect(() => {
-    if (!visibleTabs.some((t) => t.id === tab)) {
-      setTab(visibleTabs[0]!.id);
+  const tabParam = searchParams.get('tab');
+  const tab: DisplaySettingsTabId = visibleTabs.some((t) => t.id === tabParam)
+    ? (tabParam as DisplaySettingsTabId)
+    : visibleTabs[0]!.id;
+
+  const setTab = (next: DisplaySettingsTabId) => {
+    if (next === DISPLAY_SETTINGS_TAB_GENERAL) {
+      setSearchParams({}, { replace: true });
+    } else {
+      setSearchParams({ tab: next }, { replace: true });
     }
-  }, [visibleTabs, tab]);
+  };
+
+  useEffect(() => {
+    if (tabParam != null && !visibleTabs.some((t) => t.id === tabParam)) {
+      setSearchParams({}, { replace: true });
+    }
+  }, [tabParam, visibleTabs, setSearchParams]);
 
   return (
     <Stack spacing={2}>
@@ -146,7 +166,7 @@ export function DisplaySettingsPage() {
       </Paper>
 
       <Paper sx={{ p: 2 }}>
-        {tab === 'general' && (
+        {tab === DISPLAY_SETTINGS_TAB_GENERAL && (
           <Stack spacing={3}>
             {!active && (
               <Alert severity="info">Select a display in the toolbar to edit display settings.</Alert>
@@ -184,10 +204,10 @@ export function DisplaySettingsPage() {
           </Stack>
         )}
 
-        {tab === 'integrations' && (
-          <Stack spacing={2}>
+        {tab === DISPLAY_SETTINGS_TAB_ACCOUNTS && (
+          <Stack spacing={3}>
             {!active && (
-              <Alert severity="info">Select a display in the toolbar to edit integration settings.</Alert>
+              <Alert severity="info">Select a display in the toolbar to manage accounts.</Alert>
             )}
             {active && !canIntegrationsRead && (
               <Alert severity="warning">
@@ -195,12 +215,15 @@ export function DisplaySettingsPage() {
               </Alert>
             )}
             {showIntegrationSettings && active && (
-              <IntegrationOAuthSettingsSection display={active} canWrite={canIntegrationsWrite} />
+              <>
+                <IntegrationOAuthSettingsSection display={active} canWrite={canIntegrationsWrite} />
+                <IntegrationAccountsSection display={active} canWrite={canIntegrationsWrite} />
+              </>
             )}
           </Stack>
         )}
 
-        {tab === 'adoption' && (
+        {tab === DISPLAY_SETTINGS_TAB_ADOPTION && (
           <Stack spacing={2}>
             {!active && (
               <Alert severity="info">Select a display in the toolbar to edit adoption settings.</Alert>

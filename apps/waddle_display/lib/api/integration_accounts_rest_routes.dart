@@ -6,6 +6,7 @@ import 'package:shelf_router/shelf_router.dart';
 import 'package:waddle_data_providers/microsoft_graph/microsoft_graph_base_url.dart';
 import 'package:waddle_data_providers/microsoft_graph/microsoft_graph_calendars.dart';
 import 'package:waddle_data_providers/microsoft_graph/microsoft_graph_oauth.dart';
+import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
 import 'package:waddle_shared/integration_accounts/integration_accounts_service.dart';
 import 'package:waddle_shared/persistence/database.dart';
@@ -304,7 +305,9 @@ void registerIntegrationAccountsRestRoutes(
       final outlookRow = await (db.select(db.integrations)
             ..where((t) => t.id.equals(kDefaultCalendarOutlookIntegrationId)))
           .getSingleOrNull();
-      final graphBase = normalizeMicrosoftGraphBaseUrl(outlookRow?.baseUrl);
+      final graphBase = normalizeMicrosoftGraphBaseUrl(
+        integrationBaseUrlFromConfigJson(outlookRow?.configJson),
+      );
       try {
         final calendars = await listMicrosoftGraphCalendars(
           httpClient: graphHttp,

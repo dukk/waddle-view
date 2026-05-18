@@ -226,9 +226,9 @@ Future<void> _seedKvAndProvider(
           integrationType: 'calendar_outlook',
           enabled: const Value(true),
           pollSeconds: Value(pollSeconds),
-          baseUrl: const Value('https://graph.microsoft.com/v1.0'),
-          configJson: Value(
-            '{"accounts":$extraAccountsJson,"pastDays":14,"futureDays":14}',
+          configJson: integrationConfigJsonValue(
+            configJson: '{"accounts":$extraAccountsJson,"pastDays":14,"futureDays":14}',,
+            baseUrl: 'https://graph.microsoft.com/v1.0',
           ),
         ),
       );

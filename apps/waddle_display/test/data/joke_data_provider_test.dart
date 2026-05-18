@@ -47,8 +47,10 @@ void main() {
             id: kDefaultJokeOpenAiIntegrationId,
             integrationType: 'joke_openai',
             pollSeconds: const Value(1),
-            configJson: const Value('{"jokesPerDay":2}'),
-            baseUrl: const Value('http://api.local/v1'),
+            configJson: integrationConfigJsonValue(
+              configJson: '{"jokesPerDay":2}',
+              baseUrl: 'http://api.local/v1',
+            ),
           ),
         );
     await db.into(db.interestsJokes).insert(
@@ -467,8 +469,10 @@ void main() {
             id: kDefaultJokeOpenAiIntegrationId,
             integrationType: 'joke_openai',
             pollSeconds: const Value(1),
-            configJson: const Value('{"jokesPerDay":5}'),
-            baseUrl: const Value('http://api.local/v1'),
+            configJson: integrationConfigJsonValue(
+              configJson: '{"jokesPerDay":5}',
+              baseUrl: 'http://api.local/v1',
+            ),
           ),
         );
     await db.into(db.interestsJokes).insert(
