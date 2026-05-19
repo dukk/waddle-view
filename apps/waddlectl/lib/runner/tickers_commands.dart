@@ -76,7 +76,7 @@ class _TickersUpdate extends Command<void> {
       ..addOption('label')
       ..addOption('ticker-type')
       ..addOption('frequency-weight')
-      ..addOption('sort-order')
+      ..addOption('sort-order');
   }
 
   final GlobalCliOptions globalOptions;
