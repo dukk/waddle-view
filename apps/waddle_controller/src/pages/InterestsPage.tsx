@@ -1672,6 +1672,7 @@ function InterestDialog({
     min_pool: '10',
     max_pool: '100',
   });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -1764,6 +1765,7 @@ function InterestDialog({
 
   const save = async () => {
     if (!canWrite) return;
+    setSaving(true);
     try {
       if (tab === 'locations') {
         const lat = Number.parseFloat(weatherForm.latitude);
@@ -1894,6 +1896,8 @@ function InterestDialog({
       await completeDialogSave(onSaved, onClose);
     } catch (e) {
       onError(errMsg(e));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -1901,6 +1905,11 @@ function InterestDialog({
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
+        <Box
+          component="fieldset"
+          disabled={saving}
+          sx={{ border: 'none', margin: 0, padding: 0, minWidth: 0 }}
+        >
         <Stack spacing={2} sx={{ pt: 1 }}>
           {tab === 'locations' && (
             <>
@@ -2176,12 +2185,13 @@ function InterestDialog({
             </>
           )}
         </Stack>
+        </Box>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
         {canWrite && (
-          <Button variant="contained" onClick={() => void save()}>
-            Save
+          <Button variant="contained" onClick={() => void save()} disabled={saving}>
+            {saving ? 'Saving…' : 'Save'}
           </Button>
         )}
       </DialogActions>

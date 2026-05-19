@@ -40,6 +40,8 @@ export function UsersPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<ControllerRole>('operator');
+  const [creating, setCreating] = useState(false);
+  const [createErr, setCreateErr] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -55,16 +57,30 @@ export function UsersPage() {
     void load();
   }, [load]);
 
+  const openCreateDialog = () => {
+    setCreateErr(null);
+    setCreateOpen(true);
+  };
+
+  const closeCreateDialog = () => {
+    setCreateOpen(false);
+    setCreateErr(null);
+  };
+
   const createUser = async () => {
+    setCreating(true);
+    setCreateErr(null);
     try {
       await createBffUser({ username, password, role });
-      setCreateOpen(false);
+      closeCreateDialog();
       setUsername('');
       setPassword('');
       setRole('operator');
       await load();
     } catch (e) {
-      setError(e instanceof BffError ? e.message : String(e));
+      setCreateErr(e instanceof BffError ? e.message : String(e));
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -108,7 +124,7 @@ export function UsersPage() {
           <Typography variant="h5" fontWeight={600}>
             BFF operator accounts
           </Typography>
-          <Button variant="contained" onClick={() => setCreateOpen(true)}>
+          <Button variant="contained" onClick={openCreateDialog}>
             Add user
           </Button>
         </Stack>
@@ -145,19 +161,26 @@ export function UsersPage() {
         </TableBody>
       </Table>
 
-      <Dialog open={createOpen} onClose={() => setCreateOpen(false)} fullWidth maxWidth="xs">
+      <Dialog open={createOpen} onClose={closeCreateDialog} fullWidth maxWidth="xs">
         <DialogTitle>Add user</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField label="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
+            {createErr && <Alert severity="error">{createErr}</Alert>}
+            <TextField
+              label="Username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              disabled={creating}
+            />
             <TextField
               label="Password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               helperText="At least 12 characters"
+              disabled={creating}
             />
-            <FormControl>
+            <FormControl disabled={creating}>
               <InputLabel>Role</InputLabel>
               <Select label="Role" value={role} onChange={(e) => setRole(e.target.value as ControllerRole)}>
                 <MenuItem value="operator">Operator</MenuItem>
@@ -167,9 +190,9 @@ export function UsersPage() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCreateOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={() => void createUser()}>
-            Create
+          <Button onClick={closeCreateDialog}>Cancel</Button>
+          <Button variant="contained" onClick={() => void createUser()} disabled={creating}>
+            {creating ? 'Creating…' : 'Create'}
           </Button>
         </DialogActions>
       </Dialog>

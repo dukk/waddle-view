@@ -95,6 +95,10 @@ The display slide type **`controller_invite`** can open **`/join?api=<display RE
 
 Cross-origin calls require the controller origin to pass the display’s **adoption CORS** rules (LAN/private) during pairing; after confirm, the origin is stored on the display. You can also set **`WADDLE_DISPLAY_HTTP_CORS_ORIGINS`** on the display for static seeds.
 
+## UI conventions
+
+Dialogs that **Save**, **Create**, or **Add** via an API call must show in-flight feedback: disable the primary button, change its label (`Saving…`, `Creating…`, etc.), keep the dialog open on error, and close on success (typically via `completeDialogSave` in `src/util/dialogSave.ts`). Use a separate flag for initial fetch vs submit. See [`.cursor/skills/controller-dialog-submit/SKILL.md`](../../.cursor/skills/controller-dialog-submit/SKILL.md).
+
 ## Tests
 
 Unit tests use [Vitest](https://vitest.dev/) with **jsdom** for the SPA and Node for `server/`. Co-locate tests as `src/**/*.test.ts` and `server/src/**/*.test.ts`.

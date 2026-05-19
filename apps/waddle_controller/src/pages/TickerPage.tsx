@@ -436,6 +436,7 @@ function AddTickerTapeDialog({
   const [sort, setSort] = useState(0);
   const [configJsonText, setConfigJsonText] = useState('{}');
   const [err, setErr] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const submit = async () => {
     if (!active) return;
@@ -449,22 +450,23 @@ function AddTickerTapeDialog({
       setErr('Ticker type is required.');
       return;
     }
+    let configJson: unknown = {};
     try {
-      let configJson: unknown = {};
-      try {
-        configJson = JSON.parse(configJsonText.trim() || '{}') as unknown;
-        if (
-          configJson === null ||
-          typeof configJson !== 'object' ||
-          Array.isArray(configJson)
-        ) {
-          setErr('config_json must be a JSON object.');
-          return;
-        }
-      } catch {
-        setErr('config_json is not valid JSON.');
+      configJson = JSON.parse(configJsonText.trim() || '{}') as unknown;
+      if (
+        configJson === null ||
+        typeof configJson !== 'object' ||
+        Array.isArray(configJson)
+      ) {
+        setErr('config_json must be a JSON object.');
         return;
       }
+    } catch {
+      setErr('config_json is not valid JSON.');
+      return;
+    }
+    setSaving(true);
+    try {
       await apiFetch(active, '/v1/ticker/tapes', {
         method: 'POST',
         body: JSON.stringify({
@@ -481,6 +483,8 @@ function AddTickerTapeDialog({
       await completeDialogSave(onSaved, onClose);
     } catch (e) {
       setErr(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -490,8 +494,15 @@ function AddTickerTapeDialog({
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           {err && <Alert severity="error">{err}</Alert>}
-          <TextField label="Tape id" value={id} onChange={(e) => setId(e.target.value)} required fullWidth />
-          <FormControl fullWidth>
+          <TextField
+            label="Tape id"
+            value={id}
+            onChange={(e) => setId(e.target.value)}
+            required
+            fullWidth
+            disabled={saving}
+          />
+          <FormControl fullWidth disabled={saving}>
             <InputLabel id="tt">Ticker type</InputLabel>
             <Select
               labelId="tt"
@@ -506,7 +517,13 @@ function AddTickerTapeDialog({
               ))}
             </Select>
           </FormControl>
-          <TextField label="Label (optional)" value={label} onChange={(e) => setLabel(e.target.value)} fullWidth />
+          <TextField
+            label="Label (optional)"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            fullWidth
+            disabled={saving}
+          />
           <TextField
             label="Description"
             value={description}
@@ -514,9 +531,10 @@ function AddTickerTapeDialog({
             fullWidth
             multiline
             minRows={2}
+            disabled={saving}
           />
           <Stack direction="row" alignItems="center" spacing={1}>
-            <Switch checked={enabled} onChange={(_, v) => setEnabled(v)} />
+            <Switch checked={enabled} onChange={(_, v) => setEnabled(v)} disabled={saving} />
             <Typography>Enabled</Typography>
           </Stack>
           <TextField
@@ -525,6 +543,7 @@ function AddTickerTapeDialog({
             value={weight}
             onChange={(e) => setWeight(Number(e.target.value) || 0)}
             fullWidth
+            disabled={saving}
             helperText="Repeat this tape's marquee bundle this many times when building the list (0 = skip)."
           />
           <TextField
@@ -533,6 +552,7 @@ function AddTickerTapeDialog({
             value={sort}
             onChange={(e) => setSort(Number(e.target.value) || 0)}
             fullWidth
+            disabled={saving}
             helperText="Lower numbers are merged into the marquee before higher numbers."
           />
           <TextField
@@ -548,14 +568,15 @@ function AddTickerTapeDialog({
             fullWidth
             multiline
             minRows={3}
+            disabled={saving}
             inputProps={{ style: { fontFamily: 'monospace' } }}
           />
         </Stack>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={() => void submit()}>
-          Create
+        <Button variant="contained" onClick={() => void submit()} disabled={saving}>
+          {saving ? 'Creating…' : 'Create'}
         </Button>
       </DialogActions>
     </Dialog>
@@ -584,26 +605,28 @@ function EditTickerTapeDialog({
     JSON.stringify(row.config_json ?? {}, null, 2),
   );
   const [err, setErr] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const save = async () => {
     if (!active) return;
     setErr(null);
+    let configJson: unknown;
     try {
-      let configJson: unknown;
-      try {
-        configJson = JSON.parse(configJsonText.trim() || '{}') as unknown;
-        if (
-          configJson === null ||
-          typeof configJson !== 'object' ||
-          Array.isArray(configJson)
-        ) {
-          setErr('config_json must be a JSON object.');
-          return;
-        }
-      } catch {
-        setErr('config_json is not valid JSON.');
+      configJson = JSON.parse(configJsonText.trim() || '{}') as unknown;
+      if (
+        configJson === null ||
+        typeof configJson !== 'object' ||
+        Array.isArray(configJson)
+      ) {
+        setErr('config_json must be a JSON object.');
         return;
       }
+    } catch {
+      setErr('config_json is not valid JSON.');
+      return;
+    }
+    setSaving(true);
+    try {
       await apiFetch(active, `/v1/ticker/tapes/${encodeURIComponent(row.id)}`, {
         method: 'PATCH',
         body: JSON.stringify({
@@ -619,6 +642,8 @@ function EditTickerTapeDialog({
       await completeDialogSave(onSaved, onClose);
     } catch (e) {
       setErr(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -628,7 +653,7 @@ function EditTickerTapeDialog({
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           {err && <Alert severity="error">{err}</Alert>}
-          <FormControl fullWidth>
+          <FormControl fullWidth disabled={saving}>
             <InputLabel id="ett">Ticker type</InputLabel>
             <Select
               labelId="ett"
@@ -643,7 +668,13 @@ function EditTickerTapeDialog({
               ))}
             </Select>
           </FormControl>
-          <TextField label="Label" value={label} onChange={(e) => setLabel(e.target.value)} fullWidth />
+          <TextField
+            label="Label"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            fullWidth
+            disabled={saving}
+          />
           <TextField
             label="Description"
             value={description}
@@ -651,9 +682,10 @@ function EditTickerTapeDialog({
             fullWidth
             multiline
             minRows={2}
+            disabled={saving}
           />
           <Stack direction="row" alignItems="center" spacing={1}>
-            <Switch checked={enabled} onChange={(_, v) => setEnabled(v)} />
+            <Switch checked={enabled} onChange={(_, v) => setEnabled(v)} disabled={saving} />
             <Typography>Enabled</Typography>
           </Stack>
           <TextField
@@ -662,6 +694,7 @@ function EditTickerTapeDialog({
             value={weight}
             onChange={(e) => setWeight(Number(e.target.value) || 0)}
             fullWidth
+            disabled={saving}
             helperText="Repeat this tape's marquee bundle this many times when building the list (0 = skip)."
           />
           <TextField
@@ -670,6 +703,7 @@ function EditTickerTapeDialog({
             value={sort}
             onChange={(e) => setSort(Number(e.target.value) || 0)}
             fullWidth
+            disabled={saving}
             helperText="Lower numbers are merged into the marquee before higher numbers."
           />
           <TextField
@@ -685,14 +719,15 @@ function EditTickerTapeDialog({
             fullWidth
             multiline
             minRows={4}
+            disabled={saving}
             inputProps={{ style: { fontFamily: 'monospace' } }}
           />
         </Stack>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={() => void save()}>
-          Save
+        <Button variant="contained" onClick={() => void save()} disabled={saving}>
+          {saving ? 'Saving…' : 'Save'}
         </Button>
       </DialogActions>
     </Dialog>

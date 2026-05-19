@@ -755,6 +755,7 @@ function EditIntegrationDialog({
   );
   const [accountsLoading, setAccountsLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const reloadAccounts = useCallback(async () => {
     if (!active) return;
@@ -937,6 +938,7 @@ function EditIntegrationDialog({
       setErr('Configure all required accounts before enabling this integration.');
       return;
     }
+    setSaving(true);
     try {
       for (const slot of secretSlots) {
         const draft = (secretDrafts[slot.id] ?? '').trim();
@@ -963,6 +965,8 @@ function EditIntegrationDialog({
       await completeDialogSave(onSaved, onClose);
     } catch (e) {
       setErr(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -988,8 +992,9 @@ function EditIntegrationDialog({
               checked={enabled}
               onChange={(_, v) => setEnabled(v)}
               disabled={
-                enabled === false &&
-                ((secretSlots.length > 0 && !secretsReady) || !accountsReady)
+                saving ||
+                (enabled === false &&
+                  ((secretSlots.length > 0 && !secretsReady) || !accountsReady))
               }
             />
             <Typography>Enabled</Typography>
@@ -1058,6 +1063,7 @@ function EditIntegrationDialog({
                     }
                     fullWidth
                     size="small"
+                    disabled={saving}
                   />
                 </Stack>
               ))}
@@ -1070,6 +1076,7 @@ function EditIntegrationDialog({
               value={poll}
               onChange={(e) => setPoll(Number(e.target.value) || 0)}
               fullWidth
+              disabled={saving}
             />
           ) : null}
           {isManualBucket && active ? (
@@ -1103,6 +1110,7 @@ function EditIntegrationDialog({
                 schema={operatorSchema}
                 formData={formData}
                 onChange={setFormData}
+                disabled={saving}
               />
             </Stack>
           ) : null}
@@ -1114,11 +1122,12 @@ function EditIntegrationDialog({
           variant="contained"
           onClick={() => void save()}
           disabled={
+            saving ||
             (!isManualBucket && poll <= 0) ||
             (enabled && !isManualBucket && (!secretsReady || !accountsReady))
           }
         >
-          Save
+          {saving ? 'Saving…' : 'Save'}
         </Button>
       </DialogActions>
     </Dialog>

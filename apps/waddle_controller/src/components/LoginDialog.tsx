@@ -39,6 +39,7 @@ export function LoginDialog() {
   const [identifier, setIdentifier] = useState('');
   const [challengeCode, setChallengeCode] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const open = loginDialogOpen;
 
@@ -57,10 +58,13 @@ export function LoginDialog() {
 
   const submit = async () => {
     setError(null);
+    setBusy(true);
     try {
       await completeAdoption(identifier.trim(), challengeCode.trim());
     } catch (e) {
       setError(String(e));
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -95,7 +99,7 @@ export function LoginDialog() {
                 onChange={(e) => setIdentifier(e.target.value)}
                 fullWidth
                 required
-                disabled={clientId.locked}
+                disabled={busy || clientId.locked}
                 helperText={
                   clientId.locked
                     ? 'Set by WADDLE_CONTROLLER_CLIENT_IDENTIFIER on the server.'
@@ -110,9 +114,10 @@ export function LoginDialog() {
             onChange={setChallengeCode}
             fullWidth
             required
+            disabled={busy}
             helperText="Must match the code on the display alert."
             onEnter={() => {
-              if (canSubmit) void submit();
+              if (canSubmit && !busy) void submit();
             }}
           />
         </Stack>
@@ -121,8 +126,8 @@ export function LoginDialog() {
         <Button onClick={dismissToDisplays} color="inherit">
           {needsLogin ? 'Manage displays' : 'Cancel'}
         </Button>
-        <Button variant="contained" onClick={() => void submit()} disabled={!canSubmit}>
-          Confirm adoption
+        <Button variant="contained" onClick={() => void submit()} disabled={!canSubmit || busy}>
+          {busy ? 'Confirming…' : 'Confirm adoption'}
         </Button>
       </DialogActions>
     </Dialog>

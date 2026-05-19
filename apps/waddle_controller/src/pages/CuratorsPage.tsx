@@ -432,6 +432,7 @@ function CuratorConfigurationDialog({
 }) {
   const isNew = configurationId == null;
   const [loading, setLoading] = useState(!isNew);
+  const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [layer, setLayer] = useState<CuratorLayer>('base');
@@ -623,6 +624,7 @@ function CuratorConfigurationDialog({
       setErr('Name must contain at least one letter or digit.');
       return;
     }
+    setSaving(true);
     try {
       if (isNew) {
         await createCuratorConfiguration(display, { id: configId, ...buildBody(configId) });
@@ -632,8 +634,12 @@ function CuratorConfigurationDialog({
       await completeDialogSave(onSaved, onClose);
     } catch (e) {
       setErr(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
+    } finally {
+      setSaving(false);
     }
   };
+
+  const formDisabled = !canWrite || saving;
 
   const updateRule = (
     index: number,
@@ -664,7 +670,7 @@ function CuratorConfigurationDialog({
                     : undefined
                 }
               />
-              <FormControl fullWidth disabled={!canWrite}>
+              <FormControl fullWidth disabled={formDisabled}>
                 <InputLabel id="curator-layer">Layer</InputLabel>
                 <Select
                   labelId="curator-layer"
@@ -702,11 +708,11 @@ function CuratorConfigurationDialog({
                     value={sortOrder}
                     onChange={(e) => setSortOrder(Number(e.target.value) || 0)}
                     fullWidth
-                    disabled={!canWrite}
+                    disabled={formDisabled}
                     helperText="Higher values win when multiple configurations match the same schedule slot."
                   />
                   {!isEnhancementLayer && (
-                  <FormControl fullWidth disabled={!canWrite}>
+                  <FormControl fullWidth disabled={formDisabled}>
                     <InputLabel id="curator-theme-override-label">Theme while active</InputLabel>
                     <Select
                       labelId="curator-theme-override-label"
@@ -766,7 +772,7 @@ function CuratorConfigurationDialog({
                           <Checkbox
                             checked={useDisplayViewportReserveDefaults}
                             onChange={(e) => setUseDisplayViewportReserveDefaults(e.target.checked)}
-                            disabled={!canWrite}
+                            disabled={formDisabled}
                           />
                         }
                         label="Use display viewport reserve defaults"
@@ -780,7 +786,7 @@ function CuratorConfigurationDialog({
                             min={VIEWPORT_RESERVE_PCT.min}
                             max={VIEWPORT_RESERVE_PCT.max}
                             step={VIEWPORT_RESERVE_PCT.step}
-                            disabled={!canWrite}
+                            disabled={formDisabled}
                           />
                           <CuratorSliderField
                             label="Right reserve override (%)"
@@ -789,7 +795,7 @@ function CuratorConfigurationDialog({
                             min={VIEWPORT_RESERVE_PCT.min}
                             max={VIEWPORT_RESERVE_PCT.max}
                             step={VIEWPORT_RESERVE_PCT.step}
-                            disabled={!canWrite}
+                            disabled={formDisabled}
                           />
                           <CuratorSliderField
                             label="Bottom reserve override (%)"
@@ -798,7 +804,7 @@ function CuratorConfigurationDialog({
                             min={VIEWPORT_RESERVE_PCT.min}
                             max={VIEWPORT_RESERVE_PCT.max}
                             step={VIEWPORT_RESERVE_PCT.step}
-                            disabled={!canWrite}
+                            disabled={formDisabled}
                           />
                           <CuratorSliderField
                             label="Left reserve override (%)"
@@ -807,7 +813,7 @@ function CuratorConfigurationDialog({
                             min={VIEWPORT_RESERVE_PCT.min}
                             max={VIEWPORT_RESERVE_PCT.max}
                             step={VIEWPORT_RESERVE_PCT.step}
-                            disabled={!canWrite}
+                            disabled={formDisabled}
                           />
                         </Stack>
                       )}
@@ -838,7 +844,7 @@ function CuratorConfigurationDialog({
                         options={screenOptions}
                         value={screenIds}
                         onChange={setScreenIds}
-                        disabled={!canWrite}
+                        disabled={formDisabled}
                       />
                     </>
                   ) : showProgramFields ? (
@@ -850,7 +856,7 @@ function CuratorConfigurationDialog({
                         min={CURATOR_PROGRAM_DURATION.min}
                         max={CURATOR_PROGRAM_DURATION.max}
                         step={CURATOR_PROGRAM_DURATION.step}
-                        disabled={!canWrite}
+                        disabled={formDisabled}
                         formatValue={formatProgramDurationWithSeconds}
                       />
                       <FormControlLabel
@@ -858,7 +864,7 @@ function CuratorConfigurationDialog({
                           <Checkbox
                             checked={requireNewsPhoto}
                             onChange={(_, v) => setRequireNewsPhoto(v)}
-                            disabled={!canWrite}
+                            disabled={formDisabled}
                           />
                         }
                         label="Require news photo for news screens"
@@ -868,7 +874,7 @@ function CuratorConfigurationDialog({
                         options={screenOptions}
                         value={screenIds}
                         onChange={setScreenIds}
-                        disabled={!canWrite}
+                        disabled={formDisabled}
                       />
                     </>
                   ) : null}
@@ -887,7 +893,7 @@ function CuratorConfigurationDialog({
                         options={tickerOptions}
                         value={tickerIds}
                         onChange={setTickerIds}
-                        disabled={!canWrite}
+                        disabled={formDisabled}
                       />
                     </>
                   ) : showProgramFields ? (
@@ -897,7 +903,7 @@ function CuratorConfigurationDialog({
                           <Checkbox
                             checked={tickerEnabled}
                             onChange={(_, v) => setTickerEnabled(v)}
-                            disabled={!canWrite}
+                            disabled={formDisabled}
                           />
                         }
                         label="Show ticker marquee (screens use full height when off)"
@@ -909,20 +915,20 @@ function CuratorConfigurationDialog({
                         min={CURATOR_TICKER_PROGRAM_DURATION.min}
                         max={CURATOR_TICKER_PROGRAM_DURATION.max}
                         step={CURATOR_TICKER_PROGRAM_DURATION.step}
-                        disabled={!canWrite || !tickerEnabled}
+                        disabled={formDisabled || !tickerEnabled}
                         formatValue={formatProgramDurationWithSeconds}
                       />
                       <TickerPixelsPerSecondField
                         value={tickerPixelsPerSecond}
                         onChange={setTickerPixelsPerSecond}
-                        disabled={!canWrite || !tickerEnabled}
+                        disabled={formDisabled || !tickerEnabled}
                       />
                       <MemberAutocomplete
                         label="Ticker tapes"
                         options={tickerOptions}
                         value={tickerIds}
                         onChange={setTickerIds}
-                        disabled={!canWrite || !tickerEnabled}
+                        disabled={formDisabled || !tickerEnabled}
                       />
                     </>
                   ) : null}
@@ -934,7 +940,7 @@ function CuratorConfigurationDialog({
                   options={overlayOptions}
                   value={overlayIds}
                   onChange={setOverlayIds}
-                  disabled={!canWrite}
+                  disabled={formDisabled}
                 />
               )}
               {dialogTab === 'advanced' && (
@@ -944,7 +950,7 @@ function CuratorConfigurationDialog({
                       <Checkbox
                         checked={defaultConfig}
                         onChange={(_, v) => setDefaultConfig(v)}
-                        disabled={!canWrite}
+                        disabled={formDisabled}
                       />
                     }
                     label="Default fallback (when no schedule rule matches)"
@@ -986,7 +992,7 @@ function CuratorConfigurationDialog({
                           value={rule.id}
                           onChange={(e) => updateRule(index, { id: e.target.value })}
                           sx={{ flex: 1 }}
-                          disabled={!canWrite}
+                          disabled={formDisabled}
                         />
                         <TextField
                           label="Priority"
@@ -997,7 +1003,7 @@ function CuratorConfigurationDialog({
                             updateRule(index, { priority: Number(e.target.value) || 0 })
                           }
                           sx={{ width: 100 }}
-                          disabled={!canWrite}
+                          disabled={formDisabled}
                         />
                         {canWrite && (
                           <IconButton
@@ -1020,7 +1026,7 @@ function CuratorConfigurationDialog({
                               state_predicate: e.target.value ? String(e.target.value) : null,
                             })
                           }
-                          disabled={!canWrite}
+                          disabled={formDisabled}
                         >
                           <MenuItem value="">
                             <em>None (calendar / time only)</em>
@@ -1044,7 +1050,7 @@ function CuratorConfigurationDialog({
                               start_time_minutes: timeInputToMinutes(e.target.value),
                             })
                           }
-                          disabled={!canWrite}
+                          disabled={formDisabled}
                           fullWidth
                         />
                         <TextField
@@ -1057,7 +1063,7 @@ function CuratorConfigurationDialog({
                               end_time_minutes: timeInputToMinutes(e.target.value),
                             })
                           }
-                          disabled={!canWrite}
+                          disabled={formDisabled}
                           fullWidth
                         />
                       </Stack>
@@ -1073,7 +1079,7 @@ function CuratorConfigurationDialog({
                               start_month: e.target.value ? Number(e.target.value) : null,
                             })
                           }
-                          disabled={!canWrite}
+                          disabled={formDisabled}
                           fullWidth
                         />
                         <TextField
@@ -1087,7 +1093,7 @@ function CuratorConfigurationDialog({
                               start_day: e.target.value ? Number(e.target.value) : null,
                             })
                           }
-                          disabled={!canWrite}
+                          disabled={formDisabled}
                           fullWidth
                         />
                         <TextField
@@ -1101,7 +1107,7 @@ function CuratorConfigurationDialog({
                               end_month: e.target.value ? Number(e.target.value) : null,
                             })
                           }
-                          disabled={!canWrite}
+                          disabled={formDisabled}
                           fullWidth
                         />
                         <TextField
@@ -1115,7 +1121,7 @@ function CuratorConfigurationDialog({
                               end_day: e.target.value ? Number(e.target.value) : null,
                             })
                           }
-                          disabled={!canWrite}
+                          disabled={formDisabled}
                           fullWidth
                         />
                       </Stack>
@@ -1124,7 +1130,7 @@ function CuratorConfigurationDialog({
                           <Checkbox
                             checked={rule.repeat_annually}
                             onChange={(_, v) => updateRule(index, { repeat_annually: v })}
-                            disabled={!canWrite}
+                            disabled={formDisabled}
                           />
                         }
                         label="Repeat annually"
@@ -1142,8 +1148,12 @@ function CuratorConfigurationDialog({
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
         {canWrite && (
-          <Button variant="contained" onClick={() => void save()} disabled={loading}>
-            Save
+          <Button
+            variant="contained"
+            onClick={() => void save()}
+            disabled={loading || saving}
+          >
+            {saving ? 'Saving…' : 'Save'}
           </Button>
         )}
       </DialogActions>
