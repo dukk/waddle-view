@@ -3,9 +3,6 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/config/controller_datetime_format_kv.dart';
-import 'package:waddle_shared/config/display_image_overlay_kv.dart';
-import 'package:waddle_shared/persistence/tables.dart';
-
 import 'helpers/memory_database.dart';
 import 'helpers/rest_auth_helper.dart';
 

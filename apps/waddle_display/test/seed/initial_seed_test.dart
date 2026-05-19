@@ -9,7 +9,6 @@ import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/content_category_defaults.dart';
 import 'package:waddle_shared/persistence/display_overlay_repository.dart';
-import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/seed/initial_seed.dart';
 
 import '../helpers/memory_database.dart';

@@ -2,7 +2,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:meta/meta.dart';
 import 'package:waddle_shared/persistence/display_overlay_bouncing_message_settings.dart';
 
 /// Reads layout [Size] from a laid-out [RenderBox], if available.

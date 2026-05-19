@@ -5,8 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/integration_accounts/integration_accounts_service.dart';
 import 'package:waddle_shared/persistence/database.dart';
-import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
-
 import '../helpers/rest_auth_helper.dart';
 
 Future<void> _insertIntegration(

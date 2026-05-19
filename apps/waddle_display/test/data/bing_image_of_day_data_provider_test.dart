@@ -8,7 +8,6 @@ import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_integrations/photo_bing_image_of_the_day/bing_image_of_day_data_provider.dart';
 import 'package:waddle_shared/integrations/integration_kv_types.dart';
-import 'package:waddle_shared/persistence/config_json_documentation.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 
@@ -50,7 +49,6 @@ Future<void> _insertBingProvider(
   String configJson = '{"retentionDays":1,"market":"en-US","resolution":"UHD","category":"bing"}',
   String baseUrl = 'https://www.bing.com',
 }) async {
-  final doc = providerConfigJsonDocForType(kPhotoBingIotdIntegrationType);
   await db.into(db.integrations).insert(
     IntegrationsCompanion.insert(
       id: kDefaultPhotoBingIotdIntegrationId,

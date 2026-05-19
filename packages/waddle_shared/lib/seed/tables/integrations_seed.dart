@@ -354,7 +354,7 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
 
         '{"symbol":"NVDA","displayName":"NVIDIA"},'
 
-        '{"symbol":"AMZN","displayName":"Amazon"}'
+        '{"symbol":"AMZN","displayName":"Amazon"},'
 
         '{"symbol":"TSLA","displayName":"Tesla"},'
 
@@ -378,7 +378,7 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
 
         '{"symbol":"QQQ","displayName":"Invesco QQQ Trust"},'
 
-        '{"symbol":"IWM","displayName":"iShares Russell 2000 ETF"},'
+        '{"symbol":"IWM","displayName":"iShares Russell 2000 ETF"}'
 
         ']}',
 

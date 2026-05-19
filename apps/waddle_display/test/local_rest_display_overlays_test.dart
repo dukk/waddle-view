@@ -3,8 +3,6 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/persistence/display_overlay_repository.dart';
-import 'package:waddle_shared/persistence/tables.dart';
-
 import 'helpers/memory_database.dart';
 import 'helpers/rest_auth_helper.dart';
 
@@ -147,7 +145,7 @@ void main() {
       body: jsonEncode({'overlay_type': kOverlayTypeShapeRain}),
     );
     expect(noName.statusCode, 400);
-    expect(noName.body, contains('name_required'));
+    expect(noName.body, contains('label_required'));
 
     final badJson = await http.post(
       Uri.parse('${h.baseUrl}/v1/display/overlays'),

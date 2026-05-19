@@ -5,7 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_display/config/microsoft_graph_kv.dart'
     show
-        kMicrosoftGraphAccessTokenExpiresAtKvKey,
         kMicrosoftGraphOAuthAlertSource,
         kMicrosoftGraphOAuthRedirectUri,
         microsoftGraphAccessTokenSecret,

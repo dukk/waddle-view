@@ -3,8 +3,8 @@ import 'package:drift/native.dart';
 import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
 import 'package:waddle_shared/integrations/integration_kv_repository.dart';
-import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/seed/tables/integration_types_seed.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/theme/display_program_history_kv.dart';
 
@@ -33,6 +33,7 @@ Future<void> seedDisplayProgramHistoryDepthForTest(
 
 Future<void> warmDatabase(AppDatabase db, {String? displayTimeZoneIana}) async {
   await db.customStatement('select 1');
+  await ensureIntegrationTypes(db);
   if (displayTimeZoneIana != null) {
     await db.into(db.configKeyValues).insertOnConflictUpdate(
           ConfigKeyValuesCompanion.insert(

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waddle_display/theme/config/display_theme_registry.dart';
 import 'package:waddle_display/theme/display_theme.dart';
-import 'package:waddle_display/theme/theme_palette_extension.dart';
 import 'package:waddle_display/theme/ticker_marquee_style.dart';
 
 String _hex(Color c) {
