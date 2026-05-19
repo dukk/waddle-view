@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import '../persistence/kv_schema_documentation.dart';
+
 /// Config defaults for summary capacity hints (used by curator + widgets).
 int defaultSummaryCapacityCharsFor(String type, Map<String, dynamic> config) {
   switch (type) {
@@ -103,6 +105,38 @@ String synthesizeLayoutJson({
   if (decoded is! Map<String, dynamic>) {
     decoded = <String, dynamic>{};
   }
+
+  if (isGeneralLayoutScreenType(screenType)) {
+    final widgets = <Map<String, Object?>>[];
+    final slotsRaw = decoded['slots'];
+    if (slotsRaw is List<dynamic>) {
+      for (final entry in slotsRaw) {
+        if (entry is! Map<String, dynamic>) {
+          continue;
+        }
+        final slotId = entry['slot'];
+        final widget = entry['widget'];
+        if (slotId is! String || widget is! Map<String, dynamic>) {
+          continue;
+        }
+        final type = widget['type'];
+        final config = widget['config'];
+        if (type is! String) {
+          continue;
+        }
+        final cfg = config is Map<String, dynamic>
+            ? Map<String, dynamic>.from(config)
+            : <String, dynamic>{};
+        widgets.add({'type': type, 'slot': slotId, 'config': cfg});
+      }
+    }
+    return jsonEncode({
+      'v': 1,
+      'layout': screenType,
+      'widgets': widgets,
+    });
+  }
+
   return jsonEncode({
     'v': 1,
     'layout': 'single',

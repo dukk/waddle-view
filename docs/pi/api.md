@@ -187,7 +187,7 @@ These routes use the same **Bearer session** auth as other protected `/v1/*` pat
 | `integration_type` | Exact `integration_type` match |
 | `q` | Substring on `id` and `integration_type` (`%` / `_` stripped from needle) |
 | `secrets_configured` | `true` / `false` — applied after enrichment |
-| `accounts_configured` | `true` / `false` — applied after enrichment |
+| `accounts_configured` | `true` / `false` — from SQLite view `v_integration_accounts_configured` (linked accounts + `integration_secrets` access-token rows); filtered in SQL |
 | `facets` | `family` — adds `facets.family` counts (respects filters except `family`) |
 
 ## Examples

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'dashboard_viewport_scope.dart';
+import 'package:waddle_shared/display/display_viewport_reserve.dart';
+
 import 'display_viewport.dart';
 import '../theme/ticker_marquee_style.dart';
 import '../theme/tv_overscan.dart';
@@ -14,6 +16,7 @@ class DashboardShell extends StatelessWidget {
     required this.body,
     required this.ticker,
     this.showTicker = true,
+    this.viewportReserve = DisplayViewportReservePct.zero,
   });
 
   final TvOverscanInsets overscan;
@@ -21,6 +24,7 @@ class DashboardShell extends StatelessWidget {
   final Widget body;
   final Widget ticker;
   final bool showTicker;
+  final DisplayViewportReservePct viewportReserve;
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +44,11 @@ class DashboardShell extends StatelessWidget {
         final metrics = resolveDashboardShellScaleMetrics(
           viewportScale: viewport.scale,
         );
+        final reserveInsets = resolveViewportReserveInsets(
+          viewport.viewportSize,
+          viewportReserve,
+        );
+        final innerPadding = EdgeInsets.all(metrics.contentPadding) + reserveInsets;
         return Padding(
           padding: outerPadding,
           child: Padding(
@@ -48,7 +57,7 @@ class DashboardShell extends StatelessWidget {
               width: viewport.viewportSize.width,
               height: viewport.viewportSize.height,
               child: Padding(
-                padding: EdgeInsets.all(metrics.contentPadding),
+                padding: innerPadding,
                 child: Builder(
                   builder: (context) {
                     final parentTheme = Theme.of(context);

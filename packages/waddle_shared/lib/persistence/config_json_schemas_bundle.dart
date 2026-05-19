@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../integration_accounts/integration_account_catalog.dart';
 import 'config_json_documentation.dart';
+import 'kv_schema_documentation.dart';
 import 'database.dart';
 import 'integration_type_label.dart';
 import 'overlay_type_label.dart';
@@ -132,6 +133,34 @@ List<Map<String, Object?>> buildIntegrationTypeConfigJsonMetaItems() => [
         integrationTypeConfigJsonMetaItem(t),
     ];
 
+Map<String, Object?> kvWidgetTypeConfigJsonMetaItem(String widgetType) {
+  final doc = kvWidgetConfigJsonDocForType(widgetType);
+  return {
+    'widget_type': widgetType,
+    'config_json_schema': decodeConfigJsonDocField(doc.schema),
+    'example_config_json': decodeConfigJsonDocField(doc.example),
+    'expected_value_type': doc.expectedValueType,
+  };
+}
+
+Map<String, Object?> kvValueDataTypeMetaItem(String id) {
+  final doc = kKvValueDataTypeMeta[id]!;
+  return {
+    'id': doc.id,
+    'description': doc.description,
+    'value_json_schema': decodeConfigJsonDocField(doc.schema),
+    'example_value_json': decodeConfigJsonDocField(doc.example),
+  };
+}
+
+List<Map<String, Object?>> buildKvWidgetTypeConfigJsonMetaItems() => [
+      for (final t in kKvWidgetTypes) kvWidgetTypeConfigJsonMetaItem(t),
+    ];
+
+List<Map<String, Object?>> buildKvValueDataTypeMetaItems() => [
+      for (final id in kKvValueDataTypeMeta.keys) kvValueDataTypeMetaItem(id),
+    ];
+
 Future<List<Map<String, Object?>>> buildScreenTypeConfigJsonMetaItemsFromDb(
   AppDatabase db,
 ) async {
@@ -182,6 +211,8 @@ Map<String, Object?> buildConfigJsonSchemasBundle() => {
       'ticker_tape_types': buildTickerTypeConfigJsonMetaItems(),
       'overlay_types': buildOverlayTypeConfigJsonMetaItems(),
       'integration_types': buildIntegrationTypeConfigJsonMetaItems(),
+      'kv_widget_types': buildKvWidgetTypeConfigJsonMetaItems(),
+      'kv_value_data_types': buildKvValueDataTypeMetaItems(),
     };
 
 /// Like [buildConfigJsonSchemasBundle] but reads type docs from SQLite when present.
@@ -193,5 +224,7 @@ Future<Map<String, Object?>> buildConfigJsonSchemasBundleFromDb(
     'ticker_tape_types': await buildTickerTypeConfigJsonMetaItemsFromDb(db),
     'overlay_types': await buildOverlayTypeConfigJsonMetaItemsFromDb(db),
     'integration_types': await buildIntegrationTypeConfigJsonMetaItemsFromDb(db),
+    'kv_widget_types': buildKvWidgetTypeConfigJsonMetaItems(),
+    'kv_value_data_types': buildKvValueDataTypeMetaItems(),
   };
 }

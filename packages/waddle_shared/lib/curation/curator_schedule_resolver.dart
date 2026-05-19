@@ -17,6 +17,10 @@ class CuratorConfigurationInput {
     required this.requireNewsPhotoForScreens,
     required this.tickerEnabled,
     this.themeIdOverride,
+    this.viewportReserveTopPctOverride,
+    this.viewportReserveRightPctOverride,
+    this.viewportReserveBottomPctOverride,
+    this.viewportReserveLeftPctOverride,
     required this.defaultConfig,
     required this.rules,
     required this.screenMemberIds,
@@ -35,6 +39,10 @@ class CuratorConfigurationInput {
   final bool requireNewsPhotoForScreens;
   final bool tickerEnabled;
   final String? themeIdOverride;
+  final int? viewportReserveTopPctOverride;
+  final int? viewportReserveRightPctOverride;
+  final int? viewportReserveBottomPctOverride;
+  final int? viewportReserveLeftPctOverride;
   final bool defaultConfig;
   final List<CuratorScheduleRuleInput> rules;
   final Set<String> screenMemberIds;

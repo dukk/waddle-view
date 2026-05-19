@@ -14,6 +14,7 @@ Repo constraints: [AGENTS.md](../../../AGENTS.md) (default app **`apps/waddle_di
 ## Forbidden
 
 - Do not edit other `apps/*` packages unless the task explicitly names them.
+- **`kv_*` widgets** are not standalone screen types — they render inside `general_*` layouts. Use [general-openai-kv-display](../general-openai-kv-display/SKILL.md) instead.
 
 ## Checklist
 

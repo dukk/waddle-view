@@ -129,8 +129,12 @@ function listParamsForSection(
   };
 }
 
-/** Missing-accounts section: edit enabled integrations only (no enable until accounts are ready). */
+/** Missing-accounts section: enable when accounts are ready; edit when already enabled. */
 function missingAccountsActionLabel(row: IntegrationRow): string | null {
+  const ready = integrationAccountsSatisfiedForEnable(accountsDetailFromRow(row));
+  if (ready) {
+    return row.enabled ? 'Edit' : 'Enable';
+  }
   return row.enabled ? 'Edit' : null;
 }
 
@@ -573,7 +577,8 @@ export function IntegrationsPage() {
                 actionLabel={missingAccountsActionLabel(r)}
                 onAccountsChanged={reloadAll}
                 onAction={() => {
-                  setDialogIntent('edit');
+                  const label = missingAccountsActionLabel(r);
+                  setDialogIntent(label === 'Enable' ? 'enable' : 'edit');
                   setEdit(r);
                 }}
               />
@@ -585,7 +590,8 @@ export function IntegrationsPage() {
             rows={missingRows}
             actionLabelForRow={missingAccountsActionLabel}
             onAction={(r) => {
-              setDialogIntent('edit');
+              const label = missingAccountsActionLabel(r);
+              setDialogIntent(label === 'Enable' ? 'enable' : 'edit');
               setEdit(r);
             }}
           />

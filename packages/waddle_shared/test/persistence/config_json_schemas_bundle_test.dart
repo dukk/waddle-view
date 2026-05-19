@@ -9,6 +9,8 @@ void main() {
       'ticker_tape_types',
       'overlay_types',
       'integration_types',
+      'kv_widget_types',
+      'kv_value_data_types',
     ]) {
       final items = bundle[key];
       expect(items, isA<List>());

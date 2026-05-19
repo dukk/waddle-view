@@ -66,6 +66,7 @@ import {
 } from '@/constants/displaySettings';
 import {
   CURATOR_HISTORY_DEPTH,
+  VIEWPORT_RESERVE_PCT,
   curatorThemeById,
   curatorThemeIds,
   curatorTextScaleIds,
@@ -627,10 +628,16 @@ function DisplayOperatorSettingsSection({
           Number.isFinite(data.display_program_history_depth)
             ? data.display_program_history_depth
             : CURATOR_HISTORY_DEPTH.default;
+        const reservePct = (raw: unknown) =>
+          typeof raw === 'number' && Number.isFinite(raw) ? raw : VIEWPORT_RESERVE_PCT.default;
         setForm({
           ...data,
           display_timezone: tz,
           display_program_history_depth: historyDepth,
+          display_viewport_reserve_top_pct: reservePct(data.display_viewport_reserve_top_pct),
+          display_viewport_reserve_right_pct: reservePct(data.display_viewport_reserve_right_pct),
+          display_viewport_reserve_bottom_pct: reservePct(data.display_viewport_reserve_bottom_pct),
+          display_viewport_reserve_left_pct: reservePct(data.display_viewport_reserve_left_pct),
         });
         setInitialized(true);
       } catch (e) {
@@ -656,6 +663,10 @@ function DisplayOperatorSettingsSection({
         display_timezone: form.display_timezone,
         controller_time_format: form.controller_time_format,
         controller_date_order: form.controller_date_order,
+        display_viewport_reserve_top_pct: form.display_viewport_reserve_top_pct,
+        display_viewport_reserve_right_pct: form.display_viewport_reserve_right_pct,
+        display_viewport_reserve_bottom_pct: form.display_viewport_reserve_bottom_pct,
+        display_viewport_reserve_left_pct: form.display_viewport_reserve_left_pct,
       });
       await refreshFormat();
       setSaved(true);
@@ -811,6 +822,50 @@ function DisplayOperatorSettingsSection({
           How many past screen programs are kept for back-navigation and how many recent screen
           placements influence frequency weighting. Shared across all curator configurations.
         </Typography>
+        <Typography variant="subtitle2" fontWeight={600}>
+          Viewport edge reserve
+        </Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: -1 }}>
+          Percent of the letterboxed TV viewport reserved on each edge. Shrinks both screen slides
+          and the ticker so you can place always-on overlays (for example a clock or date) in the
+          margin. Use display overlays for the widgets themselves.
+        </Typography>
+        <CuratorSliderField
+          label="Top reserve (%)"
+          value={form.display_viewport_reserve_top_pct}
+          onChange={(v) => setForm({ ...form, display_viewport_reserve_top_pct: v })}
+          min={VIEWPORT_RESERVE_PCT.min}
+          max={VIEWPORT_RESERVE_PCT.max}
+          step={VIEWPORT_RESERVE_PCT.step}
+          disabled={!canWrite}
+        />
+        <CuratorSliderField
+          label="Right reserve (%)"
+          value={form.display_viewport_reserve_right_pct}
+          onChange={(v) => setForm({ ...form, display_viewport_reserve_right_pct: v })}
+          min={VIEWPORT_RESERVE_PCT.min}
+          max={VIEWPORT_RESERVE_PCT.max}
+          step={VIEWPORT_RESERVE_PCT.step}
+          disabled={!canWrite}
+        />
+        <CuratorSliderField
+          label="Bottom reserve (%)"
+          value={form.display_viewport_reserve_bottom_pct}
+          onChange={(v) => setForm({ ...form, display_viewport_reserve_bottom_pct: v })}
+          min={VIEWPORT_RESERVE_PCT.min}
+          max={VIEWPORT_RESERVE_PCT.max}
+          step={VIEWPORT_RESERVE_PCT.step}
+          disabled={!canWrite}
+        />
+        <CuratorSliderField
+          label="Left reserve (%)"
+          value={form.display_viewport_reserve_left_pct}
+          onChange={(v) => setForm({ ...form, display_viewport_reserve_left_pct: v })}
+          min={VIEWPORT_RESERVE_PCT.min}
+          max={VIEWPORT_RESERVE_PCT.max}
+          step={VIEWPORT_RESERVE_PCT.step}
+          disabled={!canWrite}
+        />
         <FormControl fullWidth disabled={!canWrite}>
           <InputLabel id="screen-scale">Screen text scale</InputLabel>
           <Select

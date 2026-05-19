@@ -61,6 +61,7 @@ import {
   CURATOR_SORT_ORDER,
   CURATOR_TICKER_PIXELS_PER_SECOND,
   CURATOR_TICKER_PROGRAM_DURATION,
+  VIEWPORT_RESERVE_PCT,
   curatorThemeById,
   curatorThemeIds,
 } from '@/constants/curatorDisplaySettings';
@@ -445,6 +446,19 @@ function CuratorConfigurationDialog({
     CURATOR_TICKER_PIXELS_PER_SECOND.default,
   );
   const [themeIdOverride, setThemeIdOverride] = useState<string | null>(null);
+  const [useDisplayViewportReserveDefaults, setUseDisplayViewportReserveDefaults] = useState(true);
+  const [viewportReserveTopOverride, setViewportReserveTopOverride] = useState(
+    VIEWPORT_RESERVE_PCT.default,
+  );
+  const [viewportReserveRightOverride, setViewportReserveRightOverride] = useState(
+    VIEWPORT_RESERVE_PCT.default,
+  );
+  const [viewportReserveBottomOverride, setViewportReserveBottomOverride] = useState(
+    VIEWPORT_RESERVE_PCT.default,
+  );
+  const [viewportReserveLeftOverride, setViewportReserveLeftOverride] = useState(
+    VIEWPORT_RESERVE_PCT.default,
+  );
   const [dialogTab, setDialogTab] = useState<ConfigDialogTabId>('general');
   const [requireNewsPhoto, setRequireNewsPhoto] = useState(true);
   const [tickerEnabled, setTickerEnabled] = useState(true);
@@ -502,6 +516,24 @@ function CuratorConfigurationDialog({
           setTickerProgramDuration(detail.ticker_program_duration_seconds);
           setTickerPixelsPerSecond(detail.ticker_pixels_per_second);
           setThemeIdOverride(detail.theme_id_override);
+          const useViewportDefaults =
+            detail.viewport_reserve_top_pct_override == null &&
+            detail.viewport_reserve_right_pct_override == null &&
+            detail.viewport_reserve_bottom_pct_override == null &&
+            detail.viewport_reserve_left_pct_override == null;
+          setUseDisplayViewportReserveDefaults(useViewportDefaults);
+          setViewportReserveTopOverride(
+            detail.viewport_reserve_top_pct_override ?? VIEWPORT_RESERVE_PCT.default,
+          );
+          setViewportReserveRightOverride(
+            detail.viewport_reserve_right_pct_override ?? VIEWPORT_RESERVE_PCT.default,
+          );
+          setViewportReserveBottomOverride(
+            detail.viewport_reserve_bottom_pct_override ?? VIEWPORT_RESERVE_PCT.default,
+          );
+          setViewportReserveLeftOverride(
+            detail.viewport_reserve_left_pct_override ?? VIEWPORT_RESERVE_PCT.default,
+          );
           setRequireNewsPhoto(detail.require_news_photo_for_screens);
           setTickerEnabled(detail.ticker_enabled);
           setDefaultConfig(detail.default_config);
@@ -551,6 +583,16 @@ function CuratorConfigurationDialog({
     ticker_program_duration_seconds: tickerProgramDuration,
     ticker_pixels_per_second: tickerPixelsPerSecond,
     theme_id_override: isEnhancementLayer ? null : themeIdOverride,
+    viewport_reserve_top_pct_override:
+      isEnhancementLayer || useDisplayViewportReserveDefaults ? null : viewportReserveTopOverride,
+    viewport_reserve_right_pct_override:
+      isEnhancementLayer || useDisplayViewportReserveDefaults ? null : viewportReserveRightOverride,
+    viewport_reserve_bottom_pct_override:
+      isEnhancementLayer || useDisplayViewportReserveDefaults
+        ? null
+        : viewportReserveBottomOverride,
+    viewport_reserve_left_pct_override:
+      isEnhancementLayer || useDisplayViewportReserveDefaults ? null : viewportReserveLeftOverride,
     require_news_photo_for_screens: requireNewsPhoto,
     ticker_enabled: isEnhancementLayer ? true : tickerEnabled,
     default_config: defaultConfig,
@@ -717,9 +759,68 @@ function CuratorConfigurationDialog({
                     </Typography>
                   </FormControl>
                   )}
+                  {!isEnhancementLayer && (
+                    <Stack spacing={1.5}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={useDisplayViewportReserveDefaults}
+                            onChange={(e) => setUseDisplayViewportReserveDefaults(e.target.checked)}
+                            disabled={!canWrite}
+                          />
+                        }
+                        label="Use display viewport reserve defaults"
+                      />
+                      {!useDisplayViewportReserveDefaults && (
+                        <Stack spacing={2}>
+                          <CuratorSliderField
+                            label="Top reserve override (%)"
+                            value={viewportReserveTopOverride}
+                            onChange={setViewportReserveTopOverride}
+                            min={VIEWPORT_RESERVE_PCT.min}
+                            max={VIEWPORT_RESERVE_PCT.max}
+                            step={VIEWPORT_RESERVE_PCT.step}
+                            disabled={!canWrite}
+                          />
+                          <CuratorSliderField
+                            label="Right reserve override (%)"
+                            value={viewportReserveRightOverride}
+                            onChange={setViewportReserveRightOverride}
+                            min={VIEWPORT_RESERVE_PCT.min}
+                            max={VIEWPORT_RESERVE_PCT.max}
+                            step={VIEWPORT_RESERVE_PCT.step}
+                            disabled={!canWrite}
+                          />
+                          <CuratorSliderField
+                            label="Bottom reserve override (%)"
+                            value={viewportReserveBottomOverride}
+                            onChange={setViewportReserveBottomOverride}
+                            min={VIEWPORT_RESERVE_PCT.min}
+                            max={VIEWPORT_RESERVE_PCT.max}
+                            step={VIEWPORT_RESERVE_PCT.step}
+                            disabled={!canWrite}
+                          />
+                          <CuratorSliderField
+                            label="Left reserve override (%)"
+                            value={viewportReserveLeftOverride}
+                            onChange={setViewportReserveLeftOverride}
+                            min={VIEWPORT_RESERVE_PCT.min}
+                            max={VIEWPORT_RESERVE_PCT.max}
+                            step={VIEWPORT_RESERVE_PCT.step}
+                            disabled={!canWrite}
+                          />
+                        </Stack>
+                      )}
+                      <Typography variant="caption" color="text.secondary">
+                        When this configuration is the active primary curator, overrides the
+                        viewport edge reserve from Display settings for screen and ticker layout.
+                      </Typography>
+                    </Stack>
+                  )}
                   {isEnhancementLayer && (
                     <Typography variant="body2" color="text.secondary">
-                      Theme and ticker visibility follow the active base or exclusive configuration.
+                      Theme, viewport reserve, and ticker visibility follow the active base or
+                      exclusive configuration.
                     </Typography>
                   )}
                 </Stack>

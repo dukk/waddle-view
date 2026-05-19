@@ -23,11 +23,17 @@ class Integrations extends Table {
   IntColumn get pollSeconds => integer().withDefault(const Constant(60))();
   TextColumn get configJson => text().nullable()();
 
-  /// Denormalized account setup status for list queries (see [refreshIntegrationAccountsReady]).
-  BoolColumn get accountsReady => boolean().withDefault(const Constant(true))();
-
   @override
   Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Required shared account types per integration collector type (catalog mirror).
+class IntegrationTypeRequiredAccounts extends Table {
+  TextColumn get integrationType => text()();
+  TextColumn get accountType => text()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {integrationType, accountType};
 }
 
 /// Shared sign-in identities (Google, Microsoft, API keys) used by integrations.
@@ -369,6 +375,10 @@ class CuratorConfigurations extends Table {
   IntColumn get tickerPixelsPerSecond =>
       integer().withDefault(const Constant(80))();
   TextColumn get themeIdOverride => text().nullable()();
+  IntColumn get viewportReserveTopPctOverride => integer().nullable()();
+  IntColumn get viewportReserveRightPctOverride => integer().nullable()();
+  IntColumn get viewportReserveBottomPctOverride => integer().nullable()();
+  IntColumn get viewportReserveLeftPctOverride => integer().nullable()();
   BoolColumn get defaultConfig => boolean().withDefault(const Constant(false))();
 
   @override

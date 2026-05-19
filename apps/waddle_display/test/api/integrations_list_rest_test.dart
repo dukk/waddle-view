@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:waddle_shared/config/microsoft_graph_kv.dart';
+import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
 import 'package:waddle_shared/integration_accounts/integration_accounts_service.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import '../helpers/rest_auth_helper.dart';
@@ -22,7 +24,6 @@ Future<void> _insertIntegration(
           pollSeconds: Value(pollSeconds),
         ),
       );
-  await refreshIntegrationAccountsReady(h.secrets, h.db, id);
 }
 
 void main() {
@@ -347,6 +348,61 @@ void main() {
       ...((body1['items'] as List).map((e) => (e as Map)['id'] as String)),
     ];
     expect(ids.toSet().length, 2);
+  });
+
+  test('accounts_configured reflects stored token via view without column refresh', () async {
+    final h = await RestTestHarness.start();
+    addTearDown(h.dispose);
+    const accountId = 'ms-home';
+    await _insertIntegration(
+      h,
+      id: 'outlook_home',
+      integrationType: 'calendar_outlook',
+      enabled: false,
+    );
+    await h.db.into(h.db.integrationAccounts).insertOnConflictUpdate(
+          IntegrationAccountsCompanion.insert(
+            id: accountId,
+            accountType: kIntegrationAccountTypeMicrosoftGraph,
+            createdAtMs: DateTime.now().millisecondsSinceEpoch,
+          ),
+        );
+    await h.db.into(h.db.integrationAccountLinks).insertOnConflictUpdate(
+          IntegrationAccountLinksCompanion.insert(
+            integrationId: 'outlook_home',
+            accountId: accountId,
+          ),
+        );
+    await h.secrets.write(microsoftGraphAccessTokenSecret(accountId), 'test-token');
+
+    final missingRes = await http.get(
+      Uri.parse(
+        '${h.baseUrl}/v1/integrations?accounts_configured=false&limit=100',
+      ),
+      headers: h.authHeaders,
+    );
+    final missingIds = ((jsonDecode(missingRes.body) as Map)['items'] as List)
+        .map((e) => (e as Map)['id'] as String)
+        .toSet();
+    expect(missingIds, isNot(contains('outlook_home')));
+
+    final readyRes = await http.get(
+      Uri.parse(
+        '${h.baseUrl}/v1/integrations?enabled=false&accounts_configured=true&limit=100',
+      ),
+      headers: h.authHeaders,
+    );
+    final readyIds = ((jsonDecode(readyRes.body) as Map)['items'] as List)
+        .map((e) => (e as Map)['id'] as String)
+        .toSet();
+    expect(readyIds, contains('outlook_home'));
+
+    final item = ((readyRes.body.isNotEmpty ? jsonDecode(readyRes.body) : {}) as Map)['items']
+        as List;
+    final outlook = item.cast<Map<String, dynamic>>().firstWhere(
+          (e) => e['id'] == 'outlook_home',
+        );
+    expect(outlook['accounts_configured'], isTrue);
   });
 
   test('facets=family returns counts', () async {

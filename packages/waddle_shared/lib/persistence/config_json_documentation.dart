@@ -7,6 +7,7 @@ import 'display_overlay_edge_glow_settings.dart';
 import 'display_overlay_matrix_rain_settings.dart';
 import 'display_overlay_clock_placement.dart';
 import 'display_overlay_static_image_settings.dart';
+import 'kv_schema_documentation.dart';
 import 'tables.dart';
 
 /// JSON Schema (draft 2020-12) and example payload for one [integration_type].
@@ -228,6 +229,84 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       'jokeRetentionDays': 14,
       'model': 'gpt-4o-mini',
       'globalPrompt': 'You write original, family-friendly jokes.',
+    }),
+  ),
+  'general_openai': ProviderConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'GeneralOpenAiProviderConfig',
+        description:
+            'Scheduled OpenAI Responses API prompts with optional remote HTTP MCP '
+            'tools. Results are stored in integration key-value rows.',
+        properties: {
+          'defaultModel': {'type': 'string'},
+          'defaultRetentionDays': {'type': 'integer', 'minimum': 1},
+          'defaultMaxHistoryEntries': {'type': 'integer', 'minimum': 1},
+          'prompts': {
+            'type': 'array',
+            'items': {
+              'type': 'object',
+              'properties': {
+                'id': {'type': 'string', 'minLength': 1},
+                'label': {'type': 'string'},
+                'enabled': {'type': 'boolean'},
+                'pollSeconds': {'type': 'integer', 'minimum': 0},
+                'model': {'type': 'string'},
+                'systemPrompt': {'type': 'string'},
+                'userPrompt': {'type': 'string', 'minLength': 1},
+                'temperature': {'type': 'number'},
+                'maxOutputTokens': {'type': 'integer', 'minimum': 1},
+                'retentionDays': {'type': 'integer', 'minimum': 1},
+                'maxHistoryEntries': {'type': 'integer', 'minimum': 1},
+                'responseFormat': {
+                  'type': 'string',
+                  'enum': ['text', 'json_object'],
+                },
+                'expectedValueType': {
+                  'type': 'string',
+                  'description':
+                      'Documents intended KV value shape for widgets (see kv_value_data_types meta).',
+                },
+                'mcpServers': {
+                  'type': 'array',
+                  'items': {
+                    'type': 'object',
+                    'properties': {
+                      'serverLabel': {'type': 'string', 'minLength': 1},
+                      'serverUrl': {'type': 'string', 'minLength': 1},
+                      'serverDescription': {'type': 'string'},
+                      'requireApproval': {
+                        'type': 'string',
+                        'enum': ['never', 'always'],
+                      },
+                      'authorizationSecretKey': {'type': 'string'},
+                    },
+                    'required': ['serverLabel', 'serverUrl'],
+                  },
+                },
+              },
+              'required': ['id', 'userPrompt'],
+            },
+          },
+        },
+      ),
+    ),
+    example: jsonEncode({
+      'defaultModel': 'gpt-4o-mini',
+      'defaultRetentionDays': 30,
+      'defaultMaxHistoryEntries': 500,
+      'prompts': [
+        {
+          'id': 'daily_summary',
+          'label': 'Daily summary',
+          'enabled': true,
+          'pollSeconds': 3600,
+          'userPrompt': 'Return JSON: {"items":["example"]}',
+          'systemPrompt': 'Valid JSON only.',
+          'responseFormat': 'json_object',
+          'expectedValueType': 'list_string_array',
+        },
+      ],
     }),
   ),
   'trivia_openai': ProviderConfigJsonDoc(
@@ -1032,6 +1111,11 @@ const List<String> kScreenLayoutWidgetTypes = [
   'data_health',
   'web_page',
   kScreenTypePluginTemplate,
+  'general_full_screen',
+  'general_2_column',
+  'general_3_column',
+  'general_2x2',
+  'general_3x2',
 ];
 
 /// [TickerTapes.tickerType] values for curation and seeds.
@@ -1749,6 +1833,9 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
 };
 
 ScreenConfigJsonDoc screenConfigJsonDocForType(String screenType) {
+  if (isGeneralLayoutScreenType(screenType)) {
+    return generalScreenConfigJsonDocForType(screenType);
+  }
   return kScreenConfigJsonMeta[screenType] ?? kGenericScreenConfigJsonDoc;
 }
 

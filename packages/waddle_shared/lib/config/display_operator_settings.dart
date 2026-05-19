@@ -7,6 +7,7 @@ import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/theme/display_text_scale_kv.dart';
 import 'package:waddle_shared/theme/display_theme_ids.dart';
+import 'package:waddle_shared/display/display_viewport_reserve.dart';
 import 'package:waddle_shared/theme/display_program_history_kv.dart';
 import 'package:waddle_shared/theme/display_theme_kv.dart';
 
@@ -27,6 +28,7 @@ Future<Map<String, dynamic>> readDisplayOperatorSettings(AppDatabase db) async {
   final programHistoryDepth = normalizeDisplayProgramHistoryDepth(
     kv[kDisplayProgramHistoryDepthKvKey],
   );
+  final viewportReserve = parseDisplayViewportReservePctFromKv(kv);
   final adoptionAllowedRoles = await readAdoptionAllowedRoles(db);
   final adoptionRolesList = adoptionAllowedRoles.toList()
     ..sort((a, b) {
@@ -40,6 +42,10 @@ Future<Map<String, dynamic>> readDisplayOperatorSettings(AppDatabase db) async {
     'display_text_scale_screen': screenTextScale,
     'display_text_scale_ticker': tickerTextScale,
     'display_timezone': displayTimezone,
+    'display_viewport_reserve_top_pct': viewportReserve.top,
+    'display_viewport_reserve_right_pct': viewportReserve.right,
+    'display_viewport_reserve_bottom_pct': viewportReserve.bottom,
+    'display_viewport_reserve_left_pct': viewportReserve.left,
     'controller_time_format':
         normalizeControllerTimeFormat(kv[kControllerTimeFormatKvKey]),
     'controller_date_order':
@@ -117,6 +123,54 @@ Future<bool> applyDisplayOperatorSettingsPut(
             ),
           );
     }
+    touched = true;
+  }
+  if (body.containsKey('display_viewport_reserve_top_pct')) {
+    final top = normalizeViewportReservePct(
+      '${body['display_viewport_reserve_top_pct']}',
+    );
+    await db.into(db.configKeyValues).insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kDisplayViewportReserveTopPctKvKey,
+            value: '$top',
+          ),
+        );
+    touched = true;
+  }
+  if (body.containsKey('display_viewport_reserve_right_pct')) {
+    final right = normalizeViewportReservePct(
+      '${body['display_viewport_reserve_right_pct']}',
+    );
+    await db.into(db.configKeyValues).insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kDisplayViewportReserveRightPctKvKey,
+            value: '$right',
+          ),
+        );
+    touched = true;
+  }
+  if (body.containsKey('display_viewport_reserve_bottom_pct')) {
+    final bottom = normalizeViewportReservePct(
+      '${body['display_viewport_reserve_bottom_pct']}',
+    );
+    await db.into(db.configKeyValues).insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kDisplayViewportReserveBottomPctKvKey,
+            value: '$bottom',
+          ),
+        );
+    touched = true;
+  }
+  if (body.containsKey('display_viewport_reserve_left_pct')) {
+    final left = normalizeViewportReservePct(
+      '${body['display_viewport_reserve_left_pct']}',
+    );
+    await db.into(db.configKeyValues).insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kDisplayViewportReserveLeftPctKvKey,
+            value: '$left',
+          ),
+        );
     touched = true;
   }
   if (body.containsKey('controller_time_format')) {

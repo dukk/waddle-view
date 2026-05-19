@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 
 import 'package:waddle_shared/alerts/alert_severity_icons_kv.dart';
 import 'package:waddle_shared/layout/collage_template_ids.dart';
+import 'package:waddle_shared/persistence/config_json_documentation.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/display_overlay_floating_balloons_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_sql.dart';
@@ -60,6 +61,7 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureCalendarScreen(db);
   await _ensureLocalApiScreen(db);
   await _ensureDataHealthScreen(db);
+  await _ensureGeneralOpenAiDemoScreen(db);
   await _ensureAdminSetupScreen(db);
   await _ensureWeatherScreen(db);
   await _ensurePhotoScreen(db);
@@ -755,6 +757,34 @@ Future<void> _ensureLocalApiScreen(AppDatabase db) async {
           minDwellSeconds: const Value(14),
           maxDwellSeconds: const Value(20),
           dataKey: const Value('dev_local_api'),
+          minPlacementsPerProgram: const Value(0),
+          maxPlacementsPerProgram: const Value(1),
+        ),
+      );
+}
+
+Future<void> _ensureGeneralOpenAiDemoScreen(AppDatabase db) async {
+  const screenId = 'dev_general_openai_dashboard';
+  final row = await (db.select(db.screens)
+        ..where((t) => t.id.equals(screenId)))
+      .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  final doc = screenConfigJsonDocForType('general_2_column');
+  await db.into(db.screens).insert(
+        ScreensCompanion.insert(
+          id: screenId,
+          label: 'Developer — General OpenAI dashboard',
+          description: const Value(
+            'Two-column KV widgets bound to default_general_openai prompt keys',
+          ),
+          screenType: 'general_2_column',
+          configJson: Value(doc.example),
+          minDwellSeconds: const Value(12),
+          maxDwellSeconds: const Value(18),
+          frequencyWeight: const Value(10),
+          dataKey: const Value('general_openai_demo'),
           minPlacementsPerProgram: const Value(0),
           maxPlacementsPerProgram: const Value(1),
         ),

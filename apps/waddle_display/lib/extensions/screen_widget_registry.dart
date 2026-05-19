@@ -28,6 +28,13 @@ import '../display/screens/stock_quotes/stock_quotes_slide_widget.dart';
 import '../display/screens/trivia/trivia_slide_widget.dart';
 import '../display/screens/weather/weather_slide_widget.dart';
 import '../display/screens/web_page/web_page_slide_widget.dart';
+import '../display/screens/kv/kv_list_slide_widget.dart';
+import '../display/screens/kv/kv_table_slide_widget.dart';
+import '../display/screens/kv/kv_chart_slide_widget.dart';
+import '../display/screens/kv/kv_gauge_slide_widget.dart';
+import '../display/screens/kv/kv_graph_slide_widget.dart';
+import '../display/screens/kv/kv_image_slide_widget.dart';
+import '../display/screens/kv/kv_shape_slide_widget.dart';
 
 class ScreenWidgetBuildContext {
   const ScreenWidgetBuildContext({
@@ -227,6 +234,48 @@ class ScreenWidgetRegistry {
                 spec: w,
                 onReportDesiredDwell: (ms) =>
                     ctx.onReportDesiredDwell(ctx.slideIndex, ms),
+              );
+            case 'kv_list':
+              return KvListSlideWidget(
+                db: ctx.db,
+                spec: w,
+                theme: ctx.theme,
+              );
+            case 'kv_table':
+              return KvTableSlideWidget(
+                db: ctx.db,
+                spec: w,
+                theme: ctx.theme,
+              );
+            case 'kv_chart':
+              return KvChartSlideWidget(
+                db: ctx.db,
+                spec: w,
+                theme: ctx.theme,
+              );
+            case 'kv_gauge':
+              return KvGaugeSlideWidget(
+                db: ctx.db,
+                spec: w,
+                theme: ctx.theme,
+              );
+            case 'kv_graph':
+              return KvGraphSlideWidget(
+                db: ctx.db,
+                spec: w,
+                theme: ctx.theme,
+              );
+            case 'kv_image':
+              return KvImageSlideWidget(
+                db: ctx.db,
+                spec: w,
+                theme: ctx.theme,
+              );
+            case 'kv_shape':
+              return KvShapeSlideWidget(
+                db: ctx.db,
+                spec: w,
+                theme: ctx.theme,
               );
             default:
               return Padding(

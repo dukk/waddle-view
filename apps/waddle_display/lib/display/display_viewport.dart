@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:waddle_shared/display/display_viewport_reserve.dart';
 
 enum DashboardAspectRatio {
   standard4x3(4 / 3),
@@ -108,5 +109,20 @@ DashboardShellScaleMetrics resolveDashboardShellScaleMetrics({
     contentPadding: 24 * viewportScale,
     gapHeight: 8 * viewportScale,
     tickerHeight: 96 * viewportScale,
+  );
+}
+
+/// Converts percent reserves to logical insets inside the letterboxed viewport.
+EdgeInsets resolveViewportReserveInsets(
+  Size viewportSize,
+  DisplayViewportReservePct reserve,
+) {
+  final width = viewportSize.width <= 0 ? 0.0 : viewportSize.width;
+  final height = viewportSize.height <= 0 ? 0.0 : viewportSize.height;
+  return EdgeInsets.only(
+    left: width * reserve.left / 100,
+    top: height * reserve.top / 100,
+    right: width * reserve.right / 100,
+    bottom: height * reserve.bottom / 100,
   );
 }

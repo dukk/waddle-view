@@ -8,6 +8,7 @@ import 'package:waddle_integrations/microsoft_graph/microsoft_graph_calendars.da
 import 'package:waddle_integrations/microsoft_graph/microsoft_graph_oauth.dart';
 import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
+import 'package:waddle_shared/integration_accounts/integration_accounts_configured_sql.dart';
 import 'package:waddle_shared/integration_accounts/integration_accounts_service.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
@@ -211,7 +212,6 @@ void registerIntegrationAccountsRestRoutes(
           body: '{"error":"value_must_be_non_empty"}', headers: _jsonHeaders);
     }
     await secrets.write(def.accessTokenSecretKey(accountId), value);
-    await refreshAllIntegrationsAccountsReady(secrets, db);
     return Response.ok('{}', headers: _jsonHeaders);
   });
 
@@ -234,7 +234,6 @@ void registerIntegrationAccountsRestRoutes(
           body: '{"error":"unknown_account_type"}', headers: _jsonHeaders);
     }
     await secrets.delete(def.accessTokenSecretKey(accountId));
-    await refreshAllIntegrationsAccountsReady(secrets, db);
     return Response.ok('{}', headers: _jsonHeaders);
   });
 
@@ -439,9 +438,9 @@ void registerIntegrationAccountsRestRoutes(
             },
         ],
         'linked_accounts': linked,
-        'accounts_configured': integrationLinkedAccountsJsonConfigured(
-          linked,
-          requiredTypes,
+        'accounts_configured': await integrationAccountsConfiguredFromView(
+          db,
+          integrationId,
         ),
       }),
       headers: _jsonHeaders,

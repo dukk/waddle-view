@@ -211,6 +211,18 @@ export function v1Router() {
       display_text_scale_screen: mockConfigKv.get('display.text_scale.screen') ?? 'normal',
       display_text_scale_ticker: mockConfigKv.get('display.text_scale.ticker') ?? 'normal',
       display_timezone,
+      display_viewport_reserve_top_pct: Number(
+        mockConfigKv.get('display.viewport.reserve_top_pct') ?? '0',
+      ),
+      display_viewport_reserve_right_pct: Number(
+        mockConfigKv.get('display.viewport.reserve_right_pct') ?? '0',
+      ),
+      display_viewport_reserve_bottom_pct: Number(
+        mockConfigKv.get('display.viewport.reserve_bottom_pct') ?? '0',
+      ),
+      display_viewport_reserve_left_pct: Number(
+        mockConfigKv.get('display.viewport.reserve_left_pct') ?? '0',
+      ),
       controller_time_format,
       controller_date_order,
       adoption_allowed_roles: ['viewer', 'power_viewer', 'operator', 'admin'],
@@ -243,6 +255,30 @@ export function v1Router() {
       }
       if (typeof body.controller_date_order === 'string') {
         mockConfigKv.set('controller.date_order', body.controller_date_order);
+      }
+      if (typeof body.display_viewport_reserve_top_pct === 'number') {
+        mockConfigKv.set(
+          'display.viewport.reserve_top_pct',
+          String(body.display_viewport_reserve_top_pct),
+        );
+      }
+      if (typeof body.display_viewport_reserve_right_pct === 'number') {
+        mockConfigKv.set(
+          'display.viewport.reserve_right_pct',
+          String(body.display_viewport_reserve_right_pct),
+        );
+      }
+      if (typeof body.display_viewport_reserve_bottom_pct === 'number') {
+        mockConfigKv.set(
+          'display.viewport.reserve_bottom_pct',
+          String(body.display_viewport_reserve_bottom_pct),
+        );
+      }
+      if (typeof body.display_viewport_reserve_left_pct === 'number') {
+        mockConfigKv.set(
+          'display.viewport.reserve_left_pct',
+          String(body.display_viewport_reserve_left_pct),
+        );
       }
     } catch {
       /* ignore malformed body */

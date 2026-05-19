@@ -5,6 +5,7 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:waddle_shared/curation/curator_schedule_resolver.dart';
 import 'package:waddle_shared/curation/curator_state_predicates.dart';
+import 'package:waddle_shared/display/display_viewport_reserve.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 
@@ -150,6 +151,30 @@ void registerCuratorConfigurationRoutes(
             themeIdOverride: Value(
               _themeIdOverrideForWrite(layer, map['theme_id_override']),
             ),
+            viewportReserveTopPctOverride: Value(
+              _viewportReserveOverrideForWrite(
+                layer,
+                map['viewport_reserve_top_pct_override'],
+              ),
+            ),
+            viewportReserveRightPctOverride: Value(
+              _viewportReserveOverrideForWrite(
+                layer,
+                map['viewport_reserve_right_pct_override'],
+              ),
+            ),
+            viewportReserveBottomPctOverride: Value(
+              _viewportReserveOverrideForWrite(
+                layer,
+                map['viewport_reserve_bottom_pct_override'],
+              ),
+            ),
+            viewportReserveLeftPctOverride: Value(
+              _viewportReserveOverrideForWrite(
+                layer,
+                map['viewport_reserve_left_pct_override'],
+              ),
+            ),
             defaultConfig: Value(_readBool(map['default_config'], defaultValue: false)),
           ),
         );
@@ -248,6 +273,28 @@ void registerCuratorConfigurationRoutes(
             : map.containsKey('theme_id_override')
                 ? Value(_readOptionalTrimmedString(map['theme_id_override']))
                 : const Value.absent(),
+        viewportReserveTopPctOverride: _viewportReserveOverrideCompanionForPatch(
+          layer: layer,
+          map: map,
+          key: 'viewport_reserve_top_pct_override',
+        ),
+        viewportReserveRightPctOverride:
+            _viewportReserveOverrideCompanionForPatch(
+          layer: layer,
+          map: map,
+          key: 'viewport_reserve_right_pct_override',
+        ),
+        viewportReserveBottomPctOverride:
+            _viewportReserveOverrideCompanionForPatch(
+          layer: layer,
+          map: map,
+          key: 'viewport_reserve_bottom_pct_override',
+        ),
+        viewportReserveLeftPctOverride: _viewportReserveOverrideCompanionForPatch(
+          layer: layer,
+          map: map,
+          key: 'viewport_reserve_left_pct_override',
+        ),
         defaultConfig: map.containsKey('default_config')
             ? Value(_readBool(map['default_config'], defaultValue: existing.defaultConfig))
             : const Value.absent(),
@@ -465,6 +512,10 @@ Map<String, Object?> _configurationSummaryJson(CuratorConfiguration c) {
     'ticker_program_duration_seconds': c.tickerProgramDurationSeconds,
     'ticker_pixels_per_second': c.tickerPixelsPerSecond,
     'theme_id_override': c.themeIdOverride,
+    'viewport_reserve_top_pct_override': c.viewportReserveTopPctOverride,
+    'viewport_reserve_right_pct_override': c.viewportReserveRightPctOverride,
+    'viewport_reserve_bottom_pct_override': c.viewportReserveBottomPctOverride,
+    'viewport_reserve_left_pct_override': c.viewportReserveLeftPctOverride,
     'default_config': c.defaultConfig,
   };
 }
@@ -707,6 +758,27 @@ String? _themeIdOverrideForWrite(String layer, dynamic mapValue) {
     return null;
   }
   return _readOptionalTrimmedString(mapValue);
+}
+
+int? _viewportReserveOverrideForWrite(String layer, dynamic mapValue) {
+  if (_isEnhancementLayer(layer)) {
+    return null;
+  }
+  return normalizeViewportReservePctOverride(mapValue);
+}
+
+Value<int?> _viewportReserveOverrideCompanionForPatch({
+  required String layer,
+  required Map<String, dynamic> map,
+  required String key,
+}) {
+  if (_isEnhancementLayer(layer)) {
+    return const Value(null);
+  }
+  if (!map.containsKey(key)) {
+    return const Value.absent();
+  }
+  return Value(normalizeViewportReservePctOverride(map[key]));
 }
 
 bool _tickerEnabledForWrite(

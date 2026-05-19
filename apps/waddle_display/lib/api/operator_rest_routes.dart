@@ -24,6 +24,7 @@ import 'package:waddle_shared/secrets/secret_store.dart';
 
 import 'integration_accounts_rest_routes.dart';
 import 'integration_oauth_providers_rest_routes.dart';
+import 'integration_kv_rest_routes.dart';
 import 'integration_secrets_rest_routes.dart';
 
 final Set<String> _reservedCuratorCategoryIds = {
@@ -54,6 +55,7 @@ void registerOperatorRestRoutes(
   DisplayNavigationBus? navigationBus,
 }) {
   registerIntegrationSecretsRestRoutes(r, db: db, secrets: secrets);
+  registerIntegrationKvRestRoutes(r, db: db);
   registerIntegrationAccountsRestRoutes(r, db: db, secrets: secrets);
   registerIntegrationOAuthProvidersRestRoutes(r, secrets: secrets);
   r.get('/v1/telemetry/integrations', (Request req) async {
@@ -738,7 +740,7 @@ void registerOperatorRestRoutes(
         configJson: Value(configJson),
       ),
     );
-    await syncIntegrationAccountLinks(db, secrets: secrets);
+    await syncIntegrationAccountLinks(db);
     await onConfigChanged();
     return Response.ok('{}', headers: {'content-type': 'application/json'});
   });

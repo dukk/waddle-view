@@ -30,6 +30,7 @@ import 'package:waddle_shared/collect/data_collection_engine.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/curation/curator_schedule_resolver.dart';
+import 'package:waddle_shared/display/display_viewport_reserve.dart';
 import 'package:waddle_shared/curation/reject_rescan.dart';
 import 'package:waddle_shared/integration_accounts/integration_accounts_service.dart';
 import 'package:waddle_shared/persistence/database.dart';
@@ -135,7 +136,7 @@ Future<void> _waddleBootstrap() async {
       db: db,
       protector: createPlatformDekProtector(),
     );
-    await syncIntegrationAccountLinks(db, secrets: secrets);
+    await syncIntegrationAccountLinks(db);
     final envMap = mergeBootstrapEnv();
     await corsOrigins.seedEnvOrigins(
       parseCorsAllowedOrigins(envMap[kDisplayHttpCorsOriginsEnv]),
@@ -440,6 +441,10 @@ class _WaddleHomeState extends State<WaddleHome> {
   Set<String> _allowedOverlayIds = const {};
   bool _tickerEnabled = true;
   String? _curatorThemeOverride;
+  int? _viewportReserveTopPctOverride;
+  int? _viewportReserveRightPctOverride;
+  int? _viewportReserveBottomPctOverride;
+  int? _viewportReserveLeftPctOverride;
   StreamSubscription<List<ApiClient>>? _apiClientsSub;
   StreamSubscription<void>? _runtimeSignalsSub;
   StreamSubscription<List<CuratorConfigurationMember>>? _curatorMembersSub;
@@ -505,6 +510,11 @@ class _WaddleHomeState extends State<WaddleHome> {
       if (_curatorThemeOverride != null && _curatorThemeOverride!.isEmpty) {
         _curatorThemeOverride = null;
       }
+      final cfg = selection.primary.configuration;
+      _viewportReserveTopPctOverride = cfg.viewportReserveTopPctOverride;
+      _viewportReserveRightPctOverride = cfg.viewportReserveRightPctOverride;
+      _viewportReserveBottomPctOverride = cfg.viewportReserveBottomPctOverride;
+      _viewportReserveLeftPctOverride = cfg.viewportReserveLeftPctOverride;
     });
     unawaited(widget.dashboardCurator.refresh());
   }
@@ -553,6 +563,15 @@ class _WaddleHomeState extends State<WaddleHome> {
     final effectiveTheme = themeOverride != null
         ? DisplayTheme.buildFromKvValue(themeOverride)
         : Theme.of(context);
+    final globalViewportReserve =
+        parseDisplayViewportReservePctFromKv(widget.dashboardKv);
+    final effectiveViewportReserve = mergeDisplayViewportReservePct(
+      globalViewportReserve,
+      topOverride: _viewportReserveTopPctOverride,
+      rightOverride: _viewportReserveRightPctOverride,
+      bottomOverride: _viewportReserveBottomPctOverride,
+      leftOverride: _viewportReserveLeftPctOverride,
+    );
 
     return Theme(
       data: effectiveTheme,
@@ -591,6 +610,7 @@ class _WaddleHomeState extends State<WaddleHome> {
                 child: DashboardDataBoundShell(
                   overscan: const TvOverscanInsets(),
                   viewportConfig: const DisplayViewportConfig(),
+                  viewportReserve: effectiveViewportReserve,
                   showTicker: _tickerEnabled,
                   body: ScreenRotator(
                     db: widget.db,

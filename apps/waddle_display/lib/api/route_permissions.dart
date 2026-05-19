@@ -78,6 +78,18 @@ String? permissionForRoute(String method, String path) {
       return WaddlePermission.integrationsWrite;
     }
   }
+  if (RegExp(r'^/v1/integrations/[^/]+/kv$').hasMatch(p) && m == 'GET') {
+    return WaddlePermission.integrationsRead;
+  }
+  final integrationKvKey = RegExp(r'^/v1/integrations/[^/]+/kv/.+');
+  if (integrationKvKey.hasMatch(p)) {
+    if (m == 'GET') {
+      return WaddlePermission.integrationsRead;
+    }
+    if (m == 'DELETE') {
+      return WaddlePermission.integrationsWrite;
+    }
+  }
   if (p.startsWith('/v1/integrations/') && m == 'PATCH') {
     return WaddlePermission.integrationsWrite;
   }

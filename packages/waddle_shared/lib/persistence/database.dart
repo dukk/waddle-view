@@ -8,6 +8,7 @@ import 'package:drift/native.dart';
 import '../config/integration_config_json.dart';
 import '../theme/display_program_history_kv.dart';
 import '../integration_accounts/integration_account_catalog.dart';
+import '../integration_accounts/integration_accounts_configured_sql.dart';
 import '../integration_accounts/integration_accounts_service.dart';
 import '../persistence/config_json_documentation.dart';
 import '../persistence/integration_type_label.dart';
@@ -29,6 +30,7 @@ part 'database.g.dart';
   tables: [
     ContentCategories,
     IntegrationTypes,
+    IntegrationTypeRequiredAccounts,
     ScreenTypes,
     TickerTapeTypes,
     OverlayTypes,
@@ -82,7 +84,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 31;
+  int get schemaVersion => 33;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -99,6 +101,9 @@ ORDER BY priority DESC, created_at DESC;
       await customStatement(kEnsureOverlayTypesTableSql);
       await _ensureIntegrationsKeyValueIndexes(this);
       await _seedDefaultRejectTerms(this);
+      await customStatement(kCreateIntegrationTypeRequiredAccountsTableSql);
+      await seedIntegrationTypeRequiredAccounts(this);
+      await customStatement(kCreateVIntegrationAccountsConfiguredViewSql);
     },
     onUpgrade: (Migrator m, int from, int to) async {
       if (from == 1 && to >= 2) {
@@ -306,6 +311,20 @@ ORDER BY priority DESC, created_at DESC;
       }
       if (from == 30 && to >= 31) {
         await _migrateV30ToV31StaticImageOverlayFromKv(this);
+        if (to == 31) {
+          return;
+        }
+        from = 31;
+      }
+      if (from == 31 && to >= 32) {
+        await _migrateV31ToV32IntegrationAccountsConfiguredView(this);
+        if (to == 32) {
+          return;
+        }
+        from = 32;
+      }
+      if (from == 32 && to >= 33) {
+        await _migrateV32ToV33ViewportReserveOverrides(this);
         return;
       }
       throw UnsupportedError(
@@ -318,6 +337,7 @@ ORDER BY priority DESC, created_at DESC;
       await _ensureCuratorConfigurationsTickerEnabled(this);
       await _ensureCuratorConfigurationsTickerProgramDuration(this);
       await _ensureCuratorConfigurationsTickerPixelsPerSecond(this);
+      await _ensureIntegrationAccountsConfiguredView(this);
     },
   );
 }
@@ -341,6 +361,7 @@ const String kDefaultNewsFacebookIntegrationId = 'default_news_facebook';
 const String kDefaultNewsTwitterIntegrationId = 'default_news_twitter';
 const String kDefaultNewsLinkedinIntegrationId = 'default_news_linkedin';
 const String kDefaultJokeOpenAiIntegrationId = 'default_joke_openai';
+const String kDefaultGeneralOpenAiIntegrationId = 'default_general_openai';
 const String kDefaultTriviaOpenAiIntegrationId = 'default_trivia_openai';
 const String kDefaultTriviaOpenTdbIntegrationId = 'default_trivia_opentdb';
 const String kDefaultWeatherOpenWeatherMapIntegrationId =
@@ -1541,7 +1562,7 @@ Future<void> _migrateV22ToV23IntegrationsAccountsReady(AppDatabase db) async {
     'CREATE INDEX IF NOT EXISTS idx_integrations_enabled_accounts '
     'ON integrations (enabled, accounts_ready)',
   );
-  await backfillIntegrationsAccountsReadyColumns(db);
+  await _backfillIntegrationsAccountsReadyColumnsV23(db);
 }
 
 Future<void> _migrateV21ToV22DisplayProgramHistoryDepth(AppDatabase db) async {
@@ -2077,6 +2098,108 @@ Future<void> _migrateV30ToV31StaticImageOverlayFromKv(AppDatabase db) async {
 
   if (await _sqliteTableExists(db, 'overlays')) {
     await ensureOverlayTypes(db);
+  }
+}
+
+/// Schema 32: derive account readiness from links + [IntegrationSecrets] via a view.
+Future<void> _migrateV31ToV32IntegrationAccountsConfiguredView(
+  AppDatabase db,
+) async {
+  await db.customStatement(kCreateIntegrationTypeRequiredAccountsTableSql);
+  await seedIntegrationTypeRequiredAccounts(db);
+
+  if (!await _sqliteTableExists(db, 'integrations')) {
+    await db.customStatement(kCreateVIntegrationAccountsConfiguredViewSql);
+    return;
+  }
+
+  if (await _sqliteColumnExists(db, 'integrations', 'accounts_ready')) {
+    await db.customStatement('PRAGMA foreign_keys = OFF');
+    await db.customStatement('DROP INDEX IF EXISTS idx_integrations_enabled_accounts');
+    await db.customStatement('DROP VIEW IF EXISTS v_integration_accounts_configured');
+    await db.customStatement('''
+CREATE TABLE integrations_new (
+  id TEXT NOT NULL PRIMARY KEY,
+  integration_type TEXT NOT NULL,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  poll_seconds INTEGER NOT NULL DEFAULT 60,
+  config_json TEXT
+)
+''');
+    final integrationRows =
+        await db.customSelect('SELECT * FROM integrations').get();
+    for (final row in integrationRows) {
+      await db.customStatement(
+        'INSERT INTO integrations_new '
+        '(id, integration_type, enabled, poll_seconds, config_json) '
+        'VALUES (?, ?, ?, ?, ?)',
+        [
+          row.read<String>('id'),
+          row.read<String>('integration_type'),
+          row.read<int>('enabled'),
+          row.read<int>('poll_seconds'),
+          row.read<String?>('config_json'),
+        ],
+      );
+    }
+    await db.customStatement('DROP TABLE integrations');
+    await db.customStatement('ALTER TABLE integrations_new RENAME TO integrations');
+    await db.customStatement('PRAGMA foreign_keys = ON');
+  }
+
+  await db.customStatement(kCreateVIntegrationAccountsConfiguredViewSql);
+}
+
+Future<void> _ensureIntegrationAccountsConfiguredView(AppDatabase db) async {
+  final view = await db.customSelect(
+    "SELECT 1 FROM sqlite_master WHERE type = 'view' "
+    "AND name = 'v_integration_accounts_configured' LIMIT 1",
+  ).getSingleOrNull();
+  if (view == null) {
+    await db.customStatement(kCreateIntegrationTypeRequiredAccountsTableSql);
+    await seedIntegrationTypeRequiredAccounts(db);
+    await db.customStatement(kCreateVIntegrationAccountsConfiguredViewSql);
+    return;
+  }
+  await seedIntegrationTypeRequiredAccounts(db);
+}
+
+/// Conservative backfill for schema 23 only (column removed in schema 32).
+Future<void> _backfillIntegrationsAccountsReadyColumnsV23(AppDatabase db) async {
+  if (!await _sqliteColumnExists(db, 'integrations', 'accounts_ready')) {
+    return;
+  }
+  final rows = await db.customSelect('SELECT id, integration_type FROM integrations').get();
+  for (final row in rows) {
+    final id = row.read<String>('id');
+    final integrationType = row.read<String>('integration_type');
+    final requires =
+        integrationAccountTypesRequiredForIntegration(integrationType).isNotEmpty;
+    final ready = requires ? 0 : 1;
+    await db.customStatement(
+      'UPDATE integrations SET accounts_ready = ? WHERE id = ?',
+      [ready, id],
+    );
+  }
+}
+
+/// Schema 33: per-curator viewport edge reserve overrides (nullable percent).
+Future<void> _migrateV32ToV33ViewportReserveOverrides(AppDatabase db) async {
+  if (!await _sqliteTableExists(db, 'curator_configurations')) {
+    return;
+  }
+  const columns = <String>[
+    'viewport_reserve_top_pct_override',
+    'viewport_reserve_right_pct_override',
+    'viewport_reserve_bottom_pct_override',
+    'viewport_reserve_left_pct_override',
+  ];
+  for (final column in columns) {
+    if (!await _sqliteColumnExists(db, 'curator_configurations', column)) {
+      await db.customStatement(
+        'ALTER TABLE curator_configurations ADD COLUMN $column INTEGER',
+      );
+    }
   }
 }
 

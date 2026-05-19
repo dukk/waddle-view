@@ -39,6 +39,10 @@ export type CuratorConfigurationSummary = {
   require_news_photo_for_screens: boolean;
   ticker_enabled: boolean;
   theme_id_override: string | null;
+  viewport_reserve_top_pct_override: number | null;
+  viewport_reserve_right_pct_override: number | null;
+  viewport_reserve_bottom_pct_override: number | null;
+  viewport_reserve_left_pct_override: number | null;
   default_config: boolean;
 };
 
@@ -78,6 +82,10 @@ export type CuratorConfigurationWriteBody = {
   require_news_photo_for_screens?: boolean;
   ticker_enabled?: boolean;
   theme_id_override?: string | null;
+  viewport_reserve_top_pct_override?: number | null;
+  viewport_reserve_right_pct_override?: number | null;
+  viewport_reserve_bottom_pct_override?: number | null;
+  viewport_reserve_left_pct_override?: number | null;
   default_config?: boolean;
   rules?: Omit<CuratorScheduleRule, 'configuration_id'>[];
   members?: CuratorConfigurationMembers;

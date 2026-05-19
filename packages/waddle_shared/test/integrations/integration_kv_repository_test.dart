@@ -75,6 +75,54 @@ void main() {
     );
   });
 
+  test('listIntegrationKeys filters by prefix', () async {
+    await kv.upsertIntegration(
+      integrationId: 'test_pexels',
+      key: 'prompt.a.latest',
+      value: '{}',
+    );
+    await kv.insertIntegration(
+      integrationId: 'test_pexels',
+      key: 'prompt.a.history.1',
+      value: '{}',
+    );
+    await kv.upsertIntegration(
+      integrationId: 'test_pexels',
+      key: 'other',
+      value: 'x',
+    );
+    final promptRows = await kv.listIntegrationKeys(
+      'test_pexels',
+      keyPrefix: 'prompt.',
+    );
+    expect(promptRows.length, 2);
+    expect(promptRows.every((r) => r.key.startsWith('prompt.')), isTrue);
+  });
+
+  test('purgeIntegrationHistoryKeys enforces age and count', () async {
+    const nowMs = 1_000_000;
+    for (var i = 0; i < 4; i++) {
+      await kv.insertIntegration(
+        integrationId: 'test_pexels',
+        key: 'prompt.p.history.${nowMs - i}',
+        value: 'v$i',
+        createdAtMs: nowMs - i,
+      );
+    }
+    final removed = await kv.purgeIntegrationHistoryKeys(
+      integrationId: 'test_pexels',
+      historyKeyPrefix: 'prompt.p.history.',
+      cutoffCreatedAtMs: nowMs - 1,
+      maxEntries: 2,
+    );
+    expect(removed, greaterThanOrEqualTo(2));
+    final remaining = await kv.listIntegrationKeys(
+      'test_pexels',
+      keyPrefix: 'prompt.p.history.',
+    );
+    expect(remaining.length, lessThanOrEqualTo(2));
+  });
+
   test('integration and account rows are independent', () async {
     await kv.upsertIntegration(
       integrationId: 'test_pexels',

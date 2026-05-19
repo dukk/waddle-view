@@ -32,6 +32,7 @@ import 'screens/news/news_columns_slide_widget.dart';
 import 'screens/news/news_slide_widget.dart';
 import 'screens/news/news_stack_slide_widget.dart';
 import 'screens/web_page/web_page_slide_widget.dart';
+import 'screens/general_layout/general_layout_slide_widget.dart';
 import '../extensions/screen_widget_registry.dart';
 
 String screenShownDebugLogLine({
@@ -1065,6 +1066,31 @@ class _SlideContent extends StatelessWidget {
           slide: slide,
           spec: w,
           onReportDesiredDwell: (ms) => onReportDesiredDwell(slideIndex, ms),
+        ),
+      );
+    }
+    final generalLayout =
+        GeneralLayoutSlideWidget.layoutTypeFromJson(slide.layoutJson);
+    if (generalLayout != null) {
+      return SizedBox.expand(
+        child: GeneralLayoutSlideWidget(
+          layoutType: generalLayout,
+          widgets: widgets,
+          buildCtx: ScreenWidgetBuildContext(
+            db: db,
+            blobs: blobs,
+            localRestBaseUrl: localRestBaseUrl,
+            adminBaseUrl: adminBaseUrl,
+            instanceIdFile: instanceIdFile,
+            viewerInviteRuntime: viewerInviteRuntime,
+            slide: slide,
+            theme: theme,
+            slideIndex: slideIndex,
+            allowVideoPlayback: allowVideoPlayback,
+            onReportDesiredDwell: onReportDesiredDwell,
+            gap: gap,
+          ),
+          theme: theme,
         ),
       );
     }

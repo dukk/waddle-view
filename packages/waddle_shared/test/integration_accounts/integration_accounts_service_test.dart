@@ -1,10 +1,13 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:test/test.dart';
 import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
+import 'package:waddle_shared/integration_accounts/integration_accounts_configured_sql.dart';
 import 'package:waddle_shared/integration_accounts/integration_accounts_service.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/seed/tables/integration_types_seed.dart';
+import 'package:waddle_shared/secrets/db_encrypted_secret_store.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
+import 'package:waddle_shared/secrets/platform/in_memory_dek_protector.dart';
 import 'package:waddle_shared/config/facebook_kv.dart';
 import 'package:waddle_shared/config/google_kv.dart';
 import 'package:waddle_shared/config/microsoft_graph_kv.dart';
@@ -53,7 +56,10 @@ void main() {
   test('syncIntegrationAccountLinks links api key account per integration row', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    final secrets = InMemorySecretStore();
+    final secrets = DbEncryptedSecretStore(
+      db: db,
+      protector: InMemoryDekProtector(),
+    );
     addTearDown(db.close);
     await ensureIntegrationTypes(db);
     await db.into(db.integrations).insertOnConflictUpdate(
@@ -62,7 +68,7 @@ void main() {
         integrationType: 'photo_pexels',
       ),
     );
-    await syncIntegrationAccountLinks(db, secrets: secrets);
+    await syncIntegrationAccountLinks(db);
     final links = await (db.select(db.integrationAccountLinks)
           ..where((t) => t.integrationId.equals('pexels_home')))
         .get();
@@ -72,13 +78,15 @@ void main() {
           ..where((t) => t.id.equals('pexels_home')))
         .getSingle();
     expect(await integrationTypeRequiresAccounts(db, 'photo_pexels'), isTrue);
-    expect(rowBeforeSecret.accountsReady, isFalse);
+    expect(
+      await integrationAccountsConfiguredFromView(db, 'pexels_home'),
+      isFalse,
+    );
     await secrets.write('provider:access_token:pexels_home', 'key-123');
-    await refreshIntegrationAccountsReady(secrets, db, 'pexels_home');
-    final rowAfterSecret = await (db.select(db.integrations)
-          ..where((t) => t.id.equals('pexels_home')))
-        .getSingle();
-    expect(rowAfterSecret.accountsReady, isTrue);
+    expect(
+      await integrationAccountsConfiguredFromView(db, 'pexels_home'),
+      isTrue,
+    );
     expect(
       await integrationAccountsSatisfiedForEnable(
         secrets,

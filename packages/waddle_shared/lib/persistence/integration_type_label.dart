@@ -7,6 +7,7 @@ const Map<String, String> kIntegrationTypeTitles = {
   'weather_openweathermap': 'OpenWeatherMap Weather',
   'weather_alerts_nws': 'NWS Weather Alerts',
   'joke_openai': 'OpenAI Jokes',
+  'general_openai': 'OpenAI General',
   'trivia_openai': 'OpenAI Trivia',
   'trivia_opentdb': 'OpenTDB Trivia',
   'stock_finnhub': 'Finnhub Stock',

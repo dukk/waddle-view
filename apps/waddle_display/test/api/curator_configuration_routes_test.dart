@@ -86,6 +86,7 @@ void main() {
           },
         ],
         'theme_id_override': 'theme_dark',
+        'viewport_reserve_top_pct_override': 12,
         'ticker_enabled': false,
         'members': {
           'screens': ['jokes'],
@@ -103,6 +104,7 @@ void main() {
     expect(created.statusCode, 200);
     final createdBody = jsonDecode(created.body) as Map<String, dynamic>;
     expect(createdBody['theme_id_override'], isNull);
+    expect(createdBody['viewport_reserve_top_pct_override'], isNull);
     expect(createdBody['ticker_enabled'], isTrue);
     expect(
       (createdBody['members'] as Map)['screens'] as List,
@@ -139,6 +141,34 @@ void main() {
       headers: h.authHeaders,
     );
     expect(missing.statusCode, 404);
+  });
+
+  test('POST base curator configuration round-trips viewport reserve overrides', () async {
+    final h = await RestTestHarness.start();
+    addTearDown(h.dispose);
+
+    final create = await http.post(
+      Uri.parse('${h.baseUrl}/v1/curator/configurations'),
+      headers: h.authHeaders,
+      body: jsonEncode({
+        'id': 'test_viewport',
+        'name': 'Viewport test',
+        'layer': 'base',
+        'viewport_reserve_top_pct_override': 15,
+        'viewport_reserve_right_pct_override': 8,
+      }),
+    );
+    expect(create.statusCode, 200);
+
+    final detail = await http.get(
+      Uri.parse('${h.baseUrl}/v1/curator/configurations/test_viewport'),
+      headers: h.authHeaders,
+    );
+    expect(detail.statusCode, 200);
+    final detailBody = jsonDecode(detail.body) as Map<String, dynamic>;
+    expect(detailBody['viewport_reserve_top_pct_override'], 15);
+    expect(detailBody['viewport_reserve_right_pct_override'], 8);
+    expect(detailBody['viewport_reserve_bottom_pct_override'], isNull);
   });
 
   test('POST curator configuration defaults sort_order to 100 when omitted', () async {

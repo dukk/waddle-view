@@ -8,6 +8,8 @@ export 'news_rss/rss_news_data_provider.dart';
 
 export 'joke_openai/joke_data_provider.dart';
 
+export 'general_openai/general_openai_data_provider.dart';
+
 export 'trivia_openai/trivia_data_provider.dart';
 
 export 'trivia_opentdb/opentdb_trivia_data_provider.dart';

@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_display/display/display_viewport.dart';
+import 'package:waddle_shared/display/display_viewport_reserve.dart';
 
 void main() {
   test('DisplayViewportConfig defaults to 16:9 horizontal', () {
@@ -47,5 +48,15 @@ void main() {
     expect(layout.viewportSize.height, closeTo(1080, 0.1));
     expect(layout.viewportInsets.left, closeTo(656.25, 0.1));
     expect(layout.viewportInsets.top, 0);
+  });
+
+  test('resolveViewportReserveInsets uses width for horizontal sides', () {
+    const reserve = DisplayViewportReservePct(top: 10, right: 20, bottom: 5, left: 15);
+    final insets = resolveViewportReserveInsets(const Size(1000, 800), reserve);
+
+    expect(insets.top, closeTo(80, 0.01));
+    expect(insets.bottom, closeTo(40, 0.01));
+    expect(insets.left, closeTo(150, 0.01));
+    expect(insets.right, closeTo(200, 0.01));
   });
 }

@@ -75,6 +75,14 @@ export const CURATOR_TICKER_PIXELS_PER_SECOND = {
   default: 80,
 } as const;
 
+/** Viewport edge reserve while curator is active (percent per side). */
+export const VIEWPORT_RESERVE_PCT = {
+  min: 0,
+  max: 50,
+  step: 1,
+  default: 0,
+} as const;
+
 function clampNumber(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }

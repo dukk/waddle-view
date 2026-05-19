@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
+import 'package:waddle_shared/integration_accounts/integration_accounts_configured_sql.dart';
 import 'package:waddle_shared/persistence/config_json_documentation.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/integration_type_label.dart';
@@ -43,6 +44,7 @@ Future<void> ensureIntegrationTypes(AppDatabase db) async {
       );
     }
   }
+  await seedIntegrationTypeRequiredAccounts(db);
 }
 
 /// JSON Schema for [integrationType] (DB first, then code catalog).

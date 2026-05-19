@@ -25,6 +25,11 @@ const Map<String, String> kScreenTypeTitles = {
   'data_health': 'Data health',
   'web_page': 'Web page',
   'plugin_template': 'Plugin template',
+  'general_full_screen': 'General full screen',
+  'general_2_column': 'General 2 column',
+  'general_3_column': 'General 3 column',
+  'general_2x2': 'General 2×2',
+  'general_3x2': 'General 3×2',
 };
 
 const Map<String, String> _kWordDisplay = {

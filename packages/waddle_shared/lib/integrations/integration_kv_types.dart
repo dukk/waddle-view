@@ -4,6 +4,9 @@ const String kIntegrationKvTypeIntMs = 'int_ms';
 /// Plain string payload.
 const String kIntegrationKvTypeString = 'string';
 
+/// JSON document stored as a string (general_openai prompt results).
+const String kIntegrationKvTypeJson = 'json';
+
 /// Microsoft Graph `@odata.deltaLink` URL.
 const String kIntegrationKvTypeDeltaLink = 'delta_link';
 

@@ -22,6 +22,7 @@ void main() {
     expect(body['display_theme_id'], isNotEmpty);
     expect(body['display_timezone'], isNotEmpty);
     expect(body.containsKey('adoption_allowed_roles'), isTrue);
+    expect(body['display_viewport_reserve_top_pct'], 0);
     expect(body.containsKey('display_image_overlay'), isFalse);
   });
 
@@ -51,6 +52,29 @@ void main() {
     expect(body['controller_time_format'], kControllerTimeFormat24h);
     expect(body['controller_date_order'], kControllerDateOrderDmy);
     expect(body['display_theme_id'], 'graphite_amber');
+  });
+
+  test('PUT display settings round-trips viewport reserve pct', () async {
+    final h = await RestTestHarness.start();
+    addTearDown(h.dispose);
+
+    final put = await http.put(
+      Uri.parse('${h.baseUrl}/v1/display/settings'),
+      headers: h.authHeaders,
+      body: jsonEncode({
+        'display_viewport_reserve_top_pct': 10,
+        'display_viewport_reserve_left_pct': 5,
+      }),
+    );
+    expect(put.statusCode, 200);
+
+    final get = await http.get(
+      Uri.parse('${h.baseUrl}/v1/display/settings'),
+      headers: h.authHeaders,
+    );
+    final body = jsonDecode(get.body) as Map<String, dynamic>;
+    expect(body['display_viewport_reserve_top_pct'], 10);
+    expect(body['display_viewport_reserve_left_pct'], 5);
   });
 
   test('PUT display settings empty body returns 400', () async {

@@ -78,7 +78,6 @@ void registerIntegrationSecretsRestRoutes(
           body: '{"error":"value_must_be_non_empty"}', headers: _jsonHeaders);
     }
     await secrets.write(slot.storageKey, value);
-    await refreshIntegrationAccountsReady(secrets, db, id);
     return Response.ok('{}', headers: _jsonHeaders);
   });
 
@@ -97,7 +96,6 @@ void registerIntegrationSecretsRestRoutes(
           body: '{"error":"unknown_secret_slot"}', headers: _jsonHeaders);
     }
     await secrets.delete(slot.storageKey);
-    await refreshIntegrationAccountsReady(secrets, db, id);
     return Response.ok('{}', headers: _jsonHeaders);
   });
 }

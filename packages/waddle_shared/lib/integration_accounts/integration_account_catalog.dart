@@ -137,6 +137,7 @@ const Map<String, List<String>> kIntegrationAccountRequirementsByType = {
   'video_onedrive': [kIntegrationAccountTypeMicrosoftGraph],
   'joke_openai': [kIntegrationAccountTypeApiKeyOpenAi],
   'trivia_openai': [kIntegrationAccountTypeApiKeyOpenAi],
+  'general_openai': [kIntegrationAccountTypeApiKeyOpenAi],
   'weather_openweathermap': [kIntegrationAccountTypeApiKeyOpenWeatherMap],
   'photo_pexels': [kIntegrationAccountTypeApiKeyPexels],
   'video_pexels': [kIntegrationAccountTypeApiKeyPexels],

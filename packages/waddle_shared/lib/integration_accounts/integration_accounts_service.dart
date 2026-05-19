@@ -145,7 +145,7 @@ bool integrationLinkedAccountsJsonConfigured(
   return true;
 }
 
-/// Integration rows for account sync during migrations (before [Integrations.accountsReady] exists).
+/// Integration rows for account sync during migrations.
 Future<List<({String id, String integrationType, String? configJson})>>
     _integrationRowsForAccountSync(AppDatabase db) async {
   final rows = await db.customSelect(
@@ -197,86 +197,7 @@ Future<void> syncIntegrationAccountsFromIntegrationConfigs(
   }
 }
 
-/// Backfills [Integrations.accountsReady] after schema 23 (and following type-registry moves).
-///
-/// Without [secrets], [accountsReady] is conservative (`false` when accounts are required).
-Future<void> backfillIntegrationsAccountsReadyColumns(
-  AppDatabase db, {
-  SecretStore? secrets,
-}) async {
-  final rows = await db.select(db.integrations).get();
-  for (final row in rows) {
-    final requires =
-        integrationAccountTypesRequiredForIntegration(row.integrationType).isNotEmpty;
-    var ready = !requires;
-    if (requires && secrets != null) {
-      ready = await integrationAccountsSatisfiedForEnable(
-        secrets,
-        db,
-        row.id,
-        row.integrationType,
-        syncAccountLinks: false,
-      );
-    } else if (requires) {
-      ready = false;
-    }
-    await (db.update(db.integrations)..where((t) => t.id.equals(row.id))).write(
-      IntegrationsCompanion(accountsReady: Value(ready)),
-    );
-  }
-}
-
-Future<void> refreshIntegrationAccountsReady(
-  SecretStore secrets,
-  AppDatabase db,
-  String integrationId, {
-  bool syncAccountLinks = false,
-}) async {
-  if (syncAccountLinks) {
-    await syncIntegrationAccountLinks(db, secrets: secrets);
-    return;
-  }
-  final row = await (db.select(db.integrations)
-        ..where((t) => t.id.equals(integrationId)))
-      .getSingleOrNull();
-  if (row == null) {
-    return;
-  }
-  final requires =
-      integrationAccountTypesRequiredForIntegration(row.integrationType).isNotEmpty;
-  final ready = requires
-      ? await integrationAccountsSatisfiedForEnable(
-          secrets,
-          db,
-          integrationId,
-          row.integrationType,
-          syncAccountLinks: false,
-        )
-      : true;
-  await (db.update(db.integrations)..where((t) => t.id.equals(integrationId))).write(
-    IntegrationsCompanion(accountsReady: Value(ready)),
-  );
-}
-
-Future<void> refreshAllIntegrationsAccountsReady(
-  SecretStore secrets,
-  AppDatabase db,
-) async {
-  final rows = await db.select(db.integrations).get();
-  for (final row in rows) {
-    await refreshIntegrationAccountsReady(
-      secrets,
-      db,
-      row.id,
-      syncAccountLinks: false,
-    );
-  }
-}
-
-Future<void> syncIntegrationAccountLinks(
-  AppDatabase db, {
-  SecretStore? secrets,
-}) async {
+Future<void> syncIntegrationAccountLinks(AppDatabase db) async {
   await syncIntegrationAccountsFromIntegrationConfigs(db);
   final rows = await _integrationRowsForAccountSync(db);
   for (final row in rows) {
@@ -318,9 +239,6 @@ Future<void> syncIntegrationAccountLinks(
         accountId: accountKey,
       );
     }
-  }
-  if (secrets != null) {
-    await refreshAllIntegrationsAccountsReady(secrets, db);
   }
 }
 
@@ -728,9 +646,7 @@ Future<String> createOperatorIntegrationAccount(
   }
   if (def.supportsOAuthSignIn) {
     await _appendOAuthAccountKeyToIntegrations(db, accountTypeId, accountId);
-    await syncIntegrationAccountLinks(db, secrets: secrets);
-  } else {
-    await refreshAllIntegrationsAccountsReady(secrets, db);
+    await syncIntegrationAccountLinks(db);
   }
   return accountId;
 }
@@ -842,7 +758,7 @@ Future<DeleteOperatorIntegrationAccountResult> deleteOperatorIntegrationAccount(
   required String accountId,
   bool confirm = false,
 }) async {
-  await syncIntegrationAccountLinks(db, secrets: secrets);
+  await syncIntegrationAccountLinks(db);
   final account = await (db.select(db.integrationAccounts)
         ..where((t) => t.id.equals(accountId)))
       .getSingleOrNull();
@@ -892,7 +808,6 @@ Future<DeleteOperatorIntegrationAccountResult> deleteOperatorIntegrationAccount(
     disabled.add(integrationId);
   }
   disabled.sort();
-  await refreshAllIntegrationsAccountsReady(secrets, db);
   return DeleteOperatorIntegrationAccountResult(
     disabledIntegrationIds: disabled,
   );

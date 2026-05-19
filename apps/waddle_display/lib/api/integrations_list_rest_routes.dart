@@ -5,6 +5,7 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:waddle_display/api/integration_secrets_rest_routes.dart';
 import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
+import 'package:waddle_shared/integration_accounts/integration_accounts_configured_sql.dart';
 import 'package:waddle_shared/integration_accounts/integration_accounts_service.dart';
 import 'package:waddle_shared/persistence/config_json_documentation.dart';
 import 'package:waddle_shared/persistence/database.dart';
@@ -152,6 +153,8 @@ Future<Response> listIntegrations(
 }) async {
   final params = IntegrationsListParams.parse(req);
   final includeDocs = includeConfigSchemaFromRequest(req);
+  await syncIntegrationAccountLinks(db);
+  final accountsConfiguredMap = await integrationAccountsConfiguredViewMap(db);
 
   if (!params.paginated) {
     final rows = await _queryIntegrationRows(db, params);
@@ -162,6 +165,7 @@ Future<Response> listIntegrations(
           db,
           secrets,
           e,
+          accountsConfigured: accountsConfiguredMap[e.id] ?? false,
           includeConfigDocs: includeDocs,
         ),
       );
@@ -207,6 +211,7 @@ Future<Response> listIntegrations(
         db,
         secrets,
         e,
+        accountsConfigured: accountsConfiguredMap[e.id] ?? false,
         includeConfigDocs: includeDocs,
       ),
     );
@@ -234,6 +239,8 @@ Future<Response> _listIntegrationsPaginatedWithSecretsFilter(
   IntegrationsListParams params, {
   bool includeConfigDocs = false,
 }) async {
+  await syncIntegrationAccountLinks(db);
+  final accountsConfiguredMap = await integrationAccountsConfiguredViewMap(db);
   final rows = await _queryIntegrationRows(db, params);
   final enriched = <Map<String, dynamic>>[];
   for (final e in rows) {
@@ -242,6 +249,7 @@ Future<Response> _listIntegrationsPaginatedWithSecretsFilter(
         db,
         secrets,
         e,
+        accountsConfigured: accountsConfiguredMap[e.id] ?? false,
         includeConfigDocs: includeConfigDocs,
       ),
     );
@@ -328,25 +336,23 @@ Expression<bool> _integrationWhere(
         (t.id.like(pattern) | t.integrationType.like(pattern));
   }
   if (params.accountsConfigured == true) {
-    final requiresExists = existsQuery(
-      db.select(db.integrationTypes)
-        ..where(
-          (it) =>
-              it.integrationType.equalsExp(t.integrationType) &
-              it.requiresAccounts.equals(true),
-        ),
-    );
-    expr = expr & (requiresExists.not() | t.accountsReady.equals(true));
+    expr = expr &
+        const CustomExpression<bool>(
+          '(NOT EXISTS (SELECT 1 FROM integration_types it '
+          'WHERE it.integration_type = integrations.integration_type '
+          'AND it.requires_accounts = 1) '
+          'OR EXISTS (SELECT 1 FROM v_integration_accounts_configured v '
+          'WHERE v.integration_id = integrations.id AND v.accounts_configured = 1))',
+        );
   } else if (params.accountsConfigured == false) {
-    final requiresExists = existsQuery(
-      db.select(db.integrationTypes)
-        ..where(
-          (it) =>
-              it.integrationType.equalsExp(t.integrationType) &
-              it.requiresAccounts.equals(true),
-        ),
-    );
-    expr = expr & requiresExists & t.accountsReady.equals(false);
+    expr = expr &
+        const CustomExpression<bool>(
+          '(EXISTS (SELECT 1 FROM integration_types it '
+          'WHERE it.integration_type = integrations.integration_type '
+          'AND it.requires_accounts = 1) '
+          'AND NOT EXISTS (SELECT 1 FROM v_integration_accounts_configured v '
+          'WHERE v.integration_id = integrations.id AND v.accounts_configured = 1))',
+        );
   }
   return expr;
 }
@@ -369,6 +375,7 @@ Future<Map<String, dynamic>> _enrichIntegrationRow(
   AppDatabase db,
   SecretStore secrets,
   Integration e, {
+  required bool accountsConfigured,
   bool includeConfigDocs = false,
 }) async {
   final requiredAccountTypes =
@@ -391,7 +398,7 @@ Future<Map<String, dynamic>> _enrichIntegrationRow(
       e.id,
       e.integrationType,
     ),
-    'accounts_configured': e.accountsReady,
+    'accounts_configured': accountsConfigured,
     'linked_accounts': await listAccountsForIntegrationJson(
       db,
       secrets,
@@ -443,7 +450,8 @@ Future<Map<String, int>> _familyFacetCounts(
     }
     if (include && params.accountsConfigured != null) {
       final requires = await integrationTypeRequiresAccounts(db, e.integrationType);
-      final accountsOk = !requires || e.accountsReady;
+      final accountsOk = !requires ||
+          (await integrationAccountsConfiguredFromView(db, e.id));
       if (accountsOk != params.accountsConfigured) {
         include = false;
       }

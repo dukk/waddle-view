@@ -14,6 +14,11 @@ export type DisplaySettings = {
   display_text_scale_ticker: string;
   /** IANA id from `display.timezone` (e.g. `America/Chicago`). */
   display_timezone: string;
+  /** Percent of letterboxed viewport reserved on each edge (0–50). */
+  display_viewport_reserve_top_pct: number;
+  display_viewport_reserve_right_pct: number;
+  display_viewport_reserve_bottom_pct: number;
+  display_viewport_reserve_left_pct: number;
   controller_time_format: ControllerTimeFormat;
   controller_date_order: ControllerDateOrder;
   /** Roles that may start adoption challenges. */

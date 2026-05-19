@@ -24,6 +24,8 @@ DataProviderRegistry buildBuiltinDataProviderRegistry() {
 
       JokeDataProvider(),
 
+      GeneralOpenAiDataProvider(),
+
       TriviaDataProvider(),
 
       OpenTdbTriviaDataProvider(),

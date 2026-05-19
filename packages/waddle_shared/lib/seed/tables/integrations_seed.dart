@@ -150,6 +150,21 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
 
 
   await _ensureIntegrationRow(
+    db,
+    id: kDefaultGeneralOpenAiIntegrationId,
+    integrationType: 'general_openai',
+    pollSeconds: 300,
+    enabled: false,
+    configJson:
+        '{"defaultModel":"gpt-4o-mini","defaultRetentionDays":30,'
+        '"defaultMaxHistoryEntries":500,"prompts":[{"id":"daily_summary",'
+        '"label":"Daily summary","enabled":true,"pollSeconds":3600,'
+        '"userPrompt":"Return a JSON object with key items as an array of strings.",'
+        '"systemPrompt":"Respond with valid JSON only.","responseFormat":"json_object",'
+        '"expectedValueType":"list_string_array"}]}',
+  );
+
+  await _ensureIntegrationRow(
 
     db,
 
