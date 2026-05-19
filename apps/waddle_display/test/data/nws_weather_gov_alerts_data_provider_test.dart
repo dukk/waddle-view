@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_integrations/weather_alerts_nws/nws_weather_gov_alerts_data_provider.dart';
+import 'package:waddle_integrations/weather_openweathermap/weather_locations_for_collect.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 
@@ -468,6 +469,53 @@ void main() {
     expect(await db.select(db.weatherAlerts).get(), isEmpty);
     await db.close();
   });
+
+  test(
+    'collect writes alerts for synthetic default when no interest rows',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
+      await db.into(db.integrations).insert(
+            IntegrationsCompanion.insert(
+              id: kDefaultWeatherAlertsNwsIntegrationId,
+              integrationType: 'weather_alerts_nws',
+              pollSeconds: const Value(60),
+              configJson: integrationConfigJsonValue(
+                configJson:
+                    '{"defaultLocation":{"name":"Fallback","lat":41.0,"lon":-75.0}}',
+                baseUrl: 'https://api.weather.gov',
+              ),
+            ),
+          );
+      final ctx = await _ctx(db, InMemorySecretStore());
+      final client = _NwsClient(
+        (uri, headers) {
+          expect(uri.queryParameters['point'], '41.0000,-75.0000');
+          return http.Response(
+            _geoJson(alertId: 'urn:default', event: 'Flood Watch'),
+            200,
+          );
+        },
+      );
+      final provider = NwsWeatherGovAlertsDataProvider(httpClient: client);
+
+      await provider.collect(ctx);
+
+      final loc = await (db.select(db.interestsLocations)
+            ..where((t) => t.id.equals(kSyntheticDefaultWeatherLocationId)))
+          .getSingleOrNull();
+      expect(loc, isNotNull);
+      expect(loc!.name, 'Fallback');
+      expect(loc.includeWeather, isTrue);
+      expect(loc.includeWeatherAlerts, isTrue);
+
+      final alerts = await db.select(db.weatherAlerts).get();
+      expect(alerts, hasLength(1));
+      expect(alerts.single.locationId, kSyntheticDefaultWeatherLocationId);
+      expect(alerts.single.event, 'Flood Watch');
+      await db.close();
+    },
+  );
 
   test('collect requests only locations with include_weather_alerts true',
       () async {

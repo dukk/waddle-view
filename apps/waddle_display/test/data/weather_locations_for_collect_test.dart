@@ -18,7 +18,7 @@ void main() {
     );
     final list = await resolveWeatherLocationsForCollect(db, def);
     expect(list, hasLength(1));
-    expect(list.single.id, 'default');
+    expect(list.single.id, kSyntheticDefaultWeatherLocationId);
     expect(list.single.name, 'Fallback City');
     expect(list.single.lat, 12.5);
     expect(list.single.lon, -34.25);
@@ -78,7 +78,7 @@ void main() {
       );
       final list = await resolveWeatherLocationsForActiveAlertsCollect(db, def);
       expect(list, hasLength(1));
-      expect(list.single.id, 'default');
+      expect(list.single.id, kSyntheticDefaultWeatherLocationId);
       await db.close();
     },
   );
@@ -112,6 +112,30 @@ void main() {
       const def = WeatherLocationConfig(name: 'X', latitude: 0, longitude: 0);
       final list = await resolveWeatherLocationsForActiveAlertsCollect(db, def);
       expect(list.map((e) => e.id).toList(), ['alerts_on']);
+      await db.close();
+    },
+  );
+
+  test(
+    'ensureSyntheticDefaultInterestsLocation upserts interests_locations row',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
+      const loc = WeatherCollectLocation(
+        id: kSyntheticDefaultWeatherLocationId,
+        name: 'Fallback City',
+        lat: 12.5,
+        lon: -34.25,
+      );
+      await ensureSyntheticDefaultInterestsLocation(db, loc);
+      final row = await (db.select(db.interestsLocations)
+            ..where((t) => t.id.equals(kSyntheticDefaultWeatherLocationId)))
+          .getSingle();
+      expect(row.name, 'Fallback City');
+      expect(row.latitude, 12.5);
+      expect(row.longitude, -34.25);
+      expect(row.includeWeather, isTrue);
+      expect(row.includeWeatherAlerts, isTrue);
       await db.close();
     },
   );

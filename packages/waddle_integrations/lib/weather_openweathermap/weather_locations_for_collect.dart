@@ -1,10 +1,15 @@
-import 'package:drift/drift.dart' show OrderingTerm;
+import 'package:drift/drift.dart' show OrderingTerm, Value;
 
 import 'package:waddle_shared/persistence/database.dart';
 import 'weather_provider_extra_config.dart';
 
+/// Synthetic [InterestsLocations.id] when no row has [InterestsLocation.includeWeather].
+/// Collectors must call [ensureSyntheticDefaultInterestsLocation] before writing
+/// [weather_current] or [weather_alerts] (both FK to [interests_locations]).
+const String kSyntheticDefaultWeatherLocationId = 'default';
+
 /// [InterestsLocations] rows with [InterestsLocation.includeWeather], or a
-/// single synthetic `default` when none.
+/// single synthetic [kSyntheticDefaultWeatherLocationId] when none.
 class WeatherCollectLocation {
   const WeatherCollectLocation({
     required this.id,
@@ -41,7 +46,7 @@ Future<List<WeatherCollectLocation>> resolveWeatherLocationsForCollect(
   }
   return [
     WeatherCollectLocation(
-      id: 'default',
+      id: kSyntheticDefaultWeatherLocationId,
       name: defaultLocation.name,
       lat: defaultLocation.latitude,
       lon: defaultLocation.longitude,
@@ -49,9 +54,30 @@ Future<List<WeatherCollectLocation>> resolveWeatherLocationsForCollect(
   ];
 }
 
+/// Upserts [interests_locations] for [kSyntheticDefaultWeatherLocationId] so
+/// weather tables can reference it under SQLite foreign keys.
+Future<void> ensureSyntheticDefaultInterestsLocation(
+  AppDatabase db,
+  WeatherCollectLocation location,
+) async {
+  if (location.id != kSyntheticDefaultWeatherLocationId) {
+    return;
+  }
+  await db.into(db.interestsLocations).insertOnConflictUpdate(
+        InterestsLocationsCompanion.insert(
+          id: location.id,
+          name: location.name,
+          latitude: location.lat,
+          longitude: location.lon,
+          includeWeather: const Value(true),
+          includeWeatherAlerts: const Value(true),
+        ),
+      );
+}
+
 /// [InterestsLocations] rows that should receive NWS active-alert collection,
-/// or a single synthetic `default` when no rows have [InterestsLocation.includeWeather]
-/// (same fallback as [resolveWeatherLocationsForCollect]).
+/// or a single synthetic [kSyntheticDefaultWeatherLocationId] when no rows have
+/// [InterestsLocation.includeWeather] (same fallback as [resolveWeatherLocationsForCollect]).
 ///
 /// When at least one row has weather enabled, only rows with
 /// [InterestsLocation.includeWeatherAlerts] true are included (the list may be
@@ -67,7 +93,7 @@ Future<List<WeatherCollectLocation>> resolveWeatherLocationsForActiveAlertsColle
   if (weatherRows.isEmpty) {
     return [
       WeatherCollectLocation(
-        id: 'default',
+        id: kSyntheticDefaultWeatherLocationId,
         name: defaultLocation.name,
         lat: defaultLocation.latitude,
         lon: defaultLocation.longitude,

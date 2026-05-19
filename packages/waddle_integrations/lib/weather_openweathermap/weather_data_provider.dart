@@ -58,6 +58,7 @@ class WeatherDataProvider implements IDataProvider {
 
     for (final location in locations) {
       try {
+        await ensureSyntheticDefaultInterestsLocation(ctx.db, location);
         final weatherUri = Uri.parse('$baseUrl/data/2.5/weather').replace(
           queryParameters: {
             'lat': location.lat.toStringAsFixed(4),

@@ -81,6 +81,7 @@ class NwsWeatherGovAlertsDataProvider implements IDataProvider {
 
     for (final location in locations) {
       try {
+        await ensureSyntheticDefaultInterestsLocation(ctx.db, location);
         final uri = Uri.parse('$baseUrl/alerts/active').replace(
           queryParameters: {
             'point': '${location.lat.toStringAsFixed(4)},${location.lon.toStringAsFixed(4)}',

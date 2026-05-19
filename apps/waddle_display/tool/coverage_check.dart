@@ -11,41 +11,7 @@
 // (display app composition root only).
 import 'dart:io';
 
-bool _includeSourceFile(String sf, {required String lcovPath}) {
-  final norm = sf.replaceAll('\\', '/');
-  final lcovNorm = lcovPath.replaceAll('\\', '/');
-  if (norm.contains('packages/waddle_plugin_example/')) {
-    return false;
-  }
-  if (norm.endsWith('.g.dart')) {
-    return false;
-  }
-  if (norm.endsWith('main.dart')) {
-    return false;
-  }
-  final bareLib = norm.startsWith('lib/') && !norm.contains('packages/');
-  final isDisplayLib = norm.contains('/apps/waddle_display/lib/') ||
-      (bareLib &&
-          !lcovNorm.contains('waddle_shared') &&
-          !lcovNorm.contains('waddle_plugin_sdk'));
-  final isSharedLib = norm.contains('packages/waddle_shared/lib/') ||
-      (bareLib && lcovNorm.contains('waddle_shared'));
-  final isPluginSdkLib = norm.contains('packages/waddle_plugin_sdk/lib/') ||
-      (bareLib && lcovNorm.contains('waddle_plugin_sdk'));
-  if (!isDisplayLib && !isSharedLib && !isPluginSdkLib) {
-    return false;
-  }
-  // Declarative Drift table definitions (no executable lines in practice).
-  if (norm.endsWith('persistence/tables.dart')) {
-    return false;
-  }
-  // Large slide-dispatch widget: logic is split across many child slide widgets
-  // that have dedicated tests; covering every switch branch here duplicates work.
-  if (norm.endsWith('display/screen_rotator.dart')) {
-    return false;
-  }
-  return true;
-}
+import 'coverage_source_filter.dart';
 
 void main(List<String> args) {
   var minPct = 80.0;
@@ -85,7 +51,10 @@ void main(List<String> args) {
         }
       }
       if (sf != null &&
-          _includeSourceFile(sf.replaceAll('\\', '/'), lcovPath: lcovPath)) {
+          includeCoverageSourceFile(
+            sf.replaceAll('\\', '/'),
+            lcovPath: lcovPath,
+          )) {
         totalLf += lf;
         totalLh += lh;
       }
