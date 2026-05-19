@@ -25,26 +25,10 @@ class StubDataProvider implements IDataProvider {
           ),
         );
     await (ctx.db.update(ctx.db.tickerTapes)
-          ..where((t) => t.id.equals('ticker_weather')))
+          ..where((t) => t.id.equals('ticker_custom')))
         .write(
       TickerTapesCompanion(
-        configJson: Value(jsonEncode({'fallbackText': '72°F · Sunny'})),
-      ),
-    );
-    await (ctx.db.update(ctx.db.tickerTapes)
-          ..where((t) => t.id.equals('ticker_news')))
-        .write(
-      TickerTapesCompanion(
-        configJson: Value(
-          jsonEncode({'fallbackText': 'Local headlines refresh with each collect'}),
-        ),
-      ),
-    );
-    await (ctx.db.update(ctx.db.tickerTapes)
-          ..where((t) => t.id.equals('ticker_quote')))
-        .write(
-      TickerTapesCompanion(
-        configJson: Value(jsonEncode({'fallbackText': 'WADDLE +1.2%'})),
+        configJson: Value(jsonEncode({'text': 'WADDLE +1.2%'})),
       ),
     );
     final ref = await ctx.blobs.putBytes(
@@ -61,6 +45,8 @@ class StubDataProvider implements IDataProvider {
         capturedAt: DateTime.now(),
       ),
     );
-    ctx.diagnostics.provider('stub: wrote header KV, ticker tape fallbacks, ping blob (2 bytes)');
+    ctx.diagnostics.provider(
+      'stub: wrote header KV, static_text ticker demo, ping blob (2 bytes)',
+    );
   }
 }

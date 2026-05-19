@@ -181,7 +181,7 @@ Future<void> syncIntegrationAccountsFromIntegrationConfigs(
   }
 }
 
-/// Backfills [Integrations.requiresAccounts] and [Integrations.accountsReady] after schema 23.
+/// Backfills [Integrations.accountsReady] after schema 23 (and following type-registry moves).
 ///
 /// Without [secrets], [accountsReady] is conservative (`false` when accounts are required).
 Future<void> backfillIntegrationsAccountsReadyColumns(
@@ -205,10 +205,7 @@ Future<void> backfillIntegrationsAccountsReadyColumns(
       ready = false;
     }
     await (db.update(db.integrations)..where((t) => t.id.equals(row.id))).write(
-      IntegrationsCompanion(
-        requiresAccounts: Value(requires),
-        accountsReady: Value(ready),
-      ),
+      IntegrationsCompanion(accountsReady: Value(ready)),
     );
   }
 }
@@ -241,10 +238,7 @@ Future<void> refreshIntegrationAccountsReady(
         )
       : true;
   await (db.update(db.integrations)..where((t) => t.id.equals(integrationId))).write(
-    IntegrationsCompanion(
-      requiresAccounts: Value(requires),
-      accountsReady: Value(ready),
-    ),
+    IntegrationsCompanion(accountsReady: Value(ready)),
   );
 }
 

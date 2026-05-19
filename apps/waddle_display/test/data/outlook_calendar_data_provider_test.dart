@@ -30,8 +30,8 @@ void main() {
   test('OutlookCalendarExtraConfig defaults and parses accounts', () {
     final c = OutlookCalendarExtraConfig.parse(null);
     expect(c.accounts, isEmpty);
-    expect(c.pastDays, 14);
-    expect(c.futureDays, 14);
+    expect(c.pastDays, 30);
+    expect(c.futureDays, 30);
 
     final raw = OutlookCalendarExtraConfig.parse(
       '{"accounts":[{"graphAccountKey":"a","sources":[{"mailbox":"me","calendars":[]}]}],"pastDays":3,"futureDays":5}',
@@ -53,8 +53,8 @@ void main() {
     expect(src.calendars.length, 2);
     expect(src.calendars[0].nameOrId, 'Work');
     expect(src.calendars[1].nameOrId, 'Personal');
-    expect(src.calendars[1].categoryId, 'family');
-    expect(src.defaultCategoryId, 'general');
+    expect(src.calendars[1].categoryIds, ['family']);
+    expect(src.defaultCategoryIds, ['general']);
     expect(src.categoryMap['Client'], 'work');
   });
 

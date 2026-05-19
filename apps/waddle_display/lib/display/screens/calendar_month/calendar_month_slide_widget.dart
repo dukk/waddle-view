@@ -14,6 +14,7 @@ import 'package:timezone/timezone.dart';
 import 'calendar_month_grid.dart';
 import 'calendar_upcoming_layout.dart';
 import '../../content_category_material_icon.dart';
+import '../../content_category_slide_header.dart';
 import '../../dashboard_viewport_scope.dart';
 
 /// ValueKey for an in-current-month day cell on [CalendarMonthSlideWidget] (tests).
@@ -140,9 +141,20 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
   CalendarMonthUpcomingTimeOptions get _upcomingTimeOptions =>
       CalendarMonthUpcomingTimeOptions.fromConfig(widget.spec.config);
 
+  /// When set, only [CalendarEvent.categoryId] matching this slug are loaded.
+  String? get _filterCategoryId {
+    final raw = widget.spec.config['categoryId'];
+    if (raw is! String) {
+      return null;
+    }
+    final trimmed = raw.trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
+    final filterCategoryId = _filterCategoryId;
+    final body = LayoutBuilder(
       builder: (context, constraints) {
         final s = DashboardViewportScope.scaleOf(context);
         final mq = MediaQuery.sizeOf(context);
@@ -170,18 +182,23 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
 
               return StreamBuilder<CalendarMonthStreamBundle>(
                 key: ValueKey<String>(
-                  '${_todayMsBoundary}_${displayZone.name}',
+                  '${_todayMsBoundary}_${displayZone.name}_$filterCategoryId',
                 ),
                 stream:
                     (widget.db.select(widget.db.calendarEvents)
-                          ..where(
-                            (t) => t.startMs.isBiggerOrEqualValue(
+                          ..where((t) {
+                            final start = t.startMs.isBiggerOrEqualValue(
                               DateTime.fromMillisecondsSinceEpoch(
                                 eventStreamStartMs,
                                 isUtc: true,
                               ),
-                            ),
-                          )
+                            );
+                            final cat = filterCategoryId;
+                            if (cat == null) {
+                              return start;
+                            }
+                            return start & t.categoryId.equals(cat);
+                          })
                           ..orderBy([(t) => OrderingTerm.asc(t.startMs)]))
                         .watch()
                         .asyncMap(
@@ -323,6 +340,20 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
         );
       },
     );
+    if (filterCategoryId == null) {
+      return body;
+    }
+    return Column(
+      children: [
+        ContentCategorySlideHeader(
+          db: widget.db,
+          blobs: widget.blobs,
+          theme: widget.theme,
+          categoryId: filterCategoryId,
+        ),
+        Expanded(child: body),
+      ],
+    );
   }
 }
 
@@ -427,12 +458,21 @@ class _UpcomingEventsPanel extends StatelessWidget {
                 final slideRow = entry.row;
                 final e = slideRow.event;
                 final loc = e.location;
-                final cat = slideRow.category;
-                final hasIcon =
-                    slideRow.categoryIconBytes != null ||
-                    (cat?.materialIconName?.trim().isNotEmpty ?? false);
-                final markerColor =
-                    calendarEventMarkerAccent(theme.colorScheme, e);
+                final cats = slideRow.categories;
+                final hasIcon = cats.isNotEmpty &&
+                    (slideRow.categoryIconBytes.any((b) => b != null) ||
+                        cats.any(
+                          (c) => c.materialIconName?.trim().isNotEmpty ?? false,
+                        ));
+                final categoryIconsWidth = hasIcon
+                    ? iconCol * cats.length.clamp(1, 4) +
+                        2 * s * (cats.length.clamp(1, 4) - 1)
+                    : 0.0;
+                final markerColor = calendarEventMarkerAccent(
+                  theme.colorScheme,
+                  e,
+                  categoryIds: cats.map((c) => c.id).toList(),
+                );
                 final listDotD = math.max(8.0, 11.0 * s);
                 final listSq = math.max(9.0, 12.0 * s);
                 final markerExtent = e.allDay ? listSq : listDotD;
@@ -440,7 +480,7 @@ class _UpcomingEventsPanel extends StatelessWidget {
                     math.max(16.0 * s, markerExtent + 3 * s);
                 final titleBlockStartPad = upcomingMarkerCol +
                     8 * s +
-                    (hasIcon ? iconCol + 8 * s : 0);
+                    (hasIcon ? categoryIconsWidth + 8 * s : 0);
                 return Padding(
                   padding: EdgeInsets.only(left: 8 * s),
                   child: Row(
@@ -494,23 +534,43 @@ class _UpcomingEventsPanel extends StatelessWidget {
                                 SizedBox(width: 8 * s),
                                 if (hasIcon) ...[
                                   SizedBox(
-                                    width: iconCol,
+                                    width: categoryIconsWidth,
                                     height: iconCol,
-                                    child: slideRow.categoryIconBytes != null
-                                        ? Image.memory(
-                                            slideRow.categoryIconBytes!,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        for (var ci = 0;
+                                            ci < cats.length && ci < 4;
+                                            ci++) ...[
+                                          if (ci > 0) SizedBox(width: 2 * s),
+                                          SizedBox(
                                             width: iconCol,
                                             height: iconCol,
-                                            fit: BoxFit.contain,
-                                          )
-                                        : Icon(
-                                            contentCategoryMaterialIcon(
-                                              slideRow.category
-                                                  ?.materialIconName,
-                                            ),
-                                            size: iconCol,
-                                            color: iconColor,
+                                            child: slideRow
+                                                        .categoryIconBytes
+                                                        .length >
+                                                    ci &&
+                                                slideRow.categoryIconBytes[ci] !=
+                                                    null
+                                                ? Image.memory(
+                                                    slideRow
+                                                        .categoryIconBytes[ci]!,
+                                                    width: iconCol,
+                                                    height: iconCol,
+                                                    fit: BoxFit.contain,
+                                                  )
+                                                : Icon(
+                                                    contentCategoryMaterialIcon(
+                                                      cats[ci]
+                                                          .materialIconName,
+                                                    ),
+                                                    size: iconCol,
+                                                    color: iconColor,
+                                                  ),
                                           ),
+                                        ],
+                                      ],
+                                    ),
                                   ),
                                   SizedBox(width: 8 * s),
                                 ],

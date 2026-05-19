@@ -77,7 +77,6 @@ class _TickersUpdate extends Command<void> {
       ..addOption('ticker-type')
       ..addOption('frequency-weight')
       ..addOption('sort-order')
-      ..addOption('config-key');
   }
 
   final GlobalCliOptions globalOptions;
@@ -103,7 +102,6 @@ class _TickersUpdate extends Command<void> {
         tickerType: o['ticker-type'] as String?,
         frequencyWeight: int.tryParse(o['frequency-weight'] as String? ?? ''),
         sortOrder: int.tryParse(o['sort-order'] as String? ?? ''),
-        configKey: o['config-key'] as String?,
       );
     });
   }

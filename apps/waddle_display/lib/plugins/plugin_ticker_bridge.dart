@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import '../curator/curator_read_port.dart';
-import '../curator/ticker_curation.dart' show parseTickerTapeFallbackText;
+import '../curator/ticker_curation.dart' show parseTickerTapePluginFallbackText;
 import '../curator/ticker_item.dart';
 
 /// Plugin ticker tapes use `fallback_text` in config or KV written by collect.
@@ -12,7 +12,7 @@ class PluginTickerBridge {
     final kvKey = pluginId != null && pluginId.isNotEmpty
         ? 'ticker.marquee.$pluginId'
         : null;
-    final fallback = parseTickerTapeFallbackText(def.configJson) ?? '';
+    final fallback = parseTickerTapePluginFallbackText(def.configJson) ?? '';
     final body = fallback.isNotEmpty ? fallback : 'Plugin ticker (${def.id})';
     return [
       TickerItem(

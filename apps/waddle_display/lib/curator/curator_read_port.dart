@@ -11,19 +11,15 @@ class TickerTapeForCuration {
     required this.tickerType,
     required this.frequencyWeight,
     required this.sortOrder,
-    this.configKey,
     this.configJson = '{}',
   });
 
   final String id;
-  /// `time`, `weather`, `news`, `quote`, `stocks`, or `custom`.
+  /// `time`, `weather`, `news`, `stocks`, `static_text`, or `plugin`.
   final String tickerType;
   final int frequencyWeight;
   final int sortOrder;
-  /// When [tickerType] is `custom`, optional `ticker.marquee.*` key; when null,
-  /// all extra marquee keys are included (same as legacy “custom” bucket).
-  final String? configKey;
-  /// JSON object for the tape (e.g. `fallbackText` for weather/news/quote).
+  /// JSON object for the tape (e.g. `text` for static_text, plugin options).
   final String configJson;
 }
 

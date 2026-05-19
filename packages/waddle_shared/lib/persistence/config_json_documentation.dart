@@ -395,6 +395,10 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
                       'email': {'type': 'string'},
                       'defaultCategoryId': {'type': 'string'},
                       'defaultCategory': {'type': 'string'},
+                      'defaultCategoryIds': {
+                        'type': 'array',
+                        'items': {'type': 'string'},
+                      },
                       'categoryMap': {
                         'type': 'object',
                         'additionalProperties': {'type': 'string'},
@@ -412,6 +416,10 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
                                 'id': {'type': 'string'},
                                 'categoryId': {'type': 'string'},
                                 'category': {'type': 'string'},
+                                'categoryIds': {
+                                  'type': 'array',
+                                  'items': {'type': 'string'},
+                                },
                               },
                               'additionalProperties': true,
                             },
@@ -441,8 +449,8 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
           ],
         },
       ],
-      'pastDays': 14,
-      'futureDays': 14,
+      'pastDays': 30,
+      'futureDays': 30,
     }),
   ),
   'calendar_google': ProviderConfigJsonDoc(
@@ -467,6 +475,10 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
                     'properties': {
                       'defaultCategoryId': {'type': 'string'},
                       'defaultCategory': {'type': 'string'},
+                      'defaultCategoryIds': {
+                        'type': 'array',
+                        'items': {'type': 'string'},
+                      },
                       'calendars': {
                         'type': 'array',
                         'items': {
@@ -480,6 +492,10 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
                                 'id': {'type': 'string'},
                                 'categoryId': {'type': 'string'},
                                 'category': {'type': 'string'},
+                                'categoryIds': {
+                                  'type': 'array',
+                                  'items': {'type': 'string'},
+                                },
                               },
                               'additionalProperties': true,
                             },
@@ -508,8 +524,8 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
           ],
         },
       ],
-      'pastDays': 14,
-      'futureDays': 14,
+      'pastDays': 30,
+      'futureDays': 30,
     }),
   ),
   'calendar_ical': ProviderConfigJsonDoc(
@@ -531,6 +547,10 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
                 'label': {'type': 'string'},
                 'categoryId': {'type': 'string'},
                 'category': {'type': 'string'},
+                'categoryIds': {
+                  'type': 'array',
+                  'items': {'type': 'string'},
+                },
                 'enabled': {'type': 'boolean'},
               },
               'required': ['id', 'url'],
@@ -550,8 +570,8 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
           'enabled': true,
         },
       ],
-      'pastDays': 14,
-      'futureDays': 14,
+      'pastDays': 30,
+      'futureDays': 30,
     }),
   ),
   'photo_onedrive': ProviderConfigJsonDoc(
@@ -684,6 +704,135 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       ],
     }),
   ),
+  'photo_google': ProviderConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'GooglePhotosPhotoProviderConfig',
+        description:
+            'Google Photos Picker: operator-selected photos (including shared '
+            'albums via search in Google Photos) sync into [Photos].',
+        properties: _integrationConfigProperties({
+          'globalPerPollLimit': {'type': 'integer', 'minimum': 1},
+          'accounts': {
+            'type': 'array',
+            'items': {
+              'type': 'object',
+              'properties': {
+                'googleAccountKey': {'type': 'string', 'minLength': 1},
+                'sources': {
+                  'type': 'array',
+                  'items': {
+                    'type': 'object',
+                    'properties': {
+                      'sourceId': {'type': 'string', 'minLength': 1},
+                      'albumLabel': {'type': 'string'},
+                      'albumSearchHint': {'type': 'string'},
+                      'category': _kJsonSchemaOptionalContentCategoryId,
+                      'maxFiles': {'type': 'integer', 'minimum': 1},
+                      'perPollLimit': {'type': 'integer', 'minimum': 1},
+                      'mediaItemIds': {
+                        'type': 'array',
+                        'items': {'type': 'string', 'minLength': 1},
+                      },
+                      'pickerSessionId': {'type': 'string'},
+                      'lastPickedAtMs': {'type': 'integer'},
+                    },
+                    'required': ['sourceId', 'category'],
+                    'additionalProperties': true,
+                  },
+                },
+              },
+              'required': ['googleAccountKey'],
+              'additionalProperties': true,
+            },
+          },
+        }),
+      ),
+    ),
+    example: jsonEncode({
+      'globalPerPollLimit': 50,
+      'accounts': [
+        {
+          'googleAccountKey': 'family',
+          'sources': [
+            {
+              'sourceId': 'vacation-2025',
+              'albumLabel': 'Vacation 2025 (shared)',
+              'albumSearchHint': 'Vacation 2025',
+              'category': 'family_media',
+              'maxFiles': 200,
+              'perPollLimit': 10,
+              'mediaItemIds': [],
+            },
+          ],
+        },
+      ],
+    }),
+  ),
+  'video_google': ProviderConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'GooglePhotosVideoProviderConfig',
+        description:
+            'Google Photos Picker: operator-selected videos (including shared '
+            'albums via search in Google Photos) sync into [Videos].',
+        properties: _integrationConfigProperties({
+          'globalPerPollLimit': {'type': 'integer', 'minimum': 1},
+          'accounts': {
+            'type': 'array',
+            'items': {
+              'type': 'object',
+              'properties': {
+                'googleAccountKey': {'type': 'string', 'minLength': 1},
+                'sources': {
+                  'type': 'array',
+                  'items': {
+                    'type': 'object',
+                    'properties': {
+                      'sourceId': {'type': 'string', 'minLength': 1},
+                      'albumLabel': {'type': 'string'},
+                      'albumSearchHint': {'type': 'string'},
+                      'category': _kJsonSchemaOptionalContentCategoryId,
+                      'maxFiles': {'type': 'integer', 'minimum': 1},
+                      'perPollLimit': {'type': 'integer', 'minimum': 1},
+                      'mediaItemIds': {
+                        'type': 'array',
+                        'items': {'type': 'string', 'minLength': 1},
+                      },
+                      'pickerSessionId': {'type': 'string'},
+                      'lastPickedAtMs': {'type': 'integer'},
+                    },
+                    'required': ['sourceId', 'category'],
+                    'additionalProperties': true,
+                  },
+                },
+              },
+              'required': ['googleAccountKey'],
+              'additionalProperties': true,
+            },
+          },
+        }),
+      ),
+    ),
+    example: jsonEncode({
+      'globalPerPollLimit': 50,
+      'accounts': [
+        {
+          'googleAccountKey': 'family',
+          'sources': [
+            {
+              'sourceId': 'clips',
+              'albumLabel': 'Family clips',
+              'albumSearchHint': 'Family videos',
+              'category': 'family_media',
+              'maxFiles': 50,
+              'mediaItemIds': [],
+            },
+          ],
+        },
+      ],
+    }),
+  ),
   'photo_flickr': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
@@ -809,6 +958,15 @@ final Map<String, Object?> _kJsonSchemaAnalogDialLabels = {
   ],
 };
 
+/// Optional [ContentCategories.id] on screen widget config (controller: content-category picker).
+const Map<String, Object?> _kJsonSchemaOptionalContentCategoryId = {
+  'type': 'string',
+  'minLength': 1,
+  'description':
+      'Optional content_categories id for filtering or curation scope.',
+  'x-waddle-widget': 'content-category',
+};
+
 /// Widget `type` values handled by [ScreenRotator].
 const List<String> kScreenLayoutWidgetTypes = [
   'static_text',
@@ -841,9 +999,8 @@ const List<String> kTickerSlotDefinitionTypes = [
   'time',
   'weather',
   'news',
-  'quote',
   'stocks',
-  'custom',
+  'static_text',
   kTickerTypePlugin,
 ];
 
@@ -908,7 +1065,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
         description:
             'Optional content_categories id to scope the joke pool for curation.',
         properties: {
-          'categoryId': {'type': 'string', 'minLength': 1},
+          'categoryId': _kJsonSchemaOptionalContentCategoryId,
         },
       ),
     ),
@@ -921,7 +1078,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
         description:
             'Category pool, elimination timing, and wrong-answer strike animation.',
         properties: {
-          'categoryId': {'type': 'string', 'minLength': 1},
+          'categoryId': _kJsonSchemaOptionalContentCategoryId,
           'eliminationWindowMs': {
             'type': 'integer',
             'minimum': 0,
@@ -1020,8 +1177,15 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
       _baseSchema(
         title: 'CalendarMonthScreenConfig',
         description:
-            'Two-column flex weights and upcoming-event time label formatting.',
+            'Two-column flex weights, optional category filter, and '
+            'upcoming-event time label formatting.',
         properties: {
+          'categoryId': {
+            ..._kJsonSchemaOptionalContentCategoryId,
+            'description':
+                'Optional content_categories id; when set, only events with '
+                'this category are shown and the category header is displayed.',
+          },
           'leftFlex': {
             'type': 'integer',
             'minimum': 1,
@@ -1094,8 +1258,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
             'description': 'Restrict articles to this rss_feeds id.',
           },
           'categoryId': {
-            'type': 'string',
-            'minLength': 1,
+            ..._kJsonSchemaOptionalContentCategoryId,
             'description':
                 'Restrict to articles in this content_categories id (pool rss_category:<id>).',
           },
@@ -1138,8 +1301,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
             'description': 'Restrict articles to this rss_feeds id.',
           },
           'categoryId': {
-            'type': 'string',
-            'minLength': 1,
+            ..._kJsonSchemaOptionalContentCategoryId,
             'description':
                 'Restrict to articles in this content_categories id (pool rss_category:<id>).',
           },
@@ -1176,8 +1338,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
             'description': 'Restrict articles to this rss_feeds id.',
           },
           'categoryId': {
-            'type': 'string',
-            'minLength': 1,
+            ..._kJsonSchemaOptionalContentCategoryId,
             'description':
                 'Restrict to articles in this content_categories id (pool rss_category:<id>).',
           },
@@ -1258,7 +1419,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
         description:
             'Optional photos category id; when omitted, any non-suppressed photo may be chosen.',
         properties: {
-          'categoryId': {'type': 'string', 'minLength': 1},
+          'categoryId': _kJsonSchemaOptionalContentCategoryId,
         },
       ),
     ),
@@ -1273,8 +1434,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
         properties: {
           'template': {'type': 'string', 'minLength': 1},
           'categoryId': {
-            'type': 'string',
-            'minLength': 1,
+            ..._kJsonSchemaOptionalContentCategoryId,
             'description':
                 'Optional content_categories id for the Pexels photo pool.',
           },
@@ -1295,8 +1455,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
             'Playback options and optional video category for selection.',
         properties: {
           'categoryId': {
-            'type': 'string',
-            'minLength': 1,
+            ..._kJsonSchemaOptionalContentCategoryId,
             'description':
                 'Restrict to videos in this content_categories id (pool video:<id>).',
           },
@@ -1554,7 +1713,7 @@ ScreenConfigJsonDoc screenConfigJsonDocForType(String screenType) {
 }
 
 /// JSON Schema and example for [TickerTapes] documentation columns
-/// (per-tape config_json, optional curator tuning keys, and custom-slot KV).
+/// (per-tape config_json and optional curator tuning keys).
 final Map<String, ScreenConfigJsonDoc> kTickerSlotConfigJsonMeta = {
   'time': ScreenConfigJsonDoc(
     schema: jsonEncode(
@@ -1575,61 +1734,29 @@ final Map<String, ScreenConfigJsonDoc> kTickerSlotConfigJsonMeta = {
         title: 'TickerWeatherSlotDoc',
         description:
             'Live weather line plus optional NWS active-alert lines when '
-            'interests_locations.include_weather_alerts is enabled. When '
-            'live data is empty, falls back to [fallbackText] in this tape’s '
-            'config_json.',
-        properties: {
-          'fallbackText': {
-            'type': 'string',
-            'description':
-                'Fallback marquee text when no live weather string is available.',
-          },
-        },
+            'interests_locations.include_weather_alerts is enabled. No marquee '
+            'line when live data is empty.',
+        properties: {},
       ),
     ),
-    example: jsonEncode({
-      'fallbackText': 'Cool and clear — tap for details',
-    }),
+    example: jsonEncode({}),
   ),
   'news': ScreenConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'TickerNewsSlotDoc',
         description:
-            'RSS headlines from stored articles when available; otherwise '
-            '[fallbackText] in this tape’s config_json. Curator KV keys in '
-            'config_key_values (curator.ticker.*) tune scroll width and cadence '
-            '(string values, parsed as numbers/bools). '
-            'Operator UI may also set display_text_scale_ticker for ticker font scale. '
-            'Controller date/time display uses controller.time_format (12h|24h) and '
+            'RSS headlines from stored articles when available; no line when '
+            'the RSS slice is empty. Curator KV keys in config_key_values '
+            '(curator.ticker.*) tune scroll width and cadence (string values, '
+            'parsed as numbers/bools). Operator UI may also set '
+            'display_text_scale_ticker for ticker font scale. Controller '
+            'date/time display uses controller.time_format (12h|24h) and '
             'controller.date_order (mdy|dmy|ymd) via GET/PUT /v1/display/settings.',
-        properties: {
-          'fallbackText': {
-            'type': 'string',
-            'description':
-                'Fallback single-line headline when the RSS slice is empty.',
-          },
-        },
+        properties: {},
       ),
     ),
-    example: jsonEncode({
-      'fallbackText': 'Local headlines when RSS is quiet',
-    }),
-  ),
-  'quote': ScreenConfigJsonDoc(
-    schema: jsonEncode(
-      _baseSchema(
-        title: 'TickerQuoteSlotDoc',
-        description: 'Single static line from config_json [fallbackText].',
-        properties: {
-          'fallbackText': {
-            'type': 'string',
-            'description': 'Quote or tagline text for the quote ticker slot.',
-          },
-        },
-      ),
-    ),
-    example: jsonEncode({'fallbackText': 'Make it a great day'}),
+    example: jsonEncode({}),
   ),
   'stocks': ScreenConfigJsonDoc(
     schema: jsonEncode(
@@ -1643,26 +1770,18 @@ final Map<String, ScreenConfigJsonDoc> kTickerSlotConfigJsonMeta = {
     ),
     example: jsonEncode({}),
   ),
-  'custom': ScreenConfigJsonDoc(
+  'static_text': ScreenConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
-        title: 'TickerCustomSlotDoc',
-        description:
-            'Uses ticker_tapes.config_key: when set to a single '
-            'ticker.marquee.* key, only that key is read from config_key_values. '
-            'When null, every ticker.marquee.* key in config_key_values is '
-            'included (sorted).',
+        title: 'TickerStaticTextSlotDoc',
+        description: 'Fixed headline / body text for the ticker marquee.',
         properties: {
-          'ticker.marquee.example_key': {
-            'type': 'string',
-            'description':
-                'Replace example_key with your suffix; keys must start with '
-                'ticker.marquee. Values are plain text lines.',
-          },
+          'text': {'type': 'string'},
         },
+        requiredKeys: ['text'],
       ),
     ),
-    example: jsonEncode({'ticker.marquee.welcome': 'Thanks for visiting'}),
+    example: jsonEncode({'text': 'Thanks for visiting'}),
   ),
   kTickerTypePlugin: ScreenConfigJsonDoc(
     schema: jsonEncode(

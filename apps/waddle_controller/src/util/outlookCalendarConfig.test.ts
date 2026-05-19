@@ -17,7 +17,7 @@ describe('outlookCalendarConfig', () => {
             {
               mailbox: 'me',
               calendars: [
-                { id: 'cal-1', name: 'Work', category: 'work' },
+                { id: 'cal-1', name: 'Work', categoryIds: ['work', 'family'] },
                 'Personal',
               ],
             },
@@ -29,25 +29,31 @@ describe('outlookCalendarConfig', () => {
     expect(state.pastDays).toBe(7);
     expect(state.futureDays).toBe(21);
     expect(state.calendars).toHaveLength(2);
-    expect(state.calendars[0]?.categoryId).toBe('work');
+    expect(state.calendars[0]?.categoryIds).toEqual(['work', 'family']);
   });
 
-  it('builds config_json without exposing empty accounts', () => {
+  it('defaults past and future days to 30', () => {
+    const state = parseOutlookCalendarConfig({ accounts: [] });
+    expect(state.pastDays).toBe(30);
+    expect(state.futureDays).toBe(30);
+  });
+
+  it('builds config_json with categoryIds array', () => {
     const json = buildOutlookCalendarConfigJson({
       graphAccountKey: 'work',
-      pastDays: 14,
-      futureDays: 14,
+      pastDays: 30,
+      futureDays: 30,
       calendars: [
         {
           id: 'cal-1',
           name: 'Work',
-          categoryId: 'work',
+          categoryIds: ['work', 'family'],
           selected: true,
         },
         {
           id: 'cal-2',
           name: 'Personal',
-          categoryId: '',
+          categoryIds: [],
           selected: false,
         },
       ],
@@ -57,19 +63,19 @@ describe('outlookCalendarConfig', () => {
     const sources = accounts[0]?.sources as Record<string, unknown>[];
     const calendars = sources[0]?.calendars as Record<string, unknown>[];
     expect(calendars).toHaveLength(1);
-    expect(calendars[0]?.category).toBe('work');
+    expect(calendars[0]?.categoryIds).toEqual(['work', 'family']);
   });
 
-  it('mergeOutlookCalendarsWithSaved preserves prior category and selection', () => {
+  it('mergeOutlookCalendarsWithSaved preserves prior categories and selection', () => {
     const merged = mergeOutlookCalendarsWithSaved(
       [
         { id: 'cal-1', name: 'Work' },
         { id: 'cal-2', name: 'Personal' },
       ],
-      [{ id: 'cal-1', name: 'Work', categoryId: 'work', selected: true }],
+      [{ id: 'cal-1', name: 'Work', categoryIds: ['work'], selected: true }],
     );
     expect(merged[0]?.selected).toBe(true);
-    expect(merged[0]?.categoryId).toBe('work');
+    expect(merged[0]?.categoryIds).toEqual(['work']);
     expect(merged[1]?.selected).toBe(false);
   });
 });

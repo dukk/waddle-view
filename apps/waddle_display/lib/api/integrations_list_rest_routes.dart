@@ -6,7 +6,9 @@ import 'package:shelf_router/shelf_router.dart';
 import 'package:waddle_display/api/integration_secrets_rest_routes.dart';
 import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
 import 'package:waddle_shared/integration_accounts/integration_accounts_service.dart';
+import 'package:waddle_shared/persistence/config_json_documentation.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/seed/tables/integration_types_seed.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';
 import 'package:waddle_display/api/rest_include_params.dart';
 
@@ -283,7 +285,7 @@ Future<int> _countIntegrationRows(
   final countExpr = db.integrations.id.count();
   final query = db.selectOnly(db.integrations)
     ..addColumns([countExpr])
-    ..where(_integrationWhere(db.integrations, params));
+    ..where(_integrationWhere(db, db.integrations, params));
   final row = await query.getSingle();
   return row.read(countExpr)!;
 }
@@ -295,7 +297,7 @@ Future<List<Integration>> _queryIntegrationRows(
   int offset = 0,
 }) async {
   final query = db.select(db.integrations)
-    ..where((t) => _integrationWhere(t, params))
+    ..where((t) => _integrationWhere(db, t, params))
     ..orderBy([(t) => _orderingTerm(t, params)]);
   if (limit != null) {
     query.limit(limit, offset: offset);
@@ -304,6 +306,7 @@ Future<List<Integration>> _queryIntegrationRows(
 }
 
 Expression<bool> _integrationWhere(
+  AppDatabase db,
   $IntegrationsTable t,
   IntegrationsListParams params,
 ) {
@@ -325,12 +328,25 @@ Expression<bool> _integrationWhere(
         (t.id.like(pattern) | t.integrationType.like(pattern));
   }
   if (params.accountsConfigured == true) {
-    expr = expr &
-        (t.requiresAccounts.equals(false) | t.accountsReady.equals(true));
+    final requiresExists = existsQuery(
+      db.select(db.integrationTypes)
+        ..where(
+          (it) =>
+              it.integrationType.equalsExp(t.integrationType) &
+              it.requiresAccounts.equals(true),
+        ),
+    );
+    expr = expr & (requiresExists.not() | t.accountsReady.equals(true));
   } else if (params.accountsConfigured == false) {
-    expr = expr &
-        t.requiresAccounts.equals(true) &
-        t.accountsReady.equals(false);
+    final requiresExists = existsQuery(
+      db.select(db.integrationTypes)
+        ..where(
+          (it) =>
+              it.integrationType.equalsExp(t.integrationType) &
+              it.requiresAccounts.equals(true),
+        ),
+    );
+    expr = expr & requiresExists & t.accountsReady.equals(false);
   }
   return expr;
 }
@@ -357,14 +373,19 @@ Future<Map<String, dynamic>> _enrichIntegrationRow(
 }) async {
   final requiredAccountTypes =
       integrationAccountTypesRequiredForIntegration(e.integrationType);
+  final typeRow = await (db.select(db.integrationTypes)
+        ..where((t) => t.integrationType.equals(e.integrationType)))
+      .getSingleOrNull();
+  final schemaRaw = typeRow?.configJsonSchema ??
+      providerConfigJsonDocForType(e.integrationType).schema;
   return {
     'id': e.id,
     'integration_type': e.integrationType,
+    if (typeRow != null) 'integration_type_label': typeRow.label,
     'enabled': e.enabled,
     'poll_seconds': e.pollSeconds,
     'config_json': _jsonDecodeLoose(e.configJson),
-    if (includeConfigDocs)
-      'config_json_schema': _jsonDecodeLoose(e.configJsonSchema),
+    if (includeConfigDocs) 'config_json_schema': _jsonDecodeLoose(schemaRaw),
     'secrets_configured': await integrationSecretsConfigured(
       secrets,
       e.id,
@@ -421,7 +442,8 @@ Future<Map<String, int>> _familyFacetCounts(
       }
     }
     if (include && params.accountsConfigured != null) {
-      final accountsOk = !e.requiresAccounts || e.accountsReady;
+      final requires = await integrationTypeRequiresAccounts(db, e.integrationType);
+      final accountsOk = !requires || e.accountsReady;
       if (accountsOk != params.accountsConfigured) {
         include = false;
       }

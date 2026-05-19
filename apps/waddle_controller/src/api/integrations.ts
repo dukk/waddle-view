@@ -6,6 +6,7 @@ import type { IntegrationLinkedAccount } from '@/util/integrationAccountStatus';
 export type IntegrationRow = {
   id: string;
   integration_type: string;
+  integration_type_label?: string;
   enabled: boolean;
   poll_seconds: number;
   config_json: unknown;

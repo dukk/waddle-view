@@ -1,11 +1,10 @@
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:test/test.dart';
-import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 void main() {
-  test('schema 22 to 23 adds requires_accounts and accounts_ready columns', () async {
+  test('schema 22 through 26 keeps accounts_ready on integrations', () async {
     final executor = NativeDatabase.memory(setup: (raw) {
       raw.execute('''
 CREATE TABLE integrations (
@@ -15,13 +14,6 @@ CREATE TABLE integrations (
   poll_seconds INTEGER NOT NULL DEFAULT 60,
   config_json TEXT,
   config_json_schema TEXT
-);
-''');
-      raw.execute('''
-CREATE TABLE integration_account_links (
-  integration_id TEXT NOT NULL,
-  account_id TEXT NOT NULL,
-  PRIMARY KEY (integration_id, account_id)
 );
 ''');
       raw.execute(
@@ -39,18 +31,23 @@ CREATE TABLE integration_account_links (
     );
     await db.customStatement('SELECT 1');
 
-    final news = await db.customSelect(
-      'SELECT requires_accounts, accounts_ready FROM integrations WHERE id = ?',
-      variables: [const Variable<String>('news_rss')],
+    final integrationColumns = await db.customSelect(
+      'PRAGMA table_info(integrations)',
+    ).get();
+    final names = integrationColumns.map((c) => c.read<String>('name')).toSet();
+    expect(names.contains('accounts_ready'), isTrue);
+    expect(names.contains('requires_accounts'), isFalse);
+
+    final calType = await db.customSelect(
+      'SELECT requires_accounts FROM integration_types WHERE integration_type = ?',
+      variables: [const Variable<String>('calendar_google')],
     ).getSingle();
-    expect(news.read<int>('requires_accounts'), 0);
-    expect(news.read<int>('accounts_ready'), 1);
+    expect(calType.read<int>('requires_accounts'), 1);
 
     final calendar = await db.customSelect(
-      'SELECT requires_accounts, accounts_ready FROM integrations WHERE id = ?',
+      'SELECT accounts_ready FROM integrations WHERE id = ?',
       variables: [const Variable<String>('cal_google')],
     ).getSingle();
-    expect(calendar.read<int>('requires_accounts'), 1);
     expect(calendar.read<int>('accounts_ready'), 0);
 
     final indexRows = await db.customSelect(

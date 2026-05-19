@@ -4,7 +4,6 @@ import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
 import 'package:waddle_shared/integrations/integration_kv_repository.dart';
 import 'package:waddle_shared/integrations/integration_kv_types.dart';
-import 'package:waddle_shared/persistence/config_json_documentation.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/theme/display_program_history_kv.dart';
@@ -52,14 +51,12 @@ Future<void> seedStubIntegrationForTest(AppDatabase db) async {
   if (existing != null) {
     return;
   }
-  final stubDoc = providerConfigJsonDocForType('stub');
   await db.into(db.integrations).insert(
         IntegrationsCompanion.insert(
           id: 'stub',
           integrationType: 'stub',
           enabled: const Value(true),
           pollSeconds: const Value(60),
-          configJsonSchema: Value(stubDoc.schema),
         ),
       );
 }

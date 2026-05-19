@@ -37,9 +37,20 @@ import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { TickerTapesHelpContent } from '@/components/help/TickerTapesHelpContent';
+import { TickerTapeIcon } from '@/icons/TickerTapeIcon';
 import { completeDialogSave } from '@/util/dialogSave';
 import { useConfigSchemas } from '@/hooks/useConfigSchemas';
 import type { TickerTypeSchemaMeta } from '@/storage/configSchemaCache';
+import { tickerTypeLabel, tickerTypeMetaFor } from '@/util/tickerTypeLabel';
+
+const tickerCardPreviewSx = {
+  borderRadius: 1,
+  bgcolor: 'action.hover',
+  minHeight: 100,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+} as const;
 
 type TickerTapeRow = {
   id: string;
@@ -49,7 +60,6 @@ type TickerTapeRow = {
   ticker_type: string;
   frequency_weight: number;
   sort_order: number;
-  config_key: string | null;
   config_json?: unknown;
   config_json_schema?: unknown;
   example_config_json?: unknown;
@@ -63,11 +73,6 @@ function trimOptionalString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function tickerTypeLabel(tickerType: string | null | undefined): string {
-  const normalized = trimOptionalString(tickerType);
-  return normalized ? normalized.replace(/_/g, ' ') : 'unknown';
-}
-
 function tickerRowTitle(row: Pick<TickerTapeRow, 'id' | 'label'>): string {
   return trimOptionalString(row.label) || row.id;
 }
@@ -78,10 +83,6 @@ function tickerRowHasCustomLabel(row: Pick<TickerTapeRow, 'label'>): boolean {
 
 function tickerRowDescription(row: Pick<TickerTapeRow, 'description'>): string {
   return trimOptionalString(row.description);
-}
-
-function tickerRowConfigKey(row: Pick<TickerTapeRow, 'config_key'>): string {
-  return trimOptionalString(row.config_key);
 }
 
 function readOptionalString(value: unknown): string | undefined {
@@ -112,8 +113,6 @@ function parseTickerTapeRow(raw: Record<string, unknown>): TickerTapeRow | null 
     configJson = raw.config_json;
   }
 
-  const configKey = readOptionalString(raw.config_key)?.trim();
-
   return {
     id,
     label: readOptionalString(raw.label) ?? readOptionalString(raw.name),
@@ -122,7 +121,6 @@ function parseTickerTapeRow(raw: Record<string, unknown>): TickerTapeRow | null 
     ticker_type: tickerType,
     frequency_weight: readNumber(raw.frequency_weight, 100),
     sort_order: readNumber(raw.sort_order, 0),
-    config_key: configKey ? configKey : null,
     config_json: configJson,
     config_json_schema: raw.config_json_schema,
     example_config_json: raw.example_config_json,
@@ -131,10 +129,12 @@ function parseTickerTapeRow(raw: Record<string, unknown>): TickerTapeRow | null 
 
 function TickerTapeTable({
   rows,
+  tickerTypes,
   onEdit,
   onDelete,
 }: {
   rows: TickerTapeRow[];
+  tickerTypes: TickerTypeSchemaMeta[];
   onEdit: (row: TickerTapeRow) => void;
   onDelete: (id: string) => void;
 }) {
@@ -148,8 +148,8 @@ function TickerTapeTable({
             <TableCell>Type</TableCell>
             <TableCell>Weight</TableCell>
             <TableCell>Sort</TableCell>
+            <TableCell>Enabled</TableCell>
             <TableCell>Description</TableCell>
-            <TableCell>Config key</TableCell>
             <TableCell align="right">Actions</TableCell>
           </TableRow>
         </TableHead>
@@ -163,10 +163,13 @@ function TickerTapeTable({
                   {title}
                 </TableCell>
                 <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.id}</TableCell>
-                <TableCell>{tickerTypeLabel(row.ticker_type)}</TableCell>
+                <TableCell>
+                  {tickerTypeLabel(row.ticker_type, tickerTypeMetaFor(tickerTypes, row.ticker_type))}
+                </TableCell>
                 <TableCell>{row.frequency_weight}</TableCell>
                 <TableCell>{row.sort_order}</TableCell>
-                <TableCell sx={{ maxWidth: 240, wordBreak: 'break-word' }}>
+                <TableCell>{row.enabled ? 'Yes' : 'No'}</TableCell>
+                <TableCell sx={{ maxWidth: 280, wordBreak: 'break-word' }}>
                   {description}
                 </TableCell>
                 <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
@@ -197,7 +200,7 @@ export function TickerPage() {
   const { schemas, error: schemasError } = useConfigSchemas(active);
   const [error, setError] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
-  const [edit, setEdit] = useState<TickerTapeRow | null>(null);
+  const [editRow, setEditRow] = useState<TickerTapeRow | null>(null);
 
   const load = useCallback(async () => {
     if (!active) return;
@@ -223,11 +226,7 @@ export function TickerPage() {
     void load();
   }, [load]);
 
-  const { enabledRows, disabledRows } = useMemo(() => {
-    const enabled = rows.filter((r) => r.enabled).sort(sortById);
-    const disabled = rows.filter((r) => !r.enabled).sort(sortById);
-    return { enabledRows: enabled, disabledRows: disabled };
-  }, [rows]);
+  const sortedRows = useMemo(() => [...rows].sort(sortById), [rows]);
 
   const deleteTape = useCallback(
     async (id: string) => {
@@ -251,6 +250,7 @@ export function TickerPage() {
 
   return (
     <Stack spacing={3}>
+      <DisplayRefreshIndicator loading={loading} />
       <Box>
         <Stack direction="row" alignItems="center" spacing={0.25} sx={{ mb: 0.5 }}>
           <Typography variant="h6" fontWeight={600}>
@@ -270,76 +270,44 @@ export function TickerPage() {
         <Button
           variant="contained"
           onClick={() => setAddOpen(true)}
-          disabled={!schemas?.ticker_types.length}
+          disabled={!schemas?.ticker_tape_types.length}
         >
           Add ticker tape
         </Button>
       </CatalogPageToolbar>
+
       {(error || schemasError) && (
         <Alert severity="error">{error ?? schemasError}</Alert>
       )}
 
-      <Stack spacing={1.5}>
-        <Typography variant="subtitle1" fontWeight={600}>
-          Enabled
+      {sortedRows.length === 0 ? (
+        <Typography variant="body2" color="text.secondary">
+          No ticker tapes in the catalog yet.
         </Typography>
-        <DisplayRefreshIndicator loading={loading} />
-        {enabledRows.length === 0 && !loading ? (
-          <Typography variant="body2" color="text.secondary">
-            No ticker tapes are enabled.
-          </Typography>
-        ) : layout === 'card' ? (
-          <Box sx={catalogCardGridSx}>
-            {enabledRows.map((r) => (
-              <TickerTapeCard
-                key={r.id}
-                row={r}
-                onEdit={() => setEdit(r)}
-                onDelete={() => void deleteTape(r.id)}
-              />
-            ))}
-          </Box>
-        ) : (
-          <TickerTapeTable
-            rows={enabledRows}
-            onEdit={setEdit}
-            onDelete={(id) => void deleteTape(id)}
-          />
-        )}
-      </Stack>
-
-      <Stack spacing={1.5}>
-        <Typography variant="subtitle1" fontWeight={600}>
-          Disabled
-        </Typography>
-        <DisplayRefreshIndicator loading={loading} />
-        {disabledRows.length === 0 && !loading ? (
-          <Typography variant="body2" color="text.secondary">
-            All ticker tapes are enabled.
-          </Typography>
-        ) : layout === 'card' ? (
-          <Box sx={catalogCardGridSx}>
-            {disabledRows.map((r) => (
-              <TickerTapeCard
-                key={r.id}
-                row={r}
-                onEdit={() => setEdit(r)}
-                onDelete={() => void deleteTape(r.id)}
-              />
-            ))}
-          </Box>
-        ) : (
-          <TickerTapeTable
-            rows={disabledRows}
-            onEdit={setEdit}
-            onDelete={(id) => void deleteTape(id)}
-          />
-        )}
-      </Stack>
+      ) : layout === 'card' ? (
+        <Box sx={catalogCardGridSx}>
+          {sortedRows.map((r) => (
+            <TickerTapeCard
+              key={r.id}
+              row={r}
+              tickerTypes={schemas.ticker_tape_types}
+              onEdit={() => setEditRow(r)}
+              onDelete={() => void deleteTape(r.id)}
+            />
+          ))}
+        </Box>
+      ) : (
+        <TickerTapeTable
+          rows={sortedRows}
+          tickerTypes={schemas?.ticker_tape_types ?? []}
+          onEdit={setEditRow}
+          onDelete={(id) => void deleteTape(id)}
+        />
+      )}
 
       {addOpen && schemas && (
         <AddTickerTapeDialog
-          tickerTypes={schemas.ticker_types}
+          tickerTypes={schemas.ticker_tape_types}
           onClose={() => setAddOpen(false)}
           onSaved={async () => {
             setAddOpen(false);
@@ -348,13 +316,13 @@ export function TickerPage() {
         />
       )}
 
-      {edit && schemas && (
+      {editRow && schemas && (
         <EditTickerTapeDialog
-          row={edit}
-          tickerTypes={schemas.ticker_types}
-          onClose={() => setEdit(null)}
+          row={editRow}
+          tickerTypes={schemas.ticker_tape_types}
+          onClose={() => setEditRow(null)}
           onSaved={async () => {
-            setEdit(null);
+            setEditRow(null);
             await load();
           }}
         />
@@ -365,17 +333,21 @@ export function TickerPage() {
 
 function TickerTapeCard({
   row,
+  tickerTypes,
   onEdit,
   onDelete,
 }: {
   row: TickerTapeRow;
+  tickerTypes: TickerTypeSchemaMeta[];
   onEdit: () => void;
   onDelete: () => void;
 }) {
   const title = tickerRowTitle(row);
-  const typeLabel = tickerTypeLabel(row.ticker_type);
+  const typeLabel = tickerTypeLabel(
+    row.ticker_type,
+    tickerTypeMetaFor(tickerTypes, row.ticker_type),
+  );
   const description = tickerRowDescription(row);
-  const configKey = tickerRowConfigKey(row);
 
   return (
     <Card
@@ -385,36 +357,31 @@ function TickerTapeCard({
     >
       <CardContent sx={{ flexGrow: 1 }}>
         <Stack spacing={1}>
+          <Box sx={tickerCardPreviewSx}>
+            <TickerTapeIcon
+              aria-hidden
+              sx={{
+                fontSize: 64,
+                color: 'primary.main',
+                opacity: 0.72,
+              }}
+            />
+          </Box>
           <Typography variant="subtitle1" fontWeight={600} sx={{ wordBreak: 'break-word' }}>
             {title}
           </Typography>
-          {tickerRowHasCustomLabel(row) ? (
-            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-              {row.id}
-            </Typography>
-          ) : null}
-          <Chip size="small" label={typeLabel} variant="outlined" sx={{ alignSelf: 'flex-start' }} />
+          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+            <Chip size="small" label={typeLabel} variant="outlined" sx={{ alignSelf: 'flex-start' }} />
+            {!row.enabled ? (
+              <Chip size="small" label="Disabled" variant="outlined" color="warning" />
+            ) : null}
+          </Stack>
           <Typography variant="caption" color="text.secondary" display="block">
             Weight {row.frequency_weight} · sort {row.sort_order}
           </Typography>
           {description ? (
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{
-                wordBreak: 'break-word',
-                display: '-webkit-box',
-                WebkitLineClamp: 3,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-              }}
-            >
+            <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
               {description}
-            </Typography>
-          ) : null}
-          {configKey ? (
-            <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
-              {configKey}
             </Typography>
           ) : null}
         </Stack>
@@ -448,7 +415,6 @@ function AddTickerTapeDialog({
   const [enabled, setEnabled] = useState(true);
   const [weight, setWeight] = useState(100);
   const [sort, setSort] = useState(0);
-  const [configKey, setConfigKey] = useState('');
   const [configJsonText, setConfigJsonText] = useState('{}');
   const [err, setErr] = useState<string | null>(null);
 
@@ -490,7 +456,6 @@ function AddTickerTapeDialog({
           enabled,
           frequency_weight: weight,
           sort_order: sort,
-          config_key: configKey.trim() || null,
           config_json: configJson,
         }),
       });
@@ -517,7 +482,7 @@ function AddTickerTapeDialog({
             >
               {tickerTypes.map((m) => (
                 <MenuItem key={m.ticker_type} value={m.ticker_type}>
-                  {m.ticker_type}
+                  {tickerTypeLabel(m.ticker_type, m)}
                 </MenuItem>
               ))}
             </Select>
@@ -552,13 +517,13 @@ function AddTickerTapeDialog({
             helperText="Lower numbers are merged into the marquee before higher numbers."
           />
           <TextField
-            label="Config key (optional, e.g. custom ticker.marquee.*)"
-            value={configKey}
-            onChange={(e) => setConfigKey(e.target.value)}
-            fullWidth
-          />
-          <TextField
-            label="config_json (JSON object, e.g. fallbackText for weather/news/quote)"
+            label={
+              tickerType === 'static_text'
+                ? 'config_json (JSON object, e.g. {"text":"Welcome"})'
+                : tickerType === 'plugin'
+                  ? 'config_json (JSON object, e.g. pluginId and fallbackText)'
+                  : 'config_json (JSON object)'
+            }
             value={configJsonText}
             onChange={(e) => setConfigJsonText(e.target.value)}
             fullWidth
@@ -596,7 +561,6 @@ function EditTickerTapeDialog({
   const [enabled, setEnabled] = useState(row.enabled);
   const [weight, setWeight] = useState(row.frequency_weight);
   const [sort, setSort] = useState(row.sort_order);
-  const [configKey, setConfigKey] = useState(row.config_key ?? '');
   const [configJsonText, setConfigJsonText] = useState(() =>
     JSON.stringify(row.config_json ?? {}, null, 2),
   );
@@ -630,7 +594,6 @@ function EditTickerTapeDialog({
           enabled,
           frequency_weight: weight,
           sort_order: sort,
-          config_key: configKey.trim() || null,
           config_json: configJson,
         }),
       });
@@ -656,7 +619,7 @@ function EditTickerTapeDialog({
             >
               {tickerTypes.map((m) => (
                 <MenuItem key={m.ticker_type} value={m.ticker_type}>
-                  {m.ticker_type}
+                  {tickerTypeLabel(m.ticker_type, m)}
                 </MenuItem>
               ))}
             </Select>
@@ -691,13 +654,13 @@ function EditTickerTapeDialog({
             helperText="Lower numbers are merged into the marquee before higher numbers."
           />
           <TextField
-            label="Config key (optional)"
-            value={configKey}
-            onChange={(e) => setConfigKey(e.target.value)}
-            fullWidth
-          />
-          <TextField
-            label="config_json (JSON object)"
+            label={
+              tickerType === 'static_text'
+                ? 'config_json (JSON object, e.g. {"text":"Welcome"})'
+                : tickerType === 'plugin'
+                  ? 'config_json (JSON object, e.g. pluginId and fallbackText)'
+                  : 'config_json (JSON object)'
+            }
             value={configJsonText}
             onChange={(e) => setConfigJsonText(e.target.value)}
             fullWidth

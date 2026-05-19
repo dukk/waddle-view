@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { integrationDisplayName } from './integrationDisplayName';
 
 describe('integrationDisplayName', () => {
+  it('prefers API label when provided', () => {
+    expect(integrationDisplayName('news_rss', 'Custom RSS')).toBe('Custom RSS');
+  });
+
   it('maps known integration types', () => {
     expect(integrationDisplayName('news_rss')).toBe('RSS News');
     expect(integrationDisplayName('calendar_google')).toBe('Google Calendar');

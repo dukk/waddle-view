@@ -4,7 +4,14 @@ CREATE TABLE IF NOT EXISTS overlays (
   id TEXT NOT NULL PRIMARY KEY,
   overlay_type TEXT NOT NULL,
   label TEXT NOT NULL DEFAULT '',
-  config_json TEXT NOT NULL DEFAULT '{}',
+  config_json TEXT NOT NULL DEFAULT '{}'
+);
+''';
+
+const String kEnsureOverlayTypesTableSql = '''
+CREATE TABLE IF NOT EXISTS overlay_types (
+  overlay_type TEXT NOT NULL PRIMARY KEY,
+  label TEXT NOT NULL,
   config_json_schema TEXT
 );
 ''';

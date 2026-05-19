@@ -61,7 +61,6 @@ Future<void> _insertBingProvider(
         configJson: configJson,
         baseUrl: baseUrl,
       ),
-      configJsonSchema: Value(doc.schema),
     ),
   );
 }

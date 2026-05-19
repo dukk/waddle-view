@@ -139,6 +139,125 @@ void main() {
     await db.close();
   });
 
+  testWidgets('categoryId filter shows only matching events and category header',
+      (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db, displayTimeZoneIana: 'Etc/UTC');
+    await seedContentCategoriesForTest(db, ['work', 'family'], label: 'Work');
+    await (db.update(db.contentCategories)..where((t) => t.id.equals('family')))
+        .write(const ContentCategoriesCompanion(label: Value('Family')));
+    await db.batch((batch) {
+      batch.insert(
+        db.calendarEvents,
+        CalendarEventsCompanion.insert(
+          id: 'work-ev',
+          title: 'Work standup',
+          startMs: DateTime.utc(2024, 6, 16, 10, 0),
+          endMs: DateTime.utc(2024, 6, 16, 11, 0),
+          categoryId: const Value('work'),
+          updatedAtMs: DateTime.utc(2024, 6, 1),
+        ),
+      );
+      batch.insert(
+        db.calendarEvents,
+        CalendarEventsCompanion.insert(
+          id: 'family-ev',
+          title: 'Family dinner',
+          startMs: DateTime.utc(2024, 6, 16, 18, 0),
+          endMs: DateTime.utc(2024, 6, 16, 20, 0),
+          categoryId: const Value('family'),
+          updatedAtMs: DateTime.utc(2024, 6, 1),
+        ),
+      );
+    });
+    const spec = ParsedWidgetSpec(
+      type: 'calendar_month',
+      slot: 'main',
+      config: {'categoryId': 'work'},
+    );
+    final theme = ThemeData.light();
+    final clock = FakeClock(DateTime.utc(2024, 6, 15, 9, 0));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: CalendarMonthSlideWidget(
+            db: db,
+            blobs: FakeBlobStore(),
+            spec: spec,
+            theme: theme,
+            clock: clock,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Work standup'), findsOneWidget);
+    expect(find.text('Family dinner'), findsNothing);
+    expect(find.byKey(const Key('content_category_slide_header')), findsOneWidget);
+    expect(find.text('Work'), findsOneWidget);
+
+    await db.close();
+  });
+
+  testWidgets('without categoryId shows all events and no category header',
+      (tester) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db, displayTimeZoneIana: 'Etc/UTC');
+    await seedContentCategoriesForTest(db, ['work', 'family']);
+    await db.batch((batch) {
+      batch.insert(
+        db.calendarEvents,
+        CalendarEventsCompanion.insert(
+          id: 'work-ev',
+          title: 'Work standup',
+          startMs: DateTime.utc(2024, 6, 16, 10, 0),
+          endMs: DateTime.utc(2024, 6, 16, 11, 0),
+          categoryId: const Value('work'),
+          updatedAtMs: DateTime.utc(2024, 6, 1),
+        ),
+      );
+      batch.insert(
+        db.calendarEvents,
+        CalendarEventsCompanion.insert(
+          id: 'family-ev',
+          title: 'Family dinner',
+          startMs: DateTime.utc(2024, 6, 16, 18, 0),
+          endMs: DateTime.utc(2024, 6, 16, 20, 0),
+          categoryId: const Value('family'),
+          updatedAtMs: DateTime.utc(2024, 6, 1),
+        ),
+      );
+    });
+    const spec = ParsedWidgetSpec(
+      type: 'calendar_month',
+      slot: 'main',
+      config: {},
+    );
+    final theme = ThemeData.light();
+    final clock = FakeClock(DateTime.utc(2024, 6, 15, 9, 0));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: CalendarMonthSlideWidget(
+            db: db,
+            blobs: FakeBlobStore(),
+            spec: spec,
+            theme: theme,
+            clock: clock,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Work standup'), findsOneWidget);
+    expect(find.text('Family dinner'), findsOneWidget);
+    expect(find.byKey(const Key('content_category_slide_header')), findsNothing);
+
+    await db.close();
+  });
+
   testWidgets('upcoming list shows large timed marker matching grid accent',
       (tester) async {
     final db = openMemoryDatabase();

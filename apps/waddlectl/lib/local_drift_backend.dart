@@ -51,7 +51,6 @@ abstract class WaddleAdminBackend {
     String? tickerType,
     int? frequencyWeight,
     int? sortOrder,
-    String? configKey,
   });
 
   Future<Map<String, Object?>> describeCuratorProgram();
@@ -274,9 +273,6 @@ class LocalDriftBackend implements WaddleAdminBackend {
     'ticker_type': row.tickerType,
     'frequency_weight': row.frequencyWeight,
     'sort_order': row.sortOrder,
-    'config_key': row.configKey,
-    'config_json_schema': row.configJsonSchema,
-    'example_config_json': row.exampleConfigJson,
   };
 
   @override
@@ -294,7 +290,6 @@ class LocalDriftBackend implements WaddleAdminBackend {
     String? tickerType,
     int? frequencyWeight,
     int? sortOrder,
-    String? configKey,
   }) async {
     final existing = await (_db.select(
       _db.tickerTapes,
@@ -314,9 +309,6 @@ class LocalDriftBackend implements WaddleAdminBackend {
             ? const Value.absent()
             : Value(frequencyWeight),
         sortOrder: sortOrder == null ? const Value.absent() : Value(sortOrder),
-        configKey: configKey == null
-            ? const Value.absent()
-            : Value(configKey.isEmpty ? null : configKey),
       ),
     );
   }

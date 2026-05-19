@@ -44,18 +44,17 @@ void main() {
     final rows = await (db.select(db.tickerTapes)
           ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
         .get();
-    expect(rows.length, 6);
+    expect(rows.length, 5);
     expect(rows.map((r) => r.tickerType).toList(), [
       'time',
       'weather',
       'news',
-      'quote',
       'stocks',
-      'custom',
+      'static_text',
     ]);
     final custom =
         rows.singleWhere((r) => r.id == 'ticker_custom');
-    expect(custom.tickerType, 'custom');
+    expect(custom.tickerType, 'static_text');
     final bootstrapMembers = await (db.select(db.curatorConfigurationMembers)
           ..where((t) => t.configurationId.equals('bootstrap')))
         .get();
@@ -65,11 +64,11 @@ void main() {
       ),
       isFalse,
     );
-    for (final r in rows) {
-      expect(r.configJsonSchema, isNotNull);
-      expect(r.exampleConfigJson, isNotNull);
-      expect(jsonDecode(r.configJsonSchema!), isA<Map<String, dynamic>>());
-      expect(jsonDecode(r.exampleConfigJson!), isA<Object>());
+    final tickerTypes = await db.select(db.tickerTapeTypes).get();
+    expect(tickerTypes.isNotEmpty, isTrue);
+    for (final t in tickerTypes) {
+      expect(t.configJsonSchema, isNotNull);
+      expect(jsonDecode(t.configJsonSchema!), isA<Map<String, dynamic>>());
     }
     await db.close();
   });

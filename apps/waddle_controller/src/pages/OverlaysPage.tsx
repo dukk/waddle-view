@@ -55,6 +55,7 @@ import { fallingImagesValidationSchema } from '@/util/fallingImagesConfigSchema'
 import { floatingBalloonsValidationSchema } from '@/util/floatingBalloonsConfigSchema';
 import { validateConfigAgainstSchema } from '@/util/rjsfSchema';
 import { OverlayTypeIcon } from '@/util/overlayTypeIcon';
+import { overlayTypeLabel, overlayTypeMetaFor } from '@/util/overlayTypeLabel';
 import type { SavedDisplay } from '@/storage/displays';
 
 type OverlayRow = {
@@ -65,21 +66,6 @@ type OverlayRow = {
   config_json_schema?: unknown;
   example_config_json?: unknown;
 };
-
-const OVERLAY_TYPE_LABELS: Record<string, string> = {
-  shape_rain: 'Shape rain',
-  hearts_rain: 'Shape rain (legacy)',
-  birthday_confetti: 'Birthday confetti',
-  bouncing_message: 'Bouncing message',
-  falling_images: 'Falling images',
-  matrix_rain: 'Matrix rain',
-  edge_glow: 'Edge glow',
-  floating_balloons: 'Floating balloons',
-};
-
-function overlayTypeLabel(t: string): string {
-  return OVERLAY_TYPE_LABELS[t] ?? t.replace(/_/g, ' ');
-}
 
 function sortByLabel(a: OverlayRow, b: OverlayRow): number {
   const an = a.label.trim() || a.id;
@@ -339,7 +325,7 @@ function OverlayDialog({
             >
               {overlayTypes.map((m) => (
                 <MenuItem key={m.overlay_type} value={m.overlay_type}>
-                  {overlayTypeLabel(m.overlay_type)}
+                  {overlayTypeLabel(m.overlay_type, m)}
                 </MenuItem>
               ))}
             </Select>
@@ -371,11 +357,13 @@ function OverlayDialog({
 
 function OverlayTable({
   rows,
+  overlayTypes,
   canWrite,
   onEdit,
   onDelete,
 }: {
   rows: OverlayRow[];
+  overlayTypes: OverlayTypeSchemaMeta[];
   canWrite: boolean;
   onEdit: (row: OverlayRow) => void;
   onDelete: (id: string) => void;
@@ -399,7 +387,10 @@ function OverlayTable({
                 <Chip
                   size="small"
                   icon={<OverlayTypeIcon overlayType={row.overlay_type} />}
-                  label={overlayTypeLabel(row.overlay_type)}
+                  label={overlayTypeLabel(
+                    row.overlay_type,
+                    overlayTypeMetaFor(overlayTypes, row.overlay_type),
+                  )}
                 />
               </TableCell>
               <TableCell sx={{ maxWidth: 280 }}>{configPreview(row)}</TableCell>
@@ -423,11 +414,13 @@ function OverlayTable({
 
 function OverlayCard({
   row,
+  overlayTypes,
   canWrite,
   onEdit,
   onDelete,
 }: {
   row: OverlayRow;
+  overlayTypes: OverlayTypeSchemaMeta[];
   canWrite: boolean;
   onEdit: () => void;
   onDelete: () => void;
@@ -449,7 +442,10 @@ function OverlayCard({
             size="small"
             variant="outlined"
             icon={<OverlayTypeIcon overlayType={row.overlay_type} />}
-            label={overlayTypeLabel(row.overlay_type)}
+            label={overlayTypeLabel(
+              row.overlay_type,
+              overlayTypeMetaFor(overlayTypes, row.overlay_type),
+            )}
             sx={{ alignSelf: 'flex-start' }}
           />
           <Typography variant="body2" color="text.secondary">
@@ -603,6 +599,7 @@ export function OverlaysPage() {
             <OverlayCard
               key={row.id}
               row={row}
+              overlayTypes={schemas?.overlay_types ?? []}
               canWrite={canWrite}
               onEdit={() => openEdit(row)}
               onDelete={() => void deleteRow(row.id)}
@@ -612,6 +609,7 @@ export function OverlaysPage() {
       ) : (
         <OverlayTable
           rows={rows}
+          overlayTypes={schemas?.overlay_types ?? []}
           canWrite={canWrite}
           onEdit={openEdit}
           onDelete={(id) => void deleteRow(id)}

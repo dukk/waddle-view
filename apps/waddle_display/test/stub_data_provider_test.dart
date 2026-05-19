@@ -29,10 +29,10 @@ void main() {
               ..where((t) => t.key.equals('header.title')))
             .getSingle();
     expect(row.value, 'Waddle View');
-    final weatherTape = await (db.select(db.tickerTapes)
-          ..where((t) => t.id.equals('ticker_weather')))
+    final staticTape = await (db.select(db.tickerTapes)
+          ..where((t) => t.id.equals('ticker_custom')))
         .getSingle();
-    expect(weatherTape.configJson.contains('72°F'), isTrue);
+    expect(staticTape.configJson.contains('WADDLE'), isTrue);
     final blobs = await db.select(db.blobMetadata).get();
     expect(blobs, isNotEmpty);
     await db.close();

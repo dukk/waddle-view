@@ -17,9 +17,10 @@ export function TickerTapesHelpContent() {
       </Typography>
       <Typography variant="body2" component="div">
         <strong>Ticker types</strong> — <code>time</code> (clock), <code>weather</code>,{' '}
-        <code>news</code> (RSS), <code>quote</code>, <code>stocks</code>, and <code>custom</code>{' '}
-        (marquee keys from <code>config_key_values</code>). Use <code>config_json</code> for
-        fallbacks such as <code>fallbackText</code> when live data is missing.
+        <code>news</code> (RSS), <code>stocks</code>, <code>static_text</code> (fixed{' '}
+        <code>text</code> in <code>config_json</code>), and <code>plugin</code>. Weather and news
+        show lines only when live/RSS data exists; plugins may use <code>fallbackText</code> when
+        they return no lines.
       </Typography>
       <Typography variant="body2" component="div">
         Scroll speed is <strong>Ticker pixels per second</strong> under{' '}

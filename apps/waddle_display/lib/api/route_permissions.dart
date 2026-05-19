@@ -46,6 +46,26 @@ String? permissionForRoute(String method, String path) {
       m == 'GET') {
     return WaddlePermission.integrationsRead;
   }
+  if (RegExp(
+        r'^/v1/integration-accounts/[^/]+/google-photos/picker/sessions$',
+      ).hasMatch(p) &&
+      m == 'POST') {
+    return WaddlePermission.integrationsWrite;
+  }
+  if (RegExp(
+        r'^/v1/integration-accounts/[^/]+/google-photos/picker/sessions/[^/]+$',
+      ).hasMatch(p) &&
+      (m == 'GET' || m == 'DELETE')) {
+    return m == 'GET'
+        ? WaddlePermission.integrationsRead
+        : WaddlePermission.integrationsWrite;
+  }
+  if (RegExp(
+        r'^/v1/integration-accounts/[^/]+/google-photos/picker/sessions/[^/]+/media-items$',
+      ).hasMatch(p) &&
+      m == 'GET') {
+    return WaddlePermission.integrationsRead;
+  }
   if (RegExp(r'^/v1/integrations/[^/]+/accounts$').hasMatch(p) && m == 'GET') {
     return WaddlePermission.integrationsRead;
   }
@@ -193,7 +213,7 @@ String? permissionForRoute(String method, String path) {
   if (p == '/v1/meta/screen-types' && m == 'GET') {
     return WaddlePermission.metaRead;
   }
-  if (p == '/v1/meta/ticker-types' && m == 'GET') {
+  if (p == '/v1/meta/ticker-tape-types' && m == 'GET') {
     return WaddlePermission.metaRead;
   }
   if (p == '/v1/meta/overlay-types' && m == 'GET') {

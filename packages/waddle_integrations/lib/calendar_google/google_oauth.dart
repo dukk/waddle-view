@@ -49,6 +49,7 @@ class GoogleOAuth {
     required String clientId,
     required String googleAccountKey,
     bool pollDeviceCode = true,
+    String scopes = kGoogleOAuthScopes,
   }) async {
     final accessKey = googleAccessTokenSecret(googleAccountKey);
     final refreshKey = googleRefreshTokenSecret(googleAccountKey);
@@ -87,6 +88,7 @@ class GoogleOAuth {
       clientId: clientId,
       googleAccountKey: googleAccountKey,
       pollDeviceCode: pollDeviceCode,
+      scopes: scopes,
     );
   }
 
@@ -140,6 +142,7 @@ class GoogleOAuth {
     required String clientId,
     required String googleAccountKey,
     bool pollDeviceCode = true,
+    required String scopes,
   }) async {
     final kv = IntegrationKvRepository(db);
     final lastPromptValue = await kv.getAccountValue(
@@ -166,7 +169,7 @@ class GoogleOAuth {
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: _formEncode({
           'client_id': clientId,
-          'scope': kGoogleCalendarOAuthScopes,
+          'scope': scopes,
         }),
       );
       if (startRes.statusCode != 200) {

@@ -25,7 +25,7 @@ vi.mock('@/storage/userDisplaysSync', () => ({
 vi.mock('@/api/configSchemas', () => ({
   fetchAndCacheConfigSchemas: vi.fn().mockResolvedValue({
     screen_types: [],
-    ticker_types: [],
+    ticker_tape_types: [],
     overlay_types: [],
     integration_types: [],
   }),

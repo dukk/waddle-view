@@ -34,6 +34,7 @@ import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { SlideProgramCard } from '@/components/SlideProgramCard';
 import { TickerProgramCard } from '@/components/TickerProgramCard';
 import type { SavedDisplay } from '@/storage/displays';
+import { useConfigSchemas } from '@/hooks/useConfigSchemas';
 import {
   buildSlideCardModel,
   collectSlideContentIds,
@@ -43,6 +44,7 @@ import {
   sortProgramsByAtMsDesc,
   type SlideCardModel,
 } from '@/util/programTelemetry';
+import { screenTypeLabel, screenTypeMetaFor } from '@/util/screenTypeLabel';
 
 const PROGRAMS_PAGE_SIZE = 1;
 
@@ -119,6 +121,7 @@ function SlideTelemetryDetail({
   slideCount,
   onPrevSlide,
   onNextSlide,
+  screenTypeDisplayLabel,
 }: {
   display: SavedDisplay;
   model: SlideCardModel | null;
@@ -128,6 +131,7 @@ function SlideTelemetryDetail({
   slideCount: number;
   onPrevSlide: () => void;
   onNextSlide: () => void;
+  screenTypeDisplayLabel: (screenType: string | undefined) => string;
 }) {
   const [rawOpen, setRawOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -301,7 +305,9 @@ function SlideTelemetryDetail({
 
   if (!model) return null;
 
-  const primaryLabel = model.screenType ?? (model.summaries[0]?.type ?? 'slide');
+  const primaryLabel = model.screenType
+    ? screenTypeDisplayLabel(model.screenType)
+    : (model.summaries[0]?.type ?? 'slide');
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth scroll="paper">
@@ -746,7 +752,18 @@ function tickerItemHeadline(kind: string, item: Record<string, unknown>): string
 
 export function ProgramsPage() {
   const { active } = useDisplay();
+  const { schemas } = useConfigSchemas(active);
   const { formatTime } = useDisplayFormat();
+  const screenTypeDisplayLabel = useCallback(
+    (screenType: string | undefined) => {
+      if (!screenType?.trim()) return 'slide';
+      return screenTypeLabel(
+        screenType,
+        screenTypeMetaFor(schemas?.screen_types ?? [], screenType),
+      );
+    },
+    [schemas],
+  );
   const { loading: screenLoading, wrapRefresh: wrapScreenRefresh } = useDisplayRefresh();
   const { loading: tickerLoading, wrapRefresh: wrapTickerRefresh } = useDisplayRefresh();
   const { layout, setLayout } = useListLayoutPreference('programs');
@@ -931,6 +948,7 @@ export function ProgramsPage() {
                         key={`${model.screenId}-${si}`}
                         display={active}
                         model={model}
+                        typeLabel={screenTypeDisplayLabel(model.screenType)}
                         onDetails={() => setSlideDetailLoc({ pi, si })}
                       />
                     );
@@ -995,7 +1013,11 @@ export function ProgramsPage() {
                         <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
                           {model.screenId}
                         </TableCell>
-                        <TableCell>{model.screenType ?? '—'}</TableCell>
+                        <TableCell>
+                          {model.screenType
+                            ? screenTypeDisplayLabel(model.screenType)
+                            : '—'}
+                        </TableCell>
                         <TableCell>{model.dwellLabel}</TableCell>
                         <TableCell sx={{ maxWidth: 320, wordBreak: 'break-word' }}>
                           {slidePreviewText(model)}
@@ -1155,6 +1177,7 @@ export function ProgramsPage() {
         onClose={() => setSlideDetailLoc(null)}
         slideIndex={slideDetailLoc?.si ?? 0}
         slideCount={slideDetailSlides.length}
+        screenTypeDisplayLabel={screenTypeDisplayLabel}
         onPrevSlide={() =>
           setSlideDetailLoc((c) => (c && c.si > 0 ? { ...c, si: c.si - 1 } : c))
         }

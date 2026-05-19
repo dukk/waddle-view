@@ -2,10 +2,11 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart';
 
-import 'package:waddle_shared/persistence/config_json_documentation.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/seed/tables/ticker_tape_types_seed.dart';
 
 Future<void> ensureTickerTapesSeed(AppDatabase db) async {
+  await ensureTickerTapeTypes(db);
   Future<void> upsert({
     required String id,
     required String label,
@@ -13,9 +14,8 @@ Future<void> ensureTickerTapesSeed(AppDatabase db) async {
     required String tickerType,
     int frequencyWeight = 100,
     int sortOrder = 0,
-    String? configKey,
+    String? configJson,
   }) async {
-    final doc = tickerSlotConfigJsonDocForType(tickerType);
     await db.into(db.tickerTapes).insertOnConflictUpdate(
           TickerTapesCompanion.insert(
             id: id,
@@ -24,17 +24,14 @@ Future<void> ensureTickerTapesSeed(AppDatabase db) async {
             tickerType: tickerType,
             frequencyWeight: Value(frequencyWeight),
             sortOrder: Value(sortOrder),
-            configKey: configKey == null
+            configJson: configJson == null
                 ? const Value.absent()
-                : Value(configKey),
-            configJson: const Value.absent(),
-            configJsonSchema: Value(doc.schema),
-            exampleConfigJson: Value(doc.example),
+                : Value(configJson),
           ),
         );
   }
 
-  Future<void> ensureTapeFallbackIfUnset(String id, String fallback) async {
+  Future<void> ensureTapeStaticTextIfUnset(String id, String text) async {
     final r = await (db.select(db.tickerTapes)..where((t) => t.id.equals(id)))
         .getSingleOrNull();
     if (r == null) {
@@ -46,7 +43,7 @@ Future<void> ensureTickerTapesSeed(AppDatabase db) async {
     }
     await (db.update(db.tickerTapes)..where((t) => t.id.equals(id))).write(
       TickerTapesCompanion(
-        configJson: Value(jsonEncode({'fallbackText': fallback})),
+        configJson: Value(jsonEncode({'text': text})),
       ),
     );
   }
@@ -61,23 +58,16 @@ Future<void> ensureTickerTapesSeed(AppDatabase db) async {
   await upsert(
     id: 'ticker_weather',
     label: 'Weather',
-    description: 'Live weather; optional fallbackText in config_json',
+    description: 'Live weather from collect',
     tickerType: 'weather',
     sortOrder: 10,
   );
   await upsert(
     id: 'ticker_news',
     label: 'News',
-    description: 'RSS headlines; optional fallbackText in config_json',
+    description: 'RSS headlines from stored articles',
     tickerType: 'news',
     sortOrder: 20,
-  );
-  await upsert(
-    id: 'ticker_quote',
-    label: 'Quote',
-    description: 'Static line from config_json fallbackText',
-    tickerType: 'quote',
-    sortOrder: 30,
   );
   await upsert(
     id: 'ticker_stocks',
@@ -88,16 +78,11 @@ Future<void> ensureTickerTapesSeed(AppDatabase db) async {
   );
   await upsert(
     id: 'ticker_custom',
-    label: 'Custom marquee',
-    description: 'Extra ticker.marquee.* keys in config_key_values (not in bootstrap curator)',
-    tickerType: 'custom',
+    label: 'Static text',
+    description: 'Fixed line from config_json text',
+    tickerType: 'static_text',
     sortOrder: 40,
   );
 
-  await ensureTapeFallbackIfUnset('ticker_weather', '— °F · demo');
-  await ensureTapeFallbackIfUnset('ticker_news', 'Welcome to Waddle View');
-  await ensureTapeFallbackIfUnset(
-    'ticker_quote',
-    'Market data updates after each collect',
-  );
+  await ensureTapeStaticTextIfUnset('ticker_custom', 'Thanks for visiting');
 }

@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
-import 'package:waddle_shared/persistence/config_json_documentation.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/seed/tables/integration_types_seed.dart';
 
 AppDatabase openMemoryDatabase() {
   return AppDatabase(
@@ -24,14 +24,13 @@ Future<void> seedStubIntegrationForTest(AppDatabase db) async {
   if (existing != null) {
     return;
   }
-  final stubDoc = providerConfigJsonDocForType('stub');
+  await ensureIntegrationTypes(db);
   await db.into(db.integrations).insert(
         IntegrationsCompanion.insert(
           id: 'stub',
           integrationType: 'stub',
           enabled: const Value(true),
           pollSeconds: const Value(60),
-          configJsonSchema: Value(stubDoc.schema),
         ),
       );
 }

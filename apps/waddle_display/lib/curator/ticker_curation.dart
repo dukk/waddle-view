@@ -50,16 +50,6 @@ List<TickerItem> buildTickerItemsFromKv({
     ),
   );
 
-  final extraKeys = kv.keys.where((k) => k.startsWith('ticker.marquee.')).toList()
-    ..sort();
-  for (final k in extraKeys) {
-    final raw = kv[k]!.trim();
-    if (raw.isEmpty) {
-      continue;
-    }
-    addIfNew(TickerItem(kind: 'custom', body: raw, sourceId: k));
-  }
-
   return out;
 }
 
@@ -276,8 +266,30 @@ List<TickerItem> pickNewsTickerItemsByWidthBudget({
   return out;
 }
 
-/// Reads [TickerTapeForCuration.configJson] for a plain-text fallback line.
-String? parseTickerTapeFallbackText(String rawConfigJson) {
+/// Reads [TickerTapeForCuration.configJson] `text` for static_text tapes.
+String? parseTickerTapeStaticText(String rawConfigJson) {
+  final t = rawConfigJson.trim();
+  if (t.isEmpty || t == '{}') {
+    return null;
+  }
+  try {
+    final decoded = jsonDecode(t);
+    if (decoded is! Map) {
+      return null;
+    }
+    final m = decoded.map((k, Object? v) => MapEntry(k.toString(), v));
+    final text = m['text'];
+    if (text is String && text.trim().isNotEmpty) {
+      return text.trim();
+    }
+    return null;
+  } on Object {
+    return null;
+  }
+}
+
+/// Reads plugin tape [fallbackText] when the plugin yields no lines.
+String? parseTickerTapePluginFallbackText(String rawConfigJson) {
   final t = rawConfigJson.trim();
   if (t.isEmpty || t == '{}') {
     return null;
@@ -291,16 +303,6 @@ String? parseTickerTapeFallbackText(String rawConfigJson) {
     final f = m['fallbackText'];
     if (f is String && f.trim().isNotEmpty) {
       return f.trim();
-    }
-    for (final legacyKey in const [
-      'ticker.marquee.weather',
-      'ticker.marquee.news',
-      'ticker.marquee.quote',
-    ]) {
-      final v = m[legacyKey];
-      if (v is String && v.trim().isNotEmpty) {
-        return v.trim();
-      }
     }
     return null;
   } on Object {
@@ -437,21 +439,6 @@ List<TickerItem> _buildTickerItemsForMarqueeLegacy({
     }
   }
 
-  final extraKeys =
-      kv.keys.where((k) => k.startsWith('ticker.marquee.')).toList()..sort();
-  for (final k in extraKeys) {
-    final raw = kv[k]!.trim();
-    if (raw.isEmpty) {
-      continue;
-    }
-    _addTickerIfNew(
-      out,
-      seenBodies,
-      TickerItem(kind: 'custom', body: raw, sourceId: k),
-      rejectCtx: rejectCtx,
-    );
-  }
-
   return out;
 }
 
@@ -475,14 +462,12 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
 
   List<TickerItem> expandWeather(TickerTapeForCuration def) {
     final live = currentWeather?.toTickerBody().trim() ?? '';
-    final fallback = parseTickerTapeFallbackText(def.configJson) ?? '';
-    final primary = live.isNotEmpty ? live : fallback;
     final out = <TickerItem>[];
-    if (primary.isNotEmpty) {
+    if (live.isNotEmpty) {
       out.add(
         TickerItem(
           kind: 'weather',
-          body: primary,
+          body: live,
           sourceId: tapeSourceId(def),
         ),
       );
@@ -499,31 +484,7 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
     if (rssItems.isNotEmpty) {
       return rssItems;
     }
-    final rawNews = parseTickerTapeFallbackText(def.configJson);
-    if (rawNews == null || rawNews.isEmpty) {
-      return const [];
-    }
-    return [
-      TickerItem(
-        kind: 'news',
-        body: rawNews,
-        sourceId: tapeSourceId(def),
-      ),
-    ];
-  }
-
-  List<TickerItem> expandQuote(TickerTapeForCuration def) {
-    final rawQuote = parseTickerTapeFallbackText(def.configJson);
-    if (rawQuote == null || rawQuote.isEmpty) {
-      return const [];
-    }
-    return [
-      TickerItem(
-        kind: 'quote',
-        body: rawQuote,
-        sourceId: tapeSourceId(def),
-      ),
-    ];
+    return const [];
   }
 
   List<TickerItem> expandStocks() {
@@ -540,28 +501,18 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
     ];
   }
 
-  List<TickerItem> expandCustom(TickerTapeForCuration def) {
-    final specific = def.configKey?.trim();
-    if (specific != null && specific.isNotEmpty) {
-      final raw = kv[specific]?.trim() ?? '';
-      if (raw.isEmpty) {
-        return const [];
-      }
-      return [
-        TickerItem(kind: 'custom', body: raw, sourceId: specific),
-      ];
+  List<TickerItem> expandStaticText(TickerTapeForCuration def) {
+    final raw = parseTickerTapeStaticText(def.configJson);
+    if (raw == null || raw.isEmpty) {
+      return const [];
     }
-    final extraKeys = kv.keys.where((k) => k.startsWith('ticker.marquee.')).toList()
-      ..sort();
-    final out = <TickerItem>[];
-    for (final k in extraKeys) {
-      final raw = kv[k]!.trim();
-      if (raw.isEmpty) {
-        continue;
-      }
-      out.add(TickerItem(kind: 'custom', body: raw, sourceId: k));
-    }
-    return out;
+    return [
+      TickerItem(
+        kind: 'static_text',
+        body: raw,
+        sourceId: tapeSourceId(def),
+      ),
+    ];
   }
 
   List<TickerItem> itemsForDef(TickerTapeForCuration def) {
@@ -588,12 +539,10 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
         return expandWeather(def);
       case 'news':
         return expandNews(def);
-      case 'quote':
-        return expandQuote(def);
       case 'stocks':
         return expandStocks();
-      case 'custom':
-        return expandCustom(def);
+      case 'static_text':
+        return expandStaticText(def);
       default:
         return const [];
     }
@@ -612,7 +561,7 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
     for (var i = 0; i < w; i++) {
       for (final item in chunk) {
         // News items already passed through reject censor inside
-        // [pickNewsTickerItemsByWidthBudget]; everything else (custom, quote,
+        // [pickNewsTickerItemsByWidthBudget]; everything else (static_text,
         // weather, stocks) is censored here.
         _addTickerIfNew(
           out,
@@ -637,13 +586,13 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
 /// KV + clock + optional RSS: ordered marquee items for [TickerCuratedRepository].
 ///
 /// When [definitions] is empty, uses legacy ordering (time, live weather, RSS
-/// news, then every `ticker.marquee.*` key in [kv] as `custom`). Otherwise uses
+/// news only). Otherwise uses
 /// enabled rows from [TickerTapes] with weighted repeats per
 /// [TickerTapeForCuration.frequencyWeight].
 ///
 /// When [rejectCtx] is non-null and non-empty, every body string from
 /// user-/feed-supplied sources (news titles/summaries/feed labels, weather,
-/// quote, custom marquee KV bodies, stock display name) is passed through
+/// static_text, stock display name) is passed through
 /// [RejectFilterContext.censor] before assembly. Block-action terms are
 /// already applied at ingest time via `suppressed = true`.
 List<TickerItem> buildTickerItemsForMarquee({

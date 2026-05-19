@@ -292,6 +292,7 @@ export type SlideScreenPreviewKind =
   | 'trivia'
   | 'wifi'
   | 'clock'
+  | 'digital_clock'
   | 'calendar'
   | 'news'
   | 'news_columns'
@@ -320,7 +321,7 @@ const SCREEN_TYPE_PREVIEW_KIND: Record<string, SlideScreenPreviewKind> = {
   joke: 'joke',
   trivia: 'trivia',
   wifi: 'wifi',
-  digital_clock: 'clock',
+  digital_clock: 'digital_clock',
   analog_clock: 'clock',
   calendar_month: 'calendar',
   news: 'news',
@@ -344,6 +345,7 @@ const WIDGET_TYPE_PREVIEW_KIND: Record<string, SlideScreenPreviewKind> = {
   joke: 'joke',
   trivia: 'trivia',
   wifi: 'wifi',
+  digital_clock: 'digital_clock',
   calendar_month: 'calendar',
   news: 'news',
   news_columns: 'news_columns',

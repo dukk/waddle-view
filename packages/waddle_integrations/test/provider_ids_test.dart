@@ -10,6 +10,7 @@ import 'package:waddle_integrations/joke_openai/joke_data_provider.dart';
 
 import 'package:waddle_integrations/photo_bing_image_of_the_day/bing_image_of_day_data_provider.dart';
 
+import 'package:waddle_integrations/google_photos/google_photos_media_data_provider.dart';
 import 'package:waddle_integrations/photo_flickr/flickr_media_data_provider.dart';
 
 import 'package:waddle_integrations/photo_onedrive/onedrive_media_data_provider.dart';
@@ -73,6 +74,10 @@ void main() {
     expect(OutlookCalendarDataProvider().id, 'calendar_outlook');
 
     expect(IcalCalendarDataProvider().id, 'calendar_ical');
+
+    expect(GooglePhotosPhotosDataProvider().id, 'photo_google');
+
+    expect(GooglePhotosVideosDataProvider().id, 'video_google');
 
   });
 

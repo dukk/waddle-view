@@ -95,12 +95,12 @@ void main() {
     expect((items.first as Map).containsKey('screen_type'), isTrue);
   });
 
-  test('GET meta ticker-types', () async {
+  test('GET meta ticker-tape-types', () async {
     final h = await RestTestHarness.start();
     addTearDown(h.dispose);
 
     final res = await http.get(
-      Uri.parse('${h.baseUrl}/v1/meta/ticker-types'),
+      Uri.parse('${h.baseUrl}/v1/meta/ticker-tape-types'),
       headers: h.authHeaders,
     );
     expect(res.statusCode, 200);
@@ -122,7 +122,7 @@ void main() {
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     for (final key in [
       'screen_types',
-      'ticker_types',
+      'ticker_tape_types',
       'overlay_types',
       'integration_types',
     ]) {
@@ -421,7 +421,6 @@ void main() {
       body: jsonEncode({
         'frequency_weight': 77,
         'sort_order': 3,
-        'config_key': '',
       }),
     );
     expect(patchTick.statusCode, 200);
@@ -479,7 +478,7 @@ void main() {
           TickerTapesCompanion.insert(
             id: 'bad_tick',
             label: 'B',
-            tickerType: 'quote',
+            tickerType: 'bogus_type',
           ),
         );
     final bad = await http.patch(

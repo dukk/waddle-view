@@ -1,12 +1,18 @@
-/// One calendar filter (name or provider id) with optional forced [ContentCategories] id.
+import 'package:waddle_shared/persistence/calendar_event_categories.dart';
+
+/// One calendar filter (name or provider id) with optional forced [ContentCategories] ids.
 class ProviderCalendarEntry {
   const ProviderCalendarEntry({
     required this.nameOrId,
-    this.categoryId,
+    this.categoryIds = const [],
   });
 
   final String nameOrId;
-  final String? categoryId;
+  final List<String> categoryIds;
+
+  /// First configured category (legacy single-column / primary assignment).
+  String? get categoryId =>
+      categoryIds.isEmpty ? null : categoryIds.first;
 
   static ProviderCalendarEntry? parse(dynamic raw) {
     if (raw is String) {
@@ -18,10 +24,13 @@ class ProviderCalendarEntry {
       if (cal is! String || cal.trim().isEmpty) {
         return null;
       }
-      final cat = raw['categoryId'] ?? raw['category'];
+      final ids = <String>[
+        ...parseCalendarConfigCategoryIds(raw['categoryIds']),
+        ...parseCalendarConfigCategoryIds(raw['categoryId'] ?? raw['category']),
+      ];
       return ProviderCalendarEntry(
         nameOrId: cal.trim(),
-        categoryId: cat is String && cat.trim().isNotEmpty ? cat.trim() : null,
+        categoryIds: normalizeCalendarEventCategoryIds(ids),
       );
     }
     return null;
@@ -61,9 +70,17 @@ Map<String, String> parseCategoryAliasMap(Object? raw) {
 }
 
 String? parseOptionalCategoryId(Object? raw) {
-  if (raw is! String) {
-    return null;
-  }
-  final t = raw.trim();
-  return t.isEmpty ? null : t;
+  final ids = parseCalendarConfigCategoryIds(raw);
+  return ids.isEmpty ? null : ids.first;
+}
+
+/// Parses `defaultCategoryId` / `defaultCategory` / `defaultCategoryIds` from source config.
+List<String> parseDefaultCategoryIds(Map<String, dynamic> m) {
+  final ids = <String>[
+    ...parseCalendarConfigCategoryIds(m['defaultCategoryIds']),
+    ...parseCalendarConfigCategoryIds(
+      m['defaultCategoryId'] ?? m['defaultCategory'],
+    ),
+  ];
+  return normalizeCalendarEventCategoryIds(ids);
 }

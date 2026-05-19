@@ -1,7 +1,7 @@
 export type OutlookCalendarSelection = {
   id: string;
   name: string;
-  categoryId: string;
+  categoryIds: string[];
   selected: boolean;
 };
 
@@ -12,6 +12,8 @@ export type OutlookCalendarConfigState = {
   calendars: OutlookCalendarSelection[];
 };
 
+const kDefaultPastFutureDays = 30;
+
 function positiveInt(value: unknown, fallback: number): number {
   if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
     return Math.floor(value);
@@ -19,19 +21,46 @@ function positiveInt(value: unknown, fallback: number): number {
   return fallback;
 }
 
+function categoryIdsFromRaw(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    const out: string[] = [];
+    for (const e of raw) {
+      if (typeof e === 'string') {
+        const t = e.trim();
+        if (t && !out.includes(t)) out.push(t);
+      }
+    }
+    return out;
+  }
+  if (typeof raw === 'string') {
+    const t = raw.trim();
+    return t ? [t] : [];
+  }
+  return [];
+}
+
 function calendarEntryFromRaw(raw: unknown): OutlookCalendarSelection | null {
   if (typeof raw === 'string') {
     const name = raw.trim();
     if (!name) return null;
-    return { id: name, name, categoryId: '', selected: true };
+    return { id: name, name, categoryIds: [], selected: true };
   }
   if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
     const m = raw as Record<string, unknown>;
     const id = String(m.id ?? m.calendar ?? m.name ?? '').trim();
     if (!id) return null;
     const name = String(m.name ?? m.calendar ?? id).trim() || id;
-    const categoryId = String(m.categoryId ?? m.category ?? '').trim();
-    return { id, name, categoryId, selected: true };
+    const categoryIds = [
+      ...categoryIdsFromRaw(m.categoryIds),
+      ...categoryIdsFromRaw(m.categoryId ?? m.category),
+    ];
+    const seen = new Set<string>();
+    const deduped = categoryIds.filter((c) => {
+      if (seen.has(c)) return false;
+      seen.add(c);
+      return true;
+    });
+    return { id, name, categoryIds: deduped, selected: true };
   }
   return null;
 }
@@ -40,8 +69,8 @@ function calendarEntryFromRaw(raw: unknown): OutlookCalendarSelection | null {
 export function parseOutlookCalendarConfig(
   raw: Record<string, unknown>,
 ): OutlookCalendarConfigState {
-  const pastDays = positiveInt(raw.pastDays, 14);
-  const futureDays = positiveInt(raw.futureDays, 14);
+  const pastDays = positiveInt(raw.pastDays, kDefaultPastFutureDays);
+  const futureDays = positiveInt(raw.futureDays, kDefaultPastFutureDays);
   const accounts = raw.accounts;
   if (!Array.isArray(accounts) || accounts.length === 0) {
     return { graphAccountKey: '', pastDays, futureDays, calendars: [] };
@@ -86,7 +115,9 @@ export function buildOutlookCalendarConfigJson(
                 calendars: selected.map((c) => ({
                   id: c.id,
                   name: c.name,
-                  category: c.categoryId.trim() || undefined,
+                  ...(c.categoryIds.length > 0
+                    ? { categoryIds: c.categoryIds }
+                    : {}),
                 })),
               },
             ],
@@ -112,7 +143,7 @@ export function mergeOutlookCalendarsWithSaved(
     return {
       id: c.id,
       name: c.name,
-      categoryId: prior?.categoryId ?? '',
+      categoryIds: prior?.categoryIds ?? [],
       selected: prior?.selected ?? false,
     };
   });

@@ -110,7 +110,7 @@ void main() {
     expect(items.length, 2);
   });
 
-  test('buildTickerItemsForMarquee uses tape fallback when RSS empty', () {
+  test('buildTickerItemsForMarquee omits news and weather when RSS and live empty', () {
     final t = DateTime(2026, 3, 4, 9, 8, 7);
     final items = buildTickerItemsForMarquee(
       kv: const {},
@@ -139,8 +139,7 @@ void main() {
         ),
       ],
     );
-    expect(items.map((e) => e.kind).toList(), ['time', 'weather', 'news']);
-    expect(items[2].body, 'KV headline');
+    expect(items.map((e) => e.kind).toList(), ['time']);
   });
 
   test('buildTickerItemsForMarquee prefers RSS over tape news fallback', () {
@@ -175,18 +174,11 @@ void main() {
     expect(news.articleId, 'rss-title-1');
   });
 
-  test('buildTickerItemsForMarquee appends sorted custom marquee keys', () {
+  test('buildTickerItemsForMarquee includes static_text from config_json', () {
     final t = DateTime(2026, 3, 4, 9, 8, 7);
     final ms = DateTime.utc(2026, 1, 1).millisecondsSinceEpoch;
     final items = buildTickerItemsForMarquee(
-      kv: {
-        'ticker.marquee.extra_z': 'Z',
-        'ticker.marquee.extra_a': 'A',
-        'ticker.marquee.extra_blank': '   ',
-        'curator.ticker.newsScrollBudgetSeconds': '10000',
-        'curator.ticker.newsCharWidthPx': '1',
-        'curator.ticker.newsSeparatorPaddingPx': '0',
-      },
+      kv: const {},
       nowLocal: t,
       newsCandidates: [
         TickerNewsCandidate(
@@ -211,16 +203,17 @@ void main() {
           sortOrder: 10,
         ),
         TickerTapeForCuration(
-          id: 'c',
-          tickerType: 'custom',
+          id: 's',
+          tickerType: 'static_text',
           frequencyWeight: 1,
           sortOrder: 20,
+          configJson: '{"text":"Welcome"}',
         ),
       ],
     );
-    final customs =
-        items.where((e) => e.kind == 'custom').map((e) => e.body).toList();
-    expect(customs, ['A', 'Z']);
+    final staticLines =
+        items.where((e) => e.kind == 'static_text').map((e) => e.body).toList();
+    expect(staticLines, ['Welcome']);
   });
 
   test('pickNewsTickerItemsByWidthBudget attaches summary to body and rss', () {

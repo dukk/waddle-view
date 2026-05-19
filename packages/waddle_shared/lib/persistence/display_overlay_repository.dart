@@ -5,6 +5,7 @@ import 'package:drift/drift.dart' hide isNull, isNotNull;
 
 import 'config_json_documentation.dart';
 import 'database.dart';
+import '../seed/tables/overlay_types_seed.dart';
 import 'display_overlay_bouncing_message_settings.dart';
 import 'display_overlay_confetti_settings.dart';
 import 'display_overlay_falling_images_settings.dart';
@@ -14,7 +15,7 @@ import 'display_overlay_matrix_rain_settings.dart';
 import 'display_overlay_shape_rain_settings.dart';
 import 'display_overlay_row.dart';
 import 'display_overlay_sql.dart';
-import 'overlay_id_allocation.dart';
+import 'overlay_type_label.dart';
 import 'tables.dart';
 
 /// Broadcast when `overlays` rows change (`upsertOverlay` / `deleteOverlay`).
@@ -286,18 +287,28 @@ Future<String> upsertOverlay(
   } on Object {
     throw FormatException('invalid_config_json');
   }
-  final doc = displayOverlayConfigJsonDocForType(overlayType.trim());
+  final trimmedType = overlayType.trim();
+  await ensureOverlayTypes(db);
+  if (!await overlayTypeExists(db, trimmedType)) {
+    final doc = displayOverlayConfigJsonDocForType(trimmedType);
+    await db.into(db.overlayTypes).insert(
+          OverlayTypesCompanion.insert(
+            overlayType: trimmedType,
+            label: overlayTypeLabel(trimmedType),
+            configJsonSchema: Value(doc.schema),
+          ),
+        );
+  }
   final trimmedId = id.trim();
   await db.customStatement(
     'INSERT OR REPLACE INTO overlays ('
-    'id, overlay_type, label, config_json, config_json_schema) '
-    'VALUES (?, ?, ?, ?, ?)',
+    'id, overlay_type, label, config_json) '
+    'VALUES (?, ?, ?, ?)',
     <Object?>[
       trimmedId,
-      overlayType.trim(),
+      trimmedType,
       label,
       configNorm,
-      doc.schema,
     ],
   );
   _notifyOverlayTableChanged();
@@ -363,6 +374,7 @@ Future<DisplayOverlayRow?> overlayScheduleById(AppDatabase db, String id) =>
 Map<String, Object?> overlayToJson(
   DisplayOverlayRow row, {
   bool includeConfigDocs = false,
+  String? configJsonSchema,
 }) {
   Object? configField;
   try {
@@ -384,9 +396,30 @@ Map<String, Object?> overlayToJson(
     'config_json': configField,
   };
   if (includeConfigDocs) {
-    out['config_json_schema'] = _decodedJsonOrNull(row.configJsonSchema);
+    out['config_json_schema'] = _decodedJsonOrNull(configJsonSchema);
   }
   return out;
+}
+
+/// Schema strings keyed by [DisplayOverlayRow.overlayType].
+Future<Map<String, String?>> overlayTypeConfigJsonSchemasByType(
+  AppDatabase db,
+) async {
+  final rows = await db.select(db.overlayTypes).get();
+  return {for (final r in rows) r.overlayType: r.configJsonSchema};
+}
+
+/// Resolves overlay type schema (DB first, then code catalog).
+Future<String?> overlayTypeSchemaForJson(
+  AppDatabase db,
+  String overlayType, {
+  Map<String, String?>? cache,
+}) async {
+  final cached = cache?[overlayType];
+  if (cached != null && cached.trim().isNotEmpty) {
+    return cached;
+  }
+  return overlayTypeConfigJsonSchema(db, overlayType);
 }
 
 /// Back-compat alias.

@@ -8,7 +8,7 @@ export type OAuthClientIdRegistrationGuide = {
 const guides: Record<string, OAuthClientIdRegistrationGuide> = {
   google: {
     message:
-      'You need a Google account and an OAuth client ID from Google Cloud.',
+      'You need a Google account and an OAuth client ID from Google Cloud. Enable the Google Photos Picker API and add the photospicker.mediaitems.readonly scope (plus Calendar scopes if you use Google Calendar).',
     href: 'https://console.cloud.google.com/apis/credentials',
     linkLabel: 'Google Cloud Console — create OAuth credentials',
   },

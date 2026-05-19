@@ -12,6 +12,7 @@ import '../news_rss/rss_http_response_body_decode.dart';
 import 'ical_calendar_extra_config.dart';
 import 'ical_event_parse.dart';
 import 'ical_feed_url.dart';
+import '../shared/calendar_event_upsert.dart';
 
 export 'ical_calendar_extra_config.dart';
 export 'ical_event_parse.dart';
@@ -111,7 +112,7 @@ class IcalCalendarDataProvider implements IDataProvider {
             ctx.db,
             feedId: feed.id,
             event: event,
-            categoryId: feed.categoryId,
+            categoryIds: feed.categoryIds,
           );
           written++;
         }
@@ -202,11 +203,11 @@ class IcalCalendarDataProvider implements IDataProvider {
     AppDatabase db, {
     required String feedId,
     required ParsedIcalEvent event,
-    String? categoryId,
+    List<String> categoryIds = const [],
   }) async {
-    final trimmedCat = categoryId?.trim();
-    await db.into(db.calendarEvents).insertOnConflictUpdate(
-      CalendarEventsCompanion.insert(
+    await upsertCalendarEventWithCategories(
+      db,
+      companion: CalendarEventsCompanion.insert(
         id: icalCalendarEventRowId(feedId, event.uid),
         title: event.title,
         startMs: event.startUtc,
@@ -217,11 +218,9 @@ class IcalCalendarDataProvider implements IDataProvider {
         source: Value(icalCalendarEventSource(feedId)),
         externalId: Value(event.uid),
         icalUid: Value(event.uid),
-        categoryId: Value(
-          trimmedCat != null && trimmedCat.isNotEmpty ? trimmedCat : null,
-        ),
         updatedAtMs: DateTime.fromMillisecondsSinceEpoch(_nowMs()),
       ),
+      categoryIds: categoryIds,
     );
   }
 }

@@ -19,14 +19,12 @@ void registerBuiltinTickerSources(TickerSourceRegistry registry) {
 
   registry.register('weather', (def, ctx) {
     final live = ctx.currentWeather?.toTickerBody().trim() ?? '';
-    final fallback = parseTickerTapeFallbackText(def.configJson) ?? '';
-    final primary = live.isNotEmpty ? live : fallback;
     final out = <TickerItem>[];
-    if (primary.isNotEmpty) {
+    if (live.isNotEmpty) {
       out.add(
         TickerItem(
           kind: 'weather',
-          body: primary,
+          body: live,
           sourceId: tapeSourceId(def),
         ),
       );
@@ -41,23 +39,7 @@ void registerBuiltinTickerSources(TickerSourceRegistry registry) {
     if (ctx.rssItems.isNotEmpty) {
       return ctx.rssItems;
     }
-    final rawNews = parseTickerTapeFallbackText(def.configJson);
-    if (rawNews == null || rawNews.isEmpty) {
-      return const [];
-    }
-    return [
-      TickerItem(kind: 'news', body: rawNews, sourceId: tapeSourceId(def)),
-    ];
-  });
-
-  registry.register('quote', (def, ctx) {
-    final rawQuote = parseTickerTapeFallbackText(def.configJson);
-    if (rawQuote == null || rawQuote.isEmpty) {
-      return const [];
-    }
-    return [
-      TickerItem(kind: 'quote', body: rawQuote, sourceId: tapeSourceId(def)),
-    ];
+    return const [];
   });
 
   registry.register('stocks', (def, ctx) {
@@ -74,27 +56,18 @@ void registerBuiltinTickerSources(TickerSourceRegistry registry) {
     ];
   });
 
-  registry.register('custom', (def, ctx) {
-    final specific = def.configKey?.trim();
-    if (specific != null && specific.isNotEmpty) {
-      final raw = ctx.kv[specific]?.trim() ?? '';
-      if (raw.isEmpty) {
-        return const [];
-      }
-      return [TickerItem(kind: 'custom', body: raw, sourceId: specific)];
+  registry.register('static_text', (def, ctx) {
+    final raw = parseTickerTapeStaticText(def.configJson);
+    if (raw == null || raw.isEmpty) {
+      return const [];
     }
-    final extraKeys =
-        ctx.kv.keys.where((k) => k.startsWith('ticker.marquee.')).toList()
-          ..sort();
-    final out = <TickerItem>[];
-    for (final k in extraKeys) {
-      final raw = ctx.kv[k]!.trim();
-      if (raw.isEmpty) {
-        continue;
-      }
-      out.add(TickerItem(kind: 'custom', body: raw, sourceId: k));
-    }
-    return out;
+    return [
+      TickerItem(
+        kind: 'static_text',
+        body: raw,
+        sourceId: tapeSourceId(def),
+      ),
+    ];
   });
 
   registry.register(kTickerTypePlugin, (def, ctx) {

@@ -6,6 +6,7 @@ import 'package:waddle_shared/persistence/display_overlay_falling_images_setting
 import 'package:waddle_shared/persistence/display_overlay_repository.dart';
 import 'package:waddle_shared/persistence/display_overlay_row.dart';
 import 'package:waddle_shared/persistence/tables.dart';
+import 'package:waddle_shared/seed/tables/overlay_types_seed.dart';
 
 import '../helpers/memory_database.dart';
 
@@ -69,7 +70,10 @@ void main() {
     expect(cfg['shapes'], ['heart', 'dog']);
     expect(cfg.containsKey('messages'), isFalse);
     expect(cfg.containsKey('ignored'), isFalse);
-    expect(rows.single.configJsonSchema, contains('Shape rain'));
+    expect(
+      await overlayTypeConfigJsonSchema(db, kOverlayTypeShapeRain),
+      contains('Shape rain'),
+    );
     await db.close();
   });
 
@@ -92,7 +96,10 @@ void main() {
     expect(cfg['colors'], ['#ABCDEF']);
     expect(cfg.containsKey('messages'), isFalse);
     expect(cfg.containsKey('message_interval_sec'), isFalse);
-    expect(rows.single.configJsonSchema, contains('Birthday confetti'));
+    expect(
+      await overlayTypeConfigJsonSchema(db, kOverlayTypeBirthdayConfetti),
+      contains('Birthday confetti'),
+    );
     await db.close();
   });
 
@@ -114,7 +121,10 @@ void main() {
     expect(cfg['image_blob_keys'], ['overlay/pool/a']);
     expect(cfg['fall_speed'], closeTo(0.25 * kFallingImagesLegacyFallSpeedRefHeightPx, 0.01));
     expect(cfg.containsKey('messages'), isFalse);
-    expect(rows.single.configJsonSchema, contains('Falling images'));
+    expect(
+      await overlayTypeConfigJsonSchema(db, kOverlayTypeFallingImages),
+      contains('Falling images'),
+    );
     await db.close();
   });
 
@@ -139,7 +149,10 @@ void main() {
     expect(cfg['colors'], ['#AABBCC', '#112233']);
     expect(cfg['spawn_interval_sec'], 30);
     expect(cfg.containsKey('messages'), isFalse);
-    expect(rows.single.configJsonSchema, contains('Floating balloons'));
+    expect(
+      await overlayTypeConfigJsonSchema(db, kOverlayTypeFloatingBalloons),
+      contains('Floating balloons'),
+    );
     await db.close();
   });
 
@@ -159,7 +172,10 @@ void main() {
     final rows = await fetchDisplayOverlays(db);
     expect(rows.single.configJson, contains('#ABCDEF'));
     expect(rows.single.configJson, contains('"Hi there"'));
-    expect(rows.single.configJsonSchema, contains('BouncingMessageOverlayConfig'));
+    expect(
+      await overlayTypeConfigJsonSchema(db, kOverlayTypeBouncingMessage),
+      contains('BouncingMessageOverlayConfig'),
+    );
     await db.close();
   });
 
@@ -182,7 +198,10 @@ void main() {
     expect(cfg['pulse_speed'], 1.2);
     expect(cfg.containsKey('messages'), isFalse);
     expect(cfg.containsKey('ignored'), isFalse);
-    expect(rows.single.configJsonSchema, contains('Edge glow'));
+    expect(
+      await overlayTypeConfigJsonSchema(db, kOverlayTypeEdgeGlow),
+      contains('Edge glow'),
+    );
     await db.close();
   });
 
@@ -204,7 +223,10 @@ void main() {
     expect(cfg['fall_speed'], 0.8);
     expect(cfg.containsKey('messages'), isFalse);
     expect(cfg.containsKey('ignored'), isFalse);
-    expect(rows.single.configJsonSchema, contains('Matrix rain'));
+    expect(
+      await overlayTypeConfigJsonSchema(db, kOverlayTypeMatrixRain),
+      contains('Matrix rain'),
+    );
     await db.close();
   });
 
@@ -256,12 +278,15 @@ void main() {
       overlayType: kOverlayTypeBirthdayConfetti,
       label: 'Confetti',
       configJson: '{"fall_speed":0.2,"opacity":0.5}',
-      configJsonSchema: '{"type":"object"}',
     );
     final jDefault = overlayToJson(row);
     expect(jDefault.containsKey('config_json_schema'), isFalse);
 
-    final j = overlayToJson(row, includeConfigDocs: true);
+    final j = overlayToJson(
+      row,
+      includeConfigDocs: true,
+      configJsonSchema: '{"type":"object"}',
+    );
     expect(j['overlay_type'], kOverlayTypeBirthdayConfetti);
     expect(j['label'], 'Confetti');
     expect(j['config_json'], {

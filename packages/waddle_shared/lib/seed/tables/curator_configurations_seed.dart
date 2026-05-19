@@ -97,7 +97,7 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
       'photo',
       'clock_digital',
     ],
-    tickers: ['ticker_time', 'ticker_weather', 'ticker_news', 'ticker_quote'],
+    tickers: ['ticker_time', 'ticker_weather', 'ticker_news'],
   );
 
   await _insertConfig(
@@ -171,7 +171,7 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
       'weather',
       'clock_digital',
     ],
-    tickers: ['ticker_time', 'ticker_quote', 'ticker_custom'],
+    tickers: ['ticker_time', 'ticker_custom'],
   );
 
   await _insertConfig(

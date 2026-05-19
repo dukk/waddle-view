@@ -7,14 +7,6 @@ import {
   CardActions,
   CardContent,
   Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
   Paper,
   Stack,
   Table,
@@ -23,7 +15,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  TextField,
   Typography,
 } from '@mui/material';
 import { CatalogPageToolbar } from '@/components/CatalogPageToolbar';
@@ -38,47 +29,26 @@ import {
   SlideScreenPreviewIcon,
 } from '@/icons/slideScreenPreviewIcon';
 import { screenTypePreviewKind } from '@/util/programTelemetry';
-import Form from '@rjsf/mui';
-import type { IChangeEvent } from '@rjsf/core';
-import type { RJSFSchema } from '@rjsf/utils';
-import validator from '@rjsf/validator-ajv8';
 import { useDisplay } from '@/context/DisplayContext';
 import { apiFetch, apiJson, ApiError } from '@/api/client';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
+import { ScreenDialog, type ScreenDialogRow } from '@/components/screens/ScreenDialog';
 import { parseJsonObject } from '@/util/json';
-import { completeDialogSave } from '@/util/dialogSave';
-import { prepareRjsfSchema } from '@/util/rjsfSchema';
 import { useConfigSchemas } from '@/hooks/useConfigSchemas';
 import {
   exampleForScreenType,
   schemaForScreenType,
-  type ScreenTypeSchemaMeta,
 } from '@/storage/configSchemaCache';
+import { screenTypeLabel, screenTypeMetaFor } from '@/util/screenTypeLabel';
 
-type ScreenRow = {
-  id: string;
-  label?: string | null;
-  description?: string;
-  screen_type: string;
-  config_json: string;
+type ScreenRow = ScreenDialogRow & {
   config_json_schema?: string;
   example_config_json?: string;
-  min_dwell_seconds: number;
-  max_dwell_seconds: number;
-  frequency_weight: number;
-  min_gap_between_shows_seconds: number;
-  min_placements_per_program: number;
-  max_placements_per_program?: number | null;
   data_key: string;
 };
 
 function sortById(a: ScreenRow, b: ScreenRow): number {
   return a.id.localeCompare(b.id);
-}
-
-function screenTypeLabel(screenType: string | null | undefined): string {
-  const normalized = (screenType ?? '').trim();
-  return normalized ? normalized.replace(/_/g, ' ') : 'unknown';
 }
 
 function screenRowTitle(row: Pick<ScreenRow, 'id' | 'label'>): string {
@@ -145,13 +115,14 @@ const screenCardPreviewSx = {
   justifyContent: 'center',
 } as const;
 
-
 function ScreenTable({
   rows,
+  screenTypes,
   onEdit,
   onDelete,
 }: {
   rows: ScreenRow[];
+  screenTypes: { screen_type: string; config_json_schema?: unknown }[];
   onEdit: (row: ScreenRow) => void;
   onDelete: (id: string) => void;
 }) {
@@ -173,11 +144,12 @@ function ScreenTable({
         <TableBody>
           {rows.map((row) => {
             const title = screenRowTitle(row);
+            const meta = screenTypeMetaFor(screenTypes, row.screen_type);
             return (
               <TableRow key={row.id} hover>
                 <TableCell sx={{ fontWeight: screenRowHasCustomTitle(row) ? 600 : 400 }}>{title}</TableCell>
                 <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.id}</TableCell>
-                <TableCell>{screenTypeLabel(row.screen_type)}</TableCell>
+                <TableCell>{screenTypeLabel(row.screen_type, meta)}</TableCell>
                 <TableCell>
                   {row.min_dwell_seconds}–{row.max_dwell_seconds}s
                 </TableCell>
@@ -210,7 +182,7 @@ export function ScreensPage() {
   const [rows, setRows] = useState<ScreenRow[]>([]);
   const { schemas, error: schemasError } = useConfigSchemas(active);
   const [error, setError] = useState<string | null>(null);
-  const [addOpen, setAddOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<'create' | 'edit' | null>(null);
   const [editRow, setEditRow] = useState<ScreenRow | null>(null);
 
   const load = useCallback(async () => {
@@ -238,7 +210,7 @@ export function ScreensPage() {
   }, [load]);
 
   const schemaForType = useCallback(
-    (screenType: string) => prepareRjsfSchema(schemaForScreenType(schemas, screenType)),
+    (screenType: string) => schemaForScreenType(schemas, screenType),
     [schemas],
   );
 
@@ -269,6 +241,8 @@ export function ScreensPage() {
     return <NoDisplayPlaceholder />;
   }
 
+  const screenTypes = schemas?.screen_types ?? [];
+
   return (
     <Stack spacing={3}>
       <DisplayRefreshIndicator loading={loading} />
@@ -288,7 +262,14 @@ export function ScreensPage() {
         </Typography>
       </Box>
       <CatalogPageToolbar layout={layout} onLayoutChange={setLayout}>
-        <Button variant="contained" onClick={() => setAddOpen(true)} disabled={!schemas?.screen_types.length}>
+        <Button
+          variant="contained"
+          onClick={() => {
+            setEditRow(null);
+            setDialogMode('create');
+          }}
+          disabled={!screenTypes.length}
+        >
           Add screen
         </Button>
       </CatalogPageToolbar>
@@ -307,7 +288,11 @@ export function ScreensPage() {
             <ScreenCard
               key={r.id}
               row={r}
-              onEdit={() => setEditRow(r)}
+              screenTypes={screenTypes}
+              onEdit={() => {
+                setEditRow(r);
+                setDialogMode('edit');
+              }}
               onDelete={() => void deleteScreen(r.id)}
             />
           ))}
@@ -315,30 +300,30 @@ export function ScreensPage() {
       ) : (
         <ScreenTable
           rows={sortedRows}
-          onEdit={setEditRow}
+          screenTypes={screenTypes}
+          onEdit={(r) => {
+            setEditRow(r);
+            setDialogMode('edit');
+          }}
           onDelete={(id) => void deleteScreen(id)}
         />
       )}
 
-      {addOpen && schemas && (
-        <AddScreenDialog
-          screenTypes={schemas.screen_types}
+      {dialogMode && schemas && (
+        <ScreenDialog
+          open
+          mode={dialogMode}
+          active={active}
+          initial={dialogMode === 'edit' ? editRow : null}
+          screenTypes={screenTypes}
           schemaForType={schemaForType}
           exampleForType={exampleForType}
-          onClose={() => setAddOpen(false)}
-          onSaved={async () => {
-            setAddOpen(false);
-            await load();
+          onClose={() => {
+            setDialogMode(null);
+            setEditRow(null);
           }}
-        />
-      )}
-
-      {editRow && schemas && (
-        <EditScreenDialog
-          row={editRow}
-          schema={schemaForType(editRow.screen_type)}
-          onClose={() => setEditRow(null)}
           onSaved={async () => {
+            setDialogMode(null);
             setEditRow(null);
             await load();
           }}
@@ -350,15 +335,18 @@ export function ScreensPage() {
 
 function ScreenCard({
   row,
+  screenTypes,
   onEdit,
   onDelete,
 }: {
   row: ScreenRow;
+  screenTypes: { screen_type: string; config_json_schema?: unknown }[];
   onEdit: () => void;
   onDelete: () => void;
 }) {
   const title = screenRowTitle(row);
-  const typeLabel = screenTypeLabel(row.screen_type);
+  const meta = screenTypeMetaFor(screenTypes, row.screen_type);
+  const typeLabel = screenTypeLabel(row.screen_type, meta);
   const previewKind = screenTypePreviewKind(row.screen_type);
   const description = screenRowDescription(row);
 
@@ -416,232 +404,5 @@ function ScreenCard({
         </Button>
       </CardActions>
     </Card>
-  );
-}
-
-function AddScreenDialog({
-  screenTypes,
-  schemaForType,
-  exampleForType,
-  onClose,
-  onSaved,
-}: {
-  screenTypes: ScreenTypeSchemaMeta[];
-  schemaForType: (t: string) => RJSFSchema;
-  exampleForType: (t: string) => Record<string, unknown>;
-  onClose: () => void;
-  onSaved: () => Promise<void>;
-}) {
-  const { active } = useDisplay();
-  const [id, setId] = useState('');
-  const [screenType, setScreenType] = useState(screenTypes[0]?.screen_type ?? '');
-  const [formData, setFormData] = useState<Record<string, unknown>>(() =>
-    exampleForType(screenTypes[0]?.screen_type ?? ''),
-  );
-  const [err, setErr] = useState<string | null>(null);
-
-  useEffect(() => {
-    setFormData(exampleForType(screenType));
-  }, [screenType, exampleForType]);
-
-  const schema = useMemo(() => schemaForType(screenType), [schemaForType, screenType]);
-
-  const submit = async ({ formData: fd }: IChangeEvent<Record<string, unknown>>) => {
-    if (!active) return;
-    setErr(null);
-    const tid = id.trim();
-    if (!tid) {
-      setErr('Screen id is required.');
-      return;
-    }
-    try {
-      await apiFetch(active, '/v1/screens', {
-        method: 'POST',
-        body: JSON.stringify({
-          id: tid,
-          screen_type: screenType,
-          config_json: fd,
-        }),
-      });
-      await completeDialogSave(onSaved, onClose);
-    } catch (e) {
-      setErr(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
-    }
-  };
-
-  return (
-    <Dialog open fullWidth maxWidth="md" onClose={onClose}>
-      <DialogTitle>Add screen</DialogTitle>
-      <DialogContent>
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          {err && <Alert severity="error">{err}</Alert>}
-          <TextField label="Screen id" value={id} onChange={(e) => setId(e.target.value)} required />
-          <FormControl fullWidth>
-            <InputLabel id="st">Screen type</InputLabel>
-            <Select
-              labelId="st"
-              label="Screen type"
-              value={screenType}
-              onChange={(e) => setScreenType(String(e.target.value))}
-            >
-              {screenTypes.map((m) => (
-                <MenuItem key={m.screen_type} value={m.screen_type}>
-                  {m.screen_type}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <Box sx={{ '& .MuiFormControl-root': { mb: 1 } }}>
-            <Form
-              schema={schema}
-              formData={formData}
-              validator={validator}
-              onChange={(e) => setFormData(e.formData)}
-              onSubmit={submit}
-            >
-              <Stack direction="row" spacing={1} sx={{ mt: 2, justifyContent: 'flex-end' }}>
-                <Button type="button" onClick={onClose}>
-                  Cancel
-                </Button>
-                <Button type="submit" variant="contained">
-                  Create
-                </Button>
-              </Stack>
-            </Form>
-          </Box>
-        </Stack>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function EditScreenDialog({
-  row,
-  schema,
-  onClose,
-  onSaved,
-}: {
-  row: ScreenRow;
-  schema: RJSFSchema;
-  onClose: () => void;
-  onSaved: () => Promise<void>;
-}) {
-  const { active } = useDisplay();
-  const [label, setLabel] = useState(row.label ?? '');
-  const [minDwell, setMinDwell] = useState(row.min_dwell_seconds);
-  const [maxDwell, setMaxDwell] = useState(row.max_dwell_seconds);
-  const [weight, setWeight] = useState(row.frequency_weight);
-  const [minGap, setMinGap] = useState(row.min_gap_between_shows_seconds);
-  const [minPlacements, setMinPlacements] = useState(row.min_placements_per_program);
-  const [maxPlacements, setMaxPlacements] = useState<number | ''>(
-    row.max_placements_per_program ?? '',
-  );
-  const [formData, setFormData] = useState<Record<string, unknown>>(() =>
-    parseJsonObject(row.config_json),
-  );
-  const [err, setErr] = useState<string | null>(null);
-
-  const submit = async () => {
-    if (!active) return;
-    setErr(null);
-    try {
-      await apiFetch(active, `/v1/screens/${encodeURIComponent(row.id)}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          label,
-          min_dwell_seconds: minDwell,
-          max_dwell_seconds: maxDwell,
-          frequency_weight: weight,
-          min_gap_between_shows_seconds: minGap,
-          min_placements_per_program: minPlacements,
-          max_placements_per_program:
-            maxPlacements === '' ? null : Number(maxPlacements),
-          config_json: formData,
-        }),
-      });
-      await completeDialogSave(onSaved, onClose);
-    } catch (e) {
-      setErr(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
-    }
-  };
-
-  return (
-    <Dialog open fullWidth maxWidth="md" onClose={onClose}>
-      <DialogTitle>Edit {row.id}</DialogTitle>
-      <DialogContent>
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          {err && <Alert severity="error">{err}</Alert>}
-          <TextField label="Label" value={label} onChange={(e) => setLabel(e.target.value)} fullWidth />
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField
-              label="Min dwell seconds"
-              type="number"
-              value={minDwell}
-              onChange={(e) => setMinDwell(Number(e.target.value) || 0)}
-              fullWidth
-            />
-            <TextField
-              label="Max dwell seconds"
-              type="number"
-              value={maxDwell}
-              onChange={(e) => setMaxDwell(Number(e.target.value) || 0)}
-              fullWidth
-            />
-          </Stack>
-          <TextField
-            label="Frequency weight"
-            type="number"
-            value={weight}
-            onChange={(e) => setWeight(Number(e.target.value) || 0)}
-            fullWidth
-            helperText="Higher values are chosen more often; recent appearances in the history window reduce effective weight."
-          />
-          <TextField
-            label="Min gap between shows (seconds)"
-            type="number"
-            value={minGap}
-            onChange={(e) => setMinGap(Number(e.target.value) || 0)}
-            fullWidth
-            helperText="Minimum time since the last showing before this screen is eligible again."
-          />
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField
-              label="Min placements per program"
-              type="number"
-              value={minPlacements}
-              onChange={(e) => setMinPlacements(Number(e.target.value) || 0)}
-              fullWidth
-            />
-            <TextField
-              label="Max placements per program"
-              type="number"
-              value={maxPlacements}
-              onChange={(e) =>
-                setMaxPlacements(e.target.value === '' ? '' : Number(e.target.value) || 0)
-              }
-              fullWidth
-              helperText="Leave empty for no cap."
-            />
-          </Stack>
-          <Typography variant="subtitle2">config.json</Typography>
-          <Form
-            schema={schema}
-            formData={formData}
-            validator={validator}
-            onChange={(e) => setFormData(e.formData)}
-          >
-            <Box sx={{ display: 'none' }}>
-              <button type="submit" />
-            </Box>
-          </Form>
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={() => void submit()}>
-          Save
-        </Button>
-      </DialogActions>
-    </Dialog>
   );
 }

@@ -6,7 +6,7 @@ void main() {
     final bundle = buildConfigJsonSchemasBundle();
     for (final key in [
       'screen_types',
-      'ticker_types',
+      'ticker_tape_types',
       'overlay_types',
       'integration_types',
     ]) {
@@ -20,12 +20,15 @@ void main() {
     final bundle = buildConfigJsonSchemasBundle();
     final screen = (bundle['screen_types']! as List).first as Map;
     expect(screen['screen_type'], isA<String>());
+    expect(screen['label'], isA<String>());
     expect(screen['config_json_schema'], isA<Map>());
     expect(screen['example_config_json'], isA<Map>());
 
     final integration =
         (bundle['integration_types']! as List).first as Map;
     expect(integration['integration_type'], isA<String>());
+    expect(integration['label'], isA<String>());
+    expect(integration['requires_accounts'], isA<bool>());
     expect(integration['config_json_schema'], isA<Map>());
     expect(integration['example_config_json'], isA<Map>());
   });

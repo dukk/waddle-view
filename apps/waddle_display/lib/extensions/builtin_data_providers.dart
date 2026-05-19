@@ -50,6 +50,10 @@ DataProviderRegistry buildBuiltinDataProviderRegistry() {
 
       BingImageOfDayDataProvider(),
 
+      GooglePhotosPhotosDataProvider(),
+
+      GooglePhotosVideosDataProvider(),
+
       StockQuoteDataProvider(),
 
       HomeAssistantDataProvider(),

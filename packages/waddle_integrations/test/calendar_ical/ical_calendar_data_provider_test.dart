@@ -109,7 +109,7 @@ void main() {
     expect(c.feeds.length, 1);
     expect(c.feeds.single.id, 'w');
     expect(c.feeds.single.url, 'https://x/y.ics');
-    expect(c.feeds.single.categoryId, 'work');
+    expect(c.feeds.single.categoryIds, ['work']);
     expect(c.feeds.single.enabled, isFalse);
     expect(c.pastDays, 3);
     expect(c.futureDays, 5);

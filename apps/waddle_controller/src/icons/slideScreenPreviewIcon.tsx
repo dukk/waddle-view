@@ -20,6 +20,7 @@ import ViewColumn from '@mui/icons-material/ViewColumn';
 import WbCloudy from '@mui/icons-material/WbCloudy';
 import Wifi from '@mui/icons-material/Wifi';
 import type { SlideScreenPreviewKind } from '@/util/programTelemetry';
+import { DigitalClockScreenIcon } from './DigitalClockScreenIcon';
 
 // To restore a custom glyph for one kind, replace its entry with a local createSvgIcon component.
 
@@ -30,6 +31,7 @@ const ICONS: Record<SlideScreenPreviewKind, SvgIconComponent> = {
   trivia: HelpOutline,
   wifi: Wifi,
   clock: Schedule,
+  digital_clock: DigitalClockScreenIcon,
   calendar: CalendarMonth,
   news: ArticleOutlined,
   news_columns: ViewColumn,

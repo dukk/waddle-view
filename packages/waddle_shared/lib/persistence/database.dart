@@ -7,7 +7,13 @@ import 'package:drift/native.dart';
 
 import '../config/integration_config_json.dart';
 import '../theme/display_program_history_kv.dart';
+import '../integration_accounts/integration_account_catalog.dart';
 import '../integration_accounts/integration_accounts_service.dart';
+import '../persistence/config_json_documentation.dart';
+import '../persistence/integration_type_label.dart';
+import '../persistence/overlay_type_label.dart';
+import '../persistence/screen_type_label.dart';
+import '../persistence/ticker_type_label.dart';
 import '../seed/tables/interests_locations_seed.dart';
 import 'display_overlay_sql.dart';
 import 'reject_term_defaults.dart';
@@ -19,6 +25,10 @@ part 'database.g.dart';
 @DriftDatabase(
   tables: [
     ContentCategories,
+    IntegrationTypes,
+    ScreenTypes,
+    TickerTapeTypes,
+    OverlayTypes,
     Integrations,
     IntegrationAccounts,
     IntegrationAccountLinks,
@@ -44,6 +54,7 @@ part 'database.g.dart';
     TriviaQuestions,
     TriviaGenerationBatches,
     CalendarEvents,
+    CalendarEventCategories,
     InterestsLocations,
     WeatherCurrent,
     WeatherAlerts,
@@ -68,7 +79,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 24;
+  int get schemaVersion => 30;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -82,6 +93,7 @@ WHERE dismissed_at IS NULL
 ORDER BY priority DESC, created_at DESC;
 ''');
       await customStatement(kEnsureOverlaysTableSql);
+      await customStatement(kEnsureOverlayTypesTableSql);
       await _ensureIntegrationsKeyValueIndexes(this);
       await _seedDefaultRejectTerms(this);
     },
@@ -242,6 +254,48 @@ ORDER BY priority DESC, created_at DESC;
       }
       if (from == 23 && to >= 24) {
         await _migrateV23ToV24DisplayEntityLabels(this);
+        if (to == 24) {
+          return;
+        }
+        from = 24;
+      }
+      if (from == 24 && to >= 25) {
+        await _migrateV24ToV25CalendarEventCategories(this, m);
+        if (to == 25) {
+          return;
+        }
+        from = 25;
+      }
+      if (from == 25 && to >= 26) {
+        await _migrateV25ToV26IntegrationTypes(this);
+        if (to == 26) {
+          return;
+        }
+        from = 26;
+      }
+      if (from == 26 && to >= 27) {
+        await _migrateV26ToV27DisplayTypeRegistries(this);
+        if (to == 27) {
+          return;
+        }
+        from = 27;
+      }
+      if (from == 27 && to >= 28) {
+        await _migrateV27ToV28TickerTapeTypesTable(this);
+        if (to == 28) {
+          return;
+        }
+        from = 28;
+      }
+      if (from == 28 && to >= 29) {
+        await _migrateV28ToV29TickerTapeSlotTypes(this);
+        if (to == 29) {
+          return;
+        }
+        from = 29;
+      }
+      if (from == 29 && to >= 30) {
+        await _migrateV29ToV30DropTickerTapeConfigKey(this);
         return;
       }
       throw UnsupportedError(
@@ -293,6 +347,8 @@ const String kDefaultCalendarIcalIntegrationId = 'default_calendar_ical';
 const String kDefaultPhotoOneDriveIntegrationId = 'default_photo_onedrive';
 const String kDefaultVideoOneDriveIntegrationId = 'default_video_onedrive';
 const String kDefaultPhotoFlickrIntegrationId = 'default_photo_flickr';
+const String kDefaultPhotoGoogleIntegrationId = 'default_photo_google';
+const String kDefaultVideoGoogleIntegrationId = 'default_video_google';
 const String kDefaultPhotoBingIotdIntegrationId =
     'default_photo_bing_image_of_the_day';
 
@@ -1334,6 +1390,115 @@ Future<void> _migrateV23ToV24DisplayEntityLabels(AppDatabase db) async {
   }
 }
 
+/// Extracts per-type schema/labels into [IntegrationTypes]; drops duplicated columns on [Integrations].
+Future<void> _migrateV25ToV26IntegrationTypes(AppDatabase db) async {
+  if (!await _sqliteTableExists(db, 'integrations')) {
+    return;
+  }
+  await db.customStatement('PRAGMA foreign_keys = OFF');
+  await db.customStatement('''
+CREATE TABLE IF NOT EXISTS integration_types (
+  integration_type TEXT NOT NULL PRIMARY KEY,
+  label TEXT NOT NULL,
+  config_json_schema TEXT,
+  requires_accounts INTEGER NOT NULL DEFAULT 0 CHECK (requires_accounts IN (0, 1))
+)
+''');
+
+  final typeSchemas = <String, String?>{};
+  final integrationRows = await db.customSelect('SELECT * FROM integrations').get();
+  for (final row in integrationRows) {
+    final type = row.read<String>('integration_type');
+    final schema = row.read<String?>('config_json_schema');
+    if (schema != null && schema.trim().isNotEmpty) {
+      typeSchemas.putIfAbsent(type, () => schema);
+    }
+  }
+
+  final allTypes = <String>{
+    ...typeSchemas.keys,
+    ...kProviderConfigJsonMeta.keys,
+    'news_facebook',
+    'news_twitter',
+    'news_linkedin',
+  };
+
+  for (final integrationType in allTypes) {
+    final schema = typeSchemas[integrationType] ??
+        providerConfigJsonDocForType(integrationType).schema;
+    final requires = integrationAccountTypesRequiredForIntegration(
+      integrationType,
+    ).isNotEmpty;
+    final label = integrationTypeLabel(integrationType);
+    await db.customStatement(
+      'INSERT OR REPLACE INTO integration_types '
+      '(integration_type, label, config_json_schema, requires_accounts) '
+      'VALUES (?, ?, ?, ?)',
+      [integrationType, label, schema, requires ? 1 : 0],
+    );
+  }
+
+  final hasConfigSchema =
+      await _sqliteColumnExists(db, 'integrations', 'config_json_schema');
+  final hasRequiresAccounts =
+      await _sqliteColumnExists(db, 'integrations', 'requires_accounts');
+  if (!hasConfigSchema && !hasRequiresAccounts) {
+    await db.customStatement('PRAGMA foreign_keys = ON');
+    return;
+  }
+
+  await db.customStatement('DROP INDEX IF EXISTS idx_integrations_enabled_accounts');
+  await db.customStatement('''
+CREATE TABLE integrations_new (
+  id TEXT NOT NULL PRIMARY KEY,
+  integration_type TEXT NOT NULL,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  poll_seconds INTEGER NOT NULL DEFAULT 60,
+  config_json TEXT,
+  accounts_ready INTEGER NOT NULL DEFAULT 1 CHECK (accounts_ready IN (0, 1))
+)
+''');
+  for (final row in integrationRows) {
+    await db.customStatement(
+      'INSERT INTO integrations_new '
+      '(id, integration_type, enabled, poll_seconds, config_json, accounts_ready) '
+      'VALUES (?, ?, ?, ?, ?, ?)',
+      [
+        row.read<String>('id'),
+        row.read<String>('integration_type'),
+        row.read<int>('enabled'),
+        row.read<int>('poll_seconds'),
+        row.read<String?>('config_json'),
+        row.read<int?>('accounts_ready') ?? 1,
+      ],
+    );
+  }
+  await db.customStatement('DROP TABLE integrations');
+  await db.customStatement('ALTER TABLE integrations_new RENAME TO integrations');
+  await db.customStatement(
+    'CREATE INDEX IF NOT EXISTS idx_integrations_enabled_accounts '
+    'ON integrations (enabled, accounts_ready)',
+  );
+  await db.customStatement('PRAGMA foreign_keys = ON');
+}
+
+/// Adds [calendar_event_categories] and backfills from legacy single [CalendarEvents.categoryId].
+Future<void> _migrateV24ToV25CalendarEventCategories(
+  AppDatabase db,
+  Migrator m,
+) async {
+  await m.createTable(db.calendarEventCategories);
+  if (!await _sqliteTableExists(db, 'calendar_events')) {
+    return;
+  }
+  await db.customStatement(
+    '''
+INSERT OR IGNORE INTO calendar_event_categories (event_id, category_id)
+SELECT id, category_id FROM calendar_events WHERE category_id IS NOT NULL
+''',
+  );
+}
+
 Future<void> _migrateV22ToV23IntegrationsAccountsReady(AppDatabase db) async {
   if (!await _sqliteTableExists(db, 'integrations')) {
     return;
@@ -1350,7 +1515,7 @@ Future<void> _migrateV22ToV23IntegrationsAccountsReady(AppDatabase db) async {
   }
   await db.customStatement(
     'CREATE INDEX IF NOT EXISTS idx_integrations_enabled_accounts '
-    'ON integrations (enabled, accounts_ready, requires_accounts)',
+    'ON integrations (enabled, accounts_ready)',
   );
   await backfillIntegrationsAccountsReadyColumns(db);
 }
@@ -1386,6 +1551,438 @@ Future<void> _migrateV21ToV22DisplayProgramHistoryDepth(AppDatabase db) async {
           value: '$depth',
         ),
       );
+}
+
+/// Extracts per-type schema/labels into [ScreenTypes], [TickerTapeTypes], [OverlayTypes];
+/// drops duplicated columns on instance tables.
+Future<void> _migrateV26ToV27DisplayTypeRegistries(AppDatabase db) async {
+  await db.customStatement('PRAGMA foreign_keys = OFF');
+
+  await db.customStatement('''
+CREATE TABLE IF NOT EXISTS screen_types (
+  screen_type TEXT NOT NULL PRIMARY KEY,
+  label TEXT NOT NULL,
+  config_json_schema TEXT
+)
+''');
+
+  final screenTypeSchemas = <String, String?>{};
+  if (await _sqliteTableExists(db, 'screens')) {
+    final screenRows = await db.customSelect('SELECT * FROM screens').get();
+    for (final row in screenRows) {
+      final type = row.read<String>('screen_type');
+      final schema = row.read<String?>('config_json_schema');
+      if (schema != null && schema.trim().isNotEmpty) {
+        screenTypeSchemas.putIfAbsent(type, () => schema);
+      }
+    }
+    final allScreenTypes = <String>{
+      ...screenTypeSchemas.keys,
+      ...kScreenLayoutWidgetTypes,
+    };
+    for (final screenType in allScreenTypes) {
+      final schema = screenTypeSchemas[screenType] ??
+          screenConfigJsonDocForType(screenType).schema;
+      await db.customStatement(
+        'INSERT OR REPLACE INTO screen_types '
+        '(screen_type, label, config_json_schema) VALUES (?, ?, ?)',
+        [screenType, screenTypeLabel(screenType), schema],
+      );
+    }
+
+    final hasScreenSchema =
+        await _sqliteColumnExists(db, 'screens', 'config_json_schema');
+    if (hasScreenSchema) {
+      await db.customStatement('''
+CREATE TABLE screens_new (
+  id TEXT NOT NULL PRIMARY KEY,
+  label TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  screen_type TEXT NOT NULL,
+  config_json TEXT NOT NULL DEFAULT '{}',
+  min_dwell_seconds INTEGER NOT NULL DEFAULT 8,
+  max_dwell_seconds INTEGER NOT NULL DEFAULT 15,
+  frequency_weight INTEGER NOT NULL DEFAULT 100,
+  min_gap_between_shows_seconds INTEGER NOT NULL DEFAULT 0,
+  min_placements_per_program INTEGER NOT NULL DEFAULT 0,
+  max_placements_per_program INTEGER,
+  data_key TEXT NOT NULL DEFAULT ''
+)
+''');
+      for (final row in screenRows) {
+        await db.customStatement(
+          'INSERT INTO screens_new ('
+          'id, label, description, screen_type, config_json, '
+          'min_dwell_seconds, max_dwell_seconds, frequency_weight, '
+          'min_gap_between_shows_seconds, min_placements_per_program, '
+          'max_placements_per_program, data_key) '
+          'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [
+            row.read<String>('id'),
+            row.read<String>('label'),
+            row.read<String>('description'),
+            row.read<String>('screen_type'),
+            row.read<String>('config_json'),
+            row.read<int>('min_dwell_seconds'),
+            row.read<int>('max_dwell_seconds'),
+            row.read<int>('frequency_weight'),
+            row.read<int>('min_gap_between_shows_seconds'),
+            row.read<int>('min_placements_per_program'),
+            row.read<int?>('max_placements_per_program'),
+            row.read<String>('data_key'),
+          ],
+        );
+      }
+      await db.customStatement('DROP TABLE screens');
+      await db.customStatement('ALTER TABLE screens_new RENAME TO screens');
+    }
+  }
+
+  await db.customStatement('''
+CREATE TABLE IF NOT EXISTS ticker_tape_types (
+  ticker_type TEXT NOT NULL PRIMARY KEY,
+  label TEXT NOT NULL,
+  config_json_schema TEXT
+)
+''');
+
+  final tickerTypeSchemas = <String, String?>{};
+  if (await _sqliteTableExists(db, 'ticker_tapes')) {
+    final tickerRows = await db.customSelect('SELECT * FROM ticker_tapes').get();
+    for (final row in tickerRows) {
+      final type = row.read<String>('ticker_type');
+      final schema = row.read<String?>('config_json_schema');
+      if (schema != null && schema.trim().isNotEmpty) {
+        tickerTypeSchemas.putIfAbsent(type, () => schema);
+      }
+    }
+    final allTickerTypes = <String>{
+      ...tickerTypeSchemas.keys,
+      ...kTickerSlotDefinitionTypes,
+    };
+    for (final tickerType in allTickerTypes) {
+      final schema = tickerTypeSchemas[tickerType] ??
+          tickerSlotConfigJsonDocForType(tickerType).schema;
+      await db.customStatement(
+        'INSERT OR REPLACE INTO ticker_tape_types '
+        '(ticker_type, label, config_json_schema) VALUES (?, ?, ?)',
+        [tickerType, tickerTypeLabel(tickerType), schema],
+      );
+    }
+
+    final hasTickerSchema =
+        await _sqliteColumnExists(db, 'ticker_tapes', 'config_json_schema');
+    if (hasTickerSchema) {
+      await db.customStatement('''
+CREATE TABLE ticker_tapes_new (
+  id TEXT NOT NULL PRIMARY KEY,
+  label TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  ticker_type TEXT NOT NULL,
+  frequency_weight INTEGER NOT NULL DEFAULT 100,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  config_json TEXT NOT NULL DEFAULT '{}'
+)
+''');
+      for (final row in tickerRows) {
+        await db.customStatement(
+          'INSERT INTO ticker_tapes_new ('
+          'id, label, description, ticker_type, frequency_weight, '
+          'sort_order, config_json) '
+          'VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [
+            row.read<String>('id'),
+            row.read<String>('label'),
+            row.read<String>('description'),
+            row.read<String>('ticker_type'),
+            row.read<int>('frequency_weight'),
+            row.read<int>('sort_order'),
+            row.read<String>('config_json'),
+          ],
+        );
+      }
+      await db.customStatement('DROP TABLE ticker_tapes');
+      await db.customStatement('ALTER TABLE ticker_tapes_new RENAME TO ticker_tapes');
+    }
+  }
+
+  await db.customStatement(kEnsureOverlayTypesTableSql);
+
+  final overlayTypeSchemas = <String, String?>{};
+  if (await _sqliteTableExists(db, 'overlays')) {
+    final overlayRows = await db.customSelect('SELECT * FROM overlays').get();
+    for (final row in overlayRows) {
+      final type = row.read<String>('overlay_type');
+      final schema = row.read<String?>('config_json_schema');
+      if (schema != null && schema.trim().isNotEmpty) {
+        overlayTypeSchemas.putIfAbsent(type, () => schema);
+      }
+    }
+    final allOverlayTypes = <String>{
+      ...overlayTypeSchemas.keys,
+      ...kBuiltinOverlayTypes,
+    };
+    for (final overlayType in allOverlayTypes) {
+      final schema = overlayTypeSchemas[overlayType] ??
+          displayOverlayConfigJsonDocForType(overlayType).schema;
+      await db.customStatement(
+        'INSERT OR REPLACE INTO overlay_types '
+        '(overlay_type, label, config_json_schema) VALUES (?, ?, ?)',
+        [overlayType, overlayTypeLabel(overlayType), schema],
+      );
+    }
+
+    final hasOverlaySchema =
+        await _sqliteColumnExists(db, 'overlays', 'config_json_schema');
+    if (hasOverlaySchema) {
+      await db.customStatement('''
+CREATE TABLE overlays_new (
+  id TEXT NOT NULL PRIMARY KEY,
+  overlay_type TEXT NOT NULL,
+  label TEXT NOT NULL DEFAULT '',
+  config_json TEXT NOT NULL DEFAULT '{}'
+)
+''');
+      for (final row in overlayRows) {
+        await db.customStatement(
+          'INSERT INTO overlays_new (id, overlay_type, label, config_json) '
+          'VALUES (?, ?, ?, ?)',
+          [
+            row.read<String>('id'),
+            row.read<String>('overlay_type'),
+            row.read<String>('label'),
+            row.read<String>('config_json'),
+          ],
+        );
+      }
+      await db.customStatement('DROP TABLE overlays');
+      await db.customStatement('ALTER TABLE overlays_new RENAME TO overlays');
+    }
+  } else {
+    for (final overlayType in kBuiltinOverlayTypes) {
+      final doc = displayOverlayConfigJsonDocForType(overlayType);
+      await db.customStatement(
+        'INSERT OR REPLACE INTO overlay_types '
+        '(overlay_type, label, config_json_schema) VALUES (?, ?, ?)',
+        [overlayType, overlayTypeLabel(overlayType), doc.schema],
+      );
+    }
+  }
+
+  await db.customStatement('PRAGMA foreign_keys = ON');
+}
+
+/// Renames legacy `ticker_types` registry table to [TickerTapeTypes] SQL name.
+Future<void> _migrateV27ToV28TickerTapeTypesTable(AppDatabase db) async {
+  if (await _sqliteTableExists(db, 'ticker_types') &&
+      !await _sqliteTableExists(db, 'ticker_tape_types')) {
+    await db.customStatement('ALTER TABLE ticker_types RENAME TO ticker_tape_types');
+  }
+}
+
+/// Removes `quote`/`custom` ticker types, migrates tapes to `static_text`, and
+/// strips weather/news fallback keys from [TickerTapes.configJson].
+Future<void> _migrateV28ToV29TickerTapeSlotTypes(AppDatabase db) async {
+  if (!await _sqliteTableExists(db, 'ticker_tapes')) {
+    return;
+  }
+
+  final kv = <String, String>{};
+  if (await _sqliteTableExists(db, 'config_key_values')) {
+    final kvRows = await db.customSelect(
+      "SELECT key, value FROM config_key_values WHERE key LIKE 'ticker.marquee.%'",
+    ).get();
+    for (final row in kvRows) {
+      kv[row.read<String>('key')] = row.read<String>('value');
+    }
+  }
+
+  final tapes = await db.customSelect('SELECT * FROM ticker_tapes').get();
+  for (final row in tapes) {
+    final id = row.read<String>('id');
+    final originalType = row.read<String>('ticker_type');
+    var configJson = row.read<String>('config_json');
+    final configKey = row.read<String?>('config_key');
+
+    if (originalType == 'quote' || originalType == 'custom') {
+      configJson = jsonEncode(
+        _staticTextConfigFromLegacyTape(
+          configJson,
+          configKey: configKey,
+          kv: kv,
+          wasCustom: originalType == 'custom',
+        ),
+      );
+      await db.customStatement(
+        'UPDATE ticker_tapes SET ticker_type = ?, config_json = ?, '
+        'config_key = NULL WHERE id = ?',
+        ['static_text', configJson, id],
+      );
+    } else if (originalType == 'weather' || originalType == 'news') {
+      configJson = jsonEncode(_stripTickerTapeFallbackKeys(configJson));
+      await db.customStatement(
+        'UPDATE ticker_tapes SET config_json = ? WHERE id = ?',
+        [configJson, id],
+      );
+    }
+  }
+
+  final registryTable = await _sqliteTableExists(db, 'ticker_tape_types')
+      ? 'ticker_tape_types'
+      : (await _sqliteTableExists(db, 'ticker_types') ? 'ticker_types' : null);
+  if (registryTable != null) {
+    await db.customStatement(
+      "DELETE FROM $registryTable WHERE ticker_type IN ('quote', 'custom')",
+    );
+    for (final tickerType in kTickerSlotDefinitionTypes) {
+      final schema = tickerSlotConfigJsonDocForType(tickerType).schema;
+      await db.customStatement(
+        'INSERT OR REPLACE INTO $registryTable '
+        '(ticker_type, label, config_json_schema) VALUES (?, ?, ?)',
+        [tickerType, tickerTypeLabel(tickerType), schema],
+      );
+    }
+  }
+}
+
+Map<String, Object?> _parseTickerTapeConfigJsonMap(String rawConfigJson) {
+  final t = rawConfigJson.trim();
+  if (t.isEmpty || t == '{}') {
+    return <String, Object?>{};
+  }
+  try {
+    final decoded = jsonDecode(t);
+    if (decoded is! Map) {
+      return <String, Object?>{};
+    }
+    return decoded.map((k, Object? v) => MapEntry(k.toString(), v));
+  } on Object {
+    return <String, Object?>{};
+  }
+}
+
+Map<String, String> _stripTickerTapeFallbackKeys(String rawConfigJson) {
+  final m = _parseTickerTapeConfigJsonMap(rawConfigJson);
+  m.remove('fallbackText');
+  m.remove('ticker.marquee.weather');
+  m.remove('ticker.marquee.news');
+  m.remove('ticker.marquee.quote');
+  return m.map((k, v) => MapEntry(k, v?.toString() ?? ''));
+}
+
+Map<String, String> _staticTextConfigFromLegacyTape(
+  String rawConfigJson, {
+  String? configKey,
+  required Map<String, String> kv,
+  required bool wasCustom,
+}) {
+  final m = _parseTickerTapeConfigJsonMap(rawConfigJson);
+  var text = (m['text'] as String?)?.trim() ?? '';
+  if (text.isEmpty) {
+    text = (m['fallbackText'] as String?)?.trim() ?? '';
+  }
+  if (text.isEmpty) {
+    final legacyQuote = m['ticker.marquee.quote'];
+    if (legacyQuote is String && legacyQuote.trim().isNotEmpty) {
+      text = legacyQuote.trim();
+    }
+  }
+  if (text.isEmpty && wasCustom) {
+    final key = configKey?.trim();
+    if (key != null && key.isNotEmpty) {
+      text = kv[key]?.trim() ?? '';
+    }
+    if (text.isEmpty) {
+      final fromConfig = m.entries
+          .where((e) => e.key.startsWith('ticker.marquee.'))
+          .map((e) => e.value?.toString().trim() ?? '')
+          .where((s) => s.isNotEmpty)
+          .toList()
+        ..sort();
+      if (fromConfig.isNotEmpty) {
+        text = fromConfig.join(' · ');
+      }
+    }
+    if (text.isEmpty) {
+      final keys = kv.keys.where((k) => k.startsWith('ticker.marquee.')).toList()
+        ..sort();
+      final lines = keys.map((k) => kv[k]!.trim()).where((s) => s.isNotEmpty).toList();
+      if (lines.isNotEmpty) {
+        text = lines.join(' · ');
+      }
+    }
+  }
+  return {'text': text};
+}
+
+/// Drops legacy [TickerTapes.configKey] column from `ticker_tapes`.
+Future<void> _migrateV29ToV30DropTickerTapeConfigKey(AppDatabase db) async {
+  if (!await _sqliteTableExists(db, 'ticker_tapes')) {
+    return;
+  }
+  if (!await _sqliteColumnExists(db, 'ticker_tapes', 'config_key')) {
+    return;
+  }
+
+  final kv = <String, String>{};
+  if (await _sqliteTableExists(db, 'config_key_values')) {
+    final kvRows = await db.customSelect(
+      "SELECT key, value FROM config_key_values WHERE key LIKE 'ticker.marquee.%'",
+    ).get();
+    for (final row in kvRows) {
+      kv[row.read<String>('key')] = row.read<String>('value');
+    }
+  }
+
+  final tapes = await db.customSelect('SELECT * FROM ticker_tapes').get();
+  final migrated = <List<Object?>>[];
+  for (final row in tapes) {
+    var configJson = row.read<String>('config_json');
+    final configKey = row.read<String?>('config_key');
+    final key = configKey?.trim();
+    if (key != null && key.isNotEmpty) {
+      final m = _parseTickerTapeConfigJsonMap(configJson);
+      final text = (m['text'] as String?)?.trim() ?? '';
+      if (text.isEmpty) {
+        final fromKv = kv[key]?.trim() ?? '';
+        if (fromKv.isNotEmpty) {
+          m['text'] = fromKv;
+          configJson = jsonEncode(m);
+        }
+      }
+    }
+    migrated.add([
+      row.read<String>('id'),
+      row.read<String>('label'),
+      row.read<String>('description'),
+      row.read<String>('ticker_type'),
+      row.read<int>('frequency_weight'),
+      row.read<int>('sort_order'),
+      configJson,
+    ]);
+  }
+
+  await db.customStatement('''
+CREATE TABLE ticker_tapes_new (
+  id TEXT NOT NULL PRIMARY KEY,
+  label TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  ticker_type TEXT NOT NULL,
+  frequency_weight INTEGER NOT NULL DEFAULT 100,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  config_json TEXT NOT NULL DEFAULT '{}'
+)
+''');
+  for (final args in migrated) {
+    await db.customStatement(
+      'INSERT INTO ticker_tapes_new ('
+      'id, label, description, ticker_type, frequency_weight, '
+      'sort_order, config_json) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      args,
+    );
+  }
+  await db.customStatement('DROP TABLE ticker_tapes');
+  await db.customStatement('ALTER TABLE ticker_tapes_new RENAME TO ticker_tapes');
 }
 
 /// Opens a file-backed SQLite at [sqliteFile] (e.g. for `waddlectl --database`).

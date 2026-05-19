@@ -1,9 +1,9 @@
 import 'dart:convert';
 
-import 'package:drift/drift.dart' show Value;
+import 'package:drift/drift.dart' show OrderingTerm, Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-import 'package:waddle_display/config/google_kv.dart';
+import 'package:waddle_shared/config/google_kv.dart';
 import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
 import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
@@ -22,8 +22,8 @@ void main() {
   test('GoogleCalendarExtraConfig defaults and parses accounts', () {
     final c = GoogleCalendarExtraConfig.parse(null);
     expect(c.accounts, isEmpty);
-    expect(c.pastDays, 14);
-    expect(c.futureDays, 14);
+    expect(c.pastDays, 30);
+    expect(c.futureDays, 30);
 
     final raw = GoogleCalendarExtraConfig.parse(
       '{"accounts":[{"googleAccountKey":"a","sources":[{"calendars":["primary"]}]}],"pastDays":2,"futureDays":6}',
@@ -43,9 +43,9 @@ void main() {
       '{"accounts":[{"googleAccountKey":"u","sources":[{"defaultCategory":"general","calendars":[{"calendar":"primary","category":"family"}]}]}]}',
     );
     final source = raw.accounts.single.sources.single;
-    expect(source.defaultCategoryId, 'general');
+    expect(source.defaultCategoryIds, ['general']);
     expect(source.calendars.single.nameOrId, 'primary');
-    expect(source.calendars.single.categoryId, 'family');
+    expect(source.calendars.single.categoryIds, ['family']);
   });
 
   test('empty accounts performs no HTTP', () async {
@@ -124,6 +124,37 @@ void main() {
     expect(rows.single.source, googleCalendarEventSource('u'));
     expect(rows.single.icalUid, 'google-ical-1');
     expect(rows.single.categoryId, 'family');
+    final junction = await db.select(db.calendarEventCategories).get();
+    expect(junction.length, 1);
+    expect(junction.single.categoryId, 'family');
+    await db.close();
+  });
+
+  test('sync stores multiple categoryIds per event', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await seedContentCategoriesForTest(db, const ['family', 'work']);
+    await _seedKvAndProvider(
+      db,
+      extraAccountsJson:
+          '[{"googleAccountKey":"u","sources":[{"calendars":[{"calendar":"primary","categoryIds":["family","work"]}]}]}]',
+    );
+    final secrets = InMemorySecretStore();
+    await secrets.write(googleAccessTokenSecret('u'), 'tok');
+    await seedIntegrationKvForTest(
+      db,
+      accountId: 'u',
+      key: kIntegrationAccessTokenExpiresAtKey,
+      value: '${DateTime.now().millisecondsSinceEpoch + 86400000}',
+      accountType: kIntegrationAccountTypeGoogle,
+    );
+    final http = _RefreshThenGoogleClient();
+    final p = GoogleCalendarDataProvider(httpClient: http);
+    await p.collect(await _ctx(db, secrets));
+    final junction = await (db.select(db.calendarEventCategories)
+          ..orderBy([(t) => OrderingTerm.asc(t.categoryId)]))
+        .get();
+    expect(junction.map((r) => r.categoryId).toList(), ['family', 'work']);
     await db.close();
   });
 
@@ -156,7 +187,10 @@ void main() {
     await p.collect(await _ctx(db, secrets));
     final alerts = await db.select(db.alerts).get();
     expect(alerts.length, 1);
-    expect(alerts.single.source, kGoogleOAuthAlertSource);
+    expect(
+      alerts.single.source,
+      anyOf(kGoogleOAuthAlertSource, kGoogleOAuthAlertSourceLegacy),
+    );
     expect(alerts.single.severity, 'auth');
     expect(alerts.single.body, contains('ABCD-EFGH'));
     expect(alerts.single.title, contains('u'));

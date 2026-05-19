@@ -45,40 +45,38 @@ void main() {
     expect(news.rss?.summary.contains('damn'), isFalse);
   });
 
-  test('custom KV marquee body censored when custom tape enabled', () {
+  test('static_text body censored when tape enabled', () {
     final ctx = _ctx(
       entries: [(term: 'damn', action: kRejectTermActionCensor)],
     );
     final items = buildTickerItemsForMarquee(
-      kv: const {
-        'ticker.marquee.custom1': 'damn good day',
-      },
+      kv: const {},
       nowLocal: DateTime(2026, 1, 1, 12, 0, 0),
       newsCandidates: const [],
       rejectCtx: ctx,
       definitions: const [
         TickerTapeForCuration(
-          id: 'q',
-          tickerType: 'quote',
+          id: 's',
+          tickerType: 'static_text',
           frequencyWeight: 1,
           sortOrder: 0,
-          configJson: '{"fallbackText":"That was so damn fast."}',
+          configJson: '{"text":"That was so damn fast."}',
         ),
         TickerTapeForCuration(
-          id: 'c',
-          tickerType: 'custom',
+          id: 's2',
+          tickerType: 'static_text',
           frequencyWeight: 1,
           sortOrder: 10,
+          configJson: '{"text":"damn good day"}',
         ),
       ],
     );
-    final quote = items.firstWhere((e) => e.kind == 'quote');
-    final custom = items.firstWhere((e) => e.kind == 'custom');
-    expect(quote.body.contains('damn'), isFalse);
-    expect(custom.body.contains('damn'), isFalse);
+    for (final line in items.where((e) => e.kind == 'static_text')) {
+      expect(line.body.contains('damn'), isFalse);
+    }
   });
 
-  test('empty reject context preserves bodies unchanged', () {
+  test('empty reject context preserves static_text unchanged', () {
     final items = buildTickerItemsForMarquee(
       kv: const {},
       nowLocal: DateTime(2026, 1, 1, 12, 0, 0),
@@ -86,16 +84,16 @@ void main() {
       rejectCtx: const RejectFilterContext.empty(),
       definitions: const [
         TickerTapeForCuration(
-          id: 'q',
-          tickerType: 'quote',
+          id: 's',
+          tickerType: 'static_text',
           frequencyWeight: 1,
           sortOrder: 0,
-          configJson: '{"fallbackText":"A damn quote"}',
+          configJson: '{"text":"A damn quote"}',
         ),
       ],
     );
-    final quote = items.firstWhere((e) => e.kind == 'quote');
-    expect(quote.body, 'A damn quote');
+    final line = items.firstWhere((e) => e.kind == 'static_text');
+    expect(line.body, 'A damn quote');
   });
 
   test('bracketed_token format applied to news segments', () {

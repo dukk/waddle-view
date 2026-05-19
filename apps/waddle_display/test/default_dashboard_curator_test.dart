@@ -112,14 +112,12 @@ void main() {
             tickerType: 'weather',
             frequencyWeight: 1,
             sortOrder: 10,
-            configJson: '{"fallbackText":"Cold"}',
           ),
           TickerTapeForCuration(
             id: 'ticker_news',
             tickerType: 'news',
             frequencyWeight: 1,
             sortOrder: 20,
-            configJson: '{"fallbackText":"Headline"}',
           ),
         ],
       ),
@@ -128,14 +126,8 @@ void main() {
     );
     await curator.refresh();
     expect(store.last, isNotNull);
-    expect(store.last!.map((e) => e.kind).toList(), [
-      'time',
-      'weather',
-      'news',
-    ]);
+    expect(store.last!.map((e) => e.kind).toList(), ['time']);
     expect(store.last![0].body, '15:00:00');
-    expect(store.last![1].body, 'Cold');
-    expect(store.last![2].body, 'Headline');
   });
 
   test('refresh includes stock quotes when ticker_tapes includes stocks', () async {
@@ -189,14 +181,12 @@ void main() {
             tickerType: 'weather',
             frequencyWeight: 1,
             sortOrder: 10,
-            configJson: '{"fallbackText":"Fallback Weather"}',
           ),
           TickerTapeForCuration(
             id: 'ticker_news',
             tickerType: 'news',
             frequencyWeight: 1,
             sortOrder: 20,
-            configJson: '{"fallbackText":"Headline"}',
           ),
         ],
         currentWeather: const CurrentWeatherTickerData(

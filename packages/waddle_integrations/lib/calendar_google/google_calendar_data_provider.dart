@@ -15,8 +15,10 @@ import 'package:waddle_shared/secrets/secret_store.dart';
 import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
+import '../shared/calendar_event_upsert.dart';
 import '../shared/calendar_provider_calendar_entry.dart';
 import '../shared/provider_calendar_date_time.dart';
+import 'package:waddle_shared/persistence/calendar_event_categories.dart';
 import 'google_calendar_extra_config.dart';
 import 'google_oauth.dart';
 
@@ -154,7 +156,7 @@ class GoogleCalendarDataProvider implements IDataProvider {
             calendarId: calendarId,
             windowStart: window.$1,
             windowEndExclusive: window.$2,
-            forceCategoryId: entry.categoryId,
+            forceCategoryIds: entry.categoryIds,
           );
           didSync = true;
         }
@@ -306,7 +308,7 @@ class GoogleCalendarDataProvider implements IDataProvider {
       return [
         ProviderCalendarEntry(
           nameOrId: 'primary',
-          categoryId: src.defaultCategoryId,
+          categoryIds: src.defaultCategoryIds,
         ),
       ];
     }
@@ -314,7 +316,9 @@ class GoogleCalendarDataProvider implements IDataProvider {
         .map(
           (e) => ProviderCalendarEntry(
             nameOrId: e.nameOrId,
-            categoryId: e.categoryId ?? src.defaultCategoryId,
+            categoryIds: e.categoryIds.isNotEmpty
+                ? e.categoryIds
+                : src.defaultCategoryIds,
           ),
         )
         .toList();
@@ -340,7 +344,7 @@ class GoogleCalendarDataProvider implements IDataProvider {
     required String calendarId,
     required DateTime windowStart,
     required DateTime windowEndExclusive,
-    String? forceCategoryId,
+    List<String> forceCategoryIds = const [],
   }) async {
     var url =
         '$baseUrl/calendars/${Uri.encodeComponent(calendarId)}/events?singleEvents=true&orderBy=startTime&maxResults=250'
@@ -377,7 +381,7 @@ class GoogleCalendarDataProvider implements IDataProvider {
               googleAccountKey: googleAccountKey,
               calendarId: calendarId,
               event: e,
-              forceCategoryId: forceCategoryId,
+              forceCategoryIds: forceCategoryIds,
             );
           }
         }
@@ -399,7 +403,7 @@ class GoogleCalendarDataProvider implements IDataProvider {
     required String googleAccountKey,
     required String calendarId,
     required Map<String, dynamic> event,
-    String? forceCategoryId,
+    List<String> forceCategoryIds = const [],
   }) async {
     final eventId = event['id'];
     if (eventId is! String || eventId.isEmpty) {
@@ -421,31 +425,30 @@ class GoogleCalendarDataProvider implements IDataProvider {
     final icalUid = icalRaw is String && icalRaw.trim().isNotEmpty
         ? icalRaw.trim()
         : null;
-    final trimmedForce = forceCategoryId?.trim();
-    final categoryId =
-        trimmedForce != null && trimmedForce.isNotEmpty ? trimmedForce : null;
-    await db.into(db.calendarEvents).insertOnConflictUpdate(
-          CalendarEventsCompanion.insert(
-            id: googleCalendarEventRowId(googleAccountKey, calendarId, eventId),
-            title: title,
-            startMs: start,
-            endMs: end,
-            allDay: Value(allDay),
-            location: Value(
-              locationRaw is String && locationRaw.isNotEmpty ? locationRaw : null,
-            ),
-            description: Value(
-              descriptionRaw is String && descriptionRaw.isNotEmpty
-                  ? descriptionRaw
-                  : null,
-            ),
-            source: Value(googleCalendarEventSource(googleAccountKey)),
-            externalId: Value(eventId),
-            icalUid: Value(icalUid),
-            categoryId: Value(categoryId),
-            updatedAtMs: DateTime.fromMillisecondsSinceEpoch(_nowMs()),
-          ),
-        );
+    final categoryIds = normalizeCalendarEventCategoryIds(forceCategoryIds);
+    await upsertCalendarEventWithCategories(
+      db,
+      companion: CalendarEventsCompanion.insert(
+        id: googleCalendarEventRowId(googleAccountKey, calendarId, eventId),
+        title: title,
+        startMs: start,
+        endMs: end,
+        allDay: Value(allDay),
+        location: Value(
+          locationRaw is String && locationRaw.isNotEmpty ? locationRaw : null,
+        ),
+        description: Value(
+          descriptionRaw is String && descriptionRaw.isNotEmpty
+              ? descriptionRaw
+              : null,
+        ),
+        source: Value(googleCalendarEventSource(googleAccountKey)),
+        externalId: Value(eventId),
+        icalUid: Value(icalUid),
+        updatedAtMs: DateTime.fromMillisecondsSinceEpoch(_nowMs()),
+      ),
+      categoryIds: categoryIds,
+    );
   }
 
   DateTime? _parseEventDateTime(Object? raw, {required bool isAllDay}) {

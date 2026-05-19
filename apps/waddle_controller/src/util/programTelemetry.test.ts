@@ -205,6 +205,7 @@ describe('screenTypePreviewKind', () => {
     expect(screenTypePreviewKind('photo')).toBe('photo');
     expect(screenTypePreviewKind('video')).toBe('video');
     expect(screenTypePreviewKind('photo_collage')).toBe('photo_collage');
+    expect(screenTypePreviewKind('digital_clock')).toBe('digital_clock');
     expect(screenTypePreviewKind('web_page')).toBeNull();
   });
 
@@ -220,7 +221,7 @@ describe('slideScreenPreviewKind', () => {
       slideScreenPreviewKind(
         buildSlideCardModel({ screen_id: 'a', screen_type: 'digital_clock', layout_json: {} }, 0),
       ),
-    ).toBe('clock');
+    ).toBe('digital_clock');
     expect(
       slideScreenPreviewKind(
         buildSlideCardModel({ screen_id: 'b', screen_type: 'stock_quotes', layout_json: {} }, 0),

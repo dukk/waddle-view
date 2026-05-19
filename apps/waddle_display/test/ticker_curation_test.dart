@@ -34,96 +34,54 @@ void main() {
     expect(c.publishedAt.millisecondsSinceEpoch, 0);
   });
 
-  test('parseTickerTapeFallbackText reads fallbackText and legacy keys', () {
+  test('parseTickerTapeStaticText reads text field', () {
     expect(
-      parseTickerTapeFallbackText(jsonEncode({'fallbackText': '  x '})),
+      parseTickerTapeStaticText(jsonEncode({'text': '  x '})),
       'x',
     );
-    expect(
-      parseTickerTapeFallbackText(jsonEncode({'ticker.marquee.quote': 'y'})),
-      'y',
-    );
-    expect(parseTickerTapeFallbackText(''), isNull);
-    expect(parseTickerTapeFallbackText('not json'), isNull);
+    expect(parseTickerTapeStaticText(''), isNull);
+    expect(parseTickerTapeStaticText('not json'), isNull);
   });
 
-  test('buildTickerItemsForMarquee quote tape uses config_json fallback', () {
+  test('parseTickerTapePluginFallbackText reads fallbackText only', () {
+    expect(
+      parseTickerTapePluginFallbackText(jsonEncode({'fallbackText': '  p '})),
+      'p',
+    );
+    expect(parseTickerTapePluginFallbackText(jsonEncode({'text': 'x'})), isNull);
+  });
+
+  test('buildTickerItemsForMarquee static_text tape uses config_json text', () {
     final items = buildTickerItemsForMarquee(
       kv: const {},
       nowLocal: DateTime(2026, 1, 1, 12, 0, 0),
       newsCandidates: const [],
       definitions: const [
         TickerTapeForCuration(
-          id: 'q',
-          tickerType: 'quote',
+          id: 's',
+          tickerType: 'static_text',
           frequencyWeight: 1,
           sortOrder: 0,
-          configJson: '{"fallbackText":"Inspiration"}',
+          configJson: '{"text":"Inspiration"}',
         ),
       ],
     );
-    final q = items.singleWhere((e) => e.kind == 'quote');
-    expect(q.body, 'Inspiration');
-    expect(q.sourceId, 'ticker_tape:q');
+    final line = items.singleWhere((e) => e.kind == 'static_text');
+    expect(line.body, 'Inspiration');
+    expect(line.sourceId, 'ticker_tape:s');
   });
 
-  test('buildTickerItemsFromKv orders time then sorted ticker.marquee keys as custom', () {
+  test('buildTickerItemsFromKv returns time only', () {
     final t = DateTime(2026, 3, 4, 9, 8, 7);
     final items = buildTickerItemsFromKv(
       kv: {
         'ticker.marquee.news': 'N1',
-        'ticker.marquee.weather': 'W1',
-        'ticker.marquee.quote': 'Q1',
         'ticker.marquee.extra': 'E1',
       },
       nowLocal: t,
     );
-    expect(items.map((e) => e.kind).toList(), [
-      'time',
-      'custom',
-      'custom',
-      'custom',
-      'custom',
-    ]);
-    expect(items[0].body, '09:08:07');
-    expect(items.map((e) => e.body).toList(), [
-      '09:08:07',
-      'E1',
-      'N1',
-      'Q1',
-      'W1',
-    ]);
-  });
-
-  test('dedupes identical bodies', () {
-    final items = buildTickerItemsFromKv(
-      kv: {
-        'ticker.marquee.news': 'Same',
-        'ticker.marquee.weather': 'Same',
-      },
-      nowLocal: DateTime(2020, 1, 1),
-    );
-    expect(items.where((e) => e.body == 'Same').length, 1);
-  });
-
-  test('redacts sensitive substrings', () {
-    final items = buildTickerItemsFromKv(
-      kv: {'ticker.marquee.news': 'token password=secret'},
-      nowLocal: DateTime(2020, 1, 1),
-    );
-    expect(
-      items.any((e) => e.kind == 'custom' && e.body == '[redacted]'),
-      isTrue,
-    );
-  });
-
-  test('skips empty marquee values', () {
-    final items = buildTickerItemsFromKv(
-      kv: {'ticker.marquee.news': '   '},
-      nowLocal: DateTime(2020, 1, 1),
-    );
-    expect(items.where((e) => e.kind == 'custom'), isEmpty);
-    expect(items.first.kind, 'time');
+    expect(items.map((e) => e.kind).toList(), ['time']);
+    expect(items.single.body, '09:08:07');
   });
 
   test('composeTickerNewsBody covers prefix and summary branches', () {
@@ -237,12 +195,11 @@ void main() {
         frequencyWeight: 1,
         sortOrder: 0,
       ),
-      TickerTapeForCuration(
+      const TickerTapeForCuration(
         id: 't2',
         tickerType: 'news',
         frequencyWeight: 1,
         sortOrder: 10,
-        configJson: jsonEncode({'fallbackText': 'KV'}),
       ),
     ];
     final ms = DateTime.utc(2026, 1, 1).millisecondsSinceEpoch;
@@ -275,14 +232,13 @@ void main() {
         tickerType: 'news',
         frequencyWeight: 1,
         sortOrder: 20,
-        configJson: '{"fallbackText":"N"}',
       ),
-      TickerTapeForCuration(
-        id: 'q',
-        tickerType: 'quote',
+      const TickerTapeForCuration(
+        id: 's',
+        tickerType: 'static_text',
         frequencyWeight: 1,
         sortOrder: 10,
-        configJson: '{"fallbackText":"Q"}',
+        configJson: '{"text":"Static line"}',
       ),
       const TickerTapeForCuration(
         id: 't',
@@ -292,16 +248,30 @@ void main() {
       ),
     ];
     final items = buildTickerItemsForMarquee(
-      kv: {
-        'curator.ticker.newsScrollBudgetSeconds': '10000',
-        'curator.ticker.newsCharWidthPx': '1',
-        'curator.ticker.newsSeparatorPaddingPx': '0',
-      },
+      kv: const {},
       nowLocal: DateTime(2026, 3, 4, 9, 8, 7),
       newsCandidates: const [],
       definitions: defs,
     );
-    expect(items.map((e) => e.kind).toList(), ['time', 'quote', 'news']);
+    expect(items.map((e) => e.kind).toList(), ['time', 'static_text']);
+  });
+
+  test('buildTickerItemsForMarquee omits weather when live data missing', () {
+    final items = buildTickerItemsForMarquee(
+      kv: const {},
+      nowLocal: DateTime(2026, 5, 1, 10, 0, 0),
+      newsCandidates: const [],
+      definitions: const [
+        TickerTapeForCuration(
+          id: 'w',
+          tickerType: 'weather',
+          frequencyWeight: 1,
+          sortOrder: 0,
+          configJson: '{"fallbackText":"Fallback Weather"}',
+        ),
+      ],
+    );
+    expect(items.where((e) => e.kind == 'weather'), isEmpty);
   });
 
   test('buildTickerItemsForMarquee falls back to time when no definitions', () {

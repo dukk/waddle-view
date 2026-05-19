@@ -63,7 +63,12 @@ describe('sessions storage', () => {
   it('clearSession clears cached config schemas', () => {
     localStorage.setItem(
       'waddle_controller_config_schemas_v1:d1',
-      JSON.stringify({ screen_types: [], ticker_types: [], overlay_types: [], integration_types: [] }),
+      JSON.stringify({
+        screen_types: [],
+        ticker_tape_types: [],
+        overlay_types: [],
+        integration_types: [],
+      }),
     );
     clearSession('d1');
     expect(localStorage.getItem('waddle_controller_config_schemas_v1:d1')).toBeNull();

@@ -13,6 +13,7 @@ import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';
 
+import 'google_photos_picker_rest.dart';
 import 'integration_account_oauth_probe.dart';
 
 const _jsonHeaders = {'content-type': 'application/json'};
@@ -335,6 +336,75 @@ void registerIntegrationAccountsRestRoutes(
           headers: _jsonHeaders,
         );
       }
+    },
+  );
+
+  r.post(
+    '/v1/integration-accounts/<accountId>/google-photos/picker/sessions',
+    (Request req, String accountId) async {
+      String? requestId;
+      try {
+        final body = await req.readAsString();
+        if (body.trim().isNotEmpty) {
+          final decoded = jsonDecode(body);
+          if (decoded is Map<String, dynamic>) {
+            final rid = decoded['requestId'];
+            if (rid is String && rid.trim().isNotEmpty) {
+              requestId = rid.trim();
+            }
+          }
+        }
+      } catch (_) {
+        return Response(400,
+            body: '{"error":"invalid_json"}', headers: _jsonHeaders);
+      }
+      return handleGooglePhotosPickerCreateSession(
+        db: db,
+        secrets: secrets,
+        httpClient: graphHttp,
+        accountId: accountId,
+        requestId: requestId,
+      );
+    },
+  );
+
+  r.get(
+    '/v1/integration-accounts/<accountId>/google-photos/picker/sessions/<sessionId>',
+    (Request req, String accountId, String sessionId) async {
+      return handleGooglePhotosPickerGetSession(
+        db: db,
+        secrets: secrets,
+        httpClient: graphHttp,
+        accountId: accountId,
+        sessionId: sessionId,
+      );
+    },
+  );
+
+  r.delete(
+    '/v1/integration-accounts/<accountId>/google-photos/picker/sessions/<sessionId>',
+    (Request req, String accountId, String sessionId) async {
+      return handleGooglePhotosPickerDeleteSession(
+        db: db,
+        secrets: secrets,
+        httpClient: graphHttp,
+        accountId: accountId,
+        sessionId: sessionId,
+      );
+    },
+  );
+
+  r.get(
+    '/v1/integration-accounts/<accountId>/google-photos/picker/sessions/<sessionId>/media-items',
+    (Request req, String accountId, String sessionId) async {
+      return handleGooglePhotosPickerListMediaItems(
+        db: db,
+        secrets: secrets,
+        httpClient: graphHttp,
+        accountId: accountId,
+        sessionId: sessionId,
+        pageToken: req.url.queryParameters['pageToken'],
+      );
     },
   );
 

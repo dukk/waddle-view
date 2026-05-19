@@ -19,6 +19,10 @@ export function schemaPropertyUsesBlobKey(prop: JsonSchemaObject): boolean {
   return items?.format === 'waddle-overlay-blob-key';
 }
 
+export function schemaPropertyUsesContentCategory(prop: JsonSchemaObject): boolean {
+  return prop['x-waddle-widget'] === 'content-category';
+}
+
 export function schemaPropertyIsBoolean(prop: JsonSchemaObject): boolean {
   return prop.type === 'boolean';
 }
@@ -41,6 +45,8 @@ export function buildUiSchemaFromJsonSchema(schema: RJSFSchema, base: UiSchema =
       fieldUi['ui:widget'] = 'WaddleSliderWidget';
     } else if (schemaPropertyUsesBlobKey(prop)) {
       fieldUi['ui:field'] = 'OverlayBlobKeysField';
+    } else if (schemaPropertyUsesContentCategory(prop)) {
+      fieldUi['ui:field'] = 'ContentCategorySelectField';
     }
     if (Object.keys(fieldUi).length > 0) {
       ui[key] = fieldUi;

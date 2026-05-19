@@ -7,6 +7,10 @@ import { normalizeSchemaFieldLabels } from '@/util/schemaFieldLabel';
 import { prepareRjsfSchema } from '@/util/rjsfSchema';
 import { buildUiSchemaFromJsonSchema } from '@/util/schemaConfigForm';
 import type { SavedDisplay } from '@/storage/displays';
+import {
+  ContentCategorySelectField,
+  type ContentCategoryOption,
+} from './ContentCategorySelectField';
 import { OverlayBlobKeysField } from './OverlayBlobKeysField';
 import { WaddleSliderWidget, WaddleSwitchWidget } from './SchemaConfigFormWidgets';
 
@@ -21,6 +25,8 @@ type Props = {
   formData: Record<string, unknown>;
   onChange: (next: Record<string, unknown>) => void;
   disabled?: boolean;
+  /** Curator content categories for categoryId fields. */
+  categories?: ContentCategoryOption[];
   /** When false, omit the default submit row (dialog provides Save). */
   showSubmit?: boolean;
   children?: React.ReactNode;
@@ -32,6 +38,7 @@ export function SchemaConfigForm({
   formData,
   onChange,
   disabled = false,
+  categories = [],
   showSubmit = false,
   children,
 }: Props) {
@@ -46,8 +53,11 @@ export function SchemaConfigForm({
       OverlayBlobKeysField: (fieldProps: FieldProps) => (
         <OverlayBlobKeysField {...fieldProps} display={display} />
       ),
+      ContentCategorySelectField: (fieldProps: FieldProps) => (
+        <ContentCategorySelectField {...fieldProps} categories={categories} />
+      ),
     }),
-    [display],
+    [display, categories],
   );
 
   return (

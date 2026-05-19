@@ -37,6 +37,8 @@ export type IntegrationIconSource =
 const SIMPLE_ICONS_BY_TYPE: Readonly<Record<string, IntegrationSimpleIconsSource>> = {
   calendar_google: { kind: 'simpleicons', slug: 'googlecalendar', color: '4285F4' },
   google_calendar: { kind: 'simpleicons', slug: 'googlecalendar', color: '4285F4' },
+  photo_google: { kind: 'simpleicons', slug: 'googlephotos', color: '4285F4' },
+  video_google: { kind: 'simpleicons', slug: 'googlephotos', color: '4285F4' },
   calendar_outlook: { kind: 'simpleicons', slug: 'microsoftoutlook', color: '0078D4' },
   photo_onedrive: { kind: 'simpleicons', slug: 'microsoftonedrive', color: '0078D4' },
   video_onedrive: { kind: 'simpleicons', slug: 'microsoftonedrive', color: '0078D4' },

@@ -12,13 +12,13 @@ import 'calendar_month_grid.dart';
 class CalendarSlideEventRow {
   const CalendarSlideEventRow({
     required this.event,
-    this.category,
-    this.categoryIconBytes,
+    this.categories = const [],
+    this.categoryIconBytes = const [],
   });
 
   final CalendarEvent event;
-  final ContentCategory? category;
-  final Uint8List? categoryIconBytes;
+  final List<ContentCategory> categories;
+  final List<Uint8List?> categoryIconBytes;
 }
 
 /// Stable key: shared [CalendarEvent.icalUid] or title/start/end fingerprint.
@@ -56,19 +56,34 @@ Future<List<CalendarSlideEventRow>> loadCalendarSlideEventRows(
   BlobStore blobs,
   List<CalendarEvent> events,
 ) async {
-  final ids = events
-      .map((e) => e.categoryId)
-      .whereType<String>()
-      .map((s) => s.trim())
-      .where((s) => s.isNotEmpty)
-      .toSet();
-  if (ids.isEmpty) {
-    return events
-        .map((e) => CalendarSlideEventRow(event: e))
-        .toList();
+  if (events.isEmpty) {
+    return const [];
+  }
+  final eventIds = events.map((e) => e.id).toList();
+  final junctionRows = await (db.select(db.calendarEventCategories)
+        ..where((t) => t.eventId.isIn(eventIds)))
+      .get();
+  final idsByEvent = <String, List<String>>{};
+  for (final row in junctionRows) {
+    idsByEvent.putIfAbsent(row.eventId, () => []).add(row.categoryId);
+  }
+  final allCategoryIds = <String>{};
+  for (final e in events) {
+    final fromJunction = idsByEvent[e.id];
+    if (fromJunction != null && fromJunction.isNotEmpty) {
+      allCategoryIds.addAll(fromJunction);
+    } else {
+      final legacy = e.categoryId?.trim();
+      if (legacy != null && legacy.isNotEmpty) {
+        allCategoryIds.add(legacy);
+      }
+    }
+  }
+  if (allCategoryIds.isEmpty) {
+    return events.map((e) => CalendarSlideEventRow(event: e)).toList();
   }
   final cats = await (db.select(db.contentCategories)
-        ..where((t) => t.id.isIn(ids)))
+        ..where((t) => t.id.isIn(allCategoryIds.toList())))
       .get();
   final catById = {for (final c in cats) c.id: c};
   final bytesByCategory = <String, Uint8List>{};
@@ -88,17 +103,27 @@ Future<List<CalendarSlideEventRow>> loadCalendarSlideEventRows(
       bytesByCategory[c.id] = read.bytes!;
     }
   }
-  return events
-      .map(
-        (e) => CalendarSlideEventRow(
-          event: e,
-          category: e.categoryId != null ? catById[e.categoryId] : null,
-          categoryIconBytes: e.categoryId != null
-              ? bytesByCategory[e.categoryId]
-              : null,
-        ),
-      )
-      .toList();
+  return events.map((e) {
+    final rawIds = idsByEvent[e.id];
+    final orderedIds = rawIds != null && rawIds.isNotEmpty
+        ? rawIds
+        : [
+            if (e.categoryId != null && e.categoryId!.trim().isNotEmpty)
+              e.categoryId!.trim(),
+          ];
+    final categories = orderedIds
+        .map((id) => catById[id])
+        .whereType<ContentCategory>()
+        .toList();
+    final iconBytes = categories
+        .map((c) => bytesByCategory[c.id])
+        .toList();
+    return CalendarSlideEventRow(
+      event: e,
+      categories: categories,
+      categoryIconBytes: iconBytes,
+    );
+  }).toList();
 }
 
 class CalendarMonthStreamBundle {
@@ -132,10 +157,16 @@ List<Color> calendarEventMarkerAccentPalette(ColorScheme scheme) => [
 
 /// Picks a stable accent from [calendarEventMarkerAccentPalette] using category,
 /// calendar [CalendarEvent.source], and event id.
-Color calendarEventMarkerAccent(ColorScheme scheme, CalendarEvent event) {
-  final cat = event.categoryId?.trim() ?? '';
+Color calendarEventMarkerAccent(
+  ColorScheme scheme,
+  CalendarEvent event, {
+  List<String> categoryIds = const [],
+}) {
+  final ids = categoryIds.isNotEmpty
+      ? categoryIds.join('\x1f')
+      : (event.categoryId?.trim() ?? '');
   final src = event.source.trim();
-  final h = Object.hash(cat, src, event.id);
+  final h = Object.hash(ids, src, event.id);
   final palette = calendarEventMarkerAccentPalette(scheme);
   return palette[h.abs() % palette.length];
 }
@@ -212,7 +243,11 @@ Map<int, CalendarMonthDayMarkers> buildCalendarMonthDayMarkersByDay({
     final allDay = <Color>[];
     final timed = <Color>[];
     for (final r in sorted) {
-      final c = calendarEventMarkerAccent(colorScheme, r.event);
+      final c = calendarEventMarkerAccent(
+        colorScheme,
+        r.event,
+        categoryIds: r.categories.map((cat) => cat.id).toList(),
+      );
       if (r.event.allDay) {
         allDay.add(c);
       } else {

@@ -12,6 +12,12 @@ enum OAuthSignInStatus {
   expired,
 }
 
+/// Alert sources to scan for Google OAuth device-code prompts.
+List<String> googleOAuthAlertSources() => [
+      kGoogleOAuthAlertSource,
+      kGoogleOAuthAlertSourceLegacy,
+    ];
+
 /// [Alerts.source] for device-code prompts for [accountTypeId], or null.
 String? oauthAlertSourceForAccountType(String accountTypeId) {
   switch (accountTypeId) {
@@ -57,17 +63,24 @@ Future<List<DashboardAlert>> activeOAuthSignInAlertsForAccount(
 }) async {
   final clock = now ?? DateTime.now();
   final accountLabel = await integrationAccountAlertLabel(db, accountId);
-  final rows = await (db.select(db.alerts)
-        ..where((t) => t.source.equals(alertSource))
-        ..where((t) => t.dismissedAt.isNull()))
-      .get();
-  return [
-    for (final row in rows)
+  final sources = alertSource == kGoogleOAuthAlertSource
+      ? googleOAuthAlertSources()
+      : [alertSource];
+  final out = <DashboardAlert>[];
+  for (final source in sources) {
+    final rows = await (db.select(db.alerts)
+          ..where((t) => t.source.equals(source))
+          ..where((t) => t.dismissedAt.isNull()))
+        .get();
+    for (final row in rows) {
       if (_isActiveOAuthAlert(row, clock) &&
           (oauthAlertMatchesAccount(row.title, accountId, accountLabel) ||
-              oauthAlertMatchesAccount(row.body, accountId, accountLabel)))
-        row,
-  ];
+              oauthAlertMatchesAccount(row.body, accountId, accountLabel))) {
+        out.add(row);
+      }
+    }
+  }
+  return out;
 }
 
 /// Sets [dismissedAt] on all non-dismissed OAuth sign-in alerts for [accountId].
@@ -83,18 +96,23 @@ Future<void> dismissOAuthSignInAlertsForAccount(
   }
   final accountLabel = await integrationAccountAlertLabel(db, accountId);
   final when = dismissedAt ?? DateTime.now();
-  final rows = await (db.select(db.alerts)
-        ..where((t) => t.source.equals(source))
-        ..where((t) => t.dismissedAt.isNull()))
-      .get();
-  for (final row in rows) {
-    if (!oauthAlertMatchesAccount(row.title, accountId, accountLabel) &&
-        !oauthAlertMatchesAccount(row.body, accountId, accountLabel)) {
-      continue;
+  final sources = accountTypeId == kIntegrationAccountTypeGoogle
+      ? googleOAuthAlertSources()
+      : [source];
+  for (final src in sources) {
+    final rows = await (db.select(db.alerts)
+          ..where((t) => t.source.equals(src))
+          ..where((t) => t.dismissedAt.isNull()))
+        .get();
+    for (final row in rows) {
+      if (!oauthAlertMatchesAccount(row.title, accountId, accountLabel) &&
+          !oauthAlertMatchesAccount(row.body, accountId, accountLabel)) {
+        continue;
+      }
+      await (db.update(db.alerts)..where((t) => t.id.equals(row.id))).write(
+        AlertsCompanion(dismissedAt: Value(when)),
+      );
     }
-    await (db.update(db.alerts)..where((t) => t.id.equals(row.id))).write(
-      AlertsCompanion(dismissedAt: Value(when)),
-    );
   }
 }
 

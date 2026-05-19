@@ -3,6 +3,7 @@ import 'package:test/test.dart';
 import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
 import 'package:waddle_shared/integration_accounts/integration_accounts_service.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/seed/tables/integration_types_seed.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 import 'package:waddle_shared/config/facebook_kv.dart';
 import 'package:waddle_shared/config/google_kv.dart';
@@ -54,6 +55,7 @@ void main() {
     await warmDatabase(db);
     final secrets = InMemorySecretStore();
     addTearDown(db.close);
+    await ensureIntegrationTypes(db);
     await db.into(db.integrations).insertOnConflictUpdate(
       IntegrationsCompanion.insert(
         id: 'pexels_home',
@@ -69,7 +71,7 @@ void main() {
     final rowBeforeSecret = await (db.select(db.integrations)
           ..where((t) => t.id.equals('pexels_home')))
         .getSingle();
-    expect(rowBeforeSecret.requiresAccounts, isTrue);
+    expect(await integrationTypeRequiresAccounts(db, 'photo_pexels'), isTrue);
     expect(rowBeforeSecret.accountsReady, isFalse);
     await secrets.write('provider:access_token:pexels_home', 'key-123');
     await refreshIntegrationAccountsReady(secrets, db, 'pexels_home');

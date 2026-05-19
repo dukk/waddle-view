@@ -66,11 +66,17 @@ import {
   OutlookCalendarConfigSection,
   type ContentCategoryOption,
 } from '@/components/OutlookCalendarConfigSection';
+import { GooglePhotosConfigSection } from '@/components/GooglePhotosConfigSection';
 import {
   buildOutlookCalendarConfigJson,
   parseOutlookCalendarConfig,
   type OutlookCalendarConfigState,
 } from '@/util/outlookCalendarConfig';
+import {
+  buildGooglePhotosConfigJson,
+  parseGooglePhotosConfig,
+  type GooglePhotosConfigState,
+} from '@/util/googlePhotosConfig';
 import type { IntegrationAccountRow } from '@/util/integrationAccounts';
 import {
   integrationAccountsSatisfiedForEnable,
@@ -81,6 +87,7 @@ import { integrationConfigBaseUrl } from '@/util/integrationConfig';
 import { formatPollInterval } from '@/util/pollIntervalFormat';
 import { useConfigSchemas } from '@/hooks/useConfigSchemas';
 import {
+  labelForIntegrationType,
   schemaForIntegrationType,
   type ConfigSchemasBundle,
 } from '@/storage/configSchemaCache';
@@ -88,6 +95,16 @@ import {
 const ROWS_PER_PAGE_OPTIONS = [15, 25, 50] as const;
 const DEFAULT_ROWS_PER_PAGE = 15;
 const INTEGRATIONS_PER_PAGE_LABEL = 'Integrations per page:';
+
+function integrationTitle(
+  row: IntegrationRow,
+  schemas: ConfigSchemasBundle | null,
+): string {
+  return integrationDisplayName(
+    row.integration_type,
+    row.integration_type_label ?? labelForIntegrationType(schemas, row.integration_type),
+  );
+}
 
 type IntegrationListSection = 'enabled' | 'available' | 'missing';
 
@@ -184,7 +201,7 @@ function IntegrationTable({
         </TableHead>
         <TableBody>
           {rows.map((row) => {
-            const displayName = integrationDisplayName(row.integration_type);
+            const displayName = integrationTitle(row, schemas);
             const configOk = configJsonSatisfiesSchema(schemas, row);
             const rowActionLabel = labelFor(row);
             const showConfigHint = rowActionLabel === 'Enable' && !configOk;
@@ -441,6 +458,7 @@ export function IntegrationsPage() {
               <IntegrationCard
                 key={r.id}
                 row={r}
+                schemas={schemas}
                 actionLabel="Edit"
                 onAccountsChanged={reloadAll}
                 onAction={() => {
@@ -491,6 +509,7 @@ export function IntegrationsPage() {
               <IntegrationCard
                 key={r.id}
                 row={r}
+                schemas={schemas}
                 actionLabel="Enable"
                 onAccountsChanged={reloadAll}
                 onAction={() => {
@@ -552,6 +571,7 @@ export function IntegrationsPage() {
               <IntegrationCard
                 key={r.id}
                 row={r}
+                schemas={schemas}
                 actionLabel={missingAccountsActionLabel(r)}
                 onAccountsChanged={reloadAll}
                 onAction={() => {
@@ -594,6 +614,7 @@ export function IntegrationsPage() {
           intent={dialogIntent}
           oauthProviders={oauthProviders}
           microsoftAccounts={accounts.filter((a) => a.account_type === 'microsoft_graph')}
+          googleAccounts={accounts.filter((a) => a.account_type === 'google')}
           onClose={() => setEdit(null)}
           onSaved={async () => {
             setEdit(null);
@@ -608,17 +629,19 @@ export function IntegrationsPage() {
 
 function IntegrationCard({
   row,
+  schemas,
   actionLabel,
   onAction,
   onAccountsChanged,
 }: {
   row: IntegrationRow;
+  schemas: ConfigSchemasBundle | null;
   actionLabel?: string | null;
   onAction: () => void;
   onAccountsChanged?: () => Promise<void>;
 }) {
   const { active } = useDisplay();
-  const displayName = integrationDisplayName(row.integration_type);
+  const displayName = integrationTitle(row, schemas);
   const accountDetail = accountsDetailFromRow(row);
 
   return (
@@ -667,6 +690,15 @@ function IntegrationCard({
 }
 
 const kOutlookCalendarIntegrationType = 'calendar_outlook';
+const kPhotoGoogleIntegrationType = 'photo_google';
+const kVideoGoogleIntegrationType = 'video_google';
+
+function isGooglePhotosIntegrationType(integrationType: string): boolean {
+  return (
+    integrationType === kPhotoGoogleIntegrationType ||
+    integrationType === kVideoGoogleIntegrationType
+  );
+}
 
 function EditIntegrationDialog({
   schemas,
@@ -674,6 +706,7 @@ function EditIntegrationDialog({
   intent,
   oauthProviders,
   microsoftAccounts,
+  googleAccounts,
   onClose,
   onSaved,
 }: {
@@ -682,11 +715,13 @@ function EditIntegrationDialog({
   intent: 'edit' | 'enable';
   oauthProviders: OAuthProviderStatus[];
   microsoftAccounts: IntegrationAccountRow[];
+  googleAccounts: IntegrationAccountRow[];
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
   const { active } = useDisplay();
   const isOutlookCalendar = row.integration_type === kOutlookCalendarIntegrationType;
+  const isGooglePhotos = isGooglePhotosIntegrationType(row.integration_type);
   const operatorSchema = useMemo(
     () => integrationOperatorSchema(schemas, row),
     [schemas, row],
@@ -702,6 +737,9 @@ function EditIntegrationDialog({
   );
   const [outlookConfig, setOutlookConfig] = useState<OutlookCalendarConfigState>(() =>
     parseOutlookCalendarConfig(parseJsonObject(row.config_json)),
+  );
+  const [googlePhotosConfig, setGooglePhotosConfig] = useState<GooglePhotosConfigState>(() =>
+    parseGooglePhotosConfig(parseJsonObject(row.config_json)),
   );
   const [curatorCategories, setCuratorCategories] = useState<ContentCategoryOption[]>([]);
   const [secretSlots, setSecretSlots] = useState<IntegrationSecretSlot[]>([]);
@@ -731,7 +769,7 @@ function EditIntegrationDialog({
   }, [reloadAccounts]);
 
   useEffect(() => {
-    if (!active || !isOutlookCalendar) return;
+    if (!active || (!isOutlookCalendar && !isGooglePhotos)) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -751,7 +789,7 @@ function EditIntegrationDialog({
     return () => {
       cancelled = true;
     };
-  }, [active, isOutlookCalendar]);
+  }, [active, isOutlookCalendar, isGooglePhotos]);
 
   useEffect(() => {
     if (!active) return;
@@ -808,23 +846,44 @@ function EditIntegrationDialog({
     return outlookConfig.calendars.some((c) => c.selected);
   }, [isOutlookCalendar, outlookConfig, microsoftAccounts]);
 
+  const googlePhotosConfigReady = useMemo(() => {
+    if (!isGooglePhotos) return true;
+    if (!googlePhotosConfig.googleAccountKey) return false;
+    const account = googleAccounts.find((a) => a.id === googlePhotosConfig.googleAccountKey);
+    if (!account?.configured) return false;
+    return googlePhotosConfig.sources.some(
+      (s) => s.category.trim() !== '' && s.mediaItemIds.length > 0 && s.pickerSessionId !== '',
+    );
+  }, [isGooglePhotos, googlePhotosConfig, googleAccounts]);
+
   const accountsReady = useMemo(() => {
     if (isOutlookCalendar) {
       return outlookConfigReady;
     }
+    if (isGooglePhotos) {
+      return googlePhotosConfigReady;
+    }
     return integrationAccountsSatisfiedForEnable(accountDetail);
-  }, [isOutlookCalendar, accountDetail, outlookConfigReady]);
+  }, [
+    isOutlookCalendar,
+    isGooglePhotos,
+    accountDetail,
+    outlookConfigReady,
+    googlePhotosConfigReady,
+  ]);
 
   const configForSave = useMemo(() => {
     const built = isOutlookCalendar
       ? buildOutlookCalendarConfigJson(outlookConfig)
-      : formData;
+      : isGooglePhotos
+        ? buildGooglePhotosConfigJson(googlePhotosConfig)
+        : formData;
     return mergeIntegrationConfigForSave(built, row.config_json);
-  }, [isOutlookCalendar, outlookConfig, formData, row.config_json]);
+  }, [isOutlookCalendar, isGooglePhotos, outlookConfig, googlePhotosConfig, formData, row.config_json]);
 
   const displayName = useMemo(
-    () => integrationDisplayName(row.integration_type),
-    [row.integration_type],
+    () => integrationTitle(row, schemas),
+    [row, schemas],
   );
 
   const save = async () => {
@@ -838,6 +897,12 @@ function EditIntegrationDialog({
       }
       if (isOutlookCalendar && !outlookConfigReady) {
         setErr('Choose a signed-in Microsoft account and at least one calendar to sync.');
+        return;
+      }
+      if (isGooglePhotos && !googlePhotosConfigReady) {
+        setErr(
+          'Choose a signed-in Google account, add an album source, and link photos or videos via Google Photos.',
+        );
         return;
       }
     }
@@ -926,17 +991,23 @@ function EditIntegrationDialog({
             <Typography variant="body2" color="text.secondary">
               Loading accounts…
             </Typography>
-          ) : active && accountDetail && !isOutlookCalendar ? (
+          ) : active && accountDetail && !isOutlookCalendar && !isGooglePhotos ? (
             <IntegrationAccountChips
               display={active}
               detail={accountDetail}
               onChanged={reloadAccounts}
             />
           ) : null}
-          {!accountsReady && accountDetail && !isOutlookCalendar ? (
+          {!accountsReady && accountDetail && !isOutlookCalendar && !isGooglePhotos ? (
             <Alert severity="info">
               Add accounts under <strong>{DISPLAY_SETTINGS_ACCOUNTS_LABEL}</strong>, or link account
               keys in <strong>Configuration</strong> below, then complete sign-in or enter API keys.
+            </Alert>
+          ) : null}
+          {!googlePhotosConfigReady && isGooglePhotos ? (
+            <Alert severity="warning">
+              Select a Google account, add at least one album source, open Google Photos to pick
+              items, and choose a category before enabling.
             </Alert>
           ) : null}
           {!outlookConfigReady && isOutlookCalendar ? (
@@ -993,6 +1064,15 @@ function EditIntegrationDialog({
               onChange={setOutlookConfig}
               microsoftAccounts={microsoftAccounts}
               categories={curatorCategories}
+            />
+          ) : isGooglePhotos && active ? (
+            <GooglePhotosConfigSection
+              display={active}
+              value={googlePhotosConfig}
+              onChange={setGooglePhotosConfig}
+              googleAccounts={googleAccounts}
+              categories={curatorCategories}
+              mediaKind={row.integration_type === kVideoGoogleIntegrationType ? 'video' : 'photo'}
             />
           ) : (
             active ? (

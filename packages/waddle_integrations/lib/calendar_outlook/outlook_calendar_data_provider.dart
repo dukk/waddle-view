@@ -18,7 +18,9 @@ import 'package:waddle_shared/collect/data_write_context.dart';
 import '../microsoft_graph/microsoft_graph_base_url.dart';
 import '../microsoft_graph/microsoft_graph_oauth.dart';
 import 'outlook_calendar_extra_config.dart';
+import '../shared/calendar_event_upsert.dart';
 import '../shared/provider_calendar_date_time.dart';
+import 'package:waddle_shared/persistence/calendar_event_categories.dart';
 
 const String kOutlookCalendarProviderId = 'calendar_outlook';
 
@@ -340,7 +342,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
         accessToken: accessToken,
         accountKey: accountKey,
         mailbox: mailbox,
-        forceCategoryId: src.defaultCategoryId,
+        forceCategoryIds: src.defaultCategoryIds,
         outlookCategoryMap: src.categoryMap,
       );
       return;
@@ -368,7 +370,9 @@ class OutlookCalendarDataProvider implements IDataProvider {
         accessToken: accessToken,
         accountKey: accountKey,
         mailbox: mailbox,
-        forceCategoryId: entry.categoryId ?? src.defaultCategoryId,
+        forceCategoryIds: entry.categoryIds.isNotEmpty
+            ? entry.categoryIds
+            : src.defaultCategoryIds,
         outlookCategoryMap: src.categoryMap,
       );
     }
@@ -455,7 +459,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
     required String accessToken,
     required String accountKey,
     required String mailbox,
-    String? forceCategoryId,
+    List<String> forceCategoryIds = const [],
     Map<String, String> outlookCategoryMap = const {},
   }) async {
     var nextUrl = url;
@@ -492,7 +496,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
               accountKey: accountKey,
               mailbox: mailbox,
               event: e,
-              forceCategoryId: forceCategoryId,
+              forceCategoryIds: forceCategoryIds,
               outlookCategoryMap: outlookCategoryMap,
             );
           }
@@ -512,7 +516,7 @@ class OutlookCalendarDataProvider implements IDataProvider {
     required String accountKey,
     required String mailbox,
     required Map<String, dynamic> event,
-    String? forceCategoryId,
+    List<String> forceCategoryIds = const [],
     Map<String, String> outlookCategoryMap = const {},
   }) async {
     final graphId = event['id'];
@@ -551,8 +555,8 @@ class OutlookCalendarDataProvider implements IDataProvider {
         ? icalRaw.trim()
         : null;
 
-    final categoryId = _resolveOutlookStoredCategoryId(
-      forceCategoryId: forceCategoryId,
+    final categoryIds = _resolveOutlookStoredCategoryIds(
+      forceCategoryIds: forceCategoryIds,
       outlookCategoryMap: outlookCategoryMap,
       categoriesRaw: event['categories'],
     );
@@ -560,33 +564,35 @@ class OutlookCalendarDataProvider implements IDataProvider {
     final rowId = _stableEventId(accountKey, mailbox, graphId);
     final updated = _nowMs();
 
-    await db.into(db.calendarEvents).insertOnConflictUpdate(
-          CalendarEventsCompanion.insert(
-            id: rowId,
-            title: title,
-            startMs: start,
-            endMs: end,
-            allDay: Value(isAllDay),
-            location: Value(location),
-            description: Value(description),
-            source: Value(outlookCalendarEventSource(accountKey)),
-            externalId: Value(graphId),
-            icalUid: Value(icalUid),
-            categoryId: Value(categoryId),
-            updatedAtMs: DateTime.fromMillisecondsSinceEpoch(updated),
-          ),
-        );
+    await upsertCalendarEventWithCategories(
+      db,
+      companion: CalendarEventsCompanion.insert(
+        id: rowId,
+        title: title,
+        startMs: start,
+        endMs: end,
+        allDay: Value(isAllDay),
+        location: Value(location),
+        description: Value(description),
+        source: Value(outlookCalendarEventSource(accountKey)),
+        externalId: Value(graphId),
+        icalUid: Value(icalUid),
+        updatedAtMs: DateTime.fromMillisecondsSinceEpoch(updated),
+      ),
+      categoryIds: categoryIds,
+    );
   }
 
-  String? _resolveOutlookStoredCategoryId({
-    String? forceCategoryId,
+  List<String> _resolveOutlookStoredCategoryIds({
+    List<String> forceCategoryIds = const [],
     required Map<String, String> outlookCategoryMap,
     required Object? categoriesRaw,
   }) {
-    final forced = forceCategoryId?.trim();
-    if (forced != null && forced.isNotEmpty) {
+    final forced = normalizeCalendarEventCategoryIds(forceCategoryIds);
+    if (forced.isNotEmpty) {
       return forced;
     }
+    final fromEvent = <String>[];
     if (categoriesRaw is List<dynamic>) {
       for (final c in categoriesRaw) {
         if (c is String && c.trim().isNotEmpty) {
@@ -594,12 +600,12 @@ class OutlookCalendarDataProvider implements IDataProvider {
           final mapped = outlookCategoryMap[label] ??
               outlookCategoryMap[label.toLowerCase()];
           if (mapped != null && mapped.trim().isNotEmpty) {
-            return mapped.trim();
+            fromEvent.add(mapped.trim());
           }
         }
       }
     }
-    return null;
+    return normalizeCalendarEventCategoryIds(fromEvent);
   }
 
   DateTime? _parseGraphDateTime(

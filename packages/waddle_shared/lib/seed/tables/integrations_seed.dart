@@ -4,9 +4,9 @@ import 'package:drift/drift.dart';
 
 import 'package:waddle_shared/config/integration_config_json.dart';
 
-import 'package:waddle_shared/persistence/config_json_documentation.dart';
-
 import 'package:waddle_shared/persistence/database.dart';
+
+import 'integration_types_seed.dart';
 
 
 
@@ -40,8 +40,6 @@ Future<void> _ensureIntegrationRow(
 
   }
 
-  final doc = providerConfigJsonDocForType(integrationType);
-
   final mergedConfig =
 
       mergeBaseUrlIntoIntegrationConfig(configJson, baseUrl) ?? configJson;
@@ -64,8 +62,6 @@ Future<void> _ensureIntegrationRow(
 
               : Value(mergedConfig),
 
-          configJsonSchema: Value(doc.schema),
-
         ),
 
       );
@@ -75,6 +71,8 @@ Future<void> _ensureIntegrationRow(
 
 
 Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
+
+  await ensureIntegrationTypes(db);
 
   await _ensureIntegrationRow(
 
@@ -426,7 +424,7 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
 
     baseUrl: 'https://www.googleapis.com/calendar/v3',
 
-    configJson: '{"accounts":[],"pastDays":14,"futureDays":14}',
+    configJson: '{"accounts":[],"pastDays":30,"futureDays":30}',
 
   );
 
@@ -446,7 +444,7 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
 
     baseUrl: 'https://graph.microsoft.com/v1.0',
 
-    configJson: '{"accounts":[],"pastDays":14,"futureDays":14}',
+    configJson: '{"accounts":[],"pastDays":30,"futureDays":30}',
 
   );
 
@@ -464,7 +462,7 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
 
     enabled: false,
 
-    configJson: '{"feeds":[],"pastDays":14,"futureDays":14}',
+    configJson: '{"feeds":[],"pastDays":30,"futureDays":30}',
 
   );
 
@@ -531,6 +529,24 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
   );
 
 
+
+  await _ensureIntegrationRow(
+    db,
+    id: kDefaultPhotoGoogleIntegrationId,
+    integrationType: 'photo_google',
+    pollSeconds: 3600,
+    enabled: false,
+    configJson: '{"accounts":[],"globalPerPollLimit":50}',
+  );
+
+  await _ensureIntegrationRow(
+    db,
+    id: kDefaultVideoGoogleIntegrationId,
+    integrationType: 'video_google',
+    pollSeconds: 3600,
+    enabled: false,
+    configJson: '{"accounts":[],"globalPerPollLimit":50}',
+  );
 
   await _ensureIntegrationRow(
 

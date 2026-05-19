@@ -130,6 +130,8 @@ const Map<String, IntegrationAccountTypeDefinition> kIntegrationAccountTypes = {
 /// Integration types that authenticate via a shared [IntegrationAccountTypeDefinition].
 const Map<String, List<String>> kIntegrationAccountRequirementsByType = {
   'calendar_google': [kIntegrationAccountTypeGoogle],
+  'photo_google': [kIntegrationAccountTypeGoogle],
+  'video_google': [kIntegrationAccountTypeGoogle],
   'calendar_outlook': [kIntegrationAccountTypeMicrosoftGraph],
   'photo_onedrive': [kIntegrationAccountTypeMicrosoftGraph],
   'video_onedrive': [kIntegrationAccountTypeMicrosoftGraph],

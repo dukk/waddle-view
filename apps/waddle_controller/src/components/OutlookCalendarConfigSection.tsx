@@ -19,14 +19,15 @@ import type { SavedDisplay } from '@/storage/displays';
 import type { IntegrationAccountRow } from '@/util/integrationAccounts';
 import { DISPLAY_SETTINGS_ACCOUNTS_LABEL } from '@/constants/displaySettingsTabs';
 import {
+  CategoryMultiSelect,
+  type ContentCategoryOption,
+} from '@/components/CategoryMultiSelect';
+import {
   mergeOutlookCalendarsWithSaved,
   type OutlookCalendarConfigState,
 } from '@/util/outlookCalendarConfig';
 
-export type ContentCategoryOption = {
-  id: string;
-  label: string;
-};
+export type { ContentCategoryOption };
 
 type Props = {
   display: SavedDisplay;
@@ -99,7 +100,10 @@ export function OutlookCalendarConfigSection({
     onChange({ ...value, ...partial });
   };
 
-  const patchCalendar = (id: string, partial: { selected?: boolean; categoryId?: string }) => {
+  const patchCalendar = (
+    id: string,
+    partial: { selected?: boolean; categoryIds?: string[] },
+  ) => {
     onChange({
       ...value,
       calendars: value.calendars.map((c) => (c.id === id ? { ...c, ...partial } : c)),
@@ -199,24 +203,14 @@ export function OutlookCalendarConfigSection({
                 }
                 label={cal.name}
               />
-              <FormControl fullWidth size="small" disabled={!cal.selected}>
-                <InputLabel id={`outlook-cal-cat-${cal.id}`}>Event category</InputLabel>
-                <Select
-                  labelId={`outlook-cal-cat-${cal.id}`}
-                  label="Event category"
-                  value={cal.categoryId}
-                  onChange={(e) => patchCalendar(cal.id, { categoryId: e.target.value })}
-                >
-                  <MenuItem value="">
-                    <em>Default</em>
-                  </MenuItem>
-                  {categories.map((cat) => (
-                    <MenuItem key={cat.id} value={cat.id}>
-                      {cat.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <CategoryMultiSelect
+                id={`outlook-cal-cat-${cal.id}`}
+                label="Event categories"
+                value={cal.categoryIds}
+                onChange={(categoryIds) => patchCalendar(cal.id, { categoryIds })}
+                categories={categories}
+                disabled={!cal.selected}
+              />
             </Box>
           ))}
         </Stack>

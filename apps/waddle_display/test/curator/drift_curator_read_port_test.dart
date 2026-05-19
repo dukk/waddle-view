@@ -163,7 +163,7 @@ void main() {
           TickerTapesCompanion.insert(
             id: 'b',
             label: 'B',
-            tickerType: 'quote',
+            tickerType: 'static_text',
             sortOrder: const Value(10),
           ),
         );

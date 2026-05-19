@@ -2,6 +2,19 @@ import 'package:drift/drift.dart';
 
 export '../news/news_source_types.dart';
 
+/// Registry of built-in integration collector types (schemas, labels, account requirements).
+class IntegrationTypes extends Table {
+  TextColumn get integrationType => text()();
+  TextColumn get label => text()();
+  TextColumn get configJsonSchema => text().nullable()();
+
+  /// True when this type requires linked integration accounts.
+  BoolColumn get requiresAccounts => boolean().withDefault(const Constant(false))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {integrationType};
+}
+
 /// Operator-configured integrations (collectors); persisted as SQLite `integrations`.
 class Integrations extends Table {
   TextColumn get id => text()();
@@ -9,10 +22,6 @@ class Integrations extends Table {
   BoolColumn get enabled => boolean().withDefault(const Constant(true))();
   IntColumn get pollSeconds => integer().withDefault(const Constant(60))();
   TextColumn get configJson => text().nullable()();
-  TextColumn get configJsonSchema => text().nullable()();
-
-  /// True when [integrationType] requires linked integration accounts.
-  BoolColumn get requiresAccounts => boolean().withDefault(const Constant(false))();
 
   /// Denormalized account setup status for list queries (see [refreshIntegrationAccountsReady]).
   BoolColumn get accountsReady => boolean().withDefault(const Constant(true))();
@@ -243,6 +252,37 @@ class ContentCategories extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// Registry of built-in screen widget types (schemas, labels).
+class ScreenTypes extends Table {
+  TextColumn get screenType => text()();
+  TextColumn get label => text()();
+  TextColumn get configJsonSchema => text().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {screenType};
+}
+
+/// Registry of ticker tape slot types (schemas, labels). SQLite `ticker_tape_types`.
+@DataClassName('TickerTapeType')
+class TickerTapeTypes extends Table {
+  TextColumn get tickerType => text()();
+  TextColumn get label => text()();
+  TextColumn get configJsonSchema => text().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {tickerType};
+}
+
+/// Registry of display overlay types (schemas, labels).
+class OverlayTypes extends Table {
+  TextColumn get overlayType => text()();
+  TextColumn get label => text()();
+  TextColumn get configJsonSchema => text().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {overlayType};
+}
+
 /// TV display screen definition (single widget type + config + scheduling hints).
 /// Runtime layout JSON for the curator is synthesized when mapping rows to slides.
 /// SQLite `screens` (legacy name `screen_definitions`).
@@ -260,8 +300,6 @@ class Screens extends Table {
 
   /// JSON object: former `widgets[0].config` in legacy `layout_json`.
   TextColumn get configJson => text().withDefault(const Constant('{}'))();
-  TextColumn get configJsonSchema => text().nullable()();
-  TextColumn get exampleConfigJson => text().nullable()();
   IntColumn get minDwellSeconds => integer().withDefault(const Constant(8))();
   IntColumn get maxDwellSeconds => integer().withDefault(const Constant(15))();
   IntColumn get frequencyWeight => integer().withDefault(const Constant(100))();
@@ -278,9 +316,7 @@ class Screens extends Table {
 
 /// Bottom ticker tape: which [tickerType] runs, how often ([frequencyWeight]),
 /// and display order ([sortOrder]). [configJson] holds per-tape options (for
-/// example [fallbackText] for weather/news/quote). [configKey] binds `custom`
-/// rows to a `ticker.marquee.*` key in [ConfigKeyValues]; when null, all
-/// `ticker.marquee.*` keys are included for that tape.
+/// example `text` on [static_text] tapes, or plugin `fallbackText`).
 ///
 /// Backed by the SQLite table `ticker_tapes` (formerly `ticker_definitions`).
 class TickerTapes extends Table {
@@ -288,20 +324,13 @@ class TickerTapes extends Table {
   TextColumn get label => text()();
   TextColumn get description => text().withDefault(const Constant(''))();
 
-  /// One of: `time`, `weather`, `news`, `quote`, `stocks`, `custom`.
+  /// One of: `time`, `weather`, `news`, `stocks`, `static_text`, `plugin`.
   TextColumn get tickerType => text()();
   IntColumn get frequencyWeight => integer().withDefault(const Constant(100))();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
-  TextColumn get configKey => text().nullable()();
 
-  /// Slot JSON (e.g. `fallbackText` when live/RSS data is missing for weather/news/quote).
+  /// Slot JSON (e.g. `text` for static_text; pluginId/fallbackText for plugin).
   TextColumn get configJson => text().withDefault(const Constant('{}'))();
-
-  /// JSON Schema (draft 2020-12) describing marquee / KV options for [tickerType].
-  TextColumn get configJsonSchema => text().nullable()();
-
-  /// Example JSON for the same documentation shape as [configJsonSchema].
-  TextColumn get exampleConfigJson => text().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -629,6 +658,23 @@ class CalendarEvents extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// Junction table assigning one or more [ContentCategories.id] values to each
+/// [CalendarEvents.id] row. [CalendarEvents.categoryId] duplicates the primary
+/// (first-listed) assignment for backwards-compatible queries.
+@TableIndex(
+  name: 'idx_calendar_event_categories_category',
+  columns: {#categoryId},
+)
+class CalendarEventCategories extends Table {
+  TextColumn get eventId =>
+      text().references(CalendarEvents, #id, onDelete: KeyAction.cascade)();
+  TextColumn get categoryId =>
+      text().references(ContentCategories, #id)();
+
+  @override
+  Set<Column<Object>> get primaryKey => {eventId, categoryId};
+}
+
 /// Operator-configured weather locations (SQLite `interests_locations`).
 class InterestsLocations extends Table {
   @override
@@ -702,6 +748,12 @@ const String kMediaDataProviderPhotoOneDrive = 'photo_onedrive';
 
 /// Microsoft Graph OneDrive video ingest into [Videos].
 const String kMediaDataProviderVideoOneDrive = 'video_onedrive';
+
+/// Google Photos Picker photo ingest into [Photos].
+const String kMediaDataProviderPhotoGoogle = 'photo_google';
+
+/// Google Photos Picker video ingest into [Videos].
+const String kMediaDataProviderVideoGoogle = 'video_google';
 
 /// Flickr group photo sync into [Photos].
 const String kMediaDataProviderPhotoFlickr = 'photo_flickr';

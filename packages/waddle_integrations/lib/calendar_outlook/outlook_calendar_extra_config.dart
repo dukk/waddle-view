@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:waddle_shared/config/calendar_integration_defaults.dart';
+
 import '../shared/calendar_provider_calendar_entry.dart';
 
 /// One mailbox (UPN or `me`) and optional calendar display names or Graph ids.
@@ -7,7 +9,7 @@ class OutlookMailboxSource {
   const OutlookMailboxSource({
     required this.mailbox,
     required this.calendars,
-    this.defaultCategoryId,
+    this.defaultCategoryIds = const [],
     this.categoryMap = const {},
   });
 
@@ -15,7 +17,7 @@ class OutlookMailboxSource {
   /// Display names or calendar `id` strings. Empty means the user's default calendar only.
   final List<ProviderCalendarEntry> calendars;
   /// Applied to events from the default calendar when [calendars] is empty.
-  final String? defaultCategoryId;
+  final List<String> defaultCategoryIds;
   /// Outlook event `categories` labels → [ContentCategories.id].
   final Map<String, String> categoryMap;
 
@@ -27,9 +29,7 @@ class OutlookMailboxSource {
     return OutlookMailboxSource(
       mailbox: box.trim(),
       calendars: ProviderCalendarEntry.parseList(m['calendars']),
-      defaultCategoryId: parseOptionalCategoryId(
-        m['defaultCategoryId'] ?? m['defaultCategory'],
-      ),
+      defaultCategoryIds: parseDefaultCategoryIds(m),
       categoryMap: parseCategoryAliasMap(m['categoryMap']),
     );
   }
@@ -84,8 +84,8 @@ class OutlookCalendarExtraConfig {
     if (configJson == null || configJson.trim().isEmpty) {
       return const OutlookCalendarExtraConfig(
         accounts: [],
-        pastDays: 14,
-        futureDays: 14,
+        pastDays: kCalendarSyncPastFutureDaysDefault,
+        futureDays: kCalendarSyncPastFutureDaysDefault,
       );
     }
     try {
@@ -104,8 +104,8 @@ class OutlookCalendarExtraConfig {
       }
       return OutlookCalendarExtraConfig(
         accounts: accounts,
-        pastDays: _positiveInt(m['pastDays'], 14),
-        futureDays: _positiveInt(m['futureDays'], 14),
+        pastDays: _positiveInt(m['pastDays'], kCalendarSyncPastFutureDaysDefault),
+        futureDays: _positiveInt(m['futureDays'], kCalendarSyncPastFutureDaysDefault),
       );
     } on Object {
       return parse(null);

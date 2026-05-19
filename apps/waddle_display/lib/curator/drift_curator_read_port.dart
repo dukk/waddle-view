@@ -118,7 +118,6 @@ class DriftCuratorReadPort implements CuratorReadPort {
             tickerType: r.tickerType,
             frequencyWeight: r.frequencyWeight,
             sortOrder: r.sortOrder,
-            configKey: r.configKey,
             configJson: r.configJson,
           ),
     ];

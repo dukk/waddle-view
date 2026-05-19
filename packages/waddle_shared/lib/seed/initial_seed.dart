@@ -4,7 +4,6 @@ import 'package:drift/drift.dart';
 
 import 'package:waddle_shared/alerts/alert_severity_icons_kv.dart';
 import 'package:waddle_shared/layout/collage_template_ids.dart';
-import 'package:waddle_shared/persistence/config_json_documentation.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/display_overlay_floating_balloons_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_sql.dart';
@@ -20,6 +19,9 @@ import 'tables/interests_locations_seed.dart';
 import 'tables/interests_rss_feeds_seed.dart';
 import 'tables/interests_trivia_seed.dart';
 import 'tables/curator_configurations_seed.dart';
+import 'tables/overlay_types_seed.dart';
+import 'tables/screen_types_seed.dart';
+import 'tables/ticker_tape_types_seed.dart';
 
 /// Idempotent demo rows for integrations, screens, ticker tapes, and related defaults.
 Future<void> ensureInitialSeed(AppDatabase db) async {
@@ -37,11 +39,13 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureDisplayProgramHistoryDepthKv(db);
   await ensureControllerDatetimeFormatKvs(db);
   await _ensureAlertSeverityIconsKv(db);
+  await ensureOverlayTypes(db);
   await _ensureDefaultRainingHeartsOverlay(db);
   await _ensureDefaultBirthdayConfettiOverlay(db);
   await _ensureDefaultFloatingBalloonsOverlay(db);
   await _ensureDefaultWattleViewsBirthdayMessageOverlay(db);
   await _ensureDefaultFallingDucksOverlay(db);
+  await ensureScreenTypes(db);
   await _ensureWelcomeScreen(db);
   await _ensureJokeScreen(db);
   await _ensureTriviaScreen(db);
@@ -72,22 +76,19 @@ Future<void> _ensureDefaultRainingHeartsOverlay(AppDatabase db) async {
   final configJson = jsonEncode(<String, Object?>{
     'shapes': <String>['heart', 'raindrop', 'cat', 'dog'],
   });
-  final shapeRainDoc = displayOverlayConfigJsonDocForType(kOverlayTypeShapeRain);
   await db.customStatement(
     '''INSERT OR IGNORE INTO overlays (
       id,
       overlay_type,
       label,
-      config_json,
-      config_json_schema
+      config_json
     )
-    VALUES (?, ?, ?, ?, ?)''',
+    VALUES (?, ?, ?, ?)''',
     <Object?>[
       kDefaultMothersDayOverlayId,
       kOverlayTypeShapeRain,
       'Raining Hearts',
       configJson,
-      shapeRainDoc.schema,
     ],
   );
 }
@@ -105,24 +106,19 @@ Future<void> _ensureDefaultBirthdayConfettiOverlay(AppDatabase db) async {
     'fall_speed': 0.12,
     'opacity': 0.48,
   });
-  final confettiDoc = displayOverlayConfigJsonDocForType(
-    kOverlayTypeBirthdayConfetti,
-  );
   await db.customStatement(
     '''INSERT OR IGNORE INTO overlays (
       id,
       overlay_type,
       label,
-      config_json,
-      config_json_schema
+      config_json
     )
-    VALUES (?, ?, ?, ?, ?)''',
+    VALUES (?, ?, ?, ?)''',
     <Object?>[
       kDefaultBirthdayConfettiOverlayId,
       kOverlayTypeBirthdayConfetti,
       'Default Birthday Confetti',
       configJson,
-      confettiDoc.schema,
     ],
   );
 }
@@ -139,22 +135,19 @@ Future<void> _ensureDefaultFloatingBalloonsOverlay(AppDatabase db) async {
     'scale_jitter': 0.25,
     'opacity': 0.92,
   });
-  final doc = displayOverlayConfigJsonDocForType(kOverlayTypeFloatingBalloons);
   await db.customStatement(
     '''INSERT OR IGNORE INTO overlays (
       id,
       overlay_type,
       label,
-      config_json,
-      config_json_schema
+      config_json
     )
-    VALUES (?, ?, ?, ?, ?)''',
+    VALUES (?, ?, ?, ?)''',
     <Object?>[
       kDefaultFloatingBalloonsOverlayId,
       kOverlayTypeFloatingBalloons,
       'Default Floating Balloons',
       configJson,
-      doc.schema,
     ],
   );
 }
@@ -168,22 +161,19 @@ Future<void> _ensureDefaultFallingDucksOverlay(AppDatabase db) async {
     'image_scale': 0.12,
     'scale_jitter': 0.33,
   });
-  final doc = displayOverlayConfigJsonDocForType(kOverlayTypeFallingImages);
   await db.customStatement(
     '''INSERT OR IGNORE INTO overlays (
       id,
       overlay_type,
       label,
-      config_json,
-      config_json_schema
+      config_json
     )
-    VALUES (?, ?, ?, ?, ?)''',
+    VALUES (?, ?, ?, ?)''',
     <Object?>[
       kDefaultFallingDucksOverlayId,
       kOverlayTypeFallingImages,
       'Default Falling Ducks',
       configJson,
-      doc.schema,
     ],
   );
 }
@@ -199,22 +189,19 @@ Future<void> _ensureDefaultWattleViewsBirthdayMessageOverlay(AppDatabase db) asy
     'shadow': true,
     'speed': 0.95,
   });
-  final doc = displayOverlayConfigJsonDocForType(kOverlayTypeBouncingMessage);
   await db.customStatement(
     '''INSERT OR IGNORE INTO overlays (
       id,
       overlay_type,
       label,
-      config_json,
-      config_json_schema
+      config_json
     )
-    VALUES (?, ?, ?, ?, ?)''',
+    VALUES (?, ?, ?, ?)''',
     <Object?>[
       kDefaultWattleViewsBirthdayMessageOverlayId,
       kOverlayTypeBouncingMessage,
       "Wattle View's Birthday Message!",
       configJson,
-      doc.schema,
     ],
   );
 }
@@ -304,6 +291,7 @@ Future<void> _ensureAlertSeverityIconsKv(AppDatabase db) async {
 }
 
 Future<void> _ensureTickerTapes(AppDatabase db) async {
+  await ensureTickerTapeTypes(db);
   Future<void> upsert({
     required String id,
     required String label,
@@ -311,9 +299,8 @@ Future<void> _ensureTickerTapes(AppDatabase db) async {
     required String tickerType,
     int frequencyWeight = 100,
     int sortOrder = 0,
-    String? configKey,
+    String? configJson,
   }) async {
-    final doc = tickerSlotConfigJsonDocForType(tickerType);
     await db
         .into(db.tickerTapes)
         .insertOnConflictUpdate(
@@ -324,17 +311,14 @@ Future<void> _ensureTickerTapes(AppDatabase db) async {
             tickerType: tickerType,
             frequencyWeight: Value(frequencyWeight),
             sortOrder: Value(sortOrder),
-            configKey: configKey == null
+            configJson: configJson == null
                 ? const Value.absent()
-                : Value(configKey),
-            configJson: const Value.absent(),
-            configJsonSchema: Value(doc.schema),
-            exampleConfigJson: Value(doc.example),
+                : Value(configJson),
           ),
         );
   }
 
-  Future<void> ensureTapeFallbackIfUnset(String id, String fallback) async {
+  Future<void> ensureTapeStaticTextIfUnset(String id, String text) async {
     final r = await (db.select(db.tickerTapes)..where((t) => t.id.equals(id)))
         .getSingleOrNull();
     if (r == null) {
@@ -346,7 +330,7 @@ Future<void> _ensureTickerTapes(AppDatabase db) async {
     }
     await (db.update(db.tickerTapes)..where((t) => t.id.equals(id))).write(
       TickerTapesCompanion(
-        configJson: Value(jsonEncode({'fallbackText': fallback})),
+        configJson: Value(jsonEncode({'text': text})),
       ),
     );
   }
@@ -361,23 +345,16 @@ Future<void> _ensureTickerTapes(AppDatabase db) async {
   await upsert(
     id: 'ticker_weather',
     label: 'Weather',
-    description: 'Live weather; optional fallbackText in config_json',
+    description: 'Live weather from collect',
     tickerType: 'weather',
     sortOrder: 10,
   );
   await upsert(
     id: 'ticker_news',
     label: 'News',
-    description: 'RSS headlines; optional fallbackText in config_json',
+    description: 'RSS headlines from stored articles',
     tickerType: 'news',
     sortOrder: 20,
-  );
-  await upsert(
-    id: 'ticker_quote',
-    label: 'Quote',
-    description: 'Static line from config_json fallbackText',
-    tickerType: 'quote',
-    sortOrder: 30,
   );
   await upsert(
     id: 'ticker_stocks',
@@ -388,18 +365,13 @@ Future<void> _ensureTickerTapes(AppDatabase db) async {
   );
   await upsert(
     id: 'ticker_custom',
-    label: 'Custom marquee',
-    description: 'Extra ticker.marquee.* keys in config_key_values',
-    tickerType: 'custom',
+    label: 'Static text',
+    description: 'Fixed line from config_json text',
+    tickerType: 'static_text',
     sortOrder: 40,
   );
 
-  await ensureTapeFallbackIfUnset('ticker_weather', '— °F · demo');
-  await ensureTapeFallbackIfUnset('ticker_news', 'Welcome to Waddle View');
-  await ensureTapeFallbackIfUnset(
-    'ticker_quote',
-    'Market data updates after each collect',
-  );
+  await ensureTapeStaticTextIfUnset('ticker_custom', 'Thanks for visiting');
 }
 
 Future<void> _ensureWelcomeScreen(AppDatabase db) async {
@@ -419,12 +391,6 @@ Future<void> _ensureWelcomeScreen(AppDatabase db) async {
           screenType: 'static_text',
           configJson: const Value(
             '{"text":"Welcome to Waddle View"}',
-          ),
-          configJsonSchema: Value(
-            screenConfigJsonDocForType('static_text').schema,
-          ),
-          exampleConfigJson: Value(
-            screenConfigJsonDocForType('static_text').example,
           ),
           minDwellSeconds: const Value(8),
           maxDwellSeconds: const Value(14),
@@ -449,12 +415,6 @@ Future<void> _ensureJokeScreen(AppDatabase db) async {
           description: const Value('Random joke with delayed punchline'),
           screenType: 'joke',
           configJson: const Value('{}'),
-          configJsonSchema: Value(
-            screenConfigJsonDocForType('joke').schema,
-          ),
-          exampleConfigJson: Value(
-            screenConfigJsonDocForType('joke').example,
-          ),
           minDwellSeconds: const Value(18),
           maxDwellSeconds: const Value(24),
           dataKey: const Value('jokes'),
@@ -480,12 +440,6 @@ Future<void> _ensureTriviaScreen(AppDatabase db) async {
           ),
           screenType: 'trivia',
           configJson: const Value('{}'),
-          configJsonSchema: Value(
-            screenConfigJsonDocForType('trivia').schema,
-          ),
-          exampleConfigJson: Value(
-            screenConfigJsonDocForType('trivia').example,
-          ),
           minDwellSeconds: const Value(14),
           maxDwellSeconds: const Value(20),
           maxPlacementsPerProgram: const Value(1),
@@ -510,12 +464,6 @@ Future<void> _ensureGuestWifiScreen(AppDatabase db) async {
           description: const Value('QR and credentials for guest network'),
           screenType: 'wifi',
           configJson: const Value('{}'),
-          configJsonSchema: Value(
-            screenConfigJsonDocForType('wifi').schema,
-          ),
-          exampleConfigJson: Value(
-            screenConfigJsonDocForType('wifi').example,
-          ),
           minDwellSeconds: const Value(16),
           maxDwellSeconds: const Value(22),
           maxPlacementsPerProgram: const Value(1),
@@ -540,12 +488,6 @@ Future<void> _ensureNewsScreen(AppDatabase db) async {
         configJson: const Value(
           '{"scrollDelayMs":2500,"trailingHoldMs":2000,"scrollPixelsPerSecond":48,"minReadMs":8000,"summaryCapacityChars":1200}',
         ),
-        configJsonSchema: Value(
-          screenConfigJsonDocForType('news').schema,
-        ),
-        exampleConfigJson: Value(
-          screenConfigJsonDocForType('news').example,
-        ),
       ),
     );
     return;
@@ -562,12 +504,6 @@ Future<void> _ensureNewsScreen(AppDatabase db) async {
           screenType: 'news',
           configJson: const Value(
             '{"scrollDelayMs":2500,"trailingHoldMs":2000,"scrollPixelsPerSecond":48,"minReadMs":8000,"summaryCapacityChars":1200}',
-          ),
-          configJsonSchema: Value(
-            screenConfigJsonDocForType('news').schema,
-          ),
-          exampleConfigJson: Value(
-            screenConfigJsonDocForType('news').example,
           ),
           minDwellSeconds: const Value(10),
           maxDwellSeconds: const Value(16),
@@ -590,12 +526,6 @@ Future<void> _ensureNewsRightImageScreen(AppDatabase db) async {
         configJson: const Value(
           '{"scrollDelayMs":2500,"trailingHoldMs":2000,"scrollPixelsPerSecond":48,"minReadMs":8000,"imageOnRight":true,"summaryCapacityChars":1200}',
         ),
-        configJsonSchema: Value(
-          screenConfigJsonDocForType('news').schema,
-        ),
-        exampleConfigJson: Value(
-          screenConfigJsonDocForType('news').example,
-        ),
       ),
     );
     return;
@@ -612,12 +542,6 @@ Future<void> _ensureNewsRightImageScreen(AppDatabase db) async {
           screenType: 'news',
           configJson: const Value(
             '{"scrollDelayMs":2500,"trailingHoldMs":2000,"scrollPixelsPerSecond":48,"minReadMs":8000,"imageOnRight":true,"summaryCapacityChars":1200}',
-          ),
-          configJsonSchema: Value(
-            screenConfigJsonDocForType('news').schema,
-          ),
-          exampleConfigJson: Value(
-            screenConfigJsonDocForType('news').example,
           ),
           minDwellSeconds: const Value(10),
           maxDwellSeconds: const Value(16),
@@ -640,12 +564,6 @@ Future<void> _ensureNewsColumnsScreen(AppDatabase db) async {
         configJson: const Value(
           '{"columnCount":3,"minReadMs":10000,"summaryCapacityCharsPerColumn":220}',
         ),
-        configJsonSchema: Value(
-          screenConfigJsonDocForType('news_columns').schema,
-        ),
-        exampleConfigJson: Value(
-          screenConfigJsonDocForType('news_columns').example,
-        ),
       ),
     );
     return;
@@ -662,12 +580,6 @@ Future<void> _ensureNewsColumnsScreen(AppDatabase db) async {
           screenType: 'news_columns',
           configJson: const Value(
             '{"columnCount":3,"minReadMs":10000,"summaryCapacityCharsPerColumn":220}',
-          ),
-          configJsonSchema: Value(
-            screenConfigJsonDocForType('news_columns').schema,
-          ),
-          exampleConfigJson: Value(
-            screenConfigJsonDocForType('news_columns').example,
           ),
           minDwellSeconds: const Value(14),
           maxDwellSeconds: const Value(20),
@@ -690,12 +602,6 @@ Future<void> _ensureNewsStackScreen(AppDatabase db) async {
         configJson: const Value(
           '{"minReadMs":12000,"imagePanelFraction":0.32,"qrLogicalSize":112,"summaryCapacityCharsPerSlot":320}',
         ),
-        configJsonSchema: Value(
-          screenConfigJsonDocForType('news_stack').schema,
-        ),
-        exampleConfigJson: Value(
-          screenConfigJsonDocForType('news_stack').example,
-        ),
       ),
     );
     return;
@@ -713,12 +619,6 @@ Future<void> _ensureNewsStackScreen(AppDatabase db) async {
           screenType: 'news_stack',
           configJson: const Value(
             '{"minReadMs":12000,"imagePanelFraction":0.32,"qrLogicalSize":112,"summaryCapacityCharsPerSlot":320}',
-          ),
-          configJsonSchema: Value(
-            screenConfigJsonDocForType('news_stack').schema,
-          ),
-          exampleConfigJson: Value(
-            screenConfigJsonDocForType('news_stack').example,
           ),
           minDwellSeconds: const Value(14),
           maxDwellSeconds: const Value(20),
@@ -751,12 +651,6 @@ Future<void> _ensureClockDigitalScreen(AppDatabase db) async {
         dataKey: const Value('clock'),
         minPlacementsPerProgram: const Value(0),
         maxPlacementsPerProgram: const Value(1),
-        configJsonSchema: Value(
-          screenConfigJsonDocForType('digital_clock').schema,
-        ),
-        exampleConfigJson: Value(
-          screenConfigJsonDocForType('digital_clock').example,
-        ),
       ),
     );
     return;
@@ -770,12 +664,6 @@ Future<void> _ensureClockDigitalScreen(AppDatabase db) async {
           description: const Value('Local time and date'),
           screenType: 'digital_clock',
           configJson: const Value('{}'),
-          configJsonSchema: Value(
-            screenConfigJsonDocForType('digital_clock').schema,
-          ),
-          exampleConfigJson: Value(
-            screenConfigJsonDocForType('digital_clock').example,
-          ),
           minDwellSeconds: const Value(14),
           maxDwellSeconds: const Value(20),
           dataKey: const Value('clock'),
@@ -797,12 +685,6 @@ Future<void> _ensureClockAnalogScreen(AppDatabase db) async {
         dataKey: const Value('clock'),
         minPlacementsPerProgram: const Value(0),
         maxPlacementsPerProgram: const Value(1),
-        configJsonSchema: Value(
-          screenConfigJsonDocForType('analog_clock').schema,
-        ),
-        exampleConfigJson: Value(
-          screenConfigJsonDocForType('analog_clock').example,
-        ),
       ),
     );
     return;
@@ -816,12 +698,6 @@ Future<void> _ensureClockAnalogScreen(AppDatabase db) async {
           description: const Value('Analog dial with local date'),
           screenType: 'analog_clock',
           configJson: const Value('{}'),
-          configJsonSchema: Value(
-            screenConfigJsonDocForType('analog_clock').schema,
-          ),
-          exampleConfigJson: Value(
-            screenConfigJsonDocForType('analog_clock').example,
-          ),
           minDwellSeconds: const Value(14),
           maxDwellSeconds: const Value(20),
           dataKey: const Value('clock'),
@@ -849,12 +725,6 @@ Future<void> _ensureCalendarScreen(AppDatabase db) async {
           ),
           screenType: 'calendar_month',
           configJson: const Value('{}'),
-          configJsonSchema: Value(
-            screenConfigJsonDocForType('calendar_month').schema,
-          ),
-          exampleConfigJson: Value(
-            screenConfigJsonDocForType('calendar_month').example,
-          ),
           minDwellSeconds: const Value(20),
           maxDwellSeconds: const Value(26),
           dataKey: const Value('calendar'),
@@ -882,12 +752,6 @@ Future<void> _ensureLocalApiScreen(AppDatabase db) async {
           ),
           screenType: 'local_api',
           configJson: const Value('{}'),
-          configJsonSchema: Value(
-            screenConfigJsonDocForType('local_api').schema,
-          ),
-          exampleConfigJson: Value(
-            screenConfigJsonDocForType('local_api').example,
-          ),
           minDwellSeconds: const Value(14),
           maxDwellSeconds: const Value(20),
           dataKey: const Value('dev_local_api'),
@@ -918,12 +782,6 @@ Future<void> _ensureDataHealthScreen(AppDatabase db) async {
           configJson: const Value(
             '{"headline":"Data health","refreshIntervalSeconds":45}',
           ),
-          configJsonSchema: Value(
-            screenConfigJsonDocForType('data_health').schema,
-          ),
-          exampleConfigJson: Value(
-            screenConfigJsonDocForType('data_health').example,
-          ),
           minDwellSeconds: const Value(16),
           maxDwellSeconds: const Value(22),
           dataKey: const Value('dev_data_health'),
@@ -949,12 +807,6 @@ Future<void> _ensureSleepMessageScreen(AppDatabase db) async {
           configJson: const Value(
             '{"text":"Everyone should get some sleep so you\'ll be rested for tomorrow."}',
           ),
-          configJsonSchema: Value(
-            screenConfigJsonDocForType('static_text').schema,
-          ),
-          exampleConfigJson: Value(
-            screenConfigJsonDocForType('static_text').example,
-          ),
           minDwellSeconds: const Value(20),
           maxDwellSeconds: const Value(30),
           maxPlacementsPerProgram: const Value(2),
@@ -976,12 +828,6 @@ Future<void> _ensureControllerInviteScreen(AppDatabase db) async {
           description: const Value('Viewer join QR for waddle_controller'),
           screenType: 'controller_invite',
           configJson: const Value('{}'),
-          configJsonSchema: Value(
-            screenConfigJsonDocForType('controller_invite').schema,
-          ),
-          exampleConfigJson: Value(
-            screenConfigJsonDocForType('controller_invite').example,
-          ),
           minDwellSeconds: const Value(25),
           maxDwellSeconds: const Value(40),
           maxPlacementsPerProgram: const Value(1),
@@ -1007,12 +853,6 @@ Future<void> _ensureAdminSetupScreen(AppDatabase db) async {
           ),
           screenType: 'admin_setup',
           configJson: const Value('{}'),
-          configJsonSchema: Value(
-            screenConfigJsonDocForType('admin_setup').schema,
-          ),
-          exampleConfigJson: Value(
-            screenConfigJsonDocForType('admin_setup').example,
-          ),
           minDwellSeconds: const Value(16),
           maxDwellSeconds: const Value(22),
           frequencyWeight: const Value(200),
@@ -1040,12 +880,6 @@ Future<void> _ensureWeatherScreen(AppDatabase db) async {
           description: const Value('Current weather'),
           screenType: 'weather',
           configJson: const Value('{"locationId":"salt_lake_city_ut"}'),
-          configJsonSchema: Value(
-            screenConfigJsonDocForType('weather').schema,
-          ),
-          exampleConfigJson: Value(
-            screenConfigJsonDocForType('weather').example,
-          ),
           minDwellSeconds: const Value(12),
           maxDwellSeconds: const Value(18),
           dataKey: const Value('weather'),
@@ -1119,12 +953,6 @@ Future<void> _ensureStockQuotesScreen(AppDatabase db) async {
           description: const Value('Latest Finnhub quotes for enabled symbols'),
           screenType: 'stock_quotes',
           configJson: const Value('{}'),
-          configJsonSchema: Value(
-            screenConfigJsonDocForType('stock_quotes').schema,
-          ),
-          exampleConfigJson: Value(
-            screenConfigJsonDocForType('stock_quotes').example,
-          ),
           minDwellSeconds: const Value(12),
           maxDwellSeconds: const Value(18),
           dataKey: const Value('stocks'),
@@ -1141,8 +969,6 @@ Future<void> _ensurePhotoScreen(AppDatabase db) async {
       ScreensCompanion(
         screenType: const Value('photo'),
         dataKey: const Value('photo'),
-        configJsonSchema: Value(screenConfigJsonDocForType('photo').schema),
-        exampleConfigJson: Value(screenConfigJsonDocForType('photo').example),
       ),
     );
     return;
@@ -1156,12 +982,6 @@ Future<void> _ensurePhotoScreen(AppDatabase db) async {
           description: const Value('Curated / search photos from Pexels'),
           screenType: 'photo',
           configJson: const Value('{}'),
-          configJsonSchema: Value(
-            screenConfigJsonDocForType('photo').schema,
-          ),
-          exampleConfigJson: Value(
-            screenConfigJsonDocForType('photo').example,
-          ),
           minDwellSeconds: const Value(10),
           maxDwellSeconds: const Value(16),
           dataKey: const Value('photo'),
@@ -1178,8 +998,6 @@ Future<void> _ensureVideoScreen(AppDatabase db) async {
       ScreensCompanion(
         screenType: const Value('video'),
         dataKey: const Value('video'),
-        configJsonSchema: Value(screenConfigJsonDocForType('video').schema),
-        exampleConfigJson: Value(screenConfigJsonDocForType('video').example),
       ),
     );
     return;
@@ -1193,12 +1011,6 @@ Future<void> _ensureVideoScreen(AppDatabase db) async {
           description: const Value('Popular / search videos from Pexels'),
           screenType: 'video',
           configJson: const Value('{"loop":true,"unmuted":false}'),
-          configJsonSchema: Value(
-            screenConfigJsonDocForType('video').schema,
-          ),
-          exampleConfigJson: Value(
-            screenConfigJsonDocForType('video').example,
-          ),
           minDwellSeconds: const Value(23),
           maxDwellSeconds: const Value(29),
           dataKey: const Value('video'),
@@ -1217,18 +1029,14 @@ Future<void> _ensurePhotoCollageScreens(AppDatabase db) async {
       db.screens,
     )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (row != null) {
-      final collageDoc = screenConfigJsonDocForType('photo_collage');
       await (db.update(db.screens)..where((t) => t.id.equals(id))).write(
         ScreensCompanion(
           screenType: const Value('photo_collage'),
           dataKey: const Value('photo'),
-          configJsonSchema: Value(collageDoc.schema),
-          exampleConfigJson: Value(collageDoc.example),
         ),
       );
       return;
     }
-    final collageDoc = screenConfigJsonDocForType('photo_collage');
     await db
         .into(db.screens)
         .insert(
@@ -1240,8 +1048,6 @@ Future<void> _ensurePhotoCollageScreens(AppDatabase db) async {
             ),
             screenType: 'photo_collage',
             configJson: Value('{"template":"$template"}'),
-            configJsonSchema: Value(collageDoc.schema),
-            exampleConfigJson: Value(collageDoc.example),
             minDwellSeconds: Value(dwellSeconds),
             maxDwellSeconds: Value(dwellSeconds),
             dataKey: const Value('photo'),

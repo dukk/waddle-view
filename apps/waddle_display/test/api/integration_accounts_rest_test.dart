@@ -225,6 +225,33 @@ void main() {
     }
   });
 
+  test('POST google-photos picker session requires configured token', () async {
+    final harness = await RestTestHarness.start();
+    try {
+      await harness.secrets.write(kGoogleClientIdSecretKey, 'google-client');
+      await harness.db.into(harness.db.integrationAccounts).insertOnConflictUpdate(
+            IntegrationAccountsCompanion.insert(
+              id: 'personal',
+              accountType: kIntegrationAccountTypeGoogle,
+              label: const Value('Personal'),
+              createdAtMs: DateTime.now().millisecondsSinceEpoch,
+            ),
+          );
+
+      final res = await http.post(
+        Uri.parse(
+          '${harness.baseUrl}/v1/integration-accounts/personal/google-photos/picker/sessions',
+        ),
+        headers: harness.authHeaders,
+      );
+      expect(res.statusCode, 503);
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      expect(body['error'], 'access_token_unavailable');
+    } finally {
+      await harness.dispose();
+    }
+  });
+
   test('POST oauth-probe rejects non-oauth account types', () async {
     final harness = await RestTestHarness.start();
     try {

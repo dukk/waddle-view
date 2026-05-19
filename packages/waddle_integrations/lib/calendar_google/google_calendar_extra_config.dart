@@ -1,22 +1,22 @@
 import 'dart:convert';
 
+import 'package:waddle_shared/config/calendar_integration_defaults.dart';
+
 import '../shared/calendar_provider_calendar_entry.dart';
 
 class GoogleCalendarSourceConfig {
   const GoogleCalendarSourceConfig({
     required this.calendars,
-    this.defaultCategoryId,
+    this.defaultCategoryIds = const [],
   });
 
   final List<ProviderCalendarEntry> calendars;
-  final String? defaultCategoryId;
+  final List<String> defaultCategoryIds;
 
   static GoogleCalendarSourceConfig parse(Map<String, dynamic> s) {
     return GoogleCalendarSourceConfig(
       calendars: ProviderCalendarEntry.parseList(s['calendars']),
-      defaultCategoryId: parseOptionalCategoryId(
-        s['defaultCategoryId'] ?? s['defaultCategory'],
-      ),
+      defaultCategoryIds: parseDefaultCategoryIds(s),
     );
   }
 }
@@ -46,8 +46,8 @@ class GoogleCalendarExtraConfig {
     if (raw == null || raw.trim().isEmpty) {
       return const GoogleCalendarExtraConfig(
         accounts: [],
-        pastDays: 14,
-        futureDays: 14,
+        pastDays: kCalendarSyncPastFutureDaysDefault,
+        futureDays: kCalendarSyncPastFutureDaysDefault,
       );
     }
     try {
@@ -55,8 +55,8 @@ class GoogleCalendarExtraConfig {
       if (root is! Map<String, dynamic>) {
         return const GoogleCalendarExtraConfig(
           accounts: [],
-          pastDays: 14,
-          futureDays: 14,
+          pastDays: kCalendarSyncPastFutureDaysDefault,
+          futureDays: kCalendarSyncPastFutureDaysDefault,
         );
       }
       final accountsRaw = root['accounts'];
@@ -90,14 +90,20 @@ class GoogleCalendarExtraConfig {
       }
       return GoogleCalendarExtraConfig(
         accounts: accounts,
-        pastDays: _asInt(root['pastDays'], fallback: 14),
-        futureDays: _asInt(root['futureDays'], fallback: 14),
+        pastDays: _asInt(
+          root['pastDays'],
+          fallback: kCalendarSyncPastFutureDaysDefault,
+        ),
+        futureDays: _asInt(
+          root['futureDays'],
+          fallback: kCalendarSyncPastFutureDaysDefault,
+        ),
       );
     } on Object {
       return const GoogleCalendarExtraConfig(
         accounts: [],
-        pastDays: 14,
-        futureDays: 14,
+        pastDays: kCalendarSyncPastFutureDaysDefault,
+        futureDays: kCalendarSyncPastFutureDaysDefault,
       );
     }
   }

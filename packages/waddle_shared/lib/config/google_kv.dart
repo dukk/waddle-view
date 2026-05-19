@@ -8,11 +8,26 @@ import 'package:crypto/crypto.dart';
 const String kGoogleClientIdKvKey = 'google.client_id';
 
 /// [Alerts.source] for Google device-code sign-in prompts.
-const String kGoogleOAuthAlertSource = 'google_calendar';
+const String kGoogleOAuthAlertSource = 'google';
+
+/// Legacy alert source value (pre-unified Google OAuth).
+const String kGoogleOAuthAlertSourceLegacy = 'google_calendar';
+
+/// Google Photos Picker API (read picked media items / sessions).
+const String kGooglePhotosPickerScope =
+    'https://www.googleapis.com/auth/photospicker.mediaitems.readonly';
 
 /// Recommended scope for calendar read-only synchronization.
 const String kGoogleCalendarOAuthScopes =
     'openid email https://www.googleapis.com/auth/calendar.readonly';
+
+/// Device-code and refresh flows for Calendar + Photos Picker integrations.
+const String kGoogleOAuthScopes =
+    '$kGoogleCalendarOAuthScopes $kGooglePhotosPickerScope';
+
+/// Picker API base URL.
+const String kGooglePhotosPickerApiBaseUrl =
+    'https://photospicker.googleapis.com/v1';
 
 /// Legacy config_key_values key for Google Calendar poll gate (schema 21+ uses
 /// [IntegrationsKeyValue] with [kIntegrationLastCollectKey] per integration id).
@@ -51,6 +66,22 @@ String googleCalendarEventRowId(
 ) {
   final bytes = utf8.encode(
     'google_cal\x00$googleAccountKey\x00$calendarId\x00$eventId',
+  );
+  return sha256.convert(bytes).toString();
+}
+
+/// Stable [Photos.id] for a Google Photos Picker item under an account.
+String googlePhotosPhotoRowId(String googleAccountKey, String mediaItemId) {
+  final bytes = utf8.encode(
+    'google_photos_photo\x00$googleAccountKey\x00$mediaItemId',
+  );
+  return sha256.convert(bytes).toString();
+}
+
+/// Stable [Videos.id] for a Google Photos Picker item under an account.
+String googlePhotosVideoRowId(String googleAccountKey, String mediaItemId) {
+  final bytes = utf8.encode(
+    'google_photos_video\x00$googleAccountKey\x00$mediaItemId',
   );
   return sha256.convert(bytes).toString();
 }

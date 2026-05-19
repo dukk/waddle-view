@@ -15,9 +15,12 @@ import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_shared/persistence/config_json_documentation.dart';
 import 'package:waddle_shared/persistence/config_json_schemas_bundle.dart';
 import 'rest_include_params.dart';
+import 'package:waddle_shared/persistence/calendar_event_categories.dart';
 import 'package:waddle_shared/persistence/content_category_defaults.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
+import 'package:waddle_shared/seed/tables/screen_types_seed.dart';
+import 'package:waddle_shared/seed/tables/ticker_tape_types_seed.dart';
 import 'package:waddle_shared/integration_accounts/integration_accounts_service.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';
@@ -147,28 +150,34 @@ void registerOperatorRestRoutes(
 
   r.get('/v1/meta/config-schemas', (Request req) async {
     return Response.ok(
-      jsonEncode(buildConfigJsonSchemasBundle()),
+      jsonEncode(await buildConfigJsonSchemasBundleFromDb(db)),
       headers: {'content-type': 'application/json'},
     );
   });
 
   r.get('/v1/meta/screen-types', (Request req) async {
     return Response.ok(
-      jsonEncode({'items': buildScreenTypeConfigJsonMetaItems()}),
+      jsonEncode({
+        'items': await buildScreenTypeConfigJsonMetaItemsFromDb(db),
+      }),
       headers: {'content-type': 'application/json'},
     );
   });
 
-  r.get('/v1/meta/ticker-types', (Request req) async {
+  r.get('/v1/meta/ticker-tape-types', (Request req) async {
     return Response.ok(
-      jsonEncode({'items': buildTickerTypeConfigJsonMetaItems()}),
+      jsonEncode({
+        'items': await buildTickerTypeConfigJsonMetaItemsFromDb(db),
+      }),
       headers: {'content-type': 'application/json'},
     );
   });
 
   r.get('/v1/meta/overlay-types', (Request req) async {
     return Response.ok(
-      jsonEncode({'items': buildOverlayTypeConfigJsonMetaItems()}),
+      jsonEncode({
+        'items': await buildOverlayTypeConfigJsonMetaItemsFromDb(db),
+      }),
       headers: {'content-type': 'application/json'},
     );
   });
@@ -181,6 +190,13 @@ void registerOperatorRestRoutes(
             (t) => OrderingTerm.asc(t.id),
           ]))
         .get();
+    final typeSchemas = <String, String?>{};
+    if (includeDocs) {
+      final typeRows = await db.select(db.tickerTapeTypes).get();
+      for (final t in typeRows) {
+        typeSchemas[t.tickerType] = t.configJsonSchema;
+      }
+    }
     return Response.ok(
       jsonEncode({
         'items': [
@@ -192,12 +208,12 @@ void registerOperatorRestRoutes(
               'ticker_type': e.tickerType,
               'frequency_weight': e.frequencyWeight,
               'sort_order': e.sortOrder,
-              'config_key': e.configKey,
               'config_json': _jsonFieldDecode(e.configJson),
-              if (includeDocs) ...{
-                'config_json_schema': _jsonFieldDecode(e.configJsonSchema),
-                'example_config_json': _jsonFieldDecode(e.exampleConfigJson),
-              },
+              if (includeDocs)
+                'config_json_schema': _jsonFieldDecode(
+                  typeSchemas[e.tickerType] ??
+                      tickerSlotConfigJsonDocForType(e.tickerType).schema,
+                ),
             },
         ],
       }),
@@ -227,7 +243,8 @@ void registerOperatorRestRoutes(
           body: '{"error":"id_and_ticker_type_required"}',
           headers: {'content-type': 'application/json'});
     }
-    if (!kTickerSlotDefinitionTypes.contains(tickerType)) {
+    await ensureTickerTapeTypes(db);
+    if (!await tickerTypeExists(db, tickerType)) {
       return Response(400,
           body: '{"error":"unknown_ticker_type"}',
           headers: {'content-type': 'application/json'});
@@ -239,17 +256,10 @@ void registerOperatorRestRoutes(
           body: '{"error":"id_already_exists"}',
           headers: {'content-type': 'application/json'});
     }
-    final doc = tickerSlotConfigJsonDocForType(tickerType);
     final label = (map['label'] as String?)?.trim();
     final description = (map['description'] as String?)?.trim() ?? '';
     final frequencyWeight = (map['frequency_weight'] as num?)?.toInt() ?? 100;
     final sortOrder = (map['sort_order'] as num?)?.toInt() ?? 0;
-    final rawCk = map['config_key'];
-    String? configKey;
-    if (rawCk is String) {
-      final t = rawCk.trim();
-      configKey = t.isEmpty ? null : t;
-    }
     final resolvedLabel = (label == null || label.isEmpty) ? id : label;
     String configJsonStr = '{}';
     if (map.containsKey('config_json')) {
@@ -269,12 +279,7 @@ void registerOperatorRestRoutes(
             tickerType: tickerType,
             frequencyWeight: Value(frequencyWeight),
             sortOrder: Value(sortOrder),
-            configKey: configKey == null
-                ? const Value.absent()
-                : Value(configKey),
             configJson: Value(configJsonStr),
-            configJsonSchema: Value(doc.schema),
-            exampleConfigJson: Value(doc.example),
           ),
         );
     await onConfigChanged();
@@ -310,14 +315,6 @@ void registerOperatorRestRoutes(
     final sortOrder = map.containsKey('sort_order')
         ? (map['sort_order'] as num?)?.toInt()
         : existing.sortOrder;
-    final Value<String?> configKeyVal;
-    if (!map.containsKey('config_key')) {
-      configKeyVal = const Value.absent();
-    } else {
-      final ck = map['config_key'] as String?;
-      configKeyVal =
-          Value(ck == null || ck.trim().isEmpty ? null : ck.trim());
-    }
     final label = map.containsKey('label')
         ? ((map['label'] as String?)?.trim() ?? '')
         : existing.label;
@@ -332,7 +329,8 @@ void registerOperatorRestRoutes(
           body: '{"error":"invalid_fields"}',
           headers: {'content-type': 'application/json'});
     }
-    if (!kTickerSlotDefinitionTypes.contains(tickerType)) {
+    await ensureTickerTapeTypes(db);
+    if (!await tickerTypeExists(db, tickerType)) {
       return Response(400,
           body: '{"error":"unknown_ticker_type"}',
           headers: {'content-type': 'application/json'});
@@ -351,18 +349,14 @@ void registerOperatorRestRoutes(
         );
       }
     }
-    final doc = tickerSlotConfigJsonDocForType(tickerType);
     await (db.update(db.tickerTapes)..where((t) => t.id.equals(id))).write(
       TickerTapesCompanion(
         label: Value(label),
         description: Value(description),
         frequencyWeight: Value(weight),
         sortOrder: Value(sortOrder),
-        configKey: configKeyVal,
         tickerType: Value(tickerType),
         configJson: configJsonVal,
-        configJsonSchema: Value(doc.schema),
-        exampleConfigJson: Value(doc.example),
       ),
     );
     await onConfigChanged();
@@ -560,10 +554,7 @@ void registerOperatorRestRoutes(
           body: '{"error":"reserved_category"}',
           headers: {'content-type': 'application/json'});
     }
-    final cal = await (db.select(db.calendarEvents)
-          ..where((t) => t.categoryId.equals(id)))
-        .get();
-    if (cal.isNotEmpty) {
+    if (await calendarCategoryIdInUse(db, id)) {
       return Response(409,
           body: '{"error":"category_in_use_calendar"}',
           headers: {'content-type': 'application/json'});
@@ -777,7 +768,8 @@ void registerOperatorRestRoutes(
           body: '{"error":"id_and_screen_type_required"}',
           headers: {'content-type': 'application/json'});
     }
-    if (!kScreenLayoutWidgetTypes.contains(screenType)) {
+    await ensureScreenTypes(db);
+    if (!await screenTypeExists(db, screenType)) {
       return Response(400,
           body: '{"error":"unknown_screen_type"}',
           headers: {'content-type': 'application/json'});
@@ -790,7 +782,6 @@ void registerOperatorRestRoutes(
           body: '{"error":"id_already_exists"}',
           headers: {'content-type': 'application/json'});
     }
-    final doc = screenConfigJsonDocForType(screenType);
     late final String configJsonStr;
     try {
       configJsonStr = _configJsonStringFromBody(map['config_json']);
@@ -831,8 +822,6 @@ void registerOperatorRestRoutes(
             description: Value(description),
             screenType: screenType,
             configJson: Value(configJsonStr),
-            configJsonSchema: Value(doc.schema),
-            exampleConfigJson: Value(doc.example),
             minDwellSeconds: Value(minDwell),
             maxDwellSeconds: Value(maxDwell),
             frequencyWeight: Value(frequencyWeight),
@@ -874,7 +863,8 @@ void registerOperatorRestRoutes(
     final screenType = map.containsKey('screen_type')
         ? (map['screen_type'] as String?)?.trim() ?? existing.screenType
         : existing.screenType;
-    if (!kScreenLayoutWidgetTypes.contains(screenType)) {
+    await ensureScreenTypes(db);
+    if (!await screenTypeExists(db, screenType)) {
       return Response(400,
           body: '{"error":"unknown_screen_type"}',
           headers: {'content-type': 'application/json'});
@@ -898,7 +888,6 @@ void registerOperatorRestRoutes(
           body: '{"error":"invalid_screen_layout"}',
           headers: {'content-type': 'application/json'});
     }
-    final doc = screenConfigJsonDocForType(screenType);
     final label = map.containsKey('label')
         ? ((map['label'] as String?)?.trim() ?? '')
         : existing.label;
@@ -941,8 +930,6 @@ void registerOperatorRestRoutes(
         description: Value(description),
         screenType: Value(screenType),
         configJson: Value(resolvedConfigJson),
-        configJsonSchema: Value(doc.schema),
-        exampleConfigJson: Value(doc.example),
         minDwellSeconds: Value(minDwell),
         maxDwellSeconds: Value(maxDwell),
         frequencyWeight: Value(frequencyWeight),

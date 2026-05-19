@@ -4,87 +4,85 @@ import 'package:test/test.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 void main() {
-  test('schema 5 to 6 renames integration types and default ids', () async {
+  test('schema 25 to 26 extracts integration_types and trims integrations', () async {
     final executor = NativeDatabase.memory(setup: (raw) {
       raw.execute('''
 CREATE TABLE integrations (
   id TEXT NOT NULL PRIMARY KEY,
-  provider_type TEXT NOT NULL,
+  integration_type TEXT NOT NULL,
   enabled INTEGER NOT NULL DEFAULT 1,
   poll_seconds INTEGER NOT NULL DEFAULT 60,
-  base_url TEXT,
   config_json TEXT,
   config_json_schema TEXT,
-  example_config_json TEXT
-);
-CREATE TABLE integration_secrets (
-  secret_key TEXT NOT NULL PRIMARY KEY,
-  ciphertext BLOB NOT NULL,
-  updated_at_ms INTEGER NOT NULL
+  requires_accounts INTEGER NOT NULL DEFAULT 0,
+  accounts_ready INTEGER NOT NULL DEFAULT 1
 );
 ''');
       raw.execute(
-        "INSERT INTO integration_secrets (secret_key, ciphertext, updated_at_ms) "
-        "VALUES ('provider:access_token:media_pexels', X'010203', 1000)",
+        "INSERT INTO integrations "
+        "(id, integration_type, enabled, poll_seconds, config_json, "
+        "config_json_schema, requires_accounts, accounts_ready) "
+        "VALUES ('news_rss', 'news_rss', 1, 3600, '{}', "
+        "'{\"type\":\"object\"}', 0, 1)",
       );
       raw.execute(
-        "INSERT INTO integrations (id, provider_type, enabled, config_json) "
-        "VALUES ('media_pexels', 'media_pexels', 1, "
-        "'{\"maxPhotos\":10,\"maxVideos\":5,\"photosPerHour\":1,\"videosPerHour\":1}')",
+        "INSERT INTO integrations "
+        "(id, integration_type, enabled, poll_seconds, config_json, "
+        "config_json_schema, requires_accounts, accounts_ready) "
+        "VALUES ('cal_google', 'calendar_google', 0, 60, '{}', "
+        "NULL, 1, 0)",
       );
-      raw.execute(
-        "INSERT INTO integrations (id, provider_type, enabled) "
-        "VALUES ('weather_nws_alerts', 'weather_nws_alerts', 1)",
-      );
-      raw.execute('PRAGMA user_version = 5');
+      raw.execute('''
+CREATE TABLE calendar_event_categories (
+  event_id TEXT NOT NULL,
+  category_id TEXT NOT NULL,
+  PRIMARY KEY (event_id, category_id)
+);
+''');
+      raw.execute('PRAGMA user_version = 25');
     });
     final db = AppDatabase(
       DatabaseConnection(executor, closeStreamsSynchronously: true),
     );
     await db.customStatement('SELECT 1');
 
-    final photo = await db.customSelect(
-      'SELECT id, integration_type FROM integrations WHERE id = ?',
-      variables: [Variable<String>(kDefaultPhotoPexelsIntegrationId)],
-    ).getSingleOrNull();
-    expect(photo, isNotNull);
-    expect(photo!.read<String>('integration_type'), 'photo_pexels');
+    final typeRows = await db.customSelect(
+      'SELECT integration_type, label, requires_accounts, config_json_schema '
+      'FROM integration_types ORDER BY integration_type',
+    ).get();
+    expect(typeRows.length >= 2, isTrue);
 
-    final video = await db.customSelect(
-      'SELECT id, integration_type FROM integrations WHERE id = ?',
-      variables: [Variable<String>(kDefaultVideoPexelsIntegrationId)],
-    ).getSingleOrNull();
-    expect(video, isNotNull);
-    expect(video!.read<String>('integration_type'), 'video_pexels');
+    final newsType = typeRows.firstWhere(
+      (r) => r.read<String>('integration_type') == 'news_rss',
+    );
+    expect(newsType.read<int>('requires_accounts'), 0);
+    expect(newsType.read<String>('label'), isNotEmpty);
+    expect(newsType.read<String?>('config_json_schema'), contains('object'));
 
-    final nws = await db.customSelect(
-      'SELECT id, integration_type FROM integrations WHERE id = ?',
-      variables: [Variable<String>(kDefaultWeatherAlertsNwsIntegrationId)],
+    final calType = typeRows.firstWhere(
+      (r) => r.read<String>('integration_type') == 'calendar_google',
+    );
+    expect(calType.read<int>('requires_accounts'), 1);
+
+    final integrationColumns = await db.customSelect(
+      'PRAGMA table_info(integrations)',
+    ).get();
+    final names = integrationColumns.map((c) => c.read<String>('name')).toSet();
+    expect(names.contains('config_json_schema'), isFalse);
+    expect(names.contains('requires_accounts'), isFalse);
+    expect(names.contains('accounts_ready'), isTrue);
+
+    final calRow = await db.customSelect(
+      'SELECT accounts_ready FROM integrations WHERE id = ?',
+      variables: [const Variable<String>('cal_google')],
     ).getSingle();
-    expect(nws.read<String>('integration_type'), 'weather_alerts_nws');
+    expect(calRow.read<int>('accounts_ready'), 0);
 
-    final photoSecret = await db.customSelect(
-      'SELECT secret_key, ciphertext, updated_at_ms FROM integration_secrets '
-      'WHERE secret_key = ?',
-      variables: [
-        Variable<String>(
-          'provider:access_token:$kDefaultPhotoPexelsIntegrationId',
-        ),
-      ],
-    ).getSingleOrNull();
-    expect(photoSecret, isNotNull);
-    expect(photoSecret!.read<Uint8List>('ciphertext'), [1, 2, 3]);
-    expect(photoSecret.read<int>('updated_at_ms'), 1000);
-
-    final videoSecret = await db.customSelect(
-      'SELECT secret_key FROM integration_secrets WHERE secret_key = ?',
-      variables: [
-        Variable<String>(
-          'provider:access_token:$kDefaultVideoPexelsIntegrationId',
-        ),
-      ],
-    ).getSingleOrNull();
-    expect(videoSecret, isNotNull);
+    final indexRows = await db.customSelect(
+      "SELECT name FROM sqlite_master WHERE type = 'index' "
+      "AND name = 'idx_integrations_enabled_accounts'",
+    ).get();
+    expect(indexRows, isNotEmpty);
 
     final version = await db.customSelect('PRAGMA user_version').getSingle();
     expect(version.read<int>('user_version'), db.schemaVersion);

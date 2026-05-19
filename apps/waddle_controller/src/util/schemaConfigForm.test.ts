@@ -4,6 +4,7 @@ import {
   buildUiSchemaFromJsonSchema,
   schemaPropertyIsBoolean,
   schemaPropertyUsesBlobKey,
+  schemaPropertyUsesContentCategory,
   schemaPropertyUsesSlider,
 } from './schemaConfigForm';
 
@@ -36,6 +37,16 @@ describe('schemaConfigForm', () => {
     expect(schemaPropertyIsBoolean({ type: 'boolean' })).toBe(true);
   });
 
+  it('detects content category properties', () => {
+    expect(
+      schemaPropertyUsesContentCategory({
+        type: 'string',
+        'x-waddle-widget': 'content-category',
+      }),
+    ).toBe(true);
+    expect(schemaPropertyUsesContentCategory({ type: 'string' })).toBe(false);
+  });
+
   it('buildUiSchemaFromJsonSchema maps widgets and fields', () => {
     const ui = buildUiSchemaFromJsonSchema({
       type: 'object',
@@ -46,11 +57,16 @@ describe('schemaConfigForm', () => {
           type: 'array',
           items: { type: 'string', format: 'waddle-overlay-blob-key' },
         },
+        categoryId: {
+          type: 'string',
+          'x-waddle-widget': 'content-category',
+        },
       },
     });
     expect(ui.shadow).toEqual({ 'ui:widget': 'WaddleSwitchWidget' });
     expect(ui.density).toEqual({ 'ui:widget': 'WaddleSliderWidget' });
     expect(ui.image_blob_keys).toEqual({ 'ui:field': 'OverlayBlobKeysField' });
+    expect(ui.categoryId).toEqual({ 'ui:field': 'ContentCategorySelectField' });
   });
 
   it('normalizeSchemaFieldLabels fills missing property titles', () => {

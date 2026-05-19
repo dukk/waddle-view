@@ -12,7 +12,7 @@ const display = { id: 'd1', label: 'Lab', baseUrl: 'https://display.test' };
 
 const bundle = {
   screen_types: [],
-  ticker_types: [],
+  ticker_tape_types: [],
   overlay_types: [],
   integration_types: [],
 };

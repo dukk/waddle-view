@@ -106,7 +106,7 @@ export function v1Router() {
     });
   });
 
-  r.get('/meta/ticker-types', (c) => {
+  r.get('/meta/ticker-tape-types', (c) => {
     const scenario = c.get('scenario');
     if (wantsEmpty(scenario)) return c.json({ items: [] });
     return c.json({
@@ -125,7 +125,7 @@ export function v1Router() {
     if (wantsEmpty(scenario)) {
       return c.json({
         screen_types: [],
-        ticker_types: [],
+        ticker_tape_types: [],
         overlay_types: [],
         integration_types: [],
       });
@@ -142,7 +142,7 @@ export function v1Router() {
           example_config_json: { text: 'Hello from mock API' },
         },
       ],
-      ticker_types: [
+      ticker_tape_types: [
         {
           ticker_type: 'time',
           config_json_schema: { type: 'object' },
@@ -179,7 +179,6 @@ export function v1Router() {
           ticker_type: 'time',
           frequency_weight: 100,
           sort_order: 0,
-          config_key: null,
           config_json: {},
         },
       ],

@@ -70,10 +70,11 @@ type WeatherAtLocation = {
 type Props = {
   display: SavedDisplay;
   model: SlideCardModel;
+  typeLabel: string;
   onDetails: () => void;
 };
 
-export function SlideProgramCard({ display, model, onDetails }: Props) {
+export function SlideProgramCard({ display, model, typeLabel, onDetails }: Props) {
   const [photoIdx, setPhotoIdx] = useState(0);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -325,7 +326,6 @@ export function SlideProgramCard({ display, model, onDetails }: Props) {
     [nPhotos],
   );
 
-  const typeLabel = model.screenType ?? model.summaries[0]?.type ?? 'slide';
   const previewKind = useMemo(() => slideScreenPreviewKind(model), [model]);
 
   const hasRasterPreview =

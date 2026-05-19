@@ -7,23 +7,28 @@ export type ConfigSchemaMetaItem = {
 
 export type ScreenTypeSchemaMeta = ConfigSchemaMetaItem & {
   screen_type: string;
+  label?: string;
 };
 
 export type TickerTypeSchemaMeta = ConfigSchemaMetaItem & {
   ticker_type: string;
+  label?: string;
 };
 
 export type OverlayTypeSchemaMeta = ConfigSchemaMetaItem & {
   overlay_type: string;
+  label?: string;
 };
 
 export type IntegrationTypeSchemaMeta = ConfigSchemaMetaItem & {
   integration_type: string;
+  label?: string;
+  requires_accounts?: boolean;
 };
 
 export type ConfigSchemasBundle = {
   screen_types: ScreenTypeSchemaMeta[];
-  ticker_types: TickerTypeSchemaMeta[];
+  ticker_tape_types: TickerTypeSchemaMeta[];
   overlay_types: OverlayTypeSchemaMeta[];
   integration_types: IntegrationTypeSchemaMeta[];
 };
@@ -44,7 +49,9 @@ export function loadConfigSchemas(displayId: string): ConfigSchemasBundle | null
     }
     return {
       screen_types: Array.isArray(parsed.screen_types) ? parsed.screen_types : [],
-      ticker_types: Array.isArray(parsed.ticker_types) ? parsed.ticker_types : [],
+      ticker_tape_types: Array.isArray(parsed.ticker_tape_types)
+        ? parsed.ticker_tape_types
+        : [],
       overlay_types: Array.isArray(parsed.overlay_types) ? parsed.overlay_types : [],
       integration_types: Array.isArray(parsed.integration_types)
         ? parsed.integration_types
@@ -81,14 +88,16 @@ export function schemaForTickerType(
   bundle: ConfigSchemasBundle | null,
   tickerType: string,
 ): unknown {
-  return bundle?.ticker_types.find((m) => m.ticker_type === tickerType)?.config_json_schema;
+  return bundle?.ticker_tape_types.find((m) => m.ticker_type === tickerType)
+    ?.config_json_schema;
 }
 
 export function exampleForTickerType(
   bundle: ConfigSchemasBundle | null,
   tickerType: string,
 ): unknown {
-  return bundle?.ticker_types.find((m) => m.ticker_type === tickerType)?.example_config_json;
+  return bundle?.ticker_tape_types.find((m) => m.ticker_type === tickerType)
+    ?.example_config_json;
 }
 
 export function schemaForOverlayType(
@@ -124,4 +133,45 @@ export function exampleForIntegrationType(
 ): unknown {
   return bundle?.integration_types.find((m) => m.integration_type === integrationType)
     ?.example_config_json;
+}
+
+export function labelForIntegrationType(
+  bundle: ConfigSchemasBundle | null,
+  integrationType: string,
+): string | undefined {
+  const label = bundle?.integration_types.find((m) => m.integration_type === integrationType)
+    ?.label;
+  return typeof label === 'string' && label.trim() ? label.trim() : undefined;
+}
+
+export function labelForScreenType(
+  bundle: ConfigSchemasBundle | null,
+  screenType: string,
+): string | undefined {
+  const label = bundle?.screen_types.find((m) => m.screen_type === screenType)?.label;
+  return typeof label === 'string' && label.trim() ? label.trim() : undefined;
+}
+
+export function labelForTickerType(
+  bundle: ConfigSchemasBundle | null,
+  tickerType: string,
+): string | undefined {
+  const label = bundle?.ticker_tape_types.find((m) => m.ticker_type === tickerType)?.label;
+  return typeof label === 'string' && label.trim() ? label.trim() : undefined;
+}
+
+export function labelForOverlayType(
+  bundle: ConfigSchemasBundle | null,
+  overlayType: string,
+): string | undefined {
+  const label = bundle?.overlay_types.find((m) => m.overlay_type === overlayType)?.label;
+  return typeof label === 'string' && label.trim() ? label.trim() : undefined;
+}
+
+export function requiresAccountsForIntegrationType(
+  bundle: ConfigSchemasBundle | null,
+  integrationType: string,
+): boolean | undefined {
+  const meta = bundle?.integration_types.find((m) => m.integration_type === integrationType);
+  return typeof meta?.requires_accounts === 'boolean' ? meta.requires_accounts : undefined;
 }

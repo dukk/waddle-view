@@ -1,5 +1,8 @@
 import 'dart:convert';
 
+import 'package:waddle_shared/config/calendar_integration_defaults.dart';
+import 'package:waddle_shared/persistence/calendar_event_categories.dart';
+
 import '../shared/calendar_provider_calendar_entry.dart';
 
 class IcalFeedConfig {
@@ -7,14 +10,14 @@ class IcalFeedConfig {
     required this.id,
     required this.url,
     this.label,
-    this.categoryId,
+    this.categoryIds = const [],
     this.enabled = true,
   });
 
   final String id;
   final String url;
   final String? label;
-  final String? categoryId;
+  final List<String> categoryIds;
   final bool enabled;
 
   static IcalFeedConfig? parse(Map<String, dynamic> raw) {
@@ -29,13 +32,15 @@ class IcalFeedConfig {
     final label = labelRaw is String && labelRaw.trim().isNotEmpty
         ? labelRaw.trim()
         : null;
+    final categoryIds = <String>[
+      ...parseCalendarConfigCategoryIds(raw['categoryIds']),
+      ...parseCalendarConfigCategoryIds(raw['categoryId'] ?? raw['category']),
+    ];
     return IcalFeedConfig(
       id: id,
       url: url,
       label: label,
-      categoryId: parseOptionalCategoryId(
-        raw['categoryId'] ?? raw['category'],
-      ),
+      categoryIds: normalizeCalendarEventCategoryIds(categoryIds),
       enabled: enabled,
     );
   }
@@ -56,8 +61,8 @@ class IcalCalendarExtraConfig {
     if (raw == null || raw.trim().isEmpty) {
       return const IcalCalendarExtraConfig(
         feeds: [],
-        pastDays: 14,
-        futureDays: 14,
+        pastDays: kCalendarSyncPastFutureDaysDefault,
+        futureDays: kCalendarSyncPastFutureDaysDefault,
       );
     }
     try {
@@ -65,8 +70,8 @@ class IcalCalendarExtraConfig {
       if (root is! Map<String, dynamic>) {
         return const IcalCalendarExtraConfig(
           feeds: [],
-          pastDays: 14,
-          futureDays: 14,
+          pastDays: kCalendarSyncPastFutureDaysDefault,
+          futureDays: kCalendarSyncPastFutureDaysDefault,
         );
       }
       final feedsRaw = root['feeds'];
@@ -83,14 +88,20 @@ class IcalCalendarExtraConfig {
       }
       return IcalCalendarExtraConfig(
         feeds: feeds,
-        pastDays: _asInt(root['pastDays'], fallback: 14),
-        futureDays: _asInt(root['futureDays'], fallback: 14),
+        pastDays: _asInt(
+          root['pastDays'],
+          fallback: kCalendarSyncPastFutureDaysDefault,
+        ),
+        futureDays: _asInt(
+          root['futureDays'],
+          fallback: kCalendarSyncPastFutureDaysDefault,
+        ),
       );
     } on Object {
       return const IcalCalendarExtraConfig(
         feeds: [],
-        pastDays: 14,
-        futureDays: 14,
+        pastDays: kCalendarSyncPastFutureDaysDefault,
+        futureDays: kCalendarSyncPastFutureDaysDefault,
       );
     }
   }

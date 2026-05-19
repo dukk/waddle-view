@@ -15,6 +15,8 @@ import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/blob/display_blob_read.dart';
 import 'package:waddle_shared/curation/reject_rescan.dart';
 import 'package:waddle_shared/persistence/content_suppression_repository.dart';
+import 'package:waddle_shared/persistence/config_json_documentation.dart';
+import 'package:waddle_shared/persistence/config_json_schemas_bundle.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/display_overlay_repository.dart';
 import 'package:waddle_shared/persistence/display_overlay_row.dart';
@@ -163,6 +165,13 @@ Handler buildProtectedApiRouter({
   r.get('/v1/screens', (Request req) async {
     final includeDocs = includeConfigSchemaFromRequest(req);
     final rows = await db.select(db.screens).get();
+    final screenTypeSchemas = <String, String?>{};
+    if (includeDocs) {
+      final typeRows = await db.select(db.screenTypes).get();
+      for (final t in typeRows) {
+        screenTypeSchemas[t.screenType] = t.configJsonSchema;
+      }
+    }
     final dataKeyLimitRows =
         await db.select(db.curatorDataKeyProgramLimits).get();
     final dataKeyLimits = <String, CuratorDataKeyProgramLimit>{
@@ -176,10 +185,11 @@ Handler buildProtectedApiRouter({
             'description': e.description,
             'screen_type': e.screenType,
             'config_json': e.configJson,
-            if (includeDocs) ...{
-              'config_json_schema': e.configJsonSchema,
-              'example_config_json': e.exampleConfigJson,
-            },
+            if (includeDocs)
+              'config_json_schema': decodeConfigJsonDocField(
+                screenTypeSchemas[e.screenType] ??
+                    screenConfigJsonDocForType(e.screenType).schema,
+              ),
             'min_dwell_seconds': e.minDwellSeconds,
             'max_dwell_seconds': e.maxDwellSeconds,
             'frequency_weight': e.frequencyWeight,
@@ -255,11 +265,21 @@ Handler buildProtectedApiRouter({
     await ensureOverlaysTableExists(db);
     final includeDocs = includeConfigSchemaFromRequest(req);
     final rows = await fetchDisplayOverlays(db);
+    final typeSchemas =
+        includeDocs ? await overlayTypeConfigJsonSchemasByType(db) : null;
     return Response.ok(
       jsonEncode({
-        'items': rows
-            .map((r) => overlayToJson(r, includeConfigDocs: includeDocs))
-            .toList(),
+        'items': [
+          for (final r in rows)
+            overlayToJson(
+              r,
+              includeConfigDocs: includeDocs,
+              configJsonSchema: includeDocs
+                  ? typeSchemas![r.overlayType] ??
+                      displayOverlayConfigJsonDocForType(r.overlayType).schema
+                  : null,
+            ),
+        ],
       }),
       headers: {'content-type': 'application/json'},
     );

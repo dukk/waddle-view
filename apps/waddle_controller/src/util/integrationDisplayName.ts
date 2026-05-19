@@ -58,7 +58,12 @@ function titleFromReversedSegments(integrationType: string): string {
 }
 
 /** Normalized label for cards and dialogs; does not expose row `id`. */
-export function integrationDisplayName(integrationType: string): string {
+export function integrationDisplayName(
+  integrationType: string,
+  apiLabel?: string | null,
+): string {
+  const fromApi = apiLabel?.trim();
+  if (fromApi) return fromApi;
   const key = integrationType.trim();
   if (!key) return 'Integration';
   const mapped = INTEGRATION_TYPE_TITLES[key];

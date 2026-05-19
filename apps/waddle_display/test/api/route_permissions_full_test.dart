@@ -13,6 +13,21 @@ void main() {
     ),
     (
       'POST',
+      '/v1/integration-accounts/work/google-photos/picker/sessions',
+      WaddlePermission.integrationsWrite,
+    ),
+    (
+      'GET',
+      '/v1/integration-accounts/work/google-photos/picker/sessions/s1',
+      WaddlePermission.integrationsRead,
+    ),
+    (
+      'GET',
+      '/v1/integration-accounts/work/google-photos/picker/sessions/s1/media-items',
+      WaddlePermission.integrationsRead,
+    ),
+    (
+      'POST',
       '/v1/integration-accounts/work/oauth-probe',
       WaddlePermission.integrationsWrite,
     ),
@@ -56,7 +71,7 @@ void main() {
     ('POST', '/v1/ticker/tapes', WaddlePermission.tickerWrite),
     ('PATCH', '/v1/ticker/tapes/t1', WaddlePermission.tickerWrite),
     ('DELETE', '/v1/ticker/tapes/t1', WaddlePermission.tickerWrite),
-    ('GET', '/v1/meta/ticker-types', WaddlePermission.metaRead),
+    ('GET', '/v1/meta/ticker-tape-types', WaddlePermission.metaRead),
     ('GET', '/v1/meta/config-schemas', WaddlePermission.metaRead),
     ('GET', '/v1/adoption/clients', WaddlePermission.usersManage),
     ('POST', '/v1/adoption/clients', WaddlePermission.usersManage),
