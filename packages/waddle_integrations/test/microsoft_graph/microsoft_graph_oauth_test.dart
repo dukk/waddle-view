@@ -218,7 +218,9 @@ void main() {
     final oauth = MicrosoftGraphOAuth(
       httpClient: httpClient,
       nowMs: () => nowMs,
-      sleep: (_) async {},
+      sleep: (duration) async {
+        nowMs += duration.inMilliseconds;
+      },
     );
     await oauth.ensureAccessToken(
       db: db,
@@ -227,6 +229,19 @@ void main() {
       graphAccountKey: 'work',
       pollDeviceCode: false,
     );
+    // Let detached poll finish (frozen [nowMs] + no-op sleep would spin until test timeout).
+    for (var i = 0; i < 50; i++) {
+      final active = await activeOAuthSignInAlertsForAccount(
+        db,
+        accountId: 'work',
+        alertSource: kMicrosoftGraphOAuthAlertSource,
+        now: DateTime.fromMillisecondsSinceEpoch(nowMs),
+      );
+      if (active.isNotEmpty) {
+        break;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
     expect(deviceCodeCalls, 1);
     final rows = await db.select(db.alerts).get();
     expect(rows.length, 2);
@@ -235,6 +250,7 @@ void main() {
       db,
       accountId: 'work',
       alertSource: kMicrosoftGraphOAuthAlertSource,
+      now: DateTime.fromMillisecondsSinceEpoch(nowMs),
     );
     expect(active.length, 1);
     expect(active.single.body, contains('NEW'));

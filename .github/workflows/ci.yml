@@ -67,7 +67,7 @@ jobs:
         working-directory: ${{ github.workspace }}
       - run: dart run build_runner build --delete-conflicting-outputs
         working-directory: ${{ github.workspace }}/packages/waddle_shared
-      - run: flutter test
+      - run: flutter test --coverage --timeout=60s
         working-directory: ${{ github.workspace }}/packages/waddle_shared
       - run: dart test --coverage=coverage
         working-directory: ${{ github.workspace }}/packages/waddle_integrations
@@ -83,7 +83,7 @@ jobs:
         run: >
           dart run tool/coverage_check.dart --min=80 --target=90
           coverage/lcov.info
-          ${{ github.workspace }}/packages/waddle_integrations/coverage/lcov.info
+          ${{ github.workspace }}/packages/waddle_shared/coverage/lcov.info
           ${{ github.workspace }}/packages/waddle_plugin_sdk/coverage/lcov.info
       - run: flutter test
         working-directory: ${{ github.workspace }}/apps/waddlectl

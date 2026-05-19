@@ -579,7 +579,7 @@ def build_dart_workspace_steps(
         )
 
     if include_coverage:
-        integrations_lcov = integrations / "coverage" / "lcov.info"
+        shared_lcov = shared / "coverage" / "lcov.info"
         plugin_lcov = plugin_sdk / "coverage" / "lcov.info"
         steps.append(
             Step(
@@ -591,7 +591,7 @@ def build_dart_workspace_steps(
                     "--min=80",
                     "--target=90",
                     "coverage/lcov.info",
-                    str(integrations_lcov),
+                    str(shared_lcov),
                     str(plugin_lcov),
                 ],
                 display,

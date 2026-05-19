@@ -11,8 +11,9 @@
 // (display app composition root only).
 import 'dart:io';
 
-bool _includeSourceFile(String sf) {
+bool _includeSourceFile(String sf, {required String lcovPath}) {
   final norm = sf.replaceAll('\\', '/');
+  final lcovNorm = lcovPath.replaceAll('\\', '/');
   if (norm.contains('packages/waddle_plugin_example/')) {
     return false;
   }
@@ -22,11 +23,18 @@ bool _includeSourceFile(String sf) {
   if (norm.endsWith('main.dart')) {
     return false;
   }
-  final isDisplayLib =
-      norm.startsWith('lib/') || norm.contains('/apps/waddle_display/lib/');
-  final isSharedLib = norm.contains('packages/waddle_shared/lib/');
-  final isIntegrationsLib = norm.contains('packages/waddle_integrations/lib/');
-  final isPluginSdkLib = norm.contains('packages/waddle_plugin_sdk/lib/');
+  final bareLib = norm.startsWith('lib/') && !norm.contains('packages/');
+  final isDisplayLib = norm.contains('/apps/waddle_display/lib/') ||
+      (bareLib &&
+          !lcovNorm.contains('waddle_shared') &&
+          !lcovNorm.contains('waddle_plugin_sdk') &&
+          !lcovNorm.contains('waddle_integrations'));
+  final isSharedLib = norm.contains('packages/waddle_shared/lib/') ||
+      (bareLib && lcovNorm.contains('waddle_shared'));
+  final isIntegrationsLib =
+      norm.contains('packages/waddle_integrations/lib/');
+  final isPluginSdkLib = norm.contains('packages/waddle_plugin_sdk/lib/') ||
+      (bareLib && lcovNorm.contains('waddle_plugin_sdk'));
   if (!isDisplayLib && !isSharedLib && !isIntegrationsLib && !isPluginSdkLib) {
     return false;
   }
@@ -79,7 +87,8 @@ void main(List<String> args) {
           lh = int.parse(line.substring(3).trim());
         }
       }
-      if (sf != null && _includeSourceFile(sf.replaceAll('\\', '/'))) {
+      if (sf != null &&
+          _includeSourceFile(sf.replaceAll('\\', '/'), lcovPath: lcovPath)) {
         totalLf += lf;
         totalLh += lh;
       }
@@ -89,8 +98,8 @@ void main(List<String> args) {
     stderr.writeln(
       'No LF entries found for waddle_display/lib, waddle_shared/lib, '
       'waddle_integrations/lib, or waddle_plugin_sdk/lib (did you run '
-      'flutter test --coverage, dart test --coverage on waddle_integrations, '
-      'and dart test --coverage on waddle_plugin_sdk?)',
+      'flutter test --coverage on waddle_display and waddle_shared, and '
+      'dart test --coverage on waddle_plugin_sdk?)',
     );
     exitCode = 1;
     return;
