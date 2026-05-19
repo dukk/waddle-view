@@ -11,6 +11,7 @@ CuratorConfigurationInput _config({
   bool defaultConfig = false,
   List<CuratorScheduleRuleInput> rules = const [],
   Set<String> screens = const {},
+  Set<String> tickers = const {},
   Set<String> overlays = const {},
 }) {
   return CuratorConfigurationInput(
@@ -27,7 +28,7 @@ CuratorConfigurationInput _config({
     defaultConfig: defaultConfig,
     rules: rules,
     screenMemberIds: screens,
-    tickerMemberIds: const {},
+    tickerMemberIds: tickers,
     overlayMemberIds: overlays,
   );
 }
@@ -122,5 +123,94 @@ void main() {
     expect(sel.enhancements, hasLength(1));
     expect(sel.enhancements.first.configuration.id, 'waddle_birthday');
     expect(sel.effectiveOverlayMemberIds, contains('overlay_confetti'));
+  });
+
+  test('enhancement unions screen and ticker members onto base', () {
+    final configs = [
+      _config(
+        id: 'evening',
+        layer: kCuratorLayerBase,
+        rules: [
+          CuratorScheduleRuleInput(
+            id: 'e1',
+            configurationId: 'evening',
+            priority: 10,
+            startTimeMinutes: 18 * 60,
+            endTimeMinutes: 22 * 60,
+            daysOfWeekMask: 0x7F,
+            repeatAnnually: true,
+          ),
+        ],
+        screens: {'jokes'},
+        tickers: {'tape_news'},
+      ),
+      _config(
+        id: 'party',
+        layer: kCuratorLayerEnhancement,
+        rules: [
+          CuratorScheduleRuleInput(
+            id: 'p1',
+            configurationId: 'party',
+            priority: 100,
+            startMonth: 5,
+            startDay: 13,
+            repeatAnnually: true,
+          ),
+        ],
+        screens: {'photos'},
+        tickers: {'tape_sports'},
+        overlays: {'overlay_confetti'},
+      ),
+    ];
+    final sel = CuratorScheduleResolver.resolve(
+      localNow: DateTime(2026, 5, 13, 19),
+      state: const CuratorRuntimeState(displayAdopted: true),
+      configurations: configs,
+    );
+    expect(sel.effectiveScreenMemberIds, containsAll(['jokes', 'photos']));
+    expect(sel.effectiveTickerMemberIds, containsAll(['tape_news', 'tape_sports']));
+    expect(sel.effectiveOverlayMemberIds, contains('overlay_confetti'));
+  });
+
+  test('exclusive uses only exclusive screen and ticker members', () {
+    final configs = [
+      _config(
+        id: 'bootstrap',
+        layer: kCuratorLayerExclusive,
+        rules: [
+          CuratorScheduleRuleInput(
+            id: 'r1',
+            configurationId: 'bootstrap',
+            priority: 10000,
+            statePredicate: kCuratorPredicateDisplayNotAdopted,
+            repeatAnnually: true,
+          ),
+        ],
+        screens: {'admin_setup'},
+        tickers: {'tape_setup'},
+      ),
+      _config(
+        id: 'party',
+        layer: kCuratorLayerEnhancement,
+        rules: [
+          CuratorScheduleRuleInput(
+            id: 'p1',
+            configurationId: 'party',
+            priority: 100,
+            repeatAnnually: true,
+          ),
+        ],
+        screens: {'photos'},
+        tickers: {'tape_sports'},
+      ),
+    ];
+    final sel = CuratorScheduleResolver.resolve(
+      localNow: DateTime(2026, 5, 13, 19),
+      state: const CuratorRuntimeState(displayAdopted: false),
+      configurations: configs,
+    );
+    expect(sel.effectiveScreenMemberIds, {'admin_setup'});
+    expect(sel.effectiveTickerMemberIds, {'tape_setup'});
+    expect(sel.effectiveScreenMemberIds, isNot(contains('photos')));
   });
 }

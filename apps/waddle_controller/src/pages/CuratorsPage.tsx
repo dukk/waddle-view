@@ -433,7 +433,7 @@ function CuratorConfigurationDialog({
   const [err, setErr] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [layer, setLayer] = useState<CuratorLayer>('base');
-  const [sortOrder, setSortOrder] = useState(0);
+  const [sortOrder, setSortOrder] = useState(100);
   const [programDuration, setProgramDuration] = useState<number>(
     CURATOR_PROGRAM_DURATION.default,
   );
@@ -540,7 +540,7 @@ function CuratorConfigurationDialog({
   }, [configurationId, display]);
 
   const showProgramFields = layer === 'base' || layer === 'exclusive';
-  const membersOverlayOnly = layer === 'enhancement';
+  const isEnhancementLayer = layer === 'enhancement';
 
   const buildBody = (configId: string): CuratorConfigurationWriteBody => ({
     name: name.trim(),
@@ -549,18 +549,20 @@ function CuratorConfigurationDialog({
     program_duration_seconds: programDuration,
     ticker_program_duration_seconds: tickerProgramDuration,
     ticker_pixels_per_second: tickerPixelsPerSecond,
-    theme_id_override: themeIdOverride,
+    theme_id_override: isEnhancementLayer ? null : themeIdOverride,
     require_news_photo_for_screens: requireNewsPhoto,
-    ticker_enabled: tickerEnabled,
+    ticker_enabled: isEnhancementLayer ? true : tickerEnabled,
     default_config: defaultConfig,
     rules: rules.map((r) => ({
       ...r,
       id: r.id.trim(),
       configuration_id: configId,
     })),
-    members: membersOverlayOnly
-      ? { screens: [], tickers: [], overlays: overlayIds }
-      : { screens: screenIds, tickers: tickerIds, overlays: overlayIds },
+    members: {
+      screens: screenIds,
+      tickers: tickerIds,
+      overlays: overlayIds,
+    },
   });
 
   const save = async () => {
@@ -619,6 +621,21 @@ function CuratorConfigurationDialog({
                     : undefined
                 }
               />
+              <FormControl fullWidth disabled={!canWrite}>
+                <InputLabel id="curator-layer">Layer</InputLabel>
+                <Select
+                  labelId="curator-layer"
+                  label="Layer"
+                  value={layer}
+                  onChange={(e) => setLayer(e.target.value as CuratorLayer)}
+                >
+                  {CURATOR_LAYERS.map((l) => (
+                    <MenuItem key={l} value={l}>
+                      {layerLabel(l)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
               <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                 <Tabs
                   value={dialogTab}
@@ -636,6 +653,16 @@ function CuratorConfigurationDialog({
               </Box>
               {dialogTab === 'general' && (
                 <Stack spacing={2}>
+                  <TextField
+                    label="Sort order"
+                    type="number"
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(Number(e.target.value) || 0)}
+                    fullWidth
+                    disabled={!canWrite}
+                    helperText="Higher values win when multiple configurations match the same schedule slot."
+                  />
+                  {!isEnhancementLayer && (
                   <FormControl fullWidth disabled={!canWrite}>
                     <InputLabel id="curator-theme-override-label">Theme while active</InputLabel>
                     <Select
@@ -688,15 +715,30 @@ function CuratorConfigurationDialog({
                       theme replaces the display default from Display settings.
                     </Typography>
                   </FormControl>
+                  )}
+                  {isEnhancementLayer && (
+                    <Typography variant="body2" color="text.secondary">
+                      Theme and ticker visibility follow the active base or exclusive configuration.
+                    </Typography>
+                  )}
                 </Stack>
               )}
               {dialogTab === 'screens' && (
                 <Stack spacing={2}>
-                  {membersOverlayOnly ? (
-                    <Typography variant="body2" color="text.secondary">
-                      Enhancement layer configurations only add overlays. Screen program settings
-                      apply to base and exclusive layers.
-                    </Typography>
+                  {isEnhancementLayer ? (
+                    <>
+                      <Typography variant="body2" color="text.secondary">
+                        Screens added here stack on the active base program when this enhancement
+                        matches its schedule.
+                      </Typography>
+                      <MemberAutocomplete
+                        label="Screens"
+                        options={screenOptions}
+                        value={screenIds}
+                        onChange={setScreenIds}
+                        disabled={!canWrite}
+                      />
+                    </>
                   ) : showProgramFields ? (
                     <>
                       <CuratorSliderField
@@ -732,11 +774,20 @@ function CuratorConfigurationDialog({
               )}
               {dialogTab === 'ticker' && (
                 <Stack spacing={2}>
-                  {membersOverlayOnly ? (
-                    <Typography variant="body2" color="text.secondary">
-                      Enhancement layer configurations only add overlays. Ticker settings apply to
-                      base and exclusive layers.
-                    </Typography>
+                  {isEnhancementLayer ? (
+                    <>
+                      <Typography variant="body2" color="text.secondary">
+                        Ticker tapes added here stack on the active base program. Marquee visibility
+                        and scroll speed follow the base or exclusive configuration.
+                      </Typography>
+                      <MemberAutocomplete
+                        label="Ticker tapes"
+                        options={tickerOptions}
+                        value={tickerIds}
+                        onChange={setTickerIds}
+                        disabled={!canWrite}
+                      />
+                    </>
                   ) : showProgramFields ? (
                     <>
                       <FormControlLabel
@@ -786,30 +837,6 @@ function CuratorConfigurationDialog({
               )}
               {dialogTab === 'advanced' && (
                 <Stack spacing={2}>
-                  <FormControl fullWidth>
-                    <InputLabel id="curator-layer">Layer</InputLabel>
-                    <Select
-                      labelId="curator-layer"
-                      label="Layer"
-                      value={layer}
-                      onChange={(e) => setLayer(e.target.value as CuratorLayer)}
-                      disabled={!canWrite}
-                    >
-                      {CURATOR_LAYERS.map((l) => (
-                        <MenuItem key={l} value={l}>
-                          {layerLabel(l)}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                  <TextField
-                    label="Sort order"
-                    type="number"
-                    value={sortOrder}
-                    onChange={(e) => setSortOrder(Number(e.target.value) || 0)}
-                    fullWidth
-                    disabled={!canWrite}
-                  />
                   <FormControlLabel
                     control={
                       <Checkbox

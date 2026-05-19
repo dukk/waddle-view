@@ -85,14 +85,29 @@ void main() {
             'repeat_annually': true,
           },
         ],
+        'theme_id_override': 'theme_dark',
+        'ticker_enabled': false,
         'members': {
-          'screens': [],
-          'ticker_tapes': [],
+          'screens': ['jokes'],
+          'tickers': ['tape_news'],
           'overlays': ['overlay_confetti'],
         },
       }),
     );
     expect(create.statusCode, 200);
+
+    final created = await http.get(
+      Uri.parse('${h.baseUrl}/v1/curator/configurations/test_enhancement'),
+      headers: h.authHeaders,
+    );
+    expect(created.statusCode, 200);
+    final createdBody = jsonDecode(created.body) as Map<String, dynamic>;
+    expect(createdBody['theme_id_override'], isNull);
+    expect(createdBody['ticker_enabled'], isTrue);
+    expect(
+      (createdBody['members'] as Map)['screens'] as List,
+      contains('jokes'),
+    );
 
     final patch = await http.patch(
       Uri.parse('${h.baseUrl}/v1/curator/configurations/test_enhancement'),
@@ -108,7 +123,8 @@ void main() {
     expect(detail.statusCode, 200);
     final detailBody = jsonDecode(detail.body) as Map<String, dynamic>;
     expect(detailBody['name'], 'Renamed');
-    expect(detailBody['ticker_enabled'], isFalse);
+    expect(detailBody['ticker_enabled'], isTrue);
+    expect(detailBody['theme_id_override'], isNull);
     expect(detailBody['ticker_program_duration_seconds'], 420);
     expect(detailBody['ticker_pixels_per_second'], 95);
 

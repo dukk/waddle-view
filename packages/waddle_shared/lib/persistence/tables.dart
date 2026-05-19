@@ -117,8 +117,9 @@ class ConfigKeyValues extends Table {
   Set<Column<Object>> get primaryKey => {key};
 }
 
-/// Curator configuration layer: exclusive replaces all; base drives program;
-/// enhancement stacks overlay members on base.
+/// Curator configuration layer: exclusive replaces all; base drives program,
+/// theme, and ticker visibility; enhancement stacks screen/ticker/overlay
+/// members on the active base (additive union at runtime).
 const String kCuratorLayerExclusive = 'exclusive';
 const String kCuratorLayerBase = 'base';
 const String kCuratorLayerEnhancement = 'enhancement';

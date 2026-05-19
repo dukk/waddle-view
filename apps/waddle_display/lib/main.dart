@@ -45,6 +45,7 @@ import 'extensions/ticker_source_registry.dart';
 import 'plugins/plugin_loader.dart';
 import 'curator/active_curator_service.dart';
 import 'curator/curator_membership_filter.dart';
+import 'curator/curator_selection_refresh.dart';
 import 'curator/dashboard_curator.dart';
 import 'curator/default_dashboard_curator.dart';
 import 'curator/drift_curator_read_port.dart';
@@ -157,6 +158,7 @@ Future<void> _waddleBootstrap() async {
     final marqueeCycleGate = MarqueeCycleGate();
     final curatorMembership = CuratorMembershipFilter();
     final runtimeSignals = RuntimeSignalRepository(db);
+    final curatorSelectionRefresh = CuratorSelectionRefresh();
     final bootstrapSelection = await ActiveCuratorService(
       db: db,
       runtimeSignals: runtimeSignals,
@@ -164,6 +166,7 @@ Future<void> _waddleBootstrap() async {
     _applyCuratorTickerMembership(
       curatorMembership,
       bootstrapSelection.primary.configuration,
+      bootstrapSelection.effectiveTickerMemberIds,
     );
     final dashboardCuratorInner = DefaultDashboardCurator(
       read: DriftCuratorReadPort(db, membershipFilter: curatorMembership),
@@ -213,6 +216,10 @@ Future<void> _waddleBootstrap() async {
       tlsCertDir: p.join(support.path, 'tls'),
     );
     final navigationBus = DisplayNavigationBus();
+    Future<void> onDisplayConfigChanged() async {
+      await dashboardCurator.refresh();
+      await curatorSelectionRefresh.notify();
+    }
     final handler = buildRootHandler(
       db: db,
       alerts: alerts,
@@ -221,7 +228,7 @@ Future<void> _waddleBootstrap() async {
       ticker: tickerCurated,
       blobs: blobs,
       secrets: secrets,
-      onConfigChanged: dashboardCurator.refresh,
+      onConfigChanged: onDisplayConfigChanged,
       env: envMap,
       telemetryHub: telemetryHub,
       navigationBus: navigationBus,
@@ -273,6 +280,7 @@ Future<void> _waddleBootstrap() async {
         ),
         curatorMembership: curatorMembership,
         dashboardCurator: dashboardCurator,
+        curatorSelectionRefresh: curatorSelectionRefresh,
       ),
     );
   } catch (e, st) {
@@ -298,6 +306,7 @@ class WaddleRoot extends StatefulWidget {
     required this.viewerInviteRuntime,
     required this.curatorMembership,
     required this.dashboardCurator,
+    required this.curatorSelectionRefresh,
   });
 
   final AppDatabase db;
@@ -315,6 +324,7 @@ class WaddleRoot extends StatefulWidget {
   final ViewerInviteRuntime viewerInviteRuntime;
   final CuratorMembershipFilter curatorMembership;
   final DashboardCurator dashboardCurator;
+  final CuratorSelectionRefresh curatorSelectionRefresh;
 
   @override
   State<WaddleRoot> createState() => _WaddleRootState();
@@ -367,6 +377,7 @@ class _WaddleRootState extends State<WaddleRoot> {
             viewerInviteRuntime: widget.viewerInviteRuntime,
             curatorMembership: widget.curatorMembership,
             dashboardCurator: widget.dashboardCurator,
+            curatorSelectionRefresh: widget.curatorSelectionRefresh,
           ),
         );
       },
@@ -393,6 +404,7 @@ class WaddleHome extends StatefulWidget {
     required this.viewerInviteRuntime,
     required this.curatorMembership,
     required this.dashboardCurator,
+    required this.curatorSelectionRefresh,
   });
 
   final AppDatabase db;
@@ -411,12 +423,15 @@ class WaddleHome extends StatefulWidget {
   final ViewerInviteRuntime viewerInviteRuntime;
   final CuratorMembershipFilter curatorMembership;
   final DashboardCurator dashboardCurator;
+  final CuratorSelectionRefresh curatorSelectionRefresh;
 
   @override
   State<WaddleHome> createState() => _WaddleHomeState();
 }
 
 class _WaddleHomeState extends State<WaddleHome> {
+  static const Duration _curatorSchedulePollInterval = Duration(seconds: 60);
+
   final TickerMarqueeNavigationController _tickerNavigationController =
       TickerMarqueeNavigationController();
   late final ActiveCuratorService _curatorService = ActiveCuratorService(
@@ -429,10 +444,18 @@ class _WaddleHomeState extends State<WaddleHome> {
   StreamSubscription<List<ApiClient>>? _apiClientsSub;
   StreamSubscription<void>? _runtimeSignalsSub;
   StreamSubscription<List<CuratorConfigurationMember>>? _curatorMembersSub;
+  StreamSubscription<List<CuratorConfiguration>>? _curatorConfigsSub;
+  StreamSubscription<List<CuratorScheduleRule>>? _curatorRulesSub;
+  Timer? _curatorSchedulePollTimer;
+
+  void _onCuratorSelectionRefresh() {
+    unawaited(_refreshCuratorSelection());
+  }
 
   @override
   void initState() {
     super.initState();
+    widget.curatorSelectionRefresh.addListener(_onCuratorSelectionRefresh);
     unawaited(_refreshCuratorSelection());
     _apiClientsSub = widget.db.select(widget.db.apiClients).watch().listen((_) {
       unawaited(_refreshCuratorSelection());
@@ -446,6 +469,22 @@ class _WaddleHomeState extends State<WaddleHome> {
         .listen((_) {
       unawaited(_refreshCuratorSelection());
     });
+    _curatorConfigsSub = widget.db
+        .select(widget.db.curatorConfigurations)
+        .watch()
+        .listen((_) {
+      unawaited(_refreshCuratorSelection());
+    });
+    _curatorRulesSub = widget.db
+        .select(widget.db.curatorScheduleRules)
+        .watch()
+        .listen((_) {
+      unawaited(_refreshCuratorSelection());
+    });
+    _curatorSchedulePollTimer = Timer.periodic(
+      _curatorSchedulePollInterval,
+      (_) => unawaited(_refreshCuratorSelection()),
+    );
   }
 
   Future<void> _refreshCuratorSelection() async {
@@ -454,7 +493,11 @@ class _WaddleHomeState extends State<WaddleHome> {
       return;
     }
     final primary = selection.primary.configuration;
-    _applyCuratorTickerMembership(widget.curatorMembership, primary);
+    _applyCuratorTickerMembership(
+      widget.curatorMembership,
+      primary,
+      selection.effectiveTickerMemberIds,
+    );
     setState(() {
       _tickerEnabled = primary.tickerEnabled;
       _allowedOverlayIds = selection.effectiveOverlayMemberIds;
@@ -469,9 +512,13 @@ class _WaddleHomeState extends State<WaddleHome> {
 
   @override
   void dispose() {
+    widget.curatorSelectionRefresh.removeListener(_onCuratorSelectionRefresh);
+    _curatorSchedulePollTimer?.cancel();
     unawaited(_apiClientsSub?.cancel());
     unawaited(_runtimeSignalsSub?.cancel());
     unawaited(_curatorMembersSub?.cancel());
+    unawaited(_curatorConfigsSub?.cancel());
+    unawaited(_curatorRulesSub?.cancel());
     if (kDebugMode) {
       unawaited(DebugConsoleDiskLogger.close());
     }
@@ -592,14 +639,14 @@ class _WaddleHomeState extends State<WaddleHome> {
 
 void _applyCuratorTickerMembership(
   CuratorMembershipFilter filter,
-  CuratorConfigurationInput configuration,
+  CuratorConfigurationInput primary,
+  Set<String> effectiveTickerMemberIds,
 ) {
-  filter.tickerCurationEnabled = configuration.tickerEnabled;
+  filter.tickerCurationEnabled = primary.tickerEnabled;
   filter.tickerTapeIds =
-      configuration.tickerEnabled ? configuration.tickerMemberIds : const {};
-  filter.tickerProgramDurationSeconds =
-      configuration.tickerProgramDurationSeconds;
-  filter.tickerPixelsPerSecond = configuration.tickerPixelsPerSecond;
+      primary.tickerEnabled ? effectiveTickerMemberIds : const {};
+  filter.tickerProgramDurationSeconds = primary.tickerProgramDurationSeconds;
+  filter.tickerPixelsPerSecond = primary.tickerPixelsPerSecond;
 }
 
 Future<void> _rescanRejectListOnStartup(AppDatabase db) async {

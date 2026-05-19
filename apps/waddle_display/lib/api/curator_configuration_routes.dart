@@ -133,7 +133,11 @@ void registerCuratorConfigurationRoutes(
               _readBool(map['require_news_photo_for_screens'], defaultValue: true),
             ),
             tickerEnabled: Value(
-              _readBool(map['ticker_enabled'], defaultValue: true),
+              _tickerEnabledForWrite(
+                layer,
+                map['ticker_enabled'],
+                defaultValue: true,
+              ),
             ),
             tickerProgramDurationSeconds: Value(
               _readInt(map['ticker_program_duration_seconds']) ?? 300,
@@ -141,7 +145,9 @@ void registerCuratorConfigurationRoutes(
             tickerPixelsPerSecond: Value(
               _readTickerPixelsPerSecond(map['ticker_pixels_per_second']) ?? 80,
             ),
-            themeIdOverride: Value(_readOptionalTrimmedString(map['theme_id_override'])),
+            themeIdOverride: Value(
+              _themeIdOverrideForWrite(layer, map['theme_id_override']),
+            ),
             defaultConfig: Value(_readBool(map['default_config'], defaultValue: false)),
           ),
         );
@@ -212,14 +218,16 @@ void registerCuratorConfigurationRoutes(
                 ),
               )
             : const Value.absent(),
-        tickerEnabled: map.containsKey('ticker_enabled')
-            ? Value(
-                _readBool(
-                  map['ticker_enabled'],
-                  defaultValue: existing.tickerEnabled,
-                ),
-              )
-            : const Value.absent(),
+        tickerEnabled: _isEnhancementLayer(layer)
+            ? const Value(true)
+            : map.containsKey('ticker_enabled')
+                ? Value(
+                    _readBool(
+                      map['ticker_enabled'],
+                      defaultValue: existing.tickerEnabled,
+                    ),
+                  )
+                : const Value.absent(),
         tickerProgramDurationSeconds:
             map.containsKey('ticker_program_duration_seconds')
                 ? Value(
@@ -233,9 +241,11 @@ void registerCuratorConfigurationRoutes(
                     existing.tickerPixelsPerSecond,
               )
             : const Value.absent(),
-        themeIdOverride: map.containsKey('theme_id_override')
-            ? Value(_readOptionalTrimmedString(map['theme_id_override']))
-            : const Value.absent(),
+        themeIdOverride: _isEnhancementLayer(layer)
+            ? const Value(null)
+            : map.containsKey('theme_id_override')
+                ? Value(_readOptionalTrimmedString(map['theme_id_override']))
+                : const Value.absent(),
         defaultConfig: map.containsKey('default_config')
             ? Value(_readBool(map['default_config'], defaultValue: existing.defaultConfig))
             : const Value.absent(),
@@ -686,6 +696,30 @@ String? _readOptionalTrimmedString(dynamic v) {
   }
   final s = '$v'.trim();
   return s.isEmpty ? null : s;
+}
+
+bool _isEnhancementLayer(String layer) => layer == kCuratorLayerEnhancement;
+
+String? _themeIdOverrideForWrite(String layer, dynamic mapValue) {
+  if (_isEnhancementLayer(layer)) {
+    return null;
+  }
+  return _readOptionalTrimmedString(mapValue);
+}
+
+bool _tickerEnabledForWrite(
+  String layer,
+  dynamic mapValue, {
+  required bool defaultValue,
+  bool? existing,
+}) {
+  if (_isEnhancementLayer(layer)) {
+    return true;
+  }
+  if (mapValue != null) {
+    return _readBool(mapValue, defaultValue: defaultValue);
+  }
+  return existing ?? defaultValue;
 }
 
 const _kTickerPixelsPerSecondMin = 20;

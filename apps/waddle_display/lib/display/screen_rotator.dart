@@ -12,6 +12,8 @@ import '../debug/app_debug_log.dart';
 import '../debug/operator_telemetry_hub.dart';
 import '../curator/curator_content_pools.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
+import 'package:waddle_shared/curation/curator_schedule_resolver.dart';
+
 import '../curator/active_curator_service.dart';
 import '../curator/screen_program_curator.dart';
 import 'package:waddle_shared/persistence/database.dart';
@@ -95,6 +97,11 @@ class _ScreenRotatorState extends State<ScreenRotator>
 
   final _random = Random();
   late final ActiveCuratorService _curatorService;
+  StreamSubscription<List<CuratorConfigurationMember>>? _curatorMembersSub;
+  StreamSubscription<List<CuratorConfiguration>>? _curatorConfigsSub;
+  StreamSubscription<List<CuratorScheduleRule>>? _curatorRulesSub;
+  Timer? _curatorSchedulePollTimer;
+  String? _curatorProgramFingerprint;
   final List<String> _recentScreenIds = [];
   final Map<String, int> _lastShownAtMsByScreenId = {};
   final FocusNode _keyboardFocusNode = FocusNode(debugLabel: 'screen-rotator');
@@ -172,12 +179,48 @@ class _ScreenRotatorState extends State<ScreenRotator>
     );
   }
 
+  static const Duration _curatorSchedulePollInterval = Duration(seconds: 60);
+
   @override
   void initState() {
     super.initState();
     _curatorService = ActiveCuratorService(db: widget.db);
     widget.navigationBus?.addListener(_onExternalScreenNavigation);
+    _curatorMembersSub = widget.db
+        .select(widget.db.curatorConfigurationMembers)
+        .watch()
+        .listen((_) => unawaited(_onCuratorTablesChanged()));
+    _curatorConfigsSub = widget.db
+        .select(widget.db.curatorConfigurations)
+        .watch()
+        .listen((_) => unawaited(_onCuratorTablesChanged()));
+    _curatorRulesSub = widget.db
+        .select(widget.db.curatorScheduleRules)
+        .watch()
+        .listen((_) => unawaited(_onCuratorTablesChanged()));
+    _curatorSchedulePollTimer = Timer.periodic(
+      _curatorSchedulePollInterval,
+      (_) => unawaited(_onCuratorTablesChanged()),
+    );
     unawaited(_bootstrap());
+  }
+
+  Future<void> _onCuratorTablesChanged() async {
+    if (!mounted) {
+      return;
+    }
+    final selection = await _curatorService.resolveAt(DateTime.now());
+    final fingerprint = _curatorProgramFingerprintFor(selection);
+    if (fingerprint == _curatorProgramFingerprint) {
+      return;
+    }
+    _curatorProgramFingerprint = fingerprint;
+    await _startNewProgram();
+  }
+
+  String _curatorProgramFingerprintFor(ResolvedCuratorSelection selection) {
+    final screens = selection.effectiveScreenMemberIds.toList()..sort();
+    return '${selection.primary.configuration.id}|${screens.join(',')}';
   }
 
   @override
@@ -192,6 +235,10 @@ class _ScreenRotatorState extends State<ScreenRotator>
   @override
   void dispose() {
     widget.navigationBus?.removeListener(_onExternalScreenNavigation);
+    _curatorSchedulePollTimer?.cancel();
+    unawaited(_curatorMembersSub?.cancel());
+    unawaited(_curatorConfigsSub?.cancel());
+    unawaited(_curatorRulesSub?.cancel());
     _dwellTimer?.cancel();
     _manualIdleTimer?.cancel();
     _anim.dispose();
@@ -207,7 +254,8 @@ class _ScreenRotatorState extends State<ScreenRotator>
   Future<void> _startNewProgram() async {
     final selection = await _curatorService.resolveAt(DateTime.now());
     final primary = selection.primary.configuration;
-    final allowedScreenIds = primary.screenMemberIds;
+    _curatorProgramFingerprint = _curatorProgramFingerprintFor(selection);
+    final allowedScreenIds = selection.effectiveScreenMemberIds;
 
     if (allowedScreenIds.isEmpty) {
       if (!mounted) {

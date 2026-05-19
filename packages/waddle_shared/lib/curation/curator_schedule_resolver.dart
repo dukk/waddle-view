@@ -104,17 +104,39 @@ class ResolvedCuratorSelection {
   ResolvedCuratorConfiguration get primary =>
       exclusive ?? base!;
 
-  Set<String> get effectiveOverlayMemberIds {
+  Set<String> get effectiveOverlayMemberIds => _mergedMemberIds(
+        exclusive: (c) => c.overlayMemberIds,
+        base: (c) => c.overlayMemberIds,
+        enhancement: (c) => c.overlayMemberIds,
+      );
+
+  Set<String> get effectiveScreenMemberIds => _mergedMemberIds(
+        exclusive: (c) => c.screenMemberIds,
+        base: (c) => c.screenMemberIds,
+        enhancement: (c) => c.screenMemberIds,
+      );
+
+  Set<String> get effectiveTickerMemberIds => _mergedMemberIds(
+        exclusive: (c) => c.tickerMemberIds,
+        base: (c) => c.tickerMemberIds,
+        enhancement: (c) => c.tickerMemberIds,
+      );
+
+  Set<String> _mergedMemberIds({
+    required Set<String> Function(CuratorConfigurationInput) exclusive,
+    required Set<String> Function(CuratorConfigurationInput) base,
+    required Set<String> Function(CuratorConfigurationInput) enhancement,
+  }) {
     final ids = <String>{};
-    if (exclusive != null) {
-      ids.addAll(exclusive!.configuration.overlayMemberIds);
+    if (this.exclusive != null) {
+      ids.addAll(exclusive(this.exclusive!.configuration));
       return ids;
     }
-    if (base != null) {
-      ids.addAll(base!.configuration.overlayMemberIds);
+    if (this.base != null) {
+      ids.addAll(base(this.base!.configuration));
     }
-    for (final e in enhancements) {
-      ids.addAll(e.configuration.overlayMemberIds);
+    for (final e in this.enhancements) {
+      ids.addAll(enhancement(e.configuration));
     }
     return ids;
   }
