@@ -5,6 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/persistence/database.dart';
 
+import 'package:waddle_shared/config/google_kv.dart';
+import 'package:waddle_shared/config/microsoft_graph_kv.dart';
+
 import '../helpers/memory_database.dart';
 import '../helpers/rest_auth_helper.dart';
 
@@ -209,6 +212,53 @@ Future<void> _seedExtendedCatalog(AppDatabase db) async {
           createdAt: DateTime.fromMillisecondsSinceEpoch(900),
           severity: const Value('warning'),
           source: const Value('custom_source'),
+        ),
+      );
+}
+
+Future<void> _seedCalendarCatalogEvents(AppDatabase db) async {
+  await seedContentCategoriesForTest(db, const ['work', 'family']);
+  final t1 = DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000);
+  final t2 = DateTime.fromMillisecondsSinceEpoch(1_700_010_000_000);
+  final t3 = DateTime.fromMillisecondsSinceEpoch(1_700_005_000_000);
+  await db.into(db.calendarEvents).insert(
+        CalendarEventsCompanion.insert(
+          id: 'cal1',
+          title: 'Team standup alpha',
+          startMs: t1,
+          endMs: t1.add(const Duration(hours: 1)),
+          location: const Value('Room A'),
+          description: const Value('Daily sync'),
+          source: Value(googleCalendarEventSource('acct1')),
+          categoryId: const Value('work'),
+          updatedAtMs: t1,
+        ),
+      );
+  await db.into(db.calendarEvents).insert(
+        CalendarEventsCompanion.insert(
+          id: 'cal2',
+          title: 'Personal errand',
+          startMs: t2,
+          endMs: t2.add(const Duration(hours: 2)),
+          source: Value(outlookCalendarEventSource('acct2')),
+          updatedAtMs: t2,
+        ),
+      );
+  await db.into(db.calendarEvents).insert(
+        CalendarEventsCompanion.insert(
+          id: 'cal3',
+          title: 'Family dinner',
+          startMs: t3,
+          endMs: t3.add(const Duration(hours: 3)),
+          source: const Value('local'),
+          categoryId: const Value('family'),
+          updatedAtMs: t3,
+        ),
+      );
+  await db.into(db.calendarEventCategories).insert(
+        CalendarEventCategoriesCompanion.insert(
+          eventId: 'cal2',
+          categoryId: 'family',
         ),
       );
 }
@@ -551,6 +601,66 @@ void main() {
       Uri.parse('${h.baseUrl}/v1/content/jokes/j1'),
       headers: h.authHeaders,
       body: '{"suppressed":true}',
+    );
+    expect(res.statusCode, 403);
+  });
+
+  test('GET /v1/catalog/calendar-events paginates and filters', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await _seedCalendarCatalogEvents(db);
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+
+    final page = await http.get(
+      Uri.parse('${h.baseUrl}/v1/catalog/calendar-events?limit=1&offset=0&title=alpha'),
+      headers: h.authHeaders,
+    );
+    expect(page.statusCode, 200);
+    final body = jsonDecode(page.body) as Map<String, dynamic>;
+    expect(body['total'], 1);
+    expect((body['items'] as List).length, 1);
+    final item = (body['items'] as List).first as Map<String, dynamic>;
+    expect(item['id'], 'cal1');
+    expect(item['integration_type'], 'calendar_google');
+    expect(item['category_ids'], ['work']);
+
+    final all = await http.get(
+      Uri.parse('${h.baseUrl}/v1/catalog/calendar-events?limit=50&offset=0'),
+      headers: h.authHeaders,
+    );
+    expect(all.statusCode, 200);
+    final allBody = jsonDecode(all.body) as Map<String, dynamic>;
+    expect(allBody['total'], 3);
+    final ids = (allBody['items'] as List).map((e) => (e as Map)['id']).toList();
+    expect(ids, ['cal2', 'cal3', 'cal1']);
+
+    final byCategory = await http.get(
+      Uri.parse('${h.baseUrl}/v1/catalog/calendar-events?category=family'),
+      headers: h.authHeaders,
+    );
+    expect(byCategory.statusCode, 200);
+    final catBody = jsonDecode(byCategory.body) as Map<String, dynamic>;
+    expect(catBody['total'], 2);
+    final catIds = (catBody['items'] as List).map((e) => (e as Map)['id']).toSet();
+    expect(catIds, {'cal2', 'cal3'});
+    final cal2 = (catBody['items'] as List)
+        .cast<Map<String, dynamic>>()
+        .firstWhere((e) => e['id'] == 'cal2');
+    expect(cal2['category_ids'], ['family']);
+    expect(cal2['integration_type'], 'calendar_outlook');
+  });
+
+  test('power_viewer cannot use suppressed=true on calendar-events catalog', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await _seedCalendarCatalogEvents(db);
+    final h = await RestTestHarness.start(database: db, role: kUserRolePowerViewer);
+    addTearDown(h.dispose);
+
+    final res = await http.get(
+      Uri.parse('${h.baseUrl}/v1/catalog/calendar-events?suppressed=true'),
+      headers: h.authHeaders,
     );
     expect(res.statusCode, 403);
   });

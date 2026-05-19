@@ -1,7 +1,6 @@
 // Parses one or more lcov.info files and enforces a **CI floor** line hit ratio on
 // merged coverage from `apps/waddle_display`, `packages/waddle_shared`, and
-// `packages/waddle_plugin_sdk` (also recognizes `packages/waddle_integrations/lib/`
-// paths when that package's lcov is passed explicitly).
+// `packages/waddle_plugin_sdk` only.
 // `packages/waddle_plugin_example/` is never counted (reference plugin only).
 //
 // Also compares against an optional **aspirational target** (default 90%): falling
@@ -28,15 +27,12 @@ bool _includeSourceFile(String sf, {required String lcovPath}) {
   final isDisplayLib = norm.contains('/apps/waddle_display/lib/') ||
       (bareLib &&
           !lcovNorm.contains('waddle_shared') &&
-          !lcovNorm.contains('waddle_plugin_sdk') &&
-          !lcovNorm.contains('waddle_integrations'));
+          !lcovNorm.contains('waddle_plugin_sdk'));
   final isSharedLib = norm.contains('packages/waddle_shared/lib/') ||
       (bareLib && lcovNorm.contains('waddle_shared'));
-  final isIntegrationsLib =
-      norm.contains('packages/waddle_integrations/lib/');
   final isPluginSdkLib = norm.contains('packages/waddle_plugin_sdk/lib/') ||
       (bareLib && lcovNorm.contains('waddle_plugin_sdk'));
-  if (!isDisplayLib && !isSharedLib && !isIntegrationsLib && !isPluginSdkLib) {
+  if (!isDisplayLib && !isSharedLib && !isPluginSdkLib) {
     return false;
   }
   // Declarative Drift table definitions (no executable lines in practice).

@@ -29,7 +29,9 @@ import {
   SlideScreenPreviewIcon,
 } from '@/icons/slideScreenPreviewIcon';
 import { screenTypePreviewKind } from '@/util/programTelemetry';
+import { useAuth } from '@/context/AuthContext';
 import { useDisplay } from '@/context/DisplayContext';
+import { CatalogDisplayTransferPanel } from '@/components/catalog/CatalogDisplayTransferPanel';
 import { apiFetch, apiJson, ApiError } from '@/api/client';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { ScreenDialog, type ScreenDialogRow } from '@/components/screens/ScreenDialog';
@@ -176,7 +178,9 @@ function ScreenTable({
 }
 
 export function ScreensPage() {
-  const { active } = useDisplay();
+  const { active, displays } = useDisplay();
+  const { hasPermission } = useAuth();
+  const canWrite = hasPermission('screens.write');
   const { loading, wrapRefresh } = useDisplayRefresh();
   const { layout, setLayout } = useListLayoutPreference('screens');
   const [rows, setRows] = useState<ScreenRow[]>([]);
@@ -220,6 +224,15 @@ export function ScreensPage() {
   );
 
   const sortedRows = useMemo(() => [...rows].sort(sortById), [rows]);
+
+  const transferItems = useMemo(
+    () =>
+      sortedRows.map((r) => ({
+        id: r.id,
+        label: screenRowTitle(r),
+      })),
+    [sortedRows],
+  );
 
   const deleteScreen = useCallback(
     async (id: string) => {
@@ -308,6 +321,15 @@ export function ScreensPage() {
           onDelete={(id) => void deleteScreen(id)}
         />
       )}
+
+      <CatalogDisplayTransferPanel
+        kind="screen"
+        active={active}
+        displays={displays}
+        canWrite={canWrite}
+        activeItems={transferItems}
+        onTransferred={() => void load()}
+      />
 
       {dialogMode && schemas && (
         <ScreenDialog

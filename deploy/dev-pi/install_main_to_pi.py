@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Push ``waddle-view-linux-arm64-main.tar.gz`` from this folder to a Pi and install.
 
-Delegates to ``deploy/pi-remote-upgrade.py`` (OpenSSH ``ssh``/``scp``, Python 3.9+).
+Delegates to ``deploy/pi-remote-upgrade.py`` (OpenSSH ``ssh``/``scp``, Python 3.9+),
+which runs bundled ``install.sh`` with ``WADDLE_INSTALL_RUNTIME_PACKAGES=1`` so
+Debian/Raspberry Pi OS hosts apt-install mpv, GTK, WebKit, and related libs when
+``ldd`` reports missing ``.so`` files.
 
 Default SSH destination: ``dukk@10.2.0.10``. Run from repo root or any cwd.
 

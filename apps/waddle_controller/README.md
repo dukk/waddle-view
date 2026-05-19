@@ -73,6 +73,18 @@ When **`WADDLE_CONTROLLER_AUTH_ENABLED=1`**, adopted displays and encrypted API 
 
 If a display loses its session, use **Adopt display** in the app bar (or complete adoption again on **Displays**).
 
+### Copy screens, overlays, and ticker tapes between displays
+
+When more than one display is paired, the bottom of **Screens**, **Overlays**, and **Ticker tapes** shows **Copy between displays** (requires **`screens.write`**, **`overlays.write`**, or **`ticker.write`** on the active session).
+
+- **Import into [active]** — pick another display and a catalog item; copies onto the display selected in the header menu.
+- **Send from [active]** — pick an item from this display and one or more target displays (checkboxes; **Select all** / **Clear**).
+- **On conflict** — **Skip** (leave existing row), **Overwrite** (replace on target), or **Use new id** (optional new label for overlays). The same new id is used for every target when sending to multiple displays.
+- **Overlay images** — `falling_images` and other configs that reference blob keys are re-uploaded to each target display.
+- **Not copied** — curator program membership, integrations, RSS/calendar/photo content, or screen `data_key` targets. Verify feeds and integrations exist on each display after copying.
+
+Offline displays are disabled in the picker; the transfer is blocked if the source or any selected target is unreachable.
+
 ### Interests
 
 Use **Interests** (Config nav, between Integrations and Data) to manage what the display collects: weather locations, RSS feeds, stock symbols, joke categories, and trivia categories. Changes call `GET` / `POST` / `PATCH` / `DELETE` on `/v1/interests/*` on the active display (requires **`interests.write`**; **`interests.read`** for view-only, including power_viewer filter dropdowns on **Data**). Joke and trivia category ids must match an existing **Curators → Categories** slug.

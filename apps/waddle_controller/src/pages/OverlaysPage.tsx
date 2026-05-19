@@ -32,6 +32,7 @@ import {
 } from '@mui/material';
 import { useAuth } from '@/context/AuthContext';
 import { useDisplay } from '@/context/DisplayContext';
+import { CatalogDisplayTransferPanel } from '@/components/catalog/CatalogDisplayTransferPanel';
 import { apiFetch, apiJson, ApiError } from '@/api/client';
 import { CatalogPageToolbar } from '@/components/CatalogPageToolbar';
 import { CatalogPageHelp } from '@/components/CatalogPageHelp';
@@ -479,7 +480,7 @@ function OverlayCard({
 }
 
 export function OverlaysPage() {
-  const { active } = useDisplay();
+  const { active, displays } = useDisplay();
   const { layout, setLayout } = useListLayoutPreference('overlays');
   const { hasPermission } = useAuth();
   const canWrite = hasPermission('overlays.write');
@@ -522,6 +523,15 @@ export function OverlaysPage() {
     parsed.sort(sortByLabel);
     return { rows: parsed, skipped: bad };
   }, [rawItems]);
+
+  const transferItems = useMemo(
+    () =>
+      rows.map((r) => ({
+        id: r.id,
+        label: r.label.trim() || r.id,
+      })),
+    [rows],
+  );
 
   const deleteRow = useCallback(
     async (id: string) => {
@@ -626,6 +636,15 @@ export function OverlaysPage() {
           onDelete={(id) => void deleteRow(id)}
         />
       )}
+
+      <CatalogDisplayTransferPanel
+        kind="overlay"
+        active={active}
+        displays={displays}
+        canWrite={canWrite}
+        activeItems={transferItems}
+        onTransferred={() => void load()}
+      />
 
       {schemas && (
         <OverlayDialog

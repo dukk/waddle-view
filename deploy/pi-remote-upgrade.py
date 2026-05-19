@@ -484,8 +484,17 @@ def scp_to_remote(
     subprocess.run(cmd, check=True)
 
 
-def remote_upgrade_script(remote_tar: str) -> str:
+def remote_upgrade_script(
+    remote_tar: str,
+    *,
+    install_runtime_packages: bool = True,
+) -> str:
     """Bash script run on the Pi (single quoted heredoc-safe segments only)."""
+    install_env = (
+        "sudo env WADDLE_INSTALL_RUNTIME_PACKAGES=1 bash install.sh"
+        if install_runtime_packages
+        else "sudo bash install.sh"
+    )
     return f"""set -eu
 REMOTE_TAR={remote_tar!r}
 systemctl --user stop waddle-view 2>/dev/null || true
@@ -508,7 +517,7 @@ if [ -z "$SUB" ]; then
   exit 1
 fi
 cd "$SUB"
-sudo bash install.sh
+{install_env}
 systemctl --user start waddle-view 2>/dev/null || true
 echo "Upgrade finished."
 """
@@ -522,14 +531,20 @@ def run_remote_upgrade(
     identity: Optional[Path],
     batch_mode: bool,
     dry_run: bool,
+    install_runtime_packages: bool = True,
 ) -> None:
     token_hex = secrets.token_hex(4)
     remote_tar = f"/tmp/waddle-view-upgrade-{os.getpid()}-{token_hex}.tar.gz"
     if dry_run:
         print(f"Would: scp {local_tarball} -> {target}:{remote_tar}")
+        install_note = (
+            "sudo env WADDLE_INSTALL_RUNTIME_PACKAGES=1 bash install.sh"
+            if install_runtime_packages
+            else "sudo bash install.sh"
+        )
         print(
             "Would: ssh ... backup /opt/waddle-view/bundle, extract, "
-            "sudo bash install.sh, systemd start."
+            f"{install_note}, systemd start."
         )
         return
 
@@ -542,7 +557,10 @@ def run_remote_upgrade(
         batch_mode=batch_mode,
     )
 
-    script = remote_upgrade_script(remote_tar)
+    script = remote_upgrade_script(
+        remote_tar,
+        install_runtime_packages=install_runtime_packages,
+    )
     ssh_cmd = ssh_base_args(
         target, port=port, identity=identity, batch_mode=batch_mode
     )
@@ -612,6 +630,14 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         help="Print actions only; do not scp/ssh or download.",
     )
     p.add_argument(
+        "--no-install-runtime-packages",
+        action="store_true",
+        help=(
+            "Do not set WADDLE_INSTALL_RUNTIME_PACKAGES=1 when running bundled "
+            "install.sh (skip apt install of libmpv, GTK, WebKit, etc.)."
+        ),
+    )
+    p.add_argument(
         "--yes",
         "-y",
         action="store_true",
@@ -666,6 +692,7 @@ def main(argv: Optional[list[str]] = None) -> None:
                 identity=args.identity,
                 batch_mode=batch_mode,
                 dry_run=True,
+                install_runtime_packages=not args.no_install_runtime_packages,
             )
         else:
             print(
@@ -724,6 +751,7 @@ def main(argv: Optional[list[str]] = None) -> None:
             identity=args.identity,
             batch_mode=batch_mode,
             dry_run=False,
+            install_runtime_packages=not args.no_install_runtime_packages,
         )
     finally:
         if args.bundle is None and tarball.exists():

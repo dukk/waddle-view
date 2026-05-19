@@ -23,6 +23,7 @@ void registerContentCatalogRoutes(Router r, {required AppDatabase db}) {
   r.get('/v1/catalog/weather-current', (Request req) => _listWeatherCurrent(db, req));
   r.get('/v1/catalog/weather-alerts', (Request req) => _listWeatherAlerts(db, req));
   r.get('/v1/catalog/alerts', (Request req) => _listOperatorAlerts(db, req));
+  r.get('/v1/catalog/calendar-events', (Request req) => _listCalendarEvents(db, req));
 }
 
 class _CatalogParams {
@@ -922,6 +923,136 @@ Future<Response> _listOperatorAlerts(AppDatabase db, Request req) async {
           'dismissed_at_ms': r.dismissedAt?.millisecondsSinceEpoch,
           'source': r.source,
           'integration_type': r.source,
+        },
+    ],
+    'total': total,
+    'limit': p.limit,
+    'offset': p.offset,
+  });
+}
+
+String _calendarCatalogIntegrationType(String source) {
+  if (source.startsWith('google_calendar:')) {
+    return 'calendar_google';
+  }
+  if (source.startsWith('outlook_calendar:')) {
+    return 'calendar_outlook';
+  }
+  if (source.startsWith('ical_feed:')) {
+    return 'calendar_ical';
+  }
+  return source;
+}
+
+Expression<bool> _calendarEventWhere(
+  AppDatabase db,
+  $CalendarEventsTable t,
+  _CatalogParams p,
+  String? titleNeedle,
+  String? locationNeedle,
+  String? descriptionNeedle,
+  String? sourceNeedle,
+) {
+  Expression<bool> e = const Constant(true);
+  if (p.category != null) {
+    final category = p.category!;
+    final junctionMatch = existsQuery(
+      db.select(db.calendarEventCategories)
+        ..where(
+          (j) => j.eventId.equalsExp(t.id) & j.categoryId.equals(category),
+        ),
+    );
+    e = e & (t.categoryId.equals(category) | junctionMatch);
+  }
+  if (titleNeedle != null) {
+    e = e & t.title.like('%$titleNeedle%');
+  }
+  if (locationNeedle != null) {
+    e = e &
+        (t.location.isNotNull() & t.location.like('%$locationNeedle%'));
+  }
+  if (descriptionNeedle != null) {
+    e = e &
+        (t.description.isNotNull() &
+            t.description.like('%$descriptionNeedle%'));
+  }
+  if (sourceNeedle != null) {
+    e = e & t.source.like('%$sourceNeedle%');
+  }
+  return e;
+}
+
+Future<Response> _listCalendarEvents(AppDatabase db, Request req) async {
+  final parsed = _CatalogParams.parse(req);
+  final prep = _prepareCatalogList(req, parsed);
+  if (prep.$1 != null) return prep.$1!;
+  final p = prep.$2;
+  final titleNeedle = _queryNeedle(req, 'title');
+  final locationNeedle = _queryNeedle(req, 'location');
+  final descriptionNeedle = _queryNeedle(req, 'description');
+  final sourceNeedle = _queryNeedle(req, 'source');
+  final pred = _calendarEventWhere(
+    db,
+    db.calendarEvents,
+    p,
+    titleNeedle,
+    locationNeedle,
+    descriptionNeedle,
+    sourceNeedle,
+  );
+
+  final rows = await (db.select(db.calendarEvents)
+        ..where(
+          (t) => _calendarEventWhere(
+            db,
+            t,
+            p,
+            titleNeedle,
+            locationNeedle,
+            descriptionNeedle,
+            sourceNeedle,
+          ),
+        )
+        ..orderBy([(t) => OrderingTerm.desc(t.startMs)])
+        ..limit(p.limit, offset: p.offset))
+      .get();
+  final countCol = countAll();
+  final totalRow = await (db.selectOnly(db.calendarEvents)
+        ..addColumns([countCol])
+        ..where(pred))
+      .getSingle();
+  final total = totalRow.read(countCol) ?? 0;
+
+  final eventIds = rows.map((r) => r.id).toList();
+  final categoryIdsByEvent = <String, List<String>>{};
+  if (eventIds.isNotEmpty) {
+    final junctionRows = await (db.select(db.calendarEventCategories)
+          ..where((j) => j.eventId.isIn(eventIds)))
+        .get();
+    for (final j in junctionRows) {
+      categoryIdsByEvent.putIfAbsent(j.eventId, () => []).add(j.categoryId);
+    }
+  }
+
+  return _jsonOk({
+    'items': [
+      for (final r in rows)
+        {
+          'id': r.id,
+          'title': r.title,
+          'start_ms': r.startMs.millisecondsSinceEpoch,
+          'end_ms': r.endMs.millisecondsSinceEpoch,
+          'all_day': r.allDay,
+          'location': r.location,
+          'description': r.description,
+          'source': r.source,
+          'integration_type': _calendarCatalogIntegrationType(r.source),
+          'category_id': r.categoryId,
+          'category_ids': categoryIdsByEvent[r.id] ??
+              (r.categoryId != null ? [r.categoryId!] : <String>[]),
+          'external_id': r.externalId,
+          'ical_uid': r.icalUid,
+          'updated_at_ms': r.updatedAtMs.millisecondsSinceEpoch,
         },
     ],
     'total': total,

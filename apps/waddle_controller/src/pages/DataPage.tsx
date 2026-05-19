@@ -32,6 +32,7 @@ import type { SavedDisplay } from '@/storage/displays';
 import { integrationDisplayName } from '@/util/integrationDisplayName';
 
 type DataKind =
+  | 'calendar_events'
   | 'jokes'
   | 'trivia'
   | 'news'
@@ -49,6 +50,7 @@ const ROWS_PER_PAGE_OPTIONS = [5, 10, 25, 50] as const;
 /** Tabs in alphabetical order by label. */
 const DATA_TABS: { kind: DataKind; label: string }[] = [
   { kind: 'dashboard_alerts', label: 'Alerts' },
+  { kind: 'calendar_events', label: 'Calendar' },
   { kind: 'jokes', label: 'Jokes' },
   { kind: 'news', label: 'News' },
   { kind: 'photos', label: 'Photos' },
@@ -60,6 +62,12 @@ const DATA_TABS: { kind: DataKind; label: string }[] = [
 ];
 
 const COLUMN_FILTER_FIELDS: Record<DataKind, readonly { param: string; label: string }[]> = {
+  calendar_events: [
+    { param: 'title', label: 'Title' },
+    { param: 'location', label: 'Location' },
+    { param: 'description', label: 'Description' },
+    { param: 'source', label: 'Source' },
+  ],
   jokes: [
     { param: 'setup', label: 'Setup' },
     { param: 'punchline', label: 'Punchline' },
@@ -123,6 +131,8 @@ function defaultRowsForKind(kind: DataKind): number {
 
 function catalogPath(kind: DataKind): string {
   switch (kind) {
+    case 'calendar_events':
+      return '/v1/catalog/calendar-events';
     case 'jokes':
       return '/v1/catalog/jokes';
     case 'trivia':
@@ -167,6 +177,32 @@ function contentPatchPath(kind: DataKind, id: string): string | null {
 
 function categoryLabel(categories: { id: string; label: string }[], id: string): string {
   return categories.find((c) => c.id === id)?.label ?? id;
+}
+
+function calendarEventWhen(
+  ms: unknown,
+  allDay: boolean,
+  formatDateTime: (d: Date) => string,
+): string {
+  if (ms == null || ms === '') return '—';
+  const d = new Date(Number(ms));
+  if (allDay) {
+    return `${d.toLocaleDateString()} (all day)`;
+  }
+  return formatDateTime(d);
+}
+
+function calendarCategoryCell(
+  row: Record<string, unknown>,
+  categories: { id: string; label: string }[],
+): string {
+  const ids = Array.isArray(row.category_ids) ? (row.category_ids as string[]) : [];
+  const primary = String(row.category_id ?? '');
+  const allIds = ids.length > 0 ? ids : primary ? [primary] : [];
+  if (allIds.length === 0) return '—';
+  const labels = allIds.map((id) => categoryLabel(categories, id));
+  if (labels.length === 1) return labels[0]!;
+  return `${labels[0]} (+${labels.length - 1})`;
 }
 
 function integrationCell(row: Record<string, unknown>): string {
@@ -355,7 +391,14 @@ export function DataPage() {
       if (t) p.set(key, t);
     }
     if (canModerate && canSuppress(kind) && suppressed !== 'all') p.set('suppressed', suppressed);
-    if (categoryId && (kind === 'jokes' || kind === 'trivia' || kind === 'photos' || kind === 'videos')) {
+    if (
+      categoryId &&
+      (kind === 'calendar_events' ||
+        kind === 'jokes' ||
+        kind === 'trivia' ||
+        kind === 'photos' ||
+        kind === 'videos')
+    ) {
       p.set('category', categoryId);
     }
     if (kind === 'news' && feedId) p.set('feed_id', feedId);
@@ -447,7 +490,8 @@ export function DataPage() {
 
   const metadataFiltersBusy =
     metadataLoading &&
-    (kind === 'jokes' ||
+    (kind === 'calendar_events' ||
+      kind === 'jokes' ||
       kind === 'trivia' ||
       kind === 'photos' ||
       kind === 'videos' ||
@@ -462,7 +506,8 @@ export function DataPage() {
           Collected content browser
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Browse content stored on the active display—jokes, news, photos, stocks, weather, and alerts.
+          Browse content stored on the active display—calendar events, jokes, news, photos, stocks,
+          weather, and alerts.
           Filter and paginate each tab; with <strong>content.moderate</strong> you can suppress rows
           so they are omitted from future programs.
         </Typography>
@@ -520,7 +565,11 @@ export function DataPage() {
             </Select>
           </FormControl>
         )}
-        {(kind === 'jokes' || kind === 'trivia' || kind === 'photos' || kind === 'videos') && (
+        {(kind === 'calendar_events' ||
+          kind === 'jokes' ||
+          kind === 'trivia' ||
+          kind === 'photos' ||
+          kind === 'videos') && (
           <FormControl size="small" sx={{ minWidth: 180 }}>
             <InputLabel id="cat-filter">Category</InputLabel>
             <Select
@@ -665,6 +714,18 @@ export function DataPage() {
                   <TableCell>Source</TableCell>
                   <TableCell>Created</TableCell>
                   <TableCell>Integration</TableCell>
+                </>
+              )}
+              {kind === 'calendar_events' && (
+                <>
+                  <TableCell>Title</TableCell>
+                  <TableCell>Start</TableCell>
+                  <TableCell>End</TableCell>
+                  <TableCell>All-day</TableCell>
+                  <TableCell>Location</TableCell>
+                  <TableCell>Category</TableCell>
+                  <TableCell>Integration</TableCell>
+                  <TableCell>Source</TableCell>
                 </>
               )}
             </TableRow>
@@ -852,6 +913,31 @@ export function DataPage() {
                             : '—'}
                         </TableCell>
                         <TableCell>{integrationCell(row)}</TableCell>
+                      </>
+                    )}
+                    {kind === 'calendar_events' && (
+                      <>
+                        <TableCell sx={{ maxWidth: 260, wordBreak: 'break-word' }}>
+                          {String(row.title ?? '')}
+                        </TableCell>
+                        <TableCell>
+                          {calendarEventWhen(row.start_ms, Boolean(row.all_day), formatDateTime)}
+                        </TableCell>
+                        <TableCell>
+                          {calendarEventWhen(row.end_ms, Boolean(row.all_day), formatDateTime)}
+                        </TableCell>
+                        <TableCell>{row.all_day ? 'Yes' : 'No'}</TableCell>
+                        <TableCell sx={{ maxWidth: 200, wordBreak: 'break-word' }}>
+                          {String(row.location ?? '') || '—'}
+                        </TableCell>
+                        <TableCell>{calendarCategoryCell(row, categories)}</TableCell>
+                        <TableCell>{integrationCell(row)}</TableCell>
+                        <TableCell
+                          sx={{ maxWidth: 180, wordBreak: 'break-word', fontSize: 12 }}
+                          title={String(row.source ?? '')}
+                        >
+                          {String(row.source ?? '') || '—'}
+                        </TableCell>
                       </>
                     )}
                   </TableRow>

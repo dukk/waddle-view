@@ -36,7 +36,7 @@ if grep -q 'not found' "$ldd_tmp"; then
   grep 'not found' "$ldd_tmp" >&2 || true
   echo >&2
   echo "On Raspberry Pi OS / Debian, install typical runtime packages, for example:" >&2
-  echo "  sudo apt update && sudo apt install -y --no-install-recommends libmpv2 mpv libgtk-3-0 libsecret-1-0" >&2
+  echo "  sudo apt update && sudo apt install -y --no-install-recommends libmpv2 mpv libgtk-3-0 libsecret-1-0 libwebkit2gtk-4.1-0" >&2
   echo >&2
   if [[ "${WADDLE_INSTALL_RUNTIME_PACKAGES:-}" == "1" ]] && command -v apt-get >/dev/null 2>&1; then
     rt_file="$SRC_DIR/runtime-apt-packages.txt"

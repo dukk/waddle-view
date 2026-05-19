@@ -242,6 +242,21 @@ class TestPiRemoteUpgradeHelpers(unittest.TestCase):
             )
         self.assertIn("GITHUB_TOKEN", str(ctx.exception))
 
+    def test_remote_upgrade_script_installs_runtime_packages_by_default(self):
+        pru = self.pru
+        script = pru.remote_upgrade_script("/tmp/waddle.tar.gz")
+        self.assertIn("WADDLE_INSTALL_RUNTIME_PACKAGES=1", script)
+        self.assertIn("sudo env WADDLE_INSTALL_RUNTIME_PACKAGES=1 bash install.sh", script)
+
+    def test_remote_upgrade_script_can_skip_runtime_packages(self):
+        pru = self.pru
+        script = pru.remote_upgrade_script(
+            "/tmp/waddle.tar.gz",
+            install_runtime_packages=False,
+        )
+        self.assertNotIn("WADDLE_INSTALL_RUNTIME_PACKAGES", script)
+        self.assertIn("sudo bash install.sh", script)
+
 
 if __name__ == "__main__":
     unittest.main()

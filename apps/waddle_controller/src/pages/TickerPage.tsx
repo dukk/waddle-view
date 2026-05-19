@@ -27,7 +27,9 @@ import {
   MenuItem,
   Select,
 } from '@mui/material';
+import { useAuth } from '@/context/AuthContext';
 import { useDisplay } from '@/context/DisplayContext';
+import { CatalogDisplayTransferPanel } from '@/components/catalog/CatalogDisplayTransferPanel';
 import { apiFetch, apiJson, ApiError } from '@/api/client';
 import { CatalogPageToolbar } from '@/components/CatalogPageToolbar';
 import { CatalogPageHelp } from '@/components/CatalogPageHelp';
@@ -190,7 +192,9 @@ function TickerTapeTable({
 }
 
 export function TickerPage() {
-  const { active } = useDisplay();
+  const { active, displays } = useDisplay();
+  const { hasPermission } = useAuth();
+  const canWrite = hasPermission('ticker.write');
   const { loading, wrapRefresh } = useDisplayRefresh();
   const { layout, setLayout } = useListLayoutPreference('ticker-tapes');
   const [rows, setRows] = useState<TickerTapeRow[]>([]);
@@ -224,6 +228,15 @@ export function TickerPage() {
   }, [load]);
 
   const sortedRows = useMemo(() => [...rows].sort(sortById), [rows]);
+
+  const transferItems = useMemo(
+    () =>
+      sortedRows.map((r) => ({
+        id: r.id,
+        label: tickerRowTitle(r),
+      })),
+    [sortedRows],
+  );
 
   const deleteTape = useCallback(
     async (id: string) => {
@@ -301,6 +314,15 @@ export function TickerPage() {
           onDelete={(id) => void deleteTape(id)}
         />
       )}
+
+      <CatalogDisplayTransferPanel
+        kind="ticker"
+        active={active}
+        displays={displays}
+        canWrite={canWrite}
+        activeItems={transferItems}
+        onTransferred={() => void load()}
+      />
 
       {addOpen && schemas && (
         <AddTickerTapeDialog
