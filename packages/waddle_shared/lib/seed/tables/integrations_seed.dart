@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 import 'package:waddle_shared/config/integration_config_json.dart';
 
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/tables.dart';
 
 import 'integration_types_seed.dart';
 
@@ -564,6 +565,46 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
 
         '{"retentionDays":1,"market":"en-US","resolution":"UHD","category":"bing"}',
 
+  );
+
+  await _ensureIntegrationRow(
+    db,
+    id: kDefaultPhotoBucketIntegrationId,
+    integrationType: kPhotoBucketIntegrationType,
+    pollSeconds: 60,
+    configJson: '{}',
+  );
+
+  await _ensureIntegrationRow(
+    db,
+    id: kDefaultVideoBucketIntegrationId,
+    integrationType: kVideoBucketIntegrationType,
+    pollSeconds: 60,
+    configJson: '{}',
+  );
+
+  await _ensureIntegrationRow(
+    db,
+    id: kDefaultCalendarBucketIntegrationId,
+    integrationType: kCalendarBucketIntegrationType,
+    pollSeconds: 60,
+    configJson: '{}',
+  );
+
+  await _ensureIntegrationRow(
+    db,
+    id: kDefaultJokeBucketIntegrationId,
+    integrationType: kJokeBucketIntegrationType,
+    pollSeconds: 60,
+    configJson: '{}',
+  );
+
+  await _ensureIntegrationRow(
+    db,
+    id: kDefaultTriviaBucketIntegrationId,
+    integrationType: kTriviaBucketIntegrationType,
+    pollSeconds: 60,
+    configJson: '{}',
   );
 
 }

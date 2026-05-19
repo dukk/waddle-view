@@ -57,11 +57,6 @@ import {
   type DisplayTimezoneOption,
 } from '@/constants/displayTimezoneOptions';
 import { putDisplaySettings, fetchDisplaySettings } from '@/api/displaySettings';
-import { DisplayImageOverlaySettingsField } from '@/components/config/DisplayImageOverlaySettingsField';
-import {
-  DEFAULT_DISPLAY_IMAGE_OVERLAY,
-  normalizeDisplayImageOverlay,
-} from '@/constants/displayImageOverlaySettings';
 import {
   ADOPTION_ROLES,
   CONTROLLER_DATE_ORDER_OPTIONS,
@@ -636,7 +631,6 @@ function DisplayOperatorSettingsSection({
           ...data,
           display_timezone: tz,
           display_program_history_depth: historyDepth,
-          display_image_overlay: normalizeDisplayImageOverlay(data.display_image_overlay),
         });
         setInitialized(true);
       } catch (e) {
@@ -662,7 +656,6 @@ function DisplayOperatorSettingsSection({
         display_timezone: form.display_timezone,
         controller_time_format: form.controller_time_format,
         controller_date_order: form.controller_date_order,
-        display_image_overlay: form.display_image_overlay,
       });
       await refreshFormat();
       setSaved(true);
@@ -848,12 +841,6 @@ function DisplayOperatorSettingsSection({
             ))}
           </Select>
         </FormControl>
-        <DisplayImageOverlaySettingsField
-          display={display}
-          value={form.display_image_overlay ?? DEFAULT_DISPLAY_IMAGE_OVERLAY}
-          onChange={(display_image_overlay) => setForm({ ...form, display_image_overlay })}
-          disabled={!canWrite}
-        />
         {canWrite && (
           <Button variant="contained" onClick={() => void save()}>
             Save display settings

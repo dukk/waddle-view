@@ -206,23 +206,6 @@ export function v1Router() {
     const display_timezone = mockConfigKv.get('display.timezone') ?? 'America/New_York';
     const controller_time_format = mockConfigKv.get('controller.time_format') ?? '12h';
     const controller_date_order = mockConfigKv.get('controller.date_order') ?? 'mdy';
-    const overlayRaw = mockConfigKv.get('display.image_overlay');
-    let display_image_overlay: Record<string, unknown> = {
-      enabled: false,
-      x: 0.05,
-      y: 0.05,
-      scale: 0.12,
-    };
-    if (overlayRaw) {
-      try {
-        const parsed = JSON.parse(overlayRaw) as Record<string, unknown>;
-        if (parsed && typeof parsed === 'object') {
-          display_image_overlay = parsed;
-        }
-      } catch {
-        /* keep defaults */
-      }
-    }
     return c.json({
       display_theme_id: mockConfigKv.get('display.theme.id') ?? 'navy_coral',
       display_text_scale_screen: mockConfigKv.get('display.text_scale.screen') ?? 'normal',
@@ -230,7 +213,6 @@ export function v1Router() {
       display_timezone,
       controller_time_format,
       controller_date_order,
-      display_image_overlay,
       adoption_allowed_roles: ['viewer', 'power_viewer', 'operator', 'admin'],
       adoption_allow_new_requests: true,
     });
@@ -261,12 +243,6 @@ export function v1Router() {
       }
       if (typeof body.controller_date_order === 'string') {
         mockConfigKv.set('controller.date_order', body.controller_date_order);
-      }
-      if (body.display_image_overlay && typeof body.display_image_overlay === 'object') {
-        mockConfigKv.set(
-          'display.image_overlay',
-          JSON.stringify(body.display_image_overlay),
-        );
       }
     } catch {
       /* ignore malformed body */

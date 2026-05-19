@@ -5,42 +5,40 @@ import {
   Box,
   Button,
   CircularProgress,
-  Divider,
-  FormControlLabel,
   IconButton,
   Stack,
-  Switch,
   Typography,
 } from '@mui/material';
 import { fetchBlobObjectUrl } from '@/api/client';
 import { uploadOverlayImageBlob } from '@/api/overlayBlobs';
 import { CuratorSliderField } from '@/components/CuratorSliderField';
 import {
-  DISPLAY_IMAGE_OVERLAY_SCALE_MAX,
-  DISPLAY_IMAGE_OVERLAY_SCALE_MIN,
-  type DisplayImageOverlaySettings,
-} from '@/constants/displayImageOverlaySettings';
+  STATIC_IMAGE_OVERLAY_SCALE_MAX,
+  STATIC_IMAGE_OVERLAY_SCALE_MIN,
+  type StaticImageOverlayConfig,
+} from '@/constants/staticImageOverlaySettings';
 import type { SavedDisplay } from '@/storage/displays';
 
 type Props = {
   display: SavedDisplay;
-  value: DisplayImageOverlaySettings;
-  onChange: (next: DisplayImageOverlaySettings) => void;
+  formData: Record<string, unknown>;
+  onChange: (next: Record<string, unknown>) => void;
   disabled?: boolean;
 };
 
-export function DisplayImageOverlaySettingsField({
-  display,
-  value,
-  onChange,
-  disabled,
-}: Props) {
+export function StaticImageConfigForm({ display, formData, onChange, disabled }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  const blobKey = value.image_blob_key?.trim() ?? '';
+  const blobKey =
+    typeof formData.image_blob_key === 'string' ? formData.image_blob_key.trim() : '';
+  const x = typeof formData.x === 'number' ? formData.x : 0.05;
+  const y = typeof formData.y === 'number' ? formData.y : 0.05;
+  const scale = typeof formData.scale === 'number' ? formData.scale : 0.12;
+  const opacity =
+    typeof formData.opacity === 'number' && formData.opacity < 1 ? formData.opacity : 1;
 
   useEffect(() => {
     let cancelled = false;
@@ -69,10 +67,10 @@ export function DisplayImageOverlaySettingsField({
   );
 
   const patch = useCallback(
-    (partial: Partial<DisplayImageOverlaySettings>) => {
-      onChange({ ...value, ...partial });
+    (partial: Record<string, unknown>) => {
+      onChange({ ...formData, ...partial });
     },
-    [onChange, value],
+    [formData, onChange],
   );
 
   const onPickFile = async (files: FileList | null) => {
@@ -82,7 +80,7 @@ export function DisplayImageOverlaySettingsField({
     setUploading(true);
     try {
       const { blob_key } = await uploadOverlayImageBlob(display, file);
-      patch({ image_blob_key: blob_key, enabled: true });
+      patch({ image_blob_key: blob_key });
     } catch (e) {
       setUploadErr(e instanceof Error ? e.message : 'Upload failed');
     } finally {
@@ -91,28 +89,13 @@ export function DisplayImageOverlaySettingsField({
     }
   };
 
-  const opacity = value.opacity ?? 1;
-
   return (
     <Stack spacing={2}>
-      <Divider />
-      <Typography variant="subtitle2" fontWeight={600}>
-        Always-on image overlay
-      </Typography>
       <Typography variant="body2" color="text.secondary">
-        Shows a logo or watermark on top of slides and the ticker at all times. Independent of
-        curator programs and celebration overlays.
+        Fixed logo or watermark at a viewport position. Assign this overlay on a curator
+        configuration Overlay tab; the global overlay kill-switch in Display settings still
+        applies.
       </Typography>
-      <FormControlLabel
-        control={
-          <Switch
-            checked={value.enabled}
-            disabled={disabled}
-            onChange={(_, enabled) => patch({ enabled })}
-          />
-        }
-        label="Enable image overlay"
-      />
       <input
         ref={fileRef}
         type="file"
@@ -196,8 +179,8 @@ export function DisplayImageOverlaySettingsField({
       )}
       <CuratorSliderField
         label="Horizontal position"
-        value={value.x}
-        onChange={(x) => patch({ x })}
+        value={x}
+        onChange={(next) => patch({ x: next })}
         min={0}
         max={1}
         step={0.01}
@@ -209,8 +192,8 @@ export function DisplayImageOverlaySettingsField({
       </Typography>
       <CuratorSliderField
         label="Vertical position"
-        value={value.y}
-        onChange={(y) => patch({ y })}
+        value={y}
+        onChange={(next) => patch({ y: next })}
         min={0}
         max={1}
         step={0.01}
@@ -219,17 +202,17 @@ export function DisplayImageOverlaySettingsField({
       />
       <CuratorSliderField
         label="Scale"
-        value={value.scale}
-        onChange={(scale) => patch({ scale })}
-        min={DISPLAY_IMAGE_OVERLAY_SCALE_MIN}
-        max={DISPLAY_IMAGE_OVERLAY_SCALE_MAX}
+        value={scale}
+        onChange={(next) => patch({ scale: next })}
+        min={STATIC_IMAGE_OVERLAY_SCALE_MIN}
+        max={STATIC_IMAGE_OVERLAY_SCALE_MAX}
         step={0.01}
         disabled={disabled}
         formatValue={(v) => v.toFixed(2)}
       />
       <Typography variant="caption" color="text.secondary" sx={{ mt: -1.5, display: 'block' }}>
         Image width as a fraction of the viewport shortest side (
-        {DISPLAY_IMAGE_OVERLAY_SCALE_MIN}–{DISPLAY_IMAGE_OVERLAY_SCALE_MAX}).
+        {STATIC_IMAGE_OVERLAY_SCALE_MIN}–{STATIC_IMAGE_OVERLAY_SCALE_MAX}).
       </Typography>
       <CuratorSliderField
         label="Opacity"

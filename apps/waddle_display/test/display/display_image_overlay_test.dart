@@ -5,8 +5,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_display/display/overlay/display_image_overlay.dart';
-import 'package:waddle_display/display/overlay/display_image_overlay_host.dart';
-import 'package:waddle_shared/config/display_image_overlay_kv.dart';
+import 'package:waddle_shared/persistence/display_overlay_static_image_settings.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 import '../helpers/fake_blob_store.dart';
@@ -33,7 +32,7 @@ Future<void> _seedBlob(AppDatabase db, FakeBlobStore blobs, String blobKey) asyn
 }
 
 void main() {
-  testWidgets('DisplayImageOverlay shows image when enabled', (tester) async {
+  testWidgets('DisplayImageOverlay shows image when renderable', (tester) async {
     final db = openMemoryDatabase();
     addTearDown(db.close);
     await warmDatabase(db);
@@ -41,8 +40,7 @@ void main() {
     final blobs = FakeBlobStore();
     await _seedBlob(db, blobs, blobKey);
 
-    const settings = DisplayImageOverlaySettings(
-      enabled: true,
+    const settings = StaticImageOverlaySettings(
       imageBlobKey: blobKey,
       x: 0.1,
       y: 0.2,
@@ -71,7 +69,7 @@ void main() {
     expect(find.byType(Opacity), findsOneWidget);
   });
 
-  testWidgets('DisplayImageOverlay hides when disabled', (tester) async {
+  testWidgets('DisplayImageOverlay hides when blob key missing', (tester) async {
     final db = openMemoryDatabase();
     addTearDown(db.close);
     await warmDatabase(db);
@@ -83,7 +81,7 @@ void main() {
             width: 400,
             height: 300,
             child: DisplayImageOverlay(
-              settings: DisplayImageOverlaySettings.defaults,
+              settings: StaticImageOverlaySettings.defaults,
               blobs: FakeBlobStore(),
               db: db,
             ),
@@ -93,65 +91,5 @@ void main() {
     );
     await tester.pump();
     expect(find.byType(Image), findsNothing);
-  });
-
-  testWidgets('DisplayImageOverlayHost omits layer when KV disabled', (tester) async {
-    final db = openMemoryDatabase();
-    addTearDown(db.close);
-    await warmDatabase(db);
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: DisplayImageOverlayHost(
-          dashboardKv: const {},
-          blobs: FakeBlobStore(),
-          db: db,
-          child: const ColoredBox(color: Colors.blue),
-        ),
-      ),
-    );
-    await tester.pump();
-    expect(find.byType(DisplayImageOverlay), findsNothing);
-  });
-
-  testWidgets('DisplayImageOverlayHost shows layer from dashboard KV', (tester) async {
-    final db = openMemoryDatabase();
-    addTearDown(db.close);
-    await warmDatabase(db);
-    const blobKey = 'overlay/pool/watermark';
-    final blobs = FakeBlobStore();
-    await _seedBlob(db, blobs, blobKey);
-
-    final kv = {
-      kDisplayImageOverlayKvKey: DisplayImageOverlaySettings.encodeKvValue(
-        const DisplayImageOverlaySettings(
-          enabled: true,
-          imageBlobKey: blobKey,
-          x: 0.0,
-          y: 0.0,
-          scale: 0.1,
-          opacity: 1.0,
-        ),
-      ),
-    };
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: SizedBox(
-          width: 320,
-          height: 240,
-          child: DisplayImageOverlayHost(
-            dashboardKv: kv,
-            blobs: blobs,
-            db: db,
-            child: const ColoredBox(color: Colors.green),
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(find.byType(DisplayImageOverlay), findsOneWidget);
-    expect(find.byKey(const Key('display_image_overlay_raster')), findsOneWidget);
   });
 }

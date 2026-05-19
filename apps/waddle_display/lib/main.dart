@@ -60,7 +60,6 @@ import 'display/dashboard_data_bound_shell.dart';
 import 'display/dashboard_viewport_scope.dart';
 import 'display/display_viewport.dart';
 import 'display/overlay/celebration_overlay_host.dart';
-import 'display/overlay/display_image_overlay_host.dart';
 import 'display/screen_rotator.dart';
 import 'display/viewer_invite_runtime.dart';
 import 'marquee_cycle_gate.dart';
@@ -589,11 +588,7 @@ class _WaddleHomeState extends State<WaddleHome> {
                 allowedOverlayIds: _allowedOverlayIds,
                 overlayRegistry: widget.overlayRegistry,
                 runtimeSignals: widget.runtimeSignals,
-                child: DisplayImageOverlayHost(
-                  dashboardKv: widget.dashboardKv,
-                  blobs: widget.blobs,
-                  db: widget.db,
-                  child: DashboardDataBoundShell(
+                child: DashboardDataBoundShell(
                   overscan: const TvOverscanInsets(),
                   viewportConfig: const DisplayViewportConfig(),
                   showTicker: _tickerEnabled,
@@ -626,7 +621,6 @@ class _WaddleHomeState extends State<WaddleHome> {
                       },
                     ),
                   ),
-                ),
                 ),
               ),
             ),

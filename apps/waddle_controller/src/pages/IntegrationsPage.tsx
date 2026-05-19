@@ -46,6 +46,8 @@ import { catalogCardGridSx } from '@/constants/catalogLayout';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import { IntegrationBrandIcon } from '@/components/IntegrationBrandIcon';
+import { ManualBucketUploadSection } from '@/components/ManualBucketUploadSection';
+import { isManualBucketIntegration } from '@/util/manualBucketIntegration';
 import { completeDialogSave } from '@/util/dialogSave';
 import { parseJsonObject } from '@/util/json';
 import { SchemaConfigForm } from '@/components/config/SchemaConfigForm';
@@ -718,6 +720,7 @@ function EditIntegrationDialog({
   const { active } = useDisplay();
   const isOutlookCalendar = row.integration_type === kOutlookCalendarIntegrationType;
   const isGooglePhotos = isGooglePhotosIntegrationType(row.integration_type);
+  const isManualBucket = isManualBucketIntegration(row.integration_type);
   const operatorSchema = useMemo(
     () => integrationOperatorSchema(schemas, row),
     [schemas, row],
@@ -853,6 +856,9 @@ function EditIntegrationDialog({
   }, [isGooglePhotos, googlePhotosConfig, googleAccounts]);
 
   const accountsReady = useMemo(() => {
+    if (isManualBucket) {
+      return true;
+    }
     if (isOutlookCalendar) {
       return outlookConfigReady;
     }
@@ -861,6 +867,7 @@ function EditIntegrationDialog({
     }
     return integrationAccountsSatisfiedForEnable(accountDetail);
   }, [
+    isManualBucket,
     isOutlookCalendar,
     isGooglePhotos,
     accountDetail,
@@ -885,7 +892,7 @@ function EditIntegrationDialog({
   const save = async () => {
     if (!active) return;
     setErr(null);
-    if (enabled) {
+    if (enabled && !isManualBucket) {
       const { errors } = validator.validateFormData(configForSave, validationSchema);
       if (errors.length > 0) {
         setErr(errors.map((e) => e.stack ?? e.message ?? 'Invalid field').join('\n'));
@@ -902,21 +909,25 @@ function EditIntegrationDialog({
         return;
       }
     }
-    if (poll <= 0) {
+    if (!isManualBucket && poll <= 0) {
       setErr('Poll seconds must be greater than zero.');
       return;
     }
-    if (enabled && !oauthClientIdsReady) {
+    if (!isManualBucket && enabled && !oauthClientIdsReady) {
       setErr(
         `Configure required OAuth client IDs under ${DISPLAY_SETTINGS_ACCOUNTS_LABEL} before enabling.`,
       );
       return;
     }
-    if (enabled && !integrationSecretsSatisfiedForEnable(secretSlots, secretDrafts)) {
+    if (
+      !isManualBucket &&
+      enabled &&
+      !integrationSecretsSatisfiedForEnable(secretSlots, secretDrafts)
+    ) {
       setErr('Configure all required integration secrets before enabling.');
       return;
     }
-    if (enabled && !accountsReady) {
+    if (!isManualBucket && enabled && !accountsReady) {
       setErr('Configure all required accounts before enabling this integration.');
       return;
     }
@@ -1016,7 +1027,7 @@ function EditIntegrationDialog({
             <Typography variant="body2" color="text.secondary">
               Loading secrets…
             </Typography>
-          ) : secretSlots.length > 0 ? (
+          ) : !isManualBucket && secretSlots.length > 0 ? (
             <Stack spacing={1.5}>
               <Typography variant="subtitle2">Secrets</Typography>
               {secretSlots.map((slot) => (
@@ -1046,14 +1057,22 @@ function EditIntegrationDialog({
               ))}
             </Stack>
           ) : null}
-          <TextField
-            label="Poll interval (seconds)"
-            type="number"
-            value={poll}
-            onChange={(e) => setPoll(Number(e.target.value) || 0)}
-            fullWidth
-          />
-          {isOutlookCalendar && active ? (
+          {!isManualBucket ? (
+            <TextField
+              label="Poll interval (seconds)"
+              type="number"
+              value={poll}
+              onChange={(e) => setPoll(Number(e.target.value) || 0)}
+              fullWidth
+            />
+          ) : null}
+          {isManualBucket && active ? (
+            <ManualBucketUploadSection
+              display={active}
+              integrationId={row.id}
+              integrationType={row.integration_type}
+            />
+          ) : isOutlookCalendar && active ? (
             <OutlookCalendarConfigSection
               display={active}
               value={outlookConfig}
@@ -1070,19 +1089,17 @@ function EditIntegrationDialog({
               categories={curatorCategories}
               mediaKind={row.integration_type === kVideoGoogleIntegrationType ? 'video' : 'photo'}
             />
-          ) : (
-            active ? (
-              <Stack spacing={1}>
-                <Typography variant="subtitle2">Configuration</Typography>
-                <SchemaConfigForm
-                  display={active}
-                  schema={operatorSchema}
-                  formData={formData}
-                  onChange={setFormData}
-                />
-              </Stack>
-            ) : null
-          )}
+          ) : !isManualBucket && active ? (
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">Configuration</Typography>
+              <SchemaConfigForm
+                display={active}
+                schema={operatorSchema}
+                formData={formData}
+                onChange={setFormData}
+              />
+            </Stack>
+          ) : null}
         </Stack>
       </DialogContent>
       <DialogActions>
@@ -1090,7 +1107,10 @@ function EditIntegrationDialog({
         <Button
           variant="contained"
           onClick={() => void save()}
-          disabled={poll <= 0 || (enabled && (!secretsReady || !accountsReady))}
+          disabled={
+            (!isManualBucket && poll <= 0) ||
+            (enabled && !isManualBucket && (!secretsReady || !accountsReady))
+          }
         >
           Save
         </Button>

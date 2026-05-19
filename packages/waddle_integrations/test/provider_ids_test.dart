@@ -35,7 +35,7 @@ import 'package:waddle_integrations/weather_alerts_nws/nws_weather_gov_alerts_da
 
 import 'package:waddle_integrations/weather_openweathermap/weather_data_provider.dart';
 
-
+import 'package:waddle_integrations/manual_bucket/manual_bucket_data_provider.dart';
 
 void main() {
 
@@ -78,6 +78,12 @@ void main() {
     expect(GooglePhotosPhotosDataProvider().id, 'photo_google');
 
     expect(GooglePhotosVideosDataProvider().id, 'video_google');
+
+    expect(photoBucketDataProvider.id, 'photo_bucket');
+    expect(videoBucketDataProvider.id, 'video_bucket');
+    expect(calendarBucketDataProvider.id, 'calendar_bucket');
+    expect(jokeBucketDataProvider.id, 'joke_bucket');
+    expect(triviaBucketDataProvider.id, 'trivia_bucket');
 
   });
 

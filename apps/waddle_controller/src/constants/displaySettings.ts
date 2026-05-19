@@ -1,5 +1,3 @@
-import type { DisplayImageOverlaySettings } from '@/constants/displayImageOverlaySettings';
-
 export type ControllerTimeFormat = '12h' | '24h';
 export type ControllerDateOrder = 'mdy' | 'dmy' | 'ymd';
 
@@ -18,8 +16,6 @@ export type DisplaySettings = {
   display_timezone: string;
   controller_time_format: ControllerTimeFormat;
   controller_date_order: ControllerDateOrder;
-  /** Always-on logo/watermark (`display.image_overlay` KV). */
-  display_image_overlay: DisplayImageOverlaySettings;
   /** Roles that may start adoption challenges. */
   adoption_allowed_roles?: string[];
   /** @deprecated Use `adoption_allowed_roles`; true when that list is non-empty. */

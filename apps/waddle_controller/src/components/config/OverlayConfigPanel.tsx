@@ -8,6 +8,9 @@ import { SchemaConfigForm } from './SchemaConfigForm';
 import { EdgeGlowConfigForm } from './EdgeGlowConfigForm';
 import { MatrixRainConfigForm } from './MatrixRainConfigForm';
 import { ShapeRainConfigForm } from './ShapeRainConfigForm';
+import { AnalogClockOverlayConfigForm } from './AnalogClockOverlayConfigForm';
+import { DigitalClockOverlayConfigForm } from './DigitalClockOverlayConfigForm';
+import { StaticImageConfigForm } from './StaticImageConfigForm';
 
 type Props = {
   display: SavedDisplay;
@@ -57,6 +60,34 @@ export function OverlayConfigPanel({
   if (overlayType === 'floating_balloons') {
     return (
       <FloatingBalloonsConfigForm
+        formData={formData}
+        onChange={onChange}
+        disabled={disabled}
+      />
+    );
+  }
+  if (overlayType === 'static_image') {
+    return (
+      <StaticImageConfigForm
+        display={display}
+        formData={formData}
+        onChange={onChange}
+        disabled={disabled}
+      />
+    );
+  }
+  if (overlayType === 'digital_clock') {
+    return (
+      <DigitalClockOverlayConfigForm
+        formData={formData}
+        onChange={onChange}
+        disabled={disabled}
+      />
+    );
+  }
+  if (overlayType === 'analog_clock') {
+    return (
+      <AnalogClockOverlayConfigForm
         formData={formData}
         onChange={onChange}
         disabled={disabled}

@@ -81,6 +81,9 @@ String? permissionForRoute(String method, String path) {
   if (p.startsWith('/v1/integrations/') && m == 'PATCH') {
     return WaddlePermission.integrationsWrite;
   }
+  if (RegExp(r'^/v1/integrations/[^/]+/bucket/').hasMatch(p) && m == 'POST') {
+    return WaddlePermission.curatorWrite;
+  }
 
   if (p == '/v1/screens' && m == 'GET') {
     return WaddlePermission.screensRead;

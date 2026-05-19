@@ -1,11 +1,12 @@
 import 'dart:convert';
 
-import 'package:waddle_shared/config/display_image_overlay_kv.dart';
 
 import 'display_overlay_falling_images_settings.dart';
 import 'display_overlay_floating_balloons_settings.dart';
 import 'display_overlay_edge_glow_settings.dart';
 import 'display_overlay_matrix_rain_settings.dart';
+import 'display_overlay_clock_placement.dart';
+import 'display_overlay_static_image_settings.dart';
 import 'tables.dart';
 
 /// JSON Schema (draft 2020-12) and example payload for one [integration_type].
@@ -62,6 +63,11 @@ final ProviderConfigJsonDoc kGenericProviderConfigJsonDoc =
 /// Documentation keyed by [Integrations.integrationType] (seeded + built-in).
 final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
   'stub': kGenericProviderConfigJsonDoc,
+  'photo_bucket': kGenericProviderConfigJsonDoc,
+  'video_bucket': kGenericProviderConfigJsonDoc,
+  'calendar_bucket': kGenericProviderConfigJsonDoc,
+  'joke_bucket': kGenericProviderConfigJsonDoc,
+  'trivia_bucket': kGenericProviderConfigJsonDoc,
   'news_rss': kGenericProviderConfigJsonDoc,
   'photo_pexels': ProviderConfigJsonDoc(
     schema: jsonEncode(
@@ -957,6 +963,40 @@ final Map<String, Object?> _kJsonSchemaAnalogDialLabels = {
     'crosshair_numbers',
   ],
 };
+
+/// JSON Schema properties shared by digital/analog clock overlays.
+Map<String, Object?> get _kOverlayClockPlacementProperties => {
+      'x': {
+        'type': 'number',
+        'minimum': 0,
+        'maximum': 1,
+        'x-waddle-widget': 'slider',
+        'description': 'Horizontal anchor (0 = left, 1 = right).',
+      },
+      'y': {
+        'type': 'number',
+        'minimum': 0,
+        'maximum': 1,
+        'x-waddle-widget': 'slider',
+        'description': 'Vertical anchor (0 = top, 1 = bottom).',
+      },
+      'scale': {
+        'type': 'number',
+        'minimum': kStaticImageOverlayScaleMin,
+        'maximum': kStaticImageOverlayScaleMax,
+        'x-waddle-widget': 'slider',
+        'description':
+            'Clock width (digital) or dial diameter (analog) as a fraction of '
+            'the viewport shortest side.',
+      },
+      'opacity': {
+        'type': 'number',
+        'minimum': 0,
+        'maximum': 1,
+        'x-waddle-widget': 'slider',
+        'description': 'Opacity (default 1).',
+      },
+    };
 
 /// Optional [ContentCategories.id] on screen widget config (controller: content-category picker).
 const Map<String, Object?> _kJsonSchemaOptionalContentCategoryId = {
@@ -2088,6 +2128,123 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
       }),
     );
   }
+  if (k == kOverlayTypeStaticImage) {
+    return ProviderConfigJsonDoc(
+      schema: jsonEncode(
+        _baseSchema(
+          title: 'Static image',
+          description:
+              'Fixed logo or watermark at a viewport position. Assign on a '
+              'curator configuration Overlay tab; respects the global overlay '
+              'kill-switch.',
+          properties: {
+            'image_blob_key': {
+              'type': 'string',
+              'pattern': r'^overlay/[a-z0-9][a-z0-9_/.-]*$',
+              'description':
+                  'Blob key from POST /v1/display/overlays/blobs upload.',
+            },
+            'x': {
+              'type': 'number',
+              'minimum': 0,
+              'maximum': 1,
+              'x-waddle-widget': 'slider',
+              'description': 'Horizontal anchor (0 = left, 1 = right).',
+            },
+            'y': {
+              'type': 'number',
+              'minimum': 0,
+              'maximum': 1,
+              'x-waddle-widget': 'slider',
+              'description': 'Vertical anchor (0 = top, 1 = bottom).',
+            },
+            'scale': {
+              'type': 'number',
+              'minimum': kStaticImageOverlayScaleMin,
+              'maximum': kStaticImageOverlayScaleMax,
+              'x-waddle-widget': 'slider',
+              'description':
+                  'Image width as a fraction of the viewport shortest side.',
+            },
+            'opacity': {
+              'type': 'number',
+              'minimum': 0,
+              'maximum': 1,
+              'x-waddle-widget': 'slider',
+              'description': 'Opacity (default 1).',
+            },
+          },
+          requiredKeys: ['image_blob_key'],
+        ),
+      ),
+      example: jsonEncode({
+        'image_blob_key': kOverlayBlobKeyDuckMascot,
+        'x': kStaticImageOverlayPositionDefault,
+        'y': kStaticImageOverlayPositionDefault,
+        'scale': kStaticImageOverlayScaleDefault,
+      }),
+    );
+  }
+  if (k == kOverlayTypeDigitalClock) {
+    return ProviderConfigJsonDoc(
+      schema: jsonEncode(
+        _baseSchema(
+          title: 'Digital clock overlay',
+          description:
+              'Digital clock and date at a viewport position. Options match '
+              'the digital clock screen; assign on a curator Overlay tab.',
+          properties: {
+            ..._kOverlayClockPlacementProperties,
+            'hour24': {
+              'type': 'boolean',
+              'description':
+                  'When true, use 24-hour time (default false / 12-hour).',
+            },
+            'showSeconds': {
+              'type': 'boolean',
+              'description':
+                  'When true, update every second; otherwise align to minute ticks.',
+            },
+          },
+        ),
+      ),
+      example: jsonEncode({
+        'x': kStaticImageOverlayPositionDefault,
+        'y': kStaticImageOverlayPositionDefault,
+        'scale': kClockOverlayScaleDefault,
+        'hour24': false,
+        'showSeconds': true,
+      }),
+    );
+  }
+  if (k == kOverlayTypeAnalogClock) {
+    return ProviderConfigJsonDoc(
+      schema: jsonEncode(
+        _baseSchema(
+          title: 'Analog clock overlay',
+          description:
+              'Analog clock and date at a viewport position. Options match '
+              'the analog clock screen; assign on a curator Overlay tab.',
+          properties: {
+            ..._kOverlayClockPlacementProperties,
+            'dialLabels': _kJsonSchemaAnalogDialLabels,
+            'hourHandAccent': _kJsonSchemaAnalogHandAccent,
+            'minuteHandAccent': _kJsonSchemaAnalogHandAccent,
+            'secondHandAccent': _kJsonSchemaAnalogHandAccent,
+          },
+        ),
+      ),
+      example: jsonEncode({
+        'x': kStaticImageOverlayPositionDefault,
+        'y': kStaticImageOverlayPositionDefault,
+        'scale': kClockOverlayScaleDefault,
+        'dialLabels': 'roman',
+        'hourHandAccent': 'accent1',
+        'minuteHandAccent': 2,
+        'secondHandAccent': 'accent3',
+      }),
+    );
+  }
   if (k == kOverlayTypeEdgeGlow) {
     return ProviderConfigJsonDoc(
       schema: jsonEncode(
@@ -2215,11 +2372,3 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
   );
 }
 
-/// Operator-facing description of [kDisplayImageOverlayKvKey] fields exposed as
-/// `display_image_overlay` on GET/PUT `/v1/display/settings`.
-const String kDisplayImageOverlaySettingsDoc =
-    'Always-on logo/watermark (independent of curator programs): '
-    '`enabled`, `image_blob_key` (overlay/… from POST /v1/display/overlays/blobs), '
-    '`x` and `y` (0–1, top-left anchor as fraction of viewport), '
-    '`scale` ($kDisplayImageOverlayScaleMin–$kDisplayImageOverlayScaleMax of shortest viewport side), '
-    'optional `opacity` (0–1, default 1).';

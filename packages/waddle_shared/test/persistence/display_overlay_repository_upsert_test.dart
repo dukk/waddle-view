@@ -179,6 +179,84 @@ void main() {
     await db.close();
   });
 
+  test('upsert static_image stores normalized config_json without messages', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureOverlaysTableExists(db);
+    await upsertOverlay(
+      db,
+      id: 'logo1',
+      overlayType: kOverlayTypeStaticImage,
+      label: 'Logo',
+      configJson:
+          '{"enabled":true,"messages":["ignored"],"image_blob_key":"$kOverlayBlobKeyDuckMascot",'
+          '"x":0.9,"y":0.1,"scale":0.15,"opacity":0.5}',
+    );
+    final rows = await fetchDisplayOverlays(db);
+    final cfg = jsonDecode(rows.single.configJson) as Map<String, dynamic>;
+    expect(cfg['image_blob_key'], kOverlayBlobKeyDuckMascot);
+    expect(cfg['x'], 0.9);
+    expect(cfg['opacity'], 0.5);
+    expect(cfg.containsKey('messages'), isFalse);
+    expect(cfg.containsKey('enabled'), isFalse);
+    expect(
+      await overlayTypeConfigJsonSchema(db, kOverlayTypeStaticImage),
+      contains('Static image'),
+    );
+    await db.close();
+  });
+
+  test('upsert digital_clock stores normalized config_json without messages', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureOverlaysTableExists(db);
+    await upsertOverlay(
+      db,
+      id: 'dig1',
+      overlayType: kOverlayTypeDigitalClock,
+      label: 'Corner digital',
+      configJson:
+          '{"enabled":true,"messages":["ignored"],"hour24":true,"showSeconds":true,'
+          '"x":0.9,"y":0.1,"scale":0.25,"opacity":0.8}',
+    );
+    final rows = await fetchDisplayOverlays(db);
+    final cfg = jsonDecode(rows.single.configJson) as Map<String, dynamic>;
+    expect(cfg['hour24'], isTrue);
+    expect(cfg['showSeconds'], isTrue);
+    expect(cfg['x'], 0.9);
+    expect(cfg['opacity'], 0.8);
+    expect(cfg.containsKey('messages'), isFalse);
+    expect(
+      await overlayTypeConfigJsonSchema(db, kOverlayTypeDigitalClock),
+      contains('Digital clock overlay'),
+    );
+    await db.close();
+  });
+
+  test('upsert analog_clock stores normalized config_json without messages', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureOverlaysTableExists(db);
+    await upsertOverlay(
+      db,
+      id: 'ana1',
+      overlayType: kOverlayTypeAnalogClock,
+      label: 'Corner analog',
+      configJson:
+          '{"dialLabels":"roman","hourHandAccent":"accent2","x":0.1,"y":0.2,"scale":0.2}',
+    );
+    final rows = await fetchDisplayOverlays(db);
+    final cfg = jsonDecode(rows.single.configJson) as Map<String, dynamic>;
+    expect(cfg['dialLabels'], 'roman');
+    expect(cfg['hourHandAccent'], 'accent2');
+    expect(cfg['x'], 0.1);
+    expect(
+      await overlayTypeConfigJsonSchema(db, kOverlayTypeAnalogClock),
+      contains('Analog clock overlay'),
+    );
+    await db.close();
+  });
+
   test('upsert edge_glow stores normalized config_json without messages', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);

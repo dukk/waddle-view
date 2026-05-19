@@ -191,6 +191,15 @@ const String kOverlayTypeEdgeGlow = 'edge_glow';
 /// Vector balloons rising from the bottom with animated strings.
 const String kOverlayTypeFloatingBalloons = 'floating_balloons';
 
+/// Fixed logo/watermark at a viewport position (curator-assignable).
+const String kOverlayTypeStaticImage = 'static_image';
+
+/// Digital clock at a viewport position (curator-assignable).
+const String kOverlayTypeDigitalClock = 'digital_clock';
+
+/// Analog clock at a viewport position (curator-assignable).
+const String kOverlayTypeAnalogClock = 'analog_clock';
+
 /// Built-in overlay types exposed via `GET /v1/meta/overlay-types`.
 const List<String> kBuiltinOverlayTypes = [
   kOverlayTypeShapeRain,
@@ -200,6 +209,9 @@ const List<String> kBuiltinOverlayTypes = [
   kOverlayTypeMatrixRain,
   kOverlayTypeEdgeGlow,
   kOverlayTypeFloatingBalloons,
+  kOverlayTypeStaticImage,
+  kOverlayTypeDigitalClock,
+  kOverlayTypeAnalogClock,
 ];
 
 /// Seed row id for Wattle View's birthday bouncing message overlay.
@@ -761,6 +773,30 @@ const String kMediaDataProviderPhotoFlickr = 'photo_flickr';
 
 /// Bing homepage image of the day into [Photos].
 const String kMediaDataProviderPhotoBingIotd = 'photo_bing_image_of_the_day';
+
+/// Operator-uploaded photos via [photo_bucket] integration.
+const String kMediaDataProviderPhotoBucket = 'photo_bucket';
+
+/// Operator-uploaded videos via [video_bucket] integration.
+const String kMediaDataProviderVideoBucket = 'video_bucket';
+
+/// [Integrations.integrationType] for manual photo uploads.
+const String kPhotoBucketIntegrationType = 'photo_bucket';
+
+/// [Integrations.integrationType] for manual video uploads.
+const String kVideoBucketIntegrationType = 'video_bucket';
+
+/// [Integrations.integrationType] for manual calendar events.
+const String kCalendarBucketIntegrationType = 'calendar_bucket';
+
+/// [Integrations.integrationType] for manual jokes.
+const String kJokeBucketIntegrationType = 'joke_bucket';
+
+/// [Integrations.integrationType] for manual trivia.
+const String kTriviaBucketIntegrationType = 'trivia_bucket';
+
+/// [CalendarEvents.source] for rows created via [calendar_bucket].
+const String kCalendarSourceBucket = 'calendar_bucket';
 
 @TableIndex(name: 'idx_photos_fetched', columns: {#fetchedAtMs})
 @TableIndex(name: 'idx_photos_category', columns: {#category})

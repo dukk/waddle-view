@@ -7,6 +7,7 @@ import 'package:waddle_display/config/google_kv.dart';
 import 'package:waddle_integrations/photo_pexels/pexels_provider_extra_config.dart';
 import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/persistence/content_category_defaults.dart';
 import 'package:waddle_shared/persistence/display_overlay_repository.dart';
 import 'package:waddle_shared/seed/initial_seed.dart';
@@ -230,6 +231,34 @@ void main() {
     expect(row!.enabled, isFalse);
     expect(row.integrationType, 'photo_flickr');
     expect(row.configJson, contains('"groupIds"'));
+    await db.close();
+  });
+
+  test('ensureInitialSeed inserts manual bucket integrations enabled', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+
+    await ensureInitialSeed(db);
+
+    for (final id in [
+      kDefaultPhotoBucketIntegrationId,
+      kDefaultVideoBucketIntegrationId,
+      kDefaultCalendarBucketIntegrationId,
+      kDefaultJokeBucketIntegrationId,
+      kDefaultTriviaBucketIntegrationId,
+    ]) {
+      final row = await (db.select(db.integrations)
+            ..where((t) => t.id.equals(id)))
+          .getSingleOrNull();
+      expect(row, isNotNull, reason: id);
+      expect(row!.enabled, isTrue, reason: id);
+    }
+
+    final photoBucket = await (db.select(db.integrations)
+          ..where((t) => t.id.equals(kDefaultPhotoBucketIntegrationId)))
+        .getSingle();
+    expect(photoBucket.integrationType, kPhotoBucketIntegrationType);
+
     await db.close();
   });
 

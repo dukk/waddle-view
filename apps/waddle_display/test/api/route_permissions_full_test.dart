@@ -37,6 +37,11 @@ void main() {
       WaddlePermission.integrationsWrite,
     ),
     ('PATCH', '/v1/integrations/p1', WaddlePermission.integrationsWrite),
+    (
+      'POST',
+      '/v1/integrations/p1/bucket/photos',
+      WaddlePermission.curatorWrite,
+    ),
     ('GET', '/v1/alerts', WaddlePermission.alertsRead),
     ('POST', '/v1/alerts', WaddlePermission.alertsWrite),
     ('DELETE', '/v1/alerts/1', WaddlePermission.alertsWrite),

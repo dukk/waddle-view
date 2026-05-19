@@ -9,9 +9,15 @@ import 'package:waddle_shared/persistence/display_overlay_row.dart';
 import 'package:waddle_shared/persistence/display_overlay_edge_glow_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_matrix_rain_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_shape_rain_settings.dart';
+import 'package:waddle_shared/persistence/display_overlay_analog_clock_settings.dart';
+import 'package:waddle_shared/persistence/display_overlay_digital_clock_settings.dart';
+import 'package:waddle_shared/persistence/display_overlay_static_image_settings.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 
+import '../display/overlay/analog_clock_overlay.dart';
 import '../display/overlay/birthday_confetti_overlay.dart';
+import '../display/overlay/digital_clock_overlay.dart';
+import '../display/overlay/display_image_overlay.dart';
 import '../display/overlay/bouncing_message_overlay.dart';
 import '../display/overlay/celebration_overlay_schedule.dart';
 import '../display/overlay/falling_images_overlay.dart';
@@ -71,8 +77,19 @@ class OverlayWidgetRegistry {
       final t = row.overlayType.trim();
       byType.putIfAbsent(t, () => []).add(row);
     }
+    final typeOrder = <String>[
+      if (byType.containsKey(kOverlayTypeStaticImage)) kOverlayTypeStaticImage,
+      if (byType.containsKey(kOverlayTypeDigitalClock)) kOverlayTypeDigitalClock,
+      if (byType.containsKey(kOverlayTypeAnalogClock)) kOverlayTypeAnalogClock,
+      for (final t in byType.keys)
+        if (t != kOverlayTypeStaticImage &&
+            t != kOverlayTypeDigitalClock &&
+            t != kOverlayTypeAnalogClock)
+          t,
+    ];
     final layers = <Widget>[];
-    for (final entry in byType.entries) {
+    for (final overlayType in typeOrder) {
+      final entry = MapEntry(overlayType, byType[overlayType]!);
       entry.value.sort((a, b) => a.id.compareTo(b.id));
       final builder = _builders[entry.key];
       if (builder == null) {
@@ -172,6 +189,47 @@ void registerBuiltins(OverlayWidgetRegistry registry) {
       return null;
     }
     return FloatingBalloonsOverlay(settings: settings);
+  });
+
+  registry.register(kOverlayTypeStaticImage, (ctx, matches) {
+    if (matches.isEmpty) {
+      return null;
+    }
+    final settings = StaticImageOverlaySettings.parse(matches.first.configJson);
+    if (!settings.isRenderable) {
+      return null;
+    }
+    return DisplayImageOverlay(
+      settings: settings,
+      blobs: ctx.blobs,
+      db: ctx.db,
+    );
+  });
+
+  registry.register(kOverlayTypeDigitalClock, (ctx, matches) {
+    if (matches.isEmpty) {
+      return null;
+    }
+    final settings = matches
+        .map((r) => DigitalClockOverlaySettings.parse(r.configJson))
+        .toList();
+    return DigitalClockOverlay(
+      settingsList: settings,
+      theme: ctx.theme,
+    );
+  });
+
+  registry.register(kOverlayTypeAnalogClock, (ctx, matches) {
+    if (matches.isEmpty) {
+      return null;
+    }
+    final settings = matches
+        .map((r) => AnalogClockOverlaySettings.parse(r.configJson))
+        .toList();
+    return AnalogClockOverlay(
+      settingsList: settings,
+      theme: ctx.theme,
+    );
   });
 
   registry.register(kOverlayTypeBouncingMessage, (ctx, matches) {

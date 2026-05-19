@@ -36,6 +36,7 @@ import 'integrations_list_rest_routes.dart';
 import 'interests_rest_routes.dart';
 import 'cors_policy.dart';
 import 'display_health.dart';
+import 'manual_bucket_rest_routes.dart';
 import 'operator_rest_routes.dart';
 import 'plugin_routes.dart';
 import 'runtime_signal_routes.dart';
@@ -677,6 +678,8 @@ Handler buildProtectedApiRouter({
     telemetryHub: telemetryHub,
     navigationBus: navigationBus,
   );
+
+  registerManualBucketRestRoutes(r, db: db, blobs: blobs);
 
   return r.call;
 }

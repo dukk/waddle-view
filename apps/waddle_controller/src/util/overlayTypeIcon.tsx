@@ -4,9 +4,11 @@ import CelebrationIcon from '@mui/icons-material/Celebration';
 import ImageIcon from '@mui/icons-material/Image';
 import OpenInFullIcon from '@mui/icons-material/OpenInFull';
 import HighlightOutlinedIcon from '@mui/icons-material/HighlightOutlined';
+import Schedule from '@mui/icons-material/Schedule';
 import TerminalIcon from '@mui/icons-material/Terminal';
 import ToysOutlinedIcon from '@mui/icons-material/ToysOutlined';
 import type { ElementType } from 'react';
+import { DigitalClockScreenIcon } from '@/icons/DigitalClockScreenIcon';
 
 const OVERLAY_TYPE_ICONS: Record<string, ElementType> = {
   shape_rain: AutoAwesomeIcon,
@@ -17,6 +19,8 @@ const OVERLAY_TYPE_ICONS: Record<string, ElementType> = {
   matrix_rain: TerminalIcon,
   edge_glow: HighlightOutlinedIcon,
   floating_balloons: ToysOutlinedIcon,
+  digital_clock: DigitalClockScreenIcon,
+  analog_clock: Schedule,
 };
 
 function resolveOverlayTypeIcon(overlayType: string): ElementType | null {

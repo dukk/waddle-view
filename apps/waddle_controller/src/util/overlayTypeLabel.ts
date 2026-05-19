@@ -8,6 +8,9 @@ const FALLBACK_LABELS: Record<string, string> = {
   matrix_rain: 'Matrix rain',
   edge_glow: 'Edge glow',
   floating_balloons: 'Floating balloons',
+  static_image: 'Static image',
+  digital_clock: 'Digital clock',
+  analog_clock: 'Analog clock',
 };
 
 /** Human-facing label for an overlay type (registry label when available). */

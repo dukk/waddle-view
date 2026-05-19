@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/blob/display_blob_read.dart';
-import 'package:waddle_shared/config/display_image_overlay_kv.dart';
+import 'package:waddle_shared/persistence/display_overlay_static_image_settings.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
-/// Renders a single always-on image at a configured viewport position.
+/// Renders a fixed image at a configured viewport position (static_image overlay).
 class DisplayImageOverlay extends StatefulWidget {
   const DisplayImageOverlay({
     super.key,
@@ -17,7 +17,7 @@ class DisplayImageOverlay extends StatefulWidget {
     required this.db,
   });
 
-  final DisplayImageOverlaySettings settings;
+  final StaticImageOverlaySettings settings;
   final BlobStore blobs;
   final AppDatabase db;
 

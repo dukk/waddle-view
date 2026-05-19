@@ -15,7 +15,10 @@ import '../persistence/overlay_type_label.dart';
 import '../persistence/screen_type_label.dart';
 import '../persistence/ticker_type_label.dart';
 import '../seed/tables/interests_locations_seed.dart';
+import 'display_overlay_repository.dart';
 import 'display_overlay_sql.dart';
+import 'display_overlay_static_image_settings.dart';
+import '../seed/tables/overlay_types_seed.dart';
 import 'reject_term_defaults.dart';
 import 'tables.dart';
 import 'weather_location_category.dart';
@@ -79,7 +82,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 30;
+  int get schemaVersion => 31;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -296,6 +299,13 @@ ORDER BY priority DESC, created_at DESC;
       }
       if (from == 29 && to >= 30) {
         await _migrateV29ToV30DropTickerTapeConfigKey(this);
+        if (to == 30) {
+          return;
+        }
+        from = 30;
+      }
+      if (from == 30 && to >= 31) {
+        await _migrateV30ToV31StaticImageOverlayFromKv(this);
         return;
       }
       throw UnsupportedError(
@@ -351,6 +361,11 @@ const String kDefaultPhotoGoogleIntegrationId = 'default_photo_google';
 const String kDefaultVideoGoogleIntegrationId = 'default_video_google';
 const String kDefaultPhotoBingIotdIntegrationId =
     'default_photo_bing_image_of_the_day';
+const String kDefaultPhotoBucketIntegrationId = 'default_photo_bucket';
+const String kDefaultVideoBucketIntegrationId = 'default_video_bucket';
+const String kDefaultCalendarBucketIntegrationId = 'default_calendar_bucket';
+const String kDefaultJokeBucketIntegrationId = 'default_joke_bucket';
+const String kDefaultTriviaBucketIntegrationId = 'default_trivia_bucket';
 
 /// Adds encrypted secret tables and disables env-dependent integrations.
 Future<void> _migrateV2ToV3IntegrationSecrets(
@@ -1992,6 +2007,77 @@ CREATE TABLE ticker_tapes_new (
   }
   await db.customStatement('DROP TABLE ticker_tapes');
   await db.customStatement('ALTER TABLE ticker_tapes_new RENAME TO ticker_tapes');
+}
+
+/// Moves legacy always-on image overlay KV into catalog + base curator members.
+Future<void> _migrateV30ToV31StaticImageOverlayFromKv(AppDatabase db) async {
+  if (!await _sqliteTableExists(db, 'config_key_values')) {
+    if (await _sqliteTableExists(db, 'overlays')) {
+      await ensureOverlayTypes(db);
+    }
+    return;
+  }
+
+  final kvRow = await db.customSelect(
+    'SELECT value FROM config_key_values WHERE key = ?',
+    variables: [Variable<String>(kLegacyDisplayImageOverlayKvKey)],
+  ).getSingleOrNull();
+
+  final legacy = kvRow == null
+      ? null
+      : parseLegacyDisplayImageOverlayKv(kvRow.read<String>('value'));
+
+  await db.customStatement(
+    'DELETE FROM config_key_values WHERE key = ?',
+    <Object?>[kLegacyDisplayImageOverlayKvKey],
+  );
+
+  if (legacy == null) {
+    if (await _sqliteTableExists(db, 'overlays')) {
+      await ensureOverlayTypes(db);
+    }
+    return;
+  }
+
+  if (await _sqliteTableExists(db, 'overlays')) {
+    final existing = await db.customSelect(
+      'SELECT id FROM overlays WHERE id = ?',
+      variables: [Variable<String>(kMigratedDisplayImageOverlayId)],
+    ).getSingleOrNull();
+    if (existing == null) {
+      await upsertOverlay(
+        db,
+        id: kMigratedDisplayImageOverlayId,
+        overlayType: kOverlayTypeStaticImage,
+        label: 'Display image',
+        configJson: jsonEncode(legacy.toJson()),
+      );
+    }
+  }
+
+  if (await _sqliteTableExists(db, 'curator_configurations') &&
+      await _sqliteTableExists(db, 'curator_configuration_members')) {
+    final baseConfigs = await db.customSelect(
+      "SELECT id FROM curator_configurations WHERE layer = ?",
+      variables: [Variable<String>(kCuratorLayerBase)],
+    ).get();
+    for (final row in baseConfigs) {
+      final configId = row.read<String>('id');
+      await db.customStatement(
+        'INSERT OR IGNORE INTO curator_configuration_members '
+        '(configuration_id, entity_type, entity_id) VALUES (?, ?, ?)',
+        <Object?>[
+          configId,
+          kCuratorMemberEntityOverlay,
+          kMigratedDisplayImageOverlayId,
+        ],
+      );
+    }
+  }
+
+  if (await _sqliteTableExists(db, 'overlays')) {
+    await ensureOverlayTypes(db);
+  }
 }
 
 /// Opens a file-backed SQLite at [sqliteFile] (e.g. for `waddlectl --database`).

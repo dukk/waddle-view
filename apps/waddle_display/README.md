@@ -193,11 +193,12 @@ Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../d
 - **`hearts_rain`**: floating **hearts** ♥ and occasional **short phrases** from `config_json.messages`, tinted from the current theme’s **accent** palette (`PaletteTertiaryLayers` / `ColorScheme` fallback).
 - **`birthday_confetti`**: **falling rectangular confetti strips** (red, yellow, cyan, and magenta by default) with optional **sparse** phrases from `config_json.messages`. Other **`config_json`** keys tune optional **`colors`** (`#RRGGBB` or `#AARRGGBB`), **`density`** (about **0.15–0.9**), **`message_interval_sec`** (about **8–120** sec between occasional phrases), **`fall_speed`** (**0.02–1.8**, lower = slower drift; **~1.0** matches the original ~5s vertical cycle; **0.02** is the slowest supported, about **4.2 minutes** per full cycle with the current cap), and **`opacity`** (**0.12–0.72**, caps per-piece alpha for stronger or softer confetti). Empty `messages` means **no** overlay text. **`hearts_rain`** upserts normalize to **`{"messages":[…]}`** only.
 - **`bouncing_message`**: a **single line** of text from **`config_json.messages`** (first string; if none, the app uses **`Happy Birthday Waddle!!`**) **bounces** within the overlay like a DVD logo. Other **`config_json`** keys may set **`color`** (`#RRGGBB` / `#AARRGGBB`), **`font_family`**, **`font_size`** (**14–96**), **`font_weight`** (**100–900**, snapped to hundreds, or a numeric string), **`letter_spacing`** (**-1.5–6**), **`shadow`** (bool), and **`speed`** (**0.25–2.5**, velocity multiplier).
-- **Stacking**: when several kinds match, **confetti** is lowest, then **hearts**, then **bouncing message** on top for readability.
+- **`static_image`**: fixed **logo or watermark** from **`image_blob_key`** (upload via `POST /v1/display/overlays/blobs`). **`x`** / **`y`** (0–1, top-left anchor), **`scale`** (fraction of viewport shortest side), optional **`opacity`**. Assign on a curator configuration **Overlay** tab; rendered below animated overlay kinds when several are active.
+- **Stacking**: when several kinds match, **static image** is lowest, then animated kinds (confetti, hearts, and so on); **bouncing message** tends to sit on top for readability.
 - **Multiple rows**: merged **message** strings are **deduped** across matching rows (sorted by `id`). For **`birthday_confetti`**, **visual settings** come from the **first** matching row by `id` only; add a dedicated row per distinct look, or keep a single confetti schedule. **`bouncing_message`** uses the **first** matching row’s `config_json` and the **first** merged phrase for the moving text.
 - **Global switch**: `config_key_values` key **`display.overlay.enabled`**. **Omit** or any value other than **`false`**, **`0`**, **`no`**, **`off`** means **on**. Set to `false` to disable all overlays without deleting rows.
 - **Storage**: SQLite **`overlays`** (migration **41** copies legacy `display_overlay_schedules` when present; fresh databases at schema **42** create **`overlays`** directly). Column **`overlay_type`** replaces **`overlay_kind`**; legacy **`messages_json`** is merged into **`config_json.messages`** on upgrade. Rows support **fixed** calendar ranges (`start_month`/`start_day`, optional inclusive `end_*`) or **`nth_week_of_month` + `nth_weekday`** using Dart **`DateTime.weekday`** (Monday=1 … Sunday=7) with `start_month` holding the anchor month (`start_day` is ignored in that mode).
-- **Types**: **`overlay_type`** uses the same slug style as **`screen_type`**. Built-in renderers today: **`hearts_rain`**, **`birthday_confetti`**, **`bouncing_message`**. Additional types may be stored and edited over REST; the display ignores unknown types until a renderer exists.
+- **Types**: **`overlay_type`** uses the same slug style as **`screen_type`**. Built-in renderers include **`shape_rain`**, **`birthday_confetti`**, **`bouncing_message`**, **`falling_images`**, **`matrix_rain`**, **`edge_glow`**, **`floating_balloons`**, and **`static_image`**. Additional types may be stored and edited over REST; the display ignores unknown types until a renderer exists.
 - **Default seeds**: id **`default_mothers_day_us`** — US **Mother’s Day** (2nd Sunday in May) with message **`Happy Mother's Day!`** (`hearts_rain`, **enabled**). Id **`default_birthday_example_may_13`** — **May 13** each year, **`birthday_confetti`** with example message and a **slower, brighter** stock `config_json`, **disabled** so operators can enable or edit via REST without affecting installs until they choose to. Id **`default_bouncing_message_may_13`** — **May 13** each year, **`bouncing_message`** with **`Happy Birthday Waddle!!`** and stock typography `config_json`, **disabled** (same intent as the birthday example).
 - **REST** (authenticated like other `/v1/*` routes):
   - `GET /v1/display/overlays` — list schedules (`config_json`); optional `?include_config_schema=true` adds `config_json_schema` from **`overlay_types`**.
@@ -496,6 +497,20 @@ The **Bing image of the day** provider (`id` / `provider_type`: **`media_bing_io
 Requests send a desktop **`User-Agent`** and **`Referer`** matching the Bing origin (Bing may throttle anonymous clients otherwise). Each HTTP call uses a **5s** timeout.
 
 **`integrations.poll_seconds`:** default **3600** when seeded; provider is **enabled** by default.
+
+## Manual bucket integrations
+
+Five built-in integration types let operators add catalog content without external APIs or polling:
+
+| `integration_type` | Default row id | Purpose |
+|--------------------|----------------|---------|
+| `photo_bucket` | `default_photo_bucket` | Upload JPEG/PNG/WebP into **`photos`** |
+| `video_bucket` | `default_video_bucket` | Upload MP4/WebM/MOV into **`videos`** |
+| `calendar_bucket` | `default_calendar_bucket` | Create **`calendar_events`** (`source` = `calendar_bucket`) |
+| `joke_bucket` | `default_joke_bucket` | Create **`jokes`** |
+| `trivia_bucket` | `default_trivia_bucket` | Create **`trivia_questions`** |
+
+All five are **enabled** when seeded. Collectors return immediately (no fetch). Use **waddle_controller → Integrations** (edit dialog **Add content**) or **`POST /v1/integrations/{id}/bucket/...`** (requires **`curator.write`**; see [`docs/pi/api.md`](../../docs/pi/api.md)). Photo/video uploads are capped at **8 MiB** / **50 MiB** respectively.
 
 ## Drift codegen
 

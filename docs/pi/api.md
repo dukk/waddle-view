@@ -80,6 +80,13 @@ Allowed responses include **`Access-Control-Allow-Origin`** (mirrored origin), *
 | PATCH | `/v1/content/photos/{id}` | Same as jokes. |
 | PATCH | `/v1/content/videos/{id}` | Same as jokes. |
 | PATCH | `/v1/content/trivia/{id}` | Same as jokes. |
+| POST | `/v1/integrations/{id}/bucket/photos` | Manual **photo_bucket** upload. JSON: `category` (content category id), `bytes_base64`, `content_type` (`image/jpeg`, `image/png`, `image/webp`), optional `alt_text`, `photographer_name`. **201** `{"id","blob_key"}`. |
+| POST | `/v1/integrations/{id}/bucket/videos` | Manual **video_bucket** upload. Same as photos plus required `duration_seconds`. |
+| POST | `/v1/integrations/{id}/bucket/jokes` | Manual **joke_bucket**. JSON: `category_id` (interests joke category), `setup`, `punchline`. **201** `{"id"}`. |
+| POST | `/v1/integrations/{id}/bucket/trivia` | Manual **trivia_bucket**. JSON: `category_id`, `question`, `option_a`–`option_d`, `correct_option` (`A`–`D`). **201** `{"id"}`. |
+| POST | `/v1/integrations/{id}/bucket/calendar-events` | Manual **calendar_bucket**. JSON: `title`, `start_ms`, `end_ms` (epoch ms or ISO-8601), `all_day`, `category_id` or `category_ids`, optional `location`, `description`. **201** `{"id"}`. |
+
+**Manual bucket access:** requires **`curator.write`**. The `{id}` must be an `integrations` row whose `integration_type` matches the path (for example `default_photo_bucket` with type `photo_bucket`). Collectors are no-ops; content is written only via these POST routes (or the controller **Integrations** upload form).
 
 ## Ingested content catalog (paginated browse)
 

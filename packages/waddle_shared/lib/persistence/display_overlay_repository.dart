@@ -13,6 +13,9 @@ import 'display_overlay_floating_balloons_settings.dart';
 import 'display_overlay_edge_glow_settings.dart';
 import 'display_overlay_matrix_rain_settings.dart';
 import 'display_overlay_shape_rain_settings.dart';
+import 'display_overlay_analog_clock_settings.dart';
+import 'display_overlay_digital_clock_settings.dart';
+import 'display_overlay_static_image_settings.dart';
 import 'display_overlay_row.dart';
 import 'display_overlay_sql.dart';
 import 'overlay_type_label.dart';
@@ -210,6 +213,15 @@ String normalizeOverlayConfigForUpsert({
             (throw FormatException('invalid_config_json')),
     kOverlayTypeEdgeGlow =>
         normalizeEdgeGlowSettingsJsonString(restJson) ??
+            (throw FormatException('invalid_config_json')),
+    kOverlayTypeStaticImage =>
+        normalizeStaticImageSettingsJsonString(restJson) ??
+            (throw FormatException('invalid_config_json')),
+    kOverlayTypeDigitalClock =>
+        normalizeDigitalClockOverlayConfigJsonString(restJson) ??
+            (throw FormatException('invalid_config_json')),
+    kOverlayTypeAnalogClock =>
+        normalizeAnalogClockOverlayConfigJsonString(restJson) ??
             (throw FormatException('invalid_config_json')),
     _ => _normalizeUnknownOverlayConfigJson(split.rest, split.messages),
   };
