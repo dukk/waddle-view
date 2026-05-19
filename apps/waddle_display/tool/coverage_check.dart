@@ -1,6 +1,7 @@
 // Parses one or more lcov.info files and enforces a **CI floor** line hit ratio on
-// Dart sources under `apps/waddle_display/lib/`, `packages/waddle_shared/lib/`,
-// `packages/waddle_integrations/lib/`, and `packages/waddle_plugin_sdk/lib/`.
+// merged coverage from `apps/waddle_display`, `packages/waddle_shared`, and
+// `packages/waddle_plugin_sdk` (also recognizes `packages/waddle_integrations/lib/`
+// paths when that package's lcov is passed explicitly).
 // `packages/waddle_plugin_example/` is never counted (reference plugin only).
 //
 // Also compares against an optional **aspirational target** (default 90%): falling
@@ -96,10 +97,10 @@ void main(List<String> args) {
   }
   if (totalLf == 0) {
     stderr.writeln(
-      'No LF entries found for waddle_display/lib, waddle_shared/lib, '
-      'waddle_integrations/lib, or waddle_plugin_sdk/lib (did you run '
-      'flutter test --coverage on waddle_display and waddle_shared, and '
-      'dart test --coverage on waddle_plugin_sdk?)',
+      'No LF entries found for waddle_display/lib, waddle_shared/lib, or '
+      'waddle_plugin_sdk/lib (did you run flutter test --coverage on '
+      'waddle_display and waddle_shared, and dart test --coverage on '
+      'waddle_plugin_sdk?)',
     );
     exitCode = 1;
     return;
@@ -107,9 +108,8 @@ void main(List<String> args) {
   final pct = 100.0 * totalLh / totalLf;
   stdout.writeln(
     'Coverage (waddle_display/lib + waddle_shared/lib + '
-    'waddle_integrations/lib + waddle_plugin_sdk/lib; excluding '
-    'waddle_plugin_example, *.g.dart, persistence/tables.dart, main.dart, '
-    'display/screen_rotator.dart): '
+    'waddle_plugin_sdk/lib; excluding waddle_plugin_example, *.g.dart, '
+    'persistence/tables.dart, main.dart, display/screen_rotator.dart): '
     '${pct.toStringAsFixed(2)}% ($totalLh / $totalLf lines)',
   );
   if (pct + 1e-9 < minPct) {

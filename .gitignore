@@ -10,6 +10,7 @@ waddle-view.*.code-workspace
 **/.dart_tool/
 **/build/
 **/coverage/
+**/flutter_*.log
 **/.packages
 
 # IDE
