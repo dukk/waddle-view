@@ -6,12 +6,51 @@ export type ContentCategoryOption = {
   label: string;
 };
 
+type StandaloneProps = {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (category: string) => void;
+  categories: ContentCategoryOption[];
+  disabled?: boolean;
+};
+
 type Props = FieldProps & {
   categories: ContentCategoryOption[];
 };
 
 function readCategoryId(formData: unknown): string {
   return typeof formData === 'string' ? formData : '';
+}
+
+export function ContentCategorySelect({
+  id,
+  label,
+  value,
+  onChange,
+  categories,
+  disabled,
+}: StandaloneProps) {
+  return (
+    <FormControl fullWidth disabled={disabled}>
+      <InputLabel id={`${id}-label`}>{label}</InputLabel>
+      <Select
+        labelId={`${id}-label`}
+        label={label}
+        value={value}
+        onChange={(e) => onChange(String(e.target.value))}
+      >
+        <MenuItem value="">
+          <em>None</em>
+        </MenuItem>
+        {categories.map((cat) => (
+          <MenuItem key={cat.id} value={cat.id}>
+            {cat.label}
+          </MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  );
 }
 
 export function ContentCategorySelectField(props: Props) {

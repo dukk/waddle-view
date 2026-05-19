@@ -49,6 +49,7 @@ import { useConfigSchemas } from '@/hooks/useConfigSchemas';
 import {
   exampleForOverlayType,
   schemaForOverlayType,
+  type ConfigSchemasBundle,
   type OverlayTypeSchemaMeta,
 } from '@/storage/configSchemaCache';
 import { fallingImagesValidationSchema } from '@/util/fallingImagesConfigSchema';
@@ -98,14 +99,24 @@ function parseOverlayRow(raw: Record<string, unknown>): OverlayRow | null {
   };
 }
 
+function overlayTypeSchemaBundle(overlayTypes: OverlayTypeSchemaMeta[]): ConfigSchemasBundle {
+  return {
+    screen_types: [],
+    ticker_tape_types: [],
+    overlay_types: overlayTypes,
+    integration_types: [],
+  };
+}
+
 function exampleForType(
   overlayTypes: OverlayTypeSchemaMeta[],
 ): (type: string) => Record<string, unknown> {
-  return (type: string) => parseJsonObject(exampleForOverlayType({ overlay_types: overlayTypes }, type));
+  const bundle = overlayTypeSchemaBundle(overlayTypes);
+  return (type: string) => parseJsonObject(exampleForOverlayType(bundle, type));
 }
 
 function schemaForType(overlayTypes: OverlayTypeSchemaMeta[], type: string): unknown {
-  return schemaForOverlayType({ overlay_types: overlayTypes }, type);
+  return schemaForOverlayType(overlayTypeSchemaBundle(overlayTypes), type);
 }
 
 function configPreview(row: OverlayRow): string {

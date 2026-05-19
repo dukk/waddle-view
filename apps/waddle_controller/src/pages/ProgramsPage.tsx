@@ -948,7 +948,7 @@ export function ProgramsPage() {
                         key={`${model.screenId}-${si}`}
                         display={active}
                         model={model}
-                        typeLabel={screenTypeDisplayLabel(model.screenType)}
+                        typeLabel={screenTypeDisplayLabel(model.screenType ?? undefined)}
                         onDetails={() => setSlideDetailLoc({ pi, si })}
                       />
                     );

@@ -46,7 +46,7 @@ export function FallingImagesConfigForm({ display, formData, onChange, disabled 
     rawErrors: [],
     idSchema: { $id: 'image_blob_keys' },
     name: 'image_blob_keys',
-  } as FieldProps;
+  } as unknown as FieldProps;
 
   const imageScale = readNumber(formData, 'image_scale', 0.12);
   const scaleJitter = readNumber(formData, 'scale_jitter', 0.33);
@@ -54,7 +54,7 @@ export function FallingImagesConfigForm({ display, formData, onChange, disabled 
   return (
     <Stack spacing={2}>
       <Typography variant="subtitle2">Configuration</Typography>
-      <OverlayBlobKeysField {...blobFieldProps} />
+      <OverlayBlobKeysField display={display} {...blobFieldProps} />
       <CuratorSliderField
         label="Drop interval"
         value={readNumber(formData, 'drop_interval_sec', 45)}

@@ -172,9 +172,6 @@ function TickerTapeTable({
                 <TableCell sx={{ maxWidth: 280, wordBreak: 'break-word' }}>
                   {description}
                 </TableCell>
-                <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
-                  {tickerRowConfigKey(row)}
-                </TableCell>
                 <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
                   <Button size="small" onClick={() => onEdit(row)}>
                     Edit
@@ -290,7 +287,7 @@ export function TickerPage() {
             <TickerTapeCard
               key={r.id}
               row={r}
-              tickerTypes={schemas.ticker_tape_types}
+              tickerTypes={schemas?.ticker_tape_types ?? []}
               onEdit={() => setEditRow(r)}
               onDelete={() => void deleteTape(r.id)}
             />

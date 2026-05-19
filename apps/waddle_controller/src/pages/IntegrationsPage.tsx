@@ -127,10 +127,6 @@ function listParamsForSection(
   };
 }
 
-function actionLabelForIntegrationRow(row: IntegrationRow): string {
-  return row.enabled ? 'Edit' : 'Enable';
-}
-
 /** Missing-accounts section: edit enabled integrations only (no enable until accounts are ready). */
 function missingAccountsActionLabel(row: IntegrationRow): string | null {
   return row.enabled ? 'Edit' : null;

@@ -24,7 +24,7 @@ import {
 import { ApiError } from '@/api/client';
 import type { SavedDisplay } from '@/storage/displays';
 import type { IntegrationAccountRow } from '@/util/integrationAccounts';
-import { ContentCategorySelectField } from '@/components/config/ContentCategorySelectField';
+import { ContentCategorySelect } from '@/components/config/ContentCategorySelectField';
 import { DISPLAY_SETTINGS_ACCOUNTS_LABEL } from '@/constants/displaySettingsTabs';
 import {
   mergePickedMediaIds,
@@ -244,7 +244,7 @@ export function GooglePhotosConfigSection({
               }
               helperText="Shown when opening Google Photos; search for this name (works for shared albums)."
             />
-            <ContentCategorySelectField
+            <ContentCategorySelect
               id={`google-photos-cat-${source.sourceId}`}
               label="Category"
               value={source.category}
