@@ -140,4 +140,33 @@ void main() {
     );
     expect(missing.statusCode, 404);
   });
+
+  test('POST curator configuration defaults sort_order to 100 when omitted', () async {
+    final h = await RestTestHarness.start();
+    addTearDown(h.dispose);
+
+    final create = await http.post(
+      Uri.parse('${h.baseUrl}/v1/curator/configurations'),
+      headers: h.authHeaders,
+      body: jsonEncode({
+        'id': 'sort_default_test',
+        'name': 'Sort default',
+        'layer': 'enhancement',
+      }),
+    );
+    expect(create.statusCode, 200);
+
+    final detail = await http.get(
+      Uri.parse('${h.baseUrl}/v1/curator/configurations/sort_default_test'),
+      headers: h.authHeaders,
+    );
+    expect(detail.statusCode, 200);
+    final body = jsonDecode(detail.body) as Map<String, dynamic>;
+    expect(body['sort_order'], 100);
+
+    await http.delete(
+      Uri.parse('${h.baseUrl}/v1/curator/configurations/sort_default_test'),
+      headers: h.authHeaders,
+    );
+  });
 }

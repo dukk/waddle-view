@@ -126,7 +126,9 @@ void registerCuratorConfigurationRoutes(
             id: id,
             name: name,
             layer: layer,
-            sortOrder: Value(_readInt(map['sort_order']) ?? 0),
+            sortOrder: Value(
+              _readInt(map['sort_order']) ?? kDefaultCuratorConfigurationSortOrder,
+            ),
             programDurationSeconds:
                 Value(_readInt(map['program_duration_seconds']) ?? 180),
             requireNewsPhotoForScreens: Value(

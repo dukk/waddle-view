@@ -130,6 +130,9 @@ const List<String> kCuratorConfigurationLayers = [
   kCuratorLayerEnhancement,
 ];
 
+/// Default [CuratorConfigurations.sortOrder] for REST POST when omitted (matches operator UI).
+const int kDefaultCuratorConfigurationSortOrder = 100;
+
 /// [CuratorConfigurationMembers.entityType] values.
 const String kCuratorMemberEntityScreen = 'screen';
 const String kCuratorMemberEntityTicker = 'ticker';

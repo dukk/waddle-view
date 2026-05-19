@@ -58,6 +58,7 @@ import { CuratorCategoriesSection } from '@/components/curator/CuratorCategories
 import { RejectTermsSection } from '@/components/curator/RejectTermsSection';
 import {
   CURATOR_PROGRAM_DURATION,
+  CURATOR_SORT_ORDER,
   CURATOR_TICKER_PIXELS_PER_SECOND,
   CURATOR_TICKER_PROGRAM_DURATION,
   curatorThemeById,
@@ -433,7 +434,7 @@ function CuratorConfigurationDialog({
   const [err, setErr] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [layer, setLayer] = useState<CuratorLayer>('base');
-  const [sortOrder, setSortOrder] = useState(100);
+  const [sortOrder, setSortOrder] = useState(CURATOR_SORT_ORDER.default);
   const [programDuration, setProgramDuration] = useState<number>(
     CURATOR_PROGRAM_DURATION.default,
   );

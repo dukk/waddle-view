@@ -41,6 +41,11 @@ export const curatorThemeIds: readonly CuratorThemeOption[] = [
   themeOption('warm_minimal', 'Warm minimal'),
 ];
 
+/** Default sort order for new curator configurations (matches display POST default). */
+export const CURATOR_SORT_ORDER = {
+  default: 100,
+} as const;
+
 /** UI slider bounds for curator timing fields (defaults match display seed). */
 export const CURATOR_PROGRAM_DURATION = {
   min: 30,
