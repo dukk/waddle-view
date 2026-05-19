@@ -210,6 +210,7 @@ void registerIntegrationAccountsRestRoutes(
           body: '{"error":"value_must_be_non_empty"}', headers: _jsonHeaders);
     }
     await secrets.write(def.accessTokenSecretKey(accountId), value);
+    await refreshAllIntegrationsAccountsReady(secrets, db);
     return Response.ok('{}', headers: _jsonHeaders);
   });
 
@@ -232,6 +233,7 @@ void registerIntegrationAccountsRestRoutes(
           body: '{"error":"unknown_account_type"}', headers: _jsonHeaders);
     }
     await secrets.delete(def.accessTokenSecretKey(accountId));
+    await refreshAllIntegrationsAccountsReady(secrets, db);
     return Response.ok('{}', headers: _jsonHeaders);
   });
 
@@ -367,8 +369,10 @@ void registerIntegrationAccountsRestRoutes(
             },
         ],
         'linked_accounts': linked,
-        'accounts_configured': linked.isNotEmpty &&
-            linked.every((a) => a['configured'] == true),
+        'accounts_configured': integrationLinkedAccountsJsonConfigured(
+          linked,
+          requiredTypes,
+        ),
       }),
       headers: _jsonHeaders,
     );

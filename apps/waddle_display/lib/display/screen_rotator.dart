@@ -15,6 +15,7 @@ import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import '../curator/active_curator_service.dart';
 import '../curator/screen_program_curator.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/theme/display_program_history_kv.dart';
 import '../theme/display_theme.dart';
 import 'dashboard_viewport_scope.dart';
 import 'display_navigation_bus.dart';
@@ -227,7 +228,11 @@ class _ScreenRotatorState extends State<ScreenRotator>
               ..orderBy([(t) => OrderingTerm.asc(t.id)]))
             .get();
     final programMs = primary.programDurationSeconds * 1000;
-    final historyDepth = primary.historyDepth;
+    final kvRows = await widget.db.select(widget.db.configKeyValues).get();
+    final kv = {for (final r in kvRows) r.key: r.value};
+    final historyDepth = normalizeDisplayProgramHistoryDepth(
+      kv[kDisplayProgramHistoryDepthKvKey],
+    );
     _historyDepth = historyDepth;
     final requireNewsPhotoForScreens = primary.requireNewsPhotoForScreens;
 

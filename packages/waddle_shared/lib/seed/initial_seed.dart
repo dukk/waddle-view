@@ -6,10 +6,12 @@ import 'package:waddle_shared/alerts/alert_severity_icons_kv.dart';
 import 'package:waddle_shared/layout/collage_template_ids.dart';
 import 'package:waddle_shared/persistence/config_json_documentation.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/display_overlay_floating_balloons_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_sql.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/seed/tables/config_key_values_seed.dart';
 import 'package:waddle_shared/theme/display_text_scale_kv.dart';
+import 'package:waddle_shared/theme/display_program_history_kv.dart';
 import 'package:waddle_shared/theme/display_theme_kv.dart';
 import 'tables/content_categories_seed.dart';
 import 'tables/interests_jokes_seed.dart';
@@ -32,10 +34,12 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureDisplayThemeKv(db);
   await _ensureDisplayTimezoneKv(db);
   await _ensureDisplayTextScaleKv(db);
+  await _ensureDisplayProgramHistoryDepthKv(db);
   await ensureControllerDatetimeFormatKvs(db);
   await _ensureAlertSeverityIconsKv(db);
   await _ensureDefaultRainingHeartsOverlay(db);
   await _ensureDefaultBirthdayConfettiOverlay(db);
+  await _ensureDefaultFloatingBalloonsOverlay(db);
   await _ensureDefaultWattleViewsBirthdayMessageOverlay(db);
   await _ensureDefaultFallingDucksOverlay(db);
   await _ensureWelcomeScreen(db);
@@ -73,7 +77,7 @@ Future<void> _ensureDefaultRainingHeartsOverlay(AppDatabase db) async {
     '''INSERT OR IGNORE INTO overlays (
       id,
       overlay_type,
-      name,
+      label,
       config_json,
       config_json_schema
     )
@@ -91,7 +95,12 @@ Future<void> _ensureDefaultRainingHeartsOverlay(AppDatabase db) async {
 Future<void> _ensureDefaultBirthdayConfettiOverlay(AppDatabase db) async {
   await db.customStatement(kEnsureOverlaysTableSql);
   final configJson = jsonEncode(<String, Object?>{
-    'shapes': <String>['rect', 'circle', 'mix'],
+    'colors': <String>[
+      '#E53935',
+      '#FFEB3B',
+      '#00BCD4',
+      '#E91E63',
+    ],
     'density': 0.36,
     'fall_speed': 0.12,
     'opacity': 0.48,
@@ -103,7 +112,7 @@ Future<void> _ensureDefaultBirthdayConfettiOverlay(AppDatabase db) async {
     '''INSERT OR IGNORE INTO overlays (
       id,
       overlay_type,
-      name,
+      label,
       config_json,
       config_json_schema
     )
@@ -118,12 +127,44 @@ Future<void> _ensureDefaultBirthdayConfettiOverlay(AppDatabase db) async {
   );
 }
 
+Future<void> _ensureDefaultFloatingBalloonsOverlay(AppDatabase db) async {
+  await db.customStatement(kEnsureOverlaysTableSql);
+  final configJson = jsonEncode(<String, Object?>{
+    'colors': kFloatingBalloonsDefaultColorHexes,
+    'spawn_interval_sec': 22,
+    'rise_speed': 85,
+    'max_active': 6,
+    'cluster_chance': 0.4,
+    'balloon_scale': 0.09,
+    'scale_jitter': 0.25,
+    'opacity': 0.92,
+  });
+  final doc = displayOverlayConfigJsonDocForType(kOverlayTypeFloatingBalloons);
+  await db.customStatement(
+    '''INSERT OR IGNORE INTO overlays (
+      id,
+      overlay_type,
+      label,
+      config_json,
+      config_json_schema
+    )
+    VALUES (?, ?, ?, ?, ?)''',
+    <Object?>[
+      kDefaultFloatingBalloonsOverlayId,
+      kOverlayTypeFloatingBalloons,
+      'Default Floating Balloons',
+      configJson,
+      doc.schema,
+    ],
+  );
+}
+
 Future<void> _ensureDefaultFallingDucksOverlay(AppDatabase db) async {
   await db.customStatement(kEnsureOverlaysTableSql);
   final configJson = jsonEncode(<String, Object?>{
     'image_blob_keys': kSeededDuckOverlayBlobKeys,
     'drop_interval_sec': 45,
-    'fall_speed': 0.18,
+    'fall_speed': 194,
     'image_scale': 0.12,
     'scale_jitter': 0.33,
   });
@@ -132,7 +173,7 @@ Future<void> _ensureDefaultFallingDucksOverlay(AppDatabase db) async {
     '''INSERT OR IGNORE INTO overlays (
       id,
       overlay_type,
-      name,
+      label,
       config_json,
       config_json_schema
     )
@@ -163,7 +204,7 @@ Future<void> _ensureDefaultWattleViewsBirthdayMessageOverlay(AppDatabase db) asy
     '''INSERT OR IGNORE INTO overlays (
       id,
       overlay_type,
-      name,
+      label,
       config_json,
       config_json_schema
     )
@@ -212,6 +253,22 @@ Future<void> _ensureDisplayThemeKv(AppDatabase db) async {
       );
 }
 
+Future<void> _ensureDisplayProgramHistoryDepthKv(AppDatabase db) async {
+  final row = await (db.select(
+    db.configKeyValues,
+  )..where((t) => t.key.equals(kDisplayProgramHistoryDepthKvKey)))
+      .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  await db.into(db.configKeyValues).insert(
+        ConfigKeyValuesCompanion.insert(
+          key: kDisplayProgramHistoryDepthKvKey,
+          value: '$kDefaultDisplayProgramHistoryDepth',
+        ),
+      );
+}
+
 Future<void> _ensureDisplayTextScaleKv(AppDatabase db) async {
   Future<void> ensureKey(String key, String value) async {
     final row = await (db.select(
@@ -249,7 +306,7 @@ Future<void> _ensureAlertSeverityIconsKv(AppDatabase db) async {
 Future<void> _ensureTickerTapes(AppDatabase db) async {
   Future<void> upsert({
     required String id,
-    required String name,
+    required String label,
     String description = '',
     required String tickerType,
     int frequencyWeight = 100,
@@ -262,7 +319,7 @@ Future<void> _ensureTickerTapes(AppDatabase db) async {
         .insertOnConflictUpdate(
           TickerTapesCompanion.insert(
             id: id,
-            name: name,
+            label: label,
             description: Value(description),
             tickerType: tickerType,
             frequencyWeight: Value(frequencyWeight),
@@ -296,42 +353,42 @@ Future<void> _ensureTickerTapes(AppDatabase db) async {
 
   await upsert(
     id: 'ticker_time',
-    name: 'Time',
+    label: 'Time',
     description: 'Local clock string',
     tickerType: 'time',
     sortOrder: 0,
   );
   await upsert(
     id: 'ticker_weather',
-    name: 'Weather',
+    label: 'Weather',
     description: 'Live weather; optional fallbackText in config_json',
     tickerType: 'weather',
     sortOrder: 10,
   );
   await upsert(
     id: 'ticker_news',
-    name: 'News',
+    label: 'News',
     description: 'RSS headlines; optional fallbackText in config_json',
     tickerType: 'news',
     sortOrder: 20,
   );
   await upsert(
     id: 'ticker_quote',
-    name: 'Quote',
+    label: 'Quote',
     description: 'Static line from config_json fallbackText',
     tickerType: 'quote',
     sortOrder: 30,
   );
   await upsert(
     id: 'ticker_stocks',
-    name: 'Stocks',
+    label: 'Stocks',
     description: 'Enabled interests_stock_symbols with latest stock_quotes',
     tickerType: 'stocks',
     sortOrder: 35,
   );
   await upsert(
     id: 'ticker_custom',
-    name: 'Custom marquee',
+    label: 'Custom marquee',
     description: 'Extra ticker.marquee.* keys in config_key_values',
     tickerType: 'custom',
     sortOrder: 40,
@@ -357,7 +414,7 @@ Future<void> _ensureWelcomeScreen(AppDatabase db) async {
       .insert(
         ScreensCompanion.insert(
           id: 'welcome',
-          name: 'Welcome',
+          label: 'Welcome',
           description: const Value('Demo display screen'),
           screenType: 'static_text',
           configJson: const Value(
@@ -388,7 +445,7 @@ Future<void> _ensureJokeScreen(AppDatabase db) async {
       .insert(
         ScreensCompanion.insert(
           id: 'jokes',
-          name: 'Jokes',
+          label: 'Jokes',
           description: const Value('Random joke with delayed punchline'),
           screenType: 'joke',
           configJson: const Value('{}'),
@@ -417,7 +474,7 @@ Future<void> _ensureTriviaScreen(AppDatabase db) async {
       .insert(
         ScreensCompanion.insert(
           id: 'trivia',
-          name: 'Trivia',
+          label: 'Trivia',
           description: const Value(
             'Trivia with progress reveal and strike-out wrong answers (multiple-choice + true/false)',
           ),
@@ -449,7 +506,7 @@ Future<void> _ensureGuestWifiScreen(AppDatabase db) async {
       .insert(
         ScreensCompanion.insert(
           id: 'guest_wifi',
-          name: 'Guest WiFi',
+          label: 'Guest WiFi',
           description: const Value('QR and credentials for guest network'),
           screenType: 'wifi',
           configJson: const Value('{}'),
@@ -498,7 +555,7 @@ Future<void> _ensureNewsScreen(AppDatabase db) async {
       .insert(
         ScreensCompanion.insert(
           id: 'news',
-          name: 'News',
+          label: 'News',
           description: const Value(
             'RSS story with image and scrolling summary',
           ),
@@ -548,7 +605,7 @@ Future<void> _ensureNewsRightImageScreen(AppDatabase db) async {
       .insert(
         ScreensCompanion.insert(
           id: 'news_right',
-          name: 'News (image right)',
+          label: 'News (image right)',
           description: const Value(
             'RSS story with image on the right and scrolling summary',
           ),
@@ -598,7 +655,7 @@ Future<void> _ensureNewsColumnsScreen(AppDatabase db) async {
       .insert(
         ScreensCompanion.insert(
           id: 'news_columns',
-          name: 'News (3 columns)',
+          label: 'News (3 columns)',
           description: const Value(
             'Three RSS stories: image above title and summary in each column',
           ),
@@ -648,7 +705,7 @@ Future<void> _ensureNewsStackScreen(AppDatabase db) async {
       .insert(
         ScreensCompanion.insert(
           id: 'news_stack',
-          name: 'News (stack of 2)',
+          label: 'News (stack of 2)',
           description: const Value(
             'Two RSS stories stacked: top image right + QR left, '
             'bottom image left + QR right; title and summary between',
@@ -709,7 +766,7 @@ Future<void> _ensureClockDigitalScreen(AppDatabase db) async {
       .insert(
         ScreensCompanion.insert(
           id: 'clock_digital',
-          name: 'Digital clock',
+          label: 'Digital clock',
           description: const Value('Local time and date'),
           screenType: 'digital_clock',
           configJson: const Value('{}'),
@@ -755,7 +812,7 @@ Future<void> _ensureClockAnalogScreen(AppDatabase db) async {
       .insert(
         ScreensCompanion.insert(
           id: 'clock_analog',
-          name: 'Analog clock',
+          label: 'Analog clock',
           description: const Value('Analog dial with local date'),
           screenType: 'analog_clock',
           configJson: const Value('{}'),
@@ -786,7 +843,7 @@ Future<void> _ensureCalendarScreen(AppDatabase db) async {
       .insert(
         ScreensCompanion.insert(
           id: 'calendar',
-          name: 'Calendar',
+          label: 'Calendar',
           description: const Value(
             'Month view with upcoming events; increase dwell_seconds when many events need air time',
           ),
@@ -819,7 +876,7 @@ Future<void> _ensureLocalApiScreen(AppDatabase db) async {
       .insert(
         ScreensCompanion.insert(
           id: 'dev_local_api',
-          name: 'Developer — Local API',
+          label: 'Developer — Local API',
           description: const Value(
             'Loopback REST base URL and API key hint; enable when configuring deployments',
           ),
@@ -852,7 +909,7 @@ Future<void> _ensureDataHealthScreen(AppDatabase db) async {
       .insert(
         ScreensCompanion.insert(
           id: 'dev_data_health',
-          name: 'Developer — Data health',
+          label: 'Developer — Data health',
           description: const Value(
             'SQLite content totals, category breakdowns, and charts; '
             'enable for operator visibility',
@@ -886,7 +943,7 @@ Future<void> _ensureSleepMessageScreen(AppDatabase db) async {
   await db.into(db.screens).insert(
         ScreensCompanion.insert(
           id: 'sleep_message',
-          name: 'Sleep reminder',
+          label: 'Sleep reminder',
           description: const Value('Night-time rest message'),
           screenType: 'static_text',
           configJson: const Value(
@@ -915,7 +972,7 @@ Future<void> _ensureControllerInviteScreen(AppDatabase db) async {
   await db.into(db.screens).insert(
         ScreensCompanion.insert(
           id: 'controller_invite',
-          name: 'Controller invite',
+          label: 'Controller invite',
           description: const Value('Viewer join QR for waddle_controller'),
           screenType: 'controller_invite',
           configJson: const Value('{}'),
@@ -944,7 +1001,7 @@ Future<void> _ensureAdminSetupScreen(AppDatabase db) async {
       .insert(
         ScreensCompanion.insert(
           id: 'admin_setup',
-          name: 'Setup Admin Access',
+          label: 'Setup Admin Access',
           description: const Value(
             'Onboarding URL, QR code, and bootstrap password for first login',
           ),
@@ -979,7 +1036,7 @@ Future<void> _ensureWeatherScreen(AppDatabase db) async {
       .insert(
         ScreensCompanion.insert(
           id: 'weather',
-          name: 'Weather',
+          label: 'Weather',
           description: const Value('Current weather'),
           screenType: 'weather',
           configJson: const Value('{"locationId":"salt_lake_city_ut"}'),
@@ -1058,7 +1115,7 @@ Future<void> _ensureStockQuotesScreen(AppDatabase db) async {
       .insert(
         ScreensCompanion.insert(
           id: 'stock_quotes',
-          name: 'Stock quotes',
+          label: 'Stock quotes',
           description: const Value('Latest Finnhub quotes for enabled symbols'),
           screenType: 'stock_quotes',
           configJson: const Value('{}'),
@@ -1095,7 +1152,7 @@ Future<void> _ensurePhotoScreen(AppDatabase db) async {
       .insert(
         ScreensCompanion.insert(
           id: 'photo',
-          name: 'Pexels photo',
+          label: 'Pexels photo',
           description: const Value('Curated / search photos from Pexels'),
           screenType: 'photo',
           configJson: const Value('{}'),
@@ -1132,7 +1189,7 @@ Future<void> _ensureVideoScreen(AppDatabase db) async {
       .insert(
         ScreensCompanion.insert(
           id: 'video',
-          name: 'Pexels video',
+          label: 'Pexels video',
           description: const Value('Popular / search videos from Pexels'),
           screenType: 'video',
           configJson: const Value('{"loop":true,"unmuted":false}'),
@@ -1152,7 +1209,7 @@ Future<void> _ensureVideoScreen(AppDatabase db) async {
 Future<void> _ensurePhotoCollageScreens(AppDatabase db) async {
   Future<void> ensureOne({
     required String id,
-    required String name,
+    required String label,
     required String template,
     int dwellSeconds = 18,
   }) async {
@@ -1177,7 +1234,7 @@ Future<void> _ensurePhotoCollageScreens(AppDatabase db) async {
         .insert(
           ScreensCompanion.insert(
             id: id,
-            name: name,
+            label: label,
             description: const Value(
               'Multi-photo collage; curator matches aspect ratio to each tile when dimensions are known',
             ),
@@ -1194,27 +1251,27 @@ Future<void> _ensurePhotoCollageScreens(AppDatabase db) async {
 
   await ensureOne(
     id: 'photo_collage_nine_square',
-    name: 'Photo collage — nine squares',
+    label: 'Photo collage — nine squares',
     template: kCollageTemplateNineSquareAsymmetric,
   );
   await ensureOne(
     id: 'photo_collage_eleven_hub',
-    name: 'Photo collage — eleven symmetric hub',
+    label: 'Photo collage — eleven symmetric hub',
     template: kCollageTemplateElevenSymmetricHub,
   );
   await ensureOne(
     id: 'photo_collage_nine_mixed',
-    name: 'Photo collage — nine mixed',
+    label: 'Photo collage — nine mixed',
     template: kCollageTemplateNineMixedGrid,
   );
   await ensureOne(
     id: 'photo_collage_nine_dynamic',
-    name: 'Photo collage — nine dynamic hub',
+    label: 'Photo collage — nine dynamic hub',
     template: kCollageTemplateNineDynamicHub,
   );
   await ensureOne(
     id: 'photo_collage_twelve_circle',
-    name: 'Photo collage — twelve + circle',
+    label: 'Photo collage — twelve + circle',
     template: kCollageTemplateTwelveCircleBand,
   );
 }

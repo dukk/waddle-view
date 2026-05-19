@@ -7,7 +7,7 @@ DisplayOverlayRow _row({String configJson = '{}'}) {
   return DisplayOverlayRow(
     id: 'test',
     overlayType: kOverlayTypeShapeRain,
-    name: 'Test',
+    label: 'Test',
     configJson: configJson,
     configJsonSchema: null,
   );

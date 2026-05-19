@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:test/test.dart';
+import 'package:waddle_shared/persistence/display_overlay_falling_images_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_repository.dart';
 import 'package:waddle_shared/persistence/display_overlay_row.dart';
 import 'package:waddle_shared/persistence/tables.dart';
@@ -26,7 +27,7 @@ void main() {
       db,
       id: 'watch_me',
       overlayType: kOverlayTypeBouncingMessage,
-      name: 'bounce',
+      label: 'bounce',
       configJson: '{"messages":["A"],"font_size":38}',
     );
     await Future<void>.delayed(Duration.zero);
@@ -40,7 +41,7 @@ void main() {
       db,
       id: 'watch_me',
       overlayType: kOverlayTypeBouncingMessage,
-      name: 'bounce',
+      label: 'bounce',
       configJson: '{"messages":["A"],"font_size":48}',
     );
     await Future<void>.delayed(Duration.zero);
@@ -59,7 +60,7 @@ void main() {
       db,
       id: 'h1',
       overlayType: kOverlayTypeShapeRain,
-      name: 'Raining Hearts',
+      label: 'Raining Hearts',
       configJson:
           '{"messages":["x"],"shapes":["heart","dog"],"ignored":1}',
     );
@@ -80,14 +81,14 @@ void main() {
       db,
       id: 'b1',
       overlayType: kOverlayTypeBirthdayConfetti,
-      name: 'birthday',
+      label: 'birthday',
       configJson:
           '{"messages":["Party"],"shapes":["rect"],"colors":["#ABCDEF"],'
           '"density":0.2,"message_interval_sec":15}',
     );
     final rows = await fetchDisplayOverlays(db);
     final cfg = jsonDecode(rows.single.configJson) as Map<String, dynamic>;
-    expect(cfg['shapes'], ['rect']);
+    expect(cfg.containsKey('shapes'), isFalse);
     expect(cfg['colors'], ['#ABCDEF']);
     expect(cfg.containsKey('messages'), isFalse);
     expect(cfg.containsKey('message_interval_sec'), isFalse);
@@ -103,7 +104,7 @@ void main() {
       db,
       id: 'fall1',
       overlayType: kOverlayTypeFallingImages,
-      name: 'drops',
+      label: 'drops',
       configJson:
           '{"messages":["Party"],"image_blob_keys":["overlay/pool/a"],'
           '"drop_interval_sec":90,"fall_speed":0.25,"image_scale":0.1}',
@@ -111,8 +112,34 @@ void main() {
     final rows = await fetchDisplayOverlays(db);
     final cfg = jsonDecode(rows.single.configJson) as Map<String, dynamic>;
     expect(cfg['image_blob_keys'], ['overlay/pool/a']);
+    expect(cfg['fall_speed'], closeTo(0.25 * kFallingImagesLegacyFallSpeedRefHeightPx, 0.01));
     expect(cfg.containsKey('messages'), isFalse);
     expect(rows.single.configJsonSchema, contains('Falling images'));
+    await db.close();
+  });
+
+  test('upsert floating_balloons stores normalized config_json without messages',
+      () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureOverlaysTableExists(db);
+    await upsertOverlay(
+      db,
+      id: 'balloons1',
+      overlayType: kOverlayTypeFloatingBalloons,
+      label: 'balloons',
+      configJson:
+          '{"messages":["Party"],"colors":["#AABBCC","#112233"],'
+          '"spawn_interval_sec":30,"rise_speed":100,"max_active":5,'
+          '"cluster_chance":0.5,"balloon_scale":0.1,"scale_jitter":0.2,'
+          '"opacity":0.8}',
+    );
+    final rows = await fetchDisplayOverlays(db);
+    final cfg = jsonDecode(rows.single.configJson) as Map<String, dynamic>;
+    expect(cfg['colors'], ['#AABBCC', '#112233']);
+    expect(cfg['spawn_interval_sec'], 30);
+    expect(cfg.containsKey('messages'), isFalse);
+    expect(rows.single.configJsonSchema, contains('Floating balloons'));
     await db.close();
   });
 
@@ -124,7 +151,7 @@ void main() {
       db,
       id: 'bounce1',
       overlayType: kOverlayTypeBouncingMessage,
-      name: 'bounce',
+      label: 'bounce',
       configJson:
           '{"messages":["Hi there"],"color":"#ABCDEF","font_size":28,'
           '"font_weight":"700","speed":1.2}',
@@ -144,7 +171,7 @@ void main() {
       db,
       id: 'edge1',
       overlayType: kOverlayTypeEdgeGlow,
-      name: 'Alarm glow',
+      label: 'Alarm glow',
       configJson:
           '{"messages":["ignored"],"color":"#FF3B30","intensity":0.7,"pulse_speed":1.2,"ignored":1}',
     );
@@ -167,7 +194,7 @@ void main() {
       db,
       id: 'matrix1',
       overlayType: kOverlayTypeMatrixRain,
-      name: 'Matrix',
+      label: 'Matrix',
       configJson:
           '{"messages":["ignored"],"opacity":0.5,"fall_speed":0.8,"ignored":1}',
     );
@@ -190,7 +217,7 @@ void main() {
         db,
         id: 'bad_bounce',
         overlayType: kOverlayTypeBouncingMessage,
-        name: 'x',
+        label: 'x',
         configJson: '{"messages":["a"],"font_size":12,"nope":1}',
       ),
       throwsA(
@@ -212,7 +239,7 @@ void main() {
       db,
       id: 'laser_row',
       overlayType: 'laser_show',
-      name: 'future',
+      label: 'future',
       configJson: '{"messages":["peek"],"beam":true}',
     );
     final rows = await fetchDisplayOverlays(db);
@@ -227,18 +254,20 @@ void main() {
     final row = DisplayOverlayRow(
       id: 'j',
       overlayType: kOverlayTypeBirthdayConfetti,
-      name: 'Confetti',
-      configJson: '{"shapes":["star"],"fall_speed":0.2}',
+      label: 'Confetti',
+      configJson: '{"fall_speed":0.2,"opacity":0.5}',
       configJsonSchema: '{"type":"object"}',
     );
-    final j = overlayToJson(row);
+    final jDefault = overlayToJson(row);
+    expect(jDefault.containsKey('config_json_schema'), isFalse);
+
+    final j = overlayToJson(row, includeConfigDocs: true);
     expect(j['overlay_type'], kOverlayTypeBirthdayConfetti);
-    expect(j['name'], 'Confetti');
+    expect(j['label'], 'Confetti');
     expect(j['config_json'], {
-      'shapes': ['star'],
       'fall_speed': 0.2,
+      'opacity': 0.5,
     });
     expect(j['config_json_schema'], {'type': 'object'});
-    expect(j.containsKey('example_config_json'), isFalse);
   });
 }

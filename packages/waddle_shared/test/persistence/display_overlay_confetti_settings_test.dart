@@ -16,7 +16,6 @@ void main() {
     final out = normalizeBirthdayConfettiSettingsJsonString(raw);
     expect(out, isNotNull);
     expect(jsonDecode(out!), {
-      'shapes': ['rect', 'mix'],
       'colors': ['#FF00AA'],
       'density': 0.4,
       'fall_speed': 0.5,
@@ -45,16 +44,17 @@ void main() {
     expect(normalizeBirthdayConfettiSettingsJsonString('{"opacity":"half"}'), isNull);
   });
 
-  test('normalize rejects non-object and invalid shapes', () {
+  test('normalize ignores legacy shapes and rejects bad colors', () {
     expect(normalizeBirthdayConfettiSettingsJsonString('[]'), isNull);
-    expect(normalizeBirthdayConfettiSettingsJsonString('{"shapes":"rect"}'), isNull);
-    expect(normalizeBirthdayConfettiSettingsJsonString('{"shapes":["bogus"]}'), isNull);
+    expect(
+      normalizeBirthdayConfettiSettingsJsonString('{"shapes":["bogus"]}'),
+      '{}',
+    );
     expect(normalizeBirthdayConfettiSettingsJsonString('{"colors":["not-a-color"]}'), isNull);
   });
 
   test('BirthdayConfettiScheduleSettings.parse defaults', () {
     final s = BirthdayConfettiScheduleSettings.parse('{}');
-    expect(s.shapeTokens, BirthdayConfettiScheduleSettings.defaults.shapeTokens);
     expect(s.colorHexes, isEmpty);
     expect(s.density, BirthdayConfettiScheduleSettings.defaults.density);
     expect(s.fallSpeed, BirthdayConfettiScheduleSettings.defaults.fallSpeed);
@@ -66,7 +66,6 @@ void main() {
       '{"shapes":["star","streamer"],"colors":["#112233","#AABBCCDD"],'
       '"density":0.6,"fall_speed":0.9,"opacity":0.6}',
     );
-    expect(s.shapeTokens, ['star', 'streamer']);
     expect(s.colorHexes, ['#112233', '#AABBCCDD']);
     expect(s.density, 0.6);
     expect(s.fallSpeed, 0.9);

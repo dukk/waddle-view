@@ -51,7 +51,7 @@ void main() {
     await h.db.into(h.db.screens).insert(
           ScreensCompanion.insert(
             id: 'a',
-            name: 'Screen A',
+            label: 'Screen A',
             screenType: 'static_text',
             minPlacementsPerProgram: const Value(1),
             maxPlacementsPerProgram: const Value(3),

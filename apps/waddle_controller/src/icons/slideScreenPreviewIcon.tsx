@@ -1,49 +1,57 @@
 import type { SvgIconProps } from '@mui/material/SvgIcon';
+import type { SvgIconComponent } from '@mui/icons-material';
+import AddLink from '@mui/icons-material/AddLink';
+import ArticleOutlined from '@mui/icons-material/ArticleOutlined';
+import CalendarMonth from '@mui/icons-material/CalendarMonth';
+import ChatBubbleOutline from '@mui/icons-material/ChatBubbleOutline';
+import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined';
+import GridView from '@mui/icons-material/GridView';
+import HelpOutline from '@mui/icons-material/HelpOutline';
+import ImageOutlined from '@mui/icons-material/ImageOutlined';
+import Layers from '@mui/icons-material/Layers';
+import MonitorHeart from '@mui/icons-material/MonitorHeart';
+import PlayCircleOutline from '@mui/icons-material/PlayCircleOutline';
+import Schedule from '@mui/icons-material/Schedule';
+import Settings from '@mui/icons-material/Settings';
+import Terminal from '@mui/icons-material/Terminal';
+import TrendingUp from '@mui/icons-material/TrendingUp';
+import ViewCarousel from '@mui/icons-material/ViewCarousel';
+import ViewColumn from '@mui/icons-material/ViewColumn';
+import WbCloudy from '@mui/icons-material/WbCloudy';
+import Wifi from '@mui/icons-material/Wifi';
 import type { SlideScreenPreviewKind } from '@/util/programTelemetry';
-import { AdminSetupScreenIcon } from './AdminSetupScreenIcon';
-import { CalendarScreenIcon } from './CalendarScreenIcon';
-import { ClockScreenIcon } from './ClockScreenIcon';
-import { ControllerInviteScreenIcon } from './ControllerInviteScreenIcon';
-import { DataHealthScreenIcon } from './DataHealthScreenIcon';
-import { JokeScreenIcon } from './JokeScreenIcon';
-import { LocalApiScreenIcon } from './LocalApiScreenIcon';
-import { PhotoCollageScreenIcon } from './PhotoCollageScreenIcon';
-import { PhotoScreenIcon } from './PhotoScreenIcon';
-import { RssArticleScreenIcon } from './RssArticleScreenIcon';
-import { RssColumnsScreenIcon } from './RssColumnsScreenIcon';
-import { RssStackScreenIcon } from './RssStackScreenIcon';
-import { StaticTextScreenIcon } from './StaticTextScreenIcon';
-import { StockScreenIcon } from './StockScreenIcon';
-import { TriviaScreenIcon } from './TriviaScreenIcon';
-import { VideoScreenIcon } from './VideoScreenIcon';
-import { WeatherScreenIcon } from './WeatherScreenIcon';
-import { WifiScreenIcon } from './WifiScreenIcon';
 
-const ICONS: Record<SlideScreenPreviewKind, typeof JokeScreenIcon> = {
-  static_text: StaticTextScreenIcon,
-  joke: JokeScreenIcon,
-  trivia: TriviaScreenIcon,
-  wifi: WifiScreenIcon,
-  clock: ClockScreenIcon,
-  calendar: CalendarScreenIcon,
-  news: RssArticleScreenIcon,
-  news_columns: RssColumnsScreenIcon,
-  news_stack: RssStackScreenIcon,
-  local_api: LocalApiScreenIcon,
-  admin_setup: AdminSetupScreenIcon,
-  controller_invite: ControllerInviteScreenIcon,
-  weather: WeatherScreenIcon,
-  stock: StockScreenIcon,
-  data_health: DataHealthScreenIcon,
-  photo: PhotoScreenIcon,
-  photo_collage: PhotoCollageScreenIcon,
-  video: VideoScreenIcon,
+// To restore a custom glyph for one kind, replace its entry with a local createSvgIcon component.
+
+/** Stock MUI icons for screen catalog / program-card previews (custom SVGs live in git history). */
+const ICONS: Record<SlideScreenPreviewKind, SvgIconComponent> = {
+  static_text: DescriptionOutlined,
+  joke: ChatBubbleOutline,
+  trivia: HelpOutline,
+  wifi: Wifi,
+  clock: Schedule,
+  calendar: CalendarMonth,
+  news: ArticleOutlined,
+  news_columns: ViewColumn,
+  news_stack: Layers,
+  local_api: Terminal,
+  admin_setup: Settings,
+  controller_invite: AddLink,
+  weather: WbCloudy,
+  stock: TrendingUp,
+  data_health: MonitorHeart,
+  photo: ImageOutlined,
+  photo_collage: GridView,
+  video: PlayCircleOutline,
 };
 
 export function SlideScreenPreviewIcon({
   kind,
   ...props
 }: { kind: SlideScreenPreviewKind } & SvgIconProps) {
-  const Icon = ICONS[kind];
+  const Icon = ICONS[kind] ?? ViewCarousel;
   return <Icon {...props} />;
 }
+
+/** Fallback when `screenTypePreviewKind` is null (unknown screen types). */
+export const ScreenCarouselFallbackIcon = ViewCarousel;

@@ -199,6 +199,9 @@ String? permissionForRoute(String method, String path) {
   if (p == '/v1/meta/overlay-types' && m == 'GET') {
     return WaddlePermission.metaRead;
   }
+  if (p == '/v1/meta/config-schemas' && m == 'GET') {
+    return WaddlePermission.metaRead;
+  }
 
   if (p == '/v1/adoption/session' && m == 'GET') {
     return null;

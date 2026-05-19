@@ -66,12 +66,12 @@ Allowed responses include **`Access-Control-Allow-Origin`** (mirrored origin), *
 |--------|------|--------|
 | GET | `/v1/health` | No auth required. |
 | GET | `/v1/integrations` | Lists non-secret integration settings. Without query parameters returns `{"items":[...]}` (full catalog). With `enabled` and/or `limit`, returns paginated `{"items":[...], "total", "limit", "offset"}` — see **Integrations list** below. |
-| GET | `/v1/screens` | Display screen definitions from SQLite table **`screens`** (`screen_type`, `config_json`, `dwell_seconds`, scheduling hints, optional `config_json_schema` / `example_config_json`). |
+| GET | `/v1/screens` | Display screen definitions from SQLite table **`screens`** (`screen_type`, `config_json`, dwell/scheduling fields). Add `?include_config_schema=true` to include per-row `config_json_schema` / `example_config_json`. Prefer `GET /v1/meta/config-schemas` for type-level docs. |
 | GET | `/v1/ticker/items` | Current bottom-marquee items (`ordinal`, `kind`, `body`) — in-process snapshot; read-only. |
 | GET | `/v1/alerts` | All operator alerts from SQLite **`alerts`** (no redaction of bodies in MVP; do not store secrets in alerts). |
 | POST | `/v1/alerts` | JSON body: `title`, `body`, optional `qr_payload`, `severity`, `priority`, `expires_at` (epoch ms). |
 | DELETE | `/v1/alerts/{id}` | Dismisses alert (`dismissed_at` set). |
-| GET | `/v1/display/overlays` | Schedules for festive full-screen overlays. SQLite table `overlays`: `overlay_type` (semantic id, like `screen_type`), `config_json` (includes `messages` string array), plus `config_json_schema` / `example_config_json` when stored (decoded as JSON when valid). Built-in renderers: `hearts_rain`, `birthday_confetti`, `bouncing_message`; other types are stored for forward use. |
+| GET | `/v1/display/overlays` | Overlay schedules (`overlay_type`, `config_json`). Optional `?include_config_schema=true` adds per-row `config_json_schema` when stored. Built-in renderers include `shape_rain`, `birthday_confetti`, `bouncing_message`. |
 | POST | `/v1/display/overlays` | Upsert a row: `id`, `overlay_type`, `label`, `config_json` (object; phrases live under `messages`), `repeat_annually`, optional `year_exact`, `start_month`/`start_day`, optional `end_month`/`end_day`, optional `nth_week_of_month`/`nth_weekday` (both required together). Legacy clients may still send `overlay_kind` and `messages_json`; the server maps them into `overlay_type` / merges `messages_json` into `config_json.messages`. |
 | PATCH | `/v1/display/overlays/{id}` | Partial update; merges with the existing row. **404** if missing. |
 | DELETE | `/v1/display/overlays/{id}` | Deletes the schedule. **404** if missing. |
@@ -137,9 +137,10 @@ These routes use the same **Bearer session** auth as other protected `/v1/*` pat
 | GET | `/v1/media/jokes/{id}` | JSON: `setup`, `punchline`, `category_id`. **404** if missing or suppressed. |
 | GET | `/v1/media/trivia/{id}` | JSON: `question`, `option_a`…`option_d`, `correct_option`, `category_id`. **404** if missing or suppressed. |
 | POST | `/v1/display/navigation` | Body: `{"surface":"screen"|"ticker","direction":"back"|"forward"}`. Enqueues UI navigation. **503** `navigation_unavailable` if the display was started without a navigation bus. |
+| GET | `/v1/meta/config-schemas` | Bundled type docs: `{screen_types, ticker_types, overlay_types, integration_types}` — each item includes `config_json_schema` and `example_config_json` (decoded JSON). Preferred for clients that cache schemas once per display session. |
 | GET | `/v1/meta/screen-types` | `{"items":[{screen_type, config_json_schema, example_config_json}, ...]}` for schema-driven screen editors. |
 | GET | `/v1/meta/ticker-types` | `{"items":[{ticker_type, config_json_schema, example_config_json}, ...]}` for ticker tape editors. |
-| GET | `/v1/ticker/tapes` | Full `ticker_tapes` rows: `config_json` plus `config_json_schema` / `example_config_json` when present. |
+| GET | `/v1/ticker/tapes` | `ticker_tapes` rows with `config_json`. Add `?include_config_schema=true` for per-row schema/example fields. |
 | POST | `/v1/ticker/tapes` | Create tape: `id`, `ticker_type`, optional `name`, `description`, `enabled`, `frequency_weight`, `sort_order`, `config_key`, `config_json`. **400** on unknown type; **409** if `id` exists. |
 | PATCH | `/v1/ticker/tapes/{id}` | JSON body may include `enabled`, `frequency_weight`, `sort_order`, `config_key`, `config_json`, `name`, `description`, `ticker_type`. |
 | DELETE | `/v1/ticker/tapes/{id}` | Deletes row; **404** if missing. |
@@ -157,7 +158,7 @@ These routes use the same **Bearer session** auth as other protected `/v1/*` pat
 | PATCH | `/v1/screens/{id}` | Partial update; `config_json` re-validates layout. |
 | DELETE | `/v1/screens/{id}` | Deletes row; **404** if missing. |
 
-**Expanded read shape:** each integration item includes decoded `config_json` and `config_json_schema` when stored (omit secrets in client logs), `secrets_configured`, `accounts_configured`, `linked_accounts`, and `required_account_types`. Service base URLs are in `config_json.baseUrl`.
+**Expanded read shape:** each integration item includes decoded `config_json`, `secrets_configured`, `accounts_configured`, `linked_accounts`, and `required_account_types`. Add `?include_config_schema=true` to include `config_json_schema`. Type-level schemas are in `GET /v1/meta/config-schemas` (`integration_types`). Service base URLs are in `config_json.baseUrl`.
 
 ## Integrations list (paginated browse)
 

@@ -8,6 +8,7 @@ import 'database.dart';
 import 'display_overlay_bouncing_message_settings.dart';
 import 'display_overlay_confetti_settings.dart';
 import 'display_overlay_falling_images_settings.dart';
+import 'display_overlay_floating_balloons_settings.dart';
 import 'display_overlay_edge_glow_settings.dart';
 import 'display_overlay_matrix_rain_settings.dart';
 import 'display_overlay_shape_rain_settings.dart';
@@ -200,6 +201,9 @@ String normalizeOverlayConfigForUpsert({
     kOverlayTypeFallingImages =>
         normalizeFallingImagesConfigJsonString(restJson) ??
             (throw FormatException('invalid_config_json')),
+    kOverlayTypeFloatingBalloons =>
+        normalizeFloatingBalloonsConfigJsonString(restJson) ??
+            (throw FormatException('invalid_config_json')),
     kOverlayTypeMatrixRain =>
         normalizeMatrixRainSettingsJsonString(restJson) ??
             (throw FormatException('invalid_config_json')),
@@ -261,7 +265,7 @@ Future<String> upsertOverlay(
   AppDatabase db, {
   required String id,
   required String overlayType,
-  required String name,
+  required String label,
   required String configJson,
 }) async {
   final err = validateOverlayUpsertDraft(
@@ -286,12 +290,12 @@ Future<String> upsertOverlay(
   final trimmedId = id.trim();
   await db.customStatement(
     'INSERT OR REPLACE INTO overlays ('
-    'id, overlay_type, name, config_json, config_json_schema) '
+    'id, overlay_type, label, config_json, config_json_schema) '
     'VALUES (?, ?, ?, ?, ?)',
     <Object?>[
       trimmedId,
       overlayType.trim(),
-      name,
+      label,
       configNorm,
       doc.schema,
     ],
@@ -320,7 +324,7 @@ Future<void> upsertOverlaySchedule(
       db,
       id: id,
       overlayType: overlayType,
-      name: label,
+      label: label,
       configJson: configJson,
     );
 
@@ -356,7 +360,10 @@ Future<DisplayOverlayRow?> overlayById(AppDatabase db, String id) async {
 Future<DisplayOverlayRow?> overlayScheduleById(AppDatabase db, String id) =>
     overlayById(db, id);
 
-Map<String, Object?> overlayToJson(DisplayOverlayRow row) {
+Map<String, Object?> overlayToJson(
+  DisplayOverlayRow row, {
+  bool includeConfigDocs = false,
+}) {
   Object? configField;
   try {
     final d = jsonDecode(row.configJson);
@@ -370,13 +377,16 @@ Map<String, Object?> overlayToJson(DisplayOverlayRow row) {
   } on Object {
     configField = const <String, Object?>{};
   }
-  return <String, Object?>{
+  final out = <String, Object?>{
     'id': row.id,
     'overlay_type': row.overlayType,
-    'name': row.name,
+    'label': row.label,
     'config_json': configField,
-    'config_json_schema': _decodedJsonOrNull(row.configJsonSchema),
   };
+  if (includeConfigDocs) {
+    out['config_json_schema'] = _decodedJsonOrNull(row.configJsonSchema);
+  }
+  return out;
 }
 
 /// Back-compat alias.

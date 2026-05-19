@@ -5,6 +5,7 @@ import type { SavedDisplay } from '@/storage/displays';
 import { saveSession, type DisplaySession } from '@/storage/sessions';
 import { adoptionError, adoptionLog } from '@/util/adoptionLog';
 import { syncUserDisplayToServer } from '@/storage/userDisplaysSync';
+import { fetchAndCacheConfigSchemas } from '@/api/configSchemas';
 
 export type ConnectDisplayWithApiKeyInput = {
   baseUrl: string;
@@ -39,6 +40,7 @@ export async function connectDisplayWithApiKey(
       label: suggestDisplayLabel(normalized, session.role, input.label),
     });
     saveSession(display.id, session);
+    await fetchAndCacheConfigSchemas(display).catch(() => undefined);
     await syncUserDisplayToServer(display, session).catch(() => undefined);
     adoptionLog('persist.apiKey.success', 'display connected with api key', {
       displayId: display.id,

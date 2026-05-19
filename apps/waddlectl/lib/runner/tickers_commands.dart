@@ -73,7 +73,7 @@ class _TickersDescribe extends Command<void> {
 class _TickersUpdate extends Command<void> {
   _TickersUpdate(this.globalOptions) : super() {
     argParser
-      ..addOption('name')
+      ..addOption('label')
       ..addOption('ticker-type')
       ..addOption('frequency-weight')
       ..addOption('sort-order')
@@ -99,7 +99,7 @@ class _TickersUpdate extends Command<void> {
     await withLocalBackend(globalOptions, (b) async {
       await b.updateTicker(
         id: id,
-        name: o['name'] as String?,
+        label: o['label'] as String?,
         tickerType: o['ticker-type'] as String?,
         frequencyWeight: int.tryParse(o['frequency-weight'] as String? ?? ''),
         sortOrder: int.tryParse(o['sort-order'] as String? ?? ''),

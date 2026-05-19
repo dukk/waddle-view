@@ -4,6 +4,7 @@ import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/display_overlay_bouncing_message_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_confetti_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_falling_images_settings.dart';
+import 'package:waddle_shared/persistence/display_overlay_floating_balloons_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_row.dart';
 import 'package:waddle_shared/persistence/display_overlay_edge_glow_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_matrix_rain_settings.dart';
@@ -14,6 +15,7 @@ import '../display/overlay/birthday_confetti_overlay.dart';
 import '../display/overlay/bouncing_message_overlay.dart';
 import '../display/overlay/celebration_overlay_schedule.dart';
 import '../display/overlay/falling_images_overlay.dart';
+import '../display/overlay/floating_balloons_overlay.dart';
 import '../display/overlay/edge_glow_overlay.dart';
 import '../display/overlay/matrix_rain_overlay.dart';
 import '../display/overlay/shape_rain_overlay.dart';
@@ -157,6 +159,19 @@ void registerBuiltins(OverlayWidgetRegistry registry) {
       blobs: ctx.blobs,
       db: ctx.db,
     );
+  });
+
+  registry.register(kOverlayTypeFloatingBalloons, (ctx, matches) {
+    if (matches.isEmpty) {
+      return null;
+    }
+    final settings = FloatingBalloonsScheduleSettings.parse(
+      matches.first.configJson,
+    );
+    if (settings.effectiveColorHexes.isEmpty) {
+      return null;
+    }
+    return FloatingBalloonsOverlay(settings: settings);
   });
 
   registry.register(kOverlayTypeBouncingMessage, (ctx, matches) {

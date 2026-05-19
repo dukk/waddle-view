@@ -3,7 +3,7 @@ const String kEnsureOverlaysTableSql = '''
 CREATE TABLE IF NOT EXISTS overlays (
   id TEXT NOT NULL PRIMARY KEY,
   overlay_type TEXT NOT NULL,
-  name TEXT NOT NULL DEFAULT '',
+  label TEXT NOT NULL DEFAULT '',
   config_json TEXT NOT NULL DEFAULT '{}',
   config_json_schema TEXT
 );

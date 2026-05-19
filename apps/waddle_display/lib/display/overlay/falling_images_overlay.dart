@@ -118,13 +118,19 @@ class _FallingImagesOverlayState extends State<FallingImagesOverlay>
     final factor = jitter <= 0
         ? 1.0
         : 1.0 - jitter + 2 * jitter * _rand.nextDouble();
-    final size = (base * factor).clamp(48.0, 220.0);
+    final size = (base * factor).clamp(
+      kFallingImagesSpriteSizePxMin,
+      kFallingImagesSpriteSizePxMax,
+    );
     _sprites.add(
       _FallingSprite(
         id: _nextSpriteId++,
         blobKey: key,
         startXFraction: 0.08 + _rand.nextDouble() * 0.84,
-        size: size.clamp(48.0, 220.0),
+        size: size.clamp(
+          kFallingImagesSpriteSizePxMin,
+          kFallingImagesSpriteSizePxMax,
+        ),
         rockPhase: _rand.nextDouble() * math.pi * 2,
         startedAt: DateTime.now(),
       ),
@@ -136,8 +142,7 @@ class _FallingImagesOverlayState extends State<FallingImagesOverlay>
     if (_viewport == Size.zero) {
       return;
     }
-    final fallPxPerSec =
-        widget.settings.fallSpeed * _viewport.height;
+    final fallPxPerSec = widget.settings.fallSpeed;
     final now = DateTime.now();
     _sprites.removeWhere((s) {
       final elapsed =
@@ -183,8 +188,7 @@ class _FallingImagesOverlayState extends State<FallingImagesOverlay>
     return LayoutBuilder(
       builder: (context, constraints) {
         _viewport = Size(constraints.maxWidth, constraints.maxHeight);
-        final fallPxPerSec =
-            widget.settings.fallSpeed * _viewport.height;
+        final fallPxPerSec = widget.settings.fallSpeed;
         final now = DateTime.now();
 
         return Stack(

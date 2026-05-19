@@ -6,6 +6,7 @@ import 'package:waddle_shared/persistence/reject_term_repository.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/theme/display_text_scale_kv.dart';
 import 'package:waddle_shared/theme/display_theme_ids.dart';
+import 'package:waddle_shared/theme/display_program_history_kv.dart';
 import 'package:waddle_shared/theme/display_theme_kv.dart';
 
 /// Local admin port (Drift). A future REST client can implement the same
@@ -24,7 +25,7 @@ abstract class WaddleAdminBackend {
   Future<Map<String, Object?>?> describeScreen(String id);
   Future<void> updateScreen({
     required String id,
-    String? name,
+    String? label,
     int? minDwellSeconds,
     int? maxDwellSeconds,
     int? frequencyWeight,
@@ -46,7 +47,7 @@ abstract class WaddleAdminBackend {
   Future<Map<String, Object?>?> describeTicker(String id);
   Future<void> updateTicker({
     required String id,
-    String? name,
+    String? label,
     String? tickerType,
     int? frequencyWeight,
     int? sortOrder,
@@ -143,7 +144,7 @@ class LocalDriftBackend implements WaddleAdminBackend {
 
   Map<String, Object?> _screenToMap(ScreenDefinition row) => {
     'id': row.id,
-    'name': row.name,
+    'label': row.label,
     'description': row.description,
     'screen_type': row.screenType,
     'config_json': row.configJson,
@@ -167,7 +168,7 @@ class LocalDriftBackend implements WaddleAdminBackend {
   @override
   Future<void> updateScreen({
     required String id,
-    String? name,
+    String? label,
     int? minDwellSeconds,
     int? maxDwellSeconds,
     int? frequencyWeight,
@@ -184,7 +185,7 @@ class LocalDriftBackend implements WaddleAdminBackend {
       _db.screens,
     )..where((t) => t.id.equals(id))).write(
       ScreensCompanion(
-        name: name == null ? const Value.absent() : Value(name),
+        label: label == null ? const Value.absent() : Value(label),
         minDwellSeconds: minDwellSeconds == null
             ? const Value.absent()
             : Value(minDwellSeconds),
@@ -268,7 +269,7 @@ class LocalDriftBackend implements WaddleAdminBackend {
 
   Map<String, Object?> _tickerToMap(TickerTape row) => {
     'id': row.id,
-    'name': row.name,
+    'label': row.label,
     'description': row.description,
     'ticker_type': row.tickerType,
     'frequency_weight': row.frequencyWeight,
@@ -289,7 +290,7 @@ class LocalDriftBackend implements WaddleAdminBackend {
   @override
   Future<void> updateTicker({
     required String id,
-    String? name,
+    String? label,
     String? tickerType,
     int? frequencyWeight,
     int? sortOrder,
@@ -305,7 +306,7 @@ class LocalDriftBackend implements WaddleAdminBackend {
       _db.tickerTapes,
     )..where((t) => t.id.equals(id))).write(
       TickerTapesCompanion(
-        name: name == null ? const Value.absent() : Value(name),
+        label: label == null ? const Value.absent() : Value(label),
         tickerType: tickerType == null
             ? const Value.absent()
             : Value(tickerType),
@@ -340,7 +341,12 @@ class LocalDriftBackend implements WaddleAdminBackend {
       'program_duration_seconds': config?.programDurationSeconds ?? 180,
       'ticker_program_duration_seconds':
           config?.tickerProgramDurationSeconds ?? 300,
-      'history_depth': config?.historyDepth ?? 5,
+      'display_program_history_depth': normalizeDisplayProgramHistoryDepth(
+        await gv(
+          kDisplayProgramHistoryDepthKvKey,
+          '$kDefaultDisplayProgramHistoryDepth',
+        ),
+      ),
       'require_news_photo_for_screens':
           config?.requireNewsPhotoForScreens ?? true,
       'theme_id_override': config?.themeIdOverride,
@@ -373,7 +379,6 @@ class LocalDriftBackend implements WaddleAdminBackend {
     final config = await _defaultCuratorConfiguration();
     if (config != null &&
         (programDurationSeconds != null ||
-            historyDepth != null ||
             requireNewsPhotoForScreens != null ||
             tickerNewsPixelsPerSecond != null)) {
       int? tickerPx;
@@ -393,9 +398,6 @@ class LocalDriftBackend implements WaddleAdminBackend {
           programDurationSeconds: programDurationSeconds == null
               ? const Value.absent()
               : Value(programDurationSeconds),
-          historyDepth: historyDepth == null
-              ? const Value.absent()
-              : Value(historyDepth),
           requireNewsPhotoForScreens: requireNewsPhotoForScreens == null
               ? const Value.absent()
               : Value(requireNewsPhotoForScreens),
@@ -403,6 +405,12 @@ class LocalDriftBackend implements WaddleAdminBackend {
               ? const Value.absent()
               : Value(tickerPx),
         ),
+      );
+    }
+    if (historyDepth != null) {
+      await setConfig(
+        kDisplayProgramHistoryDepthKvKey,
+        '${normalizeDisplayProgramHistoryDepth('$historyDepth')}',
       );
     }
     if (displayThemeId != null) {

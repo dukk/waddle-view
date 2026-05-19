@@ -894,7 +894,7 @@ class OneDrivePhotosDataProvider implements IDataProvider {
             mediaBlobKey: logicalKey,
             photographerName: photographer,
             photographerUrl: '',
-            pexelsPageUrl: pageUrl,
+            pageUrl: pageUrl,
             altText: Value(altText),
             fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(nowMs),
             suppressed: Value(blocked),

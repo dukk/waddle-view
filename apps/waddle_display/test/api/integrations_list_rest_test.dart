@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:waddle_shared/integration_accounts/integration_accounts_service.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 
@@ -23,6 +24,7 @@ Future<void> _insertIntegration(
           pollSeconds: Value(pollSeconds),
         ),
       );
+  await refreshIntegrationAccountsReady(h.secrets, h.db, id);
 }
 
 void main() {
@@ -224,6 +226,129 @@ void main() {
         .toSet();
     expect(accountsIds, contains('ready_news'));
     expect(accountsIds, isNot(contains('needs_google_setup')));
+
+    final missingRes = await http.get(
+      Uri.parse(
+        '${h.baseUrl}/v1/integrations?accounts_configured=false&limit=100',
+      ),
+      headers: h.authHeaders,
+    );
+    final missingIds = ((jsonDecode(missingRes.body) as Map)['items'] as List)
+        .map((e) => (e as Map)['id'] as String)
+        .toSet();
+    expect(missingIds, contains('needs_google_setup'));
+    expect(missingIds, isNot(contains('ready_news')));
+  });
+
+  test('accounts_configured partitions enabled lists exclusively', () async {
+    final h = await RestTestHarness.start();
+    addTearDown(h.dispose);
+    await _insertIntegration(
+      h,
+      id: 'en_ok',
+      integrationType: 'news_rss',
+      enabled: true,
+    );
+    await _insertIntegration(
+      h,
+      id: 'en_needs_acct',
+      integrationType: 'calendar_google',
+      enabled: true,
+    );
+    await _insertIntegration(
+      h,
+      id: 'off_ok',
+      integrationType: 'news_rss',
+      enabled: false,
+    );
+
+    final enabledReady = await http.get(
+      Uri.parse(
+        '${h.baseUrl}/v1/integrations?enabled=true&accounts_configured=true&limit=100',
+      ),
+      headers: h.authHeaders,
+    );
+    final enabledReadyIds =
+        ((jsonDecode(enabledReady.body) as Map)['items'] as List)
+            .map((e) => (e as Map)['id'] as String)
+            .toSet();
+    expect(enabledReadyIds, contains('en_ok'));
+    expect(enabledReadyIds, isNot(contains('en_needs_acct')));
+
+    final availableReady = await http.get(
+      Uri.parse(
+        '${h.baseUrl}/v1/integrations?enabled=false&accounts_configured=true&limit=100',
+      ),
+      headers: h.authHeaders,
+    );
+    final availableReadyIds =
+        ((jsonDecode(availableReady.body) as Map)['items'] as List)
+            .map((e) => (e as Map)['id'] as String)
+            .toSet();
+    expect(availableReadyIds, contains('off_ok'));
+    expect(availableReadyIds, isNot(contains('en_needs_acct')));
+
+    final missing = await http.get(
+      Uri.parse(
+        '${h.baseUrl}/v1/integrations?accounts_configured=false&limit=100',
+      ),
+      headers: h.authHeaders,
+    );
+    final missingIds = ((jsonDecode(missing.body) as Map)['items'] as List)
+        .map((e) => (e as Map)['id'] as String)
+        .toSet();
+    expect(missingIds, contains('en_needs_acct'));
+    expect(missingIds, isNot(contains('en_ok')));
+    expect(missingIds, isNot(contains('off_ok')));
+  });
+
+  test('accounts_configured=false paginates with stable total', () async {
+    final h = await RestTestHarness.start();
+    addTearDown(h.dispose);
+    await _insertIntegration(
+      h,
+      id: 'miss_a',
+      integrationType: 'calendar_google',
+      enabled: true,
+    );
+    await _insertIntegration(
+      h,
+      id: 'miss_b',
+      integrationType: 'calendar_outlook',
+      enabled: false,
+    );
+    await _insertIntegration(
+      h,
+      id: 'miss_c',
+      integrationType: 'photo_pexels',
+      enabled: false,
+    );
+
+    final page0 = await http.get(
+      Uri.parse(
+        '${h.baseUrl}/v1/integrations?accounts_configured=false&limit=1&offset=0&sort=id',
+      ),
+      headers: h.authHeaders,
+    );
+    final body0 = jsonDecode(page0.body) as Map<String, dynamic>;
+    expect(body0['total'], 3);
+    expect((body0['items'] as List).length, 1);
+
+    final page1 = await http.get(
+      Uri.parse(
+        '${h.baseUrl}/v1/integrations?accounts_configured=false&limit=1&offset=1&sort=id',
+      ),
+      headers: h.authHeaders,
+    );
+    final body1 = jsonDecode(page1.body) as Map<String, dynamic>;
+    expect(body1['total'], 3);
+    expect((body1['items'] as List).length, 1);
+
+    final ids = [
+      ...((body0['items'] as List).map((e) => (e as Map)['id'] as String)),
+      ...((body1['items'] as List).map((e) => (e as Map)['id'] as String)),
+    ];
+    expect(ids.toSet().length, 2);
   });
 
   test('facets=family returns counts', () async {

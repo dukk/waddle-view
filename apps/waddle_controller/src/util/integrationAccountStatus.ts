@@ -1,4 +1,7 @@
-import type { IntegrationRequiredAccountType } from './integrationAccounts';
+import type {
+  IntegrationRequiredAccountType,
+  OAuthSignInStatus,
+} from './integrationAccounts';
 
 export type IntegrationLinkedAccount = {
   account_id: string;
@@ -8,6 +11,7 @@ export type IntegrationLinkedAccount = {
   signup_url?: string;
   supports_oauth_sign_in: boolean;
   configured: boolean;
+  oauth_sign_in_status?: OAuthSignInStatus | null;
   required: boolean;
 };
 

@@ -3,8 +3,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:waddle_shared/persistence/display_overlay_confetti_settings.dart';
 
-import '../../theme/display_theme.dart';
-
 /// One full vertical drift cycle at [fallSpeed] `1.0` matches the historical
 /// ~5s tick; lower [fallSpeed] stretches the cycle (slower fall), down to
 /// [kBirthdayConfettiFallSpeedMin] and capped at [kBirthdayConfettiMaxCycleSeconds].
@@ -58,7 +56,6 @@ class _BirthdayConfettiOverlayState extends State<BirthdayConfettiOverlay>
 
   @override
   Widget build(BuildContext context) {
-    final palette = Theme.of(context).extension<PaletteTertiaryLayers>();
     var accents = <Color>[];
     if (widget.settings.colorHexes.isNotEmpty) {
       for (final h in widget.settings.colorHexes) {
@@ -68,13 +65,13 @@ class _BirthdayConfettiOverlayState extends State<BirthdayConfettiOverlay>
         }
       }
     }
-    if (accents.isEmpty && palette != null) {
-      accents = <Color>[
-        palette.accent1,
-        palette.accent2,
-        palette.accent3,
-        palette.accent4,
-      ];
+    if (accents.isEmpty) {
+      for (final h in kBirthdayConfettiDefaultColorHexes) {
+        final c = _colorFromHex(h);
+        if (c != null) {
+          accents.add(c);
+        }
+      }
     }
     if (accents.isEmpty) {
       accents = widget.fallbackAccents;
@@ -123,35 +120,6 @@ Color? _colorFromHex(String hex) {
   return null;
 }
 
-enum _ConfettiShapeKind { rect, circle, star, streamer }
-
-List<_ConfettiShapeKind> _expandedKinds(List<String> tokens) {
-  const concrete = <_ConfettiShapeKind>[
-    _ConfettiShapeKind.rect,
-    _ConfettiShapeKind.circle,
-    _ConfettiShapeKind.star,
-    _ConfettiShapeKind.streamer,
-  ];
-  final out = <_ConfettiShapeKind>[];
-  for (final t in tokens) {
-    if (t == 'mix') {
-      out.addAll(concrete);
-    } else {
-      switch (t) {
-        case 'rect':
-          out.add(_ConfettiShapeKind.rect);
-        case 'circle':
-          out.add(_ConfettiShapeKind.circle);
-        case 'star':
-          out.add(_ConfettiShapeKind.star);
-        case 'streamer':
-          out.add(_ConfettiShapeKind.streamer);
-      }
-    }
-  }
-  return out.isEmpty ? concrete : out;
-}
-
 class _ConfettiPainter extends CustomPainter {
   _ConfettiPainter({
     required this.accents,
@@ -165,73 +133,52 @@ class _ConfettiPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rand = math.Random((progress * 1e9).toInt());
-    final kinds = _expandedKinds(settings.shapeTokens);
-    final nSprites = (10 + settings.density * 12).round().clamp(10, 22);
+    final area = size.width * size.height;
+    final baseCount = (area / 9000).round();
+    final nSprites = (baseCount + settings.density * 110).round().clamp(72, 240);
     final denom = math.max(1, accents.length);
+    final unit = math.max(size.shortestSide * 0.011, 4.5);
 
     for (var i = 0; i < nSprites; i++) {
-      final base = accents[i % denom];
-      final nx = rand.nextDouble();
-      final float = (((progress + i * 0.061) % 1.0) + rand.nextDouble() * 0.28) % 1.0;
-      final yPx = float * size.height * 1.08 - size.height * 0.04;
-      final xPx = nx * size.width + math.sin(progress * math.pi * 2 + i * 0.7) * 18;
+      final pieceRand = math.Random(i * 10007 + 17);
+      final yNorm = math.pow(pieceRand.nextDouble(), 0.52).toDouble();
+      final drift = math.sin(progress * math.pi * 2 + i * 0.63) * 14;
+      final float = (yNorm + progress + pieceRand.nextDouble() * 0.08) % 1.0;
+      final yPx = float * size.height * 1.06 - size.height * 0.03;
+      final xPx =
+          pieceRand.nextDouble() * size.width + drift + math.sin(i * 0.41) * 6;
       final relY = yPx.clamp(0.0, size.height) / math.max(1e-6, size.height);
-      final bottomBias = 1.0 - ((relY - 0.78) / 0.22).clamp(0.0, 1.0) * 0.45;
 
+      final zoneFade = relY < 0.4
+          ? 1.0
+          : relY < 0.7
+          ? 1.0 - (relY - 0.4) / 0.3 * 0.35
+          : 1.0 - 0.35 - (relY - 0.7) / 0.3 * 0.55;
+      if (zoneFade < 0.12) {
+        continue;
+      }
+
+      final base = accents[i % denom];
       final maxA = settings.opacity;
-      final minA = (maxA * 0.18).clamp(0.05, maxA * 0.45);
-      final alphaBase = bottomBias *
-          (0.12 + rand.nextDouble() * 0.2 * math.max(bottomBias, 0.7));
-      final color = base.withValues(alpha: alphaBase.clamp(minA, maxA));
+      final minA = (maxA * 0.55).clamp(0.2, maxA);
+      final alpha = (maxA * zoneFade * (0.88 + pieceRand.nextDouble() * 0.12))
+          .clamp(minA, maxA);
+      final color = base.withValues(alpha: alpha);
 
-      final kind = kinds[rand.nextInt(kinds.length)];
-      final w = math.max(size.shortestSide * 0.012, 5.0);
-      final h = w * (1.4 + rand.nextDouble() * 1.8);
+      final stripLen = unit * (2.6 + pieceRand.nextDouble() * 2.4);
+      final stripW = unit * (0.2 + pieceRand.nextDouble() * 0.14);
+      final rotation = pieceRand.nextDouble() * math.pi * 2;
 
       canvas.save();
       canvas.translate(xPx, yPx);
-      canvas.rotate(progress * math.pi * 2 * 0.35 + i * 0.41);
-
-      switch (kind) {
-        case _ConfettiShapeKind.rect:
-          final rrect = RRect.fromRectAndRadius(
-            Rect.fromCenter(center: Offset.zero, width: w * 1.6, height: h * 0.55),
-            Radius.circular(w * 0.22),
-          );
-          canvas.drawRRect(rrect, Paint()..color = color);
-        case _ConfettiShapeKind.circle:
-          canvas.drawCircle(Offset.zero, w * 0.55, Paint()..color = color);
-        case _ConfettiShapeKind.star:
-          _paintStar(canvas, w * 0.9, color);
-        case _ConfettiShapeKind.streamer:
-          final sr = RRect.fromRectAndRadius(
-            Rect.fromCenter(center: Offset.zero, width: w * 0.35, height: h * 1.5),
-            Radius.circular(w * 0.2),
-          );
-          canvas.drawRRect(sr, Paint()..color = color);
-      }
+      canvas.rotate(rotation + progress * math.pi * 0.2);
+      final rrect = RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset.zero, width: stripLen, height: stripW),
+        Radius.circular(stripW * 0.2),
+      );
+      canvas.drawRRect(rrect, Paint()..color = color);
       canvas.restore();
     }
-  }
-
-  void _paintStar(Canvas canvas, double radius, Color color) {
-    final path = Path();
-    const points = 5;
-    final inner = radius * 0.38;
-    for (var i = 0; i < points * 2; i++) {
-      final r = i.isEven ? radius : inner;
-      final a = -math.pi / 2 + i * math.pi / points;
-      final x = r * math.cos(a);
-      final y = r * math.sin(a);
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-    path.close();
-    canvas.drawPath(path, Paint()..color = color);
   }
 
   @override
@@ -240,6 +187,5 @@ class _ConfettiPainter extends CustomPainter {
       oldDelegate.accents.length != accents.length ||
       oldDelegate.settings.density != settings.density ||
       oldDelegate.settings.fallSpeed != settings.fallSpeed ||
-      oldDelegate.settings.opacity != settings.opacity ||
-      oldDelegate.settings.shapeTokens.join() != settings.shapeTokens.join();
+      oldDelegate.settings.opacity != settings.opacity;
 }

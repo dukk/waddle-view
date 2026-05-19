@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
@@ -6,6 +7,8 @@ import 'package:http/http.dart' as http;
 import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/config/microsoft_graph_kv.dart';
 import 'package:waddle_shared/integration_accounts/integration_account_alert_label.dart';
+import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
+import 'package:waddle_shared/integration_accounts/oauth_sign_in_alerts.dart';
 import 'package:waddle_shared/integrations/integration_kv_repository.dart';
 import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import 'package:waddle_shared/persistence/database.dart';
@@ -59,7 +62,7 @@ class MicrosoftGraphOAuth {
   /// Returns a usable access token, or `null` if none could be obtained.
   ///
   /// When [pollDeviceCode] is false, a device-code flow may still start and insert
-  /// a sign-in alert, but token polling stops immediately so callers can return.
+  /// a sign-in alert; token polling continues in the background so callers can return.
   Future<String?> ensureAccessToken({
     required AppDatabase db,
     required SecretStore secrets,
@@ -148,8 +151,6 @@ class MicrosoftGraphOAuth {
       'MicrosoftGraphOAuth: POST $_tokenPath grant=refresh_token '
       'account=$graphAccountKey',
     );
-    // Public clients must send redirect_uri (no client_secret). Use Map body so
-    // package:http applies standard x-www-form-urlencoded encoding.
     final body = <String, String>{
       'client_id': cid,
       'grant_type': 'refresh_token',
@@ -270,6 +271,12 @@ class MicrosoftGraphOAuth {
       return null;
     }
     try {
+      await dismissOAuthSignInAlertsForAccount(
+        db,
+        accountId: graphAccountKey,
+        accountTypeId: kIntegrationAccountTypeMicrosoftGraph,
+      );
+
       diagnostics.engine(
         'MicrosoftGraphOAuth: device code flow start account=$graphAccountKey '
         'POST $_deviceAuthPath',
@@ -343,119 +350,141 @@ class MicrosoftGraphOAuth {
         valueType: kIntegrationKvTypeIntMs,
       );
 
+      final deadline = now + (expiresIn > 0 ? expiresIn * 1000 : 900 * 1000);
+      final pollParams = _DeviceCodePollParams(
+        db: db,
+        secrets: secrets,
+        clientId: cid,
+        graphAccountKey: graphAccountKey,
+        deviceCode: deviceCode,
+        alertId: alertId,
+        deadlineMs: deadline,
+      );
+
       if (!pollDeviceCode) {
         diagnostics.engine(
           'MicrosoftGraphOAuth: device code alert id=$alertId account=$graphAccountKey '
-          '(poll skipped)',
+          '(detached poll)',
+        );
+        unawaited(
+          _pollDeviceCodeUntilDone(pollParams).catchError((Object e, StackTrace st) {
+            diagnostics.engineFail('MicrosoftGraphOAuth detached poll', e, st);
+          }),
         );
         return null;
       }
 
-      final tokenUri = _loginBase(
-        'login.microsoftonline.com',
-      ).replace(path: _tokenPath);
-      final deadline = now + (expiresIn > 0 ? expiresIn * 1000 : 900 * 1000);
       diagnostics.engine(
         'MicrosoftGraphOAuth: sign-in alert id=$alertId poll every '
         '${kMicrosoftGraphDeviceCodePollSeconds}s until deadlineMs=$deadline',
       );
-      var polled = false;
-      var pollCount = 0;
-      while (_nowMs() < deadline) {
-        if (polled) {
-          await _sleep(
-            const Duration(seconds: kMicrosoftGraphDeviceCodePollSeconds),
-          );
-          if (_nowMs() >= deadline) {
-            break;
-          }
-        }
-        polled = true;
-        pollCount++;
-
-        final tokRes = await _http.post(
-          tokenUri,
-          body: <String, String>{
-            'grant_type': 'urn:ietf:params:oauth:grant-type:device_code',
-            'client_id': cid,
-            'device_code': deviceCode,
-            'redirect_uri': kMicrosoftGraphOAuthRedirectUri,
-          },
-        );
-        Map<String, dynamic>? tok;
-        try {
-          tok = jsonDecode(tokRes.body) as Map<String, dynamic>;
-        } on Object {
-          diagnostics.engine(
-            'MicrosoftGraphOAuth: token poll #$pollCount status=${tokRes.statusCode} '
-            'non-JSON body=${_responseBodySnippet(tokRes.body)}',
-          );
-          continue;
-        }
-        final err = tok['error'];
-        if (err is String) {
-          if (err == 'authorization_pending' || err == 'slow_down') {
-            final loud = err == 'slow_down' ||
-                pollCount <= 3 ||
-                pollCount % 6 == 0;
-            if (loud) {
-              diagnostics.engine(
-                'MicrosoftGraphOAuth: token poll #$pollCount '
-                'status=${tokRes.statusCode} error=$err',
-              );
-            }
-            continue;
-          }
-          final desc = tok['error_description'];
-          diagnostics.engine(
-            'MicrosoftGraphOAuth: token poll #$pollCount fatal error=$err '
-            'description=${desc is String ? _responseBodySnippet(desc, 240) : desc}',
-          );
-          return null;
-        }
-        if (tokRes.statusCode != 200) {
-          diagnostics.engine(
-            'MicrosoftGraphOAuth: token poll #$pollCount status=${tokRes.statusCode} '
-            'body=${_responseBodySnippet(tokRes.body)}',
-          );
-          continue;
-        }
-        final access = tok['access_token'];
-        final refresh = tok['refresh_token'];
-        if (access is! String ||
-            access.isEmpty ||
-            refresh is! String ||
-            refresh.isEmpty) {
-          diagnostics.engine('MicrosoftGraphOAuth: token response missing fields');
-          return null;
-        }
-        diagnostics.engine(
-          'MicrosoftGraphOAuth: token poll #$pollCount success account=$graphAccountKey '
-          'expires_in=${tok['expires_in']}',
-        );
-        await _persistTokenResponse(
-          db: db,
-          secrets: secrets,
-          graphAccountKey: graphAccountKey,
-          accessToken: access,
-          refreshToken: refresh,
-          expiresInSec: _asInt(tok['expires_in']),
-        );
-        await _dismissDeviceCodeAlert(db, alertId);
-        diagnostics.engine(
-          'MicrosoftGraphOAuth: dismissed sign-in alert id=$alertId',
-        );
-        return access;
-      }
-      diagnostics.engine(
-        'MicrosoftGraphOAuth: device code expired or deadline reached '
-        '(polls=$pollCount deadlineMs=$deadline nowMs=${_nowMs()})',
-      );
-      return null;
+      return _pollDeviceCodeUntilDone(pollParams);
     } on Object catch (e, st) {
       diagnostics.engineFail('MicrosoftGraphOAuth device flow', e, st);
       return null;
     }
+  }
+
+  Future<String?> _pollDeviceCodeUntilDone(_DeviceCodePollParams p) async {
+    final tokenUri = _loginBase(
+      'login.microsoftonline.com',
+    ).replace(path: _tokenPath);
+    var polled = false;
+    var pollCount = 0;
+    while (_nowMs() < p.deadlineMs) {
+      if (polled) {
+        await _sleep(
+          const Duration(seconds: kMicrosoftGraphDeviceCodePollSeconds),
+        );
+        if (_nowMs() >= p.deadlineMs) {
+          break;
+        }
+      }
+      polled = true;
+      pollCount++;
+
+      final tokRes = await _http.post(
+        tokenUri,
+        body: <String, String>{
+          'grant_type': 'urn:ietf:params:oauth:grant-type:device_code',
+          'client_id': p.clientId,
+          'device_code': p.deviceCode,
+          'redirect_uri': kMicrosoftGraphOAuthRedirectUri,
+        },
+      );
+      Map<String, dynamic>? tok;
+      try {
+        tok = jsonDecode(tokRes.body) as Map<String, dynamic>;
+      } on Object {
+        diagnostics.engine(
+          'MicrosoftGraphOAuth: token poll #$pollCount status=${tokRes.statusCode} '
+          'non-JSON body=${_responseBodySnippet(tokRes.body)}',
+        );
+        continue;
+      }
+      final err = tok['error'];
+      if (err is String) {
+        if (err == 'authorization_pending' || err == 'slow_down') {
+          final loud = err == 'slow_down' ||
+              pollCount <= 3 ||
+              pollCount % 6 == 0;
+          if (loud) {
+            diagnostics.engine(
+              'MicrosoftGraphOAuth: token poll #$pollCount '
+              'status=${tokRes.statusCode} error=$err',
+            );
+          }
+          continue;
+        }
+        final desc = tok['error_description'];
+        diagnostics.engine(
+          'MicrosoftGraphOAuth: token poll #$pollCount fatal error=$err '
+          'description=${desc is String ? _responseBodySnippet(desc, 240) : desc}',
+        );
+        await _dismissDeviceCodeAlert(p.db, p.alertId);
+        return null;
+      }
+      if (tokRes.statusCode != 200) {
+        diagnostics.engine(
+          'MicrosoftGraphOAuth: token poll #$pollCount status=${tokRes.statusCode} '
+          'body=${_responseBodySnippet(tokRes.body)}',
+        );
+        continue;
+      }
+      final access = tok['access_token'];
+      final refresh = tok['refresh_token'];
+      if (access is! String ||
+          access.isEmpty ||
+          refresh is! String ||
+          refresh.isEmpty) {
+        diagnostics.engine('MicrosoftGraphOAuth: token response missing fields');
+        await _dismissDeviceCodeAlert(p.db, p.alertId);
+        return null;
+      }
+      diagnostics.engine(
+        'MicrosoftGraphOAuth: token poll #$pollCount success account=${p.graphAccountKey} '
+        'expires_in=${tok['expires_in']}',
+      );
+      await _persistTokenResponse(
+        db: p.db,
+        secrets: p.secrets,
+        graphAccountKey: p.graphAccountKey,
+        accessToken: access,
+        refreshToken: refresh,
+        expiresInSec: _asInt(tok['expires_in']),
+      );
+      await _dismissDeviceCodeAlert(p.db, p.alertId);
+      diagnostics.engine(
+        'MicrosoftGraphOAuth: dismissed sign-in alert id=${p.alertId}',
+      );
+      return access;
+    }
+    diagnostics.engine(
+      'MicrosoftGraphOAuth: device code expired or deadline reached '
+      '(polls=$pollCount deadlineMs=${p.deadlineMs} nowMs=${_nowMs()})',
+    );
+    await _dismissDeviceCodeAlert(p.db, p.alertId);
+    return null;
   }
 
   Future<void> _dismissDeviceCodeAlert(AppDatabase db, int alertId) async {
@@ -468,6 +497,26 @@ class MicrosoftGraphOAuth {
           ),
         );
   }
+}
+
+class _DeviceCodePollParams {
+  const _DeviceCodePollParams({
+    required this.db,
+    required this.secrets,
+    required this.clientId,
+    required this.graphAccountKey,
+    required this.deviceCode,
+    required this.alertId,
+    required this.deadlineMs,
+  });
+
+  final AppDatabase db;
+  final SecretStore secrets;
+  final String clientId;
+  final String graphAccountKey;
+  final String deviceCode;
+  final int alertId;
+  final int deadlineMs;
 }
 
 int _asInt(Object? v) {

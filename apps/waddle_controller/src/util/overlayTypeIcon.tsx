@@ -5,6 +5,7 @@ import ImageIcon from '@mui/icons-material/Image';
 import OpenInFullIcon from '@mui/icons-material/OpenInFull';
 import HighlightOutlinedIcon from '@mui/icons-material/HighlightOutlined';
 import TerminalIcon from '@mui/icons-material/Terminal';
+import ToysOutlinedIcon from '@mui/icons-material/ToysOutlined';
 import type { ElementType } from 'react';
 
 const OVERLAY_TYPE_ICONS: Record<string, ElementType> = {
@@ -15,6 +16,7 @@ const OVERLAY_TYPE_ICONS: Record<string, ElementType> = {
   falling_images: ImageIcon,
   matrix_rain: TerminalIcon,
   edge_glow: HighlightOutlinedIcon,
+  floating_balloons: ToysOutlinedIcon,
 };
 
 function resolveOverlayTypeIcon(overlayType: string): ElementType | null {

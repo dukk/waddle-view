@@ -3,6 +3,7 @@ import type { SavedDisplay } from '@/storage/displays';
 import { prepareRjsfSchema } from '@/util/rjsfSchema';
 import { BirthdayConfettiConfigForm } from './BirthdayConfettiConfigForm';
 import { FallingImagesConfigForm } from './FallingImagesConfigForm';
+import { FloatingBalloonsConfigForm } from './FloatingBalloonsConfigForm';
 import { SchemaConfigForm } from './SchemaConfigForm';
 import { EdgeGlowConfigForm } from './EdgeGlowConfigForm';
 import { MatrixRainConfigForm } from './MatrixRainConfigForm';
@@ -47,6 +48,15 @@ export function OverlayConfigPanel({
     return (
       <FallingImagesConfigForm
         display={display}
+        formData={formData}
+        onChange={onChange}
+        disabled={disabled}
+      />
+    );
+  }
+  if (overlayType === 'floating_balloons') {
+    return (
+      <FloatingBalloonsConfigForm
         formData={formData}
         onChange={onChange}
         disabled={disabled}

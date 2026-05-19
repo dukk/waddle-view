@@ -170,7 +170,7 @@ void main() {
     expect(row, isNotNull);
     expect(row!.dataProvider, kMediaDataProviderPhotoBingIotd);
     expect(row.category, 'bing');
-    expect(row.pexelsPageUrl, 'https://www.bing.com/search?q=test');
+    expect(row.pageUrl, 'https://www.bing.com/search?q=test');
     expect(row.altText, 'Desert wide');
     expect(row.photographerName, 'Cam Example/Getty Images');
     expect(row.photographerUrl, '');
@@ -243,7 +243,7 @@ void main() {
         mediaBlobKey: oldKey,
         photographerName: 'x',
         photographerUrl: '',
-        pexelsPageUrl: '',
+        pageUrl: '',
         altText: const Value(''),
         fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(
           DateTime.now().millisecondsSinceEpoch -

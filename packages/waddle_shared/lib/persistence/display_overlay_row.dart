@@ -21,14 +21,14 @@ class DisplayOverlayRow {
   const DisplayOverlayRow({
     required this.id,
     required this.overlayType,
-    required this.name,
+    required this.label,
     required this.configJson,
     required this.configJsonSchema,
   });
 
   final String id;
   final String overlayType;
-  final String name;
+  final String label;
   final String configJson;
   final String? configJsonSchema;
 
@@ -36,7 +36,7 @@ class DisplayOverlayRow {
     return DisplayOverlayRow(
       id: row.read<String>('id'),
       overlayType: row.read<String>('overlay_type'),
-      name: row.read<String>('name'),
+      label: row.read<String>('label'),
       configJson: _readConfigJson(row),
       configJsonSchema: _readOptionalString(row, 'config_json_schema'),
     );

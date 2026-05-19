@@ -18,7 +18,7 @@ void main() {
             mediaBlobKey: 'missing_blob_key',
             photographerName: 'n',
             photographerUrl: 'https://example.com/p',
-            pexelsPageUrl: 'https://example.com',
+            pageUrl: 'https://example.com',
             fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
           ),
         );
@@ -47,7 +47,7 @@ void main() {
             mediaBlobKey: 'bk1',
             photographerName: 'n',
             photographerUrl: 'https://example.com/p',
-            pexelsPageUrl: 'https://example.com',
+            pageUrl: 'https://example.com',
             fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
           ),
         );
@@ -79,7 +79,7 @@ void main() {
             mediaBlobKey: 'bk1',
             photographerName: 'n',
             photographerUrl: 'https://example.com/p',
-            pexelsPageUrl: 'https://example.com',
+            pageUrl: 'https://example.com',
             fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
           ),
         );
@@ -109,7 +109,7 @@ void main() {
             mediaBlobKey: 'bk',
             photographerName: 'n',
             photographerUrl: 'https://example.com/p',
-            pexelsPageUrl: 'https://example.com',
+            pageUrl: 'https://example.com',
             fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
           ),
         );
@@ -128,7 +128,7 @@ void main() {
             mediaBlobKey: 'bk',
             photographerName: 'n',
             photographerUrl: 'https://example.com/p',
-            pexelsPageUrl: 'https://example.com',
+            pageUrl: 'https://example.com',
             fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
           ),
         );
@@ -159,7 +159,7 @@ void main() {
             mediaBlobKey: 'bk1',
             photographerName: 'n',
             photographerUrl: 'https://example.com/p',
-            pexelsPageUrl: 'https://example.com',
+            pageUrl: 'https://example.com',
             fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
           ),
         );
@@ -170,7 +170,7 @@ void main() {
             mediaBlobKey: 'bk2',
             photographerName: 'n',
             photographerUrl: 'https://example.com/p',
-            pexelsPageUrl: 'https://example.com',
+            pageUrl: 'https://example.com',
             fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(2),
           ),
         );
@@ -200,7 +200,7 @@ void main() {
             mediaBlobKey: 'bk',
             photographerName: 'n',
             photographerUrl: 'https://example.com/p',
-            pexelsPageUrl: 'https://example.com',
+            pageUrl: 'https://example.com',
             fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
           ),
         );

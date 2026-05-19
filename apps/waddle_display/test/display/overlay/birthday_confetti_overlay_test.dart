@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_display/display/overlay/birthday_confetti_overlay.dart'
     show BirthdayConfettiOverlay, birthdayConfettiCycleDuration;
-import '../../helpers/sample_palette_layers.dart';
-import 'package:waddle_display/theme/theme_palette_extension.dart';
 import 'package:waddle_shared/persistence/display_overlay_confetti_settings.dart'
-    show BirthdayConfettiScheduleSettings, kBirthdayConfettiFallSpeedMin;
-
-PaletteTertiaryLayers _samplePalette() => samplePaletteTertiaryLayers();
+    show
+        BirthdayConfettiScheduleSettings,
+        kBirthdayConfettiDefaultColorHexes,
+        kBirthdayConfettiFallSpeedMin;
 
 Future<void> _pumpFrames(WidgetTester tester, {int frames = 60}) async {
   for (var i = 0; i < frames; i++) {
@@ -56,14 +55,11 @@ void main() {
     );
   });
 
-  testWidgets('uses palette accents when colors empty and extension present', (
-    tester,
-  ) async {
+  testWidgets('uses stock festive palette when colors empty', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-          extensions: <ThemeExtension<dynamic>>[_samplePalette()],
         ),
         home: Scaffold(
           body: BirthdayConfettiOverlay(
@@ -79,12 +75,12 @@ void main() {
       find.byKey(const Key('birthday_confetti_custom_paint')),
       findsOneWidget,
     );
+    expect(kBirthdayConfettiDefaultColorHexes, hasLength(4));
   });
 
   testWidgets('uses custom hex colors from settings', (tester) async {
     final settings = BirthdayConfettiScheduleSettings.parse(
-      '{"shapes":["rect","circle","star","streamer"],'
-      '"colors":["#FF00AA","#11223344"]}',
+      '{"colors":["#FF00AA","#11223344"]}',
     );
     await tester.pumpWidget(
       MaterialApp(

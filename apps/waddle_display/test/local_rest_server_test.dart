@@ -50,7 +50,7 @@ Future<void> _seedContentTypes(AppDatabase db) async {
           mediaBlobKey: 'blob/p1',
           photographerName: 'n',
           photographerUrl: 'https://x/p',
-          pexelsPageUrl: 'https://x/photo',
+          pageUrl: 'https://x/photo',
           altText: const Value(''),
           fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(4),
         ),

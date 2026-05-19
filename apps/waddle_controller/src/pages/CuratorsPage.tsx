@@ -52,14 +52,16 @@ import {
   type CuratorScheduleRule,
   type CuratorStatePredicateMeta,
 } from '@/api/curatorConfigurations';
+import { DisplayThemePaletteSwatches } from '@/components/DisplayThemePaletteSwatches';
 import { CuratorSliderField } from '@/components/CuratorSliderField';
 import { CuratorCategoriesSection } from '@/components/curator/CuratorCategoriesSection';
 import { RejectTermsSection } from '@/components/curator/RejectTermsSection';
 import {
-  CURATOR_HISTORY_DEPTH,
   CURATOR_PROGRAM_DURATION,
   CURATOR_TICKER_PIXELS_PER_SECOND,
   CURATOR_TICKER_PROGRAM_DURATION,
+  curatorThemeById,
+  curatorThemeIds,
 } from '@/constants/curatorDisplaySettings';
 import { TickerPixelsPerSecondField } from '@/components/TickerPixelsPerSecondField';
 import { completeDialogSave } from '@/util/dialogSave';
@@ -353,8 +355,7 @@ function CuratorConfigurationsSection({
                 </TableCell>
                 <TableCell>{row.sort_order}</TableCell>
                 <TableCell>
-                  {row.program_duration_seconds}s / {row.ticker_program_duration_seconds}s · depth{' '}
-                  {row.history_depth}
+                  {row.program_duration_seconds}s / {row.ticker_program_duration_seconds}s
                 </TableCell>
                 <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
                   <Button size="small" onClick={() => setEditId(row.id)}>
@@ -402,7 +403,9 @@ function CuratorConfigurationsSection({
 
 type CatalogOption = { id: string; label: string };
 
-type ConfigDialogTabId = 'screens' | 'ticker' | 'schedule' | 'overlay' | 'advanced';
+type ConfigDialogTabId = 'general' | 'screens' | 'ticker' | 'schedule' | 'overlay' | 'advanced';
+
+const DISPLAY_DEFAULT_THEME_VALUE = '';
 
 /** Operator-facing label for catalog members (name only; id fallback when unnamed). */
 function catalogMemberDisplayLabel(name: string | undefined | null, id: string): string {
@@ -440,8 +443,8 @@ function CuratorConfigurationDialog({
   const [tickerPixelsPerSecond, setTickerPixelsPerSecond] = useState<number>(
     CURATOR_TICKER_PIXELS_PER_SECOND.default,
   );
-  const [historyDepth, setHistoryDepth] = useState<number>(CURATOR_HISTORY_DEPTH.default);
-  const [dialogTab, setDialogTab] = useState<ConfigDialogTabId>('screens');
+  const [themeIdOverride, setThemeIdOverride] = useState<string | null>(null);
+  const [dialogTab, setDialogTab] = useState<ConfigDialogTabId>('general');
   const [requireNewsPhoto, setRequireNewsPhoto] = useState(true);
   const [tickerEnabled, setTickerEnabled] = useState(true);
   const [defaultConfig, setDefaultConfig] = useState(false);
@@ -497,7 +500,7 @@ function CuratorConfigurationDialog({
           setProgramDuration(detail.program_duration_seconds);
           setTickerProgramDuration(detail.ticker_program_duration_seconds);
           setTickerPixelsPerSecond(detail.ticker_pixels_per_second);
-          setHistoryDepth(detail.history_depth);
+          setThemeIdOverride(detail.theme_id_override);
           setRequireNewsPhoto(detail.require_news_photo_for_screens);
           setTickerEnabled(detail.ticker_enabled);
           setDefaultConfig(detail.default_config);
@@ -546,7 +549,7 @@ function CuratorConfigurationDialog({
     program_duration_seconds: programDuration,
     ticker_program_duration_seconds: tickerProgramDuration,
     ticker_pixels_per_second: tickerPixelsPerSecond,
-    history_depth: historyDepth,
+    theme_id_override: themeIdOverride,
     require_news_photo_for_screens: requireNewsPhoto,
     ticker_enabled: tickerEnabled,
     default_config: defaultConfig,
@@ -623,6 +626,7 @@ function CuratorConfigurationDialog({
                   variant="scrollable"
                   scrollButtons="auto"
                 >
+                  <Tab label="General" value="general" />
                   <Tab label="Screens" value="screens" />
                   <Tab label="Ticker" value="ticker" />
                   <Tab label="Schedule" value="schedule" />
@@ -630,6 +634,62 @@ function CuratorConfigurationDialog({
                   <Tab label="Advanced" value="advanced" />
                 </Tabs>
               </Box>
+              {dialogTab === 'general' && (
+                <Stack spacing={2}>
+                  <FormControl fullWidth disabled={!canWrite}>
+                    <InputLabel id="curator-theme-override-label">Theme while active</InputLabel>
+                    <Select
+                      labelId="curator-theme-override-label"
+                      label="Theme while active"
+                      value={themeIdOverride ?? DISPLAY_DEFAULT_THEME_VALUE}
+                      onChange={(e) => {
+                        const v = String(e.target.value);
+                        setThemeIdOverride(v === DISPLAY_DEFAULT_THEME_VALUE ? null : v);
+                      }}
+                      renderValue={(value) => {
+                        const id = String(value);
+                        if (id === DISPLAY_DEFAULT_THEME_VALUE) {
+                          return 'Use display default';
+                        }
+                        const theme = curatorThemeById(id);
+                        if (!theme) {
+                          return id;
+                        }
+                        return (
+                          <Stack
+                            direction="row"
+                            alignItems="center"
+                            spacing={1}
+                            sx={{ width: '100%', pr: 0.5 }}
+                          >
+                            <Box
+                              component="span"
+                              sx={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}
+                            >
+                              {theme.label}
+                            </Box>
+                            <DisplayThemePaletteSwatches groups={theme.preview} />
+                          </Stack>
+                        );
+                      }}
+                    >
+                      <MenuItem value={DISPLAY_DEFAULT_THEME_VALUE}>Use display default</MenuItem>
+                      {curatorThemeIds.map((t) => (
+                        <MenuItem key={t.id} value={t.id} sx={{ gap: 1 }}>
+                          <Box component="span" sx={{ flex: 1 }}>
+                            {t.label}
+                          </Box>
+                          <DisplayThemePaletteSwatches groups={t.preview} />
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75, display: 'block' }}>
+                      When this configuration is the active primary curator (base or exclusive), this
+                      theme replaces the display default from Display settings.
+                    </Typography>
+                  </FormControl>
+                </Stack>
+              )}
               {dialogTab === 'screens' && (
                 <Stack spacing={2}>
                   {membersOverlayOnly ? (
@@ -649,15 +709,6 @@ function CuratorConfigurationDialog({
                         disabled={!canWrite}
                         formatValue={formatProgramDurationWithSeconds}
                       />
-                      <CuratorSliderField
-                        label="History depth"
-                        value={historyDepth}
-                        onChange={setHistoryDepth}
-                        min={CURATOR_HISTORY_DEPTH.min}
-                        max={CURATOR_HISTORY_DEPTH.max}
-                        step={CURATOR_HISTORY_DEPTH.step}
-                        disabled={!canWrite}
-                      />
                       <FormControlLabel
                         control={
                           <Checkbox
@@ -666,7 +717,7 @@ function CuratorConfigurationDialog({
                             disabled={!canWrite}
                           />
                         }
-                        label="Require news photo for RSS screens"
+                        label="Require news photo for news screens"
                       />
                       <MemberAutocomplete
                         label="Screens"

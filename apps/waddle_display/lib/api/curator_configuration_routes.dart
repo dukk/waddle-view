@@ -129,7 +129,6 @@ void registerCuratorConfigurationRoutes(
             sortOrder: Value(_readInt(map['sort_order']) ?? 0),
             programDurationSeconds:
                 Value(_readInt(map['program_duration_seconds']) ?? 180),
-            historyDepth: Value(_readInt(map['history_depth']) ?? 5),
             requireNewsPhotoForScreens: Value(
               _readBool(map['require_news_photo_for_screens'], defaultValue: true),
             ),
@@ -204,9 +203,6 @@ void registerCuratorConfigurationRoutes(
                 _readInt(map['program_duration_seconds']) ??
                     existing.programDurationSeconds,
               )
-            : const Value.absent(),
-        historyDepth: map.containsKey('history_depth')
-            ? Value(_readInt(map['history_depth']) ?? existing.historyDepth)
             : const Value.absent(),
         requireNewsPhotoForScreens: map.containsKey('require_news_photo_for_screens')
             ? Value(
@@ -452,7 +448,6 @@ Map<String, Object?> _configurationSummaryJson(CuratorConfiguration c) {
     'layer': c.layer,
     'sort_order': c.sortOrder,
     'program_duration_seconds': c.programDurationSeconds,
-    'history_depth': c.historyDepth,
     'require_news_photo_for_screens': c.requireNewsPhotoForScreens,
     'ticker_enabled': c.tickerEnabled,
     'ticker_program_duration_seconds': c.tickerProgramDurationSeconds,

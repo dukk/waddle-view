@@ -4,25 +4,52 @@ import 'dart:convert';
 const String kOverlayBlobKeyPrefix = 'overlay/';
 
 /// Minimum seconds between falling-image spawns.
-const int kFallingImagesDropIntervalSecMin = 15;
+const int kFallingImagesDropIntervalSecMin = 5;
 
 /// Maximum seconds between falling-image spawns.
 const int kFallingImagesDropIntervalSecMax = 180;
 
-/// Minimum vertical speed (screen-heights per second; lower = slower).
-const double kFallingImagesFallSpeedMin = 0.05;
+/// Minimum vertical speed in logical pixels per second.
+const double kFallingImagesFallSpeedPxPerSecMin = 30;
 
-/// Maximum vertical speed (screen-heights per second).
-const double kFallingImagesFallSpeedMax = 1.0;
+/// Maximum vertical speed in logical pixels per second.
+const double kFallingImagesFallSpeedPxPerSecMax = 800;
+
+/// Default vertical speed in logical pixels per second.
+const double kFallingImagesFallSpeedPxPerSecDefault = 130;
+
+/// Legacy `fall_speed` values at or below this were screen-heights per second.
+const double kFallingImagesLegacyFallSpeedMax = 1.0;
+
+/// Reference viewport height used when converting legacy screen-height speeds.
+const double kFallingImagesLegacyFallSpeedRefHeightPx = 1080;
+
+/// Resolves stored `fall_speed` to pixels per second (migrates legacy fractions).
+double resolveFallingImagesFallSpeedPxPerSec(num raw) {
+  var v = raw.toDouble();
+  if (v <= kFallingImagesLegacyFallSpeedMax) {
+    v *= kFallingImagesLegacyFallSpeedRefHeightPx;
+  }
+  return v.clamp(
+    kFallingImagesFallSpeedPxPerSecMin,
+    kFallingImagesFallSpeedPxPerSecMax,
+  );
+}
 
 /// Minimum base image size as a fraction of viewport shortest side.
 const double kFallingImagesImageScaleMin = 0.04;
 
 /// Maximum base image size as a fraction of viewport shortest side.
-const double kFallingImagesImageScaleMax = 0.35;
+const double kFallingImagesImageScaleMax = 0.70;
 
 /// Maximum per-sprite random size multiplier spread (0 = fixed size).
 const double kFallingImagesScaleJitterMax = 1.0;
+
+/// Minimum rendered sprite edge length in logical pixels.
+const double kFallingImagesSpriteSizePxMin = 48.0;
+
+/// Maximum rendered sprite edge length in logical pixels.
+const double kFallingImagesSpriteSizePxMax = 440.0;
 
 final RegExp overlayBlobKeyPattern = RegExp(r'^overlay/[a-z0-9][a-z0-9_/.-]*$');
 
@@ -42,7 +69,7 @@ class FallingImagesScheduleSettings {
       FallingImagesScheduleSettings(
         imageBlobKeys: <String>[],
         dropIntervalSec: 45,
-        fallSpeed: 0.12,
+        fallSpeed: kFallingImagesFallSpeedPxPerSecDefault,
         imageScale: 0.12,
         scaleJitter: 0.33,
       );
@@ -52,7 +79,7 @@ class FallingImagesScheduleSettings {
   /// Average seconds between occasional image drops.
   final int dropIntervalSec;
 
-  /// Vertical speed as screen-heights per second (lower = slower fall).
+  /// Vertical speed in logical pixels per second.
   final double fallSpeed;
 
   /// Base sprite size as a fraction of viewport shortest side.
@@ -99,10 +126,7 @@ class FallingImagesScheduleSettings {
     var fallSpeed = FallingImagesScheduleSettings.defaults.fallSpeed;
     final rawSpeed = map['fall_speed'];
     if (rawSpeed is num) {
-      fallSpeed = rawSpeed.toDouble().clamp(
-        kFallingImagesFallSpeedMin,
-        kFallingImagesFallSpeedMax,
-      );
+      fallSpeed = resolveFallingImagesFallSpeedPxPerSec(rawSpeed);
     }
 
     var imageScale = FallingImagesScheduleSettings.defaults.imageScale;
@@ -164,9 +188,8 @@ String? normalizeFallingImagesConfigJsonString(String raw) {
     );
   }
   if (map.containsKey('fall_speed') && map['fall_speed'] is num) {
-    out['fall_speed'] = (map['fall_speed'] as num).toDouble().clamp(
-      kFallingImagesFallSpeedMin,
-      kFallingImagesFallSpeedMax,
+    out['fall_speed'] = resolveFallingImagesFallSpeedPxPerSec(
+      map['fall_speed'] as num,
     );
   }
   if (map.containsKey('image_scale') && map['image_scale'] is num) {

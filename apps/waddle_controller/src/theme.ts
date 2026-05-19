@@ -5,6 +5,21 @@ const lightPrimary = '#4e5df8';
 const darkPrimary = '#a8b4ff';
 const darkPrimaryHover = '#c5ceff';
 
+/** Info alerts: align with primary instead of MUI default cyan. */
+function infoAlertStyleOverrides(isDark: boolean) {
+  return isDark
+    ? {
+        color: alpha('#e8e9ef', 0.88),
+        backgroundColor: alpha(darkPrimary, 0.12),
+        '& .MuiAlert-icon': { color: darkPrimary },
+      }
+    : {
+        color: '#3d4460',
+        backgroundColor: alpha(lightPrimary, 0.1),
+        '& .MuiAlert-icon': { color: lightPrimary },
+      };
+}
+
 export function createAppTheme(mode: 'light' | 'dark') {
   const isDark = mode === 'dark';
 
@@ -19,6 +34,17 @@ export function createAppTheme(mode: 'light' | 'dark') {
             contrastText: '#0f1118',
           }
         : { main: lightPrimary },
+      info: isDark
+        ? {
+            main: darkPrimary,
+            light: alpha(darkPrimary, 0.12),
+            dark: '#7d8ef5',
+          }
+        : {
+            main: lightPrimary,
+            light: alpha(lightPrimary, 0.1),
+            dark: '#3d4ac4',
+          },
       ...(isDark
         ? {
             background: { default: '#12131a', paper: '#1a1c26' },
@@ -79,6 +105,23 @@ export function createAppTheme(mode: 'light' | 'dark') {
       MuiDrawer: {
         styleOverrides: {
           paper: { backgroundColor: '#1a1c2c', color: '#e8e9ef' },
+        },
+      },
+      MuiAlert: {
+        styleOverrides: {
+          standardInfo: infoAlertStyleOverrides(isDark),
+          filledInfo: infoAlertStyleOverrides(isDark),
+          outlinedInfo: isDark
+            ? {
+                color: alpha('#e8e9ef', 0.88),
+                borderColor: alpha(darkPrimary, 0.35),
+                '& .MuiAlert-icon': { color: darkPrimary },
+              }
+            : {
+                color: '#3d4460',
+                borderColor: alpha(lightPrimary, 0.35),
+                '& .MuiAlert-icon': { color: lightPrimary },
+              },
         },
       },
     },

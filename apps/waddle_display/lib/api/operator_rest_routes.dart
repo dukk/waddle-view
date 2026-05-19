@@ -13,6 +13,8 @@ import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/auth/role_permissions.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_shared/persistence/config_json_documentation.dart';
+import 'package:waddle_shared/persistence/config_json_schemas_bundle.dart';
+import 'rest_include_params.dart';
 import 'package:waddle_shared/persistence/content_category_defaults.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
@@ -143,55 +145,36 @@ void registerOperatorRestRoutes(
     return Response.ok('{}', headers: {'content-type': 'application/json'});
   });
 
-  r.get('/v1/meta/screen-types', (Request req) async {
-    final items = <Map<String, Object?>>[];
-    for (final t in kScreenLayoutWidgetTypes) {
-      final doc = screenConfigJsonDocForType(t);
-      items.add({
-        'screen_type': t,
-        'config_json_schema': _jsonFieldDecode(doc.schema),
-        'example_config_json': _jsonFieldDecode(doc.example),
-      });
-    }
+  r.get('/v1/meta/config-schemas', (Request req) async {
     return Response.ok(
-      jsonEncode({'items': items}),
+      jsonEncode(buildConfigJsonSchemasBundle()),
+      headers: {'content-type': 'application/json'},
+    );
+  });
+
+  r.get('/v1/meta/screen-types', (Request req) async {
+    return Response.ok(
+      jsonEncode({'items': buildScreenTypeConfigJsonMetaItems()}),
       headers: {'content-type': 'application/json'},
     );
   });
 
   r.get('/v1/meta/ticker-types', (Request req) async {
-    final items = <Map<String, Object?>>[];
-    for (final t in kTickerSlotDefinitionTypes) {
-      final doc = tickerSlotConfigJsonDocForType(t);
-      items.add({
-        'ticker_type': t,
-        'config_json_schema': _jsonFieldDecode(doc.schema),
-        'example_config_json': _jsonFieldDecode(doc.example),
-      });
-    }
     return Response.ok(
-      jsonEncode({'items': items}),
+      jsonEncode({'items': buildTickerTypeConfigJsonMetaItems()}),
       headers: {'content-type': 'application/json'},
     );
   });
 
   r.get('/v1/meta/overlay-types', (Request req) async {
-    final items = <Map<String, Object?>>[];
-    for (final t in kBuiltinOverlayTypes) {
-      final doc = displayOverlayConfigJsonDocForType(t);
-      items.add({
-        'overlay_type': t,
-        'config_json_schema': _jsonFieldDecode(doc.schema),
-        'example_config_json': _jsonFieldDecode(doc.example),
-      });
-    }
     return Response.ok(
-      jsonEncode({'items': items}),
+      jsonEncode({'items': buildOverlayTypeConfigJsonMetaItems()}),
       headers: {'content-type': 'application/json'},
     );
   });
 
   r.get('/v1/ticker/tapes', (Request req) async {
+    final includeDocs = includeConfigSchemaFromRequest(req);
     final rows = await (db.select(db.tickerTapes)
           ..orderBy([
             (t) => OrderingTerm.asc(t.sortOrder),
@@ -204,15 +187,17 @@ void registerOperatorRestRoutes(
           for (final e in rows)
             {
               'id': e.id,
-              'name': e.name,
+              'label': e.label,
               'description': e.description,
               'ticker_type': e.tickerType,
               'frequency_weight': e.frequencyWeight,
               'sort_order': e.sortOrder,
               'config_key': e.configKey,
               'config_json': _jsonFieldDecode(e.configJson),
-              'config_json_schema': _jsonFieldDecode(e.configJsonSchema),
-              'example_config_json': _jsonFieldDecode(e.exampleConfigJson),
+              if (includeDocs) ...{
+                'config_json_schema': _jsonFieldDecode(e.configJsonSchema),
+                'example_config_json': _jsonFieldDecode(e.exampleConfigJson),
+              },
             },
         ],
       }),
@@ -255,7 +240,7 @@ void registerOperatorRestRoutes(
           headers: {'content-type': 'application/json'});
     }
     final doc = tickerSlotConfigJsonDocForType(tickerType);
-    final name = (map['name'] as String?)?.trim();
+    final label = (map['label'] as String?)?.trim();
     final description = (map['description'] as String?)?.trim() ?? '';
     final frequencyWeight = (map['frequency_weight'] as num?)?.toInt() ?? 100;
     final sortOrder = (map['sort_order'] as num?)?.toInt() ?? 0;
@@ -265,7 +250,7 @@ void registerOperatorRestRoutes(
       final t = rawCk.trim();
       configKey = t.isEmpty ? null : t;
     }
-    final resolvedName = (name == null || name.isEmpty) ? id : name;
+    final resolvedLabel = (label == null || label.isEmpty) ? id : label;
     String configJsonStr = '{}';
     if (map.containsKey('config_json')) {
       try {
@@ -279,7 +264,7 @@ void registerOperatorRestRoutes(
     await db.into(db.tickerTapes).insert(
           TickerTapesCompanion.insert(
             id: id,
-            name: resolvedName,
+            label: resolvedLabel,
             description: Value(description),
             tickerType: tickerType,
             frequencyWeight: Value(frequencyWeight),
@@ -333,9 +318,9 @@ void registerOperatorRestRoutes(
       configKeyVal =
           Value(ck == null || ck.trim().isEmpty ? null : ck.trim());
     }
-    final name = map.containsKey('name')
-        ? ((map['name'] as String?)?.trim() ?? '')
-        : existing.name;
+    final label = map.containsKey('label')
+        ? ((map['label'] as String?)?.trim() ?? '')
+        : existing.label;
     final description = map.containsKey('description')
         ? ((map['description'] as String?)?.trim() ?? '')
         : existing.description;
@@ -369,7 +354,7 @@ void registerOperatorRestRoutes(
     final doc = tickerSlotConfigJsonDocForType(tickerType);
     await (db.update(db.tickerTapes)..where((t) => t.id.equals(id))).write(
       TickerTapesCompanion(
-        name: Value(name),
+        label: Value(label),
         description: Value(description),
         frequencyWeight: Value(weight),
         sortOrder: Value(sortOrder),
@@ -765,7 +750,7 @@ void registerOperatorRestRoutes(
         configJson: Value(configJson),
       ),
     );
-    await syncIntegrationAccountLinks(db);
+    await syncIntegrationAccountLinks(db, secrets: secrets);
     await onConfigChanged();
     return Response.ok('{}', headers: {'content-type': 'application/json'});
   });
@@ -823,7 +808,7 @@ void registerOperatorRestRoutes(
           body: '{"error":"invalid_screen_layout"}',
           headers: {'content-type': 'application/json'});
     }
-    final name = (map['name'] as String?)?.trim();
+    final label = (map['label'] as String?)?.trim();
     final description = (map['description'] as String?)?.trim() ?? '';
     final minDwell = (map['min_dwell_seconds'] as num?)?.toInt() ?? 8;
     final maxDwell = (map['max_dwell_seconds'] as num?)?.toInt() ?? 15;
@@ -838,11 +823,11 @@ void registerOperatorRestRoutes(
         (map['min_placements_per_program'] as num?)?.toInt() ?? 0;
     final maxPlacements = (map['max_placements_per_program'] as num?)?.toInt();
     final dataKey = (map['data_key'] as String?)?.trim() ?? '';
-    final resolvedName = (name == null || name.isEmpty) ? id : name;
+    final resolvedLabel = (label == null || label.isEmpty) ? id : label;
     await db.into(db.screens).insert(
           ScreensCompanion.insert(
             id: id,
-            name: resolvedName,
+            label: resolvedLabel,
             description: Value(description),
             screenType: screenType,
             configJson: Value(configJsonStr),
@@ -914,9 +899,9 @@ void registerOperatorRestRoutes(
           headers: {'content-type': 'application/json'});
     }
     final doc = screenConfigJsonDocForType(screenType);
-    final name = map.containsKey('name')
-        ? ((map['name'] as String?)?.trim() ?? '')
-        : existing.name;
+    final label = map.containsKey('label')
+        ? ((map['label'] as String?)?.trim() ?? '')
+        : existing.label;
     final description = map.containsKey('description')
         ? ((map['description'] as String?)?.trim() ?? '')
         : existing.description;
@@ -952,7 +937,7 @@ void registerOperatorRestRoutes(
         : existing.dataKey;
     await (db.update(db.screens)..where((t) => t.id.equals(id))).write(
       ScreensCompanion(
-        name: Value(name),
+        label: Value(label),
         description: Value(description),
         screenType: Value(screenType),
         configJson: Value(resolvedConfigJson),

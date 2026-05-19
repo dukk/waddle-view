@@ -1,3 +1,5 @@
+import type { DisplayImageOverlaySettings } from '@/constants/displayImageOverlaySettings';
+
 export type ControllerTimeFormat = '12h' | '24h';
 export type ControllerDateOrder = 'mdy' | 'dmy' | 'ymd';
 
@@ -8,12 +10,16 @@ export type DateTimeFormatPrefs = {
 
 export type DisplaySettings = {
   display_theme_id: string;
+  /** Max screen programs for back-nav; shared across all curator configurations. */
+  display_program_history_depth: number;
   display_text_scale_screen: string;
   display_text_scale_ticker: string;
   /** IANA id from `display.timezone` (e.g. `America/Chicago`). */
   display_timezone: string;
   controller_time_format: ControllerTimeFormat;
   controller_date_order: ControllerDateOrder;
+  /** Always-on logo/watermark (`display.image_overlay` KV). */
+  display_image_overlay: DisplayImageOverlaySettings;
   /** Roles that may start adoption challenges. */
   adoption_allowed_roles?: string[];
   /** @deprecated Use `adoption_allowed_roles`; true when that list is non-empty. */

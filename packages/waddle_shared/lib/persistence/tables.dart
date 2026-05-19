@@ -11,6 +11,12 @@ class Integrations extends Table {
   TextColumn get configJson => text().nullable()();
   TextColumn get configJsonSchema => text().nullable()();
 
+  /// True when [integrationType] requires linked integration accounts.
+  BoolColumn get requiresAccounts => boolean().withDefault(const Constant(false))();
+
+  /// Denormalized account setup status for list queries (see [refreshIntegrationAccountsReady]).
+  BoolColumn get accountsReady => boolean().withDefault(const Constant(true))();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
@@ -172,6 +178,9 @@ const String kOverlayTypeMatrixRain = 'matrix_rain';
 /// Pulsing colored vignette along screen edges (e.g. alarms).
 const String kOverlayTypeEdgeGlow = 'edge_glow';
 
+/// Vector balloons rising from the bottom with animated strings.
+const String kOverlayTypeFloatingBalloons = 'floating_balloons';
+
 /// Built-in overlay types exposed via `GET /v1/meta/overlay-types`.
 const List<String> kBuiltinOverlayTypes = [
   kOverlayTypeShapeRain,
@@ -180,6 +189,7 @@ const List<String> kBuiltinOverlayTypes = [
   kOverlayTypeFallingImages,
   kOverlayTypeMatrixRain,
   kOverlayTypeEdgeGlow,
+  kOverlayTypeFloatingBalloons,
 ];
 
 /// Seed row id for Wattle View's birthday bouncing message overlay.
@@ -197,6 +207,9 @@ const String kDefaultBirthdayConfettiOverlayId = 'default_birthday_confetti';
 
 /// Seed row id for the default falling duck images overlay.
 const String kDefaultFallingDucksOverlayId = 'default_falling_ducks';
+
+/// Seed row id for the default floating balloons overlay.
+const String kDefaultFloatingBalloonsOverlayId = 'default_floating_balloons';
 
 /// Blob keys for seeded duck SVG assets used by [kDefaultFallingDucksOverlayId].
 const String kOverlayBlobKeyDuckMascot = 'overlay/pool/duck_mascot';
@@ -239,7 +252,7 @@ class Screens extends Table {
   String get tableName => 'screens';
 
   TextColumn get id => text()();
-  TextColumn get name => text()();
+  TextColumn get label => text()();
   TextColumn get description => text().withDefault(const Constant(''))();
 
   /// Widget `type` string (e.g. `weather`, `news`); see `kScreenLayoutWidgetTypes`.
@@ -272,7 +285,7 @@ class Screens extends Table {
 /// Backed by the SQLite table `ticker_tapes` (formerly `ticker_definitions`).
 class TickerTapes extends Table {
   TextColumn get id => text()();
-  TextColumn get name => text()();
+  TextColumn get label => text()();
   TextColumn get description => text().withDefault(const Constant(''))();
 
   /// One of: `time`, `weather`, `news`, `quote`, `stocks`, `custom`.
@@ -708,7 +721,7 @@ class Photos extends Table {
   TextColumn get mediaBlobKey => text()();
   TextColumn get photographerName => text()();
   TextColumn get photographerUrl => text()();
-  TextColumn get pexelsPageUrl => text()();
+  TextColumn get pageUrl => text()();
   TextColumn get altText => text().withDefault(const Constant(''))();
   DateTimeColumn get fetchedAtMs => dateTime()();
 

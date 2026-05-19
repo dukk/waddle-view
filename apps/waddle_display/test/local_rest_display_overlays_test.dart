@@ -22,7 +22,7 @@ void main() {
       body: jsonEncode({
         'id': 'x_test_overlay',
         'overlay_type': kOverlayTypeShapeRain,
-        'name': 'Test',
+        'label': 'Test',
         'messages_json': ['Hi'],
       }),
     );
@@ -40,11 +40,11 @@ void main() {
     final patch = await http.patch(
       Uri.parse('${h.baseUrl}/v1/display/overlays/x_test_overlay'),
       headers: h.authHeaders,
-      body: jsonEncode({'name': 'Updated'}),
+      body: jsonEncode({'label': 'Updated'}),
     );
     expect(patch.statusCode, 200);
     final after = await fetchDisplayOverlays(db);
-    expect(after.single.name, 'Updated');
+    expect(after.single.label, 'Updated');
 
     final del = await http.delete(
       Uri.parse('${h.baseUrl}/v1/display/overlays/x_test_overlay'),
@@ -66,7 +66,7 @@ void main() {
       Uri.parse('${h.baseUrl}/v1/display/overlays'),
       headers: h.authHeaders,
       body: jsonEncode({
-        'name': "Mother's Day hearts",
+        'label': "Mother's Day hearts",
         'overlay_type': kOverlayTypeShapeRain,
         'config_json': {'messages': ['Hi']},
       }),
@@ -76,7 +76,7 @@ void main() {
     expect(body['id'], 'mother_s_day_hearts');
 
     final rows = await fetchDisplayOverlays(db);
-    expect(rows.single.name, "Mother's Day hearts");
+    expect(rows.single.label, "Mother's Day hearts");
   });
 
   test('display overlays REST birthday confetti config_json', () async {
@@ -92,9 +92,8 @@ void main() {
       body: jsonEncode({
         'id': 'bd_test_overlay',
         'overlay_type': kOverlayTypeBirthdayConfetti,
-        'name': 'Birthday',
+        'label': 'Birthday',
         'config_json': {
-          'shapes': ['circle', 'rect'],
           'colors': ['#FF00AA'],
           'density': 0.55,
           'fall_speed': 0.2,
@@ -127,8 +126,8 @@ void main() {
       body: jsonEncode({
         'id': 'bad_confetti',
         'overlay_type': kOverlayTypeBirthdayConfetti,
-        'name': 'x',
-        'config_json': {'shapes': ['not_a_shape']},
+        'label': 'x',
+        'config_json': {'fall_speed': 'slow'},
       }),
     );
     expect(post.statusCode, 400);
@@ -161,7 +160,7 @@ void main() {
     final patch404 = await http.patch(
       Uri.parse('${h.baseUrl}/v1/display/overlays/ghost'),
       headers: h.authHeaders,
-      body: jsonEncode({'name': 'ghost'}),
+      body: jsonEncode({'label': 'ghost'}),
     );
     expect(patch404.statusCode, 404);
 
@@ -185,7 +184,7 @@ void main() {
       body: jsonEncode({
         'id': 'bounce_rest_test',
         'overlay_type': kOverlayTypeBouncingMessage,
-        'name': 'Bounce',
+        'label': 'Bounce',
         'config_json': {
           'messages': ['Ping'],
           'color': '#00AAFF',
@@ -226,7 +225,7 @@ void main() {
       body: jsonEncode({
         'id': 'fall_rest_test',
         'overlay_type': kOverlayTypeFallingImages,
-        'name': 'Falling',
+        'label': 'Falling',
         'config_json': {
           'image_blob_keys': [blobKey],
           'drop_interval_sec': 45,
@@ -235,5 +234,27 @@ void main() {
       }),
     );
     expect(post.statusCode, 200);
+  });
+
+  test('display overlays REST uploads SVG blob', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureOverlaysTableExists(db);
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+
+    const svg =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>';
+    final upload = await http.post(
+      Uri.parse('${h.baseUrl}/v1/display/overlays/blobs'),
+      headers: h.authHeaders,
+      body: jsonEncode({
+        'bytes_base64': base64Encode(utf8.encode(svg)),
+        'content_type': 'image/svg+xml',
+      }),
+    );
+    expect(upload.statusCode, 200, reason: upload.body);
+    final decoded = jsonDecode(upload.body) as Map<String, dynamic>;
+    expect(decoded['blob_key'], startsWith('overlay/pool/'));
   });
 }

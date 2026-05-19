@@ -135,19 +135,19 @@ void main() {
         .insert(
           ScreensCompanion.insert(
             id: 'waddlectl_test_screen',
-            name: 'T',
+            label: 'T',
             screenType: 'clock',
           ),
         );
 
     await backend.updateScreen(
       id: 'waddlectl_test_screen',
-      name: 'Renamed',
+      label: 'Renamed',
       minDwellSeconds: 10,
       maxDwellSeconds: 14,
     );
     final row = await backend.describeScreen('waddlectl_test_screen');
-    expect(row!['name'], 'Renamed');
+    expect(row!['label'], 'Renamed');
     expect(row['min_dwell_seconds'], 10);
     expect(row['max_dwell_seconds'], 14);
   });

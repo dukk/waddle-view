@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
@@ -6,6 +7,8 @@ import 'package:http/http.dart' as http;
 import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/config/google_kv.dart';
 import 'package:waddle_shared/integration_accounts/integration_account_alert_label.dart';
+import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
+import 'package:waddle_shared/integration_accounts/oauth_sign_in_alerts.dart';
 import 'package:waddle_shared/integrations/integration_kv_repository.dart';
 import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import 'package:waddle_shared/persistence/database.dart';
@@ -39,7 +42,7 @@ class GoogleOAuth {
   final CollectDiagnostics diagnostics;
 
   /// When [pollDeviceCode] is false, a device-code flow may still start and insert
-  /// a sign-in alert, but token polling stops immediately so callers can return.
+  /// a sign-in alert; token polling continues in the background so callers can return.
   Future<String?> ensureAccessToken({
     required AppDatabase db,
     required SecretStore secrets,
@@ -152,6 +155,12 @@ class GoogleOAuth {
     }
 
     try {
+      await dismissOAuthSignInAlertsForAccount(
+        db,
+        accountId: googleAccountKey,
+        accountTypeId: kIntegrationAccountTypeGoogle,
+      );
+
       final startRes = await _http.post(
         Uri.parse('https://oauth2.googleapis.com/device/code'),
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -202,66 +211,96 @@ class GoogleOAuth {
         valueType: kIntegrationKvTypeIntMs,
       );
 
+      final deadline = now + (expiresIn > 0 ? expiresIn * 1000 : 900 * 1000);
+      final pollParams = _GoogleDeviceCodePollParams(
+        db: db,
+        secrets: secrets,
+        clientId: clientId,
+        googleAccountKey: googleAccountKey,
+        deviceCode: deviceCode,
+        alertId: alertId,
+        deadlineMs: deadline,
+      );
+
       if (!pollDeviceCode) {
+        unawaited(
+          _pollDeviceCodeUntilDone(pollParams).catchError((Object e, StackTrace st) {
+            diagnostics.engineFail('GoogleOAuth detached poll', e, st);
+          }),
+        );
         return null;
       }
 
-      final deadline = now + (expiresIn > 0 ? expiresIn * 1000 : 900 * 1000);
-      var polled = false;
-      while (_nowMs() < deadline) {
-        if (polled) {
-          await _sleep(const Duration(seconds: kGoogleDeviceCodePollSeconds));
-        }
-        polled = true;
-        final tokRes = await _http.post(
-          Uri.parse('https://oauth2.googleapis.com/token'),
-          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-          body: _formEncode({
-            'client_id': clientId,
-            'grant_type': 'urn:ietf:params:oauth:grant-type:device_code',
-            'device_code': deviceCode,
-          }),
-        );
-        final tok = jsonDecode(tokRes.body) as Map<String, dynamic>;
-        final err = tok['error'];
-        if (err is String) {
-          if (err == 'authorization_pending' || err == 'slow_down') {
-            continue;
-          }
-          return null;
-        }
-        if (tokRes.statusCode != 200) {
-          continue;
-        }
-        final access = tok['access_token'];
-        if (access is! String || access.isEmpty) {
-          return null;
-        }
-        final refresh = tok['refresh_token'];
-        if (refresh is! String || refresh.isEmpty) {
-          return null;
-        }
-        await _persistTokenResponse(
-          db: db,
-          secrets: secrets,
-          googleAccountKey: googleAccountKey,
-          accessToken: access,
-          refreshToken: refresh,
-          expiresInSec: _asInt(tok['expires_in']),
-        );
-        await (db.update(db.alerts)..where((t) => t.id.equals(alertId)))
-            .write(
-              AlertsCompanion(
-                dismissedAt: Value(DateTime.fromMillisecondsSinceEpoch(_nowMs())),
-              ),
-            );
-        return access;
-      }
-      return null;
+      return _pollDeviceCodeUntilDone(pollParams);
     } on Object catch (e, st) {
       diagnostics.engineFail('GoogleOAuth device flow', e, st);
       return null;
     }
+  }
+
+  Future<String?> _pollDeviceCodeUntilDone(_GoogleDeviceCodePollParams p) async {
+    var polled = false;
+    while (_nowMs() < p.deadlineMs) {
+      if (polled) {
+        await _sleep(const Duration(seconds: kGoogleDeviceCodePollSeconds));
+        if (_nowMs() >= p.deadlineMs) {
+          break;
+        }
+      }
+      polled = true;
+      final tokRes = await _http.post(
+        Uri.parse('https://oauth2.googleapis.com/token'),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: _formEncode({
+          'client_id': p.clientId,
+          'grant_type': 'urn:ietf:params:oauth:grant-type:device_code',
+          'device_code': p.deviceCode,
+        }),
+      );
+      final tok = jsonDecode(tokRes.body) as Map<String, dynamic>;
+      final err = tok['error'];
+      if (err is String) {
+        if (err == 'authorization_pending' || err == 'slow_down') {
+          continue;
+        }
+        await _dismissDeviceCodeAlert(p.db, p.alertId);
+        return null;
+      }
+      if (tokRes.statusCode != 200) {
+        continue;
+      }
+      final access = tok['access_token'];
+      if (access is! String || access.isEmpty) {
+        await _dismissDeviceCodeAlert(p.db, p.alertId);
+        return null;
+      }
+      final refresh = tok['refresh_token'];
+      if (refresh is! String || refresh.isEmpty) {
+        await _dismissDeviceCodeAlert(p.db, p.alertId);
+        return null;
+      }
+      await _persistTokenResponse(
+        db: p.db,
+        secrets: p.secrets,
+        googleAccountKey: p.googleAccountKey,
+        accessToken: access,
+        refreshToken: refresh,
+        expiresInSec: _asInt(tok['expires_in']),
+      );
+      await _dismissDeviceCodeAlert(p.db, p.alertId);
+      return access;
+    }
+    await _dismissDeviceCodeAlert(p.db, p.alertId);
+    return null;
+  }
+
+  Future<void> _dismissDeviceCodeAlert(AppDatabase db, int alertId) async {
+    await (db.update(db.alerts)..where((t) => t.id.equals(alertId)))
+        .write(
+          AlertsCompanion(
+            dismissedAt: Value(DateTime.fromMillisecondsSinceEpoch(_nowMs())),
+          ),
+        );
   }
 
   Future<void> _persistTokenResponse({
@@ -283,6 +322,26 @@ class GoogleOAuth {
       valueType: kIntegrationKvTypeIntMs,
     );
   }
+}
+
+class _GoogleDeviceCodePollParams {
+  const _GoogleDeviceCodePollParams({
+    required this.db,
+    required this.secrets,
+    required this.clientId,
+    required this.googleAccountKey,
+    required this.deviceCode,
+    required this.alertId,
+    required this.deadlineMs,
+  });
+
+  final AppDatabase db;
+  final SecretStore secrets;
+  final String clientId;
+  final String googleAccountKey;
+  final String deviceCode;
+  final int alertId;
+  final int deadlineMs;
 }
 
 int _asInt(Object? v) {

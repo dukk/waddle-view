@@ -7,6 +7,7 @@ import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import 'package:waddle_shared/persistence/config_json_documentation.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
+import 'package:waddle_shared/theme/display_program_history_kv.dart';
 
 export 'package:waddle_shared/persistence/tables.dart';
 
@@ -17,6 +18,18 @@ AppDatabase openMemoryDatabase() {
       closeStreamsSynchronously: true,
     ),
   );
+}
+
+Future<void> seedDisplayProgramHistoryDepthForTest(
+  AppDatabase db,
+  int depth,
+) async {
+  await db.into(db.configKeyValues).insertOnConflictUpdate(
+        ConfigKeyValuesCompanion.insert(
+          key: kDisplayProgramHistoryDepthKvKey,
+          value: '$depth',
+        ),
+      );
 }
 
 Future<void> warmDatabase(AppDatabase db, {String? displayTimeZoneIana}) async {

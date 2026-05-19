@@ -1,6 +1,9 @@
 import 'dart:convert';
 
+import 'package:waddle_shared/config/display_image_overlay_kv.dart';
+
 import 'display_overlay_falling_images_settings.dart';
+import 'display_overlay_floating_balloons_settings.dart';
 import 'display_overlay_edge_glow_settings.dart';
 import 'display_overlay_matrix_rain_settings.dart';
 import 'tables.dart';
@@ -1726,15 +1729,9 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
         _baseSchema(
           title: 'Birthday confetti',
           description:
-              'Optional shapes, hex colors, density, fall speed, and opacity.',
+              'Thin rectangular confetti strips. Optional hex colors, density, '
+              'fall speed, and opacity.',
           properties: {
-            'shapes': {
-              'type': 'array',
-              'items': {
-                'type': 'string',
-                'enum': ['rect', 'circle', 'star', 'streamer', 'mix'],
-              },
-            },
             'colors': {
               'type': 'array',
               'items': {
@@ -1768,8 +1765,7 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
         ),
       ),
       example: jsonEncode({
-        'shapes': ['rect', 'circle', 'mix'],
-        'colors': ['#E05C6C', '#FFE356'],
+        'colors': ['#E53935', '#FFEB3B', '#00BCD4', '#E91E63'],
         'density': 0.36,
         'fall_speed': 0.14,
         'opacity': 0.46,
@@ -1782,9 +1778,9 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
         _baseSchema(
           title: 'Falling images',
           description:
-              'Upload images via the controller (stored as overlay blob keys). '
-              'The display occasionally drops a random image and rocks it while '
-              'it falls.',
+              'Upload images via the controller (JPEG, PNG, WebP, GIF, or SVG; '
+              'stored as overlay blob keys). The display occasionally drops a '
+              'random image and rocks it while it falls.',
           properties: {
             'image_blob_keys': {
               'type': 'array',
@@ -1804,16 +1800,18 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
               'maximum': kFallingImagesDropIntervalSecMax,
               'x-waddle-widget': 'slider',
               'description':
-                  'Average seconds between image drops (higher = less frequent).',
+                  'Average seconds between image drops (5–180 s; higher = less frequent).',
             },
             'fall_speed': {
               'type': 'number',
               'title': 'Fall speed',
-              'minimum': kFallingImagesFallSpeedMin,
-              'maximum': kFallingImagesFallSpeedMax,
+              'minimum': kFallingImagesFallSpeedPxPerSecMin,
+              'maximum': kFallingImagesFallSpeedPxPerSecMax,
               'x-waddle-widget': 'slider',
               'description':
-                  'Vertical speed as screen-heights per second (lower = slower).',
+                  'Vertical speed in logical pixels per second '
+                  '(${kFallingImagesFallSpeedPxPerSecMin.round()}–'
+                  '${kFallingImagesFallSpeedPxPerSecMax.round()} px/s).',
             },
             'image_scale': {
               'type': 'number',
@@ -1822,7 +1820,8 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
               'maximum': kFallingImagesImageScaleMax,
               'x-waddle-widget': 'slider',
               'description':
-                  'Base sprite size as a fraction of the viewport shortest side.',
+                  'Base sprite size as a fraction of the viewport shortest side '
+                  '(0.04 = 4%, 0.70 = 70%).',
             },
             'scale_jitter': {
               'type': 'number',
@@ -1831,7 +1830,7 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
               'maximum': kFallingImagesScaleJitterMax,
               'x-waddle-widget': 'slider',
               'description':
-                  'Per-sprite random size spread (0 = fixed size at image scale).',
+                  'Per-sprite random size spread (0 = fixed size; 1.0 = 100% variation).',
             },
           },
         ),
@@ -1843,9 +1842,95 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
           'overlay/pool/duck_headshot_2',
         ],
         'drop_interval_sec': 45,
-        'fall_speed': 0.12,
+        'fall_speed': kFallingImagesFallSpeedPxPerSecDefault,
         'image_scale': 0.12,
         'scale_jitter': 0.33,
+      }),
+    );
+  }
+  if (k == kOverlayTypeFloatingBalloons) {
+    return ProviderConfigJsonDoc(
+      schema: jsonEncode(
+        _baseSchema(
+          title: 'Floating balloons',
+          description:
+              'Vector balloons that rise from the bottom with animated strings. '
+              'Colors are chosen at random from the configured palette; each '
+              'balloon in a cluster gets a distinct color when possible.',
+          properties: {
+            'colors': {
+              'type': 'array',
+              'items': {
+                'type': 'string',
+                'pattern': r'^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$',
+              },
+              'description': 'Balloon fill colors (#RRGGBB or #RRGGBBAA).',
+            },
+            'spawn_interval_sec': {
+              'type': 'integer',
+              'minimum': kFloatingBalloonsSpawnIntervalSecMin,
+              'maximum': kFloatingBalloonsSpawnIntervalSecMax,
+              'x-waddle-widget': 'slider',
+              'description':
+                  'Average seconds between balloon spawns (single balloons or clusters).',
+            },
+            'rise_speed': {
+              'type': 'number',
+              'minimum': kFloatingBalloonsRiseSpeedPxPerSecMin,
+              'maximum': kFloatingBalloonsRiseSpeedPxPerSecMax,
+              'x-waddle-widget': 'slider',
+              'description': 'Vertical rise speed in logical pixels per second.',
+            },
+            'max_active': {
+              'type': 'integer',
+              'minimum': kFloatingBalloonsMaxActiveMin,
+              'maximum': kFloatingBalloonsMaxActiveMax,
+              'x-waddle-widget': 'slider',
+              'description':
+                  'Maximum concurrent balloon units on screen (each cluster counts as one).',
+            },
+            'cluster_chance': {
+              'type': 'number',
+              'minimum': 0,
+              'maximum': 1,
+              'x-waddle-widget': 'slider',
+              'description':
+                  'Probability that a spawn is a multi-balloon cluster instead of one balloon.',
+            },
+            'balloon_scale': {
+              'type': 'number',
+              'minimum': kFloatingBalloonsBalloonScaleMin,
+              'maximum': kFloatingBalloonsBalloonScaleMax,
+              'x-waddle-widget': 'slider',
+              'description':
+                  'Base balloon size as a fraction of the viewport shortest side.',
+            },
+            'scale_jitter': {
+              'type': 'number',
+              'minimum': 0,
+              'maximum': kFloatingBalloonsScaleJitterMax,
+              'x-waddle-widget': 'slider',
+              'description': 'Per-unit random size spread (0 = fixed size).',
+            },
+            'opacity': {
+              'type': 'number',
+              'minimum': 0.2,
+              'maximum': 1.0,
+              'x-waddle-widget': 'slider',
+              'description': 'Upper bound for balloon layer alpha.',
+            },
+          },
+        ),
+      ),
+      example: jsonEncode({
+        'colors': kFloatingBalloonsDefaultColorHexes,
+        'spawn_interval_sec': 22,
+        'rise_speed': 85,
+        'max_active': 6,
+        'cluster_chance': 0.4,
+        'balloon_scale': 0.09,
+        'scale_jitter': 0.25,
+        'opacity': 0.92,
       }),
     );
   }
@@ -2010,3 +2095,12 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
     example: jsonEncode({'messages': ['Hello']}),
   );
 }
+
+/// Operator-facing description of [kDisplayImageOverlayKvKey] fields exposed as
+/// `display_image_overlay` on GET/PUT `/v1/display/settings`.
+const String kDisplayImageOverlaySettingsDoc =
+    'Always-on logo/watermark (independent of curator programs): '
+    '`enabled`, `image_blob_key` (overlay/… from POST /v1/display/overlays/blobs), '
+    '`x` and `y` (0–1, top-left anchor as fraction of viewport), '
+    '`scale` ($kDisplayImageOverlayScaleMin–$kDisplayImageOverlayScaleMax of shortest viewport side), '
+    'optional `opacity` (0–1, default 1).';

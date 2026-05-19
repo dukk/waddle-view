@@ -265,7 +265,7 @@ class BingImageOfDayDataProvider implements IDataProvider {
           mediaBlobKey: logicalKey,
           photographerName: photographer,
           photographerUrl: '',
-          pexelsPageUrl: copyrightLink,
+          pageUrl: copyrightLink,
           altText: Value(title),
           fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(nowMs),
           suppressed: Value(blocked),

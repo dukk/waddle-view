@@ -38,11 +38,13 @@ import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { TickerTapesHelpContent } from '@/components/help/TickerTapesHelpContent';
 import { completeDialogSave } from '@/util/dialogSave';
+import { useConfigSchemas } from '@/hooks/useConfigSchemas';
+import type { TickerTypeSchemaMeta } from '@/storage/configSchemaCache';
 
 type TickerTapeRow = {
   id: string;
-  name: string;
-  description: string;
+  label?: string | null;
+  description?: string;
   enabled: boolean;
   ticker_type: string;
   frequency_weight: number;
@@ -53,18 +55,78 @@ type TickerTapeRow = {
   example_config_json?: unknown;
 };
 
-type TickerTypeMeta = {
-  ticker_type: string;
-  config_json_schema: unknown;
-  example_config_json: unknown;
-};
-
 function sortById(a: TickerTapeRow, b: TickerTapeRow): number {
   return a.id.localeCompare(b.id);
 }
 
-function tickerTypeLabel(tickerType: string): string {
-  return tickerType.replace(/_/g, ' ');
+function trimOptionalString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function tickerTypeLabel(tickerType: string | null | undefined): string {
+  const normalized = trimOptionalString(tickerType);
+  return normalized ? normalized.replace(/_/g, ' ') : 'unknown';
+}
+
+function tickerRowTitle(row: Pick<TickerTapeRow, 'id' | 'label'>): string {
+  return trimOptionalString(row.label) || row.id;
+}
+
+function tickerRowHasCustomLabel(row: Pick<TickerTapeRow, 'label'>): boolean {
+  return trimOptionalString(row.label).length > 0;
+}
+
+function tickerRowDescription(row: Pick<TickerTapeRow, 'description'>): string {
+  return trimOptionalString(row.description);
+}
+
+function tickerRowConfigKey(row: Pick<TickerTapeRow, 'config_key'>): string {
+  return trimOptionalString(row.config_key);
+}
+
+function readOptionalString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+function readNumber(value: unknown, fallback = 0): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function readBoolean(value: unknown, fallback = true): boolean {
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+function parseTickerTapeRow(raw: Record<string, unknown>): TickerTapeRow | null {
+  const id = typeof raw.id === 'string' ? raw.id.trim() : '';
+  const tickerType = typeof raw.ticker_type === 'string' ? raw.ticker_type.trim() : '';
+  if (!id || !tickerType) return null;
+
+  let configJson: unknown = {};
+  if (typeof raw.config_json === 'string') {
+    try {
+      configJson = JSON.parse(raw.config_json) as unknown;
+    } catch {
+      configJson = {};
+    }
+  } else if (raw.config_json != null && typeof raw.config_json === 'object') {
+    configJson = raw.config_json;
+  }
+
+  const configKey = readOptionalString(raw.config_key)?.trim();
+
+  return {
+    id,
+    label: readOptionalString(raw.label) ?? readOptionalString(raw.name),
+    description: readOptionalString(raw.description),
+    enabled: readBoolean(raw.enabled, true),
+    ticker_type: tickerType,
+    frequency_weight: readNumber(raw.frequency_weight, 100),
+    sort_order: readNumber(raw.sort_order, 0),
+    config_key: configKey ? configKey : null,
+    config_json: configJson,
+    config_json_schema: raw.config_json_schema,
+    example_config_json: raw.example_config_json,
+  };
 }
 
 function TickerTapeTable({
@@ -93,19 +155,22 @@ function TickerTapeTable({
         </TableHead>
         <TableBody>
           {rows.map((row) => {
-            const title = row.name.trim() || row.id;
+            const title = tickerRowTitle(row);
+            const description = tickerRowDescription(row);
             return (
               <TableRow key={row.id} hover>
-                <TableCell sx={{ fontWeight: row.name.trim() ? 600 : 400 }}>{title}</TableCell>
+                <TableCell sx={{ fontWeight: tickerRowHasCustomLabel(row) ? 600 : 400 }}>
+                  {title}
+                </TableCell>
                 <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.id}</TableCell>
                 <TableCell>{tickerTypeLabel(row.ticker_type)}</TableCell>
                 <TableCell>{row.frequency_weight}</TableCell>
                 <TableCell>{row.sort_order}</TableCell>
                 <TableCell sx={{ maxWidth: 240, wordBreak: 'break-word' }}>
-                  {row.description.trim()}
+                  {description}
                 </TableCell>
                 <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
-                  {row.config_key?.trim() ?? ''}
+                  {tickerRowConfigKey(row)}
                 </TableCell>
                 <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
                   <Button size="small" onClick={() => onEdit(row)}>
@@ -129,7 +194,7 @@ export function TickerPage() {
   const { loading, wrapRefresh } = useDisplayRefresh();
   const { layout, setLayout } = useListLayoutPreference('ticker-tapes');
   const [rows, setRows] = useState<TickerTapeRow[]>([]);
-  const [meta, setMeta] = useState<TickerTypeMeta[]>([]);
+  const { schemas, error: schemasError } = useConfigSchemas(active);
   const [error, setError] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [edit, setEdit] = useState<TickerTapeRow | null>(null);
@@ -139,12 +204,15 @@ export function TickerPage() {
     await wrapRefresh(async () => {
       setError(null);
       try {
-        const [tapes, types] = await Promise.all([
-          apiJson<{ items: TickerTapeRow[] }>(active, '/v1/ticker/tapes'),
-          apiJson<{ items: TickerTypeMeta[] }>(active, '/v1/meta/ticker-types'),
-        ]);
-        setRows(tapes.items ?? []);
-        setMeta(types.items ?? []);
+        const tapes = await apiJson<{ items: unknown[] }>(active, '/v1/ticker/tapes');
+        const items = (tapes.items ?? [])
+          .map((raw) =>
+            raw && typeof raw === 'object'
+              ? parseTickerTapeRow(raw as Record<string, unknown>)
+              : null,
+          )
+          .filter((row): row is TickerTapeRow => row != null);
+        setRows(items);
       } catch (e) {
         setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
       }
@@ -199,11 +267,17 @@ export function TickerPage() {
         </Typography>
       </Box>
       <CatalogPageToolbar layout={layout} onLayoutChange={setLayout}>
-        <Button variant="contained" onClick={() => setAddOpen(true)} disabled={!meta.length}>
+        <Button
+          variant="contained"
+          onClick={() => setAddOpen(true)}
+          disabled={!schemas?.ticker_types.length}
+        >
           Add ticker tape
         </Button>
       </CatalogPageToolbar>
-      {error && <Alert severity="error">{error}</Alert>}
+      {(error || schemasError) && (
+        <Alert severity="error">{error ?? schemasError}</Alert>
+      )}
 
       <Stack spacing={1.5}>
         <Typography variant="subtitle1" fontWeight={600}>
@@ -263,9 +337,9 @@ export function TickerPage() {
         )}
       </Stack>
 
-      {addOpen && (
+      {addOpen && schemas && (
         <AddTickerTapeDialog
-          meta={meta}
+          tickerTypes={schemas.ticker_types}
           onClose={() => setAddOpen(false)}
           onSaved={async () => {
             setAddOpen(false);
@@ -274,10 +348,10 @@ export function TickerPage() {
         />
       )}
 
-      {edit && (
+      {edit && schemas && (
         <EditTickerTapeDialog
           row={edit}
-          meta={meta}
+          tickerTypes={schemas.ticker_types}
           onClose={() => setEdit(null)}
           onSaved={async () => {
             setEdit(null);
@@ -298,8 +372,10 @@ function TickerTapeCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const title = row.name.trim() || row.id;
+  const title = tickerRowTitle(row);
   const typeLabel = tickerTypeLabel(row.ticker_type);
+  const description = tickerRowDescription(row);
+  const configKey = tickerRowConfigKey(row);
 
   return (
     <Card
@@ -312,7 +388,7 @@ function TickerTapeCard({
           <Typography variant="subtitle1" fontWeight={600} sx={{ wordBreak: 'break-word' }}>
             {title}
           </Typography>
-          {row.name.trim() ? (
+          {tickerRowHasCustomLabel(row) ? (
             <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
               {row.id}
             </Typography>
@@ -321,7 +397,7 @@ function TickerTapeCard({
           <Typography variant="caption" color="text.secondary" display="block">
             Weight {row.frequency_weight} · sort {row.sort_order}
           </Typography>
-          {row.description.trim() ? (
+          {description ? (
             <Typography
               variant="body2"
               color="text.secondary"
@@ -333,12 +409,12 @@ function TickerTapeCard({
                 overflow: 'hidden',
               }}
             >
-              {row.description.trim()}
+              {description}
             </Typography>
           ) : null}
-          {row.config_key?.trim() ? (
+          {configKey ? (
             <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
-              {row.config_key.trim()}
+              {configKey}
             </Typography>
           ) : null}
         </Stack>
@@ -356,18 +432,18 @@ function TickerTapeCard({
 }
 
 function AddTickerTapeDialog({
-  meta,
+  tickerTypes,
   onClose,
   onSaved,
 }: {
-  meta: TickerTypeMeta[];
+  tickerTypes: TickerTypeSchemaMeta[];
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
   const { active } = useDisplay();
   const [id, setId] = useState('');
-  const [tickerType, setTickerType] = useState(meta[0]?.ticker_type ?? '');
-  const [name, setName] = useState('');
+  const [tickerType, setTickerType] = useState(tickerTypes[0]?.ticker_type ?? '');
+  const [label, setLabel] = useState('');
   const [description, setDescription] = useState('');
   const [enabled, setEnabled] = useState(true);
   const [weight, setWeight] = useState(100);
@@ -409,7 +485,7 @@ function AddTickerTapeDialog({
         body: JSON.stringify({
           id: tid,
           ticker_type: tickerType,
-          name: name.trim() || undefined,
+          label: label.trim() || undefined,
           description: description.trim(),
           enabled,
           frequency_weight: weight,
@@ -439,14 +515,14 @@ function AddTickerTapeDialog({
               value={tickerType}
               onChange={(e) => setTickerType(String(e.target.value))}
             >
-              {meta.map((m) => (
+              {tickerTypes.map((m) => (
                 <MenuItem key={m.ticker_type} value={m.ticker_type}>
                   {m.ticker_type}
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
-          <TextField label="Name (optional)" value={name} onChange={(e) => setName(e.target.value)} fullWidth />
+          <TextField label="Label (optional)" value={label} onChange={(e) => setLabel(e.target.value)} fullWidth />
           <TextField
             label="Description"
             value={description}
@@ -504,18 +580,18 @@ function AddTickerTapeDialog({
 
 function EditTickerTapeDialog({
   row,
-  meta,
+  tickerTypes,
   onClose,
   onSaved,
 }: {
   row: TickerTapeRow;
-  meta: TickerTypeMeta[];
+  tickerTypes: TickerTypeSchemaMeta[];
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
   const { active } = useDisplay();
-  const [name, setName] = useState(row.name);
-  const [description, setDescription] = useState(row.description);
+  const [label, setLabel] = useState(row.label ?? '');
+  const [description, setDescription] = useState(row.description ?? '');
   const [tickerType, setTickerType] = useState(row.ticker_type);
   const [enabled, setEnabled] = useState(row.enabled);
   const [weight, setWeight] = useState(row.frequency_weight);
@@ -548,7 +624,7 @@ function EditTickerTapeDialog({
       await apiFetch(active, `/v1/ticker/tapes/${encodeURIComponent(row.id)}`, {
         method: 'PATCH',
         body: JSON.stringify({
-          name: name.trim(),
+          label: label.trim(),
           description: description.trim(),
           ticker_type: tickerType,
           enabled,
@@ -578,14 +654,14 @@ function EditTickerTapeDialog({
               value={tickerType}
               onChange={(e) => setTickerType(String(e.target.value))}
             >
-              {meta.map((m) => (
+              {tickerTypes.map((m) => (
                 <MenuItem key={m.ticker_type} value={m.ticker_type}>
                   {m.ticker_type}
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
-          <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} fullWidth />
+          <TextField label="Label" value={label} onChange={(e) => setLabel(e.target.value)} fullWidth />
           <TextField
             label="Description"
             value={description}

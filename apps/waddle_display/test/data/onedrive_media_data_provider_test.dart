@@ -388,7 +388,7 @@ void main() {
               mediaBlobKey: 'onedrive/photo/$id/media',
               photographerName: '',
               photographerUrl: '',
-              pexelsPageUrl: '',
+              pageUrl: '',
               fetchedAtMs: fetched,
             ),
           );
@@ -520,7 +520,7 @@ void main() {
             mediaBlobKey: 'onedrive/photo/$goneId/media',
             photographerName: '',
             photographerUrl: '',
-            pexelsPageUrl: '',
+            pageUrl: '',
             fetchedAtMs: DateTime.utc(2022),
           ),
         );

@@ -43,7 +43,7 @@ void main() {
     final rows = await fetchDisplayOverlays(db);
     expect(rows, hasLength(1));
     expect(rows.single.id, 'legacy_row');
-    expect(rows.single.name, 'Legacy hearts');
+    expect(rows.single.label, 'Legacy hearts');
     expect(rows.single.overlayType, 'hearts_rain');
 
     final cols = await db.customSelect('PRAGMA table_info(overlays)').get();

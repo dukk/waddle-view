@@ -36,7 +36,6 @@ export type CuratorConfigurationSummary = {
   program_duration_seconds: number;
   ticker_program_duration_seconds: number;
   ticker_pixels_per_second: number;
-  history_depth: number;
   require_news_photo_for_screens: boolean;
   ticker_enabled: boolean;
   theme_id_override: string | null;
@@ -76,7 +75,6 @@ export type CuratorConfigurationWriteBody = {
   program_duration_seconds?: number;
   ticker_program_duration_seconds?: number;
   ticker_pixels_per_second?: number;
-  history_depth?: number;
   require_news_photo_for_screens?: boolean;
   ticker_enabled?: boolean;
   theme_id_override?: string | null;

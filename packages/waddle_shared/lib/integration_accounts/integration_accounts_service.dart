@@ -8,6 +8,7 @@ import '../persistence/database.dart';
 import '../secrets/secret_store.dart';
 import 'integration_account_catalog.dart';
 import 'oauth_provider_catalog.dart';
+import 'oauth_sign_in_alerts.dart';
 
 /// Parses account keys referenced in integration [configJson] for OAuth types.
 Iterable<String> accountKeysInIntegrationConfig(
@@ -54,13 +55,26 @@ Future<void> _upsertIntegrationAccount(
   required String accountTypeId,
   required String label,
   required int nowMs,
+  /// When true (operator create), refresh [label] on conflict. Sync from integration
+  /// configs must leave an existing operator label unchanged.
+  bool overwriteLabelOnConflict = false,
 }) async {
-  await db.into(db.integrationAccounts).insertOnConflictUpdate(
-    IntegrationAccountsCompanion.insert(
-      id: accountId,
-      accountType: accountTypeId,
-      label: Value(label),
-      createdAtMs: nowMs,
+  final companion = IntegrationAccountsCompanion.insert(
+    id: accountId,
+    accountType: accountTypeId,
+    label: Value(label),
+    createdAtMs: nowMs,
+  );
+  if (overwriteLabelOnConflict) {
+    await db.into(db.integrationAccounts).insertOnConflictUpdate(companion);
+    return;
+  }
+  await db.into(db.integrationAccounts).insert(
+    companion,
+    onConflict: DoUpdate(
+      (old) => IntegrationAccountsCompanion(
+        accountType: Value(accountTypeId),
+      ),
     ),
   );
 }
@@ -76,6 +90,59 @@ Future<void> _linkIntegrationAccount(
       accountId: accountId,
     ),
   );
+}
+
+Future<bool> _integrationHasLinkedAccountOfType(
+  AppDatabase db,
+  String integrationId,
+  String accountTypeId,
+) async {
+  final links = await (db.select(db.integrationAccountLinks)
+        ..where((t) => t.integrationId.equals(integrationId)))
+      .get();
+  for (final link in links) {
+    final account = await (db.select(db.integrationAccounts)
+          ..where((t) => t.id.equals(link.accountId)))
+        .getSingleOrNull();
+    if (account?.accountType == accountTypeId) {
+      return true;
+    }
+  }
+  return false;
+}
+
+Future<void> _unlinkIntegrationAccount(
+  AppDatabase db, {
+  required String integrationId,
+  required String accountId,
+}) async {
+  await (db.delete(db.integrationAccountLinks)
+        ..where(
+          (t) =>
+              t.integrationId.equals(integrationId) &
+              t.accountId.equals(accountId),
+        ))
+      .go();
+}
+
+/// True when every [requiredAccountTypes] entry has at least one linked account
+/// with a configured secret (see [listAccountsForIntegrationJson] items).
+bool integrationLinkedAccountsJsonConfigured(
+  List<Map<String, dynamic>> linked,
+  List<String> requiredAccountTypes,
+) {
+  if (requiredAccountTypes.isEmpty) {
+    return true;
+  }
+  for (final typeId in requiredAccountTypes) {
+    final satisfied = linked.any(
+      (a) => a['account_type'] == typeId && a['configured'] == true,
+    );
+    if (!satisfied) {
+      return false;
+    }
+  }
+  return true;
 }
 
 Future<void> syncIntegrationAccountsFromIntegrationConfigs(
@@ -114,7 +181,92 @@ Future<void> syncIntegrationAccountsFromIntegrationConfigs(
   }
 }
 
-Future<void> syncIntegrationAccountLinks(AppDatabase db) async {
+/// Backfills [Integrations.requiresAccounts] and [Integrations.accountsReady] after schema 23.
+///
+/// Without [secrets], [accountsReady] is conservative (`false` when accounts are required).
+Future<void> backfillIntegrationsAccountsReadyColumns(
+  AppDatabase db, {
+  SecretStore? secrets,
+}) async {
+  final rows = await db.select(db.integrations).get();
+  for (final row in rows) {
+    final requires =
+        integrationAccountTypesRequiredForIntegration(row.integrationType).isNotEmpty;
+    var ready = !requires;
+    if (requires && secrets != null) {
+      ready = await integrationAccountsSatisfiedForEnable(
+        secrets,
+        db,
+        row.id,
+        row.integrationType,
+        syncAccountLinks: false,
+      );
+    } else if (requires) {
+      ready = false;
+    }
+    await (db.update(db.integrations)..where((t) => t.id.equals(row.id))).write(
+      IntegrationsCompanion(
+        requiresAccounts: Value(requires),
+        accountsReady: Value(ready),
+      ),
+    );
+  }
+}
+
+Future<void> refreshIntegrationAccountsReady(
+  SecretStore secrets,
+  AppDatabase db,
+  String integrationId, {
+  bool syncAccountLinks = false,
+}) async {
+  if (syncAccountLinks) {
+    await syncIntegrationAccountLinks(db, secrets: secrets);
+    return;
+  }
+  final row = await (db.select(db.integrations)
+        ..where((t) => t.id.equals(integrationId)))
+      .getSingleOrNull();
+  if (row == null) {
+    return;
+  }
+  final requires =
+      integrationAccountTypesRequiredForIntegration(row.integrationType).isNotEmpty;
+  final ready = requires
+      ? await integrationAccountsSatisfiedForEnable(
+          secrets,
+          db,
+          integrationId,
+          row.integrationType,
+          syncAccountLinks: false,
+        )
+      : true;
+  await (db.update(db.integrations)..where((t) => t.id.equals(integrationId))).write(
+    IntegrationsCompanion(
+      requiresAccounts: Value(requires),
+      accountsReady: Value(ready),
+    ),
+  );
+}
+
+Future<void> refreshAllIntegrationsAccountsReady(
+  SecretStore secrets,
+  AppDatabase db,
+) async {
+  final rows = await db.select(db.integrations).get();
+  for (final row in rows) {
+    await refreshIntegrationAccountsReady(
+      secrets,
+      db,
+      row.id,
+      syncAccountLinks: false,
+    );
+  }
+}
+
+Future<void> syncIntegrationAccountLinks(
+  AppDatabase db, {
+  SecretStore? secrets,
+}) async {
   await syncIntegrationAccountsFromIntegrationConfigs(db);
   final rows = await db.select(db.integrations).get();
   for (final row in rows) {
@@ -123,11 +275,27 @@ Future<void> syncIntegrationAccountLinks(AppDatabase db) async {
       continue;
     }
     if (integrationTypeUsesApiKeyAccount(row.integrationType)) {
-      await _linkIntegrationAccount(
-        db,
-        integrationId: row.id,
-        accountId: defaultApiKeyAccountIdForIntegration(row.id),
-      );
+      if (!await _integrationHasLinkedAccountOfType(db, row.id, accountTypeId)) {
+        await _linkIntegrationAccount(
+          db,
+          integrationId: row.id,
+          accountId: defaultApiKeyAccountIdForIntegration(row.id),
+        );
+      } else {
+        final legacyId = defaultApiKeyAccountIdForIntegration(row.id);
+        final links = await (db.select(db.integrationAccountLinks)
+              ..where((t) => t.integrationId.equals(row.id)))
+            .get();
+        final hasNonLegacyLink =
+            links.any((link) => link.accountId != legacyId);
+        if (hasNonLegacyLink) {
+          await _unlinkIntegrationAccount(
+            db,
+            integrationId: row.id,
+            accountId: legacyId,
+          );
+        }
+      }
       continue;
     }
     for (final accountKey in accountKeysInIntegrationConfig(
@@ -140,6 +308,9 @@ Future<void> syncIntegrationAccountLinks(AppDatabase db) async {
         accountId: accountKey,
       );
     }
+  }
+  if (secrets != null) {
+    await refreshAllIntegrationsAccountsReady(secrets, db);
   }
 }
 
@@ -178,65 +349,81 @@ Future<String?> readAccessTokenForIntegration(
     return null;
   }
   final links = await linkedAccountsForIntegration(db, integrationId);
-  if (links.isEmpty) {
-    if (integrationTypeUsesApiKeyAccount(row.integrationType)) {
-      final accountTypeId = accountTypeForIntegrationType(row.integrationType);
-      if (accountTypeId == null) {
-        return null;
-      }
-      final def = kIntegrationAccountTypes[accountTypeId];
-      if (def == null) {
-        return null;
-      }
-      return secrets.read(
-        def.accessTokenSecretKey(defaultApiKeyAccountIdForIntegration(row.id)),
-      );
+  final preferredTypeId = accountTypeForIntegrationType(row.integrationType);
+  for (final link in links) {
+    final account = await (db.select(db.integrationAccounts)
+          ..where((t) => t.id.equals(link.accountId)))
+        .getSingleOrNull();
+    if (account == null) {
+      continue;
     }
-    return null;
+    if (preferredTypeId != null && account.accountType != preferredTypeId) {
+      continue;
+    }
+    final def = kIntegrationAccountTypes[account.accountType];
+    if (def == null) {
+      continue;
+    }
+    final token = await secrets.read(def.accessTokenSecretKey(account.id));
+    if (token != null && token.trim().isNotEmpty) {
+      return token;
+    }
   }
-  final account = await (db.select(db.integrationAccounts)
-        ..where((t) => t.id.equals(links.first.accountId)))
-      .getSingleOrNull();
-  if (account == null) {
-    return null;
+  if (links.isEmpty && integrationTypeUsesApiKeyAccount(row.integrationType)) {
+    final accountTypeId = accountTypeForIntegrationType(row.integrationType);
+    if (accountTypeId == null) {
+      return null;
+    }
+    final def = kIntegrationAccountTypes[accountTypeId];
+    if (def == null) {
+      return null;
+    }
+    return secrets.read(
+      def.accessTokenSecretKey(defaultApiKeyAccountIdForIntegration(row.id)),
+    );
   }
-  final def = kIntegrationAccountTypes[account.accountType];
-  if (def == null) {
-    return null;
-  }
-  return secrets.read(def.accessTokenSecretKey(account.id));
+  return null;
 }
 
 Future<bool> integrationAccountsSatisfiedForEnable(
   SecretStore secrets,
   AppDatabase db,
   String integrationId,
-  String integrationType,
-) async {
+  String integrationType, {
+  bool syncAccountLinks = true,
+}) async {
   final requiredTypes =
       integrationAccountTypesRequiredForIntegration(integrationType);
   if (requiredTypes.isEmpty) {
     return true;
   }
-  final links = await linkedAccountsForIntegration(db, integrationId);
+  final links = syncAccountLinks
+      ? await linkedAccountsForIntegration(db, integrationId)
+      : await (db.select(db.integrationAccountLinks)
+            ..where((t) => t.integrationId.equals(integrationId)))
+          .get();
   if (links.isEmpty) {
     return false;
   }
-  for (final link in links) {
-    final account = await (db.select(db.integrationAccounts)
-          ..where((t) => t.id.equals(link.accountId)))
-        .getSingleOrNull();
-    if (account == null) {
-      return false;
+  for (final typeId in requiredTypes) {
+    var satisfied = false;
+    for (final link in links) {
+      final account = await (db.select(db.integrationAccounts)
+            ..where((t) => t.id.equals(link.accountId)))
+          .getSingleOrNull();
+      if (account == null || account.accountType != typeId) {
+        continue;
+      }
+      if (await isIntegrationAccountConfigured(
+        secrets,
+        account.accountType,
+        account.id,
+      )) {
+        satisfied = true;
+        break;
+      }
     }
-    if (!requiredTypes.contains(account.accountType)) {
-      continue;
-    }
-    if (!await isIntegrationAccountConfigured(
-      secrets,
-      account.accountType,
-      account.id,
-    )) {
+    if (!satisfied) {
       return false;
     }
   }
@@ -272,7 +459,13 @@ Future<List<Map<String, dynamic>>> listIntegrationAccountsJson(
       continue;
     }
     final linkedIntegrationIds = integrationsByAccount[row.id] ?? const [];
-    items.add({
+    final signInStatus = await oauthSignInStatusForAccount(
+      db,
+      accountId: row.id,
+      accountTypeId: row.accountType,
+      configured: configured,
+    );
+    final item = <String, dynamic>{
       'id': row.id,
       'account_type': row.accountType,
       'account_type_label': def?.label ?? row.accountType,
@@ -282,7 +475,12 @@ Future<List<Map<String, dynamic>>> listIntegrationAccountsJson(
       'configured': configured,
       'integration_types': integrationTypesForAccountType(row.accountType),
       'integration_ids': linkedIntegrationIds,
-    });
+    };
+    final statusJson = oauthSignInStatusJson(signInStatus);
+    if (statusJson != null) {
+      item['oauth_sign_in_status'] = statusJson;
+    }
+    items.add(item);
   }
   return items;
 }
@@ -311,20 +509,32 @@ Future<List<Map<String, dynamic>>> listAccountsForIntegrationJson(
       continue;
     }
     final def = kIntegrationAccountTypes[account.accountType];
-    out.add({
+    final configured = await isIntegrationAccountConfigured(
+      secrets,
+      account.accountType,
+      account.id,
+    );
+    final signInStatus = await oauthSignInStatusForAccount(
+      db,
+      accountId: account.id,
+      accountTypeId: account.accountType,
+      configured: configured,
+    );
+    final linkedItem = <String, dynamic>{
       'account_id': account.id,
       'account_type': account.accountType,
       'account_type_label': def?.label ?? account.accountType,
       'label': account.label ?? account.id,
       'signup_url': def?.signupUrl,
       'supports_oauth_sign_in': def?.supportsOAuthSignIn ?? false,
-      'configured': await isIntegrationAccountConfigured(
-        secrets,
-        account.accountType,
-        account.id,
-      ),
+      'configured': configured,
       'required': requiredTypes.contains(account.accountType),
-    });
+    };
+    final statusJson = oauthSignInStatusJson(signInStatus);
+    if (statusJson != null) {
+      linkedItem['oauth_sign_in_status'] = statusJson;
+    }
+    out.add(linkedItem);
   }
   return out;
 }
@@ -482,6 +692,7 @@ Future<String> createOperatorIntegrationAccount(
     accountTypeId: accountTypeId,
     label: displayLabel,
     nowMs: nowMs,
+    overwriteLabelOnConflict: true,
   );
   for (final integrationType in integrationTypesForAccountType(accountTypeId)) {
     final rows = await (db.select(db.integrations)
@@ -493,11 +704,23 @@ Future<String> createOperatorIntegrationAccount(
         integrationId: row.id,
         accountId: accountId,
       );
+      if (!def.supportsOAuthSignIn) {
+        final legacyId = defaultApiKeyAccountIdForIntegration(row.id);
+        if (legacyId != accountId) {
+          await _unlinkIntegrationAccount(
+            db,
+            integrationId: row.id,
+            accountId: legacyId,
+          );
+        }
+      }
     }
   }
   if (def.supportsOAuthSignIn) {
     await _appendOAuthAccountKeyToIntegrations(db, accountTypeId, accountId);
-    await syncIntegrationAccountLinks(db);
+    await syncIntegrationAccountLinks(db, secrets: secrets);
+  } else {
+    await refreshAllIntegrationsAccountsReady(secrets, db);
   }
   return accountId;
 }
@@ -609,7 +832,7 @@ Future<DeleteOperatorIntegrationAccountResult> deleteOperatorIntegrationAccount(
   required String accountId,
   bool confirm = false,
 }) async {
-  await syncIntegrationAccountLinks(db);
+  await syncIntegrationAccountLinks(db, secrets: secrets);
   final account = await (db.select(db.integrationAccounts)
         ..where((t) => t.id.equals(accountId)))
       .getSingleOrNull();
@@ -636,6 +859,11 @@ Future<DeleteOperatorIntegrationAccountResult> deleteOperatorIntegrationAccount(
   if (def != null) {
     await secrets.delete(def.accessTokenSecretKey(accountId));
   }
+  await dismissOAuthSignInAlertsForAccount(
+    db,
+    accountId: accountId,
+    accountTypeId: account.accountType,
+  );
   await _clearOAuthSignInKvForAccount(db, accountId, account.accountType);
 
   await (db.delete(db.integrationAccounts)..where((t) => t.id.equals(accountId)))
@@ -654,6 +882,7 @@ Future<DeleteOperatorIntegrationAccountResult> deleteOperatorIntegrationAccount(
     disabled.add(integrationId);
   }
   disabled.sort();
+  await refreshAllIntegrationsAccountsReady(secrets, db);
   return DeleteOperatorIntegrationAccountResult(
     disabledIntegrationIds: disabled,
   );

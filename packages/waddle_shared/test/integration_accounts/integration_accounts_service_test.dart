@@ -6,6 +6,7 @@ import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 import 'package:waddle_shared/config/facebook_kv.dart';
 import 'package:waddle_shared/config/google_kv.dart';
+import 'package:waddle_shared/config/microsoft_graph_kv.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 
 import '../helpers/memory_database.dart';
@@ -59,13 +60,23 @@ void main() {
         integrationType: 'photo_pexels',
       ),
     );
-    await syncIntegrationAccountLinks(db);
+    await syncIntegrationAccountLinks(db, secrets: secrets);
     final links = await (db.select(db.integrationAccountLinks)
           ..where((t) => t.integrationId.equals('pexels_home')))
         .get();
     expect(links, hasLength(1));
     expect(links.single.accountId, 'pexels_home');
+    final rowBeforeSecret = await (db.select(db.integrations)
+          ..where((t) => t.id.equals('pexels_home')))
+        .getSingle();
+    expect(rowBeforeSecret.requiresAccounts, isTrue);
+    expect(rowBeforeSecret.accountsReady, isFalse);
     await secrets.write('provider:access_token:pexels_home', 'key-123');
+    await refreshIntegrationAccountsReady(secrets, db, 'pexels_home');
+    final rowAfterSecret = await (db.select(db.integrations)
+          ..where((t) => t.id.equals('pexels_home')))
+        .getSingle();
+    expect(rowAfterSecret.accountsReady, isTrue);
     expect(
       await integrationAccountsSatisfiedForEnable(
         secrets,
@@ -80,6 +91,51 @@ void main() {
       'key-123',
     );
   });
+
+  test(
+    'operator shared api key account satisfies integration after legacy stub link',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
+      final secrets = InMemorySecretStore();
+      addTearDown(db.close);
+      await db.into(db.integrations).insertOnConflictUpdate(
+            IntegrationsCompanion.insert(
+              id: 'pexels_home',
+              integrationType: 'photo_pexels',
+            ),
+          );
+      await syncIntegrationAccountLinks(db);
+      const sharedId = 'my_pexels_key';
+      await createOperatorIntegrationAccount(
+        db,
+        secrets,
+        accountTypeId: kIntegrationAccountTypeApiKeyPexels,
+        accountKey: sharedId,
+        label: 'My Pexels API key',
+      );
+      await secrets.write('provider:access_token:$sharedId', 'pexels-key');
+      await db.into(db.integrationAccountLinks).insertOnConflictUpdate(
+            IntegrationAccountLinksCompanion.insert(
+              integrationId: 'pexels_home',
+              accountId: 'pexels_home',
+            ),
+          );
+      expect(
+        await integrationAccountsSatisfiedForEnable(
+          secrets,
+          db,
+          'pexels_home',
+          'photo_pexels',
+        ),
+        isTrue,
+      );
+      expect(
+        await readAccessTokenForIntegration(secrets, db, 'pexels_home'),
+        'pexels-key',
+      );
+    },
+  );
 
   test('createOperatorIntegrationAccount stores api key account and links integrations',
       () async {
@@ -161,7 +217,41 @@ void main() {
           ..where((t) => t.id.equals('personal')))
         .getSingle();
     expect(row.accountType, kIntegrationAccountTypeGoogle);
+    expect(row.label, 'Personal');
   });
+
+  test(
+    'syncIntegrationAccountLinks does not overwrite operator account label',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
+      final secrets = InMemorySecretStore();
+      addTearDown(db.close);
+      await secrets.write(kGoogleClientIdSecretKey, 'google-client');
+      await db.into(db.integrations).insertOnConflictUpdate(
+            IntegrationsCompanion.insert(
+              id: 'calendar_google_home',
+              integrationType: 'calendar_google',
+              enabled: const Value(true),
+              configJson: Value(
+                '{"accounts":[{"googleAccountKey":"personal","sources":[]}]}',
+              ),
+            ),
+          );
+      await createOperatorIntegrationAccount(
+        db,
+        secrets,
+        accountTypeId: kIntegrationAccountTypeGoogle,
+        accountKey: 'personal',
+        label: 'Personal Google',
+      );
+      await syncIntegrationAccountLinks(db);
+      final row = await (db.select(db.integrationAccounts)
+            ..where((t) => t.id.equals('personal')))
+          .getSingle();
+      expect(row.label, 'Personal Google');
+    },
+  );
 
   test('deleteOperatorIntegrationAccount blocks when linked without confirm',
       () async {
@@ -239,6 +329,37 @@ void main() {
       isEmpty,
     );
     expect(await secrets.read(googleAccessTokenSecret('personal')), isNull);
+  });
+
+  test('deleteOperatorIntegrationAccount dismisses active OAuth sign-in alert',
+      () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final secrets = InMemorySecretStore();
+    addTearDown(db.close);
+    await secrets.write(kMicrosoftGraphClientIdSecretKey, 'ms-client');
+    await db.into(db.integrationAccounts).insertOnConflictUpdate(
+          IntegrationAccountsCompanion.insert(
+            id: 'work',
+            accountType: kIntegrationAccountTypeMicrosoftGraph,
+            label: const Value('Work'),
+            createdAtMs: DateTime.now().millisecondsSinceEpoch,
+          ),
+        );
+    await db.into(db.alerts).insert(
+          AlertsCompanion.insert(
+            title: 'Microsoft sign-in (Work)',
+            body: 'Account: Work\nCode: ABCD',
+            severity: const Value('auth'),
+            priority: const Value(50),
+            createdAt: DateTime.now(),
+            expiresAt: Value(DateTime.now().add(const Duration(minutes: 15))),
+            source: const Value(kMicrosoftGraphOAuthAlertSource),
+          ),
+        );
+    await deleteOperatorIntegrationAccount(db, secrets, accountId: 'work');
+    final alert = (await db.select(db.alerts).get()).single;
+    expect(alert.dismissedAt, isNotNull);
   });
 
   test('deleteOperatorIntegrationAccount allows unused account without confirm',

@@ -45,6 +45,14 @@ import { OverlayConfigPanel } from '@/components/config/OverlayConfigPanel';
 import { completeDialogSave } from '@/util/dialogSave';
 import { parseJsonObject } from '@/util/json';
 import { prepareRjsfSchema } from '@/util/rjsfSchema';
+import { useConfigSchemas } from '@/hooks/useConfigSchemas';
+import {
+  exampleForOverlayType,
+  schemaForOverlayType,
+  type OverlayTypeSchemaMeta,
+} from '@/storage/configSchemaCache';
+import { fallingImagesValidationSchema } from '@/util/fallingImagesConfigSchema';
+import { floatingBalloonsValidationSchema } from '@/util/floatingBalloonsConfigSchema';
 import { validateConfigAgainstSchema } from '@/util/rjsfSchema';
 import { OverlayTypeIcon } from '@/util/overlayTypeIcon';
 import type { SavedDisplay } from '@/storage/displays';
@@ -52,16 +60,10 @@ import type { SavedDisplay } from '@/storage/displays';
 type OverlayRow = {
   id: string;
   overlay_type: string;
-  name: string;
+  label: string;
   config_json: unknown;
   config_json_schema?: unknown;
   example_config_json?: unknown;
-};
-
-type OverlayTypeMeta = {
-  overlay_type: string;
-  config_json_schema: unknown;
-  example_config_json: unknown;
 };
 
 const OVERLAY_TYPE_LABELS: Record<string, string> = {
@@ -72,15 +74,16 @@ const OVERLAY_TYPE_LABELS: Record<string, string> = {
   falling_images: 'Falling images',
   matrix_rain: 'Matrix rain',
   edge_glow: 'Edge glow',
+  floating_balloons: 'Floating balloons',
 };
 
 function overlayTypeLabel(t: string): string {
   return OVERLAY_TYPE_LABELS[t] ?? t.replace(/_/g, ' ');
 }
 
-function sortByName(a: OverlayRow, b: OverlayRow): number {
-  const an = a.name.trim() || a.id;
-  const bn = b.name.trim() || b.id;
+function sortByLabel(a: OverlayRow, b: OverlayRow): number {
+  const an = a.label.trim() || a.id;
+  const bn = b.label.trim() || b.id;
   return an.localeCompare(bn);
 }
 
@@ -93,32 +96,30 @@ function parseOverlayRow(raw: Record<string, unknown>): OverlayRow | null {
         ? raw.overlay_kind.trim()
         : '';
   if (!id || !overlayType) return null;
-  const name =
-    typeof raw.name === 'string'
-      ? raw.name
-      : typeof raw.label === 'string'
-        ? raw.label
+  const label =
+    typeof raw.label === 'string'
+      ? raw.label
+      : typeof raw.name === 'string'
+        ? raw.name
         : '';
   return {
     id,
     overlay_type: overlayType,
-    name,
+    label,
     config_json: raw.config_json,
     config_json_schema: raw.config_json_schema,
     example_config_json: raw.example_config_json,
   };
 }
 
-function exampleForType(meta: OverlayTypeMeta[]): (type: string) => Record<string, unknown> {
-  return (type: string) => {
-    const hit = meta.find((m) => m.overlay_type === type);
-    return parseJsonObject(hit?.example_config_json);
-  };
+function exampleForType(
+  overlayTypes: OverlayTypeSchemaMeta[],
+): (type: string) => Record<string, unknown> {
+  return (type: string) => parseJsonObject(exampleForOverlayType({ overlay_types: overlayTypes }, type));
 }
 
-function schemaForType(meta: OverlayTypeMeta[], type: string): unknown {
-  const hit = meta.find((m) => m.overlay_type === type);
-  return hit?.config_json_schema ?? { type: 'object', additionalProperties: true };
+function schemaForType(overlayTypes: OverlayTypeSchemaMeta[], type: string): unknown {
+  return schemaForOverlayType({ overlay_types: overlayTypes }, type);
 }
 
 function configPreview(row: OverlayRow): string {
@@ -210,7 +211,7 @@ function OverlayDialog({
   mode,
   active,
   initial,
-  meta,
+  overlayTypes,
   onClose,
   onSaved,
 }: {
@@ -218,37 +219,37 @@ function OverlayDialog({
   mode: OverlayDialogMode;
   active: SavedDisplay;
   initial: OverlayRow | null;
-  meta: OverlayTypeMeta[];
+  overlayTypes: OverlayTypeSchemaMeta[];
   onClose: () => void;
   onSaved: () => void;
 }) {
   const [saving, setSaving] = useState(false);
   const [localErr, setLocalErr] = useState<string | null>(null);
-  const [name, setName] = useState('');
-  const [overlayType, setOverlayType] = useState(meta[0]?.overlay_type ?? 'shape_rain');
+  const [label, setLabel] = useState('');
+  const [overlayType, setOverlayType] = useState(overlayTypes[0]?.overlay_type ?? 'shape_rain');
   const [configForm, setConfigForm] = useState<Record<string, unknown>>({});
 
-  const exampleFor = useMemo(() => exampleForType(meta), [meta]);
+  const exampleFor = useMemo(() => exampleForType(overlayTypes), [overlayTypes]);
 
   useEffect(() => {
     if (!open) return;
     setLocalErr(null);
     if (initial) {
-      setName(initial.name);
+      setLabel(initial.label);
       setOverlayType(initial.overlay_type);
       setConfigForm(
         overlayConfigForForm(initial.overlay_type, parseJsonObject(initial.config_json)),
       );
     } else {
-      setName('');
-      setOverlayType(meta[0]?.overlay_type ?? 'shape_rain');
-      setConfigForm(exampleFor(meta[0]?.overlay_type ?? 'shape_rain'));
+      setLabel('');
+      setOverlayType(overlayTypes[0]?.overlay_type ?? 'shape_rain');
+      setConfigForm(exampleFor(overlayTypes[0]?.overlay_type ?? 'shape_rain'));
     }
-  }, [open, initial, meta, exampleFor]);
+  }, [open, initial, overlayTypes, exampleFor]);
 
   const configSchema = useMemo(
-    () => prepareRjsfSchema(schemaForType(meta, overlayType)),
-    [meta, overlayType],
+    () => prepareRjsfSchema(schemaForType(overlayTypes, overlayType)),
+    [overlayTypes, overlayType],
   );
 
   const handleTypeChange = (next: string) => {
@@ -260,13 +261,19 @@ function OverlayDialog({
 
   const submit = async () => {
     setLocalErr(null);
-    const nameTrim = name.trim();
-    if (!nameTrim) {
-      setLocalErr('Name is required.');
+    const labelTrim = label.trim();
+    if (!labelTrim) {
+      setLocalErr('Label is required.');
       return;
     }
     const configPayload = overlayConfigForSubmit(overlayType, configForm);
-    const validationErrors = validateConfigAgainstSchema(configPayload, configSchema);
+    const validationSchema =
+      overlayType === 'falling_images'
+        ? fallingImagesValidationSchema
+        : overlayType === 'floating_balloons'
+          ? floatingBalloonsValidationSchema
+          : configSchema;
+    const validationErrors = validateConfigAgainstSchema(configPayload, validationSchema);
     if (validationErrors.length > 0) {
       setLocalErr(validationErrors[0] ?? 'Invalid configuration.');
       return;
@@ -284,7 +291,7 @@ function OverlayDialog({
         await apiFetch(active, '/v1/display/overlays', {
           method: 'POST',
           body: JSON.stringify({
-            name: nameTrim,
+            label: labelTrim,
             overlay_type: overlayType.trim(),
             config_json: configPayload,
           }),
@@ -293,7 +300,7 @@ function OverlayDialog({
         await apiFetch(active, `/v1/display/overlays/${encodeURIComponent(initial.id)}`, {
           method: 'PATCH',
           body: JSON.stringify({
-            name: nameTrim,
+            label: labelTrim,
             overlay_type: overlayType.trim(),
             config_json: configPayload,
           }),
@@ -314,9 +321,9 @@ function OverlayDialog({
         <Stack spacing={2} sx={{ mt: 1 }}>
           {localErr && <Alert severity="error">{localErr}</Alert>}
           <TextField
-            label="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            label="Label"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
             required
             fullWidth
             autoFocus
@@ -330,7 +337,7 @@ function OverlayDialog({
               onChange={(e) => handleTypeChange(String(e.target.value))}
               disabled={mode === 'edit'}
             >
-              {meta.map((m) => (
+              {overlayTypes.map((m) => (
                 <MenuItem key={m.overlay_type} value={m.overlay_type}>
                   {overlayTypeLabel(m.overlay_type)}
                 </MenuItem>
@@ -387,7 +394,7 @@ function OverlayTable({
         <TableBody>
           {rows.map((row) => (
             <TableRow key={row.id} hover>
-              <TableCell sx={{ fontWeight: 600 }}>{row.name.trim() || row.id}</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>{row.label.trim() || row.id}</TableCell>
               <TableCell>
                 <Chip
                   size="small"
@@ -436,7 +443,7 @@ function OverlayCard({
             />
           </Box>
           <Typography variant="subtitle1" fontWeight={600}>
-            {row.name.trim() || row.id}
+            {row.label.trim() || row.id}
           </Typography>
           <Chip
             size="small"
@@ -470,7 +477,7 @@ export function OverlaysPage() {
   const { hasPermission } = useAuth();
   const canWrite = hasPermission('overlays.write');
   const [rawItems, setRawItems] = useState<Record<string, unknown>[]>([]);
-  const [meta, setMeta] = useState<OverlayTypeMeta[]>([]);
+  const { schemas, error: schemasError } = useConfigSchemas(active);
   const [error, setError] = useState<string | null>(null);
   const { loading, wrapRefresh } = useDisplayRefresh();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -482,12 +489,11 @@ export function OverlaysPage() {
     await wrapRefresh(async () => {
       setError(null);
       try {
-        const [overlaysRes, metaRes] = await Promise.all([
-          apiJson<{ items: Record<string, unknown>[] }>(active, '/v1/display/overlays'),
-          apiJson<{ items: OverlayTypeMeta[] }>(active, '/v1/meta/overlay-types'),
-        ]);
+        const overlaysRes = await apiJson<{ items: Record<string, unknown>[] }>(
+          active,
+          '/v1/display/overlays',
+        );
         setRawItems(overlaysRes.items ?? []);
-        setMeta(metaRes.items ?? []);
       } catch (e) {
         setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
       }
@@ -506,7 +512,7 @@ export function OverlaysPage() {
       if (row) parsed.push(row);
       else bad += 1;
     }
-    parsed.sort(sortByName);
+    parsed.sort(sortByLabel);
     return { rows: parsed, skipped: bad };
   }, [rawItems]);
 
@@ -514,7 +520,7 @@ export function OverlaysPage() {
     async (id: string) => {
       if (!active) return;
       const row = rows.find((r) => r.id === id);
-      const title = row?.name.trim() || id;
+      const title = row?.label.trim() || id;
       if (!window.confirm(`Delete overlay “${title}”?`)) return;
       setError(null);
       try {
@@ -578,7 +584,9 @@ export function OverlaysPage() {
         </Tooltip>
       </CatalogPageToolbar>
 
-      {error && <Alert severity="error">{error}</Alert>}
+      {(error || schemasError) && (
+        <Alert severity="error">{error ?? schemasError}</Alert>
+      )}
       {skipped > 0 && (
         <Alert severity="warning">
           Skipped {skipped} row(s) with missing or invalid data.
@@ -610,15 +618,17 @@ export function OverlaysPage() {
         />
       )}
 
-      <OverlayDialog
-        open={dialogOpen}
-        mode={dialogMode}
-        active={active}
-        initial={dialogInitial}
-        meta={meta}
-        onClose={() => setDialogOpen(false)}
-        onSaved={() => void load()}
-      />
+      {schemas && (
+        <OverlayDialog
+          open={dialogOpen}
+          mode={dialogMode}
+          active={active}
+          initial={dialogInitial}
+          overlayTypes={schemas.overlay_types}
+          onClose={() => setDialogOpen(false)}
+          onSaved={() => void load()}
+        />
+      )}
     </Stack>
   );
 }

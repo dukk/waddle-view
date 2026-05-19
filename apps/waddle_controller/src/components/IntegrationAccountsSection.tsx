@@ -36,9 +36,10 @@ import { listOAuthProviders, type OAuthProviderStatus } from '@/api/oauthProvide
 import { completeDialogSave } from '@/util/dialogSave';
 import { integrationAccountIdFromName } from '@/util/integrationAccountSlug';
 import type { SavedDisplay } from '@/storage/displays';
-import type {
-  IntegrationAccountRow,
-  IntegrationAccountType,
+import {
+  defaultIntegrationAccountLabel,
+  type IntegrationAccountRow,
+  type IntegrationAccountType,
 } from '@/util/integrationAccounts';
 import { integrationDisplayName } from '@/util/integrationDisplayName';
 
@@ -46,21 +47,30 @@ type AddableAccountType = IntegrationAccountType & {
   oauthProvider?: OAuthProviderStatus;
 };
 
-type IntegrationLabelRow = { id: string; integration_type: string };
-
 function errMsg(e: unknown): string {
   return e instanceof ApiError ? `${e.status}: ${e.message}` : String(e);
+}
+
+async function retryOAuthSignIn(
+  display: SavedDisplay,
+  accountId: string,
+  reload: () => Promise<void>,
+  onError: (msg: string) => void,
+): Promise<void> {
+  try {
+    await probeIntegrationAccountOAuth(display, accountId);
+    await reload();
+  } catch (e) {
+    onError(errMsg(e));
+  }
 }
 
 export function IntegrationAccountsSection({
   display,
   canWrite,
-  integrationRows = [],
 }: {
   display: SavedDisplay;
   canWrite: boolean;
-  /** Used when confirming account deletion affects integrations. */
-  integrationRows?: IntegrationLabelRow[];
 }) {
   const [accounts, setAccounts] = useState<IntegrationAccountRow[]>([]);
   const [accountTypes, setAccountTypes] = useState<IntegrationAccountType[]>([]);
@@ -87,6 +97,24 @@ export function IntegrationAccountsSection({
   useEffect(() => {
     void load();
   }, [load]);
+
+  const hasPendingOAuthSignIn = useMemo(
+    () =>
+      accounts.some(
+        (a) => !a.configured && a.oauth_sign_in_status === 'pending',
+      ),
+    [accounts],
+  );
+
+  useEffect(() => {
+    if (!hasPendingOAuthSignIn) {
+      return;
+    }
+    const id = window.setInterval(() => {
+      void load();
+    }, 5000);
+    return () => window.clearInterval(id);
+  }, [hasPendingOAuthSignIn, load]);
 
   const oauthConfiguredByAccountType = useMemo(() => {
     const map = new Map<string, boolean>();
@@ -167,16 +195,35 @@ export function IntegrationAccountsSection({
                     {account.configured ? (
                       <Chip size="small" color="success" label="Ready" />
                     ) : account.supports_oauth_sign_in ? (
-                      <Chip size="small" color="warning" label="Sign-in pending" />
+                      <Chip
+                        size="small"
+                        color="warning"
+                        label={
+                          account.oauth_sign_in_status === 'expired'
+                            ? 'Sign-in expired'
+                            : 'Sign-in pending'
+                        }
+                      />
                     ) : (
                       <Chip size="small" color="warning" label="Key needed" />
                     )}
                   </TableCell>
                   {canWrite ? (
                     <TableCell align="right">
-                      <Button size="small" onClick={() => setConfigureAccount(account)}>
-                        {account.configured ? 'Manage' : 'Configure'}
-                      </Button>
+                      <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                        {!account.configured && account.supports_oauth_sign_in ? (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => void retryOAuthSignIn(display, account.id, load, setError)}
+                          >
+                            Retry sign-in
+                          </Button>
+                        ) : null}
+                        <Button size="small" onClick={() => setConfigureAccount(account)}>
+                          {account.configured ? 'Manage' : 'Configure'}
+                        </Button>
+                      </Stack>
                     </TableCell>
                   ) : null}
                 </TableRow>
@@ -201,12 +248,12 @@ export function IntegrationAccountsSection({
       <ConfigureAccountDialog
         open={configureAccount != null}
         account={configureAccount}
-        integrationRows={integrationRows}
         onClose={() => setConfigureAccount(null)}
         onSaved={async () => {
           setConfigureAccount(null);
           await load();
         }}
+        onReload={load}
         onError={setError}
         display={display}
       />
@@ -246,9 +293,14 @@ function AddAccountDialog({
     if (!open) return;
     const first = accountTypes[0];
     setAccountTypeId(first?.id ?? '');
-    setName('');
     setApiKey('');
   }, [open, accountTypes]);
+
+  useEffect(() => {
+    if (!open) return;
+    const type = accountTypes.find((t) => t.id === accountTypeId);
+    setName(type ? defaultIntegrationAccountLabel(type.label) : '');
+  }, [open, accountTypeId, accountTypes]);
 
   const save = async () => {
     if (!selected) return;
@@ -372,28 +424,20 @@ function AddAccountDialog({
   );
 }
 
-function integrationLabelForRowId(
-  integrationId: string,
-  integrationRows: IntegrationLabelRow[],
-): string {
-  const row = integrationRows.find((r) => r.id === integrationId);
-  return row ? integrationDisplayName(row.integration_type) : integrationId;
-}
-
 function ConfigureAccountDialog({
   open,
   account,
-  integrationRows,
   onClose,
   onSaved,
+  onReload,
   onError,
   display,
 }: {
   open: boolean;
   account: IntegrationAccountRow | null;
-  integrationRows: IntegrationLabelRow[];
   onClose: () => void;
   onSaved: () => Promise<void>;
+  onReload: () => Promise<void>;
   onError: (msg: string) => void;
   display: SavedDisplay;
 }) {
@@ -441,7 +485,7 @@ function ConfigureAccountDialog({
     setBusy(true);
     try {
       await probeIntegrationAccountOAuth(display, account.id);
-      await completeDialogSave(onSaved, onClose);
+      await onReload();
     } catch (e) {
       onError(errMsg(e));
     } finally {
@@ -450,22 +494,14 @@ function ConfigureAccountDialog({
   };
 
   const deleteAccount = async () => {
-    const inUseIds = account.integration_ids ?? [];
-    let message = `Delete account "${account.label}"? This cannot be undone.`;
-    if (inUseIds.length > 0) {
-      const labels = inUseIds.map((id) => integrationLabelForRowId(id, integrationRows));
-      message =
-        `This account is used by: ${labels.join(', ')}.\n\n` +
-        'Those integrations will be disabled. Delete anyway?';
-    }
-    if (!window.confirm(message)) {
+    if (
+      !window.confirm(`Delete account "${account.label}"? This cannot be undone.`)
+    ) {
       return;
     }
     setBusy(true);
     try {
-      await deleteIntegrationAccount(display, account.id, {
-        confirm: inUseIds.length > 0,
-      });
+      await deleteIntegrationAccount(display, account.id, { confirm: true });
       await completeDialogSave(onSaved, onClose);
     } catch (e) {
       onError(errMsg(e));
@@ -488,7 +524,8 @@ function ConfigureAccountDialog({
           {account.supports_oauth_sign_in ? (
             <>
               <Typography variant="body2" color="text.secondary">
-                Complete sign-in on the display (device code alert), or request a new prompt.
+                Complete sign-in on the display (device code alert). If the code expired,
+                use Retry sign-in to show a new prompt.
               </Typography>
               {account.signup_url ? (
                 <Typography variant="body2">
@@ -505,7 +542,7 @@ function ConfigureAccountDialog({
                 disabled={busy || account.configured}
                 onClick={() => void requestSignIn()}
               >
-                Request sign-in on display
+                Retry sign-in on display
               </Button>
             </>
           ) : (

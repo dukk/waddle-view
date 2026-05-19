@@ -3,6 +3,7 @@ import Form from '@rjsf/mui';
 import validator from '@rjsf/validator-ajv8';
 import type { FieldProps, RegistryFieldsType, RegistryWidgetsType, RJSFSchema } from '@rjsf/utils';
 import { Box } from '@mui/material';
+import { normalizeSchemaFieldLabels } from '@/util/schemaFieldLabel';
 import { prepareRjsfSchema } from '@/util/rjsfSchema';
 import { buildUiSchemaFromJsonSchema } from '@/util/schemaConfigForm';
 import type { SavedDisplay } from '@/storage/displays';
@@ -34,7 +35,10 @@ export function SchemaConfigForm({
   showSubmit = false,
   children,
 }: Props) {
-  const schema = useMemo(() => prepareRjsfSchema(rawSchema), [rawSchema]);
+  const schema = useMemo(() => {
+    const prepared = prepareRjsfSchema(rawSchema);
+    return normalizeSchemaFieldLabels(structuredClone(prepared));
+  }, [rawSchema]);
   const uiSchema = useMemo(() => buildUiSchemaFromJsonSchema(schema), [schema]);
 
   const fields: RegistryFieldsType = useMemo(

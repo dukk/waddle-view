@@ -1,29 +1,5 @@
-import CropSquareIcon from '@mui/icons-material/CropSquare';
-import GridViewIcon from '@mui/icons-material/GridView';
-import StarIcon from '@mui/icons-material/Star';
-import WavesIcon from '@mui/icons-material/Waves';
 import { Stack, Typography } from '@mui/material';
 import { CuratorSliderField } from '@/components/CuratorSliderField';
-import { OverlayEnumCheckboxGroup } from './OverlayEnumCheckboxGroup';
-
-const CONFETTI_SHAPE_OPTIONS = [
-  { value: 'rect', label: 'Rectangles', icon: CropSquareIcon },
-  { value: 'circle', label: 'Circles', icon: CropSquareIcon },
-  { value: 'star', label: 'Stars', icon: StarIcon },
-  { value: 'streamer', label: 'Streamers', icon: WavesIcon },
-  { value: 'mix', label: 'Mix (all shapes)', icon: GridViewIcon },
-] as const;
-
-const DEFAULT_SHAPES = ['mix'];
-
-function readShapes(form: Record<string, unknown>): string[] {
-  const raw = form.shapes;
-  if (!Array.isArray(raw)) {
-    return [...DEFAULT_SHAPES];
-  }
-  const out = raw.filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
-  return out.length > 0 ? out : [...DEFAULT_SHAPES];
-}
 
 function readNumber(form: Record<string, unknown>, key: string, fallback: number): number {
   const v = form[key];
@@ -42,13 +18,10 @@ export function BirthdayConfettiConfigForm({ formData, onChange, disabled }: Pro
   return (
     <Stack spacing={2}>
       <Typography variant="subtitle2">Configuration</Typography>
-      <OverlayEnumCheckboxGroup
-        label="Confetti shapes"
-        options={[...CONFETTI_SHAPE_OPTIONS]}
-        value={readShapes(formData)}
-        disabled={disabled}
-        onChange={(shapes) => patch({ shapes })}
-      />
+      <Typography variant="body2" color="text.secondary">
+        Thin rectangular confetti strips in red, yellow, cyan, and magenta unless custom colors
+        are set in config JSON.
+      </Typography>
       <CuratorSliderField
         label="Density"
         value={readNumber(formData, 'density', 0.36)}

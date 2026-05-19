@@ -2,6 +2,7 @@ import 'package:waddle_shared/alerts/alert_severity_icons_kv.dart';
 import 'package:waddle_shared/config/controller_datetime_format_kv.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/theme/display_text_scale_kv.dart';
+import 'package:waddle_shared/theme/display_program_history_kv.dart';
 import 'package:waddle_shared/theme/display_theme_kv.dart';
 
 Future<void> ensureDisplayThemeKv(AppDatabase db) async {
@@ -17,6 +18,22 @@ Future<void> ensureDisplayThemeKv(AppDatabase db) async {
         ConfigKeyValuesCompanion.insert(
           key: kDisplayThemeIdKvKey,
           value: kDefaultDisplayThemeId,
+        ),
+      );
+}
+
+Future<void> ensureDisplayProgramHistoryDepthKv(AppDatabase db) async {
+  final row = await (db.select(
+    db.configKeyValues,
+  )..where((t) => t.key.equals(kDisplayProgramHistoryDepthKvKey)))
+      .getSingleOrNull();
+  if (row != null) {
+    return;
+  }
+  await db.into(db.configKeyValues).insert(
+        ConfigKeyValuesCompanion.insert(
+          key: kDisplayProgramHistoryDepthKvKey,
+          value: '$kDefaultDisplayProgramHistoryDepth',
         ),
       );
 }

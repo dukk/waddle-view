@@ -381,7 +381,7 @@ class PexelsPhotosDataProvider implements IDataProvider {
         mediaBlobKey: logicalKey,
         photographerName: photographerName,
         photographerUrl: photographerUrl,
-        pexelsPageUrl: pageUrl,
+        pageUrl: pageUrl,
         altText: Value(altText),
         fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(nowMs),
         suppressed: Value(blocked),

@@ -3,6 +3,17 @@ import { completeDisplayAdoption } from '@/util/completeDisplayAdoption';
 import { loadDisplays } from '@/storage/displays';
 import { loadSession } from '@/storage/sessions';
 
+vi.mock('@/api/configSchemas', () => ({
+  fetchAndCacheConfigSchemas: vi.fn().mockResolvedValue({
+    screen_types: [],
+    ticker_types: [],
+    overlay_types: [],
+    integration_types: [],
+  }),
+}));
+
+import { fetchAndCacheConfigSchemas } from '@/api/configSchemas';
+
 describe('completeDisplayAdoption', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -41,6 +52,7 @@ describe('completeDisplayAdoption', () => {
     expect(session.apiKey).toBe('wk_test');
     expect(loadDisplays()).toHaveLength(1);
     expect(loadSession(display.id)?.apiKey).toBe('wk_test');
+    expect(fetchAndCacheConfigSchemas).toHaveBeenCalledWith(display);
   });
 
   it('second adoption on same base URL creates a separate display row', async () => {

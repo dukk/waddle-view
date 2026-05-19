@@ -1,7 +1,8 @@
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:waddle_display/alerts/drift_alert_repository.dart';
 import 'package:waddle_display/clock.dart';
+import 'package:waddle_shared/persistence/database.dart' show AlertsCompanion;
 
 import 'helpers/memory_database.dart';
 
@@ -20,6 +21,38 @@ void main() {
     await repo.dismiss(id);
     final sub = repo.watchActive(clock);
     expect(await sub.first, isNull);
+    await db.close();
+  });
+
+  test('watchActive emits null when expiresAt passes without dismiss', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final repo = DriftAlertRepository(db);
+    final start = DateTime.utc(2026, 5, 3, 12);
+    final clock = FakeClock(start);
+    await db.into(db.alerts).insert(
+          AlertsCompanion.insert(
+            title: 'OAuth',
+            body: 'Code',
+            severity: const Value('auth'),
+            priority: const Value(50),
+            createdAt: start,
+            expiresAt: Value(start.add(const Duration(seconds: 2))),
+            source: const Value('test'),
+          ),
+        );
+
+    final events = <Object?>[];
+    final sub = repo.watchActive(clock).listen(events.add);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(events.isNotEmpty, isTrue);
+    expect(events.last, isNotNull);
+
+    clock.fixed = start.add(const Duration(seconds: 3));
+    await Future<void>.delayed(const Duration(seconds: 3));
+    expect(events.last, isNull);
+
+    await sub.cancel();
     await db.close();
   });
 }

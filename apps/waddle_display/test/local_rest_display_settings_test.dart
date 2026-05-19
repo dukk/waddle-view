@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/config/controller_datetime_format_kv.dart';
+import 'package:waddle_shared/config/display_image_overlay_kv.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 
 import 'helpers/memory_database.dart';
@@ -24,6 +25,42 @@ void main() {
     expect(body['display_theme_id'], isNotEmpty);
     expect(body['display_timezone'], isNotEmpty);
     expect(body.containsKey('adoption_allowed_roles'), isTrue);
+    expect(body['display_image_overlay'], isA<Map<String, dynamic>>());
+  });
+
+  test('PUT display settings round-trips display_image_overlay', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+
+    final put = await http.put(
+      Uri.parse('${h.baseUrl}/v1/display/settings'),
+      headers: h.authHeaders,
+      body: jsonEncode({
+        'display_image_overlay': {
+          'enabled': true,
+          'image_blob_key': kOverlayBlobKeyDuckMascot,
+          'x': 0.85,
+          'y': 0.05,
+          'scale': 0.18,
+          'opacity': 0.7,
+        },
+      }),
+    );
+    expect(put.statusCode, 200);
+
+    final get = await http.get(
+      Uri.parse('${h.baseUrl}/v1/display/settings'),
+      headers: h.authHeaders,
+    );
+    expect(get.statusCode, 200);
+    final body = jsonDecode(get.body) as Map<String, dynamic>;
+    final overlay = body['display_image_overlay'] as Map<String, dynamic>;
+    expect(overlay['enabled'], isTrue);
+    expect(overlay['image_blob_key'], kOverlayBlobKeyDuckMascot);
+    expect(overlay['x'], 0.85);
+    expect(overlay['opacity'], 0.7);
   });
 
   test('PUT display settings round-trips datetime format and theme', () async {

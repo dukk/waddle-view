@@ -41,7 +41,7 @@ void main() {
             mediaBlobKey: logicalKey,
             photographerName: 'Alex Shooter',
             photographerUrl: 'https://www.pexels.com/@alex',
-            pexelsPageUrl: 'https://www.pexels.com/photo/7/',
+            pageUrl: 'https://www.pexels.com/photo/7/',
             altText: const Value('Sunrise'),
             fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
           ),

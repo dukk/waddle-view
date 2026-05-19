@@ -438,7 +438,7 @@ Future<Response> _listPhotos(AppDatabase db, Request req) async {
           'media_blob_key': r.mediaBlobKey,
           'photographer_name': r.photographerName,
           'photographer_url': r.photographerUrl,
-          'pexels_page_url': r.pexelsPageUrl,
+          'page_url': r.pageUrl,
           'alt_text': r.altText,
           'fetched_at_ms': r.fetchedAtMs.millisecondsSinceEpoch,
           if (!browseOnly) 'suppressed': r.suppressed,

@@ -66,7 +66,7 @@ type PhotoMedia = {
   id: string;
   alt_text?: string;
   photographer_name?: string;
-  pexels_page_url?: string;
+  page_url?: string;
   media_blob_key?: string;
 };
 
@@ -497,9 +497,9 @@ function WidgetDetailBlock({
         <Typography variant="body2" color="text.secondary">
           {row.photographer_name}
         </Typography>
-        {row.pexels_page_url && (
-          <Link href={row.pexels_page_url} target="_blank" rel="noreferrer">
-            View on Pexels
+        {row.page_url && (
+          <Link href={row.page_url} target="_blank" rel="noreferrer">
+            View source
           </Link>
         )}
         {src && (

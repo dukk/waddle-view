@@ -31,6 +31,7 @@ import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/curation/curator_schedule_resolver.dart';
 import 'package:waddle_shared/curation/reject_rescan.dart';
+import 'package:waddle_shared/integration_accounts/integration_accounts_service.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/runtime/runtime_signal_repository.dart';
 import 'package:waddle_shared/secrets/db_encrypted_secret_store.dart';
@@ -58,6 +59,7 @@ import 'display/dashboard_data_bound_shell.dart';
 import 'display/dashboard_viewport_scope.dart';
 import 'display/display_viewport.dart';
 import 'display/overlay/celebration_overlay_host.dart';
+import 'display/overlay/display_image_overlay_host.dart';
 import 'display/screen_rotator.dart';
 import 'display/viewer_invite_runtime.dart';
 import 'marquee_cycle_gate.dart';
@@ -133,6 +135,7 @@ Future<void> _waddleBootstrap() async {
       db: db,
       protector: createPlatformDekProtector(),
     );
+    await syncIntegrationAccountLinks(db, secrets: secrets);
     final envMap = mergeBootstrapEnv();
     await corsOrigins.seedEnvOrigins(
       parseCorsAllowedOrigins(envMap[kDisplayHttpCorsOriginsEnv]),
@@ -539,7 +542,11 @@ class _WaddleHomeState extends State<WaddleHome> {
                 allowedOverlayIds: _allowedOverlayIds,
                 overlayRegistry: widget.overlayRegistry,
                 runtimeSignals: widget.runtimeSignals,
-                child: DashboardDataBoundShell(
+                child: DisplayImageOverlayHost(
+                  dashboardKv: widget.dashboardKv,
+                  blobs: widget.blobs,
+                  db: widget.db,
+                  child: DashboardDataBoundShell(
                   overscan: const TvOverscanInsets(),
                   viewportConfig: const DisplayViewportConfig(),
                   showTicker: _tickerEnabled,
@@ -572,6 +579,7 @@ class _WaddleHomeState extends State<WaddleHome> {
                       },
                     ),
                   ),
+                ),
                 ),
               ),
             ),

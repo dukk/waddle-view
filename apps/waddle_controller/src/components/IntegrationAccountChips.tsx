@@ -155,8 +155,8 @@ export function IntegrationAccountChips({
         (t) => statusForRequiredAccountType(detail, t.account_type) === 'missing',
       ) ? (
         <Typography variant="caption" color="text.secondary">
-          Add account keys under Configuration below, save, then complete sign-in or enter API
-          keys.
+          Link account keys in <strong>Configuration</strong> below, save, then complete sign-in or
+          enter API keys.
         </Typography>
       ) : null}
 
@@ -176,8 +176,8 @@ export function IntegrationAccountChips({
               <>
                 <Typography variant="body2">
                   Account <strong>{configure.account.label}</strong> uses OAuth. Save this
-                  integration, then complete sign-in on the display (device code alert), or request
-                  a new sign-in prompt below.
+                  integration, then complete sign-in on the display (device code alert). If the
+                  code expired, request a new sign-in prompt below.
                 </Typography>
                 {configure.requiredType.signup_url ? (
                   <Typography variant="body2">
@@ -196,7 +196,7 @@ export function IntegrationAccountChips({
                   disabled={busy || configure.account.configured}
                   onClick={() => void requestSignIn(configure.account.account_id)}
                 >
-                  Request sign-in on display
+                  Retry sign-in on display
                 </Button>
                 {configure.account.configured ? (
                   <Alert severity="success">This account is already signed in.</Alert>

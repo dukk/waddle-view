@@ -29,7 +29,7 @@ export type IntegrationsListResponse = {
 export type IntegrationsSortField = 'id' | 'integration_type' | 'poll_seconds' | 'enabled';
 
 export type IntegrationsListParams = {
-  enabled: boolean;
+  enabled?: boolean;
   limit: number;
   offset: number;
   sort?: IntegrationsSortField;
@@ -44,7 +44,9 @@ export type IntegrationsListParams = {
 
 export function buildIntegrationsQuery(params: IntegrationsListParams): string {
   const p = new URLSearchParams();
-  p.set('enabled', params.enabled ? 'true' : 'false');
+  if (params.enabled !== undefined) {
+    p.set('enabled', params.enabled ? 'true' : 'false');
+  }
   p.set('limit', String(params.limit));
   p.set('offset', String(params.offset));
   if (params.sort) p.set('sort', params.sort);

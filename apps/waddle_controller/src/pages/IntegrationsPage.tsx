@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { IntegrationSecretSlot } from '@/util/integrationSecrets';
 import { integrationSecretsSatisfiedForEnable } from '@/util/integrationSecrets';
+import { Link as RouterLink } from 'react-router-dom';
 import {
   Alert,
   Box,
@@ -25,12 +26,8 @@ import {
   TableRow,
   TextField,
   Typography,
-  MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
+  Link as MuiLink,
 } from '@mui/material';
-import Form from '@rjsf/mui';
 import validator from '@rjsf/validator-ajv8';
 import type { RJSFSchema } from '@rjsf/utils';
 import { useDisplay } from '@/context/DisplayContext';
@@ -39,7 +36,6 @@ import {
   listIntegrations,
   type IntegrationRow,
   type IntegrationsListParams,
-  type IntegrationsSortField,
 } from '@/api/integrations';
 import { fetchIntegrationAccounts } from '@/api/integrationAccounts';
 import { listOAuthProviders, type OAuthProviderStatus } from '@/api/oauthProviders';
@@ -52,6 +48,16 @@ import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import { IntegrationBrandIcon } from '@/components/IntegrationBrandIcon';
 import { completeDialogSave } from '@/util/dialogSave';
 import { parseJsonObject } from '@/util/json';
+import { SchemaConfigForm } from '@/components/config/SchemaConfigForm';
+import {
+  DISPLAY_SETTINGS_ACCOUNTS_LABEL,
+  DISPLAY_SETTINGS_TAB_ACCOUNTS,
+  displaySettingsPath,
+} from '@/constants/displaySettingsTabs';
+import {
+  mergeIntegrationConfigForSave,
+  prepareIntegrationOperatorSchema,
+} from '@/util/integrationOperatorSchema';
 import { prepareRjsfSchema } from '@/util/rjsfSchema';
 import { fetchIntegrationAccountsDetail } from '@/api/integrationAccounts';
 import { AccountsSetupNotice } from '@/components/AccountsSetupNotice';
@@ -72,56 +78,45 @@ import {
 } from '@/util/integrationAccountStatus';
 import { integrationDisplayName } from '@/util/integrationDisplayName';
 import { integrationConfigBaseUrl } from '@/util/integrationConfig';
+import { formatPollInterval } from '@/util/pollIntervalFormat';
+import { useConfigSchemas } from '@/hooks/useConfigSchemas';
+import {
+  schemaForIntegrationType,
+  type ConfigSchemasBundle,
+} from '@/storage/configSchemaCache';
 
-const ROWS_PER_PAGE_OPTIONS = [12, 25, 50] as const;
-const DEFAULT_ROWS_PER_PAGE = 12;
+const ROWS_PER_PAGE_OPTIONS = [15, 25, 50] as const;
+const DEFAULT_ROWS_PER_PAGE = 15;
+const INTEGRATIONS_PER_PAGE_LABEL = 'Integrations per page:';
 
-type SetupFilter = 'all' | 'ready' | 'needs_secrets' | 'needs_accounts';
+type IntegrationListSection = 'enabled' | 'available' | 'missing';
 
-function mergeFamilyFacets(
-  a?: Record<string, number>,
-  b?: Record<string, number>,
-): Map<string, number> {
-  const m = new Map<string, number>();
-  for (const [k, v] of Object.entries(a ?? {})) {
-    m.set(k, (m.get(k) ?? 0) + v);
-  }
-  for (const [k, v] of Object.entries(b ?? {})) {
-    m.set(k, (m.get(k) ?? 0) + v);
-  }
-  return m;
-}
-
-function listParamsBase(
-  enabled: boolean,
+function listParamsForSection(
+  section: IntegrationListSection,
   offset: number,
   rowsPerPage: number,
-  sortField: IntegrationsSortField,
-  sortOrder: 'asc' | 'desc',
-  filterFamily: string | null,
-  searchQ: string,
-  setupFilter: SetupFilter,
 ): IntegrationsListParams {
-  const params: IntegrationsListParams = {
-    enabled,
+  const base: IntegrationsListParams = {
     limit: rowsPerPage,
     offset,
-    sort: sortField,
-    order: sortOrder,
-    facets: 'family',
   };
-  if (filterFamily) params.family = filterFamily;
-  const q = searchQ.trim();
-  if (q) params.q = q;
-  if (setupFilter === 'ready') {
-    params.secrets_configured = true;
-    params.accounts_configured = true;
-  } else if (setupFilter === 'needs_secrets') {
-    params.secrets_configured = false;
-  } else if (setupFilter === 'needs_accounts') {
-    params.accounts_configured = false;
+  if (section === 'missing') {
+    return { ...base, accounts_configured: false };
   }
-  return params;
+  return {
+    ...base,
+    enabled: section === 'enabled',
+    accounts_configured: true,
+  };
+}
+
+function actionLabelForIntegrationRow(row: IntegrationRow): string {
+  return row.enabled ? 'Edit' : 'Enable';
+}
+
+/** Missing-accounts section: edit enabled integrations only (no enable until accounts are ready). */
+function missingAccountsActionLabel(row: IntegrationRow): string | null {
+  return row.enabled ? 'Edit' : null;
 }
 
 function accountsDetailFromRow(row: IntegrationRow): IntegrationAccountsDetail | null {
@@ -135,52 +130,47 @@ function accountsDetailFromRow(row: IntegrationRow): IntegrationAccountsDetail |
   };
 }
 
-function integrationConfigSchema(row: IntegrationRow): RJSFSchema {
-  return prepareRjsfSchema(row.config_json_schema);
+function integrationValidationSchema(
+  schemas: ConfigSchemasBundle | null,
+  row: IntegrationRow,
+): RJSFSchema {
+  return prepareRjsfSchema(schemaForIntegrationType(schemas, row.integration_type));
 }
 
-function configJsonSatisfiesSchema(row: IntegrationRow): boolean {
-  const schema = integrationConfigSchema(row);
+function integrationOperatorSchema(
+  schemas: ConfigSchemasBundle | null,
+  row: IntegrationRow,
+): RJSFSchema {
+  return prepareIntegrationOperatorSchema(
+    schemaForIntegrationType(schemas, row.integration_type),
+  );
+}
+
+function configJsonSatisfiesSchema(
+  schemas: ConfigSchemasBundle | null,
+  row: IntegrationRow,
+): boolean {
+  const schema = integrationValidationSchema(schemas, row);
   const formData = parseJsonObject(row.config_json);
   const { errors } = validator.validateFormData(formData, schema);
   return errors.length === 0;
 }
 
-function familyLabel(family: string): string {
-  if (family.length === 0) return 'Other';
-  return family.charAt(0).toUpperCase() + family.slice(1);
-}
-
-/** Preferred chip order for known integration families; unknown families sort after these. */
-const FAMILY_ORDER: readonly string[] = [
-  'calendar',
-  'joke',
-  'media',
-  'news',
-  'stock',
-  'trivia',
-  'weather',
-  'stub',
-];
-
-function compareFamilies(a: string, b: string): number {
-  const ai = FAMILY_ORDER.indexOf(a);
-  const bi = FAMILY_ORDER.indexOf(b);
-  if (ai >= 0 && bi >= 0) return ai - bi;
-  if (ai >= 0) return -1;
-  if (bi >= 0) return 1;
-  return a.localeCompare(b);
-}
-
 function IntegrationTable({
+  schemas,
   rows,
   actionLabel,
+  actionLabelForRow,
   onAction,
 }: {
+  schemas: ConfigSchemasBundle | null;
   rows: IntegrationRow[];
-  actionLabel: string;
+  actionLabel?: string;
+  actionLabelForRow?: (row: IntegrationRow) => string | null;
   onAction: (row: IntegrationRow) => void;
 }) {
+  const labelFor = (row: IntegrationRow): string | null =>
+    actionLabelForRow?.(row) ?? actionLabel ?? 'Open';
   return (
     <TableContainer component={Paper} variant="outlined">
       <Table size="small">
@@ -195,12 +185,13 @@ function IntegrationTable({
         <TableBody>
           {rows.map((row) => {
             const displayName = integrationDisplayName(row.integration_type);
-            const configOk = configJsonSatisfiesSchema(row);
-            const showConfigHint = actionLabel === 'Enable' && !configOk;
+            const configOk = configJsonSatisfiesSchema(schemas, row);
+            const rowActionLabel = labelFor(row);
+            const showConfigHint = rowActionLabel === 'Enable' && !configOk;
             return (
               <TableRow key={row.id} hover>
                 <TableCell sx={{ fontWeight: 600 }}>{displayName}</TableCell>
-                <TableCell>{row.poll_seconds}s</TableCell>
+                <TableCell>{formatPollInterval(row.poll_seconds)}</TableCell>
                 <TableCell>
                   {showConfigHint ? (
                     <Chip size="small" color="warning" label="Schema mismatch" />
@@ -211,9 +202,11 @@ function IntegrationTable({
                   )}
                 </TableCell>
                 <TableCell align="right">
-                  <Button size="small" variant="outlined" onClick={() => onAction(row)}>
-                    {actionLabel}
-                  </Button>
+                  {rowActionLabel ? (
+                    <Button size="small" variant="outlined" onClick={() => onAction(row)}>
+                      {rowActionLabel}
+                    </Button>
+                  ) : null}
                 </TableCell>
               </TableRow>
             );
@@ -230,8 +223,10 @@ function errMsg(e: unknown): string {
 
 export function IntegrationsPage() {
   const { active } = useDisplay();
+  const { schemas, error: schemasError } = useConfigSchemas(active);
   const { loading: enabledLoading, wrapRefresh: wrapEnabledRefresh } = useDisplayRefresh();
   const { loading: availableLoading, wrapRefresh: wrapAvailableRefresh } = useDisplayRefresh();
+  const { loading: missingLoading, wrapRefresh: wrapMissingRefresh } = useDisplayRefresh();
   const { wrapRefresh: wrapAuxRefresh } = useDisplayRefresh();
   const { layout, setLayout } = useListLayoutPreference('integrations');
   const [enabledRows, setEnabledRows] = useState<IntegrationRow[]>([]);
@@ -240,62 +235,35 @@ export function IntegrationsPage() {
   const [availableTotal, setAvailableTotal] = useState(0);
   const [enabledPage, setEnabledPage] = useState(0);
   const [availablePage, setAvailablePage] = useState(0);
+  const [missingRows, setMissingRows] = useState<IntegrationRow[]>([]);
+  const [missingTotal, setMissingTotal] = useState(0);
+  const [missingPage, setMissingPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_ROWS_PER_PAGE);
-  const [familyFacetCounts, setFamilyFacetCounts] = useState<Map<string, number>>(new Map());
   const [accounts, setAccounts] = useState<IntegrationAccountRow[]>([]);
   const [oauthProviders, setOauthProviders] = useState<OAuthProviderStatus[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [edit, setEdit] = useState<IntegrationRow | null>(null);
   const [dialogIntent, setDialogIntent] = useState<'edit' | 'enable'>('edit');
-  const [filterFamily, setFilterFamily] = useState<string | null>(null);
-  const [setupFilter, setSetupFilter] = useState<SetupFilter>('all');
-  const [searchDraft, setSearchDraft] = useState('');
-  const [searchQ, setSearchQ] = useState('');
-  const [sortField, setSortField] = useState<IntegrationsSortField>('id');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-
   const enabledFetchAbortRef = useRef<AbortController | null>(null);
   const enabledLoadGenerationRef = useRef(0);
   const availableFetchAbortRef = useRef<AbortController | null>(null);
   const availableLoadGenerationRef = useRef(0);
-  const enabledFacetsRef = useRef<Record<string, number> | undefined>(undefined);
-  const availableFacetsRef = useRef<Record<string, number> | undefined>(undefined);
+  const missingFetchAbortRef = useRef<AbortController | null>(null);
+  const missingLoadGenerationRef = useRef(0);
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => setSearchQ(searchDraft), 300);
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [searchDraft]);
-
-  useEffect(() => {
+  const resetAllPages = useCallback(() => {
     setEnabledPage(0);
     setAvailablePage(0);
-  }, [filterFamily, setupFilter, searchQ, sortField, sortOrder, rowsPerPage]);
-
-  const familiesInUse = useMemo(
-    () => [...familyFacetCounts.keys()].sort(compareFamilies),
-    [familyFacetCounts],
-  );
+    setMissingPage(0);
+  }, []);
 
   useEffect(() => {
-    if (filterFamily != null && !familiesInUse.includes(filterFamily)) {
-      setFilterFamily(null);
-    }
-  }, [filterFamily, familiesInUse]);
-
-  const catalogTotal = useMemo(() => {
-    let sum = 0;
-    for (const n of familyFacetCounts.values()) {
-      sum += n;
-    }
-    return sum;
-  }, [familyFacetCounts]);
+    resetAllPages();
+  }, [rowsPerPage, resetAllPages]);
 
   const enabledOffset = enabledPage * rowsPerPage;
   const availableOffset = availablePage * rowsPerPage;
+  const missingOffset = missingPage * rowsPerPage;
 
   const loadEnabled = useCallback(async () => {
     if (!active) return;
@@ -305,49 +273,22 @@ export function IntegrationsPage() {
     const myGen = ++enabledLoadGenerationRef.current;
     await wrapEnabledRefresh(async () => {
       try {
-        const enabledParams = listParamsBase(
-          true,
-          enabledOffset,
-          rowsPerPage,
-          sortField,
-          sortOrder,
-          filterFamily,
-          searchQ,
-          setupFilter,
-        );
+        const enabledParams = listParamsForSection('enabled', enabledOffset, rowsPerPage);
         const enabledRes = await listIntegrations(active, enabledParams, {
           signal: controller.signal,
         });
         if (myGen !== enabledLoadGenerationRef.current || controller.signal.aborted) return;
         setEnabledRows(enabledRes.items ?? []);
         setEnabledTotal(typeof enabledRes.total === 'number' ? enabledRes.total : 0);
-        enabledFacetsRef.current = enabledRes.facets?.family;
-        setFamilyFacetCounts(
-          mergeFamilyFacets(enabledFacetsRef.current, availableFacetsRef.current),
-        );
         setError(null);
       } catch (e) {
         if (controller.signal.aborted || myGen !== enabledLoadGenerationRef.current) return;
         setError(errMsg(e));
         setEnabledRows([]);
         setEnabledTotal(0);
-        enabledFacetsRef.current = undefined;
-        setFamilyFacetCounts(
-          mergeFamilyFacets(enabledFacetsRef.current, availableFacetsRef.current),
-        );
       }
     });
-  }, [
-    active,
-    enabledOffset,
-    filterFamily,
-    rowsPerPage,
-    searchQ,
-    setupFilter,
-    sortField,
-    sortOrder,
-    wrapEnabledRefresh,
-  ]);
+  }, [active, enabledOffset, rowsPerPage, wrapEnabledRefresh]);
 
   const loadAvailable = useCallback(async () => {
     if (!active) return;
@@ -357,49 +298,47 @@ export function IntegrationsPage() {
     const myGen = ++availableLoadGenerationRef.current;
     await wrapAvailableRefresh(async () => {
       try {
-        const availableParams = listParamsBase(
-          false,
-          availableOffset,
-          rowsPerPage,
-          sortField,
-          sortOrder,
-          filterFamily,
-          searchQ,
-          setupFilter,
-        );
+        const availableParams = listParamsForSection('available', availableOffset, rowsPerPage);
         const availableRes = await listIntegrations(active, availableParams, {
           signal: controller.signal,
         });
         if (myGen !== availableLoadGenerationRef.current || controller.signal.aborted) return;
         setAvailableRows(availableRes.items ?? []);
         setAvailableTotal(typeof availableRes.total === 'number' ? availableRes.total : 0);
-        availableFacetsRef.current = availableRes.facets?.family;
-        setFamilyFacetCounts(
-          mergeFamilyFacets(enabledFacetsRef.current, availableFacetsRef.current),
-        );
         setError(null);
       } catch (e) {
         if (controller.signal.aborted || myGen !== availableLoadGenerationRef.current) return;
         setError(errMsg(e));
         setAvailableRows([]);
         setAvailableTotal(0);
-        availableFacetsRef.current = undefined;
-        setFamilyFacetCounts(
-          mergeFamilyFacets(enabledFacetsRef.current, availableFacetsRef.current),
-        );
       }
     });
-  }, [
-    active,
-    availableOffset,
-    filterFamily,
-    rowsPerPage,
-    searchQ,
-    setupFilter,
-    sortField,
-    sortOrder,
-    wrapAvailableRefresh,
-  ]);
+  }, [active, availableOffset, rowsPerPage, wrapAvailableRefresh]);
+
+  const loadMissing = useCallback(async () => {
+    if (!active) return;
+    missingFetchAbortRef.current?.abort();
+    const controller = new AbortController();
+    missingFetchAbortRef.current = controller;
+    const myGen = ++missingLoadGenerationRef.current;
+    await wrapMissingRefresh(async () => {
+      try {
+        const missingParams = listParamsForSection('missing', missingOffset, rowsPerPage);
+        const missingRes = await listIntegrations(active, missingParams, {
+          signal: controller.signal,
+        });
+        if (myGen !== missingLoadGenerationRef.current || controller.signal.aborted) return;
+        setMissingRows(missingRes.items ?? []);
+        setMissingTotal(typeof missingRes.total === 'number' ? missingRes.total : 0);
+        setError(null);
+      } catch (e) {
+        if (controller.signal.aborted || myGen !== missingLoadGenerationRef.current) return;
+        setError(errMsg(e));
+        setMissingRows([]);
+        setMissingTotal(0);
+      }
+    });
+  }, [active, missingOffset, rowsPerPage, wrapMissingRefresh]);
 
   const loadAux = useCallback(async () => {
     if (!active) return;
@@ -418,8 +357,8 @@ export function IntegrationsPage() {
   }, [active, wrapAuxRefresh]);
 
   const reloadAll = useCallback(async () => {
-    await Promise.all([loadEnabled(), loadAvailable(), loadAux()]);
-  }, [loadEnabled, loadAvailable, loadAux]);
+    await Promise.all([loadEnabled(), loadAvailable(), loadMissing(), loadAux()]);
+  }, [loadEnabled, loadAvailable, loadMissing, loadAux]);
 
   useEffect(() => {
     void loadEnabled();
@@ -438,16 +377,28 @@ export function IntegrationsPage() {
   }, [loadAvailable]);
 
   useEffect(() => {
+    void loadMissing();
+    return () => {
+      missingFetchAbortRef.current?.abort();
+      missingLoadGenerationRef.current += 1;
+    };
+  }, [loadMissing]);
+
+  useEffect(() => {
     void loadAux();
   }, [loadAux]);
 
   useLayoutEffect(() => {
     setEnabledRows([]);
-  }, [filterFamily, setupFilter, searchQ, sortField, sortOrder, rowsPerPage]);
+  }, [rowsPerPage]);
 
   useLayoutEffect(() => {
     setAvailableRows([]);
-  }, [filterFamily, setupFilter, searchQ, sortField, sortOrder, rowsPerPage]);
+  }, [rowsPerPage]);
+
+  useLayoutEffect(() => {
+    setMissingRows([]);
+  }, [rowsPerPage]);
 
   if (!active) {
     return <NoDisplayPlaceholder />;
@@ -465,115 +416,15 @@ export function IntegrationsPage() {
           configuration.
         </Typography>
       </Box>
-      {error && (
+      {(error || schemasError) && (
         <Alert severity="error" onClose={() => setError(null)}>
-          {error}
+          {error ?? schemasError}
         </Alert>
       )}
 
       <AccountsSetupNotice />
 
       <CatalogPageToolbar layout={layout} onLayoutChange={setLayout} />
-
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'flex-end' }}>
-        <TextField
-          label="Search"
-          size="small"
-          value={searchDraft}
-          onChange={(e) => setSearchDraft(e.target.value)}
-          placeholder="Id or integration type"
-          sx={{ minWidth: 220, flex: 1 }}
-        />
-        <FormControl size="small" sx={{ minWidth: 160 }}>
-          <InputLabel id="integrations-sort-field">Sort by</InputLabel>
-          <Select
-            labelId="integrations-sort-field"
-            label="Sort by"
-            value={sortField}
-            onChange={(e) => setSortField(e.target.value as IntegrationsSortField)}
-          >
-            <MenuItem value="id">Id</MenuItem>
-            <MenuItem value="integration_type">Type</MenuItem>
-            <MenuItem value="poll_seconds">Poll interval</MenuItem>
-            <MenuItem value="enabled">Enabled</MenuItem>
-          </Select>
-        </FormControl>
-        <FormControl size="small" sx={{ minWidth: 120 }}>
-          <InputLabel id="integrations-sort-order">Order</InputLabel>
-          <Select
-            labelId="integrations-sort-order"
-            label="Order"
-            value={sortOrder}
-            onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
-          >
-            <MenuItem value="asc">Ascending</MenuItem>
-            <MenuItem value="desc">Descending</MenuItem>
-          </Select>
-        </FormControl>
-      </Stack>
-
-      <Stack spacing={1}>
-        <Typography variant="subtitle2" color="text.secondary">
-          Setup status
-        </Typography>
-        <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1}>
-          {(
-            [
-              ['all', 'All'],
-              ['ready', 'Ready'],
-              ['needs_secrets', 'Needs secrets'],
-              ['needs_accounts', 'Needs accounts'],
-            ] as const
-          ).map(([id, label]) => (
-            <Chip
-              key={id}
-              label={label}
-              onClick={() => setSetupFilter(id)}
-              color={setupFilter === id ? 'primary' : 'default'}
-              variant={setupFilter === id ? 'filled' : 'outlined'}
-              clickable
-            />
-          ))}
-        </Stack>
-      </Stack>
-
-      <Stack spacing={1}>
-        <Typography variant="subtitle2" color="text.secondary">
-          Filter by data type
-        </Typography>
-        <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1}>
-          <Chip
-            label={`All (${catalogTotal})`}
-            onClick={() => setFilterFamily(null)}
-            color={filterFamily === null ? 'primary' : 'default'}
-            variant={filterFamily === null ? 'filled' : 'outlined'}
-            clickable
-          />
-          {familiesInUse.map((family) => {
-            const n = familyFacetCounts.get(family) ?? 0;
-            const selected = filterFamily === family;
-            return (
-              <Chip
-                key={family}
-                label={`${familyLabel(family)} (${n})`}
-                onClick={() => setFilterFamily(family)}
-                color={selected ? 'primary' : 'default'}
-                variant={selected ? 'filled' : 'outlined'}
-                clickable
-              />
-            );
-          })}
-        </Stack>
-      </Stack>
-
-      {!enabledLoading &&
-      !availableLoading &&
-      enabledTotal === 0 &&
-      availableTotal === 0 ? (
-        <Typography variant="body2" color="text.secondary">
-          No integrations match the current filters.
-        </Typography>
-      ) : null}
 
       <Stack spacing={1.5}>
         <Typography variant="subtitle1" fontWeight={600}>
@@ -582,9 +433,7 @@ export function IntegrationsPage() {
         <DisplayRefreshIndicator loading={enabledLoading} />
         {enabledRows.length === 0 && !enabledLoading ? (
           <Typography variant="body2" color="text.secondary">
-            {filterFamily != null || searchQ || setupFilter !== 'all'
-              ? 'No enabled integrations match this filter.'
-              : 'No integrations are enabled.'}
+            No integrations are enabled.
           </Typography>
         ) : layout === 'card' ? (
           <Box sx={catalogCardGridSx}>
@@ -603,6 +452,7 @@ export function IntegrationsPage() {
           </Box>
         ) : (
           <IntegrationTable
+            schemas={schemas}
             rows={enabledRows}
             actionLabel="Edit"
             onAction={(r) => {
@@ -613,6 +463,7 @@ export function IntegrationsPage() {
         )}
         <TablePagination
           component="div"
+          labelRowsPerPage={INTEGRATIONS_PER_PAGE_LABEL}
           rowsPerPageOptions={[...ROWS_PER_PAGE_OPTIONS]}
           rowsPerPage={rowsPerPage}
           count={enabledTotal}
@@ -620,8 +471,7 @@ export function IntegrationsPage() {
           onPageChange={(_, p) => setEnabledPage(p)}
           onRowsPerPageChange={(e) => {
             setRowsPerPage(parseInt(e.target.value, 10));
-            setEnabledPage(0);
-            setAvailablePage(0);
+            resetAllPages();
           }}
         />
       </Stack>
@@ -633,9 +483,7 @@ export function IntegrationsPage() {
         <DisplayRefreshIndicator loading={availableLoading} />
         {availableRows.length === 0 && !availableLoading ? (
           <Typography variant="body2" color="text.secondary">
-            {filterFamily != null || searchQ || setupFilter !== 'all'
-              ? 'No disabled integrations match this filter.'
-              : 'All integrations are enabled.'}
+            All integrations are enabled.
           </Typography>
         ) : layout === 'card' ? (
           <Box sx={catalogCardGridSx}>
@@ -654,6 +502,7 @@ export function IntegrationsPage() {
           </Box>
         ) : (
           <IntegrationTable
+            schemas={schemas}
             rows={availableRows}
             actionLabel="Enable"
             onAction={(r) => {
@@ -664,6 +513,7 @@ export function IntegrationsPage() {
         )}
         <TablePagination
           component="div"
+          labelRowsPerPage={INTEGRATIONS_PER_PAGE_LABEL}
           rowsPerPageOptions={[...ROWS_PER_PAGE_OPTIONS]}
           rowsPerPage={rowsPerPage}
           count={availableTotal}
@@ -671,14 +521,75 @@ export function IntegrationsPage() {
           onPageChange={(_, p) => setAvailablePage(p)}
           onRowsPerPageChange={(e) => {
             setRowsPerPage(parseInt(e.target.value, 10));
-            setEnabledPage(0);
-            setAvailablePage(0);
+            resetAllPages();
           }}
         />
       </Stack>
 
-      {edit && (
+      <Stack spacing={1.5}>
+        <Typography variant="subtitle1" fontWeight={600}>
+          Missing required accounts
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          These integrations need shared accounts before they can run or be enabled. Configure them
+          under{' '}
+          <MuiLink
+            component={RouterLink}
+            to={displaySettingsPath(DISPLAY_SETTINGS_TAB_ACCOUNTS)}
+          >
+            {DISPLAY_SETTINGS_ACCOUNTS_LABEL}
+          </MuiLink>
+          .
+        </Typography>
+        <DisplayRefreshIndicator loading={missingLoading} />
+        {missingRows.length === 0 && !missingLoading ? (
+          <Typography variant="body2" color="text.secondary">
+            All integrations that require accounts are configured.
+          </Typography>
+        ) : layout === 'card' ? (
+          <Box sx={catalogCardGridSx}>
+            {missingRows.map((r) => (
+              <IntegrationCard
+                key={r.id}
+                row={r}
+                actionLabel={missingAccountsActionLabel(r)}
+                onAccountsChanged={reloadAll}
+                onAction={() => {
+                  setDialogIntent('edit');
+                  setEdit(r);
+                }}
+              />
+            ))}
+          </Box>
+        ) : (
+          <IntegrationTable
+            schemas={schemas}
+            rows={missingRows}
+            actionLabelForRow={missingAccountsActionLabel}
+            onAction={(r) => {
+              setDialogIntent('edit');
+              setEdit(r);
+            }}
+          />
+        )}
+        <TablePagination
+          component="div"
+          labelRowsPerPage={INTEGRATIONS_PER_PAGE_LABEL}
+          rowsPerPageOptions={[...ROWS_PER_PAGE_OPTIONS]}
+          rowsPerPage={rowsPerPage}
+          count={missingTotal}
+          page={missingPage}
+          onPageChange={(_, p) => setMissingPage(p)}
+          onRowsPerPageChange={(e) => {
+            setRowsPerPage(parseInt(e.target.value, 10));
+            resetAllPages();
+          }}
+        />
+      </Stack>
+
+      {edit && schemas && (
         <EditIntegrationDialog
+          schemas={schemas}
           row={edit}
           intent={dialogIntent}
           oauthProviders={oauthProviders}
@@ -702,7 +613,7 @@ function IntegrationCard({
   onAccountsChanged,
 }: {
   row: IntegrationRow;
-  actionLabel: string;
+  actionLabel?: string | null;
   onAction: () => void;
   onAccountsChanged?: () => Promise<void>;
 }) {
@@ -732,13 +643,8 @@ function IntegrationCard({
             </Typography>
           </Stack>
           <Typography variant="caption" color="text.secondary" display="block">
-            Poll every {row.poll_seconds}s
+            Poll every {formatPollInterval(row.poll_seconds)}
           </Typography>
-          {integrationConfigBaseUrl(row.config_json) ? (
-            <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
-              {integrationConfigBaseUrl(row.config_json)}
-            </Typography>
-          ) : null}
           {active && accountDetail ? (
             <IntegrationAccountChips
               display={active}
@@ -749,11 +655,13 @@ function IntegrationCard({
           ) : null}
         </Stack>
       </CardContent>
-      <CardActions sx={{ justifyContent: 'flex-end', px: 2, pb: 2 }}>
-        <Button size="small" variant="outlined" onClick={onAction}>
-          {actionLabel}
-        </Button>
-      </CardActions>
+      {actionLabel ? (
+        <CardActions sx={{ justifyContent: 'flex-end', px: 2, pb: 2 }}>
+          <Button size="small" variant="outlined" onClick={onAction}>
+            {actionLabel}
+          </Button>
+        </CardActions>
+      ) : null}
     </Card>
   );
 }
@@ -761,6 +669,7 @@ function IntegrationCard({
 const kOutlookCalendarIntegrationType = 'calendar_outlook';
 
 function EditIntegrationDialog({
+  schemas,
   row,
   intent,
   oauthProviders,
@@ -768,6 +677,7 @@ function EditIntegrationDialog({
   onClose,
   onSaved,
 }: {
+  schemas: ConfigSchemasBundle;
   row: IntegrationRow;
   intent: 'edit' | 'enable';
   oauthProviders: OAuthProviderStatus[];
@@ -777,7 +687,14 @@ function EditIntegrationDialog({
 }) {
   const { active } = useDisplay();
   const isOutlookCalendar = row.integration_type === kOutlookCalendarIntegrationType;
-  const schema = useMemo(() => integrationConfigSchema(row), [row]);
+  const operatorSchema = useMemo(
+    () => integrationOperatorSchema(schemas, row),
+    [schemas, row],
+  );
+  const validationSchema = useMemo(
+    () => integrationValidationSchema(schemas, row),
+    [schemas, row],
+  );
   const [enabled, setEnabled] = useState(() => (intent === 'enable' ? true : row.enabled));
   const [poll, setPoll] = useState(row.poll_seconds);
   const [formData, setFormData] = useState<Record<string, unknown>>(() =>
@@ -899,11 +816,11 @@ function EditIntegrationDialog({
   }, [isOutlookCalendar, accountDetail, outlookConfigReady]);
 
   const configForSave = useMemo(() => {
-    if (isOutlookCalendar) {
-      return buildOutlookCalendarConfigJson(outlookConfig);
-    }
-    return formData;
-  }, [isOutlookCalendar, outlookConfig, formData]);
+    const built = isOutlookCalendar
+      ? buildOutlookCalendarConfigJson(outlookConfig)
+      : formData;
+    return mergeIntegrationConfigForSave(built, row.config_json);
+  }, [isOutlookCalendar, outlookConfig, formData, row.config_json]);
 
   const displayName = useMemo(
     () => integrationDisplayName(row.integration_type),
@@ -914,7 +831,7 @@ function EditIntegrationDialog({
     if (!active) return;
     setErr(null);
     if (enabled) {
-      const { errors } = validator.validateFormData(configForSave, schema);
+      const { errors } = validator.validateFormData(configForSave, validationSchema);
       if (errors.length > 0) {
         setErr(errors.map((e) => e.stack ?? e.message ?? 'Invalid field').join('\n'));
         return;
@@ -930,7 +847,7 @@ function EditIntegrationDialog({
     }
     if (enabled && !oauthClientIdsReady) {
       setErr(
-        'Configure required OAuth client IDs under Display settings → Accounts before enabling.',
+        `Configure required OAuth client IDs under ${DISPLAY_SETTINGS_ACCOUNTS_LABEL} before enabling.`,
       );
       return;
     }
@@ -1001,7 +918,7 @@ function EditIntegrationDialog({
           </Stack>
           {!oauthClientIdsReady ? (
             <Alert severity="info">
-              Set OAuth client IDs under <strong>Display settings → Accounts</strong> before
+              Set OAuth client IDs under <strong>{DISPLAY_SETTINGS_ACCOUNTS_LABEL}</strong> before
               enabling.
             </Alert>
           ) : null}
@@ -1018,14 +935,14 @@ function EditIntegrationDialog({
           ) : null}
           {!accountsReady && accountDetail && !isOutlookCalendar ? (
             <Alert severity="info">
-              Add accounts under <strong>Display settings → Accounts</strong>, or link account keys in
-              Configuration below, then complete sign-in or API keys.
+              Add accounts under <strong>{DISPLAY_SETTINGS_ACCOUNTS_LABEL}</strong>, or link account
+              keys in <strong>Configuration</strong> below, then complete sign-in or enter API keys.
             </Alert>
           ) : null}
           {!outlookConfigReady && isOutlookCalendar ? (
             <Alert severity="info">
               Choose a Microsoft account and at least one calendar below. Add accounts under{' '}
-              <strong>Display settings → Accounts</strong> if none appear.
+              <strong>{DISPLAY_SETTINGS_ACCOUNTS_LABEL}</strong> if none are listed.
             </Alert>
           ) : null}
           {secretsLoading ? (
@@ -1034,7 +951,7 @@ function EditIntegrationDialog({
             </Typography>
           ) : secretSlots.length > 0 ? (
             <Stack spacing={1.5}>
-              <Typography variant="subtitle2">Secrets (stored on display)</Typography>
+              <Typography variant="subtitle2">Secrets</Typography>
               {secretSlots.map((slot) => (
                 <Stack key={slot.id} spacing={0.5}>
                   <Stack direction="row" alignItems="center" spacing={1}>
@@ -1063,17 +980,12 @@ function EditIntegrationDialog({
             </Stack>
           ) : null}
           <TextField
-            label="Poll seconds"
+            label="Poll interval (seconds)"
             type="number"
             value={poll}
             onChange={(e) => setPoll(Number(e.target.value) || 0)}
             fullWidth
           />
-          {isOutlookCalendar && integrationConfigBaseUrl(row.config_json) ? (
-            <Typography variant="caption" color="text.secondary" display="block">
-              Microsoft Graph endpoint: {integrationConfigBaseUrl(row.config_json)}
-            </Typography>
-          ) : null}
           {isOutlookCalendar && active ? (
             <OutlookCalendarConfigSection
               display={active}
@@ -1083,21 +995,17 @@ function EditIntegrationDialog({
               categories={curatorCategories}
             />
           ) : (
-            <>
-              <Typography variant="subtitle2">Configuration</Typography>
-              <Box sx={{ '& .MuiFormControl-root': { mb: 1 } }}>
-                <Form
-                  schema={schema}
+            active ? (
+              <Stack spacing={1}>
+                <Typography variant="subtitle2">Configuration</Typography>
+                <SchemaConfigForm
+                  display={active}
+                  schema={operatorSchema}
                   formData={formData}
-                  validator={validator}
-                  onChange={(e) => setFormData(e.formData as Record<string, unknown>)}
-                >
-                  <Box sx={{ display: 'none' }}>
-                    <button type="submit" />
-                  </Box>
-                </Form>
-              </Box>
-            </>
+                  onChange={setFormData}
+                />
+              </Stack>
+            ) : null
           )}
         </Stack>
       </DialogContent>

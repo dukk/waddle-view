@@ -120,6 +120,52 @@ export function v1Router() {
     });
   });
 
+  r.get('/meta/config-schemas', (c) => {
+    const scenario = c.get('scenario');
+    if (wantsEmpty(scenario)) {
+      return c.json({
+        screen_types: [],
+        ticker_types: [],
+        overlay_types: [],
+        integration_types: [],
+      });
+    }
+    return c.json({
+      screen_types: [
+        {
+          screen_type: 'static_text',
+          config_json_schema: {
+            type: 'object',
+            properties: { text: { type: 'string' } },
+            required: ['text'],
+          },
+          example_config_json: { text: 'Hello from mock API' },
+        },
+      ],
+      ticker_types: [
+        {
+          ticker_type: 'time',
+          config_json_schema: { type: 'object' },
+          example_config_json: {},
+        },
+      ],
+      overlay_types: [
+        {
+          overlay_type: 'shape_rain',
+          config_json_schema: { type: 'object', additionalProperties: true },
+          example_config_json: {},
+        },
+      ],
+      integration_types: [
+        {
+          integration_type: 'stub',
+          config_json_schema: { type: 'object' },
+          example_config_json: {},
+        },
+      ],
+    });
+  });
+
   r.get('/ticker/tapes', (c) => {
     const scenario = c.get('scenario');
     if (wantsEmpty(scenario)) return c.json({ items: [] });
@@ -134,8 +180,7 @@ export function v1Router() {
           frequency_weight: 100,
           sort_order: 0,
           config_key: null,
-          config_json_schema: null,
-          example_config_json: null,
+          config_json: {},
         },
       ],
     });
@@ -162,6 +207,23 @@ export function v1Router() {
     const display_timezone = mockConfigKv.get('display.timezone') ?? 'America/New_York';
     const controller_time_format = mockConfigKv.get('controller.time_format') ?? '12h';
     const controller_date_order = mockConfigKv.get('controller.date_order') ?? 'mdy';
+    const overlayRaw = mockConfigKv.get('display.image_overlay');
+    let display_image_overlay: Record<string, unknown> = {
+      enabled: false,
+      x: 0.05,
+      y: 0.05,
+      scale: 0.12,
+    };
+    if (overlayRaw) {
+      try {
+        const parsed = JSON.parse(overlayRaw) as Record<string, unknown>;
+        if (parsed && typeof parsed === 'object') {
+          display_image_overlay = parsed;
+        }
+      } catch {
+        /* keep defaults */
+      }
+    }
     return c.json({
       display_theme_id: mockConfigKv.get('display.theme.id') ?? 'navy_coral',
       display_text_scale_screen: mockConfigKv.get('display.text_scale.screen') ?? 'normal',
@@ -169,6 +231,7 @@ export function v1Router() {
       display_timezone,
       controller_time_format,
       controller_date_order,
+      display_image_overlay,
       adoption_allowed_roles: ['viewer', 'power_viewer', 'operator', 'admin'],
       adoption_allow_new_requests: true,
     });
@@ -199,6 +262,12 @@ export function v1Router() {
       }
       if (typeof body.controller_date_order === 'string') {
         mockConfigKv.set('controller.date_order', body.controller_date_order);
+      }
+      if (body.display_image_overlay && typeof body.display_image_overlay === 'object') {
+        mockConfigKv.set(
+          'display.image_overlay',
+          JSON.stringify(body.display_image_overlay),
+        );
       }
     } catch {
       /* ignore malformed body */
@@ -355,7 +424,7 @@ export function v1Router() {
           overlay_type: 'birthday_confetti',
           config_json_schema: { type: 'object', additionalProperties: true },
           example_config_json: {
-            shapes: ['rect', 'circle', 'mix'],
+            colors: ['#E53935', '#FFEB3B', '#00BCD4', '#E91E63'],
             density: 0.36,
             fall_speed: 0.14,
             opacity: 0.46,
@@ -365,6 +434,20 @@ export function v1Router() {
           overlay_type: 'bouncing_message',
           config_json_schema: { type: 'object', additionalProperties: true },
           example_config_json: { messages: ['Happy Birthday Waddle!!'] },
+        },
+        {
+          overlay_type: 'floating_balloons',
+          config_json_schema: { type: 'object', additionalProperties: true },
+          example_config_json: {
+            colors: ['#E53935', '#FFEB3B', '#00BCD4', '#E91E63', '#43A047', '#8E24AA'],
+            spawn_interval_sec: 22,
+            rise_speed: 85,
+            max_active: 6,
+            cluster_chance: 0.4,
+            balloon_scale: 0.09,
+            scale_jitter: 0.25,
+            opacity: 0.92,
+          },
         },
         {
           overlay_type: 'falling_images',
@@ -380,20 +463,20 @@ export function v1Router() {
               drop_interval_sec: {
                 type: 'integer',
                 title: 'Drop interval',
-                minimum: 15,
+                minimum: 5,
                 maximum: 180,
               },
               fall_speed: {
                 type: 'number',
                 title: 'Fall speed',
-                minimum: 0.05,
-                maximum: 1,
+                minimum: 30,
+                maximum: 800,
               },
               image_scale: {
                 type: 'number',
                 title: 'Image scale',
                 minimum: 0.04,
-                maximum: 0.35,
+                maximum: 0.7,
               },
               scale_jitter: {
                 type: 'number',
@@ -406,7 +489,7 @@ export function v1Router() {
           example_config_json: {
             image_blob_keys: [],
             drop_interval_sec: 45,
-            fall_speed: 0.12,
+            fall_speed: 130,
             image_scale: 0.12,
             scale_jitter: 0.33,
           },

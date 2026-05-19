@@ -3,10 +3,12 @@ import 'package:waddle_shared/auth/role_permissions.dart';
 import 'package:waddle_shared/config/adoption.dart';
 import 'package:waddle_shared/config/adoption_allowed_roles.dart';
 import 'package:waddle_shared/config/controller_datetime_format_kv.dart';
+import 'package:waddle_shared/config/display_image_overlay_kv.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/theme/display_text_scale_kv.dart';
 import 'package:waddle_shared/theme/display_theme_ids.dart';
+import 'package:waddle_shared/theme/display_program_history_kv.dart';
 import 'package:waddle_shared/theme/display_theme_kv.dart';
 
 /// Aggregated display-level operator settings from [config_key_values].
@@ -23,6 +25,12 @@ Future<Map<String, dynamic>> readDisplayOperatorSettings(AppDatabase db) async {
   final tzRaw = kv[kDisplayTimezoneKvKey]?.trim() ?? '';
   final displayTimezone =
       tzRaw.isEmpty ? kDefaultDisplayTimezoneIana : tzRaw;
+  final programHistoryDepth = normalizeDisplayProgramHistoryDepth(
+    kv[kDisplayProgramHistoryDepthKvKey],
+  );
+  final imageOverlay = DisplayImageOverlaySettings.decodeKvValue(
+    kv[kDisplayImageOverlayKvKey],
+  );
   final adoptionAllowedRoles = await readAdoptionAllowedRoles(db);
   final adoptionRolesList = adoptionAllowedRoles.toList()
     ..sort((a, b) {
@@ -32,6 +40,7 @@ Future<Map<String, dynamic>> readDisplayOperatorSettings(AppDatabase db) async {
     });
   return {
     'display_theme_id': themeId,
+    'display_program_history_depth': programHistoryDepth,
     'display_text_scale_screen': screenTextScale,
     'display_text_scale_ticker': tickerTextScale,
     'display_timezone': displayTimezone,
@@ -41,6 +50,7 @@ Future<Map<String, dynamic>> readDisplayOperatorSettings(AppDatabase db) async {
         normalizeControllerDateOrder(kv[kControllerDateOrderKvKey]),
     'adoption_allowed_roles': adoptionRolesList,
     'adoption_allow_new_requests': adoptionAllowedRoles.isNotEmpty,
+    'display_image_overlay': imageOverlay.toJson(),
   };
 }
 
@@ -57,6 +67,18 @@ Future<bool> applyDisplayOperatorSettingsPut(
           ConfigKeyValuesCompanion.insert(
             key: kDisplayThemeIdKvKey,
             value: themeId,
+          ),
+        );
+    touched = true;
+  }
+  if (body.containsKey('display_program_history_depth')) {
+    final depth = normalizeDisplayProgramHistoryDepth(
+      '${body['display_program_history_depth']}',
+    );
+    await db.into(db.configKeyValues).insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kDisplayProgramHistoryDepthKvKey,
+            value: '$depth',
           ),
         );
     touched = true;
@@ -162,6 +184,28 @@ Future<bool> applyDisplayOperatorSettingsPut(
           ConfigKeyValuesCompanion.insert(
             key: kAdoptionAllowNewRequestsKvKey,
             value: flag ? 'true' : 'false',
+          ),
+        );
+    touched = true;
+  }
+  if (body.containsKey('display_image_overlay')) {
+    final raw = body['display_image_overlay'];
+    final existing = DisplayImageOverlaySettings.decodeKvValue(
+      (await (db.select(db.configKeyValues)
+                ..where((t) => t.key.equals(kDisplayImageOverlayKvKey)))
+            .getSingleOrNull())
+          ?.value,
+    );
+    final patch = raw is Map<String, dynamic>
+        ? raw
+        : raw is Map
+            ? Map<String, dynamic>.from(raw)
+            : <String, dynamic>{};
+    final next = existing.mergePartial(patch);
+    await db.into(db.configKeyValues).insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kDisplayImageOverlayKvKey,
+            value: DisplayImageOverlaySettings.encodeKvValue(next),
           ),
         );
     touched = true;

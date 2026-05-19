@@ -110,6 +110,59 @@ void main() {
     expect((items.first as Map).containsKey('ticker_type'), isTrue);
   });
 
+  test('GET meta config-schemas returns bundled sections', () async {
+    final h = await RestTestHarness.start();
+    addTearDown(h.dispose);
+
+    final res = await http.get(
+      Uri.parse('${h.baseUrl}/v1/meta/config-schemas'),
+      headers: h.authHeaders,
+    );
+    expect(res.statusCode, 200);
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    for (final key in [
+      'screen_types',
+      'ticker_types',
+      'overlay_types',
+      'integration_types',
+    ]) {
+      expect((body[key] as List).isNotEmpty, isTrue);
+    }
+  });
+
+  test('GET screens omits config_json_schema unless requested', () async {
+    final h = await RestTestHarness.start();
+    addTearDown(h.dispose);
+
+    final plain = await http.get(
+      Uri.parse('${h.baseUrl}/v1/screens'),
+      headers: h.authHeaders,
+    );
+    expect(plain.statusCode, 200);
+    final plainBody = jsonDecode(plain.body) as Map<String, dynamic>;
+    final plainItems = plainBody['items'] as List<dynamic>;
+    if (plainItems.isNotEmpty) {
+      expect(
+        (plainItems.first as Map).containsKey('config_json_schema'),
+        isFalse,
+      );
+    }
+
+    final withSchema = await http.get(
+      Uri.parse('${h.baseUrl}/v1/screens?include_config_schema=true'),
+      headers: h.authHeaders,
+    );
+    expect(withSchema.statusCode, 200);
+    final withBody = jsonDecode(withSchema.body) as Map<String, dynamic>;
+    final withItems = withBody['items'] as List<dynamic>;
+    if (withItems.isNotEmpty) {
+      expect(
+        (withItems.first as Map).containsKey('config_json_schema'),
+        isTrue,
+      );
+    }
+  });
+
   test('POST and DELETE ticker tape round-trip', () async {
     final h = await RestTestHarness.start();
     addTearDown(h.dispose);
@@ -120,7 +173,7 @@ void main() {
       body: jsonEncode({
         'id': 'rest_test_tape',
         'ticker_type': 'time',
-        'name': 'Test clock',
+        'label': 'Test clock',
       }),
     );
     expect(post.statusCode, 200);
@@ -338,7 +391,7 @@ void main() {
     await db.into(db.tickerTapes).insert(
           TickerTapesCompanion.insert(
             id: 'op_tick',
-            name: 'Op',
+            label: 'Op',
             tickerType: 'time',
             sortOrder: const Value(0),
             frequencyWeight: const Value(50),
@@ -425,7 +478,7 @@ void main() {
     await h.db.into(h.db.tickerTapes).insert(
           TickerTapesCompanion.insert(
             id: 'bad_tick',
-            name: 'B',
+            label: 'B',
             tickerType: 'quote',
           ),
         );
@@ -553,7 +606,7 @@ void main() {
       Uri.parse('${h.baseUrl}/v1/screens/patch_me'),
       headers: h.authHeaders,
       body: jsonEncode({
-        'name': 'Renamed',
+        'label': 'Renamed',
         'config_json': {'text': 'B'},
       }),
     );

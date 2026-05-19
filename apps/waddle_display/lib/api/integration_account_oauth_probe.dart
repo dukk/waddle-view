@@ -10,11 +10,11 @@ import 'package:waddle_integrations/microsoft_graph/microsoft_graph_profile.dart
 import 'package:waddle_shared/config/google_kv.dart';
 import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/config/microsoft_graph_kv.dart';
-import 'package:waddle_shared/integration_accounts/integration_account_alert_label.dart';
 import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
 import 'package:waddle_shared/integration_accounts/integration_accounts_service.dart';
+import 'package:waddle_shared/integration_accounts/oauth_sign_in_alerts.dart';
 import 'package:waddle_shared/persistence/database.dart'
-    show AppDatabase, kDefaultCalendarOutlookIntegrationId;
+    show AppDatabase, DashboardAlert, kDefaultCalendarOutlookIntegrationId;
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';
 
@@ -86,7 +86,11 @@ Future<Response> _probeGoogle({
     pollDeviceCode: false,
   );
   if (token == null || token.isEmpty) {
-    return _signInRequiredResponse(db, kGoogleOAuthAlertSource, accountId);
+    return _signInRequiredResponse(
+      db,
+      accountId: accountId,
+      accountTypeId: kIntegrationAccountTypeGoogle,
+    );
   }
   try {
     final profile = await fetchGoogleUserProfile(
@@ -134,7 +138,11 @@ Future<Response> _probeMicrosoftGraph({
     pollDeviceCode: false,
   );
   if (token == null || token.isEmpty) {
-    return _signInRequiredResponse(db, kMicrosoftGraphOAuthAlertSource, accountId);
+    return _signInRequiredResponse(
+      db,
+      accountId: accountId,
+      accountTypeId: kIntegrationAccountTypeMicrosoftGraph,
+    );
   }
   final outlookRow = await (db.select(db.integrations)
         ..where((t) => t.id.equals(kDefaultCalendarOutlookIntegrationId)))
@@ -169,56 +177,42 @@ Future<Response> _probeMicrosoftGraph({
 }
 
 Future<Response> _signInRequiredResponse(
-  AppDatabase db,
-  String alertSource,
-  String accountId,
-) async {
-  final hasAlert = await _hasActiveOAuthSignInAlert(
+  AppDatabase db, {
+  required String accountId,
+  required String accountTypeId,
+}) async {
+  final source = oauthAlertSourceForAccountType(accountTypeId);
+  final active = source == null
+      ? const <DashboardAlert>[]
+      : await activeOAuthSignInAlertsForAccount(
+          db,
+          accountId: accountId,
+          alertSource: source,
+        );
+  final body = <String, dynamic>{
+    'configured': false,
+    'status': 'sign_in_required',
+    'sign_in_alert_active': active.isNotEmpty,
+  };
+  if (active.isNotEmpty) {
+    final exp = active.first.expiresAt;
+    if (exp != null) {
+      body['sign_in_expires_at_ms'] = exp.millisecondsSinceEpoch;
+    }
+  }
+  final signInStatus = await oauthSignInStatusForAccount(
     db,
-    source: alertSource,
     accountId: accountId,
+    accountTypeId: accountTypeId,
+    configured: false,
   );
+  final statusJson = oauthSignInStatusJson(signInStatus);
+  if (statusJson != null) {
+    body['oauth_sign_in_status'] = statusJson;
+  }
   return Response(
     202,
-    body: jsonEncode({
-      'configured': false,
-      'status': 'sign_in_required',
-      'sign_in_alert_active': hasAlert,
-    }),
+    body: jsonEncode(body),
     headers: _jsonHeaders,
   );
-}
-
-Future<bool> _hasActiveOAuthSignInAlert(
-  AppDatabase db, {
-  required String source,
-  required String accountId,
-}) async {
-  final accountLabel = await integrationAccountAlertLabel(db, accountId);
-  final now = DateTime.now();
-  final rows = await (db.select(db.alerts)
-        ..where((t) => t.source.equals(source))
-        ..where((t) => t.dismissedAt.isNull()))
-      .get();
-  for (final row in rows) {
-    if (row.expiresAt != null && !row.expiresAt!.isAfter(now)) {
-      continue;
-    }
-    if (_oauthAlertMatchesAccount(row.title, accountId, accountLabel) ||
-        _oauthAlertMatchesAccount(row.body, accountId, accountLabel)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-bool _oauthAlertMatchesAccount(
-  String text,
-  String accountId,
-  String accountLabel,
-) {
-  if (text.contains(accountLabel)) {
-    return true;
-  }
-  return accountLabel != accountId && text.contains(accountId);
 }

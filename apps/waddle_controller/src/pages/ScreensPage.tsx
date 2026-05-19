@@ -33,8 +33,10 @@ import { catalogCardGridSx } from '@/constants/catalogLayout';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import { ScreenSchedulingHelpContent } from '@/components/help/ScreenSchedulingHelpContent';
-import { SlideScreenPreviewIcon } from '@/icons/slideScreenPreviewIcon';
-import { ScreenCarouselIcon } from '@/icons/ScreenCarouselIcon';
+import {
+  ScreenCarouselFallbackIcon,
+  SlideScreenPreviewIcon,
+} from '@/icons/slideScreenPreviewIcon';
 import { screenTypePreviewKind } from '@/util/programTelemetry';
 import Form from '@rjsf/mui';
 import type { IChangeEvent } from '@rjsf/core';
@@ -46,10 +48,16 @@ import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { parseJsonObject } from '@/util/json';
 import { completeDialogSave } from '@/util/dialogSave';
 import { prepareRjsfSchema } from '@/util/rjsfSchema';
+import { useConfigSchemas } from '@/hooks/useConfigSchemas';
+import {
+  exampleForScreenType,
+  schemaForScreenType,
+  type ScreenTypeSchemaMeta,
+} from '@/storage/configSchemaCache';
 
 type ScreenRow = {
   id: string;
-  name: string;
+  label?: string | null;
   description?: string;
   screen_type: string;
   config_json: string;
@@ -64,18 +72,68 @@ type ScreenRow = {
   data_key: string;
 };
 
-type ScreenTypeMeta = {
-  screen_type: string;
-  config_json_schema: unknown;
-  example_config_json: unknown;
-};
-
 function sortById(a: ScreenRow, b: ScreenRow): number {
   return a.id.localeCompare(b.id);
 }
 
-function screenTypeLabel(screenType: string): string {
-  return screenType.replace(/_/g, ' ');
+function screenTypeLabel(screenType: string | null | undefined): string {
+  const normalized = (screenType ?? '').trim();
+  return normalized ? normalized.replace(/_/g, ' ') : 'unknown';
+}
+
+function screenRowTitle(row: Pick<ScreenRow, 'id' | 'label'>): string {
+  return (row.label ?? '').trim() || row.id;
+}
+
+function screenRowHasCustomTitle(row: Pick<ScreenRow, 'label'>): boolean {
+  return Boolean((row.label ?? '').trim());
+}
+
+function screenRowDescription(row: Pick<ScreenRow, 'description'>): string {
+  return typeof row.description === 'string' ? row.description.trim() : '';
+}
+
+function readOptionalString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+function readNumber(value: unknown, fallback = 0): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function readOptionalNumber(value: unknown): number | null {
+  if (value == null) return null;
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function parseScreenRow(raw: Record<string, unknown>): ScreenRow | null {
+  const id = typeof raw.id === 'string' ? raw.id.trim() : '';
+  const screenType = typeof raw.screen_type === 'string' ? raw.screen_type.trim() : '';
+  if (!id || !screenType) return null;
+
+  let configJson = '{}';
+  if (typeof raw.config_json === 'string') {
+    configJson = raw.config_json;
+  } else if (raw.config_json != null && typeof raw.config_json === 'object') {
+    configJson = JSON.stringify(raw.config_json);
+  }
+
+  return {
+    id,
+    label: readOptionalString(raw.label) ?? readOptionalString(raw.name),
+    description: readOptionalString(raw.description),
+    screen_type: screenType,
+    config_json: configJson,
+    config_json_schema: readOptionalString(raw.config_json_schema),
+    example_config_json: readOptionalString(raw.example_config_json),
+    min_dwell_seconds: readNumber(raw.min_dwell_seconds, 8),
+    max_dwell_seconds: readNumber(raw.max_dwell_seconds, 15),
+    frequency_weight: readNumber(raw.frequency_weight, 100),
+    min_gap_between_shows_seconds: readNumber(raw.min_gap_between_shows_seconds),
+    min_placements_per_program: readNumber(raw.min_placements_per_program),
+    max_placements_per_program: readOptionalNumber(raw.max_placements_per_program),
+    data_key: readOptionalString(raw.data_key) ?? '',
+  };
 }
 
 const screenCardPreviewSx = {
@@ -114,10 +172,10 @@ function ScreenTable({
         </TableHead>
         <TableBody>
           {rows.map((row) => {
-            const title = row.name.trim() || row.id;
+            const title = screenRowTitle(row);
             return (
               <TableRow key={row.id} hover>
-                <TableCell sx={{ fontWeight: row.name.trim() ? 600 : 400 }}>{title}</TableCell>
+                <TableCell sx={{ fontWeight: screenRowHasCustomTitle(row) ? 600 : 400 }}>{title}</TableCell>
                 <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.id}</TableCell>
                 <TableCell>{screenTypeLabel(row.screen_type)}</TableCell>
                 <TableCell>
@@ -126,7 +184,7 @@ function ScreenTable({
                 <TableCell>{row.frequency_weight}</TableCell>
                 <TableCell>{row.min_gap_between_shows_seconds}s</TableCell>
                 <TableCell sx={{ maxWidth: 280, wordBreak: 'break-word' }}>
-                  {row.description?.trim() ?? ''}
+                  {screenRowDescription(row)}
                 </TableCell>
                 <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
                   <Button size="small" onClick={() => onEdit(row)}>
@@ -150,7 +208,7 @@ export function ScreensPage() {
   const { loading, wrapRefresh } = useDisplayRefresh();
   const { layout, setLayout } = useListLayoutPreference('screens');
   const [rows, setRows] = useState<ScreenRow[]>([]);
-  const [meta, setMeta] = useState<ScreenTypeMeta[]>([]);
+  const { schemas, error: schemasError } = useConfigSchemas(active);
   const [error, setError] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [editRow, setEditRow] = useState<ScreenRow | null>(null);
@@ -160,12 +218,15 @@ export function ScreensPage() {
     await wrapRefresh(async () => {
       setError(null);
       try {
-        const [s, m] = await Promise.all([
-          apiJson<{ items: ScreenRow[] }>(active, '/v1/screens'),
-          apiJson<{ items: ScreenTypeMeta[] }>(active, '/v1/meta/screen-types'),
-        ]);
-        setRows(s.items ?? []);
-        setMeta(m.items ?? []);
+        const s = await apiJson<{ items: unknown[] }>(active, '/v1/screens');
+        const items = (s.items ?? [])
+          .map((raw) =>
+            raw && typeof raw === 'object'
+              ? parseScreenRow(raw as Record<string, unknown>)
+              : null,
+          )
+          .filter((row): row is ScreenRow => row != null);
+        setRows(items);
       } catch (e) {
         setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
       }
@@ -177,19 +238,13 @@ export function ScreensPage() {
   }, [load]);
 
   const schemaForType = useCallback(
-    (screenType: string) => {
-      const hit = meta.find((m) => m.screen_type === screenType);
-      return prepareRjsfSchema(hit?.config_json_schema);
-    },
-    [meta],
+    (screenType: string) => prepareRjsfSchema(schemaForScreenType(schemas, screenType)),
+    [schemas],
   );
 
   const exampleForType = useCallback(
-    (screenType: string) => {
-      const hit = meta.find((m) => m.screen_type === screenType);
-      return parseJsonObject(hit?.example_config_json);
-    },
-    [meta],
+    (screenType: string) => parseJsonObject(exampleForScreenType(schemas, screenType)),
+    [schemas],
   );
 
   const sortedRows = useMemo(() => [...rows].sort(sortById), [rows]);
@@ -233,12 +288,14 @@ export function ScreensPage() {
         </Typography>
       </Box>
       <CatalogPageToolbar layout={layout} onLayoutChange={setLayout}>
-        <Button variant="contained" onClick={() => setAddOpen(true)} disabled={!meta.length}>
+        <Button variant="contained" onClick={() => setAddOpen(true)} disabled={!schemas?.screen_types.length}>
           Add screen
         </Button>
       </CatalogPageToolbar>
 
-      {error && <Alert severity="error">{error}</Alert>}
+      {(error || schemasError) && (
+        <Alert severity="error">{error ?? schemasError}</Alert>
+      )}
 
       {sortedRows.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
@@ -263,9 +320,9 @@ export function ScreensPage() {
         />
       )}
 
-      {addOpen && (
+      {addOpen && schemas && (
         <AddScreenDialog
-          meta={meta}
+          screenTypes={schemas.screen_types}
           schemaForType={schemaForType}
           exampleForType={exampleForType}
           onClose={() => setAddOpen(false)}
@@ -276,10 +333,10 @@ export function ScreensPage() {
         />
       )}
 
-      {editRow && (
+      {editRow && schemas && (
         <EditScreenDialog
           row={editRow}
-          schema={prepareRjsfSchema(editRow.config_json_schema)}
+          schema={schemaForType(editRow.screen_type)}
           onClose={() => setEditRow(null)}
           onSaved={async () => {
             setEditRow(null);
@@ -300,9 +357,10 @@ function ScreenCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const title = row.name.trim() || row.id;
+  const title = screenRowTitle(row);
   const typeLabel = screenTypeLabel(row.screen_type);
   const previewKind = screenTypePreviewKind(row.screen_type);
+  const description = screenRowDescription(row);
 
   return (
     <Card
@@ -324,7 +382,7 @@ function ScreenCard({
                 }}
               />
             ) : (
-              <ScreenCarouselIcon
+              <ScreenCarouselFallbackIcon
                 aria-hidden
                 sx={{
                   fontSize: 64,
@@ -342,9 +400,9 @@ function ScreenCard({
             Dwell {row.min_dwell_seconds}–{row.max_dwell_seconds}s · weight {row.frequency_weight} ·
             gap {row.min_gap_between_shows_seconds}s
           </Typography>
-          {row.description?.trim() ? (
+          {description ? (
             <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
-              {row.description.trim()}
+              {description}
             </Typography>
           ) : null}
         </Stack>
@@ -362,13 +420,13 @@ function ScreenCard({
 }
 
 function AddScreenDialog({
-  meta,
+  screenTypes,
   schemaForType,
   exampleForType,
   onClose,
   onSaved,
 }: {
-  meta: ScreenTypeMeta[];
+  screenTypes: ScreenTypeSchemaMeta[];
   schemaForType: (t: string) => RJSFSchema;
   exampleForType: (t: string) => Record<string, unknown>;
   onClose: () => void;
@@ -376,9 +434,9 @@ function AddScreenDialog({
 }) {
   const { active } = useDisplay();
   const [id, setId] = useState('');
-  const [screenType, setScreenType] = useState(meta[0]?.screen_type ?? '');
+  const [screenType, setScreenType] = useState(screenTypes[0]?.screen_type ?? '');
   const [formData, setFormData] = useState<Record<string, unknown>>(() =>
-    exampleForType(meta[0]?.screen_type ?? ''),
+    exampleForType(screenTypes[0]?.screen_type ?? ''),
   );
   const [err, setErr] = useState<string | null>(null);
 
@@ -426,7 +484,7 @@ function AddScreenDialog({
               value={screenType}
               onChange={(e) => setScreenType(String(e.target.value))}
             >
-              {meta.map((m) => (
+              {screenTypes.map((m) => (
                 <MenuItem key={m.screen_type} value={m.screen_type}>
                   {m.screen_type}
                 </MenuItem>
@@ -469,7 +527,7 @@ function EditScreenDialog({
   onSaved: () => Promise<void>;
 }) {
   const { active } = useDisplay();
-  const [name, setName] = useState(row.name);
+  const [label, setLabel] = useState(row.label ?? '');
   const [minDwell, setMinDwell] = useState(row.min_dwell_seconds);
   const [maxDwell, setMaxDwell] = useState(row.max_dwell_seconds);
   const [weight, setWeight] = useState(row.frequency_weight);
@@ -490,7 +548,7 @@ function EditScreenDialog({
       await apiFetch(active, `/v1/screens/${encodeURIComponent(row.id)}`, {
         method: 'PATCH',
         body: JSON.stringify({
-          name,
+          label,
           min_dwell_seconds: minDwell,
           max_dwell_seconds: maxDwell,
           frequency_weight: weight,
@@ -513,7 +571,7 @@ function EditScreenDialog({
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           {err && <Alert severity="error">{err}</Alert>}
-          <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} fullWidth />
+          <TextField label="Label" value={label} onChange={(e) => setLabel(e.target.value)} fullWidth />
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <TextField
               label="Min dwell seconds"

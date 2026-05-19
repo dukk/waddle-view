@@ -69,6 +69,64 @@ IconData contentCategoryMaterialIcon(String? materialIconName) {
       return Icons.self_improvement;
     case 'water':
       return Icons.water_drop_outlined;
+    case 'family_restroom':
+      return Icons.family_restroom;
+    case 'account_circle':
+      return Icons.account_circle_outlined;
+    case 'business_center':
+      return Icons.business_center_outlined;
+    case 'church':
+      return Icons.church_outlined;
+    case 'volunteer_activism':
+      return Icons.volunteer_activism_outlined;
+    case 'shopping_cart':
+      return Icons.shopping_cart_outlined;
+    case 'local_hospital':
+      return Icons.local_hospital_outlined;
+    case 'manage_search':
+      return Icons.manage_search_outlined;
+    case 'lunch_dining':
+      return Icons.lunch_dining_outlined;
+    case 'restaurant_menu':
+      return Icons.restaurant_menu_outlined;
+    case 'coffee':
+      return Icons.coffee_outlined;
+    case 'code':
+      return Icons.code_outlined;
+    case 'devices':
+      return Icons.devices_outlined;
+    case 'home':
+      return Icons.home_outlined;
+    case 'apartment':
+      return Icons.apartment_outlined;
+    case 'music_note':
+      return Icons.music_note_outlined;
+    case 'tv':
+      return Icons.tv_outlined;
+    case 'podcasts':
+      return Icons.podcasts_outlined;
+    case 'sports_esports':
+      return Icons.sports_esports_outlined;
+    case 'auto_stories':
+      return Icons.auto_stories_outlined;
+    case 'fitness_center':
+      return Icons.fitness_center_outlined;
+    case 'child_care':
+      return Icons.child_care_outlined;
+    case 'directions_car':
+      return Icons.directions_car_outlined;
+    case 'yard':
+      return Icons.yard_outlined;
+    case 'checkroom':
+      return Icons.checkroom_outlined;
+    case 'palette':
+      return Icons.palette_outlined;
+    case 'groups':
+      return Icons.groups_outlined;
+    case 'gavel':
+      return Icons.gavel_outlined;
+    case 'event':
+      return Icons.event_outlined;
     default:
       return Icons.label_outline;
   }

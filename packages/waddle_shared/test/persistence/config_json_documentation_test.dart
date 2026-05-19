@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:test/test.dart';
 import 'package:waddle_shared/persistence/config_json_documentation.dart';
+import 'package:waddle_shared/persistence/display_overlay_falling_images_settings.dart';
 
 void main() {
   test('provider meta schemas and examples are valid JSON', () {
@@ -75,6 +76,19 @@ void main() {
     final edgeGlow = displayOverlayConfigJsonDocForType('edge_glow');
     expect(jsonDecode(edgeGlow.schema), isA<Map<String, dynamic>>());
     expect(jsonDecode(edgeGlow.example), isA<Map<String, dynamic>>());
+    final balloons = displayOverlayConfigJsonDocForType('floating_balloons');
+    expect(jsonDecode(balloons.schema), isA<Map<String, dynamic>>());
+    expect(jsonDecode(balloons.example), isA<Map<String, dynamic>>());
+    final falling = displayOverlayConfigJsonDocForType('falling_images');
+    final fallingSchema = jsonDecode(falling.schema) as Map<String, dynamic>;
+    final fallingProps = fallingSchema['properties'] as Map<String, dynamic>;
+    final dropInterval = fallingProps['drop_interval_sec'] as Map<String, dynamic>;
+    expect(dropInterval['minimum'], kFallingImagesDropIntervalSecMin);
+    final imageScale = fallingProps['image_scale'] as Map<String, dynamic>;
+    expect(imageScale['maximum'], kFallingImagesImageScaleMax);
+    final fallSpeed = fallingProps['fall_speed'] as Map<String, dynamic>;
+    expect(fallSpeed['minimum'], kFallingImagesFallSpeedPxPerSecMin);
+    expect(fallSpeed['maximum'], kFallingImagesFallSpeedPxPerSecMax);
   });
 
   test('seeded provider types have explicit meta entries', () {

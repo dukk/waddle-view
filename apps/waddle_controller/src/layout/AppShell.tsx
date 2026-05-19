@@ -31,7 +31,7 @@ import {
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import { ProgramsPlayoutIcon } from '@/icons/ProgramsPlayoutIcon';
-import { ScreenCarouselIcon } from '@/icons/ScreenCarouselIcon';
+import ViewCarouselIcon from '@mui/icons-material/ViewCarousel';
 import { TickerTapeIcon } from '@/icons/TickerTapeIcon';
 import LayersIcon from '@mui/icons-material/Layers';
 import StorageIcon from '@mui/icons-material/Storage';
@@ -79,7 +79,7 @@ const realtimeNav: NavItem[] = [
 
 const configNav: NavItem[] = [
   { to: '/curators', label: 'Curators', icon: <TuneIcon /> },
-  { to: '/screens', label: 'Screens', icon: <ScreenCarouselIcon /> },
+  { to: '/screens', label: 'Screens', icon: <ViewCarouselIcon /> },
   { to: '/ticker-tapes', label: 'Ticker Tapes', icon: <TickerTapeIcon /> },
   { to: '/overlays', label: 'Overlays', icon: <LayersIcon /> },
   { to: '/integrations', label: 'Integrations', icon: <StorageIcon /> },

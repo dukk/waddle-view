@@ -107,7 +107,7 @@ Future<void> _seedExtendedCatalog(AppDatabase db) async {
           mediaBlobKey: 'blob-photo-1',
           photographerName: 'Pat Photo',
           photographerUrl: 'https://pexels.com/u',
-          pexelsPageUrl: 'https://pexels.com/p/1',
+          pageUrl: 'https://pexels.com/p/1',
           altText: const Value('mountain vista'),
           fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(200),
         ),

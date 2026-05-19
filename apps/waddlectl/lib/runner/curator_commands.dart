@@ -59,7 +59,8 @@ class _CuratorUpdateProgram extends Command<void> {
   String get name => 'update-program';
 
   @override
-  String get description => 'Update curator program / theme / text scale keys.';
+  String get description =>
+      'Update curator program keys, display theme/text scale, and program history depth.';
 
   @override
   Future<void> run() async {

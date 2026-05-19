@@ -1,3 +1,5 @@
+import { clearConfigSchemas } from '@/storage/configSchemaCache';
+
 const STORAGE_KEY = 'waddle_controller_displays_v1';
 const LOCAL_DISPLAYS_MIGRATED_KEY = 'waddle_controller_displays_server_migrated';
 
@@ -115,6 +117,7 @@ export function upsertDisplayByBaseUrl(input: {
 
 export function removeDisplay(id: string): void {
   saveDisplays(loadDisplays().filter((d) => d.id !== id));
+  clearConfigSchemas(id);
 }
 
 /** Updates the menu label for a saved display. Returns null when [id] is missing or [label] is blank. */

@@ -8,6 +8,7 @@ import 'package:waddle_shared/integration_accounts/integration_account_catalog.d
 import 'package:waddle_shared/integration_accounts/integration_accounts_service.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';
+import 'package:waddle_display/api/rest_include_params.dart';
 
 const _jsonHeaders = {'content-type': 'application/json'};
 
@@ -148,31 +149,109 @@ Future<Response> listIntegrations(
   required SecretStore secrets,
 }) async {
   final params = IntegrationsListParams.parse(req);
-  final rows = await _queryIntegrationRows(db, params);
-  final enriched = <Map<String, dynamic>>[];
-  for (final e in rows) {
-    enriched.add(await _enrichIntegrationRow(db, secrets, e));
-  }
-
-  var filtered = enriched;
-  if (params.secretsConfigured != null) {
-    filtered = filtered
-        .where((m) => m['secrets_configured'] == params.secretsConfigured)
-        .toList();
-  }
-  if (params.accountsConfigured != null) {
-    filtered = filtered
-        .where((m) => m['accounts_configured'] == params.accountsConfigured)
-        .toList();
-  }
-
-  final total = filtered.length;
+  final includeDocs = includeConfigSchemaFromRequest(req);
 
   if (!params.paginated) {
+    final rows = await _queryIntegrationRows(db, params);
+    final enriched = <Map<String, dynamic>>[];
+    for (final e in rows) {
+      enriched.add(
+        await _enrichIntegrationRow(
+          db,
+          secrets,
+          e,
+          includeConfigDocs: includeDocs,
+        ),
+      );
+    }
+    var filtered = enriched;
+    if (params.secretsConfigured != null) {
+      filtered = filtered
+          .where((m) => m['secrets_configured'] == params.secretsConfigured)
+          .toList();
+    }
+    if (params.accountsConfigured != null) {
+      filtered = filtered
+          .where((m) => m['accounts_configured'] == params.accountsConfigured)
+          .toList();
+    }
     return Response.ok(
       jsonEncode({'items': filtered}),
       headers: _jsonHeaders,
     );
+  }
+
+  if (params.secretsConfigured != null) {
+    return _listIntegrationsPaginatedWithSecretsFilter(
+      db,
+      secrets,
+      params,
+      includeConfigDocs: includeDocs,
+    );
+  }
+
+  final limit = params.limit ?? 25;
+  final total = await _countIntegrationRows(db, params);
+  final rows = await _queryIntegrationRows(
+    db,
+    params,
+    limit: limit,
+    offset: params.offset,
+  );
+  final page = <Map<String, dynamic>>[];
+  for (final e in rows) {
+    page.add(
+      await _enrichIntegrationRow(
+        db,
+        secrets,
+        e,
+        includeConfigDocs: includeDocs,
+      ),
+    );
+  }
+
+  final body = <String, dynamic>{
+    'items': page,
+    'total': total,
+    'limit': limit,
+    'offset': params.offset,
+  };
+
+  if (params.facetsFamily) {
+    body['facets'] = {
+      'family': await _familyFacetCounts(db, secrets, params),
+    };
+  }
+
+  return Response.ok(jsonEncode(body), headers: _jsonHeaders);
+}
+
+Future<Response> _listIntegrationsPaginatedWithSecretsFilter(
+  AppDatabase db,
+  SecretStore secrets,
+  IntegrationsListParams params, {
+  bool includeConfigDocs = false,
+}) async {
+  final rows = await _queryIntegrationRows(db, params);
+  final enriched = <Map<String, dynamic>>[];
+  for (final e in rows) {
+    enriched.add(
+      await _enrichIntegrationRow(
+        db,
+        secrets,
+        e,
+        includeConfigDocs: includeConfigDocs,
+      ),
+    );
+  }
+
+  var filtered = enriched
+      .where((m) => m['secrets_configured'] == params.secretsConfigured)
+      .toList();
+  if (params.accountsConfigured != null) {
+    filtered = filtered
+        .where((m) => m['accounts_configured'] == params.accountsConfigured)
+        .toList();
   }
 
   final limit = params.limit ?? 25;
@@ -183,7 +262,7 @@ Future<Response> listIntegrations(
 
   final body = <String, dynamic>{
     'items': page,
-    'total': total,
+    'total': filtered.length,
     'limit': limit,
     'offset': offset,
   };
@@ -197,13 +276,30 @@ Future<Response> listIntegrations(
   return Response.ok(jsonEncode(body), headers: _jsonHeaders);
 }
 
-Future<List<Integration>> _queryIntegrationRows(
+Future<int> _countIntegrationRows(
   AppDatabase db,
   IntegrationsListParams params,
 ) async {
+  final countExpr = db.integrations.id.count();
+  final query = db.selectOnly(db.integrations)
+    ..addColumns([countExpr])
+    ..where(_integrationWhere(db.integrations, params));
+  final row = await query.getSingle();
+  return row.read(countExpr)!;
+}
+
+Future<List<Integration>> _queryIntegrationRows(
+  AppDatabase db,
+  IntegrationsListParams params, {
+  int? limit,
+  int offset = 0,
+}) async {
   final query = db.select(db.integrations)
     ..where((t) => _integrationWhere(t, params))
     ..orderBy([(t) => _orderingTerm(t, params)]);
+  if (limit != null) {
+    query.limit(limit, offset: offset);
+  }
   return query.get();
 }
 
@@ -228,6 +324,14 @@ Expression<bool> _integrationWhere(
     expr = expr &
         (t.id.like(pattern) | t.integrationType.like(pattern));
   }
+  if (params.accountsConfigured == true) {
+    expr = expr &
+        (t.requiresAccounts.equals(false) | t.accountsReady.equals(true));
+  } else if (params.accountsConfigured == false) {
+    expr = expr &
+        t.requiresAccounts.equals(true) &
+        t.accountsReady.equals(false);
+  }
   return expr;
 }
 
@@ -248,8 +352,9 @@ OrderingTerm _orderingTerm($IntegrationsTable t, IntegrationsListParams params) 
 Future<Map<String, dynamic>> _enrichIntegrationRow(
   AppDatabase db,
   SecretStore secrets,
-  Integration e,
-) async {
+  Integration e, {
+  bool includeConfigDocs = false,
+}) async {
   final requiredAccountTypes =
       integrationAccountTypesRequiredForIntegration(e.integrationType);
   return {
@@ -258,18 +363,14 @@ Future<Map<String, dynamic>> _enrichIntegrationRow(
     'enabled': e.enabled,
     'poll_seconds': e.pollSeconds,
     'config_json': _jsonDecodeLoose(e.configJson),
-    'config_json_schema': _jsonDecodeLoose(e.configJsonSchema),
+    if (includeConfigDocs)
+      'config_json_schema': _jsonDecodeLoose(e.configJsonSchema),
     'secrets_configured': await integrationSecretsConfigured(
       secrets,
       e.id,
       e.integrationType,
     ),
-    'accounts_configured': await integrationAccountsSatisfiedForEnable(
-      secrets,
-      db,
-      e.id,
-      e.integrationType,
-    ),
+    'accounts_configured': e.accountsReady,
     'linked_accounts': await listAccountsForIntegrationJson(
       db,
       secrets,
@@ -320,12 +421,7 @@ Future<Map<String, int>> _familyFacetCounts(
       }
     }
     if (include && params.accountsConfigured != null) {
-      final accountsOk = await integrationAccountsSatisfiedForEnable(
-        secrets,
-        db,
-        e.id,
-        e.integrationType,
-      );
+      final accountsOk = !e.requiresAccounts || e.accountsReady;
       if (accountsOk != params.accountsConfigured) {
         include = false;
       }

@@ -7,6 +7,7 @@ import {
   removeLegacySessionKeyForDisplay,
   type SavedDisplay,
 } from '@/storage/displays';
+import { clearConfigSchemas } from '@/storage/configSchemaCache';
 
 const SESSION_PREFIX = 'waddle_controller_session_v1:';
 const LEGACY_SESSION_PREFIX = SESSION_PREFIX;
@@ -116,6 +117,7 @@ export function saveSession(displayId: string, session: DisplaySession): void {
 export function clearSession(displayId: string): void {
   clearDisplayAdoption(displayId);
   clearLegacySession(displayId);
+  clearConfigSchemas(displayId);
 }
 
 export function clearAllSessions(): void {

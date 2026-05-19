@@ -189,10 +189,10 @@ void main() {
       );
       final listBody = jsonDecode(listRes.body) as Map<String, dynamic>;
       final items = listBody['items'] as List<dynamic>;
-      expect(
-        items.cast<Map<String, dynamic>>().any((e) => e['id'] == 'work'),
-        isTrue,
-      );
+      final work = items.cast<Map<String, dynamic>>().singleWhere(
+            (e) => e['id'] == 'work',
+          );
+      expect(work['label'], 'Work Google');
     } finally {
       await harness.dispose();
     }

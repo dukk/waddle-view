@@ -17,6 +17,13 @@ final Uint8List _tinyPng = Uint8List.fromList(
   ),
 );
 
+final Uint8List _tinySvg = Uint8List.fromList(
+  utf8.encode(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1">'
+    '<rect width="1" height="1" fill="red"/></svg>',
+  ),
+);
+
 void main() {
   testWidgets('FallingImagesOverlay eventually shows a falling image', (tester) async {
     final db = openMemoryDatabase();
@@ -39,7 +46,7 @@ void main() {
     final settings = FallingImagesScheduleSettings(
       imageBlobKeys: const [blobKey],
       dropIntervalSec: 1,
-      fallSpeed: 0.5,
+      fallSpeed: 150,
       imageScale: 0.12,
       scaleJitter: 0.33,
     );
@@ -68,6 +75,55 @@ void main() {
     expect(find.byType(Image), findsWidgets);
   });
 
+  testWidgets('FallingImagesOverlay renders SVG blobs with SvgPicture', (tester) async {
+    final db = openMemoryDatabase();
+    addTearDown(db.close);
+    await warmDatabase(db);
+    const blobKey = 'overlay/pool/test-svg';
+    final blobs = FakeBlobStore();
+    final ref = await blobs.putBytes(_tinySvg, logicalKey: blobKey);
+    await db.into(db.blobMetadata).insert(
+          BlobMetadataCompanion.insert(
+            blobKey: blobKey,
+            sha256: 'svg',
+            relativePath: ref.storageKey,
+            bytes: _tinySvg.length,
+            mimeType: const Value('image/svg+xml'),
+            capturedAt: DateTime.utc(2020),
+          ),
+        );
+
+    final settings = FallingImagesScheduleSettings(
+      imageBlobKeys: const [blobKey],
+      dropIntervalSec: 1,
+      fallSpeed: 150,
+      imageScale: 0.12,
+      scaleJitter: 0,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 400,
+            height: 300,
+            child: FallingImagesOverlay(
+              settings: settings,
+              blobs: blobs,
+              db: db,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    for (var i = 0; i < 40; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.byKey(const Key('falling_image_svg')), findsWidgets);
+    expect(find.byKey(const Key('falling_image_raster')), findsNothing);
+  });
+
   testWidgets('fixed image_scale and zero jitter yield uniform sprite sizes', (tester) async {
     final db = openMemoryDatabase();
     addTearDown(db.close);
@@ -93,7 +149,7 @@ void main() {
     final settings = FallingImagesScheduleSettings(
       imageBlobKeys: const [blobKey],
       dropIntervalSec: 1,
-      fallSpeed: 0.5,
+      fallSpeed: 150,
       imageScale: imageScale,
       scaleJitter: 0,
     );
@@ -123,4 +179,5 @@ void main() {
     final widths = positioned.map((p) => p.width).whereType<double>().toSet();
     expect(widths, {expectedSize});
   });
+
 }

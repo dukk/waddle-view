@@ -72,7 +72,7 @@ class _ScreensDescribe extends Command<void> {
 class _ScreensUpdate extends Command<void> {
   _ScreensUpdate(this.globalOptions) : super() {
     argParser
-      ..addOption('name')
+      ..addOption('label')
       ..addOption('min-dwell-seconds')
       ..addOption('max-dwell-seconds')
       ..addOption('frequency-weight')
@@ -113,7 +113,7 @@ class _ScreensUpdate extends Command<void> {
     await withLocalBackend(globalOptions, (b) async {
       await b.updateScreen(
         id: id,
-        name: o['name'] as String?,
+        label: o['label'] as String?,
         minDwellSeconds: minDwell,
         maxDwellSeconds: maxDwell,
         frequencyWeight: weight,

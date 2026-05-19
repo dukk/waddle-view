@@ -172,7 +172,7 @@ Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../d
 
 - **Key**: `display.theme.id`
 - **Values**: `navy_coral` (default), `graphite_amber`, plus ten Coolors trending presets: `teal_gold_sunset`, `ocean_depth`, `forest_cream`, `heritage_coast`, `plum_ember`, `slate_crimson`, `wine_ember`, `dopamine_pop`, `sage_wellness`, `warm_minimal` (hex sources in [`lib/theme/config/palettes/coolors_trending_palettes.dart`](lib/theme/config/palettes/coolors_trending_palettes.dart))
-- **Operator UI**: Admin home → Curator → **Display theme** (saved with other curator settings).
+- **Operator UI**: **Display settings** → **Display theme** (global default). Per-curator override: **Curators** → edit configuration → **General** → **Theme while active** (`theme_id_override` on `curator_configurations`; applies when that configuration is the active primary base or exclusive curator).
 - **Code**: palettes and builders live under [`lib/theme/config/`](lib/theme/config/); registered ids are listed in [`lib/theme/config/display_theme_registry.dart`](lib/theme/config/display_theme_registry.dart).
 - **Roles**: each preset defines a **display background** (optional multi-stop gradient), **primary container** (slide chrome: background, foreground, gradient), **secondary container** (ticker strip: background, foreground, gradient), and four **accent** colors. [`DisplayThemeSemantics`](lib/theme/display_theme_semantics.dart) exposes `slidePanelColor`, `slideChromeFill`, `tickerChromeFill`, and `accent(1..4)` for slide widgets.
 - **Default palette** (`navy_coral`): display gradient `#0D1B2A` → `#1B263B` → `#415A77`; slide chrome `#1B263B` → `#415A77`; ticker `#415A77` → `#778DA9` → `#83AF84`; accents `#83AF84`, `#E05C6C`, `#FFE356`, `#966CB3`.
@@ -190,7 +190,7 @@ Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../d
 
 - **Effect**: on matching calendar days, an **unobtrusive** translucent layer sits **above** slides and ticker but **below** priority **alert** overlays, and it does **not** capture pointer or keyboard input.
 - **`hearts_rain`**: floating **hearts** ♥ and occasional **short phrases** from `config_json.messages`, tinted from the current theme’s **accent** palette (`PaletteTertiaryLayers` / `ColorScheme` fallback).
-- **`birthday_confetti`**: low-opacity **falling confetti** (rectangles, circles, stars, thin “streamers”) with optional **sparse** phrases from `config_json.messages`. Other **`config_json`** keys tune **`shapes`** (`rect`, `circle`, `star`, `streamer`, `mix`), optional **`colors`** (`#RRGGBB` or `#AARRGGBB`), **`density`** (about **0.15–0.9**, displayed clamped for subtlety), **`message_interval_sec`** (about **8–120** sec between occasional phrases), **`fall_speed`** (**0.02–1.8**, lower = slower drift; **~1.0** matches the original ~5s vertical cycle; **0.02** is the slowest supported, about **4.2 minutes** per full cycle with the current cap), and **`opacity`** (**0.12–0.72**, caps per-piece alpha for stronger or softer confetti). Empty `messages` means **no** overlay text. **`hearts_rain`** upserts normalize to **`{"messages":[…]}`** only.
+- **`birthday_confetti`**: **falling rectangular confetti strips** (red, yellow, cyan, and magenta by default) with optional **sparse** phrases from `config_json.messages`. Other **`config_json`** keys tune optional **`colors`** (`#RRGGBB` or `#AARRGGBB`), **`density`** (about **0.15–0.9**), **`message_interval_sec`** (about **8–120** sec between occasional phrases), **`fall_speed`** (**0.02–1.8**, lower = slower drift; **~1.0** matches the original ~5s vertical cycle; **0.02** is the slowest supported, about **4.2 minutes** per full cycle with the current cap), and **`opacity`** (**0.12–0.72**, caps per-piece alpha for stronger or softer confetti). Empty `messages` means **no** overlay text. **`hearts_rain`** upserts normalize to **`{"messages":[…]}`** only.
 - **`bouncing_message`**: a **single line** of text from **`config_json.messages`** (first string; if none, the app uses **`Happy Birthday Waddle!!`**) **bounces** within the overlay like a DVD logo. Other **`config_json`** keys may set **`color`** (`#RRGGBB` / `#AARRGGBB`), **`font_family`**, **`font_size`** (**14–96**), **`font_weight`** (**100–900**, snapped to hundreds, or a numeric string), **`letter_spacing`** (**-1.5–6**), **`shadow`** (bool), and **`speed`** (**0.25–2.5**, velocity multiplier).
 - **Stacking**: when several kinds match, **confetti** is lowest, then **hearts**, then **bouncing message** on top for readability.
 - **Multiple rows**: merged **message** strings are **deduped** across matching rows (sorted by `id`). For **`birthday_confetti`**, **visual settings** come from the **first** matching row by `id` only; add a dedicated row per distinct look, or keep a single confetti schedule. **`bouncing_message`** uses the **first** matching row’s `config_json` and the **first** merged phrase for the moving text.
@@ -199,7 +199,8 @@ Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../d
 - **Types**: **`overlay_type`** uses the same slug style as **`screen_type`**. Built-in renderers today: **`hearts_rain`**, **`birthday_confetti`**, **`bouncing_message`**. Additional types may be stored and edited over REST; the display ignores unknown types until a renderer exists.
 - **Default seeds**: id **`default_mothers_day_us`** — US **Mother’s Day** (2nd Sunday in May) with message **`Happy Mother's Day!`** (`hearts_rain`, **enabled**). Id **`default_birthday_example_may_13`** — **May 13** each year, **`birthday_confetti`** with example message and a **slower, brighter** stock `config_json`, **disabled** so operators can enable or edit via REST without affecting installs until they choose to. Id **`default_bouncing_message_may_13`** — **May 13** each year, **`bouncing_message`** with **`Happy Birthday Waddle!!`** and stock typography `config_json`, **disabled** (same intent as the birthday example).
 - **REST** (authenticated like other `/v1/*` routes):
-  - `GET /v1/display/overlays` — list schedules (`config_json`, `config_json_schema`, and `example_config_json` decoded as JSON in the response when valid).
+  - `GET /v1/display/overlays` — list schedules (`config_json`); optional `?include_config_schema=true` adds per-row `config_json_schema`.
+  - `GET /v1/meta/config-schemas` — bundled JSON Schema docs for screen, ticker, overlay, and integration types (for operator clients that cache once per connect).
   - `POST /v1/display/overlays` — upsert (requires `id`; include `start_month` / `start_day` for fixed mode, or `nth_week_of_month` / `nth_weekday` for floating holidays).
   - `PATCH /v1/display/overlays/{id}` — partial update (merge with existing row; `config_json` merges shallowly at the top level).
   - `DELETE /v1/display/overlays/{id}` — remove a schedule.
@@ -211,7 +212,7 @@ When the app assembles a timed program from `screens`, [`ScreenProgramCurator`](
 
 RSS widget `config` may include **`feedId`** (single feed), **`categoryId`** (slug shared with **`content_categories.id`**, pool key **`rss_category:<id>`**), or neither. With the global **`rss`** pool, the curator assigns articles from **one** category per slide so columns/stack rows do not mix unrelated feeds; it stores that id in **`randomChoices`** under **`rss_screen_category_id`** ([`ScreenProgramCurator.rssScreenCategoryChoiceKey`](lib/curator/screen_program_curator.dart)). **RSS**, **joke**, and **trivia** slides render a **category strip** at the top (label + icon from **`content_categories`**, with fallbacks — [`content_category_slide_header.dart`](lib/display/content_category_slide_header.dart)).
 
-Each **`screens`** row stores **`screen_type`** (widget id, e.g. `weather`, `news`), runtime **`config_json`** (JSON object: the former per-widget `config` in legacy `layout_json`), plus documentation columns **`config_json_schema`** and **`example_config_json`** for that config shape. `GET /v1/screens` includes the schema and example fields.
+Each **`screens`** row stores **`screen_type`** (widget id, e.g. `weather`, `news`), runtime **`config_json`**, plus documentation columns **`config_json_schema`** and **`example_config_json`**. `GET /v1/screens` omits those fields by default; use `?include_config_schema=true` or `GET /v1/meta/config-schemas` for editor schemas.
 
 - **Analog clock labels** — optional `analog_clock` widget `config.dialLabels` controls clock-face labels: **`none`** (default), **`numbers`** (1-12), **`roman`** (I-XII), or **`cardinal_numbers`** (12/3/6/9 only).
 - **Analog clock hand accents** — by default, hands use accent colors **1/2/3** for **hour/minute/second**. Optional per-hand config keys can override accent choice: **`hourHandAccent`**, **`minuteHandAccent`**, **`secondHandAccent`** with values **`accent1`**, **`accent2`**, **`accent3`** (or numeric **`1`**, **`2`**, **`3`**).
@@ -245,6 +246,12 @@ Separate semantic sizes for carousel content and the bottom marquee (each multip
 ### Keyboard — overlay alerts
 
 When an alert overlay is visible, **Enter** or **numpad Enter** dismisses the current (highest-priority) alert. If the alert has an expiry time (`expires_at`), a countdown bar at the bottom of the dialog (same visual language as the joke punchline timer) shrinks until the alert is hidden automatically.
+
+### Program history depth (`config_key_values`)
+
+- **Key**: `display.program.history_depth`
+- **Values**: integer **1–10** (default **5**). Controls how many past **screen programs** are kept for keyboard back-navigation and how many recent screen placements influence frequency weighting when building the next program. **Shared across all curator configurations** (not per-curator).
+- **Operator UI**: **Display settings** → **Program history depth**. CLI: `waddlectl curator update-program --history-depth N` writes this KV.
 
 ### Keyboard screen history navigation
 

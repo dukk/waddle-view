@@ -341,7 +341,7 @@ void main() {
             mediaBlobKey: 'pexels/photo/404/image',
             photographerName: 'x',
             photographerUrl: 'http://x',
-            pexelsPageUrl: 'http://p',
+            pageUrl: 'http://p',
             fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(100),
           ),
         );
@@ -383,7 +383,7 @@ void main() {
               mediaBlobKey: 'k/${e.$1}',
               photographerName: 'a',
               photographerUrl: 'b',
-              pexelsPageUrl: 'c',
+              pageUrl: 'c',
               fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(e.$2),
             ),
           );
@@ -773,7 +773,7 @@ void main() {
               mediaBlobKey: 'k/${e.$1}',
               photographerName: 'a',
               photographerUrl: 'b',
-              pexelsPageUrl: 'c',
+              pageUrl: 'c',
               fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(e.$2),
             ),
           );

@@ -17,6 +17,7 @@ import { fetchMicrosoftGraphCalendars } from '@/api/microsoftGraphCalendars';
 import { ApiError } from '@/api/client';
 import type { SavedDisplay } from '@/storage/displays';
 import type { IntegrationAccountRow } from '@/util/integrationAccounts';
+import { DISPLAY_SETTINGS_ACCOUNTS_LABEL } from '@/constants/displaySettingsTabs';
 import {
   mergeOutlookCalendarsWithSaved,
   type OutlookCalendarConfigState,
@@ -110,8 +111,8 @@ export function OutlookCalendarConfigSection({
       <Typography variant="subtitle2">Outlook calendar sync</Typography>
       {configuredMicrosoftAccounts.length === 0 ? (
         <Alert severity="info">
-          Add a Microsoft account under <strong>Accounts &amp; API keys</strong>, complete sign-in on
-          the display, then return here.
+          Add a Microsoft account under <strong>{DISPLAY_SETTINGS_ACCOUNTS_LABEL}</strong>, complete
+          sign-in on the display, then return here.
         </Alert>
       ) : (
         <FormControl fullWidth size="small">

@@ -113,13 +113,13 @@ void main() {
 }
 
 Future<void> _seedTwoSlideProgram(AppDatabase db) async {
+  await seedDisplayProgramHistoryDepthForTest(db, 4);
   await db.into(db.curatorConfigurations).insert(
         CuratorConfigurationsCompanion.insert(
           id: 'test_nav',
           name: 'Test nav',
           layer: kCuratorLayerBase,
           programDurationSeconds: const Value(2),
-          historyDepth: const Value(4),
           defaultConfig: const Value(true),
         ),
       );
@@ -129,7 +129,7 @@ Future<void> _seedTwoSlideProgram(AppDatabase db) async {
       .insert(
         ScreensCompanion.insert(
           id: 'alpha_screen',
-          name: 'Alpha',
+          label: 'Alpha',
           screenType: 'static_text',
           configJson: const Value('{"text":"Alpha"}'),
           minDwellSeconds: const Value(1),
@@ -145,7 +145,7 @@ Future<void> _seedTwoSlideProgram(AppDatabase db) async {
       .insert(
         ScreensCompanion.insert(
           id: 'beta_screen',
-          name: 'Beta',
+          label: 'Beta',
           screenType: 'static_text',
           configJson: const Value('{"text":"Beta"}'),
           minDwellSeconds: const Value(1),

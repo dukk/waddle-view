@@ -162,7 +162,7 @@ void main() {
     await db.into(db.tickerTapes).insert(
           TickerTapesCompanion.insert(
             id: 'b',
-            name: 'B',
+            label: 'B',
             tickerType: 'quote',
             sortOrder: const Value(10),
           ),
@@ -170,7 +170,7 @@ void main() {
     await db.into(db.tickerTapes).insert(
           TickerTapesCompanion.insert(
             id: 'a',
-            name: 'A',
+            label: 'A',
             tickerType: 'time',
             sortOrder: const Value(0),
           ),

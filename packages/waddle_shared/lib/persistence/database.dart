@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 
 import '../config/integration_config_json.dart';
+import '../theme/display_program_history_kv.dart';
 import '../integration_accounts/integration_accounts_service.dart';
 import '../seed/tables/interests_locations_seed.dart';
 import 'display_overlay_sql.dart';
@@ -67,7 +68,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 21;
+  int get schemaVersion => 24;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -220,6 +221,27 @@ ORDER BY priority DESC, created_at DESC;
       }
       if (from == 20 && to >= 21) {
         await _migrateV20ToV21IntegrationsKeyValue(this, m);
+        if (to == 21) {
+          return;
+        }
+        from = 21;
+      }
+      if (from == 21 && to >= 22) {
+        await _migrateV21ToV22DisplayProgramHistoryDepth(this);
+        if (to == 22) {
+          return;
+        }
+        from = 22;
+      }
+      if (from == 22 && to >= 23) {
+        await _migrateV22ToV23IntegrationsAccountsReady(this);
+        if (to == 23) {
+          return;
+        }
+        from = 23;
+      }
+      if (from == 23 && to >= 24) {
+        await _migrateV23ToV24DisplayEntityLabels(this);
         return;
       }
       throw UnsupportedError(
@@ -1282,6 +1304,88 @@ Future<void> _migrateV20ToV21IntegrationsKeyValue(
       [k],
     );
   }
+}
+
+/// Renames `name` → `label` on screens/ticker_tapes/overlays; photos `pexels_page_url` → `page_url`.
+Future<void> _migrateV23ToV24DisplayEntityLabels(AppDatabase db) async {
+  if (await _sqliteTableExists(db, 'screens') &&
+      await _sqliteColumnExists(db, 'screens', 'name') &&
+      !await _sqliteColumnExists(db, 'screens', 'label')) {
+    await db.customStatement('ALTER TABLE screens RENAME COLUMN name TO label');
+  }
+  if (await _sqliteTableExists(db, 'ticker_tapes') &&
+      await _sqliteColumnExists(db, 'ticker_tapes', 'name') &&
+      !await _sqliteColumnExists(db, 'ticker_tapes', 'label')) {
+    await db.customStatement(
+      'ALTER TABLE ticker_tapes RENAME COLUMN name TO label',
+    );
+  }
+  if (await _sqliteTableExists(db, 'overlays') &&
+      await _sqliteColumnExists(db, 'overlays', 'name') &&
+      !await _sqliteColumnExists(db, 'overlays', 'label')) {
+    await db.customStatement('ALTER TABLE overlays RENAME COLUMN name TO label');
+  }
+  if (await _sqliteTableExists(db, 'photos') &&
+      await _sqliteColumnExists(db, 'photos', 'pexels_page_url') &&
+      !await _sqliteColumnExists(db, 'photos', 'page_url')) {
+    await db.customStatement(
+      'ALTER TABLE photos RENAME COLUMN pexels_page_url TO page_url',
+    );
+  }
+}
+
+Future<void> _migrateV22ToV23IntegrationsAccountsReady(AppDatabase db) async {
+  if (!await _sqliteTableExists(db, 'integrations')) {
+    return;
+  }
+  if (!await _sqliteColumnExists(db, 'integrations', 'requires_accounts')) {
+    await db.customStatement(
+      'ALTER TABLE integrations ADD COLUMN requires_accounts INTEGER NOT NULL DEFAULT 0',
+    );
+  }
+  if (!await _sqliteColumnExists(db, 'integrations', 'accounts_ready')) {
+    await db.customStatement(
+      'ALTER TABLE integrations ADD COLUMN accounts_ready INTEGER NOT NULL DEFAULT 1',
+    );
+  }
+  await db.customStatement(
+    'CREATE INDEX IF NOT EXISTS idx_integrations_enabled_accounts '
+    'ON integrations (enabled, accounts_ready, requires_accounts)',
+  );
+  await backfillIntegrationsAccountsReadyColumns(db);
+}
+
+Future<void> _migrateV21ToV22DisplayProgramHistoryDepth(AppDatabase db) async {
+  if (!await _sqliteTableExists(db, 'config_key_values')) {
+    return;
+  }
+  final existing = await db.customSelect(
+    'SELECT 1 FROM config_key_values WHERE key = ? LIMIT 1',
+    variables: [Variable<String>(kDisplayProgramHistoryDepthKvKey)],
+  ).getSingleOrNull();
+  if (existing != null) {
+    return;
+  }
+
+  var depth = kDefaultDisplayProgramHistoryDepth;
+  if (await _sqliteTableExists(db, 'curator_configurations')) {
+    final defaultRow = await db.customSelect(
+      'SELECT history_depth FROM curator_configurations '
+      'WHERE default_config = 1 LIMIT 1',
+    ).getSingleOrNull();
+    if (defaultRow != null) {
+      depth = normalizeDisplayProgramHistoryDepth(
+        '${defaultRow.read<int>('history_depth')}',
+      );
+    }
+  }
+
+  await db.into(db.configKeyValues).insert(
+        ConfigKeyValuesCompanion.insert(
+          key: kDisplayProgramHistoryDepthKvKey,
+          value: '$depth',
+        ),
+      );
 }
 
 /// Opens a file-backed SQLite at [sqliteFile] (e.g. for `waddlectl --database`).

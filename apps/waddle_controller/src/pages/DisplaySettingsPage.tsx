@@ -47,6 +47,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useControllerAuth } from '@/context/ControllerAuthContext';
 import { useDisplay } from '@/context/DisplayContext';
 import { apiFetch, apiJson, ApiError } from '@/api/client';
+import { CuratorSliderField } from '@/components/CuratorSliderField';
 import { DisplayThemePaletteSwatches } from '@/components/DisplayThemePaletteSwatches';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
@@ -56,6 +57,11 @@ import {
   type DisplayTimezoneOption,
 } from '@/constants/displayTimezoneOptions';
 import { putDisplaySettings, fetchDisplaySettings } from '@/api/displaySettings';
+import { DisplayImageOverlaySettingsField } from '@/components/config/DisplayImageOverlaySettingsField';
+import {
+  DEFAULT_DISPLAY_IMAGE_OVERLAY,
+  normalizeDisplayImageOverlay,
+} from '@/constants/displayImageOverlaySettings';
 import {
   ADOPTION_ROLES,
   CONTROLLER_DATE_ORDER_OPTIONS,
@@ -64,6 +70,7 @@ import {
   type DisplaySettings,
 } from '@/constants/displaySettings';
 import {
+  CURATOR_HISTORY_DEPTH,
   curatorThemeById,
   curatorThemeIds,
   curatorTextScaleIds,
@@ -620,7 +627,17 @@ function DisplayOperatorSettingsSection({
           typeof data.display_timezone === 'string' && data.display_timezone.trim() !== ''
             ? data.display_timezone.trim()
             : 'America/New_York';
-        setForm({ ...data, display_timezone: tz });
+        const historyDepth =
+          typeof data.display_program_history_depth === 'number' &&
+          Number.isFinite(data.display_program_history_depth)
+            ? data.display_program_history_depth
+            : CURATOR_HISTORY_DEPTH.default;
+        setForm({
+          ...data,
+          display_timezone: tz,
+          display_program_history_depth: historyDepth,
+          display_image_overlay: normalizeDisplayImageOverlay(data.display_image_overlay),
+        });
         setInitialized(true);
       } catch (e) {
         setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
@@ -639,11 +656,13 @@ function DisplayOperatorSettingsSection({
     try {
       await putDisplaySettings(display, {
         display_theme_id: form.display_theme_id,
+        display_program_history_depth: form.display_program_history_depth,
         display_text_scale_screen: form.display_text_scale_screen,
         display_text_scale_ticker: form.display_text_scale_ticker,
         display_timezone: form.display_timezone,
         controller_time_format: form.controller_time_format,
         controller_date_order: form.controller_date_order,
+        display_image_overlay: form.display_image_overlay,
       });
       await refreshFormat();
       setSaved(true);
@@ -786,6 +805,19 @@ function DisplayOperatorSettingsSection({
             secondary container (ticker), then four accents.
           </Typography>
         </FormControl>
+        <CuratorSliderField
+          label="Program history depth"
+          value={form.display_program_history_depth}
+          onChange={(v) => setForm({ ...form, display_program_history_depth: v })}
+          min={CURATOR_HISTORY_DEPTH.min}
+          max={CURATOR_HISTORY_DEPTH.max}
+          step={CURATOR_HISTORY_DEPTH.step}
+          disabled={!canWrite}
+        />
+        <Typography variant="caption" color="text.secondary" sx={{ mt: -1.5, display: 'block' }}>
+          How many past screen programs are kept for back-navigation and how many recent screen
+          placements influence frequency weighting. Shared across all curator configurations.
+        </Typography>
         <FormControl fullWidth disabled={!canWrite}>
           <InputLabel id="screen-scale">Screen text scale</InputLabel>
           <Select
@@ -816,6 +848,12 @@ function DisplayOperatorSettingsSection({
             ))}
           </Select>
         </FormControl>
+        <DisplayImageOverlaySettingsField
+          display={display}
+          value={form.display_image_overlay ?? DEFAULT_DISPLAY_IMAGE_OVERLAY}
+          onChange={(display_image_overlay) => setForm({ ...form, display_image_overlay })}
+          disabled={!canWrite}
+        />
         {canWrite && (
           <Button variant="contained" onClick={() => void save()}>
             Save display settings

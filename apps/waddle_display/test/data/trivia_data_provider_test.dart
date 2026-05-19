@@ -417,7 +417,7 @@ void main() {
             pollSeconds: const Value(1),
             configJson: integrationConfigJsonValue(
               configJson: '{"maxQuestionPerDay":5,"maxQuestionPerHour":20,'
-              '"twoHourWindowMs":3600000}',,
+              '"twoHourWindowMs":3600000}',
               baseUrl: 'http://api.local/v1',
             ),
           ),
@@ -461,7 +461,7 @@ void main() {
             pollSeconds: const Value(1),
             configJson: integrationConfigJsonValue(
               configJson: '{"maxQuestionPerDay":5,"maxQuestionPerHour":20,'
-              '"twoHourWindowMs":3600000}',,
+              '"twoHourWindowMs":3600000}',
               baseUrl: 'http://api.local/v1',
             ),
           ),
@@ -555,7 +555,7 @@ void main() {
             pollSeconds: const Value(1),
             configJson: integrationConfigJsonValue(
               configJson: '{"maxQuestionPerDay":5,"maxQuestionPerHour":20,'
-              '"twoHourWindowMs":3600000}',,
+              '"twoHourWindowMs":3600000}',
               baseUrl: 'http://api.local/v1',
             ),
           ),

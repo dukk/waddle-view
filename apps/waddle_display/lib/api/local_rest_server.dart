@@ -28,6 +28,7 @@ import 'adoption_clients_rest_routes.dart';
 import 'adoption_rest_routes.dart';
 import 'api_key_auth.dart';
 import 'caller_origin.dart';
+import 'rest_include_params.dart';
 import 'content_catalog_rest_routes.dart';
 import 'integrations_list_rest_routes.dart';
 import 'interests_rest_routes.dart';
@@ -160,6 +161,7 @@ Handler buildProtectedApiRouter({
   });
 
   r.get('/v1/screens', (Request req) async {
+    final includeDocs = includeConfigSchemaFromRequest(req);
     final rows = await db.select(db.screens).get();
     final dataKeyLimitRows =
         await db.select(db.curatorDataKeyProgramLimits).get();
@@ -170,12 +172,14 @@ Handler buildProtectedApiRouter({
         .map(
           (e) => <String, dynamic>{
             'id': e.id,
-            'name': e.name,
+            'label': e.label,
             'description': e.description,
             'screen_type': e.screenType,
             'config_json': e.configJson,
-            'config_json_schema': e.configJsonSchema,
-            'example_config_json': e.exampleConfigJson,
+            if (includeDocs) ...{
+              'config_json_schema': e.configJsonSchema,
+              'example_config_json': e.exampleConfigJson,
+            },
             'min_dwell_seconds': e.minDwellSeconds,
             'max_dwell_seconds': e.maxDwellSeconds,
             'frequency_weight': e.frequencyWeight,
@@ -249,9 +253,14 @@ Handler buildProtectedApiRouter({
 
   r.get('/v1/display/overlays', (Request req) async {
     await ensureOverlaysTableExists(db);
+    final includeDocs = includeConfigSchemaFromRequest(req);
     final rows = await fetchDisplayOverlays(db);
     return Response.ok(
-      jsonEncode({'items': rows.map(overlayToJson).toList()}),
+      jsonEncode({
+        'items': rows
+            .map((r) => overlayToJson(r, includeConfigDocs: includeDocs))
+            .toList(),
+      }),
       headers: {'content-type': 'application/json'},
     );
   });
@@ -274,22 +283,22 @@ Handler buildProtectedApiRouter({
         headers: {'content-type': 'application/json'},
       );
     }
-    final name = _readOverlayNameFromMap(map);
-    if (name.isEmpty) {
+    final label = _readOverlayLabelFromMap(map);
+    if (label.isEmpty) {
       return Response(
         400,
-        body: '{"error":"name_required"}',
+        body: '{"error":"label_required"}',
         headers: {'content-type': 'application/json'},
       );
     }
     var id = (map['id'] as String?)?.trim() ?? '';
     if (id.isEmpty) {
       final existing = await fetchDisplayOverlays(db);
-      id = allocateOverlayIdFromName(name, existing.map((r) => r.id));
+      id = allocateOverlayIdFromName(label, existing.map((r) => r.id));
       if (id.isEmpty) {
         return Response(
           400,
-          body: '{"error":"invalid_name"}',
+          body: '{"error":"invalid_label"}',
           headers: {'content-type': 'application/json'},
         );
       }
@@ -299,7 +308,7 @@ Handler buildProtectedApiRouter({
         db,
         id: id,
         overlayType: overlayType,
-        name: name,
+        label: label,
         configJson: _effectiveOverlayConfigFromBody(map),
       );
       return Response.ok(
@@ -413,7 +422,7 @@ Handler buildProtectedApiRouter({
         db,
         id: pathId,
         overlayType: _patchOverlayType(existing, map),
-        name: _patchOverlayName(existing, map),
+        label: _patchOverlayLabel(existing, map),
         configJson: _patchOverlayConfigJson(existing, map),
       );
     } on FormatException catch (e) {
@@ -520,7 +529,7 @@ Handler buildProtectedApiRouter({
         'alt_text': row.altText,
         'photographer_name': row.photographerName,
         'photographer_url': row.photographerUrl,
-        'pexels_page_url': row.pexelsPageUrl,
+        'page_url': row.pageUrl,
         'media_blob_key': row.mediaBlobKey,
       }),
       headers: {'content-type': 'application/json'},
@@ -744,26 +753,26 @@ String _shallowMergeOverlayConfigJson(String existing, String patch) {
   return jsonEncode(<String, dynamic>{...e, ...p});
 }
 
-String _readOverlayNameFromMap(Map<String, dynamic> map) {
-  final name = map['name'];
-  if (name is String && name.trim().isNotEmpty) {
-    return name.trim();
-  }
+String _readOverlayLabelFromMap(Map<String, dynamic> map) {
   final label = map['label'];
   if (label is String && label.trim().isNotEmpty) {
     return label.trim();
   }
+  final name = map['name'];
+  if (name is String && name.trim().isNotEmpty) {
+    return name.trim();
+  }
   return '';
 }
 
-String _patchOverlayName(DisplayOverlayRow existing, Map<String, dynamic> map) {
-  if (map.containsKey('name')) {
-    return (map['name'] as String?)?.trim() ?? '';
-  }
+String _patchOverlayLabel(DisplayOverlayRow existing, Map<String, dynamic> map) {
   if (map.containsKey('label')) {
     return (map['label'] as String?)?.trim() ?? '';
   }
-  return existing.name;
+  if (map.containsKey('name')) {
+    return (map['name'] as String?)?.trim() ?? '';
+  }
+  return existing.label;
 }
 
 String _patchOverlayType(

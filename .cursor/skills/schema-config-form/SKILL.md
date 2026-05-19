@@ -12,7 +12,7 @@ disable-model-invocation: true
 
 ## When to use
 
-- **Use [`SchemaConfigForm`](../../../apps/waddle_controller/src/components/config/SchemaConfigForm.tsx)** for operator `config_json` editing when the shape is documented in [`config_json_documentation.dart`](../../../packages/waddle_shared/lib/persistence/config_json_documentation.dart) (or a meta endpoint returns `config_json_schema` + `example_config_json`).
+- **Use [`SchemaConfigForm`](../../../apps/waddle_controller/src/components/config/SchemaConfigForm.tsx)** for operator `config_json` editing when the shape is documented in [`config_json_documentation.dart`](../../../packages/waddle_shared/lib/persistence/config_json_documentation.dart). The controller loads type docs once per display connect via `GET /v1/meta/config-schemas` into [`configSchemaCache.ts`](../../../apps/waddle_controller/src/storage/configSchemaCache.ts) (not on every catalog page refresh).
 - **Do not** use for one-off composite UIs (Outlook calendar section, adoption flows) — keep bespoke sections there.
 
 ## JSON Schema → control mapping
@@ -32,11 +32,11 @@ Helpers live in [`schemaConfigForm.ts`](../../../apps/waddle_controller/src/util
 1. Add or update `displayOverlayConfigJsonDocForType` / `screenConfigJsonDocForType` in [`config_json_documentation.dart`](../../../packages/waddle_shared/lib/persistence/config_json_documentation.dart).
 2. For sliders, include `minimum`, `maximum`, and optionally `'x-waddle-widget': 'slider'`.
 3. For overlay image pools, use array `items: { format: 'waddle-overlay-blob-key', ... }`.
-4. Expose built-in overlay types via `kBuiltinOverlayTypes` and `GET /v1/meta/overlay-types`.
+4. Expose built-in overlay types via `kBuiltinOverlayTypes` and include them in `GET /v1/meta/config-schemas` (legacy: `GET /v1/meta/overlay-types`).
 
 ## Canonical usage
 
-- **Overlays**: [`OverlaysPage.tsx`](../../../apps/waddle_controller/src/pages/OverlaysPage.tsx) loads `/v1/meta/overlay-types`, renders name + type + `SchemaConfigForm` in the edit dialog.
+- **Overlays**: [`OverlaysPage.tsx`](../../../apps/waddle_controller/src/pages/OverlaysPage.tsx) reads cached overlay type schemas from [`useConfigSchemas`](../../../apps/waddle_controller/src/hooks/useConfigSchemas.ts), renders name + type + `SchemaConfigForm` in the edit dialog.
 - **Integrations / screens**: may still use raw `@rjsf/mui` `Form`; prefer migrating to `SchemaConfigForm` when touching those pages.
 
 ## Verification

@@ -17,7 +17,7 @@ export function OverlaysHelpContent() {
       <Typography variant="body2" sx={{ mt: 1 }}>
         <strong>Overlay type</strong> selects the renderer (shape rain, birthday confetti, bouncing
         message, falling images, matrix rain, edge glow). Shape rain drifts hearts, raindrops, cats,
-        and dogs. Birthday confetti is visual-only (shapes, density, fall speed, opacity). Matrix
+        and dogs. Birthday confetti is visual-only (density, fall speed, opacity). Matrix
         rain shows translucent falling green characters; lower opacity keeps slides more visible. Edge
         glow pulses a colored vignette along the screen borders — useful for alarms when assigned on
         an active curator. Edit configuration here; delete removes the row from SQLite.

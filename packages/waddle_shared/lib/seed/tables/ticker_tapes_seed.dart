@@ -8,7 +8,7 @@ import 'package:waddle_shared/persistence/database.dart';
 Future<void> ensureTickerTapesSeed(AppDatabase db) async {
   Future<void> upsert({
     required String id,
-    required String name,
+    required String label,
     String description = '',
     required String tickerType,
     int frequencyWeight = 100,
@@ -19,7 +19,7 @@ Future<void> ensureTickerTapesSeed(AppDatabase db) async {
     await db.into(db.tickerTapes).insertOnConflictUpdate(
           TickerTapesCompanion.insert(
             id: id,
-            name: name,
+            label: label,
             description: Value(description),
             tickerType: tickerType,
             frequencyWeight: Value(frequencyWeight),
@@ -53,42 +53,42 @@ Future<void> ensureTickerTapesSeed(AppDatabase db) async {
 
   await upsert(
     id: 'ticker_time',
-    name: 'Time',
+    label: 'Time',
     description: 'Local clock string',
     tickerType: 'time',
     sortOrder: 0,
   );
   await upsert(
     id: 'ticker_weather',
-    name: 'Weather',
+    label: 'Weather',
     description: 'Live weather; optional fallbackText in config_json',
     tickerType: 'weather',
     sortOrder: 10,
   );
   await upsert(
     id: 'ticker_news',
-    name: 'News',
+    label: 'News',
     description: 'RSS headlines; optional fallbackText in config_json',
     tickerType: 'news',
     sortOrder: 20,
   );
   await upsert(
     id: 'ticker_quote',
-    name: 'Quote',
+    label: 'Quote',
     description: 'Static line from config_json fallbackText',
     tickerType: 'quote',
     sortOrder: 30,
   );
   await upsert(
     id: 'ticker_stocks',
-    name: 'Stocks',
+    label: 'Stocks',
     description: 'Enabled interests_stock_symbols with latest stock_quotes',
     tickerType: 'stocks',
     sortOrder: 35,
   );
   await upsert(
     id: 'ticker_custom',
-    name: 'Custom marquee',
+    label: 'Custom marquee',
     description: 'Extra ticker.marquee.* keys in config_key_values (not in bootstrap curator)',
     tickerType: 'custom',
     sortOrder: 40,

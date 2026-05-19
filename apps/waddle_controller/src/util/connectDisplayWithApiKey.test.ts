@@ -22,7 +22,17 @@ vi.mock('@/storage/userDisplaysSync', () => ({
   syncUserDisplayToServer: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('@/api/configSchemas', () => ({
+  fetchAndCacheConfigSchemas: vi.fn().mockResolvedValue({
+    screen_types: [],
+    ticker_types: [],
+    overlay_types: [],
+    integration_types: [],
+  }),
+}));
+
 import { fetchAdoptionSession } from '@/api/adoption';
+import { fetchAndCacheConfigSchemas } from '@/api/configSchemas';
 import { saveSession } from '@/storage/sessions';
 
 describe('connectDisplayWithApiKey', () => {
@@ -48,6 +58,7 @@ describe('connectDisplayWithApiKey', () => {
     expect(session.apiKey).toBe('wd_manual_key');
     expect(session.identifier).toBe('manual-client');
     expect(saveSession).toHaveBeenCalledWith('display-1', session);
+    expect(fetchAndCacheConfigSchemas).toHaveBeenCalledWith(display);
   });
 
   it('rejects empty api key', async () => {

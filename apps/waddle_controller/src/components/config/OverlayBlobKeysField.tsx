@@ -121,7 +121,7 @@ export function OverlayBlobKeysField(props: Props) {
       <input
         ref={fileRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif"
+        accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml,.svg"
         multiple
         hidden
         disabled={disabled || uploading}

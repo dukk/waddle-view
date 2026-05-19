@@ -9,6 +9,7 @@ import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/content_category_defaults.dart';
 import 'package:waddle_shared/persistence/display_overlay_repository.dart';
+import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/seed/initial_seed.dart';
 
 import '../helpers/memory_database.dart';
@@ -377,8 +378,25 @@ void main() {
         .toList();
     expect(birthday, isNotEmpty);
     final r = birthday.single;
-    expect(r.name, 'Default Birthday Confetti');
+    expect(r.label, 'Default Birthday Confetti');
     expect(r.overlayType, kOverlayTypeBirthdayConfetti);
+    await db.close();
+  });
+
+  test('ensureInitialSeed inserts default floating balloons overlay', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureInitialSeed(db);
+    final rows = await fetchDisplayOverlays(db);
+    final balloons = rows
+        .where((r) => r.id == kDefaultFloatingBalloonsOverlayId)
+        .toList();
+    expect(balloons, isNotEmpty);
+    final r = balloons.single;
+    expect(r.label, 'Default Floating Balloons');
+    expect(r.overlayType, kOverlayTypeFloatingBalloons);
+    final cfg = jsonDecode(r.configJson) as Map<String, dynamic>;
+    expect(cfg['colors'], isA<List<dynamic>>());
     await db.close();
   });
 
@@ -390,7 +408,7 @@ void main() {
     final ducks = rows.where((r) => r.id == kDefaultFallingDucksOverlayId).toList();
     expect(ducks, isNotEmpty);
     final r = ducks.single;
-    expect(r.name, 'Default Falling Ducks');
+    expect(r.label, 'Default Falling Ducks');
     expect(r.overlayType, kOverlayTypeFallingImages);
     final cfg = jsonDecode(r.configJson) as Map<String, dynamic>;
     expect(cfg['image_blob_keys'], kSeededDuckOverlayBlobKeys);
@@ -407,7 +425,7 @@ void main() {
         .toList();
     expect(bounce, isNotEmpty);
     final r = bounce.single;
-    expect(r.name, contains('Wattle View'));
+    expect(r.label, contains('Wattle View'));
     expect(r.overlayType, kOverlayTypeBouncingMessage);
     expect(
       (jsonDecode(r.configJson) as Map<String, dynamic>)['messages'],

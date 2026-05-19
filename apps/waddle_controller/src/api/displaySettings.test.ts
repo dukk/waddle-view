@@ -41,4 +41,22 @@ describe('displaySettings api', () => {
       body: JSON.stringify({ controller_time_format: '24h' }),
     });
   });
+
+  it('putDisplaySettings PUTs display_image_overlay', async () => {
+    vi.mocked(apiJson).mockResolvedValue({});
+
+    const overlay = {
+      enabled: true,
+      image_blob_key: 'overlay/pool/logo',
+      x: 0.9,
+      y: 0.05,
+      scale: 0.15,
+      opacity: 0.8,
+    };
+    await putDisplaySettings(display, { display_image_overlay: overlay });
+    expect(apiJson).toHaveBeenCalledWith(display, '/v1/display/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ display_image_overlay: overlay }),
+    });
+  });
 });

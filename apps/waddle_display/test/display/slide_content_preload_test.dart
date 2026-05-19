@@ -95,7 +95,7 @@ void main() {
             mediaBlobKey: 'bk_preload_photo',
             photographerName: 'n',
             photographerUrl: 'https://example.com/p',
-            pexelsPageUrl: 'https://example.com',
+            pageUrl: 'https://example.com',
             fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
           ),
         );
@@ -292,7 +292,7 @@ void main() {
               mediaBlobKey: 'bk_fail',
               photographerName: 'n',
               photographerUrl: 'https://example.com/p',
-              pexelsPageUrl: 'https://example.com',
+              pageUrl: 'https://example.com',
               fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
             ),
           );
@@ -332,7 +332,7 @@ void main() {
             mediaBlobKey: 'bk_c0',
             photographerName: 'n',
             photographerUrl: 'https://example.com/p',
-            pexelsPageUrl: 'https://example.com',
+            pageUrl: 'https://example.com',
             fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
           ),
         );

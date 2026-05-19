@@ -1,3 +1,6 @@
+/** Operator-facing label for the accounts tab (links and inline help). */
+export const DISPLAY_SETTINGS_ACCOUNTS_LABEL = 'Display settings → Accounts';
+
 export const DISPLAY_SETTINGS_TAB_ACCOUNTS = 'accounts';
 export const DISPLAY_SETTINGS_TAB_GENERAL = 'general';
 export const DISPLAY_SETTINGS_TAB_ADOPTION = 'adoption';

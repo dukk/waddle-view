@@ -62,17 +62,17 @@ CREATE TABLE curator_configuration_members (
     final rows = await fetchDisplayOverlays(db);
     final mothers = rows.singleWhere((r) => r.id == kDefaultMothersDayOverlayId);
     expect(mothers.overlayType, kOverlayTypeShapeRain);
-    expect(mothers.name, 'Raining Hearts');
+    expect(mothers.label, 'Raining Hearts');
 
     final confetti = rows.singleWhere(
       (r) => r.id == kDefaultBirthdayConfettiOverlayId,
     );
-    expect(confetti.name, 'Default Birthday Confetti');
+    expect(confetti.label, 'Default Birthday Confetti');
 
     final bounce = rows.singleWhere(
       (r) => r.id == kDefaultWattleViewsBirthdayMessageOverlayId,
     );
-    expect(bounce.name, "Wattle View's Birthday Message!");
+    expect(bounce.label, "Wattle View's Birthday Message!");
 
     final member = await db.customSelect(
       'SELECT entity_id FROM curator_configuration_members '

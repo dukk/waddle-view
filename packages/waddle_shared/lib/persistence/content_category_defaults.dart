@@ -175,6 +175,172 @@ const kContentCategoryDefaults = <ContentCategoryDef>[
     label: 'History',
     materialIconName: 'menu_book',
   ),
+  // Life & daily interests (general-purpose tags for feeds, calendars, media, etc.)
+  ContentCategoryDef(
+    id: 'family',
+    label: 'Family',
+    materialIconName: 'family_restroom',
+  ),
+  ContentCategoryDef(
+    id: 'personal',
+    label: 'Personal',
+    materialIconName: 'account_circle',
+  ),
+  ContentCategoryDef(
+    id: 'career',
+    label: 'Work',
+    materialIconName: 'business_center',
+  ),
+  ContentCategoryDef(
+    id: 'church',
+    label: 'Church',
+    materialIconName: 'church',
+  ),
+  ContentCategoryDef(
+    id: 'faith',
+    label: 'Faith & spirituality',
+    materialIconName: 'volunteer_activism',
+  ),
+  ContentCategoryDef(
+    id: 'education',
+    label: 'School',
+    materialIconName: 'school',
+  ),
+  ContentCategoryDef(
+    id: 'shopping',
+    label: 'Shopping',
+    materialIconName: 'shopping_cart',
+  ),
+  ContentCategoryDef(
+    id: 'health',
+    label: 'Health',
+    materialIconName: 'local_hospital',
+  ),
+  ContentCategoryDef(
+    id: 'research',
+    label: 'Research',
+    materialIconName: 'manage_search',
+  ),
+  ContentCategoryDef(
+    id: 'restaurants',
+    label: 'Restaurants',
+    materialIconName: 'restaurant',
+  ),
+  ContentCategoryDef(
+    id: 'food',
+    label: 'Food',
+    materialIconName: 'lunch_dining',
+  ),
+  ContentCategoryDef(
+    id: 'cooking',
+    label: 'Cooking',
+    materialIconName: 'restaurant_menu',
+  ),
+  ContentCategoryDef(
+    id: 'coffee',
+    label: 'Coffee & drinks',
+    materialIconName: 'coffee',
+  ),
+  ContentCategoryDef(
+    id: 'software',
+    label: 'Software',
+    materialIconName: 'code',
+  ),
+  ContentCategoryDef(
+    id: 'hardware',
+    label: 'Hardware',
+    materialIconName: 'devices',
+  ),
+  ContentCategoryDef(
+    id: 'home',
+    label: 'Home',
+    materialIconName: 'home',
+  ),
+  ContentCategoryDef(
+    id: 'real_estate',
+    label: 'Real estate',
+    materialIconName: 'apartment',
+  ),
+  ContentCategoryDef(
+    id: 'music',
+    label: 'Music',
+    materialIconName: 'music_note',
+  ),
+  ContentCategoryDef(
+    id: 'television',
+    label: 'TV',
+    materialIconName: 'tv',
+  ),
+  ContentCategoryDef(
+    id: 'podcasts',
+    label: 'Podcasts',
+    materialIconName: 'podcasts',
+  ),
+  ContentCategoryDef(
+    id: 'gaming',
+    label: 'Gaming',
+    materialIconName: 'sports_esports',
+  ),
+  ContentCategoryDef(
+    id: 'books',
+    label: 'Books',
+    materialIconName: 'auto_stories',
+  ),
+  ContentCategoryDef(
+    id: 'fitness',
+    label: 'Fitness',
+    materialIconName: 'fitness_center',
+  ),
+  ContentCategoryDef(
+    id: 'pets',
+    label: 'Pets',
+    materialIconName: 'pets',
+  ),
+  ContentCategoryDef(
+    id: 'kids',
+    label: 'Kids',
+    materialIconName: 'child_care',
+  ),
+  ContentCategoryDef(
+    id: 'automotive',
+    label: 'Automotive',
+    materialIconName: 'directions_car',
+  ),
+  ContentCategoryDef(
+    id: 'gardening',
+    label: 'Gardening',
+    materialIconName: 'yard',
+  ),
+  ContentCategoryDef(
+    id: 'fashion',
+    label: 'Fashion',
+    materialIconName: 'checkroom',
+  ),
+  ContentCategoryDef(
+    id: 'photography',
+    label: 'Photography',
+    materialIconName: 'photo_camera',
+  ),
+  ContentCategoryDef(
+    id: 'hobbies',
+    label: 'Hobbies',
+    materialIconName: 'palette',
+  ),
+  ContentCategoryDef(
+    id: 'community',
+    label: 'Community',
+    materialIconName: 'groups',
+  ),
+  ContentCategoryDef(
+    id: 'legal',
+    label: 'Legal',
+    materialIconName: 'gavel',
+  ),
+  ContentCategoryDef(
+    id: 'events',
+    label: 'Events',
+    materialIconName: 'event',
+  ),
 ];
 
 /// One canonical dashboard content category (icons: [materialIconName] and/or [iconBlobKey]).

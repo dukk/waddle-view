@@ -1,14 +1,12 @@
 import 'dart:convert';
 
-/// Allowed `shapes` entries in `overlays.config_json` for
-/// `overlay_type` `birthday_confetti`.
-const Set<String> kBirthdayConfettiShapeTokens = {
-  'rect',
-  'circle',
-  'star',
-  'streamer',
-  'mix',
-};
+/// Stock festive palette for `birthday_confetti` when `colors` is omitted.
+const List<String> kBirthdayConfettiDefaultColorHexes = <String>[
+  '#E53935',
+  '#FFEB3B',
+  '#00BCD4',
+  '#E91E63',
+];
 
 final RegExp _hexColorPattern = RegExp(r'^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$');
 
@@ -24,14 +22,13 @@ const double kBirthdayConfettiMaxCycleSeconds = 300.0;
 /// Resolved schedule settings for birthday confetti (no Flutter types).
 class BirthdayConfettiScheduleSettings {
   const BirthdayConfettiScheduleSettings({
-    required this.shapeTokens,
     required this.colorHexes,
     required this.density,
     required this.fallSpeed,
     required this.opacity,
   });
 
-  /// When [colorHexes] is empty, the display app uses theme accent colors.
+  /// When [colorHexes] is empty, the display uses [kBirthdayConfettiDefaultColorHexes].
   ///
   /// [fallSpeed] is a relative fall rate: **lower = slower** drift (about
   /// `5s / fallSpeed` per full vertical cycle at 1.0 baseline, capped by
@@ -39,14 +36,12 @@ class BirthdayConfettiScheduleSettings {
   /// per-piece alpha (higher = more visible).
   static const BirthdayConfettiScheduleSettings defaults =
       BirthdayConfettiScheduleSettings(
-        shapeTokens: <String>['mix'],
         colorHexes: <String>[],
         density: 0.36,
         fallSpeed: 0.14,
         opacity: 0.46,
       );
 
-  final List<String> shapeTokens;
   final List<String> colorHexes;
   final double density;
 
@@ -67,23 +62,6 @@ class BirthdayConfettiScheduleSettings {
       return BirthdayConfettiScheduleSettings.defaults;
     }
     final map = decoded.cast<String, dynamic>();
-
-    var shapes = <String>[];
-    final rawShapes = map['shapes'];
-    if (rawShapes is List) {
-      for (final e in rawShapes) {
-        if (e is! String) {
-          continue;
-        }
-        final t = e.trim().toLowerCase();
-        if (kBirthdayConfettiShapeTokens.contains(t)) {
-          shapes.add(t);
-        }
-      }
-    }
-    if (shapes.isEmpty) {
-      shapes = List<String>.from(BirthdayConfettiScheduleSettings.defaults.shapeTokens);
-    }
 
     final colors = <String>[];
     final rawColors = map['colors'];
@@ -121,7 +99,6 @@ class BirthdayConfettiScheduleSettings {
     }
 
     return BirthdayConfettiScheduleSettings(
-      shapeTokens: shapes,
       colorHexes: colors,
       density: density,
       fallSpeed: fallSpeed,
@@ -148,27 +125,11 @@ String? normalizeBirthdayConfettiSettingsJsonString(String raw) {
   final map = decoded.cast<String, dynamic>();
   map.remove('messages');
   map.remove('message_interval_sec');
+  map.remove('shapes');
   if (!_confettiSettingsMapValid(map)) {
     return null;
   }
   final out = <String, dynamic>{};
-  if (map.containsKey('shapes')) {
-    final list = <String>[];
-    final raw = map['shapes'];
-    if (raw is List) {
-      for (final e in raw) {
-        if (e is String) {
-          final t = e.trim().toLowerCase();
-          if (kBirthdayConfettiShapeTokens.contains(t)) {
-            list.add(t);
-          }
-        }
-      }
-    }
-    if (list.isNotEmpty) {
-      out['shapes'] = list;
-    }
-  }
   if (map.containsKey('colors')) {
     final list = <String>[];
     final raw = map['colors'];
@@ -202,31 +163,6 @@ String? normalizeBirthdayConfettiSettingsJsonString(String raw) {
 }
 
 bool _confettiSettingsMapValid(Map<String, dynamic> map) {
-  if (map.containsKey('shapes')) {
-    final raw = map['shapes'];
-    if (raw != null && raw is! List) {
-      return false;
-    }
-    if (raw is List) {
-      var any = false;
-      for (final e in raw) {
-        if (e is! String) {
-          return false;
-        }
-        final t = e.trim().toLowerCase();
-        if (t.isEmpty) {
-          return false;
-        }
-        if (!kBirthdayConfettiShapeTokens.contains(t)) {
-          return false;
-        }
-        any = true;
-      }
-      if (!any && raw.isNotEmpty) {
-        return false;
-      }
-    }
-  }
   if (map.containsKey('colors')) {
     final raw = map['colors'];
     if (raw != null && raw is! List) {

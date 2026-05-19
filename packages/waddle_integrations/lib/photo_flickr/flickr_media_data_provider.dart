@@ -309,7 +309,7 @@ class FlickrPhotosDataProvider implements IDataProvider {
             mediaBlobKey: logicalKey,
             photographerName: owner,
             photographerUrl: photographerUrl,
-            pexelsPageUrl: pageUrl,
+            pageUrl: pageUrl,
             altText: Value(title),
             fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(nowMs),
             suppressed: Value(blocked),

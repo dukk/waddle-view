@@ -102,7 +102,7 @@ Future<RejectRescanResult> rescanContentForBlockTerms(AppDatabase db) async {
     if (ctx.isMediaRejected(
       photographer: p.photographerName,
       altText: p.altText,
-      urls: [p.photographerUrl, p.pexelsPageUrl],
+      urls: [p.photographerUrl, p.pageUrl],
     )) {
       await (db.update(db.photos)..where((t) => t.id.equals(p.id)))
           .write(const PhotosCompanion(suppressed: Value(true)));

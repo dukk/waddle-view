@@ -35,7 +35,7 @@ type PhotoMedia = {
   id: string;
   alt_text?: string;
   photographer_name?: string;
-  pexels_page_url?: string;
+  page_url?: string;
   media_blob_key?: string;
 };
 

@@ -76,7 +76,7 @@ void main() {
             mediaBlobKey: 'k/p1',
             photographerName: 'a',
             photographerUrl: 'b',
-            pexelsPageUrl: 'c',
+            pageUrl: 'c',
             fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
           ),
         );
@@ -87,7 +87,7 @@ void main() {
             mediaBlobKey: 'k/p2',
             photographerName: 'a',
             photographerUrl: 'b',
-            pexelsPageUrl: 'c',
+            pageUrl: 'c',
             fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(2),
           ),
         );
@@ -224,7 +224,7 @@ void main() {
             mediaBlobKey: 'k/ph',
             photographerName: 'a',
             photographerUrl: 'b',
-            pexelsPageUrl: 'c',
+            pageUrl: 'c',
             fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
             suppressed: const Value(true),
           ),
@@ -245,7 +245,7 @@ void main() {
             mediaBlobKey: 'k/pvis',
             photographerName: 'a',
             photographerUrl: 'b',
-            pexelsPageUrl: 'c',
+            pageUrl: 'c',
             fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(2),
           ),
         );
