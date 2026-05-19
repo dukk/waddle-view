@@ -44,13 +44,14 @@ void main() {
     expect(rows, hasLength(1));
     expect(rows.single.id, 'legacy_row');
     expect(rows.single.label, 'Legacy hearts');
-    expect(rows.single.overlayType, 'hearts_rain');
+    // v19→20 renames hearts_rain → shape_rain when migrating through current schema.
+    expect(rows.single.overlayType, 'shape_rain');
 
     final cols = await db.customSelect('PRAGMA table_info(overlays)').get();
     final names = cols.map((r) => r.read<String>('name')).toList();
-    expect(names, contains('name'));
-    expect(names, isNot(contains('label')));
+    expect(names, contains('label'));
     expect(names, isNot(contains('start_month')));
+    expect(names, isNot(contains('config_json_schema')));
 
     await db.close();
   });

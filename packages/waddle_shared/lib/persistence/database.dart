@@ -945,14 +945,18 @@ Future<void> _migrateV19ToV20OverlaysShapeRainAndDropExample(
       kDefaultMothersDayOverlayId,
     ],
   );
-  await db.customStatement(
-    'UPDATE curator_configuration_members SET entity_id = ? '
-    "WHERE entity_type = ? AND entity_id = 'default_birthday_example_may_13'",
-    <Object?>[
-      kDefaultBirthdayConfettiOverlayId,
-      kCuratorMemberEntityOverlay,
-    ],
-  );
+  final hasCuratorMembers =
+      await _sqliteTableExists(db, 'curator_configuration_members');
+  if (hasCuratorMembers) {
+    await db.customStatement(
+      'UPDATE curator_configuration_members SET entity_id = ? '
+      "WHERE entity_type = ? AND entity_id = 'default_birthday_example_may_13'",
+      <Object?>[
+        kDefaultBirthdayConfettiOverlayId,
+        kCuratorMemberEntityOverlay,
+      ],
+    );
+  }
   await db.customStatement(
     'UPDATE overlays SET id = ?, name = ? WHERE id = ?',
     <Object?>[
@@ -961,14 +965,16 @@ Future<void> _migrateV19ToV20OverlaysShapeRainAndDropExample(
       'default_birthday_example_may_13',
     ],
   );
-  await db.customStatement(
-    'UPDATE curator_configuration_members SET entity_id = ? '
-    "WHERE entity_type = ? AND entity_id = 'default_bouncing_message_may_13'",
-    <Object?>[
-      kDefaultWattleViewsBirthdayMessageOverlayId,
-      kCuratorMemberEntityOverlay,
-    ],
-  );
+  if (hasCuratorMembers) {
+    await db.customStatement(
+      'UPDATE curator_configuration_members SET entity_id = ? '
+      "WHERE entity_type = ? AND entity_id = 'default_bouncing_message_may_13'",
+      <Object?>[
+        kDefaultWattleViewsBirthdayMessageOverlayId,
+        kCuratorMemberEntityOverlay,
+      ],
+    );
+  }
   await db.customStatement(
     'UPDATE overlays SET id = ?, name = ? WHERE id = ?',
     <Object?>[
@@ -1040,6 +1046,9 @@ Future<void> _ensureCuratorConfigurationsTickerPixelsPerSecond(
 
 Future<void> _migrateV18ToV19CuratorTickerPixelsPerSecond(AppDatabase db) async {
   await _ensureCuratorConfigurationsTickerPixelsPerSecond(db);
+  if (!await _sqliteTableExists(db, 'curator_configurations')) {
+    return;
+  }
   var migratedPx = _kCuratorTickerPixelsPerSecondDefault;
   if (await _sqliteTableExists(db, 'config_key_values')) {
     final kvRow = await db.customSelect(

@@ -145,11 +145,27 @@ bool integrationLinkedAccountsJsonConfigured(
   return true;
 }
 
+/// Integration rows for account sync during migrations (before [Integrations.accountsReady] exists).
+Future<List<({String id, String integrationType, String? configJson})>>
+    _integrationRowsForAccountSync(AppDatabase db) async {
+  final rows = await db.customSelect(
+    'SELECT id, integration_type, config_json FROM integrations',
+  ).get();
+  return [
+    for (final row in rows)
+      (
+        id: row.read<String>('id'),
+        integrationType: row.read<String>('integration_type'),
+        configJson: row.read<String?>('config_json'),
+      ),
+  ];
+}
+
 Future<void> syncIntegrationAccountsFromIntegrationConfigs(
   AppDatabase db,
 ) async {
   final nowMs = DateTime.now().millisecondsSinceEpoch;
-  final rows = await db.select(db.integrations).get();
+  final rows = await _integrationRowsForAccountSync(db);
   for (final row in rows) {
     final accountTypeId = accountTypeForIntegrationType(row.integrationType);
     if (accountTypeId == null) {
@@ -262,7 +278,7 @@ Future<void> syncIntegrationAccountLinks(
   SecretStore? secrets,
 }) async {
   await syncIntegrationAccountsFromIntegrationConfigs(db);
-  final rows = await db.select(db.integrations).get();
+  final rows = await _integrationRowsForAccountSync(db);
   for (final row in rows) {
     final accountTypeId = accountTypeForIntegrationType(row.integrationType);
     if (accountTypeId == null) {

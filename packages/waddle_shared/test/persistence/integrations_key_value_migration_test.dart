@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:test/test.dart';
 import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/theme/display_program_history_kv.dart';
 
 void main() {
   test('schema 20 to 21 migrates integration KV from config_key_values', () async {
@@ -99,7 +100,13 @@ CREATE TABLE config_key_values (
     expect(delta.value, 'https://delta');
 
     final legacy = await db.select(db.configKeyValues).get();
-    expect(legacy.map((r) => r.key).toList(), ['display.timezone']);
+    expect(
+      legacy.map((r) => r.key).toSet(),
+      {
+        'display.timezone',
+        kDisplayProgramHistoryDepthKvKey,
+      },
+    );
 
     await db.close();
   });
