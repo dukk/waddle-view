@@ -13,6 +13,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from hook_common import conversation_id, load_state, read_stdin_json, repo_root, save_state
 
+# Keep in sync with stop.loop_limit in .cursor/hooks.json
+STOP_HOOK_LOOP_LIMIT = 5
+
 
 def _load_qa_failure_helpers(root: Path):
     scripts = str(root / "scripts")
@@ -42,7 +45,11 @@ def main() -> None:
     status = payload.get("status")
     loop_count = payload.get("loop_count", 0)
 
-    if status != "completed" or not isinstance(loop_count, int) or loop_count >= 4:
+    if (
+        status != "completed"
+        or not isinstance(loop_count, int)
+        or loop_count >= STOP_HOOK_LOOP_LIMIT
+    ):
         print("{}")
         sys.exit(0)
 

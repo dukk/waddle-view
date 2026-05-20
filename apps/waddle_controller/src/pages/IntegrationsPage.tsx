@@ -131,6 +131,9 @@ function listParamsForSection(
 
 /** Missing-accounts section: enable when accounts are ready; edit when already enabled. */
 function missingAccountsActionLabel(row: IntegrationRow): string | null {
+  if (isManualBucketIntegration(row.integration_type)) {
+    return row.enabled ? 'Edit' : 'Enable';
+  }
   const ready = integrationAccountsSatisfiedForEnable(accountsDetailFromRow(row));
   if (ready) {
     return row.enabled ? 'Edit' : 'Enable';
