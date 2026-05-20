@@ -3,15 +3,6 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/persistence/database.dart';
-import 'package:waddle_shared/persistence/tables.dart' show
-    kDefaultCalendarBucketIntegrationId,
-    kDefaultJokeBucketIntegrationId,
-    kDefaultPhotoBucketIntegrationId,
-    kDefaultTriviaBucketIntegrationId,
-    kDefaultVideoBucketIntegrationId,
-    kMediaDataProviderPhotoBucket,
-    kPhotoBucketIntegrationType,
-    kUserRoleViewer;
 import 'package:waddle_shared/seed/initial_seed.dart';
 import 'package:waddle_shared/seed/tables/interests_jokes_seed.dart';
 

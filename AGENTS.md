@@ -34,6 +34,10 @@ python scripts/waddle_checks.py full --controller
 
 See [`run-waddle-checks`](.cursor/skills/run-waddle-checks/SKILL.md) for manual step-by-step equivalents. Optional: `WADDLE_TEST_CONCURRENCY`, `WADDLE_CHECKS_PARALLEL_ANALYZE=0`.
 
+## Cursor agent stop — scoped QA tests
+
+When the Cursor agent edits tracked files under `apps/` or `packages/`, [`.cursor/hooks/agent_stop_followup.py`](.cursor/hooks/agent_stop_followup.py) runs [`scripts/qa_scoped_tests.py`](scripts/qa_scoped_tests.py) (mapped unit tests only—no full analyze/coverage). On failure, the **`/qa` FIX** subagent ([`.cursor/agents/qa.md`](.cursor/agents/qa.md)) receives output from [`.cursor/hooks/state/qa-test-failure.json`](.cursor/hooks/state/qa-test-failure.json); on pass, **`/qa` REVIEW** and **`/docs`** run as before. Manual rerun: `python scripts/qa_scoped_tests.py --files path/to/edited.dart`. Skip (discouraged): `WADDLE_SKIP_QA_HOOK_TESTS=1`.
+
 ## Git pre-push (local)
 
 With [`core.hooksPath=.githooks`](scripts/install-git-hooks.sh), **`git push`** runs [`scripts/pre_push_checks.py`](scripts/pre_push_checks.py) (scoped by changed paths). It does **not** run **`npm ci`** for `apps/waddle_controller/` — a running **`npm run dev`** locks native modules on Windows and caused recurring **`EPERM`** during `npm ci`. Pre-push only runs controller **`npm run build`** and **`npm run lint`**; **CI** runs **`npm ci`** on a clean runner. Pre-push uses the same **fast** Dart optimizations as `waddle_checks.py fast` (conditional `pub get` / `build_runner`, test concurrency, no coverage) but still runs **full** test suites per workspace package in scope. After changing controller `package.json` / lockfile: stop dev, run **`npm ci`** manually, then use [`run-waddle-checks`](.cursor/skills/run-waddle-checks/SKILL.md) for the full gate. Details: [`.cursor/rules/waddle-prepush.mdc`](.cursor/rules/waddle-prepush.mdc).

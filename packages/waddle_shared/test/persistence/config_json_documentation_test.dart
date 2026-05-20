@@ -35,10 +35,13 @@ void main() {
 
   test('every screen layout widget type has config schema entry', () {
     for (final t in kScreenLayoutWidgetTypes) {
+      final doc = screenConfigJsonDocForType(t);
+      expect(jsonDecode(doc.schema), isA<Map<String, dynamic>>());
+      expect(jsonDecode(doc.example), isA<Object>());
       expect(
-        kScreenConfigJsonMeta.containsKey(t),
-        isTrue,
-        reason: 'Add ScreenConfigJsonDoc for $t in kScreenConfigJsonMeta',
+        doc,
+        isNot(equals(kGenericScreenConfigJsonDoc)),
+        reason: 'Add ScreenConfigJsonDoc for $t',
       );
     }
   });

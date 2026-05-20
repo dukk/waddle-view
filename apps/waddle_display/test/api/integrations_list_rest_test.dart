@@ -5,7 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/config/microsoft_graph_kv.dart';
 import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
-import 'package:waddle_shared/integration_accounts/integration_accounts_service.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import '../helpers/rest_auth_helper.dart';
 

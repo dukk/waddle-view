@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 void main() {
-  test('schema 25 to 26 extracts integration_types and trims integrations', () async {
+  test('schema 25 legacy integrations migrate through integration_types trim', () async {
     final executor = NativeDatabase.memory(setup: (raw) {
       raw.execute('''
 CREATE TABLE integrations (
@@ -70,19 +70,19 @@ CREATE TABLE calendar_event_categories (
     final names = integrationColumns.map((c) => c.read<String>('name')).toSet();
     expect(names.contains('config_json_schema'), isFalse);
     expect(names.contains('requires_accounts'), isFalse);
-    expect(names.contains('accounts_ready'), isTrue);
+    expect(names.contains('accounts_ready'), isFalse);
 
     final calRow = await db.customSelect(
-      'SELECT accounts_ready FROM integrations WHERE id = ?',
+      'SELECT enabled FROM integrations WHERE id = ?',
       variables: [const Variable<String>('cal_google')],
     ).getSingle();
-    expect(calRow.read<int>('accounts_ready'), 0);
+    expect(calRow.read<int>('enabled'), 0);
 
-    final indexRows = await db.customSelect(
-      "SELECT name FROM sqlite_master WHERE type = 'index' "
-      "AND name = 'idx_integrations_enabled_accounts'",
+    final view = await db.customSelect(
+      "SELECT name FROM sqlite_master WHERE type = 'view' "
+      "AND name = 'v_integration_accounts_configured'",
     ).get();
-    expect(indexRows, isNotEmpty);
+    expect(view, isNotEmpty);
 
     final version = await db.customSelect('PRAGMA user_version').getSingle();
     expect(version.read<int>('user_version'), db.schemaVersion);

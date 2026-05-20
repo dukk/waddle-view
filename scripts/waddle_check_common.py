@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 
 class CheckTier(str, Enum):
@@ -41,6 +42,8 @@ DART_PACKAGE_PREFIXES: tuple[tuple[str, str], ...] = (
     ("apps/waddle_display/", "display"),
     ("apps/waddlectl/", "waddlectl"),
 )
+
+CONTROLLER_PREFIX = "apps/waddle_controller/"
 
 
 _path_augmented = False
@@ -231,6 +234,10 @@ def test_concurrency() -> int:
             return max(1, int(raw))
         except ValueError:
             pass
+    # Parallel flutter test on Windows races copying sqlite3.dll into
+    # build/native_assets (PathExistsException errno 183).
+    if sys.platform == "win32":
+        return 1
     cpus = os.cpu_count() or 4
     return max(1, min(4, cpus))
 
@@ -323,6 +330,208 @@ def infer_scoped_test_paths(repo: Path, changed: list[str]) -> dict[str, list[st
                 if rel not in scoped[key]:
                     scoped[key].append(rel)
     return scoped
+
+
+def infer_controller_test_paths(repo: Path, changed: list[str]) -> list[str]:
+    """Relative paths under apps/waddle_controller for Vitest (src/**/*.test.ts)."""
+    controller = repo / "apps" / "waddle_controller"
+    paths: list[str] = []
+    for path in changed:
+        p = _normalize_path(path)
+        if not p.startswith(CONTROLLER_PREFIX):
+            continue
+        rel = p[len(CONTROLLER_PREFIX) :]
+        if rel.endswith(".test.ts"):
+            if rel not in paths:
+                paths.append(rel)
+            continue
+        if rel.endswith(".ts") and not rel.endswith(".d.ts") and (
+            rel.startswith("src/") or "/src/" in rel
+        ):
+            candidate = rel.replace(".ts", ".test.ts")
+            if (controller / candidate).is_file() and candidate not in paths:
+                paths.append(candidate)
+    return paths
+
+
+def qa_widen_shared_tests(changed: list[str]) -> bool:
+    """Run full waddle_shared tests when persistence or Drift codegen may have changed."""
+    for path in changed:
+        p = _normalize_path(path)
+        if p.startswith("packages/waddle_shared/lib/persistence/"):
+            return True
+    return needs_build_runner(changed)
+
+
+@dataclass(frozen=True)
+class QaScopedTestResult:
+    exit_code: int
+    skipped: bool
+    edited_files: list[str]
+    test_paths: list[str]
+    failure_label: str | None = None
+    failure_cwd: Path | None = None
+    failure_argv: list[str] | None = None
+    failure_output: str | None = None
+
+
+def build_qa_scoped_test_steps(root: Path, edited_files: list[str]) -> list[Step]:
+    """Test-only steps for edited paths (no analyze, coverage, or pub get)."""
+    changed = [_normalize_path(f) for f in edited_files if f and f.strip()]
+    if not changed:
+        return []
+
+    packages = changed_dart_packages(changed)
+    if packages is not None and not packages:
+        packages = None
+
+    widen_shared = qa_widen_shared_tests(changed)
+    scoped = infer_scoped_test_paths(root, changed)
+    if widen_shared:
+        scoped.pop("shared", None)
+
+    concurrency = test_concurrency()
+    dirs = package_dirs(root)
+    steps: list[Step] = []
+
+    dart_packages: tuple[tuple[str, Path, Any], ...] = (
+        (
+            "shared",
+            dirs["shared"],
+            lambda tp: flutter_test_argv(
+                coverage=False,
+                concurrency=concurrency,
+                test_paths=tp,
+            ),
+        ),
+        (
+            "integrations",
+            dirs["integrations"],
+            lambda tp: dart_test_argv(
+                concurrency=concurrency,
+                test_paths=tp,
+                coverage=False,
+            ),
+        ),
+        (
+            "plugin_sdk",
+            dirs["plugin_sdk"],
+            lambda tp: dart_test_argv(
+                concurrency=concurrency,
+                test_paths=tp,
+                coverage=False,
+            ),
+        ),
+        (
+            "display",
+            dirs["display"],
+            lambda tp: flutter_test_argv(
+                coverage=False,
+                concurrency=concurrency,
+                test_paths=tp,
+            ),
+        ),
+        (
+            "waddlectl",
+            dirs["waddlectl"],
+            lambda tp: flutter_test_argv(
+                coverage=False,
+                concurrency=concurrency,
+                test_paths=tp,
+            ),
+        ),
+    )
+
+    for key, cwd, argv_fn in dart_packages:
+        if packages is not None and key not in packages:
+            continue
+        test_paths = scoped.get(key)
+        if test_paths:
+            rel_label = ", ".join(test_paths[:3])
+            if len(test_paths) > 3:
+                rel_label += f", +{len(test_paths) - 3} more"
+            steps.append(
+                Step(
+                    f"scoped test ({key}: {rel_label})",
+                    argv_fn(test_paths),
+                    cwd,
+                )
+            )
+        elif widen_shared and key == "shared":
+            steps.append(
+                Step(
+                    "scoped test (shared: full package)",
+                    argv_fn(None),
+                    cwd,
+                )
+            )
+
+    controller_rel = infer_controller_test_paths(root, changed)
+    if controller_rel:
+        controller = root / "apps" / "waddle_controller"
+        rel_label = ", ".join(controller_rel[:3])
+        if len(controller_rel) > 3:
+            rel_label += f", +{len(controller_rel) - 3} more"
+        steps.append(
+            Step(
+                f"scoped test (controller: {rel_label})",
+                ["npm", "run", "test", "--", *controller_rel],
+                controller,
+            )
+        )
+
+    return steps
+
+
+def collect_qa_test_path_labels(steps: list[Step]) -> list[str]:
+    labels: list[str] = []
+    for step in steps:
+        if step.argv[:3] == ["npm", "run", "test"]:
+            labels.extend(step.argv[4:])
+        else:
+            labels.extend(step.argv[3:])
+    return labels
+
+
+def run_qa_scoped_tests(root: Path, edited_files: list[str]) -> QaScopedTestResult:
+    """Run scoped unit tests for edited files; 0 pass/skip, non-zero on failure."""
+    normalized = [_normalize_path(f) for f in edited_files if f and f.strip()]
+    steps = build_qa_scoped_test_steps(root, normalized)
+    test_paths = collect_qa_test_path_labels(steps)
+
+    if not steps:
+        print(
+            "QA scoped tests: skipped (no mappable unit tests for edited files).",
+            flush=True,
+        )
+        return QaScopedTestResult(
+            exit_code=0,
+            skipped=True,
+            edited_files=normalized,
+            test_paths=[],
+        )
+
+    for step in steps:
+        code, output = run_step(step)
+        if code != 0:
+            return QaScopedTestResult(
+                exit_code=code,
+                skipped=False,
+                edited_files=normalized,
+                test_paths=test_paths,
+                failure_label=step.label,
+                failure_cwd=step.cwd,
+                failure_argv=list(step.argv),
+                failure_output=output,
+            )
+
+    print("QA scoped tests: all passed.", flush=True)
+    return QaScopedTestResult(
+        exit_code=0,
+        skipped=False,
+        edited_files=normalized,
+        test_paths=test_paths,
+    )
 
 
 def flutter_test_argv(

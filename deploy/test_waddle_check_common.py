@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 def _load_common():
@@ -94,6 +96,18 @@ class TestWaddleCheckCommon(unittest.TestCase):
         argv = c.flutter_test_argv(coverage=True, concurrency=2, test_paths=["test/a_test.dart"])
         self.assertIn("--coverage", argv)
         self.assertIn("test/a_test.dart", argv)
+
+    def test_test_concurrency_windows_defaults_to_one(self):
+        c = self.common
+        with mock.patch.object(c.sys, "platform", "win32"):
+            with mock.patch.dict(os.environ, {}, clear=True):
+                self.assertEqual(c.test_concurrency(), 1)
+
+    def test_test_concurrency_env_override_on_windows(self):
+        c = self.common
+        with mock.patch.object(c.sys, "platform", "win32"):
+            with mock.patch.dict(os.environ, {"WADDLE_TEST_CONCURRENCY": "4"}):
+                self.assertEqual(c.test_concurrency(), 4)
 
 
 if __name__ == "__main__":
