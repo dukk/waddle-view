@@ -909,7 +909,7 @@ Future<void> _ensureWeatherScreen(AppDatabase db) async {
           label: 'Weather',
           description: const Value('Current weather'),
           screenType: 'weather',
-          configJson: const Value('{"locationId":"salt_lake_city_ut"}'),
+          configJson: const Value('{"locationId":"new_york_ny"}'),
           minDwellSeconds: const Value(12),
           maxDwellSeconds: const Value(18),
           dataKey: const Value('weather'),

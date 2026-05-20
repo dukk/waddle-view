@@ -76,6 +76,17 @@ void main() {
     expect(filtered.first['message'], 'new');
   });
 
+  test('integration_type included in JSON when set', () {
+    final hub = OperatorTelemetryHub(maxIntegrationLines: 10);
+    hub.addIntegrationLine('typed', integrationType: 'news_rss');
+    hub.addEngineLine('global');
+    final snap = hub.snapshotIntegrationLines();
+    expect(snap.length, 2);
+    expect(snap[0]['integration_type'], 'news_rss');
+    expect(snap[0]['message'], 'typed');
+    expect(snap[1].containsKey('integration_type'), isFalse);
+  });
+
   test('addIntegrationFail and addEngineFail append lines', () {
     final hub = OperatorTelemetryHub(maxIntegrationLines: 20);
     hub.addIntegrationFail('ctx', StateError('x'), StackTrace.current);

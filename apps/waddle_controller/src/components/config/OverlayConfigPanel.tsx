@@ -10,6 +10,7 @@ import { MatrixRainConfigForm } from './MatrixRainConfigForm';
 import { ShapeRainConfigForm } from './ShapeRainConfigForm';
 import { AnalogClockOverlayConfigForm } from './AnalogClockOverlayConfigForm';
 import { StockQuoteOverlayConfigForm } from './StockQuoteOverlayConfigForm';
+import { QrCodeOverlayConfigForm } from './QrCodeOverlayConfigForm';
 import { CalendarMonthOverlayConfigForm } from './CalendarMonthOverlayConfigForm';
 import { CalendarUpcomingOverlayConfigForm } from './CalendarUpcomingOverlayConfigForm';
 import { DigitalClockOverlayConfigForm } from './DigitalClockOverlayConfigForm';
@@ -133,6 +134,15 @@ export function OverlayConfigPanel({
     return (
       <StockQuoteOverlayConfigForm
         display={display}
+        formData={formData}
+        onChange={onChange}
+        disabled={disabled}
+      />
+    );
+  }
+  if (overlayType === 'qr_code') {
+    return (
+      <QrCodeOverlayConfigForm
         formData={formData}
         onChange={onChange}
         disabled={disabled}

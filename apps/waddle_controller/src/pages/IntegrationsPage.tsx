@@ -16,7 +16,6 @@ import {
   DialogTitle,
   Paper,
   Stack,
-  Switch,
   Table,
   TableBody,
   TableCell,
@@ -69,6 +68,7 @@ import {
   type ContentCategoryOption,
 } from '@/components/OutlookCalendarConfigSection';
 import { GooglePhotosConfigSection } from '@/components/GooglePhotosConfigSection';
+import { OneDriveConfigSection } from '@/components/OneDriveConfigSection';
 import {
   buildOutlookCalendarConfigJson,
   parseOutlookCalendarConfig,
@@ -79,6 +79,12 @@ import {
   parseGooglePhotosConfig,
   type GooglePhotosConfigState,
 } from '@/util/googlePhotosConfig';
+import {
+  buildOneDriveConfigJson,
+  onedriveConfigReady,
+  parseOneDriveConfig,
+  type OneDriveConfigState,
+} from '@/util/onedriveConfig';
 import type { IntegrationAccountRow } from '@/util/integrationAccounts';
 import {
   integrationAccountsSatisfiedForEnable,
@@ -184,12 +190,14 @@ function IntegrationTable({
   actionLabel,
   actionLabelForRow,
   onAction,
+  onDisable,
 }: {
   schemas: ConfigSchemasBundle | null;
   rows: IntegrationRow[];
   actionLabel?: string;
   actionLabelForRow?: (row: IntegrationRow) => string | null;
   onAction: (row: IntegrationRow) => void;
+  onDisable?: (row: IntegrationRow) => void;
 }) {
   const labelFor = (row: IntegrationRow): string | null =>
     actionLabelForRow?.(row) ?? actionLabel ?? 'Open';
@@ -224,11 +232,23 @@ function IntegrationTable({
                   )}
                 </TableCell>
                 <TableCell align="right">
-                  {rowActionLabel ? (
-                    <Button size="small" variant="outlined" onClick={() => onAction(row)}>
-                      {rowActionLabel}
-                    </Button>
-                  ) : null}
+                  <Stack direction="row" spacing={1} justifyContent="flex-end">
+                    {onDisable ? (
+                      <Button
+                        size="small"
+                        color="error"
+                        variant="outlined"
+                        onClick={() => onDisable(row)}
+                      >
+                        Disable
+                      </Button>
+                    ) : null}
+                    {rowActionLabel ? (
+                      <Button size="small" variant="outlined" onClick={() => onAction(row)}>
+                        {rowActionLabel}
+                      </Button>
+                    ) : null}
+                  </Stack>
                 </TableCell>
               </TableRow>
             );
@@ -246,9 +266,7 @@ function errMsg(e: unknown): string {
 export function IntegrationsPage() {
   const { active } = useDisplay();
   const { schemas, error: schemasError } = useConfigSchemas(active);
-  const { loading: enabledLoading, wrapRefresh: wrapEnabledRefresh } = useDisplayRefresh();
-  const { loading: availableLoading, wrapRefresh: wrapAvailableRefresh } = useDisplayRefresh();
-  const { loading: missingLoading, wrapRefresh: wrapMissingRefresh } = useDisplayRefresh();
+  const { loading, wrapRefresh } = useDisplayRefresh();
   const { wrapRefresh: wrapAuxRefresh } = useDisplayRefresh();
   const { layout, setLayout } = useListLayoutPreference('integrations');
   const [enabledRows, setEnabledRows] = useState<IntegrationRow[]>([]);
@@ -266,6 +284,8 @@ export function IntegrationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [edit, setEdit] = useState<IntegrationRow | null>(null);
   const [dialogIntent, setDialogIntent] = useState<'edit' | 'enable'>('edit');
+  const [disabling, setDisabling] = useState<IntegrationRow | null>(null);
+  const [disableBusy, setDisableBusy] = useState(false);
   const enabledFetchAbortRef = useRef<AbortController | null>(null);
   const enabledLoadGenerationRef = useRef(0);
   const availableFetchAbortRef = useRef<AbortController | null>(null);
@@ -293,7 +313,7 @@ export function IntegrationsPage() {
     const controller = new AbortController();
     enabledFetchAbortRef.current = controller;
     const myGen = ++enabledLoadGenerationRef.current;
-    await wrapEnabledRefresh(async () => {
+    await wrapRefresh(async () => {
       try {
         const enabledParams = listParamsForSection('enabled', enabledOffset, rowsPerPage);
         const enabledRes = await listIntegrations(active, enabledParams, {
@@ -310,7 +330,7 @@ export function IntegrationsPage() {
         setEnabledTotal(0);
       }
     });
-  }, [active, enabledOffset, rowsPerPage, wrapEnabledRefresh]);
+  }, [active, enabledOffset, rowsPerPage, wrapRefresh]);
 
   const loadAvailable = useCallback(async () => {
     if (!active) return;
@@ -318,7 +338,7 @@ export function IntegrationsPage() {
     const controller = new AbortController();
     availableFetchAbortRef.current = controller;
     const myGen = ++availableLoadGenerationRef.current;
-    await wrapAvailableRefresh(async () => {
+    await wrapRefresh(async () => {
       try {
         const availableParams = listParamsForSection('available', availableOffset, rowsPerPage);
         const availableRes = await listIntegrations(active, availableParams, {
@@ -335,7 +355,7 @@ export function IntegrationsPage() {
         setAvailableTotal(0);
       }
     });
-  }, [active, availableOffset, rowsPerPage, wrapAvailableRefresh]);
+  }, [active, availableOffset, rowsPerPage, wrapRefresh]);
 
   const loadMissing = useCallback(async () => {
     if (!active) return;
@@ -343,7 +363,7 @@ export function IntegrationsPage() {
     const controller = new AbortController();
     missingFetchAbortRef.current = controller;
     const myGen = ++missingLoadGenerationRef.current;
-    await wrapMissingRefresh(async () => {
+    await wrapRefresh(async () => {
       try {
         const missingParams = listParamsForSection('missing', missingOffset, rowsPerPage);
         const missingRes = await listIntegrations(active, missingParams, {
@@ -360,7 +380,7 @@ export function IntegrationsPage() {
         setMissingTotal(0);
       }
     });
-  }, [active, missingOffset, rowsPerPage, wrapMissingRefresh]);
+  }, [active, missingOffset, rowsPerPage, wrapRefresh]);
 
   const loadAux = useCallback(async () => {
     if (!active) return;
@@ -381,6 +401,21 @@ export function IntegrationsPage() {
   const reloadAll = useCallback(async () => {
     await Promise.all([loadEnabled(), loadAvailable(), loadMissing(), loadAux()]);
   }, [loadEnabled, loadAvailable, loadMissing, loadAux]);
+
+  const disableIntegration = useCallback(async () => {
+    if (!active || !disabling) return;
+    setDisableBusy(true);
+    try {
+      await apiFetch(active, `/v1/integrations/${encodeURIComponent(disabling.id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ enabled: false }),
+      });
+      setDisabling(null);
+      await reloadAll();
+    } finally {
+      setDisableBusy(false);
+    }
+  }, [active, disabling, reloadAll]);
 
   useEffect(() => {
     void loadEnabled();
@@ -428,6 +463,7 @@ export function IntegrationsPage() {
 
   return (
     <Stack spacing={3}>
+      <DisplayRefreshIndicator loading={loading} />
       <Box>
         <Typography variant="h6" fontWeight={600} gutterBottom>
           External data sources
@@ -452,8 +488,7 @@ export function IntegrationsPage() {
         <Typography variant="subtitle1" fontWeight={600}>
           Enabled
         </Typography>
-        <DisplayRefreshIndicator loading={enabledLoading} />
-        {enabledRows.length === 0 && !enabledLoading ? (
+        {enabledRows.length === 0 && !loading ? (
           <Typography variant="body2" color="text.secondary">
             No integrations are enabled.
           </Typography>
@@ -466,6 +501,7 @@ export function IntegrationsPage() {
                 schemas={schemas}
                 actionLabel="Edit"
                 onAccountsChanged={reloadAll}
+                onDisable={() => setDisabling(r)}
                 onAction={() => {
                   setDialogIntent('edit');
                   setEdit(r);
@@ -478,6 +514,7 @@ export function IntegrationsPage() {
             schemas={schemas}
             rows={enabledRows}
             actionLabel="Edit"
+            onDisable={(r) => setDisabling(r)}
             onAction={(r) => {
               setDialogIntent('edit');
               setEdit(r);
@@ -503,8 +540,7 @@ export function IntegrationsPage() {
         <Typography variant="subtitle1" fontWeight={600}>
           Available to enable
         </Typography>
-        <DisplayRefreshIndicator loading={availableLoading} />
-        {availableRows.length === 0 && !availableLoading ? (
+        {availableRows.length === 0 && !loading ? (
           <Typography variant="body2" color="text.secondary">
             All integrations are enabled.
           </Typography>
@@ -565,8 +601,7 @@ export function IntegrationsPage() {
           </MuiLink>
           .
         </Typography>
-        <DisplayRefreshIndicator loading={missingLoading} />
-        {missingRows.length === 0 && !missingLoading ? (
+        {missingRows.length === 0 && !loading ? (
           <Typography variant="body2" color="text.secondary">
             All integrations that require accounts are configured.
           </Typography>
@@ -614,6 +649,30 @@ export function IntegrationsPage() {
         />
       </Stack>
 
+      <Dialog open={disabling != null} onClose={() => !disableBusy && setDisabling(null)}>
+        <DialogTitle>Disable integration?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            {disabling
+              ? `${integrationTitle(disabling, schemas)} will stop collecting until you enable it again.`
+              : ''}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDisabling(null)} disabled={disableBusy}>
+            Cancel
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            disabled={disableBusy}
+            onClick={() => void disableIntegration()}
+          >
+            {disableBusy ? 'Disabling…' : 'Disable'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {edit && schemas && (
         <EditIntegrationDialog
           schemas={schemas}
@@ -639,12 +698,14 @@ function IntegrationCard({
   schemas,
   actionLabel,
   onAction,
+  onDisable,
   onAccountsChanged,
 }: {
   row: IntegrationRow;
   schemas: ConfigSchemasBundle | null;
   actionLabel?: string | null;
   onAction: () => void;
+  onDisable?: () => void;
   onAccountsChanged?: () => Promise<void>;
 }) {
   const { active } = useDisplay();
@@ -685,11 +746,18 @@ function IntegrationCard({
           ) : null}
         </Stack>
       </CardContent>
-      {actionLabel ? (
-        <CardActions sx={{ justifyContent: 'flex-end', px: 2, pb: 2 }}>
-          <Button size="small" variant="outlined" onClick={onAction}>
-            {actionLabel}
-          </Button>
+      {actionLabel || onDisable ? (
+        <CardActions sx={{ justifyContent: 'flex-end', px: 2, pb: 2, gap: 1 }}>
+          {onDisable ? (
+            <Button size="small" color="error" variant="outlined" onClick={onDisable}>
+              Disable
+            </Button>
+          ) : null}
+          {actionLabel ? (
+            <Button size="small" variant="outlined" onClick={onAction}>
+              {actionLabel}
+            </Button>
+          ) : null}
         </CardActions>
       ) : null}
     </Card>
@@ -699,6 +767,15 @@ function IntegrationCard({
 const kOutlookCalendarIntegrationType = 'calendar_outlook';
 const kPhotoGoogleIntegrationType = 'photo_google';
 const kVideoGoogleIntegrationType = 'video_google';
+const kPhotoOneDriveIntegrationType = 'photo_onedrive';
+const kVideoOneDriveIntegrationType = 'video_onedrive';
+
+function isOneDriveIntegrationType(integrationType: string): boolean {
+  return (
+    integrationType === kPhotoOneDriveIntegrationType ||
+    integrationType === kVideoOneDriveIntegrationType
+  );
+}
 
 function isGooglePhotosIntegrationType(integrationType: string): boolean {
   return (
@@ -729,6 +806,9 @@ function EditIntegrationDialog({
   const { active } = useDisplay();
   const isOutlookCalendar = row.integration_type === kOutlookCalendarIntegrationType;
   const isGooglePhotos = isGooglePhotosIntegrationType(row.integration_type);
+  const isOneDrive = isOneDriveIntegrationType(row.integration_type);
+  const oneDriveMediaKind =
+    row.integration_type === kVideoOneDriveIntegrationType ? 'video' : 'photo';
   const isManualBucket = isManualBucketIntegration(row.integration_type);
   const operatorSchema = useMemo(
     () => integrationOperatorSchema(schemas, row),
@@ -738,7 +818,7 @@ function EditIntegrationDialog({
     () => integrationValidationSchema(schemas, row),
     [schemas, row],
   );
-  const [enabled, setEnabled] = useState(() => (intent === 'enable' ? true : row.enabled));
+  const saveEnabled = intent === 'enable' ? true : row.enabled;
   const [poll, setPoll] = useState(row.poll_seconds);
   const [formData, setFormData] = useState<Record<string, unknown>>(() =>
     parseJsonObject(row.config_json),
@@ -748,6 +828,9 @@ function EditIntegrationDialog({
   );
   const [googlePhotosConfig, setGooglePhotosConfig] = useState<GooglePhotosConfigState>(() =>
     parseGooglePhotosConfig(parseJsonObject(row.config_json)),
+  );
+  const [onedriveConfig, setOnedriveConfig] = useState<OneDriveConfigState>(() =>
+    parseOneDriveConfig(parseJsonObject(row.config_json), oneDriveMediaKind),
   );
   const [curatorCategories, setCuratorCategories] = useState<ContentCategoryOption[]>([]);
   const [secretSlots, setSecretSlots] = useState<IntegrationSecretSlot[]>([]);
@@ -778,7 +861,7 @@ function EditIntegrationDialog({
   }, [reloadAccounts]);
 
   useEffect(() => {
-    if (!active || (!isOutlookCalendar && !isGooglePhotos)) return;
+    if (!active || (!isOutlookCalendar && !isGooglePhotos && !isOneDrive)) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -798,7 +881,7 @@ function EditIntegrationDialog({
     return () => {
       cancelled = true;
     };
-  }, [active, isOutlookCalendar, isGooglePhotos]);
+  }, [active, isOutlookCalendar, isGooglePhotos, isOneDrive]);
 
   useEffect(() => {
     if (!active) return;
@@ -865,6 +948,11 @@ function EditIntegrationDialog({
     );
   }, [isGooglePhotos, googlePhotosConfig, googleAccounts]);
 
+  const onedriveConfigReadyState = useMemo(() => {
+    if (!isOneDrive) return true;
+    return onedriveConfigReady(onedriveConfig);
+  }, [isOneDrive, onedriveConfig]);
+
   const accountsReady = useMemo(() => {
     if (isManualBucket) {
       return true;
@@ -875,14 +963,19 @@ function EditIntegrationDialog({
     if (isGooglePhotos) {
       return googlePhotosConfigReady;
     }
+    if (isOneDrive) {
+      return onedriveConfigReadyState;
+    }
     return integrationAccountsSatisfiedForEnable(accountDetail);
   }, [
     isManualBucket,
     isOutlookCalendar,
     isGooglePhotos,
+    isOneDrive,
     accountDetail,
     outlookConfigReady,
     googlePhotosConfigReady,
+    onedriveConfigReadyState,
   ]);
 
   const configForSave = useMemo(() => {
@@ -890,9 +983,21 @@ function EditIntegrationDialog({
       ? buildOutlookCalendarConfigJson(outlookConfig)
       : isGooglePhotos
         ? buildGooglePhotosConfigJson(googlePhotosConfig)
-        : formData;
+        : isOneDrive
+          ? buildOneDriveConfigJson(onedriveConfig, oneDriveMediaKind)
+          : formData;
     return mergeIntegrationConfigForSave(built, row.config_json);
-  }, [isOutlookCalendar, isGooglePhotos, outlookConfig, googlePhotosConfig, formData, row.config_json]);
+  }, [
+    isOutlookCalendar,
+    isGooglePhotos,
+    isOneDrive,
+    oneDriveMediaKind,
+    outlookConfig,
+    googlePhotosConfig,
+    onedriveConfig,
+    formData,
+    row.config_json,
+  ]);
 
   const displayName = useMemo(
     () => integrationTitle(row, schemas),
@@ -902,7 +1007,7 @@ function EditIntegrationDialog({
   const save = async () => {
     if (!active) return;
     setErr(null);
-    if (enabled && !isManualBucket) {
+    if (saveEnabled && !isManualBucket) {
       const { errors } = validator.validateFormData(configForSave, validationSchema);
       if (errors.length > 0) {
         setErr(errors.map((e) => e.stack ?? e.message ?? 'Invalid field').join('\n'));
@@ -918,12 +1023,18 @@ function EditIntegrationDialog({
         );
         return;
       }
+      if (isOneDrive && !onedriveConfigReadyState) {
+        setErr(
+          'Add at least one Microsoft account, browse a folder, and choose categories for each folder source.',
+        );
+        return;
+      }
     }
     if (!isManualBucket && poll <= 0) {
       setErr('Poll seconds must be greater than zero.');
       return;
     }
-    if (!isManualBucket && enabled && !oauthClientIdsReady) {
+    if (!isManualBucket && saveEnabled && !oauthClientIdsReady) {
       setErr(
         `Configure required OAuth client IDs under ${DISPLAY_SETTINGS_ACCOUNTS_LABEL} before enabling.`,
       );
@@ -931,13 +1042,13 @@ function EditIntegrationDialog({
     }
     if (
       !isManualBucket &&
-      enabled &&
+      saveEnabled &&
       !integrationSecretsSatisfiedForEnable(secretSlots, secretDrafts)
     ) {
       setErr('Configure all required integration secrets before enabling.');
       return;
     }
-    if (!isManualBucket && enabled && !accountsReady) {
+    if (!isManualBucket && saveEnabled && !accountsReady) {
       setErr('Configure all required accounts before enabling this integration.');
       return;
     }
@@ -959,7 +1070,7 @@ function EditIntegrationDialog({
       await apiFetch(active, `/v1/integrations/${encodeURIComponent(row.id)}`, {
         method: 'PATCH',
         body: JSON.stringify({
-          enabled,
+          enabled: saveEnabled,
           poll_seconds: poll,
           config_json: configForSave,
         }),
@@ -990,18 +1101,6 @@ function EditIntegrationDialog({
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           {err && <Alert severity="error">{err}</Alert>}
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <Switch
-              checked={enabled}
-              onChange={(_, v) => setEnabled(v)}
-              disabled={
-                saving ||
-                (enabled === false &&
-                  ((secretSlots.length > 0 && !secretsReady) || !accountsReady))
-              }
-            />
-            <Typography>Enabled</Typography>
-          </Stack>
           {!oauthClientIdsReady ? (
             <Alert severity="info">
               Set OAuth client IDs under <strong>{DISPLAY_SETTINGS_ACCOUNTS_LABEL}</strong> before
@@ -1012,17 +1111,23 @@ function EditIntegrationDialog({
             <Typography variant="body2" color="text.secondary">
               Loading accounts…
             </Typography>
-          ) : active && accountDetail && !isOutlookCalendar && !isGooglePhotos ? (
+          ) : active && accountDetail && !isOutlookCalendar && !isGooglePhotos && !isOneDrive ? (
             <IntegrationAccountChips
               display={active}
               detail={accountDetail}
               onChanged={reloadAccounts}
             />
           ) : null}
-          {!accountsReady && accountDetail && !isOutlookCalendar && !isGooglePhotos ? (
+          {!accountsReady && accountDetail && !isOutlookCalendar && !isGooglePhotos && !isOneDrive ? (
             <Alert severity="info">
               Add accounts under <strong>{DISPLAY_SETTINGS_ACCOUNTS_LABEL}</strong>, or link account
               keys in <strong>Configuration</strong> below, then complete sign-in or enter API keys.
+            </Alert>
+          ) : null}
+          {!onedriveConfigReadyState && isOneDrive ? (
+            <Alert severity="info">
+              Add a Microsoft account, browse OneDrive folders, and assign at least one category
+              per folder source before enabling.
             </Alert>
           ) : null}
           {!googlePhotosConfigReady && isGooglePhotos ? (
@@ -1105,6 +1210,16 @@ function EditIntegrationDialog({
               categories={curatorCategories}
               mediaKind={row.integration_type === kVideoGoogleIntegrationType ? 'video' : 'photo'}
             />
+          ) : isOneDrive && active ? (
+            <OneDriveConfigSection
+              display={active}
+              value={onedriveConfig}
+              onChange={setOnedriveConfig}
+              microsoftAccounts={microsoftAccounts}
+              categories={curatorCategories}
+              mediaKind={oneDriveMediaKind}
+              disabled={saving}
+            />
           ) : !isManualBucket && active ? (
             <Stack spacing={1}>
               <Typography variant="subtitle2">Configuration</Typography>
@@ -1127,10 +1242,10 @@ function EditIntegrationDialog({
           disabled={
             saving ||
             (!isManualBucket && poll <= 0) ||
-            (enabled && !isManualBucket && (!secretsReady || !accountsReady))
+            (saveEnabled && !isManualBucket && (!secretsReady || !accountsReady))
           }
         >
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? 'Saving…' : intent === 'enable' ? 'Enable' : 'Save'}
         </Button>
       </DialogActions>
     </Dialog>

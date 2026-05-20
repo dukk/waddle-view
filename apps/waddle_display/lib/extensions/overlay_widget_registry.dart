@@ -16,9 +16,11 @@ import 'package:waddle_shared/persistence/display_overlay_calendar_upcoming_sett
 import 'package:waddle_shared/persistence/display_overlay_digital_clock_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_photo_slideshow_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_static_image_settings.dart';
+import 'package:waddle_shared/persistence/display_overlay_qr_code_settings.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 
 import '../display/overlay/analog_clock_overlay.dart';
+import '../display/overlay/qr_code_overlay.dart';
 import '../display/overlay/stock_quote_overlay.dart';
 import '../display/overlay/calendar_month_overlay.dart';
 import '../display/overlay/calendar_upcoming_overlay.dart';
@@ -96,6 +98,7 @@ class OverlayWidgetRegistry {
       if (byType.containsKey(kOverlayTypeCalendarUpcoming))
         kOverlayTypeCalendarUpcoming,
       if (byType.containsKey(kOverlayTypeStockQuote)) kOverlayTypeStockQuote,
+      if (byType.containsKey(kOverlayTypeQrCode)) kOverlayTypeQrCode,
       for (final t in byType.keys)
         if (t != kOverlayTypeStaticImage &&
             t != kOverlayTypePhotoSlideshow &&
@@ -103,7 +106,8 @@ class OverlayWidgetRegistry {
             t != kOverlayTypeAnalogClock &&
             t != kOverlayTypeCalendarMonth &&
             t != kOverlayTypeCalendarUpcoming &&
-            t != kOverlayTypeStockQuote)
+            t != kOverlayTypeStockQuote &&
+            t != kOverlayTypeQrCode)
           t,
     ];
     final layers = <Widget>[];
@@ -280,6 +284,23 @@ void registerBuiltins(OverlayWidgetRegistry registry) {
     }
     return StockQuoteOverlay(
       db: ctx.db,
+      settingsList: settings,
+      theme: ctx.theme,
+    );
+  });
+
+  registry.register(kOverlayTypeQrCode, (ctx, matches) {
+    if (matches.isEmpty) {
+      return null;
+    }
+    final settings = matches
+        .map((r) => QrCodeOverlaySettings.parse(r.configJson))
+        .where((s) => s.isRenderable)
+        .toList();
+    if (settings.isEmpty) {
+      return null;
+    }
+    return QrCodeOverlay(
       settingsList: settings,
       theme: ctx.theme,
     );

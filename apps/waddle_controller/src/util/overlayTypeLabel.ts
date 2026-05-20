@@ -15,6 +15,7 @@ const FALLBACK_LABELS: Record<string, string> = {
   calendar_upcoming: 'Calendar upcoming',
   stock_quote: 'Stock quote',
   photo_slideshow: 'Photo slideshow',
+  qr_code: 'QR code',
 };
 
 /** Human-facing label for an overlay type (registry label when available). */

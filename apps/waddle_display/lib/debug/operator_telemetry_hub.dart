@@ -19,34 +19,54 @@ final class OperatorTelemetryHub {
   final ListQueue<ScreenProgramRecord> _screenPrograms = ListQueue();
   final ListQueue<TickerProgramRecord> _tickerPrograms = ListQueue();
 
-  void addIntegrationLine(String message) {
+  void addIntegrationLine(String message, {String? integrationType}) {
     _appendLine(
       _integrationLines,
-      TelemetryTextLine(atMs: _nowMs(), channel: 'integration', message: message),
+      TelemetryTextLine(
+        atMs: _nowMs(),
+        channel: 'integration',
+        message: message,
+        integrationType: integrationType,
+      ),
       maxIntegrationLines,
     );
   }
 
-  void addEngineLine(String message) {
+  void addEngineLine(String message, {String? integrationType}) {
     _appendLine(
       _integrationLines,
-      TelemetryTextLine(atMs: _nowMs(), channel: 'engine', message: message),
+      TelemetryTextLine(
+        atMs: _nowMs(),
+        channel: 'engine',
+        message: message,
+        integrationType: integrationType,
+      ),
       maxIntegrationLines,
     );
   }
 
-  void addIntegrationFail(String context, Object error, StackTrace stack) {
+  void addIntegrationFail(
+    String context,
+    Object error,
+    StackTrace stack, {
+    String? integrationType,
+  }) {
     final msg =
         'FAIL $context: ${Error.safeToString(error)} '
         '(${_stackHead(stack)})';
-    addIntegrationLine(msg);
+    addIntegrationLine(msg, integrationType: integrationType);
   }
 
-  void addEngineFail(String context, Object error, StackTrace stack) {
+  void addEngineFail(
+    String context,
+    Object error,
+    StackTrace stack, {
+    String? integrationType,
+  }) {
     final msg =
         'FAIL $context: ${Error.safeToString(error)} '
         '(${_stackHead(stack)})';
-    addEngineLine(msg);
+    addEngineLine(msg, integrationType: integrationType);
   }
 
   void recordScreenProgram({
@@ -156,16 +176,19 @@ final class TelemetryTextLine {
     required this.atMs,
     required this.channel,
     required this.message,
+    this.integrationType,
   });
 
   final int atMs;
   final String channel;
   final String message;
+  final String? integrationType;
 
   Map<String, Object?> toJson() => {
     'at_ms': atMs,
     'channel': channel,
     'message': message,
+    if (integrationType != null) 'integration_type': integrationType,
   };
 }
 

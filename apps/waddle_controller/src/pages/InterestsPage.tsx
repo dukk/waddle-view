@@ -80,18 +80,12 @@ import {
 } from '@/util/interestSlug';
 import { categorySeasonPayload, formatCategorySeason } from '@/util/categorySeason';
 import { completeDialogSave } from '@/util/dialogSave';
-import { findNearestWeatherLocation } from '@/util/nearestLocation';
 import {
   interestCategoryLabel,
   weatherLocationCategoryFromName,
 } from '@/util/weatherLocationCategory';
 
 type TabId = 'locations' | 'rss' | 'stocks' | 'jokes' | 'trivia';
-
-type LocationInterestField =
-  | 'include_weather'
-  | 'include_weather_alerts'
-  | 'include_local_news';
 
 type CuratorCategoryOption = { id: string; label: string };
 
@@ -115,10 +109,7 @@ export function InterestsPage() {
   const [tab, setTab] = useState<TabId>('locations');
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [detectingLocation, setDetectingLocation] = useState(false);
-  const [expandedLocationCategories, setExpandedLocationCategories] = useState<
-    string[]
-  >([]);
+  const [addingCurrentLocation, setAddingCurrentLocation] = useState(false);
   const [expandedNewsCategories, setExpandedNewsCategories] = useState<string[]>([]);
 
   const [weather, setWeather] = useState<WeatherLocationRow[]>([]);
@@ -336,21 +327,10 @@ export function InterestsPage() {
     [trivia],
   );
 
-  const locationGroups = useMemo(() => {
-    const byCategory = new Map<string, WeatherLocationRow[]>();
-    for (const row of filteredWeather) {
-      const category = row.category || 'general';
-      const list = byCategory.get(category) ?? [];
-      list.push(row);
-      byCategory.set(category, list);
-    }
-    return [...byCategory.entries()]
-      .map(([id, rows]) => ({
-        id,
-        rows: [...rows].sort((a, b) => a.name.localeCompare(b.name)),
-      }))
-      .sort((a, b) => categoryLabel(a.id).localeCompare(categoryLabel(b.id)));
-  }, [filteredWeather, categoryLabel]);
+  const sortedLocations = useMemo(
+    () => [...filteredWeather].sort((a, b) => a.name.localeCompare(b.name)),
+    [filteredWeather],
+  );
 
   const newsGroups = useMemo(() => {
     const byCategory = new Map<string, RssFeedRow[]>();
@@ -395,25 +375,13 @@ export function InterestsPage() {
     [active, loadLocations],
   );
 
-  const patchLocationCategory = useCallback(
-    async (categoryId: string, field: LocationInterestField, enabled: boolean) => {
-      if (!active) return;
-      const rows = weather.filter((r) => (r.category || 'general') === categoryId);
-      await Promise.all(
-        rows.map((row) => patchWeatherLocation(active, row.id, { [field]: enabled })),
-      );
-      await loadLocations();
-    },
-    [active, loadLocations, weather],
-  );
-
-  const detectMyLocation = useCallback(async () => {
+  const addMyCurrentLocation = useCallback(async () => {
     if (!active || !canWrite) return;
     if (!navigator.geolocation) {
       setError('Geolocation is not available in this browser');
       return;
     }
-    setDetectingLocation(true);
+    setAddingCurrentLocation(true);
     setError(null);
     try {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
@@ -423,29 +391,29 @@ export function InterestsPage() {
           maximumAge: 60_000,
         });
       });
-      const nearest = findNearestWeatherLocation(
-        weather,
-        position.coords.latitude,
-        position.coords.longitude,
-      );
-      if (!nearest) {
-        setError('No catalog location is close enough to your position');
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+      const name = `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+      const id = weatherLocationInterestId(name, weather.map((w) => w.id));
+      if (!id) {
+        setError('Could not derive an id from the coordinates');
         return;
       }
-      await patchWeatherLocation(active, nearest.id, {
+      await createWeatherLocation(active, {
+        id,
+        name,
+        latitude: lat,
+        longitude: lon,
+        category: 'general',
         include_weather: true,
         include_weather_alerts: true,
         include_local_news: true,
       });
-      const category = nearest.category || 'general';
-      setExpandedLocationCategories((prev) =>
-        prev.includes(category) ? prev : [...prev, category],
-      );
       await loadLocations();
     } catch (e) {
       setError(errMsg(e));
     } finally {
-      setDetectingLocation(false);
+      setAddingCurrentLocation(false);
     }
   }, [active, canWrite, weather, loadLocations]);
 
@@ -547,6 +515,16 @@ export function InterestsPage() {
       </Tabs>
 
       <CatalogPageToolbar layout={layout} onLayoutChange={setLayout}>
+        {canWrite && tab === 'locations' && (
+          <Button
+            variant="outlined"
+            startIcon={<MyLocationIcon />}
+            disabled={addingCurrentLocation}
+            onClick={() => void addMyCurrentLocation()}
+          >
+            {addingCurrentLocation ? 'Detecting…' : 'Add my current location'}
+          </Button>
+        )}
         {canWrite && (
           <Button variant="contained" onClick={openAdd}>
             Add
@@ -572,53 +550,37 @@ export function InterestsPage() {
       )}
 
       {tab === 'locations' && (
-        <Stack spacing={2}>
+        <Stack spacing={1.5}>
           <DisplayRefreshIndicator loading={locationsLoading} />
-          {canWrite && (
-            <Button
-              variant="outlined"
-              startIcon={<MyLocationIcon />}
-              disabled={detectingLocation || weather.length === 0}
-              onClick={() => void detectMyLocation()}
-            >
-              {detectingLocation ? 'Detecting…' : 'Use my location'}
-            </Button>
-          )}
-          {locationGroups.length === 0 && !locationsLoading ? (
-            <Typography variant="body2" color="text.secondary">
-              No locations match the current filter.
-            </Typography>
-          ) : locationGroups.length > 0 ? (
-            locationGroups.map((group) => (
-              <LocationCategoryAccordion
-                key={group.id}
-                title={categoryLabel(group.id)}
-                rows={group.rows}
-                layout={layout}
-                expanded={expandedLocationCategories.includes(group.id)}
-                onExpandedChange={(expanded) => {
-                  setExpandedLocationCategories((prev) =>
-                    expanded
-                      ? prev.includes(group.id)
-                        ? prev
-                        : [...prev, group.id]
-                      : prev.filter((id) => id !== group.id),
-                  );
-                }}
+          <CatalogSection
+            title="Locations"
+            empty="No locations configured."
+            layout={layout}
+            isEmpty={sortedLocations.length === 0}
+            cards={sortedLocations.map((row) => (
+              <WeatherInterestCard
+                key={row.id}
+                row={row}
+                canWrite={canWrite}
+                onEdit={() => openEditWeather(row)}
+                onDelete={() => void deleteWeather(row.id)}
+                onPatch={(patch) =>
+                  patchWeather(row.id, patch).catch((e) => setError(errMsg(e)))
+                }
+              />
+            ))}
+            table={
+              <WeatherInterestTable
+                rows={sortedLocations}
                 canWrite={canWrite}
                 onEdit={openEditWeather}
                 onDelete={(id) => void deleteWeather(id)}
                 onPatch={(id, patch) =>
                   patchWeather(id, patch).catch((e) => setError(errMsg(e)))
                 }
-                onCategoryPatch={(field, enabled) =>
-                  patchLocationCategory(group.id, field, enabled).catch((e) =>
-                    setError(errMsg(e)),
-                  )
-                }
               />
-            ))
-          ) : null}
+            }
+          />
         </Stack>
       )}
 
@@ -985,13 +947,6 @@ function CatalogCardActions({
   );
 }
 
-function categoryToggleState(rows: WeatherLocationRow[], field: LocationInterestField) {
-  const on = rows.filter((r) => r[field]).length;
-  if (on === 0) return { checked: false, indeterminate: false };
-  if (on === rows.length) return { checked: true, indeterminate: false };
-  return { checked: false, indeterminate: true };
-}
-
 function rssCategoryToggleState(rows: RssFeedRow[]) {
   const on = rows.filter((r) => r.enabled).length;
   if (on === 0) return { checked: false, indeterminate: false };
@@ -1073,118 +1028,6 @@ function NewsCategoryAccordion({
           </Box>
         ) : (
           <RssInterestTable
-            rows={rows}
-            canWrite={canWrite}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            onPatch={onPatch}
-          />
-        )}
-      </AccordionDetails>
-    </Accordion>
-  );
-}
-
-function LocationCategoryAccordion({
-  title,
-  rows,
-  layout,
-  expanded,
-  onExpandedChange,
-  canWrite,
-  onEdit,
-  onDelete,
-  onPatch,
-  onCategoryPatch,
-}: {
-  title: string;
-  rows: WeatherLocationRow[];
-  layout: ListLayoutMode;
-  expanded: boolean;
-  onExpandedChange: (expanded: boolean) => void;
-  canWrite: boolean;
-  onEdit: (row: WeatherLocationRow) => void;
-  onDelete: (id: string) => void;
-  onPatch: (id: string, patch: Partial<WeatherLocationRow>) => void;
-  onCategoryPatch: (field: LocationInterestField, enabled: boolean) => void;
-}) {
-  const weatherState = categoryToggleState(rows, 'include_weather');
-  const alertsState = categoryToggleState(rows, 'include_weather_alerts');
-  const newsState = categoryToggleState(rows, 'include_local_news');
-
-  return (
-    <Accordion
-      expanded={expanded}
-      onChange={(_, isExpanded) => onExpandedChange(isExpanded)}
-      disableGutters
-      variant="outlined"
-    >
-      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          spacing={1}
-          alignItems={{ xs: 'flex-start', sm: 'center' }}
-          sx={{ width: '100%', pr: 1 }}
-        >
-          <Typography variant="subtitle1" fontWeight={600} sx={{ flexGrow: 1 }}>
-            {title} ({rows.length})
-          </Typography>
-          <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap onClick={(e) => e.stopPropagation()}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  size="small"
-                  checked={weatherState.checked}
-                  indeterminate={weatherState.indeterminate}
-                  disabled={!canWrite}
-                  onChange={(_, checked) => onCategoryPatch('include_weather', checked)}
-                />
-              }
-              label="Weather"
-            />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  size="small"
-                  checked={alertsState.checked}
-                  indeterminate={alertsState.indeterminate}
-                  disabled={!canWrite}
-                  onChange={(_, checked) => onCategoryPatch('include_weather_alerts', checked)}
-                />
-              }
-              label="Weather Alerts"
-            />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  size="small"
-                  checked={newsState.checked}
-                  indeterminate={newsState.indeterminate}
-                  disabled={!canWrite}
-                  onChange={(_, checked) => onCategoryPatch('include_local_news', checked)}
-                />
-              }
-              label="Local News"
-            />
-          </Stack>
-        </Stack>
-      </AccordionSummary>
-      <AccordionDetails sx={{ pt: 0 }}>
-        {layout === 'card' ? (
-          <Box sx={catalogCardGridSx}>
-            {rows.map((row) => (
-              <WeatherInterestCard
-                key={row.id}
-                row={row}
-                canWrite={canWrite}
-                onEdit={() => onEdit(row)}
-                onDelete={() => onDelete(row.id)}
-                onPatch={(patch) => onPatch(row.id, patch)}
-              />
-            ))}
-          </Box>
-        ) : (
-          <WeatherInterestTable
             rows={rows}
             canWrite={canWrite}
             onEdit={onEdit}
@@ -1778,9 +1621,6 @@ function InterestDialog({
             latitude: lat,
             longitude: lon,
             category,
-            include_weather: weatherForm.include_weather,
-            include_weather_alerts: weatherForm.include_weather_alerts,
-            include_local_news: weatherForm.include_local_news,
           });
         } else {
           if (!name) {
@@ -1917,7 +1757,11 @@ function InterestDialog({
                 label="Name"
                 value={weatherForm.name}
                 onChange={(e) => setWeatherForm((f) => ({ ...f, name: e.target.value }))}
-                helperText='Use "City, ST" for US or "City, Country" — category is assigned from the country.'
+                helperText={
+                  editingWeather
+                    ? undefined
+                    : 'Use "City, ST" for US or "City, Country" when naming a place.'
+                }
                 fullWidth
               />
               <TextField
@@ -1932,45 +1776,49 @@ function InterestDialog({
                 onChange={(e) => setWeatherForm((f) => ({ ...f, longitude: e.target.value }))}
                 fullWidth
               />
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={weatherForm.include_weather}
-                    onChange={(e) =>
-                      setWeatherForm((f) => ({ ...f, include_weather: e.target.checked }))
+              {!editingWeather && (
+                <>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={weatherForm.include_weather}
+                        onChange={(e) =>
+                          setWeatherForm((f) => ({ ...f, include_weather: e.target.checked }))
+                        }
+                      />
                     }
+                    label="Weather"
                   />
-                }
-                label="Weather"
-              />
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={weatherForm.include_weather_alerts}
-                    onChange={(e) =>
-                      setWeatherForm((f) => ({
-                        ...f,
-                        include_weather_alerts: e.target.checked,
-                      }))
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={weatherForm.include_weather_alerts}
+                        onChange={(e) =>
+                          setWeatherForm((f) => ({
+                            ...f,
+                            include_weather_alerts: e.target.checked,
+                          }))
+                        }
+                      />
                     }
+                    label="Weather Alerts"
                   />
-                }
-                label="Weather Alerts"
-              />
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={weatherForm.include_local_news}
-                    onChange={(e) =>
-                      setWeatherForm((f) => ({
-                        ...f,
-                        include_local_news: e.target.checked,
-                      }))
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={weatherForm.include_local_news}
+                        onChange={(e) =>
+                          setWeatherForm((f) => ({
+                            ...f,
+                            include_local_news: e.target.checked,
+                          }))
+                        }
+                      />
                     }
+                    label="Local News"
                   />
-                }
-                label="Local News"
-              />
+                </>
+              )}
             </>
           )}
           {tab === 'rss' && (

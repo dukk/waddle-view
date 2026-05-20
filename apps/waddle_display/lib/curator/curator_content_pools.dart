@@ -146,6 +146,10 @@ Future<CuratorContentPools> loadCuratorContentPools(
   if (pexelsPhotos.isNotEmpty) {
     final all = <String>[];
     final byCat = <String, List<String>>{};
+    final photoCatsById = <String, List<String>>{};
+    for (final row in await db.select(db.photoCategories).get()) {
+      (photoCatsById[row.photoId] ??= []).add(row.categoryId);
+    }
     final blobKeys = pexelsPhotos.map((p) => p.mediaBlobKey).toSet().toList();
     final metaByKey = <String, BlobMetadataData>{};
     if (blobKeys.isNotEmpty) {
@@ -156,7 +160,14 @@ Future<CuratorContentPools> loadCuratorContentPools(
     }
     for (final p in pexelsPhotos) {
       all.add(p.id);
-      (byCat[p.category] ??= []).add(p.id);
+      final junctionCats = photoCatsById[p.id];
+      if (junctionCats != null && junctionCats.isNotEmpty) {
+        for (final cat in junctionCats) {
+          (byCat[cat] ??= []).add(p.id);
+        }
+      } else {
+        (byCat[p.category] ??= []).add(p.id);
+      }
       final meta = metaByKey[p.mediaBlobKey];
       photoMetrics[p.id] = PhotoCuratorMetric(
         pixelWidth: meta?.pixelWidth,
@@ -175,9 +186,20 @@ Future<CuratorContentPools> loadCuratorContentPools(
   if (pexelsVideos.isNotEmpty) {
     final all = <String>[];
     final byCat = <String, List<String>>{};
+    final videoCatsById = <String, List<String>>{};
+    for (final row in await db.select(db.videoCategories).get()) {
+      (videoCatsById[row.videoId] ??= []).add(row.categoryId);
+    }
     for (final v in pexelsVideos) {
       all.add(v.id);
-      (byCat[v.category] ??= []).add(v.id);
+      final junctionCats = videoCatsById[v.id];
+      if (junctionCats != null && junctionCats.isNotEmpty) {
+        for (final cat in junctionCats) {
+          (byCat[cat] ??= []).add(v.id);
+        }
+      } else {
+        (byCat[v.category] ??= []).add(v.id);
+      }
     }
     out['video'] = all;
     for (final e in byCat.entries) {

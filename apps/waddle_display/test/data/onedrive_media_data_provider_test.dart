@@ -292,6 +292,76 @@ void main() {
     await db.close();
   });
 
+  test('downloads via content endpoint when delta omits downloadUrl', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await _seedProvider(
+      db,
+      accountsJson:
+          '[{"graphAccountKey":"u","sources":[{"path":"/Pictures/F","kind":"photo","category":"fam","maxFiles":10}]}]',
+    );
+    final secrets = InMemorySecretStore();
+    await secrets.write(microsoftGraphAccessTokenSecret('u'), 'tok');
+    await seedIntegrationKvForTest(
+      db,
+      accountId: 'u',
+      key: kIntegrationAccessTokenExpiresAtKey,
+      value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
+    );
+    const itemId = 'heic-item-1';
+    final httpClient = _GraphAndDownloadClient(
+      deltaPages: [
+        _deltaPage([
+          _drivePhotoNoPreauthUrl(itemId, mime: 'image/jpeg'),
+        ]),
+      ],
+    );
+    final ctx = await _ctx(db, secrets);
+    await OneDrivePhotosDataProvider(httpClient: httpClient).collect(ctx);
+    expect(httpClient.contentGets, 1);
+    expect(httpClient.downloadGets, 0);
+    final photos = await db.select(db.photos).get();
+    expect(photos.length, 1);
+    expect(photos.single.dataProvider, kMediaDataProviderPhotoOneDrive);
+    await db.close();
+  });
+
+  test('downloads HEIC via content endpoint when delta omits downloadUrl', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await _seedProvider(
+      db,
+      accountsJson:
+          '[{"graphAccountKey":"u","sources":[{"path":"/Pictures/F","kind":"photo","category":"fam","maxFiles":10}]}]',
+    );
+    final secrets = InMemorySecretStore();
+    await secrets.write(microsoftGraphAccessTokenSecret('u'), 'tok');
+    await seedIntegrationKvForTest(
+      db,
+      accountId: 'u',
+      key: kIntegrationAccessTokenExpiresAtKey,
+      value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
+    );
+    const itemId = 'heic-only';
+    final httpClient = _GraphAndDownloadClient(
+      deltaPages: [
+        _deltaPage([
+          _drivePhotoNoPreauthUrl(itemId, mime: 'image/heic', name: 'party.heic'),
+        ]),
+      ],
+    );
+    final ctx = await _ctx(db, secrets);
+    await OneDrivePhotosDataProvider(httpClient: httpClient).collect(ctx);
+    expect(httpClient.contentGets, 1);
+    final photos = await db.select(db.photos).get();
+    expect(photos.length, 1);
+    final meta = await (db.select(db.blobMetadata)
+          ..where((t) => t.blobKey.equals(photos.single.mediaBlobKey)))
+        .getSingleOrNull();
+    expect(meta?.mimeType, 'image/heic');
+    await db.close();
+  });
+
   test('downloads photos and stores rows', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
@@ -325,6 +395,66 @@ void main() {
     expect(photos.every((e) => e.dataProvider == kMediaDataProviderPhotoOneDrive), isTrue);
     expect(photos.every((e) => e.category == 'fam'), isTrue);
     expect(photos.every((e) => e.photographerName == 'Pat'), isTrue);
+    await db.close();
+  });
+
+  test('perPollLimit defers delta checkpoint for retry', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await _seedProvider(
+      db,
+      accountsJson:
+          '[{"graphAccountKey":"u","sources":[{"path":"/a","kind":"photo","category":"c","maxFiles":10,"perPollLimit":1}]}]',
+    );
+    final secrets = InMemorySecretStore();
+    await secrets.write(microsoftGraphAccessTokenSecret('u'), 'tok');
+    await seedIntegrationKvForTest(
+      db,
+      accountId: 'u',
+      key: kIntegrationAccessTokenExpiresAtKey,
+      value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
+    );
+    final twoPhotoPage = _deltaPage([
+      _drivePhoto('a', 'https://dl.example.com/a'),
+      _drivePhoto('b', 'https://dl.example.com/b'),
+    ]);
+    final httpClient = _GraphAndDownloadClient(
+      deltaPages: [twoPhotoPage, twoPhotoPage],
+    );
+    final ctx = await _ctx(db, secrets);
+    final p = OneDrivePhotosDataProvider(httpClient: httpClient);
+    await p.collect(ctx);
+    expect(httpClient.downloadGets, 1);
+    final key = oneDriveMediaDeltaLinkKey('a');
+    final rowAfterFirst = await (db.select(db.integrationsKeyValue)
+          ..where(
+            (t) =>
+                t.integrationId.equals(kDefaultPhotoOneDriveIntegrationId) &
+                t.key.equals(key),
+          ))
+        .getSingleOrNull();
+    expect(rowAfterFirst, isNull);
+    await p.collect(ctx);
+    expect(httpClient.downloadGets, 2);
+    expect((await db.select(db.photos).get()).length, 2);
+    await db.close();
+  });
+
+  test('empty accounts does not advance last_collect', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await _seedProvider(db, accountsJson: '[]', pollSeconds: 3600);
+    final httpClient = _CountingClient();
+    final ctx = await _ctx(db, InMemorySecretStore());
+    await OneDrivePhotosDataProvider(httpClient: httpClient).collect(ctx);
+    final row = await (db.select(db.integrationsKeyValue)
+          ..where(
+            (t) =>
+                t.integrationId.equals(kDefaultPhotoOneDriveIntegrationId) &
+                t.key.equals(kIntegrationLastCollectKey),
+          ))
+        .getSingleOrNull();
+    expect(row, isNull);
     await db.close();
   });
 
@@ -589,6 +719,23 @@ Map<String, Object?> _drivePhoto(String id, String downloadUrl) => {
       },
     };
 
+Map<String, Object?> _drivePhotoNoPreauthUrl(
+  String id, {
+  String mime = 'image/jpeg',
+  String? name,
+}) {
+  final item = <String, Object?>{
+    'id': id,
+    'name': name ?? '$id.jpg',
+    'file': {'mimeType': mime},
+    'webUrl': 'https://example.com/item',
+    'createdBy': {
+      'user': {'displayName': 'Pat'},
+    },
+  };
+  return item;
+}
+
 Future<DataWriteContext> _ctx(
   AppDatabase db,
   InMemorySecretStore secrets, {
@@ -597,6 +744,7 @@ Future<DataWriteContext> _ctx(
   if (clientId != null) {
     await secrets.write(kMicrosoftGraphClientIdSecretKey, clientId);
   }
+  await seedContentCategoriesForTest(db, ['c', 'fam', 'vcat', 'general']);
   final resolver = ProviderConfigResolver(db, secrets);
   return DataWriteContextImpl(
     db: db,
@@ -838,6 +986,7 @@ class _GraphAndDownloadClient extends http.BaseClient {
   int resolveGets = 0;
   int deltaGets = 0;
   int downloadGets = 0;
+  int contentGets = 0;
 
   int get graphGets => resolveGets + deltaGets;
 
@@ -859,6 +1008,13 @@ class _GraphAndDownloadClient extends http.BaseClient {
           });
         }
         return _json(_deltaPages[idx]);
+      }
+      if (u.path.contains('/content')) {
+        contentGets++;
+        return http.StreamedResponse(
+          Stream.value(<int>[1, 2, 3, 4]),
+          200,
+        );
       }
     }
     if (u.host == 'dl.example.com') {

@@ -19,7 +19,7 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     final hub = OperatorTelemetryHub(maxIntegrationLines: 10);
-    hub.addIntegrationLine('hello');
+    hub.addIntegrationLine('hello', integrationType: 'news_rss');
     final nav = DisplayNavigationBus();
     final h = await RestTestHarness.start(
       database: db,

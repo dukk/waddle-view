@@ -1,6 +1,7 @@
 import 'collect_diagnostics.dart';
 import 'data_provider.dart';
 import 'data_write_context.dart';
+import 'integration_tagged_collect_diagnostics.dart';
 import 'sleeper.dart';
 
 /// Sequential round-robin over providers; never overlaps two collects.
@@ -75,12 +76,31 @@ class DataCollectionEngine {
 
   Future<void> _runOne(IDataProvider p) async {
     _collectInFlight = true;
-    _context.diagnostics.provider('collect begin id=${p.id}');
+    _context.diagnostics.provider(
+      'collect begin id=${p.id}',
+      integrationType: p.id,
+    );
+    final collectCtx = _context is DataWriteContextImpl
+        ? _context.withDiagnostics(
+            IntegrationTaggedCollectDiagnostics(
+              _context.diagnostics,
+              integrationType: p.id,
+            ),
+          )
+        : _context;
     try {
-      await p.collect(_context);
-      _context.diagnostics.provider('collect ok id=${p.id}');
+      await p.collect(collectCtx);
+      _context.diagnostics.provider(
+        'collect ok id=${p.id}',
+        integrationType: p.id,
+      );
     } on Object catch (e, st) {
-      _context.diagnostics.providerFail('collect id=${p.id}', e, st);
+      _context.diagnostics.providerFail(
+        'collect id=${p.id}',
+        e,
+        st,
+        integrationType: p.id,
+      );
     } finally {
       _collectInFlight = false;
     }

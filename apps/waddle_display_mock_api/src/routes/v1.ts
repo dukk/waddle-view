@@ -36,7 +36,12 @@ export function v1Router() {
     if (wantsEmpty(scenario)) return c.json({ items: [] });
     return c.json({
       items: [
-        { at_ms: Date.now(), channel: 'integration', message: 'mock: collector idle' },
+        {
+          at_ms: Date.now(),
+          channel: 'integration',
+          message: 'mock: collector idle',
+          integration_type: 'news_rss',
+        },
         { at_ms: Date.now() - 1000, channel: 'engine', message: 'mock: tick' },
       ],
     });

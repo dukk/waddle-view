@@ -5,7 +5,9 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:waddle_integrations/microsoft_graph/microsoft_graph_base_url.dart';
 import 'package:waddle_integrations/microsoft_graph/microsoft_graph_calendars.dart';
+import 'package:waddle_integrations/microsoft_graph/microsoft_graph_drive_children.dart';
 import 'package:waddle_integrations/microsoft_graph/microsoft_graph_oauth.dart';
+import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
 import 'package:waddle_shared/integration_accounts/integration_accounts_configured_sql.dart';
@@ -338,6 +340,77 @@ void registerIntegrationAccountsRestRoutes(
     },
   );
 
+  r.get(
+    '/v1/integration-accounts/<accountId>/microsoft-graph/drive/children',
+    (Request req, String accountId) async {
+      final account = await (db.select(db.integrationAccounts)
+            ..where((t) => t.id.equals(accountId)))
+          .getSingleOrNull();
+      if (account == null) {
+        return Response(404,
+            body: '{"error":"not_found"}', headers: _jsonHeaders);
+      }
+      if (account.accountType != kIntegrationAccountTypeMicrosoftGraph) {
+        return Response(400,
+            body: '{"error":"not_microsoft_graph_account"}',
+            headers: _jsonHeaders);
+      }
+      final clientId =
+          await readMicrosoftGraphClientIdFromStore(secrets);
+      if (clientId == null || clientId.isEmpty) {
+        return Response(503,
+            body: '{"error":"microsoft_graph_client_id_not_configured"}',
+            headers: _jsonHeaders);
+      }
+      final oauth = MicrosoftGraphOAuth(httpClient: graphHttp);
+      final token = await oauth.ensureAccessToken(
+        db: db,
+        secrets: secrets,
+        clientId: clientId,
+        graphAccountKey: accountId,
+      );
+      if (token == null || token.isEmpty) {
+        return Response(503,
+            body: '{"error":"access_token_unavailable"}', headers: _jsonHeaders);
+      }
+      final folderPath = req.url.queryParameters['path']?.trim() ?? '';
+      final graphBase = await _microsoftGraphBaseUrlForOneDrive(db);
+      try {
+        final children = await listMicrosoftGraphDriveChildren(
+          httpClient: graphHttp,
+          graphBaseUrl: graphBase,
+          accessToken: token,
+          folderPath: folderPath,
+        );
+        return Response.ok(
+          jsonEncode({
+            'items': [
+              for (final c in children)
+                if (c.isFolder)
+                  {
+                    'id': c.id,
+                    'name': c.name,
+                    'path': c.path,
+                    'folder': true,
+                  },
+            ],
+            'path': folderPath,
+          }),
+          headers: _jsonHeaders,
+        );
+      } on MicrosoftGraphDriveChildrenException catch (e) {
+        return Response(
+          502,
+          body: jsonEncode({
+            'error': 'graph_drive_children_failed',
+            'status': e.statusCode,
+          }),
+          headers: _jsonHeaders,
+        );
+      }
+    },
+  );
+
   r.post(
     '/v1/integration-accounts/<accountId>/google-photos/picker/sessions',
     (Request req, String accountId) async {
@@ -446,4 +519,20 @@ void registerIntegrationAccountsRestRoutes(
       headers: _jsonHeaders,
     );
   });
+}
+
+Future<String> _microsoftGraphBaseUrlForOneDrive(AppDatabase db) async {
+  for (final id in [
+    kDefaultPhotoOneDriveIntegrationId,
+    kDefaultVideoOneDriveIntegrationId,
+  ]) {
+    final row = await (db.select(db.integrations)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (row != null) {
+      return normalizeMicrosoftGraphBaseUrl(
+        integrationBaseUrlFromConfigJson(row.configJson),
+      );
+    }
+  }
+  return normalizeMicrosoftGraphBaseUrl(null);
 }

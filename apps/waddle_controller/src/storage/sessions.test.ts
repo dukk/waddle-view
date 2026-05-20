@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { loadConfigSchemas, saveConfigSchemas, type ConfigSchemasBundle } from './configSchemaCache';
 import { loadDisplays, saveDisplays } from './displays';
 import {
   clearAllSessions,
@@ -61,17 +62,16 @@ describe('sessions storage', () => {
   });
 
   it('clearSession clears cached config schemas', () => {
-    localStorage.setItem(
-      'waddle_controller_config_schemas_v2:d1',
-      JSON.stringify({
-        screen_types: [],
-        ticker_tape_types: [],
-        overlay_types: [],
-        integration_types: [],
-      }),
-    );
+    const bundle: ConfigSchemasBundle = {
+      screen_types: [],
+      ticker_tape_types: [],
+      overlay_types: [{ overlay_type: 'shape_rain', label: 'Shape rain' }],
+      integration_types: [],
+    };
+    saveConfigSchemas('d1', bundle);
+    expect(loadConfigSchemas('d1')).toEqual(bundle);
     clearSession('d1');
-    expect(localStorage.getItem('waddle_controller_config_schemas_v2:d1')).toBeNull();
+    expect(loadConfigSchemas('d1')).toBeNull();
   });
 
   it('clearSession removes adoption from the display row', () => {

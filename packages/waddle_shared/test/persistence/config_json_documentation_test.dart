@@ -93,6 +93,9 @@ void main() {
     final stockQuote = displayOverlayConfigJsonDocForType('stock_quote');
     expect(jsonDecode(stockQuote.schema), isA<Map<String, dynamic>>());
     expect(jsonDecode(stockQuote.example), isA<Map<String, dynamic>>());
+    final qrCode = displayOverlayConfigJsonDocForType('qr_code');
+    expect(jsonDecode(qrCode.schema), isA<Map<String, dynamic>>());
+    expect(jsonDecode(qrCode.example), isA<Map<String, dynamic>>());
     final photoSlideshow =
         displayOverlayConfigJsonDocForType('photo_slideshow');
     expect(jsonDecode(photoSlideshow.schema), isA<Map<String, dynamic>>());
@@ -108,6 +111,11 @@ void main() {
     final stockQuoteSchema =
         jsonDecode(stockQuote.schema) as Map<String, dynamic>;
     expect(stockQuoteSchema['required'], ['symbolId']);
+    final qrCodeSchema = jsonDecode(qrCode.schema) as Map<String, dynamic>;
+    expect(qrCodeSchema['required'], ['payload', 'template']);
+    final qrProps = qrCodeSchema['properties'] as Map<String, dynamic>;
+    final qrTemplate = qrProps['template'] as Map<String, dynamic>;
+    expect(qrTemplate['enum'], isNotEmpty);
     final upcomingSchema =
         jsonDecode(calendarUpcoming.schema) as Map<String, dynamic>;
     final upcomingProps = upcomingSchema['properties'] as Map<String, dynamic>;

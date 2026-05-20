@@ -64,7 +64,9 @@ part 'database.g.dart';
     WeatherCurrent,
     WeatherAlerts,
     Photos,
+    PhotoCategories,
     Videos,
+    VideoCategories,
     PexelsFetchBatches,
     InterestsStockSymbols,
     StockQuotes,
@@ -84,7 +86,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 37;
+  int get schemaVersion => 40;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -353,7 +355,31 @@ ORDER BY priority DESC, created_at DESC;
       }
       if (from == 36 && to >= 37) {
         await _migrateV36ToV37OverlayTypesCatalog(this);
-        return;
+        if (to == 37) {
+          return;
+        }
+        from = 37;
+      }
+      if (from == 37 && to >= 38) {
+        await _migrateV37ToV38PhotoVideoCategories(this, m);
+        if (to == 38) {
+          return;
+        }
+        from = 38;
+      }
+      if (from == 38 && to >= 39) {
+        await _migrateV38ToV39TrimLocationCatalog(this);
+        if (to == 39) {
+          return;
+        }
+        from = 39;
+      }
+      if (from == 39 && to >= 40) {
+        await _migrateV39ToV40QrCodeOverlayType(this);
+        if (to == 40) {
+          return;
+        }
+        from = 40;
       }
       throw UnsupportedError(
         'Unsupported database upgrade from version $from to $to. '
@@ -2235,7 +2261,91 @@ Future<void> _migrateV35ToV36OverlayTypesCatalog(AppDatabase db) async {
   await ensureOverlayTypes(db);
 }
 
+/// Schema 40: backfill QR code overlay type in [OverlayTypes].
+Future<void> _migrateV39ToV40QrCodeOverlayType(AppDatabase db) async {
+  if (!await _sqliteTableExists(db, 'overlay_types')) {
+    return;
+  }
+  await ensureOverlayTypes(db);
+}
+
+/// Schema 39: trim default location catalog to five megacities; remove retired rows.
+Future<void> _migrateV38ToV39TrimLocationCatalog(AppDatabase db) async {
+  if (!await _sqliteTableExists(db, 'interests_locations')) {
+    return;
+  }
+  await ensureDefaultInterestsLocations(db);
+  const fallbackLocationId = 'new_york_ny';
+  for (final id in kRetiredDefaultWeatherLocationCatalogIds) {
+    if (await _sqliteTableExists(db, 'weather_alerts')) {
+      await db.customStatement(
+        'DELETE FROM weather_alerts WHERE location_id = ?',
+        [id],
+      );
+    }
+    if (await _sqliteTableExists(db, 'weather_current')) {
+      await db.customStatement(
+        'DELETE FROM weather_current WHERE location_id = ?',
+        [id],
+      );
+    }
+    await db.customStatement(
+      'DELETE FROM interests_locations WHERE id = ?',
+      [id],
+    );
+  }
+  if (await _sqliteTableExists(db, 'screens')) {
+    final rows = await db.customSelect('SELECT id, config_json FROM screens').get();
+    for (final row in rows) {
+      final configJson = row.read<String?>('config_json');
+      if (configJson == null || configJson.isEmpty) continue;
+      try {
+        final decoded = jsonDecode(configJson);
+        if (decoded is! Map<String, dynamic>) continue;
+        final locationId = decoded['locationId'];
+        if (locationId is! String ||
+            !kRetiredDefaultWeatherLocationCatalogIds.contains(locationId)) {
+          continue;
+        }
+        decoded['locationId'] = fallbackLocationId;
+        final updated = jsonEncode(decoded);
+        await db.customStatement(
+          'UPDATE screens SET config_json = ? WHERE id = ?',
+          [updated, row.read<String>('id')],
+        );
+      } catch (_) {
+        // Leave malformed config_json unchanged.
+      }
+    }
+  }
+}
+
 /// Schema 37: backfill photo slideshow overlay type in [OverlayTypes].
+/// Adds [photo_categories] / [video_categories] and backfills from legacy columns.
+Future<void> _migrateV37ToV38PhotoVideoCategories(
+  AppDatabase db,
+  Migrator m,
+) async {
+  await m.createTable(db.photoCategories);
+  await m.createTable(db.videoCategories);
+  if (await _sqliteTableExists(db, 'photos')) {
+    await db.customStatement(
+      '''
+INSERT OR IGNORE INTO photo_categories (photo_id, category_id)
+SELECT id, category FROM photos WHERE category IS NOT NULL AND category != ''
+''',
+    );
+  }
+  if (await _sqliteTableExists(db, 'videos')) {
+    await db.customStatement(
+      '''
+INSERT OR IGNORE INTO video_categories (video_id, category_id)
+SELECT id, category FROM videos WHERE category IS NOT NULL AND category != ''
+''',
+    );
+  }
+}
+
 Future<void> _migrateV36ToV37OverlayTypesCatalog(AppDatabase db) async {
   if (!await _sqliteTableExists(db, 'overlay_types')) {
     return;

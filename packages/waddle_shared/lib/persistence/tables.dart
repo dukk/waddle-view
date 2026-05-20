@@ -221,6 +221,9 @@ const String kOverlayTypeStockQuote = 'stock_quote';
 /// Random photos from the catalog at a fixed viewport position (curator-assignable).
 const String kOverlayTypePhotoSlideshow = 'photo_slideshow';
 
+/// QR code with optional title/description at a viewport position (curator-assignable).
+const String kOverlayTypeQrCode = 'qr_code';
+
 /// Built-in overlay types exposed via `GET /v1/meta/overlay-types`.
 const List<String> kBuiltinOverlayTypes = [
   kOverlayTypeShapeRain,
@@ -237,6 +240,7 @@ const List<String> kBuiltinOverlayTypes = [
   kOverlayTypeCalendarUpcoming,
   kOverlayTypeStockQuote,
   kOverlayTypePhotoSlideshow,
+  kOverlayTypeQrCode,
 ];
 
 /// Seed row id for Wattle View's birthday bouncing message overlay.
@@ -850,6 +854,18 @@ class Photos extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// Junction: one or more [ContentCategories.id] per [Photos.id] row.
+@TableIndex(name: 'idx_photo_categories_category', columns: {#categoryId})
+class PhotoCategories extends Table {
+  TextColumn get photoId =>
+      text().references(Photos, #id, onDelete: KeyAction.cascade)();
+  TextColumn get categoryId =>
+      text().references(ContentCategories, #id)();
+
+  @override
+  Set<Column<Object>> get primaryKey => {photoId, categoryId};
+}
+
 @TableIndex(name: 'idx_videos_fetched', columns: {#fetchedAtMs})
 @TableIndex(name: 'idx_videos_category', columns: {#category})
 class Videos extends Table {
@@ -872,6 +888,18 @@ class Videos extends Table {
 
   @override
   Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Junction: one or more [ContentCategories.id] per [Videos.id] row.
+@TableIndex(name: 'idx_video_categories_category', columns: {#categoryId})
+class VideoCategories extends Table {
+  TextColumn get videoId =>
+      text().references(Videos, #id, onDelete: KeyAction.cascade)();
+  TextColumn get categoryId =>
+      text().references(ContentCategories, #id)();
+
+  @override
+  Set<Column<Object>> get primaryKey => {videoId, categoryId};
 }
 
 @TableIndex(name: 'idx_pexels_fetch_batches_time', columns: {#requestedAtMs})

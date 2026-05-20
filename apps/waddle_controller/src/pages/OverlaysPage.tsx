@@ -60,6 +60,7 @@ import { floatingBalloonsValidationSchema } from '@/util/floatingBalloonsConfigS
 import { validateConfigAgainstSchema } from '@/util/rjsfSchema';
 import { OverlayTypeIcon } from '@/util/overlayTypeIcon';
 import { overlayTypeLabel, overlayTypeMetaFor } from '@/util/overlayTypeLabel';
+import { syncQrOverlayFormData } from '@/util/qrOverlayPayload';
 import type { SavedDisplay } from '@/storage/displays';
 
 type OverlayRow = {
@@ -197,6 +198,15 @@ function overlayConfigForSubmit(
       if (out[key] === undefined || out[key] === null || out[key] === '') {
         delete out[key];
       }
+    }
+    return out;
+  }
+  if (t === 'qr_code') {
+    const synced = syncQrOverlayFormData(form);
+    const out: Record<string, unknown> = { ...synced };
+    if (typeof out.title !== 'string' || !out.title.trim()) delete out.title;
+    if (typeof out.description !== 'string' || !out.description.trim()) {
+      delete out.description;
     }
     return out;
   }

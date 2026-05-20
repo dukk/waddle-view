@@ -95,9 +95,12 @@ class CalendarUpcomingOverlaySettings {
       return defaults;
     }
     var placement = ClockOverlayPlacement.parseMap(raw);
+    // Clock parseMap defaults (0.05, 0.05, 0.2) or static anchor + calendar scale
+    // without right-edge x — apply full calendar-upcoming placement (0.72, 0.05, 0.28).
     if (placement.x == kStaticImageOverlayPositionDefault &&
         placement.y == kStaticImageOverlayPositionDefault &&
-        placement.scale == kClockOverlayScaleDefault) {
+        (placement.scale == kClockOverlayScaleDefault ||
+            placement.scale == kCalendarUpcomingOverlayScaleDefault)) {
       placement = defaults.placement;
     } else if (placement.scale == kClockOverlayScaleDefault) {
       placement = ClockOverlayPlacement(

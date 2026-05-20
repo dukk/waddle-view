@@ -16,6 +16,7 @@ const Map<String, String> kOverlayTypeTitles = {
   kOverlayTypeCalendarUpcoming: 'Calendar upcoming',
   kOverlayTypeStockQuote: 'Stock quote',
   kOverlayTypePhotoSlideshow: 'Photo slideshow',
+  kOverlayTypeQrCode: 'QR code',
 };
 
 String _capitalizeToken(String word) {

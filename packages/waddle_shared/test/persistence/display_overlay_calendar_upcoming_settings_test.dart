@@ -1,5 +1,7 @@
 import 'package:test/test.dart';
 import 'package:waddle_shared/persistence/display_overlay_calendar_upcoming_settings.dart';
+import 'package:waddle_shared/persistence/display_overlay_clock_placement.dart';
+import 'package:waddle_shared/persistence/display_overlay_static_image_settings.dart';
 
 void main() {
   test('parse defaults when empty', () {
@@ -54,6 +56,29 @@ void main() {
         '{"upcomingDays": "three"}',
       ),
       isNull,
+    );
+  });
+
+  test('parseMap applies right-edge placement when anchor is static default', () {
+    final fromClockDefaults = CalendarUpcomingOverlaySettings.parseMap({
+      'x': kStaticImageOverlayPositionDefault,
+      'y': kStaticImageOverlayPositionDefault,
+      'scale': kClockOverlayScaleDefault,
+    });
+    expect(fromClockDefaults.placement.x, kCalendarUpcomingOverlayPositionXDefault);
+    expect(fromClockDefaults.placement.scale, kCalendarUpcomingOverlayScaleDefault);
+
+    final fromStaticAnchorCalendarScale = CalendarUpcomingOverlaySettings.parseMap({
+      'y': kStaticImageOverlayPositionDefault,
+      'scale': kCalendarUpcomingOverlayScaleDefault,
+    });
+    expect(
+      fromStaticAnchorCalendarScale.placement.x,
+      kCalendarUpcomingOverlayPositionXDefault,
+    );
+    expect(
+      fromStaticAnchorCalendarScale.placement.scale,
+      kCalendarUpcomingOverlayScaleDefault,
     );
   });
 

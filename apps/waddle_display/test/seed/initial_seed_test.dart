@@ -175,8 +175,11 @@ void main() {
           ..orderBy([(t) => OrderingTerm.asc(t.id)]))
         .get();
     expect(locations.map((e) => e.id), containsAll(<String>[
-      'salt_lake_city_ut',
-      'atlanta_ga',
+      'tokyo_jp',
+      'delhi_in',
+      'shanghai_cn',
+      'sao_paulo_br',
+      'new_york_ny',
     ]));
     await db.close();
   });

@@ -11,7 +11,9 @@ import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/config/microsoft_graph_kv.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/photo_category_assignments.dart';
 import 'package:waddle_shared/persistence/tables.dart';
+import 'package:waddle_shared/persistence/video_category_assignments.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';
 import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
@@ -89,6 +91,7 @@ final class _OneDriveDeltaPageStats {
   int notFileFacet = 0;
   int noMime = 0;
   int noDownloadUrl = 0;
+  int contentDownloadFallback = 0;
   int unsupportedMime = 0;
   int noSpecForMime = 0;
   int skippedExistingPhoto = 0;
@@ -109,6 +112,8 @@ void _logOneDriveDeltaPageStats(
     if (s.notFileFacet > 0) 'foldersOrNonFiles=${s.notFileFacet}',
     if (s.noMime > 0) 'noMime=${s.noMime}',
     if (s.noDownloadUrl > 0) 'noDownloadUrl=${s.noDownloadUrl}',
+    if (s.contentDownloadFallback > 0)
+      'contentFallback=${s.contentDownloadFallback}',
     if (s.unsupportedMime > 0) 'unsupportedMime=${s.unsupportedMime}',
     if (s.noSpecForMime > 0) 'noMatchingSourceKind=${s.noSpecForMime}',
     if (s.skippedExistingPhoto > 0) 'skipDupPhoto=${s.skippedExistingPhoto}',
@@ -230,7 +235,6 @@ class OneDrivePhotosDataProvider implements IDataProvider {
       ctx.diagnostics.provider(
         'onedrive_media: skip (no accounts in config_json)',
       );
-      await _markCollectDone(ctx.db, integrationId, nowMs);
       return;
     }
 
@@ -265,6 +269,7 @@ class OneDrivePhotosDataProvider implements IDataProvider {
       }
     }
     var didSync = false;
+    var collectComplete = true;
     var globalRemaining = extra.globalPerPollLimit;
 
     try {
@@ -326,12 +331,15 @@ class OneDrivePhotosDataProvider implements IDataProvider {
           );
           globalRemaining = outcome.globalRemaining;
           didSync = true;
+          if (!outcome.syncComplete) {
+            collectComplete = false;
+          }
         }
         if (globalRemaining <= 0) {
           break;
         }
       }
-      if (didSync) {
+      if (didSync && collectComplete) {
         ctx.diagnostics.provider('onedrive_media: collect ok, last_collect updated');
         await _markCollectDone(ctx.db, integrationId, nowMs);
       } else {
@@ -505,8 +513,9 @@ class OneDrivePhotosDataProvider implements IDataProvider {
   }
 
   /// Pull-only delta sync for one account path (recursive subtree). Returns
-  /// updated [globalRemaining] after downloads.
-  Future<({int downloads, int globalRemaining})> _syncPathGroup(
+  /// updated [globalRemaining] after downloads. [syncComplete] is false when
+  /// download caps were hit before the delta pass finished (checkpoint deferred).
+  Future<({int downloads, int globalRemaining, bool syncComplete})> _syncPathGroup(
     DataWriteContext ctx, {
     required String integrationId,
     required String graphBase,
@@ -544,7 +553,7 @@ class OneDrivePhotosDataProvider implements IDataProvider {
             'path="${normalizedPath.isEmpty ? '(drive root)' : normalizedPath}" '
             '(folder resolve failed)',
           );
-          return (downloads: 0, globalRemaining: globalR);
+          return (downloads: 0, globalRemaining: globalR, syncComplete: true);
         }
         url = _folderDeltaUrl(graphBase, folderId);
       }
@@ -560,8 +569,14 @@ class OneDrivePhotosDataProvider implements IDataProvider {
     var deltaPage = 0;
     var goneRetries = 0;
     String? deltaLinkToPersist;
+    var limitsExhausted = false;
+    var filesSeen = 0;
 
     while (url != null && url.isNotEmpty) {
+      if (globalR <= 0) {
+        limitsExhausted = true;
+        break;
+      }
       deltaPage++;
       final pageUri = Uri.parse(url);
       ctx.diagnostics.provider(
@@ -626,6 +641,10 @@ class OneDrivePhotosDataProvider implements IDataProvider {
           'onedrive_media: delta page=$deltaPage uniqueItems=${merged.length}',
         );
         for (final item in merged.values) {
+          if (globalR <= 0) {
+            limitsExhausted = true;
+            break;
+          }
           final id = item['id'];
           if (id is! String || id.isEmpty) {
             pageStats.badItemId++;
@@ -645,17 +664,24 @@ class OneDrivePhotosDataProvider implements IDataProvider {
             pageStats.notFileFacet++;
             continue;
           }
-          final mime = file['mimeType'];
-          if (mime is! String) {
+          filesSeen++;
+          final mimeLower = _mimeFromDriveFileItem(item, file);
+          if (mimeLower == null) {
             pageStats.noMime++;
             continue;
           }
-          final dl = item['@microsoft.graph.downloadUrl'];
-          if (dl is! String || dl.isEmpty) {
+          final rawDl = item['@microsoft.graph.downloadUrl'];
+          late final String downloadUrl;
+          if (rawDl is String && rawDl.isNotEmpty) {
+            downloadUrl = rawDl;
+          } else {
+            downloadUrl = _driveItemContentUrl(graphBase, id);
+            pageStats.contentDownloadFallback++;
+          }
+          if (downloadUrl.isEmpty) {
             pageStats.noDownloadUrl++;
             continue;
           }
-          final mimeLower = mime.toLowerCase();
           if (!_isPhotoMime(mimeLower) && !_isVideoMime(mimeLower)) {
             pageStats.unsupportedMime++;
             continue;
@@ -670,9 +696,13 @@ class OneDrivePhotosDataProvider implements IDataProvider {
 
           for (var i = 0; i < specs.length; i++) {
             if (globalR <= 0) {
+              limitsExhausted = true;
               break;
             }
             if (perSpecLeft[i] <= 0) {
+              if (_specMatchesMime(specs[i], mimeLower)) {
+                limitsExhausted = true;
+              }
               continue;
             }
             final spec = specs[i];
@@ -684,8 +714,9 @@ class OneDrivePhotosDataProvider implements IDataProvider {
               ok = await _tryIngestPhoto(
                 ctx,
                 rowId: rowId,
-                category: spec.category,
-                downloadUrl: dl,
+                categoryIds: spec.categoryIds,
+                downloadUrl: downloadUrl,
+                accessToken: accessToken,
                 item: item,
                 nowMs: nowMs,
                 rejectCtx: rejectCtx,
@@ -695,8 +726,9 @@ class OneDrivePhotosDataProvider implements IDataProvider {
               ok = await _tryIngestVideo(
                 ctx,
                 rowId: rowId,
-                category: spec.category,
-                downloadUrl: dl,
+                categoryIds: spec.categoryIds,
+                downloadUrl: downloadUrl,
+                accessToken: accessToken,
                 item: item,
                 nowMs: nowMs,
                 rejectCtx: rejectCtx,
@@ -717,6 +749,10 @@ class OneDrivePhotosDataProvider implements IDataProvider {
         );
       }
 
+      if (limitsExhausted) {
+        break;
+      }
+
       final nextLink = m['@odata.nextLink'];
       final dLink = m['@odata.deltaLink'];
       if (dLink is String && dLink.isNotEmpty) {
@@ -733,20 +769,37 @@ class OneDrivePhotosDataProvider implements IDataProvider {
       }
     }
 
-    if (deltaLinkToPersist != null && deltaLinkToPersist.isNotEmpty) {
+    final syncComplete = !limitsExhausted;
+    if (syncComplete && downloaded == 0 && filesSeen > 0) {
+      await _clearDeltaKv(ctx.db, integrationId, deltaKey);
+      ctx.diagnostics.provider(
+        'onedrive_media: cleared delta checkpoint (saw $filesSeen files, '
+        'zero downloads; next collect re-enumerates) '
+        'account=$graphAccountKey '
+        'path="${normalizedPath.isEmpty ? '(drive root)' : normalizedPath}"',
+      );
+    } else if (syncComplete &&
+        deltaLinkToPersist != null &&
+        deltaLinkToPersist.isNotEmpty) {
       await _persistDeltaLink(ctx.db, integrationId, deltaKey, deltaLinkToPersist);
       ctx.diagnostics.provider(
         'onedrive_media: delta checkpoint saved account=$graphAccountKey '
+        'path="${normalizedPath.isEmpty ? '(drive root)' : normalizedPath}"',
+      );
+    } else if (!syncComplete) {
+      ctx.diagnostics.provider(
+        'onedrive_media: delta checkpoint deferred (download limits) '
+        'account=$graphAccountKey '
         'path="${normalizedPath.isEmpty ? '(drive root)' : normalizedPath}"',
       );
     }
 
     for (final s in specs) {
       if (_ingestPhotos && (s.kind == 'photo' || s.kind == 'both')) {
-        await _prunePhotos(ctx, s.category, s.maxFiles);
+        await _prunePhotos(ctx, s.categoryIds, s.maxFiles);
       }
       if (_ingestVideos && (s.kind == 'video' || s.kind == 'both')) {
-        await _pruneVideos(ctx, s.category, s.maxFiles);
+        await _pruneVideos(ctx, s.categoryIds, s.maxFiles);
       }
     }
 
@@ -756,7 +809,11 @@ class OneDrivePhotosDataProvider implements IDataProvider {
       'newDownloads=$downloaded globalRemaining=$globalR',
     );
 
-    return (downloads: downloaded, globalRemaining: globalR);
+    return (
+      downloads: downloaded,
+      globalRemaining: globalR,
+      syncComplete: syncComplete,
+    );
   }
 
   String _encodeDrivePath(String raw) {
@@ -772,12 +829,44 @@ class OneDrivePhotosDataProvider implements IDataProvider {
     return '/$encoded';
   }
 
+  String _driveItemContentUrl(String graphBase, String itemId) {
+    final base = graphBase.endsWith('/') ? graphBase.substring(0, graphBase.length - 1) : graphBase;
+    return '$base/me/drive/items/$itemId/content';
+  }
+
+  /// MIME from Graph [file] facet or filename extension when Graph omits mimeType.
+  String? _mimeFromDriveFileItem(
+    Map<String, dynamic> item,
+    Map<String, dynamic> file,
+  ) {
+    final mt = file['mimeType'];
+    if (mt is String && mt.isNotEmpty) {
+      return mt.toLowerCase();
+    }
+    final name = item['name'];
+    if (name is! String || name.isEmpty) {
+      return null;
+    }
+    final lower = name.toLowerCase();
+    if (lower.endsWith('.heic')) return 'image/heic';
+    if (lower.endsWith('.heif')) return 'image/heif';
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.gif')) return 'image/gif';
+    if (lower.endsWith('.mp4')) return 'video/mp4';
+    if (lower.endsWith('.mov')) return 'video/quicktime';
+    return null;
+  }
+
   bool _isPhotoMime(String mime) {
     const allowed = {
       'image/jpeg',
       'image/png',
       'image/webp',
       'image/gif',
+      'image/heic',
+      'image/heif',
     };
     return allowed.contains(mime.toLowerCase());
   }
@@ -819,8 +908,9 @@ class OneDrivePhotosDataProvider implements IDataProvider {
   Future<bool> _tryIngestPhoto(
     DataWriteContext ctx, {
     required String rowId,
-    required String category,
+    required List<String> categoryIds,
     required String downloadUrl,
+    required String accessToken,
     required Map<String, dynamic> item,
     required int nowMs,
     required RejectFilterContext rejectCtx,
@@ -836,7 +926,11 @@ class OneDrivePhotosDataProvider implements IDataProvider {
       return false;
     }
 
-    final bytes = await _downloadBytes(downloadUrl, diagnostics: ctx.diagnostics);
+    final bytes = await _downloadBytes(
+      downloadUrl,
+      accessToken: accessToken,
+      diagnostics: ctx.diagnostics,
+    );
     if (bytes == null || bytes.isEmpty) {
       pageStats.downloadFailed++;
       return false;
@@ -850,9 +944,14 @@ class OneDrivePhotosDataProvider implements IDataProvider {
     final file = item['file'];
     var mime = 'image/jpeg';
     if (file is Map<String, dynamic>) {
-      final mt = file['mimeType'];
-      if (mt is String && mt.isNotEmpty) {
-        mime = mt;
+      final inferred = _mimeFromDriveFileItem(item, file);
+      if (inferred != null && _isPhotoMime(inferred)) {
+        mime = inferred;
+      } else {
+        final mt = file['mimeType'];
+        if (mt is String && mt.isNotEmpty) {
+          mime = mt;
+        }
       }
     }
 
@@ -886,10 +985,12 @@ class OneDrivePhotosDataProvider implements IDataProvider {
       urls: [pageUrl],
     );
 
+    final primaryCategory =
+        categoryIds.isEmpty ? 'general' : categoryIds.first;
     await ctx.db.into(ctx.db.photos).insert(
           PhotosCompanion.insert(
             id: rowId,
-            category: Value(category),
+            category: Value(primaryCategory),
             dataProvider: Value(kMediaDataProviderPhotoOneDrive),
             mediaBlobKey: logicalKey,
             photographerName: photographer,
@@ -900,8 +1001,13 @@ class OneDrivePhotosDataProvider implements IDataProvider {
             suppressed: Value(blocked),
           ),
         );
+    await replacePhotoCategoryAssignments(
+      ctx.db,
+      photoId: rowId,
+      categoryIds: categoryIds,
+    );
     ctx.diagnostics.provider(
-      'onedrive_media: stored photo row=$rowId category=$category '
+      'onedrive_media: stored photo row=$rowId categories=$categoryIds '
       'bytes=${bytes.length}${blocked ? ' (suppressed by reject list)' : ''}',
     );
     return true;
@@ -910,8 +1016,9 @@ class OneDrivePhotosDataProvider implements IDataProvider {
   Future<bool> _tryIngestVideo(
     DataWriteContext ctx, {
     required String rowId,
-    required String category,
+    required List<String> categoryIds,
     required String downloadUrl,
+    required String accessToken,
     required Map<String, dynamic> item,
     required int nowMs,
     required RejectFilterContext rejectCtx,
@@ -927,7 +1034,11 @@ class OneDrivePhotosDataProvider implements IDataProvider {
       return false;
     }
 
-    final bytes = await _downloadBytes(downloadUrl, diagnostics: ctx.diagnostics);
+    final bytes = await _downloadBytes(
+      downloadUrl,
+      accessToken: accessToken,
+      diagnostics: ctx.diagnostics,
+    );
     if (bytes == null || bytes.isEmpty) {
       pageStats.downloadFailed++;
       return false;
@@ -968,11 +1079,13 @@ class OneDrivePhotosDataProvider implements IDataProvider {
       urls: [pageUrl],
     );
 
+    final primaryCategory =
+        categoryIds.isEmpty ? 'general' : categoryIds.first;
     await ctx.db.into(ctx.db.videos).insert(
           VideosCompanion.insert(
             id: rowId,
-            category: Value(category),
-            dataProvider: Value(kMediaDataProviderPhotoOneDrive),
+            category: Value(primaryCategory),
+            dataProvider: Value(kMediaDataProviderVideoOneDrive),
             mediaBlobKey: logicalKey,
             photographerName: photographer,
             photographerUrl: '',
@@ -983,8 +1096,13 @@ class OneDrivePhotosDataProvider implements IDataProvider {
             suppressed: Value(blocked),
           ),
         );
+    await replaceVideoCategoryAssignments(
+      ctx.db,
+      videoId: rowId,
+      categoryIds: categoryIds,
+    );
     ctx.diagnostics.provider(
-      'onedrive_media: stored video row=$rowId category=$category '
+      'onedrive_media: stored video row=$rowId categories=$categoryIds '
       'bytes=${bytes.length} dur=${dur}s'
       '${blocked ? ' (suppressed by reject list)' : ''}',
     );
@@ -993,6 +1111,7 @@ class OneDrivePhotosDataProvider implements IDataProvider {
 
   Future<List<int>?> _downloadBytes(
     String url, {
+    required String accessToken,
     required CollectDiagnostics diagnostics,
   }) async {
     try {
@@ -1000,7 +1119,12 @@ class OneDrivePhotosDataProvider implements IDataProvider {
       diagnostics.provider(
         'onedrive_media: GET file binary ${safeHttpUriForLog(uri)}',
       );
-      final res = await _http.get(uri);
+      final headers = <String, String>{};
+      if (accessToken.isNotEmpty &&
+          uri.host.toLowerCase().contains('graph.microsoft.com')) {
+        headers['Authorization'] = 'Bearer $accessToken';
+      }
+      final res = await _http.get(uri, headers: headers);
       if (res.statusCode != 200 || res.bodyBytes.isEmpty) {
         diagnostics.provider(
           'onedrive_media: download status=${res.statusCode} bytes=${res.bodyBytes.length}',
@@ -1017,18 +1141,19 @@ class OneDrivePhotosDataProvider implements IDataProvider {
 
   Future<void> _prunePhotos(
     DataWriteContext ctx,
-    String category,
+    List<String> categoryIds,
     int max,
   ) async {
-    if (max < 1) {
+    if (max < 1 || categoryIds.isEmpty) {
       return;
     }
+    final primary = categoryIds.first;
     final rows =
         await (ctx.db.select(
               ctx.db.photos,
             )..where(
                 (t) =>
-                    t.category.equals(category) &
+                    t.category.equals(primary) &
                     t.dataProvider.equals(kMediaDataProviderPhotoOneDrive),
               )
               ..orderBy([(t) => OrderingTerm.asc(t.fetchedAtMs)]))
@@ -1038,7 +1163,7 @@ class OneDrivePhotosDataProvider implements IDataProvider {
     }
     final removeCount = rows.length - max;
     ctx.diagnostics.provider(
-      'onedrive_media: prune photos category=$category '
+      'onedrive_media: prune photos category=$primary '
       'removed=$removeCount cap=$max (had ${rows.length})',
     );
     for (var i = 0; i < removeCount; i++) {
@@ -1048,19 +1173,20 @@ class OneDrivePhotosDataProvider implements IDataProvider {
 
   Future<void> _pruneVideos(
     DataWriteContext ctx,
-    String category,
+    List<String> categoryIds,
     int max,
   ) async {
-    if (max < 1) {
+    if (max < 1 || categoryIds.isEmpty) {
       return;
     }
+    final primary = categoryIds.first;
     final rows =
         await (ctx.db.select(
               ctx.db.videos,
             )..where(
                 (t) =>
-                    t.category.equals(category) &
-                    t.dataProvider.equals(kMediaDataProviderPhotoOneDrive),
+                    t.category.equals(primary) &
+                    t.dataProvider.equals(kMediaDataProviderVideoOneDrive),
               )
               ..orderBy([(t) => OrderingTerm.asc(t.fetchedAtMs)]))
             .get();
@@ -1069,7 +1195,7 @@ class OneDrivePhotosDataProvider implements IDataProvider {
     }
     final removeCount = rows.length - max;
     ctx.diagnostics.provider(
-      'onedrive_media: prune videos category=$category '
+      'onedrive_media: prune videos category=$primary '
       'removed=$removeCount cap=$max (had ${rows.length})',
     );
     for (var i = 0; i < removeCount; i++) {

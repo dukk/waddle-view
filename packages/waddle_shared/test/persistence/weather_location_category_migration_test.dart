@@ -54,13 +54,13 @@ CREATE TABLE integration_accounts (
     ).getSingle();
     expect(row.read<String>('category'), kWeatherLocationRegionNorthAmerica);
 
-    final london = await db.customSelect(
+    final tokyo = await db.customSelect(
       'SELECT include_weather, category FROM interests_locations WHERE id = ?',
-      variables: [Variable<String>('london_gb')],
+      variables: [Variable<String>('tokyo_jp')],
     ).getSingleOrNull();
-    expect(london, isNotNull);
-    expect(london!.read<String>('category'), kWeatherLocationRegionEurope);
-    expect(london.read<int>('include_weather'), 0);
+    expect(tokyo, isNotNull);
+    expect(tokyo!.read<String>('category'), 'general');
+    expect(tokyo.read<int>('include_weather'), 0);
 
     await db.close();
   });

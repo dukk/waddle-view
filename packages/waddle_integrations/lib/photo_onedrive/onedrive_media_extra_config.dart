@@ -1,11 +1,13 @@
 import 'dart:convert';
 
+import 'package:waddle_shared/persistence/media_category_ids.dart';
+
 /// One folder under the signed-in user's OneDrive (delegated `me` drive).
 class OneDriveMediaSourceSpec {
   const OneDriveMediaSourceSpec({
     required this.path,
     required this.kind,
-    required this.category,
+    required this.categoryIds,
     required this.maxFiles,
     this.perPollLimit,
   });
@@ -16,8 +18,12 @@ class OneDriveMediaSourceSpec {
   /// `photo`, `video`, or `both` (supported image + video MIME types).
   final String kind;
 
-  /// Slug matching [ContentCategories.id] for curator / slide `categoryId`.
-  final String category;
+  /// Curator category slugs ([ContentCategories.id]) for this folder.
+  final List<String> categoryIds;
+
+  /// Primary category (first id) for legacy [Photos.category] / [Videos.category].
+  String get category =>
+      categoryIds.isEmpty ? '' : categoryIds.first;
 
   /// Retention cap: oldest OneDrive rows in this category are pruned after sync.
   final int maxFiles;
@@ -41,8 +47,10 @@ class OneDriveMediaSourceSpec {
     if (kind != 'photo' && kind != 'video' && kind != 'both') {
       return null;
     }
-    final cat = m['category'];
-    if (cat is! String || cat.trim().isEmpty) {
+    final categoryIds = parseMediaConfigCategoryIds(
+      m['categoryIds'] ?? m['category'],
+    );
+    if (categoryIds.isEmpty) {
       return null;
     }
     final maxFiles = _positiveInt(m['maxFiles'], 50);
@@ -50,7 +58,7 @@ class OneDriveMediaSourceSpec {
     return OneDriveMediaSourceSpec(
       path: path,
       kind: kind,
-      category: cat.trim(),
+      categoryIds: categoryIds,
       maxFiles: maxFiles,
       perPollLimit: perPoll,
     );

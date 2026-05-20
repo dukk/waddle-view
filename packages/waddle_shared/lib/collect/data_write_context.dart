@@ -52,4 +52,16 @@ class DataWriteContextImpl implements DataWriteContext {
   @override
   Future<ProviderRuntimeConfig> resolveConfig(String providerId) =>
       _resolve(providerId);
+
+  /// Same db/blobs/secrets/env with different [diagnostics] (e.g. per-collect tagging).
+  DataWriteContextImpl withDiagnostics(CollectDiagnostics diagnostics) {
+    return DataWriteContextImpl(
+      db: db,
+      blobs: blobs,
+      secrets: secrets,
+      resolve: _resolve,
+      env: env,
+      diagnostics: diagnostics,
+    );
+  }
 }

@@ -15,6 +15,7 @@ import 'display_overlay_matrix_rain_settings.dart';
 import 'display_overlay_shape_rain_settings.dart';
 import 'display_overlay_analog_clock_settings.dart';
 import 'display_overlay_stock_quote_settings.dart';
+import 'display_overlay_qr_code_settings.dart';
 import 'display_overlay_calendar_month_settings.dart';
 import 'display_overlay_calendar_upcoming_settings.dart';
 import 'display_overlay_digital_clock_settings.dart';
@@ -238,6 +239,9 @@ String normalizeOverlayConfigForUpsert({
             (throw FormatException('invalid_config_json')),
     kOverlayTypePhotoSlideshow =>
         normalizePhotoSlideshowSettingsJsonString(restJson) ??
+            (throw FormatException('invalid_config_json')),
+    kOverlayTypeQrCode =>
+        normalizeQrCodeOverlayConfigJsonString(restJson) ??
             (throw FormatException('invalid_config_json')),
     _ => _normalizeUnknownOverlayConfigJson(split.rest, split.messages),
   };

@@ -8,17 +8,29 @@ import 'operator_telemetry_hub.dart';
 /// Bridges [CollectDiagnostics] to [AppDebugLog] for Flutter debug builds.
 class DisplayCollectDiagnostics implements CollectDiagnostics {
   @override
-  void engine(String message) => AppDebugLog.engine(message);
+  void engine(String message, {String? integrationType}) =>
+      AppDebugLog.engine(message);
 
   @override
-  void engineFail(String context, Object error, StackTrace stack) =>
+  void engineFail(
+    String context,
+    Object error,
+    StackTrace stack, {
+    String? integrationType,
+  }) =>
       AppDebugLog.engineFail(context, error, stack);
 
   @override
-  void provider(String message) => AppDebugLog.provider(message);
+  void provider(String message, {String? integrationType}) =>
+      AppDebugLog.provider(message);
 
   @override
-  void providerFail(String context, Object error, StackTrace stack) =>
+  void providerFail(
+    String context,
+    Object error,
+    StackTrace stack, {
+    String? integrationType,
+  }) =>
       AppDebugLog.providerFail(context, error, stack);
 }
 
@@ -27,16 +39,26 @@ class ReleaseCollectDiagnostics implements CollectDiagnostics {
   const ReleaseCollectDiagnostics();
 
   @override
-  void engine(String message) {}
+  void engine(String message, {String? integrationType}) {}
 
   @override
-  void engineFail(String context, Object error, StackTrace stack) {}
+  void engineFail(
+    String context,
+    Object error,
+    StackTrace stack, {
+    String? integrationType,
+  }) {}
 
   @override
-  void provider(String message) {}
+  void provider(String message, {String? integrationType}) {}
 
   @override
-  void providerFail(String context, Object error, StackTrace stack) {}
+  void providerFail(
+    String context,
+    Object error,
+    StackTrace stack, {
+    String? integrationType,
+  }) {}
 }
 
 /// Forwards to [OperatorTelemetryHub] (works in release).
@@ -46,18 +68,35 @@ final class HubCollectDiagnostics implements CollectDiagnostics {
   final OperatorTelemetryHub _hub;
 
   @override
-  void engine(String message) => _hub.addEngineLine(message);
+  void engine(String message, {String? integrationType}) =>
+      _hub.addEngineLine(message, integrationType: integrationType);
 
   @override
-  void engineFail(String context, Object error, StackTrace stack) =>
-      _hub.addEngineFail(context, error, stack);
+  void engineFail(
+    String context,
+    Object error,
+    StackTrace stack, {
+    String? integrationType,
+  }) =>
+      _hub.addEngineFail(context, error, stack, integrationType: integrationType);
 
   @override
-  void provider(String message) => _hub.addIntegrationLine(message);
+  void provider(String message, {String? integrationType}) =>
+      _hub.addIntegrationLine(message, integrationType: integrationType);
 
   @override
-  void providerFail(String context, Object error, StackTrace stack) =>
-      _hub.addIntegrationFail(context, error, stack);
+  void providerFail(
+    String context,
+    Object error,
+    StackTrace stack, {
+    String? integrationType,
+  }) =>
+      _hub.addIntegrationFail(
+        context,
+        error,
+        stack,
+        integrationType: integrationType,
+      );
 }
 
 final class CompositeCollectDiagnostics implements CollectDiagnostics {
@@ -66,30 +105,40 @@ final class CompositeCollectDiagnostics implements CollectDiagnostics {
   final List<CollectDiagnostics> _parts;
 
   @override
-  void engine(String message) {
+  void engine(String message, {String? integrationType}) {
     for (final d in _parts) {
-      d.engine(message);
+      d.engine(message, integrationType: integrationType);
     }
   }
 
   @override
-  void engineFail(String context, Object error, StackTrace stack) {
+  void engineFail(
+    String context,
+    Object error,
+    StackTrace stack, {
+    String? integrationType,
+  }) {
     for (final d in _parts) {
-      d.engineFail(context, error, stack);
+      d.engineFail(context, error, stack, integrationType: integrationType);
     }
   }
 
   @override
-  void provider(String message) {
+  void provider(String message, {String? integrationType}) {
     for (final d in _parts) {
-      d.provider(message);
+      d.provider(message, integrationType: integrationType);
     }
   }
 
   @override
-  void providerFail(String context, Object error, StackTrace stack) {
+  void providerFail(
+    String context,
+    Object error,
+    StackTrace stack, {
+    String? integrationType,
+  }) {
     for (final d in _parts) {
-      d.providerFail(context, error, stack);
+      d.providerFail(context, error, stack, integrationType: integrationType);
     }
   }
 }

@@ -10,6 +10,8 @@ import 'display_overlay_calendar_upcoming_settings.dart';
 import 'display_overlay_clock_placement.dart';
 import 'display_overlay_photo_slideshow_settings.dart';
 import 'display_overlay_static_image_settings.dart';
+import 'display_overlay_qr_code_settings.dart';
+import 'qr_overlay_payload.dart';
 import 'kv_schema_documentation.dart';
 import 'tables.dart';
 
@@ -668,39 +670,15 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
         title: 'OneDrivePhotoProviderConfig',
         description:
             'Microsoft Graph OneDrive (read-only): delta sync of photo paths '
-            'into [Photos]; retention and per-poll download caps.',
+            'into [Photos]; JPEG/PNG/WebP/GIF/HEIC/HEIF; downloads use '
+            'pre-auth URL or /items/{id}/content when delta omits downloadUrl; '
+            'retention and per-poll download caps. Paths are Graph '
+            'root-relative (/Pictures/...), not Windows C:\\ paths.',
         properties: _integrationConfigProperties({
           'globalPerPollLimit': {'type': 'integer', 'minimum': 1},
-          'accounts': {
-            'type': 'array',
-            'items': {
-              'type': 'object',
-              'properties': {
-                'graphAccountKey': {'type': 'string', 'minLength': 1},
-                'sources': {
-                  'type': 'array',
-                  'items': {
-                    'type': 'object',
-                    'properties': {
-                      'path': {'type': 'string', 'minLength': 1},
-                      'folder': {'type': 'string'},
-                      'kind': {
-                        'type': 'string',
-                        'enum': ['photo', 'video', 'both'],
-                      },
-                      'category': {'type': 'string', 'minLength': 1},
-                      'maxFiles': {'type': 'integer', 'minimum': 1},
-                      'perPollLimit': {'type': 'integer', 'minimum': 1},
-                    },
-                    'required': ['kind', 'category'],
-                    'additionalProperties': true,
-                  },
-                },
-              },
-              'required': ['graphAccountKey'],
-              'additionalProperties': true,
-            },
-          },
+          'accounts': _kOneDriveMediaAccountsSchema(
+            sourceKindEnum: ['photo', 'video', 'both'],
+          ),
         }),
       ),
     ),
@@ -714,9 +692,8 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
             {
               'path': '/Pictures/Family',
               'kind': 'photo',
-              'category': 'family_media',
+              'categoryIds': ['family_media'],
               'maxFiles': 30,
-              'perPollLimit': 5,
             },
           ],
         },
@@ -728,41 +705,15 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       _baseSchema(
         title: 'OneDriveVideoProviderConfig',
         description:
-            'Microsoft Graph OneDrive (read-only): delta sync of each path '
-            'subtree into photo/video categories; retention and per-poll '
-            'download caps. Remote deletes remove local rows.',
+            'Microsoft Graph OneDrive (read-only): delta sync of video paths '
+            'into [Videos]; MP4/QuickTime; content-endpoint download fallback; '
+            'retention and per-poll download caps. Paths are Graph '
+            'root-relative (/Videos/...), not Windows C:\\ paths.',
         properties: _integrationConfigProperties({
           'globalPerPollLimit': {'type': 'integer', 'minimum': 1},
-          'accounts': {
-            'type': 'array',
-            'items': {
-              'type': 'object',
-              'properties': {
-                'graphAccountKey': {'type': 'string', 'minLength': 1},
-                'sources': {
-                  'type': 'array',
-                  'items': {
-                    'type': 'object',
-                    'properties': {
-                      'path': {'type': 'string', 'minLength': 1},
-                      'folder': {'type': 'string'},
-                      'kind': {
-                        'type': 'string',
-                        'enum': ['photo', 'video'],
-                      },
-                      'category': {'type': 'string', 'minLength': 1},
-                      'maxFiles': {'type': 'integer', 'minimum': 1},
-                      'perPollLimit': {'type': 'integer', 'minimum': 1},
-                    },
-                    'required': ['kind', 'category'],
-                    'additionalProperties': true,
-                  },
-                },
-              },
-              'required': ['graphAccountKey'],
-              'additionalProperties': true,
-            },
-          },
+          'accounts': _kOneDriveMediaAccountsSchema(
+            sourceKindEnum: ['photo', 'video'],
+          ),
         }),
       ),
     ),
@@ -774,18 +725,10 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
           'graphAccountKey': 'personal',
           'sources': [
             {
-              'path': '/Pictures/Family',
-              'kind': 'both',
-              'category': 'family_media',
-              'maxFiles': 30,
-              'perPollLimit': 5,
-            },
-            {
               'path': '/Videos/Clips',
               'kind': 'video',
-              'category': 'home_videos',
+              'categoryIds': ['home_videos'],
               'maxFiles': 20,
-              'perPollLimit': 2,
             },
           ],
         },
@@ -1114,6 +1057,45 @@ Map<String, Object?> get _kOverlayCalendarPlacementProperties => {
     };
 
 /// Optional [ContentCategories.id] on screen widget config (controller: content-category picker).
+Map<String, Object?> _kOneDriveMediaAccountsSchema({
+  required List<String> sourceKindEnum,
+}) =>
+    {
+      'type': 'array',
+      'items': {
+        'type': 'object',
+        'properties': {
+          'graphAccountKey': {'type': 'string', 'minLength': 1},
+          'sources': {
+            'type': 'array',
+            'items': {
+              'type': 'object',
+              'properties': {
+                'path': {'type': 'string'},
+                'folder': {'type': 'string'},
+                'kind': {
+                  'type': 'string',
+                  'enum': sourceKindEnum,
+                },
+                'category': {'type': 'string', 'minLength': 1},
+                'categoryIds': {
+                  'type': 'array',
+                  'items': {'type': 'string', 'minLength': 1},
+                  'minItems': 1,
+                },
+                'maxFiles': {'type': 'integer', 'minimum': 1},
+                'perPollLimit': {'type': 'integer', 'minimum': 1},
+              },
+              'required': ['kind'],
+              'additionalProperties': true,
+            },
+          },
+        },
+        'required': ['graphAccountKey'],
+        'additionalProperties': true,
+      },
+    };
+
 const Map<String, Object?> _kJsonSchemaOptionalContentCategoryId = {
   'type': 'string',
   'minLength': 1,
@@ -1199,7 +1181,7 @@ final String kMigration20ExampleScreenLayoutJson = jsonEncode({
     {
       'type': 'weather',
       'slot': 'main',
-      'config': {'locationId': 'salt_lake_city_ut'},
+      'config': {'locationId': 'new_york_ny'},
     },
   ],
 });
@@ -1570,7 +1552,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
         requiredKeys: ['locationId'],
       ),
     ),
-    example: jsonEncode({'locationId': 'salt_lake_city_ut'}),
+    example: jsonEncode({'locationId': 'new_york_ny'}),
   ),
   'photo': ScreenConfigJsonDoc(
     schema: jsonEncode(
@@ -2568,6 +2550,70 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
         'x': kStaticImageOverlayPositionDefault,
         'y': kStaticImageOverlayPositionDefault,
         'scale': kClockOverlayScaleDefault,
+      }),
+    );
+  }
+  if (k == kOverlayTypeQrCode) {
+    return ProviderConfigJsonDoc(
+      schema: jsonEncode(
+        _baseSchema(
+          title: 'QR code overlay',
+          description:
+              'QR code with optional title above and description below at a '
+              'viewport position. Use template to build common URI payloads '
+              '(http, tel, mailto, wifi, geo, vcard, vcalendar, sms) or '
+              'custom raw data.',
+          properties: {
+            ..._kOverlayClockPlacementProperties,
+            'template': {
+              'type': 'string',
+              'enum': kQrOverlayTemplateValues,
+              'description': 'Payload builder template (default custom).',
+            },
+            'template_fields': {
+              'type': 'object',
+              'description':
+                  'Template inputs. http: url. mailto: email, subject, body. '
+                  'tel/sms: phone, body (sms). geo: lat, lng, label. wifi: '
+                  'ssid, securityType, password, hidden. vcard: fullName or '
+                  'firstName/lastName, org, phone, email, title. vcalendar: '
+                  'summary, dtStart, dtEnd, location, description. custom: '
+                  'payload.',
+              'additionalProperties': true,
+            },
+            'payload': {
+              'type': 'string',
+              'minLength': 1,
+              'description':
+                  'Encoded QR data (computed from template on save; editable '
+                  'for custom).',
+            },
+            'title': {
+              'type': 'string',
+              'description': 'Optional short label above the QR code.',
+            },
+            'description': {
+              'type': 'string',
+              'description': 'Optional caption below the QR code.',
+            },
+          },
+          requiredKeys: ['payload', 'template'],
+        ),
+      ),
+      example: jsonEncode({
+        'template': kQrOverlayTemplateWifi,
+        'template_fields': {
+          'ssid': 'GuestWiFi',
+          'securityType': 'WPA',
+          'password': 'welcome',
+          'hidden': false,
+        },
+        'payload': 'WIFI:T:WPA;S:GuestWiFi;P:welcome;',
+        'title': 'Guest Wi‑Fi',
+        'description': 'Scan to connect',
+        'x': kQrOverlayPositionXDefault,
+        'y': kQrOverlayPositionYDefault,
+        'scale': kQrOverlayScaleDefault,
       }),
     );
   }

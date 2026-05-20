@@ -14,7 +14,9 @@ import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_shared/integrations/integration_collect.dart';
 import 'package:waddle_shared/integrations/integration_kv_repository.dart';
 import 'package:waddle_shared/integrations/integration_kv_types.dart';
+import 'package:waddle_shared/persistence/photo_category_assignments.dart';
 import 'package:waddle_shared/persistence/tables.dart';
+import 'package:waddle_shared/persistence/video_category_assignments.dart';
 import 'pexels_provider_extra_config.dart';
 
 const String kPhotoPexelsIntegrationType = 'photo_pexels';
@@ -386,6 +388,11 @@ class PexelsPhotosDataProvider implements IDataProvider {
         fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(nowMs),
         suppressed: Value(blocked),
       ),
+    );
+    await replacePhotoCategoryAssignments(
+      ctx.db,
+      photoId: id,
+      categoryIds: [category],
     );
     ctx.diagnostics.provider(
       'pexels: stored photo id=$id category=$category bytes=${bytes.length}'
