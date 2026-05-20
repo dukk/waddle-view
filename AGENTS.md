@@ -14,6 +14,7 @@
 7. **Documentation freshness**: when behavior, configuration, env vars, public endpoints, or operator workflows change, update the corresponding docs in the same task (for example `apps/waddle_display/README.md`, `.env.example`, and runbooks) or explain why no doc change is needed. New **`WADDLE_DISPLAY_*`** env vars also need a commented `# Environment=` entry in [`deploy/linux-arm64/waddle-view.service`](deploy/linux-arm64/waddle-view.service) (in sync with `.env.example` and `display_env.dart` / `provider_access_token_env.dart`).
 8. **Drift migration discipline**: for any schema/data-shape change in **`packages/waddle_shared/lib/persistence/`**, add/update migration logic and tests in the same task; do not land schema-affecting changes without a migration path and validation coverage.
 9. **General OpenAI + KV dashboards**: scheduled `general_openai` prompts, `general_*` multi-slot screens, and `kv_*` widgets — see [`.cursor/skills/general-openai-kv-display/SKILL.md`](.cursor/skills/general-openai-kv-display/SKILL.md) (schemas in `GET /v1/meta/config-schemas` → `kv_widget_types` / `kv_value_data_types`).
+10. **Built-in display overlays**: new overlay types (`shape_rain`, clocks, blob effects, etc.) — see [`.cursor/skills/add-display-overlay/SKILL.md`](.cursor/skills/add-display-overlay/SKILL.md) (schemas in `GET /v1/meta/config-schemas` → `overlay_types`; operator create/edit via **Overlays** and [controller-dialog-submit](.cursor/skills/controller-dialog-submit/SKILL.md)).
 
 ## Commands (from repo root)
 

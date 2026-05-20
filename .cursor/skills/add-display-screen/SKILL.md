@@ -16,6 +16,10 @@ Repo constraints: [AGENTS.md](../../../AGENTS.md) (default app **`apps/waddle_di
 - Do not edit other `apps/*` packages unless the task explicitly names them.
 - **`kv_*` widgets** are not standalone screen types — they render inside `general_*` layouts. Use [general-openai-kv-display](../general-openai-kv-display/SKILL.md) instead.
 
+## Related skills
+
+- [add-display-overlay](../add-display-overlay/SKILL.md) — celebration / always-on overlay types (separate from slide widgets)
+
 ## Checklist
 
 1. **Widget** — Add `*SlideWidget` (and supporting types) under `apps/waddle_display/lib/display/screens/<feature>/`.

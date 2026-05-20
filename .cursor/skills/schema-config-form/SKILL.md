@@ -13,6 +13,7 @@ disable-model-invocation: true
 ## When to use
 
 - **Use [`SchemaConfigForm`](../../../apps/waddle_controller/src/components/config/SchemaConfigForm.tsx)** for operator `config_json` editing when the shape is documented in [`config_json_documentation.dart`](../../../packages/waddle_shared/lib/persistence/config_json_documentation.dart). The controller loads type docs once per display connect via `GET /v1/meta/config-schemas` into [`configSchemaCache.ts`](../../../apps/waddle_controller/src/storage/configSchemaCache.ts) (not on every catalog page refresh).
+- For a **new built-in overlay type** end-to-end (registry, widget, normalize, icons), use [add-display-overlay](../add-display-overlay/SKILL.md) — this skill covers schema-driven form controls only.
 - **Do not** use for one-off composite UIs (Outlook calendar section, adoption flows) — keep bespoke sections there.
 - Inside a dialog that saves via API, pass **`disabled={saving}`** (or `busy`) while submit is in-flight — see [controller-dialog-submit](../controller-dialog-submit/SKILL.md).
 

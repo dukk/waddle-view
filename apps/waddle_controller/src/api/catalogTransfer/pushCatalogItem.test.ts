@@ -44,6 +44,14 @@ const screenPayload = {
   data_key: '',
 };
 
+const overlayPayload = {
+  kind: 'overlay' as const,
+  id: 'hearts',
+  overlay_type: 'hearts_rain',
+  label: 'Hearts',
+  config_json: {},
+};
+
 describe('pushCatalogItem', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -109,5 +117,37 @@ describe('pushCatalogItem', () => {
     });
     expect(result.status).toBe('failed');
     expect(apiFetch).not.toHaveBeenCalled();
+  });
+
+  it('patches overlay when overwrite and exists', async () => {
+    vi.mocked(catalogItemExists).mockResolvedValue(true);
+    const result = await pushCatalogItem({
+      source,
+      target,
+      payload: overlayPayload,
+      policy: 'overwrite',
+    });
+    expect(result.status).toBe('updated');
+    expect(apiFetch).toHaveBeenCalledWith(
+      target,
+      '/v1/display/overlays/hearts',
+      expect.objectContaining({ method: 'PATCH' }),
+    );
+  });
+
+  it('posts overlay as created when target id is free', async () => {
+    vi.mocked(catalogItemExists).mockResolvedValue(false);
+    const result = await pushCatalogItem({
+      source,
+      target,
+      payload: overlayPayload,
+      policy: 'overwrite',
+    });
+    expect(result.status).toBe('created');
+    expect(apiFetch).toHaveBeenCalledWith(
+      target,
+      '/v1/display/overlays',
+      expect.objectContaining({ method: 'POST' }),
+    );
   });
 });

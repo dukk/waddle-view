@@ -123,7 +123,7 @@ async function pushOverlay(input: {
     method: 'POST',
     body: JSON.stringify(body),
   });
-  return resultWithStatus(base, exists ? 'updated' : 'created');
+  return resultWithStatus(base, 'created');
 }
 
 async function pushScreen(input: {

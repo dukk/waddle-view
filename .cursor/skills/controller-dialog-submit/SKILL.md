@@ -95,7 +95,7 @@ const submit = async () => {
 ## Canonical examples
 
 - [`ScreenDialog.tsx`](../../../apps/waddle_controller/src/components/screens/ScreenDialog.tsx) — create/edit screen
-- [`OverlaysPage.tsx`](../../../apps/waddle_controller/src/pages/OverlaysPage.tsx) — `OverlayDialog`
+- [`OverlaysPage.tsx`](../../../apps/waddle_controller/src/pages/OverlaysPage.tsx) — `OverlayDialog` (new overlay **types** — see [add-display-overlay](../add-display-overlay/SKILL.md))
 
 ## Helper
 
