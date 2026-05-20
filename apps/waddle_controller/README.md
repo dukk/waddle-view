@@ -64,6 +64,8 @@ BFF API base path: **`/bff/v1/*`** (status, auth, settings, users, bootstrap, us
 
 When **`WADDLE_CONTROLLER_AUTH_ENABLED=1`**, adopted displays and encrypted API keys are stored in SQLite (`user_displays`) per operator account, synced on login, and used by the proxy when the SPA omits the target URL header.
 
+**`WADDLE_CONTROLLER_PROXY_UPSTREAM_TIMEOUT_MS`** (default **180000**) caps how long the BFF waits for a proxied display HTTP response before returning **502** with `display_timeout`. Raise on slow hardware if read endpoints still time out during heavy display refresh; mutating routes should return quickly once the display defers post-save refresh work.
+
 ### Display pairing
 
 1. Add a display in the first-run dialog (base URL only), or open **Manage displays**.

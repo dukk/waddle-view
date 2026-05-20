@@ -5,7 +5,10 @@ import 'display_overlay_falling_images_settings.dart';
 import 'display_overlay_floating_balloons_settings.dart';
 import 'display_overlay_edge_glow_settings.dart';
 import 'display_overlay_matrix_rain_settings.dart';
+import 'display_overlay_calendar_month_settings.dart';
+import 'display_overlay_calendar_upcoming_settings.dart';
 import 'display_overlay_clock_placement.dart';
+import 'display_overlay_photo_slideshow_settings.dart';
 import 'display_overlay_static_image_settings.dart';
 import 'kv_schema_documentation.dart';
 import 'tables.dart';
@@ -1067,6 +1070,39 @@ Map<String, Object?> get _kOverlayClockPlacementProperties => {
         'description':
             'Clock width (digital) or dial diameter (analog) as a fraction of '
             'the viewport shortest side.',
+      },
+      'opacity': {
+        'type': 'number',
+        'minimum': 0,
+        'maximum': 1,
+        'x-waddle-widget': 'slider',
+        'description': 'Opacity (default 1).',
+      },
+    };
+
+/// JSON Schema placement properties for calendar overlays.
+Map<String, Object?> get _kOverlayCalendarPlacementProperties => {
+      'x': {
+        'type': 'number',
+        'minimum': 0,
+        'maximum': 1,
+        'x-waddle-widget': 'slider',
+        'description': 'Horizontal anchor (0 = left, 1 = right).',
+      },
+      'y': {
+        'type': 'number',
+        'minimum': 0,
+        'maximum': 1,
+        'x-waddle-widget': 'slider',
+        'description': 'Vertical anchor (0 = top, 1 = bottom).',
+      },
+      'scale': {
+        'type': 'number',
+        'minimum': kStaticImageOverlayScaleMin,
+        'maximum': kStaticImageOverlayScaleMax,
+        'x-waddle-widget': 'slider',
+        'description':
+            'Overlay block width as a fraction of the viewport shortest side.',
       },
       'opacity': {
         'type': 'number',
@@ -2272,6 +2308,97 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
       }),
     );
   }
+  if (k == kOverlayTypePhotoSlideshow) {
+    return ProviderConfigJsonDoc(
+      schema: jsonEncode(
+        _baseSchema(
+          title: 'Photo slideshow',
+          description:
+              'Cycles random photos from the catalog at a viewport position. '
+              'Optional filters by content category, pixel size, and aspect '
+              'ratio. Assign on a curator configuration Overlay tab.',
+          properties: {
+            'x': {
+              'type': 'number',
+              'minimum': 0,
+              'maximum': 1,
+              'x-waddle-widget': 'slider',
+              'description': 'Horizontal anchor (0 = left, 1 = right).',
+            },
+            'y': {
+              'type': 'number',
+              'minimum': 0,
+              'maximum': 1,
+              'x-waddle-widget': 'slider',
+              'description': 'Vertical anchor (0 = top, 1 = bottom).',
+            },
+            'scale': {
+              'type': 'number',
+              'minimum': kStaticImageOverlayScaleMin,
+              'maximum': kStaticImageOverlayScaleMax,
+              'x-waddle-widget': 'slider',
+              'description':
+                  'Image width as a fraction of the viewport shortest side.',
+            },
+            'opacity': {
+              'type': 'number',
+              'minimum': 0,
+              'maximum': 1,
+              'x-waddle-widget': 'slider',
+              'description': 'Opacity (default 1).',
+            },
+            'interval_sec': {
+              'type': 'integer',
+              'minimum': kPhotoSlideshowIntervalSecMin,
+              'maximum': kPhotoSlideshowIntervalSecMax,
+              'description':
+                  'Seconds between random photo picks (default 60).',
+            },
+            'category_ids': {
+              'type': 'array',
+              'items': {'type': 'string', 'minLength': 1},
+              'description':
+                  'Optional content_categories ids; empty = all non-suppressed photos.',
+            },
+            'aspect_ratio': {
+              'type': 'string',
+              'enum': kPhotoSlideshowAspectRatioValues,
+              'description': 'Optional aspect filter (default any).',
+            },
+            'min_width': {
+              'type': 'integer',
+              'minimum': 1,
+              'description': 'Minimum pixel width from blob metadata.',
+            },
+            'max_width': {
+              'type': 'integer',
+              'minimum': 1,
+              'description': 'Maximum pixel width from blob metadata.',
+            },
+            'min_height': {
+              'type': 'integer',
+              'minimum': 1,
+              'description': 'Minimum pixel height from blob metadata.',
+            },
+            'max_height': {
+              'type': 'integer',
+              'minimum': 1,
+              'description': 'Maximum pixel height from blob metadata.',
+            },
+          },
+          requiredKeys: ['interval_sec'],
+        ),
+      ),
+      example: jsonEncode({
+        'x': kStaticImageOverlayPositionDefault,
+        'y': kStaticImageOverlayPositionDefault,
+        'scale': kStaticImageOverlayScaleDefault,
+        'interval_sec': kPhotoSlideshowIntervalSecDefault,
+        'category_ids': ['nature'],
+        'aspect_ratio': kPhotoSlideshowAspectLandscape,
+      }),
+    );
+  }
   if (k == kOverlayTypeDigitalClock) {
     return ProviderConfigJsonDoc(
       schema: jsonEncode(
@@ -2329,6 +2456,118 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
         'hourHandAccent': 'accent1',
         'minuteHandAccent': 2,
         'secondHandAccent': 'accent3',
+      }),
+    );
+  }
+  if (k == kOverlayTypeCalendarMonth) {
+    return ProviderConfigJsonDoc(
+      schema: jsonEncode(
+        _baseSchema(
+          title: 'Calendar month overlay',
+          description:
+              'Compact month grid at a viewport position. Styling matches the '
+              'calendar_month screen; assign on a curator Overlay tab.',
+          properties: {
+            ..._kOverlayCalendarPlacementProperties,
+            'categoryId': {
+              ..._kJsonSchemaOptionalContentCategoryId,
+              'description':
+                  'Optional content_categories id; when set, only events with '
+                  'this category appear in day markers.',
+            },
+          },
+        ),
+      ),
+      example: jsonEncode({
+        'x': kStaticImageOverlayPositionDefault,
+        'y': kStaticImageOverlayPositionDefault,
+        'scale': kCalendarMonthOverlayScaleDefault,
+      }),
+    );
+  }
+  if (k == kOverlayTypeCalendarUpcoming) {
+    return ProviderConfigJsonDoc(
+      schema: jsonEncode(
+        _baseSchema(
+          title: 'Calendar upcoming overlay',
+          description:
+              'Upcoming calendar events list at a viewport position. Options '
+              'match the calendar_month screen upcoming column.',
+          properties: {
+            ..._kOverlayCalendarPlacementProperties,
+            'categoryId': {
+              ..._kJsonSchemaOptionalContentCategoryId,
+              'description':
+                  'Optional content_categories id; when set, only matching '
+                  'events are listed.',
+            },
+            'upcomingDays': {
+              'type': 'integer',
+              'minimum': kCalendarUpcomingOverlayDaysMin,
+              'maximum': kCalendarUpcomingOverlayDaysMax,
+              'description':
+                  'Number of days ahead from today to include (default 5).',
+            },
+            'upcomingTime12Hour': {
+              'type': 'boolean',
+              'description': 'Use 12-hour times with AM/PM (default true).',
+            },
+            'upcomingTimeNoonLabel': {
+              'type': 'string',
+              'minLength': 1,
+              'description': 'Label for exactly 12:00 PM (default Noon).',
+            },
+            'upcomingTimeWidthCompact': {
+              'type': 'number',
+              'minimum': 1,
+              'description':
+                  'Time column width in logical px when layout is compact.',
+            },
+            'upcomingTimeWidth': {
+              'type': 'number',
+              'minimum': 1,
+              'description':
+                  'Time column width in logical px for non-compact layout.',
+            },
+          },
+        ),
+      ),
+      example: jsonEncode({
+        'x': kCalendarUpcomingOverlayPositionXDefault,
+        'y': kStaticImageOverlayPositionDefault,
+        'scale': kCalendarUpcomingOverlayScaleDefault,
+        'upcomingDays': kCalendarUpcomingOverlayDaysDefault,
+        'upcomingTime12Hour': true,
+        'upcomingTimeNoonLabel': 'Noon',
+      }),
+    );
+  }
+  if (k == kOverlayTypeStockQuote) {
+    return ProviderConfigJsonDoc(
+      schema: jsonEncode(
+        _baseSchema(
+          title: 'Stock quote overlay',
+          description:
+              'Single stock quote tile at a viewport position. Matches the '
+              'stock quotes screen tile; requires stock_finnhub collect and an '
+              'interests_stock_symbols row for symbolId.',
+          properties: {
+            ..._kOverlayClockPlacementProperties,
+            'symbolId': {
+              'type': 'string',
+              'minLength': 1,
+              'description':
+                  'interests_stock_symbols.id for the symbol to display.',
+            },
+          },
+          requiredKeys: ['symbolId'],
+        ),
+      ),
+      example: jsonEncode({
+        'symbolId': 'aapl',
+        'x': kStaticImageOverlayPositionDefault,
+        'y': kStaticImageOverlayPositionDefault,
+        'scale': kClockOverlayScaleDefault,
       }),
     );
   }

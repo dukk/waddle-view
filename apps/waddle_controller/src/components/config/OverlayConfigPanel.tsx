@@ -9,8 +9,13 @@ import { EdgeGlowConfigForm } from './EdgeGlowConfigForm';
 import { MatrixRainConfigForm } from './MatrixRainConfigForm';
 import { ShapeRainConfigForm } from './ShapeRainConfigForm';
 import { AnalogClockOverlayConfigForm } from './AnalogClockOverlayConfigForm';
+import { StockQuoteOverlayConfigForm } from './StockQuoteOverlayConfigForm';
+import { CalendarMonthOverlayConfigForm } from './CalendarMonthOverlayConfigForm';
+import { CalendarUpcomingOverlayConfigForm } from './CalendarUpcomingOverlayConfigForm';
 import { DigitalClockOverlayConfigForm } from './DigitalClockOverlayConfigForm';
+import { PhotoSlideshowOverlayConfigForm } from './PhotoSlideshowOverlayConfigForm';
 import { StaticImageConfigForm } from './StaticImageConfigForm';
+import type { ContentCategoryOption } from '@/components/CategoryMultiSelect';
 
 type Props = {
   display: SavedDisplay;
@@ -19,6 +24,7 @@ type Props = {
   formData: Record<string, unknown>;
   onChange: (next: Record<string, unknown>) => void;
   disabled?: boolean;
+  categories?: ContentCategoryOption[];
 };
 
 function isShapeRainType(t: string): boolean {
@@ -32,6 +38,7 @@ export function OverlayConfigPanel({
   formData,
   onChange,
   disabled,
+  categories = [],
 }: Props) {
   if (isShapeRainType(overlayType)) {
     return <ShapeRainConfigForm formData={formData} onChange={onChange} disabled={disabled} />;
@@ -76,6 +83,16 @@ export function OverlayConfigPanel({
       />
     );
   }
+  if (overlayType === 'photo_slideshow') {
+    return (
+      <PhotoSlideshowOverlayConfigForm
+        formData={formData}
+        onChange={onChange}
+        categories={categories}
+        disabled={disabled}
+      />
+    );
+  }
   if (overlayType === 'digital_clock') {
     return (
       <DigitalClockOverlayConfigForm
@@ -88,6 +105,34 @@ export function OverlayConfigPanel({
   if (overlayType === 'analog_clock') {
     return (
       <AnalogClockOverlayConfigForm
+        formData={formData}
+        onChange={onChange}
+        disabled={disabled}
+      />
+    );
+  }
+  if (overlayType === 'calendar_month') {
+    return (
+      <CalendarMonthOverlayConfigForm
+        formData={formData}
+        onChange={onChange}
+        disabled={disabled}
+      />
+    );
+  }
+  if (overlayType === 'calendar_upcoming') {
+    return (
+      <CalendarUpcomingOverlayConfigForm
+        formData={formData}
+        onChange={onChange}
+        disabled={disabled}
+      />
+    );
+  }
+  if (overlayType === 'stock_quote') {
+    return (
+      <StockQuoteOverlayConfigForm
+        display={display}
         formData={formData}
         onChange={onChange}
         disabled={disabled}

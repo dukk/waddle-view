@@ -233,6 +233,57 @@ void main() {
     await db.close();
   });
 
+  test('upsert photo_slideshow stores normalized config_json without messages',
+      () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureOverlaysTableExists(db);
+    await upsertOverlay(
+      db,
+      id: 'ps1',
+      overlayType: kOverlayTypePhotoSlideshow,
+      label: 'Corner photos',
+      configJson:
+          '{"enabled":true,"messages":["ignored"],"interval_sec":45,'
+          '"x":0.1,"y":0.2,"scale":0.2,"category_ids":["nature"],'
+          '"aspect_ratio":"landscape","min_width":800}',
+    );
+    final rows = await fetchDisplayOverlays(db);
+    final cfg = jsonDecode(rows.single.configJson) as Map<String, dynamic>;
+    expect(cfg['interval_sec'], 45);
+    expect(cfg['category_ids'], ['nature']);
+    expect(cfg['aspect_ratio'], 'landscape');
+    expect(cfg['min_width'], 800);
+    expect(cfg.containsKey('messages'), isFalse);
+    expect(
+      await overlayTypeConfigJsonSchema(db, kOverlayTypePhotoSlideshow),
+      contains('Photo slideshow'),
+    );
+    await db.close();
+  });
+
+  test('upsert stock_quote stores normalized config_json without messages', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureOverlaysTableExists(db);
+    await upsertOverlay(
+      db,
+      id: 'stk1',
+      overlayType: kOverlayTypeStockQuote,
+      label: 'Corner AAPL',
+      configJson: '{"symbolId":"aapl","x":0.1,"y":0.2,"scale":0.2}',
+    );
+    final rows = await fetchDisplayOverlays(db);
+    final cfg = jsonDecode(rows.single.configJson) as Map<String, dynamic>;
+    expect(cfg['symbolId'], 'aapl');
+    expect(cfg['x'], 0.1);
+    expect(
+      await overlayTypeConfigJsonSchema(db, kOverlayTypeStockQuote),
+      contains('Stock quote overlay'),
+    );
+    await db.close();
+  });
+
   test('upsert analog_clock stores normalized config_json without messages', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);

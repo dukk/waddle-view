@@ -84,7 +84,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 34;
+  int get schemaVersion => 37;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -332,6 +332,27 @@ ORDER BY priority DESC, created_at DESC;
       }
       if (from == 33 && to >= 34) {
         await _migrateV33ToV34OverlayTypesCatalog(this);
+        if (to == 34) {
+          return;
+        }
+        from = 34;
+      }
+      if (from == 34 && to >= 35) {
+        await _migrateV34ToV35OverlayTypesCatalog(this);
+        if (to == 35) {
+          return;
+        }
+        from = 35;
+      }
+      if (from == 35 && to >= 36) {
+        await _migrateV35ToV36OverlayTypesCatalog(this);
+        if (to == 36) {
+          return;
+        }
+        from = 36;
+      }
+      if (from == 36 && to >= 37) {
+        await _migrateV36ToV37OverlayTypesCatalog(this);
         return;
       }
       throw UnsupportedError(
@@ -2192,6 +2213,30 @@ Future<void> _backfillIntegrationsAccountsReadyColumnsV23(AppDatabase db) async 
 
 /// Schema 34: backfill [OverlayTypes] rows for all built-in overlay catalog entries.
 Future<void> _migrateV33ToV34OverlayTypesCatalog(AppDatabase db) async {
+  if (!await _sqliteTableExists(db, 'overlay_types')) {
+    return;
+  }
+  await ensureOverlayTypes(db);
+}
+
+/// Schema 35: backfill calendar overlay types in [OverlayTypes].
+Future<void> _migrateV34ToV35OverlayTypesCatalog(AppDatabase db) async {
+  if (!await _sqliteTableExists(db, 'overlay_types')) {
+    return;
+  }
+  await ensureOverlayTypes(db);
+}
+
+/// Schema 36: backfill stock quote overlay type in [OverlayTypes].
+Future<void> _migrateV35ToV36OverlayTypesCatalog(AppDatabase db) async {
+  if (!await _sqliteTableExists(db, 'overlay_types')) {
+    return;
+  }
+  await ensureOverlayTypes(db);
+}
+
+/// Schema 37: backfill photo slideshow overlay type in [OverlayTypes].
+Future<void> _migrateV36ToV37OverlayTypesCatalog(AppDatabase db) async {
   if (!await _sqliteTableExists(db, 'overlay_types')) {
     return;
   }

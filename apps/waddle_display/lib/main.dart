@@ -19,6 +19,7 @@ import 'package:waddle_shared/auth/adoption_repository.dart';
 import 'package:waddle_shared/auth/cors_origin_repository.dart';
 import 'api/network_addressing.dart';
 import 'bootstrap/app_fatal_error_recovery.dart';
+import 'bootstrap/deferred_config_changed.dart';
 import 'bootstrap/webview_platform_bootstrap.dart';
 import 'clock.dart';
 import 'config/dev_dotenv_secrets.dart';
@@ -217,8 +218,10 @@ Future<void> _waddleBootstrap() async {
     );
     final navigationBus = DisplayNavigationBus();
     Future<void> onDisplayConfigChanged() async {
-      await dashboardCurator.refresh();
-      await curatorSelectionRefresh.notify();
+      await scheduleDeferredConfigChanged(() async {
+        await dashboardCurator.refresh();
+        await curatorSelectionRefresh.notify();
+      });
     }
     final handler = buildRootHandler(
       db: db,

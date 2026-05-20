@@ -4,7 +4,11 @@ import CelebrationIcon from '@mui/icons-material/Celebration';
 import ImageIcon from '@mui/icons-material/Image';
 import OpenInFullIcon from '@mui/icons-material/OpenInFull';
 import HighlightOutlinedIcon from '@mui/icons-material/HighlightOutlined';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import EventNoteIcon from '@mui/icons-material/EventNote';
 import Schedule from '@mui/icons-material/Schedule';
+import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
+import ShowChartIcon from '@mui/icons-material/ShowChart';
 import TerminalIcon from '@mui/icons-material/Terminal';
 import ToysOutlinedIcon from '@mui/icons-material/ToysOutlined';
 import type { ElementType } from 'react';
@@ -22,6 +26,10 @@ const OVERLAY_TYPE_ICONS: Record<string, ElementType> = {
   static_image: ImageIcon,
   digital_clock: DigitalClockScreenIcon,
   analog_clock: Schedule,
+  calendar_month: CalendarMonthIcon,
+  calendar_upcoming: EventNoteIcon,
+  stock_quote: ShowChartIcon,
+  photo_slideshow: PhotoLibraryIcon,
 };
 
 function resolveOverlayTypeIcon(overlayType: string): ElementType | null {

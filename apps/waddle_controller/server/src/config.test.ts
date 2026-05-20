@@ -52,4 +52,21 @@ describe('loadConfig', () => {
     const cfg = loadConfig();
     expect(cfg.clientIdentifier).toBe('wc-deployed');
   });
+
+  it('defaults proxy upstream timeout to 180s', () => {
+    delete process.env.WADDLE_CONTROLLER_PROXY_UPSTREAM_TIMEOUT_MS;
+    const cfg = loadConfig();
+    expect(cfg.proxyUpstreamTimeoutMs).toBe(180_000);
+  });
+
+  it('reads proxy upstream timeout from env', () => {
+    process.env.WADDLE_CONTROLLER_PROXY_UPSTREAM_TIMEOUT_MS = '90000';
+    const cfg = loadConfig();
+    expect(cfg.proxyUpstreamTimeoutMs).toBe(90_000);
+  });
+
+  it('rejects invalid proxy upstream timeout', () => {
+    process.env.WADDLE_CONTROLLER_PROXY_UPSTREAM_TIMEOUT_MS = '0';
+    expect(() => loadConfig()).toThrow(/PROXY_UPSTREAM_TIMEOUT_MS/);
+  });
 });

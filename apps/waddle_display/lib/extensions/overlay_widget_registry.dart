@@ -10,14 +10,22 @@ import 'package:waddle_shared/persistence/display_overlay_edge_glow_settings.dar
 import 'package:waddle_shared/persistence/display_overlay_matrix_rain_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_shape_rain_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_analog_clock_settings.dart';
+import 'package:waddle_shared/persistence/display_overlay_stock_quote_settings.dart';
+import 'package:waddle_shared/persistence/display_overlay_calendar_month_settings.dart';
+import 'package:waddle_shared/persistence/display_overlay_calendar_upcoming_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_digital_clock_settings.dart';
+import 'package:waddle_shared/persistence/display_overlay_photo_slideshow_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_static_image_settings.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 
 import '../display/overlay/analog_clock_overlay.dart';
+import '../display/overlay/stock_quote_overlay.dart';
+import '../display/overlay/calendar_month_overlay.dart';
+import '../display/overlay/calendar_upcoming_overlay.dart';
 import '../display/overlay/birthday_confetti_overlay.dart';
 import '../display/overlay/digital_clock_overlay.dart';
 import '../display/overlay/display_image_overlay.dart';
+import '../display/overlay/photo_slideshow_overlay.dart';
 import '../display/overlay/bouncing_message_overlay.dart';
 import '../display/overlay/celebration_overlay_schedule.dart';
 import '../display/overlay/falling_images_overlay.dart';
@@ -79,12 +87,23 @@ class OverlayWidgetRegistry {
     }
     final typeOrder = <String>[
       if (byType.containsKey(kOverlayTypeStaticImage)) kOverlayTypeStaticImage,
+      if (byType.containsKey(kOverlayTypePhotoSlideshow))
+        kOverlayTypePhotoSlideshow,
       if (byType.containsKey(kOverlayTypeDigitalClock)) kOverlayTypeDigitalClock,
       if (byType.containsKey(kOverlayTypeAnalogClock)) kOverlayTypeAnalogClock,
+      if (byType.containsKey(kOverlayTypeCalendarMonth))
+        kOverlayTypeCalendarMonth,
+      if (byType.containsKey(kOverlayTypeCalendarUpcoming))
+        kOverlayTypeCalendarUpcoming,
+      if (byType.containsKey(kOverlayTypeStockQuote)) kOverlayTypeStockQuote,
       for (final t in byType.keys)
         if (t != kOverlayTypeStaticImage &&
+            t != kOverlayTypePhotoSlideshow &&
             t != kOverlayTypeDigitalClock &&
-            t != kOverlayTypeAnalogClock)
+            t != kOverlayTypeAnalogClock &&
+            t != kOverlayTypeCalendarMonth &&
+            t != kOverlayTypeCalendarUpcoming &&
+            t != kOverlayTypeStockQuote)
           t,
     ];
     final layers = <Widget>[];
@@ -206,6 +225,22 @@ void registerBuiltins(OverlayWidgetRegistry registry) {
     );
   });
 
+  registry.register(kOverlayTypePhotoSlideshow, (ctx, matches) {
+    if (matches.isEmpty) {
+      return null;
+    }
+    final settings =
+        PhotoSlideshowOverlaySettings.parse(matches.first.configJson);
+    if (!settings.isRenderable) {
+      return null;
+    }
+    return PhotoSlideshowOverlay(
+      settings: settings,
+      blobs: ctx.blobs,
+      db: ctx.db,
+    );
+  });
+
   registry.register(kOverlayTypeDigitalClock, (ctx, matches) {
     if (matches.isEmpty) {
       return null;
@@ -227,6 +262,54 @@ void registerBuiltins(OverlayWidgetRegistry registry) {
         .map((r) => AnalogClockOverlaySettings.parse(r.configJson))
         .toList();
     return AnalogClockOverlay(
+      settingsList: settings,
+      theme: ctx.theme,
+    );
+  });
+
+  registry.register(kOverlayTypeStockQuote, (ctx, matches) {
+    if (matches.isEmpty) {
+      return null;
+    }
+    final settings = matches
+        .map((r) => StockQuoteOverlaySettings.parse(r.configJson))
+        .where((s) => s.symbolId.isNotEmpty)
+        .toList();
+    if (settings.isEmpty) {
+      return null;
+    }
+    return StockQuoteOverlay(
+      db: ctx.db,
+      settingsList: settings,
+      theme: ctx.theme,
+    );
+  });
+
+  registry.register(kOverlayTypeCalendarMonth, (ctx, matches) {
+    if (matches.isEmpty) {
+      return null;
+    }
+    final settings = matches
+        .map((r) => CalendarMonthOverlaySettings.parse(r.configJson))
+        .toList();
+    return CalendarMonthOverlay(
+      db: ctx.db,
+      blobs: ctx.blobs,
+      settingsList: settings,
+      theme: ctx.theme,
+    );
+  });
+
+  registry.register(kOverlayTypeCalendarUpcoming, (ctx, matches) {
+    if (matches.isEmpty) {
+      return null;
+    }
+    final settings = matches
+        .map((r) => CalendarUpcomingOverlaySettings.parse(r.configJson))
+        .toList();
+    return CalendarUpcomingOverlay(
+      db: ctx.db,
+      blobs: ctx.blobs,
       settingsList: settings,
       theme: ctx.theme,
     );

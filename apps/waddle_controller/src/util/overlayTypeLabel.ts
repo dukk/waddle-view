@@ -11,6 +11,10 @@ const FALLBACK_LABELS: Record<string, string> = {
   static_image: 'Static image',
   digital_clock: 'Digital clock',
   analog_clock: 'Analog clock',
+  calendar_month: 'Calendar month',
+  calendar_upcoming: 'Calendar upcoming',
+  stock_quote: 'Stock quote',
+  photo_slideshow: 'Photo slideshow',
 };
 
 /** Human-facing label for an overlay type (registry label when available). */

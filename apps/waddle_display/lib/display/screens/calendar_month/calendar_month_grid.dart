@@ -3,6 +3,10 @@
 import 'package:flutter/material.dart';
 import 'package:timezone/timezone.dart';
 
+/// ValueKey for an in-current-month day cell on [CalendarMonthSlideWidget] (tests).
+Key calendarMonthInMonthDayCellKey(int day) =>
+    ValueKey<String>('calendar_month_in_month_$day');
+
 /// Interprets [stored] as an absolute instant and returns its wall clock in [zone].
 TZDateTime calendarInstantInZone(DateTime stored, Location zone) {
   final utc = stored.toUtc();

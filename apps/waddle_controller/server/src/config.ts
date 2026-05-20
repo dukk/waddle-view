@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { defaultTlsDir, envFlag, resolveTls, type ResolvedTls } from '@waddle/node-tls';
+import { DEFAULT_PROXY_UPSTREAM_TIMEOUT_MS } from './services/insecureFetch.js';
 
 export type AppConfig = {
   authEnabled: boolean;
@@ -11,7 +12,21 @@ export type AppConfig = {
   clientIdentifier: string | null;
   secureCookies: boolean;
   tls: ResolvedTls;
+  /** Max wait for a proxied display HTTP response (socket inactivity). */
+  proxyUpstreamTimeoutMs: number;
 };
+
+function parseProxyUpstreamTimeoutMs(env: NodeJS.ProcessEnv): number {
+  const raw = env.WADDLE_CONTROLLER_PROXY_UPSTREAM_TIMEOUT_MS?.trim();
+  if (!raw) return DEFAULT_PROXY_UPSTREAM_TIMEOUT_MS;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 1_000) {
+    throw new Error(
+      'WADDLE_CONTROLLER_PROXY_UPSTREAM_TIMEOUT_MS must be a number >= 1000',
+    );
+  }
+  return Math.floor(n);
+}
 
 export function loadConfig(): AppConfig {
   const authEnabled = envFlag('WADDLE_CONTROLLER_AUTH_ENABLED', process.env, false);
@@ -57,5 +72,6 @@ export function loadConfig(): AppConfig {
     clientIdentifier,
     secureCookies,
     tls,
+    proxyUpstreamTimeoutMs: parseProxyUpstreamTimeoutMs(process.env),
   };
 }

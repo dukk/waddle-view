@@ -2,7 +2,9 @@ import 'dart:convert';
 
 import 'package:test/test.dart';
 import 'package:waddle_shared/persistence/config_json_documentation.dart';
+import 'package:waddle_shared/persistence/display_overlay_calendar_upcoming_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_falling_images_settings.dart';
+import 'package:waddle_shared/persistence/display_overlay_photo_slideshow_settings.dart';
 
 void main() {
   test('provider meta schemas and examples are valid JSON', () {
@@ -82,6 +84,36 @@ void main() {
     final balloons = displayOverlayConfigJsonDocForType('floating_balloons');
     expect(jsonDecode(balloons.schema), isA<Map<String, dynamic>>());
     expect(jsonDecode(balloons.example), isA<Map<String, dynamic>>());
+    final calendarMonth = displayOverlayConfigJsonDocForType('calendar_month');
+    expect(jsonDecode(calendarMonth.schema), isA<Map<String, dynamic>>());
+    expect(jsonDecode(calendarMonth.example), isA<Map<String, dynamic>>());
+    final calendarUpcoming =
+        displayOverlayConfigJsonDocForType('calendar_upcoming');
+    expect(jsonDecode(calendarUpcoming.schema), isA<Map<String, dynamic>>());
+    final stockQuote = displayOverlayConfigJsonDocForType('stock_quote');
+    expect(jsonDecode(stockQuote.schema), isA<Map<String, dynamic>>());
+    expect(jsonDecode(stockQuote.example), isA<Map<String, dynamic>>());
+    final photoSlideshow =
+        displayOverlayConfigJsonDocForType('photo_slideshow');
+    expect(jsonDecode(photoSlideshow.schema), isA<Map<String, dynamic>>());
+    expect(jsonDecode(photoSlideshow.example), isA<Map<String, dynamic>>());
+    final slideshowSchema =
+        jsonDecode(photoSlideshow.schema) as Map<String, dynamic>;
+    expect(slideshowSchema['required'], ['interval_sec']);
+    final slideshowProps =
+        slideshowSchema['properties'] as Map<String, dynamic>;
+    final interval = slideshowProps['interval_sec'] as Map<String, dynamic>;
+    expect(interval['minimum'], kPhotoSlideshowIntervalSecMin);
+    expect(interval['maximum'], kPhotoSlideshowIntervalSecMax);
+    final stockQuoteSchema =
+        jsonDecode(stockQuote.schema) as Map<String, dynamic>;
+    expect(stockQuoteSchema['required'], ['symbolId']);
+    final upcomingSchema =
+        jsonDecode(calendarUpcoming.schema) as Map<String, dynamic>;
+    final upcomingProps = upcomingSchema['properties'] as Map<String, dynamic>;
+    final days = upcomingProps['upcomingDays'] as Map<String, dynamic>;
+    expect(days['minimum'], kCalendarUpcomingOverlayDaysMin);
+    expect(days['maximum'], kCalendarUpcomingOverlayDaysMax);
     final falling = displayOverlayConfigJsonDocForType('falling_images');
     final fallingSchema = jsonDecode(falling.schema) as Map<String, dynamic>;
     final fallingProps = fallingSchema['properties'] as Map<String, dynamic>;

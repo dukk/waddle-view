@@ -209,6 +209,18 @@ const String kOverlayTypeDigitalClock = 'digital_clock';
 /// Analog clock at a viewport position (curator-assignable).
 const String kOverlayTypeAnalogClock = 'analog_clock';
 
+/// Compact month grid at a viewport position (curator-assignable).
+const String kOverlayTypeCalendarMonth = 'calendar_month';
+
+/// Upcoming calendar events list at a viewport position (curator-assignable).
+const String kOverlayTypeCalendarUpcoming = 'calendar_upcoming';
+
+/// Single stock quote tile at a viewport position (curator-assignable).
+const String kOverlayTypeStockQuote = 'stock_quote';
+
+/// Random photos from the catalog at a fixed viewport position (curator-assignable).
+const String kOverlayTypePhotoSlideshow = 'photo_slideshow';
+
 /// Built-in overlay types exposed via `GET /v1/meta/overlay-types`.
 const List<String> kBuiltinOverlayTypes = [
   kOverlayTypeShapeRain,
@@ -221,6 +233,10 @@ const List<String> kBuiltinOverlayTypes = [
   kOverlayTypeStaticImage,
   kOverlayTypeDigitalClock,
   kOverlayTypeAnalogClock,
+  kOverlayTypeCalendarMonth,
+  kOverlayTypeCalendarUpcoming,
+  kOverlayTypeStockQuote,
+  kOverlayTypePhotoSlideshow,
 ];
 
 /// Seed row id for Wattle View's birthday bouncing message overlay.

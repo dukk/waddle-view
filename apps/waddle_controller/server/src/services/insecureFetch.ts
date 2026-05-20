@@ -2,7 +2,10 @@ import http from 'node:http';
 import https from 'node:https';
 import { Readable } from 'node:stream';
 
-const UPSTREAM_TIMEOUT_MS = 60_000;
+export const DEFAULT_PROXY_UPSTREAM_TIMEOUT_MS = 180_000;
+
+const httpAgent = new http.Agent({ keepAlive: false });
+const httpsAgent = new https.Agent({ keepAlive: false });
 
 export class DisplayUpstreamError extends Error {
   constructor(
@@ -45,13 +48,25 @@ function normalizeUpstreamError(url: string, err: unknown): DisplayUpstreamError
   );
 }
 
+function socketTimeoutError(): NodeJS.ErrnoException {
+  const err = new Error('socket timeout') as NodeJS.ErrnoException;
+  err.code = 'ETIMEDOUT';
+  return err;
+}
+
 export async function insecureNodeFetch(
   url: string,
-  init: { method: string; headers: Headers; body?: ArrayBuffer },
+  init: {
+    method: string;
+    headers: Headers;
+    body?: ArrayBuffer;
+    timeoutMs?: number;
+  },
 ): Promise<Response> {
   const parsed = new URL(url);
   const isHttps = parsed.protocol === 'https:';
   const lib = isHttps ? https.request : http.request;
+  const timeoutMs = init.timeoutMs ?? DEFAULT_PROXY_UPSTREAM_TIMEOUT_MS;
   const headerRecord: Record<string, string> = {};
   init.headers.forEach((value, key) => {
     headerRecord[key] = value;
@@ -70,6 +85,7 @@ export async function insecureNodeFetch(
         method: init.method,
         headers: headerRecord,
         rejectUnauthorized: false,
+        agent: isHttps ? httpsAgent : httpAgent,
       },
       (res) => {
         res.on('error', fail);
@@ -93,9 +109,9 @@ export async function insecureNodeFetch(
       },
     );
     req.on('error', fail);
-    req.setTimeout(UPSTREAM_TIMEOUT_MS, () => {
+    req.setTimeout(timeoutMs, () => {
       req.destroy();
-      fail(new Error('ETIMEDOUT'));
+      fail(socketTimeoutError());
     });
     if (init.body && init.body.byteLength > 0) {
       req.write(Buffer.from(init.body));

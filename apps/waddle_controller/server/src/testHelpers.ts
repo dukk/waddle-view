@@ -5,6 +5,7 @@ import type { AppConfig } from './config.js';
 import { openTestDatabase } from './db/database.js';
 import { createApp } from './app.js';
 import { resetRateLimits } from './lib/rateLimit.js';
+import { DEFAULT_PROXY_UPSTREAM_TIMEOUT_MS } from './services/insecureFetch.js';
 
 export function testConfig(dir: string, overrides: Partial<AppConfig> = {}): AppConfig {
   const dataDir = path.join(dir, 'data');
@@ -18,6 +19,7 @@ export function testConfig(dir: string, overrides: Partial<AppConfig> = {}): App
     clientIdentifier: null,
     secureCookies: false,
     tls: { enabled: false, paths: null, pem: null },
+    proxyUpstreamTimeoutMs: DEFAULT_PROXY_UPSTREAM_TIMEOUT_MS,
     ...overrides,
   };
 }

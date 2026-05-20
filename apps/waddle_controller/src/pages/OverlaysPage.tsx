@@ -43,6 +43,7 @@ import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { catalogCardGridSx } from '@/constants/catalogLayout';
 import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import { OverlaysHelpContent } from '@/components/help/OverlaysHelpContent';
+import type { ContentCategoryOption } from '@/components/CategoryMultiSelect';
 import { OverlayConfigPanel } from '@/components/config/OverlayConfigPanel';
 import { completeDialogSave } from '@/util/dialogSave';
 import { parseJsonObject } from '@/util/json';
@@ -184,6 +185,21 @@ function overlayConfigForSubmit(
   if (t === 'falling_images') {
     return fallingImagesConfigFromForm(stripMessagesFromConfig(form));
   }
+  if (t === 'photo_slideshow') {
+    const out: Record<string, unknown> = { ...form };
+    if (!Array.isArray(out.category_ids) || out.category_ids.length === 0) {
+      delete out.category_ids;
+    }
+    if (out.aspect_ratio === 'any') {
+      delete out.aspect_ratio;
+    }
+    for (const key of ['min_width', 'max_width', 'min_height', 'max_height'] as const) {
+      if (out[key] === undefined || out[key] === null || out[key] === '') {
+        delete out[key];
+      }
+    }
+    return out;
+  }
   return form;
 }
 
@@ -227,8 +243,37 @@ function OverlayDialog({
   const [label, setLabel] = useState('');
   const [overlayType, setOverlayType] = useState(overlayTypes[0]?.overlay_type ?? 'shape_rain');
   const [configForm, setConfigForm] = useState<Record<string, unknown>>({});
+  const [categories, setCategories] = useState<ContentCategoryOption[]>([]);
 
   const exampleFor = useMemo(() => exampleForType(overlayTypes), [overlayTypes]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await apiJson<{ items: ContentCategoryOption[] }>(
+          active,
+          '/v1/curator/categories',
+        );
+        if (!cancelled) {
+          setCategories(
+            (res.items ?? [])
+              .filter((c) => typeof c.id === 'string' && c.id.trim())
+              .map((c) => ({
+                id: c.id.trim(),
+                label: (c.label ?? c.id).trim() || c.id.trim(),
+              })),
+          );
+        }
+      } catch {
+        if (!cancelled) setCategories([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, active]);
 
   useEffect(() => {
     if (!open) return;
@@ -355,6 +400,8 @@ function OverlayDialog({
             schema={configSchema}
             formData={configForm}
             onChange={setConfigForm}
+            disabled={saving}
+            categories={categories}
           />
         </Stack>
       </DialogContent>

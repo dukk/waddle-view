@@ -197,6 +197,7 @@ export async function forwardDisplayProxy(
       method,
       headers,
       body: body && body.byteLength > 0 ? body : undefined,
+      timeoutMs: config.proxyUpstreamTimeoutMs,
     });
 
     const responseHeaders = new Headers();
