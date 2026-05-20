@@ -51,8 +51,7 @@ export function CatalogListWithTransferSection({
         </Stack>
       ) : (
         <Stack spacing={3}>
-          {toolbar}
-          {list}
+          {mainContent}
           {transferPanel}
         </Stack>
       )}
