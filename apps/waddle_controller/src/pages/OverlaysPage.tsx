@@ -33,6 +33,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { useDisplay } from '@/context/DisplayContext';
 import { CatalogDisplayTransferPanel } from '@/components/catalog/CatalogDisplayTransferPanel';
+import { CatalogListWithTransferSection } from '@/components/catalog/CatalogListWithTransferSection';
 import { apiFetch, apiJson, ApiError } from '@/api/client';
 import { CatalogPageToolbar } from '@/components/CatalogPageToolbar';
 import { CatalogPageHelp } from '@/components/CatalogPageHelp';
@@ -586,21 +587,6 @@ export function OverlaysPage() {
           curator schedule rules.
         </Typography>
       </Box>
-      <CatalogPageToolbar layout={layout} onLayoutChange={setLayout}>
-        {canWrite && (
-          <Button startIcon={<AddIcon />} variant="contained" onClick={openCreate}>
-            Add overlay
-          </Button>
-        )}
-        <Tooltip title="Reload overlays">
-          <span>
-            <IconButton onClick={() => void load()} disabled={loading} aria-label="Reload overlays">
-              <RefreshIcon />
-            </IconButton>
-          </span>
-        </Tooltip>
-      </CatalogPageToolbar>
-
       {(error || schemasError) && (
         <Alert severity="error">{error ?? schemasError}</Alert>
       )}
@@ -610,40 +596,67 @@ export function OverlaysPage() {
         </Alert>
       )}
 
-      {rows.length === 0 && !error && !loading ? (
-        <Typography variant="body2" color="text.secondary">
-          No overlays defined yet.
-        </Typography>
-      ) : layout === 'card' ? (
-        <Box sx={catalogCardGridSx}>
-          {rows.map((row) => (
-            <OverlayCard
-              key={row.id}
-              row={row}
+      <CatalogListWithTransferSection
+        toolbar={
+          <CatalogPageToolbar layout={layout} onLayoutChange={setLayout}>
+            {canWrite && (
+              <Button startIcon={<AddIcon />} variant="contained" onClick={openCreate}>
+                Add overlay
+              </Button>
+            )}
+            <Tooltip title="Reload overlays">
+              <span>
+                <IconButton
+                  onClick={() => void load()}
+                  disabled={loading}
+                  aria-label="Reload overlays"
+                >
+                  <RefreshIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
+          </CatalogPageToolbar>
+        }
+        list={
+          rows.length === 0 && !error && !loading ? (
+            <Typography variant="body2" color="text.secondary">
+              No overlays defined yet.
+            </Typography>
+          ) : layout === 'card' ? (
+            <Box sx={catalogCardGridSx}>
+              {rows.map((row) => (
+                <OverlayCard
+                  key={row.id}
+                  row={row}
+                  overlayTypes={schemas?.overlay_types ?? []}
+                  canWrite={canWrite}
+                  onEdit={() => openEdit(row)}
+                  onDelete={() => void deleteRow(row.id)}
+                />
+              ))}
+            </Box>
+          ) : (
+            <OverlayTable
+              rows={rows}
               overlayTypes={schemas?.overlay_types ?? []}
               canWrite={canWrite}
-              onEdit={() => openEdit(row)}
-              onDelete={() => void deleteRow(row.id)}
+              onEdit={openEdit}
+              onDelete={(id) => void deleteRow(id)}
             />
-          ))}
-        </Box>
-      ) : (
-        <OverlayTable
-          rows={rows}
-          overlayTypes={schemas?.overlay_types ?? []}
-          canWrite={canWrite}
-          onEdit={openEdit}
-          onDelete={(id) => void deleteRow(id)}
-        />
-      )}
-
-      <CatalogDisplayTransferPanel
-        kind="overlay"
-        active={active}
-        displays={displays}
-        canWrite={canWrite}
-        activeItems={transferItems}
-        onTransferred={() => void load()}
+          )
+        }
+        transferPanel={
+          canWrite && displays.length > 1 ? (
+            <CatalogDisplayTransferPanel
+              kind="overlay"
+              active={active}
+              displays={displays}
+              canWrite={canWrite}
+              activeItems={transferItems}
+              onTransferred={() => void load()}
+            />
+          ) : null
+        }
       />
 
       {schemas && (

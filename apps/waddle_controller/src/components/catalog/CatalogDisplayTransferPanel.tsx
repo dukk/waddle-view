@@ -249,7 +249,7 @@ export function CatalogDisplayTransferPanel({
   const kindLabel = KIND_LABEL[kind];
 
   return (
-    <Paper variant="outlined" sx={{ p: 2 }}>
+    <Paper variant="outlined" sx={{ p: 2, width: '100%' }}>
       <Typography variant="subtitle1" fontWeight={600} gutterBottom>
         Copy between displays
       </Typography>

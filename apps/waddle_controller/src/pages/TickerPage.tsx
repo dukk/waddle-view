@@ -30,6 +30,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { useDisplay } from '@/context/DisplayContext';
 import { CatalogDisplayTransferPanel } from '@/components/catalog/CatalogDisplayTransferPanel';
+import { CatalogListWithTransferSection } from '@/components/catalog/CatalogListWithTransferSection';
 import { apiFetch, apiJson, ApiError } from '@/api/client';
 import { CatalogPageToolbar } from '@/components/CatalogPageToolbar';
 import { CatalogPageHelp } from '@/components/CatalogPageHelp';
@@ -146,7 +147,6 @@ function TickerTapeTable({
         <TableHead>
           <TableRow>
             <TableCell>Name</TableCell>
-            <TableCell>ID</TableCell>
             <TableCell>Type</TableCell>
             <TableCell>Weight</TableCell>
             <TableCell>Sort</TableCell>
@@ -164,7 +164,6 @@ function TickerTapeTable({
                 <TableCell sx={{ fontWeight: tickerRowHasCustomLabel(row) ? 600 : 400 }}>
                   {title}
                 </TableCell>
-                <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.id}</TableCell>
                 <TableCell>
                   {tickerTypeLabel(row.ticker_type, tickerTypeMetaFor(tickerTypes, row.ticker_type))}
                 </TableCell>
@@ -276,52 +275,60 @@ export function TickerPage() {
           speed is under Display settings.
         </Typography>
       </Box>
-      <CatalogPageToolbar layout={layout} onLayoutChange={setLayout}>
-        <Button
-          variant="contained"
-          onClick={() => setAddOpen(true)}
-          disabled={!schemas?.ticker_tape_types.length}
-        >
-          Add ticker tape
-        </Button>
-      </CatalogPageToolbar>
-
       {(error || schemasError) && (
         <Alert severity="error">{error ?? schemasError}</Alert>
       )}
 
-      {sortedRows.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
-          No ticker tapes in the catalog yet.
-        </Typography>
-      ) : layout === 'card' ? (
-        <Box sx={catalogCardGridSx}>
-          {sortedRows.map((r) => (
-            <TickerTapeCard
-              key={r.id}
-              row={r}
+      <CatalogListWithTransferSection
+        toolbar={
+          <CatalogPageToolbar layout={layout} onLayoutChange={setLayout}>
+            <Button
+              variant="contained"
+              onClick={() => setAddOpen(true)}
+              disabled={!schemas?.ticker_tape_types.length}
+            >
+              Add ticker tape
+            </Button>
+          </CatalogPageToolbar>
+        }
+        list={
+          sortedRows.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              No ticker tapes in the catalog yet.
+            </Typography>
+          ) : layout === 'card' ? (
+            <Box sx={catalogCardGridSx}>
+              {sortedRows.map((r) => (
+                <TickerTapeCard
+                  key={r.id}
+                  row={r}
+                  tickerTypes={schemas?.ticker_tape_types ?? []}
+                  onEdit={() => setEditRow(r)}
+                  onDelete={() => void deleteTape(r.id)}
+                />
+              ))}
+            </Box>
+          ) : (
+            <TickerTapeTable
+              rows={sortedRows}
               tickerTypes={schemas?.ticker_tape_types ?? []}
-              onEdit={() => setEditRow(r)}
-              onDelete={() => void deleteTape(r.id)}
+              onEdit={setEditRow}
+              onDelete={(id) => void deleteTape(id)}
             />
-          ))}
-        </Box>
-      ) : (
-        <TickerTapeTable
-          rows={sortedRows}
-          tickerTypes={schemas?.ticker_tape_types ?? []}
-          onEdit={setEditRow}
-          onDelete={(id) => void deleteTape(id)}
-        />
-      )}
-
-      <CatalogDisplayTransferPanel
-        kind="ticker"
-        active={active}
-        displays={displays}
-        canWrite={canWrite}
-        activeItems={transferItems}
-        onTransferred={() => void load()}
+          )
+        }
+        transferPanel={
+          canWrite && displays.length > 1 ? (
+            <CatalogDisplayTransferPanel
+              kind="ticker"
+              active={active}
+              displays={displays}
+              canWrite={canWrite}
+              activeItems={transferItems}
+              onTransferred={() => void load()}
+            />
+          ) : null
+        }
       />
 
       {addOpen && schemas && (

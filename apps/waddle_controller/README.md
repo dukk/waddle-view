@@ -75,7 +75,7 @@ If a display loses its session, use **Adopt display** in the app bar (or complet
 
 ### Copy screens, overlays, and ticker tapes between displays
 
-When more than one display is paired, the bottom of **Screens**, **Overlays**, and **Ticker tapes** shows **Copy between displays** (requires **`screens.write`**, **`overlays.write`**, or **`ticker.write`** on the active session).
+When more than one display is paired, **Screens**, **Overlays**, and **Ticker tapes** show **Copy between displays** (requires **`screens.write`**, **`overlays.write`**, or **`ticker.write`** on the active session). On a wide viewport (more than four catalog card columns would fit in a row), the panel sits in a right column capped at two card widths with the page toolbar and catalog list to its left; on narrower widths the toolbar, list, and panel stack vertically.
 
 - **Import into [active]** — pick another display and a catalog item; copies onto the display selected in the header menu.
 - **Send from [active]** — pick an item from this display and one or more target displays (checkboxes; **Select all** / **Clear**).
