@@ -3,8 +3,6 @@ import 'dart:convert';
 import 'package:waddle_shared/config/calendar_integration_defaults.dart';
 import 'package:waddle_shared/persistence/calendar_event_categories.dart';
 
-import '../shared/calendar_provider_calendar_entry.dart';
-
 class IcalFeedConfig {
   const IcalFeedConfig({
     required this.id,

@@ -1,4 +1,3 @@
-import 'package:drift/drift.dart' show Value;
 import 'package:waddle_shared/auth/role_permissions.dart';
 import 'package:waddle_shared/config/adoption.dart';
 import 'package:waddle_shared/config/adoption_allowed_roles.dart';
@@ -23,8 +22,7 @@ Future<Map<String, dynamic>> readDisplayOperatorSettings(AppDatabase db) async {
     kv[kDisplayTextScaleTickerKvKey],
   );
   final tzRaw = kv[kDisplayTimezoneKvKey]?.trim() ?? '';
-  final displayTimezone =
-      tzRaw.isEmpty ? kDefaultDisplayTimezoneIana : tzRaw;
+  final displayTimezone = tzRaw.isEmpty ? kDefaultDisplayTimezoneIana : tzRaw;
   final programHistoryDepth = normalizeDisplayProgramHistoryDepth(
     kv[kDisplayProgramHistoryDepthKvKey],
   );
@@ -46,10 +44,12 @@ Future<Map<String, dynamic>> readDisplayOperatorSettings(AppDatabase db) async {
     'display_viewport_reserve_right_pct': viewportReserve.right,
     'display_viewport_reserve_bottom_pct': viewportReserve.bottom,
     'display_viewport_reserve_left_pct': viewportReserve.left,
-    'controller_time_format':
-        normalizeControllerTimeFormat(kv[kControllerTimeFormatKvKey]),
-    'controller_date_order':
-        normalizeControllerDateOrder(kv[kControllerDateOrderKvKey]),
+    'controller_time_format': normalizeControllerTimeFormat(
+      kv[kControllerTimeFormatKvKey],
+    ),
+    'controller_date_order': normalizeControllerDateOrder(
+      kv[kControllerDateOrderKvKey],
+    ),
     'adoption_allowed_roles': adoptionRolesList,
     'adoption_allow_new_requests': adoptionAllowedRoles.isNotEmpty,
   };
@@ -64,7 +64,9 @@ Future<bool> applyDisplayOperatorSettingsPut(
 
   if (body.containsKey('display_theme_id')) {
     final themeId = normalizeDisplayThemeId('${body['display_theme_id']}');
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
           ConfigKeyValuesCompanion.insert(
             key: kDisplayThemeIdKvKey,
             value: themeId,
@@ -76,7 +78,9 @@ Future<bool> applyDisplayOperatorSettingsPut(
     final depth = normalizeDisplayProgramHistoryDepth(
       '${body['display_program_history_depth']}',
     );
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
           ConfigKeyValuesCompanion.insert(
             key: kDisplayProgramHistoryDepthKvKey,
             value: '$depth',
@@ -88,7 +92,9 @@ Future<bool> applyDisplayOperatorSettingsPut(
     final screenTextScale = normalizeDisplayTextScaleOption(
       '${body['display_text_scale_screen']}',
     );
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
           ConfigKeyValuesCompanion.insert(
             key: kDisplayTextScaleScreenKvKey,
             value: screenTextScale,
@@ -100,7 +106,9 @@ Future<bool> applyDisplayOperatorSettingsPut(
     final tickerTextScale = normalizeDisplayTextScaleOption(
       '${body['display_text_scale_ticker']}',
     );
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
           ConfigKeyValuesCompanion.insert(
             key: kDisplayTextScaleTickerKvKey,
             value: tickerTextScale,
@@ -112,11 +120,13 @@ Future<bool> applyDisplayOperatorSettingsPut(
     final raw = body['display_timezone'];
     final s = raw == null ? '' : '$raw'.trim();
     if (s.isEmpty) {
-      await (db.delete(db.configKeyValues)
-            ..where((t) => t.key.equals(kDisplayTimezoneKvKey)))
-          .go();
+      await (db.delete(
+        db.configKeyValues,
+      )..where((t) => t.key.equals(kDisplayTimezoneKvKey))).go();
     } else {
-      await db.into(db.configKeyValues).insertOnConflictUpdate(
+      await db
+          .into(db.configKeyValues)
+          .insertOnConflictUpdate(
             ConfigKeyValuesCompanion.insert(
               key: kDisplayTimezoneKvKey,
               value: s,
@@ -129,7 +139,9 @@ Future<bool> applyDisplayOperatorSettingsPut(
     final top = normalizeViewportReservePct(
       '${body['display_viewport_reserve_top_pct']}',
     );
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
           ConfigKeyValuesCompanion.insert(
             key: kDisplayViewportReserveTopPctKvKey,
             value: '$top',
@@ -141,7 +153,9 @@ Future<bool> applyDisplayOperatorSettingsPut(
     final right = normalizeViewportReservePct(
       '${body['display_viewport_reserve_right_pct']}',
     );
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
           ConfigKeyValuesCompanion.insert(
             key: kDisplayViewportReserveRightPctKvKey,
             value: '$right',
@@ -153,7 +167,9 @@ Future<bool> applyDisplayOperatorSettingsPut(
     final bottom = normalizeViewportReservePct(
       '${body['display_viewport_reserve_bottom_pct']}',
     );
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
           ConfigKeyValuesCompanion.insert(
             key: kDisplayViewportReserveBottomPctKvKey,
             value: '$bottom',
@@ -165,7 +181,9 @@ Future<bool> applyDisplayOperatorSettingsPut(
     final left = normalizeViewportReservePct(
       '${body['display_viewport_reserve_left_pct']}',
     );
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
           ConfigKeyValuesCompanion.insert(
             key: kDisplayViewportReserveLeftPctKvKey,
             value: '$left',
@@ -174,8 +192,12 @@ Future<bool> applyDisplayOperatorSettingsPut(
     touched = true;
   }
   if (body.containsKey('controller_time_format')) {
-    final fmt = normalizeControllerTimeFormat('${body['controller_time_format']}');
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
+    final fmt = normalizeControllerTimeFormat(
+      '${body['controller_time_format']}',
+    );
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
           ConfigKeyValuesCompanion.insert(
             key: kControllerTimeFormatKvKey,
             value: fmt,
@@ -184,8 +206,12 @@ Future<bool> applyDisplayOperatorSettingsPut(
     touched = true;
   }
   if (body.containsKey('controller_date_order')) {
-    final order = normalizeControllerDateOrder('${body['controller_date_order']}');
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
+    final order = normalizeControllerDateOrder(
+      '${body['controller_date_order']}',
+    );
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
           ConfigKeyValuesCompanion.insert(
             key: kControllerDateOrderKvKey,
             value: order,
@@ -206,13 +232,17 @@ Future<bool> applyDisplayOperatorSettingsPut(
         }
       }
     }
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
           ConfigKeyValuesCompanion.insert(
             key: kAdoptionAllowedRolesKvKey,
             value: encodeAdoptionAllowedRoles(roles),
           ),
         );
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
           ConfigKeyValuesCompanion.insert(
             key: kAdoptionAllowNewRequestsKvKey,
             value: roles.isEmpty ? 'false' : 'true',
@@ -223,13 +253,17 @@ Future<bool> applyDisplayOperatorSettingsPut(
     final raw = body['adoption_allow_new_requests'];
     final flag = raw is bool ? raw : raw?.toString().toLowerCase() == 'true';
     final roles = flag ? Set<String>.from(kValidUserRoles) : <String>{};
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
           ConfigKeyValuesCompanion.insert(
             key: kAdoptionAllowedRolesKvKey,
             value: encodeAdoptionAllowedRoles(roles),
           ),
         );
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
           ConfigKeyValuesCompanion.insert(
             key: kAdoptionAllowNewRequestsKvKey,
             value: flag ? 'true' : 'false',

@@ -109,6 +109,25 @@ class TestWaddleCheckCommon(unittest.TestCase):
             with mock.patch.dict(os.environ, {"WADDLE_TEST_CONCURRENCY": "4"}):
                 self.assertEqual(c.test_concurrency(), 4)
 
+    def test_subprocess_env_prefers_node_before_augment_for_controller(self):
+        c = self.common
+        c._path_augmented = False
+        c._node_bin_dir_before_augment = None
+        with tempfile.TemporaryDirectory() as tmp:
+            preferred = Path(tmp) / "node22"
+            preferred.mkdir()
+            fake_node = preferred / ("node.exe" if os.name == "nt" else "node")
+            fake_node.write_text("", encoding="utf-8")
+            with mock.patch.object(c.shutil, "which", return_value=str(fake_node)):
+                c.augment_path_for_tooling()
+            controller = self.root / "apps" / "waddle_controller"
+            env = c._subprocess_env_for_cwd(controller)
+            self.assertIsNotNone(env)
+            assert env is not None
+            self.assertTrue(env["PATH"].startswith(str(preferred)))
+            other = self.root / "apps" / "waddle_display"
+            self.assertIsNone(c._subprocess_env_for_cwd(other))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,36 @@
+{
+	"folders": [
+		{
+			"name": "Waddle View",
+			"path": "."
+		}
+	],
+	"settings": {
+		"vitest.nodeExecutable": "${env:LOCALAPPDATA}/Programs/cursor/resources/app/resources/helpers/node.exe",
+		"vitest.enable": true,
+		"sqltools.connections": [
+			{
+				"previewLimit": 50,
+				"driver": "SQLite",
+				"database": "${workspaceFolder:waddle-view}/apps/waddle_controller/data/waddle_controller.db",
+				"group": "Waddle View",
+				"name": "Debug Waddle Controller DB"
+			},
+			{
+				"previewLimit": 50,
+				"driver": "SQLite",
+				"database": "${workspaceFolder:Waddle Display APPDATA}/waddle_display.db",
+				"name": "Debug Waddle Display DB",
+				"group": "Waddle View"
+			},
+			{
+				"previewLimit": 50,
+				"driver": "SQLite",
+				"database": "${env:APPDATA}/com.waddleview/waddle_display/waddle_display.db",
+				"name": "Display DB - Windows AppData",
+				"group": "Waddle View"
+			}
+		],
+		"sqltools.useNodeRuntime": true
+	}
+}

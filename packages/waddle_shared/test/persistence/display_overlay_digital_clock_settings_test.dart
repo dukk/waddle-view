@@ -1,5 +1,4 @@
 import 'package:test/test.dart';
-import 'package:waddle_shared/persistence/display_overlay_clock_placement.dart';
 import 'package:waddle_shared/persistence/display_overlay_digital_clock_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_static_image_settings.dart';
 

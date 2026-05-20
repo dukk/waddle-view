@@ -109,26 +109,25 @@ class ResolvedCuratorSelection {
   final ResolvedCuratorConfiguration? base;
   final List<ResolvedCuratorConfiguration> enhancements;
 
-  ResolvedCuratorConfiguration get primary =>
-      exclusive ?? base!;
+  ResolvedCuratorConfiguration get primary => exclusive ?? base!;
 
   Set<String> get effectiveOverlayMemberIds => _mergedMemberIds(
-        exclusive: (c) => c.overlayMemberIds,
-        base: (c) => c.overlayMemberIds,
-        enhancement: (c) => c.overlayMemberIds,
-      );
+    exclusive: (c) => c.overlayMemberIds,
+    base: (c) => c.overlayMemberIds,
+    enhancement: (c) => c.overlayMemberIds,
+  );
 
   Set<String> get effectiveScreenMemberIds => _mergedMemberIds(
-        exclusive: (c) => c.screenMemberIds,
-        base: (c) => c.screenMemberIds,
-        enhancement: (c) => c.screenMemberIds,
-      );
+    exclusive: (c) => c.screenMemberIds,
+    base: (c) => c.screenMemberIds,
+    enhancement: (c) => c.screenMemberIds,
+  );
 
   Set<String> get effectiveTickerMemberIds => _mergedMemberIds(
-        exclusive: (c) => c.tickerMemberIds,
-        base: (c) => c.tickerMemberIds,
-        enhancement: (c) => c.tickerMemberIds,
-      );
+    exclusive: (c) => c.tickerMemberIds,
+    base: (c) => c.tickerMemberIds,
+    enhancement: (c) => c.tickerMemberIds,
+  );
 
   Set<String> _mergedMemberIds({
     required Set<String> Function(CuratorConfigurationInput) exclusive,
@@ -143,7 +142,7 @@ class ResolvedCuratorSelection {
     if (this.base != null) {
       ids.addAll(base(this.base!.configuration));
     }
-    for (final e in this.enhancements) {
+    for (final e in enhancements) {
       ids.addAll(enhancement(e.configuration));
     }
     return ids;
@@ -186,16 +185,15 @@ class CuratorScheduleResolver {
       );
     }
 
-    final baseRules =
-        matching.where((m) => m.config.layer == kCuratorLayerBase).toList();
+    final baseRules = matching
+        .where((m) => m.config.layer == kCuratorLayerBase)
+        .toList();
     ResolvedCuratorConfiguration? baseResolved;
     if (baseRules.isNotEmpty) {
       baseResolved = _toResolved(_pickWinner(baseRules));
     } else {
       final fallback = configurations
-          .where(
-            (c) => c.layer == kCuratorLayerBase && c.defaultConfig,
-          )
+          .where((c) => c.layer == kCuratorLayerBase && c.defaultConfig)
           .toList();
       if (fallback.isEmpty) {
         throw StateError('No matching base curator and no default_config row');
@@ -209,10 +207,9 @@ class CuratorScheduleResolver {
       );
     }
 
-    final enhancementRules =
-        matching
-            .where((m) => m.config.layer == kCuratorLayerEnhancement)
-            .toList();
+    final enhancementRules = matching
+        .where((m) => m.config.layer == kCuratorLayerEnhancement)
+        .toList();
     final byConfig = <String, _MatchedRule>{};
     for (final m in enhancementRules) {
       final existing = byConfig[m.config.id];
@@ -220,13 +217,11 @@ class CuratorScheduleResolver {
         byConfig[m.config.id] = m;
       }
     }
-    final enhancements =
-        byConfig.values.map(_toResolved).toList()
-          ..sort(
-            (a, b) => b.configuration.sortOrder.compareTo(
-              a.configuration.sortOrder,
-            ),
-          );
+    final enhancements = byConfig.values.map(_toResolved).toList()
+      ..sort(
+        (a, b) =>
+            b.configuration.sortOrder.compareTo(a.configuration.sortOrder),
+      );
 
     return ResolvedCuratorSelection(
       base: baseResolved,

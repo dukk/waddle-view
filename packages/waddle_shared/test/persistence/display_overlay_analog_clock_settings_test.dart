@@ -1,6 +1,5 @@
 import 'package:test/test.dart';
 import 'package:waddle_shared/persistence/display_overlay_analog_clock_settings.dart';
-import 'package:waddle_shared/persistence/display_overlay_static_image_settings.dart';
 
 void main() {
   test('parse defaults when empty', () {
@@ -26,9 +25,7 @@ void main() {
   });
 
   test('parse unknown dialLabels falls back to none', () {
-    final s = AnalogClockOverlaySettings.parseMap({
-      'dialLabels': 'invalid',
-    });
+    final s = AnalogClockOverlaySettings.parseMap({'dialLabels': 'invalid'});
     expect(s.dialLabels, kAnalogClockOverlayDialLabelsDefault);
   });
 

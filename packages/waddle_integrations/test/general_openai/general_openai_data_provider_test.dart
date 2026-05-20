@@ -5,7 +5,6 @@ import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
-import 'package:waddle_integrations/general_openai/general_openai_config.dart';
 import 'package:waddle_integrations/general_openai/general_openai_data_provider.dart';
 import 'package:waddle_integrations/general_openai/openai_responses_client.dart';
 import 'package:waddle_shared/blob/blob_store.dart';
@@ -52,8 +51,10 @@ class _MemoryBlobStore implements BlobStore {
   Future<List<int>> readBytes(BlobRef ref) async => const [];
 
   @override
-  Future<BlobRef> putBytes(List<int> bytes, {required String logicalKey}) async =>
-      BlobRef(logicalKey);
+  Future<BlobRef> putBytes(
+    List<int> bytes, {
+    required String logicalKey,
+  }) async => BlobRef(logicalKey);
 
   @override
   File? tryLocalFile(BlobRef ref) => null;
@@ -87,7 +88,9 @@ void main() {
   });
 
   test('collect stores latest KV on success', () async {
-    await db.into(db.integrations).insert(
+    await db
+        .into(db.integrations)
+        .insert(
           IntegrationsCompanion.insert(
             id: 'default_general_openai',
             integrationType: kGeneralOpenAiProviderId,
@@ -137,7 +140,9 @@ void main() {
 
   test('collect skips when poll gate not elapsed', () async {
     const nowMs = 1_700_000_000_000;
-    await db.into(db.integrations).insert(
+    await db
+        .into(db.integrations)
+        .insert(
           IntegrationsCompanion.insert(
             id: 'default_general_openai',
             integrationType: kGeneralOpenAiProviderId,

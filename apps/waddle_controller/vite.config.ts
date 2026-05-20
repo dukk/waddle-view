@@ -23,6 +23,7 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    globalSetup: ['./tool/vitest-global-setup.mjs'],
     setupFiles: ['./vitest.setup.ts'],
     include: ['src/**/*.test.{ts,tsx}', 'server/src/**/*.test.ts'],
     coverage: {

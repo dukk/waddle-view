@@ -47,6 +47,30 @@ CONTROLLER_PREFIX = "apps/waddle_controller/"
 
 
 _path_augmented = False
+# Node binary directory captured before augment_path_for_tooling() mutates PATH.
+_node_bin_dir_before_augment: str | None = None
+
+
+def _capture_node_bin_dir_before_augment() -> None:
+    """Remember which `node` resolves first (e.g. Cursor Node 22 vs Program Files Node 24)."""
+    global _node_bin_dir_before_augment
+    if _node_bin_dir_before_augment is not None:
+        return
+    node = shutil.which("node")
+    if node:
+        _node_bin_dir_before_augment = str(Path(node).resolve().parent)
+
+
+def _subprocess_env_for_cwd(cwd: Path) -> dict[str, str] | None:
+    """Prefer pre-augment Node for waddle_controller (better-sqlite3 ABI matches engines)."""
+    if "waddle_controller" not in str(cwd).replace("\\", "/"):
+        return None
+    preferred = _node_bin_dir_before_augment
+    if not preferred:
+        return None
+    env = os.environ.copy()
+    env["PATH"] = preferred + os.pathsep + env.get("PATH", "")
+    return env
 
 
 def repo_root() -> Path:
@@ -90,6 +114,7 @@ def augment_path_for_tooling() -> None:
     global _path_augmented
     if _path_augmented:
         return
+    _capture_node_bin_dir_before_augment()
     _path_augmented = True
 
     extra: list[str] = []
@@ -185,6 +210,7 @@ def run_step(step: Step) -> tuple[int, str]:
     result = subprocess.run(
         argv,
         cwd=step.cwd,
+        env=_subprocess_env_for_cwd(step.cwd),
         capture_output=True,
         text=True,
         encoding="utf-8",
