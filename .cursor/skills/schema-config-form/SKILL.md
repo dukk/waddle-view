@@ -12,7 +12,7 @@ disable-model-invocation: true
 
 ## When to use
 
-- **Use [`SchemaConfigForm`](../../../apps/waddle_controller/src/components/config/SchemaConfigForm.tsx)** for operator `config_json` editing when the shape is documented in [`config_json_documentation.dart`](../../../packages/waddle_shared/lib/persistence/config_json_documentation.dart). The controller loads type docs once per display connect via `GET /v1/meta/config-schemas` into [`configSchemaCache.ts`](../../../apps/waddle_controller/src/storage/configSchemaCache.ts) (not on every catalog page refresh).
+- **Use [`SchemaConfigForm`](../../../apps/waddle_controller/src/components/config/SchemaConfigForm.tsx)** for operator `config_json` editing when the shape is documented in [`config_json_documentation.dart`](../../../packages/waddle_shared/lib/persistence/config_json_documentation.dart). The controller loads **type-level** `config_json_schema` from SQLite **`overlay_types`** via `GET /v1/meta/config-schemas` → `overlay_types`, cached in [`configSchemaCache.ts`](../../../apps/waddle_controller/src/storage/configSchemaCache.ts) (not on every catalog page refresh). New built-in overlay types require DB sync (`ensureOverlayTypes`) plus a cache prefix bump — see [add-display-overlay](../add-display-overlay/SKILL.md).
 - For a **new built-in overlay type** end-to-end (registry, widget, normalize, icons), use [add-display-overlay](../add-display-overlay/SKILL.md) — this skill covers schema-driven form controls only.
 - **Do not** use for one-off composite UIs (Outlook calendar section, adoption flows) — keep bespoke sections there.
 - Inside a dialog that saves via API, pass **`disabled={saving}`** (or `busy`) while submit is in-flight — see [controller-dialog-submit](../controller-dialog-submit/SKILL.md).
@@ -34,7 +34,7 @@ Helpers live in [`schemaConfigForm.ts`](../../../apps/waddle_controller/src/util
 1. Add or update `displayOverlayConfigJsonDocForType` / `screenConfigJsonDocForType` in [`config_json_documentation.dart`](../../../packages/waddle_shared/lib/persistence/config_json_documentation.dart).
 2. For sliders, include `minimum`, `maximum`, and optionally `'x-waddle-widget': 'slider'`.
 3. For overlay image pools, use array `items: { format: 'waddle-overlay-blob-key', ... }`.
-4. Expose built-in overlay types via `kBuiltinOverlayTypes` and include them in `GET /v1/meta/config-schemas` (legacy: `GET /v1/meta/overlay-types`).
+4. Add the type to `kBuiltinOverlayTypes` and ensure [`ensureOverlayTypes`](../../../packages/waddle_shared/lib/seed/tables/overlay_types_seed.dart) inserts/updates the **`overlay_types`** row (runs before `buildOverlayTypeConfigJsonMetaItemsFromDb` serves `GET /v1/meta/config-schemas`). Do not rely on a code-only catalog at API read time.
 
 ## Canonical usage
 

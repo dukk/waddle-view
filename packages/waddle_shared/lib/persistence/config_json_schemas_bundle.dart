@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../integration_accounts/integration_account_catalog.dart';
+import '../seed/tables/overlay_types_seed.dart';
 import 'config_json_documentation.dart';
 import 'kv_schema_documentation.dart';
 import 'database.dart';
@@ -186,6 +187,7 @@ Future<List<Map<String, Object?>>> buildTickerTypeConfigJsonMetaItemsFromDb(
 Future<List<Map<String, Object?>>> buildOverlayTypeConfigJsonMetaItemsFromDb(
   AppDatabase db,
 ) async {
+  await ensureOverlayTypes(db);
   final rows = await db.select(db.overlayTypes).get();
   if (rows.isEmpty) {
     return buildOverlayTypeConfigJsonMetaItems();

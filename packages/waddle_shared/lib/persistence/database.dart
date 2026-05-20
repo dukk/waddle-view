@@ -84,7 +84,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 33;
+  int get schemaVersion => 34;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -325,6 +325,13 @@ ORDER BY priority DESC, created_at DESC;
       }
       if (from == 32 && to >= 33) {
         await _migrateV32ToV33ViewportReserveOverrides(this);
+        if (to == 33) {
+          return;
+        }
+        from = 33;
+      }
+      if (from == 33 && to >= 34) {
+        await _migrateV33ToV34OverlayTypesCatalog(this);
         return;
       }
       throw UnsupportedError(
@@ -2181,6 +2188,14 @@ Future<void> _backfillIntegrationsAccountsReadyColumnsV23(AppDatabase db) async 
       [ready, id],
     );
   }
+}
+
+/// Schema 34: backfill [OverlayTypes] rows for all built-in overlay catalog entries.
+Future<void> _migrateV33ToV34OverlayTypesCatalog(AppDatabase db) async {
+  if (!await _sqliteTableExists(db, 'overlay_types')) {
+    return;
+  }
+  await ensureOverlayTypes(db);
 }
 
 /// Schema 33: per-curator viewport edge reserve overrides (nullable percent).

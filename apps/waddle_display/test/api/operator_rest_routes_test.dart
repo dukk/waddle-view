@@ -28,6 +28,12 @@ void main() {
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     expect(body.containsKey('kv_widget_types'), isTrue);
     expect(body.containsKey('overlay_types'), isTrue);
+
+    final overlayTypes = body['overlay_types'] as List<dynamic>;
+    final slugs = overlayTypes
+        .map((e) => (e as Map<String, dynamic>)['overlay_type'] as String)
+        .toSet();
+    expect(slugs, containsAll(['static_image', 'digital_clock', 'analog_clock']));
   });
 
   test('GET telemetry programs returns items list', () async {

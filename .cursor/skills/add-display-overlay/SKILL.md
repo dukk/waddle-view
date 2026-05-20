@@ -27,8 +27,10 @@ Repo constraints: [AGENTS.md](../../../AGENTS.md) (tests-first; Drift migration 
 ```mermaid
 flowchart LR
   subgraph shared [waddle_shared]
-    tables[kBuiltinOverlayTypes]
+    tables[kBuiltinOverlayTypes seed list]
     doc[displayOverlayConfigJsonDocForType]
+    seedFn[ensureOverlayTypes]
+    overlayTypesTable[overlay_types SQLite]
     norm[normalizeOverlayConfigForUpsert]
   end
   subgraph display [waddle_display]
@@ -40,16 +42,20 @@ flowchart LR
     panel[OverlayConfigPanel]
     page[OverlaysPage]
   end
-  doc --> panel
+  tables --> seedFn
+  doc --> seedFn
+  seedFn --> overlayTypesTable
+  overlayTypesTable --> page
   doc --> norm
   norm --> widget
   widget --> registry
   panel --> page
 ```
 
-- **Rows**: SQLite **`overlays`** (`id`, `overlay_type`, `label`, `config_json`).
-- **Type catalog**: **`overlay_types`** seeded from code via [`ensureOverlayTypes`](../../../packages/waddle_shared/lib/seed/tables/overlay_types_seed.dart).
-- **REST**: `POST` / `PATCH` `/v1/display/overlays`; blob upload `POST /v1/display/overlays/blobs`; schemas in `GET /v1/meta/config-schemas` → `overlay_types`.
+- **Instance rows**: SQLite **`overlays`** (`id`, `overlay_type`, `label`, `config_json`) — per-overlay settings only; no per-row `config_json_schema` required.
+- **Type catalog (operator dropdown + forms)**: SQLite **`overlay_types`** (`overlay_type`, `label`, `config_json_schema`). Every built-in type must have a row here; [`kBuiltinOverlayTypes`](../../../packages/waddle_shared/lib/persistence/tables.dart) is the **seed list**, not what REST returns directly.
+- **DB sync**: [`ensureOverlayTypes`](../../../packages/waddle_shared/lib/seed/tables/overlay_types_seed.dart) writes/updates catalog rows from `displayOverlayConfigJsonDocForType`. Runs on initial seed, overlay upsert, **`buildOverlayTypeConfigJsonMetaItemsFromDb`** (config-schemas), and a **Drift migration** when adding builtins to existing displays.
+- **REST**: `POST` / `PATCH` `/v1/display/overlays`; blob upload `POST /v1/display/overlays/blobs`; type docs in `GET /v1/meta/config-schemas` → `overlay_types` (DB rows after `ensureOverlayTypes`; legacy: `GET /v1/meta/overlay-types`).
 - **Runtime**: [`OverlayWidgetRegistry`](../../../apps/waddle_display/lib/extensions/overlay_widget_registry.dart) builds celebration layers; [`matchesCelebrationOverlay`](../../../apps/waddle_display/lib/display/overlay/celebration_overlay_schedule.dart) respects optional `config_json.trigger` (`signal` / `when`).
 - **Z-order**: `static_image`, `digital_clock`, and `analog_clock` render **before** other types (see `typeOrder` in the registry).
 
@@ -65,16 +71,18 @@ flowchart LR
 
 ## Checklist
 
-1. **Type id** — Add `kOverlayType*` constant and entry in [`kBuiltinOverlayTypes`](../../../packages/waddle_shared/lib/persistence/tables.dart).
-2. **Schema + example** — Branch in [`displayOverlayConfigJsonDocForType`](../../../packages/waddle_shared/lib/persistence/config_json_documentation.dart); extend [`config_json_documentation_test.dart`](../../../packages/waddle_shared/test/persistence/config_json_documentation_test.dart).
+1. **Type id** — Add `kOverlayType*` constant and entry in [`kBuiltinOverlayTypes`](../../../packages/waddle_shared/lib/persistence/tables.dart) (seed list only).
+2. **Schema + example** — Branch in [`displayOverlayConfigJsonDocForType`](../../../packages/waddle_shared/lib/persistence/config_json_documentation.dart); extend [`config_json_documentation_test.dart`](../../../packages/waddle_shared/test/persistence/config_json_documentation_test.dart). This schema is copied into **`overlay_types.config_json_schema`** by `ensureOverlayTypes`.
 3. **Label** — Add to [`kOverlayTypeTitles`](../../../packages/waddle_shared/lib/persistence/overlay_type_label.dart) (keep in sync with controller [`overlayTypeLabel.ts`](../../../apps/waddle_controller/src/util/overlayTypeLabel.ts)).
-4. **Persistence normalize** — If validation beyond generic JSON: settings module + `normalizeOverlayConfigForUpsert` switch case + test under `packages/waddle_shared/test/persistence/`.
-5. **Display widget** — `apps/waddle_display/lib/display/overlay/<name>_overlay.dart` + tests in `test/display/overlay/`.
-6. **Registry** — `registry.register(...)` in [`registerBuiltins`](../../../apps/waddle_display/lib/extensions/overlay_widget_registry.dart); return `null` when config is empty or unrenderable (see `falling_images`, `floating_balloons`).
-7. **Controller UI** — Branch in [`OverlayConfigPanel.tsx`](../../../apps/waddle_controller/src/components/config/OverlayConfigPanel.tsx); if needed, update `overlayConfigForSubmit` / `overlayConfigForForm` / `configPreview` in [`OverlaysPage.tsx`](../../../apps/waddle_controller/src/pages/OverlaysPage.tsx); optional `*ValidationSchema` in `src/util/`.
-8. **Icon** — Map in [`overlayTypeIcon.tsx`](../../../apps/waddle_controller/src/util/overlayTypeIcon.tsx).
-9. **Optional seed** — Idempotent overlay row in [`initial_seed.dart`](../../../packages/waddle_shared/lib/seed/initial_seed.dart) + blob seed if assets are required.
-10. **Docs** — [`apps/waddle_display/README.md`](../../../apps/waddle_display/README.md) overlay section; controller README only if operator workflow changes.
+4. **DB catalog sync** — Confirm [`ensureOverlayTypes`](../../../packages/waddle_shared/lib/seed/tables/overlay_types_seed.dart) picks up the new type. For existing installs, add a Drift migration step that calls `ensureOverlayTypes` (see schema 34 pattern in [`database.dart`](../../../packages/waddle_shared/lib/persistence/database.dart)). Do **not** expose types by unioning `kBuiltinOverlayTypes` at API read time — populate `overlay_types` first.
+5. **Persistence normalize** — If validation beyond generic JSON: settings module + `normalizeOverlayConfigForUpsert` switch case + test under `packages/waddle_shared/test/persistence/`.
+6. **Display widget** — `apps/waddle_display/lib/display/overlay/<name>_overlay.dart` + tests in `test/display/overlay/`.
+7. **Registry** — `registry.register(...)` in [`registerBuiltins`](../../../apps/waddle_display/lib/extensions/overlay_widget_registry.dart); return `null` when config is empty or unrenderable (see `falling_images`, `floating_balloons`).
+8. **Controller UI** — Branch in [`OverlayConfigPanel.tsx`](../../../apps/waddle_controller/src/components/config/OverlayConfigPanel.tsx); if needed, update `overlayConfigForSubmit` / `overlayConfigForForm` / `configPreview` in [`OverlaysPage.tsx`](../../../apps/waddle_controller/src/pages/OverlaysPage.tsx); optional `*ValidationSchema` in `src/util/`. Create/edit reads `config_json_schema` from cached **`overlay_types`** (via [`useConfigSchemas`](../../../apps/waddle_controller/src/hooks/useConfigSchemas.ts)), not from a hardcoded controller list.
+9. **Icon** — Map in [`overlayTypeIcon.tsx`](../../../apps/waddle_controller/src/util/overlayTypeIcon.tsx).
+10. **Controller schema cache** — Bump [`configSchemaCache.ts`](../../../apps/waddle_controller/src/storage/configSchemaCache.ts) `STORAGE_PREFIX` version when adding a builtin so Overlays → Create type dropdown refetches.
+11. **Optional seed** — Idempotent overlay **instance** row in [`initial_seed.dart`](../../../packages/waddle_shared/lib/seed/initial_seed.dart) + blob seed if assets are required (separate from `overlay_types` catalog row).
+12. **Docs** — [`apps/waddle_display/README.md`](../../../apps/waddle_display/README.md) overlay section; controller README only if operator workflow changes.
 
 ## Canonical examples
 
@@ -102,4 +110,4 @@ cd apps/waddle_controller && npm run test:coverage -- src/util/schemaConfigForm.
 
 Full CI parity: [run-waddle-checks](../run-waddle-checks/SKILL.md).
 
-**Manual**: create overlay in controller → Save disables button → display shows effect when overlay is on an active curator program.
+**Manual**: Overlays → Create overlay — new type appears in dropdown (DB-backed `overlay_types`); config form renders; Save persists instance `config_json` → display shows effect when overlay is on an active curator program.

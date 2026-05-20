@@ -19,6 +19,7 @@ const OVERLAY_TYPE_ICONS: Record<string, ElementType> = {
   matrix_rain: TerminalIcon,
   edge_glow: HighlightOutlinedIcon,
   floating_balloons: ToysOutlinedIcon,
+  static_image: ImageIcon,
   digital_clock: DigitalClockScreenIcon,
   analog_clock: Schedule,
 };

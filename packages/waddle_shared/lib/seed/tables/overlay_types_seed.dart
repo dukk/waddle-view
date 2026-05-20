@@ -5,14 +5,26 @@ import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/overlay_type_label.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 
+Future<bool> _sqliteTableExists(AppDatabase db, String tableName) async {
+  final row = await db.customSelect(
+    "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1",
+    variables: [Variable<String>(tableName)],
+  ).getSingleOrNull();
+  return row != null;
+}
+
 /// Ensures every built-in overlay type exists in [OverlayTypes].
 Future<void> ensureOverlayTypes(AppDatabase db) async {
-  final referenced = await db.customSelect(
-    'SELECT DISTINCT overlay_type FROM overlays',
-  ).get();
+  final referenced = <String>{};
+  if (await _sqliteTableExists(db, 'overlays')) {
+    final rows = await db.customSelect(
+      'SELECT DISTINCT overlay_type FROM overlays',
+    ).get();
+    referenced.addAll(rows.map((row) => row.read<String>('overlay_type')));
+  }
   final types = <String>{
     ...kBuiltinOverlayTypes,
-    for (final row in referenced) row.read<String>('overlay_type'),
+    ...referenced,
   };
   for (final overlayType in types) {
     final doc = displayOverlayConfigJsonDocForType(overlayType);

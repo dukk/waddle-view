@@ -62,7 +62,7 @@ describe('sessions storage', () => {
 
   it('clearSession clears cached config schemas', () => {
     localStorage.setItem(
-      'waddle_controller_config_schemas_v1:d1',
+      'waddle_controller_config_schemas_v2:d1',
       JSON.stringify({
         screen_types: [],
         ticker_tape_types: [],
@@ -71,7 +71,7 @@ describe('sessions storage', () => {
       }),
     );
     clearSession('d1');
-    expect(localStorage.getItem('waddle_controller_config_schemas_v1:d1')).toBeNull();
+    expect(localStorage.getItem('waddle_controller_config_schemas_v2:d1')).toBeNull();
   });
 
   it('clearSession removes adoption from the display row', () => {
@@ -110,4 +110,4 @@ describe('sessions storage', () => {
     expect(loadSession('d1')).toBeNull();
   });
 });
-
+

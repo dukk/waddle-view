@@ -1,5 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_shared/persistence/config_json_schemas_bundle.dart';
+import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/persistence/tables.dart';
+
+import '../helpers/memory_database.dart';
 
 void main() {
   test('buildConfigJsonSchemasBundle has non-empty typed sections', () {
@@ -40,5 +44,30 @@ void main() {
     final types = items.map((e) => e['screen_type']).toSet();
     expect(types.length, items.length);
     expect(types.contains('weather'), isTrue);
+  });
+
+  test('partial overlay_types DB syncs builtins before meta read', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    addTearDown(db.close);
+
+    await db.into(db.overlayTypes).insert(
+          OverlayTypesCompanion.insert(
+            overlayType: kOverlayTypeShapeRain,
+            label: 'Shape rain',
+          ),
+        );
+
+    final items = await buildOverlayTypeConfigJsonMetaItemsFromDb(db);
+    final types = items.map((e) => e['overlay_type'] as String).toSet();
+    expect(
+      types,
+      containsAll([
+        kOverlayTypeStaticImage,
+        kOverlayTypeDigitalClock,
+        kOverlayTypeAnalogClock,
+      ]),
+    );
+    expect(types.length, greaterThanOrEqualTo(kBuiltinOverlayTypes.length));
   });
 }
