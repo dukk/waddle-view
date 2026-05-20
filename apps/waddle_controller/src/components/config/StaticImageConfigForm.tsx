@@ -15,7 +15,6 @@ import { CuratorSliderField } from '@/components/CuratorSliderField';
 import {
   STATIC_IMAGE_OVERLAY_SCALE_MAX,
   STATIC_IMAGE_OVERLAY_SCALE_MIN,
-  type StaticImageOverlayConfig,
 } from '@/constants/staticImageOverlaySettings';
 import type { SavedDisplay } from '@/storage/displays';
 

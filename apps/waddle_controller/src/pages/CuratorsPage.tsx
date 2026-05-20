@@ -436,7 +436,7 @@ function CuratorConfigurationDialog({
   const [err, setErr] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [layer, setLayer] = useState<CuratorLayer>('base');
-  const [sortOrder, setSortOrder] = useState(CURATOR_SORT_ORDER.default);
+  const [sortOrder, setSortOrder] = useState<number>(CURATOR_SORT_ORDER.default);
   const [programDuration, setProgramDuration] = useState<number>(
     CURATOR_PROGRAM_DURATION.default,
   );
@@ -448,16 +448,16 @@ function CuratorConfigurationDialog({
   );
   const [themeIdOverride, setThemeIdOverride] = useState<string | null>(null);
   const [useDisplayViewportReserveDefaults, setUseDisplayViewportReserveDefaults] = useState(true);
-  const [viewportReserveTopOverride, setViewportReserveTopOverride] = useState(
+  const [viewportReserveTopOverride, setViewportReserveTopOverride] = useState<number>(
     VIEWPORT_RESERVE_PCT.default,
   );
-  const [viewportReserveRightOverride, setViewportReserveRightOverride] = useState(
+  const [viewportReserveRightOverride, setViewportReserveRightOverride] = useState<number>(
     VIEWPORT_RESERVE_PCT.default,
   );
-  const [viewportReserveBottomOverride, setViewportReserveBottomOverride] = useState(
+  const [viewportReserveBottomOverride, setViewportReserveBottomOverride] = useState<number>(
     VIEWPORT_RESERVE_PCT.default,
   );
-  const [viewportReserveLeftOverride, setViewportReserveLeftOverride] = useState(
+  const [viewportReserveLeftOverride, setViewportReserveLeftOverride] = useState<number>(
     VIEWPORT_RESERVE_PCT.default,
   );
   const [dialogTab, setDialogTab] = useState<ConfigDialogTabId>('general');

@@ -1,7 +1,6 @@
 import { Stack, Typography } from '@mui/material';
 import { CuratorSliderField } from '@/components/CuratorSliderField';
 import {
-  CLOCK_OVERLAY_POSITION_DEFAULT,
   CLOCK_OVERLAY_SCALE_DEFAULT,
   CLOCK_OVERLAY_SCALE_MAX,
   CLOCK_OVERLAY_SCALE_MIN,

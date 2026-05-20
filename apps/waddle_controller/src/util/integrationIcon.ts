@@ -34,7 +34,7 @@ export type IntegrationIconSource =
   | IntegrationFaviconSource
   | IntegrationMuiIconSource;
 
-const SIMPLE_ICONS_BY_TYPE: Readonly<Record<string, IntegrationSimpleIconsSource>> = {
+const SIMPLE_ICONS_BY_TYPE: Readonly<Record<string, IntegrationIconSource>> = {
   calendar_google: { kind: 'simpleicons', slug: 'googlecalendar', color: '4285F4' },
   google_calendar: { kind: 'simpleicons', slug: 'googlecalendar', color: '4285F4' },
   photo_google: { kind: 'simpleicons', slug: 'googlephotos', color: '4285F4' },
