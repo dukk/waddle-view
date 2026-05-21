@@ -55,6 +55,7 @@ export const requireAuthEnabled = createMiddleware<{ Variables: AppVariables }>(
   },
 );
 
+/** Session required when auth capability is on — not gated on user mode (admin settings stay protected). */
 export const requireAuth = createMiddleware<{ Variables: AppVariables }>(async (c, next) => {
   if (!c.get('config').authEnabled) {
     await next();
@@ -67,6 +68,7 @@ export const requireAuth = createMiddleware<{ Variables: AppVariables }>(async (
   return c.json({ error: 'Unauthorized', code: 'unauthorized' }, 401);
 });
 
+/** Admin role required when auth capability is on — independent of user mode toggle. */
 export const requireAdmin = createMiddleware<{ Variables: AppVariables }>(async (c, next) => {
   if (!c.get('config').authEnabled) {
     await next();
