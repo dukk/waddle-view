@@ -975,6 +975,9 @@ class ScreenProgramCurator {
       case 'joke':
         final c = w.config['categoryId'] as String?;
         return (c != null && c.isNotEmpty) ? 'joke:$c' : 'joke';
+      case 'quote':
+        final cq = w.config['categoryId'] as String?;
+        return (cq != null && cq.isNotEmpty) ? 'quote:$cq' : 'quote';
       case 'news':
       case 'news_columns':
       case 'news_stack':

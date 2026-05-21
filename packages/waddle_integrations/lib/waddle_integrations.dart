@@ -16,6 +16,10 @@ export 'trivia_opentdb/opentdb_trivia_data_provider.dart';
 
 export 'weather_openweathermap/weather_data_provider.dart';
 
+export 'weather_openmeteo/open_meteo_weather_data_provider.dart';
+
+export 'air_quality_openmeteo/open_meteo_air_quality_data_provider.dart';
+
 export 'weather_alerts_nws/nws_weather_gov_alerts_data_provider.dart';
 
 export 'stock_finnhub/stock_quote_data_provider.dart';
@@ -33,6 +37,14 @@ export 'photo_onedrive/onedrive_media_data_provider.dart';
 export 'video_onedrive/onedrive_media_data_provider.dart';
 
 export 'photo_bing_image_of_the_day/bing_image_of_day_data_provider.dart';
+
+export 'photo_nasa_apod/apod_data_provider.dart';
+
+export 'photo_nasa_mars_rover/mars_rover_data_provider.dart';
+
+export 'photo_nasa_earth_imagery/earth_imagery_data_provider.dart';
+
+export 'quote_quoterism/quoterism_data_provider.dart';
 
 export 'calendar_google/google_calendar_data_provider.dart';
 

@@ -1,7 +1,20 @@
 import 'package:meta/meta.dart';
 import 'package:waddle_shared/curation/reject_filter_context.dart';
 
+import 'ticker_item.dart';
 import 'ticker_news_candidate.dart';
+
+/// Preloaded Quoterism lines for ticker curation.
+@immutable
+class QuoterismTickerMarqueeData {
+  const QuoterismTickerMarqueeData({
+    this.items = const [],
+    this.categoryIdsByQuoteId = const {},
+  });
+
+  final List<TickerItem> items;
+  final Map<String, Set<String>> categoryIdsByQuoteId;
+}
 
 /// One row from [TickerTapes] for marquee curation.
 @immutable
@@ -90,6 +103,9 @@ abstract class CuratorReadPort {
 
   /// Enabled [InterestsStockSymbols] rows with optional [StockQuotes], ordered by symbol.
   Future<List<StockTickerRowForMarquee>> loadStockRowsForTicker();
+
+  /// Quoterism quote ticker lines and per-quote category ids.
+  Future<QuoterismTickerMarqueeData> loadQuoterismQuotesForTicker();
 
   /// Snapshot of the operator-curated reject list + chosen censor format.
   Future<RejectFilterContext> loadRejectFilterContext();

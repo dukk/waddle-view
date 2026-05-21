@@ -89,6 +89,31 @@ Future<CuratorContentPools> loadCuratorContentPools(
     }
   }
 
+  final quotes = await (db.select(db.quoterismQuotes)
+        ..where((t) => t.suppressed.equals(false)))
+      .get();
+  if (quotes.isNotEmpty) {
+    final all = <String>[];
+    final byCat = <String, List<String>>{};
+    final junction =
+        await db.select(db.quoterismQuoteCategories).get();
+    final catsByQuote = <String, List<String>>{};
+    for (final link in junction) {
+      (catsByQuote[link.quoteId] ??= []).add(link.categoryId);
+    }
+    for (final q in quotes) {
+      all.add(q.id);
+      final cats = catsByQuote[q.id] ?? const [];
+      for (final cat in cats) {
+        (byCat[cat] ??= []).add(q.id);
+      }
+    }
+    out['quote'] = all;
+    for (final e in byCat.entries) {
+      out['quote:${e.key}'] = List<String>.from(e.value);
+    }
+  }
+
   final feeds = await db.select(db.interestsRssFeeds).get();
   final feedById = {for (final f in feeds) f.id: f};
 

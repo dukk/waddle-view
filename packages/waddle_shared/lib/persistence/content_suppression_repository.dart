@@ -32,4 +32,9 @@ class ContentSuppressionRepository {
     return (_db.update(_db.triviaQuestions)..where((t) => t.id.equals(id)))
         .write(TriviaQuestionsCompanion(suppressed: Value(suppressed)));
   }
+
+  Future<int> setQuoterismQuoteSuppressed(String id, bool suppressed) {
+    return (_db.update(_db.quoterismQuotes)..where((t) => t.id.equals(id)))
+        .write(QuoterismQuotesCompanion(suppressed: Value(suppressed)));
+  }
 }

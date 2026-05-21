@@ -55,6 +55,8 @@ part 'database.g.dart';
     InterestsJokes,
     Jokes,
     JokeGenerationBatches,
+    QuoterismQuotes,
+    QuoterismQuoteCategories,
     InterestsTrivia,
     TriviaQuestions,
     TriviaGenerationBatches,
@@ -86,7 +88,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 45;
+  int get schemaVersion => 46;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -416,6 +418,13 @@ ORDER BY priority DESC, created_at DESC;
         }
         from = 45;
       }
+      if (from == 45 && to >= 46) {
+        await _migrateV45ToV46QuoterismQuotes(this, m);
+        if (to == 46) {
+          return;
+        }
+        from = 46;
+      }
       throw UnsupportedError(
         'Unsupported database upgrade from version $from to $to. '
         'Delete the SQLite file and reinstall (fresh seed).',
@@ -459,6 +468,10 @@ const String kDefaultWeatherOpenWeatherMapIntegrationId =
     'default_weather_openweathermap';
 const String kDefaultWeatherAlertsNwsIntegrationId =
     'default_weather_alerts_nws';
+const String kDefaultWeatherOpenMeteoIntegrationId =
+    'default_weather_openmeteo';
+const String kDefaultAirQualityOpenMeteoIntegrationId =
+    'default_air_quality_openmeteo';
 const String kDefaultPhotoPexelsIntegrationId = 'default_photo_pexels';
 const String kDefaultVideoPexelsIntegrationId = 'default_video_pexels';
 const String kDefaultStockFinnhubIntegrationId = 'default_stock_finnhub';
@@ -475,6 +488,13 @@ const String kDefaultPhotoGoogleIntegrationId = 'default_photo_google';
 const String kDefaultVideoGoogleIntegrationId = 'default_video_google';
 const String kDefaultPhotoBingIotdIntegrationId =
     'default_photo_bing_image_of_the_day';
+const String kDefaultPhotoNasaApodIntegrationId = 'default_photo_nasa_apod';
+const String kDefaultPhotoNasaMarsRoverIntegrationId =
+    'default_photo_nasa_mars_rover';
+const String kDefaultPhotoNasaEarthImageryIntegrationId =
+    'default_photo_nasa_earth_imagery';
+const String kDefaultQuoteQuoterismIntegrationId = 'default_quote_quoterism';
+
 /// Adds encrypted secret tables and disables env-dependent integrations.
 Future<void> _migrateV2ToV3IntegrationSecrets(
   AppDatabase db,
@@ -2614,6 +2634,15 @@ Future<void> _migrateV44ToV45ManualEntrySource(AppDatabase db) async {
   } finally {
     await db.customStatement('PRAGMA foreign_keys = ON');
   }
+}
+
+/// Schema 46: Quoterism quote storage and category junction.
+Future<void> _migrateV45ToV46QuoterismQuotes(
+  AppDatabase db,
+  Migrator m,
+) async {
+  await m.createTable(db.quoterismQuotes);
+  await m.createTable(db.quoterismQuoteCategories);
 }
 
 /// Schema 39: trim default location catalog to five megacities; remove retired rows.

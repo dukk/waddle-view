@@ -41,6 +41,8 @@ const String kIntegrationAccountTypeApiKeyFlickr = 'api_key_flickr';
 const String kIntegrationAccountTypeApiKeyFinnhub = 'api_key_finnhub';
 const String kIntegrationAccountTypeApiKeyHomeAssistant =
     'api_key_home_assistant';
+const String kIntegrationAccountTypeApiKeyNasa = 'api_key_nasa';
+const String kIntegrationAccountTypeApiKeyQuoterism = 'api_key_quoterism';
 const String kIntegrationAccountTypeFacebook = 'facebook';
 const String kIntegrationAccountTypeTwitter = 'twitter';
 const String kIntegrationAccountTypeLinkedin = 'linkedin';
@@ -101,6 +103,18 @@ const Map<String, IntegrationAccountTypeDefinition> kIntegrationAccountTypes = {
     label: 'Home Assistant token',
     accessTokenSecretKey: _apiKeyAccessTokenSecret,
   ),
+  kIntegrationAccountTypeApiKeyNasa: IntegrationAccountTypeDefinition(
+    id: kIntegrationAccountTypeApiKeyNasa,
+    label: 'NASA API key',
+    signupUrl: 'https://api.nasa.gov/',
+    accessTokenSecretKey: _apiKeyAccessTokenSecret,
+  ),
+  kIntegrationAccountTypeApiKeyQuoterism: IntegrationAccountTypeDefinition(
+    id: kIntegrationAccountTypeApiKeyQuoterism,
+    label: 'Quoterism API key',
+    signupUrl: 'https://www.quoterism.com/developer',
+    accessTokenSecretKey: _apiKeyAccessTokenSecret,
+  ),
   kIntegrationAccountTypeFacebook: IntegrationAccountTypeDefinition(
     id: kIntegrationAccountTypeFacebook,
     label: 'Facebook account',
@@ -144,6 +158,10 @@ const Map<String, List<String>> kIntegrationAccountRequirementsByType = {
   'photo_flickr': [kIntegrationAccountTypeApiKeyFlickr],
   'stock_finnhub': [kIntegrationAccountTypeApiKeyFinnhub],
   'home_assistant': [kIntegrationAccountTypeApiKeyHomeAssistant],
+  'photo_nasa_apod': [kIntegrationAccountTypeApiKeyNasa],
+  'photo_nasa_mars_rover': [kIntegrationAccountTypeApiKeyNasa],
+  'photo_nasa_earth_imagery': [kIntegrationAccountTypeApiKeyNasa],
+  'quote_quoterism': [kIntegrationAccountTypeApiKeyQuoterism],
   'news_facebook': [kIntegrationAccountTypeFacebook],
   'news_twitter': [kIntegrationAccountTypeTwitter],
   'news_linkedin': [kIntegrationAccountTypeLinkedin],

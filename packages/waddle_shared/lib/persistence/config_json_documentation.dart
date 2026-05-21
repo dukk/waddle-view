@@ -177,6 +177,70 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       'defaultLocation': {'name': 'Default', 'lat': 40.7128, 'lon': -74.006},
     }),
   ),
+  'weather_openmeteo': ProviderConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'OpenMeteoWeatherConfig',
+        description:
+            'Open-Meteo forecast (no API key). Writes weather_current for '
+            'interests_locations with include_weather. units: imperial→fahrenheit, '
+            'metric→celsius. lang is ignored (WMO descriptions).',
+        properties: _integrationConfigProperties({
+          'units': {'type': 'string'},
+          'lang': {'type': 'string'},
+          'hourlyCount': {'type': 'integer', 'minimum': 0},
+          'defaultLocation': {
+            'type': 'object',
+            'properties': {
+              'name': {'type': 'string'},
+              'lat': {'type': 'number'},
+              'lon': {'type': 'number'},
+            },
+            'required': ['lat', 'lon'],
+            'additionalProperties': true,
+          },
+        }),
+      ),
+    ),
+    example: jsonEncode({
+      'baseUrl': 'https://api.open-meteo.com',
+      'units': 'imperial',
+      'lang': 'en',
+      'hourlyCount': 6,
+      'defaultLocation': {'name': 'Default', 'lat': 40.7128, 'lon': -74.006},
+    }),
+  ),
+  'air_quality_openmeteo': ProviderConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'OpenMeteoAirQualityConfig',
+        description:
+            'Open-Meteo air quality (no API key). Stores per-location JSON in '
+            'integration KV: air_quality.location.{locationId}.current, '
+            '.hourly, .collected_at_ms. Uses interests_locations with '
+            'include_weather (or defaultLocation).',
+        properties: _integrationConfigProperties({
+          'units': {'type': 'string'},
+          'hourlyCount': {'type': 'integer', 'minimum': 0},
+          'defaultLocation': {
+            'type': 'object',
+            'properties': {
+              'name': {'type': 'string'},
+              'lat': {'type': 'number'},
+              'lon': {'type': 'number'},
+            },
+            'required': ['lat', 'lon'],
+            'additionalProperties': true,
+          },
+        }),
+      ),
+    ),
+    example: jsonEncode({
+      'baseUrl': 'https://air-quality-api.open-meteo.com',
+      'hourlyCount': 6,
+      'defaultLocation': {'name': 'Default', 'lat': 40.7128, 'lon': -74.006},
+    }),
+  ),
   'weather_alerts_nws': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
@@ -992,6 +1056,128 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       'category': 'bing',
     }),
   ),
+  'quote_quoterism': ProviderConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'QuoterismQuoteProviderConfig',
+        description:
+            'Quoterism REST API (X-API-Key). Paginates /api/quotes, stores '
+            'text and author portraits, and syncs quote categories into '
+            'content_categories.',
+        properties: _integrationConfigProperties({
+          'pageLimit': {'type': 'integer', 'minimum': 1, 'maximum': 100},
+          'pagesPerCollect': {'type': 'integer', 'minimum': 1, 'maximum': 5},
+          'maxStoredQuotes': {'type': 'integer', 'minimum': 10},
+          'retentionDays': {'type': 'integer', 'minimum': 0},
+          'fetchAuthorImages': {'type': 'boolean'},
+        }),
+      ),
+    ),
+    example: jsonEncode({
+      'baseUrl': 'https://www.quoterism.com',
+      'pageLimit': 20,
+      'pagesPerCollect': 1,
+      'maxStoredQuotes': 500,
+      'retentionDays': 90,
+      'fetchAuthorImages': true,
+    }),
+  ),
+  'photo_nasa_apod': ProviderConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'NasaApodProviderConfig',
+        description:
+            'NASA Astronomy Picture of the Day. Requires api.nasa.gov API key.',
+        properties: _integrationConfigProperties({
+          'retentionDays': {'type': 'integer'},
+          'category': {'type': 'string', 'minLength': 1},
+          'hd': {'type': 'boolean'},
+          'backfillDays': {
+            'type': 'integer',
+            'minimum': 0,
+            'maximum': 7,
+          },
+        }),
+      ),
+    ),
+    example: jsonEncode({
+      'baseUrl': 'https://api.nasa.gov',
+      'retentionDays': 30,
+      'category': 'nasa_apod',
+      'hd': true,
+      'backfillDays': 0,
+    }),
+  ),
+  'photo_nasa_mars_rover': ProviderConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'NasaMarsRoverProviderConfig',
+        description:
+            'NASA Mars rover photos by earth_date. Categories stored as '
+            '{category}_{rover} (default category nasa_mars).',
+        properties: _integrationConfigProperties({
+          'rovers': {
+            'type': 'array',
+            'items': {
+              'type': 'string',
+              'enum': [
+                'curiosity',
+                'opportunity',
+                'spirit',
+                'perseverance',
+              ],
+            },
+          },
+          'photosPerCollect': {'type': 'integer', 'minimum': 1, 'maximum': 20},
+          'maxDaysBack': {'type': 'integer', 'minimum': 1, 'maximum': 30},
+          'maxPhotos': {'type': 'integer', 'minimum': 10},
+          'retentionDays': {'type': 'integer'},
+          'category': {'type': 'string', 'minLength': 1},
+        }),
+      ),
+    ),
+    example: jsonEncode({
+      'baseUrl': 'https://api.nasa.gov',
+      'rovers': ['perseverance', 'curiosity'],
+      'photosPerCollect': 5,
+      'maxDaysBack': 7,
+      'maxPhotos': 200,
+      'retentionDays': 90,
+      'category': 'nasa_mars',
+    }),
+  ),
+  'photo_nasa_earth_imagery': ProviderConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'NasaEarthImageryProviderConfig',
+        description:
+            'NASA Landsat Earth imagery for interests_locations with '
+            'include_weather (or synthetic default). Two-step assets + imagery API.',
+        properties: _integrationConfigProperties({
+          'retentionDays': {'type': 'integer'},
+          'category': {'type': 'string', 'minLength': 1},
+          'lookbackDays': {'type': 'integer', 'minimum': 1, 'maximum': 60},
+          'dim': {'type': 'number', 'minimum': 0.05, 'maximum': 0.25},
+          'defaultLocation': {
+            'type': 'object',
+            'properties': {
+              'name': {'type': 'string'},
+              'lat': {'type': 'number'},
+              'lon': {'type': 'number'},
+            },
+          },
+        }),
+      ),
+    ),
+    example: jsonEncode({
+      'baseUrl': 'https://api.nasa.gov',
+      'retentionDays': 30,
+      'category': 'nasa_earth',
+      'lookbackDays': 16,
+      'dim': 0.15,
+      'defaultLocation': {'name': 'Default', 'lat': 40.7128, 'lon': -74.006},
+    }),
+  ),
 };
 
 ProviderConfigJsonDoc providerConfigJsonDocForType(String providerType) {
@@ -1171,6 +1357,7 @@ const Map<String, Object?> _kJsonSchemaOptionalContentCategoryId = {
 const List<String> kScreenLayoutWidgetTypes = [
   'static_text',
   'joke',
+  'quote',
   'trivia',
   'wifi',
   'digital_clock',
@@ -1204,6 +1391,7 @@ const List<String> kTickerSlotDefinitionTypes = [
   'time',
   'weather',
   'news',
+  'quote',
   'stocks',
   'static_text',
   kTickerTypePlugin,
@@ -1275,6 +1463,20 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
       ),
     ),
     example: jsonEncode({'categoryId': 'general'}),
+  ),
+  'quote': ScreenConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'QuoteScreenConfig',
+        description:
+            'Optional content_categories id to scope Quoterism quotes for '
+            'curation; omit for the full catalog.',
+        properties: {
+          'categoryId': _kJsonSchemaOptionalContentCategoryId,
+        },
+      ),
+    ),
+    example: jsonEncode({'categoryId': 'quoterism_wisdom'}),
   ),
   'trivia': ScreenConfigJsonDoc(
     schema: jsonEncode(
@@ -1948,6 +2150,20 @@ final Map<String, ScreenConfigJsonDoc> kTickerSlotConfigJsonMeta = {
       ),
     ),
     example: jsonEncode({}),
+  ),
+  'quote': ScreenConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'TickerQuoteSlotDoc',
+        description:
+            'Quoterism quote lines from quoterism_quotes. Optional categoryId '
+            'filters via quoterism_quote_categories; omit for random catalog.',
+        properties: {
+          'categoryId': _kJsonSchemaOptionalContentCategoryId,
+        },
+      ),
+    ),
+    example: jsonEncode({'categoryId': 'quoterism_wisdom'}),
   ),
   'news': ScreenConfigJsonDoc(
     schema: jsonEncode(

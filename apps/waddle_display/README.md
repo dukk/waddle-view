@@ -240,11 +240,17 @@ Returns **`404`** when the target row does not exist.
 
 ### Screen program (main carousel)
 
-When the app assembles a timed program from `screens`, [`ScreenProgramCurator`](lib/curator/screen_program_curator.dart) pre-assigns **content ids** on each [`ResolvedSlide`](lib/curator/screen_program_curator.dart) for **jokes**, **RSS articles**, **trivia** (and existing **random photo** pools). Slide widgets read those ids from `randomChoices` first, so the same joke or article is not shown twice in one program when SQLite has enough distinct rows. If every candidate is already used, the slide falls back to the previous random / “best article” selection. Multi-article RSS widgets use suffixed keys, for example **`main_news_columns_0`** … **`_2`**, or **`main_news_stack_0`** / **`_1`** for the two-row stack layout ([`news_stack_slide_widget.dart`](lib/display/screens/news/news_stack_slide_widget.dart)). The **`news_columns`** layout places a **QR code** under each column’s **title** (start-aligned) with the **summary beside it** when that article’s `link` is non-empty; optional widget `config` **`qrLogicalSize`** (default **80**, clamped) scales the code after the viewport multiplier ([`news_columns_slide_widget.dart`](lib/display/screens/news/news_columns_slide_widget.dart)).
+When the app assembles a timed program from `screens`, [`ScreenProgramCurator`](lib/curator/screen_program_curator.dart) pre-assigns **content ids** on each [`ResolvedSlide`](lib/curator/screen_program_curator.dart) for **jokes**, **quotes** (Quoterism), **RSS articles**, **trivia** (and existing **random photo** pools). Slide widgets read those ids from `randomChoices` first, so the same joke or article is not shown twice in one program when SQLite has enough distinct rows. If every candidate is already used, the slide falls back to the previous random / “best article” selection. Multi-article RSS widgets use suffixed keys, for example **`main_news_columns_0`** … **`_2`**, or **`main_news_stack_0`** / **`_1`** for the two-row stack layout ([`news_stack_slide_widget.dart`](lib/display/screens/news/news_stack_slide_widget.dart)). The **`news_columns`** layout places a **QR code** under each column’s **title** (start-aligned) with the **summary beside it** when that article’s `link` is non-empty; optional widget `config` **`qrLogicalSize`** (default **80**, clamped) scales the code after the viewport multiplier ([`news_columns_slide_widget.dart`](lib/display/screens/news/news_columns_slide_widget.dart)).
 
 RSS widget `config` may include **`feedId`** (single feed), **`categoryId`** (slug shared with **`content_categories.id`**, pool key **`rss_category:<id>`**), or neither. With the global **`rss`** pool, the curator assigns articles from **one** category per slide so columns/stack rows do not mix unrelated feeds; it stores that id in **`randomChoices`** under **`rss_screen_category_id`** ([`ScreenProgramCurator.rssScreenCategoryChoiceKey`](lib/curator/screen_program_curator.dart)). **RSS**, **joke**, and **trivia** slides render a **category strip** at the top (label + icon from **`content_categories`**, with fallbacks — [`content_category_slide_header.dart`](lib/display/content_category_slide_header.dart)).
 
 Each **`screens`** row stores **`screen_type`** (widget id, e.g. `weather`, `news`) and runtime **`config_json`**. Type-level **`label`** and **`config_json_schema`** live in SQLite **`screen_types`** (same pattern for **`ticker_tape_types`** / **`ticker_tapes`** and **`overlay_types`** / **`overlays`**). `GET /v1/screens` omits schema by default; use `?include_config_schema=true` or `GET /v1/meta/config-schemas` for editor schemas and examples.
+
+### Quoterism quotes (`quote_quoterism`)
+
+- **`quote_quoterism`** integration (`default_quote_quoterism` when seeded): paginates [Quoterism](https://www.quoterism.com/developer) `GET /api/quotes` with an **X-API-Key** from a linked **Quoterism API key** account. Rows land in **`quoterism_quotes`** with author portraits in blob storage and categories in **`quoterism_quote_categories`** / **`content_categories`** (created on ingest when missing).
+- **`quote`** screen widget: optional **`categoryId`** scopes curation to `quote:<id>`; omit for the full catalog pool **`quote`**.
+- **`quote`** ticker tape: same optional **`categoryId`** filter; lines are `"text" — author` from stored rows.
 
 ### General OpenAI + KV dashboards
 
@@ -260,7 +266,7 @@ Each **`screens`** row stores **`screen_type`** (widget id, e.g. `weather`, `new
 
 ### Bottom ticker (`ticker_tapes`)
 
-SQLite table **`ticker_tapes`** configures the bottom marquee: which **types** run (`time`, `weather`, `news`, `stocks`, `static_text`, `plugin`), **order** (`sort_order`, then id), **`enabled`**, and **`frequency_weight`** (repeat that type’s item bundle that many times when building the curated list; identical bodies are still deduplicated). Each row has **`config_json`**: **`static_text`** uses required **`text`** (same shape as screen static text); **`plugin`** may set **`pluginId`** and optional **`fallbackText`** when the plugin returns no lines. **`weather`** and **`news`** emit lines only when live weather or stored RSS articles are available (no fallback text).
+SQLite table **`ticker_tapes`** configures the bottom marquee: which **types** run (`time`, `weather`, `news`, `quote`, `stocks`, `static_text`, `plugin`), **order** (`sort_order`, then id), **`enabled`**, and **`frequency_weight`** (repeat that type’s item bundle that many times when building the curated list; identical bodies are still deduplicated). Each row has **`config_json`**: **`static_text`** uses required **`text`** (same shape as screen static text); **`plugin`** may set **`pluginId`** and optional **`fallbackText`** when the plugin returns no lines. **`weather`** and **`news`** emit lines only when live weather or stored RSS articles are available (no fallback text).
 
 Live weather plus **active NWS alerts** (same `weather` ticker kind), stored RSS articles for **`news`**, and enabled **`stock_symbols`** / **`stock_quotes`** for **`stocks`** are read from their domain tables. **`curator.ticker.*`** keys in **`config_key_values`** still tune RSS width budgeting for the news slice. If **`ticker_tapes`** has **no rows** (empty table), curation uses a legacy path: **time**, live weather (if any), and RSS news — **without** stock lines. If the table has rows but **none are enabled**, curation falls back to **time** only.
 
@@ -395,6 +401,29 @@ The **`home_assistant`** provider polls your [Home Assistant](https://www.home-a
 **Binary sensors:** each successful collect for `binary_sensor.*` entities also upserts **`runtime_signals`** with signal id equal to the HA **`entity_id`** and boolean value **`true`** when state is **`on`**. Use these ids in curator predicates (for example `binary_sensor.living_room_motion` equals `true`).
 
 **Screen:** widget type **`home_assistant`**. The slide lists every enabled interest row with friendly name, state, and unit when present.
+
+## Open-Meteo weather and air quality
+
+Two built-in integrations use the free [Open-Meteo](https://open-meteo.com/) APIs (**no API key** for non-commercial use). Attribute [Open-Meteo](https://open-meteo.com/) and [CAMS](https://open-meteo.com/en/docs/air-quality-api) per their documentation.
+
+| Integration type | Default row id | Storage |
+|------------------|----------------|---------|
+| **`weather_openmeteo`** | `default_weather_openmeteo` | **`weather_current`** (same columns as OpenWeather: temp, description, hourly JSON) |
+| **`air_quality_openmeteo`** | `default_air_quality_openmeteo` | Integration KV per location |
+
+**Locations:** both collectors use **`interests_locations`** rows with **`include_weather`**, or **`defaultLocation`** in **`config_json`** when none are enabled (same shape as OpenWeather).
+
+**Weather:** enable **`weather_openmeteo`** (disable **`weather_openweathermap`** if you switch providers — both write the same **`weather_current`** keys). **`base_url`** defaults to **`https://api.open-meteo.com`**; requests **`GET /v1/forecast`** with WMO weather codes mapped to slide icons.
+
+**Air quality:** enable **`air_quality_openmeteo`**. **`base_url`** defaults to **`https://air-quality-api.open-meteo.com`**. Per-location KV keys:
+
+- `air_quality.location.<locationId>.current` — JSON (pm10, pm2_5, us_aqi, european_aqi, …)
+- `air_quality.location.<locationId>.hourly` — JSON array of hourly points
+- `air_quality.location.<locationId>.collected_at_ms` — last successful collect (epoch ms)
+
+KV widgets: set **`integrationId`** to the integration row id (e.g. `default_air_quality_openmeteo`), **`valueKey`** to one of the keys above, optional **`jsonPath`** (e.g. `us_aqi`).
+
+**`integrations.poll_seconds`:** default **900** when seeded.
 
 ## NWS weather alerts (api.weather.gov)
 
@@ -574,6 +603,18 @@ The **Bing image of the day** provider (`id` / `provider_type`: **`media_bing_io
 Requests send a desktop **`User-Agent`** and **`Referer`** matching the Bing origin (Bing may throttle anonymous clients otherwise). Each HTTP call uses a **5s** timeout.
 
 **`integrations.poll_seconds`:** default **3600** when seeded; provider is **enabled** by default.
+
+## NASA photo integrations (api.nasa.gov)
+
+Three built-in providers share one **NASA API key** account type (`api_key_nasa`). Sign up at [api.nasa.gov](https://api.nasa.gov/) and link the key in **waddle_controller → Integrations** (integrations seed **disabled** until configured). All three write **`photos`** + blobs; use **`photo`**, **`photo_random`**, or **`photo_collage`** screens with matching **`content_categories`** ids.
+
+| Integration type | Default poll | Notes |
+| ---------------- | ------------ | ----- |
+| **`photo_nasa_apod`** | 86400 s | `GET /planetary/apod` — daily image; optional **`backfillDays`** (0–7). |
+| **`photo_nasa_mars_rover`** | 21600 s | `GET /mars-photos/api/v1/rovers/{rover}/photos` — **`rovers`**, **`photosPerCollect`**, **`maxPhotos`**. |
+| **`photo_nasa_earth_imagery`** | 86400 s | `GET /planetary/earth/assets` then **`/imagery`** per **`interests_locations`** row with **`include_weather`** (or synthetic default). Landsat imagery may be sparse; API is [archived](https://github.com/nasa/earth-imagery-api) but still served via api.nasa.gov. |
+
+**`integrations.base_url`:** default **`https://api.nasa.gov`**. Rate limit is **1000 requests/hour per key** across all NASA endpoints (collectors log `X-RateLimit-Remaining` when present). Attribute imagery per NASA media guidelines (stored in **`photographerName`** / **`altText`**).
 
 ## Manual entry (operator uploads)
 

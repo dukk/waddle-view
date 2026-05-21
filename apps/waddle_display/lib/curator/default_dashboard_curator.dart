@@ -45,6 +45,7 @@ class DefaultDashboardCurator implements DashboardCurator {
     final weatherGovAlerts = await _read.loadWeatherGovAlertsForTicker();
     final tickerDefs = await _read.loadTickerTapesForCuration();
     final stockRows = await _read.loadStockRowsForTicker();
+    final quoterismQuotes = await _read.loadQuoterismQuotesForTicker();
     final rejectCtx = await _read.loadRejectFilterContext();
     AppDebugLog.curator(
       'ticker refresh: loaded inputs kvKeys=${kv.length} newsCandidates=${news.length} '
@@ -60,6 +61,8 @@ class DefaultDashboardCurator implements DashboardCurator {
       definitions: tickerDefs,
       stockRows: stockRows,
       weatherGovAlerts: weatherGovAlerts,
+      quoteTickerItems: quoterismQuotes.items,
+      quoteCategoryIdsByQuoteId: quoterismQuotes.categoryIdsByQuoteId,
       rejectCtx: rejectCtx,
     );
     await _tickerStore.replaceAll(items);

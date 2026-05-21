@@ -11,6 +11,10 @@ import 'package:waddle_integrations/general_openai/general_openai_data_provider.
 import 'package:waddle_integrations/joke_openai/joke_data_provider.dart';
 
 import 'package:waddle_integrations/photo_bing_image_of_the_day/bing_image_of_day_data_provider.dart';
+import 'package:waddle_integrations/photo_nasa_apod/apod_data_provider.dart';
+import 'package:waddle_integrations/photo_nasa_earth_imagery/earth_imagery_data_provider.dart';
+import 'package:waddle_integrations/photo_nasa_mars_rover/mars_rover_data_provider.dart';
+import 'package:waddle_integrations/quote_quoterism/quoterism_data_provider.dart';
 
 import 'package:waddle_integrations/google_photos/google_photos_media_data_provider.dart';
 import 'package:waddle_integrations/photo_flickr/flickr_media_data_provider.dart';
@@ -37,6 +41,10 @@ import 'package:waddle_integrations/weather_alerts_nws/nws_weather_gov_alerts_da
 
 import 'package:waddle_integrations/weather_openweathermap/weather_data_provider.dart';
 
+import 'package:waddle_integrations/weather_openmeteo/open_meteo_weather_data_provider.dart';
+
+import 'package:waddle_integrations/air_quality_openmeteo/open_meteo_air_quality_data_provider.dart';
+
 import 'package:waddle_integrations/manual_bucket/manual_bucket_data_provider.dart';
 
 void main() {
@@ -54,6 +62,10 @@ void main() {
     expect(OpenTdbTriviaDataProvider().id, 'trivia_opentdb');
 
     expect(WeatherDataProvider().id, 'weather_openweathermap');
+
+    expect(OpenMeteoWeatherDataProvider().id, 'weather_openmeteo');
+
+    expect(OpenMeteoAirQualityDataProvider().id, 'air_quality_openmeteo');
 
     expect(NwsWeatherGovAlertsDataProvider().id, 'weather_alerts_nws');
 
@@ -73,6 +85,12 @@ void main() {
 
     expect(BingImageOfDayDataProvider().id, 'photo_bing_image_of_the_day');
 
+    expect(NasaApodDataProvider().id, 'photo_nasa_apod');
+
+    expect(NasaMarsRoverDataProvider().id, 'photo_nasa_mars_rover');
+
+    expect(NasaEarthImageryDataProvider().id, 'photo_nasa_earth_imagery');
+
     expect(GoogleCalendarDataProvider().id, 'calendar_google');
 
     expect(OutlookCalendarDataProvider().id, 'calendar_outlook');
@@ -84,6 +102,8 @@ void main() {
     expect(GooglePhotosPhotosDataProvider().id, 'photo_google');
 
     expect(GooglePhotosVideosDataProvider().id, 'video_google');
+
+    expect(QuoterismDataProvider().id, 'quote_quoterism');
 
   });
 

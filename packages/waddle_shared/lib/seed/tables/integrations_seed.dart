@@ -280,6 +280,54 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
 
 
 
+  await _ensureIntegrationRow(
+
+    db,
+
+    id: kDefaultWeatherOpenMeteoIntegrationId,
+
+    integrationType: 'weather_openmeteo',
+
+    pollSeconds: 900,
+
+    enabled: false,
+
+    baseUrl: 'https://api.open-meteo.com',
+
+    configJson:
+
+        '{"units":"imperial","lang":"en","hourlyCount":6,'
+
+        '"defaultLocation":{"name":"Default","lat":40.7128,"lon":-74.0060}}',
+
+  );
+
+
+
+  await _ensureIntegrationRow(
+
+    db,
+
+    id: kDefaultAirQualityOpenMeteoIntegrationId,
+
+    integrationType: 'air_quality_openmeteo',
+
+    pollSeconds: 900,
+
+    enabled: false,
+
+    baseUrl: 'https://air-quality-api.open-meteo.com',
+
+    configJson:
+
+        '{"hourlyCount":6,'
+
+        '"defaultLocation":{"name":"Default","lat":40.7128,"lon":-74.0060}}',
+
+  );
+
+
+
   const pexelsSources =
 
       '[{"query":"Nature","category":"nature"},'
@@ -600,6 +648,52 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
 
         '{"retentionDays":1,"market":"en-US","resolution":"UHD","category":"bing"}',
 
+  );
+
+  await _ensureIntegrationRow(
+    db,
+    id: kDefaultPhotoNasaApodIntegrationId,
+    integrationType: 'photo_nasa_apod',
+    pollSeconds: 86400,
+    enabled: false,
+    baseUrl: 'https://api.nasa.gov',
+    configJson:
+        '{"retentionDays":30,"category":"nasa_apod","hd":true,"backfillDays":0}',
+  );
+
+  await _ensureIntegrationRow(
+    db,
+    id: kDefaultPhotoNasaMarsRoverIntegrationId,
+    integrationType: 'photo_nasa_mars_rover',
+    pollSeconds: 21600,
+    enabled: false,
+    baseUrl: 'https://api.nasa.gov',
+    configJson:
+        '{"rovers":["perseverance","curiosity"],"photosPerCollect":5,'
+        '"maxDaysBack":7,"maxPhotos":200,"retentionDays":90,"category":"nasa_mars"}',
+  );
+
+  await _ensureIntegrationRow(
+    db,
+    id: kDefaultPhotoNasaEarthImageryIntegrationId,
+    integrationType: 'photo_nasa_earth_imagery',
+    pollSeconds: 86400,
+    enabled: false,
+    baseUrl: 'https://api.nasa.gov',
+    configJson:
+        '{"retentionDays":30,"category":"nasa_earth","lookbackDays":16,"dim":0.15}',
+  );
+
+  await _ensureIntegrationRow(
+    db,
+    id: kDefaultQuoteQuoterismIntegrationId,
+    integrationType: kQuoteQuoterismIntegrationType,
+    pollSeconds: 3600,
+    enabled: false,
+    baseUrl: 'https://www.quoterism.com',
+    configJson:
+        '{"pageLimit":20,"pagesPerCollect":1,"maxStoredQuotes":500,'
+        '"retentionDays":90,"fetchAuthorImages":true}',
   );
 
 }

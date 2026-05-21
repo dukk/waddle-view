@@ -24,6 +24,7 @@ void registerContentCatalogRoutes(Router r, {required AppDatabase db}) {
   r.get('/v1/catalog/weather-alerts', (Request req) => _listWeatherAlerts(db, req));
   r.get('/v1/catalog/alerts', (Request req) => _listOperatorAlerts(db, req));
   r.get('/v1/catalog/calendar-events', (Request req) => _listCalendarEvents(db, req));
+  r.get('/v1/catalog/quoterism-quotes', (Request req) => _listQuoterismQuotes(db, req));
 }
 
 class _CatalogParams {
@@ -1083,4 +1084,104 @@ Future<Response> _listCalendarEvents(AppDatabase db, Request req) async {
     'limit': p.limit,
     'offset': p.offset,
   });
+}
+
+Future<Response> _listQuoterismQuotes(AppDatabase db, Request req) async {
+  final parsed = _CatalogParams.parse(req);
+  final prep = _prepareCatalogList(req, parsed);
+  if (prep.$1 != null) return prep.$1!;
+  final p = prep.$2;
+  final browseOnly = prep.$3;
+  final textNeedle = _queryNeedle(req, 'text');
+  final authorNeedle = _queryNeedle(req, 'author_name');
+
+  final rows = await (db.select(db.quoterismQuotes)
+        ..where((t) => _quoterismQuoteWhere(t, p, textNeedle, authorNeedle, db))
+        ..orderBy([(t) => OrderingTerm.desc(t.fetchedAtMs)])
+        ..limit(p.limit, offset: p.offset))
+      .get();
+  final total = await _countQuoterismQuotes(
+    db,
+    p,
+    textNeedle,
+    authorNeedle,
+  );
+
+  final quoteIds = rows.map((r) => r.id).toList();
+  final categoryIdsByQuote = <String, List<String>>{};
+  if (quoteIds.isNotEmpty) {
+    final junction = await (db.select(db.quoterismQuoteCategories)
+          ..where((j) => j.quoteId.isIn(quoteIds)))
+        .get();
+    for (final j in junction) {
+      categoryIdsByQuote.putIfAbsent(j.quoteId, () => []).add(j.categoryId);
+    }
+  }
+
+  return _jsonOk({
+    'items': [
+      for (final r in rows)
+        {
+          'id': r.id,
+          'text': r.quoteText,
+          'author_id': r.authorId,
+          'author_name': r.authorName,
+          'author_slug': r.authorSlug,
+          'author_image_blob_key': r.authorImageBlobKey,
+          'quoterism_created_at_ms':
+              r.quoterismCreatedAtMs?.millisecondsSinceEpoch,
+          'fetched_at_ms': r.fetchedAtMs.millisecondsSinceEpoch,
+          'category_ids': categoryIdsByQuote[r.id] ?? const <String>[],
+          if (!browseOnly) 'suppressed': r.suppressed,
+          'integration_type': kCatalogQuoterismIntegrationType,
+        },
+    ],
+    'total': total,
+    'limit': p.limit,
+    'offset': p.offset,
+  });
+}
+
+Expression<bool> _quoterismQuoteWhere(
+  $QuoterismQuotesTable t,
+  _CatalogParams p,
+  String? textNeedle,
+  String? authorNeedle,
+  AppDatabase db,
+) {
+  Expression<bool> e = const Constant(true);
+  if (p.suppressed != null) {
+    e = e & t.suppressed.equals(p.suppressed!);
+  }
+  if (p.category != null) {
+    final cat = p.category!;
+    e = e &
+        t.id.isInQuery(
+          db.selectOnly(db.quoterismQuoteCategories)
+            ..addColumns([db.quoterismQuoteCategories.quoteId])
+            ..where(db.quoterismQuoteCategories.categoryId.equals(cat)),
+        );
+  }
+  if (textNeedle != null) {
+    e = e & t.quoteText.like('%$textNeedle%');
+  }
+  if (authorNeedle != null) {
+    e = e & t.authorName.like('%$authorNeedle%');
+  }
+  return e;
+}
+
+Future<int> _countQuoterismQuotes(
+  AppDatabase db,
+  _CatalogParams p,
+  String? textNeedle,
+  String? authorNeedle,
+) async {
+  final row = await (db.selectOnly(db.quoterismQuotes)
+        ..addColumns([db.quoterismQuotes.id.count()])
+        ..where(
+          (t) => _quoterismQuoteWhere(t, p, textNeedle, authorNeedle, db),
+        ))
+      .getSingle();
+  return row.read<int>(db.quoterismQuotes.id.count()) ?? 0;
 }

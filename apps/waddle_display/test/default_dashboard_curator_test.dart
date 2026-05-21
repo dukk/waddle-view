@@ -49,6 +49,10 @@ class _MapRead implements CuratorReadPort {
       stockRows ?? const [];
 
   @override
+  Future<QuoterismTickerMarqueeData> loadQuoterismQuotesForTicker() async =>
+      const QuoterismTickerMarqueeData();
+
+  @override
   Future<RejectFilterContext> loadRejectFilterContext() async =>
       const RejectFilterContext.empty();
 }

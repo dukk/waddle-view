@@ -14,6 +14,8 @@ class TickerExpandContext {
     required this.kv,
     required this.nowLocal,
     required this.rssItems,
+    this.quoteTickerItems = const [],
+    this.quoteCategoryIdsByQuoteId = const {},
     this.currentWeather,
     this.stockRows = const [],
     this.weatherGovAlerts = const [],
@@ -23,6 +25,8 @@ class TickerExpandContext {
   final Map<String, String> kv;
   final DateTime nowLocal;
   final List<TickerItem> rssItems;
+  final List<TickerItem> quoteTickerItems;
+  final Map<String, Set<String>> quoteCategoryIdsByQuoteId;
   final CurrentWeatherTickerData? currentWeather;
   final List<StockTickerRowForMarquee> stockRows;
   final List<WeatherGovAlertTickerItem> weatherGovAlerts;

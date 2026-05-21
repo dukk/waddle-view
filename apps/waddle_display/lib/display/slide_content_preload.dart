@@ -9,6 +9,7 @@ import 'screens/photo/photo_video_materialize.dart';
 import 'screens/news/news_load.dart';
 import 'screens/web_page/web_page_session.dart';
 import 'slide_content_joke_trivia.dart';
+import 'slide_content_quote.dart';
 
 /// Warms DB/blob/video file resources for every async widget on this slide so
 /// mounted slide widgets hit warm caches and avoid loading spinners.
@@ -44,6 +45,8 @@ Future<void> _preloadWidget(
       await _preloadPexelsVideo(db, blobs, slide, w);
     case 'joke':
       await loadJokeForSlide(db, w, slide);
+    case 'quote':
+      await loadQuoteForSlide(db, w, slide);
     case 'trivia':
       await loadTriviaForSlide(db, w, slide);
     case 'web_page':

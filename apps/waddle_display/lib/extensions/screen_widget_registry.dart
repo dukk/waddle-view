@@ -15,6 +15,7 @@ import '../display/screens/controller_invite/controller_invite_slide_widget.dart
 import '../display/screens/data_health/data_health_slide_widget.dart';
 import '../display/screens/guest_wifi/guest_wifi_slide_widget.dart';
 import '../display/screens/joke/joke_slide_widget.dart';
+import '../display/screens/quote/quote_slide_widget.dart';
 import '../display/screens/local_api/local_api_slide_widget.dart';
 import '../display/screens/photo/photo_collage_slide_widget.dart';
 import '../display/screens/photo/photo_slide_widget.dart';
@@ -83,6 +84,14 @@ class ScreenWidgetRegistry {
               );
             case 'joke':
               return JokeSlideWidget(
+                db: ctx.db,
+                blobs: ctx.blobs,
+                slide: ctx.slide,
+                spec: w,
+                theme: ctx.theme,
+              );
+            case 'quote':
+              return QuoteSlideWidget(
                 db: ctx.db,
                 blobs: ctx.blobs,
                 slide: ctx.slide,

@@ -651,6 +651,54 @@ class Jokes extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// Inspirational quotes ingested from Quoterism (`quoterism_quotes`).
+@TableIndex(name: 'idx_quoterism_quotes_fetched_at', columns: {#fetchedAtMs})
+class QuoterismQuotes extends Table {
+  /// Quoterism quote id (stable API id).
+  TextColumn get id => text()();
+  TextColumn get quoteText => text()();
+  TextColumn get authorId => text().nullable()();
+  TextColumn get authorName => text().nullable()();
+  TextColumn get authorSlug => text().nullable()();
+  TextColumn get authorImageBlobKey => text().nullable()();
+  DateTimeColumn get quoterismCreatedAtMs => dateTime().nullable()();
+  DateTimeColumn get fetchedAtMs => dateTime()();
+
+  /// [Integrations.id] that collected this row.
+  TextColumn get integrationId => text().nullable()();
+
+  /// When true, excluded from slides and ticker; row kept for stable ids.
+  BoolColumn get suppressed => boolean().withDefault(const Constant(false))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Many-to-many link between [QuoterismQuotes] and [ContentCategories].
+@TableIndex(
+  name: 'idx_quoterism_quote_categories_quote',
+  columns: {#quoteId},
+)
+@TableIndex(
+  name: 'idx_quoterism_quote_categories_category',
+  columns: {#categoryId},
+)
+class QuoterismQuoteCategories extends Table {
+  TextColumn get quoteId =>
+      text().references(QuoterismQuotes, #id, onDelete: KeyAction.cascade)();
+  TextColumn get categoryId =>
+      text().references(ContentCategories, #id, onDelete: KeyAction.cascade)();
+
+  @override
+  Set<Column<Object>> get primaryKey => {quoteId, categoryId};
+}
+
+/// Integration collector type for Quoterism quotes.
+const String kQuoteQuoterismIntegrationType = 'quote_quoterism';
+
+/// Operator catalog provenance for Quoterism rows.
+const String kCatalogQuoterismIntegrationType = kQuoteQuoterismIntegrationType;
+
 /// Operator-configured trivia categories (SQLite `interests_trivia`).
 class InterestsTrivia extends Table {
   @override
@@ -830,6 +878,15 @@ const String kMediaDataProviderPhotoFlickr = 'photo_flickr';
 
 /// Bing homepage image of the day into [Photos].
 const String kMediaDataProviderPhotoBingIotd = 'photo_bing_image_of_the_day';
+
+/// NASA APOD into [Photos].
+const String kMediaDataProviderPhotoNasaApod = 'photo_nasa_apod';
+
+/// NASA Mars rover photos into [Photos].
+const String kMediaDataProviderPhotoNasaMarsRover = 'photo_nasa_mars_rover';
+
+/// NASA Landsat Earth imagery into [Photos].
+const String kMediaDataProviderPhotoNasaEarthImagery = 'photo_nasa_earth_imagery';
 
 /// Operator-uploaded content (controller Data page, curator manual routes).
 const String kManualEntrySource = 'manual_entry';

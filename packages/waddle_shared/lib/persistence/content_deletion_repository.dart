@@ -14,6 +14,20 @@ class ContentDeletionRepository {
     return (_db.delete(_db.jokes)..where((t) => t.id.equals(id))).go();
   }
 
+  Future<int> deleteQuoterismQuote(String id) async {
+    final row = await (_db.select(_db.quoterismQuotes)
+          ..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (row == null) {
+      return 0;
+    }
+    await _deleteBlobByKey(row.authorImageBlobKey);
+    await (_db.delete(_db.quoterismQuoteCategories)
+          ..where((t) => t.quoteId.equals(id)))
+        .go();
+    return (_db.delete(_db.quoterismQuotes)..where((t) => t.id.equals(id))).go();
+  }
+
   Future<int> deleteTriviaQuestion(String id) {
     return (_db.delete(
       _db.triviaQuestions,

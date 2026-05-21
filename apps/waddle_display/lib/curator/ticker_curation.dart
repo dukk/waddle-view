@@ -450,6 +450,8 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
   required List<TickerTapeForCuration> enabledDefinitions,
   required List<StockTickerRowForMarquee> stockRows,
   List<WeatherGovAlertTickerItem> weatherGovAlerts = const [],
+  List<TickerItem> quoteTickerItems = const [],
+  Map<String, Set<String>> quoteCategoryIdsByQuoteId = const {},
   RejectFilterContext? rejectCtx,
 }) {
   List<TickerItem> expandTime() => [
@@ -520,6 +522,8 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
       kv: kv,
       nowLocal: nowLocal,
       rssItems: rssItems,
+      quoteTickerItems: quoteTickerItems,
+      quoteCategoryIdsByQuoteId: quoteCategoryIdsByQuoteId,
       currentWeather: currentWeather,
       stockRows: stockRows,
       weatherGovAlerts: weatherGovAlerts,
@@ -603,6 +607,8 @@ List<TickerItem> buildTickerItemsForMarquee({
   List<TickerTapeForCuration> definitions = const [],
   List<StockTickerRowForMarquee> stockRows = const [],
   List<WeatherGovAlertTickerItem> weatherGovAlerts = const [],
+  List<TickerItem> quoteTickerItems = const [],
+  Map<String, Set<String>> quoteCategoryIdsByQuoteId = const {},
   RejectFilterContext? rejectCtx,
 }) {
   AppDebugLog.curator(
@@ -658,6 +664,8 @@ List<TickerItem> buildTickerItemsForMarquee({
     enabledDefinitions: enabled,
     stockRows: stockRows,
     weatherGovAlerts: weatherGovAlerts,
+    quoteTickerItems: quoteTickerItems,
+    quoteCategoryIdsByQuoteId: quoteCategoryIdsByQuoteId,
     rejectCtx: rejectCtx,
   );
   AppDebugLog.curator(

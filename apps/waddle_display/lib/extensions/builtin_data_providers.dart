@@ -32,6 +32,10 @@ DataProviderRegistry buildBuiltinDataProviderRegistry() {
 
       WeatherDataProvider(),
 
+      OpenMeteoWeatherDataProvider(),
+
+      OpenMeteoAirQualityDataProvider(),
+
       NwsWeatherGovAlertsDataProvider(),
 
       PexelsPhotosDataProvider(),
@@ -53,6 +57,14 @@ DataProviderRegistry buildBuiltinDataProviderRegistry() {
       FlickrPhotosDataProvider(),
 
       BingImageOfDayDataProvider(),
+
+      NasaApodDataProvider(),
+
+      NasaMarsRoverDataProvider(),
+
+      NasaEarthImageryDataProvider(),
+
+      QuoterismDataProvider(),
 
       GooglePhotosPhotosDataProvider(),
 

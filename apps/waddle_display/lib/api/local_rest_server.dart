@@ -79,6 +79,15 @@ Handler buildProtectedApiRouter({
   r.delete('/v1/content/jokes/<id>', (Request req, String id) async {
     return _deleteContent(() => contentDeletion.deleteJoke(id));
   });
+  r.patch('/v1/content/quoterism-quotes/<id>', (Request req, String id) async {
+    return _patchContentSuppressed(
+      req,
+      (b) => suppression.setQuoterismQuoteSuppressed(id, b),
+    );
+  });
+  r.delete('/v1/content/quoterism-quotes/<id>', (Request req, String id) async {
+    return _deleteContent(() => contentDeletion.deleteQuoterismQuote(id));
+  });
   r.patch('/v1/content/rss-articles/<id>', (Request req, String id) async {
     return _patchContentSuppressed(
       req,

@@ -6,6 +6,7 @@ const Map<String, String> kTickerTypeTitles = {
   'time': 'Time',
   'weather': 'Weather',
   'news': 'News',
+  'quote': 'Quote',
   'stocks': 'Stocks',
   'static_text': 'Static text',
   kTickerTypePlugin: 'Plugin',

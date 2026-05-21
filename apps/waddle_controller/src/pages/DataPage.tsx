@@ -44,6 +44,7 @@ type DataKind =
   | 'trivia'
   | 'news'
   | 'photos'
+  | 'quoterism_quotes'
   | 'videos'
   | 'stocks'
   | 'weather'
@@ -59,6 +60,7 @@ const DATA_TABS: { kind: DataKind; label: string }[] = [
   { kind: 'jokes', label: 'Jokes' },
   { kind: 'news', label: 'News' },
   { kind: 'photos', label: 'Photos' },
+  { kind: 'quoterism_quotes', label: 'Quotes' },
   { kind: 'stocks', label: 'Stocks' },
   { kind: 'trivia', label: 'Trivia' },
   { kind: 'videos', label: 'Videos' },
@@ -95,6 +97,10 @@ const COLUMN_FILTER_FIELDS: Record<DataKind, readonly { param: string; label: st
     { param: 'alt_text', label: 'Alt text' },
     { param: 'photographer_name', label: 'Photographer' },
     { param: 'data_provider', label: 'Provider id' },
+  ],
+  quoterism_quotes: [
+    { param: 'text', label: 'Quote' },
+    { param: 'author_name', label: 'Author' },
   ],
   videos: [
     { param: 'alt_text', label: 'Alt text' },
@@ -146,6 +152,8 @@ function catalogPath(kind: DataKind): string {
       return '/v1/catalog/rss-articles';
     case 'photos':
       return '/v1/catalog/photos';
+    case 'quoterism_quotes':
+      return '/v1/catalog/quoterism-quotes';
     case 'videos':
       return '/v1/catalog/videos';
     case 'stocks':
@@ -160,7 +168,14 @@ function catalogPath(kind: DataKind): string {
 }
 
 function canSuppress(kind: DataKind): boolean {
-  return kind === 'jokes' || kind === 'trivia' || kind === 'news' || kind === 'photos' || kind === 'videos';
+  return (
+    kind === 'jokes' ||
+    kind === 'trivia' ||
+    kind === 'news' ||
+    kind === 'photos' ||
+    kind === 'videos' ||
+    kind === 'quoterism_quotes'
+  );
 }
 
 function contentPatchPath(kind: DataKind, id: string): string | null {
@@ -175,6 +190,8 @@ function contentPatchPath(kind: DataKind, id: string): string | null {
       return `/v1/content/photos/${encodeURIComponent(id)}`;
     case 'videos':
       return `/v1/content/videos/${encodeURIComponent(id)}`;
+    case 'quoterism_quotes':
+      return `/v1/content/quoterism-quotes/${encodeURIComponent(id)}`;
     default:
       return null;
   }
@@ -187,6 +204,7 @@ function contentDeletePath(kind: DataKind, row: Record<string, unknown>): string
     case 'news':
     case 'photos':
     case 'videos':
+    case 'quoterism_quotes':
     case 'calendar_events': {
       const id = String(row.id ?? '').trim();
       if (!id) return null;
@@ -195,6 +213,9 @@ function contentDeletePath(kind: DataKind, row: Record<string, unknown>): string
       if (kind === 'news') return `/v1/content/rss-articles/${encodeURIComponent(id)}`;
       if (kind === 'photos') return `/v1/content/photos/${encodeURIComponent(id)}`;
       if (kind === 'videos') return `/v1/content/videos/${encodeURIComponent(id)}`;
+      if (kind === 'quoterism_quotes') {
+        return `/v1/content/quoterism-quotes/${encodeURIComponent(id)}`;
+      }
       return `/v1/content/calendar-events/${encodeURIComponent(id)}`;
     }
     case 'stocks': {
@@ -225,6 +246,8 @@ function deleteRowSummary(kind: DataKind, row: Record<string, unknown>): string 
   switch (kind) {
     case 'jokes':
       return String(row.setup ?? row.id ?? 'joke');
+    case 'quoterism_quotes':
+      return String(row.text ?? row.id ?? 'quote');
     case 'trivia':
       return String(row.question ?? row.id ?? 'trivia');
     case 'news':
@@ -393,6 +416,8 @@ function dataRowSummary(row: Record<string, unknown>, kind: DataKind): string {
       return pick('title') ?? pick('location') ?? String(row.id ?? '');
     case 'jokes':
       return pick('setup') ?? String(row.id ?? '');
+    case 'quoterism_quotes':
+      return pick('text') ?? String(row.id ?? '');
     case 'trivia':
       return pick('question') ?? String(row.id ?? '');
     case 'news':
@@ -527,7 +552,8 @@ export function DataPage() {
         kind === 'jokes' ||
         kind === 'trivia' ||
         kind === 'photos' ||
-        kind === 'videos')
+        kind === 'videos' ||
+        kind === 'quoterism_quotes')
     ) {
       p.set('category', categoryId);
     }
@@ -755,10 +781,11 @@ export function DataPage() {
           </FormControl>
         )}
         {(kind === 'calendar_events' ||
-          kind === 'jokes' ||
-          kind === 'trivia' ||
-          kind === 'photos' ||
-          kind === 'videos') && (
+        kind === 'jokes' ||
+        kind === 'trivia' ||
+        kind === 'photos' ||
+        kind === 'videos' ||
+        kind === 'quoterism_quotes') && (
           <FormControl size="small" sx={{ minWidth: 180 }}>
             <InputLabel id="cat-filter">Category</InputLabel>
             <Select
@@ -878,6 +905,15 @@ export function DataPage() {
                 <>
                   <TableCell>Preview</TableCell>
                   <TableCell>Alt / photographer</TableCell>
+                  <TableCell>Source</TableCell>
+                  {canModerate && <TableCell width={100}>Suppressed</TableCell>}
+                </>
+              )}
+              {kind === 'quoterism_quotes' && (
+                <>
+                  <TableCell>Author</TableCell>
+                  <TableCell>Quote</TableCell>
+                  <TableCell>Categories</TableCell>
                   <TableCell>Source</TableCell>
                   {canModerate && <TableCell width={100}>Suppressed</TableCell>}
                 </>
@@ -1017,6 +1053,41 @@ export function DataPage() {
                         {canModerate && (
                           <TableCell>
                             <Switch size="small" checked={sup} onChange={(_, v) => void patchSuppressed(id, v)} />
+                          </TableCell>
+                        )}
+                      </>
+                    )}
+                    {kind === 'quoterism_quotes' && (
+                      <>
+                        <TableCell>
+                          <BlobMedia
+                            display={active}
+                            blobKey={row.author_image_blob_key as string | undefined}
+                            variant="image"
+                          />
+                          <Typography variant="body2" sx={{ mt: 0.5 }}>
+                            {String(row.author_name ?? '—')}
+                          </Typography>
+                        </TableCell>
+                        <TableCell sx={{ maxWidth: 360, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                          {String(row.text ?? '')}
+                        </TableCell>
+                        <TableCell>
+                          {Array.isArray(row.category_ids)
+                            ? (row.category_ids as string[])
+                                .map((cid) => categoryLabel(categories, cid))
+                                .join(', ')
+                            : '—'}
+                        </TableCell>
+                        <TableCell>{integrationCell(row)}</TableCell>
+                        {canModerate && (
+                          <TableCell>
+                            <Switch
+                              size="small"
+                              checked={sup}
+                              onChange={(_, v) => void patchSuppressed(id, v)}
+                              inputProps={{ 'aria-label': `Suppress quote ${id}` }}
+                            />
                           </TableCell>
                         )}
                       </>

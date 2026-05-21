@@ -56,6 +56,31 @@ const kContentCategoryDefaults = <ContentCategoryDef>[
     materialIconName: 'wallpaper',
   ),
   ContentCategoryDef(
+    id: 'nasa_apod',
+    label: 'NASA APOD',
+    materialIconName: 'nights_stay',
+  ),
+  ContentCategoryDef(
+    id: 'nasa_earth',
+    label: 'NASA Earth',
+    materialIconName: 'public',
+  ),
+  ContentCategoryDef(
+    id: 'nasa_mars',
+    label: 'NASA Mars',
+    materialIconName: 'rocket_launch',
+  ),
+  ContentCategoryDef(
+    id: 'nasa_mars_curiosity',
+    label: 'Mars — Curiosity',
+    materialIconName: 'rocket_launch',
+  ),
+  ContentCategoryDef(
+    id: 'nasa_mars_perseverance',
+    label: 'Mars — Perseverance',
+    materialIconName: 'rocket_launch',
+  ),
+  ContentCategoryDef(
     id: 'flickr',
     label: 'Flickr',
     materialIconName: 'photo_camera',

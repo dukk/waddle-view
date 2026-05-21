@@ -21,6 +21,10 @@ IconData contentCategoryMaterialIcon(String? materialIconName) {
       return Icons.photo_library_outlined;
     case 'wallpaper':
       return Icons.wallpaper_outlined;
+    case 'nights_stay':
+      return Icons.nights_stay_outlined;
+    case 'rocket_launch':
+      return Icons.rocket_launch_outlined;
     case 'photo_camera':
       return Icons.photo_camera_outlined;
     case 'forest':

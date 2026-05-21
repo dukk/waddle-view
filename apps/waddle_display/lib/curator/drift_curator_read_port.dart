@@ -5,6 +5,7 @@ import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'curator_membership_filter.dart';
 import 'curator_read_port.dart';
+import 'quoterism_ticker.dart';
 import 'ticker_news_candidate.dart';
 
 int _severityRank(String? severity) {
@@ -76,6 +77,31 @@ class DriftCuratorReadPort implements CuratorReadPort {
           articleId: a.id,
         ),
     ];
+  }
+
+  @override
+  Future<QuoterismTickerMarqueeData> loadQuoterismQuotesForTicker() async {
+    final rejectCtx = await loadRejectFilterContext();
+    final items = await loadQuoterismTickerItems(
+      _db,
+      maxItems: 24,
+      rejectCtx: rejectCtx,
+    );
+    if (items.isEmpty) {
+      return const QuoterismTickerMarqueeData();
+    }
+    final quoteIds = items.map((i) => i.sourceId).whereType<String>().toSet();
+    final junction = await (_db.select(_db.quoterismQuoteCategories)
+          ..where((t) => t.quoteId.isIn(quoteIds)))
+        .get();
+    final byQuote = <String, Set<String>>{};
+    for (final row in junction) {
+      (byQuote[row.quoteId] ??= {}).add(row.categoryId);
+    }
+    return QuoterismTickerMarqueeData(
+      items: items,
+      categoryIdsByQuoteId: byQuote,
+    );
   }
 
   @override

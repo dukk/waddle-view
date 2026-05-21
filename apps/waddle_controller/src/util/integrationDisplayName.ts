@@ -8,6 +8,8 @@ const INTEGRATION_TYPE_TITLES: Record<string, string> = {
   photo_pexels: 'Pexels Photos',
   video_pexels: 'Pexels Videos',
   weather_openweathermap: 'OpenWeatherMap Weather',
+  weather_openmeteo: 'Open-Meteo Weather',
+  air_quality_openmeteo: 'Open-Meteo Air Quality',
   weather_alerts_nws: 'NWS Weather Alerts',
   joke_openai: 'OpenAI Jokes',
   general_openai: 'OpenAI General',
@@ -24,6 +26,10 @@ const INTEGRATION_TYPE_TITLES: Record<string, string> = {
   video_onedrive: 'OneDrive Videos',
   photo_flickr: 'Flickr Photos',
   photo_bing_image_of_the_day: 'Bing Image of the Day',
+  photo_nasa_apod: 'NASA APOD',
+  photo_nasa_mars_rover: 'NASA Mars Rover Photos',
+  photo_nasa_earth_imagery: 'NASA Earth Imagery',
+  quote_quoterism: 'Quoterism Quotes',
   manual_entry: 'Manual entry',
 };
 
@@ -36,6 +42,7 @@ const WORD_DISPLAY: Record<string, string> = {
   onedrive: 'OneDrive',
   openai: 'OpenAI',
   openweathermap: 'OpenWeatherMap',
+  openmeteo: 'Open-Meteo',
   opentdb: 'OpenTDB',
   finnhub: 'Finnhub',
   google: 'Google',
@@ -43,6 +50,8 @@ const WORD_DISPLAY: Record<string, string> = {
   pexels: 'Pexels',
   flickr: 'Flickr',
   bing: 'Bing',
+  nasa: 'NASA',
+  apod: 'APOD',
 };
 
 function capitalizeToken(word: string): string {

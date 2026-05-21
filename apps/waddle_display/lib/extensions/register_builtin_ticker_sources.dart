@@ -42,6 +42,18 @@ void registerBuiltinTickerSources(TickerSourceRegistry registry) {
     return const [];
   });
 
+  registry.register('quote', (def, ctx) {
+    final categoryId = (def.configJson['categoryId'] as String?)?.trim();
+    if (categoryId == null || categoryId.isEmpty) {
+      return ctx.quoteTickerItems;
+    }
+    final byQuote = ctx.quoteCategoryIdsByQuoteId;
+    return [
+      for (final item in ctx.quoteTickerItems)
+        if (byQuote[item.sourceId ?? '']?.contains(categoryId) ?? false) item,
+    ];
+  });
+
   registry.register('stocks', (def, ctx) {
     if (ctx.stockRows.isEmpty) {
       return const [];

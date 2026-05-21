@@ -4,6 +4,7 @@ import 'config_json_documentation.dart';
 const Map<String, String> kScreenTypeTitles = {
   'static_text': 'Static text',
   'joke': 'Joke',
+  'quote': 'Quote',
   'trivia': 'Trivia',
   'wifi': 'Wi‑Fi',
   'digital_clock': 'Digital clock',
