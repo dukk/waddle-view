@@ -449,24 +449,26 @@ export function InterestsPage() {
       }),
     [filteredTrivia, search, sortId, interestNameSort],
   );
-  const tabListForPaging = useMemo(() => {
-    switch (tab) {
-      case 'locations':
-        return sortedLocations;
-      case 'jokes':
-        return sortedJokes;
-      case 'trivia':
-        return sortedTrivia;
-      case 'stocks':
-        return [...stocksInterested, ...stocksNotInterested];
-      default:
-        return [];
-    }
-  }, [tab, sortedLocations, sortedJokes, sortedTrivia, stocksInterested, stocksNotInterested]);
-
-  const tabPaged = useMemo(
-    () => paginateList(tabListForPaging, listPage, listPageSize),
-    [tabListForPaging, listPage, listPageSize],
+  const locationsPaged = useMemo(
+    () => paginateList(sortedLocations, listPage, listPageSize),
+    [sortedLocations, listPage, listPageSize],
+  );
+  const stocksPaged = useMemo(
+    () =>
+      paginateList(
+        [...stocksInterested, ...stocksNotInterested],
+        listPage,
+        listPageSize,
+      ),
+    [stocksInterested, stocksNotInterested, listPage, listPageSize],
+  );
+  const jokesPaged = useMemo(
+    () => paginateList(sortedJokes, listPage, listPageSize),
+    [sortedJokes, listPage, listPageSize],
+  );
+  const triviaPaged = useMemo(
+    () => paginateList(sortedTrivia, listPage, listPageSize),
+    [sortedTrivia, listPage, listPageSize],
   );
 
   useEffect(() => {
@@ -484,30 +486,20 @@ export function InterestsPage() {
             ? jokesLoading
             : triviaLoading;
 
-  const pagedLocations = useMemo(() => {
-    if (tab !== 'locations') return sortedLocations;
-    return tabPaged.items;
-  }, [tab, tabPaged.items, sortedLocations]);
+  const pagedLocations = locationsPaged.items;
 
   const pagedStocksInterested = useMemo(() => {
     const ids = new Set(stocksInterested.map((r) => r.id));
-    return tabPaged.items.filter((r) => 'symbol' in r && ids.has(r.id)) as typeof stocksInterested;
-  }, [tabPaged.items, stocksInterested]);
+    return stocksPaged.items.filter((r) => ids.has(r.id));
+  }, [stocksPaged.items, stocksInterested]);
 
   const pagedStocksNotInterested = useMemo(() => {
     const ids = new Set(stocksNotInterested.map((r) => r.id));
-    return tabPaged.items.filter((r) => 'symbol' in r && ids.has(r.id)) as typeof stocksNotInterested;
-  }, [tabPaged.items, stocksNotInterested]);
+    return stocksPaged.items.filter((r) => ids.has(r.id));
+  }, [stocksPaged.items, stocksNotInterested]);
 
-  const pagedJokes = useMemo(() => {
-    if (tab !== 'jokes') return sortedJokes;
-    return tabPaged.items as typeof sortedJokes;
-  }, [tab, tabPaged.items, sortedJokes]);
-
-  const pagedTrivia = useMemo(() => {
-    if (tab !== 'trivia') return sortedTrivia;
-    return tabPaged.items as typeof sortedTrivia;
-  }, [tab, tabPaged.items, sortedTrivia]);
+  const pagedJokes = jokesPaged.items;
+  const pagedTrivia = triviaPaged.items;
 
   const patchWeather = useCallback(
     async (id: string, patch: Parameters<typeof patchWeatherLocation>[2]) => {
@@ -738,9 +730,9 @@ export function InterestsPage() {
           />
           {tab === 'locations' && (
             <DataViewPagination
-              count={sortedLocations.length}
-              page={tabPaged.page}
-              pageSize={tabPaged.pageSize}
+              count={locationsPaged.total}
+              page={locationsPaged.page}
+              pageSize={locationsPaged.pageSize}
               onPageChange={setListPage}
               onPageSizeChange={setListPageSize}
             />
@@ -841,9 +833,9 @@ export function InterestsPage() {
             }
           />
           <DataViewPagination
-            count={tabListForPaging.length}
-            page={tabPaged.page}
-            pageSize={tabPaged.pageSize}
+            count={stocksPaged.total}
+            page={stocksPaged.page}
+            pageSize={stocksPaged.pageSize}
             onPageChange={setListPage}
             onPageSizeChange={setListPageSize}
           />
@@ -891,9 +883,9 @@ export function InterestsPage() {
           }
         />
           <DataViewPagination
-            count={sortedJokes.length}
-            page={tabPaged.page}
-            pageSize={tabPaged.pageSize}
+            count={jokesPaged.total}
+            page={jokesPaged.page}
+            pageSize={jokesPaged.pageSize}
             onPageChange={setListPage}
             onPageSizeChange={setListPageSize}
           />
@@ -941,9 +933,9 @@ export function InterestsPage() {
           }
         />
           <DataViewPagination
-            count={sortedTrivia.length}
-            page={tabPaged.page}
-            pageSize={tabPaged.pageSize}
+            count={triviaPaged.total}
+            page={triviaPaged.page}
+            pageSize={triviaPaged.pageSize}
             onPageChange={setListPage}
             onPageSizeChange={setListPageSize}
           />

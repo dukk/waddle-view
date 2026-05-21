@@ -22,6 +22,7 @@ function initialMap(displays: SavedDisplay[]): DisplaysReachabilityMap {
 export function useDisplaysReachability(displays: SavedDisplay[]): {
   reachability: DisplaysReachabilityMap;
   refreshing: boolean;
+  refreshReachability: () => Promise<void>;
 } {
   const [map, setMap] = useState<DisplaysReachabilityMap>(() => initialMap(displays));
   const [refreshing, setRefreshing] = useState(false);

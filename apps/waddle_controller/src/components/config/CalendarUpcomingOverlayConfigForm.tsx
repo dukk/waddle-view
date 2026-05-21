@@ -70,7 +70,7 @@ export function CalendarUpcomingOverlayConfigForm({ formData, onChange, disabled
           <Checkbox
             checked={upcomingTime12Hour}
             disabled={disabled}
-            onChange={(e) => patch({ upcomingTime12Hour: e.target.checked || undefined })}
+            onChange={(e) => patch({ upcomingTime12Hour: e.target.checked })}
           />
         }
         label="12-hour times with AM/PM"

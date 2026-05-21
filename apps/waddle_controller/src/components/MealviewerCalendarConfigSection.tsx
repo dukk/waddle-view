@@ -365,6 +365,7 @@ export function MealviewerCalendarConfigSection({
               </IconButton>
             </Stack>
             <CategoryMultiSelect
+              id={`mealviewer-cal-cat-${school.schoolSlug}`}
               label="Event categories"
               categories={categories}
               value={school.categoryIds}
