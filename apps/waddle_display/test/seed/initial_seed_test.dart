@@ -220,6 +220,27 @@ void main() {
     await db.close();
   });
 
+  test('ensureInitialSeed inserts joke_jokeapi provider disabled', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+
+    await ensureInitialSeed(db);
+
+    final row = await (db.select(db.integrations)
+          ..where((t) => t.id.equals(kDefaultJokeJokeapiIntegrationId)))
+        .getSingleOrNull();
+    expect(row, isNotNull);
+    expect(row!.enabled, isFalse);
+    expect(row.integrationType, 'joke_jokeapi');
+    expect(
+      integrationBaseUrlFromConfigJson(row.configJson),
+      'https://v2.jokeapi.dev/joke',
+    );
+    expect(row.configJson, contains('"jokesPerPoll"'));
+    expect(row.configJson, contains('"categoryMap"'));
+    await db.close();
+  });
+
   test('ensureInitialSeed inserts photo_flickr provider disabled', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);

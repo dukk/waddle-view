@@ -4,6 +4,10 @@ import {
   Box,
   Button,
   IconButton,
+  Link,
+  List,
+  ListItem,
+  ListItemText,
   Stack,
   TextField,
   Typography,
@@ -20,6 +24,14 @@ import {
   type IcalCalendarConfigState,
   type IcalFeedConfig,
 } from '@/util/icalCalendarConfig';
+import {
+  feedFromSuggestion,
+  feedListHasUrl,
+  ICAL_SUGGESTED_WEBCAL_GURU_FEEDS,
+  kWebcalGuruSignupMessage,
+  kWebcalGuruSignupUrl,
+  type IcalSuggestedFeed,
+} from '@/util/icalSuggestedFeeds';
 
 export type { ContentCategoryOption };
 
@@ -38,6 +50,7 @@ export function IcalCalendarConfigSection({
 }: Props) {
   const [urlDraft, setUrlDraft] = useState('');
   const [urlError, setUrlError] = useState<string | null>(null);
+  const [suggestedError, setSuggestedError] = useState<string | null>(null);
 
   const defaultCategoryId = useMemo(
     () => categories[0]?.id ?? '',
@@ -85,9 +98,73 @@ export function IcalCalendarConfigSection({
     });
   };
 
+  const addSuggestedFeed = useCallback(
+    (suggestion: IcalSuggestedFeed) => {
+      if (!defaultCategoryId) {
+        setSuggestedError('Add content categories on the display before adding feeds.');
+        return;
+      }
+      if (feedListHasUrl(value.feeds, suggestion.url)) {
+        setSuggestedError(`${suggestion.label} is already in your feed list.`);
+        return;
+      }
+      const feed = feedFromSuggestion(suggestion, defaultCategoryId);
+      onChange({
+        ...value,
+        feeds: mergeFeedIntoList(value.feeds, feed),
+      });
+      setSuggestedError(null);
+    },
+    [defaultCategoryId, onChange, value],
+  );
+
+  const canAddFeeds = !disabled && categories.length > 0;
+
   return (
     <Stack spacing={2}>
       <Typography variant="subtitle2">iCal / ICS feeds</Typography>
+
+      <Alert severity="info">
+        {kWebcalGuruSignupMessage}{' '}
+        <Link href={kWebcalGuruSignupUrl} target="_blank" rel="noopener noreferrer">
+          Sign up at WebCal.Guru
+        </Link>
+      </Alert>
+
+      <Typography variant="subtitle2">Suggested calendars (WebCal.Guru)</Typography>
+      {suggestedError ? (
+        <Alert severity="warning" onClose={() => setSuggestedError(null)}>
+          {suggestedError}
+        </Alert>
+      ) : null}
+      <List dense disablePadding sx={{ border: 1, borderColor: 'divider', borderRadius: 1 }}>
+        {ICAL_SUGGESTED_WEBCAL_GURU_FEEDS.map((suggestion) => {
+          const alreadyAdded = feedListHasUrl(value.feeds, suggestion.url);
+          return (
+            <ListItem
+              key={suggestion.url}
+              secondaryAction={
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => addSuggestedFeed(suggestion)}
+                  disabled={!canAddFeeds || alreadyAdded}
+                >
+                  {alreadyAdded ? 'Added' : 'Add'}
+                </Button>
+              }
+              sx={{ pr: 10 }}
+            >
+              <ListItemText
+                primary={suggestion.label}
+                secondary={suggestion.url}
+                secondaryTypographyProps={{ noWrap: true, title: suggestion.url }}
+              />
+            </ListItem>
+          );
+        })}
+      </List>
+
       {categories.length === 0 ? (
         <Alert severity="info">
           No content categories are available yet. Seed or add categories on the display, then

@@ -92,7 +92,7 @@ Offline displays are disabled in the picker; the transfer is blocked if the sour
 
 ### Integrations
 
-On **Integrations**, enable collectors and edit configuration per integration type. **iCal / ICS Calendar** uses a dedicated form: add or remove feeds by subscription URL, optional label per feed, and a **Category** dropdown (from **Curators → Categories** on the display). Feed ids are generated automatically; the sync window is always 30 days past and future (not shown in the form).
+On **Integrations**, enable collectors and edit configuration per integration type. **iCal / ICS Calendar** uses a dedicated form: one-click **Suggested calendars (WebCal.Guru)** shortcuts (U.S. elections, awareness days, holidays, and more), a link to **sign up at WebCal.Guru** for additional calendars, manual feed URL entry, optional label per feed, and a **Category** dropdown (from **Curators → Categories** on the display). Feed ids are generated automatically; the sync window is always 30 days past and future (not shown in the form).
 
 ### Interests
 

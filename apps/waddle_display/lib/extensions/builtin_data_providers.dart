@@ -24,6 +24,8 @@ DataProviderRegistry buildBuiltinDataProviderRegistry() {
 
       JokeDataProvider(),
 
+      JokeApiDataProvider(),
+
       GeneralOpenAiDataProvider(),
 
       TriviaDataProvider(),

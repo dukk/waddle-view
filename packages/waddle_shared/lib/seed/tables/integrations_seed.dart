@@ -192,6 +192,30 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
 
     db,
 
+    id: kDefaultJokeJokeapiIntegrationId,
+
+    integrationType: 'joke_jokeapi',
+
+    pollSeconds: 3600,
+
+    enabled: false,
+
+    baseUrl: 'https://v2.jokeapi.dev/joke',
+
+    configJson:
+
+        '{"jokesPerPoll":5,"blacklistFlags":["nsfw","racist","sexist","explicit"],'
+
+        '"categoryMap":{"general":"Misc","tech":"Programming"},"jokeRetentionDays":14}',
+
+  );
+
+
+
+  await _ensureIntegrationRow(
+
+    db,
+
     id: kDefaultTriviaOpenAiIntegrationId,
 
     integrationType: 'trivia_openai',

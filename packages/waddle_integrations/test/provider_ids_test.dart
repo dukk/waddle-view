@@ -9,6 +9,7 @@ import 'package:waddle_integrations/calendar_outlook/outlook_calendar_data_provi
 
 import 'package:waddle_integrations/general_openai/general_openai_data_provider.dart';
 import 'package:waddle_integrations/joke_openai/joke_data_provider.dart';
+import 'package:waddle_integrations/joke_jokeapi/jokeapi_data_provider.dart';
 
 import 'package:waddle_integrations/photo_bing_image_of_the_day/bing_image_of_day_data_provider.dart';
 import 'package:waddle_integrations/photo_nasa_apod/apod_data_provider.dart';
@@ -54,6 +55,8 @@ void main() {
     expect(RssNewsDataProvider().id, 'news_rss');
 
     expect(JokeDataProvider().id, 'joke_openai');
+
+    expect(JokeApiDataProvider().id, 'joke_jokeapi');
 
     expect(GeneralOpenAiDataProvider().id, 'general_openai');
 

@@ -142,6 +142,7 @@ void main() {
       'stub',
       'news_rss',
       'joke_openai',
+      'joke_jokeapi',
       'trivia_openai',
       'trivia_opentdb',
       'weather_openweathermap',

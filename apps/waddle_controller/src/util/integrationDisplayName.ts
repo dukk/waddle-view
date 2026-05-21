@@ -12,6 +12,7 @@ const INTEGRATION_TYPE_TITLES: Record<string, string> = {
   air_quality_openmeteo: 'Open-Meteo Air Quality',
   weather_alerts_nws: 'NWS Weather Alerts',
   joke_openai: 'OpenAI Jokes',
+  joke_jokeapi: 'JokeAPI Jokes',
   general_openai: 'OpenAI General',
   trivia_openai: 'OpenAI Trivia',
   trivia_opentdb: 'OpenTDB Trivia',

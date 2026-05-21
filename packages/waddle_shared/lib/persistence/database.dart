@@ -461,6 +461,7 @@ const String kDefaultNewsFacebookIntegrationId = 'default_news_facebook';
 const String kDefaultNewsTwitterIntegrationId = 'default_news_twitter';
 const String kDefaultNewsLinkedinIntegrationId = 'default_news_linkedin';
 const String kDefaultJokeOpenAiIntegrationId = 'default_joke_openai';
+const String kDefaultJokeJokeapiIntegrationId = 'default_joke_jokeapi';
 const String kDefaultGeneralOpenAiIntegrationId = 'default_general_openai';
 const String kDefaultTriviaOpenAiIntegrationId = 'default_trivia_openai';
 const String kDefaultTriviaOpenTdbIntegrationId = 'default_trivia_opentdb';
@@ -691,6 +692,7 @@ Future<void> _migrateV5ToV6IntegrationTypesAndDefaults(AppDatabase db) async {
   const idMigrations = <String, String>{
     'news_rss': kDefaultNewsRssIntegrationId,
     'joke_openai': kDefaultJokeOpenAiIntegrationId,
+    'joke_jokeapi': kDefaultJokeJokeapiIntegrationId,
     'trivia_openai': kDefaultTriviaOpenAiIntegrationId,
     'trivia_opentdb': kDefaultTriviaOpenTdbIntegrationId,
     'weather_openweathermap': kDefaultWeatherOpenWeatherMapIntegrationId,

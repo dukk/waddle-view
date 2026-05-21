@@ -296,6 +296,51 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       'globalPrompt': 'You write original, family-friendly jokes.',
     }),
   ),
+  'joke_jokeapi': ProviderConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'JokeApiProviderConfig',
+        description:
+            'JokeAPI fetch settings. categoryMap maps local joke category ids '
+            'to JokeAPI path categories (Programming, Misc, etc.). Only twopart '
+            'jokes are fetched.',
+        properties: _integrationConfigProperties({
+          'jokesPerPoll': {'type': 'integer', 'minimum': 1, 'maximum': 10},
+          'categoryMap': {
+            'type': 'object',
+            'additionalProperties': {'type': 'string', 'minLength': 1},
+          },
+          'blacklistFlags': {
+            'type': 'array',
+            'items': {
+              'type': 'string',
+              'enum': [
+                'nsfw',
+                'religious',
+                'political',
+                'racist',
+                'sexist',
+                'explicit',
+              ],
+            },
+          },
+          'contains': {
+            'type': 'string',
+            'description': 'Search string; jokes must contain this text.',
+          },
+          'jokeRetentionDays': {'type': 'integer'},
+        }),
+      ),
+    ),
+    example: jsonEncode({
+      'baseUrl': 'https://v2.jokeapi.dev/joke',
+      'jokesPerPoll': 5,
+      'contains': 'programmer',
+      'blacklistFlags': ['nsfw', 'racist', 'sexist', 'explicit'],
+      'categoryMap': {'general': 'Misc', 'tech': 'Programming'},
+      'jokeRetentionDays': 14,
+    }),
+  ),
   'general_openai': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
