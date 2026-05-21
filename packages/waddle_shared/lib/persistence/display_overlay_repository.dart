@@ -10,6 +10,7 @@ import 'display_overlay_bouncing_message_settings.dart';
 import 'display_overlay_confetti_settings.dart';
 import 'display_overlay_falling_images_settings.dart';
 import 'display_overlay_floating_balloons_settings.dart';
+import 'display_overlay_cloud_drift_settings.dart';
 import 'display_overlay_edge_glow_settings.dart';
 import 'display_overlay_matrix_rain_settings.dart';
 import 'display_overlay_shape_rain_settings.dart';
@@ -218,6 +219,9 @@ String normalizeOverlayConfigForUpsert({
             (throw FormatException('invalid_config_json')),
     kOverlayTypeEdgeGlow =>
         normalizeEdgeGlowSettingsJsonString(restJson) ??
+            (throw FormatException('invalid_config_json')),
+    kOverlayTypeCloudDrift =>
+        normalizeCloudDriftSettingsJsonString(restJson) ??
             (throw FormatException('invalid_config_json')),
     kOverlayTypeStaticImage =>
         normalizeStaticImageSettingsJsonString(restJson) ??

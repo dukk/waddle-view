@@ -5,6 +5,7 @@ import { BirthdayConfettiConfigForm } from './BirthdayConfettiConfigForm';
 import { FallingImagesConfigForm } from './FallingImagesConfigForm';
 import { FloatingBalloonsConfigForm } from './FloatingBalloonsConfigForm';
 import { SchemaConfigForm } from './SchemaConfigForm';
+import { CloudDriftConfigForm } from './CloudDriftConfigForm';
 import { EdgeGlowConfigForm } from './EdgeGlowConfigForm';
 import { MatrixRainConfigForm } from './MatrixRainConfigForm';
 import { ShapeRainConfigForm } from './ShapeRainConfigForm';
@@ -49,6 +50,9 @@ export function OverlayConfigPanel({
   }
   if (overlayType === 'edge_glow') {
     return <EdgeGlowConfigForm formData={formData} onChange={onChange} disabled={disabled} />;
+  }
+  if (overlayType === 'cloud_drift') {
+    return <CloudDriftConfigForm formData={formData} onChange={onChange} disabled={disabled} />;
   }
   if (overlayType === 'birthday_confetti') {
     return (

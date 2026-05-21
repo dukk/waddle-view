@@ -334,6 +334,35 @@ void main() {
     await db.close();
   });
 
+  test('upsert cloud_drift stores normalized config_json without messages', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureOverlaysTableExists(db);
+    await upsertOverlay(
+      db,
+      id: 'cloud1',
+      overlayType: kOverlayTypeCloudDrift,
+      label: 'Clouds',
+      configJson:
+          '{"messages":["ignored"],"cloud_type":"cirrus","scatter":0.5,'
+          '"density":0.4,"opacity":0.5,"color":"#C8CDD3","ignored":1}',
+    );
+    final rows = await fetchDisplayOverlays(db);
+    final cfg = jsonDecode(rows.single.configJson) as Map<String, dynamic>;
+    expect(cfg['cloud_type'], 'cirrus');
+    expect(cfg['scatter'], 0.5);
+    expect(cfg['density'], 0.4);
+    expect(cfg['opacity'], 0.5);
+    expect(cfg['color'], '#C8CDD3');
+    expect(cfg.containsKey('messages'), isFalse);
+    expect(cfg.containsKey('ignored'), isFalse);
+    expect(
+      await overlayTypeConfigJsonSchema(db, kOverlayTypeCloudDrift),
+      contains('Cloud drift'),
+    );
+    await db.close();
+  });
+
   test('upsert matrix_rain stores normalized config_json without messages', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);

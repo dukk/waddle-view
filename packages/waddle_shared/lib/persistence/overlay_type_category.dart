@@ -19,6 +19,7 @@ const Set<String> kOverlayTypeEffectTypes = {
   kOverlayTypeMatrixRain,
   kOverlayTypeEdgeGlow,
   kOverlayTypeFloatingBalloons,
+  kOverlayTypeCloudDrift,
 };
 
 /// Built-in overlay types that require viewport placement (`x`, `y`, `scale`, …).

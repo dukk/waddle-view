@@ -15,6 +15,7 @@ const EFFECT_TYPES = new Set([
   'matrix_rain',
   'edge_glow',
   'floating_balloons',
+  'cloud_drift',
 ]);
 
 const WIDGET_TYPES = new Set([

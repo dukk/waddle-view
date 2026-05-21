@@ -11,6 +11,7 @@ void main() {
     kOverlayTypeMatrixRain,
     kOverlayTypeEdgeGlow,
     kOverlayTypeFloatingBalloons,
+    kOverlayTypeCloudDrift,
   ];
 
   const widgetTypes = [

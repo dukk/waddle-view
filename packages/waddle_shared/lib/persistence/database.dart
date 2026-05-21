@@ -86,7 +86,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 40;
+  int get schemaVersion => 41;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -380,6 +380,13 @@ ORDER BY priority DESC, created_at DESC;
           return;
         }
         from = 40;
+      }
+      if (from == 40 && to >= 41) {
+        await _migrateV40ToV41CloudDriftOverlayType(this);
+        if (to == 41) {
+          return;
+        }
+        from = 41;
       }
       throw UnsupportedError(
         'Unsupported database upgrade from version $from to $to. '
@@ -2246,6 +2253,14 @@ Future<void> _migrateV35ToV36OverlayTypesCatalog(AppDatabase db) async {
 
 /// Schema 40: backfill QR code overlay type in [OverlayTypes].
 Future<void> _migrateV39ToV40QrCodeOverlayType(AppDatabase db) async {
+  if (!await _sqliteTableExists(db, 'overlay_types')) {
+    return;
+  }
+  await ensureOverlayTypes(db);
+}
+
+/// Schema 41: backfill cloud drift overlay type in [OverlayTypes].
+Future<void> _migrateV40ToV41CloudDriftOverlayType(AppDatabase db) async {
   if (!await _sqliteTableExists(db, 'overlay_types')) {
     return;
   }

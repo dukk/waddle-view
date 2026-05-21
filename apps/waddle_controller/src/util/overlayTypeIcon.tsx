@@ -12,6 +12,7 @@ import ShowChartIcon from '@mui/icons-material/ShowChart';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import TerminalIcon from '@mui/icons-material/Terminal';
 import ToysOutlinedIcon from '@mui/icons-material/ToysOutlined';
+import WbCloudyIcon from '@mui/icons-material/WbCloudy';
 import type { ElementType } from 'react';
 import { DigitalClockScreenIcon } from '@/icons/DigitalClockScreenIcon';
 
@@ -24,6 +25,7 @@ const OVERLAY_TYPE_ICONS: Record<string, ElementType> = {
   matrix_rain: TerminalIcon,
   edge_glow: HighlightOutlinedIcon,
   floating_balloons: ToysOutlinedIcon,
+  cloud_drift: WbCloudyIcon,
   static_image: ImageIcon,
   digital_clock: DigitalClockScreenIcon,
   analog_clock: Schedule,

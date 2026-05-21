@@ -81,6 +81,9 @@ void main() {
     final edgeGlow = displayOverlayConfigJsonDocForType('edge_glow');
     expect(jsonDecode(edgeGlow.schema), isA<Map<String, dynamic>>());
     expect(jsonDecode(edgeGlow.example), isA<Map<String, dynamic>>());
+    final cloudDrift = displayOverlayConfigJsonDocForType('cloud_drift');
+    expect(jsonDecode(cloudDrift.schema), isA<Map<String, dynamic>>());
+    expect(jsonDecode(cloudDrift.example), isA<Map<String, dynamic>>());
     final balloons = displayOverlayConfigJsonDocForType('floating_balloons');
     expect(jsonDecode(balloons.schema), isA<Map<String, dynamic>>());
     expect(jsonDecode(balloons.example), isA<Map<String, dynamic>>());

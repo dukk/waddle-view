@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'display_overlay_falling_images_settings.dart';
 import 'display_overlay_floating_balloons_settings.dart';
+import 'display_overlay_cloud_drift_settings.dart';
 import 'display_overlay_edge_glow_settings.dart';
 import 'display_overlay_matrix_rain_settings.dart';
 import 'display_overlay_calendar_month_settings.dart';
@@ -2681,6 +2682,62 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
         'x': kQrOverlayPositionXDefault,
         'y': kQrOverlayPositionYDefault,
         'scale': kQrOverlayScaleDefault,
+      }),
+    );
+  }
+  if (k == kOverlayTypeCloudDrift) {
+    return ProviderConfigJsonDoc(
+      schema: jsonEncode(
+        _baseSchema(
+          title: 'Cloud drift',
+          description:
+              'Procedural clouds that drift from right to left across the '
+              'viewport. Adjust morphology, scatter, density, transparency, '
+              'and tint.',
+          properties: {
+            'cloud_type': {
+              'type': 'string',
+              'enum': kCloudDriftCloudTypes,
+              'description':
+                  'Cloud silhouette style (default cirrostratus: thin high sheets).',
+            },
+            'scatter': {
+              'type': 'number',
+              'minimum': kCloudDriftScatterMin,
+              'maximum': kCloudDriftScatterMax,
+              'x-waddle-widget': 'slider',
+              'description':
+                  'Vertical and size spread (higher = more varied positions).',
+            },
+            'density': {
+              'type': 'number',
+              'minimum': kCloudDriftDensityMin,
+              'maximum': kCloudDriftDensityMax,
+              'x-waddle-widget': 'slider',
+              'description': 'How many clouds are active on screen.',
+            },
+            'opacity': {
+              'type': 'number',
+              'minimum': kCloudDriftOpacityMin,
+              'maximum': kCloudDriftOpacityMax,
+              'x-waddle-widget': 'slider',
+              'description':
+                  'Layer transparency (higher = more visible over slides).',
+            },
+            'color': {
+              'type': 'string',
+              'pattern': r'^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$',
+              'description': 'Cloud tint as a hex color.',
+            },
+          },
+        ),
+      ),
+      example: jsonEncode({
+        'cloud_type': kCloudDriftDefaultCloudType,
+        'scatter': 0.45,
+        'density': 0.35,
+        'opacity': 0.42,
+        'color': kCloudDriftDefaultColorHex,
       }),
     );
   }

@@ -6,6 +6,7 @@ import 'package:waddle_shared/persistence/display_overlay_confetti_settings.dart
 import 'package:waddle_shared/persistence/display_overlay_falling_images_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_floating_balloons_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_row.dart';
+import 'package:waddle_shared/persistence/display_overlay_cloud_drift_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_edge_glow_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_matrix_rain_settings.dart';
 import 'package:waddle_shared/persistence/display_overlay_shape_rain_settings.dart';
@@ -32,6 +33,7 @@ import '../display/overlay/bouncing_message_overlay.dart';
 import '../display/overlay/celebration_overlay_schedule.dart';
 import '../display/overlay/falling_images_overlay.dart';
 import '../display/overlay/floating_balloons_overlay.dart';
+import '../display/overlay/cloud_drift_overlay.dart';
 import '../display/overlay/edge_glow_overlay.dart';
 import '../display/overlay/matrix_rain_overlay.dart';
 import '../display/overlay/shape_rain_overlay.dart';
@@ -182,6 +184,14 @@ void registerBuiltins(OverlayWidgetRegistry registry) {
     }
     final settings = EdgeGlowScheduleSettings.parse(matches.first.configJson);
     return EdgeGlowOverlay(settings: settings);
+  });
+
+  registry.register(kOverlayTypeCloudDrift, (ctx, matches) {
+    if (matches.isEmpty) {
+      return null;
+    }
+    final settings = CloudDriftScheduleSettings.parse(matches.first.configJson);
+    return CloudDriftOverlay(settings: settings);
   });
 
   registry.register(kOverlayTypeFallingImages, (ctx, matches) {

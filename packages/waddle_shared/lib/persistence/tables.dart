@@ -200,6 +200,9 @@ const String kOverlayTypeEdgeGlow = 'edge_glow';
 /// Vector balloons rising from the bottom with animated strings.
 const String kOverlayTypeFloatingBalloons = 'floating_balloons';
 
+/// Procedural clouds drifting right-to-left across the viewport.
+const String kOverlayTypeCloudDrift = 'cloud_drift';
+
 /// Fixed logo/watermark at a viewport position (curator-assignable).
 const String kOverlayTypeStaticImage = 'static_image';
 
@@ -233,6 +236,7 @@ const List<String> kBuiltinOverlayTypes = [
   kOverlayTypeMatrixRain,
   kOverlayTypeEdgeGlow,
   kOverlayTypeFloatingBalloons,
+  kOverlayTypeCloudDrift,
   kOverlayTypeStaticImage,
   kOverlayTypeDigitalClock,
   kOverlayTypeAnalogClock,

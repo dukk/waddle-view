@@ -9,6 +9,7 @@ const Map<String, String> kOverlayTypeTitles = {
   kOverlayTypeMatrixRain: 'Matrix rain',
   kOverlayTypeEdgeGlow: 'Edge glow',
   kOverlayTypeFloatingBalloons: 'Floating balloons',
+  kOverlayTypeCloudDrift: 'Cloud drift',
   kOverlayTypeStaticImage: 'Static image',
   kOverlayTypeDigitalClock: 'Digital clock',
   kOverlayTypeAnalogClock: 'Analog clock',
