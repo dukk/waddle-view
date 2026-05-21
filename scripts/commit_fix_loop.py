@@ -71,6 +71,9 @@ def ensure_loop_started(root: Path, commit_sha: str) -> dict[str, Any]:
     state = read_loop(root)
     if state and state.get("commit_sha") == commit_sha:
         return state
+    prev_started = state.get("started_at_ms") if state else None
+    if isinstance(prev_started, int):
+        now = max(now, prev_started + 1)
     payload: dict[str, Any] = {
         "started_at_ms": now,
         "commit_sha": commit_sha,
