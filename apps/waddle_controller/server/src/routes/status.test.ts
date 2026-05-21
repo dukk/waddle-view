@@ -16,4 +16,17 @@ describe('status route', () => {
     const body = (await res.json()) as { clientIdentifier?: string };
     expect(body.clientIdentifier).toBe('wc-deployed');
   });
+
+  it('includes userModeEnabled and recoveryExportAvailable', async () => {
+    const t = createTestApp();
+    cleanup = t.cleanup;
+    const res = await t.app.request('/bff/v1/status');
+    const body = (await res.json()) as {
+      userModeEnabled: boolean;
+      userManagementEnabled: boolean;
+      recoveryExportAvailable: boolean;
+    };
+    expect(body.userModeEnabled).toBe(body.userManagementEnabled);
+    expect(body.recoveryExportAvailable).toBe(false);
+  });
 });

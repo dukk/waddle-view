@@ -25,6 +25,7 @@ import { AccountPage } from '@/pages/AccountPage';
 import { ViewerJoinPage } from '@/pages/ViewerJoinPage';
 import { ControllerLoginPage } from '@/pages/ControllerLoginPage';
 import { ControllerBootstrapPage } from '@/pages/ControllerBootstrapPage';
+import { ControllerChangePasswordPage } from '@/pages/ControllerChangePasswordPage';
 
 function DefaultHomeRedirect() {
   const { displays } = useDisplay();
@@ -83,6 +84,7 @@ export default function App() {
       <Routes>
         <Route path="/controller-login" element={<ControllerLoginPage />} />
         <Route path="/controller-bootstrap" element={<ControllerBootstrapPage />} />
+        <Route path="/controller-change-password" element={<ControllerChangePasswordPage />} />
         <Route
           path="/*"
           element={

@@ -8,14 +8,18 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useControllerAuth } from '@/context/ControllerAuthContext';
+import { isUserModeActive, useControllerAuth } from '@/context/ControllerAuthContext';
 import {
   exportDisplaysJson,
   importDisplaysJson,
   importDisplaysJsonLegacy,
   shouldOfferLocalDisplaysMigration,
 } from '@/storage/displays';
-import { migrateLocalDisplaysToServer } from '@/storage/userDisplaysSync';
+import {
+  importDisplaysToServer,
+  migrateLocalDisplaysToServer,
+  pullUserDisplaysFromServer,
+} from '@/storage/userDisplaysSync';
 
 type DisplaysBackupSectionProps = {
   onChanged: () => void;
@@ -23,43 +27,62 @@ type DisplaysBackupSectionProps = {
 
 export function DisplaysBackupSection({ onChanged }: DisplaysBackupSectionProps) {
   const { status } = useControllerAuth();
-  const userModeEnabled = Boolean(status?.authEnabled);
+  const userModeEnabled = status ? isUserModeActive(status) : false;
   const [importText, setImportText] = useState('');
   const [msg, setMsg] = useState<{ level: 'success' | 'error'; text: string } | null>(null);
   const [migrating, setMigrating] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const showMigration =
-    userModeEnabled && shouldOfferLocalDisplaysMigration();
-  const showBackup = !userModeEnabled;
+  const showMigration = userModeEnabled && shouldOfferLocalDisplaysMigration();
+  const showBackup = true;
 
   if (!showBackup && !showMigration) {
     return null;
   }
 
-  const exportBlob = () => {
-    const blob = new Blob([exportDisplaysJson()], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'waddle_controller_displays.json';
-    a.click();
-    URL.revokeObjectURL(url);
+  const exportBlob = async () => {
+    setMsg(null);
+    setExporting(true);
+    try {
+      if (userModeEnabled) {
+        await pullUserDisplaysFromServer();
+      }
+      const blob = new Blob([exportDisplaysJson()], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'waddle_controller_displays.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setMsg({ level: 'error', text: String(e) });
+    } finally {
+      setExporting(false);
+    }
   };
 
-  const doImport = () => {
+  const doImport = async () => {
     setMsg(null);
+    setImporting(true);
     try {
-      try {
-        importDisplaysJson(importText);
-      } catch {
-        importDisplaysJsonLegacy(importText);
+      if (userModeEnabled) {
+        await importDisplaysToServer(importText);
+      } else {
+        try {
+          importDisplaysJson(importText);
+        } catch {
+          importDisplaysJsonLegacy(importText);
+        }
       }
       setImportText('');
       onChanged();
       setMsg({ level: 'success', text: 'Imported display list.' });
     } catch (e) {
       setMsg({ level: 'error', text: String(e) });
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -90,7 +113,7 @@ export function DisplaysBackupSection({ onChanged }: DisplaysBackupSectionProps)
       )}
 
       {showMigration && (
-        <Box>
+        <Box sx={{ mb: showBackup ? 2 : 0 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             This browser still has display settings saved locally. Move them to your controller
             account on the server (API keys are included for adopted displays).
@@ -104,12 +127,13 @@ export function DisplaysBackupSection({ onChanged }: DisplaysBackupSectionProps)
       {showBackup && (
         <Box>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Export or import the saved display list stored in this browser (labels, base URLs, and
-            adopted API keys and roles when present).
+            {userModeEnabled
+              ? 'Export or import your display list. Exports reflect the server copy for your account; imports update the server and refresh this browser.'
+              : 'Export or import the display list stored in this browser (labels, base URLs, and adopted API keys when present).'}
           </Typography>
           <Stack direction="row" spacing={1} sx={{ mb: 2 }} flexWrap="wrap" useFlexGap>
-            <Button variant="outlined" onClick={exportBlob}>
-              Export JSON
+            <Button variant="outlined" disabled={exporting} onClick={() => void exportBlob()}>
+              {exporting ? 'Exporting…' : 'Export JSON'}
             </Button>
             <Button variant="outlined" onClick={() => fileRef.current?.click()}>
               Import from file
@@ -138,10 +162,10 @@ export function DisplaysBackupSection({ onChanged }: DisplaysBackupSectionProps)
           <Button
             sx={{ mt: 1 }}
             variant="contained"
-            onClick={doImport}
-            disabled={!importText.trim()}
+            onClick={() => void doImport()}
+            disabled={!importText.trim() || importing}
           >
-            Apply import
+            {importing ? 'Importing…' : 'Apply import'}
           </Button>
         </Box>
       )}

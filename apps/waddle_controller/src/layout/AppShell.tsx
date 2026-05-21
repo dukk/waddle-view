@@ -48,7 +48,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import { useAuth } from '@/context/AuthContext';
-import { useControllerAuth } from '@/context/ControllerAuthContext';
+import { isUserModeActive, useControllerAuth } from '@/context/ControllerAuthContext';
 import { useDisplay } from '@/context/DisplayContext';
 import { dismissActiveDisplayAlert, postDisplayNavigation } from '@/util/displayRemote';
 import { PREVIEWABLE_CONTROLLER_ROLES } from '@/auth/rolePermissions';
@@ -112,7 +112,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
   const { status: bffStatus, logout: controllerLogout } = useControllerAuth();
 
   const signedIn = Boolean(session && !needsLogin);
-  const showUserMenu = Boolean(bffStatus?.authEnabled);
+  const showUserMenu = Boolean(bffStatus && isUserModeActive(bffStatus));
 
   const filterDrawerNav = (items: NavItem[]) =>
     items.filter((item) => {
@@ -427,7 +427,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
                         <ListItemText>View UI as role…</ListItemText>
                       </MenuItem>
                     )}
-                    {bffStatus?.authEnabled && (
+                    {showUserMenu && (
                       <MenuItem
                         onClick={() => {
                           setUserMenuAnchor(null);

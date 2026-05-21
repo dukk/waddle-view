@@ -11,7 +11,7 @@ export function bootstrapRoutes() {
 
   app.post('/bootstrap/admin', async (c) => {
     const db = c.get('db');
-    if (!needsBootstrap(db, c.get('config').authEnabled)) {
+    if (!needsBootstrap(db, c.get('config'))) {
       return c.json({ error: 'Bootstrap not required', code: 'bootstrap_not_required' }, 409);
     }
     const ip = c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || 'local';
@@ -31,7 +31,12 @@ export function bootstrapRoutes() {
       const sessionId = createSession(db, user.id);
       setCookie(c, SESSION_COOKIE, sessionId, sessionCookieOptions(c.get('config')));
       return c.json({
-        user: { id: user.id, username: user.username, role: user.role },
+        user: {
+          id: user.id,
+          username: user.username,
+          role: user.role,
+          mustChangePassword: user.mustChangePassword,
+        },
         needsBootstrap: false,
       });
     } catch (e) {

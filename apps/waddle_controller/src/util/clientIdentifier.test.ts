@@ -4,7 +4,14 @@ import { resolveClientIdentifier } from './clientIdentifier';
 describe('resolveClientIdentifier', () => {
   it('uses env value when configured', () => {
     const result = resolveClientIdentifier(
-      { authEnabled: true, userManagementEnabled: true, needsBootstrap: false, clientIdentifier: 'wc-fixed' },
+      {
+        authEnabled: true,
+        userModeEnabled: true,
+        userManagementEnabled: true,
+        needsBootstrap: false,
+        recoveryExportAvailable: false,
+        clientIdentifier: 'wc-fixed',
+      },
       'wc-fallback',
     );
     expect(result).toEqual({ value: 'wc-fixed', locked: true });
@@ -12,7 +19,13 @@ describe('resolveClientIdentifier', () => {
 
   it('falls back when env unset', () => {
     const result = resolveClientIdentifier(
-      { authEnabled: false, userManagementEnabled: false, needsBootstrap: false },
+      {
+        authEnabled: false,
+        userModeEnabled: false,
+        userManagementEnabled: false,
+        needsBootstrap: false,
+        recoveryExportAvailable: false,
+      },
       'wc-fallback',
     );
     expect(result).toEqual({ value: 'wc-fallback', locked: false });

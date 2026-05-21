@@ -118,7 +118,6 @@ import {
 
 const DEFAULT_ROWS_PER_PAGE = 15;
 const INTEGRATION_SORT_OPTIONS = [
-  { id: 'id', label: 'ID' },
   { id: 'integration_type', label: 'Type' },
   { id: 'poll_seconds', label: 'Poll interval' },
   { id: 'enabled', label: 'Enabled' },
@@ -298,7 +297,7 @@ export function IntegrationsPage() {
   const { wrapRefresh: wrapAuxRefresh } = useDisplayRefresh();
   const { layout, setLayout } = useListLayoutPreference('integrations');
   const listControls = useServerDataView({
-    defaultSort: 'id',
+    defaultSort: 'integration_type',
     defaultOrder: 'asc',
     initialPageSize: DEFAULT_ROWS_PER_PAGE,
   });

@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { createTestApp } from '../testHelpers.js';
+import { setUserManagementEnabled } from './settings.js';
 import { createUser } from './users.js';
 import { upsertUserDisplay } from './userDisplays.js';
 import {
@@ -58,6 +59,7 @@ describe('displayProxy', () => {
   it('resolves active display for authenticated users without URL header', async () => {
     const t = createTestApp();
     cleanup = t.cleanup;
+    setUserManagementEnabled(t.db, true);
     const admin = await createUser(t.db, {
       username: 'admin',
       password: 'test-password1',
@@ -92,6 +94,7 @@ describe('displayProxy', () => {
   it('rejects URL mismatch for registered display', async () => {
     const t = createTestApp();
     cleanup = t.cleanup;
+    setUserManagementEnabled(t.db, true);
     const admin = await createUser(t.db, {
       username: 'admin',
       password: 'test-password1',

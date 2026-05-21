@@ -33,7 +33,15 @@ type ControllerAuthCtx = {
 
 const Ctx = createContext<ControllerAuthCtx | null>(null);
 
-const PUBLIC_PATHS = new Set(['/controller-login', '/controller-bootstrap']);
+const PUBLIC_PATHS = new Set([
+  '/controller-login',
+  '/controller-bootstrap',
+  '/controller-change-password',
+]);
+
+export function isUserModeActive(status: BffStatus): boolean {
+  return status.userModeEnabled ?? status.userManagementEnabled ?? false;
+}
 
 export function ControllerAuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<BffStatus | null>(null);
@@ -47,22 +55,23 @@ export function ControllerAuthProvider({ children }: { children: ReactNode }) {
     try {
       const next = await fetchBffStatus();
       setStatus(next);
-      setDisplayProxyAuthEnabled(next.authEnabled);
-      if (!next.authEnabled) {
+      setDisplayProxyAuthEnabled(isUserModeActive(next));
+      if (!isUserModeActive(next)) {
         clearLocalDisplaysMigrationComplete();
       } else if (next.user) {
         await pullUserDisplaysFromServer();
       }
     } catch (e) {
-      // BFF not running (static-only dev or release bundle): treat as auth disabled.
       const offline =
         e instanceof TypeError ||
         (e instanceof Error && /failed to fetch|network/i.test(e.message));
       if (offline) {
         setStatus({
           authEnabled: false,
+          userModeEnabled: false,
           userManagementEnabled: false,
           needsBootstrap: false,
+          recoveryExportAvailable: false,
         });
         return;
       }
@@ -87,12 +96,17 @@ export function ControllerAuthProvider({ children }: { children: ReactNode }) {
     (next: BffStatus) => {
       const path = location.pathname;
       if (PUBLIC_PATHS.has(path)) return;
-      if (next.authEnabled && next.needsBootstrap) {
+      const userMode = isUserModeActive(next);
+      if (userMode && next.needsBootstrap) {
         navigate('/controller-bootstrap', { replace: true });
         return;
       }
-      if (next.authEnabled && !next.user) {
+      if (userMode && !next.user) {
         navigate('/controller-login', { replace: true });
+        return;
+      }
+      if (userMode && next.user?.mustChangePassword && path !== '/controller-change-password') {
+        navigate('/controller-change-password', { replace: true });
       }
     },
     [location.pathname, navigate],
@@ -105,9 +119,13 @@ export function ControllerAuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (username: string, password: string) => {
-      await bffLogin(username, password);
+      const res = await bffLogin(username, password);
       await refresh();
-      navigate('/', { replace: true });
+      if (res.user.mustChangePassword) {
+        navigate('/controller-change-password', { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
     },
     [navigate, refresh],
   );
@@ -119,10 +137,10 @@ export function ControllerAuthProvider({ children }: { children: ReactNode }) {
       if (!(e instanceof BffError) || e.status !== 401) throw e;
     }
     await refresh();
-    if (status?.authEnabled) {
+    if (status && isUserModeActive(status)) {
       navigate('/controller-login', { replace: true });
     }
-  }, [navigate, refresh, status?.authEnabled]);
+  }, [navigate, refresh, status]);
 
   const bootstrapAdmin = useCallback(
     async (username: string, password: string) => {
@@ -173,11 +191,17 @@ export function ControllerAuthGate({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
-  if (status.authEnabled && status.needsBootstrap) {
+  const userMode = isUserModeActive(status);
+
+  if (userMode && status.needsBootstrap) {
     return null;
   }
 
-  if (status.authEnabled && !status.user) {
+  if (userMode && !status.user) {
+    return null;
+  }
+
+  if (userMode && status.user?.mustChangePassword) {
     return null;
   }
 

@@ -20,8 +20,10 @@ describe('controller BFF', () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as StatusResponse;
     expect(body.authEnabled).toBe(false);
+    expect(body.userModeEnabled).toBe(false);
     expect(body.userManagementEnabled).toBe(false);
     expect(body.needsBootstrap).toBe(false);
+    expect(body.recoveryExportAvailable).toBe(false);
   });
 
   it('blocks routes with needs_bootstrap until admin is created', async () => {
@@ -143,14 +145,7 @@ describe('controller BFF', () => {
     expect(listBody.users).toHaveLength(2);
   });
 
-  it('requires auth when auth is enabled', async () => {
-    const t = createTestApp();
-    cleanup = t.cleanup;
-    const res = await t.app.request('/bff/v1/users');
-    expect(res.status).toBe(401);
-  });
-
-  it('serves status and display proxy without users middleware blocking', async () => {
+  it('requires auth when user mode is enabled', async () => {
     const t = createTestApp();
     cleanup = t.cleanup;
     setUserManagementEnabled(t.db, true);
@@ -159,6 +154,22 @@ describe('controller BFF', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: 'admin', password: 'passwordpassword' }),
     });
+    const res = await t.app.request('/bff/v1/users');
+    expect(res.status).toBe(401);
+  });
+
+  it('returns user_mode_disabled for users when user mode is off', async () => {
+    const t = createTestApp();
+    cleanup = t.cleanup;
+    setUserManagementEnabled(t.db, false);
+    const res = await t.app.request('/bff/v1/users');
+    expect(res.status).toBe(403);
+  });
+
+  it('serves status and display proxy with URL header when user mode is off', async () => {
+    const t = createTestApp();
+    cleanup = t.cleanup;
+    setUserManagementEnabled(t.db, false);
     const status = await t.app.request('/bff/v1/status');
     expect(status.status).toBe(200);
 

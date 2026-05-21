@@ -34,6 +34,7 @@ import { AdoptDisplayDialog } from '@/components/AdoptDisplayDialog';
 import { EditDisplayDialog } from '@/components/EditDisplayDialog';
 
 import { DisplaysBackupSection } from '@/components/DisplaysBackupSection';
+import { DisplaysRecoverySection } from '@/components/DisplaysRecoverySection';
 
 import { useDisplay } from '@/context/DisplayContext';
 
@@ -379,6 +380,7 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
         />
       </Stack>
 
+      <DisplaysRecoverySection onChanged={refresh} />
       <DisplaysBackupSection onChanged={refresh} />
 
 

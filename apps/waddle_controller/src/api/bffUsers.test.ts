@@ -29,6 +29,8 @@ describe('bffUsers', () => {
             username: 'op',
             role: 'operator',
             disabled: false,
+            mustChangePassword: false,
+            lastLoginAt: null,
             createdAt: '',
             updatedAt: '',
           },

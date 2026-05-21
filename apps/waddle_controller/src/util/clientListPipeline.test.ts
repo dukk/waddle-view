@@ -10,7 +10,6 @@ import {
 type Row = { id: string; label: string };
 
 const sortOptions: SortOption<Row>[] = [
-  { id: 'id', label: 'ID', compare: (a, b) => a.id.localeCompare(b.id) },
   { id: 'label', label: 'Label', compare: (a, b) => a.label.localeCompare(b.label) },
 ];
 
@@ -43,8 +42,8 @@ describe('sortByOption', () => {
       { id: 'b', label: 'B' },
       { id: 'a', label: 'A' },
     ];
-    const sorted = sortByOption(input, sortOptions[0]);
-    expect(sorted.map((r) => r.id)).toEqual(['a', 'b']);
+    const sorted = sortByOption(input, sortOptions[0]!);
+    expect(sorted.map((r) => r.label)).toEqual(['A', 'B']);
     expect(input.map((r) => r.id)).toEqual(['b', 'a']);
   });
 });

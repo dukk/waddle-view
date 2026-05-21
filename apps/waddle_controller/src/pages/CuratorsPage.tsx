@@ -261,10 +261,13 @@ export function CuratorsPage() {
 }
 
 const CURATOR_CONFIG_SORT: SortOption<CuratorConfigurationSummary>[] = [
-  { id: 'sort_order', label: 'Sort order', compare: (a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id) },
+  {
+    id: 'sort_order',
+    label: 'Sort order',
+    compare: (a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name),
+  },
   { id: 'name_asc', label: 'Name (A–Z)', compare: (a, b) => a.name.localeCompare(b.name) },
   { id: 'name_desc', label: 'Name (Z–A)', compare: (a, b) => b.name.localeCompare(a.name) },
-  { id: 'id', label: 'ID', compare: (a, b) => a.id.localeCompare(b.id) },
 ];
 
 function CuratorConfigurationsSection({

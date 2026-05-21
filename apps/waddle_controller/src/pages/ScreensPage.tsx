@@ -55,8 +55,6 @@ type ScreenRow = ScreenDialogRow & {
 };
 
 const SCREEN_SORT_OPTIONS: SortOption<ScreenRow>[] = [
-  { id: 'id_asc', label: 'ID (A–Z)', compare: (a, b) => a.id.localeCompare(b.id) },
-  { id: 'id_desc', label: 'ID (Z–A)', compare: (a, b) => b.id.localeCompare(a.id) },
   {
     id: 'label_asc',
     label: 'Name (A–Z)',
@@ -252,7 +250,7 @@ export function ScreensPage() {
   const dataView = useClientDataView({
     items: rows,
     sortOptions: SCREEN_SORT_OPTIONS,
-    defaultSortId: 'id_asc',
+    defaultSortId: 'label_asc',
     searchMatches: (row, q) => {
       const meta = screenTypeMetaFor(screenTypes, row.screen_type);
       const typeLabel = screenTypeLabel(row.screen_type, meta);

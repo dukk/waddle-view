@@ -3,18 +3,15 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardActions,
-  CardContent,
-  Chip,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControl,
+  FormControlLabel,
   InputLabel,
   MenuItem,
-  Paper,
   Select,
   Stack,
   Switch,
@@ -35,82 +32,40 @@ import {
   updateBffUser,
   type BffUserRecord,
 } from '@/api/bffUsers';
-import { DataViewEmptyState } from '@/components/dataView/DataViewEmptyState';
-import { DataViewPagination } from '@/components/dataView/DataViewPagination';
-import { DataViewToolbar } from '@/components/dataView/DataViewToolbar';
-import { catalogCardGridSx } from '@/constants/catalogLayout';
-import { useControllerAuth } from '@/context/ControllerAuthContext';
-import { useClientDataView } from '@/hooks/useClientDataView';
-import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
-import type { SortOption } from '@/util/clientListPipeline';
+import { isUserModeActive, useControllerAuth } from '@/context/ControllerAuthContext';
+import { completeDialogSave } from '@/util/dialogSave';
 
-const USER_SORT_OPTIONS: SortOption<BffUserRecord>[] = [
-  {
-    id: 'username_asc',
-    label: 'Username (A–Z)',
-    compare: (a, b) => a.username.localeCompare(b.username),
-  },
-  {
-    id: 'username_desc',
-    label: 'Username (Z–A)',
-    compare: (a, b) => b.username.localeCompare(a.username),
-  },
-  { id: 'role', label: 'Role', compare: (a, b) => a.role.localeCompare(b.role) || a.username.localeCompare(b.username) },
-];
-
-function UserCard({
-  user,
-  onToggleDisabled,
-  onRemove,
-}: {
-  user: BffUserRecord;
-  onToggleDisabled: () => void;
-  onRemove: () => void;
-}) {
-  return (
-    <Card variant="outlined" sx={{ height: '100%' }}>
-      <CardContent>
-        <Typography variant="subtitle1" fontWeight={600}>
-          {user.username}
-        </Typography>
-        <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap">
-          <Chip size="small" label={user.role} />
-          {user.disabled ? <Chip size="small" color="warning" label="Disabled" /> : null}
-        </Stack>
-      </CardContent>
-      <CardActions sx={{ justifyContent: 'flex-end' }}>
-        <Switch checked={user.disabled} onChange={() => onToggleDisabled()} />
-        <Button color="error" size="small" onClick={onRemove}>
-          Delete
-        </Button>
-      </CardActions>
-    </Card>
-  );
+function formatLastLogin(iso: string | null): string {
+  if (!iso) return 'Never';
+  try {
+    return new Date(iso).toLocaleString();
+  } catch {
+    return iso;
+  }
 }
 
 export function UsersPage() {
   const { status } = useControllerAuth();
-  const { layout, setLayout } = useListLayoutPreference('users');
   const [users, setUsers] = useState<BffUserRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editUser, setEditUser] = useState<BffUserRecord | null>(null);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<ControllerRole>('operator');
+  const [mustChangePassword, setMustChangePassword] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createErr, setCreateErr] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [editErr, setEditErr] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
     setError(null);
     try {
       const res = await listBffUsers();
       setUsers(res.users);
     } catch (e) {
       setError(e instanceof BffError ? e.message : String(e));
-    } finally {
-      setLoading(false);
     }
   }, []);
 
@@ -118,18 +73,9 @@ export function UsersPage() {
     void load();
   }, [load]);
 
-  const dataView = useClientDataView({
-    items: users,
-    sortOptions: USER_SORT_OPTIONS,
-    defaultSortId: 'username_asc',
-    searchMatches: (u, q) =>
-      u.username.toLowerCase().includes(q) || u.role.toLowerCase().includes(q),
-  });
-
-  const displayRows = dataView.paginated.items;
-
   const openCreateDialog = () => {
     setCreateErr(null);
+    setMustChangePassword(false);
     setCreateOpen(true);
   };
 
@@ -142,16 +88,53 @@ export function UsersPage() {
     setCreating(true);
     setCreateErr(null);
     try {
-      await createBffUser({ username, password, role });
+      await createBffUser({ username, password, role, mustChangePassword });
       closeCreateDialog();
       setUsername('');
       setPassword('');
       setRole('operator');
+      setMustChangePassword(false);
       await load();
     } catch (e) {
       setCreateErr(e instanceof BffError ? e.message : String(e));
     } finally {
       setCreating(false);
+    }
+  };
+
+  const openEdit = (user: BffUserRecord) => {
+    setEditUser(user);
+    setRole(user.role);
+    setPassword('');
+    setMustChangePassword(user.mustChangePassword);
+    setEditErr(null);
+  };
+
+  const closeEdit = () => {
+    setEditUser(null);
+    setEditErr(null);
+    setPassword('');
+  };
+
+  const saveEdit = async () => {
+    if (!editUser) return;
+    setSaving(true);
+    setEditErr(null);
+    try {
+      const patch: {
+        role: ControllerRole;
+        mustChangePassword: boolean;
+        password?: string;
+      } = { role, mustChangePassword };
+      if (password.trim()) {
+        patch.password = password;
+      }
+      await updateBffUser(editUser.id, patch);
+      await completeDialogSave(load, closeEdit);
+    } catch (e) {
+      setEditErr(e instanceof BffError ? e.message : String(e));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -173,101 +156,71 @@ export function UsersPage() {
     }
   };
 
-  if (!status?.userManagementEnabled) {
+  if (!status || !isUserModeActive(status)) {
     return (
       <Alert severity="info">
-        User management is disabled. Enable it on the <strong>Users</strong> tab under Controller
-        Settings (admin only).
+        User mode is off. Turn it on above to manage controller accounts, or use display recovery on
+        the Displays tab if you need to copy server-stored settings into this browser.
       </Alert>
     );
   }
 
   return (
-    <Stack spacing={3} sx={{ maxWidth: 960 }}>
+    <Stack spacing={3} sx={{ maxWidth: 1100 }}>
       <Box>
-        <Typography variant="h5" fontWeight={600} sx={{ mb: 1 }}>
-          BFF operator accounts
-        </Typography>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          justifyContent="space-between"
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+          spacing={1}
+          sx={{ mb: 1 }}
+        >
+          <Typography variant="h5" fontWeight={600}>
+            Controller accounts
+          </Typography>
+          <Button variant="contained" onClick={openCreateDialog}>
+            Add user
+          </Button>
+        </Stack>
         <Typography variant="body2" color="text.secondary">
-          Operator and admin accounts for BFF sign-in to this controller. Disabled users remain in
-          the list but cannot authenticate until re-enabled.
+          Admin and operator accounts for signing in to this controller. Disabled users cannot sign
+          in until re-enabled.
         </Typography>
       </Box>
       {error && <Alert severity="error">{error}</Alert>}
-
-      <DataViewToolbar
-        layout={layout}
-        onLayoutChange={setLayout}
-        search={dataView.search}
-        onSearchChange={dataView.setSearch}
-        searchPlaceholder="Search users…"
-        sortOptions={USER_SORT_OPTIONS}
-        sortId={dataView.sortId}
-        onSortChange={dataView.setSortId}
-        onReload={() => void load()}
-        reloadDisabled={loading}
-        reloadAriaLabel="Reload users"
-      >
-        <Button variant="contained" onClick={openCreateDialog}>
-          Add user
-        </Button>
-      </DataViewToolbar>
-
-      <Stack spacing={2}>
-        <DataViewEmptyState
-          hasItems={users.length > 0}
-          hasFilteredMatches={displayRows.length > 0}
-          emptyMessage="No operator accounts yet."
-        />
-        {displayRows.length > 0 && layout === 'card' ? (
-          <Box sx={catalogCardGridSx}>
-            {displayRows.map((u) => (
-              <UserCard
-                key={u.id}
-                user={u}
-                onToggleDisabled={() => void toggleDisabled(u)}
-                onRemove={() => void remove(u.id)}
-              />
-            ))}
-          </Box>
-        ) : displayRows.length > 0 ? (
-          <Paper variant="outlined">
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Username</TableCell>
-                  <TableCell>Role</TableCell>
-                  <TableCell>Disabled</TableCell>
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {displayRows.map((u) => (
-                  <TableRow key={u.id}>
-                    <TableCell>{u.username}</TableCell>
-                    <TableCell>{u.role}</TableCell>
-                    <TableCell>
-                      <Switch checked={u.disabled} onChange={() => void toggleDisabled(u)} />
-                    </TableCell>
-                    <TableCell align="right">
-                      <Button color="error" size="small" onClick={() => void remove(u.id)}>
-                        Delete
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Paper>
-        ) : null}
-        <DataViewPagination
-          count={dataView.filteredTotal}
-          page={dataView.paginated.page}
-          pageSize={dataView.paginated.pageSize}
-          onPageChange={dataView.setPage}
-          onPageSizeChange={dataView.setPageSize}
-        />
-      </Stack>
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell>Username</TableCell>
+            <TableCell>Role</TableCell>
+            <TableCell>Last login</TableCell>
+            <TableCell>Must change password</TableCell>
+            <TableCell>Disabled</TableCell>
+            <TableCell align="right">Actions</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {users.map((u) => (
+            <TableRow key={u.id}>
+              <TableCell>{u.username}</TableCell>
+              <TableCell>{u.role}</TableCell>
+              <TableCell>{formatLastLogin(u.lastLoginAt)}</TableCell>
+              <TableCell>{u.mustChangePassword ? 'Yes' : 'No'}</TableCell>
+              <TableCell>
+                <Switch checked={u.disabled} onChange={() => void toggleDisabled(u)} />
+              </TableCell>
+              <TableCell align="right">
+                <Button size="small" onClick={() => openEdit(u)} sx={{ mr: 0.5 }}>
+                  Edit
+                </Button>
+                <Button color="error" size="small" onClick={() => void remove(u.id)}>
+                  Delete
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
 
       <Dialog open={createOpen} onClose={closeCreateDialog} fullWidth maxWidth="xs">
         <DialogTitle>Add user</DialogTitle>
@@ -290,17 +243,76 @@ export function UsersPage() {
             />
             <FormControl disabled={creating}>
               <InputLabel>Role</InputLabel>
-              <Select label="Role" value={role} onChange={(e) => setRole(e.target.value as ControllerRole)}>
+              <Select
+                label="Role"
+                value={role}
+                onChange={(e) => setRole(e.target.value as ControllerRole)}
+              >
                 <MenuItem value="operator">Operator</MenuItem>
                 <MenuItem value="admin">Admin</MenuItem>
               </Select>
             </FormControl>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={mustChangePassword}
+                  onChange={(e) => setMustChangePassword(e.target.checked)}
+                  disabled={creating}
+                />
+              }
+              label="Require password change on next sign-in"
+            />
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={closeCreateDialog}>Cancel</Button>
           <Button variant="contained" onClick={() => void createUser()} disabled={creating}>
             {creating ? 'Creating…' : 'Create'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={editUser !== null} onClose={closeEdit} fullWidth maxWidth="xs">
+        <DialogTitle>Edit user</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            {editErr && <Alert severity="error">{editErr}</Alert>}
+            <TextField label="Username" value={editUser?.username ?? ''} disabled />
+            <FormControl disabled={saving}>
+              <InputLabel>Role</InputLabel>
+              <Select
+                label="Role"
+                value={role}
+                onChange={(e) => setRole(e.target.value as ControllerRole)}
+              >
+                <MenuItem value="operator">Operator</MenuItem>
+                <MenuItem value="admin">Admin</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              label="New password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              helperText="Leave blank to keep current password"
+              disabled={saving}
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={mustChangePassword}
+                  onChange={(e) => setMustChangePassword(e.target.checked)}
+                  disabled={saving}
+                />
+              }
+              label="Require password change on next sign-in"
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeEdit}>Cancel</Button>
+          <Button variant="contained" onClick={() => void saveEdit()} disabled={saving}>
+            {saving ? 'Saving…' : 'Save'}
           </Button>
         </DialogActions>
       </Dialog>

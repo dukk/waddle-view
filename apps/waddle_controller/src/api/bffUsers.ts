@@ -3,6 +3,8 @@ import type { BffUser, ControllerRole } from '@/api/bffAuth';
 
 export type BffUserRecord = BffUser & {
   disabled: boolean;
+  mustChangePassword: boolean;
+  lastLoginAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -15,6 +17,7 @@ export function createBffUser(input: {
   username: string;
   password: string;
   role: ControllerRole;
+  mustChangePassword?: boolean;
 }): Promise<{ user: BffUserRecord }> {
   return bffJson('/users', {
     method: 'POST',
@@ -24,7 +27,12 @@ export function createBffUser(input: {
 
 export function updateBffUser(
   id: string,
-  patch: { role?: ControllerRole; disabled?: boolean; password?: string },
+  patch: {
+    role?: ControllerRole;
+    disabled?: boolean;
+    password?: string;
+    mustChangePassword?: boolean;
+  },
 ): Promise<{ user: BffUserRecord }> {
   return bffJson(`/users/${encodeURIComponent(id)}`, {
     method: 'PATCH',

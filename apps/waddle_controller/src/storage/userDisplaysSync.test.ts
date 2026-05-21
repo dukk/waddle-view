@@ -9,8 +9,8 @@ import {
 import {
   isLocalDisplaysMigrationComplete,
   loadDisplays,
+  saveDisplays,
 } from '@/storage/displays';
-import { loadDisplays, saveDisplays } from '@/storage/displays';
 import { loadSession, saveSession } from '@/storage/sessions';
 
 vi.mock('@/api/bffUserDisplays', () => ({
@@ -88,7 +88,7 @@ describe('userDisplaysSync', () => {
   });
 
   it('pullUserDisplaysFromServer merges remote displays', async () => {
-    vi.mocked(fetchUserDisplays).mockResolvedValue({
+    const remote = {
       displays: [
         {
           id: 'row1',
@@ -104,7 +104,8 @@ describe('userDisplaysSync', () => {
           updatedAt: '',
         },
       ],
-    });
+    };
+    vi.mocked(fetchUserDisplays).mockResolvedValue(remote);
     await pullUserDisplaysFromServer();
     const displays = loadDisplays();
     expect(displays.some((d) => d.id === 'd_remote')).toBe(true);

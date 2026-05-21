@@ -18,6 +18,7 @@ import {
   userDisplayBaseUrlMatches,
   type UserDisplayRow,
 } from './userDisplays.js';
+import { isEffectiveUserMode } from './userMode.js';
 
 const RESPONSE_HEADER_ALLOW = new Set([
   'content-type',
@@ -96,6 +97,7 @@ export function resolveProxyTarget(
   proxyPath: string,
   headers: Headers,
 ): ProxyResolveResult {
+  const userMode = isEffectiveUserMode(config, db);
   const adoption = isAdoptionProxyPath(proxyPath);
   const urlHeader = headers.get(DISPLAY_URL_HEADER)?.trim() ?? '';
   const displayId = headers.get(DISPLAY_ID_HEADER)?.trim() ?? '';
@@ -109,11 +111,11 @@ export function resolveProxyTarget(
     return { ok: true, upstreamUrl: validated.upstreamUrl };
   }
 
-  if (!urlHeader && !displayId && !config.authEnabled) {
+  if (!urlHeader && !displayId && !userMode) {
     return fail(400, 'display_url_required', 'X-Waddle-Display-Url is required');
   }
 
-  if (config.authEnabled) {
+  if (userMode) {
     if (!user) {
       return fail(401, 'unauthorized', 'Unauthorized');
     }

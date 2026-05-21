@@ -44,7 +44,10 @@ const Ctx = createContext<DisplayCtx | null>(null);
 
 export function DisplayProvider({ children }: { children: ReactNode }) {
   const { status: controllerStatus } = useControllerAuth();
-  const proxyAuthEnabled = controllerStatus?.authEnabled ?? false;
+  const proxyAuthEnabled = Boolean(
+    controllerStatus &&
+      (controllerStatus.userModeEnabled ?? controllerStatus.userManagementEnabled),
+  );
 
   const [displays, setDisplays] = useState<SavedDisplay[]>(() => loadDisplays());
   const [activeId, setActiveId] = useState<string | null>(() =>

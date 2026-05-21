@@ -16,10 +16,17 @@ export function usersRoutes() {
       username?: string;
       password?: string;
       role?: ControllerRole;
-    }>().catch(() => ({} as { username?: string; password?: string; role?: ControllerRole }))) as {
+      mustChangePassword?: boolean;
+    }>().catch(() => ({} as {
       username?: string;
       password?: string;
       role?: ControllerRole;
+      mustChangePassword?: boolean;
+    }))) as {
+      username?: string;
+      password?: string;
+      role?: ControllerRole;
+      mustChangePassword?: boolean;
     };
     const username = body.username?.trim() ?? '';
     const password = body.password ?? '';
@@ -31,7 +38,12 @@ export function usersRoutes() {
       return c.json({ error: 'Invalid role', code: 'invalid_request' }, 400);
     }
     try {
-      const user = await createUser(c.get('db'), { username, password, role });
+      const user = await createUser(c.get('db'), {
+        username,
+        password,
+        role,
+        mustChangePassword: body.mustChangePassword,
+      });
       return c.json({ user }, 201);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Create failed';
@@ -45,10 +57,17 @@ export function usersRoutes() {
       role?: ControllerRole;
       disabled?: boolean;
       password?: string;
-    }>().catch(() => ({} as { role?: ControllerRole; disabled?: boolean; password?: string }))) as {
+      mustChangePassword?: boolean;
+    }>().catch(() => ({} as {
       role?: ControllerRole;
       disabled?: boolean;
       password?: string;
+      mustChangePassword?: boolean;
+    }))) as {
+      role?: ControllerRole;
+      disabled?: boolean;
+      password?: string;
+      mustChangePassword?: boolean;
     };
     if (body.role !== undefined && body.role !== 'admin' && body.role !== 'operator') {
       return c.json({ error: 'Invalid role', code: 'invalid_request' }, 400);
@@ -70,7 +89,7 @@ export function usersRoutes() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Delete failed';
       const status = msg === 'User not found' ? 404 : 400;
-      return c.json({ error: msg, code: 'delete_failed' }, status);
+      return c.json({ error: msg, code: 'update_failed' }, status);
     }
   });
 

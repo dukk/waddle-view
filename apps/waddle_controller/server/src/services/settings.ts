@@ -1,6 +1,6 @@
 import type { AppDatabase } from '../db/database.js';
 
-const USER_MANAGEMENT_KEY = 'user_management_enabled';
+export const USER_MANAGEMENT_KEY = 'user_management_enabled';
 
 export function isUserManagementEnabled(db: AppDatabase): boolean {
   const row = db

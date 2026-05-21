@@ -13,8 +13,10 @@ describe('bffAuth', () => {
         ok: true,
         json: async () => ({
           authEnabled: true,
+          userModeEnabled: false,
           userManagementEnabled: false,
           needsBootstrap: false,
+          recoveryExportAvailable: false,
         }),
       }),
     );

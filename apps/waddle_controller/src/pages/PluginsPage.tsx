@@ -37,12 +37,15 @@ type PluginRow = {
 };
 
 const PLUGIN_SORT_OPTIONS: SortOption<PluginRow>[] = [
-  { id: 'id_asc', label: 'ID (A–Z)', compare: (a, b) => a.id.localeCompare(b.id) },
-  { id: 'id_desc', label: 'ID (Z–A)', compare: (a, b) => b.id.localeCompare(a.id) },
   {
     id: 'version',
     label: 'Version',
-    compare: (a, b) => a.version.localeCompare(b.version) || a.id.localeCompare(b.id),
+    compare: (a, b) => a.version.localeCompare(b.version) || a.path.localeCompare(b.path),
+  },
+  {
+    id: 'path_asc',
+    label: 'Path (A–Z)',
+    compare: (a, b) => a.path.localeCompare(b.path),
   },
 ];
 
@@ -126,7 +129,7 @@ export function PluginsPage() {
   const dataView = useClientDataView({
     items,
     sortOptions: PLUGIN_SORT_OPTIONS,
-    defaultSortId: 'id_asc',
+    defaultSortId: 'version',
     searchMatches: (row, q) =>
       row.id.toLowerCase().includes(q) ||
       row.version.toLowerCase().includes(q) ||

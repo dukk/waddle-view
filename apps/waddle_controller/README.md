@@ -36,7 +36,7 @@ Commit the updated files under `public/` so Docker builds (which only copy this 
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `WADDLE_CONTROLLER_AUTH_ENABLED` | `0` | Require sign-in before using the SPA |
+| `WADDLE_CONTROLLER_AUTH_ENABLED` | `0` | Enable BFF sign-in capability (user mode is toggled in Settings) |
 | `WADDLE_CONTROLLER_SESSION_SECRET` | — | Required when auth is enabled (session signing) |
 | `WADDLE_CONTROLLER_DATA_DIR` | `./data` | SQLite directory (`waddle_controller.db`) |
 | `WADDLE_CONTROLLER_BIND` | `127.0.0.1` | BFF listen host |
@@ -55,14 +55,17 @@ export WADDLE_CONTROLLER_SESSION_SECRET=change-me-in-production
 npm run dev
 ```
 
-1. Sign in at `/controller-login` when auth is enabled.
-2. In **Settings → Controller access**, an admin can enable **user management**.
-3. The first time user management is turned on with no accounts, the UI forces **Create admin account** (`POST /bff/v1/bootstrap/admin`).
-4. Manage accounts under **Users** (nav) when user management is enabled.
+1. Set `WADDLE_CONTROLLER_AUTH_ENABLED=1` on the BFF (deployment prerequisite).
+2. In **Settings → Users**, an admin turns on **User mode** (runtime toggle in SQLite).
+3. The first time user mode is enabled with no accounts, the UI forces **Create admin account** (`POST /bff/v1/bootstrap/admin`).
+4. Manage accounts on the **Users** tab: set passwords, roles, require password change on next sign-in, and view last login time.
+5. Sign in at `/controller-login` when user mode is on. Users flagged for password change land on `/controller-change-password` first.
 
-BFF API base path: **`/bff/v1/*`** (status, auth, settings, users, bootstrap, user-displays, display proxy).
+BFF API base path: **`/bff/v1/*`** (status, auth, settings, users, bootstrap, user-displays, recovery, display proxy).
 
-When **`WADDLE_CONTROLLER_AUTH_ENABLED=1`**, adopted displays and encrypted API keys are stored in SQLite (`user_displays`) per operator account, synced on login, and used by the proxy when the SPA omits the target URL header.
+When **user mode** is on, adopted displays and encrypted API keys are stored in SQLite (`user_displays`) per account. The browser keeps a local cache synced from the server on login and after imports. **Display list backup** (export/import JSON) works in user mode; exports pull from the server first.
+
+When **user mode** is turned off, sign-in is disabled but server data remains. Use **Recover display settings to this browser** on the Displays tab (`POST /bff/v1/recovery/export-displays`) to sign in once and copy an account’s displays into `localStorage`.
 
 **`WADDLE_CONTROLLER_PROXY_UPSTREAM_TIMEOUT_MS`** (default **180000**) caps how long the BFF waits for a proxied display HTTP response before returning **502** with `display_timeout`. Raise on slow hardware if read endpoints still time out during heavy display refresh; mutating routes should return quickly once the display defers post-save refresh work.
 

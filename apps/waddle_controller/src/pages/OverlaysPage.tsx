@@ -96,12 +96,15 @@ const OVERLAY_SORT_OPTIONS: SortOption<OverlayRow>[] = [
     label: 'Name (Z–A)',
     compare: (a, b) => overlayRowTitle(b).localeCompare(overlayRowTitle(a)),
   },
-  { id: 'id_asc', label: 'ID (A–Z)', compare: (a, b) => a.id.localeCompare(b.id) },
-  { id: 'id_desc', label: 'ID (Z–A)', compare: (a, b) => b.id.localeCompare(a.id) },
   {
     id: 'type_asc',
     label: 'Type (A–Z)',
     compare: (a, b) => a.overlay_type.localeCompare(b.overlay_type),
+  },
+  {
+    id: 'type_desc',
+    label: 'Type (Z–A)',
+    compare: (a, b) => b.overlay_type.localeCompare(a.overlay_type),
   },
 ];
 

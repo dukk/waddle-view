@@ -9,6 +9,8 @@ type UserRow = {
   password_hash: string;
   role: ControllerRole;
   disabled: number;
+  must_change_password: number;
+  last_login_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -19,6 +21,8 @@ function toPublicUser(row: UserRow): PublicUser {
     username: row.username,
     role: row.role,
     disabled: row.disabled !== 0,
+    mustChangePassword: row.must_change_password !== 0,
+    lastLoginAt: row.last_login_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -56,18 +60,33 @@ export function countAdmins(db: AppDatabase): number {
   return row.c;
 }
 
+export function recordUserLogin(db: AppDatabase, userId: string): void {
+  const now = new Date().toISOString();
+  db.prepare('UPDATE users SET last_login_at = ?, updated_at = ? WHERE id = ?').run(
+    now,
+    now,
+    userId,
+  );
+}
+
 export async function createUser(
   db: AppDatabase,
-  input: { username: string; password: string; role: ControllerRole },
+  input: {
+    username: string;
+    password: string;
+    role: ControllerRole;
+    mustChangePassword?: boolean;
+  },
 ): Promise<PublicUser> {
   const now = new Date().toISOString();
   const id = randomUUID();
   const passwordHash = await hashPassword(input.password);
+  const mustChange = input.mustChangePassword ? 1 : 0;
   try {
     db.prepare(
-      `INSERT INTO users (id, username, password_hash, role, disabled, created_at, updated_at)
-       VALUES (?, ?, ?, ?, 0, ?, ?)`,
-    ).run(id, input.username.trim(), passwordHash, input.role, now, now);
+      `INSERT INTO users (id, username, password_hash, role, disabled, must_change_password, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 0, ?, ?, ?)`,
+    ).run(id, input.username.trim(), passwordHash, input.role, mustChange, now, now);
   } catch (e: unknown) {
     if (e && typeof e === 'object' && 'code' in e && (e as { code: string }).code === 'SQLITE_CONSTRAINT_UNIQUE') {
       throw new Error('Username already exists');
@@ -80,13 +99,24 @@ export async function createUser(
 export async function updateUser(
   db: AppDatabase,
   id: string,
-  patch: { role?: ControllerRole; disabled?: boolean; password?: string },
+  patch: {
+    role?: ControllerRole;
+    disabled?: boolean;
+    password?: string;
+    mustChangePassword?: boolean;
+  },
 ): Promise<PublicUser> {
   const existing = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as UserRow | undefined;
   if (!existing) throw new Error('User not found');
 
   const role = patch.role ?? existing.role;
   const disabled = patch.disabled !== undefined ? (patch.disabled ? 1 : 0) : existing.disabled;
+  const mustChangePassword =
+    patch.mustChangePassword !== undefined
+      ? patch.mustChangePassword
+        ? 1
+        : 0
+      : existing.must_change_password;
   const now = new Date().toISOString();
   let passwordHash = existing.password_hash;
   if (patch.password) {
@@ -101,9 +131,23 @@ export async function updateUser(
   }
 
   db.prepare(
-    `UPDATE users SET role = ?, disabled = ?, password_hash = ?, updated_at = ? WHERE id = ?`,
-  ).run(role, disabled, passwordHash, now, id);
+    `UPDATE users SET role = ?, disabled = ?, password_hash = ?, must_change_password = ?, updated_at = ? WHERE id = ?`,
+  ).run(role, disabled, passwordHash, mustChangePassword, now, id);
   return findUserById(db, id)!;
+}
+
+export async function changeUserPassword(
+  db: AppDatabase,
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<PublicUser> {
+  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as UserRow | undefined;
+  if (!row) throw new Error('User not found');
+  const { verifyPassword } = await import('./password.js');
+  const ok = await verifyPassword(currentPassword, row.password_hash);
+  if (!ok) throw new Error('Current password is incorrect');
+  return updateUser(db, userId, { password: newPassword, mustChangePassword: false });
 }
 
 export function deleteUser(db: AppDatabase, id: string): void {

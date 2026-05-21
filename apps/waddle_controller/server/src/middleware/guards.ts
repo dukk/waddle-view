@@ -3,6 +3,7 @@ import type { AppVariables } from './context.js';
 import { isAdoptionProxyPath } from '../constants/proxyHeaders.js';
 import { needsBootstrap } from '../services/bootstrap.js';
 import { upstreamPathFromProxyRequest } from '../services/displayProxy.js';
+import { isEffectiveUserMode } from '../services/userMode.js';
 
 const BOOTSTRAP_ALLOWED = new Set([
   'GET:/status',
@@ -26,7 +27,8 @@ export function isAllowedDuringBootstrap(method: string, path: string): boolean 
 
 export const bootstrapGuard = createMiddleware<{ Variables: AppVariables }>(async (c, next) => {
   const db = c.get('db');
-  if (!needsBootstrap(db, c.get('config').authEnabled)) {
+  const config = c.get('config');
+  if (!needsBootstrap(db, config)) {
     await next();
     return;
   }
@@ -41,14 +43,20 @@ export const bootstrapGuard = createMiddleware<{ Variables: AppVariables }>(asyn
 export const requireAuthEnabled = createMiddleware<{ Variables: AppVariables }>(
   async (c, next) => {
     if (!c.get('config').authEnabled) {
-      return c.json({ error: 'Authentication is disabled', code: 'auth_disabled' }, 403);
+      return c.json(
+        { error: 'Authentication capability is disabled', code: 'auth_disabled' },
+        403,
+      );
+    }
+    if (!isEffectiveUserMode(c.get('config'), c.get('db'))) {
+      return c.json({ error: 'User mode is disabled', code: 'user_mode_disabled' }, 403);
     }
     await next();
   },
 );
 
 export const requireAuth = createMiddleware<{ Variables: AppVariables }>(async (c, next) => {
-  if (!c.get('config').authEnabled) {
+  if (!isEffectiveUserMode(c.get('config'), c.get('db'))) {
     await next();
     return;
   }
@@ -61,7 +69,7 @@ export const requireAuth = createMiddleware<{ Variables: AppVariables }>(async (
 
 export const requireAdmin = createMiddleware<{ Variables: AppVariables }>(async (c, next) => {
   const user = c.get('user');
-  if (!c.get('config').authEnabled) {
+  if (!isEffectiveUserMode(c.get('config'), c.get('db'))) {
     await next();
     return;
   }
@@ -73,12 +81,8 @@ export const requireAdmin = createMiddleware<{ Variables: AppVariables }>(async 
 });
 
 export const requireUserManagement = createMiddleware<{ Variables: AppVariables }>(async (c, next) => {
-  if (!c.get('config').authEnabled) {
-    return c.json({ error: 'Authentication is disabled', code: 'auth_disabled' }, 403);
-  }
-  const { isUserManagementEnabled } = await import('../services/settings.js');
-  if (!isUserManagementEnabled(c.get('db'))) {
-    return c.json({ error: 'User management is disabled', code: 'user_management_disabled' }, 403);
+  if (!isEffectiveUserMode(c.get('config'), c.get('db'))) {
+    return c.json({ error: 'User mode is disabled', code: 'user_mode_disabled' }, 403);
   }
   await next();
 });

@@ -73,8 +73,6 @@ type TickerTapeRow = {
 };
 
 const TICKER_SORT_OPTIONS: SortOption<TickerTapeRow>[] = [
-  { id: 'id_asc', label: 'ID (A–Z)', compare: (a, b) => a.id.localeCompare(b.id) },
-  { id: 'id_desc', label: 'ID (Z–A)', compare: (a, b) => b.id.localeCompare(a.id) },
   {
     id: 'label_asc',
     label: 'Name (A–Z)',
@@ -88,7 +86,8 @@ const TICKER_SORT_OPTIONS: SortOption<TickerTapeRow>[] = [
   {
     id: 'sort_order',
     label: 'Sort order',
-    compare: (a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id),
+    compare: (a, b) =>
+      a.sort_order - b.sort_order || tickerRowTitle(a).localeCompare(tickerRowTitle(b)),
   },
 ];
 
@@ -251,7 +250,7 @@ export function TickerPage() {
   const dataView = useClientDataView({
     items: rows,
     sortOptions: TICKER_SORT_OPTIONS,
-    defaultSortId: 'id_asc',
+    defaultSortId: 'label_asc',
     searchMatches: (row, q) => {
       const typeLabel = tickerTypeLabel(
         row.ticker_type,

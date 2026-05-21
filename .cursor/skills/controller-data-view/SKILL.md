@@ -25,6 +25,7 @@ Any **list or catalog page** under `apps/waddle_controller/src/pages/` that show
 5. **Reload** — wire `onReload` to the page `load` function; `reloadDisabled` while `useDisplayRefresh().loading` (or page `loading` for BFF-only pages).
 6. **Empty states** — [`DataViewEmptyState`](../../../apps/waddle_controller/src/components/dataView/DataViewEmptyState.tsx) for “no data” vs “no matches”.
 7. **Both layouts** — implement **card** and **table** branches over the same `displayRows` / `paginated.items`.
+8. **Sort labels** — only offer sorts on fields operators see (name, label, type, dates, etc.). Do **not** add “ID” sort options; internal ids may still be used in `searchMatches` or compare tie-breakers.
 
 Reset page index when search, sort, or filter changes.
 
@@ -45,15 +46,15 @@ import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import type { SortOption } from '@/util/clientListPipeline';
 
 const SORT_OPTIONS: SortOption<Row>[] = [
-  { id: 'id_asc', label: 'ID (A–Z)', compare: (a, b) => a.id.localeCompare(b.id) },
+  { id: 'name_asc', label: 'Name (A–Z)', compare: (a, b) => a.name.localeCompare(b.name) },
 ];
 
 const { layout, setLayout } = useListLayoutPreference('my-page');
 const dataView = useClientDataView({
   items: rows,
   sortOptions: SORT_OPTIONS,
-  defaultSortId: 'id_asc',
-  searchMatches: (row, q) => row.id.toLowerCase().includes(q),
+  defaultSortId: 'name_asc',
+  searchMatches: (row, q) => row.name.toLowerCase().includes(q),
 });
 const displayRows = dataView.paginated.items;
 
@@ -81,7 +82,7 @@ const displayRows = dataView.paginated.items;
 ## Server-paged template (Integrations-style)
 
 ```tsx
-const listControls = useServerDataView({ defaultSort: 'id', defaultOrder: 'asc' });
+const listControls = useServerDataView({ defaultSort: 'integration_type', defaultOrder: 'asc' });
 
 // listParams: { ...listControls.query, enabled, ... }
 // useEffect deps include listControls.query
