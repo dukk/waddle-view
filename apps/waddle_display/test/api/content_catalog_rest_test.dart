@@ -13,7 +13,7 @@ import '../helpers/rest_auth_helper.dart';
 
 Future<void> _seedCatalogRows(AppDatabase db) async {
   const cat = 'general';
-  await db.into(db.contentCategories).insert(
+  await db.into(db.contentCategories).insertOnConflictUpdate(
         ContentCategoriesCompanion.insert(id: cat, label: 'General'),
       );
   await db.into(db.interestsJokes).insert(

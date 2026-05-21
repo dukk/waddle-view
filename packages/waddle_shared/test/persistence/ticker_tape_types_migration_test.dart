@@ -168,11 +168,15 @@ CREATE TABLE config_key_values (
     ).getSingle();
     expect(jsonDecode(weather.read<String>('config_json')) as Map, isEmpty);
 
-    final legacyTypes = await db.customSelect(
-      "SELECT ticker_type FROM ticker_tape_types "
-      "WHERE ticker_type IN ('quote', 'custom')",
+    final customLegacy = await db.customSelect(
+      "SELECT ticker_type FROM ticker_tape_types WHERE ticker_type = 'custom'",
     ).get();
-    expect(legacyTypes, isEmpty);
+    expect(customLegacy, isEmpty);
+
+    final quoteType = await db.customSelect(
+      "SELECT label FROM ticker_tape_types WHERE ticker_type = 'quote'",
+    ).getSingle();
+    expect(quoteType.read<String>('label'), 'Quote');
 
     final staticType = await db.customSelect(
       "SELECT label FROM ticker_tape_types WHERE ticker_type = 'static_text'",

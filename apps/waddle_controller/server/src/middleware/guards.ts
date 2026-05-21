@@ -56,7 +56,7 @@ export const requireAuthEnabled = createMiddleware<{ Variables: AppVariables }>(
 );
 
 export const requireAuth = createMiddleware<{ Variables: AppVariables }>(async (c, next) => {
-  if (!isEffectiveUserMode(c.get('config'), c.get('db'))) {
+  if (!c.get('config').authEnabled) {
     await next();
     return;
   }
@@ -68,11 +68,11 @@ export const requireAuth = createMiddleware<{ Variables: AppVariables }>(async (
 });
 
 export const requireAdmin = createMiddleware<{ Variables: AppVariables }>(async (c, next) => {
-  const user = c.get('user');
-  if (!isEffectiveUserMode(c.get('config'), c.get('db'))) {
+  if (!c.get('config').authEnabled) {
     await next();
     return;
   }
+  const user = c.get('user');
   if (user?.role === 'admin') {
     await next();
     return;

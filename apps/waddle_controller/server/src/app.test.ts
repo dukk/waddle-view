@@ -115,6 +115,48 @@ describe('controller BFF', () => {
     expect(res.status).toBe(403);
   });
 
+  it('rejects unauthenticated settings update when auth enabled but user mode disabled', async () => {
+    const t = createTestApp();
+    cleanup = t.cleanup;
+    setUserManagementEnabled(t.db, true);
+    await t.app.request('/bff/v1/bootstrap/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'admin', password: 'passwordpassword' }),
+    });
+    setUserManagementEnabled(t.db, false);
+    const res = await t.app.request('/bff/v1/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userModeEnabled: true }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('admin can update settings when user mode is disabled', async () => {
+    const t = createTestApp();
+    cleanup = t.cleanup;
+    setUserManagementEnabled(t.db, true);
+    const boot = await t.app.request('/bff/v1/bootstrap/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'admin', password: 'passwordpassword' }),
+    });
+    const cookie = sessionCookieHeader(boot.headers.get('set-cookie') ?? undefined);
+    setUserManagementEnabled(t.db, false);
+    const res = await t.app.request('/bff/v1/settings', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(cookie ? { Cookie: cookie } : {}),
+      },
+      body: JSON.stringify({ userModeEnabled: true }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { userModeEnabled: boolean };
+    expect(body.userModeEnabled).toBe(true);
+  });
+
   it('admin can manage users when user management is enabled', async () => {
     const t = createTestApp();
     cleanup = t.cleanup;
@@ -161,8 +203,17 @@ describe('controller BFF', () => {
   it('returns user_mode_disabled for users when user mode is off', async () => {
     const t = createTestApp();
     cleanup = t.cleanup;
+    setUserManagementEnabled(t.db, true);
+    const boot = await t.app.request('/bff/v1/bootstrap/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'admin', password: 'passwordpassword' }),
+    });
+    const cookie = sessionCookieHeader(boot.headers.get('set-cookie') ?? undefined);
     setUserManagementEnabled(t.db, false);
-    const res = await t.app.request('/bff/v1/users');
+    const res = await t.app.request('/bff/v1/users', {
+      headers: cookie ? { Cookie: cookie } : {},
+    });
     expect(res.status).toBe(403);
   });
 

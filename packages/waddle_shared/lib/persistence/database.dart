@@ -881,8 +881,12 @@ Future<void> _ensureCuratorCategoriesTable(
   }
   if (await _sqliteTableExists(db, 'content_categories')) {
     await db.customStatement(
+      'DROP VIEW IF EXISTS v_integration_accounts_configured',
+    );
+    await db.customStatement(
       'ALTER TABLE content_categories RENAME TO curator_categories',
     );
+    await _ensureIntegrationAccountsConfiguredView(db);
     return;
   }
   if (migrator != null) {

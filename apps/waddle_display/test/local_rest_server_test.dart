@@ -11,7 +11,7 @@ import 'helpers/rest_auth_helper.dart';
 
 Future<void> _seedContentTypes(AppDatabase db) async {
   const cat = 'general';
-  await db.into(db.contentCategories).insert(
+  await db.into(db.contentCategories).insertOnConflictUpdate(
         ContentCategoriesCompanion.insert(id: cat, label: 'General'),
       );
   await db.into(db.interestsJokes).insert(
@@ -309,7 +309,7 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     const cat = 'general';
-    await db.into(db.contentCategories).insert(
+    await db.into(db.contentCategories).insertOnConflictUpdate(
           ContentCategoriesCompanion.insert(id: cat, label: 'General'),
         );
     await db.into(db.interestsLocations).insert(

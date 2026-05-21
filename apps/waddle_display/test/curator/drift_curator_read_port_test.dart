@@ -82,13 +82,6 @@ void main() {
   test('loadNewsCandidatesForTicker includes category icon name when available', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.contentCategories).insert(
-          ContentCategoriesCompanion.insert(
-            id: 'world',
-            label: 'World',
-            materialIconName: const Value('public'),
-          ),
-        );
     await db.into(db.interestsRssFeeds).insert(
           InterestsRssFeedsCompanion.insert(
             id: 'f1',
