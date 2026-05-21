@@ -5,49 +5,36 @@ import 'package:shelf_router/shelf_router.dart';
 import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/manual_bucket/manual_bucket_writes.dart';
 import 'package:waddle_shared/persistence/database.dart';
-import 'package:waddle_shared/persistence/tables.dart';
 
 void registerManualBucketRestRoutes(
   Router r, {
   required AppDatabase db,
   required BlobStore blobs,
 }) {
-  r.post('/v1/integrations/<integrationId>/bucket/photos',
-      (Request req, String integrationId) => _postPhoto(
-            req,
-            db: db,
-            blobs: blobs,
-            integrationId: integrationId,
-          ));
+  r.post(
+    '/v1/curator/manual/photos',
+    (Request req) => _postPhoto(req, db: db, blobs: blobs),
+  );
 
-  r.post('/v1/integrations/<integrationId>/bucket/videos',
-      (Request req, String integrationId) => _postVideo(
-            req,
-            db: db,
-            blobs: blobs,
-            integrationId: integrationId,
-          ));
+  r.post(
+    '/v1/curator/manual/videos',
+    (Request req) => _postVideo(req, db: db, blobs: blobs),
+  );
 
-  r.post('/v1/integrations/<integrationId>/bucket/jokes',
-      (Request req, String integrationId) => _postJoke(
-            req,
-            db: db,
-            integrationId: integrationId,
-          ));
+  r.post(
+    '/v1/curator/manual/jokes',
+    (Request req) => _postJoke(req, db: db),
+  );
 
-  r.post('/v1/integrations/<integrationId>/bucket/trivia',
-      (Request req, String integrationId) => _postTrivia(
-            req,
-            db: db,
-            integrationId: integrationId,
-          ));
+  r.post(
+    '/v1/curator/manual/trivia',
+    (Request req) => _postTrivia(req, db: db),
+  );
 
-  r.post('/v1/integrations/<integrationId>/bucket/calendar-events',
-      (Request req, String integrationId) => _postCalendarEvent(
-            req,
-            db: db,
-            integrationId: integrationId,
-          ));
+  r.post(
+    '/v1/curator/manual/calendar-events',
+    (Request req) => _postCalendarEvent(req, db: db),
+  );
 }
 
 Future<Map<String, dynamic>?> _parseBody(Request req) async {
@@ -83,32 +70,19 @@ Response _jsonCreated(Map<String, Object?> body) {
 }
 
 Response _mapManualBucketError(ManualBucketWriteException e) {
-  switch (e.code) {
-    case 'integration_not_found':
-      return _jsonError(404, e.code);
-    case 'integration_type_mismatch':
-      return _jsonError(400, e.code);
-    default:
-      return _jsonError(400, e.code, e.detail);
-  }
+  return _jsonError(400, e.code, e.detail);
 }
 
 Future<Response> _postPhoto(
   Request req, {
   required AppDatabase db,
   required BlobStore blobs,
-  required String integrationId,
 }) async {
   final map = await _parseBody(req);
   if (map == null) {
     return _jsonError(400, 'invalid_json');
   }
   try {
-    await requireManualBucketIntegration(
-      db,
-      integrationId: integrationId,
-      expectedType: kPhotoBucketIntegrationType,
-    );
     final bytes = decodeManualBucketBytes('${map['bytes_base64'] ?? ''}');
     final result = await writeManualBucketPhoto(
       db: db,
@@ -132,18 +106,12 @@ Future<Response> _postVideo(
   Request req, {
   required AppDatabase db,
   required BlobStore blobs,
-  required String integrationId,
 }) async {
   final map = await _parseBody(req);
   if (map == null) {
     return _jsonError(400, 'invalid_json');
   }
   try {
-    await requireManualBucketIntegration(
-      db,
-      integrationId: integrationId,
-      expectedType: kVideoBucketIntegrationType,
-    );
     final duration = map['duration_seconds'];
     final durationSeconds = duration is int
         ? duration
@@ -173,18 +141,12 @@ Future<Response> _postVideo(
 Future<Response> _postJoke(
   Request req, {
   required AppDatabase db,
-  required String integrationId,
 }) async {
   final map = await _parseBody(req);
   if (map == null) {
     return _jsonError(400, 'invalid_json');
   }
   try {
-    await requireManualBucketIntegration(
-      db,
-      integrationId: integrationId,
-      expectedType: kJokeBucketIntegrationType,
-    );
     final result = await writeManualBucketJoke(
       db: db,
       categoryId: '${map['category_id'] ?? ''}',
@@ -200,21 +162,14 @@ Future<Response> _postJoke(
 Future<Response> _postTrivia(
   Request req, {
   required AppDatabase db,
-  required String integrationId,
 }) async {
   final map = await _parseBody(req);
   if (map == null) {
     return _jsonError(400, 'invalid_json');
   }
   try {
-    await requireManualBucketIntegration(
-      db,
-      integrationId: integrationId,
-      expectedType: kTriviaBucketIntegrationType,
-    );
     final result = await writeManualBucketTrivia(
       db: db,
-      integrationRowId: integrationId,
       categoryId: '${map['category_id'] ?? ''}',
       question: '${map['question'] ?? ''}',
       optionA: '${map['option_a'] ?? ''}',
@@ -232,18 +187,12 @@ Future<Response> _postTrivia(
 Future<Response> _postCalendarEvent(
   Request req, {
   required AppDatabase db,
-  required String integrationId,
 }) async {
   final map = await _parseBody(req);
   if (map == null) {
     return _jsonError(400, 'invalid_json');
   }
   try {
-    await requireManualBucketIntegration(
-      db,
-      integrationId: integrationId,
-      expectedType: kCalendarBucketIntegrationType,
-    );
     final start = _parseDateTimeMs(map['start_ms']);
     final end = _parseDateTimeMs(map['end_ms']);
     if (start == null || end == null) {

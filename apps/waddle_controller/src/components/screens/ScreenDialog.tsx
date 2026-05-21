@@ -16,9 +16,12 @@ import {
 } from '@mui/material';
 import { apiFetch, apiJson, ApiError } from '@/api/client';
 import type { ContentCategoryOption } from '@/components/config/ContentCategorySelectField';
+import { CuratorSliderField } from '@/components/CuratorSliderField';
+import { DurationInputField } from '@/components/DurationInputField';
 import { ScreenConfigPanel } from '@/components/screens/ScreenConfigPanel';
 import type { SavedDisplay } from '@/storage/displays';
 import type { ScreenTypeSchemaMeta } from '@/storage/configSchemaCache';
+import { screenIdFromLabel } from '@/util/catalogIdFromLabel';
 import { completeDialogSave } from '@/util/dialogSave';
 import { parseJsonObject } from '@/util/json';
 import { prepareRjsfSchema, validateConfigAgainstSchema } from '@/util/rjsfSchema';
@@ -40,6 +43,7 @@ export type ScreenDialogRow = {
 
 export type ScreenDialogMode = 'create' | 'edit';
 
+const UNSELECTED_TYPE = '';
 const DEFAULT_MIN_DWELL = 8;
 const DEFAULT_MAX_DWELL = 15;
 const DEFAULT_WEIGHT = 100;
@@ -49,6 +53,7 @@ type Props = {
   mode: ScreenDialogMode;
   active: SavedDisplay;
   initial: ScreenDialogRow | null;
+  existingScreenIds: string[];
   screenTypes: ScreenTypeSchemaMeta[];
   schemaForType: (screenType: string) => unknown;
   exampleForType: (screenType: string) => Record<string, unknown>;
@@ -61,6 +66,7 @@ export function ScreenDialog({
   mode,
   active,
   initial,
+  existingScreenIds,
   screenTypes,
   schemaForType,
   exampleForType,
@@ -69,29 +75,37 @@ export function ScreenDialog({
 }: Props) {
   const [saving, setSaving] = useState(false);
   const [localErr, setLocalErr] = useState<string | null>(null);
-  const [id, setId] = useState('');
   const [label, setLabel] = useState('');
   const [description, setDescription] = useState('');
-  const [screenType, setScreenType] = useState(screenTypes[0]?.screen_type ?? '');
+  const [screenType, setScreenType] = useState(UNSELECTED_TYPE);
   const [minDwell, setMinDwell] = useState(DEFAULT_MIN_DWELL);
   const [maxDwell, setMaxDwell] = useState(DEFAULT_MAX_DWELL);
   const [weight, setWeight] = useState(DEFAULT_WEIGHT);
   const [minGap, setMinGap] = useState(0);
   const [minPlacements, setMinPlacements] = useState(0);
-  const [maxPlacements, setMaxPlacements] = useState<number | ''>('');
+  const [maxPlacements, setMaxPlacements] = useState(0);
   const [configForm, setConfigForm] = useState<Record<string, unknown>>({});
   const [categories, setCategories] = useState<ContentCategoryOption[]>([]);
 
+  const previewId = useMemo(() => {
+    if (mode !== 'create') return '';
+    return screenIdFromLabel(label, existingScreenIds);
+  }, [mode, label, existingScreenIds]);
+
   const configSchema = useMemo(
-    () => prepareRjsfSchema(schemaForType(screenType)),
+    () => (screenType ? prepareRjsfSchema(schemaForType(screenType)) : null),
     [schemaForType, screenType],
   );
+
+  const dialogTitle =
+    mode === 'create'
+      ? 'Add screen'
+      : `Edit ${(initial?.label ?? '').trim() || initial?.id || 'screen'}`;
 
   useEffect(() => {
     if (!open) return;
     setLocalErr(null);
     if (initial) {
-      setId(initial.id);
       setLabel(initial.label ?? '');
       setDescription(initial.description?.trim() ?? '');
       setScreenType(initial.screen_type);
@@ -100,23 +114,21 @@ export function ScreenDialog({
       setWeight(initial.frequency_weight);
       setMinGap(initial.min_gap_between_shows_seconds);
       setMinPlacements(initial.min_placements_per_program);
-      setMaxPlacements(initial.max_placements_per_program ?? '');
+      setMaxPlacements(initial.max_placements_per_program ?? 0);
       setConfigForm(parseJsonObject(initial.config_json));
     } else {
-      const defaultType = screenTypes[0]?.screen_type ?? '';
-      setId('');
       setLabel('');
       setDescription('');
-      setScreenType(defaultType);
+      setScreenType(UNSELECTED_TYPE);
       setMinDwell(DEFAULT_MIN_DWELL);
       setMaxDwell(DEFAULT_MAX_DWELL);
       setWeight(DEFAULT_WEIGHT);
       setMinGap(0);
       setMinPlacements(0);
-      setMaxPlacements('');
-      setConfigForm(exampleForType(defaultType));
+      setMaxPlacements(0);
+      setConfigForm({});
     }
-  }, [open, initial, screenTypes, exampleForType]);
+  }, [open, initial]);
 
   useEffect(() => {
     if (!open) return;
@@ -148,16 +160,20 @@ export function ScreenDialog({
 
   const handleTypeChange = (next: string) => {
     setScreenType(next);
-    if (mode === 'create') {
+    if (mode === 'create' && next) {
       setConfigForm(exampleForType(next));
     }
   };
 
   const submit = async () => {
     setLocalErr(null);
-    const idTrim = id.trim();
-    if (mode === 'create' && !idTrim) {
-      setLocalErr('Screen id is required.');
+    const labelTrim = label.trim();
+    if (!labelTrim) {
+      setLocalErr('Label is required.');
+      return;
+    }
+    if (!screenType) {
+      setLocalErr('Select a screen type.');
       return;
     }
     if (minDwell <= 0 || maxDwell <= 0 || minDwell > maxDwell) {
@@ -175,16 +191,15 @@ export function ScreenDialog({
         await apiFetch(active, '/v1/screens', {
           method: 'POST',
           body: JSON.stringify({
-            id: idTrim,
-            screen_type: screenType.trim(),
-            label: label.trim() || undefined,
+            label: labelTrim,
             description: description.trim(),
+            screen_type: screenType.trim(),
             min_dwell_seconds: minDwell,
             max_dwell_seconds: maxDwell,
             frequency_weight: weight,
             min_gap_between_shows_seconds: minGap,
             min_placements_per_program: minPlacements,
-            max_placements_per_program: maxPlacements === '' ? null : Number(maxPlacements),
+            max_placements_per_program: maxPlacements <= 0 ? null : maxPlacements,
             config_json: configForm,
           }),
         });
@@ -192,14 +207,14 @@ export function ScreenDialog({
         await apiFetch(active, `/v1/screens/${encodeURIComponent(initial.id)}`, {
           method: 'PATCH',
           body: JSON.stringify({
-            label: label.trim(),
+            label: labelTrim,
             description: description.trim(),
             min_dwell_seconds: minDwell,
             max_dwell_seconds: maxDwell,
             frequency_weight: weight,
             min_gap_between_shows_seconds: minGap,
             min_placements_per_program: minPlacements,
-            max_placements_per_program: maxPlacements === '' ? null : Number(maxPlacements),
+            max_placements_per_program: maxPlacements <= 0 ? null : maxPlacements,
             config_json: configForm,
           }),
         });
@@ -214,30 +229,25 @@ export function ScreenDialog({
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>
-        {mode === 'create' ? 'Add screen' : `Edit ${initial?.id ?? 'screen'}`}
-      </DialogTitle>
+      <DialogTitle>{dialogTitle}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           {localErr && <Alert severity="error">{localErr}</Alert>}
-          {mode === 'create' ? (
-            <TextField
-              label="Screen id"
-              value={id}
-              onChange={(e) => setId(e.target.value)}
-              required
-              fullWidth
-              autoFocus
-            />
-          ) : (
-            <TextField label="Screen id" value={id} disabled fullWidth />
-          )}
           <TextField
             label="Label"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
+            required
             fullWidth
-            helperText={mode === 'create' ? 'Optional; defaults to screen id when empty.' : undefined}
+            autoFocus={mode === 'create'}
+            disabled={saving}
+            helperText={
+              mode === 'create'
+                ? previewId
+                  ? `Id will be ${previewId} (derived from this label).`
+                  : 'Id is derived from this label (letters and numbers).'
+                : undefined
+            }
           />
           <TextField
             label="Description"
@@ -246,16 +256,22 @@ export function ScreenDialog({
             fullWidth
             multiline
             minRows={2}
+            disabled={saving}
           />
-          <FormControl fullWidth>
+          <FormControl fullWidth disabled={saving || mode === 'edit'}>
             <InputLabel id="screen-type-label">Screen type</InputLabel>
             <Select
               labelId="screen-type-label"
               label="Screen type"
               value={screenType}
               onChange={(e) => handleTypeChange(String(e.target.value))}
-              disabled={mode === 'edit'}
+              displayEmpty
             >
+              {mode === 'create' ? (
+                <MenuItem value={UNSELECTED_TYPE} disabled>
+                  Select screen type
+                </MenuItem>
+              ) : null}
               {screenTypes.map((m) => (
                 <MenuItem key={m.screen_type} value={m.screen_type}>
                   {screenTypeLabel(m.screen_type, m)}
@@ -269,65 +285,81 @@ export function ScreenDialog({
               types.
             </Typography>
           ) : null}
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField
-              label="Min dwell seconds"
-              type="number"
-              value={minDwell}
-              onChange={(e) => setMinDwell(Number(e.target.value) || 0)}
-              fullWidth
-            />
-            <TextField
-              label="Max dwell seconds"
-              type="number"
-              value={maxDwell}
-              onChange={(e) => setMaxDwell(Number(e.target.value) || 0)}
-              fullWidth
-            />
-          </Stack>
-          <TextField
-            label="Frequency weight"
-            type="number"
-            value={weight}
-            onChange={(e) => setWeight(Number(e.target.value) || 0)}
-            fullWidth
-            helperText="Higher values are chosen more often; recent appearances in the history window reduce effective weight."
-          />
-          <TextField
-            label="Min gap between shows (seconds)"
-            type="number"
-            value={minGap}
-            onChange={(e) => setMinGap(Number(e.target.value) || 0)}
-            fullWidth
-            helperText="Minimum time since the last showing before this screen is eligible again."
-          />
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField
-              label="Min placements per program"
-              type="number"
-              value={minPlacements}
-              onChange={(e) => setMinPlacements(Number(e.target.value) || 0)}
-              fullWidth
-            />
-            <TextField
-              label="Max placements per program"
-              type="number"
-              value={maxPlacements}
-              onChange={(e) =>
-                setMaxPlacements(e.target.value === '' ? '' : Number(e.target.value) || 0)
-              }
-              fullWidth
-              helperText="Leave empty for no cap."
-            />
-          </Stack>
-          <ScreenConfigPanel
-            display={active}
-            schema={configSchema}
-            formData={configForm}
-            onChange={setConfigForm}
-            disabled={saving}
-            categories={categories}
-          />
+          {screenType ? (
+            <>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <DurationInputField
+                  label="Min dwell"
+                  valueSeconds={minDwell}
+                  onChange={setMinDwell}
+                  allowedUnits={['sec', 'min', 'hr']}
+                  minSeconds={1}
+                  maxSeconds={86400}
+                  disabled={saving}
+                />
+                <DurationInputField
+                  label="Max dwell"
+                  valueSeconds={maxDwell}
+                  onChange={setMaxDwell}
+                  allowedUnits={['sec', 'min', 'hr']}
+                  minSeconds={1}
+                  maxSeconds={86400}
+                  disabled={saving}
+                />
+              </Stack>
+              <CuratorSliderField
+                label="Frequency weight"
+                value={weight}
+                onChange={setWeight}
+                min={0}
+                max={500}
+                step={5}
+                disabled={saving}
+                formatValue={(v) => String(v)}
+              />
+              <Typography variant="caption" color="text.secondary" sx={{ mt: -1 }}>
+                Higher values are chosen more often; recent appearances in the history window reduce
+                effective weight.
+              </Typography>
+              <DurationInputField
+                label="Min gap between shows"
+                valueSeconds={minGap}
+                onChange={setMinGap}
+                allowedUnits={['sec', 'min', 'hr', 'day']}
+                minSeconds={0}
+                maxSeconds={604800}
+                disabled={saving}
+                helperText="Minimum time since the last showing before this screen is eligible again."
+              />
+              <CuratorSliderField
+                label="Min placements per program"
+                value={minPlacements}
+                onChange={setMinPlacements}
+                min={0}
+                max={20}
+                step={1}
+                disabled={saving}
+              />
+              <CuratorSliderField
+                label="Max placements per program"
+                value={maxPlacements}
+                onChange={setMaxPlacements}
+                min={0}
+                max={20}
+                step={1}
+                disabled={saving}
+                formatValue={(v) => (v <= 0 ? 'No cap' : String(v))}
+              />
+              <ScreenConfigPanel
+                display={active}
+                schema={configSchema}
+                formData={configForm}
+                onChange={setConfigForm}
+                disabled={saving}
+                categories={categories}
+              />
+            </>
+          ) : null}
         </Stack>
       </DialogContent>
       <DialogActions>

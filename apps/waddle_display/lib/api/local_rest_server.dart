@@ -359,11 +359,13 @@ Handler buildProtectedApiRouter({
       }
     }
     try {
+      final description = (map['description'] as String?)?.trim() ?? '';
       final storedId = await upsertOverlay(
         db,
         id: id,
         overlayType: overlayType,
         label: label,
+        description: description,
         configJson: _effectiveOverlayConfigFromBody(map),
       );
       return Response.ok(
@@ -478,6 +480,7 @@ Handler buildProtectedApiRouter({
         id: pathId,
         overlayType: _patchOverlayType(existing, map),
         label: _patchOverlayLabel(existing, map),
+        description: _patchOverlayDescription(existing, map),
         configJson: _patchOverlayConfigJson(existing, map),
       );
     } on FormatException catch (e) {
@@ -830,6 +833,16 @@ String _patchOverlayLabel(DisplayOverlayRow existing, Map<String, dynamic> map) 
     return (map['name'] as String?)?.trim() ?? '';
   }
   return existing.label;
+}
+
+String _patchOverlayDescription(
+  DisplayOverlayRow existing,
+  Map<String, dynamic> map,
+) {
+  if (map.containsKey('description')) {
+    return (map['description'] as String?)?.trim() ?? '';
+  }
+  return existing.description;
 }
 
 String _patchOverlayType(

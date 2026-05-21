@@ -159,7 +159,7 @@ Future<ManualBucketWriteResult> writeManualBucketPhoto({
         PhotosCompanion.insert(
           id: id,
           category: Value(cat),
-          dataProvider: const Value(kMediaDataProviderPhotoBucket),
+          dataProvider: const Value(kManualEntrySource),
           mediaBlobKey: logicalKey,
           photographerName: photographer,
           photographerUrl: '',
@@ -221,7 +221,7 @@ Future<ManualBucketWriteResult> writeManualBucketVideo({
         VideosCompanion.insert(
           id: id,
           category: Value(cat),
-          dataProvider: const Value(kMediaDataProviderVideoBucket),
+          dataProvider: const Value(kManualEntrySource),
           mediaBlobKey: logicalKey,
           photographerName: photographer,
           photographerUrl: '',
@@ -268,7 +268,6 @@ Future<ManualBucketWriteResult> writeManualBucketJoke({
 
 Future<ManualBucketWriteResult> writeManualBucketTrivia({
   required AppDatabase db,
-  required String integrationRowId,
   required String categoryId,
   required String question,
   required String optionA,
@@ -307,7 +306,7 @@ Future<ManualBucketWriteResult> writeManualBucketTrivia({
           optionD: d,
           correctOption: correct,
           createdAtMs: now,
-          integrationId: Value(integrationRowId.trim()),
+          integrationId: const Value.absent(),
           suppressed: Value(blocked),
         ),
       );
@@ -351,28 +350,10 @@ Future<ManualBucketWriteResult> writeManualBucketCalendarEvent({
       description: description == null || description.trim().isEmpty
           ? const Value.absent()
           : Value(description.trim()),
-      source: const Value(kCalendarSourceBucket),
+      source: const Value(kManualEntrySource),
       updatedAtMs: now,
     ),
     categoryIds: normalizedCats,
   );
   return ManualBucketWriteResult(id: id);
-}
-
-/// Returns the integration row when [integrationId] exists and [expectedType] matches.
-Future<Integration> requireManualBucketIntegration(
-  AppDatabase db, {
-  required String integrationId,
-  required String expectedType,
-}) async {
-  final row = await (db.select(db.integrations)
-        ..where((t) => t.id.equals(integrationId.trim())))
-      .getSingleOrNull();
-  if (row == null) {
-    throw ManualBucketWriteException('integration_not_found');
-  }
-  if (row.integrationType.trim() != expectedType) {
-    throw ManualBucketWriteException('integration_type_mismatch');
-  }
-  return row;
 }

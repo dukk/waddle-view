@@ -602,45 +602,5 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
 
   );
 
-  await _ensureIntegrationRow(
-    db,
-    id: kDefaultPhotoBucketIntegrationId,
-    integrationType: kPhotoBucketIntegrationType,
-    pollSeconds: 60,
-    configJson: '{}',
-  );
-
-  await _ensureIntegrationRow(
-    db,
-    id: kDefaultVideoBucketIntegrationId,
-    integrationType: kVideoBucketIntegrationType,
-    pollSeconds: 60,
-    configJson: '{}',
-  );
-
-  await _ensureIntegrationRow(
-    db,
-    id: kDefaultCalendarBucketIntegrationId,
-    integrationType: kCalendarBucketIntegrationType,
-    pollSeconds: 60,
-    configJson: '{}',
-  );
-
-  await _ensureIntegrationRow(
-    db,
-    id: kDefaultJokeBucketIntegrationId,
-    integrationType: kJokeBucketIntegrationType,
-    pollSeconds: 60,
-    configJson: '{}',
-  );
-
-  await _ensureIntegrationRow(
-    db,
-    id: kDefaultTriviaBucketIntegrationId,
-    integrationType: kTriviaBucketIntegrationType,
-    pollSeconds: 60,
-    configJson: '{}',
-  );
-
 }
 

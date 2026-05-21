@@ -27,6 +27,10 @@ export function schemaPropertyIsBoolean(prop: JsonSchemaObject): boolean {
   return prop.type === 'boolean';
 }
 
+export function schemaPropertyUsesDuration(prop: JsonSchemaObject): boolean {
+  return prop['x-waddle-widget'] === 'duration';
+}
+
 /** Builds RJSF uiSchema with switches, sliders, and blob upload fields from JSON Schema. */
 export function buildUiSchemaFromJsonSchema(schema: RJSFSchema, base: UiSchema = {}): UiSchema {
   const root = asObject(schema);
@@ -41,6 +45,8 @@ export function buildUiSchemaFromJsonSchema(schema: RJSFSchema, base: UiSchema =
     const fieldUi: Record<string, unknown> = {};
     if (schemaPropertyIsBoolean(prop)) {
       fieldUi['ui:widget'] = 'WaddleSwitchWidget';
+    } else if (schemaPropertyUsesDuration(prop)) {
+      fieldUi['ui:widget'] = 'WaddleDurationWidget';
     } else if (schemaPropertyUsesSlider(prop)) {
       fieldUi['ui:widget'] = 'WaddleSliderWidget';
     } else if (schemaPropertyUsesBlobKey(prop)) {

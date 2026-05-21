@@ -12,11 +12,16 @@ import {
   type ContentCategoryOption,
 } from './ContentCategorySelectField';
 import { OverlayBlobKeysField } from './OverlayBlobKeysField';
-import { WaddleSliderWidget, WaddleSwitchWidget } from './SchemaConfigFormWidgets';
+import {
+  WaddleDurationWidget,
+  WaddleSliderWidget,
+  WaddleSwitchWidget,
+} from './SchemaConfigFormWidgets';
 
 const widgets: RegistryWidgetsType = {
   WaddleSwitchWidget,
   WaddleSliderWidget,
+  WaddleDurationWidget,
 };
 
 type Props = {

@@ -1,6 +1,7 @@
 import { Stack, Typography } from '@mui/material';
 import type { FieldProps } from '@rjsf/utils';
 import { CuratorSliderField } from '@/components/CuratorSliderField';
+import { DurationInputField } from '@/components/DurationInputField';
 import type { SavedDisplay } from '@/storage/displays';
 import {
   FALLING_IMAGES_DROP_INTERVAL_SEC_MAX,
@@ -55,15 +56,16 @@ export function FallingImagesConfigForm({ display, formData, onChange, disabled 
     <Stack spacing={2}>
       <Typography variant="subtitle2">Configuration</Typography>
       <OverlayBlobKeysField display={display} {...blobFieldProps} />
-      <CuratorSliderField
+      <DurationInputField
         label="Drop interval"
-        value={readNumber(formData, 'drop_interval_sec', 45)}
-        onChange={(drop_interval_sec) => patch({ drop_interval_sec: Math.round(drop_interval_sec) })}
-        min={FALLING_IMAGES_DROP_INTERVAL_SEC_MIN}
-        max={FALLING_IMAGES_DROP_INTERVAL_SEC_MAX}
-        step={1}
+        valueSeconds={readNumber(formData, 'drop_interval_sec', 45)}
+        onChange={(drop_interval_sec) =>
+          patch({ drop_interval_sec: Math.round(drop_interval_sec) })
+        }
+        allowedUnits={['sec', 'min', 'hr']}
+        minSeconds={FALLING_IMAGES_DROP_INTERVAL_SEC_MIN}
+        maxSeconds={FALLING_IMAGES_DROP_INTERVAL_SEC_MAX}
         disabled={disabled}
-        formatValue={(v) => `${Math.round(v)}s`}
       />
       <CuratorSliderField
         label="Fall speed"

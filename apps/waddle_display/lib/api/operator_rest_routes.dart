@@ -15,6 +15,7 @@ import 'package:waddle_shared/persistence/config_json_schemas_bundle.dart';
 import 'rest_include_params.dart';
 import 'package:waddle_shared/persistence/calendar_event_categories.dart';
 import 'package:waddle_shared/persistence/content_category_defaults.dart';
+import 'package:waddle_shared/persistence/catalog_id_allocation.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/seed/tables/screen_types_seed.dart';
 import 'package:waddle_shared/seed/tables/ticker_tape_types_seed.dart';
@@ -237,12 +238,27 @@ void registerOperatorRestRoutes(
           body: '{"error":"invalid_json"}',
           headers: {'content-type': 'application/json'});
     }
-    final id = (map['id'] as String?)?.trim() ?? '';
+    var id = (map['id'] as String?)?.trim() ?? '';
+    final label = (map['label'] as String?)?.trim() ?? '';
     final tickerType = (map['ticker_type'] as String?)?.trim() ?? '';
-    if (id.isEmpty || tickerType.isEmpty) {
+    if (tickerType.isEmpty) {
       return Response(400,
-          body: '{"error":"id_and_ticker_type_required"}',
+          body: '{"error":"ticker_type_required"}',
           headers: {'content-type': 'application/json'});
+    }
+    if (id.isEmpty) {
+      if (label.isEmpty) {
+        return Response(400,
+            body: '{"error":"label_required"}',
+            headers: {'content-type': 'application/json'});
+      }
+      final existingIds = await (db.select(db.tickerTapes)).map((r) => r.id).get();
+      id = allocateTickerTapeIdFromName(label, existingIds);
+      if (id.isEmpty) {
+        return Response(400,
+            body: '{"error":"invalid_label"}',
+            headers: {'content-type': 'application/json'});
+      }
     }
     await ensureTickerTapeTypes(db);
     if (!await tickerTypeExists(db, tickerType)) {
@@ -257,11 +273,10 @@ void registerOperatorRestRoutes(
           body: '{"error":"id_already_exists"}',
           headers: {'content-type': 'application/json'});
     }
-    final label = (map['label'] as String?)?.trim();
     final description = (map['description'] as String?)?.trim() ?? '';
     final frequencyWeight = (map['frequency_weight'] as num?)?.toInt() ?? 100;
     final sortOrder = (map['sort_order'] as num?)?.toInt() ?? 0;
-    final resolvedLabel = (label == null || label.isEmpty) ? id : label;
+    final resolvedLabel = label.isEmpty ? id : label;
     String configJsonStr = '{}';
     if (map.containsKey('config_json')) {
       try {
@@ -762,12 +777,27 @@ void registerOperatorRestRoutes(
           body: '{"error":"invalid_json"}',
           headers: {'content-type': 'application/json'});
     }
-    final id = (map['id'] as String?)?.trim() ?? '';
+    var id = (map['id'] as String?)?.trim() ?? '';
+    final label = (map['label'] as String?)?.trim() ?? '';
     final screenType = (map['screen_type'] as String?)?.trim() ?? '';
-    if (id.isEmpty || screenType.isEmpty) {
+    if (screenType.isEmpty) {
       return Response(400,
-          body: '{"error":"id_and_screen_type_required"}',
+          body: '{"error":"screen_type_required"}',
           headers: {'content-type': 'application/json'});
+    }
+    if (id.isEmpty) {
+      if (label.isEmpty) {
+        return Response(400,
+            body: '{"error":"label_required"}',
+            headers: {'content-type': 'application/json'});
+      }
+      final existingIds = await (db.select(db.screens)).map((r) => r.id).get();
+      id = allocateScreenIdFromName(label, existingIds);
+      if (id.isEmpty) {
+        return Response(400,
+            body: '{"error":"invalid_label"}',
+            headers: {'content-type': 'application/json'});
+      }
     }
     await ensureScreenTypes(db);
     if (!await screenTypeExists(db, screenType)) {
@@ -800,7 +830,6 @@ void registerOperatorRestRoutes(
           body: '{"error":"invalid_screen_layout"}',
           headers: {'content-type': 'application/json'});
     }
-    final label = (map['label'] as String?)?.trim();
     final description = (map['description'] as String?)?.trim() ?? '';
     final minDwell = (map['min_dwell_seconds'] as num?)?.toInt() ?? 8;
     final maxDwell = (map['max_dwell_seconds'] as num?)?.toInt() ?? 15;
@@ -815,7 +844,7 @@ void registerOperatorRestRoutes(
         (map['min_placements_per_program'] as num?)?.toInt() ?? 0;
     final maxPlacements = (map['max_placements_per_program'] as num?)?.toInt();
     final dataKey = (map['data_key'] as String?)?.trim() ?? '';
-    final resolvedLabel = (label == null || label.isEmpty) ? id : label;
+    final resolvedLabel = label.isEmpty ? id : label;
     await db.into(db.screens).insert(
           ScreensCompanion.insert(
             id: id,

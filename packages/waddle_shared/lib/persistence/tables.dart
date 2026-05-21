@@ -831,29 +831,8 @@ const String kMediaDataProviderPhotoFlickr = 'photo_flickr';
 /// Bing homepage image of the day into [Photos].
 const String kMediaDataProviderPhotoBingIotd = 'photo_bing_image_of_the_day';
 
-/// Operator-uploaded photos via [photo_bucket] integration.
-const String kMediaDataProviderPhotoBucket = 'photo_bucket';
-
-/// Operator-uploaded videos via [video_bucket] integration.
-const String kMediaDataProviderVideoBucket = 'video_bucket';
-
-/// [Integrations.integrationType] for manual photo uploads.
-const String kPhotoBucketIntegrationType = 'photo_bucket';
-
-/// [Integrations.integrationType] for manual video uploads.
-const String kVideoBucketIntegrationType = 'video_bucket';
-
-/// [Integrations.integrationType] for manual calendar events.
-const String kCalendarBucketIntegrationType = 'calendar_bucket';
-
-/// [Integrations.integrationType] for manual jokes.
-const String kJokeBucketIntegrationType = 'joke_bucket';
-
-/// [Integrations.integrationType] for manual trivia.
-const String kTriviaBucketIntegrationType = 'trivia_bucket';
-
-/// [CalendarEvents.source] for rows created via [calendar_bucket].
-const String kCalendarSourceBucket = 'calendar_bucket';
+/// Operator-uploaded content (controller Data page, curator manual routes).
+const String kManualEntrySource = 'manual_entry';
 
 @TableIndex(name: 'idx_photos_fetched', columns: {#fetchedAtMs})
 @TableIndex(name: 'idx_photos_category', columns: {#category})

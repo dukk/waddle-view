@@ -62,8 +62,8 @@ import { floatingBalloonsValidationSchema } from '@/util/floatingBalloonsConfigS
 import { validateConfigAgainstSchema } from '@/util/rjsfSchema';
 import { OverlayTypeIcon } from '@/util/overlayTypeIcon';
 import { overlayTypeLabel, overlayTypeMetaFor } from '@/util/overlayTypeLabel';
+import { overlayIdFromLabel } from '@/util/catalogIdFromLabel';
 import {
-  defaultCreateOverlayType,
   groupOverlayTypesByCategory,
   overlayCategoryLabel,
   overlayTypeCategory,
@@ -76,6 +76,7 @@ type OverlayRow = {
   id: string;
   overlay_type: string;
   label: string;
+  description?: string;
   config_json: unknown;
   config_json_schema?: unknown;
   example_config_json?: unknown;
@@ -123,10 +124,13 @@ function parseOverlayRow(raw: Record<string, unknown>): OverlayRow | null {
       : typeof raw.name === 'string'
         ? raw.name
         : '';
+  const description =
+    typeof raw.description === 'string' ? raw.description : '';
   return {
     id,
     overlay_type: overlayType,
     label,
+    description,
     config_json: raw.config_json,
     config_json_schema: raw.config_json_schema,
     example_config_json: raw.example_config_json,
@@ -259,6 +263,8 @@ const overlayCardPreviewSx = {
   justifyContent: 'center',
 } as const;
 
+const UNSELECTED_OVERLAY_TYPE = '';
+
 type OverlayDialogMode = 'create' | 'edit';
 
 function OverlayDialog({
@@ -266,6 +272,7 @@ function OverlayDialog({
   mode,
   active,
   initial,
+  existingOverlayIds,
   overlayTypes,
   onClose,
   onSaved,
@@ -274,6 +281,7 @@ function OverlayDialog({
   mode: OverlayDialogMode;
   active: SavedDisplay;
   initial: OverlayRow | null;
+  existingOverlayIds: string[];
   overlayTypes: OverlayTypeSchemaMeta[];
   onClose: () => void;
   onSaved: () => void;
@@ -281,19 +289,26 @@ function OverlayDialog({
   const [saving, setSaving] = useState(false);
   const [localErr, setLocalErr] = useState<string | null>(null);
   const [label, setLabel] = useState('');
+  const [description, setDescription] = useState('');
   const groupedTypes = useMemo(
     () => groupOverlayTypesByCategory(overlayTypes),
     [overlayTypes],
   );
-  const defaultType = useMemo(
-    () => defaultCreateOverlayType(overlayTypes),
-    [overlayTypes],
-  );
-  const [overlayType, setOverlayType] = useState(defaultType);
+  const [overlayType, setOverlayType] = useState(UNSELECTED_OVERLAY_TYPE);
   const [configForm, setConfigForm] = useState<Record<string, unknown>>({});
   const [categories, setCategories] = useState<ContentCategoryOption[]>([]);
 
   const exampleFor = useMemo(() => exampleForType(overlayTypes), [overlayTypes]);
+
+  const previewId = useMemo(() => {
+    if (mode !== 'create') return '';
+    return overlayIdFromLabel(label, existingOverlayIds);
+  }, [mode, label, existingOverlayIds]);
+
+  const dialogTitle =
+    mode === 'create'
+      ? 'New overlay'
+      : `Edit ${(initial?.label ?? '').trim() || initial?.id || 'overlay'}`;
 
   useEffect(() => {
     if (!open) return;
@@ -328,25 +343,30 @@ function OverlayDialog({
     setLocalErr(null);
     if (initial) {
       setLabel(initial.label);
+      setDescription(initial.description?.trim() ?? '');
       setOverlayType(initial.overlay_type);
       setConfigForm(
         overlayConfigForForm(initial.overlay_type, parseJsonObject(initial.config_json)),
       );
     } else {
       setLabel('');
-      setOverlayType(defaultType);
-      setConfigForm(exampleFor(defaultType));
+      setDescription('');
+      setOverlayType(UNSELECTED_OVERLAY_TYPE);
+      setConfigForm({});
     }
-  }, [open, initial, overlayTypes, exampleFor, defaultType]);
+  }, [open, initial]);
 
   const configSchema = useMemo(
-    () => prepareRjsfSchema(schemaForType(overlayTypes, overlayType)),
+    () =>
+      overlayType
+        ? prepareRjsfSchema(schemaForType(overlayTypes, overlayType))
+        : null,
     [overlayTypes, overlayType],
   );
 
   const handleTypeChange = (next: string) => {
     setOverlayType(next);
-    if (mode === 'create') {
+    if (mode === 'create' && next) {
       setConfigForm(overlayConfigForForm(next, exampleFor(next)));
     }
   };
@@ -356,6 +376,10 @@ function OverlayDialog({
     const labelTrim = label.trim();
     if (!labelTrim) {
       setLocalErr('Label is required.');
+      return;
+    }
+    if (!overlayType) {
+      setLocalErr('Select an overlay type.');
       return;
     }
     const configPayload = overlayConfigForSubmit(overlayType, configForm);
@@ -379,23 +403,21 @@ function OverlayDialog({
     }
     setSaving(true);
     try {
+      const body = {
+        label: labelTrim,
+        description: description.trim(),
+        overlay_type: overlayType.trim(),
+        config_json: configPayload,
+      };
       if (mode === 'create') {
         await apiFetch(active, '/v1/display/overlays', {
           method: 'POST',
-          body: JSON.stringify({
-            label: labelTrim,
-            overlay_type: overlayType.trim(),
-            config_json: configPayload,
-          }),
+          body: JSON.stringify(body),
         });
       } else if (initial) {
         await apiFetch(active, `/v1/display/overlays/${encodeURIComponent(initial.id)}`, {
           method: 'PATCH',
-          body: JSON.stringify({
-            label: labelTrim,
-            overlay_type: overlayType.trim(),
-            config_json: configPayload,
-          }),
+          body: JSON.stringify(body),
         });
       }
       await completeDialogSave(onSaved, onClose);
@@ -408,7 +430,7 @@ function OverlayDialog({
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>{mode === 'create' ? 'New overlay' : 'Edit overlay'}</DialogTitle>
+      <DialogTitle>{dialogTitle}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           {localErr && <Alert severity="error">{localErr}</Alert>}
@@ -418,17 +440,39 @@ function OverlayDialog({
             onChange={(e) => setLabel(e.target.value)}
             required
             fullWidth
-            autoFocus
+            autoFocus={mode === 'create'}
+            disabled={saving}
+            helperText={
+              mode === 'create'
+                ? previewId
+                  ? `Id will be ${previewId} (derived from this label).`
+                  : 'Id is derived from this label (letters and numbers).'
+                : undefined
+            }
           />
-          <FormControl fullWidth>
+          <TextField
+            label="Description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            fullWidth
+            multiline
+            minRows={2}
+            disabled={saving}
+          />
+          <FormControl fullWidth disabled={saving || mode === 'edit'}>
             <InputLabel id="overlay-type-label">Overlay type</InputLabel>
             <Select
               labelId="overlay-type-label"
               label="Overlay type"
               value={overlayType}
               onChange={(e) => handleTypeChange(String(e.target.value))}
-              disabled={mode === 'edit'}
+              displayEmpty
             >
+              {mode === 'create' ? (
+                <MenuItem value={UNSELECTED_OVERLAY_TYPE} disabled>
+                  Select overlay type
+                </MenuItem>
+              ) : null}
               <ListSubheader>Effects</ListSubheader>
               {groupedTypes.effects.map((m) => (
                 <MenuItem key={m.overlay_type} value={m.overlay_type}>
@@ -449,15 +493,17 @@ function OverlayDialog({
               types.
             </Typography>
           ) : null}
-          <OverlayConfigPanel
-            display={active}
-            overlayType={overlayType}
-            schema={configSchema}
-            formData={configForm}
-            onChange={setConfigForm}
-            disabled={saving}
-            categories={categories}
-          />
+          {overlayType ? (
+            <OverlayConfigPanel
+              display={active}
+              overlayType={overlayType}
+              schema={configSchema}
+              formData={configForm}
+              onChange={setConfigForm}
+              disabled={saving}
+              categories={categories}
+            />
+          ) : null}
         </Stack>
       </DialogContent>
       <DialogActions>
@@ -868,6 +914,7 @@ export function OverlaysPage() {
           mode={dialogMode}
           active={active}
           initial={dialogInitial}
+          existingOverlayIds={rows.map((r) => r.id)}
           overlayTypes={schemas.overlay_types}
           onClose={() => setDialogOpen(false)}
           onSaved={() => void load()}

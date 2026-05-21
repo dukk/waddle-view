@@ -86,7 +86,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 43;
+  int get schemaVersion => 45;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -402,6 +402,20 @@ ORDER BY priority DESC, created_at DESC;
         }
         from = 43;
       }
+      if (from == 43 && to >= 44) {
+        await _migrateV43ToV44OverlayDescription(this);
+        if (to == 44) {
+          return;
+        }
+        from = 44;
+      }
+      if (from == 44 && to >= 45) {
+        await _migrateV44ToV45ManualEntrySource(this);
+        if (to == 45) {
+          return;
+        }
+        from = 45;
+      }
       throw UnsupportedError(
         'Unsupported database upgrade from version $from to $to. '
         'Delete the SQLite file and reinstall (fresh seed).',
@@ -459,12 +473,6 @@ const String kDefaultPhotoGoogleIntegrationId = 'default_photo_google';
 const String kDefaultVideoGoogleIntegrationId = 'default_video_google';
 const String kDefaultPhotoBingIotdIntegrationId =
     'default_photo_bing_image_of_the_day';
-const String kDefaultPhotoBucketIntegrationId = 'default_photo_bucket';
-const String kDefaultVideoBucketIntegrationId = 'default_video_bucket';
-const String kDefaultCalendarBucketIntegrationId = 'default_calendar_bucket';
-const String kDefaultJokeBucketIntegrationId = 'default_joke_bucket';
-const String kDefaultTriviaBucketIntegrationId = 'default_trivia_bucket';
-
 /// Adds encrypted secret tables and disables env-dependent integrations.
 Future<void> _migrateV2ToV3IntegrationSecrets(
   AppDatabase db,
@@ -2462,6 +2470,89 @@ Future<void> _migrateV42ToV43DefaultBaseCurator(AppDatabase db) async {
         'DELETE FROM curator_configuration_members '
         'WHERE configuration_id = ? AND entity_type = ? AND entity_id = ?',
         <Object?>[childId, kCuratorMemberEntityTicker, 'ticker_time'],
+      );
+    }
+  }
+}
+
+/// Schema 44: operator-facing description on overlay catalog rows.
+Future<void> _migrateV43ToV44OverlayDescription(AppDatabase db) async {
+  if (!await _sqliteTableExists(db, 'overlays')) {
+    return;
+  }
+  if (!await _sqliteColumnExists(db, 'overlays', 'description')) {
+    await db.customStatement(
+      "ALTER TABLE overlays ADD COLUMN description TEXT NOT NULL DEFAULT ''",
+    );
+  }
+}
+
+/// Schema 45: manual bucket integrations → operator manual_entry provenance.
+Future<void> _migrateV44ToV45ManualEntrySource(AppDatabase db) async {
+  const manualEntry = 'manual_entry';
+  const bucketTypes = <String>[
+    'photo_bucket',
+    'video_bucket',
+    'calendar_bucket',
+    'joke_bucket',
+    'trivia_bucket',
+  ];
+  const defaultBucketIds = <String>[
+    'default_photo_bucket',
+    'default_video_bucket',
+    'default_calendar_bucket',
+    'default_joke_bucket',
+    'default_trivia_bucket',
+  ];
+
+  if (await _sqliteTableExists(db, 'photos')) {
+    await db.customStatement(
+      "UPDATE photos SET data_provider = ? WHERE data_provider = 'photo_bucket'",
+      <Object?>[manualEntry],
+    );
+  }
+  if (await _sqliteTableExists(db, 'videos')) {
+    await db.customStatement(
+      "UPDATE videos SET data_provider = ? WHERE data_provider = 'video_bucket'",
+      <Object?>[manualEntry],
+    );
+  }
+  if (await _sqliteTableExists(db, 'calendar_events')) {
+    await db.customStatement(
+      "UPDATE calendar_events SET source = ? WHERE source = 'calendar_bucket'",
+      <Object?>[manualEntry],
+    );
+  }
+  if (await _sqliteTableExists(db, 'trivia_questions')) {
+    for (final id in defaultBucketIds) {
+      await db.customStatement(
+        'UPDATE trivia_questions SET integration_id = NULL WHERE integration_id = ?',
+        <Object?>[id],
+      );
+    }
+  }
+
+  if (await _sqliteTableExists(db, 'integration_type_required_accounts')) {
+    for (final type in bucketTypes) {
+      await db.customStatement(
+        'DELETE FROM integration_type_required_accounts WHERE integration_type = ?',
+        <Object?>[type],
+      );
+    }
+  }
+  if (await _sqliteTableExists(db, 'integrations')) {
+    for (final type in bucketTypes) {
+      await db.customStatement(
+        'DELETE FROM integrations WHERE integration_type = ?',
+        <Object?>[type],
+      );
+    }
+  }
+  if (await _sqliteTableExists(db, 'integration_types')) {
+    for (final type in bucketTypes) {
+      await db.customStatement(
+        'DELETE FROM integration_types WHERE integration_type = ?',
+        <Object?>[type],
       );
     }
   }

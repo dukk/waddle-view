@@ -1,6 +1,8 @@
 import type { WidgetProps } from '@rjsf/utils';
 import { FormControlLabel, Stack, Switch, Typography } from '@mui/material';
 import { CuratorSliderField } from '@/components/CuratorSliderField';
+import { DurationInputField } from '@/components/DurationInputField';
+import type { DurationUnit } from '@/util/durationInput';
 
 export function WaddleSwitchWidget(props: WidgetProps) {
   const { id, label, value, disabled, onChange, schema } = props;
@@ -24,6 +26,43 @@ export function WaddleSwitchWidget(props: WidgetProps) {
             </Typography>
           ) : null}
         </Stack>
+      }
+    />
+  );
+}
+
+function parseDurationUnits(schema: WidgetProps['schema']): DurationUnit[] {
+  const raw = schema['x-waddle-duration-units'];
+  if (!Array.isArray(raw)) {
+    return ['sec', 'min', 'hr'];
+  }
+  const allowed: DurationUnit[] = [];
+  for (const u of raw) {
+    if (u === 'sec' || u === 'min' || u === 'hr' || u === 'day') {
+      allowed.push(u);
+    }
+  }
+  return allowed.length > 0 ? allowed : ['sec', 'min', 'hr'];
+}
+
+export function WaddleDurationWidget(props: WidgetProps) {
+  const { label, value, disabled, onChange, schema } = props;
+  const num = typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  const minSeconds =
+    typeof schema.minimum === 'number' ? Math.round(schema.minimum) : undefined;
+  const maxSeconds =
+    typeof schema.maximum === 'number' ? Math.round(schema.maximum) : undefined;
+  return (
+    <DurationInputField
+      label={label || (typeof schema.title === 'string' ? schema.title : 'Duration')}
+      valueSeconds={num}
+      onChange={(v) => onChange(v)}
+      allowedUnits={parseDurationUnits(schema)}
+      minSeconds={minSeconds}
+      maxSeconds={maxSeconds}
+      disabled={disabled}
+      helperText={
+        typeof schema.description === 'string' ? schema.description : undefined
       }
     />
   );

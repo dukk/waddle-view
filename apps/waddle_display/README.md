@@ -575,19 +575,9 @@ Requests send a desktop **`User-Agent`** and **`Referer`** matching the Bing ori
 
 **`integrations.poll_seconds`:** default **3600** when seeded; provider is **enabled** by default.
 
-## Manual bucket integrations
+## Manual entry (operator uploads)
 
-Five built-in integration types let operators add catalog content without external APIs or polling:
-
-| `integration_type` | Default row id | Purpose |
-|--------------------|----------------|---------|
-| `photo_bucket` | `default_photo_bucket` | Upload JPEG/PNG/WebP into **`photos`** |
-| `video_bucket` | `default_video_bucket` | Upload MP4/WebM/MOV into **`videos`** |
-| `calendar_bucket` | `default_calendar_bucket` | Create **`calendar_events`** (`source` = `calendar_bucket`) |
-| `joke_bucket` | `default_joke_bucket` | Create **`jokes`** |
-| `trivia_bucket` | `default_trivia_bucket` | Create **`trivia_questions`** |
-
-All five are **enabled** when seeded. Collectors return immediately (no fetch). Use **waddle_controller → Integrations** (edit dialog **Add content**) or **`POST /v1/integrations/{id}/bucket/...`** (requires **`curator.write`**; see [`docs/pi/api.md`](../../docs/pi/api.md)). Photo/video uploads are capped at **8 MiB** / **50 MiB** respectively.
+Operators with **`curator.write`** add photos, videos, jokes, trivia, and calendar events from **waddle_controller → Data** (**Add** on the relevant tab) or via **`POST /v1/curator/manual/...`** (see [`docs/pi/api.md`](../../docs/pi/api.md)). Rows are stored with provenance **`manual_entry`** in the catalog **Source** column. Photo/video uploads are capped at **8 MiB** / **50 MiB** respectively.
 
 ## Drift codegen
 

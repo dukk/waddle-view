@@ -100,7 +100,7 @@ Use **Interests** (Config nav, between Integrations and Data) to manage what the
 
 ### Data (collected content browser)
 
-**Data** lists ingested rows from `GET /v1/catalog/*` (requires **`content.catalog_read`** or **`content.moderate`**). With **`content.moderate`** (adopted display role **operator** or **admin**), you can suppress jokes/news/photos/videos/trivia (`PATCH /v1/content/*`) or permanently delete any tab’s row (`DELETE /v1/content/*`; dashboard alerts use `DELETE /v1/alerts/{id}`). **power_viewer** can browse but not delete or suppress.
+**Data** lists ingested rows from `GET /v1/catalog/*` (requires **`content.catalog_read`** or **`content.moderate`**). With **`curator.write`**, use **Add** on the Calendar, Jokes, Photos, Trivia, or Videos tab to upload or enter content manually (provenance **Manual entry**; `POST /v1/curator/manual/*` on the display). With **`content.moderate`** (adopted display role **operator** or **admin**), you can suppress jokes/news/photos/videos/trivia (`PATCH /v1/content/*`) or permanently delete any tab’s row (`DELETE /v1/content/*`; dashboard alerts use `DELETE /v1/alerts/{id}`). **power_viewer** can browse but not delete or suppress.
 
 ## Join from a display QR (`/join`)
 
@@ -117,6 +117,10 @@ Operator list pages (Screens, Integrations, Data, Activity, Users, etc.) share *
 ### Dialog submit
 
 Dialogs that **Save**, **Create**, or **Add** via an API call must show in-flight feedback: disable the primary button, change its label (`Saving…`, `Creating…`, etc.), keep the dialog open on error, and close on success (typically via `completeDialogSave` in `src/util/dialogSave.ts`). Use a separate flag for initial fetch vs submit. See [`.cursor/skills/controller-dialog-submit/SKILL.md`](../../.cursor/skills/controller-dialog-submit/SKILL.md).
+
+### Screens, overlays, and ticker tapes (add/edit)
+
+Catalog add/edit dialogs use a fixed field order: **label** (required; row id is derived from the label on create), **description** (optional), **type** (choose explicitly on create), then scheduling fields and schema-driven configuration. Operators do not edit raw JSON or type ids. Durations are entered in seconds/minutes/hours (stored as seconds in the display database).
 
 ## Tests
 

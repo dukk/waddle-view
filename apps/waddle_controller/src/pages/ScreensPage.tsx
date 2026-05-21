@@ -400,6 +400,7 @@ export function ScreensPage() {
           mode={dialogMode}
           active={active}
           initial={dialogMode === 'edit' ? editRow : null}
+          existingScreenIds={rows.map((r) => r.id)}
           screenTypes={screenTypes}
           schemaForType={schemaForType}
           exampleForType={exampleForType}

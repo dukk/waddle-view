@@ -85,12 +85,6 @@ void main() {
 
     expect(GooglePhotosVideosDataProvider().id, 'video_google');
 
-    expect(photoBucketDataProvider.id, 'photo_bucket');
-    expect(videoBucketDataProvider.id, 'video_bucket');
-    expect(calendarBucketDataProvider.id, 'calendar_bucket');
-    expect(jokeBucketDataProvider.id, 'joke_bucket');
-    expect(triviaBucketDataProvider.id, 'trivia_bucket');
-
   });
 
 }

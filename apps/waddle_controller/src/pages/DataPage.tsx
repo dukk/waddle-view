@@ -34,7 +34,9 @@ import { sortByOption, type SortOption } from '@/util/clientListPipeline';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import type { SavedDisplay } from '@/storage/displays';
+import { ManualEntryDialog } from '@/components/data/ManualEntryDialog';
 import { integrationDisplayName } from '@/util/integrationDisplayName';
+import { isManualEntryKind } from '@/util/manualEntryApi';
 
 type DataKind =
   | 'calendar_events'
@@ -81,7 +83,7 @@ const COLUMN_FILTER_FIELDS: Record<DataKind, readonly { param: string; label: st
     { param: 'option_b', label: 'Option B' },
     { param: 'option_c', label: 'Option C' },
     { param: 'option_d', label: 'Option D' },
-    { param: 'integration_type', label: 'Integration' },
+    { param: 'integration_type', label: 'Source' },
   ],
   news: [
     { param: 'title', label: 'Title' },
@@ -418,8 +420,10 @@ export function DataPage() {
   const { layout, setLayout } = useListLayoutPreference('data');
   const canModerate = hasPermission('content.moderate');
   const canBrowseData = canModerate || hasPermission('content.catalog_read');
+  const canCuratorWrite = hasPermission('curator.write');
 
   const [kind, setKind] = useState<DataKind>('jokes');
+  const canAddManualEntry = canCuratorWrite && isManualEntryKind(kind);
   const [toolbarSearch, setToolbarSearch] = useState('');
   const [dataSortId, setDataSortId] = useState('newest');
   const [page, setPage] = useState(0);
@@ -440,6 +444,7 @@ export function DataPage() {
   const [categories, setCategories] = useState<{ id: string; label: string }[]>([]);
   const [feeds, setFeeds] = useState<{ id: string; title: string | null; url: string }[]>([]);
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
+  const [manualEntryOpen, setManualEntryOpen] = useState(false);
 
   const draftForKind = columnFilterDrafts[kind] ?? {};
   const draftJson = JSON.stringify(draftForKind);
@@ -697,7 +702,23 @@ export function DataPage() {
         onReload={() => void loadCatalog()}
         reloadDisabled={catalogLoading}
         reloadAriaLabel="Reload catalog data"
-      />
+      >
+        {canAddManualEntry && active ? (
+          <Button variant="contained" onClick={() => setManualEntryOpen(true)}>
+            Add
+          </Button>
+        ) : null}
+      </DataViewToolbar>
+
+      {active && isManualEntryKind(kind) ? (
+        <ManualEntryDialog
+          open={manualEntryOpen}
+          kind={kind}
+          display={active}
+          onClose={() => setManualEntryOpen(false)}
+          onSaved={() => void loadCatalog()}
+        />
+      ) : null}
 
       <Paper sx={{ p: 2 }}>
         <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
@@ -831,7 +852,7 @@ export function DataPage() {
                   <TableCell>Category</TableCell>
                   <TableCell>Setup</TableCell>
                   <TableCell>Punchline</TableCell>
-                  <TableCell>Integration</TableCell>
+                  <TableCell>Source</TableCell>
                   {canModerate && <TableCell width={100}>Suppressed</TableCell>}
                 </>
               )}
@@ -840,7 +861,7 @@ export function DataPage() {
                   <TableCell>Category</TableCell>
                   <TableCell>Question</TableCell>
                   <TableCell>Options</TableCell>
-                  <TableCell>Integration</TableCell>
+                  <TableCell>Source</TableCell>
                   {canModerate && <TableCell width={100}>Suppressed</TableCell>}
                 </>
               )}
@@ -849,7 +870,7 @@ export function DataPage() {
                   <TableCell>Image</TableCell>
                   <TableCell>Title</TableCell>
                   <TableCell>Summary</TableCell>
-                  <TableCell>Integration</TableCell>
+                  <TableCell>Source</TableCell>
                   {canModerate && <TableCell width={100}>Suppressed</TableCell>}
                 </>
               )}
@@ -857,7 +878,7 @@ export function DataPage() {
                 <>
                   <TableCell>Preview</TableCell>
                   <TableCell>Alt / photographer</TableCell>
-                  <TableCell>Integration</TableCell>
+                  <TableCell>Source</TableCell>
                   {canModerate && <TableCell width={100}>Suppressed</TableCell>}
                 </>
               )}
@@ -866,7 +887,7 @@ export function DataPage() {
                   <TableCell>Preview</TableCell>
                   <TableCell>Alt / photographer</TableCell>
                   <TableCell>Duration</TableCell>
-                  <TableCell>Integration</TableCell>
+                  <TableCell>Source</TableCell>
                   {canModerate && <TableCell width={100}>Suppressed</TableCell>}
                 </>
               )}
@@ -877,7 +898,7 @@ export function DataPage() {
                   <TableCell>Price</TableCell>
                   <TableCell>Change %</TableCell>
                   <TableCell>Observed</TableCell>
-                  <TableCell>Integration</TableCell>
+                  <TableCell>Source</TableCell>
                 </>
               )}
               {kind === 'weather' && (
@@ -886,7 +907,7 @@ export function DataPage() {
                   <TableCell>Icon</TableCell>
                   <TableCell>Temp / description</TableCell>
                   <TableCell>Observed</TableCell>
-                  <TableCell>Integration</TableCell>
+                  <TableCell>Source</TableCell>
                 </>
               )}
               {kind === 'weather_alerts' && (
@@ -895,7 +916,7 @@ export function DataPage() {
                   <TableCell>Event</TableCell>
                   <TableCell>Headline</TableCell>
                   <TableCell>Severity</TableCell>
-                  <TableCell>Integration</TableCell>
+                  <TableCell>Source</TableCell>
                 </>
               )}
               {kind === 'dashboard_alerts' && (
@@ -906,7 +927,7 @@ export function DataPage() {
                   <TableCell>Priority</TableCell>
                   <TableCell>Source</TableCell>
                   <TableCell>Created</TableCell>
-                  <TableCell>Integration</TableCell>
+                  <TableCell>Source</TableCell>
                 </>
               )}
               {kind === 'calendar_events' && (
@@ -917,7 +938,7 @@ export function DataPage() {
                   <TableCell>All-day</TableCell>
                   <TableCell>Location</TableCell>
                   <TableCell>Category</TableCell>
-                  <TableCell>Integration</TableCell>
+                  <TableCell>Source</TableCell>
                   <TableCell>Source</TableCell>
                 </>
               )}

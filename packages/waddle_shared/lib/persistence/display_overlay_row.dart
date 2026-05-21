@@ -14,19 +14,28 @@ class DisplayOverlayRow {
     required this.id,
     required this.overlayType,
     required this.label,
+    required this.description,
     required this.configJson,
   });
 
   final String id;
   final String overlayType;
   final String label;
+  final String description;
   final String configJson;
 
   static DisplayOverlayRow fromQueryRow(QueryRow row) {
+    String description = '';
+    try {
+      description = row.read<String>('description');
+    } on Object {
+      description = '';
+    }
     return DisplayOverlayRow(
       id: row.read<String>('id'),
       overlayType: row.read<String>('overlay_type'),
       label: row.read<String>('label'),
+      description: description,
       configJson: _readConfigJson(row),
     );
   }

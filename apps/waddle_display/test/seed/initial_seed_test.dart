@@ -236,30 +236,24 @@ void main() {
     await db.close();
   });
 
-  test('ensureInitialSeed inserts manual bucket integrations enabled', () async {
+  test('ensureInitialSeed does not seed manual bucket integrations', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
 
     await ensureInitialSeed(db);
 
-    for (final id in [
-      kDefaultPhotoBucketIntegrationId,
-      kDefaultVideoBucketIntegrationId,
-      kDefaultCalendarBucketIntegrationId,
-      kDefaultJokeBucketIntegrationId,
-      kDefaultTriviaBucketIntegrationId,
+    for (final type in [
+      'photo_bucket',
+      'video_bucket',
+      'calendar_bucket',
+      'joke_bucket',
+      'trivia_bucket',
     ]) {
       final row = await (db.select(db.integrations)
-            ..where((t) => t.id.equals(id)))
+            ..where((t) => t.integrationType.equals(type)))
           .getSingleOrNull();
-      expect(row, isNotNull, reason: id);
-      expect(row!.enabled, isTrue, reason: id);
+      expect(row, isNull, reason: type);
     }
-
-    final photoBucket = await (db.select(db.integrations)
-          ..where((t) => t.id.equals(kDefaultPhotoBucketIntegrationId)))
-        .getSingle();
-    expect(photoBucket.integrationType, kPhotoBucketIntegrationType);
 
     await db.close();
   });

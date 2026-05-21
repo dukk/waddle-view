@@ -47,8 +47,6 @@ import { catalogCardGridSx } from '@/constants/catalogLayout';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import { IntegrationBrandIcon } from '@/components/IntegrationBrandIcon';
-import { ManualBucketUploadSection } from '@/components/ManualBucketUploadSection';
-import { isManualBucketIntegration } from '@/util/manualBucketIntegration';
 import { completeDialogSave } from '@/util/dialogSave';
 import { parseJsonObject } from '@/util/json';
 import { SchemaConfigForm } from '@/components/config/SchemaConfigForm';
@@ -164,9 +162,6 @@ function listParamsForSection(
 
 /** Missing-accounts section: enable when accounts are ready; edit when already enabled. */
 function missingAccountsActionLabel(row: IntegrationRow): string | null {
-  if (isManualBucketIntegration(row.integration_type)) {
-    return row.enabled ? 'Edit' : 'Enable';
-  }
   const ready = integrationAccountsSatisfiedForEnable(accountsDetailFromRow(row));
   if (ready) {
     return row.enabled ? 'Edit' : 'Enable';
@@ -866,7 +861,6 @@ function EditIntegrationDialog({
   const isOneDrive = isOneDriveIntegrationType(row.integration_type);
   const oneDriveMediaKind =
     row.integration_type === kVideoOneDriveIntegrationType ? 'video' : 'photo';
-  const isManualBucket = isManualBucketIntegration(row.integration_type);
   const operatorSchema = useMemo(
     () => integrationOperatorSchema(schemas, row),
     [schemas, row],
@@ -1043,9 +1037,6 @@ function EditIntegrationDialog({
   }, [isIcalCalendar, icalConfig]);
 
   const accountsReady = useMemo(() => {
-    if (isManualBucket) {
-      return true;
-    }
     if (isOutlookCalendar) {
       return outlookConfigReady;
     }
@@ -1063,7 +1054,6 @@ function EditIntegrationDialog({
     }
     return integrationAccountsSatisfiedForEnable(accountDetail);
   }, [
-    isManualBucket,
     isOutlookCalendar,
     isMealviewerCalendar,
     isIcalCalendar,
@@ -1114,7 +1104,7 @@ function EditIntegrationDialog({
   const save = async () => {
     if (!active) return;
     setErr(null);
-    if (saveEnabled && !isManualBucket) {
+    if (saveEnabled) {
       const { errors } = validator.validateFormData(configForSave, validationSchema);
       if (errors.length > 0) {
         setErr(errors.map((e) => e.stack ?? e.message ?? 'Invalid field').join('\n'));
@@ -1145,25 +1135,24 @@ function EditIntegrationDialog({
         return;
       }
     }
-    if (!isManualBucket && poll <= 0) {
+    if (poll <= 0) {
       setErr('Poll seconds must be greater than zero.');
       return;
     }
-    if (!isManualBucket && saveEnabled && !oauthClientIdsReady) {
+    if (saveEnabled && !oauthClientIdsReady) {
       setErr(
         `Configure required OAuth client IDs under ${DISPLAY_SETTINGS_ACCOUNTS_LABEL} before enabling.`,
       );
       return;
     }
     if (
-      !isManualBucket &&
       saveEnabled &&
       !integrationSecretsSatisfiedForEnable(secretSlots, secretDrafts)
     ) {
       setErr('Configure all required integration secrets before enabling.');
       return;
     }
-    if (!isManualBucket && saveEnabled && !accountsReady) {
+    if (saveEnabled && !accountsReady) {
       setErr('Configure all required accounts before enabling this integration.');
       return;
     }
@@ -1284,7 +1273,7 @@ function EditIntegrationDialog({
             <Typography variant="body2" color="text.secondary">
               Loading secrets…
             </Typography>
-          ) : !isManualBucket && secretSlots.length > 0 ? (
+          ) : secretSlots.length > 0 ? (
             <Stack spacing={1.5}>
               <Typography variant="subtitle2">Secrets</Typography>
               {secretSlots.map((slot) => (
@@ -1315,23 +1304,15 @@ function EditIntegrationDialog({
               ))}
             </Stack>
           ) : null}
-          {!isManualBucket ? (
-            <TextField
-              label="Poll interval (seconds)"
-              type="number"
-              value={poll}
-              onChange={(e) => setPoll(Number(e.target.value) || 0)}
-              fullWidth
-              disabled={saving}
-            />
-          ) : null}
-          {isManualBucket && active ? (
-            <ManualBucketUploadSection
-              display={active}
-              integrationId={row.id}
-              integrationType={row.integration_type}
-            />
-          ) : isOutlookCalendar && active ? (
+          <TextField
+            label="Poll interval (seconds)"
+            type="number"
+            value={poll}
+            onChange={(e) => setPoll(Number(e.target.value) || 0)}
+            fullWidth
+            disabled={saving}
+          />
+          {isOutlookCalendar && active ? (
             <OutlookCalendarConfigSection
               display={active}
               value={outlookConfig}
@@ -1373,7 +1354,7 @@ function EditIntegrationDialog({
               mediaKind={oneDriveMediaKind}
               disabled={saving}
             />
-          ) : !isManualBucket && active ? (
+          ) : active ? (
             <Stack spacing={1}>
               <Typography variant="subtitle2">Configuration</Typography>
               <SchemaConfigForm
@@ -1394,8 +1375,8 @@ function EditIntegrationDialog({
           onClick={() => void save()}
           disabled={
             saving ||
-            (!isManualBucket && poll <= 0) ||
-            (saveEnabled && !isManualBucket && (!secretsReady || !accountsReady))
+            poll <= 0 ||
+            (saveEnabled && (!secretsReady || !accountsReady))
           }
         >
           {saving ? 'Saving…' : intent === 'enable' ? 'Enable' : 'Save'}

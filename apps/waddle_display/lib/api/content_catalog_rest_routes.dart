@@ -71,6 +71,27 @@ class _CatalogParams {
 }
 
 const String _kCatalogJokeIntegrationType = 'joke_openai';
+
+String _catalogJokeIntegrationType(String jokeId) {
+  if (jokeId.startsWith('bucket_joke_')) {
+    return kManualEntrySource;
+  }
+  return _kCatalogJokeIntegrationType;
+}
+
+String _catalogTriviaIntegrationType(String triviaId, String? integrationId) {
+  if (triviaId.startsWith('bucket_trivia_')) {
+    return kManualEntrySource;
+  }
+  final raw = integrationId?.trim();
+  if (raw == null || raw.isEmpty) {
+    return kManualEntrySource;
+  }
+  if (raw == 'default_trivia_bucket') {
+    return kManualEntrySource;
+  }
+  return raw;
+}
 const String _kCatalogNewsIntegrationType = 'news_rss';
 const String _kCatalogStockIntegrationType = 'stock_finnhub';
 const String _kCatalogWeatherCurrentIntegrationType = 'weather_openweathermap';
@@ -153,7 +174,7 @@ Future<Response> _listJokes(AppDatabase db, Request req) async {
           'punchline': r.punchline,
           'created_at_ms': r.createdAtMs.millisecondsSinceEpoch,
           if (!browseOnly) 'suppressed': r.suppressed,
-          'integration_type': _kCatalogJokeIntegrationType,
+          'integration_type': _catalogJokeIntegrationType(r.id),
         },
     ],
     'total': total,
@@ -250,7 +271,10 @@ Future<Response> _listTrivia(AppDatabase db, Request req) async {
           'correct_option': r.correctOption,
           'created_at_ms': r.createdAtMs.millisecondsSinceEpoch,
           if (!browseOnly) 'suppressed': r.suppressed,
-          'integration_type': r.integrationId,
+          'integration_type': _catalogTriviaIntegrationType(
+            r.id,
+            r.integrationId,
+          ),
         },
     ],
     'total': total,

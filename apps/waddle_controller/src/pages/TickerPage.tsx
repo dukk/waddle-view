@@ -45,9 +45,19 @@ import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { TickerTapesHelpContent } from '@/components/help/TickerTapesHelpContent';
 import { TickerTapeIcon } from '@/icons/TickerTapeIcon';
+import { CuratorSliderField } from '@/components/CuratorSliderField';
+import { TickerConfigPanel } from '@/components/ticker/TickerConfigPanel';
 import { completeDialogSave } from '@/util/dialogSave';
+import { parseJsonObject } from '@/util/json';
 import { useConfigSchemas } from '@/hooks/useConfigSchemas';
-import type { TickerTypeSchemaMeta } from '@/storage/configSchemaCache';
+import {
+  exampleForTickerType,
+  schemaForTickerType,
+  type ConfigSchemasBundle,
+  type TickerTypeSchemaMeta,
+} from '@/storage/configSchemaCache';
+import { tickerTapeIdFromLabel } from '@/util/catalogIdFromLabel';
+import { prepareRjsfSchema, validateConfigAgainstSchema } from '@/util/rjsfSchema';
 import { tickerTypeLabel, tickerTypeMetaFor } from '@/util/tickerTypeLabel';
 
 const tickerCardPreviewSx = {
@@ -393,9 +403,11 @@ export function TickerPage() {
         }
       />
 
-      {addOpen && schemas && (
+      {addOpen && schemas && active && (
         <AddTickerTapeDialog
+          active={active}
           tickerTypes={schemas.ticker_tape_types}
+          existingTickerIds={rows.map((r) => r.id)}
           onClose={() => setAddOpen(false)}
           onSaved={async () => {
             setAddOpen(false);
@@ -404,8 +416,9 @@ export function TickerPage() {
         />
       )}
 
-      {editRow && schemas && (
+      {editRow && schemas && active && (
         <EditTickerTapeDialog
+          active={active}
           row={editRow}
           tickerTypes={schemas.ticker_tape_types}
           onClose={() => setEditRow(null)}
@@ -486,52 +499,66 @@ function TickerTapeCard({
   );
 }
 
+const UNSELECTED_TICKER_TYPE = '';
+
+function tickerSchemaBundle(tickerTypes: TickerTypeSchemaMeta[]): ConfigSchemasBundle {
+  return {
+    screen_types: [],
+    ticker_tape_types: tickerTypes,
+    overlay_types: [],
+    integration_types: [],
+  };
+}
+
 function AddTickerTapeDialog({
+  active,
   tickerTypes,
+  existingTickerIds,
   onClose,
   onSaved,
 }: {
+  active: NonNullable<ReturnType<typeof useDisplay>['active']>;
   tickerTypes: TickerTypeSchemaMeta[];
+  existingTickerIds: string[];
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
-  const { active } = useDisplay();
-  const [id, setId] = useState('');
-  const [tickerType, setTickerType] = useState(tickerTypes[0]?.ticker_type ?? '');
+  const bundle = useMemo(() => tickerSchemaBundle(tickerTypes), [tickerTypes]);
+  const [tickerType, setTickerType] = useState(UNSELECTED_TICKER_TYPE);
   const [label, setLabel] = useState('');
   const [description, setDescription] = useState('');
   const [enabled, setEnabled] = useState(true);
   const [weight, setWeight] = useState(100);
   const [sort, setSort] = useState(0);
-  const [configJsonText, setConfigJsonText] = useState('{}');
+  const [configForm, setConfigForm] = useState<Record<string, unknown>>({});
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const previewId = useMemo(
+    () => tickerTapeIdFromLabel(label, existingTickerIds),
+    [label, existingTickerIds],
+  );
+
+  const configSchema = useMemo(
+    () =>
+      tickerType ? prepareRjsfSchema(schemaForTickerType(bundle, tickerType)) : null,
+    [bundle, tickerType],
+  );
+
   const submit = async () => {
-    if (!active) return;
     setErr(null);
-    const tid = id.trim();
-    if (!tid) {
-      setErr('Tape id is required.');
+    const labelTrim = label.trim();
+    if (!labelTrim) {
+      setErr('Label is required.');
       return;
     }
     if (!tickerType) {
-      setErr('Ticker type is required.');
+      setErr('Select a ticker type.');
       return;
     }
-    let configJson: unknown = {};
-    try {
-      configJson = JSON.parse(configJsonText.trim() || '{}') as unknown;
-      if (
-        configJson === null ||
-        typeof configJson !== 'object' ||
-        Array.isArray(configJson)
-      ) {
-        setErr('config_json must be a JSON object.');
-        return;
-      }
-    } catch {
-      setErr('config_json is not valid JSON.');
+    const validationErrors = validateConfigAgainstSchema(configForm, configSchema);
+    if (validationErrors.length > 0) {
+      setErr(validationErrors[0] ?? 'Invalid configuration.');
       return;
     }
     setSaving(true);
@@ -539,14 +566,13 @@ function AddTickerTapeDialog({
       await apiFetch(active, '/v1/ticker/tapes', {
         method: 'POST',
         body: JSON.stringify({
-          id: tid,
-          ticker_type: tickerType,
-          label: label.trim() || undefined,
+          label: labelTrim,
           description: description.trim(),
+          ticker_type: tickerType,
           enabled,
           frequency_weight: weight,
           sort_order: sort,
-          config_json: configJson,
+          config_json: configForm,
         }),
       });
       await completeDialogSave(onSaved, onClose);
@@ -558,40 +584,24 @@ function AddTickerTapeDialog({
   };
 
   return (
-    <Dialog open fullWidth maxWidth="sm" onClose={onClose}>
+    <Dialog open fullWidth maxWidth="md" onClose={onClose}>
       <DialogTitle>Add ticker tape</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           {err && <Alert severity="error">{err}</Alert>}
           <TextField
-            label="Tape id"
-            value={id}
-            onChange={(e) => setId(e.target.value)}
-            required
-            fullWidth
-            disabled={saving}
-          />
-          <FormControl fullWidth disabled={saving}>
-            <InputLabel id="tt">Ticker type</InputLabel>
-            <Select
-              labelId="tt"
-              label="Ticker type"
-              value={tickerType}
-              onChange={(e) => setTickerType(String(e.target.value))}
-            >
-              {tickerTypes.map((m) => (
-                <MenuItem key={m.ticker_type} value={m.ticker_type}>
-                  {tickerTypeLabel(m.ticker_type, m)}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <TextField
-            label="Label (optional)"
+            label="Label"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
+            required
             fullWidth
+            autoFocus
             disabled={saving}
+            helperText={
+              previewId
+                ? `Id will be ${previewId} (derived from this label).`
+                : 'Id is derived from this label (letters and numbers).'
+            }
           />
           <TextField
             label="Description"
@@ -602,44 +612,71 @@ function AddTickerTapeDialog({
             minRows={2}
             disabled={saving}
           />
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <Switch checked={enabled} onChange={(_, v) => setEnabled(v)} disabled={saving} />
-            <Typography>Enabled</Typography>
-          </Stack>
-          <TextField
-            label="Frequency weight"
-            type="number"
-            value={weight}
-            onChange={(e) => setWeight(Number(e.target.value) || 0)}
-            fullWidth
-            disabled={saving}
-            helperText="Repeat this tape's marquee bundle this many times when building the list (0 = skip)."
-          />
-          <TextField
-            label="Sort order"
-            type="number"
-            value={sort}
-            onChange={(e) => setSort(Number(e.target.value) || 0)}
-            fullWidth
-            disabled={saving}
-            helperText="Lower numbers are merged into the marquee before higher numbers."
-          />
-          <TextField
-            label={
-              tickerType === 'static_text'
-                ? 'config_json (JSON object, e.g. {"text":"Welcome"})'
-                : tickerType === 'plugin'
-                  ? 'config_json (JSON object, e.g. pluginId and fallbackText)'
-                  : 'config_json (JSON object)'
-            }
-            value={configJsonText}
-            onChange={(e) => setConfigJsonText(e.target.value)}
-            fullWidth
-            multiline
-            minRows={3}
-            disabled={saving}
-            inputProps={{ style: { fontFamily: 'monospace' } }}
-          />
+          <FormControl fullWidth disabled={saving}>
+            <InputLabel id="tt">Ticker type</InputLabel>
+            <Select
+              labelId="tt"
+              label="Ticker type"
+              value={tickerType}
+              displayEmpty
+              onChange={(e) => {
+                const next = String(e.target.value);
+                setTickerType(next);
+                if (next) {
+                  setConfigForm(parseJsonObject(exampleForTickerType(bundle, next)));
+                }
+              }}
+            >
+              <MenuItem value={UNSELECTED_TICKER_TYPE} disabled>
+                Select ticker type
+              </MenuItem>
+              {tickerTypes.map((m) => (
+                <MenuItem key={m.ticker_type} value={m.ticker_type}>
+                  {tickerTypeLabel(m.ticker_type, m)}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          {tickerType ? (
+            <>
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <Switch checked={enabled} onChange={(_, v) => setEnabled(v)} disabled={saving} />
+                <Typography>Enabled</Typography>
+              </Stack>
+              <CuratorSliderField
+                label="Frequency weight"
+                value={weight}
+                onChange={setWeight}
+                min={0}
+                max={500}
+                step={5}
+                disabled={saving}
+              />
+              <Typography variant="caption" color="text.secondary" sx={{ mt: -1 }}>
+                Repeat this tape&apos;s marquee bundle this many times when building the list (0 =
+                skip).
+              </Typography>
+              <CuratorSliderField
+                label="Sort order"
+                value={sort}
+                onChange={setSort}
+                min={0}
+                max={100}
+                step={1}
+                disabled={saving}
+              />
+              <Typography variant="caption" color="text.secondary" sx={{ mt: -1 }}>
+                Lower numbers are merged into the marquee before higher numbers.
+              </Typography>
+              <TickerConfigPanel
+                display={active}
+                schema={configSchema}
+                formData={configForm}
+                onChange={setConfigForm}
+                disabled={saving}
+              />
+            </>
+          ) : null}
         </Stack>
       </DialogContent>
       <DialogActions>
@@ -653,45 +690,48 @@ function AddTickerTapeDialog({
 }
 
 function EditTickerTapeDialog({
+  active,
   row,
   tickerTypes,
   onClose,
   onSaved,
 }: {
+  active: NonNullable<ReturnType<typeof useDisplay>['active']>;
   row: TickerTapeRow;
   tickerTypes: TickerTypeSchemaMeta[];
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
-  const { active } = useDisplay();
+  const bundle = useMemo(() => tickerSchemaBundle(tickerTypes), [tickerTypes]);
   const [label, setLabel] = useState(row.label ?? '');
   const [description, setDescription] = useState(row.description ?? '');
-  const [tickerType, setTickerType] = useState(row.ticker_type);
+  const [tickerType] = useState(row.ticker_type);
   const [enabled, setEnabled] = useState(row.enabled);
   const [weight, setWeight] = useState(row.frequency_weight);
   const [sort, setSort] = useState(row.sort_order);
-  const [configJsonText, setConfigJsonText] = useState(() =>
-    JSON.stringify(row.config_json ?? {}, null, 2),
+  const [configForm, setConfigForm] = useState<Record<string, unknown>>(() =>
+    parseJsonObject(row.config_json),
   );
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const configSchema = useMemo(
+    () => prepareRjsfSchema(schemaForTickerType(bundle, tickerType)),
+    [bundle, tickerType],
+  );
+
+  const dialogTitle = `Edit ${tickerRowTitle(row)}`;
+
   const save = async () => {
-    if (!active) return;
     setErr(null);
-    let configJson: unknown;
-    try {
-      configJson = JSON.parse(configJsonText.trim() || '{}') as unknown;
-      if (
-        configJson === null ||
-        typeof configJson !== 'object' ||
-        Array.isArray(configJson)
-      ) {
-        setErr('config_json must be a JSON object.');
-        return;
-      }
-    } catch {
-      setErr('config_json is not valid JSON.');
+    const labelTrim = label.trim();
+    if (!labelTrim) {
+      setErr('Label is required.');
+      return;
+    }
+    const validationErrors = validateConfigAgainstSchema(configForm, configSchema);
+    if (validationErrors.length > 0) {
+      setErr(validationErrors[0] ?? 'Invalid configuration.');
       return;
     }
     setSaving(true);
@@ -699,13 +739,12 @@ function EditTickerTapeDialog({
       await apiFetch(active, `/v1/ticker/tapes/${encodeURIComponent(row.id)}`, {
         method: 'PATCH',
         body: JSON.stringify({
-          label: label.trim(),
+          label: labelTrim,
           description: description.trim(),
-          ticker_type: tickerType,
           enabled,
           frequency_weight: weight,
           sort_order: sort,
-          config_json: configJson,
+          config_json: configForm,
         }),
       });
       await completeDialogSave(onSaved, onClose);
@@ -717,30 +756,16 @@ function EditTickerTapeDialog({
   };
 
   return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Edit {row.id}</DialogTitle>
+    <Dialog open onClose={onClose} fullWidth maxWidth="md">
+      <DialogTitle>{dialogTitle}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           {err && <Alert severity="error">{err}</Alert>}
-          <FormControl fullWidth disabled={saving}>
-            <InputLabel id="ett">Ticker type</InputLabel>
-            <Select
-              labelId="ett"
-              label="Ticker type"
-              value={tickerType}
-              onChange={(e) => setTickerType(String(e.target.value))}
-            >
-              {tickerTypes.map((m) => (
-                <MenuItem key={m.ticker_type} value={m.ticker_type}>
-                  {tickerTypeLabel(m.ticker_type, m)}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
           <TextField
             label="Label"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
+            required
             fullWidth
             disabled={saving}
           />
@@ -753,43 +778,47 @@ function EditTickerTapeDialog({
             minRows={2}
             disabled={saving}
           />
+          <FormControl fullWidth disabled>
+            <InputLabel id="ett">Ticker type</InputLabel>
+            <Select labelId="ett" label="Ticker type" value={tickerType}>
+              {tickerTypes.map((m) => (
+                <MenuItem key={m.ticker_type} value={m.ticker_type}>
+                  {tickerTypeLabel(m.ticker_type, m)}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Typography variant="caption" color="text.secondary">
+            Ticker type cannot be changed after create. Delete and add a new tape to switch types.
+          </Typography>
           <Stack direction="row" alignItems="center" spacing={1}>
             <Switch checked={enabled} onChange={(_, v) => setEnabled(v)} disabled={saving} />
             <Typography>Enabled</Typography>
           </Stack>
-          <TextField
+          <CuratorSliderField
             label="Frequency weight"
-            type="number"
             value={weight}
-            onChange={(e) => setWeight(Number(e.target.value) || 0)}
-            fullWidth
+            onChange={setWeight}
+            min={0}
+            max={500}
+            step={5}
             disabled={saving}
-            helperText="Repeat this tape's marquee bundle this many times when building the list (0 = skip)."
           />
-          <TextField
+          <CuratorSliderField
             label="Sort order"
-            type="number"
             value={sort}
-            onChange={(e) => setSort(Number(e.target.value) || 0)}
-            fullWidth
+            onChange={setSort}
+            min={0}
+            max={100}
+            step={1}
             disabled={saving}
-            helperText="Lower numbers are merged into the marquee before higher numbers."
           />
-          <TextField
-            label={
-              tickerType === 'static_text'
-                ? 'config_json (JSON object, e.g. {"text":"Welcome"})'
-                : tickerType === 'plugin'
-                  ? 'config_json (JSON object, e.g. pluginId and fallbackText)'
-                  : 'config_json (JSON object)'
-            }
-            value={configJsonText}
-            onChange={(e) => setConfigJsonText(e.target.value)}
-            fullWidth
-            multiline
-            minRows={4}
+          <TickerConfigPanel
+            display={active}
+            schema={configSchema}
+            formData={configForm}
+            onChange={setConfigForm}
             disabled={saving}
-            inputProps={{ style: { fontFamily: 'monospace' } }}
           />
         </Stack>
       </DialogContent>

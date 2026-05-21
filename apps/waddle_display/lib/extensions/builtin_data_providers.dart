@@ -62,16 +62,6 @@ DataProviderRegistry buildBuiltinDataProviderRegistry() {
 
       HomeAssistantDataProvider(),
 
-      photoBucketDataProvider,
-
-      videoBucketDataProvider,
-
-      calendarBucketDataProvider,
-
-      jokeBucketDataProvider,
-
-      triviaBucketDataProvider,
-
       PluginHttpDataProvider(),
 
     ],

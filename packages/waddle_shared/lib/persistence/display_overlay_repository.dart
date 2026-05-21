@@ -303,6 +303,7 @@ Future<String> upsertOverlay(
   required String id,
   required String overlayType,
   required String label,
+  String description = '',
   required String configJson,
 }) async {
   final err = validateOverlayUpsertDraft(
@@ -338,12 +339,13 @@ Future<String> upsertOverlay(
   final trimmedId = id.trim();
   await db.customStatement(
     'INSERT OR REPLACE INTO overlays ('
-    'id, overlay_type, label, config_json) '
-    'VALUES (?, ?, ?, ?)',
+    'id, overlay_type, label, description, config_json) '
+    'VALUES (?, ?, ?, ?, ?)',
     <Object?>[
       trimmedId,
       trimmedType,
       label,
+      description.trim(),
       configNorm,
     ],
   );
@@ -429,6 +431,7 @@ Map<String, Object?> overlayToJson(
     'id': row.id,
     'overlay_type': row.overlayType,
     'label': row.label,
+    'description': row.description,
     'config_json': configField,
   };
   if (includeConfigDocs) {

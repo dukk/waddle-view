@@ -1,5 +1,6 @@
 import { Stack, Typography } from '@mui/material';
 import { CuratorSliderField } from '@/components/CuratorSliderField';
+import { DurationInputField } from '@/components/DurationInputField';
 import {
   FLOATING_BALLOONS_BALLOON_SCALE_MAX,
   FLOATING_BALLOONS_BALLOON_SCALE_MIN,
@@ -31,15 +32,16 @@ export function FloatingBalloonsConfigForm({ formData, onChange, disabled }: Pro
     <Stack spacing={2}>
       <Typography variant="subtitle2">Configuration</Typography>
       <OverlayColorListField formData={formData} onChange={onChange} disabled={disabled} />
-      <CuratorSliderField
-        label="Spawn interval (sec)"
-        value={readNumber(formData, 'spawn_interval_sec', 22)}
-        onChange={(spawn_interval_sec) => patch({ spawn_interval_sec })}
-        min={FLOATING_BALLOONS_SPAWN_INTERVAL_SEC_MIN}
-        max={FLOATING_BALLOONS_SPAWN_INTERVAL_SEC_MAX}
-        step={1}
+      <DurationInputField
+        label="Spawn interval"
+        valueSeconds={readNumber(formData, 'spawn_interval_sec', 22)}
+        onChange={(spawn_interval_sec) =>
+          patch({ spawn_interval_sec: Math.round(spawn_interval_sec) })
+        }
+        allowedUnits={['sec', 'min', 'hr']}
+        minSeconds={FLOATING_BALLOONS_SPAWN_INTERVAL_SEC_MIN}
+        maxSeconds={FLOATING_BALLOONS_SPAWN_INTERVAL_SEC_MAX}
         disabled={disabled}
-        formatValue={(v) => String(Math.round(v))}
       />
       <CuratorSliderField
         label="Rise speed (px/s)"

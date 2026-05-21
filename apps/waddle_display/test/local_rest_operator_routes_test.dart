@@ -557,16 +557,36 @@ void main() {
     final h = await RestTestHarness.start();
     addTearDown(h.dispose);
 
-    final emptyId = await http.post(
+    final labelRequired = await http.post(
       Uri.parse('${h.baseUrl}/v1/screens'),
       headers: h.authHeaders,
       body: jsonEncode({
-        'id': '',
         'screen_type': 'static_text',
-        'config_json': {},
+        'config_json': {'text': 'A'},
       }),
     );
-    expect(emptyId.statusCode, 400);
+    expect(labelRequired.statusCode, 400);
+
+    final fromLabel = await http.post(
+      Uri.parse('${h.baseUrl}/v1/screens'),
+      headers: h.authHeaders,
+      body: jsonEncode({
+        'label': 'Weekend Party',
+        'screen_type': 'static_text',
+        'config_json': {'text': 'A'},
+      }),
+    );
+    expect(fromLabel.statusCode, 200);
+    final fromLabelDup = await http.post(
+      Uri.parse('${h.baseUrl}/v1/screens'),
+      headers: h.authHeaders,
+      body: jsonEncode({
+        'label': 'Weekend Party',
+        'screen_type': 'static_text',
+        'config_json': {'text': 'B'},
+      }),
+    );
+    expect(fromLabelDup.statusCode, 200);
 
     final unknown = await http.post(
       Uri.parse('${h.baseUrl}/v1/screens'),

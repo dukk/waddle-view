@@ -13,8 +13,8 @@ Repo constraints: [AGENTS.md](../../../AGENTS.md) (tests-first; Drift migration 
 
 ## Related skills
 
-- [controller-dialog-submit](../controller-dialog-submit/SKILL.md) — Save/Create dialog UX in [`OverlayDialog`](../../../apps/waddle_controller/src/pages/OverlaysPage.tsx)
-- [schema-config-form](../schema-config-form/SKILL.md) — RJSF widgets for schema-only overlay configs
+- [controller-dialog-submit](../controller-dialog-submit/SKILL.md) — catalog dialog field order, label-derived ids, Save/Create UX in [`OverlayDialog`](../../../apps/waddle_controller/src/pages/OverlaysPage.tsx)
+- [schema-config-form](../schema-config-form/SKILL.md) — RJSF widgets for schema-only overlay configs; use [`DurationInputField`](../../../apps/waddle_controller/src/components/DurationInputField.tsx) for `*_sec` in bespoke forms
 
 ## Forbidden
 

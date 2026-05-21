@@ -23,6 +23,7 @@ disable-model-invocation: true
 |---------------|------------|--------|
 | `type: boolean` | MUI `Switch` via `WaddleSwitchWidget` | Auto via [`buildUiSchemaFromJsonSchema`](../../../apps/waddle_controller/src/util/schemaConfigForm.ts) |
 | `type: integer` / `number` with `minimum` + `maximum` | MUI `Slider` via `WaddleSliderWidget` | Also when `x-waddle-widget: slider` is set |
+| `'x-waddle-widget': 'duration'` | [`DurationInputField`](../../../apps/waddle_controller/src/components/DurationInputField.tsx) via `WaddleDurationWidget` | Values stored as **seconds**; optional `x-waddle-duration-units` |
 | `format: waddle-overlay-blob-key` on `items` (array) | `OverlayBlobKeysField` | Upload via `POST /v1/display/overlays/blobs`; stores `image_blob_keys` |
 | `enum` | RJSF default select | No custom widget |
 | Plain `string` / `array` of strings | RJSF defaults | e.g. `messages` phrase lists |
@@ -38,8 +39,11 @@ Helpers live in [`schemaConfigForm.ts`](../../../apps/waddle_controller/src/util
 
 ## Canonical usage
 
-- **Overlays**: [`OverlaysPage.tsx`](../../../apps/waddle_controller/src/pages/OverlaysPage.tsx) reads cached overlay type schemas from [`useConfigSchemas`](../../../apps/waddle_controller/src/hooks/useConfigSchemas.ts), renders name + type + `SchemaConfigForm` in the edit dialog.
-- **Integrations / screens**: may still use raw `@rjsf/mui` `Form`; prefer migrating to `SchemaConfigForm` when touching those pages.
+- **Overlays**: [`OverlaysPage.tsx`](../../../apps/waddle_controller/src/pages/OverlaysPage.tsx) — label → description → type → [`OverlayConfigPanel`](../../../apps/waddle_controller/src/components/config/OverlayConfigPanel.tsx).
+- **Screens**: [`ScreenDialog.tsx`](../../../apps/waddle_controller/src/components/screens/ScreenDialog.tsx) + [`ScreenConfigPanel`](../../../apps/waddle_controller/src/components/screens/ScreenConfigPanel.tsx).
+- **Ticker tapes**: [`TickerPage.tsx`](../../../apps/waddle_controller/src/pages/TickerPage.tsx) + [`TickerConfigPanel`](../../../apps/waddle_controller/src/components/ticker/TickerConfigPanel.tsx).
+
+**Never** expose raw `config_json` JSON text areas in catalog dialogs; use schema/bespoke forms only.
 
 ## Verification
 

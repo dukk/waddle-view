@@ -70,11 +70,6 @@ final ProviderConfigJsonDoc kGenericProviderConfigJsonDoc =
 /// Documentation keyed by [Integrations.integrationType] (seeded + built-in).
 final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
   'stub': kGenericProviderConfigJsonDoc,
-  'photo_bucket': kGenericProviderConfigJsonDoc,
-  'video_bucket': kGenericProviderConfigJsonDoc,
-  'calendar_bucket': kGenericProviderConfigJsonDoc,
-  'joke_bucket': kGenericProviderConfigJsonDoc,
-  'trivia_bucket': kGenericProviderConfigJsonDoc,
   'news_rss': kGenericProviderConfigJsonDoc,
   'photo_pexels': ProviderConfigJsonDoc(
     schema: jsonEncode(

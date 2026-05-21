@@ -5,6 +5,7 @@ import {
   schemaPropertyIsBoolean,
   schemaPropertyUsesBlobKey,
   schemaPropertyUsesContentCategory,
+  schemaPropertyUsesDuration,
   schemaPropertyUsesSlider,
 } from './schemaConfigForm';
 
@@ -37,6 +38,15 @@ describe('schemaConfigForm', () => {
     expect(schemaPropertyIsBoolean({ type: 'boolean' })).toBe(true);
   });
 
+  it('detects duration properties', () => {
+    expect(
+      schemaPropertyUsesDuration({
+        type: 'integer',
+        'x-waddle-widget': 'duration',
+      }),
+    ).toBe(true);
+  });
+
   it('detects content category properties', () => {
     expect(
       schemaPropertyUsesContentCategory({
@@ -61,12 +71,19 @@ describe('schemaConfigForm', () => {
           type: 'string',
           'x-waddle-widget': 'content-category',
         },
+        interval_sec: {
+          type: 'integer',
+          minimum: 5,
+          maximum: 3600,
+          'x-waddle-widget': 'duration',
+        },
       },
     });
     expect(ui.shadow).toEqual({ 'ui:widget': 'WaddleSwitchWidget' });
     expect(ui.density).toEqual({ 'ui:widget': 'WaddleSliderWidget' });
     expect(ui.image_blob_keys).toEqual({ 'ui:field': 'OverlayBlobKeysField' });
     expect(ui.categoryId).toEqual({ 'ui:field': 'ContentCategorySelectField' });
+    expect(ui.interval_sec).toEqual({ 'ui:widget': 'WaddleDurationWidget' });
   });
 
   it('normalizeSchemaFieldLabels fills missing property titles', () => {

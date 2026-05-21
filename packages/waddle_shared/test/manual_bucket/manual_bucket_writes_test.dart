@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/manual_bucket/manual_bucket_writes.dart';
@@ -64,7 +63,7 @@ void main() {
           ..where((t) => t.id.equals(result.id)))
         .getSingle();
     expect(photo.category, 'nature');
-    expect(photo.dataProvider, kMediaDataProviderPhotoBucket);
+    expect(photo.dataProvider, kManualEntrySource);
     expect(photo.mediaBlobKey, result.mediaBlobKey);
     expect(photo.altText, 'sunset');
 
@@ -115,14 +114,13 @@ void main() {
     expect(row.setup, contains('chicken'));
   });
 
-  test('writeManualBucketTrivia stores question with integration id', () async {
+  test('writeManualBucketTrivia stores question without integration id', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await ensureDefaultInterestsTrivia(db);
 
     final result = await writeManualBucketTrivia(
       db: db,
-      integrationRowId: kDefaultTriviaBucketIntegrationId,
       categoryId: 'science',
       question: 'What is 2+2?',
       optionA: '3',
@@ -135,7 +133,7 @@ void main() {
     final row = await (db.select(db.triviaQuestions)
           ..where((t) => t.id.equals(result.id)))
         .getSingle();
-    expect(row.integrationId, kDefaultTriviaBucketIntegrationId);
+    expect(row.integrationId, isNull);
     expect(row.correctOption, 'B');
   });
 
@@ -160,7 +158,7 @@ void main() {
           ..where((t) => t.id.equals(result.id)))
         .getSingle();
     expect(event.title, 'Team lunch');
-    expect(event.source, kCalendarSourceBucket);
+    expect(event.source, kManualEntrySource);
     expect(event.categoryId, 'family');
 
     final junction = await (db.select(db.calendarEventCategories)
@@ -170,38 +168,4 @@ void main() {
     expect(junction.single.categoryId, 'family');
   });
 
-  test('requireManualBucketIntegration validates type', () async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
-    await db.into(db.integrations).insert(
-          IntegrationsCompanion.insert(
-            id: 'bucket_photo_test',
-            integrationType: kPhotoBucketIntegrationType,
-            enabled: const Value(true),
-            pollSeconds: const Value(60),
-          ),
-        );
-
-    final row = await requireManualBucketIntegration(
-      db,
-      integrationId: 'bucket_photo_test',
-      expectedType: kPhotoBucketIntegrationType,
-    );
-    expect(row.id, 'bucket_photo_test');
-
-    await expectLater(
-      requireManualBucketIntegration(
-        db,
-        integrationId: 'bucket_photo_test',
-        expectedType: kVideoBucketIntegrationType,
-      ),
-      throwsA(
-        isA<ManualBucketWriteException>().having(
-          (e) => e.code,
-          'code',
-          'integration_type_mismatch',
-        ),
-      ),
-    );
-  });
 }

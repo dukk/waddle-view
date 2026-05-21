@@ -435,6 +435,7 @@ void main() {
       id: 'j',
       overlayType: kOverlayTypeBirthdayConfetti,
       label: 'Confetti',
+      description: '',
       configJson: '{"fall_speed":0.2,"opacity":0.5}',
     );
     final jDefault = overlayToJson(row);

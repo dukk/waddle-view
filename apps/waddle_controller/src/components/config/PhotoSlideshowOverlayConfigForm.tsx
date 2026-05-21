@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import { CategoryMultiSelect, type ContentCategoryOption } from '@/components/CategoryMultiSelect';
 import { CuratorSliderField } from '@/components/CuratorSliderField';
+import { DurationInputField } from '@/components/DurationInputField';
 import {
   STATIC_IMAGE_OVERLAY_SCALE_MAX,
   STATIC_IMAGE_OVERLAY_SCALE_MIN,
@@ -73,19 +74,15 @@ export function PhotoSlideshowOverlayConfigForm({
         Cycles random photos from the catalog at a viewport position. Assign on a curator
         configuration Overlay tab; respects the global overlay kill-switch.
       </Typography>
-      <TextField
-        label="Cycle interval (seconds)"
-        type="number"
-        size="small"
-        fullWidth
+      <DurationInputField
+        label="Cycle interval"
+        valueSeconds={intervalSec}
+        onChange={(interval_sec) => patch({ interval_sec })}
+        allowedUnits={['sec', 'min', 'hr']}
+        minSeconds={5}
+        maxSeconds={3600}
         disabled={disabled}
-        value={intervalSec}
-        inputProps={{ min: 5, max: 3600, step: 1 }}
-        onChange={(e) => {
-          const v = Number.parseInt(e.target.value, 10);
-          patch({ interval_sec: Number.isFinite(v) ? v : 60 });
-        }}
-        helperText="Seconds between random photo picks (5–3600)."
+        helperText="Time between random photo picks."
       />
       <CategoryMultiSelect
         id="photo-slideshow-categories"

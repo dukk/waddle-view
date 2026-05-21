@@ -24,11 +24,7 @@ const INTEGRATION_TYPE_TITLES: Record<string, string> = {
   video_onedrive: 'OneDrive Videos',
   photo_flickr: 'Flickr Photos',
   photo_bing_image_of_the_day: 'Bing Image of the Day',
-  photo_bucket: 'Photo Bucket',
-  video_bucket: 'Video Bucket',
-  calendar_bucket: 'Calendar Bucket',
-  joke_bucket: 'Joke Bucket',
-  trivia_bucket: 'Trivia Bucket',
+  manual_entry: 'Manual entry',
 };
 
 /** Token segments inside `integration_type` after splitting on `_`. */

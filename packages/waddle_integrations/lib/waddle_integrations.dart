@@ -46,5 +46,3 @@ export 'google_photos/photo_google_data_provider.dart';
 
 export 'google_photos/video_google_data_provider.dart';
 
-export 'manual_bucket/manual_bucket_data_provider.dart';
-

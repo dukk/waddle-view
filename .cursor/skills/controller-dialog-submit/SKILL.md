@@ -91,11 +91,25 @@ const submit = async () => {
 - `disabled={loading}` on Save when `loading` only tracks **initial fetch** (see [`CuratorsPage.tsx`](../../../apps/waddle_controller/src/pages/CuratorsPage.tsx) — use `saving` for submit).
 - Omitting `finally { setSaving(false) }` so the button stays disabled after errors.
 - Closing the dialog before the API succeeds (except auth flows that clear session state explicitly).
+- Showing **id** fields or raw **config_json** monospace text areas in catalog add/edit dialogs.
+
+## Catalog entity dialogs (screens, overlays, ticker tapes)
+
+Fixed field order for create and edit:
+
+1. **Label** (required on create; id derived server-side — preview with [`catalogIdFromLabel.ts`](../../../apps/waddle_controller/src/util/catalogIdFromLabel.ts))
+2. **Description** (optional multiline)
+3. **Type** (empty `Select` + “Select … type” on create; disabled on edit)
+4. Scheduling / shell fields (dwell, weight, enabled, …)
+5. Type config via [`SchemaConfigForm`](../../../apps/waddle_controller/src/components/config/SchemaConfigForm.tsx) or bespoke overlay panels — **never** pasted JSON
+
+Use [`DurationInputField`](../../../apps/waddle_controller/src/components/DurationInputField.tsx) for operator-facing seconds stored in the DB. Ticker tapes use [`TickerConfigPanel`](../../../apps/waddle_controller/src/components/ticker/TickerConfigPanel.tsx).
 
 ## Canonical examples
 
 - [`ScreenDialog.tsx`](../../../apps/waddle_controller/src/components/screens/ScreenDialog.tsx) — create/edit screen
 - [`OverlaysPage.tsx`](../../../apps/waddle_controller/src/pages/OverlaysPage.tsx) — `OverlayDialog` (new overlay **types** — see [add-display-overlay](../add-display-overlay/SKILL.md))
+- [`TickerPage.tsx`](../../../apps/waddle_controller/src/pages/TickerPage.tsx) — add/edit ticker tape dialogs
 
 ## Helper
 
