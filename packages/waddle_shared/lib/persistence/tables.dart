@@ -139,6 +139,23 @@ const List<String> kCuratorConfigurationLayers = [
 /// Default [CuratorConfigurations.sortOrder] for REST POST when omitted (matches operator UI).
 const int kDefaultCuratorConfigurationSortOrder = 100;
 
+/// Seeded base curator extended by time-slot programs (night/morning/work/evening).
+const String kDefaultBaseCuratorConfigurationId = 'default';
+
+/// Screen members on [kDefaultBaseCuratorConfigurationId] (unioned at load time).
+const List<String> kDefaultBaseCuratorScreenMemberIds = ['clock_digital'];
+
+/// Ticker members on [kDefaultBaseCuratorConfigurationId] (unioned at load time).
+const List<String> kDefaultBaseCuratorTickerMemberIds = ['ticker_time'];
+
+/// Base-layer curators that extend [kDefaultBaseCuratorConfigurationId].
+const List<String> kTimeSlotBaseCuratorConfigurationIds = [
+  'night',
+  'morning',
+  'work',
+  'evening',
+];
+
 /// [CuratorConfigurationMembers.entityType] values.
 const String kCuratorMemberEntityScreen = 'screen';
 const String kCuratorMemberEntityTicker = 'ticker';
@@ -405,6 +422,8 @@ class CuratorConfigurations extends Table {
   IntColumn get viewportReserveBottomPctOverride => integer().nullable()();
   IntColumn get viewportReserveLeftPctOverride => integer().nullable()();
   BoolColumn get defaultConfig => boolean().withDefault(const Constant(false))();
+  TextColumn get parentConfigurationId =>
+      text().nullable().references(CuratorConfigurations, #id)();
 
   @override
   Set<Column<Object>> get primaryKey => {id};

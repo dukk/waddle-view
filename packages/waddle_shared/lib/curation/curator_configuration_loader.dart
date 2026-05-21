@@ -2,6 +2,31 @@ import 'package:waddle_shared/curation/curator_schedule_resolver.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 
+/// Unions [configId]'s own members with those of ancestor configurations.
+Set<String> effectiveCuratorMemberIdsForConfig({
+  required String configId,
+  required Map<String, Set<String>> ownByConfig,
+  required Map<String, String?> parentById,
+}) {
+  final merged = <String>{};
+  final visited = <String>{};
+  var current = configId;
+  while (true) {
+    if (!visited.add(current)) {
+      throw StateError(
+        'Curator configuration parent cycle detected at $current',
+      );
+    }
+    merged.addAll(ownByConfig[current] ?? const {});
+    final parent = parentById[current];
+    if (parent == null || parent.isEmpty) {
+      break;
+    }
+    current = parent;
+  }
+  return merged;
+}
+
 /// Loads curator rows from [db] for [CuratorScheduleResolver].
 Future<List<CuratorConfigurationInput>> loadCuratorConfigurationInputs(
   AppDatabase db,
@@ -53,6 +78,10 @@ Future<List<CuratorConfigurationInput>> loadCuratorConfigurationInputs(
     }
   }
 
+  final parentById = {
+    for (final c in configs) c.id: c.parentConfigurationId,
+  };
+
   return [
     for (final c in configs)
       CuratorConfigurationInput(
@@ -73,9 +102,21 @@ Future<List<CuratorConfigurationInput>> loadCuratorConfigurationInputs(
         viewportReserveLeftPctOverride: c.viewportReserveLeftPctOverride,
         defaultConfig: c.defaultConfig,
         rules: rulesByConfig[c.id] ?? const [],
-        screenMemberIds: screensByConfig[c.id] ?? const {},
-        tickerMemberIds: tickersByConfig[c.id] ?? const {},
-        overlayMemberIds: overlaysByConfig[c.id] ?? const {},
+        screenMemberIds: effectiveCuratorMemberIdsForConfig(
+          configId: c.id,
+          ownByConfig: screensByConfig,
+          parentById: parentById,
+        ),
+        tickerMemberIds: effectiveCuratorMemberIdsForConfig(
+          configId: c.id,
+          ownByConfig: tickersByConfig,
+          parentById: parentById,
+        ),
+        overlayMemberIds: effectiveCuratorMemberIdsForConfig(
+          configId: c.id,
+          ownByConfig: overlaysByConfig,
+          parentById: parentById,
+        ),
       ),
   ];
 }

@@ -40,6 +40,24 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
 
   await _insertConfig(
     db,
+    id: kDefaultBaseCuratorConfigurationId,
+    name: 'Default',
+    layer: kCuratorLayerBase,
+    sortOrder: 5,
+    programDurationSeconds: 180,
+    historyDepth: 5,
+    requireNewsPhoto: true,
+    defaultConfig: false,
+  );
+  await _members(
+    db,
+    kDefaultBaseCuratorConfigurationId,
+    screens: kDefaultBaseCuratorScreenMemberIds,
+    tickers: kDefaultBaseCuratorTickerMemberIds,
+  );
+
+  await _insertConfig(
+    db,
     id: 'night',
     name: 'Night',
     layer: kCuratorLayerBase,
@@ -48,6 +66,7 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
     historyDepth: 3,
     requireNewsPhoto: false,
     defaultConfig: false,
+    parentConfigurationId: kDefaultBaseCuratorConfigurationId,
   );
   await _insertRule(
     db,
@@ -61,8 +80,7 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
   await _members(
     db,
     'night',
-    screens: ['clock_digital', 'clock_analog', 'sleep_message'],
-    tickers: ['ticker_time'],
+    screens: ['clock_analog', 'sleep_message'],
   );
 
   await _insertConfig(
@@ -75,6 +93,7 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
     historyDepth: 5,
     requireNewsPhoto: true,
     defaultConfig: false,
+    parentConfigurationId: kDefaultBaseCuratorConfigurationId,
   );
   await _insertRule(
     db,
@@ -95,9 +114,8 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
       'jokes',
       'trivia',
       'photo',
-      'clock_digital',
     ],
-    tickers: ['ticker_time', 'ticker_weather', 'ticker_news'],
+    tickers: ['ticker_weather', 'ticker_news'],
   );
 
   await _insertConfig(
@@ -110,6 +128,7 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
     historyDepth: 5,
     requireNewsPhoto: true,
     defaultConfig: false,
+    parentConfigurationId: kDefaultBaseCuratorConfigurationId,
   );
   await _insertRule(
     db,
@@ -128,11 +147,9 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
       'news_columns',
       'stock_quotes',
       'weather',
-      'clock_digital',
       'calendar',
     ],
     tickers: [
-      'ticker_time',
       'ticker_weather',
       'ticker_news',
       'ticker_stocks',
@@ -149,6 +166,7 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
     historyDepth: 5,
     requireNewsPhoto: false,
     defaultConfig: true,
+    parentConfigurationId: kDefaultBaseCuratorConfigurationId,
   );
   await _insertRule(
     db,
@@ -169,9 +187,8 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
       'photo_collage_nine_square',
       'video',
       'weather',
-      'clock_digital',
     ],
-    tickers: ['ticker_time', 'ticker_custom'],
+    tickers: ['ticker_custom'],
   );
 
   await _insertConfig(
@@ -243,6 +260,7 @@ Future<void> _insertConfig(
   required bool requireNewsPhoto,
   required bool defaultConfig,
   String? themeIdOverride,
+  String? parentConfigurationId,
 }) async {
   await db.into(db.curatorConfigurations).insert(
         CuratorConfigurationsCompanion.insert(
@@ -255,6 +273,7 @@ Future<void> _insertConfig(
           requireNewsPhotoForScreens: Value(requireNewsPhoto),
           themeIdOverride: Value(themeIdOverride),
           defaultConfig: Value(defaultConfig),
+          parentConfigurationId: Value(parentConfigurationId),
         ),
       );
 }

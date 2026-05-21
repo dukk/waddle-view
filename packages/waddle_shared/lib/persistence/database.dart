@@ -86,7 +86,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 42;
+  int get schemaVersion => 43;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -394,6 +394,13 @@ ORDER BY priority DESC, created_at DESC;
           return;
         }
         from = 42;
+      }
+      if (from == 42 && to >= 43) {
+        await _migrateV42ToV43DefaultBaseCurator(this);
+        if (to == 43) {
+          return;
+        }
+        from = 43;
       }
       throw UnsupportedError(
         'Unsupported database upgrade from version $from to $to. '
@@ -2366,6 +2373,98 @@ Future<void> _migrateV40ToV41CloudDriftOverlayType(AppDatabase db) async {
     return;
   }
   await ensureOverlayTypes(db);
+}
+
+/// Schema 43: default base curator + parent_configuration_id for time-slot programs.
+Future<void> _migrateV42ToV43DefaultBaseCurator(AppDatabase db) async {
+  if (!await _sqliteTableExists(db, 'curator_configurations')) {
+    return;
+  }
+  if (!await _sqliteColumnExists(
+    db,
+    'curator_configurations',
+    'parent_configuration_id',
+  )) {
+    await db.customStatement(
+      'ALTER TABLE curator_configurations ADD COLUMN parent_configuration_id '
+      'TEXT REFERENCES curator_configurations(id)',
+    );
+  }
+
+  final defaultExists = await db.customSelect(
+    'SELECT 1 FROM curator_configurations WHERE id = ? LIMIT 1',
+    variables: [Variable<String>(kDefaultBaseCuratorConfigurationId)],
+  ).getSingleOrNull();
+  if (defaultExists == null) {
+    await db.customStatement(
+      'INSERT INTO curator_configurations ('
+      'id, name, layer, sort_order, program_duration_seconds, history_depth, '
+      'require_news_photo_for_screens, ticker_enabled, default_config, '
+      'parent_configuration_id'
+      ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)',
+      <Object?>[
+        kDefaultBaseCuratorConfigurationId,
+        'Default',
+        kCuratorLayerBase,
+        5,
+        180,
+        5,
+        1,
+        1,
+        0,
+      ],
+    );
+  }
+
+  if (await _sqliteTableExists(db, 'curator_configuration_members')) {
+    for (final screenId in kDefaultBaseCuratorScreenMemberIds) {
+      await db.customStatement(
+        'INSERT OR IGNORE INTO curator_configuration_members '
+        '(configuration_id, entity_type, entity_id) VALUES (?, ?, ?)',
+        <Object?>[
+          kDefaultBaseCuratorConfigurationId,
+          kCuratorMemberEntityScreen,
+          screenId,
+        ],
+      );
+    }
+    for (final tickerId in kDefaultBaseCuratorTickerMemberIds) {
+      await db.customStatement(
+        'INSERT OR IGNORE INTO curator_configuration_members '
+        '(configuration_id, entity_type, entity_id) VALUES (?, ?, ?)',
+        <Object?>[
+          kDefaultBaseCuratorConfigurationId,
+          kCuratorMemberEntityTicker,
+          tickerId,
+        ],
+      );
+    }
+
+    for (final childId in kTimeSlotBaseCuratorConfigurationIds) {
+      final childExists = await db.customSelect(
+        'SELECT 1 FROM curator_configurations WHERE id = ? LIMIT 1',
+        variables: [Variable<String>(childId)],
+      ).getSingleOrNull();
+      if (childExists == null) {
+        continue;
+      }
+      await db.customStatement(
+        'UPDATE curator_configurations SET parent_configuration_id = ? '
+        'WHERE id = ?',
+        <Object?>[kDefaultBaseCuratorConfigurationId, childId],
+      );
+      await db.customStatement(
+        'DELETE FROM curator_configuration_members '
+        'WHERE configuration_id = ? AND entity_type = ? AND entity_id = ?',
+        <Object?>[childId, kCuratorMemberEntityScreen, 'clock_digital'],
+      );
+      await db.customStatement(
+        'DELETE FROM curator_configuration_members '
+        'WHERE configuration_id = ? AND entity_type = ? AND entity_id = ?',
+        <Object?>[childId, kCuratorMemberEntityTicker, 'ticker_time'],
+      );
+    }
+  }
 }
 
 /// Schema 39: trim default location catalog to five megacities; remove retired rows.

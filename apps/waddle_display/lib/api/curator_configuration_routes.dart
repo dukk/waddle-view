@@ -123,6 +123,18 @@ void registerCuratorConfigurationRoutes(
           body: '{"error":"id_already_exists"}',
           headers: {'content-type': 'application/json'});
     }
+    final parentId = _readOptionalTrimmedString(map['parent_configuration_id']);
+    final parentError = await _validateParentConfigurationWrite(
+      db,
+      childId: id,
+      layer: layer,
+      parentId: parentId,
+    );
+    if (parentError != null) {
+      return Response(400,
+          body: jsonEncode({'error': parentError}),
+          headers: {'content-type': 'application/json'});
+    }
     await db.into(db.curatorConfigurations).insert(
           CuratorConfigurationsCompanion.insert(
             id: id,
@@ -183,6 +195,7 @@ void registerCuratorConfigurationRoutes(
               ),
             ),
             defaultConfig: Value(_readBool(map['default_config'], defaultValue: false)),
+            parentConfigurationId: Value(parentId),
           ),
         );
     try {
@@ -228,6 +241,20 @@ void registerCuratorConfigurationRoutes(
       return Response(400,
           body: '{"error":"invalid_layer"}',
           headers: {'content-type': 'application/json'});
+    }
+    if (map.containsKey('parent_configuration_id')) {
+      final parentId = _readOptionalTrimmedString(map['parent_configuration_id']);
+      final parentError = await _validateParentConfigurationWrite(
+        db,
+        childId: id,
+        layer: layer,
+        parentId: parentId,
+      );
+      if (parentError != null) {
+        return Response(400,
+            body: jsonEncode({'error': parentError}),
+            headers: {'content-type': 'application/json'});
+      }
     }
     await (db.update(db.curatorConfigurations)..where((t) => t.id.equals(id))).write(
       CuratorConfigurationsCompanion(
@@ -302,6 +329,9 @@ void registerCuratorConfigurationRoutes(
         ),
         defaultConfig: map.containsKey('default_config')
             ? Value(_readBool(map['default_config'], defaultValue: existing.defaultConfig))
+            : const Value.absent(),
+        parentConfigurationId: map.containsKey('parent_configuration_id')
+            ? Value(_readOptionalTrimmedString(map['parent_configuration_id']))
             : const Value.absent(),
       ),
     );
@@ -522,7 +552,39 @@ Map<String, Object?> _configurationSummaryJson(CuratorConfiguration c) {
     'viewport_reserve_bottom_pct_override': c.viewportReserveBottomPctOverride,
     'viewport_reserve_left_pct_override': c.viewportReserveLeftPctOverride,
     'default_config': c.defaultConfig,
+    'parent_configuration_id': c.parentConfigurationId,
   };
+}
+
+Future<String?> _validateParentConfigurationWrite(
+  AppDatabase db, {
+  required String childId,
+  required String layer,
+  String? parentId,
+}) async {
+  if (parentId == null) {
+    return null;
+  }
+  if (parentId == childId) {
+    return 'invalid_parent_configuration';
+  }
+  if (layer != kCuratorLayerBase) {
+    return 'parent_only_for_base_layer';
+  }
+  final parent = await (db.select(db.curatorConfigurations)
+        ..where((t) => t.id.equals(parentId)))
+      .getSingleOrNull();
+  if (parent == null) {
+    return 'parent_not_found';
+  }
+  if (parent.layer != kCuratorLayerBase) {
+    return 'parent_must_be_base_layer';
+  }
+  final grandparent = parent.parentConfigurationId?.trim();
+  if (grandparent != null && grandparent.isNotEmpty) {
+    return 'parent_cannot_extend_parent';
+  }
+  return null;
 }
 
 Future<Map<String, Object?>?> _loadConfigurationDetail(

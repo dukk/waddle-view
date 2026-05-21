@@ -47,6 +47,7 @@ void main() {
     final items =
         (jsonDecode(list.body) as Map<String, dynamic>)['items'] as List;
     expect(items.any((e) => (e as Map)['id'] == 'evening'), isTrue);
+    expect(items.any((e) => (e as Map)['id'] == 'default'), isTrue);
 
     final detail = await http.get(
       Uri.parse('${h.baseUrl}/v1/curator/configurations/evening'),
@@ -55,6 +56,7 @@ void main() {
     expect(detail.statusCode, 200);
     final detailBody = jsonDecode(detail.body) as Map<String, dynamic>;
     expect(detailBody['id'], 'evening');
+    expect(detailBody['parent_configuration_id'], 'default');
     expect(detailBody['members'], isA<Map>());
     expect(detailBody['rules'], isA<List>());
     expect(detailBody['ticker_enabled'], isTrue);

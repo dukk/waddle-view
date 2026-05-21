@@ -44,6 +44,7 @@ export type CuratorConfigurationSummary = {
   viewport_reserve_bottom_pct_override: number | null;
   viewport_reserve_left_pct_override: number | null;
   default_config: boolean;
+  parent_configuration_id: string | null;
 };
 
 export type CuratorConfigurationDetail = CuratorConfigurationSummary & {

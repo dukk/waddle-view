@@ -580,6 +580,7 @@ function CuratorConfigurationDialog({
   const [requireNewsPhoto, setRequireNewsPhoto] = useState(true);
   const [tickerEnabled, setTickerEnabled] = useState(true);
   const [defaultConfig, setDefaultConfig] = useState(false);
+  const [parentConfigurationId, setParentConfigurationId] = useState<string | null>(null);
   const [rules, setRules] = useState<Omit<CuratorScheduleRule, 'configuration_id'>[]>([]);
   const [screenIds, setScreenIds] = useState<string[]>([]);
   const [tickerIds, setTickerIds] = useState<string[]>([]);
@@ -662,6 +663,7 @@ function CuratorConfigurationDialog({
           setRequireNewsPhoto(detail.require_news_photo_for_screens);
           setTickerEnabled(detail.ticker_enabled);
           setDefaultConfig(detail.default_config);
+          setParentConfigurationId(detail.parent_configuration_id);
           setRules(
             detail.rules.map((r) => ({
               id: r.id,
@@ -847,6 +849,15 @@ function CuratorConfigurationDialog({
                     disabled={formDisabled}
                     helperText="Higher values win when multiple configurations match the same schedule slot."
                   />
+                  {parentConfigurationId && (
+                    <TextField
+                      label="Extends"
+                      value={parentConfigurationId}
+                      fullWidth
+                      disabled
+                      helperText="Shared screens and ticker tapes from the parent configuration are included at runtime."
+                    />
+                  )}
                   {!isEnhancementLayer && (
                   <FormControl fullWidth disabled={formDisabled}>
                     <InputLabel id="curator-theme-override-label">Theme while active</InputLabel>
