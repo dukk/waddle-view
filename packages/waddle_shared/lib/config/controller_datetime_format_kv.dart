@@ -42,10 +42,8 @@ String normalizeControllerDateOrder(String? raw) {
   final s = raw?.trim().toLowerCase() ?? '';
   switch (s) {
     case kControllerDateOrderDmy:
-    case 'dmY':
       return kControllerDateOrderDmy;
     case kControllerDateOrderYmd:
-    case 'ymd':
       return kControllerDateOrderYmd;
     default:
       return kDefaultControllerDateOrder;

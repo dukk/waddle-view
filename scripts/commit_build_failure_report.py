@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+"""Persist post-commit build-phase failures for Cursor hooks."""
+
+from __future__ import annotations
+
+import json
+import time
+from pathlib import Path
+from typing import Any
+
+FAILURE_REL = Path(".cursor/hooks/state/commit-build-failure.json")
+OUTPUT_TAIL_MAX = 12_000
+FAILURE_MAX_AGE_MS = 2 * 60 * 60 * 1000
+
+
+def failure_path(root: Path) -> Path:
+    return root / FAILURE_REL
+
+
+def _tail(text: str, limit: int = OUTPUT_TAIL_MAX) -> str:
+    if len(text) <= limit:
+        return text
+    return f"… ({len(text) - limit} chars truncated)\n{text[-limit:]}"
+
+
+def write_failure(
+    root: Path,
+    *,
+    label: str,
+    cwd: Path,
+    argv: list[str],
+    exit_code: int,
+    output: str,
+    scopes: list[str],
+    commit_sha: str,
+) -> None:
+    path = failure_path(root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload: dict[str, Any] = {
+        "phase": "build",
+        "failed_at_ms": int(time.time() * 1000),
+        "commit_sha": commit_sha,
+        "label": label,
+        "cwd": str(cwd),
+        "argv": argv,
+        "exit_code": exit_code,
+        "output_tail": _tail(output),
+        "scopes": scopes,
+    }
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def read_failure(root: Path) -> dict[str, Any] | None:
+    path = failure_path(root)
+    if not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    failed_at = data.get("failed_at_ms")
+    if isinstance(failed_at, int):
+        age = int(time.time() * 1000) - failed_at
+        if age > FAILURE_MAX_AGE_MS:
+            return None
+    return data
+
+
+def clear_failure(root: Path) -> None:
+    path = failure_path(root)
+    try:
+        path.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+def build_autofix_prompt(failure: dict[str, Any]) -> str:
+    label = str(failure.get("label") or "post-commit build step")
+    exit_code = failure.get("exit_code")
+    cwd = failure.get("cwd") or ""
+    scopes = failure.get("scopes") or []
+    scope_line = ", ".join(scopes) if scopes else "unknown"
+    tail = str(failure.get("output_tail") or "").strip()
+    rerun = "python scripts/post_commit_gate.py --build-only"
+
+    lines = [
+        "**Mode: FIX (post-commit build)** — compile/analyze/codegen failed after the last commit.",
+        "",
+        f"**Failed step:** {label} (exit {exit_code})",
+        f"**Working directory:** `{cwd}`",
+        f"**Scopes:** {scope_line}",
+        "",
+        "Read `.cursor/hooks/state/commit-build-failure.json` for full details.",
+        "",
+        "Fix build/analyze/codegen/TypeScript errors with **minimal** diffs. Re-run:",
+        f"`{rerun}` (from repo root) or `python scripts/post_commit_gate.py` for the full gate.",
+        "Do not refactor unrelated files.",
+        "",
+        "Follow [AGENTS.md](AGENTS.md) and "
+        "[`.cursor/skills/run-waddle-checks/SKILL.md`](.cursor/skills/run-waddle-checks/SKILL.md).",
+        "",
+        "Auto-fix stops after **20 minutes** wall clock; then ask the user for help.",
+    ]
+    if tail:
+        lines.extend(["", "**Command output (tail):**", "```", tail, "```"])
+
+    body = "\n".join(lines)
+    return f"{body}\n\n---\n\n/build-fix FIX\n\nRepair the build failures above. When the build phase passes, report briefly and stop."

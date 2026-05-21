@@ -266,6 +266,28 @@ List<TickerItem> pickNewsTickerItemsByWidthBudget({
   return out;
 }
 
+/// Reads [TickerTapeForCuration.configJson] `categoryId` for quote tapes.
+String? parseTickerTapeCategoryId(String rawConfigJson) {
+  final t = rawConfigJson.trim();
+  if (t.isEmpty || t == '{}') {
+    return null;
+  }
+  try {
+    final decoded = jsonDecode(t);
+    if (decoded is! Map) {
+      return null;
+    }
+    final m = decoded.map((k, Object? v) => MapEntry(k.toString(), v));
+    final id = m['categoryId'];
+    if (id is String && id.trim().isNotEmpty) {
+      return id.trim();
+    }
+    return null;
+  } on Object {
+    return null;
+  }
+}
+
 /// Reads [TickerTapeForCuration.configJson] `text` for static_text tapes.
 String? parseTickerTapeStaticText(String rawConfigJson) {
   final t = rawConfigJson.trim();

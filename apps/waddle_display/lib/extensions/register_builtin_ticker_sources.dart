@@ -43,7 +43,7 @@ void registerBuiltinTickerSources(TickerSourceRegistry registry) {
   });
 
   registry.register('quote', (def, ctx) {
-    final categoryId = (def.configJson['categoryId'] as String?)?.trim();
+    final categoryId = parseTickerTapeCategoryId(def.configJson);
     if (categoryId == null || categoryId.isEmpty) {
       return ctx.quoteTickerItems;
     }

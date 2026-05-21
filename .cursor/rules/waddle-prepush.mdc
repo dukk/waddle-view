@@ -1,6 +1,6 @@
 ---
-description: Git pre-push hook — scoped checks, no npm ci on controller, Windows EPERM
-globs: scripts/pre_push_checks.py,.githooks/**,apps/waddle_controller/package.json,apps/waddle_controller/package-lock.json
+description: Git pre-push and post-commit hooks — scoped checks, no npm ci on controller, Windows EPERM
+globs: scripts/pre_push_checks.py,scripts/post_commit_gate.py,.githooks/**,apps/waddle_controller/package.json,apps/waddle_controller/package-lock.json
 ---
 
 # Pre-push checks (`scripts/pre_push_checks.py`)
@@ -9,6 +9,16 @@ globs: scripts/pre_push_checks.py,.githooks/**,apps/waddle_controller/package.js
 - **Skip** (discouraged): `WADDLE_SKIP_PREPUSH_CHECKS=1`, or `git push --no-verify`.
 - **Cursor QA hook** (agent stop, not git): scoped unit tests via [`scripts/qa_scoped_tests.py`](../../scripts/qa_scoped_tests.py); skip with `WADDLE_SKIP_QA_HOOK_TESTS=1`. See [`.cursor/agents/qa.md`](../agents/qa.md).
 - **Scoped by diff**: only runs suites for changed areas (`dart_workspace`, `controller`, `deploy`). Unknown or new-branch pushes run the full suite.
+
+## Post-commit gate (`scripts/post_commit_gate.py`)
+
+- **Hook**: [`.githooks/post-commit`](../../.githooks/post-commit) runs [`scripts/post_commit_gate.py`](../../scripts/post_commit_gate.py). The commit **always succeeds** (`exit 0`); failures are saved for Cursor.
+- **Phase 1 — build:** codegen, `dart analyze` / `flutter analyze`, controller `npm run build` + `build:server` (no `npm ci`, same EPERM rules as pre-push).
+- **Phase 2 — test:** pre-push-equivalent unit tests for paths in `HEAD~1..HEAD` (tests skipped while build fails).
+- **Cursor fix loop:** [`session_start_commit_fix.py`](../hooks/session_start_commit_fix.py) + commit phase in [`agent_stop_followup.py`](../hooks/agent_stop_followup.py) chain [`build-fix`](../agents/build-fix.md) then [`test-fix`](../agents/test-fix.md). State: `commit-build-failure.json`, `commit-test-failure.json`, `commit-fix-loop.json`.
+- **20-minute cap:** auto-fix stops and asks for user help (`WADDLE_COMMIT_FIX_MAX_WALL_MS` to override in tests).
+- **Skip** (discouraged): `WADDLE_SKIP_POST_COMMIT_CHECKS=1`.
+- Helpers: [`deploy/test_post_commit_gate.py`](../../deploy/test_post_commit_gate.py).
 
 ## waddle_controller — no `npm ci` on push
 

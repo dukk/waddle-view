@@ -11,6 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from commit_fix_common import emit_followup, resolve_commit_fix_followup
 from hook_common import conversation_id, load_state, read_stdin_json, repo_root, save_state
 
 # Keep in sync with stop.loop_limit in .cursor/hooks.json
@@ -45,11 +46,17 @@ def main() -> None:
     status = payload.get("status")
     loop_count = payload.get("loop_count", 0)
 
-    if (
-        status != "completed"
-        or not isinstance(loop_count, int)
-        or loop_count >= STOP_HOOK_LOOP_LIMIT
-    ):
+    if status != "completed":
+        print("{}")
+        sys.exit(0)
+
+    root = repo_root()
+    commit_followup = resolve_commit_fix_followup(root, rerun_gate=True)
+    if commit_followup:
+        emit_followup(commit_followup)
+        sys.exit(0)
+
+    if not isinstance(loop_count, int) or loop_count >= STOP_HOOK_LOOP_LIMIT:
         print("{}")
         sys.exit(0)
 
@@ -74,7 +81,6 @@ def main() -> None:
             lines += f"\n- …and {len(paths) - 30} more"
         return lines
 
-    root = repo_root()
     sections: list[str] = []
     tests_failed = False
 

@@ -1,5 +1,4 @@
-import 'package:drift/drift.dart'
-    show CustomExpression, Expression, OrderingTerm;
+import 'package:drift/drift.dart' show CustomExpression, OrderingTerm;
 
 import 'package:waddle_shared/curation/reject_filter_context.dart';
 import 'package:waddle_shared/persistence/database.dart';

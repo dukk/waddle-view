@@ -1,0 +1,9 @@
+#!/bin/sh
+# Post-commit build + test gate (see scripts/post_commit_gate.py). Commit always succeeds.
+set -e
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+export WADDLE_REPO_ROOT="$ROOT"
+export PYTHONIOENCODING=utf-8
+python "$ROOT/scripts/post_commit_gate.py" || true
+exit 0

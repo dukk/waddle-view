@@ -14,6 +14,11 @@
         "matcher": "Write"
       }
     ],
+    "sessionStart": [
+      {
+        "command": "python .cursor/hooks/session_start_commit_fix.py"
+      }
+    ],
     "stop": [
       {
         "command": "python .cursor/hooks/agent_stop_followup.py",

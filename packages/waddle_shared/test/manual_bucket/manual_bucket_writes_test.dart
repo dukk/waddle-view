@@ -5,7 +5,6 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/manual_bucket/manual_bucket_writes.dart';
-import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/seed/tables/interests_jokes_seed.dart';
 import 'package:waddle_shared/seed/tables/interests_trivia_seed.dart';
@@ -19,7 +18,10 @@ class _MemBlobStore implements BlobStore {
   Future<void> delete(BlobRef ref) async => _data.remove(ref.storageKey);
 
   @override
-  Future<BlobRef> putBytes(List<int> bytes, {required String logicalKey}) async {
+  Future<BlobRef> putBytes(
+    List<int> bytes, {
+    required String logicalKey,
+  }) async {
     final key = 'stored/$logicalKey';
     _data[key] = List<int>.from(bytes);
     return BlobRef(key);
@@ -59,17 +61,17 @@ void main() {
       photographerName: 'Operator',
     );
 
-    final photo = await (db.select(db.photos)
-          ..where((t) => t.id.equals(result.id)))
-        .getSingle();
+    final photo = await (db.select(
+      db.photos,
+    )..where((t) => t.id.equals(result.id))).getSingle();
     expect(photo.category, 'nature');
     expect(photo.dataProvider, kManualEntrySource);
     expect(photo.mediaBlobKey, result.mediaBlobKey);
     expect(photo.altText, 'sunset');
 
-    final meta = await (db.select(db.blobMetadata)
-          ..where((t) => t.blobKey.equals(result.mediaBlobKey!)))
-        .getSingle();
+    final meta = await (db.select(
+      db.blobMetadata,
+    )..where((t) => t.blobKey.equals(result.mediaBlobKey!))).getSingle();
     expect(meta.mimeType, 'image/png');
     expect(meta.bytes, bytes.length);
   });
@@ -107,35 +109,38 @@ void main() {
       punchline: 'To get to the other side.',
     );
 
-    final row = await (db.select(db.jokes)
-          ..where((t) => t.id.equals(result.id)))
-        .getSingle();
+    final row = await (db.select(
+      db.jokes,
+    )..where((t) => t.id.equals(result.id))).getSingle();
     expect(row.categoryId, 'dad');
     expect(row.setup, contains('chicken'));
   });
 
-  test('writeManualBucketTrivia stores question without integration id', () async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
-    await ensureDefaultInterestsTrivia(db);
+  test(
+    'writeManualBucketTrivia stores question without integration id',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
+      await ensureDefaultInterestsTrivia(db);
 
-    final result = await writeManualBucketTrivia(
-      db: db,
-      categoryId: 'science',
-      question: 'What is 2+2?',
-      optionA: '3',
-      optionB: '4',
-      optionC: '5',
-      optionD: '6',
-      correctOption: 'B',
-    );
+      final result = await writeManualBucketTrivia(
+        db: db,
+        categoryId: 'science',
+        question: 'What is 2+2?',
+        optionA: '3',
+        optionB: '4',
+        optionC: '5',
+        optionD: '6',
+        correctOption: 'B',
+      );
 
-    final row = await (db.select(db.triviaQuestions)
-          ..where((t) => t.id.equals(result.id)))
-        .getSingle();
-    expect(row.integrationId, isNull);
-    expect(row.correctOption, 'B');
-  });
+      final row = await (db.select(
+        db.triviaQuestions,
+      )..where((t) => t.id.equals(result.id))).getSingle();
+      expect(row.integrationId, isNull);
+      expect(row.correctOption, 'B');
+    },
+  );
 
   test('writeManualBucketCalendarEvent stores event and categories', () async {
     final db = openMemoryDatabase();
@@ -154,18 +159,17 @@ void main() {
       location: 'Cafe',
     );
 
-    final event = await (db.select(db.calendarEvents)
-          ..where((t) => t.id.equals(result.id)))
-        .getSingle();
+    final event = await (db.select(
+      db.calendarEvents,
+    )..where((t) => t.id.equals(result.id))).getSingle();
     expect(event.title, 'Team lunch');
     expect(event.source, kManualEntrySource);
     expect(event.categoryId, 'family');
 
-    final junction = await (db.select(db.calendarEventCategories)
-          ..where((t) => t.eventId.equals(result.id)))
-        .get();
+    final junction = await (db.select(
+      db.calendarEventCategories,
+    )..where((t) => t.eventId.equals(result.id))).get();
     expect(junction, hasLength(1));
     expect(junction.single.categoryId, 'family');
   });
-
 }

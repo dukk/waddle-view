@@ -8,8 +8,9 @@ void main() {
   test(
     'schema 41 to 42 nullable ticker overrides and display ticker KV seed',
     () async {
-      final executor = NativeDatabase.memory(setup: (raw) {
-        raw.execute('''
+      final executor = NativeDatabase.memory(
+        setup: (raw) {
+          raw.execute('''
 CREATE TABLE curator_configurations (
   id TEXT NOT NULL PRIMARY KEY,
   name TEXT NOT NULL,
@@ -29,38 +30,39 @@ CREATE TABLE curator_configurations (
   default_config INTEGER NOT NULL DEFAULT 0
 );
 ''');
-        raw.execute('''
+          raw.execute('''
 CREATE TABLE config_key_values (
   key TEXT NOT NULL PRIMARY KEY,
   value TEXT NOT NULL
 );
 ''');
-        raw.execute(
-          "INSERT INTO curator_configurations (id, name, layer, "
-          "ticker_program_duration_seconds, ticker_pixels_per_second) "
-          "VALUES ('default', 'Default', 'base', 300, 80)",
-        );
-        raw.execute(
-          "INSERT INTO curator_configurations (id, name, layer, "
-          "ticker_program_duration_seconds, ticker_pixels_per_second) "
-          "VALUES ('custom', 'Custom', 'base', 420, 95)",
-        );
-        raw.execute('PRAGMA user_version = 41');
-      });
+          raw.execute(
+            "INSERT INTO curator_configurations (id, name, layer, "
+            "ticker_program_duration_seconds, ticker_pixels_per_second) "
+            "VALUES ('default', 'Default', 'base', 300, 80)",
+          );
+          raw.execute(
+            "INSERT INTO curator_configurations (id, name, layer, "
+            "ticker_program_duration_seconds, ticker_pixels_per_second) "
+            "VALUES ('custom', 'Custom', 'base', 420, 95)",
+          );
+          raw.execute('PRAGMA user_version = 41');
+        },
+      );
       final db = AppDatabase(
         DatabaseConnection(executor, closeStreamsSynchronously: true),
       );
       await db.customStatement('SELECT 1');
 
-      final defaultRow = await (db.select(db.curatorConfigurations)
-            ..where((t) => t.id.equals('default')))
-          .getSingle();
+      final defaultRow = await (db.select(
+        db.curatorConfigurations,
+      )..where((t) => t.id.equals('default'))).getSingle();
       expect(defaultRow.tickerProgramDurationSeconds, isNull);
       expect(defaultRow.tickerPixelsPerSecond, isNull);
 
-      final customRow = await (db.select(db.curatorConfigurations)
-            ..where((t) => t.id.equals('custom')))
-          .getSingle();
+      final customRow = await (db.select(
+        db.curatorConfigurations,
+      )..where((t) => t.id.equals('custom'))).getSingle();
       expect(customRow.tickerProgramDurationSeconds, 420);
       expect(customRow.tickerPixelsPerSecond, 95);
 
@@ -68,11 +70,11 @@ CREATE TABLE config_key_values (
       final kv = {for (final r in kvRows) r.key: r.value};
       expect(
         kv[kDisplayTickerProgramDurationSecondsKvKey],
-        '${kDisplayTickerProgramDurationSecondsDefault}',
+        kDisplayTickerProgramDurationSecondsDefault,
       );
       expect(
         kv[kDisplayTickerPixelsPerSecondKvKey],
-        '${kDisplayTickerPixelsPerSecondDefault}',
+        kDisplayTickerPixelsPerSecondDefault,
       );
 
       await db.close();

@@ -1180,7 +1180,13 @@ Future<int> _countQuoterismQuotes(
   final row = await (db.selectOnly(db.quoterismQuotes)
         ..addColumns([db.quoterismQuotes.id.count()])
         ..where(
-          (t) => _quoterismQuoteWhere(t, p, textNeedle, authorNeedle, db),
+          _quoterismQuoteWhere(
+            db.quoterismQuotes,
+            p,
+            textNeedle,
+            authorNeedle,
+            db,
+          ),
         ))
       .getSingle();
   return row.read<int>(db.quoterismQuotes.id.count()) ?? 0;

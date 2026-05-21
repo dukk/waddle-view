@@ -15,6 +15,7 @@ from typing import Any
 
 class CheckTier(str, Enum):
     PREPUSH = "prepush"
+    POST_COMMIT = "post_commit"
     FAST = "fast"
     FULL = "full"
 
@@ -691,6 +692,128 @@ def package_dirs(root: Path) -> dict[str, Path]:
         "display": root / "apps" / "waddle_display",
         "waddlectl": root / "apps" / "waddlectl",
     }
+
+
+def git_commit_parent_sha(root: Path) -> str | None:
+    """Return HEAD~1 when the parent commit exists, else None (initial commit)."""
+    result = subprocess.run(
+        resolve_argv(["git", "rev-parse", "HEAD~1"]),
+        cwd=root,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+    sha = result.stdout.strip()
+    return sha or None
+
+
+def git_head_sha(root: Path) -> str:
+    result = subprocess.run(
+        resolve_argv(["git", "rev-parse", "HEAD"]),
+        cwd=root,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return ""
+    return result.stdout.strip()
+
+
+def collect_commit_changed_files(root: Path) -> list[str] | None:
+    """Paths changed in the latest commit (HEAD~1..HEAD), or None for a full suite."""
+    parent = git_commit_parent_sha(root)
+    head = git_head_sha(root)
+    if not head:
+        return None
+    if not parent:
+        return None
+    return git_changed_files(root, parent, head)
+
+
+def build_post_commit_build_steps(
+    root: Path,
+    scopes: set[str],
+    changed: list[str] | None,
+) -> list[Step]:
+    """Codegen, analyze, and TypeScript builds for post-commit phase 1 (no unit tests)."""
+    steps: list[Step] = []
+    dirs = package_dirs(root)
+    packages = changed_dart_packages(changed)
+
+    def package_enabled(key: str) -> bool:
+        return packages is None or key in packages
+
+    if "dart_workspace" in scopes:
+        if needs_pub_get(changed):
+            steps.append(Step("flutter pub get", ["flutter", "pub", "get"], root))
+        else:
+            print("\n==> flutter pub get — skipped (no pubspec/lock changes)", flush=True)
+
+        if needs_build_runner(changed):
+            steps.append(
+                Step(
+                    "build_runner (waddle_shared)",
+                    [
+                        "dart",
+                        "run",
+                        "build_runner",
+                        "build",
+                        "--delete-conflicting-outputs",
+                    ],
+                    dirs["shared"],
+                )
+            )
+        else:
+            print(
+                "\n==> build_runner (waddle_shared) — skipped (no Drift/codegen changes)",
+                flush=True,
+            )
+
+        dart_analyze_packages: list[tuple[str, str, Path]] = [
+            ("dart analyze (waddle_shared)", "shared", dirs["shared"]),
+            (
+                "dart analyze (waddle_integrations)",
+                "integrations",
+                dirs["integrations"],
+            ),
+            ("dart analyze (waddle_plugin_sdk)", "plugin_sdk", dirs["plugin_sdk"]),
+            ("dart analyze (waddlectl)", "waddlectl", dirs["waddlectl"]),
+        ]
+        for label, key, cwd in dart_analyze_packages:
+            if package_enabled(key):
+                steps.append(Step(label, ["dart", "analyze"], cwd))
+
+        if package_enabled("display"):
+            steps.append(
+                Step(
+                    "flutter analyze (waddle_display)",
+                    ["flutter", "analyze"],
+                    dirs["display"],
+                )
+            )
+
+    if "controller" in scopes:
+        controller = root / "apps" / "waddle_controller"
+        stale = controller_lockfile_stale_warning(controller)
+        if stale:
+            print(f"\nWARNING: {stale}", file=sys.stderr, flush=True)
+        steps.extend(
+            [
+                Step(
+                    "npm run build (waddle_controller)",
+                    ["npm", "run", "build"],
+                    controller,
+                ),
+                Step(
+                    "npm run build:server (waddle_controller)",
+                    ["npm", "run", "build:server"],
+                    controller,
+                ),
+            ]
+        )
+
+    return steps
 
 
 def build_dart_workspace_steps(

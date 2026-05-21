@@ -11,7 +11,6 @@ import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/persistence/database.dart';
-import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 

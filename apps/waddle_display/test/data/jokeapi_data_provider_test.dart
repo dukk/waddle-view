@@ -33,7 +33,7 @@ class _CapturingJokeApiClient extends http.BaseClient {
 }
 
 void main() {
-  Future<DataWriteContextImpl> _ctx(AppDatabase db) async {
+  Future<DataWriteContextImpl> dataCtx(AppDatabase db) async {
     final secrets = InMemorySecretStore();
     final resolver = ProviderConfigResolver(db, secrets);
     return DataWriteContextImpl(
@@ -90,7 +90,7 @@ void main() {
       httpClient: client,
       now: () => DateTime(2026, 5, 21),
     );
-    await provider.collect(await _ctx(db));
+    await provider.collect(await dataCtx(db));
 
     final rows = await db.select(db.jokes).get();
     expect(rows, hasLength(2));
@@ -136,7 +136,7 @@ void main() {
       httpClient: client,
       now: () => DateTime(2026, 5, 21),
     );
-    await provider.collect(await _ctx(db));
+    await provider.collect(await dataCtx(db));
 
     expect(client.lastUri!.path, endsWith('/Programming'));
     expect(client.lastUri!.queryParameters['contains'], 'dev');
@@ -182,7 +182,7 @@ void main() {
       httpClient: client,
       now: () => DateTime(2026, 5, 21, 12),
     );
-    await provider.collect(await _ctx(db));
+    await provider.collect(await dataCtx(db));
 
     expect(called, isFalse);
     expect(await db.select(db.jokes).get(), isEmpty);
@@ -215,7 +215,7 @@ void main() {
       httpClient: client,
       now: () => now,
     );
-    await provider.collect(await _ctx(db));
+    await provider.collect(await dataCtx(db));
 
     final kv = IntegrationKvRepository(db);
     final until = await kv.getIntegrationValue(

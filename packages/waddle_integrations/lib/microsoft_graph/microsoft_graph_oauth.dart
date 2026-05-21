@@ -369,6 +369,7 @@ class MicrosoftGraphOAuth {
         unawaited(
           _pollDeviceCodeUntilDone(pollParams).catchError((Object e, StackTrace st) {
             diagnostics.engineFail('MicrosoftGraphOAuth detached poll', e, st);
+            return null;
           }),
         );
         return null;

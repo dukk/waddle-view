@@ -46,8 +46,6 @@ import 'package:waddle_integrations/weather_openmeteo/open_meteo_weather_data_pr
 
 import 'package:waddle_integrations/air_quality_openmeteo/open_meteo_air_quality_data_provider.dart';
 
-import 'package:waddle_integrations/manual_bucket/manual_bucket_data_provider.dart';
-
 void main() {
 
   test('collector IDataProvider ids match integration types', () {
