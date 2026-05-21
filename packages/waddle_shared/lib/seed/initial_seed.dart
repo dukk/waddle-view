@@ -13,6 +13,7 @@ import 'package:waddle_shared/seed/tables/config_key_values_seed.dart';
 import 'package:waddle_shared/theme/display_text_scale_kv.dart';
 import 'package:waddle_shared/theme/display_program_history_kv.dart';
 import 'package:waddle_shared/theme/display_theme_kv.dart';
+import 'package:waddle_shared/persistence/reject_term_defaults.dart';
 import 'tables/content_categories_seed.dart';
 import 'tables/interests_jokes_seed.dart';
 import 'tables/integrations_seed.dart';
@@ -30,6 +31,7 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureDefaultInterestsStockSymbols(db);
   await ensureDefaultInterestsLocations(db);
   await ensureDefaultContentCategories(db);
+  await ensureDefaultRejectTerms(db);
   await ensureDefaultInterestsJokes(db);
   await ensureDefaultInterestsTrivia(db);
   await ensureDefaultInterestsRssFeeds(db);

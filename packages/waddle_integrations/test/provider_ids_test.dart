@@ -3,6 +3,7 @@ import 'package:test/test.dart';
 import 'package:waddle_integrations/calendar_google/google_calendar_data_provider.dart';
 
 import 'package:waddle_integrations/calendar_ical/ical_calendar_data_provider.dart';
+import 'package:waddle_integrations/calendar_mealviewer/mealviewer_calendar_data_provider.dart';
 
 import 'package:waddle_integrations/calendar_outlook/outlook_calendar_data_provider.dart';
 
@@ -77,6 +78,8 @@ void main() {
     expect(OutlookCalendarDataProvider().id, 'calendar_outlook');
 
     expect(IcalCalendarDataProvider().id, 'calendar_ical');
+
+    expect(MealviewerCalendarDataProvider().id, 'calendar_mealviewer');
 
     expect(GooglePhotosPhotosDataProvider().id, 'photo_google');
 

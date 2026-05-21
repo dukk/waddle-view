@@ -15,6 +15,7 @@ const Map<String, String> kIntegrationTypeTitles = {
   'calendar_outlook': 'Outlook Calendar',
   'calendar_google': 'Google Calendar',
   'calendar_ical': 'iCal / ICS Calendar',
+  'calendar_mealviewer': 'MealViewer School Menus',
   'google_calendar': 'Google Calendar',
   'photo_google': 'Google Photos',
   'video_google': 'Google Photos Videos',

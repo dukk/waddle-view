@@ -16,6 +16,7 @@ import {
   FormControl,
   IconButton,
   InputLabel,
+  ListSubheader,
   MenuItem,
   Paper,
   Select,
@@ -60,6 +61,13 @@ import { floatingBalloonsValidationSchema } from '@/util/floatingBalloonsConfigS
 import { validateConfigAgainstSchema } from '@/util/rjsfSchema';
 import { OverlayTypeIcon } from '@/util/overlayTypeIcon';
 import { overlayTypeLabel, overlayTypeMetaFor } from '@/util/overlayTypeLabel';
+import {
+  defaultCreateOverlayType,
+  groupOverlayTypesByCategory,
+  overlayCategoryLabel,
+  overlayTypeCategory,
+  partitionOverlayRowsByCategory,
+} from '@/util/overlayTypeCategory';
 import { syncQrOverlayFormData } from '@/util/qrOverlayPayload';
 import type { SavedDisplay } from '@/storage/displays';
 
@@ -251,7 +259,15 @@ function OverlayDialog({
   const [saving, setSaving] = useState(false);
   const [localErr, setLocalErr] = useState<string | null>(null);
   const [label, setLabel] = useState('');
-  const [overlayType, setOverlayType] = useState(overlayTypes[0]?.overlay_type ?? 'shape_rain');
+  const groupedTypes = useMemo(
+    () => groupOverlayTypesByCategory(overlayTypes),
+    [overlayTypes],
+  );
+  const defaultType = useMemo(
+    () => defaultCreateOverlayType(overlayTypes),
+    [overlayTypes],
+  );
+  const [overlayType, setOverlayType] = useState(defaultType);
   const [configForm, setConfigForm] = useState<Record<string, unknown>>({});
   const [categories, setCategories] = useState<ContentCategoryOption[]>([]);
 
@@ -296,10 +312,10 @@ function OverlayDialog({
       );
     } else {
       setLabel('');
-      setOverlayType(overlayTypes[0]?.overlay_type ?? 'shape_rain');
-      setConfigForm(exampleFor(overlayTypes[0]?.overlay_type ?? 'shape_rain'));
+      setOverlayType(defaultType);
+      setConfigForm(exampleFor(defaultType));
     }
-  }, [open, initial, overlayTypes, exampleFor]);
+  }, [open, initial, overlayTypes, exampleFor, defaultType]);
 
   const configSchema = useMemo(
     () => prepareRjsfSchema(schemaForType(overlayTypes, overlayType)),
@@ -391,7 +407,14 @@ function OverlayDialog({
               onChange={(e) => handleTypeChange(String(e.target.value))}
               disabled={mode === 'edit'}
             >
-              {overlayTypes.map((m) => (
+              <ListSubheader>Effects</ListSubheader>
+              {groupedTypes.effects.map((m) => (
+                <MenuItem key={m.overlay_type} value={m.overlay_type}>
+                  {overlayTypeLabel(m.overlay_type, m)}
+                </MenuItem>
+              ))}
+              <ListSubheader>Widgets</ListSubheader>
+              {groupedTypes.widgets.map((m) => (
                 <MenuItem key={m.overlay_type} value={m.overlay_type}>
                   {overlayTypeLabel(m.overlay_type, m)}
                 </MenuItem>
@@ -425,6 +448,32 @@ function OverlayDialog({
   );
 }
 
+function OverlayTypeChips({
+  row,
+  overlayTypes,
+}: {
+  row: OverlayRow;
+  overlayTypes: OverlayTypeSchemaMeta[];
+}) {
+  const meta = overlayTypeMetaFor(overlayTypes, row.overlay_type);
+  const category = overlayTypeCategory(row.overlay_type, meta);
+  return (
+    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+      <Chip
+        size="small"
+        variant="outlined"
+        label={overlayCategoryLabel(category)}
+        sx={{ fontWeight: 500 }}
+      />
+      <Chip
+        size="small"
+        icon={<OverlayTypeIcon overlayType={row.overlay_type} />}
+        label={overlayTypeLabel(row.overlay_type, meta)}
+      />
+    </Stack>
+  );
+}
+
 function OverlayTable({
   rows,
   overlayTypes,
@@ -454,14 +503,7 @@ function OverlayTable({
             <TableRow key={row.id} hover>
               <TableCell sx={{ fontWeight: 600 }}>{row.label.trim() || row.id}</TableCell>
               <TableCell>
-                <Chip
-                  size="small"
-                  icon={<OverlayTypeIcon overlayType={row.overlay_type} />}
-                  label={overlayTypeLabel(
-                    row.overlay_type,
-                    overlayTypeMetaFor(overlayTypes, row.overlay_type),
-                  )}
-                />
+                <OverlayTypeChips row={row} overlayTypes={overlayTypes} />
               </TableCell>
               <TableCell sx={{ maxWidth: 280 }}>{configPreview(row)}</TableCell>
               {canWrite ? (
@@ -508,16 +550,7 @@ function OverlayCard({
           <Typography variant="subtitle1" fontWeight={600}>
             {row.label.trim() || row.id}
           </Typography>
-          <Chip
-            size="small"
-            variant="outlined"
-            icon={<OverlayTypeIcon overlayType={row.overlay_type} />}
-            label={overlayTypeLabel(
-              row.overlay_type,
-              overlayTypeMetaFor(overlayTypes, row.overlay_type),
-            )}
-            sx={{ alignSelf: 'flex-start' }}
-          />
+          <OverlayTypeChips row={row} overlayTypes={overlayTypes} />
           <Typography variant="body2" color="text.secondary">
             {configPreview(row)}
           </Typography>
@@ -534,6 +567,65 @@ function OverlayCard({
         </CardActions>
       ) : null}
     </Card>
+  );
+}
+
+function sortOverlayRows(rows: OverlayRow[]): OverlayRow[] {
+  return [...rows].sort(sortByLabel);
+}
+
+function OverlayCatalogSection({
+  title,
+  emptyHint,
+  rows,
+  layout,
+  overlayTypes,
+  canWrite,
+  onEdit,
+  onDelete,
+}: {
+  title: string;
+  emptyHint: string;
+  rows: OverlayRow[];
+  layout: 'card' | 'table';
+  overlayTypes: OverlayTypeSchemaMeta[];
+  canWrite: boolean;
+  onEdit: (row: OverlayRow) => void;
+  onDelete: (id: string) => void;
+}) {
+  const sorted = useMemo(() => sortOverlayRows(rows), [rows]);
+  return (
+    <Stack spacing={1.5}>
+      <Typography variant="subtitle1" fontWeight={600}>
+        {title}
+      </Typography>
+      {sorted.length === 0 ? (
+        <Typography variant="body2" color="text.secondary">
+          {emptyHint}
+        </Typography>
+      ) : layout === 'card' ? (
+        <Box sx={catalogCardGridSx}>
+          {sorted.map((row) => (
+            <OverlayCard
+              key={row.id}
+              row={row}
+              overlayTypes={overlayTypes}
+              canWrite={canWrite}
+              onEdit={() => onEdit(row)}
+              onDelete={() => onDelete(row.id)}
+            />
+          ))}
+        </Box>
+      ) : (
+        <OverlayTable
+          rows={sorted}
+          overlayTypes={overlayTypes}
+          canWrite={canWrite}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
+      )}
+    </Stack>
   );
 }
 
@@ -581,6 +673,13 @@ export function OverlaysPage() {
     parsed.sort(sortByLabel);
     return { rows: parsed, skipped: bad };
   }, [rawItems]);
+
+  const overlayTypes = schemas?.overlay_types ?? [];
+
+  const { effects: effectRows, widgets: widgetRows } = useMemo(
+    () => partitionOverlayRowsByCategory(rows, overlayTypes),
+    [rows, overlayTypes],
+  );
 
   const transferItems = useMemo(
     () =>
@@ -639,9 +738,10 @@ export function OverlaysPage() {
           </CatalogPageHelp>
         </Stack>
         <Typography variant="body2" color="text.secondary">
-          Define celebration overlay effects (confetti, hearts, bouncing text, falling images).
-          Attach overlays to curator programs on the Curators page; schedule when they run using
-          curator schedule rules.
+          Overlays are <strong>Effects</strong> (full-screen motion and celebration layers, no
+          viewport position) or <strong>Widgets</strong> (clocks, calendars, images, stock quotes,
+          QR codes — placed on the display with position and scale). Attach overlays to curator
+          programs on the Curators page; schedule when they run using curator schedule rules.
         </Typography>
       </Box>
       {(error || schemasError) && (
@@ -679,27 +779,29 @@ export function OverlaysPage() {
             <Typography variant="body2" color="text.secondary">
               No overlays defined yet.
             </Typography>
-          ) : layout === 'card' ? (
-            <Box sx={catalogCardGridSx}>
-              {rows.map((row) => (
-                <OverlayCard
-                  key={row.id}
-                  row={row}
-                  overlayTypes={schemas?.overlay_types ?? []}
-                  canWrite={canWrite}
-                  onEdit={() => openEdit(row)}
-                  onDelete={() => void deleteRow(row.id)}
-                />
-              ))}
-            </Box>
           ) : (
-            <OverlayTable
-              rows={rows}
-              overlayTypes={schemas?.overlay_types ?? []}
-              canWrite={canWrite}
-              onEdit={openEdit}
-              onDelete={(id) => void deleteRow(id)}
-            />
+            <Stack spacing={3}>
+              <OverlayCatalogSection
+                title="Effects"
+                emptyHint="No effect overlays yet."
+                rows={effectRows}
+                layout={layout}
+                overlayTypes={overlayTypes}
+                canWrite={canWrite}
+                onEdit={openEdit}
+                onDelete={(id) => void deleteRow(id)}
+              />
+              <OverlayCatalogSection
+                title="Widgets"
+                emptyHint="No widget overlays yet."
+                rows={widgetRows}
+                layout={layout}
+                overlayTypes={overlayTypes}
+                canWrite={canWrite}
+                onEdit={openEdit}
+                onDelete={(id) => void deleteRow(id)}
+              />
+            </Stack>
           )
         }
         transferPanel={

@@ -144,6 +144,25 @@ void main() {
       );
     });
 
+    test('short block terms avoid common false positives', () {
+      expect(
+        hasBlockMatch('fresh cucumber salad', [_block('cum')]),
+        isFalse,
+      );
+      expect(
+        hasBlockMatch('cocktail hour at the peacock pavilion', [_block('cock')]),
+        isFalse,
+      );
+      expect(
+        censorText(
+          'A titmouse nested near the title page',
+          [_censor('tit')],
+          CensorFormat.asterisksFull,
+        ),
+        'A titmouse nested near the title page',
+      );
+    });
+
     test('empty body or empty list returns false', () {
       expect(hasBlockMatch('', [_block('damn')]), isFalse);
       expect(hasBlockMatch('damn', const []), isFalse);

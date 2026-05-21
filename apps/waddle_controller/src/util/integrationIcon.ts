@@ -60,6 +60,7 @@ const SIMPLE_ICONS_BY_TYPE: Readonly<Record<string, IntegrationIconSource>> = {
 };
 
 const FAVICON_HOST_BY_TYPE: Readonly<Record<string, string>> = {
+  calendar_mealviewer: 'mealviewer.com',
   weather_alerts_nws: 'weather.gov',
   trivia_opentdb: 'opentdb.com',
 };

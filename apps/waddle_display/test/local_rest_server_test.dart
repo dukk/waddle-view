@@ -266,6 +266,134 @@ void main() {
     expect(res.body, contains('invalid_json'));
   });
 
+  test('DELETE content removes jokes rss photos videos trivia', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await _seedContentTypes(db);
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+
+    for (final path in [
+      '/v1/content/jokes/rest_j1',
+      '/v1/content/rss-articles/rest_a1',
+      '/v1/content/photos/rest_p1',
+      '/v1/content/videos/rest_v1',
+      '/v1/content/trivia/rest_q1',
+    ]) {
+      final res = await http.delete(
+        Uri.parse('${h.baseUrl}$path'),
+        headers: h.authHeaders,
+      );
+      expect(res.statusCode, 200, reason: path);
+    }
+
+    expect(await db.select(db.jokes).get(), isEmpty);
+    expect(await db.select(db.news).get(), isEmpty);
+    expect(await db.select(db.photos).get(), isEmpty);
+    expect(await db.select(db.videos).get(), isEmpty);
+    expect(await db.select(db.triviaQuestions).get(), isEmpty);
+  });
+
+  test('DELETE content returns 404 when id missing', () async {
+    final h = await RestTestHarness.start();
+    addTearDown(h.dispose);
+    final res = await http.delete(
+      Uri.parse('${h.baseUrl}/v1/content/jokes/missing'),
+      headers: h.authHeaders,
+    );
+    expect(res.statusCode, 404);
+    expect(res.body, contains('not_found'));
+  });
+
+  test('DELETE calendar stock weather content', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    const cat = 'general';
+    await db.into(db.contentCategories).insert(
+          ContentCategoriesCompanion.insert(id: cat, label: 'General'),
+        );
+    await db.into(db.interestsLocations).insert(
+          InterestsLocationsCompanion.insert(
+            id: 'loc1',
+            name: 'Home',
+            latitude: 0,
+            longitude: 0,
+          ),
+        );
+    await db.into(db.interestsStockSymbols).insert(
+          InterestsStockSymbolsCompanion.insert(id: 'sym1', symbol: 'AAPL'),
+        );
+    await db.into(db.calendarEvents).insert(
+          CalendarEventsCompanion.insert(
+            id: 'ev1',
+            title: 'Meet',
+            startMs: DateTime.fromMillisecondsSinceEpoch(10),
+            endMs: DateTime.fromMillisecondsSinceEpoch(20),
+            updatedAtMs: DateTime.fromMillisecondsSinceEpoch(10),
+          ),
+        );
+    await db.into(db.stockQuotes).insert(
+          StockQuotesCompanion.insert(
+            symbolId: 'sym1',
+            observedAtMs: DateTime.fromMillisecondsSinceEpoch(7),
+          ),
+        );
+    await db.into(db.weatherCurrent).insert(
+          WeatherCurrentCompanion.insert(
+            locationId: 'loc1',
+            observedAtMs: DateTime.fromMillisecondsSinceEpoch(8),
+          ),
+        );
+    await db.into(db.weatherAlerts).insert(
+          WeatherAlertsCompanion.insert(
+            locationId: 'loc1',
+            nwsAlertId: 'nws-1',
+            event: 'Flood',
+          ),
+        );
+
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+
+    expect(
+      (await http.delete(
+        Uri.parse('${h.baseUrl}/v1/content/calendar-events/ev1'),
+        headers: h.authHeaders,
+      ))
+          .statusCode,
+      200,
+    );
+    expect(
+      (await http.delete(
+        Uri.parse('${h.baseUrl}/v1/content/stock-quotes/sym1'),
+        headers: h.authHeaders,
+      ))
+          .statusCode,
+      200,
+    );
+    expect(
+      (await http.delete(
+        Uri.parse('${h.baseUrl}/v1/content/weather-current/loc1'),
+        headers: h.authHeaders,
+      ))
+          .statusCode,
+      200,
+    );
+    expect(
+      (await http.delete(
+        Uri.parse('${h.baseUrl}/v1/content/weather-alerts/loc1/nws-1'),
+        headers: h.authHeaders,
+      ))
+          .statusCode,
+      200,
+    );
+
+    expect(await db.select(db.calendarEvents).get(), isEmpty);
+    expect(await db.select(db.stockQuotes).get(), isEmpty);
+    expect(await db.select(db.weatherCurrent).get(), isEmpty);
+    expect(await db.select(db.weatherAlerts).get(), isEmpty);
+  });
+
   test('CORS adds headers for allowed origin', () async {
     const origin = 'http://localhost:5173';
     final h = await RestTestHarness.start(

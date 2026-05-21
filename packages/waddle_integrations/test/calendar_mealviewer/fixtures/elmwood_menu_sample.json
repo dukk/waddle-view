@@ -1,0 +1,47 @@
+{
+  "menuSchedules": [
+    {
+      "dateInformation": {
+        "dateFull": "2026-05-19T00:00:00"
+      },
+      "menuBlocks": [
+        {
+          "blockName": "Breakfast",
+          "cafeteriaLineList": {
+            "data": [
+              {
+                "foodItemList": {
+                  "data": [
+                    {"item_Name": "Mini Cinnis", "item_Type": "BREAKFAST"},
+                    {"item_Name": "Fruit Cup", "item_Type": "BREAKFAST"}
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "blockName": "Lunch",
+          "cafeteriaLineList": {
+            "data": [
+              {
+                "foodItemList": {
+                  "data": [
+                    {"item_Name": "Chicken Patty", "item_Type": "ENTREE"},
+                    {"item_Name": "Green Beans", "item_Type": "VEGETABLE"}
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "dateInformation": {
+        "dateFull": "2026-05-20T00:00:00"
+      },
+      "menuBlocks": []
+    }
+  ]
+}

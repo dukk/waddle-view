@@ -18,6 +18,7 @@ const INTEGRATION_TYPE_TITLES: Record<string, string> = {
   calendar_outlook: 'Outlook Calendar',
   calendar_google: 'Google Calendar',
   calendar_ical: 'iCal / ICS Calendar',
+  calendar_mealviewer: 'MealViewer School Menus',
   google_calendar: 'Google Calendar',
   photo_onedrive: 'OneDrive Photos',
   video_onedrive: 'OneDrive Videos',

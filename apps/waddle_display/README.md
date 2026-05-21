@@ -137,13 +137,30 @@ Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../d
   - `/v1/content/trivia/<id>`
 - **`404`** when the id does not exist. Full table and examples: **[`docs/pi/api.md`](../../docs/pi/api.md)**.
 
+### Content delete (operator)
+
+Requires **`content.moderate`** (display roles **operator** or **admin**). Hard-deletes the row from SQLite (distinct from suppression). Associated blob files are removed for RSS images, photos, videos, and weather icons when metadata exists.
+
+- `DELETE /v1/content/jokes/<id>`
+- `DELETE /v1/content/rss-articles/<id>`
+- `DELETE /v1/content/photos/<id>`
+- `DELETE /v1/content/videos/<id>`
+- `DELETE /v1/content/trivia/<id>`
+- `DELETE /v1/content/calendar-events/<id>`
+- `DELETE /v1/content/stock-quotes/<symbolId>` — removes the latest quote row only (not the symbol in **Interests**).
+- `DELETE /v1/content/weather-current/<locationId>` — removes the cached snapshot (not the location).
+- `DELETE /v1/content/weather-alerts/<locationId>/<nwsAlertId>`
+- Operator dashboard alerts on the **Data** tab use existing `DELETE /v1/alerts/<id>` (**`alerts.write`**).
+
+Returns **`404`** when the target row does not exist.
+
 ### Reject word list (curse-word filter)
 
 - SQLite table **`curator_rejected_terms`** (renamed from `reject_terms` in schema **42**) holds operator-managed words. Each row has an **`action`**:
   - **`block`** — at **ingest time** providers set **`suppressed = true`** when the term appears in any text field, photographer name, alt text, or URL part (URL separators like `-`, `_`, `/`, `?`, `=`, `&`, `.` are normalized to spaces for whole-word matching). Media matches (Pexels, Bing, Flickr, OneDrive) **always** block, even when the matching term's action is `censor`.
   - **`censor`** — at **slide and ticker load time** the matched word is replaced with a configurable mask **transiently** (the SQLite row is untouched). The censor format lives in **`config_key_values`** under **`curator.reject.censorFormat`** with values **`asterisks_full`** (default), **`asterisks_fixed`** (always 4 asterisks), **`first_last`** (keeps first and last character, masks middle), or **`bracketed_token`** (replaces with `[censored]`).
 - Matching is case-insensitive and word-boundary aware so substring noise (e.g. *class* containing *ass*) does not trigger.
-- A set of common defaults is seeded by [`reject_term_defaults.dart`](../../packages/waddle_shared/lib/persistence/reject_term_defaults.dart) on first run; remove or replace any of them via REST / `waddlectl`.
+- A broad default list (profanity, sexual slang, and derogatory slurs) is defined in [`reject_term_defaults.dart`](../../packages/waddle_shared/lib/persistence/reject_term_defaults.dart). Fresh databases receive every `default_*` row on create; existing databases pick up **missing** `default_*` rows idempotently on display startup via [`ensureInitialSeed`](../../packages/waddle_shared/lib/seed/initial_seed.dart). Remove or change any default via REST / `waddlectl`.
 - On every startup, the display app re-evaluates stored content against the current list and updates `suppressed = true` for new matches (already-suppressed rows are left alone). The REST and `waddlectl` mutators trigger the same rescan so operator changes apply to content already in the database, not just future ingests.
 - **REST** (authenticated like other `/v1/*` routes):
   - `GET /v1/reject-terms` — list current terms and the active censor format.
@@ -210,7 +227,7 @@ Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../d
 - **Multiple rows**: merged **message** strings are **deduped** across matching rows (sorted by `id`). For **`birthday_confetti`**, **visual settings** come from the **first** matching row by `id` only; add a dedicated row per distinct look, or keep a single confetti schedule. **`bouncing_message`** uses the **first** matching row’s `config_json` and the **first** merged phrase for the moving text.
 - **Global switch**: `config_key_values` key **`display.overlay.enabled`**. **Omit** or any value other than **`false`**, **`0`**, **`no`**, **`off`** means **on**. Set to `false` to disable all overlays without deleting rows.
 - **Storage**: SQLite **`overlays`** (migration **41** copies legacy `display_overlay_schedules` when present; fresh databases at schema **42** create **`overlays`** directly). Column **`overlay_type`** replaces **`overlay_kind`**; legacy **`messages_json`** is merged into **`config_json.messages`** on upgrade. Rows support **fixed** calendar ranges (`start_month`/`start_day`, optional inclusive `end_*`) or **`nth_week_of_month` + `nth_weekday`** using Dart **`DateTime.weekday`** (Monday=1 … Sunday=7) with `start_month` holding the anchor month (`start_day` is ignored in that mode).
-- **Types**: **`overlay_type`** uses the same slug style as **`screen_type`**. Built-in renderers include **`shape_rain`**, **`birthday_confetti`**, **`bouncing_message`**, **`falling_images`**, **`matrix_rain`**, **`edge_glow`**, **`floating_balloons`**, **`static_image`**, **`photo_slideshow`**, **`digital_clock`**, **`analog_clock`**, **`calendar_month`**, **`calendar_upcoming`**, **`stock_quote`**, and **`qr_code`**. Additional types may be stored and edited over REST; the display ignores unknown types until a renderer exists.
+- **Types**: **`overlay_type`** uses the same slug style as **`screen_type`**. Operator meta (`GET /v1/meta/config-schemas` → `overlay_types`) includes **`category`** (`effect` | `widget`) and **`requires_placement`**. **Effects** (no viewport placement): **`shape_rain`**, **`birthday_confetti`**, **`bouncing_message`**, **`falling_images`**, **`matrix_rain`**, **`edge_glow`**, **`floating_balloons`**. **Widgets** (positioned with **`x`** / **`y`** / **`scale`**): **`static_image`**, **`photo_slideshow`**, **`digital_clock`**, **`analog_clock`**, **`calendar_month`**, **`calendar_upcoming`**, **`stock_quote`**, **`qr_code`**. Additional types may be stored and edited over REST; the display ignores unknown types until a renderer exists.
 - **Default seeds**: id **`default_mothers_day_us`** — US **Mother’s Day** (2nd Sunday in May) with message **`Happy Mother's Day!`** (`hearts_rain`, **enabled**). Id **`default_birthday_example_may_13`** — **May 13** each year, **`birthday_confetti`** with example message and a **slower, brighter** stock `config_json`, **disabled** so operators can enable or edit via REST without affecting installs until they choose to. Id **`default_bouncing_message_may_13`** — **May 13** each year, **`bouncing_message`** with **`Happy Birthday Waddle!!`** and stock typography `config_json`, **disabled** (same intent as the birthday example).
 - **REST** (authenticated like other `/v1/*` routes):
   - `GET /v1/display/overlays` — list schedules (`config_json`); optional `?include_config_schema=true` adds `config_json_schema` from **`overlay_types`**.
@@ -445,6 +462,21 @@ Seed adds the provider **disabled** by default. Configure and enable in `integra
 - **`pastDays`** / **`futureDays`**: sync window around today’s UTC midnight (defaults **14** / **14**).
 
 **`integrations.poll_seconds`:** default **3600**.
+
+## MealViewer school menus (`calendar_mealviewer`)
+
+The **MealViewer** integration (`integration_type`: **`calendar_mealviewer`**, default row **`default_calendar_mealviewer`**) polls the public [MealViewer API](https://api.mealviewer.com) for configured schools and writes **all-day** menu blocks into **`calendar_events`** (breakfast, lunch, snacks, etc., one event per block per day). No OAuth or API keys are required.
+
+**Operator setup (waddle_controller → Integrations):** enable **MealViewer School Menus**. Use **Search schools** (typeahead via display proxy `GET /v1/mealviewer/schools/search`), **Browse by district** (`GET /v1/mealviewer/districts` and `GET /v1/mealviewer/districts/{slug}/schools`), or **Verify & add** with a manual school slug (`GET /v1/mealviewer/schools/{slug}/probe`). Add one or more schools; assign **one or more content categories per school** (applied to every menu event from that school). Set **Past days** / **Future days** for the sync window.
+
+**`integrations.config_json`:**
+
+- **`schools`**: `[{ "schoolSlug": "ElmwoodElementary", "label": "Elmwood Elementary", "districtSlug": "Hopkinton", "categoryIds": ["school"] }]`. **`schoolSlug`** is the API path segment (spaces removed). **`categoryIds`** are forced onto all events for that school.
+- **`pastDays`** / **`futureDays`**: inclusive UTC-day window around today (defaults **30** / **30**).
+
+**`integrations.poll_seconds`:** default **3600** when seeded. The integration is **disabled** by default.
+
+**`calendar_events.source`:** `mealviewer:{schoolSlug}` for purge and deduplication.
 
 ## Google Photos (Picker API)
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import {
   Alert,
   Box,
+  Button,
   FormControl,
   InputLabel,
   MenuItem,
@@ -172,6 +173,71 @@ function contentPatchPath(kind: DataKind, id: string): string | null {
       return `/v1/content/videos/${encodeURIComponent(id)}`;
     default:
       return null;
+  }
+}
+
+function contentDeletePath(kind: DataKind, row: Record<string, unknown>): string | null {
+  switch (kind) {
+    case 'jokes':
+    case 'trivia':
+    case 'news':
+    case 'photos':
+    case 'videos':
+    case 'calendar_events': {
+      const id = String(row.id ?? '').trim();
+      if (!id) return null;
+      if (kind === 'jokes') return `/v1/content/jokes/${encodeURIComponent(id)}`;
+      if (kind === 'trivia') return `/v1/content/trivia/${encodeURIComponent(id)}`;
+      if (kind === 'news') return `/v1/content/rss-articles/${encodeURIComponent(id)}`;
+      if (kind === 'photos') return `/v1/content/photos/${encodeURIComponent(id)}`;
+      if (kind === 'videos') return `/v1/content/videos/${encodeURIComponent(id)}`;
+      return `/v1/content/calendar-events/${encodeURIComponent(id)}`;
+    }
+    case 'stocks': {
+      const symbolId = String(row.symbol_id ?? '').trim();
+      return symbolId ? `/v1/content/stock-quotes/${encodeURIComponent(symbolId)}` : null;
+    }
+    case 'weather': {
+      const locationId = String(row.location_id ?? '').trim();
+      return locationId
+        ? `/v1/content/weather-current/${encodeURIComponent(locationId)}`
+        : null;
+    }
+    case 'weather_alerts': {
+      const locationId = String(row.location_id ?? '').trim();
+      const nwsAlertId = String(row.nws_alert_id ?? '').trim();
+      if (!locationId || !nwsAlertId) return null;
+      return `/v1/content/weather-alerts/${encodeURIComponent(locationId)}/${encodeURIComponent(nwsAlertId)}`;
+    }
+    case 'dashboard_alerts': {
+      const id = row.id;
+      if (id == null || id === '') return null;
+      return `/v1/alerts/${encodeURIComponent(String(id))}`;
+    }
+  }
+}
+
+function deleteRowSummary(kind: DataKind, row: Record<string, unknown>): string {
+  switch (kind) {
+    case 'jokes':
+      return String(row.setup ?? row.id ?? 'joke');
+    case 'trivia':
+      return String(row.question ?? row.id ?? 'trivia');
+    case 'news':
+      return String(row.title ?? row.id ?? 'article');
+    case 'photos':
+    case 'videos':
+      return String(row.alt_text ?? row.id ?? kind);
+    case 'stocks':
+      return String(row.symbol ?? row.symbol_id ?? 'quote');
+    case 'weather':
+      return String(row.location_name ?? row.location_id ?? 'weather');
+    case 'weather_alerts':
+      return String(row.event ?? row.nws_alert_id ?? 'alert');
+    case 'dashboard_alerts':
+      return String(row.title ?? row.id ?? 'alert');
+    case 'calendar_events':
+      return String(row.title ?? row.id ?? 'event');
   }
 }
 
@@ -465,6 +531,25 @@ export function DataPage() {
     }
   };
 
+  const deleteRow = useCallback(
+    async (row: Record<string, unknown>) => {
+      if (!canModerate || !active) return;
+      const path = contentDeletePath(kind, row);
+      if (!path) return;
+      const summary = deleteRowSummary(kind, row);
+      if (!window.confirm(`Permanently delete “${summary}”? This cannot be undone.`)) return;
+      setError(null);
+      try {
+        await apiFetch(active, path, { method: 'DELETE' });
+        await loadCatalog();
+      } catch (e) {
+        const msg = e instanceof ApiError ? `${e.status}: ${e.message}` : String(e);
+        setError(msg);
+      }
+    },
+    [active, canModerate, kind, loadCatalog],
+  );
+
   const setFilterField = (param: string, value: string) => {
     setColumnFilterDrafts((prev) => ({
       ...prev,
@@ -508,8 +593,8 @@ export function DataPage() {
         <Typography variant="body2" color="text.secondary">
           Browse content stored on the active display—calendar events, jokes, news, photos, stocks,
           weather, and alerts.
-          Filter and paginate each tab; with <strong>content.moderate</strong> you can suppress rows
-          so they are omitted from future programs.
+          Filter and paginate each tab; with <strong>content.moderate</strong> (operator or admin role)
+          you can suppress rows so they are omitted from future programs, or permanently delete a row.
         </Typography>
       </Box>
       {error && (
@@ -728,6 +813,7 @@ export function DataPage() {
                   <TableCell>Source</TableCell>
                 </>
               )}
+              {canModerate ? <TableCell align="right">Actions</TableCell> : null}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -940,6 +1026,18 @@ export function DataPage() {
                         </TableCell>
                       </>
                     )}
+                    {canModerate ? (
+                      <TableCell align="right">
+                        <Button
+                          size="small"
+                          color="error"
+                          disabled={contentDeletePath(kind, row) == null}
+                          onClick={() => void deleteRow(row)}
+                        >
+                          Delete
+                        </Button>
+                      </TableCell>
+                    ) : null}
                   </TableRow>
                 );
               })}

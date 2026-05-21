@@ -1,4 +1,4 @@
-const STORAGE_PREFIX = 'waddle_controller_config_schemas_v6:';
+const STORAGE_PREFIX = 'waddle_controller_config_schemas_v7:';
 
 export type ConfigSchemaMetaItem = {
   config_json_schema?: unknown;
@@ -18,6 +18,8 @@ export type TickerTypeSchemaMeta = ConfigSchemaMetaItem & {
 export type OverlayTypeSchemaMeta = ConfigSchemaMetaItem & {
   overlay_type: string;
   label?: string;
+  category?: 'effect' | 'widget';
+  requires_placement?: boolean;
 };
 
 export type IntegrationTypeSchemaMeta = ConfigSchemaMetaItem & {

@@ -23,6 +23,7 @@ import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';
 
 import 'integration_accounts_rest_routes.dart';
+import 'mealviewer_rest_routes.dart';
 import 'integration_oauth_providers_rest_routes.dart';
 import 'integration_kv_rest_routes.dart';
 import 'integration_secrets_rest_routes.dart';
@@ -58,6 +59,7 @@ void registerOperatorRestRoutes(
   registerIntegrationKvRestRoutes(r, db: db);
   registerIntegrationAccountsRestRoutes(r, db: db, secrets: secrets);
   registerIntegrationOAuthProvidersRestRoutes(r, secrets: secrets);
+  registerMealviewerRestRoutes(r);
   r.get('/v1/telemetry/integrations', (Request req) async {
     final limit = int.tryParse(req.url.queryParameters['limit'] ?? '') ?? 200;
     final sinceMs = int.tryParse(req.url.queryParameters['since_ms'] ?? '');

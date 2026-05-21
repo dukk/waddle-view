@@ -39,6 +39,34 @@ void main() {
     expect(integration['example_config_json'], isA<Map>());
   });
 
+  test('overlay type items include category and requires_placement', () {
+    final items = buildOverlayTypeConfigJsonMetaItems();
+    expect(items, isNotEmpty);
+    for (final raw in items) {
+      final item = raw;
+      expect(item['overlay_type'], isA<String>());
+      expect(item['category'], isIn(['effect', 'widget']));
+      expect(item['requires_placement'], isA<bool>());
+      final category = item['category'] as String;
+      final requiresPlacement = item['requires_placement'] as bool;
+      if (category == 'widget') {
+        expect(requiresPlacement, isTrue);
+      } else {
+        expect(requiresPlacement, isFalse);
+      }
+    }
+    final widget = items.firstWhere(
+      (e) => e['overlay_type'] == kOverlayTypeDigitalClock,
+    );
+    expect(widget['category'], 'widget');
+    expect(widget['requires_placement'], isTrue);
+    final effect = items.firstWhere(
+      (e) => e['overlay_type'] == kOverlayTypeShapeRain,
+    );
+    expect(effect['category'], 'effect');
+    expect(effect['requires_placement'], isFalse);
+  });
+
   test('screen type items cover kScreenLayoutWidgetTypes', () {
     final items = buildScreenTypeConfigJsonMetaItems();
     final types = items.map((e) => e['screen_type']).toSet();

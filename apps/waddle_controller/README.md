@@ -87,9 +87,17 @@ When more than one display is paired, **Screens**, **Overlays**, and **Ticker ta
 
 Offline displays are disabled in the picker; the transfer is blocked if the source or any selected target is unreachable.
 
+### Integrations
+
+On **Integrations**, enable collectors and edit configuration per integration type. **iCal / ICS Calendar** uses a dedicated form: add or remove feeds by subscription URL, optional label per feed, and a **Category** dropdown (from **Curators → Categories** on the display). Feed ids are generated automatically; the sync window is always 30 days past and future (not shown in the form).
+
 ### Interests
 
 Use **Interests** (Config nav, between Integrations and Data) to manage what the display collects: weather locations, RSS feeds, stock symbols, joke categories, and trivia categories. Changes call `GET` / `POST` / `PATCH` / `DELETE` on `/v1/interests/*` on the active display (requires **`interests.write`**; **`interests.read`** for view-only, including power_viewer filter dropdowns on **Data**). Joke and trivia category ids must match an existing **Curators → Categories** slug.
+
+### Data (collected content browser)
+
+**Data** lists ingested rows from `GET /v1/catalog/*` (requires **`content.catalog_read`** or **`content.moderate`**). With **`content.moderate`** (adopted display role **operator** or **admin**), you can suppress jokes/news/photos/videos/trivia (`PATCH /v1/content/*`) or permanently delete any tab’s row (`DELETE /v1/content/*`; dashboard alerts use `DELETE /v1/alerts/{id}`). **power_viewer** can browse but not delete or suppress.
 
 ## Join from a display QR (`/join`)
 

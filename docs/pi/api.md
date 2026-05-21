@@ -80,6 +80,15 @@ Allowed responses include **`Access-Control-Allow-Origin`** (mirrored origin), *
 | PATCH | `/v1/content/photos/{id}` | Same as jokes. |
 | PATCH | `/v1/content/videos/{id}` | Same as jokes. |
 | PATCH | `/v1/content/trivia/{id}` | Same as jokes. |
+| DELETE | `/v1/content/jokes/{id}` | Permanently deletes the row. Requires **`content.moderate`**. Removes linked blob when present. **404** if missing. |
+| DELETE | `/v1/content/rss-articles/{id}` | Same as jokes delete. |
+| DELETE | `/v1/content/photos/{id}` | Same as jokes delete. |
+| DELETE | `/v1/content/videos/{id}` | Same as jokes delete. |
+| DELETE | `/v1/content/trivia/{id}` | Same as jokes delete. |
+| DELETE | `/v1/content/calendar-events/{id}` | Deletes calendar event (junction categories cascade). |
+| DELETE | `/v1/content/stock-quotes/{symbolId}` | Deletes latest quote for symbol id; does not remove **Interests** symbol. |
+| DELETE | `/v1/content/weather-current/{locationId}` | Deletes cached weather snapshot; does not remove location. |
+| DELETE | `/v1/content/weather-alerts/{locationId}/{nwsAlertId}` | Deletes one NWS alert row. |
 | POST | `/v1/integrations/{id}/bucket/photos` | Manual **photo_bucket** upload. JSON: `category` (content category id), `bytes_base64`, `content_type` (`image/jpeg`, `image/png`, `image/webp`), optional `alt_text`, `photographer_name`. **201** `{"id","blob_key"}`. |
 | POST | `/v1/integrations/{id}/bucket/videos` | Manual **video_bucket** upload. Same as photos plus required `duration_seconds`. |
 | POST | `/v1/integrations/{id}/bucket/jokes` | Manual **joke_bucket**. JSON: `category_id` (interests joke category), `setup`, `punchline`. **201** `{"id"}`. |
@@ -90,7 +99,7 @@ Allowed responses include **`Access-Control-Allow-Origin`** (mirrored origin), *
 
 ## Ingested content catalog (paginated browse)
 
-**Access:** `GET /v1/catalog/*` requires **`content.catalog_read`** or **`content.moderate`**. **`content.moderate`** alone unlocks optional **`suppressed`** filters, the **`suppressed`** field in JSON, and **`PATCH /v1/content/*`**. Callers with only **`content.catalog_read`** (for example **`power_viewer`**) always receive active (non-suppressed) rows only, omit **`suppressed`** from item objects, and get **403** if they pass **`suppressed=true`**. Query parameters are shared where applicable: `limit` (default **25**, max **100**), `offset` (default **0**), optional **`suppressed`** (`true` / `false`) on jokes, trivia, RSS articles, photos, and videos when permitted.
+**Access:** `GET /v1/catalog/*` requires **`content.catalog_read`** or **`content.moderate`**. **`content.moderate`** alone unlocks optional **`suppressed`** filters, the **`suppressed`** field in JSON, **`PATCH /v1/content/*`**, and **`DELETE /v1/content/*`**. Callers with only **`content.catalog_read`** (for example **`power_viewer`**) always receive active (non-suppressed) rows only, omit **`suppressed`** from item objects, and get **403** if they pass **`suppressed=true`**. Query parameters are shared where applicable: `limit` (default **25**, max **100**), `offset` (default **0**), optional **`suppressed`** (`true` / `false`) on jokes, trivia, RSS articles, photos, and videos when permitted.
 
 **Text filters:** each list supports optional substring query parameters on its text columns (`%` / `_` wildcards are stripped from the needle). Multiple parameters **AND** together. Every catalog item includes **`integration_type`**: the collector id / provider string (for example `joke_openai`, `news_rss`, `media_pexels`, `stock_finnhub`, `weather_openweathermap`, `weather_nws_alerts`). Trivia rows use the stored `integration_id` when present (`trivia_openai`, `trivia_opentdb`). Operator **`alerts`** use `integration_type` equal to the row `source` string.
 

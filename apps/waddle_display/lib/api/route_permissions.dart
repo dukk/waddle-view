@@ -217,7 +217,7 @@ String? permissionForRoute(String method, String path) {
     return WaddlePermission.contentCatalogRead;
   }
 
-  if (p.startsWith('/v1/content/') && m == 'PATCH') {
+  if (p.startsWith('/v1/content/') && (m == 'PATCH' || m == 'DELETE')) {
     return WaddlePermission.contentModerate;
   }
 
@@ -241,6 +241,19 @@ String? permissionForRoute(String method, String path) {
     return WaddlePermission.metaRead;
   }
   if (p == '/v1/meta/config-schemas' && m == 'GET') {
+    return WaddlePermission.metaRead;
+  }
+
+  if (p == '/v1/mealviewer/schools/search' && m == 'GET') {
+    return WaddlePermission.metaRead;
+  }
+  if (p == '/v1/mealviewer/districts' && m == 'GET') {
+    return WaddlePermission.metaRead;
+  }
+  if (RegExp(r'^/v1/mealviewer/districts/[^/]+/schools$').hasMatch(p) && m == 'GET') {
+    return WaddlePermission.metaRead;
+  }
+  if (RegExp(r'^/v1/mealviewer/schools/[^/]+/probe$').hasMatch(p) && m == 'GET') {
     return WaddlePermission.metaRead;
   }
 

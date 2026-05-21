@@ -488,6 +488,26 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
 
     db,
 
+    id: kDefaultCalendarMealviewerIntegrationId,
+
+    integrationType: 'calendar_mealviewer',
+
+    pollSeconds: 3600,
+
+    enabled: false,
+
+    baseUrl: 'https://api.mealviewer.com',
+
+    configJson: '{"schools":[],"pastDays":30,"futureDays":30}',
+
+  );
+
+
+
+  await _ensureIntegrationRow(
+
+    db,
+
     id: kDefaultPhotoOneDriveIntegrationId,
 
     integrationType: 'photo_onedrive',

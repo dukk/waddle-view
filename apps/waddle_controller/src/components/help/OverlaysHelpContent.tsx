@@ -9,23 +9,24 @@ export function OverlaysHelpContent() {
         for falling images).
       </Typography>
       <Typography variant="body2" sx={{ mt: 1 }}>
+        <strong>Effects</strong> are full-screen or motion layers (shape rain, confetti, matrix rain,
+        edge glow, bouncing message, falling images, balloons). They do not use viewport position —
+        no placement sliders.
+      </Typography>
+      <Typography variant="body2" sx={{ mt: 1 }}>
+        <strong>Widgets</strong> are positioned on the display (static image, photo slideshow,
+        digital/analog clocks, calendars, stock quote, QR code). Use the position and scale sliders to
+        anchor them on the viewport (top-left anchor).
+      </Typography>
+      <Typography variant="body2" sx={{ mt: 1 }}>
         <strong>When it runs</strong> — Scheduling is not on this page. On{' '}
         <strong>Curators</strong>, pick overlays on the Overlay tab and set calendar or time rules on
         the Schedule tab. The display shows an overlay only when an active curator configuration
         includes it. A global overlay toggle in SQLite can still suppress all overlays.
       </Typography>
       <Typography variant="body2" sx={{ mt: 1 }}>
-        <strong>Overlay type</strong> selects the renderer (shape rain, birthday confetti, bouncing
-        message, falling images, matrix rain, edge glow, static image, digital clock, analog clock).
-        Shape rain drifts hearts,
-        raindrops, cats, and dogs. Birthday confetti is visual-only (density, fall speed, opacity).
-        Matrix rain shows translucent falling green characters; lower opacity keeps slides more visible.
-        Edge glow pulses a colored vignette along the screen borders — useful for alarms when assigned
-        on an active curator. <strong>Static image</strong> shows a fixed logo or watermark at a
-        configured position and scale (upload via the form). <strong>Digital clock</strong> and{' '}
-        <strong>analog clock</strong> show the same options as the matching full-screen clocks, plus
-        position and scale sliders (top-left anchor). Edit configuration here; delete removes
-        the row from SQLite.
+        Edit configuration here; delete removes the row from SQLite. Overlay type cannot be changed
+        after create — delete and add a new overlay to switch between an effect and a widget.
       </Typography>
     </>
   );

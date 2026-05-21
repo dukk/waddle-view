@@ -14,6 +14,7 @@ import '../display/display_navigation_bus.dart';
 import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/blob/display_blob_read.dart';
 import 'package:waddle_shared/curation/reject_rescan.dart';
+import 'package:waddle_shared/persistence/content_deletion_repository.dart';
 import 'package:waddle_shared/persistence/content_suppression_repository.dart';
 import 'package:waddle_shared/persistence/config_json_documentation.dart';
 import 'package:waddle_shared/persistence/config_json_schemas_bundle.dart';
@@ -70,9 +71,13 @@ Handler buildProtectedApiRouter({
     );
   }
   final suppression = ContentSuppressionRepository(db);
+  final contentDeletion = ContentDeletionRepository(db, blobs: blobs);
 
   r.patch('/v1/content/jokes/<id>', (Request req, String id) async {
     return _patchContentSuppressed(req, (b) => suppression.setJokeSuppressed(id, b));
+  });
+  r.delete('/v1/content/jokes/<id>', (Request req, String id) async {
+    return _deleteContent(() => contentDeletion.deleteJoke(id));
   });
   r.patch('/v1/content/rss-articles/<id>', (Request req, String id) async {
     return _patchContentSuppressed(
@@ -80,11 +85,20 @@ Handler buildProtectedApiRouter({
       (b) => suppression.setRssArticleSuppressed(id, b),
     );
   });
+  r.delete('/v1/content/rss-articles/<id>', (Request req, String id) async {
+    return _deleteContent(() => contentDeletion.deleteRssArticle(id));
+  });
   r.patch('/v1/content/photos/<id>', (Request req, String id) async {
     return _patchContentSuppressed(req, (b) => suppression.setPhotoSuppressed(id, b));
   });
+  r.delete('/v1/content/photos/<id>', (Request req, String id) async {
+    return _deleteContent(() => contentDeletion.deletePhoto(id));
+  });
   r.patch('/v1/content/videos/<id>', (Request req, String id) async {
     return _patchContentSuppressed(req, (b) => suppression.setVideoSuppressed(id, b));
+  });
+  r.delete('/v1/content/videos/<id>', (Request req, String id) async {
+    return _deleteContent(() => contentDeletion.deleteVideo(id));
   });
   r.patch('/v1/content/trivia/<id>', (Request req, String id) async {
     return _patchContentSuppressed(
@@ -92,6 +106,26 @@ Handler buildProtectedApiRouter({
       (b) => suppression.setTriviaQuestionSuppressed(id, b),
     );
   });
+  r.delete('/v1/content/trivia/<id>', (Request req, String id) async {
+    return _deleteContent(() => contentDeletion.deleteTriviaQuestion(id));
+  });
+  r.delete('/v1/content/calendar-events/<id>', (Request req, String id) async {
+    return _deleteContent(() => contentDeletion.deleteCalendarEvent(id));
+  });
+  r.delete('/v1/content/stock-quotes/<symbolId>', (Request req, String symbolId) async {
+    return _deleteContent(() => contentDeletion.deleteStockQuote(symbolId));
+  });
+  r.delete('/v1/content/weather-current/<locationId>', (Request req, String locationId) async {
+    return _deleteContent(() => contentDeletion.deleteWeatherCurrent(locationId));
+  });
+  r.delete(
+    '/v1/content/weather-alerts/<locationId>/<nwsAlertId>',
+    (Request req, String locationId, String nwsAlertId) async {
+      return _deleteContent(
+        () => contentDeletion.deleteWeatherAlert(locationId, nwsAlertId),
+      );
+    },
+  );
 
   registerContentCatalogRoutes(r, db: db);
   registerIntegrationsListRestRoutes(r, db: db, secrets: secrets);
@@ -938,6 +972,18 @@ Future<Response> _setRejectCensorFormat(Request req, AppDatabase db) async {
     jsonEncode({'format': raw}),
     headers: {'content-type': 'application/json'},
   );
+}
+
+Future<Response> _deleteContent(Future<int> Function() apply) async {
+  final n = await apply();
+  if (n == 0) {
+    return Response(
+      404,
+      body: '{"error":"not_found"}',
+      headers: {'content-type': 'application/json'},
+    );
+  }
+  return Response.ok('{}', headers: {'content-type': 'application/json'});
 }
 
 Future<Response> _patchContentSuppressed(

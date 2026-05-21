@@ -102,7 +102,7 @@ ORDER BY priority DESC, created_at DESC;
       await customStatement(kEnsureOverlaysTableSql);
       await customStatement(kEnsureOverlayTypesTableSql);
       await _ensureIntegrationsKeyValueIndexes(this);
-      await _seedDefaultRejectTerms(this);
+      await ensureDefaultRejectTerms(this);
       await customStatement(kCreateIntegrationTypeRequiredAccountsTableSql);
       await seedIntegrationTypeRequiredAccounts(this);
       await customStatement(kCreateVIntegrationAccountsConfiguredViewSql);
@@ -429,6 +429,8 @@ const String kDefaultHomeAssistantIntegrationId = 'default_home_assistant';
 const String kDefaultCalendarGoogleIntegrationId = 'default_calendar_google';
 const String kDefaultCalendarOutlookIntegrationId = 'default_calendar_outlook';
 const String kDefaultCalendarIcalIntegrationId = 'default_calendar_ical';
+const String kDefaultCalendarMealviewerIntegrationId =
+    'default_calendar_mealviewer';
 const String kDefaultPhotoOneDriveIntegrationId = 'default_photo_onedrive';
 const String kDefaultVideoOneDriveIntegrationId = 'default_video_onedrive';
 const String kDefaultPhotoFlickrIntegrationId = 'default_photo_flickr';
@@ -648,6 +650,7 @@ Future<void> _migrateV5ToV6IntegrationTypesAndDefaults(AppDatabase db) async {
     'calendar_google': kDefaultCalendarGoogleIntegrationId,
     'calendar_outlook': kDefaultCalendarOutlookIntegrationId,
     'calendar_ical': kDefaultCalendarIcalIntegrationId,
+    'calendar_mealviewer': kDefaultCalendarMealviewerIntegrationId,
     'media_flickr': kDefaultPhotoFlickrIntegrationId,
     'photo_flickr': kDefaultPhotoFlickrIntegrationId,
     'media_bing_iotd': kDefaultPhotoBingIotdIntegrationId,
@@ -1204,27 +1207,6 @@ CREATE TABLE integrations_new (
   await db.customStatement('PRAGMA foreign_keys = ON');
 }
 
-Future<void> _seedDefaultRejectTerms(AppDatabase db) async {
-  final existing = await db.select(db.rejectTerms).get();
-  if (existing.isNotEmpty) {
-    return;
-  }
-  final nowMs = DateTime.now().millisecondsSinceEpoch;
-  for (final entry in kDefaultRejectTermSeeds) {
-    await db
-        .into(db.rejectTerms)
-        .insert(
-          RejectTermsCompanion.insert(
-            id: entry.id,
-            term: entry.term,
-            action: entry.action,
-            createdAtMs: nowMs,
-            updatedAtMs: nowMs,
-          ),
-        );
-  }
-}
-
 Future<void> _ensureIntegrationsKeyValueIndexes(AppDatabase db) async {
   await db.customStatement('''
 CREATE UNIQUE INDEX IF NOT EXISTS idx_integrations_kv_integration_key
@@ -1294,6 +1276,7 @@ Future<_LegacyIntegrationKvMapping?> _mapLegacyIntegrationKvKey(
       'calendar_google' => kDefaultCalendarGoogleIntegrationId,
       'calendar_outlook' => kDefaultCalendarOutlookIntegrationId,
       'calendar_ical' => kDefaultCalendarIcalIntegrationId,
+      'calendar_mealviewer' => kDefaultCalendarMealviewerIntegrationId,
       _ => mid,
     };
     return _LegacyIntegrationKvMapping(

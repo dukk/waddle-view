@@ -44,6 +44,8 @@ DataProviderRegistry buildBuiltinDataProviderRegistry() {
 
       IcalCalendarDataProvider(),
 
+      MealviewerCalendarDataProvider(),
+
       OneDrivePhotosDataProvider(),
 
       OneDriveVideosDataProvider(),

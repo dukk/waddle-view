@@ -85,6 +85,20 @@ import {
   parseOneDriveConfig,
   type OneDriveConfigState,
 } from '@/util/onedriveConfig';
+import { MealviewerCalendarConfigSection } from '@/components/MealviewerCalendarConfigSection';
+import { IcalCalendarConfigSection } from '@/components/IcalCalendarConfigSection';
+import {
+  buildMealviewerCalendarConfigJson,
+  mealviewerConfigReady,
+  parseMealviewerCalendarConfig,
+  type MealviewerCalendarConfigState,
+} from '@/util/mealviewerCalendarConfig';
+import {
+  buildIcalCalendarConfigJson,
+  icalConfigReady,
+  parseIcalCalendarConfig,
+  type IcalCalendarConfigState,
+} from '@/util/icalCalendarConfig';
 import type { IntegrationAccountRow } from '@/util/integrationAccounts';
 import {
   integrationAccountsSatisfiedForEnable,
@@ -765,6 +779,8 @@ function IntegrationCard({
 }
 
 const kOutlookCalendarIntegrationType = 'calendar_outlook';
+const kMealviewerCalendarIntegrationType = 'calendar_mealviewer';
+const kIcalCalendarIntegrationType = 'calendar_ical';
 const kPhotoGoogleIntegrationType = 'photo_google';
 const kVideoGoogleIntegrationType = 'video_google';
 const kPhotoOneDriveIntegrationType = 'photo_onedrive';
@@ -805,6 +821,9 @@ function EditIntegrationDialog({
 }) {
   const { active } = useDisplay();
   const isOutlookCalendar = row.integration_type === kOutlookCalendarIntegrationType;
+  const isMealviewerCalendar =
+    row.integration_type === kMealviewerCalendarIntegrationType;
+  const isIcalCalendar = row.integration_type === kIcalCalendarIntegrationType;
   const isGooglePhotos = isGooglePhotosIntegrationType(row.integration_type);
   const isOneDrive = isOneDriveIntegrationType(row.integration_type);
   const oneDriveMediaKind =
@@ -831,6 +850,12 @@ function EditIntegrationDialog({
   );
   const [onedriveConfig, setOnedriveConfig] = useState<OneDriveConfigState>(() =>
     parseOneDriveConfig(parseJsonObject(row.config_json), oneDriveMediaKind),
+  );
+  const [mealviewerConfig, setMealviewerConfig] = useState<MealviewerCalendarConfigState>(
+    () => parseMealviewerCalendarConfig(parseJsonObject(row.config_json)),
+  );
+  const [icalConfig, setIcalConfig] = useState<IcalCalendarConfigState>(() =>
+    parseIcalCalendarConfig(parseJsonObject(row.config_json)),
   );
   const [curatorCategories, setCuratorCategories] = useState<ContentCategoryOption[]>([]);
   const [secretSlots, setSecretSlots] = useState<IntegrationSecretSlot[]>([]);
@@ -861,7 +886,16 @@ function EditIntegrationDialog({
   }, [reloadAccounts]);
 
   useEffect(() => {
-    if (!active || (!isOutlookCalendar && !isGooglePhotos && !isOneDrive)) return;
+    if (
+      !active ||
+      (!isOutlookCalendar &&
+        !isGooglePhotos &&
+        !isOneDrive &&
+        !isMealviewerCalendar &&
+        !isIcalCalendar)
+    ) {
+      return;
+    }
     let cancelled = false;
     void (async () => {
       try {
@@ -881,7 +915,14 @@ function EditIntegrationDialog({
     return () => {
       cancelled = true;
     };
-  }, [active, isOutlookCalendar, isGooglePhotos, isOneDrive]);
+  }, [
+    active,
+    isOutlookCalendar,
+    isGooglePhotos,
+    isOneDrive,
+    isMealviewerCalendar,
+    isIcalCalendar,
+  ]);
 
   useEffect(() => {
     if (!active) return;
@@ -953,12 +994,28 @@ function EditIntegrationDialog({
     return onedriveConfigReady(onedriveConfig);
   }, [isOneDrive, onedriveConfig]);
 
+  const mealviewerConfigReadyState = useMemo(() => {
+    if (!isMealviewerCalendar) return true;
+    return mealviewerConfigReady(mealviewerConfig);
+  }, [isMealviewerCalendar, mealviewerConfig]);
+
+  const icalConfigReadyState = useMemo(() => {
+    if (!isIcalCalendar) return true;
+    return icalConfigReady(icalConfig);
+  }, [isIcalCalendar, icalConfig]);
+
   const accountsReady = useMemo(() => {
     if (isManualBucket) {
       return true;
     }
     if (isOutlookCalendar) {
       return outlookConfigReady;
+    }
+    if (isMealviewerCalendar) {
+      return mealviewerConfigReadyState;
+    }
+    if (isIcalCalendar) {
+      return icalConfigReadyState;
     }
     if (isGooglePhotos) {
       return googlePhotosConfigReady;
@@ -970,10 +1027,14 @@ function EditIntegrationDialog({
   }, [
     isManualBucket,
     isOutlookCalendar,
+    isMealviewerCalendar,
+    isIcalCalendar,
     isGooglePhotos,
     isOneDrive,
     accountDetail,
     outlookConfigReady,
+    mealviewerConfigReadyState,
+    icalConfigReadyState,
     googlePhotosConfigReady,
     onedriveConfigReadyState,
   ]);
@@ -981,18 +1042,26 @@ function EditIntegrationDialog({
   const configForSave = useMemo(() => {
     const built = isOutlookCalendar
       ? buildOutlookCalendarConfigJson(outlookConfig)
-      : isGooglePhotos
-        ? buildGooglePhotosConfigJson(googlePhotosConfig)
-        : isOneDrive
-          ? buildOneDriveConfigJson(onedriveConfig, oneDriveMediaKind)
-          : formData;
+      : isMealviewerCalendar
+        ? buildMealviewerCalendarConfigJson(mealviewerConfig)
+        : isIcalCalendar
+          ? buildIcalCalendarConfigJson(icalConfig)
+          : isGooglePhotos
+          ? buildGooglePhotosConfigJson(googlePhotosConfig)
+          : isOneDrive
+            ? buildOneDriveConfigJson(onedriveConfig, oneDriveMediaKind)
+            : formData;
     return mergeIntegrationConfigForSave(built, row.config_json);
   }, [
     isOutlookCalendar,
+    isMealviewerCalendar,
+    isIcalCalendar,
     isGooglePhotos,
     isOneDrive,
     oneDriveMediaKind,
     outlookConfig,
+    mealviewerConfig,
+    icalConfig,
     googlePhotosConfig,
     onedriveConfig,
     formData,
@@ -1027,6 +1096,14 @@ function EditIntegrationDialog({
         setErr(
           'Add at least one Microsoft account, browse a folder, and choose categories for each folder source.',
         );
+        return;
+      }
+      if (isMealviewerCalendar && !mealviewerConfigReadyState) {
+        setErr('Add at least one school and assign categories before enabling.');
+        return;
+      }
+      if (isIcalCalendar && !icalConfigReadyState) {
+        setErr('Add at least one feed URL and assign a category before enabling.');
         return;
       }
     }
@@ -1111,14 +1188,26 @@ function EditIntegrationDialog({
             <Typography variant="body2" color="text.secondary">
               Loading accounts…
             </Typography>
-          ) : active && accountDetail && !isOutlookCalendar && !isGooglePhotos && !isOneDrive ? (
+          ) : active &&
+            accountDetail &&
+            !isOutlookCalendar &&
+            !isMealviewerCalendar &&
+            !isIcalCalendar &&
+            !isGooglePhotos &&
+            !isOneDrive ? (
             <IntegrationAccountChips
               display={active}
               detail={accountDetail}
               onChanged={reloadAccounts}
             />
           ) : null}
-          {!accountsReady && accountDetail && !isOutlookCalendar && !isGooglePhotos && !isOneDrive ? (
+          {!accountsReady &&
+          accountDetail &&
+          !isOutlookCalendar &&
+          !isMealviewerCalendar &&
+          !isIcalCalendar &&
+          !isGooglePhotos &&
+          !isOneDrive ? (
             <Alert severity="info">
               Add accounts under <strong>{DISPLAY_SETTINGS_ACCOUNTS_LABEL}</strong>, or link account
               keys in <strong>Configuration</strong> below, then complete sign-in or enter API keys.
@@ -1140,6 +1229,17 @@ function EditIntegrationDialog({
             <Alert severity="info">
               Choose a Microsoft account and at least one calendar below. Add accounts under{' '}
               <strong>{DISPLAY_SETTINGS_ACCOUNTS_LABEL}</strong> if none are listed.
+            </Alert>
+          ) : null}
+          {!mealviewerConfigReadyState && isMealviewerCalendar ? (
+            <Alert severity="info">
+              Search or browse for at least one school and assign event categories for each
+              school before enabling.
+            </Alert>
+          ) : null}
+          {!icalConfigReadyState && isIcalCalendar ? (
+            <Alert severity="info">
+              Add at least one ICS feed URL and choose a category for each feed before enabling.
             </Alert>
           ) : null}
           {secretsLoading ? (
@@ -1200,6 +1300,21 @@ function EditIntegrationDialog({
               onChange={setOutlookConfig}
               microsoftAccounts={microsoftAccounts}
               categories={curatorCategories}
+            />
+          ) : isMealviewerCalendar && active ? (
+            <MealviewerCalendarConfigSection
+              display={active}
+              value={mealviewerConfig}
+              onChange={setMealviewerConfig}
+              categories={curatorCategories}
+              disabled={saving}
+            />
+          ) : isIcalCalendar && active ? (
+            <IcalCalendarConfigSection
+              value={icalConfig}
+              onChange={setIcalConfig}
+              categories={curatorCategories}
+              disabled={saving}
             />
           ) : isGooglePhotos && active ? (
             <GooglePhotosConfigSection

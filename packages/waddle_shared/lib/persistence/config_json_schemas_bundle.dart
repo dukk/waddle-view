@@ -6,6 +6,7 @@ import 'config_json_documentation.dart';
 import 'kv_schema_documentation.dart';
 import 'database.dart';
 import 'integration_type_label.dart';
+import 'overlay_type_category.dart';
 import 'overlay_type_label.dart';
 import 'screen_type_label.dart';
 import 'tables.dart';
@@ -69,9 +70,12 @@ Map<String, Object?> tickerTypeConfigJsonMetaItemFromRow(TickerTapeType row) {
 
 Map<String, Object?> overlayTypeConfigJsonMetaItem(String overlayType) {
   final doc = displayOverlayConfigJsonDocForType(overlayType);
+  final category = overlayTypeCategory(overlayType);
   return {
     'overlay_type': overlayType,
     'label': overlayTypeLabel(overlayType),
+    'category': category,
+    'requires_placement': overlayTypeRequiresPlacement(overlayType),
     'config_json_schema': decodeConfigJsonDocField(doc.schema),
     'example_config_json': decodeConfigJsonDocField(doc.example),
   };
@@ -79,14 +83,37 @@ Map<String, Object?> overlayTypeConfigJsonMetaItem(String overlayType) {
 
 Map<String, Object?> overlayTypeConfigJsonMetaItemFromRow(OverlayType row) {
   final doc = displayOverlayConfigJsonDocForType(row.overlayType);
+  final category = overlayTypeCategory(row.overlayType);
   return {
     'overlay_type': row.overlayType,
     'label': row.label,
+    'category': category,
+    'requires_placement': overlayTypeRequiresPlacement(row.overlayType),
     'config_json_schema': decodeConfigJsonDocField(
       row.configJsonSchema ?? doc.schema,
     ),
     'example_config_json': decodeConfigJsonDocField(doc.example),
   };
+}
+
+void sortOverlayTypeConfigJsonMetaItems(List<Map<String, Object?>> items) {
+  items.sort((a, b) {
+    final catA = overlayTypeCategorySortOrder(
+      (a['category'] as String?) ?? kOverlayCategoryEffect,
+    );
+    final catB = overlayTypeCategorySortOrder(
+      (b['category'] as String?) ?? kOverlayCategoryEffect,
+    );
+    final catCmp = catA.compareTo(catB);
+    if (catCmp != 0) return catCmp;
+    final labelA =
+        ((a['label'] as String?) ?? (a['overlay_type'] as String?) ?? '')
+            .toLowerCase();
+    final labelB =
+        ((b['label'] as String?) ?? (b['overlay_type'] as String?) ?? '')
+            .toLowerCase();
+    return labelA.compareTo(labelB);
+  });
 }
 
 Map<String, Object?> integrationTypeConfigJsonMetaItem(String integrationType) {
@@ -125,9 +152,13 @@ List<Map<String, Object?>> buildTickerTypeConfigJsonMetaItems() => [
       for (final t in kTickerSlotDefinitionTypes) tickerTypeConfigJsonMetaItem(t),
     ];
 
-List<Map<String, Object?>> buildOverlayTypeConfigJsonMetaItems() => [
-      for (final t in kBuiltinOverlayTypes) overlayTypeConfigJsonMetaItem(t),
-    ];
+List<Map<String, Object?>> buildOverlayTypeConfigJsonMetaItems() {
+  final items = [
+    for (final t in kBuiltinOverlayTypes) overlayTypeConfigJsonMetaItem(t),
+  ];
+  sortOverlayTypeConfigJsonMetaItems(items);
+  return items;
+}
 
 List<Map<String, Object?>> buildIntegrationTypeConfigJsonMetaItems() => [
       for (final t in kProviderConfigJsonMeta.keys)
@@ -192,8 +223,11 @@ Future<List<Map<String, Object?>>> buildOverlayTypeConfigJsonMetaItemsFromDb(
   if (rows.isEmpty) {
     return buildOverlayTypeConfigJsonMetaItems();
   }
-  rows.sort((a, b) => a.overlayType.compareTo(b.overlayType));
-  return [for (final row in rows) overlayTypeConfigJsonMetaItemFromRow(row)];
+  final items = [
+    for (final row in rows) overlayTypeConfigJsonMetaItemFromRow(row),
+  ];
+  sortOverlayTypeConfigJsonMetaItems(items);
+  return items;
 }
 
 Future<List<Map<String, Object?>>> buildIntegrationTypeConfigJsonMetaItemsFromDb(
