@@ -6,6 +6,9 @@ import {
   Autocomplete,
   Box,
   Button,
+  Card,
+  CardActions,
+  CardContent,
   Checkbox,
   Chip,
   Dialog,
@@ -69,7 +72,14 @@ import { TickerPixelsPerSecondField } from '@/components/TickerPixelsPerSecondFi
 import { completeDialogSave } from '@/util/dialogSave';
 import { curatorConfigurationIdFromName } from '@/util/interestSlug';
 import { formatProgramDurationWithSeconds } from '@/util/programDurationFormat';
+import { DataViewEmptyState } from '@/components/dataView/DataViewEmptyState';
+import { DataViewPagination } from '@/components/dataView/DataViewPagination';
+import { DataViewToolbar } from '@/components/dataView/DataViewToolbar';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
+import { catalogCardGridSx } from '@/constants/catalogLayout';
+import { useClientDataView } from '@/hooks/useClientDataView';
+import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
+import type { SortOption } from '@/util/clientListPipeline';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import type { SavedDisplay } from '@/storage/displays';
@@ -250,6 +260,13 @@ export function CuratorsPage() {
   );
 }
 
+const CURATOR_CONFIG_SORT: SortOption<CuratorConfigurationSummary>[] = [
+  { id: 'sort_order', label: 'Sort order', compare: (a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id) },
+  { id: 'name_asc', label: 'Name (A–Z)', compare: (a, b) => a.name.localeCompare(b.name) },
+  { id: 'name_desc', label: 'Name (Z–A)', compare: (a, b) => b.name.localeCompare(a.name) },
+  { id: 'id', label: 'ID', compare: (a, b) => a.id.localeCompare(b.id) },
+];
+
 function CuratorConfigurationsSection({
   display,
   canRead,
@@ -259,6 +276,7 @@ function CuratorConfigurationsSection({
   canRead: boolean;
   canWrite: boolean;
 }) {
+  const { layout, setLayout } = useListLayoutPreference('curators');
   const { loading, wrapRefresh } = useDisplayRefresh();
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<CuratorConfigurationSummary[]>([]);
@@ -275,7 +293,7 @@ function CuratorConfigurationsSection({
           listCuratorConfigurations(display),
           fetchActiveCurator(display),
         ]);
-        setRows(list.sort((a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id)));
+        setRows(list);
         setActivePreview(active);
       } catch (e) {
         setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
@@ -286,6 +304,18 @@ function CuratorConfigurationsSection({
   useEffect(() => {
     void load();
   }, [load]);
+
+  const dataView = useClientDataView({
+    items: rows,
+    sortOptions: CURATOR_CONFIG_SORT,
+    defaultSortId: 'sort_order',
+    searchMatches: (row, q) =>
+      row.name.toLowerCase().includes(q) ||
+      row.id.toLowerCase().includes(q) ||
+      row.layer.toLowerCase().includes(q),
+  });
+
+  const displayRows = dataView.paginated.items;
 
   const deleteConfig = async (id: string) => {
     if (!confirm(`Delete curator configuration "${id}"?`)) return;
@@ -320,46 +350,61 @@ function CuratorConfigurationsSection({
         </Paper>
       </Box>
 
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Typography variant="subtitle2" fontWeight={600}>
-          Configurations
-        </Typography>
+      <Typography variant="subtitle2" fontWeight={600}>
+        Configurations
+      </Typography>
+
+      <DataViewToolbar
+        layout={layout}
+        onLayoutChange={setLayout}
+        search={dataView.search}
+        onSearchChange={dataView.setSearch}
+        searchPlaceholder="Search configurations…"
+        sortOptions={CURATOR_CONFIG_SORT}
+        sortId={dataView.sortId}
+        onSortChange={dataView.setSortId}
+        onReload={() => void load()}
+        reloadDisabled={loading}
+        reloadAriaLabel="Reload curator configurations"
+      >
         {canWrite && (
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => setAddOpen(true)}>
             Add configuration
           </Button>
         )}
-      </Stack>
+      </DataViewToolbar>
 
-      <TableContainer component={Paper} variant="outlined">
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>ID</TableCell>
-              <TableCell>Layer</TableCell>
-              <TableCell>Sort</TableCell>
-              <TableCell>Program</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.id} hover>
-                <TableCell sx={{ fontWeight: 600 }}>{row.name}</TableCell>
-                <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.id}</TableCell>
-                <TableCell>
-                  <Chip
-                    size="small"
-                    label={layerLabel(row.layer)}
-                    color={LAYER_CHIP_COLOR[row.layer]}
-                  />
-                </TableCell>
-                <TableCell>{row.sort_order}</TableCell>
-                <TableCell>
-                  {row.program_duration_seconds}s / {row.ticker_program_duration_seconds}s
-                </TableCell>
-                <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+      <Stack spacing={2}>
+        <DataViewEmptyState
+          hasItems={rows.length > 0}
+          hasFilteredMatches={displayRows.length > 0}
+          emptyMessage="No curator configurations yet."
+        />
+        {displayRows.length > 0 && layout === 'card' ? (
+          <Box sx={catalogCardGridSx}>
+            {displayRows.map((row) => (
+              <Card key={row.id} variant="outlined">
+                <CardContent>
+                  <Typography variant="subtitle1" fontWeight={600}>
+                    {row.name}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    {row.id}
+                  </Typography>
+                  <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap">
+                    <Chip
+                      size="small"
+                      label={layerLabel(row.layer)}
+                      color={LAYER_CHIP_COLOR[row.layer]}
+                    />
+                    <Chip size="small" variant="outlined" label={`Sort ${row.sort_order}`} />
+                  </Stack>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                    Program {row.program_duration_seconds}s / ticker{' '}
+                    {row.ticker_program_duration_seconds}s
+                  </Typography>
+                </CardContent>
+                <CardActions sx={{ justifyContent: 'flex-end' }}>
                   <Button size="small" onClick={() => setEditId(row.id)}>
                     Edit
                   </Button>
@@ -368,12 +413,63 @@ function CuratorConfigurationsSection({
                       Delete
                     </Button>
                   )}
-                </TableCell>
-              </TableRow>
+                </CardActions>
+              </Card>
             ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+          </Box>
+        ) : displayRows.length > 0 ? (
+          <TableContainer component={Paper} variant="outlined">
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Name</TableCell>
+                  <TableCell>ID</TableCell>
+                  <TableCell>Layer</TableCell>
+                  <TableCell>Sort</TableCell>
+                  <TableCell>Program</TableCell>
+                  <TableCell align="right">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {displayRows.map((row) => (
+                  <TableRow key={row.id} hover>
+                    <TableCell sx={{ fontWeight: 600 }}>{row.name}</TableCell>
+                    <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.id}</TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        label={layerLabel(row.layer)}
+                        color={LAYER_CHIP_COLOR[row.layer]}
+                      />
+                    </TableCell>
+                    <TableCell>{row.sort_order}</TableCell>
+                    <TableCell>
+                      {row.program_duration_seconds}s / {row.ticker_program_duration_seconds}s
+                    </TableCell>
+                    <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                      <Button size="small" onClick={() => setEditId(row.id)}>
+                        Edit
+                      </Button>
+                      {canWrite && (
+                        <Button size="small" color="error" onClick={() => void deleteConfig(row.id)}>
+                          Delete
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        ) : null}
+        <DataViewPagination
+          count={dataView.filteredTotal}
+          page={dataView.paginated.page}
+          pageSize={dataView.paginated.pageSize}
+          onPageChange={dataView.setPage}
+          onPageSizeChange={dataView.setPageSize}
+        />
+      </Stack>
 
       {addOpen && (
         <CuratorConfigurationDialog

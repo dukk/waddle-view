@@ -6,9 +6,11 @@ import {
 } from './listLayoutPreference';
 
 describe('listLayoutPreference', () => {
-  it('defaults each page to card', () => {
+  it('defaults catalog pages to card except data and activity', () => {
     expect(readListLayoutPreference('screens')).toBe('card');
     expect(readListLayoutPreference('displays')).toBe('card');
+    expect(readListLayoutPreference('data')).toBe('table');
+    expect(readListLayoutPreference('activity')).toBe('table');
   });
 
   it('round-trips table and card per page', () => {

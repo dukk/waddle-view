@@ -5,15 +5,29 @@ import {
   Card,
   CardContent,
   Chip,
+  Paper,
   Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Typography,
 } from '@mui/material';
 import ExtensionIcon from '@mui/icons-material/Extension';
 import { useDisplay } from '@/context/DisplayContext';
 import { apiJson, ApiError } from '@/api/client';
+import { DataViewEmptyState } from '@/components/dataView/DataViewEmptyState';
+import { DataViewPagination } from '@/components/dataView/DataViewPagination';
+import { DataViewToolbar } from '@/components/dataView/DataViewToolbar';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
+import { catalogCardGridSx } from '@/constants/catalogLayout';
+import { useClientDataView } from '@/hooks/useClientDataView';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
+import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
+import type { SortOption } from '@/util/clientListPipeline';
 
 type PluginRow = {
   id: string;
@@ -22,8 +36,72 @@ type PluginRow = {
   capabilities: string[];
 };
 
+const PLUGIN_SORT_OPTIONS: SortOption<PluginRow>[] = [
+  { id: 'id_asc', label: 'ID (A–Z)', compare: (a, b) => a.id.localeCompare(b.id) },
+  { id: 'id_desc', label: 'ID (Z–A)', compare: (a, b) => b.id.localeCompare(a.id) },
+  {
+    id: 'version',
+    label: 'Version',
+    compare: (a, b) => a.version.localeCompare(b.version) || a.id.localeCompare(b.id),
+  },
+];
+
+function PluginTable({ rows }: { rows: PluginRow[] }) {
+  return (
+    <TableContainer component={Paper} variant="outlined">
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell>ID</TableCell>
+            <TableCell>Version</TableCell>
+            <TableCell>Path</TableCell>
+            <TableCell>Capabilities</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {rows.map((p) => (
+            <TableRow key={p.id} hover>
+              <TableCell sx={{ fontWeight: 600 }}>{p.id}</TableCell>
+              <TableCell>{p.version}</TableCell>
+              <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem', wordBreak: 'break-all' }}>
+                {p.path}
+              </TableCell>
+              <TableCell>
+                <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                  {p.capabilities.map((c) => (
+                    <Chip key={c} size="small" label={c} />
+                  ))}
+                </Stack>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+}
+
+function PluginCard({ row }: { row: PluginRow }) {
+  return (
+    <Card variant="outlined" sx={{ height: '100%' }}>
+      <CardContent>
+        <Typography variant="h6">{row.id}</Typography>
+        <Typography variant="body2" color="text.secondary">
+          v{row.version} — {row.path}
+        </Typography>
+        <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap">
+          {row.capabilities.map((c) => (
+            <Chip key={c} size="small" label={c} />
+          ))}
+        </Stack>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function PluginsPage() {
   const { active } = useDisplay();
+  const { layout, setLayout } = useListLayoutPreference('plugins');
   const { loading, wrapRefresh } = useDisplayRefresh();
   const [items, setItems] = useState<PluginRow[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +122,19 @@ export function PluginsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const dataView = useClientDataView({
+    items,
+    sortOptions: PLUGIN_SORT_OPTIONS,
+    defaultSortId: 'id_asc',
+    searchMatches: (row, q) =>
+      row.id.toLowerCase().includes(q) ||
+      row.version.toLowerCase().includes(q) ||
+      row.path.toLowerCase().includes(q) ||
+      row.capabilities.some((c) => c.toLowerCase().includes(q)),
+  });
+
+  const displayRows = dataView.paginated.items;
 
   if (!active) {
     return <NoDisplayPlaceholder />;
@@ -68,28 +159,43 @@ export function PluginsPage() {
           {error}
         </Alert>
       ) : null}
+
+      <DataViewToolbar
+        layout={layout}
+        onLayoutChange={setLayout}
+        search={dataView.search}
+        onSearchChange={dataView.setSearch}
+        searchPlaceholder="Search plugins…"
+        sortOptions={PLUGIN_SORT_OPTIONS}
+        sortId={dataView.sortId}
+        onSortChange={dataView.setSortId}
+        onReload={() => void load()}
+        reloadDisabled={loading}
+        reloadAriaLabel="Reload plugins"
+      />
+
       <Stack spacing={2}>
-        {items.length === 0 ? (
-          <Typography color="text.secondary">
-            No plugins loaded. Set WADDLE_DISPLAY_PLUGINS_DIR and restart the display.
-          </Typography>
-        ) : (
-          items.map((p) => (
-            <Card key={p.id}>
-              <CardContent>
-                <Typography variant="h6">{p.id}</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  v{p.version} — {p.path}
-                </Typography>
-                <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap">
-                  {p.capabilities.map((c) => (
-                    <Chip key={c} size="small" label={c} />
-                  ))}
-                </Stack>
-              </CardContent>
-            </Card>
-          ))
-        )}
+        <DataViewEmptyState
+          hasItems={items.length > 0}
+          hasFilteredMatches={displayRows.length > 0}
+          emptyMessage="No plugins loaded. Set WADDLE_DISPLAY_PLUGINS_DIR and restart the display."
+        />
+        {displayRows.length > 0 && layout === 'card' ? (
+          <Box sx={catalogCardGridSx}>
+            {displayRows.map((p) => (
+              <PluginCard key={p.id} row={p} />
+            ))}
+          </Box>
+        ) : displayRows.length > 0 ? (
+          <PluginTable rows={displayRows} />
+        ) : null}
+        <DataViewPagination
+          count={dataView.filteredTotal}
+          page={dataView.paginated.page}
+          pageSize={dataView.paginated.pageSize}
+          onPageChange={dataView.setPage}
+          onPageSizeChange={dataView.setPageSize}
+        />
       </Stack>
     </Stack>
   );

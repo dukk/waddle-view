@@ -17,7 +17,11 @@ import {
   TableRow,
   Typography,
 } from '@mui/material';
-import { CatalogPageToolbar } from '@/components/CatalogPageToolbar';
+import { DataViewEmptyState } from '@/components/dataView/DataViewEmptyState';
+import { DataViewPagination } from '@/components/dataView/DataViewPagination';
+import { DataViewToolbar } from '@/components/dataView/DataViewToolbar';
+import { useClientDataView } from '@/hooks/useClientDataView';
+import type { SortOption } from '@/util/clientListPipeline';
 import { CatalogPageHelp } from '@/components/CatalogPageHelp';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { catalogCardGridSx } from '@/constants/catalogLayout';
@@ -50,8 +54,29 @@ type ScreenRow = ScreenDialogRow & {
   data_key: string;
 };
 
-function sortById(a: ScreenRow, b: ScreenRow): number {
-  return a.id.localeCompare(b.id);
+const SCREEN_SORT_OPTIONS: SortOption<ScreenRow>[] = [
+  { id: 'id_asc', label: 'ID (A–Z)', compare: (a, b) => a.id.localeCompare(b.id) },
+  { id: 'id_desc', label: 'ID (Z–A)', compare: (a, b) => b.id.localeCompare(a.id) },
+  {
+    id: 'label_asc',
+    label: 'Name (A–Z)',
+    compare: (a, b) => screenRowTitle(a).localeCompare(screenRowTitle(b)),
+  },
+  {
+    id: 'label_desc',
+    label: 'Name (Z–A)',
+    compare: (a, b) => screenRowTitle(b).localeCompare(screenRowTitle(a)),
+  },
+];
+
+function screenMatchesSearch(row: ScreenRow, q: string, typeLabel: string): boolean {
+  return (
+    row.id.toLowerCase().includes(q) ||
+    screenRowTitle(row).toLowerCase().includes(q) ||
+    row.screen_type.toLowerCase().includes(q) ||
+    typeLabel.toLowerCase().includes(q) ||
+    screenRowDescription(row).toLowerCase().includes(q)
+  );
 }
 
 function screenRowTitle(row: Pick<ScreenRow, 'id' | 'label'>): string {
@@ -222,15 +247,28 @@ export function ScreensPage() {
     [schemas],
   );
 
-  const sortedRows = useMemo(() => [...rows].sort(sortById), [rows]);
+  const screenTypes = schemas?.screen_types ?? [];
+
+  const dataView = useClientDataView({
+    items: rows,
+    sortOptions: SCREEN_SORT_OPTIONS,
+    defaultSortId: 'id_asc',
+    searchMatches: (row, q) => {
+      const meta = screenTypeMetaFor(screenTypes, row.screen_type);
+      const typeLabel = screenTypeLabel(row.screen_type, meta);
+      return screenMatchesSearch(row, q, typeLabel);
+    },
+  });
+
+  const displayRows = dataView.paginated.items;
 
   const transferItems = useMemo(
     () =>
-      sortedRows.map((r) => ({
+      dataView.allFilteredSorted.map((r) => ({
         id: r.id,
         label: screenRowTitle(r),
       })),
-    [sortedRows],
+    [dataView.allFilteredSorted],
   );
 
   const deleteScreen = useCallback(
@@ -252,8 +290,6 @@ export function ScreensPage() {
   if (!active) {
     return <NoDisplayPlaceholder />;
   }
-
-  const screenTypes = schemas?.screen_types ?? [];
 
   return (
     <Stack spacing={3}>
@@ -279,7 +315,19 @@ export function ScreensPage() {
 
       <CatalogListWithTransferSection
         toolbar={
-          <CatalogPageToolbar layout={layout} onLayoutChange={setLayout}>
+          <DataViewToolbar
+            layout={layout}
+            onLayoutChange={setLayout}
+            search={dataView.search}
+            onSearchChange={dataView.setSearch}
+            searchPlaceholder="Search screens…"
+            sortOptions={SCREEN_SORT_OPTIONS}
+            sortId={dataView.sortId}
+            onSortChange={dataView.setSortId}
+            onReload={() => void load()}
+            reloadDisabled={loading}
+            reloadAriaLabel="Reload screens"
+          >
             <Button
               variant="contained"
               onClick={() => {
@@ -290,16 +338,18 @@ export function ScreensPage() {
             >
               Add screen
             </Button>
-          </CatalogPageToolbar>
+          </DataViewToolbar>
         }
         list={
-          sortedRows.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              No screens in the catalog yet.
-            </Typography>
-          ) : layout === 'card' ? (
+          <Stack spacing={2}>
+            <DataViewEmptyState
+              hasItems={rows.length > 0}
+              hasFilteredMatches={displayRows.length > 0}
+              emptyMessage="No screens in the catalog yet."
+            />
+            {displayRows.length > 0 && layout === 'card' ? (
             <Box sx={catalogCardGridSx}>
-              {sortedRows.map((r) => (
+              {displayRows.map((r) => (
                 <ScreenCard
                   key={r.id}
                   row={r}
@@ -312,9 +362,9 @@ export function ScreensPage() {
                 />
               ))}
             </Box>
-          ) : (
+          ) : displayRows.length > 0 ? (
             <ScreenTable
-              rows={sortedRows}
+              rows={displayRows}
               screenTypes={screenTypes}
               onEdit={(r) => {
                 setEditRow(r);
@@ -322,7 +372,15 @@ export function ScreensPage() {
               }}
               onDelete={(id) => void deleteScreen(id)}
             />
-          )
+          ) : null}
+            <DataViewPagination
+              count={dataView.filteredTotal}
+              page={dataView.paginated.page}
+              pageSize={dataView.paginated.pageSize}
+              onPageChange={dataView.setPage}
+              onPageSizeChange={dataView.setPageSize}
+            />
+          </Stack>
         }
         transferPanel={
           canWrite && displays.length > 1 ? (

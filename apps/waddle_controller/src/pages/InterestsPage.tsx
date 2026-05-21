@@ -65,7 +65,10 @@ import {
   type StockSymbolRow,
   type WeatherLocationRow,
 } from '@/api/interests';
-import { CatalogPageToolbar } from '@/components/CatalogPageToolbar';
+import { DataViewPagination } from '@/components/dataView/DataViewPagination';
+import { DataViewToolbar } from '@/components/dataView/DataViewToolbar';
+import { applyClientListPipeline, type SortOption } from '@/util/clientListPipeline';
+import { paginateList } from '@/util/listPagination';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { catalogCardGridSx } from '@/constants/catalogLayout';
@@ -107,6 +110,10 @@ export function InterestsPage() {
   const loadedTabsRef = useRef<Set<TabId>>(new Set());
 
   const [tab, setTab] = useState<TabId>('locations');
+  const [search, setSearch] = useState('');
+  const [sortId, setSortId] = useState('name_asc');
+  const [listPage, setListPage] = useState(0);
+  const [listPageSize, setListPageSize] = useState(25);
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [addingCurrentLocation, setAddingCurrentLocation] = useState(false);
@@ -327,14 +334,55 @@ export function InterestsPage() {
     [trivia],
   );
 
-  const sortedLocations = useMemo(
-    () => [...filteredWeather].sort((a, b) => a.name.localeCompare(b.name)),
-    [filteredWeather],
+  const interestNameSort = useMemo(
+    (): SortOption<{ label: string }>[] => [
+      {
+        id: 'name_asc',
+        label: 'Name (A–Z)',
+        compare: (a, b) => a.label.localeCompare(b.label),
+      },
+      {
+        id: 'name_desc',
+        label: 'Name (Z–A)',
+        compare: (a, b) => b.label.localeCompare(a.label),
+      },
+    ],
+    [],
   );
+
+  const sortedLocations = useMemo(
+    () =>
+      applyClientListPipeline({
+        items: filteredWeather.map((r) => ({ ...r, label: r.name })),
+        search,
+        searchMatches: (row, q) =>
+          row.label.toLowerCase().includes(q) || row.id.toLowerCase().includes(q),
+        sortOptions: interestNameSort,
+        sortId,
+      }),
+    [filteredWeather, search, sortId, interestNameSort],
+  );
+
+  const filteredRssForSearch = useMemo(() => {
+    const pipeline = applyClientListPipeline({
+      items: rss.map((r) => ({
+        ...r,
+        label: (r.title?.trim() || r.url).toLowerCase(),
+      })),
+      search,
+      searchMatches: (row, q) =>
+        row.label.includes(q) ||
+        row.id.toLowerCase().includes(q) ||
+        (row.url ?? '').toLowerCase().includes(q),
+      sortOptions: interestNameSort,
+      sortId,
+    });
+    return pipeline;
+  }, [rss, search, sortId, interestNameSort]);
 
   const newsGroups = useMemo(() => {
     const byCategory = new Map<string, RssFeedRow[]>();
-    for (const row of rss) {
+    for (const row of filteredRssForSearch) {
       const category = row.category || 'general';
       const list = byCategory.get(category) ?? [];
       list.push(row);
@@ -347,24 +395,119 @@ export function InterestsPage() {
         rows: [...rows].sort((a, b) => feedLabel(a).localeCompare(feedLabel(b))),
       }))
       .sort((a, b) => categoryLabel(a.id).localeCompare(categoryLabel(b.id)));
-  }, [rss, categoryLabel]);
+  }, [filteredRssForSearch, categoryLabel]);
 
   const stocksInterested = useMemo(
-    () => stocks.filter((r) => r.enabled).sort((a, b) => a.symbol.localeCompare(b.symbol)),
-    [stocks],
+    () =>
+      applyClientListPipeline({
+        items: stocks
+          .filter((r) => r.enabled)
+          .map((r) => ({ ...r, label: r.symbol })),
+        search,
+        searchMatches: (row, q) =>
+          row.symbol.toLowerCase().includes(q) || row.id.toLowerCase().includes(q),
+        sortOptions: interestNameSort,
+        sortId,
+      }),
+    [stocks, search, sortId, interestNameSort],
   );
   const stocksNotInterested = useMemo(
-    () => stocks.filter((r) => !r.enabled).sort((a, b) => a.symbol.localeCompare(b.symbol)),
-    [stocks],
+    () =>
+      applyClientListPipeline({
+        items: stocks
+          .filter((r) => !r.enabled)
+          .map((r) => ({ ...r, label: r.symbol })),
+        search,
+        searchMatches: (row, q) =>
+          row.symbol.toLowerCase().includes(q) || row.id.toLowerCase().includes(q),
+        sortOptions: interestNameSort,
+        sortId,
+      }),
+    [stocks, search, sortId, interestNameSort],
   );
   const sortedJokes = useMemo(
-    () => [...filteredJokes].sort((a, b) => a.label.localeCompare(b.label)),
-    [filteredJokes],
+    () =>
+      applyClientListPipeline({
+        items: filteredJokes.map((r) => ({ ...r, label: r.label })),
+        search,
+        searchMatches: (row, q) =>
+          row.label.toLowerCase().includes(q) || row.id.toLowerCase().includes(q),
+        sortOptions: interestNameSort,
+        sortId,
+      }),
+    [filteredJokes, search, sortId, interestNameSort],
   );
   const sortedTrivia = useMemo(
-    () => [...filteredTrivia].sort((a, b) => a.label.localeCompare(b.label)),
-    [filteredTrivia],
+    () =>
+      applyClientListPipeline({
+        items: filteredTrivia.map((r) => ({ ...r, label: r.label })),
+        search,
+        searchMatches: (row, q) =>
+          row.label.toLowerCase().includes(q) || row.id.toLowerCase().includes(q),
+        sortOptions: interestNameSort,
+        sortId,
+      }),
+    [filteredTrivia, search, sortId, interestNameSort],
   );
+  const tabListForPaging = useMemo(() => {
+    switch (tab) {
+      case 'locations':
+        return sortedLocations;
+      case 'jokes':
+        return sortedJokes;
+      case 'trivia':
+        return sortedTrivia;
+      case 'stocks':
+        return [...stocksInterested, ...stocksNotInterested];
+      default:
+        return [];
+    }
+  }, [tab, sortedLocations, sortedJokes, sortedTrivia, stocksInterested, stocksNotInterested]);
+
+  const tabPaged = useMemo(
+    () => paginateList(tabListForPaging, listPage, listPageSize),
+    [tabListForPaging, listPage, listPageSize],
+  );
+
+  useEffect(() => {
+    setListPage(0);
+  }, [tab, search, sortId, filterCategory]);
+
+  const tabLoading =
+    tab === 'locations'
+      ? locationsLoading
+      : tab === 'rss'
+        ? rssLoading
+        : tab === 'stocks'
+          ? stocksLoading
+          : tab === 'jokes'
+            ? jokesLoading
+            : triviaLoading;
+
+  const pagedLocations = useMemo(() => {
+    if (tab !== 'locations') return sortedLocations;
+    return tabPaged.items;
+  }, [tab, tabPaged.items, sortedLocations]);
+
+  const pagedStocksInterested = useMemo(() => {
+    const ids = new Set(stocksInterested.map((r) => r.id));
+    return tabPaged.items.filter((r) => 'symbol' in r && ids.has(r.id)) as typeof stocksInterested;
+  }, [tabPaged.items, stocksInterested]);
+
+  const pagedStocksNotInterested = useMemo(() => {
+    const ids = new Set(stocksNotInterested.map((r) => r.id));
+    return tabPaged.items.filter((r) => 'symbol' in r && ids.has(r.id)) as typeof stocksNotInterested;
+  }, [tabPaged.items, stocksNotInterested]);
+
+  const pagedJokes = useMemo(() => {
+    if (tab !== 'jokes') return sortedJokes;
+    return tabPaged.items as typeof sortedJokes;
+  }, [tab, tabPaged.items, sortedJokes]);
+
+  const pagedTrivia = useMemo(() => {
+    if (tab !== 'trivia') return sortedTrivia;
+    return tabPaged.items as typeof sortedTrivia;
+  }, [tab, tabPaged.items, sortedTrivia]);
 
   const patchWeather = useCallback(
     async (id: string, patch: Parameters<typeof patchWeatherLocation>[2]) => {
@@ -514,7 +657,19 @@ export function InterestsPage() {
         <Tab value="trivia" label="Trivia" />
       </Tabs>
 
-      <CatalogPageToolbar layout={layout} onLayoutChange={setLayout}>
+      <DataViewToolbar
+        layout={layout}
+        onLayoutChange={setLayout}
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search interests…"
+        sortOptions={interestNameSort}
+        sortId={sortId}
+        onSortChange={setSortId}
+        onReload={() => void reloadTab(tab)}
+        reloadDisabled={tabLoading}
+        reloadAriaLabel="Reload interests"
+      >
         {canWrite && tab === 'locations' && (
           <Button
             variant="outlined"
@@ -530,7 +685,7 @@ export function InterestsPage() {
             Add
           </Button>
         )}
-      </CatalogPageToolbar>
+      </DataViewToolbar>
 
       {tab === 'jokes' && jokeCategoryOptions.length > 0 && (
         <InterestCategoryFilter
@@ -557,7 +712,7 @@ export function InterestsPage() {
             empty="No locations configured."
             layout={layout}
             isEmpty={sortedLocations.length === 0}
-            cards={sortedLocations.map((row) => (
+            cards={pagedLocations.map((row) => (
               <WeatherInterestCard
                 key={row.id}
                 row={row}
@@ -571,7 +726,7 @@ export function InterestsPage() {
             ))}
             table={
               <WeatherInterestTable
-                rows={sortedLocations}
+                rows={pagedLocations}
                 canWrite={canWrite}
                 onEdit={openEditWeather}
                 onDelete={(id) => void deleteWeather(id)}
@@ -581,6 +736,15 @@ export function InterestsPage() {
               />
             }
           />
+          {tab === 'locations' && (
+            <DataViewPagination
+              count={sortedLocations.length}
+              page={tabPaged.page}
+              pageSize={tabPaged.pageSize}
+              onPageChange={setListPage}
+              onPageSizeChange={setListPageSize}
+            />
+          )}
         </Stack>
       )}
 
@@ -631,7 +795,7 @@ export function InterestsPage() {
             empty="No stock symbols are marked interested."
             layout={layout}
             isEmpty={stocksInterested.length === 0}
-            cards={stocksInterested.map((row) => (
+            cards={pagedStocksInterested.map((row) => (
               <StockInterestCard
                 key={row.id}
                 row={row}
@@ -643,7 +807,7 @@ export function InterestsPage() {
             ))}
             table={
               <StockInterestTable
-                rows={stocksInterested}
+                rows={pagedStocksInterested}
                 canWrite={canWrite}
                 onEdit={openEditStock}
                 onDelete={(id) => void deleteStock(id)}
@@ -656,7 +820,7 @@ export function InterestsPage() {
             empty="All stock symbols are marked interested."
             layout={layout}
             isEmpty={stocksNotInterested.length === 0}
-            cards={stocksNotInterested.map((row) => (
+            cards={pagedStocksNotInterested.map((row) => (
               <StockInterestCard
                 key={row.id}
                 row={row}
@@ -668,13 +832,20 @@ export function InterestsPage() {
             ))}
             table={
               <StockInterestTable
-                rows={stocksNotInterested}
+                rows={pagedStocksNotInterested}
                 canWrite={canWrite}
                 onEdit={openEditStock}
                 onDelete={(id) => void deleteStock(id)}
                 onPatch={(id, patch) => patchStock(id, patch).catch((e) => setError(errMsg(e)))}
               />
             }
+          />
+          <DataViewPagination
+            count={tabListForPaging.length}
+            page={tabPaged.page}
+            pageSize={tabPaged.pageSize}
+            onPageChange={setListPage}
+            onPageSizeChange={setListPageSize}
           />
         </Stack>
       )}
@@ -687,7 +858,7 @@ export function InterestsPage() {
           empty="No joke categories configured."
           layout={layout}
           isEmpty={sortedJokes.length === 0}
-          cards={sortedJokes.map((row) => (
+          cards={pagedJokes.map((row) => (
             <CategoryInterestCard
               key={row.id}
               row={row}
@@ -705,7 +876,7 @@ export function InterestsPage() {
           ))}
           table={
             <CategoryInterestTable
-              rows={sortedJokes}
+              rows={pagedJokes}
               canWrite={canWrite}
               onEdit={openEditJoke}
               onDelete={async (id) => {
@@ -719,6 +890,13 @@ export function InterestsPage() {
             />
           }
         />
+          <DataViewPagination
+            count={sortedJokes.length}
+            page={tabPaged.page}
+            pageSize={tabPaged.pageSize}
+            onPageChange={setListPage}
+            onPageSizeChange={setListPageSize}
+          />
         </Stack>
       )}
 
@@ -730,7 +908,7 @@ export function InterestsPage() {
           empty="No trivia categories configured."
           layout={layout}
           isEmpty={sortedTrivia.length === 0}
-          cards={sortedTrivia.map((row) => (
+          cards={pagedTrivia.map((row) => (
             <CategoryInterestCard
               key={row.id}
               row={row}
@@ -748,7 +926,7 @@ export function InterestsPage() {
           ))}
           table={
             <CategoryInterestTable
-              rows={sortedTrivia}
+              rows={pagedTrivia}
               canWrite={canWrite}
               onEdit={openEditTrivia}
               onDelete={async (id) => {
@@ -762,6 +940,13 @@ export function InterestsPage() {
             />
           }
         />
+          <DataViewPagination
+            count={sortedTrivia.length}
+            page={tabPaged.page}
+            pageSize={tabPaged.pageSize}
+            onPageChange={setListPage}
+            onPageSizeChange={setListPageSize}
+          />
         </Stack>
       )}
 

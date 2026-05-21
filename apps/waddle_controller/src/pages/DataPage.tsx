@@ -16,7 +16,6 @@ import {
   TableCell,
   TableContainer,
   TableHead,
-  TablePagination,
   TableRow,
   Tabs,
   TextField,
@@ -26,7 +25,12 @@ import { useAuth } from '@/context/AuthContext';
 import { useDisplay } from '@/context/DisplayContext';
 import { useDisplayFormat } from '@/context/DisplayFormatContext';
 import { apiFetch, apiJson, ApiError, fetchBlobObjectUrl } from '@/api/client';
+import { DataViewPagination } from '@/components/dataView/DataViewPagination';
+import { DataViewToolbar } from '@/components/dataView/DataViewToolbar';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
+import { catalogCardGridSx } from '@/constants/catalogLayout';
+import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
+import { sortByOption, type SortOption } from '@/util/clientListPipeline';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import type { SavedDisplay } from '@/storage/displays';
@@ -45,8 +49,6 @@ type DataKind =
   | 'dashboard_alerts';
 
 type Paginated<T> = { items: T[]; total: number; limit?: number; offset?: number };
-
-const ROWS_PER_PAGE_OPTIONS = [5, 10, 25, 50] as const;
 
 /** Tabs in alphabetical order by label. */
 const DATA_TABS: { kind: DataKind; label: string }[] = [
@@ -357,14 +359,69 @@ function BlobMedia({
   );
 }
 
+const DATA_ROW_SORT: SortOption<Record<string, unknown>>[] = [
+  { id: 'newest', label: 'Newest on page', compare: (a, b) => rowSortMs(b) - rowSortMs(a) },
+  { id: 'oldest', label: 'Oldest on page', compare: (a, b) => rowSortMs(a) - rowSortMs(b) },
+];
+
+function rowSortMs(row: Record<string, unknown>): number {
+  for (const key of ['created_at_ms', 'published_at', 'fetched_at_ms', 'observed_at_ms', 'start_ms', 'effective_at']) {
+    const v = row[key];
+    if (typeof v === 'number' && Number.isFinite(v)) return v;
+  }
+  return 0;
+}
+
+function rowMatchesToolbarSearch(row: Record<string, unknown>, q: string): boolean {
+  for (const value of Object.values(row)) {
+    if (value == null) continue;
+    if (typeof value === 'string' && value.toLowerCase().includes(q)) return true;
+    if (typeof value === 'number' && String(value).includes(q)) return true;
+  }
+  return false;
+}
+
+function dataRowSummary(row: Record<string, unknown>, kind: DataKind): string {
+  const pick = (key: string) => {
+    const v = row[key];
+    return typeof v === 'string' && v.trim() ? v.trim() : null;
+  };
+  switch (kind) {
+    case 'calendar_events':
+      return pick('title') ?? pick('location') ?? String(row.id ?? '');
+    case 'jokes':
+      return pick('setup') ?? String(row.id ?? '');
+    case 'trivia':
+      return pick('question') ?? String(row.id ?? '');
+    case 'news':
+      return pick('title') ?? String(row.id ?? '');
+    case 'photos':
+    case 'videos':
+      return pick('alt_text') ?? String(row.id ?? '');
+    case 'stocks':
+      return pick('symbol') ?? pick('display_name') ?? String(row.id ?? '');
+    case 'weather':
+      return pick('location_name') ?? pick('description') ?? String(row.id ?? '');
+    case 'weather_alerts':
+      return pick('event') ?? pick('headline') ?? String(row.id ?? '');
+    case 'dashboard_alerts':
+      return pick('title') ?? String(row.id ?? '');
+    default:
+      return String(row.id ?? '');
+  }
+}
+
 export function DataPage() {
   const { active } = useDisplay();
   const { formatDateTime } = useDisplayFormat();
   const { hasPermission } = useAuth();
+  const { layout, setLayout } = useListLayoutPreference('data');
   const canModerate = hasPermission('content.moderate');
   const canBrowseData = canModerate || hasPermission('content.catalog_read');
 
   const [kind, setKind] = useState<DataKind>('jokes');
+  const [toolbarSearch, setToolbarSearch] = useState('');
+  const [dataSortId, setDataSortId] = useState('newest');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(() => defaultRowsForKind('jokes'));
   const [columnFilterDrafts, setColumnFilterDrafts] = useState<Partial<Record<DataKind, Record<string, string>>>>({});
@@ -390,6 +447,8 @@ export function DataPage() {
   useEffect(() => {
     setPage(0);
     setRowsPerPage(defaultRowsForKind(kind));
+    setToolbarSearch('');
+    setDataSortId('newest');
   }, [kind]);
 
   /** Cancels stale catalog fetches so a slow tab (e.g. weather) cannot overwrite rows after switching kind. */
@@ -559,6 +618,16 @@ export function DataPage() {
 
   const filterFields = COLUMN_FILTER_FIELDS[kind];
 
+  const displayRows = useMemo(() => {
+    const q = toolbarSearch.trim().toLowerCase();
+    let list = rows;
+    if (q) {
+      list = rows.filter((row) => rowMatchesToolbarSearch(row, q));
+    }
+    const sortOption = DATA_ROW_SORT.find((o) => o.id === dataSortId) ?? DATA_ROW_SORT[0];
+    return sortByOption(list, sortOption);
+  }, [rows, toolbarSearch, dataSortId]);
+
   if (!active) {
     return <NoDisplayPlaceholder />;
   }
@@ -615,6 +684,20 @@ export function DataPage() {
           ))}
         </Tabs>
       </Paper>
+
+      <DataViewToolbar
+        layout={layout}
+        onLayoutChange={setLayout}
+        search={toolbarSearch}
+        onSearchChange={setToolbarSearch}
+        searchPlaceholder="Search current page…"
+        sortOptions={DATA_ROW_SORT}
+        sortId={dataSortId}
+        onSortChange={setDataSortId}
+        onReload={() => void loadCatalog()}
+        reloadDisabled={catalogLoading}
+        reloadAriaLabel="Reload catalog data"
+      />
 
       <Paper sx={{ p: 2 }}>
         <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
@@ -714,6 +797,31 @@ export function DataPage() {
       </Stack>
 
       <DisplayRefreshIndicator loading={catalogLoading} />
+      {layout === 'card' && displayRows.length > 0 ? (
+        <Box sx={catalogCardGridSx}>
+          {displayRows.map((row, i) => (
+            <Paper key={String(row.id ?? i)} variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                {dataRowSummary(row, kind)}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" display="block">
+                {String(row.id ?? '')}
+              </Typography>
+              {canModerate ? (
+                <Button
+                  size="small"
+                  color="error"
+                  sx={{ mt: 1 }}
+                  disabled={contentDeletePath(kind, row) == null}
+                  onClick={() => void deleteRow(row)}
+                >
+                  Delete
+                </Button>
+              ) : null}
+            </Paper>
+          ))}
+        </Box>
+      ) : (
       <TableContainer component={Paper}>
         <Table size="small" stickyHeader>
           <TableHead>
@@ -827,7 +935,7 @@ export function DataPage() {
               </TableRow>
             ) : null}
             {!catalogLoading &&
-              rows.map((row, index) => {
+              displayRows.map((row, index) => {
                 const id = String(row.id ?? '');
                 const sup = Boolean(row.suppressed);
                 const rowKey = catalogRowKey(kind, row, index);
@@ -1041,7 +1149,7 @@ export function DataPage() {
                   </TableRow>
                 );
               })}
-            {!catalogLoading && rows.length === 0 && (
+            {!catalogLoading && displayRows.length === 0 && (
               <TableRow>
                 <TableCell colSpan={12}>
                   <Typography variant="body2" color="text.secondary">
@@ -1052,19 +1160,18 @@ export function DataPage() {
             )}
           </TableBody>
         </Table>
-        <TablePagination
-          component="div"
-          rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
-          rowsPerPage={rowsPerPage}
-          count={total}
-          page={page}
-          onPageChange={(_, p) => setPage(p)}
-          onRowsPerPageChange={(e) => {
-            setRowsPerPage(parseInt(e.target.value, 10));
-            setPage(0);
-          }}
-        />
       </TableContainer>
+      )}
+      <DataViewPagination
+        count={total}
+        page={page}
+        pageSize={rowsPerPage}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => {
+          setRowsPerPage(size);
+          setPage(0);
+        }}
+      />
     </Stack>
   );
 }

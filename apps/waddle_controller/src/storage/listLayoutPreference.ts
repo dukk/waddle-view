@@ -8,7 +8,15 @@ export const LIST_LAYOUT_PAGE_KEYS = [
   'integrations',
   'displays',
   'interests',
+  'plugins',
+  'data',
+  'activity',
+  'curators',
+  'users',
 ] as const;
+
+/** Pages that default to table layout when no preference is stored. */
+const TABLE_DEFAULT_PAGES = new Set<ListLayoutPageKey>(['data', 'activity']);
 
 export type ListLayoutPageKey = (typeof LIST_LAYOUT_PAGE_KEYS)[number];
 
@@ -30,7 +38,9 @@ function readAll(): StoredLayouts {
 
 export function readListLayoutPreference(page: ListLayoutPageKey): ListLayoutMode {
   const v = readAll()[page];
-  return v === 'table' ? 'table' : 'card';
+  if (v === 'table') return 'table';
+  if (v === 'card') return 'card';
+  return TABLE_DEFAULT_PAGES.has(page) ? 'table' : 'card';
 }
 
 export function writeListLayoutPreference(page: ListLayoutPageKey, value: ListLayoutMode): void {

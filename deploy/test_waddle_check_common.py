@@ -97,6 +97,12 @@ class TestWaddleCheckCommon(unittest.TestCase):
         self.assertIn("--coverage", argv)
         self.assertIn("test/a_test.dart", argv)
 
+    def test_flutter_test_argv_includes_no_pub_on_windows(self):
+        c = self.common
+        with mock.patch.object(c.sys, "platform", "win32"):
+            argv = c.flutter_test_argv(coverage=False, concurrency=1)
+        self.assertIn("--no-pub", argv)
+
     def test_test_concurrency_windows_defaults_to_one(self):
         c = self.common
         with mock.patch.object(c.sys, "platform", "win32"):
@@ -108,6 +114,31 @@ class TestWaddleCheckCommon(unittest.TestCase):
         with mock.patch.object(c.sys, "platform", "win32"):
             with mock.patch.dict(os.environ, {"WADDLE_TEST_CONCURRENCY": "4"}):
                 self.assertEqual(c.test_concurrency(), 4)
+
+    def test_clean_windows_flutter_native_assets_removes_stale_build_dir(self):
+        c = self.common
+        with tempfile.TemporaryDirectory() as tmp:
+            pkg = Path(tmp) / "waddle_shared"
+            native = pkg / "build" / "native_assets" / "windows"
+            native.mkdir(parents=True)
+            (native / "sqlite3.dll").write_bytes(b"stub")
+            bundled = pkg / ".dart_tool" / "lib"
+            bundled.mkdir(parents=True)
+            (bundled / "sqlite3.dll").write_bytes(b"stub")
+            with mock.patch.object(c.sys, "platform", "win32"):
+                c.clean_windows_flutter_native_assets(pkg)
+            self.assertFalse((pkg / "build" / "native_assets").exists())
+            self.assertFalse((bundled / "sqlite3.dll").exists())
+
+    def test_clean_windows_flutter_native_assets_noop_off_windows(self):
+        c = self.common
+        with tempfile.TemporaryDirectory() as tmp:
+            pkg = Path(tmp) / "pkg"
+            native = pkg / "build" / "native_assets" / "windows"
+            native.mkdir(parents=True)
+            with mock.patch.object(c.sys, "platform", "linux"):
+                c.clean_windows_flutter_native_assets(pkg)
+            self.assertTrue(native.is_dir())
 
     def test_subprocess_env_prefers_node_before_augment_for_controller(self):
         c = self.common

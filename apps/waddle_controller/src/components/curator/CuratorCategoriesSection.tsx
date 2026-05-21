@@ -13,7 +13,6 @@ import {
   TableContainer,
   TableFooter,
   TableHead,
-  TablePagination,
   TableRow,
   TextField,
   Typography,
@@ -25,6 +24,7 @@ import {
   updateCuratorConfiguration,
 } from '@/api/curatorConfigurations';
 import { apiJson, ApiError } from '@/api/client';
+import { DataViewPagination } from '@/components/dataView/DataViewPagination';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import { curatorCategoryMaterialIconComponent } from '@/util/curatorCategoryMaterialIcon';
@@ -333,17 +333,15 @@ export function CuratorCategoriesSection({
             <TableFooter>
               <TableRow>
                 <TableCell colSpan={4} sx={{ borderBottom: 'none', py: 0 }}>
-                  <TablePagination
-                    component="div"
+                  <DataViewPagination
                     count={filteredCategories.length}
                     page={catPage}
-                    onPageChange={(_, p) => setCatPage(p)}
-                    rowsPerPage={catRowsPerPage}
-                    onRowsPerPageChange={(e) => {
-                      setCatRowsPerPage(parseInt(e.target.value, 10));
+                    pageSize={catRowsPerPage}
+                    onPageChange={setCatPage}
+                    onPageSizeChange={(size) => {
+                      setCatRowsPerPage(size);
                       setCatPage(0);
                     }}
-                    rowsPerPageOptions={[5, 10, 25, 50]}
                   />
                 </TableCell>
               </TableRow>

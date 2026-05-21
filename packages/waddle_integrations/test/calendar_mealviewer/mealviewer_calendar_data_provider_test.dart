@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:drift/drift.dart' hide isNotNull;
@@ -11,7 +10,6 @@ import 'package:waddle_shared/config/mealviewer_kv.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
-import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 
 class _MenuClient extends http.BaseClient {
@@ -46,23 +44,24 @@ class _MemoryBlobStore implements BlobStore {
   Future<List<int>> readBytes(BlobRef ref) async => const [];
 
   @override
-  Future<BlobRef> putBytes(List<int> bytes, {required String logicalKey}) async =>
-      BlobRef(logicalKey);
+  Future<BlobRef> putBytes(
+    List<int> bytes, {
+    required String logicalKey,
+  }) async => BlobRef(logicalKey);
 
   @override
   File? tryLocalFile(BlobRef ref) => null;
 }
 
 AppDatabase _openDb() => AppDatabase(
-      DatabaseConnection(
-        NativeDatabase.memory(),
-        closeStreamsSynchronously: true,
-      ),
-    );
+  DatabaseConnection(NativeDatabase.memory(), closeStreamsSynchronously: true),
+);
 
 Future<void> _seedCategories(AppDatabase db, Iterable<String> ids) async {
   for (final id in ids) {
-    await db.into(db.contentCategories).insertOnConflictUpdate(
+    await db
+        .into(db.contentCategories)
+        .insertOnConflictUpdate(
           ContentCategoriesCompanion.insert(id: id, label: id),
         );
   }
@@ -73,7 +72,9 @@ Future<void> _seedIntegration(
   required String configJson,
   int pollSeconds = 0,
 }) async {
-  await db.into(db.integrations).insertOnConflictUpdate(
+  await db
+      .into(db.integrations)
+      .insertOnConflictUpdate(
         IntegrationsCompanion.insert(
           id: kDefaultCalendarMealviewerIntegrationId,
           integrationType: kMealviewerCalendarProviderId,
@@ -137,7 +138,12 @@ void main() {
     expect(http.requests, 1);
     final rows = await db.select(db.calendarEvents).get();
     expect(rows.length, 2);
-    expect(rows.every((r) => r.source == mealviewerCalendarEventSource('ElmwoodElementary')), isTrue);
+    expect(
+      rows.every(
+        (r) => r.source == mealviewerCalendarEventSource('ElmwoodElementary'),
+      ),
+      isTrue,
+    );
     final junction = await db.select(db.calendarEventCategories).get();
     expect(junction.length, 4);
     await db.close();

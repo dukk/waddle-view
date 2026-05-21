@@ -7,7 +7,6 @@ import 'package:waddle_integrations/microsoft_graph/microsoft_graph_base_url.dar
 import 'package:waddle_integrations/microsoft_graph/microsoft_graph_calendars.dart';
 import 'package:waddle_integrations/microsoft_graph/microsoft_graph_drive_children.dart';
 import 'package:waddle_integrations/microsoft_graph/microsoft_graph_oauth.dart';
-import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
 import 'package:waddle_shared/integration_accounts/integration_accounts_configured_sql.dart';
@@ -47,18 +46,27 @@ void registerIntegrationAccountsRestRoutes(
     try {
       final decoded = jsonDecode(await req.readAsString());
       if (decoded is! Map<String, dynamic>) {
-        return Response(400,
-            body: '{"error":"expected_json_object"}', headers: _jsonHeaders);
+        return Response(
+          400,
+          body: '{"error":"expected_json_object"}',
+          headers: _jsonHeaders,
+        );
       }
       map = decoded;
     } catch (_) {
-      return Response(400,
-          body: '{"error":"invalid_json"}', headers: _jsonHeaders);
+      return Response(
+        400,
+        body: '{"error":"invalid_json"}',
+        headers: _jsonHeaders,
+      );
     }
     final accountType = (map['account_type'] as String?)?.trim() ?? '';
     if (accountType.isEmpty) {
-      return Response(400,
-          body: '{"error":"account_type_required"}', headers: _jsonHeaders);
+      return Response(
+        400,
+        body: '{"error":"account_type_required"}',
+        headers: _jsonHeaders,
+      );
     }
     final accountKey = (map['account_key'] as String?)?.trim();
     final label = (map['label'] as String?)?.trim();
@@ -83,9 +91,13 @@ void registerIntegrationAccountsRestRoutes(
     }
   });
 
-  r.delete('/v1/integration-accounts/<accountId>',
-      (Request req, String accountId) async {
-    final confirmParam = req.url.queryParameters['confirm']?.trim().toLowerCase();
+  r.delete('/v1/integration-accounts/<accountId>', (
+    Request req,
+    String accountId,
+  ) async {
+    final confirmParam = req.url.queryParameters['confirm']
+        ?.trim()
+        .toLowerCase();
     final confirm = confirmParam == 'true' || confirmParam == '1';
     try {
       final result = await deleteOperatorIntegrationAccount(
@@ -95,9 +107,7 @@ void registerIntegrationAccountsRestRoutes(
         confirm: confirm,
       );
       return Response.ok(
-        jsonEncode({
-          'disabled_integration_ids': result.disabledIntegrationIds,
-        }),
+        jsonEncode({'disabled_integration_ids': result.disabledIntegrationIds}),
         headers: _jsonHeaders,
       );
     } on IntegrationAccountInUseException catch (e) {
@@ -116,23 +126,35 @@ void registerIntegrationAccountsRestRoutes(
     }
   });
 
-  r.patch('/v1/integration-accounts/<accountId>', (Request req, String accountId) async {
+  r.patch('/v1/integration-accounts/<accountId>', (
+    Request req,
+    String accountId,
+  ) async {
     Map<String, dynamic> map;
     try {
       final decoded = jsonDecode(await req.readAsString());
       if (decoded is! Map<String, dynamic>) {
-        return Response(400,
-            body: '{"error":"expected_json_object"}', headers: _jsonHeaders);
+        return Response(
+          400,
+          body: '{"error":"expected_json_object"}',
+          headers: _jsonHeaders,
+        );
       }
       map = decoded;
     } catch (_) {
-      return Response(400,
-          body: '{"error":"invalid_json"}', headers: _jsonHeaders);
+      return Response(
+        400,
+        body: '{"error":"invalid_json"}',
+        headers: _jsonHeaders,
+      );
     }
     final label = (map['label'] as String?)?.trim() ?? '';
     if (label.isEmpty) {
-      return Response(400,
-          body: '{"error":"label_required"}', headers: _jsonHeaders);
+      return Response(
+        400,
+        body: '{"error":"label_required"}',
+        headers: _jsonHeaders,
+      );
     }
     try {
       await updateOperatorIntegrationAccountLabel(db, accountId, label: label);
@@ -144,19 +166,27 @@ void registerIntegrationAccountsRestRoutes(
     return Response.ok('{}', headers: _jsonHeaders);
   });
 
-  r.get('/v1/integration-accounts/<accountId>/secrets',
-      (Request req, String accountId) async {
-    final account = await (db.select(db.integrationAccounts)
-          ..where((t) => t.id.equals(accountId)))
-        .getSingleOrNull();
+  r.get('/v1/integration-accounts/<accountId>/secrets', (
+    Request req,
+    String accountId,
+  ) async {
+    final account = await (db.select(
+      db.integrationAccounts,
+    )..where((t) => t.id.equals(accountId))).getSingleOrNull();
     if (account == null) {
-      return Response(404,
-          body: '{"error":"not_found"}', headers: _jsonHeaders);
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: _jsonHeaders,
+      );
     }
     final def = kIntegrationAccountTypes[account.accountType];
     if (def == null) {
-      return Response(404,
-          body: '{"error":"unknown_account_type"}', headers: _jsonHeaders);
+      return Response(
+        404,
+        body: '{"error":"unknown_account_type"}',
+        headers: _jsonHeaders,
+      );
     }
     final access = await secrets.read(def.accessTokenSecretKey(accountId));
     return Response.ok(
@@ -173,93 +203,138 @@ void registerIntegrationAccountsRestRoutes(
     );
   });
 
-  r.put('/v1/integration-accounts/<accountId>/secrets/<slotId>',
-      (Request req, String accountId, String slotId) async {
+  r.put('/v1/integration-accounts/<accountId>/secrets/<slotId>', (
+    Request req,
+    String accountId,
+    String slotId,
+  ) async {
     if (slotId != kIntegrationAccountSecretSlotAccessToken) {
-      return Response(404,
-          body: '{"error":"unknown_secret_slot"}', headers: _jsonHeaders);
+      return Response(
+        404,
+        body: '{"error":"unknown_secret_slot"}',
+        headers: _jsonHeaders,
+      );
     }
-    final account = await (db.select(db.integrationAccounts)
-          ..where((t) => t.id.equals(accountId)))
-        .getSingleOrNull();
+    final account = await (db.select(
+      db.integrationAccounts,
+    )..where((t) => t.id.equals(accountId))).getSingleOrNull();
     if (account == null) {
-      return Response(404,
-          body: '{"error":"not_found"}', headers: _jsonHeaders);
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: _jsonHeaders,
+      );
     }
     final def = kIntegrationAccountTypes[account.accountType];
     if (def == null) {
-      return Response(404,
-          body: '{"error":"unknown_account_type"}', headers: _jsonHeaders);
+      return Response(
+        404,
+        body: '{"error":"unknown_account_type"}',
+        headers: _jsonHeaders,
+      );
     }
     Map<String, dynamic> map;
     try {
       final decoded = jsonDecode(await req.readAsString());
       if (decoded is! Map<String, dynamic>) {
-        return Response(400,
-            body: '{"error":"expected_json_object"}', headers: _jsonHeaders);
+        return Response(
+          400,
+          body: '{"error":"expected_json_object"}',
+          headers: _jsonHeaders,
+        );
       }
       map = decoded;
     } catch (_) {
-      return Response(400,
-          body: '{"error":"invalid_json"}', headers: _jsonHeaders);
+      return Response(
+        400,
+        body: '{"error":"invalid_json"}',
+        headers: _jsonHeaders,
+      );
     }
     final raw = map['value'];
     if (raw is! String) {
-      return Response(400,
-          body: '{"error":"value_must_be_string"}', headers: _jsonHeaders);
+      return Response(
+        400,
+        body: '{"error":"value_must_be_string"}',
+        headers: _jsonHeaders,
+      );
     }
     final value = raw.trim();
     if (value.isEmpty) {
-      return Response(400,
-          body: '{"error":"value_must_be_non_empty"}', headers: _jsonHeaders);
+      return Response(
+        400,
+        body: '{"error":"value_must_be_non_empty"}',
+        headers: _jsonHeaders,
+      );
     }
     await secrets.write(def.accessTokenSecretKey(accountId), value);
     return Response.ok('{}', headers: _jsonHeaders);
   });
 
-  r.delete('/v1/integration-accounts/<accountId>/secrets/<slotId>',
-      (Request req, String accountId, String slotId) async {
+  r.delete('/v1/integration-accounts/<accountId>/secrets/<slotId>', (
+    Request req,
+    String accountId,
+    String slotId,
+  ) async {
     if (slotId != kIntegrationAccountSecretSlotAccessToken) {
-      return Response(404,
-          body: '{"error":"unknown_secret_slot"}', headers: _jsonHeaders);
+      return Response(
+        404,
+        body: '{"error":"unknown_secret_slot"}',
+        headers: _jsonHeaders,
+      );
     }
-    final account = await (db.select(db.integrationAccounts)
-          ..where((t) => t.id.equals(accountId)))
-        .getSingleOrNull();
+    final account = await (db.select(
+      db.integrationAccounts,
+    )..where((t) => t.id.equals(accountId))).getSingleOrNull();
     if (account == null) {
-      return Response(404,
-          body: '{"error":"not_found"}', headers: _jsonHeaders);
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: _jsonHeaders,
+      );
     }
     final def = kIntegrationAccountTypes[account.accountType];
     if (def == null) {
-      return Response(404,
-          body: '{"error":"unknown_account_type"}', headers: _jsonHeaders);
+      return Response(
+        404,
+        body: '{"error":"unknown_account_type"}',
+        headers: _jsonHeaders,
+      );
     }
     await secrets.delete(def.accessTokenSecretKey(accountId));
     return Response.ok('{}', headers: _jsonHeaders);
   });
 
-  r.post('/v1/integration-accounts/<accountId>/request-sign-in',
-      (Request req, String accountId) async {
-    final account = await (db.select(db.integrationAccounts)
-          ..where((t) => t.id.equals(accountId)))
-        .getSingleOrNull();
+  r.post('/v1/integration-accounts/<accountId>/request-sign-in', (
+    Request req,
+    String accountId,
+  ) async {
+    final account = await (db.select(
+      db.integrationAccounts,
+    )..where((t) => t.id.equals(accountId))).getSingleOrNull();
     if (account == null) {
-      return Response(404,
-          body: '{"error":"not_found"}', headers: _jsonHeaders);
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: _jsonHeaders,
+      );
     }
     final def = kIntegrationAccountTypes[account.accountType];
     if (def == null || !def.supportsOAuthSignIn) {
-      return Response(400,
-          body: '{"error":"oauth_sign_in_not_supported"}',
-          headers: _jsonHeaders);
+      return Response(
+        400,
+        body: '{"error":"oauth_sign_in_not_supported"}',
+        headers: _jsonHeaders,
+      );
     }
     await requestOAuthSignInForAccount(db, accountId);
     return Response.ok('{}', headers: _jsonHeaders);
   });
 
-  r.post('/v1/integration-accounts/<accountId>/oauth-probe',
-      (Request req, String accountId) async {
+  r.post('/v1/integration-accounts/<accountId>/oauth-probe', (
+    Request req,
+    String accountId,
+  ) async {
     return handleIntegrationAccountOAuthProbe(
       db: db,
       secrets: secrets,
@@ -268,177 +343,197 @@ void registerIntegrationAccountsRestRoutes(
     );
   });
 
-  r.get(
-    '/v1/integration-accounts/<accountId>/microsoft-graph/calendars',
-    (Request req, String accountId) async {
-      final account = await (db.select(db.integrationAccounts)
-            ..where((t) => t.id.equals(accountId)))
-          .getSingleOrNull();
-      if (account == null) {
-        return Response(404,
-            body: '{"error":"not_found"}', headers: _jsonHeaders);
-      }
-      if (account.accountType != kIntegrationAccountTypeMicrosoftGraph) {
-        return Response(400,
-            body: '{"error":"not_microsoft_graph_account"}',
-            headers: _jsonHeaders);
-      }
-      final clientId =
-          await readMicrosoftGraphClientIdFromStore(secrets);
-      if (clientId == null || clientId.isEmpty) {
-        return Response(503,
-            body: '{"error":"microsoft_graph_client_id_not_configured"}',
-            headers: _jsonHeaders);
-      }
-      final oauth = MicrosoftGraphOAuth(httpClient: graphHttp);
-      final token = await oauth.ensureAccessToken(
-        db: db,
-        secrets: secrets,
-        clientId: clientId,
-        graphAccountKey: accountId,
+  r.get('/v1/integration-accounts/<accountId>/microsoft-graph/calendars', (
+    Request req,
+    String accountId,
+  ) async {
+    final account = await (db.select(
+      db.integrationAccounts,
+    )..where((t) => t.id.equals(accountId))).getSingleOrNull();
+    if (account == null) {
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: _jsonHeaders,
       );
-      if (token == null || token.isEmpty) {
-        return Response(503,
-            body: '{"error":"access_token_unavailable"}', headers: _jsonHeaders);
-      }
-      final mailbox = req.url.queryParameters['mailbox']?.trim() ?? 'me';
-      if (mailbox.isEmpty) {
-        return Response(400,
-            body: '{"error":"mailbox_required"}', headers: _jsonHeaders);
-      }
-      final outlookRow = await (db.select(db.integrations)
-            ..where((t) => t.id.equals(kDefaultCalendarOutlookIntegrationId)))
-          .getSingleOrNull();
-      final graphBase = normalizeMicrosoftGraphBaseUrl(
-        integrationBaseUrlFromConfigJson(outlookRow?.configJson),
+    }
+    if (account.accountType != kIntegrationAccountTypeMicrosoftGraph) {
+      return Response(
+        400,
+        body: '{"error":"not_microsoft_graph_account"}',
+        headers: _jsonHeaders,
       );
-      try {
-        final calendars = await listMicrosoftGraphCalendars(
-          httpClient: graphHttp,
-          graphBaseUrl: graphBase,
-          userPath: mailbox,
-          accessToken: token,
-        );
-        return Response.ok(
-          jsonEncode({
-            'items': [
-              for (final c in calendars) {'id': c.id, 'name': c.name},
-            ],
-          }),
-          headers: _jsonHeaders,
-        );
-      } on MicrosoftGraphCalendarsException catch (e) {
-        return Response(
-          502,
-          body: jsonEncode({
-            'error': 'graph_calendars_failed',
-            'status': e.statusCode,
-          }),
-          headers: _jsonHeaders,
-        );
-      }
-    },
-  );
+    }
+    final clientId = await readMicrosoftGraphClientIdFromStore(secrets);
+    if (clientId == null || clientId.isEmpty) {
+      return Response(
+        503,
+        body: '{"error":"microsoft_graph_client_id_not_configured"}',
+        headers: _jsonHeaders,
+      );
+    }
+    final oauth = MicrosoftGraphOAuth(httpClient: graphHttp);
+    final token = await oauth.ensureAccessToken(
+      db: db,
+      secrets: secrets,
+      clientId: clientId,
+      graphAccountKey: accountId,
+    );
+    if (token == null || token.isEmpty) {
+      return Response(
+        503,
+        body: '{"error":"access_token_unavailable"}',
+        headers: _jsonHeaders,
+      );
+    }
+    final mailbox = req.url.queryParameters['mailbox']?.trim() ?? 'me';
+    if (mailbox.isEmpty) {
+      return Response(
+        400,
+        body: '{"error":"mailbox_required"}',
+        headers: _jsonHeaders,
+      );
+    }
+    final outlookRow =
+        await (db.select(db.integrations)
+              ..where((t) => t.id.equals(kDefaultCalendarOutlookIntegrationId)))
+            .getSingleOrNull();
+    final graphBase = normalizeMicrosoftGraphBaseUrl(
+      integrationBaseUrlFromConfigJson(outlookRow?.configJson),
+    );
+    try {
+      final calendars = await listMicrosoftGraphCalendars(
+        httpClient: graphHttp,
+        graphBaseUrl: graphBase,
+        userPath: mailbox,
+        accessToken: token,
+      );
+      return Response.ok(
+        jsonEncode({
+          'items': [
+            for (final c in calendars) {'id': c.id, 'name': c.name},
+          ],
+        }),
+        headers: _jsonHeaders,
+      );
+    } on MicrosoftGraphCalendarsException catch (e) {
+      return Response(
+        502,
+        body: jsonEncode({
+          'error': 'graph_calendars_failed',
+          'status': e.statusCode,
+        }),
+        headers: _jsonHeaders,
+      );
+    }
+  });
 
-  r.get(
-    '/v1/integration-accounts/<accountId>/microsoft-graph/drive/children',
-    (Request req, String accountId) async {
-      final account = await (db.select(db.integrationAccounts)
-            ..where((t) => t.id.equals(accountId)))
-          .getSingleOrNull();
-      if (account == null) {
-        return Response(404,
-            body: '{"error":"not_found"}', headers: _jsonHeaders);
-      }
-      if (account.accountType != kIntegrationAccountTypeMicrosoftGraph) {
-        return Response(400,
-            body: '{"error":"not_microsoft_graph_account"}',
-            headers: _jsonHeaders);
-      }
-      final clientId =
-          await readMicrosoftGraphClientIdFromStore(secrets);
-      if (clientId == null || clientId.isEmpty) {
-        return Response(503,
-            body: '{"error":"microsoft_graph_client_id_not_configured"}',
-            headers: _jsonHeaders);
-      }
-      final oauth = MicrosoftGraphOAuth(httpClient: graphHttp);
-      final token = await oauth.ensureAccessToken(
-        db: db,
-        secrets: secrets,
-        clientId: clientId,
-        graphAccountKey: accountId,
+  r.get('/v1/integration-accounts/<accountId>/microsoft-graph/drive/children', (
+    Request req,
+    String accountId,
+  ) async {
+    final account = await (db.select(
+      db.integrationAccounts,
+    )..where((t) => t.id.equals(accountId))).getSingleOrNull();
+    if (account == null) {
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: _jsonHeaders,
       );
-      if (token == null || token.isEmpty) {
-        return Response(503,
-            body: '{"error":"access_token_unavailable"}', headers: _jsonHeaders);
-      }
-      final folderPath = req.url.queryParameters['path']?.trim() ?? '';
-      final graphBase = await _microsoftGraphBaseUrlForOneDrive(db);
-      try {
-        final children = await listMicrosoftGraphDriveChildren(
-          httpClient: graphHttp,
-          graphBaseUrl: graphBase,
-          accessToken: token,
-          folderPath: folderPath,
-        );
-        return Response.ok(
-          jsonEncode({
-            'items': [
-              for (final c in children)
-                if (c.isFolder)
-                  {
-                    'id': c.id,
-                    'name': c.name,
-                    'path': c.path,
-                    'folder': true,
-                  },
-            ],
-            'path': folderPath,
-          }),
-          headers: _jsonHeaders,
-        );
-      } on MicrosoftGraphDriveChildrenException catch (e) {
-        return Response(
-          502,
-          body: jsonEncode({
-            'error': 'graph_drive_children_failed',
-            'status': e.statusCode,
-          }),
-          headers: _jsonHeaders,
-        );
-      }
-    },
-  );
+    }
+    if (account.accountType != kIntegrationAccountTypeMicrosoftGraph) {
+      return Response(
+        400,
+        body: '{"error":"not_microsoft_graph_account"}',
+        headers: _jsonHeaders,
+      );
+    }
+    final clientId = await readMicrosoftGraphClientIdFromStore(secrets);
+    if (clientId == null || clientId.isEmpty) {
+      return Response(
+        503,
+        body: '{"error":"microsoft_graph_client_id_not_configured"}',
+        headers: _jsonHeaders,
+      );
+    }
+    final oauth = MicrosoftGraphOAuth(httpClient: graphHttp);
+    final token = await oauth.ensureAccessToken(
+      db: db,
+      secrets: secrets,
+      clientId: clientId,
+      graphAccountKey: accountId,
+    );
+    if (token == null || token.isEmpty) {
+      return Response(
+        503,
+        body: '{"error":"access_token_unavailable"}',
+        headers: _jsonHeaders,
+      );
+    }
+    final folderPath = req.url.queryParameters['path']?.trim() ?? '';
+    final graphBase = await _microsoftGraphBaseUrlForOneDrive(db);
+    try {
+      final children = await listMicrosoftGraphDriveChildren(
+        httpClient: graphHttp,
+        graphBaseUrl: graphBase,
+        accessToken: token,
+        folderPath: folderPath,
+      );
+      return Response.ok(
+        jsonEncode({
+          'items': [
+            for (final c in children)
+              if (c.isFolder)
+                {'id': c.id, 'name': c.name, 'path': c.path, 'folder': true},
+          ],
+          'path': folderPath,
+        }),
+        headers: _jsonHeaders,
+      );
+    } on MicrosoftGraphDriveChildrenException catch (e) {
+      return Response(
+        502,
+        body: jsonEncode({
+          'error': 'graph_drive_children_failed',
+          'status': e.statusCode,
+        }),
+        headers: _jsonHeaders,
+      );
+    }
+  });
 
-  r.post(
-    '/v1/integration-accounts/<accountId>/google-photos/picker/sessions',
-    (Request req, String accountId) async {
-      String? requestId;
-      try {
-        final body = await req.readAsString();
-        if (body.trim().isNotEmpty) {
-          final decoded = jsonDecode(body);
-          if (decoded is Map<String, dynamic>) {
-            final rid = decoded['requestId'];
-            if (rid is String && rid.trim().isNotEmpty) {
-              requestId = rid.trim();
-            }
+  r.post('/v1/integration-accounts/<accountId>/google-photos/picker/sessions', (
+    Request req,
+    String accountId,
+  ) async {
+    String? requestId;
+    try {
+      final body = await req.readAsString();
+      if (body.trim().isNotEmpty) {
+        final decoded = jsonDecode(body);
+        if (decoded is Map<String, dynamic>) {
+          final rid = decoded['requestId'];
+          if (rid is String && rid.trim().isNotEmpty) {
+            requestId = rid.trim();
           }
         }
-      } catch (_) {
-        return Response(400,
-            body: '{"error":"invalid_json"}', headers: _jsonHeaders);
       }
-      return handleGooglePhotosPickerCreateSession(
-        db: db,
-        secrets: secrets,
-        httpClient: graphHttp,
-        accountId: accountId,
-        requestId: requestId,
+    } catch (_) {
+      return Response(
+        400,
+        body: '{"error":"invalid_json"}',
+        headers: _jsonHeaders,
       );
-    },
-  );
+    }
+    return handleGooglePhotosPickerCreateSession(
+      db: db,
+      secrets: secrets,
+      httpClient: graphHttp,
+      accountId: accountId,
+      requestId: requestId,
+    );
+  });
 
   r.get(
     '/v1/integration-accounts/<accountId>/google-photos/picker/sessions/<sessionId>',
@@ -480,22 +575,28 @@ void registerIntegrationAccountsRestRoutes(
     },
   );
 
-  r.get('/v1/integrations/<integrationId>/accounts',
-      (Request req, String integrationId) async {
-    final existing = await (db.select(db.integrations)
-          ..where((t) => t.id.equals(integrationId)))
-        .getSingleOrNull();
+  r.get('/v1/integrations/<integrationId>/accounts', (
+    Request req,
+    String integrationId,
+  ) async {
+    final existing = await (db.select(
+      db.integrations,
+    )..where((t) => t.id.equals(integrationId))).getSingleOrNull();
     if (existing == null) {
-      return Response(404,
-          body: '{"error":"not_found"}', headers: _jsonHeaders);
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: _jsonHeaders,
+      );
     }
     final linked = await listAccountsForIntegrationJson(
       db,
       secrets,
       integrationId,
     );
-    final requiredTypes =
-        integrationAccountTypesRequiredForIntegration(existing.integrationType);
+    final requiredTypes = integrationAccountTypesRequiredForIntegration(
+      existing.integrationType,
+    );
     return Response.ok(
       jsonEncode({
         'required_account_types': [
@@ -507,7 +608,7 @@ void registerIntegrationAccountsRestRoutes(
               'signup_url': kIntegrationAccountTypes[typeId]?.signupUrl ?? '',
               'supports_oauth_sign_in':
                   kIntegrationAccountTypes[typeId]?.supportsOAuthSignIn ??
-                      false,
+                  false,
             },
         ],
         'linked_accounts': linked,
@@ -526,8 +627,9 @@ Future<String> _microsoftGraphBaseUrlForOneDrive(AppDatabase db) async {
     kDefaultPhotoOneDriveIntegrationId,
     kDefaultVideoOneDriveIntegrationId,
   ]) {
-    final row = await (db.select(db.integrations)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final row = await (db.select(
+      db.integrations,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (row != null) {
       return normalizeMicrosoftGraphBaseUrl(
         integrationBaseUrlFromConfigJson(row.configJson),

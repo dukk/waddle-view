@@ -15,12 +15,15 @@ class ContentDeletionRepository {
   }
 
   Future<int> deleteTriviaQuestion(String id) {
-    return (_db.delete(_db.triviaQuestions)..where((t) => t.id.equals(id))).go();
+    return (_db.delete(
+      _db.triviaQuestions,
+    )..where((t) => t.id.equals(id))).go();
   }
 
   Future<int> deleteRssArticle(String id) async {
-    final row = await (_db.select(_db.news)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final row = await (_db.select(
+      _db.news,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (row == null) {
       return 0;
     }
@@ -29,8 +32,9 @@ class ContentDeletionRepository {
   }
 
   Future<int> deletePhoto(String id) async {
-    final row = await (_db.select(_db.photos)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final row = await (_db.select(
+      _db.photos,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (row == null) {
       return 0;
     }
@@ -39,8 +43,9 @@ class ContentDeletionRepository {
   }
 
   Future<int> deleteVideo(String id) async {
-    final row = await (_db.select(_db.videos)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final row = await (_db.select(
+      _db.videos,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (row == null) {
       return 0;
     }
@@ -53,31 +58,29 @@ class ContentDeletionRepository {
   }
 
   Future<int> deleteStockQuote(String symbolId) {
-    return (_db.delete(_db.stockQuotes)
-          ..where((t) => t.symbolId.equals(symbolId)))
-        .go();
+    return (_db.delete(
+      _db.stockQuotes,
+    )..where((t) => t.symbolId.equals(symbolId))).go();
   }
 
   Future<int> deleteWeatherCurrent(String locationId) async {
-    final row = await (_db.select(_db.weatherCurrent)
-          ..where((t) => t.locationId.equals(locationId)))
-        .getSingleOrNull();
+    final row = await (_db.select(
+      _db.weatherCurrent,
+    )..where((t) => t.locationId.equals(locationId))).getSingleOrNull();
     if (row == null) {
       return 0;
     }
     await _deleteBlobByKey(row.currentIconBlobKey);
-    return (_db.delete(_db.weatherCurrent)
-          ..where((t) => t.locationId.equals(locationId)))
-        .go();
+    return (_db.delete(
+      _db.weatherCurrent,
+    )..where((t) => t.locationId.equals(locationId))).go();
   }
 
   Future<int> deleteWeatherAlert(String locationId, String nwsAlertId) {
-    return (_db.delete(_db.weatherAlerts)
-          ..where(
-            (t) =>
-                t.locationId.equals(locationId) &
-                t.nwsAlertId.equals(nwsAlertId),
-          ))
+    return (_db.delete(_db.weatherAlerts)..where(
+          (t) =>
+              t.locationId.equals(locationId) & t.nwsAlertId.equals(nwsAlertId),
+        ))
         .go();
   }
 
@@ -85,14 +88,15 @@ class ContentDeletionRepository {
     if (key == null || key.isEmpty || _blobs == null) {
       return;
     }
-    final meta = await (_db.select(_db.blobMetadata)
-          ..where((t) => t.blobKey.equals(key)))
-        .getSingleOrNull();
+    final meta = await (_db.select(
+      _db.blobMetadata,
+    )..where((t) => t.blobKey.equals(key))).getSingleOrNull();
     if (meta == null) {
       return;
     }
-    await _blobs!.delete(BlobRef(meta.relativePath));
-    await (_db.delete(_db.blobMetadata)..where((t) => t.blobKey.equals(key)))
-        .go();
+    await _blobs.delete(BlobRef(meta.relativePath));
+    await (_db.delete(
+      _db.blobMetadata,
+    )..where((t) => t.blobKey.equals(key))).go();
   }
 }

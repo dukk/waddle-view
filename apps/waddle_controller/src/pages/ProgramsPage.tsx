@@ -24,7 +24,8 @@ import {
   Typography,
 } from '@mui/material';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
-import { ListLayoutToggle } from '@/components/ListLayoutToggle';
+import { DataViewToolbar } from '@/components/dataView/DataViewToolbar';
+import { applyClientListPipeline, type SortOption } from '@/util/clientListPipeline';
 import { useDisplay } from '@/context/DisplayContext';
 import { useDisplayFormat } from '@/context/DisplayFormatContext';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
@@ -41,12 +42,40 @@ import {
   collectWeatherLocationIds,
   paginateList,
   programAtMs,
-  sortProgramsByAtMsDesc,
   type SlideCardModel,
 } from '@/util/programTelemetry';
 import { screenTypeLabel, screenTypeMetaFor } from '@/util/screenTypeLabel';
 
 const PROGRAMS_PAGE_SIZE = 1;
+
+const PROGRAM_SORT_OPTIONS: SortOption<Record<string, unknown>>[] = [
+  {
+    id: 'newest',
+    label: 'Newest first',
+    compare: (a, b) => programAtMs(b) - programAtMs(a),
+  },
+  {
+    id: 'oldest',
+    label: 'Oldest first',
+    compare: (a, b) => programAtMs(a) - programAtMs(b),
+  },
+];
+
+function programMatchesSearch(row: Record<string, unknown>, q: string): boolean {
+  const reason = String(row['reason'] ?? '').toLowerCase();
+  const atMs = String(programAtMs(row));
+  if (reason.includes(q) || atMs.includes(q)) return true;
+  const slides = row['slides'];
+  if (!Array.isArray(slides)) return false;
+  return slides.some((slide) => {
+    if (!slide || typeof slide !== 'object') return false;
+    const s = slide as Record<string, unknown>;
+    return (
+      String(s['screen_id'] ?? '').toLowerCase().includes(q) ||
+      String(s['screen_type'] ?? '').toLowerCase().includes(q)
+    );
+  });
+}
 
 type Items<T> = { items: T[] };
 
@@ -774,6 +803,8 @@ export function ProgramsPage() {
   const [tickerDetailLoc, setTickerDetailLoc] = useState<{ pi: number; ii: number } | null>(null);
   const [screenPage, setScreenPage] = useState(0);
   const [tickerPage, setTickerPage] = useState(0);
+  const [search, setSearch] = useState('');
+  const [sortId, setSortId] = useState('newest');
 
   const lastScreenJson = useRef<string | null>(null);
   const lastTickerJson = useRef<string | null>(null);
@@ -838,8 +869,45 @@ export function ProgramsPage() {
     return () => window.clearInterval(id);
   }, [loadTicker]);
 
-  const screenProgramsDesc = useMemo(() => sortProgramsByAtMsDesc(screen), [screen]);
-  const tickerProgramsDesc = useMemo(() => sortProgramsByAtMsDesc(ticker), [ticker]);
+  const screenProgramsDesc = useMemo(
+    () =>
+      applyClientListPipeline({
+        items: screen,
+        search,
+        searchMatches: programMatchesSearch,
+        sortOptions: PROGRAM_SORT_OPTIONS,
+        sortId,
+      }),
+    [screen, search, sortId],
+  );
+  const tickerProgramsDesc = useMemo(
+    () =>
+      applyClientListPipeline({
+        items: ticker,
+        search,
+        searchMatches: programMatchesSearch,
+        sortOptions: PROGRAM_SORT_OPTIONS,
+        sortId,
+      }),
+    [ticker, search, sortId],
+  );
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearch(value);
+    setScreenPage(0);
+    setTickerPage(0);
+  }, []);
+
+  const handleSortChange = useCallback((value: string) => {
+    setSortId(value);
+    setScreenPage(0);
+    setTickerPage(0);
+  }, []);
+
+  const handleReload = useCallback(() => {
+    void loadScreen();
+    void loadTicker();
+  }, [loadScreen, loadTicker]);
 
   const screenProgramsPage = useMemo(
     () => paginateList(screenProgramsDesc, screenPage, PROGRAMS_PAGE_SIZE),
@@ -906,7 +974,19 @@ export function ProgramsPage() {
             or integrations elsewhere to change what runs next.
           </Typography>
         </Box>
-        <ListLayoutToggle value={layout} onChange={setLayout} />
+        <DataViewToolbar
+          layout={layout}
+          onLayoutChange={setLayout}
+          search={search}
+          onSearchChange={handleSearchChange}
+          searchPlaceholder="Search programs…"
+          sortOptions={PROGRAM_SORT_OPTIONS}
+          sortId={sortId}
+          onSortChange={handleSortChange}
+          onReload={handleReload}
+          reloadDisabled={screenLoading || tickerLoading}
+          reloadAriaLabel="Reload programs"
+        />
       </Stack>
       <Typography variant="subtitle1" fontWeight={600}>
         Screen programs

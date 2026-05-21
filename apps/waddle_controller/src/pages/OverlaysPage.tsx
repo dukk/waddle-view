@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
-import RefreshIcon from '@mui/icons-material/Refresh';
 import {
   Alert,
   Box,
@@ -14,7 +13,6 @@ import {
   DialogContent,
   DialogTitle,
   FormControl,
-  IconButton,
   InputLabel,
   ListSubheader,
   MenuItem,
@@ -28,7 +26,6 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import { useAuth } from '@/context/AuthContext';
@@ -36,7 +33,11 @@ import { useDisplay } from '@/context/DisplayContext';
 import { CatalogDisplayTransferPanel } from '@/components/catalog/CatalogDisplayTransferPanel';
 import { CatalogListWithTransferSection } from '@/components/catalog/CatalogListWithTransferSection';
 import { apiFetch, apiJson, ApiError } from '@/api/client';
-import { CatalogPageToolbar } from '@/components/CatalogPageToolbar';
+import { DataViewEmptyState } from '@/components/dataView/DataViewEmptyState';
+import { DataViewPagination } from '@/components/dataView/DataViewPagination';
+import { DataViewToolbar } from '@/components/dataView/DataViewToolbar';
+import { useClientDataView } from '@/hooks/useClientDataView';
+import type { SortOption } from '@/util/clientListPipeline';
 import { CatalogPageHelp } from '@/components/CatalogPageHelp';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
@@ -80,11 +81,29 @@ type OverlayRow = {
   example_config_json?: unknown;
 };
 
-function sortByLabel(a: OverlayRow, b: OverlayRow): number {
-  const an = a.label.trim() || a.id;
-  const bn = b.label.trim() || b.id;
-  return an.localeCompare(bn);
+function overlayRowTitle(row: OverlayRow): string {
+  return row.label.trim() || row.id;
 }
+
+const OVERLAY_SORT_OPTIONS: SortOption<OverlayRow>[] = [
+  {
+    id: 'label_asc',
+    label: 'Name (A–Z)',
+    compare: (a, b) => overlayRowTitle(a).localeCompare(overlayRowTitle(b)),
+  },
+  {
+    id: 'label_desc',
+    label: 'Name (Z–A)',
+    compare: (a, b) => overlayRowTitle(b).localeCompare(overlayRowTitle(a)),
+  },
+  { id: 'id_asc', label: 'ID (A–Z)', compare: (a, b) => a.id.localeCompare(b.id) },
+  { id: 'id_desc', label: 'ID (Z–A)', compare: (a, b) => b.id.localeCompare(a.id) },
+  {
+    id: 'type_asc',
+    label: 'Type (A–Z)',
+    compare: (a, b) => a.overlay_type.localeCompare(b.overlay_type),
+  },
+];
 
 function parseOverlayRow(raw: Record<string, unknown>): OverlayRow | null {
   const id = typeof raw.id === 'string' ? raw.id.trim() : '';
@@ -570,10 +589,6 @@ function OverlayCard({
   );
 }
 
-function sortOverlayRows(rows: OverlayRow[]): OverlayRow[] {
-  return [...rows].sort(sortByLabel);
-}
-
 function OverlayCatalogSection({
   title,
   emptyHint,
@@ -593,19 +608,18 @@ function OverlayCatalogSection({
   onEdit: (row: OverlayRow) => void;
   onDelete: (id: string) => void;
 }) {
-  const sorted = useMemo(() => sortOverlayRows(rows), [rows]);
   return (
     <Stack spacing={1.5}>
       <Typography variant="subtitle1" fontWeight={600}>
         {title}
       </Typography>
-      {sorted.length === 0 ? (
+      {rows.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
           {emptyHint}
         </Typography>
       ) : layout === 'card' ? (
         <Box sx={catalogCardGridSx}>
-          {sorted.map((row) => (
+          {rows.map((row) => (
             <OverlayCard
               key={row.id}
               row={row}
@@ -618,7 +632,7 @@ function OverlayCatalogSection({
         </Box>
       ) : (
         <OverlayTable
-          rows={sorted}
+          rows={rows}
           overlayTypes={overlayTypes}
           canWrite={canWrite}
           onEdit={onEdit}
@@ -670,24 +684,40 @@ export function OverlaysPage() {
       if (row) parsed.push(row);
       else bad += 1;
     }
-    parsed.sort(sortByLabel);
     return { rows: parsed, skipped: bad };
   }, [rawItems]);
 
   const overlayTypes = schemas?.overlay_types ?? [];
 
+  const dataView = useClientDataView({
+    items: rows,
+    sortOptions: OVERLAY_SORT_OPTIONS,
+    defaultSortId: 'label_asc',
+    searchMatches: (row, q) => {
+      const typeLabel = overlayTypeLabel(row.overlay_type);
+      return (
+        row.id.toLowerCase().includes(q) ||
+        overlayRowTitle(row).toLowerCase().includes(q) ||
+        row.overlay_type.toLowerCase().includes(q) ||
+        typeLabel.toLowerCase().includes(q)
+      );
+    },
+  });
+
+  const displayRows = dataView.paginated.items;
+
   const { effects: effectRows, widgets: widgetRows } = useMemo(
-    () => partitionOverlayRowsByCategory(rows, overlayTypes),
-    [rows, overlayTypes],
+    () => partitionOverlayRowsByCategory(displayRows, overlayTypes),
+    [displayRows, overlayTypes],
   );
 
   const transferItems = useMemo(
     () =>
-      rows.map((r) => ({
+      dataView.allFilteredSorted.map((r) => ({
         id: r.id,
-        label: r.label.trim() || r.id,
+        label: overlayRowTitle(r),
       })),
-    [rows],
+    [dataView.allFilteredSorted],
   );
 
   const deleteRow = useCallback(
@@ -755,31 +785,34 @@ export function OverlaysPage() {
 
       <CatalogListWithTransferSection
         toolbar={
-          <CatalogPageToolbar layout={layout} onLayoutChange={setLayout}>
+          <DataViewToolbar
+            layout={layout}
+            onLayoutChange={setLayout}
+            search={dataView.search}
+            onSearchChange={dataView.setSearch}
+            searchPlaceholder="Search overlays…"
+            sortOptions={OVERLAY_SORT_OPTIONS}
+            sortId={dataView.sortId}
+            onSortChange={dataView.setSortId}
+            onReload={() => void load()}
+            reloadDisabled={loading}
+            reloadAriaLabel="Reload overlays"
+          >
             {canWrite && (
               <Button startIcon={<AddIcon />} variant="contained" onClick={openCreate}>
                 Add overlay
               </Button>
             )}
-            <Tooltip title="Reload overlays">
-              <span>
-                <IconButton
-                  onClick={() => void load()}
-                  disabled={loading}
-                  aria-label="Reload overlays"
-                >
-                  <RefreshIcon />
-                </IconButton>
-              </span>
-            </Tooltip>
-          </CatalogPageToolbar>
+          </DataViewToolbar>
         }
         list={
-          rows.length === 0 && !error && !loading ? (
-            <Typography variant="body2" color="text.secondary">
-              No overlays defined yet.
-            </Typography>
-          ) : (
+          <Stack spacing={2}>
+            <DataViewEmptyState
+              hasItems={rows.length > 0}
+              hasFilteredMatches={displayRows.length > 0}
+              emptyMessage="No overlays defined yet."
+            />
+            {displayRows.length > 0 ? (
             <Stack spacing={3}>
               <OverlayCatalogSection
                 title="Effects"
@@ -802,7 +835,15 @@ export function OverlaysPage() {
                 onDelete={(id) => void deleteRow(id)}
               />
             </Stack>
-          )
+            ) : null}
+            <DataViewPagination
+              count={dataView.filteredTotal}
+              page={dataView.paginated.page}
+              pageSize={dataView.paginated.pageSize}
+              onPageChange={dataView.setPage}
+              onPageSizeChange={dataView.setPageSize}
+            />
+          </Stack>
         }
         transferPanel={
           canWrite && displays.length > 1 ? (

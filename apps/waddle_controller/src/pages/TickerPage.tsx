@@ -32,7 +32,11 @@ import { useDisplay } from '@/context/DisplayContext';
 import { CatalogDisplayTransferPanel } from '@/components/catalog/CatalogDisplayTransferPanel';
 import { CatalogListWithTransferSection } from '@/components/catalog/CatalogListWithTransferSection';
 import { apiFetch, apiJson, ApiError } from '@/api/client';
-import { CatalogPageToolbar } from '@/components/CatalogPageToolbar';
+import { DataViewEmptyState } from '@/components/dataView/DataViewEmptyState';
+import { DataViewPagination } from '@/components/dataView/DataViewPagination';
+import { DataViewToolbar } from '@/components/dataView/DataViewToolbar';
+import { useClientDataView } from '@/hooks/useClientDataView';
+import type { SortOption } from '@/util/clientListPipeline';
 import { CatalogPageHelp } from '@/components/CatalogPageHelp';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { catalogCardGridSx } from '@/constants/catalogLayout';
@@ -68,9 +72,25 @@ type TickerTapeRow = {
   example_config_json?: unknown;
 };
 
-function sortById(a: TickerTapeRow, b: TickerTapeRow): number {
-  return a.id.localeCompare(b.id);
-}
+const TICKER_SORT_OPTIONS: SortOption<TickerTapeRow>[] = [
+  { id: 'id_asc', label: 'ID (A–Z)', compare: (a, b) => a.id.localeCompare(b.id) },
+  { id: 'id_desc', label: 'ID (Z–A)', compare: (a, b) => b.id.localeCompare(a.id) },
+  {
+    id: 'label_asc',
+    label: 'Name (A–Z)',
+    compare: (a, b) => tickerRowTitle(a).localeCompare(tickerRowTitle(b)),
+  },
+  {
+    id: 'label_desc',
+    label: 'Name (Z–A)',
+    compare: (a, b) => tickerRowTitle(b).localeCompare(tickerRowTitle(a)),
+  },
+  {
+    id: 'sort_order',
+    label: 'Sort order',
+    compare: (a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id),
+  },
+];
 
 function trimOptionalString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -226,15 +246,36 @@ export function TickerPage() {
     void load();
   }, [load]);
 
-  const sortedRows = useMemo(() => [...rows].sort(sortById), [rows]);
+  const tickerTypes = schemas?.ticker_tape_types ?? [];
+
+  const dataView = useClientDataView({
+    items: rows,
+    sortOptions: TICKER_SORT_OPTIONS,
+    defaultSortId: 'id_asc',
+    searchMatches: (row, q) => {
+      const typeLabel = tickerTypeLabel(
+        row.ticker_type,
+        tickerTypeMetaFor(tickerTypes, row.ticker_type),
+      );
+      return (
+        row.id.toLowerCase().includes(q) ||
+        tickerRowTitle(row).toLowerCase().includes(q) ||
+        row.ticker_type.toLowerCase().includes(q) ||
+        typeLabel.toLowerCase().includes(q) ||
+        tickerRowDescription(row).toLowerCase().includes(q)
+      );
+    },
+  });
+
+  const displayRows = dataView.paginated.items;
 
   const transferItems = useMemo(
     () =>
-      sortedRows.map((r) => ({
+      dataView.allFilteredSorted.map((r) => ({
         id: r.id,
         label: tickerRowTitle(r),
       })),
-    [sortedRows],
+    [dataView.allFilteredSorted],
   );
 
   const deleteTape = useCallback(
@@ -281,41 +322,63 @@ export function TickerPage() {
 
       <CatalogListWithTransferSection
         toolbar={
-          <CatalogPageToolbar layout={layout} onLayoutChange={setLayout}>
+          <DataViewToolbar
+            layout={layout}
+            onLayoutChange={setLayout}
+            search={dataView.search}
+            onSearchChange={dataView.setSearch}
+            searchPlaceholder="Search ticker tapes…"
+            sortOptions={TICKER_SORT_OPTIONS}
+            sortId={dataView.sortId}
+            onSortChange={dataView.setSortId}
+            onReload={() => void load()}
+            reloadDisabled={loading}
+            reloadAriaLabel="Reload ticker tapes"
+          >
             <Button
               variant="contained"
               onClick={() => setAddOpen(true)}
-              disabled={!schemas?.ticker_tape_types.length}
+              disabled={!tickerTypes.length}
             >
               Add ticker tape
             </Button>
-          </CatalogPageToolbar>
+          </DataViewToolbar>
         }
         list={
-          sortedRows.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              No ticker tapes in the catalog yet.
-            </Typography>
-          ) : layout === 'card' ? (
+          <Stack spacing={2}>
+            <DataViewEmptyState
+              hasItems={rows.length > 0}
+              hasFilteredMatches={displayRows.length > 0}
+              emptyMessage="No ticker tapes in the catalog yet."
+            />
+            {displayRows.length > 0 && layout === 'card' ? (
             <Box sx={catalogCardGridSx}>
-              {sortedRows.map((r) => (
+              {displayRows.map((r) => (
                 <TickerTapeCard
                   key={r.id}
                   row={r}
-                  tickerTypes={schemas?.ticker_tape_types ?? []}
+                  tickerTypes={tickerTypes}
                   onEdit={() => setEditRow(r)}
                   onDelete={() => void deleteTape(r.id)}
                 />
               ))}
             </Box>
-          ) : (
+          ) : displayRows.length > 0 ? (
             <TickerTapeTable
-              rows={sortedRows}
-              tickerTypes={schemas?.ticker_tape_types ?? []}
+              rows={displayRows}
+              tickerTypes={tickerTypes}
               onEdit={setEditRow}
               onDelete={(id) => void deleteTape(id)}
             />
-          )
+          ) : null}
+            <DataViewPagination
+              count={dataView.filteredTotal}
+              page={dataView.paginated.page}
+              pageSize={dataView.paginated.pageSize}
+              onPageChange={dataView.setPage}
+              onPageSizeChange={dataView.setPageSize}
+            />
+          </Stack>
         }
         transferPanel={
           canWrite && displays.length > 1 ? (

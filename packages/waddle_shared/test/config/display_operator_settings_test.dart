@@ -1,7 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_shared/auth/role_permissions.dart';
-import 'package:waddle_shared/config/adoption.dart';
-import 'package:waddle_shared/config/adoption_allowed_roles.dart';
 import 'package:waddle_shared/config/controller_datetime_format_kv.dart';
 import 'package:waddle_shared/config/display_operator_settings.dart';
 import 'package:waddle_shared/persistence/database.dart';
@@ -123,24 +121,21 @@ void main() {
     },
   );
 
-  test(
-    'applyDisplayOperatorSettingsPut round-trips text scales',
-    () async {
-      final db = openMemoryDatabase();
-      addTearDown(db.close);
-      await ensureInitialSeed(db);
+  test('applyDisplayOperatorSettingsPut round-trips text scales', () async {
+    final db = openMemoryDatabase();
+    addTearDown(db.close);
+    await ensureInitialSeed(db);
 
-      final touched = await applyDisplayOperatorSettingsPut(db, {
-        'display_text_scale_screen': 'large',
-        'display_text_scale_ticker': 'small',
-      });
-      expect(touched, isTrue);
+    final touched = await applyDisplayOperatorSettingsPut(db, {
+      'display_text_scale_screen': 'large',
+      'display_text_scale_ticker': 'small',
+    });
+    expect(touched, isTrue);
 
-      final body = await readDisplayOperatorSettings(db);
-      expect(body['display_text_scale_screen'], kDisplayTextScaleLarge);
-      expect(body['display_text_scale_ticker'], kDisplayTextScaleSmall);
-    },
-  );
+    final body = await readDisplayOperatorSettings(db);
+    expect(body['display_text_scale_screen'], kDisplayTextScaleLarge);
+    expect(body['display_text_scale_ticker'], kDisplayTextScaleSmall);
+  });
 
   test(
     'applyDisplayOperatorSettingsPut empty timezone deletes kv and read uses default',
@@ -154,9 +149,9 @@ void main() {
       });
       await applyDisplayOperatorSettingsPut(db, {'display_timezone': ''});
 
-      final tzRow = await (db.select(db.configKeyValues)
-            ..where((t) => t.key.equals(kDisplayTimezoneKvKey)))
-          .getSingleOrNull();
+      final tzRow = await (db.select(
+        db.configKeyValues,
+      )..where((t) => t.key.equals(kDisplayTimezoneKvKey))).getSingleOrNull();
       expect(tzRow, isNull);
 
       final body = await readDisplayOperatorSettings(db);
@@ -180,51 +175,39 @@ void main() {
       });
 
       final body = await readDisplayOperatorSettings(db);
-      expect(body['adoption_allowed_roles'], [
-        kUserRoleViewer,
-        kUserRoleAdmin,
-      ]);
+      expect(body['adoption_allowed_roles'], [kUserRoleViewer, kUserRoleAdmin]);
       expect(body['adoption_allow_new_requests'], isTrue);
     },
   );
 
-  test(
-    'adoption_allow_new_requests false clears roles',
-    () async {
-      final db = openMemoryDatabase();
-      addTearDown(db.close);
-      await ensureInitialSeed(db);
+  test('adoption_allow_new_requests false clears roles', () async {
+    final db = openMemoryDatabase();
+    addTearDown(db.close);
+    await ensureInitialSeed(db);
 
-      await applyDisplayOperatorSettingsPut(db, {
-        'adoption_allow_new_requests': false,
-      });
+    await applyDisplayOperatorSettingsPut(db, {
+      'adoption_allow_new_requests': false,
+    });
 
-      final body = await readDisplayOperatorSettings(db);
-      expect(body['adoption_allowed_roles'], isEmpty);
-      expect(body['adoption_allow_new_requests'], isFalse);
-    },
-  );
+    final body = await readDisplayOperatorSettings(db);
+    expect(body['adoption_allowed_roles'], isEmpty);
+    expect(body['adoption_allow_new_requests'], isFalse);
+  });
 
-  test(
-    'adoption_allow_new_requests true grants all valid roles',
-    () async {
-      final db = openMemoryDatabase();
-      addTearDown(db.close);
-      await ensureInitialSeed(db);
+  test('adoption_allow_new_requests true grants all valid roles', () async {
+    final db = openMemoryDatabase();
+    addTearDown(db.close);
+    await ensureInitialSeed(db);
 
-      await applyDisplayOperatorSettingsPut(db, {
-        'adoption_allow_new_requests': false,
-      });
-      await applyDisplayOperatorSettingsPut(db, {
-        'adoption_allow_new_requests': true,
-      });
+    await applyDisplayOperatorSettingsPut(db, {
+      'adoption_allow_new_requests': false,
+    });
+    await applyDisplayOperatorSettingsPut(db, {
+      'adoption_allow_new_requests': true,
+    });
 
-      final body = await readDisplayOperatorSettings(db);
-      expect(
-        (body['adoption_allowed_roles'] as List).toSet(),
-        kValidUserRoles,
-      );
-      expect(body['adoption_allow_new_requests'], isTrue);
-    },
-  );
+    final body = await readDisplayOperatorSettings(db);
+    expect((body['adoption_allowed_roles'] as List).toSet(), kValidUserRoles);
+    expect(body['adoption_allow_new_requests'], isTrue);
+  });
 }

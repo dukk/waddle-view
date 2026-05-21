@@ -6,7 +6,6 @@ import 'package:test/test.dart';
 import 'package:waddle_plugin_sdk/client/display_client.dart';
 import 'package:waddle_plugin_sdk/client/display_client_config.dart';
 import 'package:waddle_plugin_sdk/contracts/alert_contract.dart';
-import 'package:waddle_plugin_sdk/contracts/signal_contract.dart';
 
 class _FakeClient extends http.BaseClient {
   _FakeClient(this.handler);

@@ -67,7 +67,7 @@ int overlayTypeCategorySortOrder(String category) {
 bool _schemaImpliesPlacement(String overlayType) {
   final doc = displayOverlayConfigJsonDocForType(overlayType);
   final schemaRaw = doc.schema;
-  if (schemaRaw == null || schemaRaw.trim().isEmpty) {
+  if (schemaRaw.trim().isEmpty) {
     return false;
   }
   try {

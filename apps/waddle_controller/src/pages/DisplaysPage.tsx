@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import {
   Alert,
@@ -19,10 +19,14 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { CatalogPageToolbar } from '@/components/CatalogPageToolbar';
+import { DataViewEmptyState } from '@/components/dataView/DataViewEmptyState';
+import { DataViewPagination } from '@/components/dataView/DataViewPagination';
+import { DataViewToolbar } from '@/components/dataView/DataViewToolbar';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { catalogCardGridSx } from '@/constants/catalogLayout';
+import { useClientDataView } from '@/hooks/useClientDataView';
 import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
+import type { SortOption } from '@/util/clientListPipeline';
 import type { DisplaysReachabilityMap } from '@/util/useDisplaysReachability';
 
 import { AdoptDisplayDialog } from '@/components/AdoptDisplayDialog';
@@ -42,6 +46,12 @@ import { formatDisplayHostSummary } from '@/util/displayHealth';
 import { useDisplaysReachability } from '@/util/useDisplaysReachability';
 
 
+
+const DISPLAY_SORT_OPTIONS: SortOption<SavedDisplay>[] = [
+  { id: 'label_asc', label: 'Name (A–Z)', compare: (a, b) => a.label.localeCompare(b.label) },
+  { id: 'label_desc', label: 'Name (Z–A)', compare: (a, b) => b.label.localeCompare(a.label) },
+  { id: 'url_asc', label: 'URL (A–Z)', compare: (a, b) => a.baseUrl.localeCompare(b.baseUrl) },
+];
 
 type DisplaysPageProps = {
 
@@ -169,7 +179,45 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
   const [editDisplay, setEditDisplay] = useState<SavedDisplay | null>(null);
 
   const adopted = hasAnyAdoptedDisplay(displays);
-  const { reachability, refreshing: reachabilityRefreshing } = useDisplaysReachability(displays);
+  const { reachability, refreshing: reachabilityRefreshing, refreshReachability } =
+    useDisplaysReachability(displays);
+
+  const dataView = useClientDataView({
+    items: displays,
+    sortOptions: DISPLAY_SORT_OPTIONS,
+    defaultSortId: 'label_asc',
+    searchMatches: (d, q) =>
+      d.id.toLowerCase().includes(q) ||
+      d.label.toLowerCase().includes(q) ||
+      d.baseUrl.toLowerCase().includes(q),
+  });
+
+  const displayRows = dataView.paginated.items;
+
+  const handleReload = useCallback(() => {
+    refresh();
+    void refreshReachability();
+  }, [refresh, refreshReachability]);
+
+  const toolbar = (
+    <DataViewToolbar
+      layout={layout}
+      onLayoutChange={setLayout}
+      search={dataView.search}
+      onSearchChange={dataView.setSearch}
+      searchPlaceholder="Search displays…"
+      sortOptions={DISPLAY_SORT_OPTIONS}
+      sortId={dataView.sortId}
+      onSortChange={dataView.setSortId}
+      onReload={handleReload}
+      reloadDisabled={reachabilityRefreshing}
+      reloadAriaLabel="Reload displays"
+    >
+      <Button variant="contained" onClick={() => setAdoptOpen(true)}>
+        Adopt display
+      </Button>
+    </DataViewToolbar>
+  );
 
 
 
@@ -208,21 +256,11 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
             targets. Adopted API keys stay in local storage only—they are not included in backup
             export.
           </Typography>
-          <CatalogPageToolbar layout={layout} onLayoutChange={setLayout}>
-            <Button variant="contained" onClick={() => setAdoptOpen(true)}>
-              Adopt display
-            </Button>
-          </CatalogPageToolbar>
+          {toolbar}
         </Stack>
       )}
 
-      {embedded && (
-        <CatalogPageToolbar layout={layout} onLayoutChange={setLayout}>
-          <Button variant="contained" onClick={() => setAdoptOpen(true)}>
-            Adopt display
-          </Button>
-        </CatalogPageToolbar>
-      )}
+      {embedded && toolbar}
 
 
 
@@ -248,15 +286,15 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
 
 
 
-      {displays.length === 0 ? (
-        <Paper variant="outlined" sx={{ py: 4, px: 2, textAlign: 'center' }}>
-          <Typography variant="body2" color="text.secondary">
-            No displays saved yet. Use <strong>Adopt display</strong> to pair with a display.
-          </Typography>
-        </Paper>
-      ) : layout === 'card' ? (
+      <Stack spacing={2}>
+        <DataViewEmptyState
+          hasItems={displays.length > 0}
+          hasFilteredMatches={displayRows.length > 0}
+          emptyMessage="No displays saved yet. Use Adopt display to pair with a display."
+        />
+        {displayRows.length > 0 && layout === 'card' ? (
         <Box sx={catalogCardGridSx}>
-          {displays.map((d) => {
+          {displayRows.map((d) => {
             const session = loadSession(d.id);
             const isActive = active?.id === d.id;
             const status = reachability[d.id] ?? { state: 'checking' as const };
@@ -273,7 +311,7 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
             );
           })}
         </Box>
-      ) : (
+      ) : displayRows.length > 0 ? (
         <TableContainer component={Paper} variant="outlined">
           <Table size="small">
             <TableHead>
@@ -286,7 +324,7 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
               </TableRow>
             </TableHead>
             <TableBody>
-              {displays.map((d) => {
+              {displayRows.map((d) => {
                 const session = loadSession(d.id);
                 const isActive = active?.id === d.id;
                 const status = reachability[d.id] ?? { state: 'checking' as const };
@@ -331,9 +369,15 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
             </TableBody>
           </Table>
         </TableContainer>
-      )}
-
-
+      ) : null}
+        <DataViewPagination
+          count={dataView.filteredTotal}
+          page={dataView.paginated.page}
+          pageSize={dataView.paginated.pageSize}
+          onPageChange={dataView.setPage}
+          onPageSizeChange={dataView.setPageSize}
+        />
+      </Stack>
 
       <DisplaysBackupSection onChanged={refresh} />
 

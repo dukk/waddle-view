@@ -14,7 +14,6 @@ import {
   TableContainer,
   TableFooter,
   TableHead,
-  TablePagination,
   TableRow,
   TextField,
   Tooltip,
@@ -23,6 +22,7 @@ import {
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import type { SavedDisplay } from '@/storage/displays';
 import { apiJson, ApiError } from '@/api/client';
+import { DataViewPagination } from '@/components/dataView/DataViewPagination';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import { maskRejectTermForDisplay } from '@/util/maskRejectTerm';
@@ -228,17 +228,15 @@ export function RejectTermsSection({ display }: { display: SavedDisplay }) {
           <TableFooter>
             <TableRow>
               <TableCell colSpan={3} sx={{ borderBottom: 'none', py: 0 }}>
-                <TablePagination
-                  component="div"
+                <DataViewPagination
                   count={filteredRejectItems.length}
                   page={rejPage}
-                  onPageChange={(_, p) => setRejPage(p)}
-                  rowsPerPage={rejRowsPerPage}
-                  onRowsPerPageChange={(e) => {
-                    setRejRowsPerPage(parseInt(e.target.value, 10));
+                  pageSize={rejRowsPerPage}
+                  onPageChange={setRejPage}
+                  onPageSizeChange={(size) => {
+                    setRejRowsPerPage(size);
                     setRejPage(0);
                   }}
-                  rowsPerPageOptions={[5, 10, 25, 50]}
                 />
               </TableCell>
             </TableRow>

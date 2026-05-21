@@ -16,7 +16,6 @@ import 'package:waddle_shared/integrations/integration_kv_repository.dart';
 import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import 'package:waddle_shared/persistence/photo_category_assignments.dart';
 import 'package:waddle_shared/persistence/tables.dart';
-import 'package:waddle_shared/persistence/video_category_assignments.dart';
 import 'pexels_provider_extra_config.dart';
 
 const String kPhotoPexelsIntegrationType = 'photo_pexels';
@@ -55,8 +54,10 @@ class PexelsPhotosDataProvider implements IDataProvider {
     final kv = IntegrationKvRepository(ctx.db);
 
     if (setting.pollSeconds > 0) {
-      final lastValue =
-          await kv.getIntegrationValue(integrationId, kIntegrationLastCollectKey);
+      final lastValue = await kv.getIntegrationValue(
+        integrationId,
+        kIntegrationLastCollectKey,
+      );
       final last = int.tryParse(lastValue ?? '') ?? 0;
       if (nowMs - last < setting.pollSeconds * 1000) {
         ctx.diagnostics.provider(
@@ -76,7 +77,9 @@ class PexelsPhotosDataProvider implements IDataProvider {
 
     final token = config.accessToken;
     if (token == null || token.isEmpty) {
-      ctx.diagnostics.provider('pexels_photo: skip (no API key) id=$integrationId');
+      ctx.diagnostics.provider(
+        'pexels_photo: skip (no API key) id=$integrationId',
+      );
       return;
     }
 
@@ -148,11 +151,9 @@ class PexelsPhotosDataProvider implements IDataProvider {
     if (max < 1) {
       return;
     }
-    final rows =
-        await (ctx.db.select(
-              ctx.db.photos,
-            )..orderBy([(t) => OrderingTerm.asc(t.fetchedAtMs)]))
-            .get();
+    final rows = await (ctx.db.select(
+      ctx.db.photos,
+    )..orderBy([(t) => OrderingTerm.asc(t.fetchedAtMs)])).get();
     if (rows.length <= max) {
       return;
     }
@@ -164,31 +165,26 @@ class PexelsPhotosDataProvider implements IDataProvider {
 
   Future<void> _deletePexelsPhoto(DataWriteContext ctx, Photo row) async {
     final key = row.mediaBlobKey;
-    final meta =
-        await (ctx.db.select(
-              ctx.db.blobMetadata,
-            )..where((t) => t.blobKey.equals(key)))
-            .getSingleOrNull();
+    final meta = await (ctx.db.select(
+      ctx.db.blobMetadata,
+    )..where((t) => t.blobKey.equals(key))).getSingleOrNull();
     if (meta != null) {
       await ctx.blobs.delete(BlobRef(meta.relativePath));
       await (ctx.db.delete(
-            ctx.db.blobMetadata,
-          )..where((t) => t.blobKey.equals(key)))
-          .go();
+        ctx.db.blobMetadata,
+      )..where((t) => t.blobKey.equals(key))).go();
     }
     await (ctx.db.delete(
-          ctx.db.photos,
-        )..where((t) => t.id.equals(row.id)))
-        .go();
+      ctx.db.photos,
+    )..where((t) => t.id.equals(row.id))).go();
   }
 
   Future<void> _pruneOldFetchBatches(AppDatabase db, int nowMs) async {
     final cutoffMs = nowMs - _fetchBatchRetention.inMilliseconds;
     final cutoff = DateTime.fromMillisecondsSinceEpoch(cutoffMs);
     await (db.delete(
-          db.pexelsFetchBatches,
-        )..where((t) => t.requestedAtMs.isSmallerThanValue(cutoff)))
-        .go();
+      db.pexelsFetchBatches,
+    )..where((t) => t.requestedAtMs.isSmallerThanValue(cutoff))).go();
   }
 
   Future<int> _sumFetchesSince(
@@ -198,13 +194,11 @@ class PexelsPhotosDataProvider implements IDataProvider {
   ) async {
     final since = DateTime.fromMillisecondsSinceEpoch(sinceMsInclusive);
     final rows =
-        await (db.select(
-              db.pexelsFetchBatches,
-            )..where(
-                (t) =>
-                    t.kind.equals(kind) &
-                    t.requestedAtMs.isBiggerOrEqualValue(since),
-              ))
+        await (db.select(db.pexelsFetchBatches)..where(
+              (t) =>
+                  t.kind.equals(kind) &
+                  t.requestedAtMs.isBiggerOrEqualValue(since),
+            ))
             .get();
     var sum = 0;
     for (final r in rows) {
@@ -214,13 +208,15 @@ class PexelsPhotosDataProvider implements IDataProvider {
   }
 
   Future<void> _recordFetch(AppDatabase db, int nowMs, String kind) async {
-    await db.into(db.pexelsFetchBatches).insert(
-      PexelsFetchBatchesCompanion.insert(
-        requestedAtMs: DateTime.fromMillisecondsSinceEpoch(nowMs),
-        kind: kind,
-        count: const Value(1),
-      ),
-    );
+    await db
+        .into(db.pexelsFetchBatches)
+        .insert(
+          PexelsFetchBatchesCompanion.insert(
+            requestedAtMs: DateTime.fromMillisecondsSinceEpoch(nowMs),
+            kind: kind,
+            count: const Value(1),
+          ),
+        );
   }
 
   Future<Map<String, dynamic>?> _getJson(
@@ -230,10 +226,7 @@ class PexelsPhotosDataProvider implements IDataProvider {
   }) async {
     try {
       diagnostics.provider('pexels: GET ${safeHttpUriForLog(uri)}');
-      final res = await _http.get(
-        uri,
-        headers: {'Authorization': token},
-      );
+      final res = await _http.get(uri, headers: {'Authorization': token});
       if (res.statusCode != 200) {
         diagnostics.provider(
           'pexels: JSON ${safeHttpUriForLog(uri)} status=${res.statusCode}',
@@ -323,11 +316,9 @@ class PexelsPhotosDataProvider implements IDataProvider {
       return false;
     }
 
-    final exists =
-        await (ctx.db.select(
-              ctx.db.photos,
-            )..where((t) => t.id.equals(id)))
-            .getSingleOrNull();
+    final exists = await (ctx.db.select(
+      ctx.db.photos,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (exists != null) {
       return false;
     }
@@ -352,18 +343,20 @@ class PexelsPhotosDataProvider implements IDataProvider {
     final pw = _positivePixelDimension(photo['width']);
     final ph = _positivePixelDimension(photo['height']);
 
-    await ctx.db.into(ctx.db.blobMetadata).insertOnConflictUpdate(
-      BlobMetadataCompanion.insert(
-        blobKey: logicalKey,
-        sha256: ref.storageKey.split('/').last,
-        relativePath: ref.storageKey,
-        bytes: bytes.length,
-        mimeType: Value(mime),
-        capturedAt: DateTime.fromMillisecondsSinceEpoch(nowMs),
-        pixelWidth: pw != null ? Value(pw) : const Value.absent(),
-        pixelHeight: ph != null ? Value(ph) : const Value.absent(),
-      ),
-    );
+    await ctx.db
+        .into(ctx.db.blobMetadata)
+        .insertOnConflictUpdate(
+          BlobMetadataCompanion.insert(
+            blobKey: logicalKey,
+            sha256: ref.storageKey.split('/').last,
+            relativePath: ref.storageKey,
+            bytes: bytes.length,
+            mimeType: Value(mime),
+            capturedAt: DateTime.fromMillisecondsSinceEpoch(nowMs),
+            pixelWidth: pw != null ? Value(pw) : const Value.absent(),
+            pixelHeight: ph != null ? Value(ph) : const Value.absent(),
+          ),
+        );
 
     final photographerName = '${photo['photographer'] ?? ''}';
     final photographerUrl = '${photo['photographer_url'] ?? ''}';
@@ -375,20 +368,22 @@ class PexelsPhotosDataProvider implements IDataProvider {
       urls: [photographerUrl, pageUrl],
     );
 
-    await ctx.db.into(ctx.db.photos).insert(
-      PhotosCompanion.insert(
-        id: id,
-        category: Value(category),
-        dataProvider: const Value(kMediaDataProviderPhotoPexels),
-        mediaBlobKey: logicalKey,
-        photographerName: photographerName,
-        photographerUrl: photographerUrl,
-        pageUrl: pageUrl,
-        altText: Value(altText),
-        fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(nowMs),
-        suppressed: Value(blocked),
-      ),
-    );
+    await ctx.db
+        .into(ctx.db.photos)
+        .insert(
+          PhotosCompanion.insert(
+            id: id,
+            category: Value(category),
+            dataProvider: const Value(kMediaDataProviderPhotoPexels),
+            mediaBlobKey: logicalKey,
+            photographerName: photographerName,
+            photographerUrl: photographerUrl,
+            pageUrl: pageUrl,
+            altText: Value(altText),
+            fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(nowMs),
+            suppressed: Value(blocked),
+          ),
+        );
     await replacePhotoCategoryAssignments(
       ctx.db,
       photoId: id,

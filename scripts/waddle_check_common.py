@@ -195,8 +195,42 @@ def resolve_argv(argv: list[str]) -> list[str]:
     return argv
 
 
+def clean_windows_flutter_native_assets(package_dir: Path) -> None:
+    """Drop stale sqlite3 native-asset outputs before flutter/dart test on Windows.
+
+    Flutter/Dart copy sqlite3.dll into build/native_assets and
+    .dart_tool/lib; an existing destination triggers PathExistsException
+    (errno 183) when hooks re-run (e.g. after pub get or a prior test).
+    """
+    if sys.platform != "win32":
+        return
+    native_assets = package_dir / "build" / "native_assets"
+    if native_assets.is_dir():
+        shutil.rmtree(native_assets, ignore_errors=True)
+    bundled_dll = package_dir / ".dart_tool" / "lib" / "sqlite3.dll"
+    if bundled_dll.is_file():
+        bundled_dll.unlink(missing_ok=True)
+
+
+def clean_windows_flutter_native_assets_for_workspace(root: Path) -> None:
+    """Clear sqlite3.dll bundle paths for all workspace Dart packages (Windows)."""
+    if sys.platform != "win32":
+        return
+    for prefix, _key in DART_PACKAGE_PREFIXES:
+        clean_windows_flutter_native_assets(root / prefix.rstrip("/"))
+
+
+def _is_flutter_test_argv(argv: list[str]) -> bool:
+    return len(argv) >= 2 and argv[0] == "flutter" and argv[1] == "test"
+
+
 def run_step(step: Step) -> tuple[int, str]:
     argv = resolve_argv(step.argv)
+    if sys.platform == "win32" and _is_flutter_test_argv(step.argv):
+        # pub get / build_runner may already have copied sqlite3.dll; flutter test
+        # copies again without overwriting on Windows (errno 183).
+        clean_windows_flutter_native_assets(step.cwd)
+        clean_windows_flutter_native_assets_for_workspace(repo_root())
     print(f"\n==> {step.label}", flush=True)
     print(f"    cwd: {step.cwd}", flush=True)
     print(f"    cmd: {' '.join(argv)}", flush=True)
@@ -223,6 +257,11 @@ def run_step(step: Step) -> tuple[int, str]:
     combined = f"{result.stdout or ''}{result.stderr or ''}"
     if result.returncode != 0:
         print(f"\nFAILED: {step.label} (exit {result.returncode})", file=sys.stderr)
+    elif sys.platform == "win32" and result.returncode == 0:
+        if step.label == "flutter pub get":
+            clean_windows_flutter_native_assets_for_workspace(step.cwd)
+        elif step.label.startswith("build_runner (waddle_shared)"):
+            clean_windows_flutter_native_assets(step.cwd)
     return result.returncode, combined
 
 
@@ -565,8 +604,13 @@ def flutter_test_argv(
     coverage: bool,
     concurrency: int,
     test_paths: list[str] | None = None,
+    skip_pub: bool = False,
 ) -> list[str]:
     argv = ["flutter", "test", "--timeout=60s", f"--concurrency={concurrency}"]
+    if skip_pub or sys.platform == "win32":
+        # Workspace pub get already ran; avoid a second hook pass that races on
+        # sqlite3.dll copies (PathExistsException errno 183 on Windows).
+        argv.append("--no-pub")
     if coverage:
         argv.append("--coverage")
     if test_paths:

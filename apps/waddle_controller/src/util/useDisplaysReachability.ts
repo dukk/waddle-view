@@ -61,5 +61,5 @@ export function useDisplaysReachability(displays: SavedDisplay[]): {
     return () => window.clearInterval(id);
   }, [refresh, displayIdsKey]);
 
-  return { reachability: map, refreshing };
+  return { reachability: map, refreshing, refreshReachability: refresh };
 }

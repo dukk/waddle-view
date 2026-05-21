@@ -21,7 +21,6 @@ import {
   TableCell,
   TableContainer,
   TableHead,
-  TablePagination,
   TableRow,
   TextField,
   Typography,
@@ -38,7 +37,10 @@ import {
 } from '@/api/integrations';
 import { fetchIntegrationAccounts } from '@/api/integrationAccounts';
 import { listOAuthProviders, type OAuthProviderStatus } from '@/api/oauthProviders';
-import { CatalogPageToolbar } from '@/components/CatalogPageToolbar';
+import { DataViewPagination } from '@/components/dataView/DataViewPagination';
+import { DataViewToolbar } from '@/components/dataView/DataViewToolbar';
+import { useServerDataView } from '@/hooks/useServerDataView';
+import type { IntegrationsSortField } from '@/api/integrations';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { catalogCardGridSx } from '@/constants/catalogLayout';
@@ -114,9 +116,13 @@ import {
   type ConfigSchemasBundle,
 } from '@/storage/configSchemaCache';
 
-const ROWS_PER_PAGE_OPTIONS = [15, 25, 50] as const;
 const DEFAULT_ROWS_PER_PAGE = 15;
-const INTEGRATIONS_PER_PAGE_LABEL = 'Integrations per page:';
+const INTEGRATION_SORT_OPTIONS = [
+  { id: 'id', label: 'ID' },
+  { id: 'integration_type', label: 'Type' },
+  { id: 'poll_seconds', label: 'Poll interval' },
+  { id: 'enabled', label: 'Enabled' },
+] as const;
 
 function integrationTitle(
   row: IntegrationRow,
@@ -134,10 +140,18 @@ function listParamsForSection(
   section: IntegrationListSection,
   offset: number,
   rowsPerPage: number,
+  listQuery: {
+    q: string | null;
+    sort: string;
+    order: 'asc' | 'desc';
+  },
 ): IntegrationsListParams {
   const base: IntegrationsListParams = {
     limit: rowsPerPage,
     offset,
+    q: listQuery.q,
+    order: listQuery.order,
+    sort: listQuery.sort ? (listQuery.sort as IntegrationsSortField) : undefined,
   };
   if (section === 'missing') {
     return { ...base, accounts_configured: false };
@@ -283,6 +297,11 @@ export function IntegrationsPage() {
   const { loading, wrapRefresh } = useDisplayRefresh();
   const { wrapRefresh: wrapAuxRefresh } = useDisplayRefresh();
   const { layout, setLayout } = useListLayoutPreference('integrations');
+  const listControls = useServerDataView({
+    defaultSort: 'id',
+    defaultOrder: 'asc',
+    initialPageSize: DEFAULT_ROWS_PER_PAGE,
+  });
   const [enabledRows, setEnabledRows] = useState<IntegrationRow[]>([]);
   const [availableRows, setAvailableRows] = useState<IntegrationRow[]>([]);
   const [enabledTotal, setEnabledTotal] = useState(0);
@@ -315,7 +334,7 @@ export function IntegrationsPage() {
 
   useEffect(() => {
     resetAllPages();
-  }, [rowsPerPage, resetAllPages]);
+  }, [rowsPerPage, listControls.search, listControls.sort, listControls.order, resetAllPages]);
 
   const enabledOffset = enabledPage * rowsPerPage;
   const availableOffset = availablePage * rowsPerPage;
@@ -329,7 +348,11 @@ export function IntegrationsPage() {
     const myGen = ++enabledLoadGenerationRef.current;
     await wrapRefresh(async () => {
       try {
-        const enabledParams = listParamsForSection('enabled', enabledOffset, rowsPerPage);
+        const enabledParams = listParamsForSection('enabled', enabledOffset, rowsPerPage, {
+          q: listControls.query.q,
+          sort: listControls.sort,
+          order: listControls.order,
+        });
         const enabledRes = await listIntegrations(active, enabledParams, {
           signal: controller.signal,
         });
@@ -344,7 +367,7 @@ export function IntegrationsPage() {
         setEnabledTotal(0);
       }
     });
-  }, [active, enabledOffset, rowsPerPage, wrapRefresh]);
+  }, [active, enabledOffset, rowsPerPage, listControls.query, listControls.sort, listControls.order, wrapRefresh]);
 
   const loadAvailable = useCallback(async () => {
     if (!active) return;
@@ -354,7 +377,11 @@ export function IntegrationsPage() {
     const myGen = ++availableLoadGenerationRef.current;
     await wrapRefresh(async () => {
       try {
-        const availableParams = listParamsForSection('available', availableOffset, rowsPerPage);
+        const availableParams = listParamsForSection('available', availableOffset, rowsPerPage, {
+          q: listControls.query.q,
+          sort: listControls.sort,
+          order: listControls.order,
+        });
         const availableRes = await listIntegrations(active, availableParams, {
           signal: controller.signal,
         });
@@ -369,7 +396,7 @@ export function IntegrationsPage() {
         setAvailableTotal(0);
       }
     });
-  }, [active, availableOffset, rowsPerPage, wrapRefresh]);
+  }, [active, availableOffset, rowsPerPage, listControls.query, listControls.sort, listControls.order, wrapRefresh]);
 
   const loadMissing = useCallback(async () => {
     if (!active) return;
@@ -379,7 +406,11 @@ export function IntegrationsPage() {
     const myGen = ++missingLoadGenerationRef.current;
     await wrapRefresh(async () => {
       try {
-        const missingParams = listParamsForSection('missing', missingOffset, rowsPerPage);
+        const missingParams = listParamsForSection('missing', missingOffset, rowsPerPage, {
+          q: listControls.query.q,
+          sort: listControls.sort,
+          order: listControls.order,
+        });
         const missingRes = await listIntegrations(active, missingParams, {
           signal: controller.signal,
         });
@@ -394,7 +425,7 @@ export function IntegrationsPage() {
         setMissingTotal(0);
       }
     });
-  }, [active, missingOffset, rowsPerPage, wrapRefresh]);
+  }, [active, missingOffset, rowsPerPage, listControls.query, listControls.sort, listControls.order, wrapRefresh]);
 
   const loadAux = useCallback(async () => {
     if (!active) return;
@@ -496,7 +527,21 @@ export function IntegrationsPage() {
 
       <AccountsSetupNotice />
 
-      <CatalogPageToolbar layout={layout} onLayoutChange={setLayout} />
+      <DataViewToolbar
+        layout={layout}
+        onLayoutChange={setLayout}
+        search={listControls.search}
+        onSearchChange={listControls.setSearch}
+        searchPlaceholder="Search integrations…"
+        sortOptions={INTEGRATION_SORT_OPTIONS}
+        sortId={listControls.sort}
+        onSortChange={listControls.setSort}
+        order={listControls.order}
+        onOrderChange={listControls.setOrder}
+        onReload={() => void reloadAll()}
+        reloadDisabled={loading}
+        reloadAriaLabel="Reload integrations"
+      />
 
       <Stack spacing={1.5}>
         <Typography variant="subtitle1" fontWeight={600}>
@@ -535,18 +580,16 @@ export function IntegrationsPage() {
             }}
           />
         )}
-        <TablePagination
-          component="div"
-          labelRowsPerPage={INTEGRATIONS_PER_PAGE_LABEL}
-          rowsPerPageOptions={[...ROWS_PER_PAGE_OPTIONS]}
-          rowsPerPage={rowsPerPage}
+        <DataViewPagination
           count={enabledTotal}
           page={enabledPage}
-          onPageChange={(_, p) => setEnabledPage(p)}
-          onRowsPerPageChange={(e) => {
-            setRowsPerPage(parseInt(e.target.value, 10));
+          pageSize={rowsPerPage}
+          onPageChange={setEnabledPage}
+          onPageSizeChange={(size) => {
+            setRowsPerPage(size);
             resetAllPages();
           }}
+          rowsPerPageOptions={[15, 25, 50]}
         />
       </Stack>
 
@@ -585,18 +628,16 @@ export function IntegrationsPage() {
             }}
           />
         )}
-        <TablePagination
-          component="div"
-          labelRowsPerPage={INTEGRATIONS_PER_PAGE_LABEL}
-          rowsPerPageOptions={[...ROWS_PER_PAGE_OPTIONS]}
-          rowsPerPage={rowsPerPage}
+        <DataViewPagination
           count={availableTotal}
           page={availablePage}
-          onPageChange={(_, p) => setAvailablePage(p)}
-          onRowsPerPageChange={(e) => {
-            setRowsPerPage(parseInt(e.target.value, 10));
+          pageSize={rowsPerPage}
+          onPageChange={setAvailablePage}
+          onPageSizeChange={(size) => {
+            setRowsPerPage(size);
             resetAllPages();
           }}
+          rowsPerPageOptions={[15, 25, 50]}
         />
       </Stack>
 
@@ -648,18 +689,16 @@ export function IntegrationsPage() {
             }}
           />
         )}
-        <TablePagination
-          component="div"
-          labelRowsPerPage={INTEGRATIONS_PER_PAGE_LABEL}
-          rowsPerPageOptions={[...ROWS_PER_PAGE_OPTIONS]}
-          rowsPerPage={rowsPerPage}
+        <DataViewPagination
           count={missingTotal}
           page={missingPage}
-          onPageChange={(_, p) => setMissingPage(p)}
-          onRowsPerPageChange={(e) => {
-            setRowsPerPage(parseInt(e.target.value, 10));
+          pageSize={rowsPerPage}
+          onPageChange={setMissingPage}
+          onPageSizeChange={(size) => {
+            setRowsPerPage(size);
             resetAllPages();
           }}
+          rowsPerPageOptions={[15, 25, 50]}
         />
       </Stack>
 

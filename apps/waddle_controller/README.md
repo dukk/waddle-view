@@ -107,6 +107,12 @@ Cross-origin calls require the controller origin to pass the display’s **adopt
 
 ## UI conventions
 
+### List and catalog pages
+
+Operator list pages (Screens, Integrations, Data, Activity, Users, etc.) share **`DataViewToolbar`** (`src/components/dataView/DataViewToolbar.tsx`): **search**, **sort**, **reload**, **card/table** toggle (persisted per page in `localStorage`), optional extra filters in `filterSlot`, and **`DataViewPagination`** below the list. Client-side lists use **`useClientDataView`**; server-paged lists (Integrations, Data tabs) use **`useServerDataView`** or existing offset/limit query params. See [`.cursor/skills/controller-data-view/SKILL.md`](../../.cursor/skills/controller-data-view/SKILL.md).
+
+### Dialog submit
+
 Dialogs that **Save**, **Create**, or **Add** via an API call must show in-flight feedback: disable the primary button, change its label (`Saving…`, `Creating…`, etc.), keep the dialog open on error, and close on success (typically via `completeDialogSave` in `src/util/dialogSave.ts`). Use a separate flag for initial fetch vs submit. See [`.cursor/skills/controller-dialog-submit/SKILL.md`](../../.cursor/skills/controller-dialog-submit/SKILL.md).
 
 ## Tests
