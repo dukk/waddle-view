@@ -8,7 +8,7 @@ void main() {
     final executor = NativeDatabase.memory(setup: (raw) {
       raw.execute('PRAGMA user_version = 37');
       raw.execute('''
-CREATE TABLE content_categories (
+CREATE TABLE curator_categories (
   id TEXT NOT NULL PRIMARY KEY,
   label TEXT NOT NULL,
   material_icon_name TEXT,
@@ -45,7 +45,7 @@ CREATE TABLE videos (
 )
 ''');
       raw.execute(
-        "INSERT INTO content_categories (id, label) VALUES ('fam', 'Family')",
+        "INSERT INTO curator_categories (id, label) VALUES ('fam', 'Family')",
       );
       raw.execute(
         "INSERT INTO photos (id, category, data_provider, media_blob_key, "

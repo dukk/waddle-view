@@ -49,11 +49,7 @@ void main() {
       '/v1/mealviewer/schools/ElmwoodElementary/probe',
       WaddlePermission.metaRead,
     ),
-    (
-      'POST',
-      '/v1/integrations/p1/bucket/photos',
-      WaddlePermission.curatorWrite,
-    ),
+    ('POST', '/v1/curator/manual/photos', WaddlePermission.curatorWrite),
     ('GET', '/v1/alerts', WaddlePermission.alertsRead),
     ('POST', '/v1/alerts', WaddlePermission.alertsWrite),
     ('DELETE', '/v1/alerts/1', WaddlePermission.alertsWrite),

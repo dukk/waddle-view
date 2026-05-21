@@ -423,6 +423,8 @@ ORDER BY priority DESC, created_at DESC;
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
+      await _ensureCuratorCategoriesTable(this);
+      await _ensureCuratorRejectedTermsTable(this);
       await _ensureCuratorConfigurationsTickerEnabled(this);
       await _ensureCuratorConfigurationsTickerProgramDuration(this);
       await _ensureCuratorConfigurationsTickerPixelsPerSecond(this);
@@ -844,6 +846,45 @@ Future<bool> _sqliteColumnExists(
 ) async {
   final rows = await db.customSelect('PRAGMA table_info($tableName)').get();
   return rows.any((r) => r.read<String>('name') == columnName);
+}
+
+/// Ensures [ContentCategories] is stored as `curator_categories` (renamed from
+/// legacy `content_categories` on upgraded databases).
+Future<void> _ensureCuratorCategoriesTable(
+  AppDatabase db, {
+  Migrator? migrator,
+}) async {
+  if (await _sqliteTableExists(db, 'curator_categories')) {
+    return;
+  }
+  if (await _sqliteTableExists(db, 'content_categories')) {
+    await db.customStatement(
+      'ALTER TABLE content_categories RENAME TO curator_categories',
+    );
+    return;
+  }
+  if (migrator != null) {
+    await migrator.createTable(db.contentCategories);
+  }
+}
+
+/// Ensures [RejectTerms] is stored as `curator_rejected_terms`.
+Future<void> _ensureCuratorRejectedTermsTable(
+  AppDatabase db, {
+  Migrator? migrator,
+}) async {
+  if (await _sqliteTableExists(db, 'curator_rejected_terms')) {
+    return;
+  }
+  if (await _sqliteTableExists(db, 'reject_terms')) {
+    await db.customStatement(
+      'ALTER TABLE reject_terms RENAME TO curator_rejected_terms',
+    );
+    return;
+  }
+  if (migrator != null) {
+    await migrator.createTable(db.rejectTerms);
+  }
 }
 
 /// Renames legacy interest catalog tables to `interests_*` (schema 1 → 2).
@@ -2127,6 +2168,11 @@ Future<void> _migrateV30ToV31StaticImageOverlayFromKv(AppDatabase db) async {
   }
 
   if (await _sqliteTableExists(db, 'overlays')) {
+    if (!await _sqliteColumnExists(db, 'overlays', 'description')) {
+      await db.customStatement(
+        "ALTER TABLE overlays ADD COLUMN description TEXT NOT NULL DEFAULT ''",
+      );
+    }
     final existing = await db.customSelect(
       'SELECT id FROM overlays WHERE id = ?',
       variables: [Variable<String>(kMigratedDisplayImageOverlayId)],
@@ -2296,6 +2342,9 @@ Future<void> _migrateV41ToV42NullableCuratorTickerOverrides(
   )) {
     return;
   }
+  await db.customStatement(
+    'DROP VIEW IF EXISTS v_integration_accounts_configured',
+  );
   await db.customStatement('''
 CREATE TABLE curator_configurations_new (
   id TEXT NOT NULL PRIMARY KEY,
@@ -2343,7 +2392,7 @@ SELECT
   program_duration_seconds,
   history_depth,
   require_news_photo_for_screens,
-  ticker_enabled,
+  COALESCE(ticker_enabled, 1),
   CASE
     WHEN ticker_program_duration_seconds = 300 THEN NULL
     ELSE ticker_program_duration_seconds
@@ -2364,6 +2413,7 @@ FROM curator_configurations;
   await db.customStatement(
     'ALTER TABLE curator_configurations_new RENAME TO curator_configurations',
   );
+  await _ensureIntegrationAccountsConfiguredView(db);
   if (await _sqliteTableExists(db, 'config_key_values')) {
     await db.customStatement(
       "INSERT OR IGNORE INTO config_key_values (key, value) VALUES "
@@ -2388,6 +2438,9 @@ Future<void> _migrateV42ToV43DefaultBaseCurator(AppDatabase db) async {
   if (!await _sqliteTableExists(db, 'curator_configurations')) {
     return;
   }
+  await _ensureCuratorConfigurationsTickerEnabled(db);
+  await _ensureCuratorConfigurationsTickerProgramDuration(db);
+  await _ensureCuratorConfigurationsTickerPixelsPerSecond(db);
   if (!await _sqliteColumnExists(
     db,
     'curator_configurations',
@@ -2532,29 +2585,34 @@ Future<void> _migrateV44ToV45ManualEntrySource(AppDatabase db) async {
     }
   }
 
-  if (await _sqliteTableExists(db, 'integration_type_required_accounts')) {
-    for (final type in bucketTypes) {
-      await db.customStatement(
-        'DELETE FROM integration_type_required_accounts WHERE integration_type = ?',
-        <Object?>[type],
-      );
+  await db.customStatement('PRAGMA foreign_keys = OFF');
+  try {
+    if (await _sqliteTableExists(db, 'integration_type_required_accounts')) {
+      for (final type in bucketTypes) {
+        await db.customStatement(
+          'DELETE FROM integration_type_required_accounts WHERE integration_type = ?',
+          <Object?>[type],
+        );
+      }
     }
-  }
-  if (await _sqliteTableExists(db, 'integrations')) {
-    for (final type in bucketTypes) {
-      await db.customStatement(
-        'DELETE FROM integrations WHERE integration_type = ?',
-        <Object?>[type],
-      );
+    if (await _sqliteTableExists(db, 'integrations')) {
+      for (final type in bucketTypes) {
+        await db.customStatement(
+          'DELETE FROM integrations WHERE integration_type = ?',
+          <Object?>[type],
+        );
+      }
     }
-  }
-  if (await _sqliteTableExists(db, 'integration_types')) {
-    for (final type in bucketTypes) {
-      await db.customStatement(
-        'DELETE FROM integration_types WHERE integration_type = ?',
-        <Object?>[type],
-      );
+    if (await _sqliteTableExists(db, 'integration_types')) {
+      for (final type in bucketTypes) {
+        await db.customStatement(
+          'DELETE FROM integration_types WHERE integration_type = ?',
+          <Object?>[type],
+        );
+      }
     }
+  } finally {
+    await db.customStatement('PRAGMA foreign_keys = ON');
   }
 }
 
@@ -2615,13 +2673,21 @@ Future<void> _migrateV37ToV38PhotoVideoCategories(
   AppDatabase db,
   Migrator m,
 ) async {
+  await _ensureCuratorCategoriesTable(db, migrator: m);
   await m.createTable(db.photoCategories);
   await m.createTable(db.videoCategories);
+  if (!await _sqliteTableExists(db, 'curator_categories')) {
+    return;
+  }
   if (await _sqliteTableExists(db, 'photos')) {
     await db.customStatement(
       '''
 INSERT OR IGNORE INTO photo_categories (photo_id, category_id)
-SELECT id, category FROM photos WHERE category IS NOT NULL AND category != ''
+SELECT p.id, p.category FROM photos p
+WHERE p.category IS NOT NULL AND p.category != ''
+  AND EXISTS (
+    SELECT 1 FROM curator_categories c WHERE c.id = p.category
+  )
 ''',
     );
   }
@@ -2629,7 +2695,11 @@ SELECT id, category FROM photos WHERE category IS NOT NULL AND category != ''
     await db.customStatement(
       '''
 INSERT OR IGNORE INTO video_categories (video_id, category_id)
-SELECT id, category FROM videos WHERE category IS NOT NULL AND category != ''
+SELECT v.id, v.category FROM videos v
+WHERE v.category IS NOT NULL AND v.category != ''
+  AND EXISTS (
+    SELECT 1 FROM curator_categories c WHERE c.id = v.category
+  )
 ''',
     );
   }

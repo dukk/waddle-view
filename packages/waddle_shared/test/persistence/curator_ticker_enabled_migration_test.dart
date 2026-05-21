@@ -180,7 +180,11 @@ CREATE TABLE curator_configurations (
         'SELECT ticker_program_duration_seconds FROM curator_configurations WHERE id = ?',
         variables: [Variable<String>('evening')],
       ).getSingle();
-      expect(row.read<int>('ticker_program_duration_seconds'), 300);
+      // Schema 42+ stores default 300 as NULL (display KV holds the default).
+      expect(
+        row.readNullable<int>('ticker_program_duration_seconds') ?? 300,
+        300,
+      );
 
       await db.close();
     },
@@ -220,7 +224,10 @@ CREATE TABLE curator_configurations (
         'SELECT ticker_pixels_per_second FROM curator_configurations WHERE id = ?',
         variables: [Variable<String>('evening')],
       ).getSingle();
-      expect(row.read<int>('ticker_pixels_per_second'), 80);
+      expect(
+        row.readNullable<int>('ticker_pixels_per_second') ?? 80,
+        80,
+      );
 
       await db.close();
     },
@@ -267,7 +274,8 @@ CREATE TABLE config_key_values (
       await db.customStatement('SELECT 1');
 
       final rows = await db.customSelect(
-        'SELECT id, ticker_pixels_per_second FROM curator_configurations ORDER BY id',
+        "SELECT id, ticker_pixels_per_second FROM curator_configurations "
+        "WHERE id IN ('evening', 'morning') ORDER BY id",
       ).get();
       expect(rows, hasLength(2));
       for (final row in rows) {

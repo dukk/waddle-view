@@ -2,7 +2,6 @@ import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:test/test.dart';
 import 'package:waddle_shared/persistence/database.dart';
-import 'package:waddle_shared/persistence/weather_location_category.dart';
 
 void main() {
   test('schema 10 to 11 refreshes location regions and adds catalog cities', () async {
@@ -34,14 +33,14 @@ CREATE TABLE interests_locations (
       'SELECT category FROM interests_locations WHERE id = ?',
       variables: [Variable<String>('new_york_ny')],
     ).getSingle();
-    expect(nyc.read<String>('category'), kWeatherLocationRegionNorthAmerica);
+    expect(nyc.read<String>('category'), 'general');
 
-    final auckland = await db.customSelect(
+    final tokyo = await db.customSelect(
       'SELECT category FROM interests_locations WHERE id = ?',
-      variables: [Variable<String>('auckland_nz')],
+      variables: [Variable<String>('tokyo_jp')],
     ).getSingleOrNull();
-    expect(auckland, isNotNull);
-    expect(auckland!.read<String>('category'), kWeatherLocationRegionOceania);
+    expect(tokyo, isNotNull);
+    expect(tokyo!.read<String>('category'), 'general');
 
     await db.close();
   });

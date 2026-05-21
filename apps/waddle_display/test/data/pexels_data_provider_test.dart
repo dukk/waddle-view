@@ -467,6 +467,7 @@ void main() {
         ']}';
     await _ensurePexelsProvider(db, extra: extra);
     await _ensureVideoPexelsProvider(db, extra: extra);
+    await seedContentCategoriesForTest(db, ['cat1', 'cat2']);
 
     final secrets = InMemorySecretStore();
     final ctx = await _ctx(db, secrets);
