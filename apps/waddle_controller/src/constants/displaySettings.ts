@@ -19,6 +19,10 @@ export type DisplaySettings = {
   display_viewport_reserve_right_pct: number;
   display_viewport_reserve_bottom_pct: number;
   display_viewport_reserve_left_pct: number;
+  /** RSS scroll budget for ticker curation (seconds). */
+  display_ticker_program_duration_seconds: number;
+  /** Bottom marquee scroll speed (pixels per second). */
+  display_ticker_pixels_per_second: number;
   controller_time_format: ControllerTimeFormat;
   controller_date_order: ControllerDateOrder;
   /** Roles that may start adoption challenges. */

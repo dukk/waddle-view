@@ -404,7 +404,7 @@ function CuratorConfigurationsSection({
                   </Stack>
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                     Program {row.program_duration_seconds}s / ticker{' '}
-                    {row.ticker_program_duration_seconds}s
+                    {formatTickerProgramDurationSummary(row.ticker_program_duration_seconds)}
                   </Typography>
                 </CardContent>
                 <CardActions sx={{ justifyContent: 'flex-end' }}>
@@ -447,7 +447,8 @@ function CuratorConfigurationsSection({
                     </TableCell>
                     <TableCell>{row.sort_order}</TableCell>
                     <TableCell>
-                      {row.program_duration_seconds}s / {row.ticker_program_duration_seconds}s
+                      {row.program_duration_seconds}s /{' '}
+                      {formatTickerProgramDurationSummary(row.ticker_program_duration_seconds)}
                     </TableCell>
                     <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
                       <Button size="small" onClick={() => setEditId(row.id)}>
@@ -508,10 +509,25 @@ type ConfigDialogTabId = 'general' | 'screens' | 'ticker' | 'schedule' | 'overla
 
 const DISPLAY_DEFAULT_THEME_VALUE = '';
 
-/** Operator-facing label for catalog members (name only; id fallback when unnamed). */
-function catalogMemberDisplayLabel(name: string | undefined | null, id: string): string {
+/** Operator-facing label for catalog members (name/label only; optional id-free fallback). */
+function catalogMemberDisplayLabel(
+  name: string | undefined | null,
+  id: string,
+  options?: { unnamedLabel?: string },
+): string {
   const trimmed = name?.trim();
-  return trimmed ? trimmed : id;
+  if (trimmed) {
+    return trimmed;
+  }
+  return options?.unnamedLabel ?? id;
+}
+
+function tickerTapeDisplayLabel(label: string | undefined | null): string {
+  return catalogMemberDisplayLabel(label, '', { unnamedLabel: 'Unnamed tape' });
+}
+
+function formatTickerProgramDurationSummary(seconds: number | null): string {
+  return seconds == null ? 'display default' : `${seconds}s`;
 }
 
 function CuratorConfigurationDialog({
@@ -547,6 +563,7 @@ function CuratorConfigurationDialog({
   );
   const [themeIdOverride, setThemeIdOverride] = useState<string | null>(null);
   const [useDisplayViewportReserveDefaults, setUseDisplayViewportReserveDefaults] = useState(true);
+  const [useDisplayTickerDefaults, setUseDisplayTickerDefaults] = useState(true);
   const [viewportReserveTopOverride, setViewportReserveTopOverride] = useState<number>(
     VIEWPORT_RESERVE_PCT.default,
   );
@@ -580,7 +597,7 @@ function CuratorConfigurationDialog({
         const [preds, screens, tickers, overlays] = await Promise.all([
           fetchCuratorStatePredicates(display),
           apiJson<{ items: { id: string; name: string }[] }>(display, '/v1/screens'),
-          apiJson<{ items: { id: string; name: string }[] }>(display, '/v1/ticker/tapes'),
+          apiJson<{ items: { id: string; label?: string | null }[] }>(display, '/v1/ticker/tapes'),
           apiJson<{ items: { id: string; name: string }[] }>(display, '/v1/display/overlays'),
         ]);
         if (cancelled) return;
@@ -594,7 +611,7 @@ function CuratorConfigurationDialog({
         setTickerOptions(
           (tickers.items ?? []).map((t) => ({
             id: t.id,
-            label: catalogMemberDisplayLabel(t.name, t.id),
+            label: tickerTapeDisplayLabel(t.label),
           })),
         );
         setOverlayOptions(
@@ -613,8 +630,16 @@ function CuratorConfigurationDialog({
           setLayer(detail.layer);
           setSortOrder(detail.sort_order);
           setProgramDuration(detail.program_duration_seconds);
-          setTickerProgramDuration(detail.ticker_program_duration_seconds);
-          setTickerPixelsPerSecond(detail.ticker_pixels_per_second);
+          const useTickerDefaults =
+            detail.ticker_program_duration_seconds == null &&
+            detail.ticker_pixels_per_second == null;
+          setUseDisplayTickerDefaults(useTickerDefaults);
+          setTickerProgramDuration(
+            detail.ticker_program_duration_seconds ?? CURATOR_TICKER_PROGRAM_DURATION.default,
+          );
+          setTickerPixelsPerSecond(
+            detail.ticker_pixels_per_second ?? CURATOR_TICKER_PIXELS_PER_SECOND.default,
+          );
           setThemeIdOverride(detail.theme_id_override);
           const useViewportDefaults =
             detail.viewport_reserve_top_pct_override == null &&
@@ -675,13 +700,25 @@ function CuratorConfigurationDialog({
   const showProgramFields = layer === 'base' || layer === 'exclusive';
   const isEnhancementLayer = layer === 'enhancement';
 
+  const mergedTickerOptions = useMemo(() => {
+    const byId = new Map(tickerOptions.map((o) => [o.id, o]));
+    for (const id of tickerIds) {
+      if (!byId.has(id)) {
+        byId.set(id, { id, label: 'Removed tape' });
+      }
+    }
+    return [...byId.values()].sort((a, b) => a.label.localeCompare(b.label));
+  }, [tickerOptions, tickerIds]);
+
   const buildBody = (configId: string): CuratorConfigurationWriteBody => ({
     name: name.trim(),
     layer,
     sort_order: sortOrder,
     program_duration_seconds: programDuration,
-    ticker_program_duration_seconds: tickerProgramDuration,
-    ticker_pixels_per_second: tickerPixelsPerSecond,
+    ticker_program_duration_seconds:
+      isEnhancementLayer || useDisplayTickerDefaults ? null : tickerProgramDuration,
+    ticker_pixels_per_second:
+      isEnhancementLayer || useDisplayTickerDefaults ? null : tickerPixelsPerSecond,
     theme_id_override: isEnhancementLayer ? null : themeIdOverride,
     viewport_reserve_top_pct_override:
       isEnhancementLayer || useDisplayViewportReserveDefaults ? null : viewportReserveTopOverride,
@@ -989,7 +1026,7 @@ function CuratorConfigurationDialog({
                       </Typography>
                       <MemberAutocomplete
                         label="Ticker tapes"
-                        options={tickerOptions}
+                        options={mergedTickerOptions}
                         value={tickerIds}
                         onChange={setTickerIds}
                         disabled={formDisabled}
@@ -1007,24 +1044,42 @@ function CuratorConfigurationDialog({
                         }
                         label="Show ticker marquee (screens use full height when off)"
                       />
-                      <CuratorSliderField
-                        label="Ticker program duration"
-                        value={tickerProgramDuration}
-                        onChange={setTickerProgramDuration}
-                        min={CURATOR_TICKER_PROGRAM_DURATION.min}
-                        max={CURATOR_TICKER_PROGRAM_DURATION.max}
-                        step={CURATOR_TICKER_PROGRAM_DURATION.step}
-                        disabled={formDisabled || !tickerEnabled}
-                        formatValue={formatProgramDurationWithSeconds}
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={useDisplayTickerDefaults}
+                            onChange={(e) => setUseDisplayTickerDefaults(e.target.checked)}
+                            disabled={formDisabled || !tickerEnabled}
+                          />
+                        }
+                        label="Use display ticker defaults (duration and speed)"
                       />
-                      <TickerPixelsPerSecondField
-                        value={tickerPixelsPerSecond}
-                        onChange={setTickerPixelsPerSecond}
-                        disabled={formDisabled || !tickerEnabled}
-                      />
+                      {!useDisplayTickerDefaults && (
+                        <>
+                          <CuratorSliderField
+                            label="Ticker program duration override"
+                            value={tickerProgramDuration}
+                            onChange={setTickerProgramDuration}
+                            min={CURATOR_TICKER_PROGRAM_DURATION.min}
+                            max={CURATOR_TICKER_PROGRAM_DURATION.max}
+                            step={CURATOR_TICKER_PROGRAM_DURATION.step}
+                            disabled={formDisabled || !tickerEnabled}
+                            formatValue={formatProgramDurationWithSeconds}
+                          />
+                          <TickerPixelsPerSecondField
+                            value={tickerPixelsPerSecond}
+                            onChange={setTickerPixelsPerSecond}
+                            disabled={formDisabled || !tickerEnabled}
+                          />
+                        </>
+                      )}
+                      <Typography variant="caption" color="text.secondary">
+                        Base values live in Display settings. Overrides apply when this
+                        configuration is the active primary curator (base or exclusive).
+                      </Typography>
                       <MemberAutocomplete
                         label="Ticker tapes"
-                        options={tickerOptions}
+                        options={mergedTickerOptions}
                         value={tickerIds}
                         onChange={setTickerIds}
                         disabled={formDisabled || !tickerEnabled}

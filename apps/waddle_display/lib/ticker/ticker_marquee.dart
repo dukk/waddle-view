@@ -56,6 +56,7 @@ class _TickerMarqueeState extends State<TickerMarquee>
   StreamSubscription<List<TickerItem>>? _subscription;
   List<TickerItem> _items = const [];
   double _segmentWidth = 0;
+  double _viewportWidth = 0;
   bool _wrapWasHigh = false;
   bool _wrapListenerAttached = false;
   final List<List<TickerItem>> _history = <List<TickerItem>>[];
@@ -170,6 +171,7 @@ class _TickerMarqueeState extends State<TickerMarquee>
     if ((_segmentWidth - w).abs() < 0.5 && _controller.isAnimating) {
       return;
     }
+    final scrollDistance = w + _viewportWidth;
     setState(() {
       _segmentWidth = w;
     });
@@ -177,7 +179,7 @@ class _TickerMarqueeState extends State<TickerMarquee>
       ..stop()
       ..reset()
       ..duration = marqueeScrollDuration(
-        contentWidthPx: w,
+        scrollDistancePx: scrollDistance,
         pixelsPerSecond: widget.pixelsPerSecond,
       );
     if (_items.isNotEmpty && w > 0) {
@@ -336,6 +338,18 @@ class _TickerMarqueeState extends State<TickerMarquee>
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
           color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
+      ),
+    );
+  }
+
+  Widget _programSeparator(BuildContext context) {
+    final s = DashboardViewportScope.scaleOf(context);
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 14 * s),
+      child: Icon(
+        Icons.diamond_outlined,
+        size: 22 * s,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
       ),
     );
   }
@@ -499,16 +513,62 @@ class _TickerMarqueeState extends State<TickerMarquee>
     return Icons.wb_sunny;
   }
 
+  /// Non-empty programs for auto-scroll (newest first), up to history cap.
+  List<List<TickerItem>> get _autoScrollPrograms {
+    if (_history.isNotEmpty) {
+      return [
+        for (final program in _history)
+          if (program.isNotEmpty) program,
+      ];
+    }
+    if (_items.isEmpty) {
+      return const [];
+    }
+    return [_items];
+  }
+
   List<Widget> _segmentChildren(BuildContext context) {
-    final sep = widget.separator ?? _defaultSeparator(context);
+    final itemSep = widget.separator ?? _defaultSeparator(context);
+    final programs = _autoScrollPrograms;
     final out = <Widget>[];
-    for (var i = 0; i < _items.length; i++) {
-      if (i > 0) {
-        out.add(sep);
+    for (var p = 0; p < programs.length; p++) {
+      if (p > 0) {
+        out.add(_programSeparator(context));
       }
-      out.add(_tickerItemLine(context, _items[i]));
+      final items = programs[p];
+      for (var i = 0; i < items.length; i++) {
+        if (i > 0) {
+          out.add(itemSep);
+        }
+        out.add(_tickerItemLine(context, items[i]));
+      }
     }
     return out;
+  }
+
+  void _scheduleViewportWidthSync(double next) {
+    if (next <= 0 || (next - _viewportWidth).abs() < 0.5) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || (next - _viewportWidth).abs() < 0.5) {
+        return;
+      }
+      setState(() {
+        _viewportWidth = next;
+      });
+      if (_segmentWidth > 0 && _items.isNotEmpty) {
+        _measureAndStart();
+      }
+    });
+  }
+
+  double _marqueeTranslateX(double value) {
+    if (_segmentWidth <= 0) {
+      return 0;
+    }
+    final distance = _segmentWidth + _viewportWidth;
+    return _viewportWidth - (value * distance);
   }
 
   @override
@@ -527,6 +587,10 @@ class _TickerMarqueeState extends State<TickerMarquee>
         final h = constraints.maxHeight.isFinite && constraints.maxHeight > 0
             ? constraints.maxHeight
             : widget.height;
+        final viewportW = constraints.maxWidth;
+        if (viewportW.isFinite && viewportW > 0) {
+          _scheduleViewportWidthSync(viewportW);
+        }
 
         if (_items.isEmpty) {
           return SizedBox(
@@ -601,7 +665,7 @@ class _TickerMarqueeState extends State<TickerMarquee>
                     if (_segmentWidth <= 0) {
                       return child!;
                     }
-                    final dx = -(_controller.value * _segmentWidth);
+                    final dx = _marqueeTranslateX(_controller.value);
                     return Transform.translate(
                       offset: Offset(dx, 0),
                       filterQuality: FilterQuality.low,

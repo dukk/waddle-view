@@ -86,7 +86,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 41;
+  int get schemaVersion => 42;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -387,6 +387,13 @@ ORDER BY priority DESC, created_at DESC;
           return;
         }
         from = 41;
+      }
+      if (from == 41 && to >= 42) {
+        await _migrateV41ToV42NullableCuratorTickerOverrides(this);
+        if (to == 42) {
+          return;
+        }
+        from = 42;
       }
       throw UnsupportedError(
         'Unsupported database upgrade from version $from to $to. '
@@ -1106,7 +1113,7 @@ Future<void> _ensureCuratorConfigurationsTickerProgramDuration(
   )) {
     await db.customStatement(
       'ALTER TABLE curator_configurations ADD COLUMN '
-      'ticker_program_duration_seconds INTEGER NOT NULL DEFAULT 300',
+      'ticker_program_duration_seconds INTEGER',
     );
   }
 }
@@ -1139,7 +1146,7 @@ Future<void> _ensureCuratorConfigurationsTickerPixelsPerSecond(
   )) {
     await db.customStatement(
       'ALTER TABLE curator_configurations ADD COLUMN '
-      'ticker_pixels_per_second INTEGER NOT NULL DEFAULT $_kCuratorTickerPixelsPerSecondDefault',
+      'ticker_pixels_per_second INTEGER',
     );
   }
 }
@@ -2260,6 +2267,100 @@ Future<void> _migrateV39ToV40QrCodeOverlayType(AppDatabase db) async {
 }
 
 /// Schema 41: backfill cloud drift overlay type in [OverlayTypes].
+/// Schema 42: nullable curator ticker overrides; display KV holds defaults.
+Future<void> _migrateV41ToV42NullableCuratorTickerOverrides(
+  AppDatabase db,
+) async {
+  if (!await _sqliteTableExists(db, 'curator_configurations')) {
+    return;
+  }
+  if (!await _sqliteColumnExists(
+    db,
+    'curator_configurations',
+    'ticker_program_duration_seconds',
+  )) {
+    return;
+  }
+  await db.customStatement('''
+CREATE TABLE curator_configurations_new (
+  id TEXT NOT NULL PRIMARY KEY,
+  name TEXT NOT NULL,
+  layer TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  program_duration_seconds INTEGER NOT NULL DEFAULT 180,
+  history_depth INTEGER NOT NULL DEFAULT 5,
+  require_news_photo_for_screens INTEGER NOT NULL DEFAULT 1,
+  ticker_enabled INTEGER NOT NULL DEFAULT 1,
+  ticker_program_duration_seconds INTEGER,
+  ticker_pixels_per_second INTEGER,
+  theme_id_override TEXT,
+  viewport_reserve_top_pct_override INTEGER,
+  viewport_reserve_right_pct_override INTEGER,
+  viewport_reserve_bottom_pct_override INTEGER,
+  viewport_reserve_left_pct_override INTEGER,
+  default_config INTEGER NOT NULL DEFAULT 0
+);
+''');
+  await db.customStatement('''
+INSERT INTO curator_configurations_new (
+  id,
+  name,
+  layer,
+  sort_order,
+  program_duration_seconds,
+  history_depth,
+  require_news_photo_for_screens,
+  ticker_enabled,
+  ticker_program_duration_seconds,
+  ticker_pixels_per_second,
+  theme_id_override,
+  viewport_reserve_top_pct_override,
+  viewport_reserve_right_pct_override,
+  viewport_reserve_bottom_pct_override,
+  viewport_reserve_left_pct_override,
+  default_config
+)
+SELECT
+  id,
+  name,
+  layer,
+  sort_order,
+  program_duration_seconds,
+  history_depth,
+  require_news_photo_for_screens,
+  ticker_enabled,
+  CASE
+    WHEN ticker_program_duration_seconds = 300 THEN NULL
+    ELSE ticker_program_duration_seconds
+  END,
+  CASE
+    WHEN ticker_pixels_per_second = 80 THEN NULL
+    ELSE ticker_pixels_per_second
+  END,
+  theme_id_override,
+  viewport_reserve_top_pct_override,
+  viewport_reserve_right_pct_override,
+  viewport_reserve_bottom_pct_override,
+  viewport_reserve_left_pct_override,
+  default_config
+FROM curator_configurations;
+''');
+  await db.customStatement('DROP TABLE curator_configurations');
+  await db.customStatement(
+    'ALTER TABLE curator_configurations_new RENAME TO curator_configurations',
+  );
+  if (await _sqliteTableExists(db, 'config_key_values')) {
+    await db.customStatement(
+      "INSERT OR IGNORE INTO config_key_values (key, value) VALUES "
+      "('display.ticker.program_duration_seconds', '300')",
+    );
+    await db.customStatement(
+      "INSERT OR IGNORE INTO config_key_values (key, value) VALUES "
+      "('display.ticker.pixels_per_second', '80')",
+    );
+  }
+}
+
 Future<void> _migrateV40ToV41CloudDriftOverlayType(AppDatabase db) async {
   if (!await _sqliteTableExists(db, 'overlay_types')) {
     return;

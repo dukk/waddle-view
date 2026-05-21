@@ -167,6 +167,48 @@ function DisplayCard({
   );
 }
 
+function DisplaysPageToolbar({
+  layout,
+  onLayoutChange,
+  search,
+  onSearchChange,
+  sortId,
+  onSortChange,
+  onReload,
+  reloadDisabled,
+  onAdoptClick,
+}: {
+  layout: ReturnType<typeof useListLayoutPreference>['layout'];
+  onLayoutChange: ReturnType<typeof useListLayoutPreference>['setLayout'];
+  search: string;
+  onSearchChange: (value: string) => void;
+  sortId: string;
+  onSortChange: (id: string) => void;
+  onReload: () => void;
+  reloadDisabled: boolean;
+  onAdoptClick: () => void;
+}) {
+  return (
+    <DataViewToolbar
+      layout={layout}
+      onLayoutChange={onLayoutChange}
+      search={search}
+      onSearchChange={onSearchChange}
+      searchPlaceholder="Search displays…"
+      sortOptions={DISPLAY_SORT_OPTIONS}
+      sortId={sortId}
+      onSortChange={onSortChange}
+      onReload={onReload}
+      reloadDisabled={reloadDisabled}
+      reloadAriaLabel="Reload displays"
+    >
+      <Button variant="contained" onClick={onAdoptClick}>
+        Adopt display
+      </Button>
+    </DataViewToolbar>
+  );
+}
+
 export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
   const { layout, setLayout } = useListLayoutPreference('displays');
   const { displays, active, refresh, removeDisplay, updateDisplay } = useDisplay();
@@ -200,27 +242,17 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
     void refreshReachability();
   }, [refresh, refreshReachability]);
 
-  const toolbar = (
-    <DataViewToolbar
-      layout={layout}
-      onLayoutChange={setLayout}
-      search={dataView.search}
-      onSearchChange={dataView.setSearch}
-      searchPlaceholder="Search displays…"
-      sortOptions={DISPLAY_SORT_OPTIONS}
-      sortId={dataView.sortId}
-      onSortChange={dataView.setSortId}
-      onReload={handleReload}
-      reloadDisabled={reachabilityRefreshing}
-      reloadAriaLabel="Reload displays"
-    >
-      <Button variant="contained" onClick={() => setAdoptOpen(true)}>
-        Adopt display
-      </Button>
-    </DataViewToolbar>
-  );
-
-
+  const toolbarProps = {
+    layout,
+    onLayoutChange: setLayout,
+    search: dataView.search,
+    onSearchChange: dataView.setSearch,
+    sortId: dataView.sortId,
+    onSortChange: dataView.setSortId,
+    onReload: handleReload,
+    reloadDisabled: reachabilityRefreshing,
+    onAdoptClick: () => setAdoptOpen(true),
+  };
 
   useEffect(() => {
 
@@ -257,11 +289,11 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
             targets. Adopted API keys stay in local storage only—they are not included in backup
             export.
           </Typography>
-          {toolbar}
+          <DisplaysPageToolbar {...toolbarProps} />
         </Stack>
       )}
 
-      {embedded && toolbar}
+      {embedded && <DisplaysPageToolbar {...toolbarProps} />}
 
 
 

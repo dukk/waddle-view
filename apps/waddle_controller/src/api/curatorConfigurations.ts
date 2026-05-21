@@ -34,8 +34,8 @@ export type CuratorConfigurationSummary = {
   layer: CuratorLayer;
   sort_order: number;
   program_duration_seconds: number;
-  ticker_program_duration_seconds: number;
-  ticker_pixels_per_second: number;
+  ticker_program_duration_seconds: number | null;
+  ticker_pixels_per_second: number | null;
   require_news_photo_for_screens: boolean;
   ticker_enabled: boolean;
   theme_id_override: string | null;
@@ -77,8 +77,8 @@ export type CuratorConfigurationWriteBody = {
   layer?: CuratorLayer;
   sort_order?: number;
   program_duration_seconds?: number;
-  ticker_program_duration_seconds?: number;
-  ticker_pixels_per_second?: number;
+  ticker_program_duration_seconds?: number | null;
+  ticker_pixels_per_second?: number | null;
   require_news_photo_for_screens?: boolean;
   ticker_enabled?: boolean;
   theme_id_override?: string | null;

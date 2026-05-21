@@ -104,6 +104,37 @@ describe('users lifecycle', () => {
     expect(changed.user.mustChangePassword).toBe(false);
     void adminCookie;
   });
+
+  it('DELETE returns delete_failed code on errors', async () => {
+    const t = createTestApp();
+    cleanup = t.cleanup;
+    const adminCookie = await bootstrapAdmin(t);
+    const headers = adminCookie ? { Cookie: adminCookie } : {};
+
+    const notFound = await t.app.request('/bff/v1/users/missing-id', {
+      method: 'DELETE',
+      headers,
+    });
+    expect(notFound.status).toBe(404);
+    expect((await notFound.json()) as { code: string }).toEqual({
+      error: 'User not found',
+      code: 'delete_failed',
+    });
+
+    const lastAdmin = await t.app.request('/bff/v1/users', { headers });
+    const adminId = (
+      (await lastAdmin.json()) as { users: { id: string; username: string }[] }
+    ).users.find((u) => u.username === 'admin')!.id;
+    const blocked = await t.app.request(`/bff/v1/users/${adminId}`, {
+      method: 'DELETE',
+      headers,
+    });
+    expect(blocked.status).toBe(400);
+    expect((await blocked.json()) as { code: string }).toEqual({
+      error: 'Cannot delete the last active admin',
+      code: 'delete_failed',
+    });
+  });
 });
 
 describe('recovery export', () => {

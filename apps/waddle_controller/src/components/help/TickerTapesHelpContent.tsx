@@ -23,11 +23,13 @@ export function TickerTapesHelpContent() {
         they return no lines.
       </Typography>
       <Typography variant="body2" component="div">
-        Scroll speed is <strong>Ticker pixels per second</strong> under{' '}
+        Default <strong>ticker program duration</strong> (RSS scroll budget) and{' '}
+        <strong>pixels per second</strong> are under{' '}
         <Link component={RouterLink} to="/display-settings">
           Display settings
         </Link>
-        . Disabled tapes are omitted from the marquee until enabled again.
+        ; curators can override when active. Disabled tapes are omitted from the marquee until
+        enabled again.
       </Typography>
     </>
   );

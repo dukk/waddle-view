@@ -31,6 +31,7 @@ import 'package:waddle_shared/collect/data_collection_engine.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/curation/curator_schedule_resolver.dart';
+import 'package:waddle_shared/display/display_ticker_settings.dart';
 import 'package:waddle_shared/display/display_viewport_reserve.dart';
 import 'package:waddle_shared/curation/reject_rescan.dart';
 import 'package:waddle_shared/integration_accounts/integration_accounts_service.dart';
@@ -164,10 +165,13 @@ Future<void> _waddleBootstrap() async {
       db: db,
       runtimeSignals: runtimeSignals,
     ).resolveAt(DateTime.now());
+    final bootstrapKvRows = await db.select(db.configKeyValues).get();
+    final bootstrapKv = {for (final r in bootstrapKvRows) r.key: r.value};
     _applyCuratorTickerMembership(
       curatorMembership,
       bootstrapSelection.primary.configuration,
       bootstrapSelection.effectiveTickerMemberIds,
+      parseDisplayTickerSettingsFromKv(bootstrapKv),
     );
     final dashboardCuratorInner = DefaultDashboardCurator(
       read: DriftCuratorReadPort(db, membershipFilter: curatorMembership),
@@ -504,6 +508,7 @@ class _WaddleHomeState extends State<WaddleHome> {
       widget.curatorMembership,
       primary,
       selection.effectiveTickerMemberIds,
+      parseDisplayTickerSettingsFromKv(widget.dashboardKv),
     );
     setState(() {
       _tickerEnabled = primary.tickerEnabled;
@@ -631,7 +636,8 @@ class _WaddleHomeState extends State<WaddleHome> {
                       builder: (context) {
                         final s = DashboardViewportScope.scaleOf(context);
                         final px =
-                            (widget.curatorMembership.tickerPixelsPerSecond ?? 80)
+                            (widget.curatorMembership.tickerPixelsPerSecond ??
+                                    kDisplayTickerPixelsPerSecondDefault)
                                 .toDouble();
                         return TickerMarquee(
                           repository: widget.tickerCurated,
@@ -658,12 +664,18 @@ void _applyCuratorTickerMembership(
   CuratorMembershipFilter filter,
   CuratorConfigurationInput primary,
   Set<String> effectiveTickerMemberIds,
+  DisplayTickerSettings displayTicker,
 ) {
   filter.tickerCurationEnabled = primary.tickerEnabled;
   filter.tickerTapeIds =
       primary.tickerEnabled ? effectiveTickerMemberIds : const {};
-  filter.tickerProgramDurationSeconds = primary.tickerProgramDurationSeconds;
-  filter.tickerPixelsPerSecond = primary.tickerPixelsPerSecond;
+  final merged = mergeDisplayTickerSettings(
+    displayTicker,
+    programDurationSecondsOverride: primary.tickerProgramDurationSeconds,
+    pixelsPerSecondOverride: primary.tickerPixelsPerSecond,
+  );
+  filter.tickerProgramDurationSeconds = merged.programDurationSeconds;
+  filter.tickerPixelsPerSecond = merged.pixelsPerSecond;
 }
 
 Future<void> _rescanRejectListOnStartup(AppDatabase db) async {

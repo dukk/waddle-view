@@ -56,7 +56,7 @@ export const CURATOR_PROGRAM_DURATION = {
 
 export const CURATOR_TICKER_PROGRAM_DURATION = {
   min: 30,
-  max: 600,
+  max: 1800,
   step: 15,
   default: 300,
 } as const;

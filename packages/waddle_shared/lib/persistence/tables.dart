@@ -394,10 +394,11 @@ class CuratorConfigurations extends Table {
   BoolColumn get requireNewsPhotoForScreens =>
       boolean().withDefault(const Constant(true))();
   BoolColumn get tickerEnabled => boolean().withDefault(const Constant(true))();
-  IntColumn get tickerProgramDurationSeconds =>
-      integer().withDefault(const Constant(300))();
-  IntColumn get tickerPixelsPerSecond =>
-      integer().withDefault(const Constant(80))();
+  /// Null uses display-level `display.ticker.program_duration_seconds`.
+  IntColumn get tickerProgramDurationSeconds => integer().nullable()();
+
+  /// Null uses display-level `display.ticker.pixels_per_second`.
+  IntColumn get tickerPixelsPerSecond => integer().nullable()();
   TextColumn get themeIdOverride => text().nullable()();
   IntColumn get viewportReserveTopPctOverride => integer().nullable()();
   IntColumn get viewportReserveRightPctOverride => integer().nullable()();

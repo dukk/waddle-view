@@ -6,6 +6,7 @@ import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/theme/display_text_scale_kv.dart';
 import 'package:waddle_shared/theme/display_theme_ids.dart';
+import 'package:waddle_shared/display/display_ticker_settings.dart';
 import 'package:waddle_shared/display/display_viewport_reserve.dart';
 import 'package:waddle_shared/theme/display_program_history_kv.dart';
 import 'package:waddle_shared/theme/display_theme_kv.dart';
@@ -27,6 +28,7 @@ Future<Map<String, dynamic>> readDisplayOperatorSettings(AppDatabase db) async {
     kv[kDisplayProgramHistoryDepthKvKey],
   );
   final viewportReserve = parseDisplayViewportReservePctFromKv(kv);
+  final tickerSettings = parseDisplayTickerSettingsFromKv(kv);
   final adoptionAllowedRoles = await readAdoptionAllowedRoles(db);
   final adoptionRolesList = adoptionAllowedRoles.toList()
     ..sort((a, b) {
@@ -44,6 +46,9 @@ Future<Map<String, dynamic>> readDisplayOperatorSettings(AppDatabase db) async {
     'display_viewport_reserve_right_pct': viewportReserve.right,
     'display_viewport_reserve_bottom_pct': viewportReserve.bottom,
     'display_viewport_reserve_left_pct': viewportReserve.left,
+    'display_ticker_program_duration_seconds':
+        tickerSettings.programDurationSeconds,
+    'display_ticker_pixels_per_second': tickerSettings.pixelsPerSecond,
     'controller_time_format': normalizeControllerTimeFormat(
       kv[kControllerTimeFormatKvKey],
     ),
@@ -133,6 +138,34 @@ Future<bool> applyDisplayOperatorSettingsPut(
             ),
           );
     }
+    touched = true;
+  }
+  if (body.containsKey('display_ticker_program_duration_seconds')) {
+    final seconds = normalizeDisplayTickerProgramDurationSeconds(
+      '${body['display_ticker_program_duration_seconds']}',
+    );
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kDisplayTickerProgramDurationSecondsKvKey,
+            value: '$seconds',
+          ),
+        );
+    touched = true;
+  }
+  if (body.containsKey('display_ticker_pixels_per_second')) {
+    final px = normalizeDisplayTickerPixelsPerSecond(
+      '${body['display_ticker_pixels_per_second']}',
+    );
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kDisplayTickerPixelsPerSecondKvKey,
+            value: '$px',
+          ),
+        );
     touched = true;
   }
   if (body.containsKey('display_viewport_reserve_top_pct')) {

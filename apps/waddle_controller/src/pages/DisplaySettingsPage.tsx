@@ -66,11 +66,14 @@ import {
 } from '@/constants/displaySettings';
 import {
   CURATOR_HISTORY_DEPTH,
+  CURATOR_TICKER_PIXELS_PER_SECOND,
+  CURATOR_TICKER_PROGRAM_DURATION,
   VIEWPORT_RESERVE_PCT,
   curatorThemeById,
   curatorThemeIds,
   curatorTextScaleIds,
 } from '@/constants/curatorDisplaySettings';
+import { TickerPixelsPerSecondField } from '@/components/TickerPixelsPerSecondField';
 import { useDisplayFormat } from '@/context/DisplayFormatContext';
 import { IntegrationAccountsSection } from '@/components/IntegrationAccountsSection';
 import { IntegrationOAuthSettingsSection } from '@/components/IntegrationOAuthSettingsSection';
@@ -630,6 +633,16 @@ function DisplayOperatorSettingsSection({
             : CURATOR_HISTORY_DEPTH.default;
         const reservePct = (raw: unknown) =>
           typeof raw === 'number' && Number.isFinite(raw) ? raw : VIEWPORT_RESERVE_PCT.default;
+        const tickerDuration =
+          typeof data.display_ticker_program_duration_seconds === 'number' &&
+          Number.isFinite(data.display_ticker_program_duration_seconds)
+            ? data.display_ticker_program_duration_seconds
+            : CURATOR_TICKER_PROGRAM_DURATION.default;
+        const tickerPx =
+          typeof data.display_ticker_pixels_per_second === 'number' &&
+          Number.isFinite(data.display_ticker_pixels_per_second)
+            ? data.display_ticker_pixels_per_second
+            : CURATOR_TICKER_PIXELS_PER_SECOND.default;
         setForm({
           ...data,
           display_timezone: tz,
@@ -638,6 +651,8 @@ function DisplayOperatorSettingsSection({
           display_viewport_reserve_right_pct: reservePct(data.display_viewport_reserve_right_pct),
           display_viewport_reserve_bottom_pct: reservePct(data.display_viewport_reserve_bottom_pct),
           display_viewport_reserve_left_pct: reservePct(data.display_viewport_reserve_left_pct),
+          display_ticker_program_duration_seconds: tickerDuration,
+          display_ticker_pixels_per_second: tickerPx,
         });
         setInitialized(true);
       } catch (e) {
@@ -667,6 +682,8 @@ function DisplayOperatorSettingsSection({
         display_viewport_reserve_right_pct: form.display_viewport_reserve_right_pct,
         display_viewport_reserve_bottom_pct: form.display_viewport_reserve_bottom_pct,
         display_viewport_reserve_left_pct: form.display_viewport_reserve_left_pct,
+        display_ticker_program_duration_seconds: form.display_ticker_program_duration_seconds,
+        display_ticker_pixels_per_second: form.display_ticker_pixels_per_second,
       });
       await refreshFormat();
       setSaved(true);
@@ -822,6 +839,28 @@ function DisplayOperatorSettingsSection({
           How many past screen programs are kept for back-navigation and how many recent screen
           placements influence frequency weighting. Shared across all curator configurations.
         </Typography>
+        <Typography variant="subtitle2" fontWeight={600}>
+          Ticker marquee
+        </Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: -1 }}>
+          Default scroll speed and RSS scroll budget for the bottom ticker. Curator configurations
+          can override these when they are the active primary program.
+        </Typography>
+        <CuratorSliderField
+          label="Ticker program duration"
+          value={form.display_ticker_program_duration_seconds}
+          onChange={(v) => setForm({ ...form, display_ticker_program_duration_seconds: v })}
+          min={CURATOR_TICKER_PROGRAM_DURATION.min}
+          max={CURATOR_TICKER_PROGRAM_DURATION.max}
+          step={CURATOR_TICKER_PROGRAM_DURATION.step}
+          disabled={!canWrite}
+          formatValue={(v) => `${v}s`}
+        />
+        <TickerPixelsPerSecondField
+          value={form.display_ticker_pixels_per_second}
+          onChange={(v) => setForm({ ...form, display_ticker_pixels_per_second: v })}
+          disabled={!canWrite}
+        />
         <Typography variant="subtitle2" fontWeight={600}>
           Viewport edge reserve
         </Typography>

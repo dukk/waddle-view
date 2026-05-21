@@ -360,6 +360,68 @@ void main() {
     );
   });
 
+  testWidgets('inserts diamond between curation programs in auto-scroll', (
+    tester,
+  ) async {
+    final repo = MemoryTickerCuratedRepository();
+    addTearDown(repo.dispose);
+    await repo.replaceAll([
+      const TickerItem(kind: 'a', body: 'ProgramA'),
+    ]);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 400,
+              child: TickerMarquee(repository: repo, pixelsPerSecond: 400),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await repo.replaceAll([
+      const TickerItem(kind: 'b', body: 'ProgramB'),
+    ]);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.text('ProgramA'), findsWidgets);
+    expect(find.text('ProgramB'), findsWidgets);
+    expect(find.byIcon(Icons.diamond_outlined), findsNWidgets(2));
+    expect(find.text('\u00B7'), findsNothing);
+  });
+
+  testWidgets('marquee starts with content entering from the right', (
+    tester,
+  ) async {
+    final repo = MemoryTickerCuratedRepository();
+    addTearDown(repo.dispose);
+    await repo.replaceAll([
+      const TickerItem(kind: 'a', body: 'Hi'),
+    ]);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 400,
+              child: TickerMarquee(repository: repo, pixelsPerSecond: 400),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    final transforms = tester
+        .widgetList<Transform>(find.byType(Transform))
+        .where((t) => t.transform.getTranslation().x > 0)
+        .toList();
+    expect(transforms, isNotEmpty);
+    expect(transforms.first.transform.getTranslation().x, closeTo(400, 1));
+  });
+
   testWidgets('cycleGate completes after horizontal wrap with configured gate', (
     tester,
   ) async {

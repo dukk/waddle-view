@@ -5,6 +5,7 @@ import 'package:waddle_shared/config/display_operator_settings.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/seed/initial_seed.dart';
+import 'package:waddle_shared/display/display_ticker_settings.dart';
 import 'package:waddle_shared/display/display_viewport_reserve.dart';
 import 'package:waddle_shared/theme/display_program_history_kv.dart';
 import 'package:waddle_shared/theme/display_text_scale_kv.dart';
@@ -33,6 +34,14 @@ void main() {
       expect(body['display_viewport_reserve_right_pct'], 0);
       expect(body['display_viewport_reserve_bottom_pct'], 0);
       expect(body['display_viewport_reserve_left_pct'], 0);
+      expect(
+        body['display_ticker_program_duration_seconds'],
+        kDisplayTickerProgramDurationSecondsDefault,
+      );
+      expect(
+        body['display_ticker_pixels_per_second'],
+        kDisplayTickerPixelsPerSecondDefault,
+      );
       expect(body.containsKey('display_image_overlay'), isFalse);
     },
   );
@@ -82,6 +91,30 @@ void main() {
       final kv = await db.select(db.configKeyValues).get();
       final map = {for (final r in kv) r.key: r.value};
       expect(map[kDisplayViewportReserveTopPctKvKey], '12');
+    },
+  );
+
+  test(
+    'applyDisplayOperatorSettingsPut round-trips ticker duration and pixels per second',
+    () async {
+      final db = openMemoryDatabase();
+      addTearDown(db.close);
+      await ensureInitialSeed(db);
+
+      final touched = await applyDisplayOperatorSettingsPut(db, {
+        'display_ticker_program_duration_seconds': 600,
+        'display_ticker_pixels_per_second': 100,
+      });
+      expect(touched, isTrue);
+
+      final body = await readDisplayOperatorSettings(db);
+      expect(body['display_ticker_program_duration_seconds'], 600);
+      expect(body['display_ticker_pixels_per_second'], 100);
+
+      final kv = await db.select(db.configKeyValues).get();
+      final map = {for (final r in kv) r.key: r.value};
+      expect(map[kDisplayTickerProgramDurationSecondsKvKey], '600');
+      expect(map[kDisplayTickerPixelsPerSecondKvKey], '100');
     },
   );
 

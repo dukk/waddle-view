@@ -89,7 +89,7 @@ export function usersRoutes() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Delete failed';
       const status = msg === 'User not found' ? 404 : 400;
-      return c.json({ error: msg, code: 'update_failed' }, status);
+      return c.json({ error: msg, code: 'delete_failed' }, status);
     }
   });
 

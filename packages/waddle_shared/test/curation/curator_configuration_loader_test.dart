@@ -22,8 +22,8 @@ void main() {
     final evening = inputs.singleWhere((c) => c.id == 'evening');
     expect(evening.layer, kCuratorLayerBase);
     expect(evening.tickerEnabled, isTrue);
-    expect(evening.tickerProgramDurationSeconds, 300);
-    expect(evening.tickerPixelsPerSecond, 80);
+    expect(evening.tickerProgramDurationSeconds, isNull);
+    expect(evening.tickerPixelsPerSecond, isNull);
     expect(evening.tickerMemberIds, isNotEmpty);
 
     await db.close();

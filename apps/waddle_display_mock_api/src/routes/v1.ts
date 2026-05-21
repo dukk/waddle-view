@@ -228,6 +228,12 @@ export function v1Router() {
       display_viewport_reserve_left_pct: Number(
         mockConfigKv.get('display.viewport.reserve_left_pct') ?? '0',
       ),
+      display_ticker_program_duration_seconds: Number(
+        mockConfigKv.get('display.ticker.program_duration_seconds') ?? '300',
+      ),
+      display_ticker_pixels_per_second: Number(
+        mockConfigKv.get('display.ticker.pixels_per_second') ?? '80',
+      ),
       controller_time_format,
       controller_date_order,
       adoption_allowed_roles: ['viewer', 'power_viewer', 'operator', 'admin'],
@@ -283,6 +289,18 @@ export function v1Router() {
         mockConfigKv.set(
           'display.viewport.reserve_left_pct',
           String(body.display_viewport_reserve_left_pct),
+        );
+      }
+      if (typeof body.display_ticker_program_duration_seconds === 'number') {
+        mockConfigKv.set(
+          'display.ticker.program_duration_seconds',
+          String(body.display_ticker_program_duration_seconds),
+        );
+      }
+      if (typeof body.display_ticker_pixels_per_second === 'number') {
+        mockConfigKv.set(
+          'display.ticker.pixels_per_second',
+          String(body.display_ticker_pixels_per_second),
         );
       }
     } catch {

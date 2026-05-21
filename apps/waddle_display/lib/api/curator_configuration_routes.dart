@@ -5,6 +5,7 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:waddle_shared/curation/curator_schedule_resolver.dart';
 import 'package:waddle_shared/curation/curator_state_predicates.dart';
+import 'package:waddle_shared/display/display_ticker_settings.dart';
 import 'package:waddle_shared/display/display_viewport_reserve.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
@@ -143,10 +144,16 @@ void registerCuratorConfigurationRoutes(
               ),
             ),
             tickerProgramDurationSeconds: Value(
-              _readInt(map['ticker_program_duration_seconds']) ?? 300,
+              _tickerProgramDurationOverrideForWrite(
+                layer,
+                map['ticker_program_duration_seconds'],
+              ),
             ),
             tickerPixelsPerSecond: Value(
-              _readTickerPixelsPerSecond(map['ticker_pixels_per_second']) ?? 80,
+              _tickerPixelsPerSecondOverrideForWrite(
+                layer,
+                map['ticker_pixels_per_second'],
+              ),
             ),
             themeIdOverride: Value(
               _themeIdOverrideForWrite(layer, map['theme_id_override']),
@@ -256,18 +263,16 @@ void registerCuratorConfigurationRoutes(
                   )
                 : const Value.absent(),
         tickerProgramDurationSeconds:
-            map.containsKey('ticker_program_duration_seconds')
-                ? Value(
-                    _readInt(map['ticker_program_duration_seconds']) ??
-                        existing.tickerProgramDurationSeconds,
-                  )
-                : const Value.absent(),
-        tickerPixelsPerSecond: map.containsKey('ticker_pixels_per_second')
-            ? Value(
-                _readTickerPixelsPerSecond(map['ticker_pixels_per_second']) ??
-                    existing.tickerPixelsPerSecond,
-              )
-            : const Value.absent(),
+            _tickerProgramDurationOverrideCompanionForPatch(
+          layer: layer,
+          map: map,
+          key: 'ticker_program_duration_seconds',
+        ),
+        tickerPixelsPerSecond: _tickerPixelsPerSecondOverrideCompanionForPatch(
+          layer: layer,
+          map: map,
+          key: 'ticker_pixels_per_second',
+        ),
         themeIdOverride: _isEnhancementLayer(layer)
             ? const Value(null)
             : map.containsKey('theme_id_override')
@@ -796,19 +801,72 @@ bool _tickerEnabledForWrite(
   return existing ?? defaultValue;
 }
 
-const _kTickerPixelsPerSecondMin = 20;
-const _kTickerPixelsPerSecondMax = 140;
+int? _tickerProgramDurationOverrideForWrite(String layer, dynamic mapValue) {
+  if (_isEnhancementLayer(layer)) {
+    return null;
+  }
+  return _readTickerProgramDurationSecondsOverride(mapValue);
+}
 
-int? _readTickerPixelsPerSecond(dynamic v) {
+int? _tickerPixelsPerSecondOverrideForWrite(String layer, dynamic mapValue) {
+  if (_isEnhancementLayer(layer)) {
+    return null;
+  }
+  return _readTickerPixelsPerSecondOverride(mapValue);
+}
+
+int? _readTickerProgramDurationSecondsOverride(dynamic v) {
+  if (v == null) {
+    return null;
+  }
   final parsed = _readInt(v);
   if (parsed == null) {
     return null;
   }
-  if (parsed < _kTickerPixelsPerSecondMin) {
-    return _kTickerPixelsPerSecondMin;
+  return parsed.clamp(
+    kDisplayTickerProgramDurationSecondsMin,
+    kDisplayTickerProgramDurationSecondsMax,
+  );
+}
+
+int? _readTickerPixelsPerSecondOverride(dynamic v) {
+  if (v == null) {
+    return null;
   }
-  if (parsed > _kTickerPixelsPerSecondMax) {
-    return _kTickerPixelsPerSecondMax;
+  final parsed = _readInt(v);
+  if (parsed == null) {
+    return null;
   }
-  return parsed;
+  return parsed.clamp(
+    kDisplayTickerPixelsPerSecondMin,
+    kDisplayTickerPixelsPerSecondMax,
+  );
+}
+
+Value<int?> _tickerProgramDurationOverrideCompanionForPatch({
+  required String layer,
+  required Map<String, dynamic> map,
+  required String key,
+}) {
+  if (_isEnhancementLayer(layer)) {
+    return const Value(null);
+  }
+  if (!map.containsKey(key)) {
+    return const Value.absent();
+  }
+  return Value(_readTickerProgramDurationSecondsOverride(map[key]));
+}
+
+Value<int?> _tickerPixelsPerSecondOverrideCompanionForPatch({
+  required String layer,
+  required Map<String, dynamic> map,
+  required String key,
+}) {
+  if (_isEnhancementLayer(layer)) {
+    return const Value(null);
+  }
+  if (!map.containsKey(key)) {
+    return const Value.absent();
+  }
+  return Value(_readTickerPixelsPerSecondOverride(map[key]));
 }

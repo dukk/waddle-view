@@ -58,8 +58,8 @@ void main() {
     expect(detailBody['members'], isA<Map>());
     expect(detailBody['rules'], isA<List>());
     expect(detailBody['ticker_enabled'], isTrue);
-    expect(detailBody['ticker_program_duration_seconds'], 300);
-    expect(detailBody['ticker_pixels_per_second'], 80);
+    expect(detailBody['ticker_program_duration_seconds'], isNull);
+    expect(detailBody['ticker_pixels_per_second'], isNull);
   });
 
   test('POST PATCH DELETE curator configuration lifecycle', () async {
@@ -127,8 +127,8 @@ void main() {
     expect(detailBody['name'], 'Renamed');
     expect(detailBody['ticker_enabled'], isTrue);
     expect(detailBody['theme_id_override'], isNull);
-    expect(detailBody['ticker_program_duration_seconds'], 420);
-    expect(detailBody['ticker_pixels_per_second'], 95);
+    expect(detailBody['ticker_program_duration_seconds'], isNull);
+    expect(detailBody['ticker_pixels_per_second'], isNull);
 
     final del = await http.delete(
       Uri.parse('${h.baseUrl}/v1/curator/configurations/test_enhancement'),
@@ -169,6 +169,56 @@ void main() {
     expect(detailBody['viewport_reserve_top_pct_override'], 15);
     expect(detailBody['viewport_reserve_right_pct_override'], 8);
     expect(detailBody['viewport_reserve_bottom_pct_override'], isNull);
+  });
+
+  test('POST PATCH base curator ticker overrides clamp and clear to null', () async {
+    final h = await RestTestHarness.start();
+    addTearDown(h.dispose);
+
+    final create = await http.post(
+      Uri.parse('${h.baseUrl}/v1/curator/configurations'),
+      headers: h.authHeaders,
+      body: jsonEncode({
+        'id': 'test_ticker_override',
+        'name': 'Ticker override',
+        'layer': 'base',
+        'ticker_program_duration_seconds': 9999,
+        'ticker_pixels_per_second': 5,
+      }),
+    );
+    expect(create.statusCode, 200);
+
+    final detail = await http.get(
+      Uri.parse('${h.baseUrl}/v1/curator/configurations/test_ticker_override'),
+      headers: h.authHeaders,
+    );
+    expect(detail.statusCode, 200);
+    final detailBody = jsonDecode(detail.body) as Map<String, dynamic>;
+    expect(detailBody['ticker_program_duration_seconds'], 1800);
+    expect(detailBody['ticker_pixels_per_second'], 20);
+
+    final clear = await http.patch(
+      Uri.parse('${h.baseUrl}/v1/curator/configurations/test_ticker_override'),
+      headers: h.authHeaders,
+      body: jsonEncode({
+        'ticker_program_duration_seconds': null,
+        'ticker_pixels_per_second': null,
+      }),
+    );
+    expect(clear.statusCode, 200);
+
+    final cleared = await http.get(
+      Uri.parse('${h.baseUrl}/v1/curator/configurations/test_ticker_override'),
+      headers: h.authHeaders,
+    );
+    final clearedBody = jsonDecode(cleared.body) as Map<String, dynamic>;
+    expect(clearedBody['ticker_program_duration_seconds'], isNull);
+    expect(clearedBody['ticker_pixels_per_second'], isNull);
+
+    await http.delete(
+      Uri.parse('${h.baseUrl}/v1/curator/configurations/test_ticker_override'),
+      headers: h.authHeaders,
+    );
   });
 
   test('POST curator configuration defaults sort_order to 100 when omitted', () async {
