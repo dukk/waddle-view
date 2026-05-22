@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/seed/initial_seed.dart';
 
 import '../helpers/memory_database.dart';
@@ -154,83 +153,97 @@ void main() {
     expect(missing.statusCode, 404);
   });
 
-  test('POST base curator configuration round-trips viewport reserve overrides', () async {
-    final h = await RestTestHarness.start();
-    addTearDown(h.dispose);
+  test(
+    'POST base curator configuration round-trips viewport reserve overrides',
+    () async {
+      final h = await RestTestHarness.start();
+      addTearDown(h.dispose);
 
-    final create = await http.post(
-      Uri.parse('${h.baseUrl}/v1/curator/configurations'),
-      headers: h.authHeaders,
-      body: jsonEncode({
-        'id': 'test_viewport',
-        'name': 'Viewport test',
-        'layer': 'base',
-        'viewport_reserve_top_pct_override': 15,
-        'viewport_reserve_right_pct_override': 8,
-      }),
-    );
-    expect(create.statusCode, 200);
+      final create = await http.post(
+        Uri.parse('${h.baseUrl}/v1/curator/configurations'),
+        headers: h.authHeaders,
+        body: jsonEncode({
+          'id': 'test_viewport',
+          'name': 'Viewport test',
+          'layer': 'base',
+          'viewport_reserve_top_pct_override': 15,
+          'viewport_reserve_right_pct_override': 8,
+        }),
+      );
+      expect(create.statusCode, 200);
 
-    final detail = await http.get(
-      Uri.parse('${h.baseUrl}/v1/curator/configurations/test_viewport'),
-      headers: h.authHeaders,
-    );
-    expect(detail.statusCode, 200);
-    final detailBody = jsonDecode(detail.body) as Map<String, dynamic>;
-    expect(detailBody['viewport_reserve_top_pct_override'], 15);
-    expect(detailBody['viewport_reserve_right_pct_override'], 8);
-    expect(detailBody['viewport_reserve_bottom_pct_override'], isNull);
-  });
+      final detail = await http.get(
+        Uri.parse('${h.baseUrl}/v1/curator/configurations/test_viewport'),
+        headers: h.authHeaders,
+      );
+      expect(detail.statusCode, 200);
+      final detailBody = jsonDecode(detail.body) as Map<String, dynamic>;
+      expect(detailBody['viewport_reserve_top_pct_override'], 15);
+      expect(detailBody['viewport_reserve_right_pct_override'], 8);
+      expect(detailBody['viewport_reserve_bottom_pct_override'], isNull);
+    },
+  );
 
-  test('POST PATCH base curator ticker overrides clamp and clear to null', () async {
-    final h = await RestTestHarness.start();
-    addTearDown(h.dispose);
+  test(
+    'POST PATCH base curator ticker overrides clamp and clear to null',
+    () async {
+      final h = await RestTestHarness.start();
+      addTearDown(h.dispose);
 
-    final create = await http.post(
-      Uri.parse('${h.baseUrl}/v1/curator/configurations'),
-      headers: h.authHeaders,
-      body: jsonEncode({
-        'id': 'test_ticker_override',
-        'name': 'Ticker override',
-        'layer': 'base',
-        'ticker_program_duration_seconds': 9999,
-        'ticker_pixels_per_second': 5,
-      }),
-    );
-    expect(create.statusCode, 200);
+      final create = await http.post(
+        Uri.parse('${h.baseUrl}/v1/curator/configurations'),
+        headers: h.authHeaders,
+        body: jsonEncode({
+          'id': 'test_ticker_override',
+          'name': 'Ticker override',
+          'layer': 'base',
+          'ticker_program_duration_seconds': 9999,
+          'ticker_pixels_per_second': 5,
+        }),
+      );
+      expect(create.statusCode, 200);
 
-    final detail = await http.get(
-      Uri.parse('${h.baseUrl}/v1/curator/configurations/test_ticker_override'),
-      headers: h.authHeaders,
-    );
-    expect(detail.statusCode, 200);
-    final detailBody = jsonDecode(detail.body) as Map<String, dynamic>;
-    expect(detailBody['ticker_program_duration_seconds'], 1800);
-    expect(detailBody['ticker_pixels_per_second'], 20);
+      final detail = await http.get(
+        Uri.parse(
+          '${h.baseUrl}/v1/curator/configurations/test_ticker_override',
+        ),
+        headers: h.authHeaders,
+      );
+      expect(detail.statusCode, 200);
+      final detailBody = jsonDecode(detail.body) as Map<String, dynamic>;
+      expect(detailBody['ticker_program_duration_seconds'], 1800);
+      expect(detailBody['ticker_pixels_per_second'], 20);
 
-    final clear = await http.patch(
-      Uri.parse('${h.baseUrl}/v1/curator/configurations/test_ticker_override'),
-      headers: h.authHeaders,
-      body: jsonEncode({
-        'ticker_program_duration_seconds': null,
-        'ticker_pixels_per_second': null,
-      }),
-    );
-    expect(clear.statusCode, 200);
+      final clear = await http.patch(
+        Uri.parse(
+          '${h.baseUrl}/v1/curator/configurations/test_ticker_override',
+        ),
+        headers: h.authHeaders,
+        body: jsonEncode({
+          'ticker_program_duration_seconds': null,
+          'ticker_pixels_per_second': null,
+        }),
+      );
+      expect(clear.statusCode, 200);
 
-    final cleared = await http.get(
-      Uri.parse('${h.baseUrl}/v1/curator/configurations/test_ticker_override'),
-      headers: h.authHeaders,
-    );
-    final clearedBody = jsonDecode(cleared.body) as Map<String, dynamic>;
-    expect(clearedBody['ticker_program_duration_seconds'], isNull);
-    expect(clearedBody['ticker_pixels_per_second'], isNull);
+      final cleared = await http.get(
+        Uri.parse(
+          '${h.baseUrl}/v1/curator/configurations/test_ticker_override',
+        ),
+        headers: h.authHeaders,
+      );
+      final clearedBody = jsonDecode(cleared.body) as Map<String, dynamic>;
+      expect(clearedBody['ticker_program_duration_seconds'], isNull);
+      expect(clearedBody['ticker_pixels_per_second'], isNull);
 
-    await http.delete(
-      Uri.parse('${h.baseUrl}/v1/curator/configurations/test_ticker_override'),
-      headers: h.authHeaders,
-    );
-  });
+      await http.delete(
+        Uri.parse(
+          '${h.baseUrl}/v1/curator/configurations/test_ticker_override',
+        ),
+        headers: h.authHeaders,
+      );
+    },
+  );
 
   test('POST PATCH base curator screens_enabled round-trips', () async {
     final h = await RestTestHarness.start();
@@ -276,34 +289,37 @@ void main() {
     );
   });
 
-  test('POST curator configuration defaults sort_order to 100 when omitted', () async {
-    final h = await RestTestHarness.start();
-    addTearDown(h.dispose);
+  test(
+    'POST curator configuration defaults sort_order to 100 when omitted',
+    () async {
+      final h = await RestTestHarness.start();
+      addTearDown(h.dispose);
 
-    final create = await http.post(
-      Uri.parse('${h.baseUrl}/v1/curator/configurations'),
-      headers: h.authHeaders,
-      body: jsonEncode({
-        'id': 'sort_default_test',
-        'name': 'Sort default',
-        'layer': 'enhancement',
-      }),
-    );
-    expect(create.statusCode, 200);
+      final create = await http.post(
+        Uri.parse('${h.baseUrl}/v1/curator/configurations'),
+        headers: h.authHeaders,
+        body: jsonEncode({
+          'id': 'sort_default_test',
+          'name': 'Sort default',
+          'layer': 'enhancement',
+        }),
+      );
+      expect(create.statusCode, 200);
 
-    final detail = await http.get(
-      Uri.parse('${h.baseUrl}/v1/curator/configurations/sort_default_test'),
-      headers: h.authHeaders,
-    );
-    expect(detail.statusCode, 200);
-    final body = jsonDecode(detail.body) as Map<String, dynamic>;
-    expect(body['sort_order'], 100);
+      final detail = await http.get(
+        Uri.parse('${h.baseUrl}/v1/curator/configurations/sort_default_test'),
+        headers: h.authHeaders,
+      );
+      expect(detail.statusCode, 200);
+      final body = jsonDecode(detail.body) as Map<String, dynamic>;
+      expect(body['sort_order'], 100);
 
-    await http.delete(
-      Uri.parse('${h.baseUrl}/v1/curator/configurations/sort_default_test'),
-      headers: h.authHeaders,
-    );
-  });
+      await http.delete(
+        Uri.parse('${h.baseUrl}/v1/curator/configurations/sort_default_test'),
+        headers: h.authHeaders,
+      );
+    },
+  );
 
   test('POST PATCH DELETE curator configuration rules', () async {
     final db = openMemoryDatabase();
@@ -376,9 +392,9 @@ void main() {
     );
     expect(res.statusCode, 200);
 
-    final members = await (db.select(db.curatorConfigurationMembers)
-          ..where((t) => t.configurationId.equals('evening')))
-        .get();
+    final members = await (db.select(
+      db.curatorConfigurationMembers,
+    )..where((t) => t.configurationId.equals('evening'))).get();
     expect(members, isEmpty);
   });
 }
