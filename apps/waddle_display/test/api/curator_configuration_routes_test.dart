@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/seed/initial_seed.dart';
 
 import '../helpers/memory_database.dart';
@@ -302,5 +303,82 @@ void main() {
       Uri.parse('${h.baseUrl}/v1/curator/configurations/sort_default_test'),
       headers: h.authHeaders,
     );
+  });
+
+  test('POST PATCH DELETE curator configuration rules', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureInitialSeed(db);
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+    final base = '${h.baseUrl}/v1/curator/configurations/evening/rules';
+
+    final create = await http.post(
+      Uri.parse(base),
+      headers: h.authHeaders,
+      body: jsonEncode({
+        'id': 'rule_test_1',
+        'priority': 5,
+        'state_predicate': 'display.adopted',
+        'days_of_week_mask': 127,
+        'start_time_minutes': 1080,
+        'end_time_minutes': 1320,
+      }),
+    );
+    expect(create.statusCode, 200);
+
+    final dup = await http.post(
+      Uri.parse(base),
+      headers: h.authHeaders,
+      body: jsonEncode({'id': 'rule_test_1', 'priority': 1}),
+    );
+    expect(dup.statusCode, 409);
+
+    final patch = await http.patch(
+      Uri.parse('$base/rule_test_1'),
+      headers: h.authHeaders,
+      body: jsonEncode({'priority': 10}),
+    );
+    expect(patch.statusCode, 200);
+
+    final invalid = await http.post(
+      Uri.parse(base),
+      headers: h.authHeaders,
+      body: jsonEncode({
+        'id': 'rule_bad',
+        'state_predicate': 'not.a.real.predicate',
+      }),
+    );
+    expect(invalid.statusCode, 400);
+
+    final del = await http.delete(
+      Uri.parse('$base/rule_test_1'),
+      headers: h.authHeaders,
+    );
+    expect(del.statusCode, 200);
+  });
+
+  test('PUT curator configuration members replaces screen list', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureInitialSeed(db);
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+
+    final res = await http.put(
+      Uri.parse('${h.baseUrl}/v1/curator/configurations/evening/members'),
+      headers: h.authHeaders,
+      body: jsonEncode({
+        'screens': <String>[],
+        'tickers': <String>[],
+        'overlays': <String>[],
+      }),
+    );
+    expect(res.statusCode, 200);
+
+    final members = await (db.select(db.curatorConfigurationMembers)
+          ..where((t) => t.configurationId.equals('evening')))
+        .get();
+    expect(members, isEmpty);
   });
 }

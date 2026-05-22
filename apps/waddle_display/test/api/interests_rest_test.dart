@@ -480,6 +480,130 @@ void main() {
     expect(item['enabled'], isFalse);
   });
 
+  test('weather location POST validates required fields and duplicate id', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+    final base = '${h.baseUrl}/v1/interests/weather-locations';
+    final auth = h.authHeaders;
+
+    final missing = await http.post(
+      Uri.parse(base),
+      headers: auth,
+      body: jsonEncode({'id': 'x', 'name': 'X'}),
+    );
+    expect(missing.statusCode, 400);
+
+    final create = await http.post(
+      Uri.parse(base),
+      headers: auth,
+      body: jsonEncode({
+        'id': 'sea',
+        'name': 'Seattle',
+        'latitude': 47.6,
+        'longitude': -122.3,
+      }),
+    );
+    expect(create.statusCode, 200);
+
+    final dup = await http.post(
+      Uri.parse(base),
+      headers: auth,
+      body: jsonEncode({
+        'id': 'sea',
+        'name': 'Seattle 2',
+        'latitude': 48,
+        'longitude': -123,
+      }),
+    );
+    expect(dup.statusCode, 409);
+
+    final notFound = await http.patch(
+      Uri.parse('$base/missing'),
+      headers: auth,
+      body: jsonEncode({'name': 'N'}),
+    );
+    expect(notFound.statusCode, 404);
+  });
+
+  test('stock symbol POST rejects duplicate id', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+
+    final url = '${h.baseUrl}/v1/interests/stock-symbols';
+    final body = jsonEncode({'id': 'sym', 'symbol': 'SYM'});
+    expect(
+      (await http.post(Uri.parse(url), headers: h.authHeaders, body: body))
+          .statusCode,
+      200,
+    );
+    expect(
+      (await http.post(Uri.parse(url), headers: h.authHeaders, body: body))
+          .statusCode,
+      409,
+    );
+  });
+
+  test('home assistant POST rejects duplicate entity_id', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+    final url = '${h.baseUrl}/v1/interests/home-assistant-entities';
+    final body = jsonEncode({
+      'id': 'a',
+      'entity_id': 'sensor.temp',
+      'display_name': 'Temp',
+    });
+    expect(
+      (await http.post(Uri.parse(url), headers: h.authHeaders, body: body))
+          .statusCode,
+      200,
+    );
+    final dup = await http.post(
+      Uri.parse(url),
+      headers: h.authHeaders,
+      body: jsonEncode({
+        'id': 'b',
+        'entity_id': 'sensor.temp',
+        'display_name': 'Temp 2',
+      }),
+    );
+    expect(dup.statusCode, 409);
+  });
+
+  test('trivia category POST rejects invalid category id format', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await seedContentCategoriesForTest(db, ['science']);
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+
+    final res = await http.post(
+      Uri.parse('${h.baseUrl}/v1/interests/trivia-categories'),
+      headers: h.authHeaders,
+      body: jsonEncode({'id': 'Bad-ID', 'label': 'Bad'}),
+    );
+    expect(res.statusCode, 400);
+  });
+
+  test('interests endpoints reject non-json bodies', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+
+    final res = await http.post(
+      Uri.parse('${h.baseUrl}/v1/interests/stock-symbols'),
+      headers: h.authHeaders,
+      body: '[]',
+    );
+    expect(res.statusCode, 400);
+  });
+
   test('viewer cannot read interests', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);

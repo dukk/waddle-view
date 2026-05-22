@@ -19,7 +19,11 @@ describe('backups routes', () => {
     cleanup = t.cleanup;
     vi.spyOn(githubReleases, 'fetchLatestWaddleViewRelease').mockResolvedValue({
       tag_name: 'v1.0.0',
-      assets: [],
+      name: 'v1.0.0',
+      published_at: '2026-01-01T00:00:00Z',
+      html_url: 'https://github.com/dukk/waddle-view/releases/tag/v1.0.0',
+      body: '',
+      pi_asset: null,
     });
 
     const res = await t.app.request('/bff/v1/releases/waddle-view');

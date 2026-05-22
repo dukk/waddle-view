@@ -3,6 +3,8 @@ import 'package:test/test.dart';
 import 'package:waddle_shared/integration_accounts/integration_account_catalog.dart';
 import 'package:waddle_shared/integration_accounts/integration_accounts_configured_sql.dart';
 import 'package:waddle_shared/integration_accounts/integration_accounts_service.dart';
+import 'package:waddle_shared/integrations/integration_kv_repository.dart';
+import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/seed/tables/integration_types_seed.dart';
 import 'package:waddle_shared/secrets/db_encrypted_secret_store.dart';
@@ -432,6 +434,53 @@ void main() {
       );
     },
   );
+
+  test('oauthProvidersStatusJson reflects stored client ids', () async {
+    final secrets = InMemorySecretStore();
+    await secrets.write(kGoogleClientIdSecretKey, 'google-cid');
+    final status = await oauthProvidersStatusJson(secrets);
+    final google = status.firstWhere((e) => e['id'] == 'google');
+    expect(google['client_id_configured'], isTrue);
+    expect(
+      status.any((e) => e['id'] == 'microsoft_graph' && e['client_id_configured'] == false),
+      isTrue,
+    );
+  });
+
+  test('putOAuthProviderClientId writes provider client id secret', () async {
+    final secrets = InMemorySecretStore();
+    await putOAuthProviderClientId(secrets, 'google', '  my-client  ');
+    expect(await secrets.read(kGoogleClientIdSecretKey), 'my-client');
+    expect(
+      () => putOAuthProviderClientId(secrets, 'unknown', 'x'),
+      throwsA(isA<ArgumentError>()),
+    );
+  });
+
+  test('requestOAuthSignInForAccount clears last device prompt kv', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    addTearDown(db.close);
+    await db.into(db.integrationAccounts).insertOnConflictUpdate(
+          IntegrationAccountsCompanion.insert(
+            id: 'personal',
+            accountType: kIntegrationAccountTypeGoogle,
+            label: const Value('Personal'),
+            createdAtMs: 1,
+          ),
+        );
+    final kv = IntegrationKvRepository(db);
+    await kv.upsertAccount(
+      accountId: 'personal',
+      key: kIntegrationLastDevicePromptKey,
+      value: '123',
+    );
+    await requestOAuthSignInForAccount(db, 'personal');
+    expect(
+      await kv.getAccountValue('personal', kIntegrationLastDevicePromptKey),
+      '0',
+    );
+  });
 
   test('updateOperatorIntegrationAccountLabel changes display name', () async {
     final db = openMemoryDatabase();

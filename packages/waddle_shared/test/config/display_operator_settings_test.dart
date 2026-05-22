@@ -344,6 +344,29 @@ void main() {
     },
   );
 
+  test(
+    'applyDisplayOperatorSettingsPut round-trips live preview settings',
+    () async {
+      final db = openMemoryDatabase();
+      addTearDown(db.close);
+      await ensureInitialSeed(db);
+
+      final touched = await applyDisplayOperatorSettingsPut(db, {
+        'display_live_preview_enabled': true,
+        'display_live_preview_fps': 5,
+        'display_live_preview_width': 960,
+        'display_live_preview_quality': 80,
+      });
+      expect(touched, isTrue);
+
+      final body = await readDisplayOperatorSettings(db);
+      expect(body['display_live_preview_enabled'], isTrue);
+      expect(body['display_live_preview_fps'], 5);
+      expect(body['display_live_preview_width'], 960);
+      expect(body['display_live_preview_quality'], 80);
+    },
+  );
+
   test('adoption_allow_new_requests true grants all valid roles', () async {
     final db = openMemoryDatabase();
     addTearDown(db.close);

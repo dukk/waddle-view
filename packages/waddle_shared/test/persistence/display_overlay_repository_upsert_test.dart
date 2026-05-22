@@ -11,6 +11,23 @@ import 'package:waddle_shared/seed/tables/overlay_types_seed.dart';
 import '../helpers/memory_database.dart';
 
 void main() {
+  test('fetchDisplayOverlays returns empty list when table has no rows', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureOverlaysTableExists(db);
+    addTearDown(db.close);
+    expect(await fetchDisplayOverlays(db), isEmpty);
+  });
+
+  test('parseDisplayOverlayGloballyEnabled treats explicit disables', () {
+    expect(parseDisplayOverlayGloballyEnabled(null), isTrue);
+    expect(parseDisplayOverlayGloballyEnabled(''), isTrue);
+    expect(parseDisplayOverlayGloballyEnabled('false'), isFalse);
+    expect(parseDisplayOverlayGloballyEnabled('0'), isFalse);
+    expect(parseDisplayOverlayGloballyEnabled('off'), isFalse);
+    expect(parseDisplayOverlayGloballyEnabled('yes'), isTrue);
+  });
+
   test('watchDisplayOverlaySchedules emits when overlay row changes', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);

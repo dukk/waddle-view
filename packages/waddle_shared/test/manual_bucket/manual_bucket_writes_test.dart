@@ -44,6 +44,21 @@ Uint8List _tinyPng() {
 }
 
 void main() {
+  test('decodeManualBucketBytes rejects invalid base64', () {
+    expect(
+      () => decodeManualBucketBytes('%%%'),
+      throwsA(
+        isA<ManualBucketWriteException>().having((e) => e.code, 'code', 'invalid_base64'),
+      ),
+    );
+    expect(
+      () => decodeManualBucketBytes(''),
+      throwsA(
+        isA<ManualBucketWriteException>().having((e) => e.code, 'code', 'bytes_base64_required'),
+      ),
+    );
+  });
+
   test('writeManualBucketPhoto stores photo and blob metadata', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
@@ -74,6 +89,32 @@ void main() {
     )..where((t) => t.blobKey.equals(result.mediaBlobKey!))).getSingle();
     expect(meta.mimeType, 'image/png');
     expect(meta.bytes, bytes.length);
+    await db.close();
+  });
+
+  test('writeManualBucketVideo stores video row and blob', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await seedContentCategoriesForTest(db, ['nature']);
+    final blobs = _MemBlobStore();
+    final bytes = _tinyPng();
+
+    final result = await writeManualBucketVideo(
+      db: db,
+      blobs: blobs,
+      category: 'nature',
+      bytes: bytes,
+      contentType: 'video/mp4',
+      durationSeconds: 12,
+      altText: 'clip',
+    );
+
+    final video = await (db.select(db.videos)
+          ..where((t) => t.id.equals(result.id)))
+        .getSingle();
+    expect(video.category, 'nature');
+    expect(video.durationSeconds, 12);
+    expect(video.mediaBlobKey, result.mediaBlobKey);
     await db.close();
   });
 
