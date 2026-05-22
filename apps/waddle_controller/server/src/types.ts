@@ -11,6 +11,28 @@ export type PublicUser = {
   updatedAt: string;
 };
 
+export type ProductLicenseInfo = {
+  id: string;
+  name: string;
+  url: string;
+  summary: string;
+};
+
+export type DependencyInfo = {
+  name: string;
+  version: string;
+  license?: string;
+};
+
+export type AboutResponse = {
+  app: string;
+  version: string;
+  build: string;
+  productLicense: ProductLicenseInfo;
+  dependencies: DependencyInfo[];
+  thirdPartyNotices: string;
+};
+
 export type StatusResponse = {
   /** Env capability: `WADDLE_CONTROLLER_AUTH_ENABLED=1`. */
   authEnabled: boolean;

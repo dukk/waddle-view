@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
+  Autocomplete,
+  Box,
   CircularProgress,
   FormControl,
   FormControlLabel,
@@ -11,10 +13,20 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import {
+  displayTimezoneSelectOptions,
+  filterDisplayTimezoneOptions,
+  type DisplayTimezoneOption,
+} from '@/constants/displayTimezoneOptions';
 import { listStockSymbols, listWeatherLocations, type StockSymbolRow } from '@/api/interests';
 import type { ContentCategoryOption } from '@/components/config/ContentCategorySelectField';
 import { ContentCategorySelect } from '@/components/config/ContentCategorySelectField';
 import type { SavedDisplay } from '@/storage/displays';
+
+const DEVICE_LOCAL_TIMEZONE: DisplayTimezoneOption = {
+  id: '',
+  label: 'Device local (default)',
+};
 
 const TIME_FORMAT_PRESETS = [
   { value: '24h_hms', label: '24-hour with seconds (14:05:09)' },
@@ -118,8 +130,29 @@ export function TickerTypeExtraConfig({
     onChange({ ...formData, ...partial });
   };
 
+  const timeZone = type === 'time' ? readString(formData.timeZone) : '';
+  const timezoneOptions = useMemo(() => {
+    if (type !== 'time') {
+      return [] as DisplayTimezoneOption[];
+    }
+    return [DEVICE_LOCAL_TIMEZONE, ...displayTimezoneSelectOptions(timeZone)];
+  }, [type, timeZone]);
+
+  const selectedTickerTimezone = useMemo((): DisplayTimezoneOption => {
+    if (type !== 'time' || !timeZone) {
+      return DEVICE_LOCAL_TIMEZONE;
+    }
+    return (
+      timezoneOptions.find((o) => o.id === timeZone) ?? {
+        id: timeZone,
+        label: `${timeZone} (custom)`,
+      }
+    );
+  }, [type, timeZone, timezoneOptions]);
+
   if (type === 'time') {
     const preset = readString(formData.timeFormatPreset, '24h_hms');
+
     return (
       <Stack spacing={1.5}>
         <FormControl fullWidth disabled={disabled}>
@@ -137,15 +170,35 @@ export function TickerTypeExtraConfig({
             ))}
           </Select>
         </FormControl>
-        <TextField
-          label="Time zone (IANA, optional)"
-          value={readString(formData.timeZone)}
-          onChange={(e) => patch({ timeZone: e.target.value })}
-          disabled={disabled}
-          fullWidth
-          placeholder="America/Chicago"
-          helperText="Leave empty for device local time."
-        />
+        <Box>
+          <Autocomplete
+            fullWidth
+            disabled={disabled}
+            options={timezoneOptions}
+            value={selectedTickerTimezone}
+            onChange={(_, option) => {
+              const next = { ...formData };
+              const id = option?.id?.trim() ?? '';
+              if (!id) {
+                delete next.timeZone;
+              } else {
+                next.timeZone = id;
+              }
+              onChange(next);
+            }}
+            getOptionLabel={(option) => option.label}
+            isOptionEqualToValue={(a, b) => a.id === b.id}
+            filterOptions={(options, state) =>
+              filterDisplayTimezoneOptions(options, state.inputValue)
+            }
+            renderInput={(params) => (
+              <TextField {...params} label="Time zone (optional)" />
+            )}
+          />
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75, display: 'block' }}>
+            Same IANA list as Display settings. Choose device local to use the display device clock.
+          </Typography>
+        </Box>
         <TextField
           label="Label prefix (optional)"
           value={readString(formData.labelPrefix)}

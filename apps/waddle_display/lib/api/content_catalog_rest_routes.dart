@@ -73,6 +73,13 @@ class _CatalogParams {
 
 const String _kCatalogJokeIntegrationType = 'joke_openai';
 
+String _catalogQuoteIntegrationType(String quoteId) {
+  if (quoteId.startsWith('bucket_quote_')) {
+    return kManualEntrySource;
+  }
+  return kCatalogQuoterismIntegrationType;
+}
+
 String _catalogJokeIntegrationType(String jokeId) {
   if (jokeId.startsWith('bucket_joke_')) {
     return kManualEntrySource;
@@ -1133,7 +1140,7 @@ Future<Response> _listQuoterismQuotes(AppDatabase db, Request req) async {
           'fetched_at_ms': r.fetchedAtMs.millisecondsSinceEpoch,
           'category_ids': categoryIdsByQuote[r.id] ?? const <String>[],
           if (!browseOnly) 'suppressed': r.suppressed,
-          'integration_type': kCatalogQuoterismIntegrationType,
+          'integration_type': _catalogQuoteIntegrationType(r.id),
         },
     ],
     'total': total,

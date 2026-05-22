@@ -32,6 +32,7 @@ From the **repository root** (monorepo Pub workspace):
 
 ```bash
 flutter pub get
+dart run apps/waddle_display/tool/generate_about_manifest.dart
 cd packages/waddle_shared
 dart run build_runner build --delete-conflicting-outputs
 flutter test
@@ -181,7 +182,8 @@ Returns **`404`** when the target row does not exist.
 ## Local REST API and admin UI (debug, profile, release)
 
 - Defaults to **`0.0.0.0:8787`** (all interfaces; QR/adoption URLs use the first non-loopback IPv4). Set `WADDLE_DISPLAY_HTTP_BIND_IP=127.0.0.1` for loopback-only, or optional `WADDLE_DISPLAY_HTTP_PORT`.
-- **Authentication**: adopt via **`POST /v1/adoption/request`** and **`POST /v1/adoption/confirm`** (see [`docs/pi/api.md`](../../docs/pi/api.md)), then send **`Authorization: Bearer <api_key>`** on protected routes. Only **`/v1/health`** and **`/v1/adoption/*`** are public.
+- **Authentication**: adopt via **`POST /v1/adoption/request`** and **`POST /v1/adoption/confirm`** (see [`docs/pi/api.md`](../../docs/pi/api.md)), then send **`Authorization: Bearer <api_key>`** on protected routes. Only **`/v1/health`**, **`/v1/about`**, and **`/v1/adoption/*`** are public.
+- **About / licenses**: **`GET /v1/about`** returns app version, build number, ONC product license metadata, direct dependency list, and bundled third-party license text. Regenerate bundled assets after dependency changes: `dart run tool/generate_about_manifest.dart` from this app directory (or `dart run apps/waddle_display/tool/generate_about_manifest.dart` from the repo root). Requires a Flutter SDK on the machine for full `pub licenses` output in release builds.
 - **Instance id file**: **`waddle_instance.id`** in Flutter’s **application support** directory (`getApplicationSupportDirectory()` in `lib/main.dart`). Created on first launch; legacy **`waddle_api.key`** is renamed on upgrade. Used as the HMAC secret for adoption challenges and API keys (not sent as the bearer token).
 - Protected `/v1/*` routes return **401** without a valid API key, **403** when the adopted client’s role lacks permission.
 - **Operator UI**: **`apps/waddle_controller`** pairs via adoption and stores per-display API keys in the browser. Role semantics (`viewer`, `power_viewer`, `operator`, `admin`) are unchanged on protected routes — see **`docs/pi/api.md`**.
@@ -280,6 +282,8 @@ SQLite table **`ticker_tapes`** configures the bottom marquee: which **types** r
 | **`plugin`** | **`pluginId`**, optional **`fallbackText`**. |
 
 **Display setting** **`display.weather.temperature_unit`** (`c` or `f`, via `GET`/`PUT /v1/display/settings` as `display_weather_temperature_unit`) is the default for weather ticker lines and weather slides unless a tape overrides **`temperatureUnit`**. When unset, the display defaults to **Fahrenheit (°F)**.
+
+**Display settings** (controller **Programs** tab, `GET`/`PUT /v1/display/settings` as `display_ticker_item_separator` / `display_ticker_program_separator`) choose **dot** (`·`) or **diamond** spacers between ticker lines within one program (`display.ticker.item_separator`, default **dot**) and between past programs in auto-scroll (`display.ticker.program_separator`, default **diamond**). Duration and scroll speed use `display.ticker.program_duration_seconds` and `display.ticker.pixels_per_second`.
 
 Live weather plus **active NWS alerts** (same `weather` ticker kind), stored RSS articles for **`news`**, and enabled **`stock_symbols`** / **`stock_quotes`** for **`stocks`** are read from their domain tables. **`curator.ticker.*`** keys in **`config_key_values`** still tune RSS width budgeting for the news slice. If **`ticker_tapes`** has **no rows** (empty table), curation uses a legacy path: **time**, live weather (if any), and RSS news — **without** stock lines. If the table has rows but **none are enabled**, curation falls back to **time** only.
 

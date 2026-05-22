@@ -17,6 +17,8 @@ class CalendarUpcomingEventsPanel extends StatelessWidget {
     required this.layoutCompact,
     required this.timeColumnWidth,
     this.forOverlay = false,
+    this.scrollController,
+    this.enableScroll = false,
   });
 
   final AsyncSnapshot<CalendarMonthStreamBundle> snapshot;
@@ -27,6 +29,8 @@ class CalendarUpcomingEventsPanel extends StatelessWidget {
   final bool layoutCompact;
   final double timeColumnWidth;
   final bool forOverlay;
+  final ScrollController? scrollController;
+  final bool enableScroll;
 
   @override
   Widget build(BuildContext context) {
@@ -62,9 +66,10 @@ class CalendarUpcomingEventsPanel extends StatelessWidget {
       );
     } else {
       listBody = ListView.separated(
+        controller: enableScroll ? scrollController : null,
         padding: EdgeInsets.zero,
-        shrinkWrap: forOverlay,
-        physics: forOverlay
+        shrinkWrap: forOverlay && !enableScroll,
+        physics: forOverlay && !enableScroll
             ? const NeverScrollableScrollPhysics()
             : null,
         itemCount: listItems.length,

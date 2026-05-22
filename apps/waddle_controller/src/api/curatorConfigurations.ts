@@ -37,6 +37,7 @@ export type CuratorConfigurationSummary = {
   ticker_program_duration_seconds: number | null;
   ticker_pixels_per_second: number | null;
   require_news_photo_for_screens: boolean;
+  screens_enabled: boolean;
   ticker_enabled: boolean;
   theme_id_override: string | null;
   viewport_reserve_top_pct_override: number | null;
@@ -81,6 +82,7 @@ export type CuratorConfigurationWriteBody = {
   ticker_program_duration_seconds?: number | null;
   ticker_pixels_per_second?: number | null;
   require_news_photo_for_screens?: boolean;
+  screens_enabled?: boolean;
   ticker_enabled?: boolean;
   theme_id_override?: string | null;
   viewport_reserve_top_pct_override?: number | null;

@@ -7,13 +7,19 @@ import { normalizeSchemaFieldLabels } from '@/util/schemaFieldLabel';
 import { prepareRjsfSchema } from '@/util/rjsfSchema';
 import { buildUiSchemaFromJsonSchema } from '@/util/schemaConfigForm';
 import type { SavedDisplay } from '@/storage/displays';
+import type { DisplayThemePreviewGroups } from '@/constants/displayThemePreview';
 import {
   ContentCategorySelectField,
   type ContentCategoryOption,
 } from './ContentCategorySelectField';
+import { ContentCategoryMultiSelectField } from './ContentCategoryMultiSelectField';
 import { OverlayBlobKeysField } from './OverlayBlobKeysField';
+import { StockSymbolsMultiSelectField } from './StockSymbolsMultiSelectField';
+import { ThemeAccentSelectField } from './ThemeAccentSelectField';
+import { WeatherLocationSelectField } from './WeatherLocationSelectField';
 import {
   WaddleDurationWidget,
+  WaddleEnumSelectWidget,
   WaddleSliderWidget,
   WaddleSwitchWidget,
 } from './SchemaConfigFormWidgets';
@@ -22,6 +28,7 @@ const widgets: RegistryWidgetsType = {
   WaddleSwitchWidget,
   WaddleSliderWidget,
   WaddleDurationWidget,
+  WaddleEnumSelectWidget,
 };
 
 type Props = {
@@ -30,8 +37,10 @@ type Props = {
   formData: Record<string, unknown>;
   onChange: (next: Record<string, unknown>) => void;
   disabled?: boolean;
-  /** Curator content categories for categoryId fields. */
+  /** Curator content categories for category name fields. */
   categories?: ContentCategoryOption[];
+  /** Active display theme accent swatches for theme-accent fields. */
+  themePreview?: DisplayThemePreviewGroups;
   /** When false, omit the default submit row (dialog provides Save). */
   showSubmit?: boolean;
   children?: React.ReactNode;
@@ -44,6 +53,7 @@ export function SchemaConfigForm({
   onChange,
   disabled = false,
   categories = [],
+  themePreview,
   showSubmit = false,
   children,
 }: Props) {
@@ -61,8 +71,20 @@ export function SchemaConfigForm({
       ContentCategorySelectField: (fieldProps: FieldProps) => (
         <ContentCategorySelectField {...fieldProps} categories={categories} />
       ),
+      ContentCategoryMultiSelectField: (fieldProps: FieldProps) => (
+        <ContentCategoryMultiSelectField {...fieldProps} categories={categories} />
+      ),
+      ThemeAccentSelectField: (fieldProps: FieldProps) => (
+        <ThemeAccentSelectField {...fieldProps} themePreview={themePreview} />
+      ),
+      WeatherLocationSelectField: (fieldProps: FieldProps) => (
+        <WeatherLocationSelectField {...fieldProps} display={display} />
+      ),
+      StockSymbolsMultiSelectField: (fieldProps: FieldProps) => (
+        <StockSymbolsMultiSelectField {...fieldProps} display={display} />
+      ),
     }),
-    [display, categories],
+    [display, categories, themePreview],
   );
 
   return (

@@ -644,9 +644,14 @@ class _WaddleHomeState extends State<WaddleHome> {
                             (widget.curatorMembership.tickerPixelsPerSecond ??
                                     kDisplayTickerPixelsPerSecondDefault)
                                 .toDouble();
+                        final tickerSettings = parseDisplayTickerSettingsFromKv(
+                          widget.dashboardKv,
+                        );
                         return TickerMarquee(
                           repository: widget.tickerCurated,
                           pixelsPerSecond: px * s,
+                          itemSeparator: tickerSettings.itemSeparator,
+                          programSeparator: tickerSettings.programSeparator,
                           cycleGate: widget.marqueeCycleGate,
                           navigationController: _tickerNavigationController,
                           telemetryHub: widget.telemetryHub,

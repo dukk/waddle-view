@@ -1,0 +1,98 @@
+{
+  "app": "waddle_controller",
+  "version": "1.0.0",
+  "build": "dev",
+  "productLicense": {
+    "id": "ONC",
+    "name": "Open Non-Commercial License (ONC) v1.0",
+    "url": "https://github.com/dukk/waddle-view/blob/main/LICENSE",
+    "summary": "Open Non-Commercial License (ONC) v1.0\r\n\r\nCopyright (c) 2026 Justin / dukk"
+  },
+  "dependencies": [
+    {
+      "name": "@emotion/react",
+      "version": "11.14.0",
+      "license": "MIT"
+    },
+    {
+      "name": "@emotion/styled",
+      "version": "11.14.1",
+      "license": "MIT"
+    },
+    {
+      "name": "@hono/node-server",
+      "version": "1.19.14",
+      "license": "MIT"
+    },
+    {
+      "name": "@mui/icons-material",
+      "version": "6.5.0",
+      "license": "MIT"
+    },
+    {
+      "name": "@mui/material",
+      "version": "6.5.0",
+      "license": "MIT"
+    },
+    {
+      "name": "@node-rs/argon2",
+      "version": "2.0.2",
+      "license": "MIT"
+    },
+    {
+      "name": "@rjsf/core",
+      "version": "5.24.13",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "@rjsf/mui",
+      "version": "5.24.13",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "@rjsf/utils",
+      "version": "5.24.13",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "@rjsf/validator-ajv8",
+      "version": "5.24.13",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "@waddle/node-tls",
+      "version": ""
+    },
+    {
+      "name": "better-sqlite3",
+      "version": "11.10.0",
+      "license": "MIT"
+    },
+    {
+      "name": "hono",
+      "version": "4.12.19",
+      "license": "MIT"
+    },
+    {
+      "name": "react",
+      "version": "19.2.6",
+      "license": "MIT"
+    },
+    {
+      "name": "react-dom",
+      "version": "19.2.6",
+      "license": "MIT"
+    },
+    {
+      "name": "react-is",
+      "version": "18.3.1",
+      "license": "MIT"
+    },
+    {
+      "name": "react-router-dom",
+      "version": "7.15.1",
+      "license": "MIT"
+    }
+  ],
+  "thirdPartyNotices": "@emotion/react@11.14.0 — MIT\n@emotion/styled@11.14.1 — MIT\n@hono/node-server@1.19.14 — MIT\n@mui/icons-material@6.5.0 — MIT\n@mui/material@6.5.0 — MIT\n@node-rs/argon2@2.0.2 — MIT\n@rjsf/core@5.24.13 — Apache-2.0\n@rjsf/mui@5.24.13 — Apache-2.0\n@rjsf/utils@5.24.13 — Apache-2.0\n@rjsf/validator-ajv8@5.24.13 — Apache-2.0\nbetter-sqlite3@11.10.0 — MIT\nhono@4.12.19 — MIT\nreact@19.2.6 — MIT\nreact-dom@19.2.6 — MIT\nreact-is@18.3.1 — MIT\nreact-router-dom@7.15.1 — MIT\n"
+}

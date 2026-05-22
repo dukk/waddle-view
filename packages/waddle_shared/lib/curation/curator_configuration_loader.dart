@@ -94,6 +94,7 @@ Future<List<CuratorConfigurationInput>> loadCuratorConfigurationInputs(
         tickerPixelsPerSecond: c.tickerPixelsPerSecond,
         historyDepth: c.historyDepth,
         requireNewsPhotoForScreens: c.requireNewsPhotoForScreens,
+        screensEnabled: c.screensEnabled,
         tickerEnabled: c.tickerEnabled,
         themeIdOverride: c.themeIdOverride,
         viewportReserveTopPctOverride: c.viewportReserveTopPctOverride,

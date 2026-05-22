@@ -15,6 +15,7 @@ class CuratorConfigurationInput {
     this.tickerPixelsPerSecond,
     required this.historyDepth,
     required this.requireNewsPhotoForScreens,
+    required this.screensEnabled,
     required this.tickerEnabled,
     this.themeIdOverride,
     this.viewportReserveTopPctOverride,
@@ -37,6 +38,7 @@ class CuratorConfigurationInput {
   final int? tickerPixelsPerSecond;
   final int historyDepth;
   final bool requireNewsPhotoForScreens;
+  final bool screensEnabled;
   final bool tickerEnabled;
   final String? themeIdOverride;
   final int? viewportReserveTopPctOverride;

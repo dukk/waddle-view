@@ -2,12 +2,10 @@ import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
+import 'package:waddle_display/api/display_about.dart';
 
-/// Application version (keep in sync with [pubspec.yaml] `version` before `+`).
-const kWaddleDisplayAppVersion = '1.0.0';
-
-/// Build number (keep in sync with [pubspec.yaml] `version` after `+`).
-const kWaddleDisplayBuildNumber = '1';
+export 'package:waddle_display/api/display_about.dart'
+    show kWaddleDisplayAppVersion, kWaddleDisplayBuildNumber;
 
 /// Host facts exposed on `GET /v1/health` (overridable in tests).
 @immutable
@@ -52,6 +50,7 @@ Map<String, dynamic> buildDisplayHealthJson({
   DisplayHostFacts? hostFacts,
   DateTime? serverStartedAt,
   DateTime? now,
+  bool? pluginsDirConfigured,
 }) {
   final host = hostFacts ?? DisplayHostFacts.fromPlatform();
   final clock = (now ?? DateTime.now()).toUtc();
@@ -73,6 +72,8 @@ Map<String, dynamic> buildDisplayHealthJson({
     'cpu_count': host.numberOfProcessors,
     if (host.dartVersion.isNotEmpty) 'dart_version': host.dartVersion,
     'uptime_seconds': ?uptimeSeconds,
+    if (pluginsDirConfigured != null)
+      'plugins_dir_configured': pluginsDirConfigured,
   };
 }
 
@@ -81,6 +82,7 @@ String encodeDisplayHealthJson({
   DisplayHostFacts? hostFacts,
   DateTime? serverStartedAt,
   DateTime? now,
+  bool? pluginsDirConfigured,
 }) =>
     jsonEncode(
       buildDisplayHealthJson(
@@ -88,5 +90,6 @@ String encodeDisplayHealthJson({
         hostFacts: hostFacts,
         serverStartedAt: serverStartedAt,
         now: now,
+        pluginsDirConfigured: pluginsDirConfigured,
       ),
     );

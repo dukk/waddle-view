@@ -33,6 +33,7 @@ import 'screens/news/news_slide_widget.dart';
 import 'screens/news/news_stack_slide_widget.dart';
 import 'screens/web_page/web_page_slide_widget.dart';
 import 'screens/general_layout/general_layout_slide_widget.dart';
+import 'screens/stock_quotes/stock_quotes_slide_widget.dart';
 import '../extensions/screen_widget_registry.dart';
 
 String screenShownDebugLogLine({
@@ -103,6 +104,7 @@ class _ScreenRotatorState extends State<ScreenRotator>
   StreamSubscription<List<CuratorScheduleRule>>? _curatorRulesSub;
   Timer? _curatorSchedulePollTimer;
   String? _curatorProgramFingerprint;
+  bool _screensProgramDisabledByCurator = false;
   final List<String> _recentScreenIds = [];
   final Map<String, int> _lastShownAtMsByScreenId = {};
   final FocusNode _keyboardFocusNode = FocusNode(debugLabel: 'screen-rotator');
@@ -220,8 +222,12 @@ class _ScreenRotatorState extends State<ScreenRotator>
   }
 
   String _curatorProgramFingerprintFor(ResolvedCuratorSelection selection) {
-    final screens = selection.effectiveScreenMemberIds.toList()..sort();
-    return '${selection.primary.configuration.id}|${screens.join(',')}';
+    final primary = selection.primary.configuration;
+    final screens = primary.screensEnabled
+        ? selection.effectiveScreenMemberIds.toList()
+        : <String>[];
+    screens.sort();
+    return '${primary.id}|${primary.screensEnabled}|${screens.join(',')}';
   }
 
   @override
@@ -256,19 +262,27 @@ class _ScreenRotatorState extends State<ScreenRotator>
     final selection = await _curatorService.resolveAt(DateTime.now());
     final primary = selection.primary.configuration;
     _curatorProgramFingerprint = _curatorProgramFingerprintFor(selection);
-    final allowedScreenIds = selection.effectiveScreenMemberIds;
+    final allowedScreenIds = primary.screensEnabled
+        ? selection.effectiveScreenMemberIds
+        : const <String>{};
+    final screensDisabledByCurator = !primary.screensEnabled;
 
     if (allowedScreenIds.isEmpty) {
       if (!mounted) {
         return;
       }
       setState(() {
+        _screensProgramDisabledByCurator = screensDisabledByCurator;
         _history.clear();
         _history.add(const _ProgramHistoryEntry(slides: []));
         _historyCursor = 0;
         _slideCursor = 0;
       });
       return;
+    }
+
+    if (mounted) {
+      setState(() => _screensProgramDisabledByCurator = false);
     }
 
     final defs =
@@ -303,6 +317,12 @@ class _ScreenRotatorState extends State<ScreenRotator>
     }
 
     final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final categoryRows = await widget.db.select(widget.db.contentCategories).get();
+    final categoryLabelToId = {
+      for (final c in categoryRows)
+        if (c.label.trim().isNotEmpty) c.label.trim(): c.id,
+    };
+
     final candidates = defs
         .map(
           (r) => ScreenCandidate(
@@ -335,6 +355,7 @@ class _ScreenRotatorState extends State<ScreenRotator>
       requirePhotoForRssScreens: requireNewsPhotoForScreens,
       lastShownAtMsByScreenId: _lastShownAtMsByScreenId,
       nowMs: nowMs,
+      categoryLabelToId: categoryLabelToId,
     );
 
     final screenTypeById = {for (final r in defs) r.id: r.screenType};
@@ -676,7 +697,9 @@ class _ScreenRotatorState extends State<ScreenRotator>
     if (_history.isEmpty || _visibleProgram.isEmpty) {
       return Center(
         child: Text(
-          'No display screens enabled',
+          _screensProgramDisabledByCurator
+              ? 'Screen program disabled'
+              : 'No display screens enabled',
           style: theme.textTheme.titleMedium,
           textAlign: TextAlign.center,
         ),
@@ -1065,6 +1088,18 @@ class _SlideContent extends StatelessWidget {
         child: WebPageSlideWidget(
           slide: slide,
           spec: w,
+          onReportDesiredDwell: (ms) => onReportDesiredDwell(slideIndex, ms),
+        ),
+      );
+    }
+    if (widgets.length == 1 && widgets.first.type == 'stock_quotes') {
+      final w = widgets.first;
+      return SizedBox.expand(
+        child: StockQuotesSlideWidget(
+          db: db,
+          slide: slide,
+          spec: w,
+          theme: theme,
           onReportDesiredDwell: (ms) => onReportDesiredDwell(slideIndex, ms),
         ),
       );

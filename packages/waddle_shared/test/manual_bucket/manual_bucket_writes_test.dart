@@ -172,4 +172,31 @@ void main() {
     expect(junction, hasLength(1));
     expect(junction.single.categoryId, 'family');
   });
+
+  test('writeManualBucketQuote stores quote and categories', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await seedContentCategoriesForTest(db, ['wisdom']);
+
+    final result = await writeManualBucketQuote(
+      db: db,
+      text: 'To be or not to be.',
+      authorName: 'Shakespeare',
+      categoryIds: ['wisdom'],
+    );
+
+    expect(result.id, startsWith('bucket_quote_'));
+    final row = await (db.select(db.quoterismQuotes)
+          ..where((t) => t.id.equals(result.id)))
+        .getSingle();
+    expect(row.quoteText, 'To be or not to be.');
+    expect(row.authorName, 'Shakespeare');
+    expect(row.integrationId, isNull);
+
+    final junction = await (db.select(db.quoterismQuoteCategories)
+          ..where((t) => t.quoteId.equals(result.id)))
+        .get();
+    expect(junction, hasLength(1));
+    expect(junction.single.categoryId, 'wisdom');
+  });
 }

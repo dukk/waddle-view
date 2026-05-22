@@ -27,6 +27,10 @@ export type DisplaySettings = {
   display_ticker_program_duration_seconds: number;
   /** Bottom marquee scroll speed (pixels per second). */
   display_ticker_pixels_per_second: number;
+  /** `dot` or `diamond` from `display.ticker.item_separator`. */
+  display_ticker_item_separator: DisplayTickerSeparator;
+  /** `dot` or `diamond` from `display.ticker.program_separator`. */
+  display_ticker_program_separator: DisplayTickerSeparator;
   /** `c` or `f` from `display.weather.temperature_unit`. */
   display_weather_temperature_unit: 'c' | 'f';
   controller_time_format: ControllerTimeFormat;
@@ -36,6 +40,30 @@ export type DisplaySettings = {
   /** @deprecated Use `adoption_allowed_roles`; true when that list is non-empty. */
   adoption_allow_new_requests?: boolean;
 };
+
+export type DisplayTickerSeparator = 'dot' | 'diamond';
+
+export const DEFAULT_DISPLAY_TICKER_ITEM_SEPARATOR = 'dot' as const;
+export const DEFAULT_DISPLAY_TICKER_PROGRAM_SEPARATOR = 'diamond' as const;
+
+export const DISPLAY_TICKER_SEPARATOR_OPTIONS = [
+  { value: 'dot' as const, label: 'Dot (·)' },
+  { value: 'diamond' as const, label: 'Diamond' },
+] as const;
+
+export function normalizeDisplayTickerSeparator(
+  raw: unknown,
+  defaultValue: DisplayTickerSeparator,
+): DisplayTickerSeparator {
+  const s = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
+  if (s === 'diamond') {
+    return 'diamond';
+  }
+  if (s === 'dot') {
+    return 'dot';
+  }
+  return defaultValue;
+}
 
 export const DEFAULT_DISPLAY_WEATHER_TEMPERATURE_UNIT = 'f' as const;
 

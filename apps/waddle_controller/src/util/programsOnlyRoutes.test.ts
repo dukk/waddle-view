@@ -7,10 +7,11 @@ import {
 describe('isProgramsOnlyPathAllowed', () => {
   const denyAll = () => false;
 
-  it('allows programs and account for any permission set', () => {
+  it('allows programs, account, and about for any permission set', () => {
     expect(isProgramsOnlyPathAllowed('/programs', denyAll)).toBe(true);
     expect(isProgramsOnlyPathAllowed('/programs/foo', denyAll)).toBe(true);
     expect(isProgramsOnlyPathAllowed('/account', denyAll)).toBe(true);
+    expect(isProgramsOnlyPathAllowed('/about', denyAll)).toBe(true);
   });
 
   it('allows remote only with navigation.control', () => {

@@ -5,8 +5,11 @@ import {
   schemaPropertyIsBoolean,
   schemaPropertyUsesBlobKey,
   schemaPropertyUsesContentCategory,
+  schemaPropertyUsesContentCategoryMulti,
   schemaPropertyUsesDuration,
+  schemaPropertyUsesEnumLabels,
   schemaPropertyUsesSlider,
+  schemaPropertyUsesThemeAccent,
 } from './schemaConfigForm';
 
 describe('schemaConfigForm', () => {
@@ -55,6 +58,25 @@ describe('schemaConfigForm', () => {
       }),
     ).toBe(true);
     expect(schemaPropertyUsesContentCategory({ type: 'string' })).toBe(false);
+    expect(
+      schemaPropertyUsesContentCategoryMulti({
+        type: 'array',
+        'x-waddle-widget': 'content-category-multi',
+      }),
+    ).toBe(true);
+    expect(
+      schemaPropertyUsesThemeAccent({
+        'x-waddle-widget': 'theme-accent',
+        oneOf: [],
+      }),
+    ).toBe(true);
+    expect(
+      schemaPropertyUsesEnumLabels({
+        type: 'string',
+        enum: ['a'],
+        'x-waddle-enum-labels': { a: 'A' },
+      }),
+    ).toBe(true);
   });
 
   it('buildUiSchemaFromJsonSchema maps widgets and fields', () => {
@@ -71,6 +93,11 @@ describe('schemaConfigForm', () => {
           type: 'string',
           'x-waddle-widget': 'content-category',
         },
+        qrMode: {
+          type: 'string',
+          enum: ['hidden', 'left'],
+          'x-waddle-enum-labels': { hidden: 'Hidden', left: 'Left' },
+        },
         interval_sec: {
           type: 'integer',
           minimum: 5,
@@ -84,6 +111,7 @@ describe('schemaConfigForm', () => {
     expect(ui.image_blob_keys).toEqual({ 'ui:field': 'OverlayBlobKeysField' });
     expect(ui.categoryId).toEqual({ 'ui:field': 'ContentCategorySelectField' });
     expect(ui.interval_sec).toEqual({ 'ui:widget': 'WaddleDurationWidget' });
+    expect(ui.qrMode).toEqual({ 'ui:widget': 'WaddleEnumSelectWidget' });
   });
 
   it('normalizeSchemaFieldLabels fills missing property titles', () => {

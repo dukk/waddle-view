@@ -10,6 +10,7 @@ import 'package:waddle_shared/persistence/database.dart';
 import '../../content_category_slide_header.dart';
 import '../../../theme/display_theme.dart';
 import '../../dashboard_viewport_scope.dart';
+import 'news_config.dart';
 import 'news_load.dart';
 import 'news_slide_timing.dart';
 
@@ -101,7 +102,8 @@ class _NewsSlideWidgetState extends State<NewsSlideWidget> {
   late final double _scrollPps;
   late final int _minReadMs;
   late final double _imageFraction;
-  late final bool _imageOnRight;
+  late final String _qrMode;
+  late final BoxFit _imageFit;
 
   @override
   void initState() {
@@ -112,7 +114,11 @@ class _NewsSlideWidgetState extends State<NewsSlideWidget> {
     _scrollPps = _cfgDouble(c, 'scrollPixelsPerSecond', 48);
     _minReadMs = _cfgInt(c, 'minReadMs', 8000);
     _imageFraction = _cfgDouble(c, 'imagePanelFraction', 0.39).clamp(0.2, 0.55);
-    _imageOnRight = _cfgBool(c, 'imageOnRight', false);
+    _qrMode = readNewsQrMode(
+      c,
+      legacyImageOnRight: _cfgBool(c, 'imageOnRight', false),
+    );
+    _imageFit = readNewsImageFit(c);
     final slideCat =
         widget.slide.randomChoices[ScreenProgramCurator.rssScreenCategoryChoiceKey];
     if (slideCat != null && slideCat.isNotEmpty) {
@@ -408,20 +414,57 @@ class _NewsSlideWidgetState extends State<NewsSlideWidget> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(11 * s),
-                child: Image.memory(
-                  _imageLoad.bytes!,
-                  fit: BoxFit.cover,
-                  gaplessPlayback: true,
-                  errorBuilder: (context, error, stackTrace) =>
-                      _imagePlaceholder(
-                        theme,
-                        s,
-                        blobReadFailed: false,
-                        useNewsIcon:
-                            widget.slide.randomChoices['${widget.spec.choiceKey}_imageMode'] ==
-                            'icon',
+                child: newsQrImageOverlayBottom(_qrMode) &&
+                        article.link.trim().isNotEmpty
+                    ? Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.memory(
+                            _imageLoad.bytes!,
+                            fit: _imageFit,
+                            gaplessPlayback: true,
+                            width: double.infinity,
+                            height: double.infinity,
+                            errorBuilder: (context, error, stackTrace) =>
+                                _imagePlaceholder(
+                                  theme,
+                                  s,
+                                  blobReadFailed: false,
+                                  useNewsIcon: widget.slide.randomChoices[
+                                          '${widget.spec.choiceKey}_imageMode'] ==
+                                      'icon',
+                                ),
+                          ),
+                          Positioned(
+                            left: 8 * s,
+                            right: 8 * s,
+                            bottom: 8 * s,
+                            child: Align(
+                              alignment: Alignment.bottomCenter,
+                              child: _articleLinkQr(
+                                theme,
+                                s,
+                                article.link,
+                                compact: true,
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Image.memory(
+                        _imageLoad.bytes!,
+                        fit: _imageFit,
+                        gaplessPlayback: true,
+                        errorBuilder: (context, error, stackTrace) =>
+                            _imagePlaceholder(
+                              theme,
+                              s,
+                              blobReadFailed: false,
+                              useNewsIcon: widget.slide.randomChoices[
+                                      '${widget.spec.choiceKey}_imageMode'] ==
+                                  'icon',
+                            ),
                       ),
-                ),
               ),
             ),
           )
@@ -481,7 +524,7 @@ class _NewsSlideWidgetState extends State<NewsSlideWidget> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: hasImage
-              ? (_imageOnRight
+              ? (newsQrOnRight(_qrMode)
                     ? <Widget>[textPanel, gap, imagePanel]
                     : <Widget>[imagePanel, gap, textPanel])
               : <Widget>[textPanel],
@@ -497,6 +540,8 @@ class _NewsSlideWidgetState extends State<NewsSlideWidget> {
     required String link,
   }) {
     final url = link.trim();
+    final showQr =
+        newsQrVisible(_qrMode) && !newsQrImageOverlayBottom(_qrMode) && url.isNotEmpty;
     if (url.isEmpty) {
       if (summary.isEmpty) {
         return const SizedBox.shrink();
@@ -517,31 +562,33 @@ class _NewsSlideWidgetState extends State<NewsSlideWidget> {
         ),
       );
     }
+    final summaryWidget = summary.isEmpty
+        ? const SizedBox.shrink()
+        : Scrollbar(
+            controller: _scroll,
+            thumbVisibility: true,
+            child: SingleChildScrollView(
+              key: const Key('rss_article_summary_scroll'),
+              controller: _scroll,
+              child: Padding(
+                padding: EdgeInsets.only(bottom: 6 * s),
+                child: Text(
+                  summary,
+                  style: theme.textTheme.bodyLarge,
+                ),
+              ),
+            ),
+          );
+    if (!showQr) {
+      return summaryWidget;
+    }
+    final qr = _articleLinkQr(theme, s, link);
+    final gap = SizedBox(width: 12 * s);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _articleLinkQr(theme, s, link),
-        SizedBox(width: 12 * s),
-        Expanded(
-          child: summary.isEmpty
-              ? const SizedBox.shrink()
-              : Scrollbar(
-                  controller: _scroll,
-                  thumbVisibility: true,
-                  child: SingleChildScrollView(
-                    key: const Key('rss_article_summary_scroll'),
-                    controller: _scroll,
-                    child: Padding(
-                      padding: EdgeInsets.only(bottom: 6 * s),
-                      child: Text(
-                        summary,
-                        style: theme.textTheme.bodyLarge,
-                      ),
-                    ),
-                  ),
-                ),
-        ),
-      ],
+      children: newsQrOnRight(_qrMode)
+          ? [Expanded(child: summaryWidget), gap, qr]
+          : [qr, gap, Expanded(child: summaryWidget)],
     );
   }
 
@@ -577,12 +624,13 @@ class _NewsSlideWidgetState extends State<NewsSlideWidget> {
     double s,
     String link, {
     bool standalone = false,
+    bool compact = false,
   }) {
     final url = link.trim();
     if (url.isEmpty) {
       return const SizedBox.shrink();
     }
-    const qrLogical = 176.0;
+    final qrLogical = compact ? 96.0 : 176.0;
     final innerPad = 14 * s;
     final box = Padding(
       padding: EdgeInsets.all(6 * s),

@@ -23,6 +23,31 @@ export function schemaPropertyUsesContentCategory(prop: JsonSchemaObject): boole
   return prop['x-waddle-widget'] === 'content-category';
 }
 
+export function schemaPropertyUsesContentCategoryMulti(prop: JsonSchemaObject): boolean {
+  return prop['x-waddle-widget'] === 'content-category-multi';
+}
+
+export function schemaPropertyUsesThemeAccent(prop: JsonSchemaObject): boolean {
+  return prop['x-waddle-widget'] === 'theme-accent';
+}
+
+export function schemaPropertyUsesWeatherLocation(prop: JsonSchemaObject): boolean {
+  return prop['x-waddle-widget'] === 'weather-location';
+}
+
+export function schemaPropertyUsesStockSymbolsMulti(prop: JsonSchemaObject): boolean {
+  return prop['x-waddle-widget'] === 'stock-symbols-multi';
+}
+
+export function schemaPropertyUsesEnumLabels(prop: JsonSchemaObject): boolean {
+  const labels = prop['x-waddle-enum-labels'];
+  return labels != null && typeof labels === 'object' && !Array.isArray(labels);
+}
+
+export function schemaPropertyIsEnumString(prop: JsonSchemaObject): boolean {
+  return prop.type === 'string' && Array.isArray(prop.enum);
+}
+
 export function schemaPropertyIsBoolean(prop: JsonSchemaObject): boolean {
   return prop.type === 'boolean';
 }
@@ -53,6 +78,19 @@ export function buildUiSchemaFromJsonSchema(schema: RJSFSchema, base: UiSchema =
       fieldUi['ui:field'] = 'OverlayBlobKeysField';
     } else if (schemaPropertyUsesContentCategory(prop)) {
       fieldUi['ui:field'] = 'ContentCategorySelectField';
+    } else if (schemaPropertyUsesContentCategoryMulti(prop)) {
+      fieldUi['ui:field'] = 'ContentCategoryMultiSelectField';
+    } else if (schemaPropertyUsesThemeAccent(prop)) {
+      fieldUi['ui:field'] = 'ThemeAccentSelectField';
+    } else if (schemaPropertyUsesWeatherLocation(prop)) {
+      fieldUi['ui:field'] = 'WeatherLocationSelectField';
+    } else if (schemaPropertyUsesStockSymbolsMulti(prop)) {
+      fieldUi['ui:field'] = 'StockSymbolsMultiSelectField';
+    } else if (
+      schemaPropertyIsEnumString(prop) &&
+      schemaPropertyUsesEnumLabels(prop)
+    ) {
+      fieldUi['ui:widget'] = 'WaddleEnumSelectWidget';
     }
     if (Object.keys(fieldUi).length > 0) {
       ui[key] = fieldUi;

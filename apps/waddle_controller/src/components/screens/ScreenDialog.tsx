@@ -25,6 +25,7 @@ import { screenIdFromLabel } from '@/util/catalogIdFromLabel';
 import { completeDialogSave } from '@/util/dialogSave';
 import { parseJsonObject } from '@/util/json';
 import { prepareRjsfSchema, validateConfigAgainstSchema } from '@/util/rjsfSchema';
+import { displayThemePreviewById } from '@/constants/displayThemePreview';
 import { screenTypeLabel } from '@/util/screenTypeLabel';
 
 export type ScreenDialogRow = {
@@ -96,6 +97,14 @@ export function ScreenDialog({
     () => (screenType ? prepareRjsfSchema(schemaForType(screenType)) : null),
     [schemaForType, screenType],
   );
+
+  const editTypeLabel = useMemo(() => {
+    if (mode !== 'edit' || !screenType) return '';
+    const meta = screenTypes.find((m) => m.screen_type === screenType);
+    return screenTypeLabel(screenType, meta);
+  }, [mode, screenType, screenTypes]);
+
+  const themePreview = displayThemePreviewById.navy_coral;
 
   const dialogTitle =
     mode === 'create'
@@ -258,33 +267,31 @@ export function ScreenDialog({
             minRows={2}
             disabled={saving}
           />
-          <FormControl fullWidth disabled={saving || mode === 'edit'}>
-            <InputLabel id="screen-type-label">Screen type</InputLabel>
-            <Select
-              labelId="screen-type-label"
-              label="Screen type"
-              value={screenType}
-              onChange={(e) => handleTypeChange(String(e.target.value))}
-              displayEmpty
-            >
-              {mode === 'create' ? (
+          {mode === 'create' ? (
+            <FormControl fullWidth disabled={saving}>
+              <InputLabel id="screen-type-label">Screen type</InputLabel>
+              <Select
+                labelId="screen-type-label"
+                label="Screen type"
+                value={screenType}
+                onChange={(e) => handleTypeChange(String(e.target.value))}
+                displayEmpty
+              >
                 <MenuItem value={UNSELECTED_TYPE} disabled>
                   Select screen type
                 </MenuItem>
-              ) : null}
-              {screenTypes.map((m) => (
-                <MenuItem key={m.screen_type} value={m.screen_type}>
-                  {screenTypeLabel(m.screen_type, m)}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          {mode === 'edit' ? (
-            <Typography variant="caption" color="text.secondary">
-              Screen type cannot be changed after create. Delete and add a new screen to switch
-              types.
+                {screenTypes.map((m) => (
+                  <MenuItem key={m.screen_type} value={m.screen_type}>
+                    {screenTypeLabel(m.screen_type, m)}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              Type: {editTypeLabel || screenType}
             </Typography>
-          ) : null}
+          )}
           {screenType ? (
             <>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
@@ -352,11 +359,13 @@ export function ScreenDialog({
               />
               <ScreenConfigPanel
                 display={active}
+                screenType={screenType}
                 schema={configSchema}
                 formData={configForm}
                 onChange={setConfigForm}
                 disabled={saving}
                 categories={categories}
+                themePreview={themePreview}
               />
             </>
           ) : null}

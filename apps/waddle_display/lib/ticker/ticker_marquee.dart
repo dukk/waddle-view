@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:waddle_shared/display/display_ticker_settings.dart';
 
 import '../curator/ticker_item.dart';
 import '../display/dashboard_viewport_scope.dart';
@@ -23,6 +24,8 @@ class TickerMarquee extends StatefulWidget {
     super.key,
     required this.repository,
     this.pixelsPerSecond = 80,
+    this.itemSeparator = kDefaultDisplayTickerItemSeparator,
+    this.programSeparator = kDefaultDisplayTickerProgramSeparator,
     this.separator,
     this.height = 96,
     this.cycleGate,
@@ -33,6 +36,11 @@ class TickerMarquee extends StatefulWidget {
 
   final TickerCuratedRepository repository;
   final double pixelsPerSecond;
+  /// Between ticker lines within one program ([kDisplayTickerSeparatorDot] or diamond).
+  final String itemSeparator;
+  /// Between ticker programs in auto-scroll history.
+  final String programSeparator;
+  /// When set, overrides [itemSeparator] widget for item gaps only.
   final Widget? separator;
   final double height;
 
@@ -331,27 +339,24 @@ class _TickerMarqueeState extends State<TickerMarquee>
     });
   }
 
-  Widget _defaultSeparator(BuildContext context) {
+  Widget _separatorWidget(BuildContext context, String kind) {
     final s = DashboardViewportScope.scaleOf(context);
+    final color = Theme.of(context).colorScheme.onSurfaceVariant;
+    if (kind == kDisplayTickerSeparatorDiamond) {
+      return Padding(
+        padding: EdgeInsets.symmetric(horizontal: 14 * s),
+        child: Icon(
+          Icons.diamond_outlined,
+          size: 22 * s,
+          color: color,
+        ),
+      );
+    }
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 10 * s),
       child: Text(
         '\u00B7',
-        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
-      ),
-    );
-  }
-
-  Widget _programSeparator(BuildContext context) {
-    final s = DashboardViewportScope.scaleOf(context);
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 14 * s),
-      child: Icon(
-        Icons.diamond_outlined,
-        size: 22 * s,
-        color: Theme.of(context).colorScheme.onSurfaceVariant,
+        style: Theme.of(context).textTheme.titleLarge?.copyWith(color: color),
       ),
     );
   }
@@ -592,12 +597,14 @@ class _TickerMarqueeState extends State<TickerMarquee>
   }
 
   List<Widget> _segmentChildren(BuildContext context) {
-    final itemSep = widget.separator ?? _defaultSeparator(context);
+    final itemSep =
+        widget.separator ?? _separatorWidget(context, widget.itemSeparator);
+    final programSep = _separatorWidget(context, widget.programSeparator);
     final programs = _autoScrollPrograms;
     final out = <Widget>[];
     for (var p = 0; p < programs.length; p++) {
       if (p > 0) {
-        out.add(_programSeparator(context));
+        out.add(programSep);
       }
       final items = programs[p];
       for (var i = 0; i < items.length; i++) {

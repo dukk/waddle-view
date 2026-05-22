@@ -25,7 +25,12 @@ disable-model-invocation: true
 | `type: integer` / `number` with `minimum` + `maximum` | MUI `Slider` via `WaddleSliderWidget` | Also when `x-waddle-widget: slider` is set |
 | `'x-waddle-widget': 'duration'` | [`DurationInputField`](../../../apps/waddle_controller/src/components/DurationInputField.tsx) via `WaddleDurationWidget` | Values stored as **seconds**; optional `x-waddle-duration-units` |
 | `format: waddle-overlay-blob-key` on `items` (array) | `OverlayBlobKeysField` | Upload via `POST /v1/display/overlays/blobs`; stores `image_blob_keys` |
-| `enum` | RJSF default select | No custom widget |
+| `'x-waddle-widget': 'content-category'` | `ContentCategorySelectField` | Stores **category display name** (label), not id |
+| `'x-waddle-widget': 'content-category-multi'` | `ContentCategoryMultiSelectField` | Array of category display names |
+| `'x-waddle-widget': 'theme-accent'` | `ThemeAccentSelectField` | Swatches from `themePreview` prop (accent1–3) |
+| `'x-waddle-widget': 'weather-location'` | `WeatherLocationSelectField` | Stores location **name** |
+| `'x-waddle-widget': 'stock-symbols-multi'` | `StockSymbolsMultiSelectField` | Ticker symbols (e.g. AAPL) |
+| `enum` + `'x-waddle-enum-labels': { … }` | `WaddleEnumSelectWidget` | **Never** show raw slug values to operators |
 | Plain `string` / `array` of strings | RJSF defaults | e.g. `messages` phrase lists |
 
 Helpers live in [`schemaConfigForm.ts`](../../../apps/waddle_controller/src/util/schemaConfigForm.ts) (unit-tested).

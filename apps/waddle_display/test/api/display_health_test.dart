@@ -28,5 +28,20 @@ void main() {
     expect(body['cpu_count'], 4);
     expect(body['dart_version'], startsWith('Dart'));
     expect(body['uptime_seconds'], 300);
+    expect(body.containsKey('plugins_dir_configured'), isFalse);
+  });
+
+  test('buildDisplayHealthJson emits plugins_dir_configured when set', () {
+    final withDir = buildDisplayHealthJson(
+      schemaVersion: 1,
+      pluginsDirConfigured: true,
+    );
+    expect(withDir['plugins_dir_configured'], isTrue);
+
+    final withoutDir = buildDisplayHealthJson(
+      schemaVersion: 1,
+      pluginsDirConfigured: false,
+    );
+    expect(withoutDir['plugins_dir_configured'], isFalse);
   });
 }

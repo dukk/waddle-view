@@ -24,6 +24,7 @@ CuratorConfigurationInput _config({
     tickerPixelsPerSecond: 80,
     historyDepth: 5,
     requireNewsPhotoForScreens: true,
+    screensEnabled: true,
     tickerEnabled: true,
     defaultConfig: defaultConfig,
     rules: rules,

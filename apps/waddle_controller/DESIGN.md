@@ -59,11 +59,13 @@ Create/edit dialogs for **screens**, **overlays**, and **ticker tapes** share a 
 
 1. **Label** (required on create; id derived server-side — preview with [`catalogIdFromLabel.ts`](src/util/catalogIdFromLabel.ts))
 2. **Description** (optional multiline)
-3. **Type** (empty `Select` + “Select … type” on create; **disabled** on edit)
+3. **Type** (empty `Select` + “Select … type” on create only; on edit show read-only type label — no disabled select)
 4. Scheduling / shell fields (dwell, weight, enabled, …)
 5. Type config via [`SchemaConfigForm`](src/components/config/SchemaConfigForm.tsx) or bespoke overlay panels — **never** pasted JSON
 
 **Never** show raw **id** fields or monospace **`config_json`** text areas in catalog add/edit dialogs.
+
+**Config field UX:** enum and option fields use human labels (`x-waddle-enum-labels` / [`clockEnumLabels.ts`](src/constants/clockEnumLabels.ts)), not stored slugs. Categories, locations, and stock symbols are chosen by **display name** or ticker symbol, not internal ids. Theme accent fields use swatches from the active display theme (`theme-accent` widget).
 
 Canonical examples: [`ScreenDialog.tsx`](src/components/screens/ScreenDialog.tsx), [`OverlaysPage.tsx`](src/pages/OverlaysPage.tsx) (`OverlayDialog`), [`TickerPage.tsx`](src/pages/TickerPage.tsx).
 

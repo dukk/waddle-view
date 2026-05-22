@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:waddle_display/config/display_env.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/seed/tables/interests_jokes_seed.dart';
 
@@ -92,6 +93,15 @@ void main() {
     expect(healthBody['status'], 'ok');
     expect(healthBody['app'], 'waddle_display');
     expect(healthBody['schema_version'], isA<int>());
+    expect(healthBody['plugins_dir_configured'], isFalse);
+
+    final about = await http.get(Uri.parse('${h.baseUrl}/v1/about'));
+    expect(about.statusCode, 200);
+    final aboutBody = jsonDecode(about.body) as Map<String, dynamic>;
+    expect(aboutBody['app'], 'waddle_display');
+    expect(aboutBody['version'], isNotEmpty);
+    expect(aboutBody['dependencies'], isA<List<dynamic>>());
+    expect((aboutBody['dependencies'] as List).isNotEmpty, isTrue);
 
     final denied = await http.get(Uri.parse('${h.baseUrl}/v1/integrations'));
     expect(denied.statusCode, 401);
@@ -101,6 +111,17 @@ void main() {
       headers: h.authHeaders,
     );
     expect(ok.statusCode, 200);
+  });
+
+  test('health reports plugins_dir_configured when env is set', () async {
+    final h = await RestTestHarness.start(
+      env: {kDisplayPluginsDirEnv: '/opt/waddle-view/plugins'},
+    );
+    addTearDown(h.dispose);
+    final health = await http.get(Uri.parse('${h.baseUrl}/v1/health'));
+    expect(health.statusCode, 200);
+    final healthBody = jsonDecode(health.body) as Map<String, dynamic>;
+    expect(healthBody['plugins_dir_configured'], isTrue);
   });
 
   test('PATCH content suppression updates row', () async {

@@ -54,10 +54,12 @@ import { dismissActiveDisplayAlert, postDisplayNavigation } from '@/util/display
 import { PREVIEWABLE_CONTROLLER_ROLES } from '@/auth/rolePermissions';
 import { WaddleBrandMark } from '@/components/brand/WaddleBrandMark';
 import { DisplaySelector } from '@/components/DisplaySelector';
+import { useActiveDisplayPluginsNav } from '@/hooks/useActiveDisplayPluginsNav';
 import { isProgramsOnlyNavRouteAllowed } from '@/util/programsOnlyRoutes';
+import { useControllerAbout } from '@/hooks/useControllerAbout';
 
 const drawerWidth = 260;
-const appVersion = __APP_VERSION__;
+const fallbackAppVersion = __APP_VERSION__;
 
 function clientInitials(identifier: string): string {
   const id = identifier.trim();
@@ -70,6 +72,7 @@ type NavItem = {
   label: string;
   icon: ReactNode;
   requiresNavigationControl?: boolean;
+  requiresPluginsDir?: boolean;
 };
 
 const realtimeNav: NavItem[] = [
@@ -83,7 +86,12 @@ const configNav: NavItem[] = [
   { to: '/ticker-tapes', label: 'Ticker Tapes', icon: <TickerTapeIcon /> },
   { to: '/overlays', label: 'Overlays', icon: <LayersIcon /> },
   { to: '/integrations', label: 'Integrations', icon: <StorageIcon /> },
-  { to: '/plugins', label: 'Plugins', icon: <ExtensionIcon /> },
+  {
+    to: '/plugins',
+    label: 'Plugins',
+    icon: <ExtensionIcon />,
+    requiresPluginsDir: true,
+  },
   { to: '/interests', label: 'Interests', icon: <FavoriteBorderIcon /> },
   { to: '/data', label: 'Data', icon: <DatasetIcon /> },
 ];
@@ -110,6 +118,10 @@ export function AppShell({ children }: { children?: ReactNode }) {
     isProgramsOnlyControllerUser,
   } = useAuth();
   const { status: bffStatus, logout: controllerLogout } = useControllerAuth();
+  const { enabled: pluginsNavEnabled } = useActiveDisplayPluginsNav();
+  const { versionLabel: controllerVersionLabel } = useControllerAbout();
+  const drawerVersion =
+    controllerVersionLabel != null ? `v${controllerVersionLabel}` : `v${fallbackAppVersion}`;
 
   const signedIn = Boolean(session && !needsLogin);
   const showUserMenu = Boolean(bffStatus && isUserModeActive(bffStatus));
@@ -117,6 +129,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
   const filterDrawerNav = (items: NavItem[]) =>
     items.filter((item) => {
       if (item.requiresNavigationControl && !hasPermission('navigation.control')) return false;
+      if (item.requiresPluginsDir && !pluginsNavEnabled) return false;
       if (!isProgramsOnlyControllerUser) return true;
       return isProgramsOnlyNavRouteAllowed(item.to, hasPermission);
     });
@@ -249,8 +262,21 @@ export function AppShell({ children }: { children?: ReactNode }) {
               );
             })}
           </List>
-          <Typography variant="body2" color="text.secondary" sx={{ px: 1, py: 0.5 }}>
-            v{appVersion}
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            component={RouterLink}
+            to="/about"
+            onClick={() => setMobileOpen(false)}
+            sx={{
+              px: 1,
+              py: 0.5,
+              display: 'block',
+              textDecoration: 'none',
+              '&:hover': { color: 'text.primary', textDecoration: 'underline' },
+            }}
+          >
+            {drawerVersion}
           </Typography>
           <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
           <List sx={{ px: 1, py: 1 }}>
@@ -330,7 +356,9 @@ export function AppShell({ children }: { children?: ReactNode }) {
           )}
           
           <Typography variant="h6" fontWeight={600} sx={{ flexGrow: 1 }}>
-          {location.pathname.startsWith('/controller-settings')
+          {location.pathname.startsWith('/about')
+              ? 'About'
+              : location.pathname.startsWith('/controller-settings')
               ? 'Controller Settings'
               : location.pathname.startsWith('/display-settings')
                 ? 'Display Settings'

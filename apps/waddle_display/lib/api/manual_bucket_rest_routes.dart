@@ -35,6 +35,11 @@ void registerManualBucketRestRoutes(
     '/v1/curator/manual/calendar-events',
     (Request req) => _postCalendarEvent(req, db: db),
   );
+
+  r.post(
+    '/v1/curator/manual/quoterism-quotes',
+    (Request req) => _postQuoterismQuote(req, db: db),
+  );
 }
 
 Future<Map<String, dynamic>?> _parseBody(Request req) async {
@@ -177,6 +182,28 @@ Future<Response> _postTrivia(
       optionC: '${map['option_c'] ?? ''}',
       optionD: '${map['option_d'] ?? ''}',
       correctOption: '${map['correct_option'] ?? ''}',
+    );
+    return _jsonCreated({'id': result.id});
+  } on ManualBucketWriteException catch (e) {
+    return _mapManualBucketError(e);
+  }
+}
+
+Future<Response> _postQuoterismQuote(
+  Request req, {
+  required AppDatabase db,
+}) async {
+  final map = await _parseBody(req);
+  if (map == null) {
+    return _jsonError(400, 'invalid_json');
+  }
+  try {
+    final categoryIds = _parseCategoryIds(map);
+    final result = await writeManualBucketQuote(
+      db: db,
+      text: '${map['text'] ?? ''}',
+      authorName: map['author_name'] as String?,
+      categoryIds: categoryIds,
     );
     return _jsonCreated({'id': result.id});
   } on ManualBucketWriteException catch (e) {

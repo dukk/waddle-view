@@ -1,0 +1,1 @@
+Third-party license text was not generated. Run tool/generate_about_manifest.dart on a machine with Flutter SDK.

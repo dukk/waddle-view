@@ -5,6 +5,10 @@ const String kDisplayTickerProgramDurationSecondsKvKey =
     'display.ticker.program_duration_seconds';
 const String kDisplayTickerPixelsPerSecondKvKey =
     'display.ticker.pixels_per_second';
+const String kDisplayTickerItemSeparatorKvKey =
+    'display.ticker.item_separator';
+const String kDisplayTickerProgramSeparatorKvKey =
+    'display.ticker.program_separator';
 
 const int kDisplayTickerProgramDurationSecondsDefault = 300;
 const int kDisplayTickerPixelsPerSecondDefault = 80;
@@ -15,19 +19,50 @@ const int kDisplayTickerProgramDurationSecondsMax = 1800;
 const int kDisplayTickerPixelsPerSecondMin = 20;
 const int kDisplayTickerPixelsPerSecondMax = 140;
 
+/// Middle dot between ticker lines within one program.
+const String kDisplayTickerSeparatorDot = 'dot';
+
+/// Diamond icon between ticker programs in auto-scroll history.
+const String kDisplayTickerSeparatorDiamond = 'diamond';
+
+const String kDefaultDisplayTickerItemSeparator = kDisplayTickerSeparatorDot;
+const String kDefaultDisplayTickerProgramSeparator =
+    kDisplayTickerSeparatorDiamond;
+
+/// Normalizes [raw] to [kDisplayTickerSeparatorDot] or [kDisplayTickerSeparatorDiamond].
+String normalizeDisplayTickerSeparator(
+  Object? raw, {
+  required String defaultValue,
+}) {
+  final s = raw == null ? '' : '$raw'.trim().toLowerCase();
+  if (s == kDisplayTickerSeparatorDiamond) {
+    return kDisplayTickerSeparatorDiamond;
+  }
+  if (s == kDisplayTickerSeparatorDot) {
+    return kDisplayTickerSeparatorDot;
+  }
+  return defaultValue;
+}
+
 /// Effective ticker program duration (RSS scroll budget) and marquee speed.
 class DisplayTickerSettings {
   const DisplayTickerSettings({
     required this.programDurationSeconds,
     required this.pixelsPerSecond,
+    required this.itemSeparator,
+    required this.programSeparator,
   });
 
   final int programDurationSeconds;
   final int pixelsPerSecond;
+  final String itemSeparator;
+  final String programSeparator;
 
   static const defaults = DisplayTickerSettings(
     programDurationSeconds: kDisplayTickerProgramDurationSecondsDefault,
     pixelsPerSecond: kDisplayTickerPixelsPerSecondDefault,
+    itemSeparator: kDefaultDisplayTickerItemSeparator,
+    programSeparator: kDefaultDisplayTickerProgramSeparator,
   );
 }
 
@@ -67,6 +102,14 @@ DisplayTickerSettings parseDisplayTickerSettingsFromKv(Map<String, String> kv) {
     pixelsPerSecond: normalizeDisplayTickerPixelsPerSecond(
       kv[kDisplayTickerPixelsPerSecondKvKey],
     ),
+    itemSeparator: normalizeDisplayTickerSeparator(
+      kv[kDisplayTickerItemSeparatorKvKey],
+      defaultValue: kDefaultDisplayTickerItemSeparator,
+    ),
+    programSeparator: normalizeDisplayTickerSeparator(
+      kv[kDisplayTickerProgramSeparatorKvKey],
+      defaultValue: kDefaultDisplayTickerProgramSeparator,
+    ),
   );
 }
 
@@ -80,6 +123,8 @@ DisplayTickerSettings mergeDisplayTickerSettings(
     programDurationSeconds:
         programDurationSecondsOverride ?? global.programDurationSeconds,
     pixelsPerSecond: pixelsPerSecondOverride ?? global.pixelsPerSecond,
+    itemSeparator: global.itemSeparator,
+    programSeparator: global.programSeparator,
   );
 }
 

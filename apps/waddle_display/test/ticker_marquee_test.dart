@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:waddle_shared/display/display_ticker_settings.dart';
 
 import 'package:waddle_display/curator/ticker_item.dart';
 import 'package:waddle_display/marquee_cycle_gate.dart';
@@ -390,6 +391,73 @@ void main() {
     expect(find.text('ProgramB'), findsWidgets);
     expect(find.byIcon(Icons.diamond_outlined), findsNWidgets(2));
     expect(find.text('\u00B7'), findsNothing);
+  });
+
+  testWidgets('uses diamond separators between items when configured', (
+    tester,
+  ) async {
+    final repo = MemoryTickerCuratedRepository();
+    addTearDown(repo.dispose);
+    await repo.replaceAll([
+      const TickerItem(kind: 'a', body: 'One'),
+      const TickerItem(kind: 'b', body: 'Two'),
+    ]);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 400,
+              child: TickerMarquee(
+                repository: repo,
+                pixelsPerSecond: 400,
+                itemSeparator: kDisplayTickerSeparatorDiamond,
+                programSeparator: kDisplayTickerSeparatorDiamond,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.byIcon(Icons.diamond_outlined), findsWidgets);
+    expect(find.text('\u00B7'), findsNothing);
+  });
+
+  testWidgets('swaps dot and diamond separators when configured', (
+    tester,
+  ) async {
+    final repo = MemoryTickerCuratedRepository();
+    addTearDown(repo.dispose);
+    await repo.replaceAll([
+      const TickerItem(kind: 'a', body: 'ProgramA'),
+    ]);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 400,
+              child: TickerMarquee(
+                repository: repo,
+                pixelsPerSecond: 400,
+                itemSeparator: kDisplayTickerSeparatorDiamond,
+                programSeparator: kDisplayTickerSeparatorDot,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await repo.replaceAll([
+      const TickerItem(kind: 'b', body: 'ProgramB'),
+    ]);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.text('\u00B7'), findsWidgets);
+    expect(find.byIcon(Icons.diamond_outlined), findsNothing);
   });
 
   testWidgets('marquee starts with content entering from the right', (

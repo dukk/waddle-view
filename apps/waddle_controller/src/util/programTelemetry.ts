@@ -389,6 +389,44 @@ export function programAtMs(row: Record<string, unknown>): number {
   return typeof v === 'number' ? v : Number(v) || 0;
 }
 
+/** Largest `at_ms` in the list (live / current snapshot), or null when empty. */
+export function latestProgramAtMs(
+  items: readonly Record<string, unknown>[],
+): number | null {
+  if (items.length === 0) return null;
+  let max = -Infinity;
+  for (const row of items) {
+    const ms = programAtMs(row);
+    if (ms > max) max = ms;
+  }
+  return Number.isFinite(max) ? max : null;
+}
+
+export function findProgramIndexByAtMs(
+  items: readonly Record<string, unknown>[],
+  atMs: number,
+): number {
+  return items.findIndex((row) => programAtMs(row) === atMs);
+}
+
+export type ProgramSelectionFallback = 'latest' | 'null';
+
+/** Keeps `selectedAtMs` when still in `items`; otherwise applies `fallback`. */
+export function resolveProgramSelectionAtMs(
+  items: readonly Record<string, unknown>[],
+  selectedAtMs: number | null,
+  options: { fallback: ProgramSelectionFallback },
+): number | null {
+  if (items.length === 0) return null;
+  if (selectedAtMs != null && findProgramIndexByAtMs(items, selectedAtMs) >= 0) {
+    return selectedAtMs;
+  }
+  if (options.fallback === 'latest') {
+    return latestProgramAtMs(items);
+  }
+  return null;
+}
+
 export function sortProgramsByAtMsDesc(
   items: Record<string, unknown>[],
 ): Record<string, unknown>[] {

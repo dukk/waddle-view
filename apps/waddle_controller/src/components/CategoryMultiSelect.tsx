@@ -23,8 +23,8 @@ type Props = {
   size?: 'small' | 'medium';
 };
 
-function categoryLabel(categories: ContentCategoryOption[], id: string): string {
-  return categories.find((c) => c.id === id)?.label ?? id;
+function categoryLabel(categories: ContentCategoryOption[], name: string): string {
+  return categories.find((c) => c.label === name)?.label ?? name;
 }
 
 export function CategoryMultiSelect({
@@ -45,7 +45,7 @@ export function CategoryMultiSelect({
     if (selected.length === 0) {
       return <em>Default</em>;
     }
-    return selected.map((cid) => categoryLabel(categories, cid)).join(', ');
+    return selected.map((name) => categoryLabel(categories, name)).join(', ');
   };
 
   return (
@@ -60,8 +60,8 @@ export function CategoryMultiSelect({
         renderValue={renderValue}
       >
         {categories.map((cat) => (
-          <MenuItem key={cat.id} value={cat.id}>
-            <Checkbox checked={value.includes(cat.id)} size="small" />
+          <MenuItem key={cat.id} value={cat.label}>
+            <Checkbox checked={value.includes(cat.label)} size="small" />
             <ListItemText primary={cat.label} />
           </MenuItem>
         ))}

@@ -11,6 +11,7 @@ import '../integration_accounts/integration_account_catalog.dart';
 import '../integration_accounts/integration_accounts_configured_sql.dart';
 import '../integration_accounts/integration_accounts_service.dart';
 import '../persistence/config_json_documentation.dart';
+import '../persistence/screen_config_migrate.dart';
 import '../persistence/integration_type_label.dart';
 import '../persistence/overlay_type_label.dart';
 import '../persistence/screen_type_label.dart';
@@ -88,7 +89,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 46;
+  int get schemaVersion => 48;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -425,6 +426,20 @@ ORDER BY priority DESC, created_at DESC;
         }
         from = 46;
       }
+      if (from == 46 && to >= 47) {
+        await _migrateV46ToV47CuratorScreensEnabled(this);
+        if (to == 47) {
+          return;
+        }
+        from = 47;
+      }
+      if (from == 47 && to >= 48) {
+        await _migrateV47ToV48ScreenConfigJson(this);
+        if (to == 48) {
+          return;
+        }
+        from = 48;
+      }
       throw UnsupportedError(
         'Unsupported database upgrade from version $from to $to. '
         'Delete the SQLite file and reinstall (fresh seed).',
@@ -435,6 +450,7 @@ ORDER BY priority DESC, created_at DESC;
       await _ensureCuratorCategoriesTable(this);
       await _ensureCuratorRejectedTermsTable(this);
       await _ensureCuratorConfigurationsTickerEnabled(this);
+      await _ensureCuratorConfigurationsScreensEnabled(this);
       await _ensureCuratorConfigurationsTickerProgramDuration(this);
       await _ensureCuratorConfigurationsTickerPixelsPerSecond(this);
       await _ensureIntegrationAccountsConfiguredView(this);
@@ -2649,6 +2665,31 @@ Future<void> _migrateV45ToV46QuoterismQuotes(
 ) async {
   await m.createTable(db.quoterismQuotes);
   await m.createTable(db.quoterismQuoteCategories);
+}
+
+Future<void> _migrateV46ToV47CuratorScreensEnabled(AppDatabase db) async {
+  await _ensureCuratorConfigurationsScreensEnabled(db);
+}
+
+Future<void> _migrateV47ToV48ScreenConfigJson(AppDatabase db) async {
+  await migrateScreenConfigJsonV48(db);
+}
+
+/// Ensures [CuratorConfigurations.screensEnabled] is present and non-null.
+Future<void> _ensureCuratorConfigurationsScreensEnabled(AppDatabase db) async {
+  if (!await _sqliteTableExists(db, 'curator_configurations')) {
+    return;
+  }
+  if (!await _sqliteColumnExists(db, 'curator_configurations', 'screens_enabled')) {
+    await db.customStatement(
+      'ALTER TABLE curator_configurations ADD COLUMN screens_enabled '
+      'INTEGER NOT NULL DEFAULT 1',
+    );
+  }
+  await db.customStatement(
+    'UPDATE curator_configurations SET screens_enabled = 1 '
+    'WHERE screens_enabled IS NULL',
+  );
 }
 
 /// Schema 39: trim default location catalog to five megacities; remove retired rows.

@@ -4,6 +4,7 @@ import 'curator_content_pools.dart' show PhotoCuratorMetric, RssArticleMetric;
 import 'photo_collage_curation.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart'
     show ParsedWidgetSpec, parseScreenLayoutWidgets;
+import 'package:waddle_shared/persistence/content_category_resolve.dart';
 
 class DataKeyProgramLimit {
   const DataKeyProgramLimit({
@@ -114,6 +115,7 @@ class ScreenProgramCurator {
     bool requirePhotoForRssScreens = true,
     Map<String, int> lastShownAtMsByScreenId = const {},
     int nowMs = 0,
+    Map<String, String> categoryLabelToId = const {},
   }) {
     final eligibleScreens = screens
         .where((s) => s.minDwellMs > 0 && s.maxDwellMs > 0)
@@ -173,6 +175,7 @@ class ScreenProgramCurator {
               dataKeyLimits,
             ),
             random: random,
+            categoryLabelToId: categoryLabelToId,
           );
           if (a != null) {
             rssAssignmentByScreenId[s.id] = a;
@@ -410,6 +413,7 @@ class ScreenProgramCurator {
     required bool requirePhotoForRssScreens,
     required bool needsMinFallback,
     required Random random,
+    Map<String, String> categoryLabelToId = const {},
   }) {
     final specs =
         parseScreenLayoutWidgets(
@@ -428,8 +432,24 @@ class ScreenProgramCurator {
     );
 
     String? forcedCategory;
+    final multiCategoryIds = specs.isEmpty
+        ? const <String>[]
+        : resolveCategoryIdsFromConfigMap(
+            specs.first.config,
+            categoryLabelToId,
+          );
+    if (multiCategoryIds.length > 1) {
+      forcedCategory =
+          multiCategoryIds[random.nextInt(multiCategoryIds.length)];
+    } else if (multiCategoryIds.length == 1) {
+      forcedCategory = multiCategoryIds.first;
+    }
+
     for (final w in specs) {
-      final poolName = _poolNameForWidget(w);
+      final poolName = _poolNameForWidget(
+        w,
+        categoryLabelToId: categoryLabelToId,
+      );
       if (poolName == null || poolName.isEmpty) {
         return null;
       }
@@ -453,8 +473,9 @@ class ScreenProgramCurator {
       }
     }
 
-    final hasGlobalRss =
-        specs.any((w) => _poolNameForWidget(w) == 'rss');
+    final hasGlobalRss = specs.any(
+      (w) => _poolNameForWidget(w, categoryLabelToId: categoryLabelToId) == 'rss',
+    );
     String? screenCategory = forcedCategory;
     if (hasGlobalRss) {
       final rssPool = randomPools['rss'] ?? [];
@@ -494,7 +515,10 @@ class ScreenProgramCurator {
     double totalCost = 0;
 
     for (final w in specs) {
-      final poolName = _poolNameForWidget(w);
+      final poolName = _poolNameForWidget(
+        w,
+        categoryLabelToId: categoryLabelToId,
+      );
       if (poolName == null || poolName.isEmpty) {
         return null;
       }
@@ -968,40 +992,37 @@ class ScreenProgramCurator {
     return choice;
   }
 
-  static String? _poolNameForWidget(ParsedWidgetSpec w) {
+  static String? _poolNameForWidget(
+    ParsedWidgetSpec w, {
+    Map<String, String> categoryLabelToId = const {},
+  }) {
+    String? categoryPoolSuffix(Map<String, dynamic> config, String prefix) {
+      final id = resolveCategoryIdFromConfigMap(config, categoryLabelToId);
+      if (id != null && id.isNotEmpty) {
+        return '$prefix$id';
+      }
+      return null;
+    }
+
     switch (w.type) {
       case 'photo_random':
         return w.config['pool'] as String?;
       case 'joke':
-        final c = w.config['categoryId'] as String?;
-        return (c != null && c.isNotEmpty) ? 'joke:$c' : 'joke';
+        return categoryPoolSuffix(w.config, 'joke:') ?? 'joke';
       case 'quote':
-        final cq = w.config['categoryId'] as String?;
-        return (cq != null && cq.isNotEmpty) ? 'quote:$cq' : 'quote';
+        return categoryPoolSuffix(w.config, 'quote:') ?? 'quote';
       case 'news':
       case 'news_columns':
       case 'news_stack':
-        final f = w.config['feedId'] as String?;
-        if (f != null && f.isNotEmpty) {
-          return 'rss:$f';
-        }
-        final c = w.config['categoryId'] as String?;
-        if (c != null && c.isNotEmpty) {
-          return 'rss_category:$c';
-        }
-        return 'rss';
+        return categoryPoolSuffix(w.config, 'rss_category:') ?? 'rss';
       case 'trivia':
-        final c = w.config['categoryId'] as String?;
-        return (c != null && c.isNotEmpty) ? 'trivia:$c' : 'trivia';
+        return categoryPoolSuffix(w.config, 'trivia:') ?? 'trivia';
       case 'photo':
-        final c = w.config['categoryId'] as String?;
-        return (c != null && c.isNotEmpty) ? 'photo:$c' : 'photo';
+        return categoryPoolSuffix(w.config, 'photo:') ?? 'photo';
       case 'photo_collage':
-        final c2 = w.config['categoryId'] as String?;
-        return (c2 != null && c2.isNotEmpty) ? 'photo:$c2' : 'photo';
+        return categoryPoolSuffix(w.config, 'photo:') ?? 'photo';
       case 'video':
-        final c = w.config['categoryId'] as String?;
-        return (c != null && c.isNotEmpty) ? 'video:$c' : 'video';
+        return categoryPoolSuffix(w.config, 'video:') ?? 'video';
       default:
         return null;
     }

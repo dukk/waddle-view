@@ -64,7 +64,7 @@ Allowed responses include **`Access-Control-Allow-Origin`** (mirrored origin), *
 
 | Method | Path | Notes |
 |--------|------|--------|
-| GET | `/v1/health` | No auth required. |
+| GET | `/v1/health` | No auth required. See **Health** below. |
 | GET | `/v1/integrations` | Lists non-secret integration settings. Without query parameters returns `{"items":[...]}` (full catalog). With `enabled` and/or `limit`, returns paginated `{"items":[...], "total", "limit", "offset"}` — see **Integrations list** below. |
 | GET | `/v1/screens` | Display screen definitions from SQLite table **`screens`** (`screen_type`, `config_json`, dwell/scheduling fields). Add `?include_config_schema=true` to include `config_json_schema` from SQLite **`screen_types`** (keyed by `screen_type`). Prefer `GET /v1/meta/config-schemas` for type-level docs and examples. |
 | GET | `/v1/ticker/items` | Current bottom-marquee items (`ordinal`, `kind`, `body`) — in-process snapshot; read-only. |
@@ -202,6 +202,10 @@ These routes use the same **Bearer session** auth as other protected `/v1/*` pat
 | `secrets_configured` | `true` / `false` — applied after enrichment |
 | `accounts_configured` | `true` / `false` — from SQLite view `v_integration_accounts_configured` (linked accounts + `integration_secrets` access-token rows); filtered in SQL |
 | `facets` | `family` — adds `facets.family` counts (respects filters except `family`) |
+
+### Health
+
+`GET /v1/health` returns JSON including `status` (`ok`), `app`, `version`, `build`, `schema_version`, optional host fields (`platform_os`, `platform_os_version`, `hostname`, `cpu_count`, `dart_version`), `uptime_seconds`, and **`plugins_dir_configured`** (boolean). The latter is `true` when the display process has a non-empty **`WADDLE_DISPLAY_PLUGINS_DIR`**; otherwise `false`. The controller hides its **Plugins** nav and redirects `/plugins` when the active display reports `plugins_dir_configured: false`. Older displays that omit the field are treated as configured for backward compatibility.
 
 ## Examples
 

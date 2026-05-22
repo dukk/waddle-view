@@ -19,6 +19,14 @@ import '../../weather/weather_condition_icon.dart';
 
 String? weatherLocationIdForSpec(ParsedWidgetSpec spec) {
   final raw = (spec.config['locationId'] as String?)?.trim();
+  if (raw != null && raw.isNotEmpty) {
+    return raw;
+  }
+  return null;
+}
+
+String? weatherLocationNameForSpec(ParsedWidgetSpec spec) {
+  final raw = (spec.config['locationName'] as String?)?.trim();
   if (raw == null || raw.isEmpty) {
     return null;
   }
@@ -101,6 +109,7 @@ class WeatherSlideWidget extends StatelessWidget {
     final iconColor = theme.defaultIconColor;
     final primaryAccent = theme.accent(1);
     final configuredLocationId = weatherLocationIdForSpec(spec);
+    final configuredLocationName = weatherLocationNameForSpec(spec);
     final locationQuery = db.select(db.interestsLocations)
       ..where((t) => t.includeWeather.equals(true))
       ..orderBy([(t) => OrderingTerm.asc(t.id)]);
@@ -115,6 +124,14 @@ class WeatherSlideWidget extends StatelessWidget {
         if (configuredLocationId != null) {
           for (final candidate in locations) {
             if (candidate.id == configuredLocationId) {
+              location = candidate;
+              break;
+            }
+          }
+        } else if (configuredLocationName != null) {
+          final want = configuredLocationName.toLowerCase();
+          for (final candidate in locations) {
+            if (candidate.name.trim().toLowerCase() == want) {
               location = candidate;
               break;
             }

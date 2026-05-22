@@ -44,7 +44,7 @@ export function ContentCategorySelect({
           <em>None</em>
         </MenuItem>
         {categories.map((cat) => (
-          <MenuItem key={cat.id} value={cat.id}>
+          <MenuItem key={cat.id} value={cat.label}>
             {cat.label}
           </MenuItem>
         ))}
@@ -75,7 +75,7 @@ export function ContentCategorySelectField(props: Props) {
           <em>None</em>
         </MenuItem>
         {categories.map((cat) => (
-          <MenuItem key={cat.id} value={cat.id}>
+          <MenuItem key={cat.id} value={cat.label}>
             {cat.label}
           </MenuItem>
         ))}

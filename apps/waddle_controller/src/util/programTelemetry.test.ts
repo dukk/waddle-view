@@ -3,10 +3,13 @@ import {
   buildSlideCardModel,
   collectSlideContentIds,
   collectWeatherLocationIds,
+  findProgramIndexByAtMs,
   formatDwell,
+  latestProgramAtMs,
   parseLayoutWidgets,
   programAtMs,
   programTimestamp,
+  resolveProgramSelectionAtMs,
   screenTypePreviewKind,
   slideScreenPreviewKind,
   sortProgramsByAtMsDesc,
@@ -238,6 +241,38 @@ describe('slideScreenPreviewKind', () => {
         buildSlideCardModel({ screen_id: 'g', screen_type: 'video', layout_json: {} }, 0),
       ),
     ).toBeNull();
+  });
+});
+
+describe('program snapshot selection', () => {
+  const rows = [
+    { at_ms: 100, reason: 'a' },
+    { at_ms: 300, reason: 'c' },
+    { at_ms: 200, reason: 'b' },
+  ];
+
+  it('latestProgramAtMs returns max at_ms', () => {
+    expect(latestProgramAtMs(rows)).toBe(300);
+    expect(latestProgramAtMs([])).toBeNull();
+  });
+
+  it('findProgramIndexByAtMs locates row', () => {
+    expect(findProgramIndexByAtMs(rows, 200)).toBe(2);
+    expect(findProgramIndexByAtMs(rows, 999)).toBe(-1);
+  });
+
+  it('resolveProgramSelectionAtMs keeps selection when present', () => {
+    expect(resolveProgramSelectionAtMs(rows, 100, { fallback: 'latest' })).toBe(100);
+  });
+
+  it('resolveProgramSelectionAtMs falls back to latest when missing', () => {
+    expect(resolveProgramSelectionAtMs(rows, 50, { fallback: 'latest' })).toBe(300);
+    expect(resolveProgramSelectionAtMs(rows, null, { fallback: 'latest' })).toBe(300);
+  });
+
+  it('resolveProgramSelectionAtMs can return null fallback', () => {
+    expect(resolveProgramSelectionAtMs(rows, 50, { fallback: 'null' })).toBeNull();
+    expect(resolveProgramSelectionAtMs([], 100, { fallback: 'latest' })).toBeNull();
   });
 });
 

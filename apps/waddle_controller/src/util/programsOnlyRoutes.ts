@@ -23,6 +23,7 @@ export function isProgramsOnlyPathAllowed(
     return true;
   }
   if (pathname === '/account' || pathname.startsWith('/account/')) return true;
+  if (pathname === '/about' || pathname.startsWith('/about/')) return true;
   if ((pathname === '/data' || pathname.startsWith('/data/')) && canViewData(hasPermission)) {
     return true;
   }

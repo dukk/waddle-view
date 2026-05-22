@@ -1,7 +1,7 @@
 {
   "name": "waddle_display_mock_api",
   "private": true,
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "postinstall": "npm ci --prefix ../../packages/waddle_node_tls",

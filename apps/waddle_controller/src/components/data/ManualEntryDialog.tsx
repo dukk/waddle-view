@@ -82,13 +82,20 @@ export function ManualEntryDialog({ open, kind, display, onClose, onSaved }: Pro
   const [startLocal, setStartLocal] = useState('');
   const [endLocal, setEndLocal] = useState('');
   const [allDay, setAllDay] = useState(false);
+  const [quoteText, setQuoteText] = useState('');
+  const [quoteAuthor, setQuoteAuthor] = useState('');
+  const [quoteCategoryIds, setQuoteCategoryIds] = useState<string[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   const usesCuratorCategories =
-    kind === 'photos' || kind === 'videos' || kind === 'calendar_events';
+    kind === 'photos' ||
+    kind === 'videos' ||
+    kind === 'calendar_events' ||
+    kind === 'quoterism_quotes';
   const usesInterestCategories = kind === 'jokes' || kind === 'trivia';
+  const usesMultiCuratorCategories = kind === 'quoterism_quotes';
 
   useEffect(() => {
     if (!open) return;
@@ -164,6 +171,12 @@ export function ManualEntryDialog({ open, kind, display, onClose, onSaved }: Pro
         return;
       }
     }
+    if (kind === 'quoterism_quotes') {
+      if (!quoteText.trim()) {
+        setErr('Quote text is required.');
+        return;
+      }
+    }
 
     setSaving(true);
     try {
@@ -198,6 +211,12 @@ export function ManualEntryDialog({ open, kind, display, onClose, onSaved }: Pro
           option_c: optionC,
           option_d: optionD,
           correct_option: correctOption,
+        };
+      } else if (kind === 'quoterism_quotes') {
+        body = {
+          text: quoteText,
+          author_name: quoteAuthor,
+          category_ids: quoteCategoryIds,
         };
       } else {
         body = {
@@ -248,6 +267,9 @@ export function ManualEntryDialog({ open, kind, display, onClose, onSaved }: Pro
     allDay,
     location,
     description,
+    quoteText,
+    quoteAuthor,
+    quoteCategoryIds,
     onSaved,
     onClose,
   ]);
@@ -273,22 +295,50 @@ export function ManualEntryDialog({ open, kind, display, onClose, onSaved }: Pro
             </Button>
           )}
 
-          <FormControl fullWidth size="small">
-            <InputLabel id="manual-entry-category-label">Category</InputLabel>
-            <Select
-              labelId="manual-entry-category-label"
-              label="Category"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              disabled={saving}
-            >
-              {categoryOptions.map((c) => (
-                <MenuItem key={c.id} value={c.id}>
-                  {c.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          {usesMultiCuratorCategories ? (
+            <FormControl fullWidth size="small">
+              <InputLabel id="manual-entry-quote-categories-label">Categories (optional)</InputLabel>
+              <Select
+                labelId="manual-entry-quote-categories-label"
+                label="Categories (optional)"
+                multiple
+                value={quoteCategoryIds}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setQuoteCategoryIds(typeof v === 'string' ? v.split(',') : v);
+                }}
+                disabled={saving}
+                renderValue={(selected) =>
+                  selected
+                    .map((id) => categoryOptions.find((c) => c.id === id)?.label ?? id)
+                    .join(', ')
+                }
+              >
+                {categoryOptions.map((c) => (
+                  <MenuItem key={c.id} value={c.id}>
+                    {c.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          ) : !usesMultiCuratorCategories ? (
+            <FormControl fullWidth size="small">
+              <InputLabel id="manual-entry-category-label">Category</InputLabel>
+              <Select
+                labelId="manual-entry-category-label"
+                label="Category"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                disabled={saving}
+              >
+                {categoryOptions.map((c) => (
+                  <MenuItem key={c.id} value={c.id}>
+                    {c.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          ) : null}
 
           {kind === 'videos' ? (
             <TextField
@@ -408,6 +458,29 @@ export function ManualEntryDialog({ open, kind, display, onClose, onSaved }: Pro
                   ))}
                 </Select>
               </FormControl>
+            </>
+          ) : null}
+
+          {kind === 'quoterism_quotes' ? (
+            <>
+              <TextField
+                label="Quote"
+                size="small"
+                fullWidth
+                multiline
+                minRows={3}
+                value={quoteText}
+                onChange={(e) => setQuoteText(e.target.value)}
+                disabled={saving}
+              />
+              <TextField
+                label="Author"
+                size="small"
+                fullWidth
+                value={quoteAuthor}
+                onChange={(e) => setQuoteAuthor(e.target.value)}
+                disabled={saving}
+              />
             </>
           ) : null}
 

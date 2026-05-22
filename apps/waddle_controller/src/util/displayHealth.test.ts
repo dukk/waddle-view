@@ -4,7 +4,9 @@ import type { SavedDisplay } from '@/storage/displays';
 import {
   fetchDisplayHealth,
   formatDisplayHostSummary,
+  isDisplayPluginsNavEnabled,
   type DisplayHealthPayload,
+  type DisplayReachability,
 } from '@/util/displayHealth';
 
 const display: SavedDisplay = {
@@ -51,6 +53,43 @@ describe('fetchDisplayHealth', () => {
     if (result.state === 'offline') {
       expect(result.message).toContain('Could not reach');
     }
+  });
+});
+
+describe('isDisplayPluginsNavEnabled', () => {
+  const online = (health: DisplayHealthPayload): DisplayReachability => ({
+    state: 'online',
+    health,
+    checkedAtMs: 0,
+  });
+
+  it('returns false when reachability is missing or not online', () => {
+    expect(isDisplayPluginsNavEnabled(undefined)).toBe(false);
+    expect(isDisplayPluginsNavEnabled({ state: 'checking' })).toBe(false);
+    expect(
+      isDisplayPluginsNavEnabled({
+        state: 'offline',
+        message: 'down',
+        checkedAtMs: 0,
+      }),
+    ).toBe(false);
+  });
+
+  it('returns false when plugins_dir_configured is false', () => {
+    expect(
+      isDisplayPluginsNavEnabled(
+        online({ status: 'ok', plugins_dir_configured: false }),
+      ),
+    ).toBe(false);
+  });
+
+  it('returns true when plugins_dir_configured is true or omitted', () => {
+    expect(
+      isDisplayPluginsNavEnabled(
+        online({ status: 'ok', plugins_dir_configured: true }),
+      ),
+    ).toBe(true);
+    expect(isDisplayPluginsNavEnabled(online({ status: 'ok' }))).toBe(true);
   });
 });
 

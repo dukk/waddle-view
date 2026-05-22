@@ -7,12 +7,17 @@ import {
   alpha,
   Box,
   Button,
+  FormControl,
+  InputLabel,
   Link,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
+import { INVITE_ROLE_OPTIONS } from '@/constants/clockEnumLabels';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { WaddleBrandMark } from '@/components/brand/WaddleBrandMark';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -51,7 +56,17 @@ export function ViewerJoinPage() {
   const clientId = resolveClientIdentifier(status, defaultViewerIdentifier());
 
   const initialApi = useMemo(() => (params.get('api') ?? '').trim(), [params]);
+  const roleFromQr = useMemo(() => (params.get('role') ?? '').trim(), [params]);
+  const roleLocked = roleFromQr.length > 0;
+  const initialRole = useMemo(() => {
+    const allowed = INVITE_ROLE_OPTIONS.map((o) => o.value);
+    if (roleFromQr && allowed.includes(roleFromQr as (typeof allowed)[number])) {
+      return roleFromQr;
+    }
+    return 'viewer';
+  }, [roleFromQr]);
   const [apiUrl, setApiUrl] = useState(initialApi || 'https://127.0.0.1:8787');
+  const [adoptionRole, setAdoptionRole] = useState(initialRole);
   const [identifier, setIdentifier] = useState(clientId.value);
   const [challengeCode, setChallengeCode] = useState('');
   const [pendingConfirm, setPendingConfirm] = useState(false);
@@ -64,6 +79,10 @@ export function ViewerJoinPage() {
     }
   }, [clientId.locked, clientId.value]);
 
+  useEffect(() => {
+    setAdoptionRole(initialRole);
+  }, [initialRole]);
+
   const onRequest = async () => {
     setError(null);
     setBusy(true);
@@ -71,13 +90,13 @@ export function ViewerJoinPage() {
     adoptionLog('ui.join.request.start', 'viewer join requested adoption', {
       baseUrl: api,
       identifier: identifier.trim(),
-      role: 'viewer',
+      role: adoptionRole,
     });
     try {
       void new URL(api);
       await requestAdoption(api, {
         identifier: identifier.trim(),
-        role: 'viewer',
+        role: adoptionRole,
       });
       setChallengeCode('');
       setPendingConfirm(true);
@@ -161,8 +180,10 @@ export function ViewerJoinPage() {
               Viewer pairing
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Pair as a <strong>viewer</strong> with read-focused permissions using the challenge code
-              from the display alert.
+              Pair with the display using the challenge code from the alert.
+              {roleLocked
+                ? ' Role is set by the invite QR and cannot be changed here.'
+                : ' Choose a role below unless the QR link already includes one.'}
             </Typography>
           </Box>
         </Stack>
@@ -179,6 +200,21 @@ export function ViewerJoinPage() {
           fullWidth
           helperText="Usually pre-filled from the QR link (?api=…)."
         />
+        <FormControl fullWidth disabled={busy || roleLocked}>
+          <InputLabel id="join-adoption-role">Role</InputLabel>
+          <Select
+            labelId="join-adoption-role"
+            label="Role"
+            value={adoptionRole}
+            onChange={(e) => setAdoptionRole(String(e.target.value))}
+          >
+            {INVITE_ROLE_OPTIONS.map((o) => (
+              <MenuItem key={o.value} value={o.value}>
+                {o.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
         <Accordion>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography variant="subtitle2">Advanced</Typography>
@@ -200,7 +236,7 @@ export function ViewerJoinPage() {
         </Accordion>
         {!pendingConfirm ? (
           <Button variant="contained" onClick={() => void onRequest()} disabled={busy}>
-            Request viewer adoption
+            Request adoption
           </Button>
         ) : (
           <>

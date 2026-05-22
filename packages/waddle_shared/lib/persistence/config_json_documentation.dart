@@ -1249,16 +1249,39 @@ final ScreenConfigJsonDoc kGenericScreenConfigJsonDoc = ScreenConfigJsonDoc(
   example: '{}',
 );
 
+/// Operator labels for analog clock dial enum values (stored values unchanged).
+const Map<String, String> kAnalogDialLabelsEnumLabels = {
+  'none': 'None',
+  'numbers': 'Hour numbers (1–12)',
+  'numeric': 'Hour numbers (1–12)',
+  'roman': 'Roman numerals',
+  'roman_numerals': 'Roman numerals',
+  'cardinal_numbers': 'Cardinal (12, 3, 6, 9)',
+  'cardinal': 'Cardinal (12, 3, 6, 9)',
+  'crosshair_numbers': 'Cardinal (12, 3, 6, 9)',
+};
+
+/// Operator labels for theme accent hand colors.
+const Map<String, String> kAnalogHandAccentEnumLabels = {
+  'accent1': 'Accent 1',
+  'accent2': 'Accent 2',
+  'accent3': 'Accent 3',
+  '1': 'Accent 1',
+  '2': 'Accent 2',
+  '3': 'Accent 3',
+};
+
 /// JSON Schema fragment: analog clock per-hand accent (`hourHandAccent`, etc.).
 final Map<String, Object?> _kJsonSchemaAnalogHandAccent = {
   'description':
       'Theme accent for this hand (hour defaults to accent1, minute to '
-      'accent2, second to accent3). Use accent1, accent2, accent3 or integers '
-      '1–3.',
+      'accent2, second to accent3).',
+  'x-waddle-widget': 'theme-accent',
   'oneOf': [
     {
       'type': 'string',
       'enum': ['accent1', 'accent2', 'accent3', '1', '2', '3'],
+      'x-waddle-enum-labels': kAnalogHandAccentEnumLabels,
     },
     {'type': 'integer', 'minimum': 1, 'maximum': 3},
   ],
@@ -1267,10 +1290,7 @@ final Map<String, Object?> _kJsonSchemaAnalogHandAccent = {
 /// JSON Schema fragment: analog clock `dialLabels` string values.
 final Map<String, Object?> _kJsonSchemaAnalogDialLabels = {
   'type': 'string',
-  'description':
-      'Hour labels on the dial. none: hidden (default). numbers or numeric: '
-      '1–12. roman or roman_numerals: I–XII. cardinal_numbers, cardinal, or '
-      'crosshair_numbers: 12, 3, 6, and 9 only.',
+  'description': 'Hour labels on the dial.',
   'enum': [
     'none',
     'numbers',
@@ -1281,6 +1301,33 @@ final Map<String, Object?> _kJsonSchemaAnalogDialLabels = {
     'cardinal',
     'crosshair_numbers',
   ],
+  'x-waddle-enum-labels': kAnalogDialLabelsEnumLabels,
+};
+
+/// News QR placement modes.
+const Map<String, String> kNewsQrModeEnumLabels = {
+  'hidden': 'Hidden',
+  'left': 'Left of article text',
+  'right': 'Right of article text',
+  'image_overlay_bottom': 'Over bottom of article image',
+};
+
+/// News article image fit modes (maps to Flutter BoxFit).
+const Map<String, String> kNewsImageFitEnumLabels = {
+  'cover': 'Fill (crop)',
+  'contain': 'Actual size (letterbox)',
+  'fill': 'Stretch',
+  'fitWidth': 'Fit width',
+  'fitHeight': 'Fit height',
+  'scaleDown': 'Scale down only',
+};
+
+/// Display adoption roles for controller_invite QR.
+const Map<String, String> kInviteRoleEnumLabels = {
+  'viewer': 'Viewer',
+  'power_viewer': 'Power viewer',
+  'operator': 'Operator',
+  'admin': 'Admin',
 };
 
 /// JSON Schema properties shared by digital/analog clock overlays.
@@ -1390,13 +1437,29 @@ Map<String, Object?> _kOneDriveMediaAccountsSchema({
       },
     };
 
-const Map<String, Object?> _kJsonSchemaOptionalContentCategoryId = {
+const Map<String, Object?> _kJsonSchemaOptionalContentCategoryName = {
   'type': 'string',
   'minLength': 1,
   'description':
-      'Optional content_categories id for filtering or curation scope.',
+      'Optional category display name for filtering or curation scope.',
   'x-waddle-widget': 'content-category',
 };
+
+const Map<String, Object?> _kJsonSchemaContentCategoryNames = {
+  'type': 'array',
+  'items': {
+    'type': 'string',
+    'minLength': 1,
+  },
+  'description':
+      'Category display names; when more than one, the curator picks randomly '
+      'among them per slide.',
+  'x-waddle-widget': 'content-category-multi',
+};
+
+/// Legacy schema key name for integrations still documenting `categoryId`.
+const Map<String, Object?> _kJsonSchemaOptionalContentCategoryId =
+    _kJsonSchemaOptionalContentCategoryName;
 
 /// Widget `type` values handled by [ScreenRotator].
 const List<String> kScreenLayoutWidgetTypes = [
@@ -1503,25 +1566,25 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
         description:
             'Optional content_categories id to scope the joke pool for curation.',
         properties: {
-          'categoryId': _kJsonSchemaOptionalContentCategoryId,
+          'categoryName': _kJsonSchemaOptionalContentCategoryName,
         },
       ),
     ),
-    example: jsonEncode({'categoryId': 'general'}),
+    example: jsonEncode({'categoryName': 'General'}),
   ),
   'quote': ScreenConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'QuoteScreenConfig',
         description:
-            'Optional content_categories id to scope Quoterism quotes for '
+            'Optional category display name to scope Quoterism quotes for '
             'curation; omit for the full catalog.',
         properties: {
-          'categoryId': _kJsonSchemaOptionalContentCategoryId,
+          'categoryName': _kJsonSchemaOptionalContentCategoryName,
         },
       ),
     ),
-    example: jsonEncode({'categoryId': 'quoterism_wisdom'}),
+    example: jsonEncode({'categoryName': 'Wisdom'}),
   ),
   'trivia': ScreenConfigJsonDoc(
     schema: jsonEncode(
@@ -1530,7 +1593,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
         description:
             'Category pool, elimination timing, and wrong-answer strike animation.',
         properties: {
-          'categoryId': _kJsonSchemaOptionalContentCategoryId,
+          'categoryName': _kJsonSchemaOptionalContentCategoryName,
           'eliminationWindowMs': {
             'type': 'integer',
             'minimum': 0,
@@ -1556,7 +1619,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
       ),
     ),
     example: jsonEncode({
-      'categoryId': 'science',
+      'categoryName': 'Science',
       'strikeAnimation': 'hand_drawn_x',
       'strikeAnimationDurationMs': 450,
     }),
@@ -1629,15 +1692,32 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
       _baseSchema(
         title: 'CalendarMonthScreenConfig',
         description:
-            'Two-column flex weights, optional category filter, and '
-            'upcoming-event time label formatting.',
+            'Two-column flex weights, optional category filter, upcoming '
+            'window, hide-past filter, and scroll timing for the events list.',
         properties: {
-          'categoryId': {
-            ..._kJsonSchemaOptionalContentCategoryId,
+          'categoryName': {
+            ..._kJsonSchemaOptionalContentCategoryName,
             'description':
-                'Optional content_categories id; when set, only events with '
-                'this category are shown and the category header is displayed.',
+                'Optional category display name; when set, only matching '
+                'events are shown and the category header is displayed.',
           },
+          'upcomingDays': {
+            'type': 'integer',
+            'minimum': kCalendarUpcomingOverlayDaysMin,
+            'maximum': kCalendarUpcomingOverlayDaysMax,
+            'description':
+                'Number of days ahead from today to include (default 5).',
+          },
+          'hidePastEvents': {
+            'type': 'boolean',
+            'description':
+                'When true, omit timed events that already ended today and '
+                'all-day events on past civil days.',
+          },
+          'upcomingScrollDelayMs': {'type': 'integer', 'minimum': 0},
+          'upcomingScrollPixelsPerSecond': {'type': 'number', 'minimum': 0},
+          'upcomingTrailingHoldMs': {'type': 'integer', 'minimum': 0},
+          'upcomingMinReadMs': {'type': 'integer', 'minimum': 0},
           'leftFlex': {
             'type': 'integer',
             'minimum': 1,
@@ -1675,6 +1755,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
     example: jsonEncode({
       'leftFlex': 1,
       'rightFlex': 1,
+      'upcomingDays': 5,
       'upcomingTime12Hour': true,
       'upcomingTimeNoonLabel': 'Noon',
       'upcomingTimeWidthCompact': 132,
@@ -1701,24 +1782,33 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
       _baseSchema(
         title: 'RssArticleScreenConfig',
         description:
-            'Scroll timing, image side, summary capacity, optional feed or '
-            'category filter for article selection.',
+            'Scroll timing, QR placement, image fit, summary capacity, and '
+            'optional category filters for article selection.',
         properties: {
-          'feedId': {
-            'type': 'string',
-            'minLength': 1,
-            'description': 'Restrict articles to this rss_feeds id.',
-          },
-          'categoryId': {
-            ..._kJsonSchemaOptionalContentCategoryId,
-            'description':
-                'Restrict to articles in this content_categories id (pool rss_category:<id>).',
-          },
+          'categoryNames': _kJsonSchemaContentCategoryNames,
           'scrollDelayMs': {'type': 'integer', 'minimum': 0},
           'trailingHoldMs': {'type': 'integer', 'minimum': 0},
           'scrollPixelsPerSecond': {'type': 'number', 'minimum': 0},
           'minReadMs': {'type': 'integer', 'minimum': 0},
-          'imageOnRight': {'type': 'boolean'},
+          'qrMode': {
+            'type': 'string',
+            'enum': ['hidden', 'left', 'right', 'image_overlay_bottom'],
+            'x-waddle-enum-labels': kNewsQrModeEnumLabels,
+            'description': 'Article link QR placement.',
+          },
+          'imageFit': {
+            'type': 'string',
+            'enum': [
+              'cover',
+              'contain',
+              'fill',
+              'fitWidth',
+              'fitHeight',
+              'scaleDown',
+            ],
+            'x-waddle-enum-labels': kNewsImageFitEnumLabels,
+            'description': 'How the article image fills its panel.',
+          },
           'imagePanelFraction': {
             'type': 'number',
             'minimum': 0.2,
@@ -1731,11 +1821,13 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
       ),
     ),
     example: jsonEncode({
-      'feedId': 'bbc_world',
+      'categoryNames': ['News'],
       'scrollDelayMs': 2500,
       'trailingHoldMs': 2000,
       'scrollPixelsPerSecond': 48,
       'minReadMs': 8000,
+      'qrMode': 'right',
+      'imageFit': 'cover',
       'imagePanelFraction': 0.39,
       'summaryCapacityChars': 1200,
     }),
@@ -1745,35 +1837,45 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
       _baseSchema(
         title: 'RssArticleColumnsScreenConfig',
         description:
-            'Multi-column RSS layout; optional feed or category filter; QR size.',
+            'Multi-column RSS layout; category filters; QR placement and size.',
         properties: {
-          'feedId': {
-            'type': 'string',
-            'minLength': 1,
-            'description': 'Restrict articles to this rss_feeds id.',
-          },
-          'categoryId': {
-            ..._kJsonSchemaOptionalContentCategoryId,
-            'description':
-                'Restrict to articles in this content_categories id (pool rss_category:<id>).',
-          },
+          'categoryNames': _kJsonSchemaContentCategoryNames,
           'columnCount': {'type': 'integer', 'minimum': 1, 'maximum': 6},
           'minReadMs': {'type': 'integer', 'minimum': 0},
+          'qrMode': {
+            'type': 'string',
+            'enum': ['hidden', 'left', 'right', 'image_overlay_bottom'],
+            'x-waddle-enum-labels': kNewsQrModeEnumLabels,
+          },
           'qrLogicalSize': {
             'type': 'number',
             'minimum': 48,
             'maximum': 140,
             'description': 'QR code size in logical pixels (clamped in UI).',
           },
+          'imageFit': {
+            'type': 'string',
+            'enum': [
+              'cover',
+              'contain',
+              'fill',
+              'fitWidth',
+              'fitHeight',
+              'scaleDown',
+            ],
+            'x-waddle-enum-labels': kNewsImageFitEnumLabels,
+          },
           'summaryCapacityCharsPerColumn': {'type': 'integer', 'minimum': 1},
         },
       ),
     ),
     example: jsonEncode({
-      'categoryId': 'news',
+      'categoryNames': ['News'],
       'columnCount': 3,
       'minReadMs': 10000,
+      'qrMode': 'left',
       'qrLogicalSize': 80,
+      'imageFit': 'cover',
       'summaryCapacityCharsPerColumn': 220,
     }),
   ),
@@ -1782,25 +1884,33 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
       _baseSchema(
         title: 'RssArticleStackScreenConfig',
         description:
-            'Two-row stacked RSS layout; optional feed or category filter.',
+            'Two-row stacked RSS layout; category filters; QR and image options.',
         properties: {
-          'feedId': {
-            'type': 'string',
-            'minLength': 1,
-            'description': 'Restrict articles to this rss_feeds id.',
-          },
-          'categoryId': {
-            ..._kJsonSchemaOptionalContentCategoryId,
-            'description':
-                'Restrict to articles in this content_categories id (pool rss_category:<id>).',
-          },
+          'categoryNames': _kJsonSchemaContentCategoryNames,
           'minReadMs': {'type': 'integer', 'minimum': 0},
+          'qrMode': {
+            'type': 'string',
+            'enum': ['hidden', 'left', 'right', 'image_overlay_bottom'],
+            'x-waddle-enum-labels': kNewsQrModeEnumLabels,
+          },
           'imagePanelFraction': {
             'type': 'number',
             'minimum': 0.2,
             'maximum': 0.48,
             'description':
                 'Per-row image panel width fraction (clamped in UI).',
+          },
+          'imageFit': {
+            'type': 'string',
+            'enum': [
+              'cover',
+              'contain',
+              'fill',
+              'fitWidth',
+              'fitHeight',
+              'scaleDown',
+            ],
+            'x-waddle-enum-labels': kNewsImageFitEnumLabels,
           },
           'qrLogicalSize': {
             'type': 'number',
@@ -1813,9 +1923,11 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
       ),
     ),
     example: jsonEncode({
-      'feedId': 'local_news',
+      'categoryNames': ['News'],
       'minReadMs': 12000,
       'imagePanelFraction': 0.32,
+      'qrMode': 'image_overlay_bottom',
+      'imageFit': 'cover',
       'qrLogicalSize': 112,
       'summaryCapacityCharsPerSlot': 320,
     }),
@@ -1855,27 +1967,31 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
     schema: jsonEncode(
       _baseSchema(
         title: 'WeatherScreenConfig',
-        description: 'Selects a row from interests_locations.',
+        description: 'Selects a row from interests_locations by display name.',
         properties: {
-          'locationId': {'type': 'string', 'minLength': 1},
+          'locationName': {
+            'type': 'string',
+            'minLength': 1,
+            'x-waddle-widget': 'weather-location',
+          },
         },
-        requiredKeys: ['locationId'],
+        requiredKeys: ['locationName'],
       ),
     ),
-    example: jsonEncode({'locationId': 'new_york_ny'}),
+    example: jsonEncode({'locationName': 'New York, NY'}),
   ),
   'photo': ScreenConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'PexelsPhotoScreenConfig',
         description:
-            'Optional photos category id; when omitted, any non-suppressed photo may be chosen.',
+            'Optional category display name; when omitted, any non-suppressed photo may be chosen.',
         properties: {
-          'categoryId': _kJsonSchemaOptionalContentCategoryId,
+          'categoryName': _kJsonSchemaOptionalContentCategoryName,
         },
       ),
     ),
-    example: jsonEncode({'categoryId': 'nature'}),
+    example: jsonEncode({'categoryName': 'Nature'}),
   ),
   'photo_collage': ScreenConfigJsonDoc(
     schema: jsonEncode(
@@ -1885,10 +2001,10 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
             'Collage template id and optional category for the photo pool.',
         properties: {
           'template': {'type': 'string', 'minLength': 1},
-          'categoryId': {
-            ..._kJsonSchemaOptionalContentCategoryId,
+          'categoryName': {
+            ..._kJsonSchemaOptionalContentCategoryName,
             'description':
-                'Optional content_categories id for the Pexels photo pool.',
+                'Optional category display name for the Pexels photo pool.',
           },
         },
         requiredKeys: ['template'],
@@ -1896,7 +2012,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
     ),
     example: jsonEncode({
       'template': 'nine_square_asymmetric',
-      'categoryId': 'pexels',
+      'categoryName': 'Pexels',
     }),
   ),
   'video': ScreenConfigJsonDoc(
@@ -1906,10 +2022,10 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
         description:
             'Playback options and optional video category for selection.',
         properties: {
-          'categoryId': {
-            ..._kJsonSchemaOptionalContentCategoryId,
+          'categoryName': {
+            ..._kJsonSchemaOptionalContentCategoryName,
             'description':
-                'Restrict to videos in this content_categories id (pool video:<id>).',
+                'Restrict to videos in this category display name.',
           },
           'loop': {'type': 'boolean'},
           'unmuted': {'type': 'boolean'},
@@ -1917,7 +2033,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
       ),
     ),
     example: jsonEncode({
-      'categoryId': 'pexels',
+      'categoryName': 'Pexels',
       'loop': true,
       'unmuted': false,
     }),
@@ -1927,11 +2043,30 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
       _baseSchema(
         title: 'StockQuotesScreenConfig',
         description:
-            'No per-screen options; the slide lists all enabled interests_stock_symbols rows.',
-        properties: {},
+            'Optional symbol filter and vertical scroll timing when quotes '
+            'overflow the viewport.',
+        properties: {
+          'symbols': {
+            'type': 'array',
+            'items': {'type': 'string', 'minLength': 1},
+            'description':
+                'Ticker symbols to show (e.g. AAPL); empty = all enabled.',
+            'x-waddle-widget': 'stock-symbols-multi',
+          },
+          'scrollDelayMs': {'type': 'integer', 'minimum': 0},
+          'trailingHoldMs': {'type': 'integer', 'minimum': 0},
+          'scrollPixelsPerSecond': {'type': 'number', 'minimum': 0},
+          'minReadMs': {'type': 'integer', 'minimum': 0},
+        },
       ),
     ),
-    example: jsonEncode({}),
+    example: jsonEncode({
+      'symbols': ['AAPL', 'MSFT'],
+      'scrollDelayMs': 500,
+      'scrollPixelsPerSecond': 48,
+      'trailingHoldMs': 1500,
+      'minReadMs': 6000,
+    }),
   ),
   'home_assistant': ScreenConfigJsonDoc(
     schema: jsonEncode(
@@ -1950,11 +2085,19 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
       _baseSchema(
         title: 'ControllerInviteScreenConfig',
         description:
-            'Promotes the waddle_controller web UI. Optional controllerUrl overrides '
-            'WADDLE_DISPLAY_CONTROLLER_PUBLIC_URL on the display device for the QR link.',
+            'Promotes the waddle_controller web UI. The QR encodes the adoption '
+            'role (locked on the join page). Optional controllerUrl overrides '
+            'WADDLE_DISPLAY_CONTROLLER_PUBLIC_URL on the display device.',
         properties: {
           'headline': {'type': 'string'},
           'body': {'type': 'string'},
+          'inviteRole': {
+            'type': 'string',
+            'enum': ['viewer', 'power_viewer', 'operator', 'admin'],
+            'x-waddle-enum-labels': kInviteRoleEnumLabels,
+            'description':
+                'Role assigned when an operator scans this QR (cannot be changed on join).',
+          },
           'controllerUrl': {
             'type': 'string',
             'minLength': 1,
@@ -1962,13 +2105,14 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
                 'Public origin of the controller SPA (e.g. http://192.168.1.10:5173).',
           },
         },
+        requiredKeys: ['inviteRole'],
       ),
     ),
     example: jsonEncode({
       'headline': 'Manage this display from your phone',
       'body':
-          'Scan the QR code to open waddle_controller, then create a viewer account '
-          '(Programs + account access) or sign in.',
+          'Scan the QR code to open waddle_controller and pair with the role shown below.',
+      'inviteRole': 'viewer',
       'controllerUrl': 'http://192.168.1.10:5173',
     }),
   ),

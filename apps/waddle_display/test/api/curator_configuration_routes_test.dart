@@ -59,6 +59,7 @@ void main() {
     expect(detailBody['parent_configuration_id'], 'default');
     expect(detailBody['members'], isA<Map>());
     expect(detailBody['rules'], isA<List>());
+    expect(detailBody['screens_enabled'], isTrue);
     expect(detailBody['ticker_enabled'], isTrue);
     expect(detailBody['ticker_program_duration_seconds'], isNull);
     expect(detailBody['ticker_pixels_per_second'], isNull);
@@ -90,6 +91,7 @@ void main() {
         'theme_id_override': 'theme_dark',
         'viewport_reserve_top_pct_override': 12,
         'ticker_enabled': false,
+        'screens_enabled': false,
         'members': {
           'screens': ['jokes'],
           'tickers': ['tape_news'],
@@ -107,6 +109,7 @@ void main() {
     final createdBody = jsonDecode(created.body) as Map<String, dynamic>;
     expect(createdBody['theme_id_override'], isNull);
     expect(createdBody['viewport_reserve_top_pct_override'], isNull);
+    expect(createdBody['screens_enabled'], isTrue);
     expect(createdBody['ticker_enabled'], isTrue);
     expect(
       (createdBody['members'] as Map)['screens'] as List,
@@ -116,7 +119,11 @@ void main() {
     final patch = await http.patch(
       Uri.parse('${h.baseUrl}/v1/curator/configurations/test_enhancement'),
       headers: h.authHeaders,
-      body: jsonEncode({'name': 'Renamed', 'ticker_enabled': false}),
+      body: jsonEncode({
+        'name': 'Renamed',
+        'ticker_enabled': false,
+        'screens_enabled': false,
+      }),
     );
     expect(patch.statusCode, 200);
 
@@ -127,6 +134,7 @@ void main() {
     expect(detail.statusCode, 200);
     final detailBody = jsonDecode(detail.body) as Map<String, dynamic>;
     expect(detailBody['name'], 'Renamed');
+    expect(detailBody['screens_enabled'], isTrue);
     expect(detailBody['ticker_enabled'], isTrue);
     expect(detailBody['theme_id_override'], isNull);
     expect(detailBody['ticker_program_duration_seconds'], isNull);
@@ -219,6 +227,50 @@ void main() {
 
     await http.delete(
       Uri.parse('${h.baseUrl}/v1/curator/configurations/test_ticker_override'),
+      headers: h.authHeaders,
+    );
+  });
+
+  test('POST PATCH base curator screens_enabled round-trips', () async {
+    final h = await RestTestHarness.start();
+    addTearDown(h.dispose);
+
+    final create = await http.post(
+      Uri.parse('${h.baseUrl}/v1/curator/configurations'),
+      headers: h.authHeaders,
+      body: jsonEncode({
+        'id': 'test_screens_off',
+        'name': 'Screens off',
+        'layer': 'base',
+        'screens_enabled': false,
+      }),
+    );
+    expect(create.statusCode, 200);
+
+    final detail = await http.get(
+      Uri.parse('${h.baseUrl}/v1/curator/configurations/test_screens_off'),
+      headers: h.authHeaders,
+    );
+    expect(detail.statusCode, 200);
+    final detailBody = jsonDecode(detail.body) as Map<String, dynamic>;
+    expect(detailBody['screens_enabled'], isFalse);
+
+    final patch = await http.patch(
+      Uri.parse('${h.baseUrl}/v1/curator/configurations/test_screens_off'),
+      headers: h.authHeaders,
+      body: jsonEncode({'screens_enabled': true}),
+    );
+    expect(patch.statusCode, 200);
+
+    final updated = await http.get(
+      Uri.parse('${h.baseUrl}/v1/curator/configurations/test_screens_off'),
+      headers: h.authHeaders,
+    );
+    final updatedBody = jsonDecode(updated.body) as Map<String, dynamic>;
+    expect(updatedBody['screens_enabled'], isTrue);
+
+    await http.delete(
+      Uri.parse('${h.baseUrl}/v1/curator/configurations/test_screens_off'),
       headers: h.authHeaders,
     );
   });

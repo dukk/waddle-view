@@ -357,3 +357,49 @@ Future<ManualBucketWriteResult> writeManualBucketCalendarEvent({
   );
   return ManualBucketWriteResult(id: id);
 }
+
+Future<ManualBucketWriteResult> writeManualBucketQuote({
+  required AppDatabase db,
+  required String text,
+  String? authorName,
+  List<String> categoryIds = const [],
+  RejectFilterContext? rejectCtx,
+}) async {
+  final quoteText = text.trim();
+  if (quoteText.isEmpty) {
+    throw ManualBucketWriteException('quote_text_required');
+  }
+  final normalizedCats = <String>[];
+  for (final raw in categoryIds) {
+    final id = raw.trim();
+    if (id.isEmpty || normalizedCats.contains(id)) continue;
+    await _assertContentCategoryExists(db, id);
+    normalizedCats.add(id);
+  }
+  final filter = rejectCtx ?? await RejectFilterContext.loadFromDb(db);
+  final blocked = filter.isBlocked(quoteText);
+  final id = newManualBucketId('quote');
+  final now = DateTime.now();
+  await db.into(db.quoterismQuotes).insert(
+        QuoterismQuotesCompanion.insert(
+          id: id,
+          quoteText: quoteText,
+          authorName: authorName == null || authorName.trim().isEmpty
+              ? const Value.absent()
+              : Value(authorName.trim()),
+          fetchedAtMs: now,
+          integrationId: const Value.absent(),
+          suppressed: Value(blocked),
+        ),
+      );
+  for (final catId in normalizedCats) {
+    await db.into(db.quoterismQuoteCategories).insert(
+          QuoterismQuoteCategoriesCompanion.insert(
+            quoteId: id,
+            categoryId: catId,
+          ),
+          mode: InsertMode.insertOrIgnore,
+        );
+  }
+  return ManualBucketWriteResult(id: id);
+}

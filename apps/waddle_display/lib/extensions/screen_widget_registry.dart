@@ -118,6 +118,8 @@ class ScreenWidgetRegistry {
                 blobs: ctx.blobs,
                 spec: w,
                 theme: ctx.theme,
+                onReportDesiredDwell: (ms) =>
+                    ctx.onReportDesiredDwell(ctx.slideIndex, ms),
               );
             case 'photo_random':
               final key = ctx.slide.randomChoices[w.choiceKey];
@@ -217,6 +219,8 @@ class ScreenWidgetRegistry {
                 slide: ctx.slide,
                 spec: w,
                 theme: ctx.theme,
+                onReportDesiredDwell: (ms) =>
+                    ctx.onReportDesiredDwell(ctx.slideIndex, ms),
               );
             case 'home_assistant':
               return HomeAssistantSlideWidget(

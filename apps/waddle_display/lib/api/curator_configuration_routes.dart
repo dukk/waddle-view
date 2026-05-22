@@ -148,6 +148,13 @@ void registerCuratorConfigurationRoutes(
             requireNewsPhotoForScreens: Value(
               _readBool(map['require_news_photo_for_screens'], defaultValue: true),
             ),
+            screensEnabled: Value(
+              _screensEnabledForWrite(
+                layer,
+                map['screens_enabled'],
+                defaultValue: true,
+              ),
+            ),
             tickerEnabled: Value(
               _tickerEnabledForWrite(
                 layer,
@@ -279,6 +286,16 @@ void registerCuratorConfigurationRoutes(
                 ),
               )
             : const Value.absent(),
+        screensEnabled: _isEnhancementLayer(layer)
+            ? const Value(true)
+            : map.containsKey('screens_enabled')
+                ? Value(
+                    _readBool(
+                      map['screens_enabled'],
+                      defaultValue: existing.screensEnabled,
+                    ),
+                  )
+                : const Value.absent(),
         tickerEnabled: _isEnhancementLayer(layer)
             ? const Value(true)
             : map.containsKey('ticker_enabled')
@@ -543,6 +560,7 @@ Map<String, Object?> _configurationSummaryJson(CuratorConfiguration c) {
     'sort_order': c.sortOrder,
     'program_duration_seconds': c.programDurationSeconds,
     'require_news_photo_for_screens': c.requireNewsPhotoForScreens,
+    'screens_enabled': c.screensEnabled,
     'ticker_enabled': c.tickerEnabled,
     'ticker_program_duration_seconds': c.tickerProgramDurationSeconds,
     'ticker_pixels_per_second': c.tickerPixelsPerSecond,
@@ -846,6 +864,21 @@ Value<int?> _viewportReserveOverrideCompanionForPatch({
     return const Value.absent();
   }
   return Value(normalizeViewportReservePctOverride(map[key]));
+}
+
+bool _screensEnabledForWrite(
+  String layer,
+  dynamic mapValue, {
+  required bool defaultValue,
+  bool? existing,
+}) {
+  if (_isEnhancementLayer(layer)) {
+    return true;
+  }
+  if (mapValue != null) {
+    return _readBool(mapValue, defaultValue: defaultValue);
+  }
+  return existing ?? defaultValue;
 }
 
 bool _tickerEnabledForWrite(

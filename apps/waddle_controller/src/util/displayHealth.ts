@@ -15,6 +15,8 @@ export type DisplayHealthPayload = {
   cpu_count?: number;
   dart_version?: string;
   uptime_seconds?: number;
+  /** True when `WADDLE_DISPLAY_PLUGINS_DIR` is set on the display process. */
+  plugins_dir_configured?: boolean;
 };
 
 export type DisplayReachability =
@@ -26,6 +28,16 @@ function isHealthPayload(value: unknown): value is DisplayHealthPayload {
   if (value == null || typeof value !== 'object') return false;
   const status = (value as DisplayHealthPayload).status;
   return typeof status === 'string';
+}
+
+/** Whether the controller should show Plugins nav/routes for this reachability snapshot. */
+export function isDisplayPluginsNavEnabled(
+  reachability: DisplayReachability | undefined,
+): boolean {
+  if (!reachability || reachability.state !== 'online') return false;
+  const configured = reachability.health.plugins_dir_configured;
+  if (configured === false) return false;
+  return true;
 }
 
 /** Fetches public health from a display via the controller BFF proxy. */

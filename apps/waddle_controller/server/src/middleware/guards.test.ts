@@ -55,6 +55,7 @@ describe('requireAuth / requireAdmin', () => {
 describe('isAllowedDuringBootstrap', () => {
   it('allows status and bootstrap admin routes', () => {
     expect(isAllowedDuringBootstrap('GET', '/bff/v1/status')).toBe(true);
+    expect(isAllowedDuringBootstrap('GET', '/bff/v1/about')).toBe(true);
     expect(isAllowedDuringBootstrap('POST', '/bff/v1/bootstrap/admin')).toBe(true);
   });
 

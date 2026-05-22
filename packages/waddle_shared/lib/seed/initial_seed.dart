@@ -859,7 +859,9 @@ Future<void> _ensureControllerInviteScreen(AppDatabase db) async {
           label: 'Controller invite',
           description: const Value('Viewer join QR for waddle_controller'),
           screenType: 'controller_invite',
-          configJson: const Value('{}'),
+          configJson: const Value(
+            '{"inviteRole":"viewer","headline":"Manage this display from your phone"}',
+          ),
           minDwellSeconds: const Value(25),
           maxDwellSeconds: const Value(40),
           maxPlacementsPerProgram: const Value(1),

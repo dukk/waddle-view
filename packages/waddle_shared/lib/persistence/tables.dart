@@ -124,7 +124,7 @@ class ConfigKeyValues extends Table {
 }
 
 /// Curator configuration layer: exclusive replaces all; base drives program,
-/// theme, and ticker visibility; enhancement stacks screen/ticker/overlay
+/// theme, screen program, and ticker visibility; enhancement stacks screen/ticker/overlay
 /// members on the active base (additive union at runtime).
 const String kCuratorLayerExclusive = 'exclusive';
 const String kCuratorLayerBase = 'base';
@@ -400,6 +400,7 @@ class TickerTapes extends Table {
 }
 
 /// Operator-defined curator program (screens/ticker/overlays membership + tuning).
+/// Base/exclusive rows control [screensEnabled] and [tickerEnabled] visibility.
 class CuratorConfigurations extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
@@ -410,6 +411,7 @@ class CuratorConfigurations extends Table {
   IntColumn get historyDepth => integer().withDefault(const Constant(5))();
   BoolColumn get requireNewsPhotoForScreens =>
       boolean().withDefault(const Constant(true))();
+  BoolColumn get screensEnabled => boolean().withDefault(const Constant(true))();
   BoolColumn get tickerEnabled => boolean().withDefault(const Constant(true))();
   /// Null uses display-level `display.ticker.program_duration_seconds`.
   IntColumn get tickerProgramDurationSeconds => integer().nullable()();

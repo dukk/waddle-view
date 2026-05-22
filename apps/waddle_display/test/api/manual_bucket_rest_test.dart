@@ -68,6 +68,35 @@ void main() {
     }
   });
 
+  test('POST curator manual quoterism quote creates catalog row', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await ensureInitialSeed(db);
+    final harness = await RestTestHarness.start(database: db);
+    try {
+      final res = await http.post(
+        Uri.parse('${harness.baseUrl}/v1/curator/manual/quoterism-quotes'),
+        headers: harness.authHeaders,
+        body: jsonEncode({
+          'text': 'Stay hungry, stay foolish.',
+          'author_name': 'Steve Jobs',
+          'category_ids': ['general'],
+        }),
+      );
+      expect(res.statusCode, 201, reason: res.body);
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      final id = body['id'] as String;
+      expect(id, startsWith('bucket_quote_'));
+
+      final quote = await (db.select(db.quoterismQuotes)
+            ..where((t) => t.id.equals(id)))
+          .getSingle();
+      expect(quote.quoteText, contains('hungry'));
+    } finally {
+      await harness.dispose();
+    }
+  });
+
   test('legacy integration bucket routes are not registered', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);

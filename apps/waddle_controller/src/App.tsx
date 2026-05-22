@@ -22,6 +22,7 @@ import { DisplaySettingsPage } from '@/pages/DisplaySettingsPage';
 import { CuratorsPage } from '@/pages/CuratorsPage';
 import { ControllerSettingsPage } from '@/pages/ControllerSettingsPage';
 import { AccountPage } from '@/pages/AccountPage';
+import { AboutPage } from '@/pages/AboutPage';
 import { ViewerJoinPage } from '@/pages/ViewerJoinPage';
 import { ControllerLoginPage } from '@/pages/ControllerLoginPage';
 import { ControllerBootstrapPage } from '@/pages/ControllerBootstrapPage';
@@ -61,6 +62,7 @@ function MainAppRoutes() {
               <Route path="data" element={<DataPage />} />
               <Route path="activity" element={<ActivityPage />} />
               <Route path="account" element={<AccountPage />} />
+              <Route path="about" element={<AboutPage />} />
               <Route path="controller-settings" element={<ControllerSettingsPage />} />
               <Route path="display-settings" element={<DisplaySettingsPage />} />
               <Route path="displays" element={<Navigate to="/controller-settings" replace />} />

@@ -21,11 +21,14 @@ import {
   VIEWPORT_RESERVE_PCT,
   curatorTextScaleIds,
 } from '@/constants/curatorDisplaySettings';
+import DiamondOutlinedIcon from '@mui/icons-material/DiamondOutlined';
 import {
   CONTROLLER_DATE_ORDER_OPTIONS,
   CONTROLLER_TIME_FORMAT_OPTIONS,
+  DISPLAY_TICKER_SEPARATOR_OPTIONS,
   DISPLAY_WEATHER_TEMPERATURE_UNIT_OPTIONS,
   type DisplaySettings,
+  type DisplayTickerSeparator,
 } from '@/constants/displaySettings';
 import {
   filterDisplayTimezoneOptions,
@@ -407,6 +410,75 @@ export function DisplayOperatorSettingsProgramsFields({
         onChange={(v) => setForm({ ...form, display_ticker_pixels_per_second: v })}
         disabled={!canWrite}
       />
+      <FormControl fullWidth disabled={!canWrite}>
+        <InputLabel id="ticker-item-separator-label">Between ticker items</InputLabel>
+        <Select
+          labelId="ticker-item-separator-label"
+          label="Between ticker items"
+          value={form.display_ticker_item_separator}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              display_ticker_item_separator: e.target.value as DisplayTickerSeparator,
+            })
+          }
+        >
+          {DISPLAY_TICKER_SEPARATOR_OPTIONS.map((o) => (
+            <MenuItem key={o.value} value={o.value}>
+              <TickerSeparatorMenuLabel kind={o.value} label={o.label} />
+            </MenuItem>
+          ))}
+        </Select>
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75, display: 'block' }}>
+          Stored as <code>display.ticker.item_separator</code>. Separator between lines within one
+          ticker program.
+        </Typography>
+      </FormControl>
+      <FormControl fullWidth disabled={!canWrite}>
+        <InputLabel id="ticker-program-separator-label">Between ticker programs</InputLabel>
+        <Select
+          labelId="ticker-program-separator-label"
+          label="Between ticker programs"
+          value={form.display_ticker_program_separator}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              display_ticker_program_separator: e.target.value as DisplayTickerSeparator,
+            })
+          }
+        >
+          {DISPLAY_TICKER_SEPARATOR_OPTIONS.map((o) => (
+            <MenuItem key={`p-${o.value}`} value={o.value}>
+              <TickerSeparatorMenuLabel kind={o.value} label={o.label} />
+            </MenuItem>
+          ))}
+        </Select>
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75, display: 'block' }}>
+          Stored as <code>display.ticker.program_separator</code>. Separator when auto-scroll shows
+          multiple past ticker programs.
+        </Typography>
+      </FormControl>
     </>
+  );
+}
+
+function TickerSeparatorMenuLabel({
+  kind,
+  label,
+}: {
+  kind: DisplayTickerSeparator;
+  label: string;
+}) {
+  return (
+    <Stack direction="row" alignItems="center" spacing={1}>
+      {kind === 'diamond' ? (
+        <DiamondOutlinedIcon fontSize="small" />
+      ) : (
+        <Typography component="span" variant="body2" sx={{ fontWeight: 600 }}>
+          ·
+        </Typography>
+      )}
+      <span>{label}</span>
+    </Stack>
   );
 }

@@ -57,3 +57,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/icons/
+    - assets/generated/third_party_licenses.txt

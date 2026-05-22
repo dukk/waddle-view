@@ -59,6 +59,8 @@ Future<Map<String, dynamic>> readDisplayOperatorSettings(AppDatabase db) async {
     'display_ticker_program_duration_seconds':
         tickerSettings.programDurationSeconds,
     'display_ticker_pixels_per_second': tickerSettings.pixelsPerSecond,
+    'display_ticker_item_separator': tickerSettings.itemSeparator,
+    'display_ticker_program_separator': tickerSettings.programSeparator,
     'display_weather_temperature_unit': displayWeatherTemperatureUnitFromKv(kv),
     'controller_time_format': normalizeControllerTimeFormat(
       kv[kControllerTimeFormatKvKey],
@@ -183,6 +185,36 @@ Future<bool> applyDisplayOperatorSettingsPut(
           ConfigKeyValuesCompanion.insert(
             key: kDisplayTickerPixelsPerSecondKvKey,
             value: '$px',
+          ),
+        );
+    touched = true;
+  }
+  if (body.containsKey('display_ticker_item_separator')) {
+    final sep = normalizeDisplayTickerSeparator(
+      body['display_ticker_item_separator'],
+      defaultValue: kDefaultDisplayTickerItemSeparator,
+    );
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kDisplayTickerItemSeparatorKvKey,
+            value: sep,
+          ),
+        );
+    touched = true;
+  }
+  if (body.containsKey('display_ticker_program_separator')) {
+    final sep = normalizeDisplayTickerSeparator(
+      body['display_ticker_program_separator'],
+      defaultValue: kDefaultDisplayTickerProgramSeparator,
+    );
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kDisplayTickerProgramSeparatorKvKey,
+            value: sep,
           ),
         );
     touched = true;

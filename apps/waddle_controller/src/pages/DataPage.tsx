@@ -3,6 +3,7 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   FormControl,
   InputLabel,
   MenuItem,
@@ -18,13 +19,12 @@ import {
   TableHead,
   TableRow,
   Tabs,
-  TextField,
   Typography,
 } from '@mui/material';
 import { useAuth } from '@/context/AuthContext';
 import { useDisplay } from '@/context/DisplayContext';
 import { useDisplayFormat } from '@/context/DisplayFormatContext';
-import { apiFetch, apiJson, ApiError, fetchBlobObjectUrl } from '@/api/client';
+import { apiFetch, apiJson, ApiError } from '@/api/client';
 import { DataViewPagination } from '@/components/dataView/DataViewPagination';
 import { DataViewToolbar } from '@/components/dataView/DataViewToolbar';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
@@ -33,8 +33,23 @@ import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import { sortByOption, type SortOption } from '@/util/clientListPipeline';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
-import type { SavedDisplay } from '@/storage/displays';
+import { AlertEntryDialog } from '@/components/data/AlertEntryDialog';
+import { CatalogBlobMedia } from '@/components/data/CatalogBlobMedia';
+import { DataCatalogCard } from '@/components/data/DataCatalogCard';
 import { ManualEntryDialog } from '@/components/data/ManualEntryDialog';
+import { fetchIntegrationAccounts } from '@/api/integrationAccounts';
+import { listIntegrations } from '@/api/integrations';
+import {
+  alertLifecycleLabel,
+  alertLifecycleStatus,
+  alertSeverityLabel,
+  alertSourceLabel,
+  icalFeedsByIdFromConfig,
+  newsSourceLabel,
+  parseCalendarEventSource,
+} from '@/util/catalogDisplayLabels';
+import { alertSeverityIconComponent } from '@/util/alertSeverityIcon';
+import { parseIcalCalendarConfig } from '@/util/icalCalendarConfig';
 import { integrationDisplayName } from '@/util/integrationDisplayName';
 import { isManualEntryKind } from '@/util/manualEntryApi';
 
@@ -67,68 +82,6 @@ const DATA_TABS: { kind: DataKind; label: string }[] = [
   { kind: 'weather', label: 'Weather' },
   { kind: 'weather_alerts', label: 'Weather alerts' },
 ];
-
-const COLUMN_FILTER_FIELDS: Record<DataKind, readonly { param: string; label: string }[]> = {
-  calendar_events: [
-    { param: 'title', label: 'Title' },
-    { param: 'location', label: 'Location' },
-    { param: 'description', label: 'Description' },
-    { param: 'source', label: 'Source' },
-  ],
-  jokes: [
-    { param: 'setup', label: 'Setup' },
-    { param: 'punchline', label: 'Punchline' },
-  ],
-  trivia: [
-    { param: 'question', label: 'Question' },
-    { param: 'option_a', label: 'Option A' },
-    { param: 'option_b', label: 'Option B' },
-    { param: 'option_c', label: 'Option C' },
-    { param: 'option_d', label: 'Option D' },
-    { param: 'integration_type', label: 'Source' },
-  ],
-  news: [
-    { param: 'title', label: 'Title' },
-    { param: 'summary', label: 'Summary' },
-    { param: 'link', label: 'Link' },
-    { param: 'guid', label: 'Guid' },
-  ],
-  photos: [
-    { param: 'alt_text', label: 'Alt text' },
-    { param: 'photographer_name', label: 'Photographer' },
-    { param: 'data_provider', label: 'Provider id' },
-  ],
-  quoterism_quotes: [
-    { param: 'text', label: 'Quote' },
-    { param: 'author_name', label: 'Author' },
-  ],
-  videos: [
-    { param: 'alt_text', label: 'Alt text' },
-    { param: 'photographer_name', label: 'Photographer' },
-    { param: 'data_provider', label: 'Provider id' },
-  ],
-  stocks: [
-    { param: 'symbol', label: 'Symbol' },
-    { param: 'display_name', label: 'Name' },
-  ],
-  weather: [
-    { param: 'description', label: 'Description' },
-    { param: 'location_name', label: 'Location name' },
-  ],
-  weather_alerts: [
-    { param: 'event', label: 'Event' },
-    { param: 'headline', label: 'Headline' },
-    { param: 'severity', label: 'Severity' },
-    { param: 'excerpt', label: 'Excerpt' },
-    { param: 'location_name', label: 'Location name' },
-  ],
-  dashboard_alerts: [
-    { param: 'title', label: 'Title' },
-    { param: 'body', label: 'Body' },
-    { param: 'source', label: 'Source' },
-    { param: 'severity', label: 'Severity' },
-  ],
-};
 
 function defaultRowsForKind(kind: DataKind): number {
   if (kind === 'videos') {
@@ -324,66 +277,6 @@ function catalogRowKey(kind: DataKind, row: Record<string, unknown>, index: numb
   }
 }
 
-function BlobMedia({
-  display,
-  blobKey,
-  variant,
-}: {
-  display: SavedDisplay;
-  blobKey: string | null | undefined;
-  variant: 'image' | 'video';
-}) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    if (!blobKey?.trim()) {
-      setUrl(null);
-      return;
-    }
-    let revoked: string | null = null;
-    let cancelled = false;
-    void (async () => {
-      const u = await fetchBlobObjectUrl(display, blobKey.trim());
-      if (cancelled) {
-        if (u) URL.revokeObjectURL(u);
-        return;
-      }
-      revoked = u;
-      setUrl(u);
-    })();
-    return () => {
-      cancelled = true;
-      if (revoked) URL.revokeObjectURL(revoked);
-    };
-  }, [display, blobKey]);
-
-  if (!url) {
-    return (
-      <Typography variant="caption" color="text.secondary">
-        {blobKey ? '…' : '—'}
-      </Typography>
-    );
-  }
-  if (variant === 'video') {
-    return (
-      <video
-        src={url}
-        controls
-        muted
-        playsInline
-        style={{ maxWidth: 280, maxHeight: 160, borderRadius: 4, background: '#000' }}
-      />
-    );
-  }
-  return (
-    <Box
-      component="img"
-      src={url}
-      alt=""
-      sx={{ maxWidth: 200, maxHeight: 120, objectFit: 'cover', borderRadius: 1, display: 'block' }}
-    />
-  );
-}
-
 const DATA_ROW_SORT: SortOption<Record<string, unknown>>[] = [
   { id: 'newest', label: 'Newest on page', compare: (a, b) => rowSortMs(b) - rowSortMs(a) },
   { id: 'oldest', label: 'Oldest on page', compare: (a, b) => rowSortMs(a) - rowSortMs(b) },
@@ -406,38 +299,6 @@ function rowMatchesToolbarSearch(row: Record<string, unknown>, q: string): boole
   return false;
 }
 
-function dataRowSummary(row: Record<string, unknown>, kind: DataKind): string {
-  const pick = (key: string) => {
-    const v = row[key];
-    return typeof v === 'string' && v.trim() ? v.trim() : null;
-  };
-  switch (kind) {
-    case 'calendar_events':
-      return pick('title') ?? pick('location') ?? String(row.id ?? '');
-    case 'jokes':
-      return pick('setup') ?? String(row.id ?? '');
-    case 'quoterism_quotes':
-      return pick('text') ?? String(row.id ?? '');
-    case 'trivia':
-      return pick('question') ?? String(row.id ?? '');
-    case 'news':
-      return pick('title') ?? String(row.id ?? '');
-    case 'photos':
-    case 'videos':
-      return pick('alt_text') ?? String(row.id ?? '');
-    case 'stocks':
-      return pick('symbol') ?? pick('display_name') ?? String(row.id ?? '');
-    case 'weather':
-      return pick('location_name') ?? pick('description') ?? String(row.id ?? '');
-    case 'weather_alerts':
-      return pick('event') ?? pick('headline') ?? String(row.id ?? '');
-    case 'dashboard_alerts':
-      return pick('title') ?? String(row.id ?? '');
-    default:
-      return String(row.id ?? '');
-  }
-}
-
 export function DataPage() {
   const { active } = useDisplay();
   const { formatDateTime } = useDisplayFormat();
@@ -446,15 +307,15 @@ export function DataPage() {
   const canModerate = hasPermission('content.moderate');
   const canBrowseData = canModerate || hasPermission('content.catalog_read');
   const canCuratorWrite = hasPermission('curator.write');
+  const canAlertsWrite = hasPermission('alerts.write');
 
   const [kind, setKind] = useState<DataKind>('jokes');
   const canAddManualEntry = canCuratorWrite && isManualEntryKind(kind);
+  const canAddAlert = canAlertsWrite && kind === 'dashboard_alerts';
   const [toolbarSearch, setToolbarSearch] = useState('');
   const [dataSortId, setDataSortId] = useState('newest');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(() => defaultRowsForKind('jokes'));
-  const [columnFilterDrafts, setColumnFilterDrafts] = useState<Partial<Record<DataKind, Record<string, string>>>>({});
-  const [columnFilters, setColumnFilters] = useState<Partial<Record<DataKind, Record<string, string>>>>({});
   const [suppressed, setSuppressed] = useState<'all' | 'true' | 'false'>('all');
   const [categoryId, setCategoryId] = useState('');
   const [feedId, setFeedId] = useState('');
@@ -470,9 +331,13 @@ export function DataPage() {
   const [feeds, setFeeds] = useState<{ id: string; title: string | null; url: string }[]>([]);
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
-
-  const draftForKind = columnFilterDrafts[kind] ?? {};
-  const draftJson = JSON.stringify(draftForKind);
+  const [alertEntryOpen, setAlertEntryOpen] = useState(false);
+  const [integrationAccounts, setIntegrationAccounts] = useState<
+    { id: string; label: string }[]
+  >([]);
+  const [icalFeedsById, setIcalFeedsById] = useState<
+    Record<string, { label?: string; url: string }>
+  >({});
 
   useEffect(() => {
     setPage(0);
@@ -486,25 +351,9 @@ export function DataPage() {
   /** Monotonic generation: late responses (or non-aborted fetches) cannot apply after a newer load started. */
   const catalogLoadGenerationRef = useRef(0);
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      try {
-        const parsed = JSON.parse(draftJson) as Record<string, string>;
-        setColumnFilters((prev) => ({ ...prev, [kind]: parsed }));
-      } catch {
-        setColumnFilters((prev) => ({ ...prev, [kind]: {} }));
-      }
-    }, 300);
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [draftJson, kind]);
-
   useEffect(() => {
     setPage(0);
-  }, [suppressed, categoryId, feedId, locationId, columnFilters, rowsPerPage, kind]);
+  }, [suppressed, categoryId, feedId, locationId, rowsPerPage, kind]);
 
   const loadMetadata = useCallback(async () => {
     if (!active || !canBrowseData) return;
@@ -524,6 +373,22 @@ export function DataPage() {
         setCategories(catRes.items ?? []);
         setFeeds(feedRes.items ?? []);
         setLocations(locRes.items ?? []);
+        const [accountsRes, integrationsRes] = await Promise.all([
+          fetchIntegrationAccounts(active),
+          listIntegrations(active, { limit: 200, offset: 0 }),
+        ]);
+        setIntegrationAccounts(
+          (accountsRes.items ?? []).map((a) => ({ id: a.id, label: a.label })),
+        );
+        const icalRow = (integrationsRes.items ?? []).find(
+          (i) => i.integration_type === 'calendar_ical',
+        );
+        if (icalRow?.config_json && typeof icalRow.config_json === 'object') {
+          const parsed = parseIcalCalendarConfig(icalRow.config_json as Record<string, unknown>);
+          setIcalFeedsById(icalFeedsByIdFromConfig(parsed.feeds));
+        } else {
+          setIcalFeedsById({});
+        }
       } catch {
         /* optional metadata */
       }
@@ -540,11 +405,6 @@ export function DataPage() {
     const p = new URLSearchParams();
     p.set('limit', String(rowsPerPage));
     p.set('offset', String(offset));
-    const applied = columnFilters[kind] ?? {};
-    for (const [key, value] of Object.entries(applied)) {
-      const t = value.trim();
-      if (t) p.set(key, t);
-    }
     if (canModerate && canSuppress(kind) && suppressed !== 'all') p.set('suppressed', suppressed);
     if (
       categoryId &&
@@ -563,7 +423,7 @@ export function DataPage() {
     }
     const s = p.toString();
     return s ? `?${s}` : '';
-  }, [offset, columnFilters, suppressed, categoryId, feedId, locationId, kind, rowsPerPage, canModerate]);
+  }, [offset, suppressed, categoryId, feedId, locationId, kind, rowsPerPage, canModerate]);
 
   useLayoutEffect(() => {
     setRows([]);
@@ -639,15 +499,6 @@ export function DataPage() {
     },
     [active, canModerate, kind, loadCatalog],
   );
-
-  const setFilterField = (param: string, value: string) => {
-    setColumnFilterDrafts((prev) => ({
-      ...prev,
-      [kind]: { ...(prev[kind] ?? {}), [param]: value },
-    }));
-  };
-
-  const filterFields = COLUMN_FILTER_FIELDS[kind];
 
   const displayRows = useMemo(() => {
     const q = toolbarSearch.trim().toLowerCase();
@@ -734,6 +585,11 @@ export function DataPage() {
             Add
           </Button>
         ) : null}
+        {canAddAlert && active ? (
+          <Button variant="contained" onClick={() => setAlertEntryOpen(true)}>
+            Add
+          </Button>
+        ) : null}
       </DataViewToolbar>
 
       {active && isManualEntryKind(kind) ? (
@@ -746,23 +602,14 @@ export function DataPage() {
         />
       ) : null}
 
-      <Paper sx={{ p: 2 }}>
-        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-          Column filters (substring match; multiple fields combine with AND)
-        </Typography>
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ gap: 1 }}>
-          {filterFields.map((f) => (
-            <TextField
-              key={f.param}
-              label={f.label}
-              size="small"
-              value={draftForKind[f.param] ?? ''}
-              onChange={(e) => setFilterField(f.param, e.target.value)}
-              sx={{ minWidth: 140, flex: '1 1 160px' }}
-            />
-          ))}
-        </Stack>
-      </Paper>
+      {active && canAddAlert ? (
+        <AlertEntryDialog
+          open={alertEntryOpen}
+          display={active}
+          onClose={() => setAlertEntryOpen(false)}
+          onSaved={() => void loadCatalog()}
+        />
+      ) : null}
 
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} flexWrap="wrap" useFlexGap>
         {canModerate && canSuppress(kind) && (
@@ -848,25 +695,22 @@ export function DataPage() {
       {layout === 'card' && displayRows.length > 0 ? (
         <Box sx={catalogCardGridSx}>
           {displayRows.map((row, i) => (
-            <Paper key={String(row.id ?? i)} variant="outlined" sx={{ p: 2 }}>
-              <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                {dataRowSummary(row, kind)}
-              </Typography>
-              <Typography variant="caption" color="text.secondary" display="block">
-                {String(row.id ?? '')}
-              </Typography>
-              {canModerate ? (
-                <Button
-                  size="small"
-                  color="error"
-                  sx={{ mt: 1 }}
-                  disabled={contentDeletePath(kind, row) == null}
-                  onClick={() => void deleteRow(row)}
-                >
-                  Delete
-                </Button>
-              ) : null}
-            </Paper>
+            <DataCatalogCard
+              key={catalogRowKey(kind, row, i)}
+              kind={kind}
+              row={row}
+              display={active}
+              categories={categories}
+              feeds={feeds}
+              integrationAccounts={integrationAccounts}
+              icalFeedsById={icalFeedsById}
+              canModerate={canModerate}
+              canSuppress={canSuppress(kind)}
+              formatDateTime={formatDateTime}
+              onPatchSuppressed={(id, next) => void patchSuppressed(id, next)}
+              onDelete={() => void deleteRow(row)}
+              canDelete={contentDeletePath(kind, row) != null}
+            />
           ))}
         </Box>
       ) : (
@@ -957,13 +801,13 @@ export function DataPage() {
               )}
               {kind === 'dashboard_alerts' && (
                 <>
+                  <TableCell>Status</TableCell>
                   <TableCell>Title</TableCell>
                   <TableCell>Body</TableCell>
                   <TableCell>Severity</TableCell>
                   <TableCell>Priority</TableCell>
                   <TableCell>Source</TableCell>
                   <TableCell>Created</TableCell>
-                  <TableCell>Source</TableCell>
                 </>
               )}
               {kind === 'calendar_events' && (
@@ -974,8 +818,8 @@ export function DataPage() {
                   <TableCell>All-day</TableCell>
                   <TableCell>Location</TableCell>
                   <TableCell>Category</TableCell>
-                  <TableCell>Source</TableCell>
-                  <TableCell>Source</TableCell>
+                  <TableCell>Integration</TableCell>
+                  <TableCell>Account / feed</TableCell>
                 </>
               )}
               {canModerate ? <TableCell align="right">Actions</TableCell> : null}
@@ -1043,13 +887,17 @@ export function DataPage() {
                     {kind === 'news' && (
                       <>
                         <TableCell>
-                          <BlobMedia display={active} blobKey={row.image_blob_key as string | undefined} variant="image" />
+                          <CatalogBlobMedia
+                            display={active}
+                            blobKey={row.image_blob_key as string | undefined}
+                            variant="image"
+                          />
                         </TableCell>
                         <TableCell sx={{ maxWidth: 260, wordBreak: 'break-word' }}>{String(row.title ?? '')}</TableCell>
                         <TableCell sx={{ maxWidth: 360, wordBreak: 'break-word' }}>
                           {String(row.summary ?? '')}
                         </TableCell>
-                        <TableCell>{integrationCell(row)}</TableCell>
+                        <TableCell>{newsSourceLabel(row, feeds)}</TableCell>
                         {canModerate && (
                           <TableCell>
                             <Switch size="small" checked={sup} onChange={(_, v) => void patchSuppressed(id, v)} />
@@ -1060,7 +908,7 @@ export function DataPage() {
                     {kind === 'quoterism_quotes' && (
                       <>
                         <TableCell>
-                          <BlobMedia
+                          <CatalogBlobMedia
                             display={active}
                             blobKey={row.author_image_blob_key as string | undefined}
                             variant="image"
@@ -1095,7 +943,7 @@ export function DataPage() {
                     {kind === 'photos' && (
                       <>
                         <TableCell>
-                          <BlobMedia display={active} blobKey={row.media_blob_key as string | undefined} variant="image" />
+                          <CatalogBlobMedia display={active} blobKey={row.media_blob_key as string | undefined} variant="image" />
                         </TableCell>
                         <TableCell sx={{ maxWidth: 280 }}>
                           <Typography variant="body2">{String(row.alt_text ?? '')}</Typography>
@@ -1114,7 +962,7 @@ export function DataPage() {
                     {kind === 'videos' && (
                       <>
                         <TableCell>
-                          <BlobMedia display={active} blobKey={row.media_blob_key as string | undefined} variant="video" />
+                          <CatalogBlobMedia display={active} blobKey={row.media_blob_key as string | undefined} variant="video" />
                         </TableCell>
                         <TableCell sx={{ maxWidth: 240 }}>
                           <Typography variant="body2">{String(row.alt_text ?? '')}</Typography>
@@ -1151,7 +999,7 @@ export function DataPage() {
                       <>
                         <TableCell>{String(row.location_name ?? row.location_id ?? '')}</TableCell>
                         <TableCell>
-                          <BlobMedia
+                          <CatalogBlobMedia
                             display={active}
                             blobKey={row.current_icon_blob_key as string | undefined}
                             variant="image"
@@ -1184,21 +1032,44 @@ export function DataPage() {
                     )}
                     {kind === 'dashboard_alerts' && (
                       <>
+                        <TableCell>
+                          <Chip
+                            size="small"
+                            label={alertLifecycleLabel(alertLifecycleStatus(row))}
+                            color={
+                              alertLifecycleStatus(row) === 'active'
+                                ? 'success'
+                                : alertLifecycleStatus(row) === 'expired'
+                                  ? 'default'
+                                  : 'warning'
+                            }
+                            variant="outlined"
+                          />
+                        </TableCell>
                         <TableCell sx={{ maxWidth: 200, wordBreak: 'break-word' }}>
                           {String(row.title ?? '')}
                         </TableCell>
                         <TableCell sx={{ maxWidth: 360, wordBreak: 'break-word' }}>
                           {String(row.body ?? '')}
                         </TableCell>
-                        <TableCell>{String(row.severity ?? '')}</TableCell>
+                        <TableCell>
+                          <Stack direction="row" spacing={0.5} alignItems="center">
+                            {(() => {
+                              const Icon = alertSeverityIconComponent(String(row.severity ?? ''));
+                              return <Icon fontSize="small" color="action" />;
+                            })()}
+                            <Typography variant="body2">
+                              {alertSeverityLabel(String(row.severity ?? ''))}
+                            </Typography>
+                          </Stack>
+                        </TableCell>
                         <TableCell>{row.priority != null ? String(row.priority) : '—'}</TableCell>
-                        <TableCell>{String(row.source ?? '')}</TableCell>
+                        <TableCell>{alertSourceLabel(String(row.source ?? ''))}</TableCell>
                         <TableCell>
                           {row.created_at_ms != null
                             ? formatDateTime(new Date(Number(row.created_at_ms)))
                             : '—'}
                         </TableCell>
-                        <TableCell>{integrationCell(row)}</TableCell>
                       </>
                     )}
                     {kind === 'calendar_events' && (
@@ -1217,12 +1088,19 @@ export function DataPage() {
                           {String(row.location ?? '') || '—'}
                         </TableCell>
                         <TableCell>{calendarCategoryCell(row, categories)}</TableCell>
-                        <TableCell>{integrationCell(row)}</TableCell>
-                        <TableCell
-                          sx={{ maxWidth: 180, wordBreak: 'break-word', fontSize: 12 }}
-                          title={String(row.source ?? '')}
-                        >
-                          {String(row.source ?? '') || '—'}
+                        <TableCell>
+                          {parseCalendarEventSource(String(row.source ?? ''), {
+                            integrationAccounts,
+                            icalFeedsById,
+                          }).integrationLabel}
+                        </TableCell>
+                        <TableCell sx={{ maxWidth: 200, wordBreak: 'break-word' }}>
+                          {
+                            parseCalendarEventSource(String(row.source ?? ''), {
+                              integrationAccounts,
+                              icalFeedsById,
+                            }).accountOrFeedLabel
+                          }
                         </TableCell>
                       </>
                     )}

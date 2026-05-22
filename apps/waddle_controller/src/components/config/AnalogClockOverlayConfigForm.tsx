@@ -7,9 +7,9 @@ import {
   Typography,
 } from '@mui/material';
 import {
-  ANALOG_CLOCK_OVERLAY_DIAL_LABELS,
-  ANALOG_CLOCK_OVERLAY_HAND_ACCENTS,
-} from '@/constants/clockOverlaySettings';
+  ANALOG_DIAL_LABELS_OPTIONS,
+  THEME_ACCENT_OPTIONS,
+} from '@/constants/clockEnumLabels';
 import { ClockOverlayPlacementFields } from './ClockOverlayPlacementFields';
 
 type Props = {
@@ -48,9 +48,9 @@ export function AnalogClockOverlayConfigForm({ formData, onChange, disabled }: P
             patch({ dialLabels: v === 'none' ? undefined : v });
           }}
         >
-          {ANALOG_CLOCK_OVERLAY_DIAL_LABELS.map((v) => (
-            <MenuItem key={v} value={v}>
-              {v}
+          {ANALOG_DIAL_LABELS_OPTIONS.map((o) => (
+            <MenuItem key={o.value} value={o.value}>
+              {o.label}
             </MenuItem>
           ))}
         </Select>
@@ -66,9 +66,9 @@ export function AnalogClockOverlayConfigForm({ formData, onChange, disabled }: P
             patch({ hourHandAccent: v === 'accent1' ? undefined : v });
           }}
         >
-          {ANALOG_CLOCK_OVERLAY_HAND_ACCENTS.map((v) => (
-            <MenuItem key={`hour-${v}`} value={v}>
-              {v}
+          {THEME_ACCENT_OPTIONS.map((o) => (
+            <MenuItem key={`hour-${o.value}`} value={o.value}>
+              {o.label}
             </MenuItem>
           ))}
         </Select>
@@ -84,9 +84,9 @@ export function AnalogClockOverlayConfigForm({ formData, onChange, disabled }: P
             patch({ minuteHandAccent: v === 'accent2' ? undefined : v });
           }}
         >
-          {ANALOG_CLOCK_OVERLAY_HAND_ACCENTS.map((v) => (
-            <MenuItem key={`minute-${v}`} value={v}>
-              {v}
+          {THEME_ACCENT_OPTIONS.map((o) => (
+            <MenuItem key={`minute-${o.value}`} value={o.value}>
+              {o.label}
             </MenuItem>
           ))}
         </Select>
@@ -102,9 +102,9 @@ export function AnalogClockOverlayConfigForm({ formData, onChange, disabled }: P
             patch({ secondHandAccent: v === 'accent3' ? undefined : v });
           }}
         >
-          {ANALOG_CLOCK_OVERLAY_HAND_ACCENTS.map((v) => (
-            <MenuItem key={`second-${v}`} value={v}>
-              {v}
+          {THEME_ACCENT_OPTIONS.map((o) => (
+            <MenuItem key={`second-${o.value}`} value={o.value}>
+              {o.label}
             </MenuItem>
           ))}
         </Select>

@@ -737,7 +737,7 @@ function EditTickerTapeDialog({
   const bundle = useMemo(() => tickerSchemaBundle(tickerTypes), [tickerTypes]);
   const [label, setLabel] = useState(row.label ?? '');
   const [description, setDescription] = useState(row.description ?? '');
-  const [tickerType] = useState(row.ticker_type);
+  const tickerType = row.ticker_type;
   const [enabled, setEnabled] = useState(row.enabled);
   const [weight, setWeight] = useState(row.frequency_weight);
   const [sort, setSort] = useState(row.sort_order);
@@ -810,19 +810,6 @@ function EditTickerTapeDialog({
             minRows={2}
             disabled={saving}
           />
-          <FormControl fullWidth disabled>
-            <InputLabel id="ett">Ticker type</InputLabel>
-            <Select labelId="ett" label="Ticker type" value={tickerType}>
-              {tickerTypes.map((m) => (
-                <MenuItem key={m.ticker_type} value={m.ticker_type}>
-                  {tickerTypeLabel(m.ticker_type, m)}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <Typography variant="caption" color="text.secondary">
-            Ticker type cannot be changed after create. Delete and add a new tape to switch types.
-          </Typography>
           <Stack direction="row" alignItems="center" spacing={1}>
             <Switch checked={enabled} onChange={(_, v) => setEnabled(v)} disabled={saving} />
             <Typography>Enabled</Typography>

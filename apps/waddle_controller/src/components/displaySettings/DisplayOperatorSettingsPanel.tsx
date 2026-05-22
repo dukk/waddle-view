@@ -26,7 +26,7 @@ const PANEL_COPY: Record<
   programs: {
     title: 'Programs',
     description:
-      'Program history depth and default ticker marquee scroll settings. Curator configurations can override ticker values when active.',
+      'Program history depth, default ticker marquee scroll settings, and dot/diamond spacers between ticker lines and programs. Curator configurations can override duration and speed when active.',
   },
 };
 

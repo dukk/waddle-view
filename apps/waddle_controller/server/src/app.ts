@@ -5,6 +5,7 @@ import type { AppDatabase } from './db/database.js';
 import { createAppContext, type AppVariables } from './middleware/context.js';
 import { bootstrapGuard } from './middleware/guards.js';
 import { statusRoutes } from './routes/status.js';
+import { aboutRoutes } from './routes/about.js';
 import { authRoutes } from './routes/auth.js';
 import { bootstrapRoutes } from './routes/bootstrap.js';
 import { settingsRoutes } from './routes/settings.js';
@@ -32,6 +33,7 @@ export function createApp(config: AppConfig, db: AppDatabase) {
 
   const v1 = new Hono<{ Variables: AppVariables }>();
   v1.route('/', statusRoutes());
+  v1.route('/', aboutRoutes());
   v1.route('/', authRoutes());
   v1.route('/', bootstrapRoutes());
   v1.route('/', settingsRoutes());

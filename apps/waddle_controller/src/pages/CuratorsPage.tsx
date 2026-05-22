@@ -591,6 +591,7 @@ function CuratorConfigurationDialog({
   );
   const [dialogTab, setDialogTab] = useState<ConfigDialogTabId>('general');
   const [requireNewsPhoto, setRequireNewsPhoto] = useState(true);
+  const [screensEnabled, setScreensEnabled] = useState(true);
   const [tickerEnabled, setTickerEnabled] = useState(true);
   const [defaultConfig, setDefaultConfig] = useState(false);
   const [parentConfigurationId, setParentConfigurationId] = useState<string | null>(null);
@@ -674,6 +675,7 @@ function CuratorConfigurationDialog({
             detail.viewport_reserve_left_pct_override ?? VIEWPORT_RESERVE_PCT.default,
           );
           setRequireNewsPhoto(detail.require_news_photo_for_screens);
+          setScreensEnabled(detail.screens_enabled);
           setTickerEnabled(detail.ticker_enabled);
           setDefaultConfig(detail.default_config);
           setParentConfigurationId(detail.parent_configuration_id);
@@ -746,6 +748,7 @@ function CuratorConfigurationDialog({
     viewport_reserve_left_pct_override:
       isEnhancementLayer || useDisplayViewportReserveDefaults ? null : viewportReserveLeftOverride,
     require_news_photo_for_screens: requireNewsPhoto,
+    screens_enabled: isEnhancementLayer ? true : screensEnabled,
     ticker_enabled: isEnhancementLayer ? true : tickerEnabled,
     default_config: defaultConfig,
     rules: rules.map((r) => ({
@@ -1010,6 +1013,16 @@ function CuratorConfigurationDialog({
                     </>
                   ) : showProgramFields ? (
                     <>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={screensEnabled}
+                            onChange={(_, v) => setScreensEnabled(v)}
+                            disabled={formDisabled}
+                          />
+                        }
+                        label="Show screen program (ticker marquee can use full viewport height when off)"
+                      />
                       <CuratorSliderField
                         label="Screen program duration"
                         value={programDuration}
@@ -1017,7 +1030,7 @@ function CuratorConfigurationDialog({
                         min={CURATOR_PROGRAM_DURATION.min}
                         max={CURATOR_PROGRAM_DURATION.max}
                         step={CURATOR_PROGRAM_DURATION.step}
-                        disabled={formDisabled}
+                        disabled={formDisabled || !screensEnabled}
                         formatValue={formatProgramDurationWithSeconds}
                       />
                       <FormControlLabel
@@ -1025,7 +1038,7 @@ function CuratorConfigurationDialog({
                           <Checkbox
                             checked={requireNewsPhoto}
                             onChange={(_, v) => setRequireNewsPhoto(v)}
-                            disabled={formDisabled}
+                            disabled={formDisabled || !screensEnabled}
                           />
                         }
                         label="Require news photo for news screens"
@@ -1035,7 +1048,7 @@ function CuratorConfigurationDialog({
                         options={screenOptions}
                         value={screenIds}
                         onChange={setScreenIds}
-                        disabled={formDisabled}
+                        disabled={formDisabled || !screensEnabled}
                       />
                     </>
                   ) : null}
@@ -1067,7 +1080,7 @@ function CuratorConfigurationDialog({
                             disabled={formDisabled}
                           />
                         }
-                        label="Show ticker marquee (screens use full height when off)"
+                        label="Show ticker marquee (screen program can use full viewport height when off)"
                       />
                       <FormControlLabel
                         control={

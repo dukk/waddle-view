@@ -7,6 +7,7 @@ import { isEffectiveUserMode } from '../services/userMode.js';
 
 const BOOTSTRAP_ALLOWED = new Set([
   'GET:/status',
+  'GET:/about',
   'POST:/bootstrap/admin',
 ]);
 

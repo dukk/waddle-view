@@ -11,6 +11,9 @@ import {
 } from '@/constants/curatorDisplaySettings';
 import type { DisplayCustomTheme } from '@/constants/displayThemes';
 import {
+  DEFAULT_DISPLAY_TICKER_ITEM_SEPARATOR,
+  DEFAULT_DISPLAY_TICKER_PROGRAM_SEPARATOR,
+  normalizeDisplayTickerSeparator,
   normalizeDisplayWeatherTemperatureUnit,
   type DisplaySettings,
 } from '@/constants/displaySettings';
@@ -121,6 +124,14 @@ export function useDisplayOperatorSettings(
           display_viewport_reserve_left_pct: reservePct(data.display_viewport_reserve_left_pct),
           display_ticker_program_duration_seconds: tickerDuration,
           display_ticker_pixels_per_second: tickerPx,
+          display_ticker_item_separator: normalizeDisplayTickerSeparator(
+            data.display_ticker_item_separator,
+            DEFAULT_DISPLAY_TICKER_ITEM_SEPARATOR,
+          ),
+          display_ticker_program_separator: normalizeDisplayTickerSeparator(
+            data.display_ticker_program_separator,
+            DEFAULT_DISPLAY_TICKER_PROGRAM_SEPARATOR,
+          ),
         });
         setInitialized(true);
       } catch (e) {
@@ -153,6 +164,8 @@ export function useDisplayOperatorSettings(
         display_viewport_reserve_left_pct: form.display_viewport_reserve_left_pct,
         display_ticker_program_duration_seconds: form.display_ticker_program_duration_seconds,
         display_ticker_pixels_per_second: form.display_ticker_pixels_per_second,
+        display_ticker_item_separator: form.display_ticker_item_separator,
+        display_ticker_program_separator: form.display_ticker_program_separator,
       });
       await refreshFormat();
       setSaved(true);

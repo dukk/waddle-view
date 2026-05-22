@@ -63,7 +63,9 @@ npm run dev
 4. Manage accounts on the **Users** tab: set passwords, roles, require password change on next sign-in, and view last login time.
 5. Sign in at `/controller-login` when user mode is on. Users flagged for password change land on `/controller-change-password` first.
 
-BFF API base path: **`/bff/v1/*`** (status, auth, settings, users, bootstrap, user-displays, recovery, display proxy).
+BFF API base path: **`/bff/v1/*`** (status, **about**, auth, settings, users, bootstrap, user-displays, recovery, display proxy).
+
+**Version and licenses:** the drawer build label loads from **`GET /bff/v1/about`** (running BFF manifest). Click it to open **About** (`/about`) for controller and active-display dependencies and ONC / third-party notices. Regenerate the server manifest after dependency changes: `npm run generate:about` (runs automatically before `npm run build` / `build:server`). Optional release build number: set **`WADDLE_CONTROLLER_BUILD_NUMBER`** when invoking the generator (defaults to `dev` locally).
 
 When **user mode** is on, adopted displays and encrypted API keys are stored in SQLite (`user_displays`) per account. The browser keeps a local cache synced from the server on login and after imports. **Display list backup** (export/import JSON) works in user mode; exports pull from the server first.
 
@@ -102,11 +104,11 @@ Use **Interests** (Config nav, between Integrations and Data) to manage what the
 
 ### Data (collected content browser)
 
-**Data** lists ingested rows from `GET /v1/catalog/*` (requires **`content.catalog_read`** or **`content.moderate`**). With **`curator.write`**, use **Add** on the Calendar, Jokes, Photos, Trivia, or Videos tab to upload or enter content manually (provenance **Manual entry**; `POST /v1/curator/manual/*` on the display). With **`content.moderate`** (adopted display role **operator** or **admin**), you can suppress jokes/news/photos/videos/trivia (`PATCH /v1/content/*`) or permanently delete any tab’s row (`DELETE /v1/content/*`; dashboard alerts use `DELETE /v1/alerts/{id}`). **power_viewer** can browse but not delete or suppress.
+**Data** lists ingested rows from `GET /v1/catalog/*` (requires **`content.catalog_read`** or **`content.moderate`**). Card layout shows category chips, human-readable sources (integration, RSS feed, calendar account, alert severity/source), and a **Suppressed** switch when moderation is allowed; row ids are not shown on cards. With **`curator.write`**, use **Add** on Calendar, Jokes, Photos, Trivia, Videos, or Quotes (`POST /v1/curator/manual/*`; manual quotes use `POST /v1/curator/manual/quoterism-quotes`). With **`alerts.write`**, use **Add** on the Alerts tab (`POST /v1/alerts`). With **`content.moderate`** (operator or admin), suppress catalog rows (`PATCH /v1/content/*`) or delete (`DELETE /v1/content/*`; dashboard alerts use `DELETE /v1/alerts/{id}`). **power_viewer** can browse but not delete, suppress, or add.
 
 ## Join from a display QR (`/join`)
 
-The display slide type **`controller_invite`** can open **`/join?api=<display REST>`** on this SPA. That page runs **viewer** adoption (challenge on the display, then confirm). For other roles, use **Manage displays**.
+The display slide type **`controller_invite`** opens **`/join?api=<display REST>&role=<role>`** when the screen config sets **`inviteRole`**. The join page uses that role for adoption and **locks the role selector** when `role` is present in the URL. Without `role`, operators choose a role on the page (default viewer). For other flows, use **Manage displays**.
 
 Cross-origin calls require the controller origin to pass the display’s **adoption CORS** rules (LAN/private) during pairing; after confirm, the origin is stored on the display. You can also set **`WADDLE_DISPLAY_HTTP_CORS_ORIGINS`** on the display for static seeds.
 

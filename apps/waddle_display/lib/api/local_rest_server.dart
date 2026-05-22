@@ -36,6 +36,8 @@ import 'content_catalog_rest_routes.dart';
 import 'integrations_list_rest_routes.dart';
 import 'interests_rest_routes.dart';
 import 'cors_policy.dart';
+import '../config/display_env.dart';
+import 'display_about.dart';
 import 'display_health.dart';
 import 'manual_bucket_rest_routes.dart';
 import 'operator_rest_routes.dart';
@@ -286,6 +288,10 @@ Handler buildProtectedApiRouter({
   r.post('/v1/alerts', (Request req) async {
     final body = await req.readAsString();
     final map = jsonDecode(body) as Map<String, dynamic>;
+    final sourceRaw = map['source'] as String?;
+    final source = sourceRaw != null && sourceRaw.trim().isNotEmpty
+        ? sourceRaw.trim()
+        : 'api';
     final id = await alerts.insertAlert(
       title: map['title'] as String? ?? '',
       body: map['body'] as String? ?? '',
@@ -293,6 +299,7 @@ Handler buildProtectedApiRouter({
       severity: map['severity'] as String? ?? 'info',
       priority: (map['priority'] as num?)?.toInt() ?? 0,
       expiresAtMs: (map['expires_at'] as num?)?.toInt(),
+      source: source,
     );
     return Response.ok(
       jsonEncode({'id': id}),
@@ -1078,11 +1085,19 @@ Handler buildRootHandler({
 }) {
   final effectiveCorsPolicy = corsPolicy ?? CorsPolicy();
   final healthStartedAt = DateTime.now().toUtc();
+  final pluginsDirConfigured =
+      (env[kDisplayPluginsDirEnv] ?? '').trim().isNotEmpty;
   Response health(Request req) => Response.ok(
     encodeDisplayHealthJson(
       schemaVersion: db.schemaVersion,
       serverStartedAt: healthStartedAt,
+      pluginsDirConfigured: pluginsDirConfigured,
     ),
+    headers: {'content-type': 'application/json'},
+  );
+
+  Response about(Request req) => Response.ok(
+    encodeDisplayAboutJson(),
     headers: {'content-type': 'application/json'},
   );
 
@@ -1129,6 +1144,9 @@ Handler buildRootHandler({
     final path = req.requestedUri.path;
     if (path == '/v1/health' || path == 'v1/health') {
       return health(req);
+    }
+    if (path == '/v1/about' || path == 'v1/about') {
+      return about(req);
     }
     if (path.startsWith('/admin') || path.startsWith('admin')) {
       return Response(

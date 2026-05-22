@@ -4,7 +4,8 @@ export type ManualEntryKind =
   | 'jokes'
   | 'photos'
   | 'trivia'
-  | 'videos';
+  | 'videos'
+  | 'quoterism_quotes';
 
 export const MANUAL_ENTRY_KINDS: ReadonlySet<ManualEntryKind> = new Set([
   'calendar_events',
@@ -12,6 +13,7 @@ export const MANUAL_ENTRY_KINDS: ReadonlySet<ManualEntryKind> = new Set([
   'photos',
   'trivia',
   'videos',
+  'quoterism_quotes',
 ]);
 
 export function isManualEntryKind(kind: string): kind is ManualEntryKind {
@@ -30,6 +32,8 @@ export function manualEntryPostPath(kind: ManualEntryKind): string {
       return '/v1/curator/manual/trivia';
     case 'calendar_events':
       return '/v1/curator/manual/calendar-events';
+    case 'quoterism_quotes':
+      return '/v1/curator/manual/quoterism-quotes';
   }
 }
 
@@ -45,5 +49,7 @@ export function manualEntryDialogTitle(kind: ManualEntryKind): string {
       return 'Add trivia';
     case 'calendar_events':
       return 'Add calendar event';
+    case 'quoterism_quotes':
+      return 'Add quote';
   }
 }

@@ -10,6 +10,7 @@ Uri? buildControllerJoinUri({
   required String controllerBaseUrl,
   required String displayApiBaseUrl,
   required String viewerRegistrationSecret,
+  String inviteRole = 'viewer',
 }) {
   var trimmed = controllerBaseUrl.trim();
   if (trimmed.isEmpty) {
@@ -29,7 +30,11 @@ Uri? buildControllerJoinUri({
   }
   final path = root.path;
   final joinPath = path.endsWith('/') ? '${path}join' : '$path/join';
-  final qp = <String, String>{'api': displayApiBaseUrl};
+  final role = inviteRole.trim();
+  final qp = <String, String>{
+    'api': displayApiBaseUrl,
+    if (role.isNotEmpty) 'role': role,
+  };
   if (viewerRegistrationSecret.isNotEmpty) {
     qp['secret'] = viewerRegistrationSecret;
   }
@@ -64,10 +69,13 @@ class ControllerInviteSlideWidget extends StatelessWidget {
     final effectiveController = configController.isNotEmpty
         ? configController
         : viewerInviteRuntime.controllerPublicUrl.trim();
+    final inviteRole =
+        (spec.config['inviteRole'] as String?)?.trim() ?? 'viewer';
     final joinUri = buildControllerJoinUri(
       controllerBaseUrl: effectiveController,
       displayApiBaseUrl: displayApiBaseUrl,
       viewerRegistrationSecret: viewerInviteRuntime.viewerRegistrationSecret,
+      inviteRole: inviteRole,
     );
     final qrData = joinUri?.toString();
     return SingleChildScrollView(

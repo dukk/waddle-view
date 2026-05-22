@@ -708,6 +708,7 @@ export function InterestsPage() {
               <WeatherInterestCard
                 key={row.id}
                 row={row}
+                categoryLabel={categoryLabel(row.category)}
                 canWrite={canWrite}
                 onEdit={() => openEditWeather(row)}
                 onDelete={() => void deleteWeather(row.id)}
@@ -773,6 +774,7 @@ export function InterestsPage() {
                 onCategoryPatch={(enabled) =>
                   patchRssCategory(group.id, enabled).catch((e) => setError(errMsg(e)))
                 }
+                labelForCategory={categoryLabel}
               />
             ))
           ) : null}
@@ -1142,6 +1144,7 @@ function NewsCategoryAccordion({
   onDelete,
   onPatch,
   onCategoryPatch,
+  labelForCategory,
 }: {
   title: string;
   rows: RssFeedRow[];
@@ -1153,6 +1156,7 @@ function NewsCategoryAccordion({
   onDelete: (id: string) => void;
   onPatch: (id: string, patch: Partial<RssFeedRow>) => void;
   onCategoryPatch: (enabled: boolean) => void;
+  labelForCategory: (categoryId: string) => string;
 }) {
   const interestedState = rssCategoryToggleState(rows);
 
@@ -1196,6 +1200,7 @@ function NewsCategoryAccordion({
               <RssInterestCard
                 key={row.id}
                 row={row}
+                categoryLabel={labelForCategory(row.category)}
                 canWrite={canWrite}
                 onEdit={() => onEdit(row)}
                 onDelete={() => onDelete(row.id)}
@@ -1285,12 +1290,14 @@ function WeatherInterestTable({
 
 function WeatherInterestCard({
   row,
+  categoryLabel,
   canWrite,
   onEdit,
   onDelete,
   onPatch,
 }: {
   row: WeatherLocationRow;
+  categoryLabel: string;
   canWrite: boolean;
   onEdit: () => void;
   onDelete: () => void;
@@ -1303,6 +1310,7 @@ function WeatherInterestCard({
           <Typography variant="subtitle1" fontWeight={600}>
             {row.name}
           </Typography>
+          <Chip size="small" label={categoryLabel} variant="outlined" sx={{ alignSelf: 'flex-start' }} />
           <Typography variant="caption" color="text.secondary">
             {row.latitude}, {row.longitude}
           </Typography>
@@ -1405,12 +1413,14 @@ function RssInterestTable({
 
 function RssInterestCard({
   row,
+  categoryLabel,
   canWrite,
   onEdit,
   onDelete,
   onPatch,
 }: {
   row: RssFeedRow;
+  categoryLabel: string;
   canWrite: boolean;
   onEdit: () => void;
   onDelete: () => void;
@@ -1424,6 +1434,7 @@ function RssInterestCard({
           <Typography variant="subtitle1" fontWeight={600} sx={{ wordBreak: 'break-word' }}>
             {feedName}
           </Typography>
+          <Chip size="small" label={categoryLabel} variant="outlined" sx={{ alignSelf: 'flex-start' }} />
           <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
             {row.url}
           </Typography>

@@ -10,6 +10,7 @@ import 'package:waddle_shared/persistence/database.dart';
 import '../../content_category_slide_header.dart';
 import '../../../theme/display_theme.dart';
 import '../../dashboard_viewport_scope.dart';
+import 'news_config.dart';
 import 'news_load.dart';
 
 int _cfgInt(Map<String, dynamic> c, String key, int def) {
@@ -87,6 +88,8 @@ class _NewsColumnsSlideWidgetState
   late final int _nColumns;
   late final int _minReadMs;
   late final double _qrLogical;
+  late final String _qrMode;
+  late final BoxFit _imageFit;
   List<_ColumnArticle> _columns = const [];
   String? _headerCategoryId;
 
@@ -102,6 +105,8 @@ class _NewsColumnsSlideWidgetState
     _nColumns = _columnCountFromConfig(c);
     _minReadMs = _cfgInt(c, 'minReadMs', 8000);
     _qrLogical = _cfgDouble(c, 'qrLogicalSize', 80).clamp(48, 140);
+    _qrMode = readNewsQrMode(c);
+    _imageFit = readNewsImageFit(c);
     unawaited(_bootstrap());
   }
 
@@ -243,6 +248,8 @@ class _NewsColumnsSlideWidgetState
                           scale: s,
                           columnIndex: i,
                           qrLogical: _qrLogical,
+                          qrMode: _qrMode,
+                          imageFit: _imageFit,
                           data: _columns[i],
                           useNewsIcon:
                               widget.slide.randomChoices['${widget.spec.choiceKey}_${i}_imageMode'] ==
@@ -267,6 +274,8 @@ class _ArticleColumnCard extends StatelessWidget {
     required this.scale,
     required this.columnIndex,
     required this.qrLogical,
+    required this.qrMode,
+    required this.imageFit,
     required this.data,
     required this.useNewsIcon,
   });
@@ -275,6 +284,8 @@ class _ArticleColumnCard extends StatelessWidget {
   final double scale;
   final int columnIndex;
   final double qrLogical;
+  final String qrMode;
+  final BoxFit imageFit;
   final _ColumnArticle data;
   final bool useNewsIcon;
 
@@ -305,7 +316,7 @@ class _ArticleColumnCard extends StatelessWidget {
               child: data.imageLoad.bytes != null
                   ? Image.memory(
                       data.imageLoad.bytes!,
-                      fit: BoxFit.cover,
+                      fit: imageFit,
                       gaplessPlayback: true,
                       errorBuilder: (context, error, stackTrace) =>
                           _placeholder(
@@ -369,26 +380,15 @@ class _ArticleColumnCard extends StatelessWidget {
                           theme: theme,
                           scale: scale,
                         )
-                      : Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _columnLinkQr(
-                              theme: theme,
-                              scale: scale,
-                              link: article.link,
-                              qrLogical: qrLogical,
-                              columnIndex: columnIndex,
-                            ),
-                            SizedBox(width: 8 * scale),
-                            Expanded(
-                              child: _columnSummaryOnly(
-                                title: title,
-                                summary: summary,
-                                theme: theme,
-                                scale: scale,
-                              ),
-                            ),
-                          ],
+                      : _columnSummaryWithOptionalQr(
+                          theme: theme,
+                          scale: scale,
+                          title: title,
+                          summary: summary,
+                          link: article.link,
+                          qrLogical: qrLogical,
+                          qrMode: qrMode,
+                          columnIndex: columnIndex,
                         ),
                 ),
               ],
@@ -426,6 +426,52 @@ class _ArticleColumnCard extends StatelessWidget {
           color: theme.colorScheme.onSurfaceVariant,
         ),
       ),
+    );
+  }
+
+  static Widget _columnSummaryWithOptionalQr({
+    required ThemeData theme,
+    required double scale,
+    required String title,
+    required String summary,
+    required String link,
+    required double qrLogical,
+    required String qrMode,
+    required int columnIndex,
+  }) {
+    final body = _columnSummaryOnly(
+      title: title,
+      summary: summary,
+      theme: theme,
+      scale: scale,
+    );
+    if (!newsQrVisible(qrMode) || link.trim().isEmpty) {
+      return body;
+    }
+    final qr = _columnLinkQr(
+      theme: theme,
+      scale: scale,
+      link: link,
+      qrLogical: qrLogical,
+      columnIndex: columnIndex,
+    );
+    if (newsQrOnRight(qrMode)) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: body),
+          SizedBox(width: 8 * scale),
+          qr,
+        ],
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        qr,
+        SizedBox(width: 8 * scale),
+        Expanded(child: body),
+      ],
     );
   }
 

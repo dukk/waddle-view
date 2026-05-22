@@ -19,7 +19,6 @@ import {
   TableCell,
   TableContainer,
   TableHead,
-  TablePagination,
   TableRow,
   Typography,
 } from '@mui/material';
@@ -32,6 +31,7 @@ import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import { apiJson, ApiError, fetchBlobObjectUrl } from '@/api/client';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
+import { ProgramSnapshotsCarousel } from '@/components/ProgramSnapshotsCarousel';
 import { SlideProgramCard } from '@/components/SlideProgramCard';
 import { TickerProgramCard } from '@/components/TickerProgramCard';
 import type { SavedDisplay } from '@/storage/displays';
@@ -40,13 +40,12 @@ import {
   buildSlideCardModel,
   collectSlideContentIds,
   collectWeatherLocationIds,
-  paginateList,
+  latestProgramAtMs,
   programAtMs,
+  resolveProgramSelectionAtMs,
   type SlideCardModel,
 } from '@/util/programTelemetry';
 import { screenTypeLabel, screenTypeMetaFor } from '@/util/screenTypeLabel';
-
-const PROGRAMS_PAGE_SIZE = 1;
 
 const PROGRAM_SORT_OPTIONS: SortOption<Record<string, unknown>>[] = [
   {
@@ -799,10 +798,10 @@ export function ProgramsPage() {
   const [screen, setScreen] = useState<Record<string, unknown>[]>([]);
   const [ticker, setTicker] = useState<Record<string, unknown>[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [slideDetailLoc, setSlideDetailLoc] = useState<{ pi: number; si: number } | null>(null);
-  const [tickerDetailLoc, setTickerDetailLoc] = useState<{ pi: number; ii: number } | null>(null);
-  const [screenPage, setScreenPage] = useState(0);
-  const [tickerPage, setTickerPage] = useState(0);
+  const [slideDetailLoc, setSlideDetailLoc] = useState<{ atMs: number; si: number } | null>(null);
+  const [tickerDetailLoc, setTickerDetailLoc] = useState<{ atMs: number; ii: number } | null>(null);
+  const [screenSelectedAtMs, setScreenSelectedAtMs] = useState<number | null>(null);
+  const [tickerSelectedAtMs, setTickerSelectedAtMs] = useState<number | null>(null);
   const [search, setSearch] = useState('');
   const [sortId, setSortId] = useState('newest');
 
@@ -812,50 +811,80 @@ export function ProgramsPage() {
   useEffect(() => {
     lastScreenJson.current = null;
     lastTickerJson.current = null;
-    setScreenPage(0);
-    setTickerPage(0);
+    setScreenSelectedAtMs(null);
+    setTickerSelectedAtMs(null);
   }, [active?.id]);
+
+  const fetchScreenPrograms = useCallback(async () => {
+    if (!active) return;
+    const s = await apiJson<Items<Record<string, unknown>>>(active, '/v1/telemetry/programs');
+    const nextScreen = s.items ?? [];
+    const screenJson = JSON.stringify(nextScreen);
+    if (lastScreenJson.current !== screenJson) {
+      lastScreenJson.current = screenJson;
+      setScreen(nextScreen);
+    }
+    setError((prev) => (prev != null ? null : prev));
+  }, [active]);
+
+  const fetchTickerPrograms = useCallback(async () => {
+    if (!active) return;
+    const t = await apiJson<Items<Record<string, unknown>>>(
+      active,
+      '/v1/telemetry/ticker-programs',
+    );
+    const nextTicker = t.items ?? [];
+    const tickerJson = JSON.stringify(nextTicker);
+    if (lastTickerJson.current !== tickerJson) {
+      lastTickerJson.current = tickerJson;
+      setTicker(nextTicker);
+    }
+    setError((prev) => (prev != null ? null : prev));
+  }, [active]);
 
   const loadScreen = useCallback(async () => {
     if (!active) return;
-    await wrapScreenRefresh(async () => {
-      try {
-        const s = await apiJson<Items<Record<string, unknown>>>(active, '/v1/telemetry/programs');
-        const nextScreen = s.items ?? [];
-        const screenJson = JSON.stringify(nextScreen);
-        if (lastScreenJson.current !== screenJson) {
-          lastScreenJson.current = screenJson;
-          setScreen(nextScreen);
-        }
-        setError((prev) => (prev != null ? null : prev));
-      } catch (e) {
-        const msg = e instanceof ApiError ? `${e.status}: ${e.message}` : String(e);
-        setError((prev) => (prev === msg ? prev : msg));
-      }
-    });
-  }, [active, wrapScreenRefresh]);
+    try {
+      await fetchScreenPrograms();
+    } catch (e) {
+      const msg = e instanceof ApiError ? `${e.status}: ${e.message}` : String(e);
+      setError((prev) => (prev === msg ? prev : msg));
+    }
+  }, [active, fetchScreenPrograms]);
 
   const loadTicker = useCallback(async () => {
     if (!active) return;
-    await wrapTickerRefresh(async () => {
+    try {
+      await fetchTickerPrograms();
+    } catch (e) {
+      const msg = e instanceof ApiError ? `${e.status}: ${e.message}` : String(e);
+      setError((prev) => (prev === msg ? prev : msg));
+    }
+  }, [active, fetchTickerPrograms]);
+
+  const reloadScreen = useCallback(async () => {
+    if (!active) return;
+    await wrapScreenRefresh(async () => {
       try {
-        const t = await apiJson<Items<Record<string, unknown>>>(
-          active,
-          '/v1/telemetry/ticker-programs',
-        );
-        const nextTicker = t.items ?? [];
-        const tickerJson = JSON.stringify(nextTicker);
-        if (lastTickerJson.current !== tickerJson) {
-          lastTickerJson.current = tickerJson;
-          setTicker(nextTicker);
-        }
-        setError((prev) => (prev != null ? null : prev));
+        await fetchScreenPrograms();
       } catch (e) {
         const msg = e instanceof ApiError ? `${e.status}: ${e.message}` : String(e);
         setError((prev) => (prev === msg ? prev : msg));
       }
     });
-  }, [active, wrapTickerRefresh]);
+  }, [active, fetchScreenPrograms, wrapScreenRefresh]);
+
+  const reloadTicker = useCallback(async () => {
+    if (!active) return;
+    await wrapTickerRefresh(async () => {
+      try {
+        await fetchTickerPrograms();
+      } catch (e) {
+        const msg = e instanceof ApiError ? `${e.status}: ${e.message}` : String(e);
+        setError((prev) => (prev === msg ? prev : msg));
+      }
+    });
+  }, [active, fetchTickerPrograms, wrapTickerRefresh]);
 
   useEffect(() => {
     void loadScreen();
@@ -894,46 +923,41 @@ export function ProgramsPage() {
 
   const handleSearchChange = useCallback((value: string) => {
     setSearch(value);
-    setScreenPage(0);
-    setTickerPage(0);
   }, []);
 
   const handleSortChange = useCallback((value: string) => {
     setSortId(value);
-    setScreenPage(0);
-    setTickerPage(0);
   }, []);
 
   const handleReload = useCallback(() => {
-    void loadScreen();
-    void loadTicker();
-  }, [loadScreen, loadTicker]);
+    void reloadScreen();
+    void reloadTicker();
+  }, [reloadScreen, reloadTicker]);
 
-  const screenProgramsPage = useMemo(
-    () => paginateList(screenProgramsDesc, screenPage, PROGRAMS_PAGE_SIZE),
-    [screenProgramsDesc, screenPage],
+  const screenLiveAtMs = useMemo(
+    () => latestProgramAtMs(screenProgramsDesc),
+    [screenProgramsDesc],
   );
-
-  const tickerProgramsPage = useMemo(
-    () => paginateList(tickerProgramsDesc, tickerPage, PROGRAMS_PAGE_SIZE),
-    [tickerProgramsDesc, tickerPage],
+  const tickerLiveAtMs = useMemo(
+    () => latestProgramAtMs(tickerProgramsDesc),
+    [tickerProgramsDesc],
   );
 
   useEffect(() => {
-    if (screenPage !== screenProgramsPage.page) {
-      setScreenPage(screenProgramsPage.page);
-    }
-  }, [screenPage, screenProgramsPage.page]);
+    setScreenSelectedAtMs((prev) =>
+      resolveProgramSelectionAtMs(screenProgramsDesc, prev, { fallback: 'latest' }),
+    );
+  }, [screenProgramsDesc]);
 
   useEffect(() => {
-    if (tickerPage !== tickerProgramsPage.page) {
-      setTickerPage(tickerProgramsPage.page);
-    }
-  }, [tickerPage, tickerProgramsPage.page]);
+    setTickerSelectedAtMs((prev) =>
+      resolveProgramSelectionAtMs(tickerProgramsDesc, prev, { fallback: 'latest' }),
+    );
+  }, [tickerProgramsDesc]);
 
   const slideDetailSlides = useMemo(() => {
     if (slideDetailLoc == null) return [] as Record<string, unknown>[];
-    const row = screenProgramsDesc[slideDetailLoc.pi];
+    const row = screenProgramsDesc.find((r) => programAtMs(r) === slideDetailLoc.atMs);
     if (!row) return [];
     return asRecordArray(row['slides']);
   }, [slideDetailLoc, screenProgramsDesc]);
@@ -947,7 +971,7 @@ export function ProgramsPage() {
 
   const tickerDetailRow = useMemo(() => {
     if (tickerDetailLoc == null) return null;
-    return tickerProgramsDesc[tickerDetailLoc.pi] ?? null;
+    return tickerProgramsDesc.find((r) => programAtMs(r) === tickerDetailLoc.atMs) ?? null;
   }, [tickerDetailLoc, tickerProgramsDesc]);
 
   const tickerDetailItems = useMemo(() => {
@@ -991,264 +1015,253 @@ export function ProgramsPage() {
       <Typography variant="subtitle1" fontWeight={600}>
         Screen programs
       </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        Browse snapshots with the carousel; the live program is selected on first load and stays
+        selected when new snapshots arrive.
+      </Typography>
       <DisplayRefreshIndicator loading={screenLoading} />
-      <Stack spacing={2}>
-        {layout === 'card' &&
-          screenProgramsPage.items.map((row, localPi) => {
-          const pi = screenProgramsPage.page * screenProgramsPage.pageSize + localPi;
+      <ProgramSnapshotsCarousel
+        programs={screenProgramsDesc}
+        selectedAtMs={screenSelectedAtMs}
+        onSelectAtMs={setScreenSelectedAtMs}
+        isLive={(atMs) => screenLiveAtMs != null && atMs === screenLiveAtMs}
+        emptyMessage={
+          screen.length === 0 && !screenLoading
+            ? 'No samples yet (wait for the display to build a program).'
+            : 'No screen programs match your search.'
+        }
+        renderProgram={(row) => {
           const slides = asRecordArray(row['slides']);
           const atMs = programAtMs(row);
           const reason = String(row['reason'] ?? '');
-          return (
-            <Paper key={`${atMs}-sp-${pi}`} variant="outlined" sx={{ p: 2 }}>
-              <Stack spacing={1.5}>
-                <Stack
-                  direction={{ xs: 'column', sm: 'row' }}
-                  spacing={1}
-                  justifyContent="space-between"
-                  alignItems={{ xs: 'flex-start', sm: 'center' }}
-                >
-                  <div>
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      Curated {formatTime(new Date(atMs))}
-                    </Typography>
-                    {reason && (
-                      <Typography variant="body2" color="text.secondary">
-                        Reason: {reason}
+          if (layout === 'card') {
+            return (
+              <Paper key={`${atMs}-sp-card`} variant="outlined" sx={{ p: 2 }}>
+                <Stack spacing={1.5}>
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    spacing={1}
+                    justifyContent="space-between"
+                    alignItems={{ xs: 'flex-start', sm: 'center' }}
+                  >
+                    <div>
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        Curated {formatTime(new Date(atMs))}
                       </Typography>
-                    )}
-                  </div>
-                  <Chip label={`${slides.length} screen${slides.length === 1 ? '' : 's'}`} size="small" />
+                      {reason && (
+                        <Typography variant="body2" color="text.secondary">
+                          Reason: {reason}
+                        </Typography>
+                      )}
+                    </div>
+                    <Chip label={`${slides.length} screen${slides.length === 1 ? '' : 's'}`} size="small" />
+                  </Stack>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
+                    {slides.map((slide, si) => {
+                      const model = buildSlideCardModel(slide, si);
+                      return (
+                        <SlideProgramCard
+                          key={`${model.screenId}-${si}`}
+                          display={active}
+                          model={model}
+                          typeLabel={screenTypeDisplayLabel(model.screenType ?? undefined)}
+                          onDetails={() => setSlideDetailLoc({ atMs, si })}
+                        />
+                      );
+                    })}
+                  </Box>
+                  {slides.length === 0 && (
+                    <Typography variant="body2" color="text.secondary">
+                      No slides in this program snapshot.
+                    </Typography>
+                  )}
                 </Stack>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
-                  {slides.map((slide, si) => {
-                    const model = buildSlideCardModel(slide, si);
-                    return (
-                      <SlideProgramCard
-                        key={`${model.screenId}-${si}`}
-                        display={active}
-                        model={model}
-                        typeLabel={screenTypeDisplayLabel(model.screenType ?? undefined)}
-                        onDetails={() => setSlideDetailLoc({ pi, si })}
-                      />
-                    );
-                  })}
-                </Box>
-                {slides.length === 0 && (
-                  <Typography variant="body2" color="text.secondary">
-                    No slides in this program snapshot.
-                  </Typography>
-                )}
-              </Stack>
-            </Paper>
+              </Paper>
+            );
+          }
+          return (
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Curated</TableCell>
+                    <TableCell>Reason</TableCell>
+                    <TableCell>Screen</TableCell>
+                    <TableCell>Type</TableCell>
+                    <TableCell>Dwell</TableCell>
+                    <TableCell>Preview</TableCell>
+                    <TableCell align="right">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {slides.length === 0 ? (
+                    <TableRow key={`${atMs}-sp-empty`} hover>
+                      <TableCell>{formatTime(new Date(atMs))}</TableCell>
+                      <TableCell sx={{ maxWidth: 200, wordBreak: 'break-word' }}>{reason}</TableCell>
+                      <TableCell colSpan={4}>
+                        <Typography variant="body2" color="text.secondary">
+                          No slides in this program snapshot.
+                        </Typography>
+                      </TableCell>
+                      <TableCell />
+                    </TableRow>
+                  ) : (
+                    slides.map((slide, si) => {
+                      const model = buildSlideCardModel(slide, si);
+                      return (
+                        <TableRow key={`${atMs}-sp-${si}`} hover>
+                          {si === 0 ? (
+                            <>
+                              <TableCell rowSpan={slides.length}>
+                                {formatTime(new Date(atMs))}
+                              </TableCell>
+                              <TableCell
+                                rowSpan={slides.length}
+                                sx={{ maxWidth: 200, wordBreak: 'break-word' }}
+                              >
+                                {reason}
+                              </TableCell>
+                            </>
+                          ) : null}
+                          <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                            {model.screenId}
+                          </TableCell>
+                          <TableCell>
+                            {model.screenType
+                              ? screenTypeDisplayLabel(model.screenType)
+                              : '—'}
+                          </TableCell>
+                          <TableCell>{model.dwellLabel}</TableCell>
+                          <TableCell sx={{ maxWidth: 320, wordBreak: 'break-word' }}>
+                            {slidePreviewText(model)}
+                          </TableCell>
+                          <TableCell align="right">
+                            <Button size="small" onClick={() => setSlideDetailLoc({ atMs, si })}>
+                              Details
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
           );
-        })}
-        {layout === 'table' && screenProgramsPage.items.length > 0 && (
-          <TableContainer component={Paper} variant="outlined">
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Curated</TableCell>
-                  <TableCell>Reason</TableCell>
-                  <TableCell>Screen</TableCell>
-                  <TableCell>Type</TableCell>
-                  <TableCell>Dwell</TableCell>
-                  <TableCell>Preview</TableCell>
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {screenProgramsPage.items.flatMap((row, localPi) => {
-                  const pi = screenProgramsPage.page * screenProgramsPage.pageSize + localPi;
-                  const slides = asRecordArray(row['slides']);
-                  const atMs = programAtMs(row);
-                  const reason = String(row['reason'] ?? '');
-                  const timeLabel = formatTime(new Date(atMs));
-                  if (slides.length === 0) {
-                    return [
-                      <TableRow key={`${atMs}-sp-empty-${pi}`} hover>
-                        <TableCell>{timeLabel}</TableCell>
-                        <TableCell sx={{ maxWidth: 200, wordBreak: 'break-word' }}>{reason}</TableCell>
-                        <TableCell colSpan={4}>
-                          <Typography variant="body2" color="text.secondary">
-                            No slides in this program snapshot.
-                          </Typography>
-                        </TableCell>
-                        <TableCell />
-                      </TableRow>,
-                    ];
-                  }
-                  return slides.map((slide, si) => {
-                    const model = buildSlideCardModel(slide, si);
-                    return (
-                      <TableRow key={`${atMs}-sp-${pi}-${si}`} hover>
-                        {si === 0 ? (
-                          <>
-                            <TableCell rowSpan={slides.length}>{timeLabel}</TableCell>
-                            <TableCell rowSpan={slides.length} sx={{ maxWidth: 200, wordBreak: 'break-word' }}>
-                              {reason}
-                            </TableCell>
-                          </>
-                        ) : null}
-                        <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
-                          {model.screenId}
-                        </TableCell>
-                        <TableCell>
-                          {model.screenType
-                            ? screenTypeDisplayLabel(model.screenType)
-                            : '—'}
-                        </TableCell>
-                        <TableCell>{model.dwellLabel}</TableCell>
-                        <TableCell sx={{ maxWidth: 320, wordBreak: 'break-word' }}>
-                          {slidePreviewText(model)}
-                        </TableCell>
-                        <TableCell align="right">
-                          <Button size="small" onClick={() => setSlideDetailLoc({ pi, si })}>
-                            Details
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  });
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-        {screen.length === 0 && !screenLoading && (
-          <Typography variant="body2" color="text.secondary">
-            No samples yet (wait for the display to build a program).
-          </Typography>
-        )}
-      </Stack>
-      {screenProgramsPage.total > 0 && (
-        <TablePagination
-          component="div"
-          rowsPerPageOptions={[]}
-          rowsPerPage={PROGRAMS_PAGE_SIZE}
-          count={screenProgramsPage.total}
-          page={screenProgramsPage.page}
-          onPageChange={(_, p) => setScreenPage(p)}
-        />
-      )}
+        }}
+      />
 
-      <Typography variant="subtitle1" fontWeight={600}>
+      <Typography variant="subtitle1" fontWeight={600} sx={{ mt: 2 }}>
         Ticker programs
       </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        Same carousel behavior as screen programs for ticker tape snapshots.
+      </Typography>
       <DisplayRefreshIndicator loading={tickerLoading} />
-      <Stack spacing={2}>
-        {layout === 'card' &&
-          tickerProgramsPage.items.map((row, localPi) => {
-          const pi = tickerProgramsPage.page * tickerProgramsPage.pageSize + localPi;
+      <ProgramSnapshotsCarousel
+        programs={tickerProgramsDesc}
+        selectedAtMs={tickerSelectedAtMs}
+        onSelectAtMs={setTickerSelectedAtMs}
+        isLive={(atMs) => tickerLiveAtMs != null && atMs === tickerLiveAtMs}
+        emptyMessage={
+          ticker.length === 0 && !tickerLoading
+            ? 'No ticker program snapshots yet.'
+            : 'No ticker programs match your search.'
+        }
+        renderProgram={(row) => {
           const items = asRecordArray(row['items']);
           const atMs = programAtMs(row);
-          return (
-            <Paper key={`${atMs}-tp-${pi}`} variant="outlined" sx={{ p: 2 }}>
-              <Stack spacing={1.5}>
-                <Stack
-                  direction={{ xs: 'column', sm: 'row' }}
-                  spacing={1}
-                  justifyContent="space-between"
-                  alignItems={{ xs: 'flex-start', sm: 'center' }}
-                >
-                  <div>
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      Curated {formatTime(new Date(atMs))}
+          if (layout === 'card') {
+            return (
+              <Paper key={`${atMs}-tp-card`} variant="outlined" sx={{ p: 2 }}>
+                <Stack spacing={1.5}>
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    spacing={1}
+                    justifyContent="space-between"
+                    alignItems={{ xs: 'flex-start', sm: 'center' }}
+                  >
+                    <div>
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        Curated {formatTime(new Date(atMs))}
+                      </Typography>
+                    </div>
+                    <Chip label={`${items.length} tape${items.length === 1 ? '' : 's'}`} size="small" />
+                  </Stack>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
+                    {items.map((it, ii) => {
+                      const kind = String(it['kind'] ?? '');
+                      return (
+                        <TickerProgramCard
+                          key={`${atMs}-ti-${ii}`}
+                          index={ii}
+                          item={it}
+                          kind={kind}
+                          onDetails={() => setTickerDetailLoc({ atMs, ii })}
+                        />
+                      );
+                    })}
+                  </Box>
+                  {items.length === 0 && (
+                    <Typography variant="body2" color="text.secondary">
+                      No ticker items in this snapshot.
                     </Typography>
-                  </div>
-                  <Chip label={`${items.length} tape${items.length === 1 ? '' : 's'}`} size="small" />
+                  )}
                 </Stack>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
-                  {items.map((it, ii) => {
-                    const kind = String(it['kind'] ?? '');
-                    return (
-                      <TickerProgramCard
-                        key={`${atMs}-ti-${ii}`}
-                        index={ii}
-                        item={it}
-                        kind={kind}
-                        onDetails={() => setTickerDetailLoc({ pi, ii })}
-                      />
-                    );
-                  })}
-                </Box>
-                {items.length === 0 && (
-                  <Typography variant="body2" color="text.secondary">
-                    No ticker items in this snapshot.
-                  </Typography>
-                )}
-              </Stack>
-            </Paper>
+              </Paper>
+            );
+          }
+          return (
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Curated</TableCell>
+                    <TableCell>Kind</TableCell>
+                    <TableCell>Preview</TableCell>
+                    <TableCell align="right">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {items.length === 0 ? (
+                    <TableRow key={`${atMs}-tp-empty`} hover>
+                      <TableCell>{formatTime(new Date(atMs))}</TableCell>
+                      <TableCell colSpan={2}>
+                        <Typography variant="body2" color="text.secondary">
+                          No ticker items in this snapshot.
+                        </Typography>
+                      </TableCell>
+                      <TableCell />
+                    </TableRow>
+                  ) : (
+                    items.map((it, ii) => {
+                      const kind = String(it['kind'] ?? '');
+                      return (
+                        <TableRow key={`${atMs}-tp-${ii}`} hover>
+                          {ii === 0 ? (
+                            <TableCell rowSpan={items.length}>
+                              {formatTime(new Date(atMs))}
+                            </TableCell>
+                          ) : null}
+                          <TableCell>{kind || 'item'}</TableCell>
+                          <TableCell sx={{ maxWidth: 420, wordBreak: 'break-word' }}>
+                            {tickerItemHeadline(kind, it)}
+                          </TableCell>
+                          <TableCell align="right">
+                            <Button size="small" onClick={() => setTickerDetailLoc({ atMs, ii })}>
+                              Details
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
           );
-        })}
-        {layout === 'table' && tickerProgramsPage.items.length > 0 && (
-          <TableContainer component={Paper} variant="outlined">
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Curated</TableCell>
-                  <TableCell>Kind</TableCell>
-                  <TableCell>Preview</TableCell>
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {tickerProgramsPage.items.flatMap((row, localPi) => {
-                  const pi = tickerProgramsPage.page * tickerProgramsPage.pageSize + localPi;
-                  const items = asRecordArray(row['items']);
-                  const atMs = programAtMs(row);
-                  const timeLabel = formatTime(new Date(atMs));
-                  if (items.length === 0) {
-                    return [
-                      <TableRow key={`${atMs}-tp-empty-${pi}`} hover>
-                        <TableCell>{timeLabel}</TableCell>
-                        <TableCell colSpan={2}>
-                          <Typography variant="body2" color="text.secondary">
-                            No ticker items in this snapshot.
-                          </Typography>
-                        </TableCell>
-                        <TableCell />
-                      </TableRow>,
-                    ];
-                  }
-                  return items.map((it, ii) => {
-                    const kind = String(it['kind'] ?? '');
-                    return (
-                      <TableRow key={`${atMs}-tp-${pi}-${ii}`} hover>
-                        {ii === 0 ? <TableCell rowSpan={items.length}>{timeLabel}</TableCell> : null}
-                        <TableCell>{kind || 'item'}</TableCell>
-                        <TableCell sx={{ maxWidth: 420, wordBreak: 'break-word' }}>
-                          {tickerItemHeadline(kind, it)}
-                        </TableCell>
-                        <TableCell align="right">
-                          <Button size="small" onClick={() => setTickerDetailLoc({ pi, ii })}>
-                            Details
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  });
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-        {ticker.length === 0 && !tickerLoading && (
-          <Typography variant="body2" color="text.secondary">
-            No ticker program snapshots yet.
-          </Typography>
-        )}
-      </Stack>
-      {tickerProgramsPage.total > 0 && (
-        <TablePagination
-          component="div"
-          rowsPerPageOptions={[]}
-          rowsPerPage={PROGRAMS_PAGE_SIZE}
-          count={tickerProgramsPage.total}
-          page={tickerProgramsPage.page}
-          onPageChange={(_, p) => setTickerPage(p)}
-        />
-      )}
+        }}
+      />
 
       <SlideTelemetryDetail
         display={active}

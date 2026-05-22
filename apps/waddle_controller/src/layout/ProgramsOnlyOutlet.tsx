@@ -1,5 +1,8 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useDisplay } from '@/context/DisplayContext';
+import { useActiveDisplayPluginsNav } from '@/hooks/useActiveDisplayPluginsNav';
+import { defaultHomePath } from '@/util/defaultHomePath';
 import { isProgramsOnlyPathAllowed } from '@/util/programsOnlyRoutes';
 
 /**
@@ -9,9 +12,25 @@ import { isProgramsOnlyPathAllowed } from '@/util/programsOnlyRoutes';
  * or **`interests.write`** is granted. Plain viewers only have Programs + Account. Other paths redirect to
  * `/programs`.
  */
+function isPluginsPath(pathname: string): boolean {
+  return pathname === '/plugins' || pathname.startsWith('/plugins/');
+}
+
 export function ProgramsOnlyOutlet() {
   const { isProgramsOnlyControllerUser, hasPermission } = useAuth();
+  const { displays } = useDisplay();
   const location = useLocation();
+  const { enabled: pluginsNavEnabled, loading: pluginsNavLoading } =
+    useActiveDisplayPluginsNav();
+
+  if (isPluginsPath(location.pathname) && !pluginsNavLoading && !pluginsNavEnabled) {
+    return (
+      <Navigate
+        to={defaultHomePath(displays, isProgramsOnlyControllerUser)}
+        replace
+      />
+    );
+  }
 
   if (!isProgramsOnlyControllerUser) {
     return <Outlet />;

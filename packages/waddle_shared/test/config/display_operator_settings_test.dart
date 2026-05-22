@@ -45,6 +45,14 @@ void main() {
         body['display_ticker_pixels_per_second'],
         kDisplayTickerPixelsPerSecondDefault,
       );
+      expect(
+        body['display_ticker_item_separator'],
+        kDefaultDisplayTickerItemSeparator,
+      );
+      expect(
+        body['display_ticker_program_separator'],
+        kDefaultDisplayTickerProgramSeparator,
+      );
       expect(body.containsKey('display_image_overlay'), isFalse);
     },
   );
@@ -118,6 +126,30 @@ void main() {
       final map = {for (final r in kv) r.key: r.value};
       expect(map[kDisplayTickerProgramDurationSecondsKvKey], '600');
       expect(map[kDisplayTickerPixelsPerSecondKvKey], '100');
+    },
+  );
+
+  test(
+    'applyDisplayOperatorSettingsPut round-trips ticker separators',
+    () async {
+      final db = openMemoryDatabase();
+      addTearDown(db.close);
+      await ensureInitialSeed(db);
+
+      final touched = await applyDisplayOperatorSettingsPut(db, {
+        'display_ticker_item_separator': 'diamond',
+        'display_ticker_program_separator': 'dot',
+      });
+      expect(touched, isTrue);
+
+      final body = await readDisplayOperatorSettings(db);
+      expect(body['display_ticker_item_separator'], kDisplayTickerSeparatorDiamond);
+      expect(body['display_ticker_program_separator'], kDisplayTickerSeparatorDot);
+
+      final kv = await db.select(db.configKeyValues).get();
+      final map = {for (final r in kv) r.key: r.value};
+      expect(map[kDisplayTickerItemSeparatorKvKey], 'diamond');
+      expect(map[kDisplayTickerProgramSeparatorKvKey], 'dot');
     },
   );
 

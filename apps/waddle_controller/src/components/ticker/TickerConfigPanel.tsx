@@ -35,6 +35,7 @@ export function TickerConfigPanel({
   delete schemaForForm.title;
 
   const type = tickerType.trim().toLowerCase();
+  const hideSectionTitle = type === 'time';
   const showExtra = TYPES_WITH_EXTRA.has(type);
   const properties =
     schemaForForm.properties != null &&
@@ -47,7 +48,9 @@ export function TickerConfigPanel({
 
   return (
     <Stack spacing={1}>
-      <Typography variant="subtitle2">{sectionTitle}</Typography>
+      {!hideSectionTitle ? (
+        <Typography variant="subtitle2">{sectionTitle}</Typography>
+      ) : null}
       {showExtra ? (
         <TickerTypeExtraConfig
           display={display}

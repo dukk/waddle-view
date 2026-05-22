@@ -248,6 +248,10 @@ export function v1Router() {
       display_ticker_pixels_per_second: Number(
         mockConfigKv.get('display.ticker.pixels_per_second') ?? '80',
       ),
+      display_ticker_item_separator:
+        mockConfigKv.get('display.ticker.item_separator') ?? 'dot',
+      display_ticker_program_separator:
+        mockConfigKv.get('display.ticker.program_separator') ?? 'diamond',
       controller_time_format,
       controller_date_order,
       adoption_allowed_roles: ['viewer', 'power_viewer', 'operator', 'admin'],
@@ -391,6 +395,18 @@ export function v1Router() {
           'display.ticker.pixels_per_second',
           String(body.display_ticker_pixels_per_second),
         );
+      }
+      if (typeof body.display_ticker_item_separator === 'string') {
+        const sep = body.display_ticker_item_separator.trim().toLowerCase();
+        if (sep === 'dot' || sep === 'diamond') {
+          mockConfigKv.set('display.ticker.item_separator', sep);
+        }
+      }
+      if (typeof body.display_ticker_program_separator === 'string') {
+        const sep = body.display_ticker_program_separator.trim().toLowerCase();
+        if (sep === 'dot' || sep === 'diamond') {
+          mockConfigKv.set('display.ticker.program_separator', sep);
+        }
       }
     } catch {
       /* ignore malformed body */

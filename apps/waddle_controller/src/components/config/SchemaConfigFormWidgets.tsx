@@ -1,5 +1,16 @@
 import type { WidgetProps } from '@rjsf/utils';
-import { FormControlLabel, Stack, Switch, Typography } from '@mui/material';
+import {
+  FormControl,
+  FormHelperText,
+  FormControlLabel,
+  InputLabel,
+  MenuItem,
+  Select,
+  Stack,
+  Switch,
+  Typography,
+} from '@mui/material';
+import { readEnumLabelsFromSchema } from '@/constants/clockEnumLabels';
 import { CuratorSliderField } from '@/components/CuratorSliderField';
 import { DurationInputField } from '@/components/DurationInputField';
 import type { DurationUnit } from '@/util/durationInput';
@@ -65,6 +76,38 @@ export function WaddleDurationWidget(props: WidgetProps) {
         typeof schema.description === 'string' ? schema.description : undefined
       }
     />
+  );
+}
+
+export function WaddleEnumSelectWidget(props: WidgetProps) {
+  const { id, label, value, disabled, onChange, schema, rawErrors } = props;
+  const labels = readEnumLabelsFromSchema(schema as Record<string, unknown>);
+  const enumValues = Array.isArray(schema.enum)
+    ? schema.enum.filter((v): v is string => typeof v === 'string')
+    : [];
+  const current = typeof value === 'string' ? value : enumValues[0] ?? '';
+
+  return (
+    <FormControl fullWidth error={rawErrors != null && rawErrors.length > 0} disabled={disabled}>
+      <InputLabel id={`${id}-label`}>{label || schema.title || id}</InputLabel>
+      <Select
+        labelId={`${id}-label`}
+        label={label || schema.title || id}
+        value={current}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        {enumValues.map((v) => (
+          <MenuItem key={v} value={v}>
+            {labels?.[v] ?? v}
+          </MenuItem>
+        ))}
+      </Select>
+      {rawErrors?.length ? (
+        <FormHelperText>{rawErrors.join(', ')}</FormHelperText>
+      ) : schema.description ? (
+        <FormHelperText>{String(schema.description)}</FormHelperText>
+      ) : null}
+    </FormControl>
   );
 }
 
