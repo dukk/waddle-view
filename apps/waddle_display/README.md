@@ -32,15 +32,17 @@ From the **repository root** (monorepo Pub workspace):
 
 ```bash
 flutter pub get
-dart run build_runner build --delete-conflicting-outputs -C packages/waddle_shared
-flutter test -C packages/waddle_shared
+cd packages/waddle_shared
+dart run build_runner build --delete-conflicting-outputs
+flutter test
 ```
 
 After editing `packages/waddle_shared/lib/persistence/tables.dart` or `database.dart` schema:
 
 ```bash
-dart run build_runner build --delete-conflicting-outputs -C packages/waddle_shared
-flutter test -C packages/waddle_shared
+cd packages/waddle_shared
+dart run build_runner build --delete-conflicting-outputs
+flutter test
 ```
 
 ## Run locally (debug and other modes)
@@ -625,6 +627,7 @@ Operators with **`curator.write`** add photos, videos, jokes, trivia, and calend
 After editing `packages/waddle_shared/lib/persistence/tables.dart` or `database.dart` schema:
 
 ```bash
-dart run build_runner build --delete-conflicting-outputs -C packages/waddle_shared
-flutter test -C packages/waddle_shared
+cd packages/waddle_shared
+dart run build_runner build --delete-conflicting-outputs
+flutter test
 ```

@@ -27,8 +27,8 @@ dart run tool/coverage_check.dart --min=85 --target=90
 After editing shared Drift schema, run from the **repository root** (see [`AGENTS.md`](../../AGENTS.md)):
 
 ```bash
-dart run build_runner build --delete-conflicting-outputs -C packages/waddle_shared
 cd packages/waddle_shared
+dart run build_runner build --delete-conflicting-outputs
 flutter test
 cd ../..
 ```

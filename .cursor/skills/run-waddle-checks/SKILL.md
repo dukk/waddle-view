@@ -43,12 +43,18 @@ Pre-push ([`scripts/pre_push_checks.py`](../../../scripts/pre_push_checks.py)) u
 
 ```bash
 flutter pub get
-dart run build_runner build --delete-conflicting-outputs -C packages/waddle_shared
-flutter test --coverage --timeout=60s -C packages/waddle_shared
-dart test --coverage=coverage -C packages/waddle_integrations
-dart run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib -C packages/waddle_integrations
-dart test --coverage=coverage -C packages/waddle_plugin_sdk
-dart run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib -C packages/waddle_plugin_sdk
+cd packages/waddle_shared
+dart run build_runner build --delete-conflicting-outputs
+flutter test --coverage --timeout=60s
+cd ../..
+cd packages/waddle_integrations
+dart test --coverage=coverage
+dart run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib
+cd ../..
+cd packages/waddle_plugin_sdk
+dart test --coverage=coverage
+dart run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib
+cd ../..
 cd apps/waddle_display
 flutter analyze
 flutter test --coverage --timeout=60s
