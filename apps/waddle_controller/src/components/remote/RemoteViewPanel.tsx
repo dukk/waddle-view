@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Box, Button, CircularProgress, Stack, Typography } from '@mui/material';
+import DesktopWindowsIcon from '@mui/icons-material/DesktopWindows';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import RFB from '@novnc/novnc';
 import { createRemoteViewSession } from '@/api/displayRemoteView';
@@ -19,6 +20,7 @@ type Props = {
   /** VNC password for test flow or when operator supplied. */
   vncPassword?: string;
   passwordConfigured?: boolean;
+  /** When true, connects on mount (pop-out with a pre-issued ticket). */
   autoConnect?: boolean;
 };
 
@@ -29,7 +31,7 @@ export function RemoteViewPanel({
   initialTicket,
   vncPassword,
   passwordConfigured,
-  autoConnect = true,
+  autoConnect = false,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const rfbRef = useRef<RFB | null>(null);
@@ -115,6 +117,8 @@ export function RemoteViewPanel({
   const needsPassword =
     passwordConfigured && !vncPassword && !passwordPrompt.trim() && status === 'idle';
 
+  const showPlaceholder = status !== 'connected';
+
   return (
     <Stack spacing={1} sx={{ height: '100%', minHeight: 320 }}>
       {error && (
@@ -128,27 +132,6 @@ export function RemoteViewPanel({
           returned over the API.
         </Alert>
       )}
-      <Stack direction="row" spacing={1} flexWrap="wrap">
-        <Button
-          size="small"
-          variant="contained"
-          disabled={status === 'connecting'}
-          onClick={() => void connect()}
-        >
-          {status === 'connecting' ? 'Connecting…' : 'Connect'}
-        </Button>
-        <Button size="small" variant="outlined" disabled={status === 'idle'} onClick={disconnect}>
-          Disconnect
-        </Button>
-        <Button
-          size="small"
-          variant="outlined"
-          startIcon={<OpenInNewIcon />}
-          onClick={() => void openPopOut()}
-        >
-          Open in new window
-        </Button>
-      </Stack>
       {needsPassword && (
         <Box>
           <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
@@ -174,13 +157,77 @@ export function RemoteViewPanel({
           position: 'relative',
         }}
       >
-        {status === 'connecting' && (
+        {showPlaceholder && (
           <Stack
             alignItems="center"
             justifyContent="center"
-            sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0,0,0,0.5)' }}
+            spacing={2}
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 1,
+              bgcolor: 'grey.900',
+              p: 2,
+              textAlign: 'center',
+            }}
           >
-            <CircularProgress color="inherit" />
+            {status === 'connecting' ? (
+              <>
+                <CircularProgress color="inherit" />
+                <Typography variant="body2" color="grey.400">
+                  Connecting to display…
+                </Typography>
+              </>
+            ) : (
+              <>
+                <DesktopWindowsIcon sx={{ fontSize: 48, color: 'grey.600' }} />
+                <Typography variant="body2" color="grey.400">
+                  Live display desktop will appear here after you connect.
+                </Typography>
+                <Stack direction="row" spacing={1} flexWrap="wrap" justifyContent="center">
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={() => void connect()}
+                  >
+                    Connect
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<OpenInNewIcon />}
+                    onClick={() => void openPopOut()}
+                  >
+                    Open in new window
+                  </Button>
+                </Stack>
+              </>
+            )}
+          </Stack>
+        )}
+        {status === 'connected' && (
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              zIndex: 2,
+            }}
+          >
+            <Button size="small" variant="contained" color="inherit" onClick={disconnect}>
+              Disconnect
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              color="inherit"
+              startIcon={<OpenInNewIcon />}
+              onClick={() => void openPopOut()}
+            >
+              Pop out
+            </Button>
           </Stack>
         )}
       </Box>

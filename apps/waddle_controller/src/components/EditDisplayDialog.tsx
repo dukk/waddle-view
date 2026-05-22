@@ -44,7 +44,7 @@ export function EditDisplayDialog({ display, onClose, onSave }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [remoteLoading, setRemoteLoading] = useState(false);
-  const [remoteOpen, setRemoteOpen] = useState(true);
+  const [remoteOpen, setRemoteOpen] = useState(false);
   const [remoteEnabled, setRemoteEnabled] = useState(false);
   const [remoteHost, setRemoteHost] = useState('127.0.0.1');
   const [remotePort, setRemotePort] = useState('6080');
@@ -70,7 +70,7 @@ export function EditDisplayDialog({ display, onClose, onSave }: Props) {
   }, [baseUrl, originalBaseUrl]);
 
   const loadRemoteSettings = useCallback(async () => {
-    if (!session) return;
+    if (!loadSession(display.id)) return;
     setRemoteLoading(true);
     try {
       const settings = await fetchDisplaySettings(display);
@@ -86,7 +86,7 @@ export function EditDisplayDialog({ display, onClose, onSave }: Props) {
     } finally {
       setRemoteLoading(false);
     }
-  }, [display, session]);
+  }, [display]);
 
   useEffect(() => {
     setLabel(display.label);
@@ -254,7 +254,13 @@ export function EditDisplayDialog({ display, onClose, onSave }: Props) {
             {remoteOpen ? 'Hide' : 'Show'} remote view (VNC)
           </Button>
           <Collapse in={remoteOpen}>
-            <Stack spacing={2} sx={{ pl: 0.5 }}>
+            <Stack
+              spacing={2}
+              sx={{
+                pl: 0.5,
+                minHeight: remoteLoading ? 280 : undefined,
+              }}
+            >
               {!session ? (
                 <Typography variant="body2" color="text.secondary">
                   Adopt this display to configure remote view on the display device.

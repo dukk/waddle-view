@@ -57,7 +57,7 @@ export function RemoteViewPage() {
         <RemoteViewPanel
           display={display}
           initialTicket={ticket}
-          autoConnect
+          autoConnect={Boolean(ticket)}
           popOutPath="/remote/view"
         />
       </Box>
