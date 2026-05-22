@@ -454,6 +454,7 @@ ORDER BY priority DESC, created_at DESC;
       await _ensureCuratorConfigurationsTickerProgramDuration(this);
       await _ensureCuratorConfigurationsTickerPixelsPerSecond(this);
       await _ensureIntegrationAccountsConfiguredView(this);
+      await _ensureAdoptionApiTables(this);
     },
   );
 }
@@ -559,10 +560,15 @@ Future<void> _migrateV5ToV6IntegrationTypesAndDefaults(AppDatabase db) async {
     return;
   }
 
-  final columns = await db.customSelect('PRAGMA table_info(integrations)').get();
-  final hasProviderType = columns.any((c) => c.read<String>('name') == 'provider_type');
-  final hasIntegrationType =
-      columns.any((c) => c.read<String>('name') == 'integration_type');
+  final columns = await db
+      .customSelect('PRAGMA table_info(integrations)')
+      .get();
+  final hasProviderType = columns.any(
+    (c) => c.read<String>('name') == 'provider_type',
+  );
+  final hasIntegrationType = columns.any(
+    (c) => c.read<String>('name') == 'integration_type',
+  );
   if (hasProviderType && !hasIntegrationType) {
     await db.customStatement(
       'ALTER TABLE integrations RENAME COLUMN provider_type TO integration_type',
@@ -581,7 +587,11 @@ Future<void> _migrateV5ToV6IntegrationTypesAndDefaults(AppDatabase db) async {
     );
   }
 
-  Future<void> updateDataProviderIfTable(String table, String set, String where) async {
+  Future<void> updateDataProviderIfTable(
+    String table,
+    String set,
+    String where,
+  ) async {
     final present = await db
         .customSelect(
           "SELECT 1 FROM sqlite_master WHERE type='table' AND name=? LIMIT 1",
@@ -608,13 +618,15 @@ Future<void> _migrateV5ToV6IntegrationTypesAndDefaults(AppDatabase db) async {
     'media_bing_iotd',
   );
 
-  final pexelsRow = await db.customSelect(
-    'SELECT * FROM integrations WHERE id = ? OR integration_type = ? LIMIT 1',
-    variables: [
-      const Variable<String>('media_pexels'),
-      const Variable<String>('media_pexels'),
-    ],
-  ).getSingleOrNull();
+  final pexelsRow = await db
+      .customSelect(
+        'SELECT * FROM integrations WHERE id = ? OR integration_type = ? LIMIT 1',
+        variables: [
+          const Variable<String>('media_pexels'),
+          const Variable<String>('media_pexels'),
+        ],
+      )
+      .getSingleOrNull();
   if (pexelsRow != null) {
     final oldId = pexelsRow.read<String>('id');
     final configJson = pexelsRow.read<String?>('config_json');
@@ -628,13 +640,19 @@ Future<void> _migrateV5ToV6IntegrationTypesAndDefaults(AppDatabase db) async {
       'UPDATE integrations SET id = ?, integration_type = ? WHERE id = ?',
       [kDefaultPhotoPexelsIntegrationId, 'photo_pexels', oldId],
     );
-    await _migrateIntegrationSecretKeys(db, oldId, kDefaultPhotoPexelsIntegrationId);
+    await _migrateIntegrationSecretKeys(
+      db,
+      oldId,
+      kDefaultPhotoPexelsIntegrationId,
+    );
     await _migrateConfigKvPrefix(db, oldId, kDefaultPhotoPexelsIntegrationId);
 
-    final videoExists = await db.customSelect(
-      'SELECT 1 FROM integrations WHERE id = ? LIMIT 1',
-      variables: [Variable<String>(kDefaultVideoPexelsIntegrationId)],
-    ).getSingleOrNull();
+    final videoExists = await db
+        .customSelect(
+          'SELECT 1 FROM integrations WHERE id = ? LIMIT 1',
+          variables: [Variable<String>(kDefaultVideoPexelsIntegrationId)],
+        )
+        .getSingleOrNull();
     if (videoExists == null) {
       await db.customStatement(
         'INSERT INTO integrations '
@@ -659,13 +677,15 @@ Future<void> _migrateV5ToV6IntegrationTypesAndDefaults(AppDatabase db) async {
     }
   }
 
-  final onedriveRow = await db.customSelect(
-    'SELECT * FROM integrations WHERE id = ? OR integration_type = ? LIMIT 1',
-    variables: [
-      const Variable<String>('media_onedrive'),
-      const Variable<String>('media_onedrive'),
-    ],
-  ).getSingleOrNull();
+  final onedriveRow = await db
+      .customSelect(
+        'SELECT * FROM integrations WHERE id = ? OR integration_type = ? LIMIT 1',
+        variables: [
+          const Variable<String>('media_onedrive'),
+          const Variable<String>('media_onedrive'),
+        ],
+      )
+      .getSingleOrNull();
   if (onedriveRow != null) {
     final oldId = onedriveRow.read<String>('id');
     final configJson = onedriveRow.read<String?>('config_json');
@@ -679,13 +699,19 @@ Future<void> _migrateV5ToV6IntegrationTypesAndDefaults(AppDatabase db) async {
       'UPDATE integrations SET id = ?, integration_type = ? WHERE id = ?',
       [kDefaultPhotoOneDriveIntegrationId, 'photo_onedrive', oldId],
     );
-    await _migrateIntegrationSecretKeys(db, oldId, kDefaultPhotoOneDriveIntegrationId);
+    await _migrateIntegrationSecretKeys(
+      db,
+      oldId,
+      kDefaultPhotoOneDriveIntegrationId,
+    );
     await _migrateConfigKvPrefix(db, oldId, kDefaultPhotoOneDriveIntegrationId);
 
-    final videoExists = await db.customSelect(
-      'SELECT 1 FROM integrations WHERE id = ? LIMIT 1',
-      variables: [Variable<String>(kDefaultVideoOneDriveIntegrationId)],
-    ).getSingleOrNull();
+    final videoExists = await db
+        .customSelect(
+          'SELECT 1 FROM integrations WHERE id = ? LIMIT 1',
+          variables: [Variable<String>(kDefaultVideoOneDriveIntegrationId)],
+        )
+        .getSingleOrNull();
     if (videoExists == null) {
       await db.customStatement(
         'INSERT INTO integrations '
@@ -726,32 +752,37 @@ Future<void> _migrateV5ToV6IntegrationTypesAndDefaults(AppDatabase db) async {
     'photo_bing_image_of_the_day': kDefaultPhotoBingIotdIntegrationId,
   };
   for (final e in idMigrations.entries) {
-    final exists = await db.customSelect(
-      'SELECT 1 FROM integrations WHERE id = ? LIMIT 1',
-      variables: [Variable<String>(e.key)],
-    ).getSingleOrNull();
+    final exists = await db
+        .customSelect(
+          'SELECT 1 FROM integrations WHERE id = ? LIMIT 1',
+          variables: [Variable<String>(e.key)],
+        )
+        .getSingleOrNull();
     if (exists == null) {
       continue;
     }
-    final targetTaken = await db.customSelect(
-      'SELECT 1 FROM integrations WHERE id = ? LIMIT 1',
-      variables: [Variable<String>(e.value)],
-    ).getSingleOrNull();
+    final targetTaken = await db
+        .customSelect(
+          'SELECT 1 FROM integrations WHERE id = ? LIMIT 1',
+          variables: [Variable<String>(e.value)],
+        )
+        .getSingleOrNull();
     if (targetTaken != null) {
       continue;
     }
-    await db.customStatement(
-      'UPDATE integrations SET id = ? WHERE id = ?',
-      [e.value, e.key],
-    );
+    await db.customStatement('UPDATE integrations SET id = ? WHERE id = ?', [
+      e.value,
+      e.key,
+    ]);
     await _migrateIntegrationSecretKeys(db, e.key, e.value);
     await _migrateConfigKvPrefix(db, e.key, e.value);
   }
 }
 
 Future<String?> _integrationSecretsStorageKeyColumn(AppDatabase db) async {
-  final columns =
-      await db.customSelect('PRAGMA table_info(integration_secrets)').get();
+  final columns = await db
+      .customSelect('PRAGMA table_info(integration_secrets)')
+      .get();
   if (columns.any((c) => c.read<String>('name') == 'secret_key')) {
     return 'secret_key';
   }
@@ -827,15 +858,18 @@ Future<void> _copyAccessTokenSecret(
   }
   final fromKey = 'provider:access_token:$fromIntegrationId';
   final toKey = 'provider:access_token:$toIntegrationId';
-  final columns =
-      await db.customSelect('PRAGMA table_info(integration_secrets)').get();
+  final columns = await db
+      .customSelect('PRAGMA table_info(integration_secrets)')
+      .get();
   final hasNonce = columns.any((c) => c.read<String>('name') == 'nonce');
   if (hasNonce) {
-    final row = await db.customSelect(
-      'SELECT ciphertext, nonce, updated_at_ms FROM integration_secrets '
-      'WHERE $keyColumn = ?',
-      variables: [Variable<String>(fromKey)],
-    ).getSingleOrNull();
+    final row = await db
+        .customSelect(
+          'SELECT ciphertext, nonce, updated_at_ms FROM integration_secrets '
+          'WHERE $keyColumn = ?',
+          variables: [Variable<String>(fromKey)],
+        )
+        .getSingleOrNull();
     if (row == null) {
       return;
     }
@@ -851,29 +885,29 @@ Future<void> _copyAccessTokenSecret(
     );
     return;
   }
-  final row = await db.customSelect(
-    'SELECT ciphertext, updated_at_ms FROM integration_secrets WHERE $keyColumn = ?',
-    variables: [Variable<String>(fromKey)],
-  ).getSingleOrNull();
+  final row = await db
+      .customSelect(
+        'SELECT ciphertext, updated_at_ms FROM integration_secrets WHERE $keyColumn = ?',
+        variables: [Variable<String>(fromKey)],
+      )
+      .getSingleOrNull();
   if (row == null) {
     return;
   }
   await db.customStatement(
     'INSERT OR REPLACE INTO integration_secrets '
     '($keyColumn, ciphertext, updated_at_ms) VALUES (?, ?, ?)',
-    [
-      toKey,
-      row.read<Uint8List>('ciphertext'),
-      row.read<int>('updated_at_ms'),
-    ],
+    [toKey, row.read<Uint8List>('ciphertext'), row.read<int>('updated_at_ms')],
   );
 }
 
 Future<bool> _sqliteTableExists(AppDatabase db, String tableName) async {
-  final row = await db.customSelect(
-    "SELECT 1 FROM sqlite_master WHERE type='table' AND name=? LIMIT 1",
-    variables: [Variable<String>(tableName)],
-  ).getSingleOrNull();
+  final row = await db
+      .customSelect(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=? LIMIT 1",
+        variables: [Variable<String>(tableName)],
+      )
+      .getSingleOrNull();
   return row != null;
 }
 
@@ -884,6 +918,39 @@ Future<bool> _sqliteColumnExists(
 ) async {
   final rows = await db.customSelect('PRAGMA table_info($tableName)').get();
   return rows.any((r) => r.read<String>('name') == columnName);
+}
+
+/// Ensures adoption REST tables exist (pairing flow + API key hashes).
+///
+/// Fresh databases get these from [MigrationStrategy.onCreate]. Upgraded
+/// databases at schema 48 may have skipped the v47 cutover when adoption
+/// migrations were dropped — this idempotent guard runs on every open.
+Future<void> _ensureAdoptionApiTables(AppDatabase db) async {
+  final migrator = Migrator(db);
+
+  if (!await _sqliteTableExists(db, 'adoption_pending')) {
+    await migrator.createTable(db.adoptionPending);
+  }
+
+  if (!await _sqliteTableExists(db, 'api_clients')) {
+    await migrator.createTable(db.apiClients);
+    await db.customStatement(
+      'CREATE UNIQUE INDEX IF NOT EXISTS api_clients_identifier '
+      'ON api_clients (identifier)',
+    );
+    await db.customStatement(
+      'CREATE UNIQUE INDEX IF NOT EXISTS api_clients_api_key_hash '
+      'ON api_clients (api_key_hash)',
+    );
+  } else if (!await _sqliteColumnExists(db, 'api_clients', 'referrer_origin')) {
+    await db.customStatement(
+      'ALTER TABLE api_clients ADD COLUMN referrer_origin TEXT',
+    );
+  }
+
+  if (!await _sqliteTableExists(db, 'cors_allowed_origins')) {
+    await migrator.createTable(db.corsAllowedOrigins);
+  }
 }
 
 /// Ensures [ContentCategories] is stored as `curator_categories` (renamed from
@@ -991,9 +1058,9 @@ Future<void> _migrateV7ToV8WeatherLocationCategories(AppDatabase db) async {
   await db.customStatement(
     "ALTER TABLE interests_locations ADD COLUMN category TEXT NOT NULL DEFAULT 'general'",
   );
-  final rows = await db.customSelect(
-    'SELECT id, name FROM interests_locations',
-  ).get();
+  final rows = await db
+      .customSelect('SELECT id, name FROM interests_locations')
+      .get();
   for (final row in rows) {
     final category = weatherLocationCategoryFromName(row.read<String>('name'));
     await db.customStatement(
@@ -1023,7 +1090,11 @@ Future<void> _migrateV8ToV9LocationInterestFlags(AppDatabase db) async {
       'include_active_weather_alerts TO include_weather_alerts',
     );
   }
-  if (!await _sqliteColumnExists(db, 'interests_locations', 'include_local_news')) {
+  if (!await _sqliteColumnExists(
+    db,
+    'interests_locations',
+    'include_local_news',
+  )) {
     await db.customStatement(
       'ALTER TABLE interests_locations ADD COLUMN include_local_news '
       'INTEGER NOT NULL DEFAULT 0',
@@ -1091,7 +1162,11 @@ Future<void> _ensureCuratorConfigurationsTickerEnabled(AppDatabase db) async {
   if (!await _sqliteTableExists(db, 'curator_configurations')) {
     return;
   }
-  if (!await _sqliteColumnExists(db, 'curator_configurations', 'ticker_enabled')) {
+  if (!await _sqliteColumnExists(
+    db,
+    'curator_configurations',
+    'ticker_enabled',
+  )) {
     await db.customStatement(
       'ALTER TABLE curator_configurations ADD COLUMN ticker_enabled '
       'INTEGER NOT NULL DEFAULT 1',
@@ -1103,7 +1178,9 @@ Future<void> _ensureCuratorConfigurationsTickerEnabled(AppDatabase db) async {
   );
 }
 
-Future<void> _migrateV16ToV17CuratorTickerProgramDuration(AppDatabase db) async {
+Future<void> _migrateV16ToV17CuratorTickerProgramDuration(
+  AppDatabase db,
+) async {
   await _ensureCuratorConfigurationsTickerProgramDuration(db);
 }
 
@@ -1150,16 +1227,15 @@ Future<void> _migrateV19ToV20OverlaysShapeRainAndDropExample(
       kDefaultMothersDayOverlayId,
     ],
   );
-  final hasCuratorMembers =
-      await _sqliteTableExists(db, 'curator_configuration_members');
+  final hasCuratorMembers = await _sqliteTableExists(
+    db,
+    'curator_configuration_members',
+  );
   if (hasCuratorMembers) {
     await db.customStatement(
       'UPDATE curator_configuration_members SET entity_id = ? '
       "WHERE entity_type = ? AND entity_id = 'default_birthday_example_may_13'",
-      <Object?>[
-        kDefaultBirthdayConfettiOverlayId,
-        kCuratorMemberEntityOverlay,
-      ],
+      <Object?>[kDefaultBirthdayConfettiOverlayId, kCuratorMemberEntityOverlay],
     );
   }
   await db.customStatement(
@@ -1249,19 +1325,25 @@ Future<void> _ensureCuratorConfigurationsTickerPixelsPerSecond(
   }
 }
 
-Future<void> _migrateV18ToV19CuratorTickerPixelsPerSecond(AppDatabase db) async {
+Future<void> _migrateV18ToV19CuratorTickerPixelsPerSecond(
+  AppDatabase db,
+) async {
   await _ensureCuratorConfigurationsTickerPixelsPerSecond(db);
   if (!await _sqliteTableExists(db, 'curator_configurations')) {
     return;
   }
   var migratedPx = _kCuratorTickerPixelsPerSecondDefault;
   if (await _sqliteTableExists(db, 'config_key_values')) {
-    final kvRow = await db.customSelect(
-      "SELECT value FROM config_key_values WHERE key = 'curator.ticker.newsPixelsPerSecond' LIMIT 1",
-    ).getSingleOrNull();
+    final kvRow = await db
+        .customSelect(
+          "SELECT value FROM config_key_values WHERE key = 'curator.ticker.newsPixelsPerSecond' LIMIT 1",
+        )
+        .getSingleOrNull();
     final raw = kvRow?.read<String?>('value')?.trim();
     if (raw != null && raw.isNotEmpty) {
-      migratedPx = _clampCuratorTickerPixelsPerSecond(int.tryParse(raw) ?? migratedPx);
+      migratedPx = _clampCuratorTickerPixelsPerSecond(
+        int.tryParse(raw) ?? migratedPx,
+      );
     }
   }
   await db.customStatement(
@@ -1275,10 +1357,12 @@ Future<void> _migrateV15ToV16IntegrationsConfigColumns(AppDatabase db) async {
   if (!await _sqliteTableExists(db, 'integrations')) {
     return;
   }
-  final hasBaseUrl =
-      await _sqliteColumnExists(db, 'integrations', 'base_url');
-  final hasExample =
-      await _sqliteColumnExists(db, 'integrations', 'example_config_json');
+  final hasBaseUrl = await _sqliteColumnExists(db, 'integrations', 'base_url');
+  final hasExample = await _sqliteColumnExists(
+    db,
+    'integrations',
+    'example_config_json',
+  );
   if (!hasBaseUrl && !hasExample) {
     return;
   }
@@ -1315,7 +1399,9 @@ CREATE TABLE integrations_new (
     );
   }
   await db.customStatement('DROP TABLE integrations');
-  await db.customStatement('ALTER TABLE integrations_new RENAME TO integrations');
+  await db.customStatement(
+    'ALTER TABLE integrations_new RENAME TO integrations',
+  );
   await db.customStatement('PRAGMA foreign_keys = ON');
 }
 
@@ -1350,16 +1436,18 @@ Future<String?> _resolveOnedriveIntegrationIdForAccount(
   AppDatabase db,
   String accountKey,
 ) async {
-  final links = await db.customSelect(
-    '''
+  final links = await db
+      .customSelect(
+        '''
 SELECT l.integration_id AS integration_id
 FROM integration_account_links l
 INNER JOIN integrations i ON i.id = l.integration_id
 WHERE l.account_id = ?
   AND i.integration_type IN ('photo_onedrive', 'video_onedrive')
 ''',
-    variables: [Variable<String>(accountKey)],
-  ).get();
+        variables: [Variable<String>(accountKey)],
+      )
+      .get();
   if (links.isEmpty) {
     return null;
   }
@@ -1425,7 +1513,8 @@ Future<_LegacyIntegrationKvMapping?> _mapLegacyIntegrationKvKey(
     );
   }
 
-  const outlookPromptPrefix = 'provider.calendar_outlook.last_device_prompt_ms.';
+  const outlookPromptPrefix =
+      'provider.calendar_outlook.last_device_prompt_ms.';
   if (legacyKey.startsWith(outlookPromptPrefix)) {
     return _LegacyIntegrationKvMapping(
       accountId: legacyKey.substring(outlookPromptPrefix.length),
@@ -1443,8 +1532,10 @@ Future<_LegacyIntegrationKvMapping?> _mapLegacyIntegrationKvKey(
     }
     final accountKey = rest.substring(0, dot);
     final pathTag = rest.substring(dot + 1);
-    final integrationId =
-        await _resolveOnedriveIntegrationIdForAccount(db, accountKey);
+    final integrationId = await _resolveOnedriveIntegrationIdForAccount(
+      db,
+      accountKey,
+    );
     if (integrationId == null) {
       return null;
     }
@@ -1472,8 +1563,9 @@ Future<void> _migrateV20ToV21IntegrationsKeyValue(
   }
 
   final nowMs = DateTime.now().millisecondsSinceEpoch;
-  final legacyRows =
-      await db.customSelect('SELECT key, value FROM config_key_values').get();
+  final legacyRows = await db
+      .customSelect('SELECT key, value FROM config_key_values')
+      .get();
   final keysToDelete = <String>[];
 
   for (final row in legacyRows) {
@@ -1487,19 +1579,23 @@ Future<void> _migrateV20ToV21IntegrationsKeyValue(
     final integrationId = mapped.integrationId;
     final accountId = mapped.accountId;
     if (integrationId != null) {
-      final exists = await db.customSelect(
-        'SELECT 1 FROM integrations WHERE id = ? LIMIT 1',
-        variables: [Variable<String>(integrationId)],
-      ).getSingleOrNull();
+      final exists = await db
+          .customSelect(
+            'SELECT 1 FROM integrations WHERE id = ? LIMIT 1',
+            variables: [Variable<String>(integrationId)],
+          )
+          .getSingleOrNull();
       if (exists == null) {
         continue;
       }
     }
     if (accountId != null) {
-      final exists = await db.customSelect(
-        'SELECT 1 FROM integration_accounts WHERE id = ? LIMIT 1',
-        variables: [Variable<String>(accountId)],
-      ).getSingleOrNull();
+      final exists = await db
+          .customSelect(
+            'SELECT 1 FROM integration_accounts WHERE id = ? LIMIT 1',
+            variables: [Variable<String>(accountId)],
+          )
+          .getSingleOrNull();
       if (exists == null) {
         continue;
       }
@@ -1509,24 +1605,27 @@ Future<void> _migrateV20ToV21IntegrationsKeyValue(
 
     final IntegrationsKeyValueData? existing;
     if (integrationId != null) {
-      existing = await (db.select(db.integrationsKeyValue)
-            ..where(
-              (t) => t.integrationId.equals(integrationId) & t.key.equals(mapped.key),
-            ))
-          .getSingleOrNull();
+      existing =
+          await (db.select(db.integrationsKeyValue)..where(
+                (t) =>
+                    t.integrationId.equals(integrationId) &
+                    t.key.equals(mapped.key),
+              ))
+              .getSingleOrNull();
     } else {
-      existing = await (db.select(db.integrationsKeyValue)
-            ..where(
-              (t) => t.accountId.equals(accountId!) & t.key.equals(mapped.key),
-            ))
-          .getSingleOrNull();
+      existing =
+          await (db.select(db.integrationsKeyValue)..where(
+                (t) =>
+                    t.accountId.equals(accountId!) & t.key.equals(mapped.key),
+              ))
+              .getSingleOrNull();
     }
 
     if (existing != null) {
       final existingId = existing.id;
-      await (db.update(db.integrationsKeyValue)
-            ..where((t) => t.id.equals(existingId)))
-          .write(
+      await (db.update(
+        db.integrationsKeyValue,
+      )..where((t) => t.id.equals(existingId))).write(
         IntegrationsKeyValueCompanion(
           value: Value(value),
           valueType: Value(mapped.valueType),
@@ -1534,7 +1633,9 @@ Future<void> _migrateV20ToV21IntegrationsKeyValue(
         ),
       );
     } else {
-      await db.into(db.integrationsKeyValue).insert(
+      await db
+          .into(db.integrationsKeyValue)
+          .insert(
             IntegrationsKeyValueCompanion.insert(
               integrationId: Value(integrationId),
               accountId: Value(accountId),
@@ -1549,10 +1650,9 @@ Future<void> _migrateV20ToV21IntegrationsKeyValue(
   }
 
   for (final k in keysToDelete) {
-    await db.customStatement(
-      'DELETE FROM config_key_values WHERE key = ?',
-      [k],
-    );
+    await db.customStatement('DELETE FROM config_key_values WHERE key = ?', [
+      k,
+    ]);
   }
 }
 
@@ -1573,7 +1673,9 @@ Future<void> _migrateV23ToV24DisplayEntityLabels(AppDatabase db) async {
   if (await _sqliteTableExists(db, 'overlays') &&
       await _sqliteColumnExists(db, 'overlays', 'name') &&
       !await _sqliteColumnExists(db, 'overlays', 'label')) {
-    await db.customStatement('ALTER TABLE overlays RENAME COLUMN name TO label');
+    await db.customStatement(
+      'ALTER TABLE overlays RENAME COLUMN name TO label',
+    );
   }
   if (await _sqliteTableExists(db, 'photos') &&
       await _sqliteColumnExists(db, 'photos', 'pexels_page_url') &&
@@ -1600,7 +1702,9 @@ CREATE TABLE IF NOT EXISTS integration_types (
 ''');
 
   final typeSchemas = <String, String?>{};
-  final integrationRows = await db.customSelect('SELECT * FROM integrations').get();
+  final integrationRows = await db
+      .customSelect('SELECT * FROM integrations')
+      .get();
   for (final row in integrationRows) {
     final type = row.read<String>('integration_type');
     final schema = row.read<String?>('config_json_schema');
@@ -1618,7 +1722,8 @@ CREATE TABLE IF NOT EXISTS integration_types (
   };
 
   for (final integrationType in allTypes) {
-    final schema = typeSchemas[integrationType] ??
+    final schema =
+        typeSchemas[integrationType] ??
         providerConfigJsonDocForType(integrationType).schema;
     final requires = integrationAccountTypesRequiredForIntegration(
       integrationType,
@@ -1632,16 +1737,24 @@ CREATE TABLE IF NOT EXISTS integration_types (
     );
   }
 
-  final hasConfigSchema =
-      await _sqliteColumnExists(db, 'integrations', 'config_json_schema');
-  final hasRequiresAccounts =
-      await _sqliteColumnExists(db, 'integrations', 'requires_accounts');
+  final hasConfigSchema = await _sqliteColumnExists(
+    db,
+    'integrations',
+    'config_json_schema',
+  );
+  final hasRequiresAccounts = await _sqliteColumnExists(
+    db,
+    'integrations',
+    'requires_accounts',
+  );
   if (!hasConfigSchema && !hasRequiresAccounts) {
     await db.customStatement('PRAGMA foreign_keys = ON');
     return;
   }
 
-  await db.customStatement('DROP INDEX IF EXISTS idx_integrations_enabled_accounts');
+  await db.customStatement(
+    'DROP INDEX IF EXISTS idx_integrations_enabled_accounts',
+  );
   await db.customStatement('''
 CREATE TABLE integrations_new (
   id TEXT NOT NULL PRIMARY KEY,
@@ -1668,7 +1781,9 @@ CREATE TABLE integrations_new (
     );
   }
   await db.customStatement('DROP TABLE integrations');
-  await db.customStatement('ALTER TABLE integrations_new RENAME TO integrations');
+  await db.customStatement(
+    'ALTER TABLE integrations_new RENAME TO integrations',
+  );
   await db.customStatement(
     'CREATE INDEX IF NOT EXISTS idx_integrations_enabled_accounts '
     'ON integrations (enabled, accounts_ready)',
@@ -1685,12 +1800,10 @@ Future<void> _migrateV24ToV25CalendarEventCategories(
   if (!await _sqliteTableExists(db, 'calendar_events')) {
     return;
   }
-  await db.customStatement(
-    '''
+  await db.customStatement('''
 INSERT OR IGNORE INTO calendar_event_categories (event_id, category_id)
 SELECT id, category_id FROM calendar_events WHERE category_id IS NOT NULL
-''',
-  );
+''');
 }
 
 Future<void> _migrateV22ToV23IntegrationsAccountsReady(AppDatabase db) async {
@@ -1718,20 +1831,24 @@ Future<void> _migrateV21ToV22DisplayProgramHistoryDepth(AppDatabase db) async {
   if (!await _sqliteTableExists(db, 'config_key_values')) {
     return;
   }
-  final existing = await db.customSelect(
-    'SELECT 1 FROM config_key_values WHERE key = ? LIMIT 1',
-    variables: [Variable<String>(kDisplayProgramHistoryDepthKvKey)],
-  ).getSingleOrNull();
+  final existing = await db
+      .customSelect(
+        'SELECT 1 FROM config_key_values WHERE key = ? LIMIT 1',
+        variables: [Variable<String>(kDisplayProgramHistoryDepthKvKey)],
+      )
+      .getSingleOrNull();
   if (existing != null) {
     return;
   }
 
   var depth = kDefaultDisplayProgramHistoryDepth;
   if (await _sqliteTableExists(db, 'curator_configurations')) {
-    final defaultRow = await db.customSelect(
-      'SELECT history_depth FROM curator_configurations '
-      'WHERE default_config = 1 LIMIT 1',
-    ).getSingleOrNull();
+    final defaultRow = await db
+        .customSelect(
+          'SELECT history_depth FROM curator_configurations '
+          'WHERE default_config = 1 LIMIT 1',
+        )
+        .getSingleOrNull();
     if (defaultRow != null) {
       depth = normalizeDisplayProgramHistoryDepth(
         '${defaultRow.read<int>('history_depth')}',
@@ -1739,7 +1856,9 @@ Future<void> _migrateV21ToV22DisplayProgramHistoryDepth(AppDatabase db) async {
     }
   }
 
-  await db.into(db.configKeyValues).insert(
+  await db
+      .into(db.configKeyValues)
+      .insert(
         ConfigKeyValuesCompanion.insert(
           key: kDisplayProgramHistoryDepthKvKey,
           value: '$depth',
@@ -1775,7 +1894,8 @@ CREATE TABLE IF NOT EXISTS screen_types (
       ...kScreenLayoutWidgetTypes,
     };
     for (final screenType in allScreenTypes) {
-      final schema = screenTypeSchemas[screenType] ??
+      final schema =
+          screenTypeSchemas[screenType] ??
           screenConfigJsonDocForType(screenType).schema;
       await db.customStatement(
         'INSERT OR REPLACE INTO screen_types '
@@ -1784,8 +1904,11 @@ CREATE TABLE IF NOT EXISTS screen_types (
       );
     }
 
-    final hasScreenSchema =
-        await _sqliteColumnExists(db, 'screens', 'config_json_schema');
+    final hasScreenSchema = await _sqliteColumnExists(
+      db,
+      'screens',
+      'config_json_schema',
+    );
     if (hasScreenSchema) {
       await db.customStatement('''
 CREATE TABLE screens_new (
@@ -1842,7 +1965,9 @@ CREATE TABLE IF NOT EXISTS ticker_tape_types (
 
   final tickerTypeSchemas = <String, String?>{};
   if (await _sqliteTableExists(db, 'ticker_tapes')) {
-    final tickerRows = await db.customSelect('SELECT * FROM ticker_tapes').get();
+    final tickerRows = await db
+        .customSelect('SELECT * FROM ticker_tapes')
+        .get();
     for (final row in tickerRows) {
       final type = row.read<String>('ticker_type');
       final schema = row.read<String?>('config_json_schema');
@@ -1855,7 +1980,8 @@ CREATE TABLE IF NOT EXISTS ticker_tape_types (
       ...kTickerSlotDefinitionTypes,
     };
     for (final tickerType in allTickerTypes) {
-      final schema = tickerTypeSchemas[tickerType] ??
+      final schema =
+          tickerTypeSchemas[tickerType] ??
           tickerSlotConfigJsonDocForType(tickerType).schema;
       await db.customStatement(
         'INSERT OR REPLACE INTO ticker_tape_types '
@@ -1864,8 +1990,11 @@ CREATE TABLE IF NOT EXISTS ticker_tape_types (
       );
     }
 
-    final hasTickerSchema =
-        await _sqliteColumnExists(db, 'ticker_tapes', 'config_json_schema');
+    final hasTickerSchema = await _sqliteColumnExists(
+      db,
+      'ticker_tapes',
+      'config_json_schema',
+    );
     if (hasTickerSchema) {
       await db.customStatement('''
 CREATE TABLE ticker_tapes_new (
@@ -1896,7 +2025,9 @@ CREATE TABLE ticker_tapes_new (
         );
       }
       await db.customStatement('DROP TABLE ticker_tapes');
-      await db.customStatement('ALTER TABLE ticker_tapes_new RENAME TO ticker_tapes');
+      await db.customStatement(
+        'ALTER TABLE ticker_tapes_new RENAME TO ticker_tapes',
+      );
     }
   }
 
@@ -1917,7 +2048,8 @@ CREATE TABLE ticker_tapes_new (
       ...kBuiltinOverlayTypes,
     };
     for (final overlayType in allOverlayTypes) {
-      final schema = overlayTypeSchemas[overlayType] ??
+      final schema =
+          overlayTypeSchemas[overlayType] ??
           displayOverlayConfigJsonDocForType(overlayType).schema;
       await db.customStatement(
         'INSERT OR REPLACE INTO overlay_types '
@@ -1926,8 +2058,11 @@ CREATE TABLE ticker_tapes_new (
       );
     }
 
-    final hasOverlaySchema =
-        await _sqliteColumnExists(db, 'overlays', 'config_json_schema');
+    final hasOverlaySchema = await _sqliteColumnExists(
+      db,
+      'overlays',
+      'config_json_schema',
+    );
     if (hasOverlaySchema) {
       await db.customStatement('''
 CREATE TABLE overlays_new (
@@ -1970,7 +2105,9 @@ CREATE TABLE overlays_new (
 Future<void> _migrateV27ToV28TickerTapeTypesTable(AppDatabase db) async {
   if (await _sqliteTableExists(db, 'ticker_types') &&
       !await _sqliteTableExists(db, 'ticker_tape_types')) {
-    await db.customStatement('ALTER TABLE ticker_types RENAME TO ticker_tape_types');
+    await db.customStatement(
+      'ALTER TABLE ticker_types RENAME TO ticker_tape_types',
+    );
   }
 }
 
@@ -1983,9 +2120,11 @@ Future<void> _migrateV28ToV29TickerTapeSlotTypes(AppDatabase db) async {
 
   final kv = <String, String>{};
   if (await _sqliteTableExists(db, 'config_key_values')) {
-    final kvRows = await db.customSelect(
-      "SELECT key, value FROM config_key_values WHERE key LIKE 'ticker.marquee.%'",
-    ).get();
+    final kvRows = await db
+        .customSelect(
+          "SELECT key, value FROM config_key_values WHERE key LIKE 'ticker.marquee.%'",
+        )
+        .get();
     for (final row in kvRows) {
       kv[row.read<String>('key')] = row.read<String>('value');
     }
@@ -2087,20 +2226,25 @@ Map<String, String> _staticTextConfigFromLegacyTape(
       text = kv[key]?.trim() ?? '';
     }
     if (text.isEmpty) {
-      final fromConfig = m.entries
-          .where((e) => e.key.startsWith('ticker.marquee.'))
-          .map((e) => e.value?.toString().trim() ?? '')
-          .where((s) => s.isNotEmpty)
-          .toList()
-        ..sort();
+      final fromConfig =
+          m.entries
+              .where((e) => e.key.startsWith('ticker.marquee.'))
+              .map((e) => e.value?.toString().trim() ?? '')
+              .where((s) => s.isNotEmpty)
+              .toList()
+            ..sort();
       if (fromConfig.isNotEmpty) {
         text = fromConfig.join(' · ');
       }
     }
     if (text.isEmpty) {
-      final keys = kv.keys.where((k) => k.startsWith('ticker.marquee.')).toList()
-        ..sort();
-      final lines = keys.map((k) => kv[k]!.trim()).where((s) => s.isNotEmpty).toList();
+      final keys =
+          kv.keys.where((k) => k.startsWith('ticker.marquee.')).toList()
+            ..sort();
+      final lines = keys
+          .map((k) => kv[k]!.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
       if (lines.isNotEmpty) {
         text = lines.join(' · ');
       }
@@ -2120,9 +2264,11 @@ Future<void> _migrateV29ToV30DropTickerTapeConfigKey(AppDatabase db) async {
 
   final kv = <String, String>{};
   if (await _sqliteTableExists(db, 'config_key_values')) {
-    final kvRows = await db.customSelect(
-      "SELECT key, value FROM config_key_values WHERE key LIKE 'ticker.marquee.%'",
-    ).get();
+    final kvRows = await db
+        .customSelect(
+          "SELECT key, value FROM config_key_values WHERE key LIKE 'ticker.marquee.%'",
+        )
+        .get();
     for (final row in kvRows) {
       kv[row.read<String>('key')] = row.read<String>('value');
     }
@@ -2176,7 +2322,9 @@ CREATE TABLE ticker_tapes_new (
     );
   }
   await db.customStatement('DROP TABLE ticker_tapes');
-  await db.customStatement('ALTER TABLE ticker_tapes_new RENAME TO ticker_tapes');
+  await db.customStatement(
+    'ALTER TABLE ticker_tapes_new RENAME TO ticker_tapes',
+  );
 }
 
 /// Moves legacy always-on image overlay KV into catalog + base curator members.
@@ -2188,10 +2336,12 @@ Future<void> _migrateV30ToV31StaticImageOverlayFromKv(AppDatabase db) async {
     return;
   }
 
-  final kvRow = await db.customSelect(
-    'SELECT value FROM config_key_values WHERE key = ?',
-    variables: [Variable<String>(kLegacyDisplayImageOverlayKvKey)],
-  ).getSingleOrNull();
+  final kvRow = await db
+      .customSelect(
+        'SELECT value FROM config_key_values WHERE key = ?',
+        variables: [Variable<String>(kLegacyDisplayImageOverlayKvKey)],
+      )
+      .getSingleOrNull();
 
   final legacy = kvRow == null
       ? null
@@ -2215,10 +2365,12 @@ Future<void> _migrateV30ToV31StaticImageOverlayFromKv(AppDatabase db) async {
         "ALTER TABLE overlays ADD COLUMN description TEXT NOT NULL DEFAULT ''",
       );
     }
-    final existing = await db.customSelect(
-      'SELECT id FROM overlays WHERE id = ?',
-      variables: [Variable<String>(kMigratedDisplayImageOverlayId)],
-    ).getSingleOrNull();
+    final existing = await db
+        .customSelect(
+          'SELECT id FROM overlays WHERE id = ?',
+          variables: [Variable<String>(kMigratedDisplayImageOverlayId)],
+        )
+        .getSingleOrNull();
     if (existing == null) {
       await upsertOverlay(
         db,
@@ -2232,10 +2384,12 @@ Future<void> _migrateV30ToV31StaticImageOverlayFromKv(AppDatabase db) async {
 
   if (await _sqliteTableExists(db, 'curator_configurations') &&
       await _sqliteTableExists(db, 'curator_configuration_members')) {
-    final baseConfigs = await db.customSelect(
-      "SELECT id FROM curator_configurations WHERE layer = ?",
-      variables: [Variable<String>(kCuratorLayerBase)],
-    ).get();
+    final baseConfigs = await db
+        .customSelect(
+          "SELECT id FROM curator_configurations WHERE layer = ?",
+          variables: [Variable<String>(kCuratorLayerBase)],
+        )
+        .get();
     for (final row in baseConfigs) {
       final configId = row.read<String>('id');
       await db.customStatement(
@@ -2269,8 +2423,12 @@ Future<void> _migrateV31ToV32IntegrationAccountsConfiguredView(
 
   if (await _sqliteColumnExists(db, 'integrations', 'accounts_ready')) {
     await db.customStatement('PRAGMA foreign_keys = OFF');
-    await db.customStatement('DROP INDEX IF EXISTS idx_integrations_enabled_accounts');
-    await db.customStatement('DROP VIEW IF EXISTS v_integration_accounts_configured');
+    await db.customStatement(
+      'DROP INDEX IF EXISTS idx_integrations_enabled_accounts',
+    );
+    await db.customStatement(
+      'DROP VIEW IF EXISTS v_integration_accounts_configured',
+    );
     await db.customStatement('''
 CREATE TABLE integrations_new (
   id TEXT NOT NULL PRIMARY KEY,
@@ -2280,8 +2438,9 @@ CREATE TABLE integrations_new (
   config_json TEXT
 )
 ''');
-    final integrationRows =
-        await db.customSelect('SELECT * FROM integrations').get();
+    final integrationRows = await db
+        .customSelect('SELECT * FROM integrations')
+        .get();
     for (final row in integrationRows) {
       await db.customStatement(
         'INSERT INTO integrations_new '
@@ -2297,7 +2456,9 @@ CREATE TABLE integrations_new (
       );
     }
     await db.customStatement('DROP TABLE integrations');
-    await db.customStatement('ALTER TABLE integrations_new RENAME TO integrations');
+    await db.customStatement(
+      'ALTER TABLE integrations_new RENAME TO integrations',
+    );
     await db.customStatement('PRAGMA foreign_keys = ON');
   }
 
@@ -2305,10 +2466,12 @@ CREATE TABLE integrations_new (
 }
 
 Future<void> _ensureIntegrationAccountsConfiguredView(AppDatabase db) async {
-  final view = await db.customSelect(
-    "SELECT 1 FROM sqlite_master WHERE type = 'view' "
-    "AND name = 'v_integration_accounts_configured' LIMIT 1",
-  ).getSingleOrNull();
+  final view = await db
+      .customSelect(
+        "SELECT 1 FROM sqlite_master WHERE type = 'view' "
+        "AND name = 'v_integration_accounts_configured' LIMIT 1",
+      )
+      .getSingleOrNull();
   if (view == null) {
     await db.customStatement(kCreateIntegrationTypeRequiredAccountsTableSql);
     await seedIntegrationTypeRequiredAccounts(db);
@@ -2319,16 +2482,21 @@ Future<void> _ensureIntegrationAccountsConfiguredView(AppDatabase db) async {
 }
 
 /// Conservative backfill for schema 23 only (column removed in schema 32).
-Future<void> _backfillIntegrationsAccountsReadyColumnsV23(AppDatabase db) async {
+Future<void> _backfillIntegrationsAccountsReadyColumnsV23(
+  AppDatabase db,
+) async {
   if (!await _sqliteColumnExists(db, 'integrations', 'accounts_ready')) {
     return;
   }
-  final rows = await db.customSelect('SELECT id, integration_type FROM integrations').get();
+  final rows = await db
+      .customSelect('SELECT id, integration_type FROM integrations')
+      .get();
   for (final row in rows) {
     final id = row.read<String>('id');
     final integrationType = row.read<String>('integration_type');
-    final requires =
-        integrationAccountTypesRequiredForIntegration(integrationType).isNotEmpty;
+    final requires = integrationAccountTypesRequiredForIntegration(
+      integrationType,
+    ).isNotEmpty;
     final ready = requires ? 0 : 1;
     await db.customStatement(
       'UPDATE integrations SET accounts_ready = ? WHERE id = ?',
@@ -2494,10 +2662,12 @@ Future<void> _migrateV42ToV43DefaultBaseCurator(AppDatabase db) async {
     );
   }
 
-  final defaultExists = await db.customSelect(
-    'SELECT 1 FROM curator_configurations WHERE id = ? LIMIT 1',
-    variables: [Variable<String>(kDefaultBaseCuratorConfigurationId)],
-  ).getSingleOrNull();
+  final defaultExists = await db
+      .customSelect(
+        'SELECT 1 FROM curator_configurations WHERE id = ? LIMIT 1',
+        variables: [Variable<String>(kDefaultBaseCuratorConfigurationId)],
+      )
+      .getSingleOrNull();
   if (defaultExists == null) {
     await db.customStatement(
       'INSERT INTO curator_configurations ('
@@ -2544,10 +2714,12 @@ Future<void> _migrateV42ToV43DefaultBaseCurator(AppDatabase db) async {
     }
 
     for (final childId in kTimeSlotBaseCuratorConfigurationIds) {
-      final childExists = await db.customSelect(
-        'SELECT 1 FROM curator_configurations WHERE id = ? LIMIT 1',
-        variables: [Variable<String>(childId)],
-      ).getSingleOrNull();
+      final childExists = await db
+          .customSelect(
+            'SELECT 1 FROM curator_configurations WHERE id = ? LIMIT 1',
+            variables: [Variable<String>(childId)],
+          )
+          .getSingleOrNull();
       if (childExists == null) {
         continue;
       }
@@ -2659,10 +2831,7 @@ Future<void> _migrateV44ToV45ManualEntrySource(AppDatabase db) async {
 }
 
 /// Schema 46: Quoterism quote storage and category junction.
-Future<void> _migrateV45ToV46QuoterismQuotes(
-  AppDatabase db,
-  Migrator m,
-) async {
+Future<void> _migrateV45ToV46QuoterismQuotes(AppDatabase db, Migrator m) async {
   await m.createTable(db.quoterismQuotes);
   await m.createTable(db.quoterismQuoteCategories);
 }
@@ -2680,7 +2849,11 @@ Future<void> _ensureCuratorConfigurationsScreensEnabled(AppDatabase db) async {
   if (!await _sqliteTableExists(db, 'curator_configurations')) {
     return;
   }
-  if (!await _sqliteColumnExists(db, 'curator_configurations', 'screens_enabled')) {
+  if (!await _sqliteColumnExists(
+    db,
+    'curator_configurations',
+    'screens_enabled',
+  )) {
     await db.customStatement(
       'ALTER TABLE curator_configurations ADD COLUMN screens_enabled '
       'INTEGER NOT NULL DEFAULT 1',
@@ -2712,13 +2885,14 @@ Future<void> _migrateV38ToV39TrimLocationCatalog(AppDatabase db) async {
         [id],
       );
     }
-    await db.customStatement(
-      'DELETE FROM interests_locations WHERE id = ?',
-      [id],
-    );
+    await db.customStatement('DELETE FROM interests_locations WHERE id = ?', [
+      id,
+    ]);
   }
   if (await _sqliteTableExists(db, 'screens')) {
-    final rows = await db.customSelect('SELECT id, config_json FROM screens').get();
+    final rows = await db
+        .customSelect('SELECT id, config_json FROM screens')
+        .get();
     for (final row in rows) {
       final configJson = row.read<String?>('config_json');
       if (configJson == null || configJson.isEmpty) continue;
@@ -2756,28 +2930,24 @@ Future<void> _migrateV37ToV38PhotoVideoCategories(
     return;
   }
   if (await _sqliteTableExists(db, 'photos')) {
-    await db.customStatement(
-      '''
+    await db.customStatement('''
 INSERT OR IGNORE INTO photo_categories (photo_id, category_id)
 SELECT p.id, p.category FROM photos p
 WHERE p.category IS NOT NULL AND p.category != ''
   AND EXISTS (
     SELECT 1 FROM curator_categories c WHERE c.id = p.category
   )
-''',
-    );
+''');
   }
   if (await _sqliteTableExists(db, 'videos')) {
-    await db.customStatement(
-      '''
+    await db.customStatement('''
 INSERT OR IGNORE INTO video_categories (video_id, category_id)
 SELECT v.id, v.category FROM videos v
 WHERE v.category IS NOT NULL AND v.category != ''
   AND EXISTS (
     SELECT 1 FROM curator_categories c WHERE c.id = v.category
   )
-''',
-    );
+''');
   }
 }
 
