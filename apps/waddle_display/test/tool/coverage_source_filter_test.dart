@@ -86,6 +86,13 @@ void main() {
         ),
         isFalse,
       );
+      expect(
+        includeCoverageSourceFile(
+          'lib/extensions/screen_widget_registry.dart',
+          lcovPath: 'coverage/lcov.info',
+        ),
+        isFalse,
+      );
     });
   });
 }

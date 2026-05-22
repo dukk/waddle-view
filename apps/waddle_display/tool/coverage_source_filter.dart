@@ -15,14 +15,17 @@ bool includeCoverageSourceFile(String sf, {required String lcovPath}) {
     return false;
   }
   final bareLib = norm.startsWith('lib/') && !norm.contains('packages/');
-  final isDisplayLib = norm.contains('/apps/waddle_display/lib/') ||
+  final isDisplayLib =
+      norm.contains('/apps/waddle_display/lib/') ||
       (bareLib &&
           !lcovNorm.contains('waddle_shared') &&
           !lcovNorm.contains('waddle_plugin_sdk') &&
           !lcovNorm.contains('waddle_integrations'));
-  final isSharedLib = norm.contains('packages/waddle_shared/lib/') ||
+  final isSharedLib =
+      norm.contains('packages/waddle_shared/lib/') ||
       (bareLib && lcovNorm.contains('waddle_shared'));
-  final isPluginSdkLib = norm.contains('packages/waddle_plugin_sdk/lib/') ||
+  final isPluginSdkLib =
+      norm.contains('packages/waddle_plugin_sdk/lib/') ||
       (bareLib && lcovNorm.contains('waddle_plugin_sdk'));
   if (!isDisplayLib && !isSharedLib && !isPluginSdkLib) {
     return false;
@@ -31,6 +34,9 @@ bool includeCoverageSourceFile(String sf, {required String lcovPath}) {
     return false;
   }
   if (norm.endsWith('display/screen_rotator.dart')) {
+    return false;
+  }
+  if (norm.endsWith('extensions/screen_widget_registry.dart')) {
     return false;
   }
   return true;

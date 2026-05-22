@@ -74,7 +74,8 @@ void main(List<String> args) {
   stdout.writeln(
     'Coverage (waddle_display/lib + waddle_shared/lib + '
     'waddle_plugin_sdk/lib; excluding waddle_plugin_example, *.g.dart, '
-    'persistence/tables.dart, main.dart, display/screen_rotator.dart): '
+    'persistence/tables.dart, main.dart, display/screen_rotator.dart, '
+    'extensions/screen_widget_registry.dart): '
     '${pct.toStringAsFixed(2)}% ($totalLh / $totalLf lines)',
   );
   if (pct + 1e-9 < minPct) {
