@@ -213,18 +213,6 @@ String? permissionForRoute(String method, String path) {
   if (p == '/v1/display/navigation' && m == 'POST') {
     return WaddlePermission.navigationControl;
   }
-  if (p == '/v1/display/remote-view' && m == 'GET') {
-    return WaddlePermission.navigationControl;
-  }
-  if (p == '/v1/display/remote-view/session' && m == 'POST') {
-    return WaddlePermission.navigationControl;
-  }
-  if (p == '/v1/display/remote-view/password' && m == 'PUT') {
-    return WaddlePermission.curatorWrite;
-  }
-  if (p == '/v1/display/remote-view/password' && m == 'DELETE') {
-    return WaddlePermission.curatorWrite;
-  }
   if (p == '/v1/display/live-preview' && m == 'GET') {
     return WaddlePermission.navigationControl;
   }

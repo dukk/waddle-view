@@ -51,10 +51,13 @@ import { ADOPTION_ROLES, parseAdoptionAllowedRoles } from '@/constants/displaySe
 import { useDisplayFormat } from '@/context/DisplayFormatContext';
 import { IntegrationAccountsSection } from '@/components/IntegrationAccountsSection';
 import { IntegrationOAuthSettingsSection } from '@/components/IntegrationOAuthSettingsSection';
+import { DisplayBackupTabContent } from '@/components/displaySettings/DisplayBackupTabContent';
+import { loadSession } from '@/storage/sessions';
 import {
   DISPLAY_SETTINGS_TAB_ACCOUNTS,
   DISPLAY_SETTINGS_TAB_ADOPTION,
   DISPLAY_SETTINGS_TAB_ADVANCED,
+  DISPLAY_SETTINGS_TAB_BACKUP,
   DISPLAY_SETTINGS_TAB_GENERAL,
   DISPLAY_SETTINGS_TAB_PROGRAMS,
   DISPLAY_SETTINGS_TAB_THEME,
@@ -74,6 +77,8 @@ export function DisplaySettingsPage() {
   const showIntegrationSettings = Boolean(active && canIntegrationsRead);
   const showAdoptionSettings = Boolean(active && canCuratorWrite);
   const showApiClientManagement = Boolean(active && hasPermission('users.manage'));
+  const displaySession = active ? loadSession(active.id) : null;
+  const showBackupTab = Boolean(active && displaySession?.apiKey);
   const displayLabel = active?.label ?? 'Display';
 
   const onKvChanged = useCallback(() => setKvWriteTick((t) => t + 1), []);
@@ -93,9 +98,12 @@ export function DisplaySettingsPage() {
     if (showIntegrationSettings) {
       tabs.push({ id: DISPLAY_SETTINGS_TAB_ACCOUNTS, label: 'Accounts' });
     }
+    if (showBackupTab) {
+      tabs.push({ id: DISPLAY_SETTINGS_TAB_BACKUP, label: 'Backup & restore' });
+    }
     tabs.push({ id: DISPLAY_SETTINGS_TAB_ADOPTION, label: 'Adoption' });
     return tabs;
-  }, [showDisplaySettings, showIntegrationSettings]);
+  }, [showDisplaySettings, showIntegrationSettings, showBackupTab]);
 
   const tabParam = searchParams.get('tab');
   const tab: DisplaySettingsTabId = visibleTabs.some((t) => t.id === tabParam)
@@ -279,6 +287,10 @@ function DisplaySettingsTabPanels({
               />
             )}
           </CuratorSettingsTabShell>
+        )}
+
+        {tab === DISPLAY_SETTINGS_TAB_BACKUP && active && (
+          <DisplayBackupTabContent display={active} />
         )}
 
         {tab === DISPLAY_SETTINGS_TAB_ACCOUNTS && (

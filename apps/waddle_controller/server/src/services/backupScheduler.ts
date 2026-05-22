@@ -1,7 +1,11 @@
 import type { AppConfig } from '../config.js';
 import type { AppDatabase } from '../db/database.js';
-import { isDailyCronDue } from './cronDue.js';
-import { listEnabledBackupTargets, updateBackupTargetRunStatus } from './backupTargets.js';
+import { isBackupScheduleDue } from './backupSchedule.js';
+import {
+  listEnabledBackupTargets,
+  rowScheduleFields,
+  updateBackupTargetRunStatus,
+} from './backupTargets.js';
 import { pullBackupFromDisplay } from './displayBackupPull.js';
 
 const lastFiredMinute = new Map<string, string>();
@@ -43,7 +47,8 @@ async function tick(config: AppConfig, db: AppDatabase): Promise<void> {
   try {
     const now = new Date();
     for (const target of listEnabledBackupTargets(db)) {
-      if (!isDailyCronDue(target.cron_expr, target.timezone, now)) {
+      const schedule = rowScheduleFields(target);
+      if (!isBackupScheduleDue(schedule, target.timezone, target.last_run_at, now)) {
         continue;
       }
       const key = `${target.id}:${minuteKey(target.timezone, now)}`;

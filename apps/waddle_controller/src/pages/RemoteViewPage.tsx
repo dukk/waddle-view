@@ -4,12 +4,10 @@ import { Alert, Box, Typography } from '@mui/material';
 import { useDisplay } from '@/context/DisplayContext';
 import { useAuth } from '@/context/AuthContext';
 import { LivePreviewPanel } from '@/components/remote/LivePreviewPanel';
-import { RemoteViewPanel } from '@/components/remote/RemoteViewPanel';
 import { loadDisplays } from '@/storage/displays';
 
 export function RemoteViewPage() {
   const [params] = useSearchParams();
-  const mode = params.get('mode') ?? '';
   const { active, displays } = useDisplay();
   const { hasPermission } = useAuth();
 
@@ -28,7 +26,7 @@ export function RemoteViewPage() {
   if (!hasPermission('navigation.control')) {
     return (
       <Alert severity="warning" sx={{ m: 2 }}>
-        Your role does not include remote view access.
+        Your role does not include live preview access.
       </Alert>
     );
   }
@@ -44,8 +42,8 @@ export function RemoteViewPage() {
   if (!ticket) {
     return (
       <Alert severity="warning" sx={{ m: 2 }}>
-        Missing session ticket. Open remote view from the controller Remote page or display settings
-        test button.
+        Missing session ticket. Open live preview from the controller Remote page or display
+        settings test button.
       </Alert>
     );
   }
@@ -53,24 +51,15 @@ export function RemoteViewPage() {
   return (
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', p: 1 }}>
       <Typography variant="subtitle2" sx={{ mb: 1 }}>
-        {mode === 'live' ? 'Live preview' : 'Remote view'} — {display.label}
+        Live preview — {display.label}
       </Typography>
       <Box sx={{ flex: 1, minHeight: 0 }}>
-        {mode === 'live' ? (
-          <LivePreviewPanel
-            display={display}
-            initialTicket={ticket}
-            autoConnect={Boolean(ticket)}
-            popOutPath="/remote/view"
-          />
-        ) : (
-          <RemoteViewPanel
-            display={display}
-            initialTicket={ticket}
-            autoConnect={Boolean(ticket)}
-            popOutPath="/remote/view"
-          />
-        )}
+        <LivePreviewPanel
+          display={display}
+          initialTicket={ticket}
+          autoConnect={Boolean(ticket)}
+          popOutPath="/remote/view"
+        />
       </Box>
     </Box>
   );

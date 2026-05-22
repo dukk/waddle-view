@@ -1,7 +1,18 @@
-import { proxyWsUrlForDisplayPath } from '@/util/remoteViewWsUrl';
+import { PROXY_WS_PREFIX } from '@/constants/proxyHeaders';
 import { sessionForDisplay } from '@/api/client';
 import type { SavedDisplay } from '@/storage/displays';
 import { normalizeBaseUrl } from '@/storage/displays';
+
+export function proxyWsUrlForDisplayPath(
+  displayPath: string,
+  params: Record<string, string>,
+): string {
+  const path = displayPath.startsWith('/') ? displayPath : `/${displayPath}`;
+  const search = new URLSearchParams(params).toString();
+  const { protocol, host } = window.location;
+  const wsProto = protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${wsProto}//${host}${PROXY_WS_PREFIX}${path}?${search}`;
+}
 
 /** Same-origin WebSocket URL for in-app live preview (JPEG frames). */
 export function buildLivePreviewWebSocketUrl(

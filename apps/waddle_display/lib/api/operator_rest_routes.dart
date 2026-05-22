@@ -29,7 +29,6 @@ import 'integration_oauth_providers_rest_routes.dart';
 import 'integration_kv_rest_routes.dart';
 import 'display_themes_rest_routes.dart';
 import 'display_live_preview_routes.dart';
-import 'display_remote_view_routes.dart';
 import 'integration_secrets_rest_routes.dart';
 
 final Set<String> _reservedCuratorCategoryIds = {
@@ -69,7 +68,6 @@ void registerOperatorRestRoutes(
     db: db,
     onConfigChanged: onConfigChanged,
   );
-  registerDisplayRemoteViewRoutes(r, db: db, secrets: secrets);
   registerDisplayLivePreviewRoutes(r, db: db);
   r.get('/v1/telemetry/integrations', (Request req) async {
     final limit = int.tryParse(req.url.queryParameters['limit'] ?? '') ?? 200;
@@ -402,7 +400,7 @@ void registerOperatorRestRoutes(
   });
 
   r.get('/v1/display/settings', (Request req) async {
-    final body = await readDisplayOperatorSettings(db, secrets: secrets);
+    final body = await readDisplayOperatorSettings(db);
     return Response.ok(
       jsonEncode(body),
       headers: {'content-type': 'application/json'},

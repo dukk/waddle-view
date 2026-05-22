@@ -75,20 +75,27 @@ When **user mode** is turned off, sign-in is disabled but server data remains. U
 
 ### Backup, restore, and Pi upgrades
 
-The **Backup & restore** tab under **Controller settings** (`/controller-settings?tab=backup`) compares the active display to the latest [GitHub release](https://github.com/dukk/waddle-view/releases), pulls **`.zip`** backups from displays into `WADDLE_CONTROLLER_DATA_DIR/backups/`, restores from stored copies or uploads, and can trigger **Pi arm64** in-band upgrades when the display reports `upgrade_capable: true`.
+**One-time backup/restore** (download from the display or upload a restore archive) lives under **Display settings → Backup & restore** (`/display-settings?tab=backup`) for the active display. Requires an adopted **admin** API key (`display.maintenance` on the display).
+
+**Scheduled backups and inventory** live under **Controller settings → Backup & restore** (`/controller-settings?tab=backup`):
+
+- Per-display schedule (every day/week or every 2 days/weeks, day-of-week, night-time window, timezone, retention count).
+- Pulls **`.zip`** archives from displays into `WADDLE_CONTROLLER_DATA_DIR/backups/{displayId}/` (filesystem; SQLite stores metadata only).
+- Bottom table lists all stored backups with download / restore / delete. Restore uses a confirmation dialog (overwrites display data).
+- Optional **Pi arm64** in-band upgrade when the display reports `upgrade_capable: true`.
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `GITHUB_TOKEN` or `GH_TOKEN` | — | Optional; raises GitHub API rate limits for release checks |
 | `WADDLE_CONTROLLER_BACKUP_MAX_BYTES` | `0` (no cap) | Reject pulled backups larger than this many bytes |
 
-Scheduled pulls use **`backup_targets`** in the BFF SQLite DB (cron `M H * * *` in the target timezone). Save a target from the UI (stores encrypted display API key on the server). When user mode is off, targets are global (`user_id` null); sign-in is not required for the BFF backup API in that mode.
+Scheduled pulls use **`backup_targets`** (structured schedule fields + encrypted display API key). New targets default to **once per week** on a random weekday between 02:00–04:59 in the chosen timezone. When user mode is off, targets are global (`user_id` null); sign-in is not required for the BFF backup API in that mode.
 
-### Live preview and remote view
+**Display list JSON** export/import on the Displays tab is separate from SQLite/media archives (`DisplaysBackupSection`).
 
-The **Remote** page shows a **live preview** when enabled on the display (view-only JPEG over WebSocket; no VNC). Enable it under **Controller settings → Displays → Edit → Live preview**, then connect from the Remote page or **Test live preview**. The stream uses the same ticket + API-key WebSocket proxy as remote view (`/bff/v1/proxy-ws/*`).
+### Live preview
 
-**Remote view (VNC)** remains available as a legacy option (websockify + noVNC, view-only in the controller). Configure host/port/path in the edit dialog when not using live preview.
+The **Remote** page shows a **live preview** when enabled on the display (view-only JPEG over WebSocket). Enable it under **Controller settings → Displays → Edit → Live preview**, then connect from the Remote page or **Test live preview**. The stream uses the ticket + API-key WebSocket proxy (`/bff/v1/proxy-ws/*`).
 
 ### Display pairing
 

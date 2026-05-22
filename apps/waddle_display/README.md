@@ -195,7 +195,6 @@ Returns **`404`** when the target row does not exist.
 - **Live preview (recommended)**: view-only JPEG stream from the Flutter window (`GET`/`POST` `/v1/display/live-preview*`, WebSocket `/v1/display/live-preview/ws?ticket=…`). Settings in `display.live_preview.*` KV and optional **`WADDLE_DISPLAY_LIVE_PREVIEW_*`** env (see **`.env.example`**). On Linux/Pi, install **GStreamer** (`gstreamer1.0-tools`, `gstreamer1.0-plugins-good` in [`deploy/linux-arm64/build-deps.txt`](../../deploy/linux-arm64/build-deps.txt)); capture uses `ximagesrc` against the `waddle_display` window (`xdotool` or **`WADDLE_DISPLAY_WINDOW_XID`**). Encoding runs only while a viewer is connected.
 
   **Pi manual check:** enable live preview in the controller, open **Remote → Connect**, rotate to a **web_page** slide and a **Pexels video** slide, and confirm the preview matches HDMI (both must render in the stream). If capture fails, set `WADDLE_DISPLAY_WINDOW_XID` from `xdotool search --name waddle_display` and ensure the display runs under X11 (not headless).
-- **Remote view (VNC, legacy)**: optional websockify relay (`GET`/`POST` `/v1/display/remote-view*`, WebSocket `/v1/display/remote-view/ws?ticket=…`). Settings in `display.remote_view.*` and **`WADDLE_DISPLAY_REMOTE_VIEW_*`**. Requires **websockify** + VNC on the device; controller noVNC is view-only.
 
 ### Display theme (`config_key_values`)
 

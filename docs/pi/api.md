@@ -154,11 +154,6 @@ These routes use the same **Bearer session** auth as other protected `/v1/*` pat
 | GET | `/v1/media/jokes/{id}` | JSON: `setup`, `punchline`, `category_id`. **404** if missing or suppressed. |
 | GET | `/v1/media/trivia/{id}` | JSON: `question`, `option_a`…`option_d`, `correct_option`, `category_id`. **404** if missing or suppressed. |
 | POST | `/v1/display/navigation` | Body: `{"surface":"screen"|"ticker","direction":"back"|"forward"}`. Enqueues UI navigation. **503** `navigation_unavailable` if the display was started without a navigation bus. |
-| GET | `/v1/display/remote-view` | Remote desktop (VNC via websockify) status: `configured`, `enabled`, `host`, `port`, `path`, `password_configured` (password is never returned). **400** when not configured for session creation. Requires `navigation.control`. |
-| POST | `/v1/display/remote-view/session` | Creates a short-lived ticket for the WebSocket relay. Response: `{ "ticket", "expires_at_ms" }`. Requires remote view enabled and `navigation.control`. |
-| GET (upgrade) | `/v1/display/remote-view/ws?ticket=…` | Authenticated WebSocket upgrade (Bearer API key + valid ticket). Relays frames to the configured websockify upstream. Ticket is single-use. |
-| PUT | `/v1/display/remote-view/password` | Body: `{ "value": "<vnc password>" }`. Stores encrypted password on the display. Requires `curator.write`. |
-| DELETE | `/v1/display/remote-view/password` | Clears stored VNC password. Requires `curator.write`. |
 | GET | `/v1/display/live-preview` | In-app live preview status: `configured`, `enabled`, `fps`, `width`, `quality`. Requires `navigation.control`. |
 | POST | `/v1/display/live-preview/session` | Creates a short-lived ticket for the JPEG WebSocket stream. Response: `{ "ticket", "expires_at_ms" }`. Requires live preview enabled and `navigation.control`. |
 | GET (upgrade) | `/v1/display/live-preview/ws?ticket=…` | Authenticated WebSocket (Bearer API key + valid ticket). Binary frames: 4-byte big-endian length + JPEG. View-only (no client input). Ticket is single-use. Capture starts when the socket opens and stops when it closes. |

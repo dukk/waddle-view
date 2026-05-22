@@ -1,11 +1,14 @@
 import { bffFetch, bffJson } from '@/api/bffClient';
+import type { BackupSchedule } from '@/util/backupSchedule';
+
+export type BackupTargetSchedule = BackupSchedule;
 
 export type BackupTarget = {
   id: string;
   displayId: string;
   label: string;
   baseUrl: string;
-  cronExpr: string;
+  schedule: BackupTargetSchedule;
   timezone: string;
   retentionCount: number;
   enabled: boolean;
@@ -20,6 +23,7 @@ export type BackupSnapshot = {
   id: string;
   targetId: string;
   displayId: string;
+  displayLabel: string;
   fileName: string;
   byteSize: number;
   manifest: Record<string, unknown> | null;
@@ -37,7 +41,7 @@ export async function saveBackupTarget(input: {
   label: string;
   baseUrl: string;
   apiKey: string;
-  cronExpr: string;
+  schedule: BackupTargetSchedule;
   timezone: string;
   retentionCount: number;
   enabled: boolean;
@@ -51,6 +55,11 @@ export async function saveBackupTarget(input: {
 
 export async function deleteBackupTarget(id: string): Promise<void> {
   await bffJson(`/backup-targets/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+export async function listAllBackupSnapshots(): Promise<BackupSnapshot[]> {
+  const body = await bffJson<{ snapshots: BackupSnapshot[] }>('/backup-snapshots');
+  return body.snapshots;
 }
 
 export async function listBackupSnapshots(targetId: string): Promise<BackupSnapshot[]> {

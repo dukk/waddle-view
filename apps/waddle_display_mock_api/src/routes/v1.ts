@@ -106,51 +106,6 @@ export function v1Router() {
     return c.json({});
   });
 
-  r.get('/display/remote-view', (c) => {
-    const scenario = c.get('scenario');
-    const bad = maybeErr(c, scenario);
-    if (bad) return bad;
-    const enabled = mockConfigKv.get('display.remote_view.enabled') === 'true';
-    return c.json({
-      configured: enabled,
-      enabled,
-      host: mockConfigKv.get('display.remote_view.host') ?? '127.0.0.1',
-      port: Number(mockConfigKv.get('display.remote_view.port') ?? '6080'),
-      path: mockConfigKv.get('display.remote_view.path') ?? '/',
-      password_configured: mockConfigKv.get('display.remote_view.password') === '1',
-    });
-  });
-
-  r.post('/display/remote-view/session', (c) => {
-    const scenario = c.get('scenario');
-    const bad = maybeErr(c, scenario);
-    if (bad) return bad;
-    const enabled = mockConfigKv.get('display.remote_view.enabled') === 'true';
-    if (!enabled) {
-      return c.json({ error: 'remote_view_not_configured' }, 400);
-    }
-    return c.json({
-      ticket: 'mock-remote-view-ticket',
-      expires_at_ms: Date.now() + 300_000,
-    });
-  });
-
-  r.put('/display/remote-view/password', async (c) => {
-    const scenario = c.get('scenario');
-    const bad = maybeErr(c, scenario);
-    if (bad) return bad;
-    mockConfigKv.set('display.remote_view.password', '1');
-    return c.json({});
-  });
-
-  r.delete('/display/remote-view/password', (c) => {
-    const scenario = c.get('scenario');
-    const bad = maybeErr(c, scenario);
-    if (bad) return bad;
-    mockConfigKv.delete('display.remote_view.password');
-    return c.json({});
-  });
-
   r.get('/display/live-preview', (c) => {
     const scenario = c.get('scenario');
     const bad = maybeErr(c, scenario);
@@ -331,12 +286,6 @@ export function v1Router() {
       controller_date_order,
       adoption_allowed_roles: ['viewer', 'power_viewer', 'operator', 'admin'],
       adoption_allow_new_requests: true,
-      display_remote_view_enabled: mockConfigKv.get('display.remote_view.enabled') === 'true',
-      display_remote_view_host: mockConfigKv.get('display.remote_view.host') ?? '127.0.0.1',
-      display_remote_view_port: Number(mockConfigKv.get('display.remote_view.port') ?? '6080'),
-      display_remote_view_path: mockConfigKv.get('display.remote_view.path') ?? '/',
-      display_remote_view_password_configured:
-        mockConfigKv.get('display.remote_view.password') === '1',
       display_live_preview_enabled:
         mockConfigKv.get('display.live_preview.enabled') === 'true',
       display_live_preview_fps: Number(mockConfigKv.get('display.live_preview.fps') ?? '10'),
@@ -495,21 +444,6 @@ export function v1Router() {
         if (sep === 'dot' || sep === 'diamond') {
           mockConfigKv.set('display.ticker.program_separator', sep);
         }
-      }
-      if (typeof body.display_remote_view_enabled === 'boolean') {
-        mockConfigKv.set(
-          'display.remote_view.enabled',
-          body.display_remote_view_enabled ? 'true' : 'false',
-        );
-      }
-      if (typeof body.display_remote_view_host === 'string') {
-        mockConfigKv.set('display.remote_view.host', body.display_remote_view_host.trim());
-      }
-      if (typeof body.display_remote_view_port === 'number') {
-        mockConfigKv.set('display.remote_view.port', String(body.display_remote_view_port));
-      }
-      if (typeof body.display_remote_view_path === 'string') {
-        mockConfigKv.set('display.remote_view.path', body.display_remote_view_path.trim());
       }
       if (typeof body.display_live_preview_enabled === 'boolean') {
         mockConfigKv.set(

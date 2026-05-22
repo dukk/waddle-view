@@ -40,11 +40,6 @@
       "license": "MIT"
     },
     {
-      "name": "@novnc/novnc",
-      "version": "1.7.0",
-      "license": "MPL-2.0"
-    },
-    {
       "name": "@rjsf/core",
       "version": "5.24.13",
       "license": "Apache-2.0"

@@ -164,7 +164,6 @@ export function LivePreviewPanel({
       const params = new URLSearchParams({
         displayId: display.id,
         ticket: session.ticket,
-        mode: 'live',
       });
       window.open(`${popOutPath}?${params.toString()}`, '_blank', 'noopener,noreferrer');
     } catch (e) {
@@ -224,7 +223,7 @@ export function LivePreviewPanel({
               </>
             ) : (
               <Typography variant="body2" color="grey.400">
-                View-only stream from the display app window (no VNC).
+                View-only stream from the display app window.
               </Typography>
             )}
           </Stack>

@@ -57,6 +57,11 @@ CREATE TABLE IF NOT EXISTS backup_targets (
   api_key_ciphertext TEXT NOT NULL,
   api_key_iv TEXT NOT NULL,
   cron_expr TEXT NOT NULL DEFAULT '0 2 * * *',
+  schedule_frequency TEXT NOT NULL DEFAULT 'weekly',
+  schedule_interval INTEGER NOT NULL DEFAULT 1,
+  schedule_day_of_week INTEGER,
+  schedule_hour INTEGER NOT NULL DEFAULT 2,
+  schedule_minute INTEGER NOT NULL DEFAULT 0,
   timezone TEXT NOT NULL DEFAULT 'UTC',
   retention_count INTEGER NOT NULL DEFAULT 3,
   enabled INTEGER NOT NULL DEFAULT 1,
@@ -101,7 +106,89 @@ function migrateUsersColumns(db: Database.Database): void {
   }
 }
 
+function migrateBackupTargetScheduleColumns(db: Database.Database): void {
+  if (!columnExists(db, 'backup_targets', 'schedule_frequency')) {
+    db.exec(
+      `ALTER TABLE backup_targets ADD COLUMN schedule_frequency TEXT NOT NULL DEFAULT 'weekly'`,
+    );
+  }
+  if (!columnExists(db, 'backup_targets', 'schedule_interval')) {
+    db.exec(`ALTER TABLE backup_targets ADD COLUMN schedule_interval INTEGER NOT NULL DEFAULT 1`);
+  }
+  if (!columnExists(db, 'backup_targets', 'schedule_day_of_week')) {
+    db.exec(`ALTER TABLE backup_targets ADD COLUMN schedule_day_of_week INTEGER`);
+  }
+  if (!columnExists(db, 'backup_targets', 'schedule_hour')) {
+    db.exec(`ALTER TABLE backup_targets ADD COLUMN schedule_hour INTEGER NOT NULL DEFAULT 2`);
+  }
+  if (!columnExists(db, 'backup_targets', 'schedule_minute')) {
+    db.exec(`ALTER TABLE backup_targets ADD COLUMN schedule_minute INTEGER NOT NULL DEFAULT 0`);
+  }
+}
+
 export function runMigrations(db: Database.Database): void {
   db.exec(SCHEMA_SQL);
   migrateUsersColumns(db);
+  migrateBackupTargetScheduleColumns(db);
+  backfillBackupTargetSchedules(db);
+}
+
+function parseCronForBackfill(cronExpr: string): {
+  frequency: string;
+  interval: number;
+  dayOfWeek: number | null;
+  hour: number;
+  minute: number;
+} | null {
+  const parts = cronExpr.trim().split(/\s+/);
+  if (parts.length !== 5) return null;
+  const [minutePart, hourPart, dom, month, dow] = parts;
+  if (dom !== '*' || month !== '*') return null;
+  const minute = Number.parseInt(minutePart, 10);
+  const hour = Number.parseInt(hourPart, 10);
+  if (!Number.isFinite(minute) || !Number.isFinite(hour)) return null;
+  if (dow === '*') {
+    return { frequency: 'daily', interval: 1, dayOfWeek: null, hour, minute };
+  }
+  const dayOfWeek = Number.parseInt(dow, 10);
+  if (!Number.isFinite(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6) return null;
+  return { frequency: 'weekly', interval: 1, dayOfWeek, hour, minute };
+}
+
+function backfillBackupTargetSchedules(db: Database.Database): void {
+  if (!columnExists(db, 'backup_targets', 'schedule_frequency')) return;
+
+  const rows = db.prepare('SELECT id, cron_expr FROM backup_targets').all() as {
+    id: string;
+    cron_expr: string;
+  }[];
+
+  const update = db.prepare(
+    `UPDATE backup_targets SET
+      schedule_frequency = ?,
+      schedule_interval = ?,
+      schedule_day_of_week = ?,
+      schedule_hour = ?,
+      schedule_minute = ?
+     WHERE id = ?`,
+  );
+
+  for (const row of rows) {
+    const parsed = parseCronForBackfill(row.cron_expr);
+    if (!parsed) {
+      const dow = Math.floor(Math.random() * 7);
+      const hour = 2 + Math.floor(Math.random() * 3);
+      const minute = Math.floor(Math.random() * 60);
+      update.run('weekly', 1, dow, hour, minute, row.id);
+      continue;
+    }
+    update.run(
+      parsed.frequency,
+      parsed.interval,
+      parsed.dayOfWeek,
+      parsed.hour,
+      parsed.minute,
+      row.id,
+    );
+  }
 }

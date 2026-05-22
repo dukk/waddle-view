@@ -22,11 +22,8 @@ import { useDisplay } from '@/context/DisplayContext';
 import { useAuth } from '@/context/AuthContext';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { LivePreviewPanel } from '@/components/remote/LivePreviewPanel';
-import { RemoteViewPanel } from '@/components/remote/RemoteViewPanel';
 import { fetchLivePreviewInfo } from '@/api/displayLivePreview';
 import type { LivePreviewInfo } from '@/api/displayLivePreview';
-import { fetchRemoteViewInfo } from '@/api/displayRemoteView';
-import type { RemoteViewInfo } from '@/api/displayRemoteView';
 import { dismissActiveDisplayAlert, postDisplayNavigation } from '@/util/displayRemote';
 
 export function RemoteControlPage() {
@@ -35,9 +32,8 @@ export function RemoteControlPage() {
   const theme = useTheme();
   const wide = useMediaQuery(theme.breakpoints.up('md'));
   const [navSnack, setNavSnack] = useState<string | null>(null);
-  const [remoteInfo, setRemoteInfo] = useState<RemoteViewInfo | null>(null);
   const [livePreviewInfo, setLivePreviewInfo] = useState<LivePreviewInfo | null>(null);
-  const [remoteLoadError, setRemoteLoadError] = useState<string | null>(null);
+  const [previewLoadError, setPreviewLoadError] = useState<string | null>(null);
 
   const runRemote = useCallback(
     async (action: () => Promise<string | null>) => {
@@ -50,27 +46,21 @@ export function RemoteControlPage() {
 
   useEffect(() => {
     if (!active || !hasPermission('navigation.control')) {
-      setRemoteInfo(null);
       setLivePreviewInfo(null);
       return;
     }
     let cancelled = false;
     void (async () => {
       try {
-        const [remote, live] = await Promise.all([
-          fetchRemoteViewInfo(active),
-          fetchLivePreviewInfo(active),
-        ]);
+        const live = await fetchLivePreviewInfo(active);
         if (!cancelled) {
-          setRemoteInfo(remote);
           setLivePreviewInfo(live);
-          setRemoteLoadError(null);
+          setPreviewLoadError(null);
         }
       } catch (e) {
         if (!cancelled) {
-          setRemoteInfo(null);
           setLivePreviewInfo(null);
-          setRemoteLoadError(String(e));
+          setPreviewLoadError(String(e));
         }
       }
     })();
@@ -94,8 +84,6 @@ export function RemoteControlPage() {
 
   const canDismissAlerts = hasPermission('alerts.write');
   const livePreviewConfigured = livePreviewInfo?.configured === true;
-  const remoteConfigured = remoteInfo?.configured === true;
-  const viewConfigured = livePreviewConfigured || remoteConfigured;
 
   const controls = (
     <Stack spacing={3} sx={{ maxWidth: wide ? 480 : undefined }}>
@@ -117,9 +105,9 @@ export function RemoteControlPage() {
         </Typography>
       </Box>
 
-      {remoteLoadError && (
+      {previewLoadError && (
         <Alert severity="warning" sx={{ maxWidth: 720 }}>
-          Could not load remote view settings: {remoteLoadError}
+          Could not load live preview settings: {previewLoadError}
         </Alert>
       )}
 
@@ -213,23 +201,16 @@ export function RemoteControlPage() {
     </Stack>
   );
 
-  const remoteViewSection = viewConfigured ? (
+  const livePreviewSection = livePreviewConfigured ? (
     <Paper variant="outlined" sx={{ p: 2, minHeight: 420 }}>
       <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
-        {livePreviewConfigured ? 'Live preview' : 'Remote view (VNC)'}
+        Live preview
       </Typography>
-      {livePreviewConfigured ? (
-        <LivePreviewPanel display={active} />
-      ) : (
-        <RemoteViewPanel
-          display={active}
-          passwordConfigured={remoteInfo?.password_configured}
-        />
-      )}
+      <LivePreviewPanel display={active} />
     </Paper>
   ) : null;
 
-  if (!viewConfigured) {
+  if (!livePreviewConfigured) {
     return controls;
   }
 
@@ -240,7 +221,7 @@ export function RemoteControlPage() {
           {controls}
         </Grid>
         <Grid item xs={12} md={7}>
-          {remoteViewSection}
+          {livePreviewSection}
         </Grid>
       </Grid>
     );
@@ -249,7 +230,7 @@ export function RemoteControlPage() {
   return (
     <Stack spacing={3}>
       {controls}
-      {remoteViewSection}
+      {livePreviewSection}
     </Stack>
   );
 }

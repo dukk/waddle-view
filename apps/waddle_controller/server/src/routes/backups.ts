@@ -12,9 +12,12 @@ import {
   deleteSnapshot,
   findSnapshot,
   insertSnapshot,
+  listAllBackupSnapshots,
   listSnapshotsForTarget,
+  pruneSnapshotsForTarget,
   readSnapshotBytes,
 } from '../services/backupSnapshots.js';
+import type { BackupScheduleFields } from '../services/backupSchedule.js';
 import { pullBackupFromDisplay, restoreSnapshotToDisplay } from '../services/displayBackupPull.js';
 import type { PublicUser } from '../types.js';
 
@@ -80,7 +83,7 @@ export function backupsRoutes() {
       label?: string;
       baseUrl?: string;
       apiKey?: string;
-      cronExpr?: string;
+      schedule?: Partial<BackupScheduleFields>;
       timezone?: string;
       retentionCount?: number;
       enabled?: boolean;
@@ -89,7 +92,7 @@ export function backupsRoutes() {
       label?: string;
       baseUrl?: string;
       apiKey?: string;
-      cronExpr?: string;
+      schedule?: Partial<BackupScheduleFields>;
       timezone?: string;
       retentionCount?: number;
       enabled?: boolean;
@@ -107,12 +110,20 @@ export function backupsRoutes() {
       label,
       baseUrl,
       apiKey,
-      cronExpr: body.cronExpr?.trim() || '0 2 * * *',
+      schedule: body.schedule,
       timezone: body.timezone?.trim() || 'UTC',
       retentionCount: body.retentionCount ?? 3,
       enabled: body.enabled !== false,
     });
     return c.json({ target });
+  });
+
+  protectedRoutes.get('/backup-snapshots', (c) => {
+    const uid = userIdForRequest(c);
+    if (c.get('config').authEnabled && uid == null) {
+      return c.json({ error: 'Unauthorized', code: 'unauthorized' }, 401);
+    }
+    return c.json({ snapshots: listAllBackupSnapshots(c.get('db'), uid) });
   });
 
   protectedRoutes.delete('/backup-targets/:id', (c) => {
@@ -133,7 +144,9 @@ export function backupsRoutes() {
     if (!target) {
       return c.json({ error: 'Not found', code: 'not_found' }, 404);
     }
-    return c.json({ snapshots: listSnapshotsForTarget(c.get('db'), target.id) });
+    return c.json({
+      snapshots: listSnapshotsForTarget(c.get('db'), target.id, target.label),
+    });
   });
 
   protectedRoutes.post('/backup-targets/:id/pull-now', async (c) => {
@@ -229,7 +242,8 @@ export function backupsRoutes() {
       fileName: `upload_${Date.now()}.zip`,
       source: 'upload',
     });
-    return c.json({ snapshot: snap });
+    pruneSnapshotsForTarget(c.get('db'), target.id, target.retention_count);
+    return c.json({ snapshot: { ...snap, displayLabel: target.label } });
   });
 
   app.route('/', protectedRoutes);

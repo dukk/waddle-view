@@ -3,6 +3,13 @@ import type { AppConfig } from '../config.js';
 import type { AppDatabase } from '../db/database.js';
 import { decryptDisplayApiKey, encryptDisplayApiKey } from './displaySecrets.js';
 import { normalizeDisplayBaseUrl } from '../constants/proxyHeaders.js';
+import {
+  buildDefaultBackupSchedule,
+  normalizeScheduleInput,
+  scheduleToCronExpr,
+  type BackupScheduleFields,
+  type BackupSchedulePublic,
+} from './backupSchedule.js';
 
 export type BackupTargetRow = {
   id: string;
@@ -13,6 +20,11 @@ export type BackupTargetRow = {
   api_key_ciphertext: string;
   api_key_iv: string;
   cron_expr: string;
+  schedule_frequency: string;
+  schedule_interval: number;
+  schedule_day_of_week: number | null;
+  schedule_hour: number;
+  schedule_minute: number;
   timezone: string;
   retention_count: number;
   enabled: number;
@@ -28,7 +40,7 @@ export type BackupTargetPublic = {
   displayId: string;
   label: string;
   baseUrl: string;
-  cronExpr: string;
+  schedule: BackupSchedulePublic;
   timezone: string;
   retentionCount: number;
   enabled: boolean;
@@ -39,13 +51,23 @@ export type BackupTargetPublic = {
   updatedAt: string;
 };
 
+export function rowScheduleFields(row: BackupTargetRow): BackupScheduleFields {
+  return {
+    frequency: row.schedule_frequency === 'daily' ? 'daily' : 'weekly',
+    interval: row.schedule_interval,
+    dayOfWeek: row.schedule_day_of_week,
+    hour: row.schedule_hour,
+    minute: row.schedule_minute,
+  };
+}
+
 function toPublic(row: BackupTargetRow): BackupTargetPublic {
   return {
     id: row.id,
     displayId: row.display_id,
     label: row.label,
     baseUrl: row.base_url,
-    cronExpr: row.cron_expr,
+    schedule: rowScheduleFields(row),
     timezone: row.timezone,
     retentionCount: row.retention_count,
     enabled: row.enabled === 1,
@@ -115,7 +137,7 @@ export function upsertBackupTarget(
     label: string;
     baseUrl: string;
     apiKey: string;
-    cronExpr: string;
+    schedule?: Partial<BackupScheduleFields>;
     timezone: string;
     retentionCount: number;
     enabled: boolean;
@@ -125,32 +147,50 @@ export function upsertBackupTarget(
   const baseUrl = normalizeDisplayBaseUrl(input.baseUrl);
   const { ciphertext, iv } = encryptDisplayApiKey(config.sessionSecret, input.apiKey);
   const existing = findBackupTargetByDisplayId(db, input.displayId, input.userId);
+
+  const schedule = normalizeScheduleInput(
+    input.schedule,
+    existing ? rowScheduleFields(existing) : buildDefaultBackupSchedule(),
+  );
+  const cronExpr = scheduleToCronExpr(schedule);
+  const tz = input.timezone.trim() || 'UTC';
+  const retention = Math.max(1, Math.min(100, input.retentionCount));
+
   if (existing) {
     db.prepare(
       `UPDATE backup_targets SET
         label = ?, base_url = ?, api_key_ciphertext = ?, api_key_iv = ?,
-        cron_expr = ?, timezone = ?, retention_count = ?, enabled = ?, updated_at = ?
+        cron_expr = ?, schedule_frequency = ?, schedule_interval = ?,
+        schedule_day_of_week = ?, schedule_hour = ?, schedule_minute = ?,
+        timezone = ?, retention_count = ?, enabled = ?, updated_at = ?
        WHERE id = ?`,
     ).run(
       input.label,
       baseUrl,
       ciphertext,
       iv,
-      input.cronExpr,
-      input.timezone,
-      Math.max(1, Math.min(100, input.retentionCount)),
+      cronExpr,
+      schedule.frequency,
+      schedule.interval,
+      schedule.dayOfWeek,
+      schedule.hour,
+      schedule.minute,
+      tz,
+      retention,
       input.enabled ? 1 : 0,
       now,
       existing.id,
     );
     return toPublic(findBackupTarget(db, existing.id, input.userId)!);
   }
+
   const id = randomUUID();
   db.prepare(
     `INSERT INTO backup_targets (
       id, user_id, display_id, label, base_url, api_key_ciphertext, api_key_iv,
-      cron_expr, timezone, retention_count, enabled, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      cron_expr, schedule_frequency, schedule_interval, schedule_day_of_week,
+      schedule_hour, schedule_minute, timezone, retention_count, enabled, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     input.userId,
@@ -159,9 +199,14 @@ export function upsertBackupTarget(
     baseUrl,
     ciphertext,
     iv,
-    input.cronExpr,
-    input.timezone,
-    Math.max(1, Math.min(100, input.retentionCount)),
+    cronExpr,
+    schedule.frequency,
+    schedule.interval,
+    schedule.dayOfWeek,
+    schedule.hour,
+    schedule.minute,
+    tz,
+    retention,
     input.enabled ? 1 : 0,
     now,
     now,

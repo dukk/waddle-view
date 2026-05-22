@@ -20,6 +20,7 @@ export type BackupSnapshotPublic = {
   id: string;
   targetId: string;
   displayId: string;
+  displayLabel: string;
   fileName: string;
   byteSize: number;
   manifest: Record<string, unknown> | null;
@@ -27,7 +28,7 @@ export type BackupSnapshotPublic = {
   createdAt: string;
 };
 
-function toPublic(row: BackupSnapshotRow): BackupSnapshotPublic {
+function toPublic(row: BackupSnapshotRow, displayLabel?: string): BackupSnapshotPublic {
   let manifest: Record<string, unknown> | null = null;
   if (row.manifest_json) {
     try {
@@ -40,6 +41,7 @@ function toPublic(row: BackupSnapshotRow): BackupSnapshotPublic {
     id: row.id,
     targetId: row.target_id,
     displayId: row.display_id,
+    displayLabel: displayLabel ?? row.display_id,
     fileName: row.file_name,
     byteSize: row.byte_size,
     manifest,
@@ -63,13 +65,40 @@ export function snapshotDirForDisplay(
 export function listSnapshotsForTarget(
   db: AppDatabase,
   targetId: string,
+  displayLabel?: string,
 ): BackupSnapshotPublic[] {
   const rows = db
     .prepare(
       'SELECT * FROM backup_snapshots WHERE target_id = ? ORDER BY created_at DESC',
     )
     .all(targetId) as BackupSnapshotRow[];
-  return rows.map(toPublic);
+  return rows.map((r) => toPublic(r, displayLabel));
+}
+
+export function listAllBackupSnapshots(
+  db: AppDatabase,
+  userId: string | null,
+): BackupSnapshotPublic[] {
+  const rows = userId
+    ? (db
+        .prepare(
+          `SELECT s.*, t.label AS display_label
+           FROM backup_snapshots s
+           INNER JOIN backup_targets t ON s.target_id = t.id
+           WHERE t.user_id = ?
+           ORDER BY s.created_at DESC`,
+        )
+        .all(userId) as (BackupSnapshotRow & { display_label: string })[])
+    : (db
+        .prepare(
+          `SELECT s.*, t.label AS display_label
+           FROM backup_snapshots s
+           INNER JOIN backup_targets t ON s.target_id = t.id
+           WHERE t.user_id IS NULL
+           ORDER BY s.created_at DESC`,
+        )
+        .all() as (BackupSnapshotRow & { display_label: string })[]);
+  return rows.map((r) => toPublic(r, r.display_label));
 }
 
 export function findSnapshot(

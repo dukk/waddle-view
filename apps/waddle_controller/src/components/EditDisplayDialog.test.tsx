@@ -9,7 +9,7 @@ vi.mock('@/api/displaySettings', () => ({
 }));
 
 describe('EditDisplayDialog', () => {
-  it('loads remote view settings once on mount for adopted displays', async () => {
+  it('loads live preview settings once on mount for adopted displays', async () => {
     const display = addDisplay({ baseUrl: 'https://display.test/', label: 'Lab' });
     applyDisplayAdoption(display.id, {
       apiKey: 'wd_test_key',
@@ -18,11 +18,10 @@ describe('EditDisplayDialog', () => {
     });
 
     vi.mocked(displaySettingsApi.fetchDisplaySettings).mockResolvedValue({
-      display_remote_view_enabled: false,
-      display_remote_view_host: '127.0.0.1',
-      display_remote_view_port: 6080,
-      display_remote_view_path: '/',
-      display_remote_view_password_configured: false,
+      display_live_preview_enabled: false,
+      display_live_preview_fps: 10,
+      display_live_preview_width: 1280,
+      display_live_preview_quality: 75,
     });
 
     render(

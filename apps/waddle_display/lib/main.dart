@@ -15,11 +15,9 @@ import 'alerts/alert_severity_icons_kv.dart';
 import 'alerts/drift_alert_repository.dart';
 import 'api/display_instance_id_source.dart';
 import 'api/display_live_preview_ws.dart';
-import 'api/display_remote_view_ws.dart';
 import 'api/local_rest_server.dart';
 import 'config/display_live_preview_env.dart';
 import 'preview/live_preview_boundary.dart';
-import 'config/display_remote_view_env.dart';
 import 'package:waddle_shared/auth/adoption_repository.dart';
 import 'package:waddle_shared/auth/cors_origin_repository.dart';
 import 'api/network_addressing.dart';
@@ -234,7 +232,6 @@ Future<void> _waddleBootstrap() async {
         await curatorSelectionRefresh.notify();
       });
     }
-    applyDisplayRemoteViewEnvDefaults(envMap);
     applyDisplayLivePreviewEnvDefaults(envMap);
     final databaseFile = File(p.join(support.path, 'waddle_display.db'));
     final handler = buildRootHandler(
@@ -261,9 +258,6 @@ Future<void> _waddleBootstrap() async {
       port: httpConfig.port,
       displayHost: httpConfig.displayHost,
       tls: httpConfig.tls,
-      remoteViewGateway: adoption != null
-          ? DisplayRemoteViewWebSocketGateway(adoption: adoption)
-          : null,
       livePreviewGateway: adoption != null
           ? DisplayLivePreviewWebSocketGateway(adoption: adoption)
           : null,
