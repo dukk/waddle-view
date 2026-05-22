@@ -63,16 +63,13 @@ void registerOperatorRestRoutes(
   registerIntegrationAccountsRestRoutes(r, db: db, secrets: secrets);
   registerIntegrationOAuthProvidersRestRoutes(r, secrets: secrets);
   registerMealviewerRestRoutes(r);
-  registerDisplayThemesRestRoutes(
-    r,
-    db: db,
-    onConfigChanged: onConfigChanged,
-  );
+  registerDisplayThemesRestRoutes(r, db: db, onConfigChanged: onConfigChanged);
   registerDisplayLivePreviewRoutes(r, db: db);
   r.get('/v1/telemetry/integrations', (Request req) async {
     final limit = int.tryParse(req.url.queryParameters['limit'] ?? '') ?? 200;
     final sinceMs = int.tryParse(req.url.queryParameters['since_ms'] ?? '');
-    final items = telemetryHub?.snapshotIntegrationLines(
+    final items =
+        telemetryHub?.snapshotIntegrationLines(
           limit: limit.clamp(1, 2000),
           sinceMs: sinceMs,
         ) ??
@@ -84,9 +81,12 @@ void registerOperatorRestRoutes(
   });
 
   r.get('/v1/telemetry/programs', (Request req) async {
-    final limit = int.tryParse(req.url.queryParameters['limit'] ?? '') ?? 50;
+    final limit =
+        int.tryParse(req.url.queryParameters['limit'] ?? '') ??
+        kDefaultOperatorTelemetryProgramLimit;
     final sinceMs = int.tryParse(req.url.queryParameters['since_ms'] ?? '');
-    final items = telemetryHub?.snapshotScreenPrograms(
+    final items =
+        telemetryHub?.snapshotScreenPrograms(
           limit: limit.clamp(1, 500),
           sinceMs: sinceMs,
         ) ??
@@ -98,9 +98,12 @@ void registerOperatorRestRoutes(
   });
 
   r.get('/v1/telemetry/ticker-programs', (Request req) async {
-    final limit = int.tryParse(req.url.queryParameters['limit'] ?? '') ?? 50;
+    final limit =
+        int.tryParse(req.url.queryParameters['limit'] ?? '') ??
+        kDefaultOperatorTelemetryProgramLimit;
     final sinceMs = int.tryParse(req.url.queryParameters['since_ms'] ?? '');
-    final items = telemetryHub?.snapshotTickerPrograms(
+    final items =
+        telemetryHub?.snapshotTickerPrograms(
           limit: limit.clamp(1, 500),
           sinceMs: sinceMs,
         ) ??
@@ -123,15 +126,19 @@ void registerOperatorRestRoutes(
     try {
       final decoded = jsonDecode(await req.readAsString());
       if (decoded is! Map<String, dynamic>) {
-        return Response(400,
-            body: '{"error":"expected_json_object"}',
-            headers: {'content-type': 'application/json'});
+        return Response(
+          400,
+          body: '{"error":"expected_json_object"}',
+          headers: {'content-type': 'application/json'},
+        );
       }
       map = decoded;
     } catch (_) {
-      return Response(400,
-          body: '{"error":"invalid_json"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"invalid_json"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     final surface = map['surface'] as String?;
     final direction = map['direction'] as String?;
@@ -141,9 +148,11 @@ void registerOperatorRestRoutes(
       _ => null,
     };
     if (delta == null) {
-      return Response(400,
-          body: '{"error":"direction_must_be_back_or_forward"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"direction_must_be_back_or_forward"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     switch (surface) {
       case 'screen':
@@ -151,9 +160,11 @@ void registerOperatorRestRoutes(
       case 'ticker':
         navigationBus.enqueueTickerNav(delta);
       default:
-        return Response(400,
-            body: '{"error":"surface_must_be_screen_or_ticker"}',
-            headers: {'content-type': 'application/json'});
+        return Response(
+          400,
+          body: '{"error":"surface_must_be_screen_or_ticker"}',
+          headers: {'content-type': 'application/json'},
+        );
     }
     return Response.ok('{}', headers: {'content-type': 'application/json'});
   });
@@ -167,18 +178,14 @@ void registerOperatorRestRoutes(
 
   r.get('/v1/meta/screen-types', (Request req) async {
     return Response.ok(
-      jsonEncode({
-        'items': await buildScreenTypeConfigJsonMetaItemsFromDb(db),
-      }),
+      jsonEncode({'items': await buildScreenTypeConfigJsonMetaItemsFromDb(db)}),
       headers: {'content-type': 'application/json'},
     );
   });
 
   r.get('/v1/meta/ticker-tape-types', (Request req) async {
     return Response.ok(
-      jsonEncode({
-        'items': await buildTickerTypeConfigJsonMetaItemsFromDb(db),
-      }),
+      jsonEncode({'items': await buildTickerTypeConfigJsonMetaItemsFromDb(db)}),
       headers: {'content-type': 'application/json'},
     );
   });
@@ -194,12 +201,12 @@ void registerOperatorRestRoutes(
 
   r.get('/v1/ticker/tapes', (Request req) async {
     final includeDocs = includeConfigSchemaFromRequest(req);
-    final rows = await (db.select(db.tickerTapes)
-          ..orderBy([
-            (t) => OrderingTerm.asc(t.sortOrder),
-            (t) => OrderingTerm.asc(t.id),
-          ]))
-        .get();
+    final rows =
+        await (db.select(db.tickerTapes)..orderBy([
+              (t) => OrderingTerm.asc(t.sortOrder),
+              (t) => OrderingTerm.asc(t.id),
+            ]))
+            .get();
     final typeSchemas = <String, String?>{};
     if (includeDocs) {
       final typeRows = await db.select(db.tickerTapeTypes).get();
@@ -236,50 +243,67 @@ void registerOperatorRestRoutes(
     try {
       final decoded = jsonDecode(await req.readAsString());
       if (decoded is! Map<String, dynamic>) {
-        return Response(400,
-            body: '{"error":"expected_json_object"}',
-            headers: {'content-type': 'application/json'});
+        return Response(
+          400,
+          body: '{"error":"expected_json_object"}',
+          headers: {'content-type': 'application/json'},
+        );
       }
       map = decoded;
     } catch (_) {
-      return Response(400,
-          body: '{"error":"invalid_json"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"invalid_json"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     var id = (map['id'] as String?)?.trim() ?? '';
     final label = (map['label'] as String?)?.trim() ?? '';
     final tickerType = (map['ticker_type'] as String?)?.trim() ?? '';
     if (tickerType.isEmpty) {
-      return Response(400,
-          body: '{"error":"ticker_type_required"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"ticker_type_required"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     if (id.isEmpty) {
       if (label.isEmpty) {
-        return Response(400,
-            body: '{"error":"label_required"}',
-            headers: {'content-type': 'application/json'});
+        return Response(
+          400,
+          body: '{"error":"label_required"}',
+          headers: {'content-type': 'application/json'},
+        );
       }
-      final existingIds = await (db.select(db.tickerTapes)).map((r) => r.id).get();
+      final existingIds = await (db.select(
+        db.tickerTapes,
+      )).map((r) => r.id).get();
       id = allocateTickerTapeIdFromName(label, existingIds);
       if (id.isEmpty) {
-        return Response(400,
-            body: '{"error":"invalid_label"}',
-            headers: {'content-type': 'application/json'});
+        return Response(
+          400,
+          body: '{"error":"invalid_label"}',
+          headers: {'content-type': 'application/json'},
+        );
       }
     }
     await ensureTickerTapeTypes(db);
     if (!await tickerTypeExists(db, tickerType)) {
-      return Response(400,
-          body: '{"error":"unknown_ticker_type"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"unknown_ticker_type"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
-    final dup = await (db.select(db.tickerTapes)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final dup = await (db.select(
+      db.tickerTapes,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (dup != null) {
-      return Response(409,
-          body: '{"error":"id_already_exists"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        409,
+        body: '{"error":"id_already_exists"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     final description = (map['description'] as String?)?.trim() ?? '';
     final frequencyWeight = (map['frequency_weight'] as num?)?.toInt() ?? 100;
@@ -290,12 +314,16 @@ void registerOperatorRestRoutes(
       try {
         configJsonStr = _configJsonStringFromBody(map['config_json']);
       } on FormatException {
-        return Response(400,
-            body: '{"error":"config_json_must_be_string_or_object"}',
-            headers: {'content-type': 'application/json'});
+        return Response(
+          400,
+          body: '{"error":"config_json_must_be_string_or_object"}',
+          headers: {'content-type': 'application/json'},
+        );
       }
     }
-    await db.into(db.tickerTapes).insert(
+    await db
+        .into(db.tickerTapes)
+        .insert(
           TickerTapesCompanion.insert(
             id: id,
             label: resolvedLabel,
@@ -311,27 +339,33 @@ void registerOperatorRestRoutes(
   });
 
   r.patch('/v1/ticker/tapes/<id>', (Request req, String id) async {
-    final existing = await (db.select(db.tickerTapes)
-          ..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final existing = await (db.select(
+      db.tickerTapes,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (existing == null) {
-      return Response(404,
-          body: '{"error":"not_found"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     Map<String, dynamic> map;
     try {
       final decoded = jsonDecode(await req.readAsString());
       if (decoded is! Map<String, dynamic>) {
-        return Response(400,
-            body: '{"error":"expected_json_object"}',
-            headers: {'content-type': 'application/json'});
+        return Response(
+          400,
+          body: '{"error":"expected_json_object"}',
+          headers: {'content-type': 'application/json'},
+        );
       }
       map = decoded;
     } catch (_) {
-      return Response(400,
-          body: '{"error":"invalid_json"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"invalid_json"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     final weight = map.containsKey('frequency_weight')
         ? (map['frequency_weight'] as num?)?.toInt()
@@ -349,15 +383,19 @@ void registerOperatorRestRoutes(
         ? (map['ticker_type'] as String?)?.trim() ?? existing.tickerType
         : existing.tickerType;
     if (weight == null || sortOrder == null) {
-      return Response(400,
-          body: '{"error":"invalid_fields"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"invalid_fields"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     await ensureTickerTapeTypes(db);
     if (!await tickerTypeExists(db, tickerType)) {
-      return Response(400,
-          body: '{"error":"unknown_ticker_type"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"unknown_ticker_type"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     final Value<String> configJsonVal;
     if (!map.containsKey('config_json')) {
@@ -368,7 +406,10 @@ void registerOperatorRestRoutes(
       } on FormatException catch (e) {
         return Response(
           400,
-          body: jsonEncode({'error': 'invalid_config_json', 'detail': e.message}),
+          body: jsonEncode({
+            'error': 'invalid_config_json',
+            'detail': e.message,
+          }),
           headers: {'content-type': 'application/json'},
         );
       }
@@ -388,12 +429,15 @@ void registerOperatorRestRoutes(
   });
 
   r.delete('/v1/ticker/tapes/<id>', (Request req, String id) async {
-    final n =
-        await (db.delete(db.tickerTapes)..where((t) => t.id.equals(id))).go();
+    final n = await (db.delete(
+      db.tickerTapes,
+    )..where((t) => t.id.equals(id))).go();
     if (n == 0) {
-      return Response(404,
-          body: '{"error":"not_found"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     await onConfigChanged();
     return Response.ok('{}', headers: {'content-type': 'application/json'});
@@ -412,27 +456,35 @@ void registerOperatorRestRoutes(
     try {
       final decoded = jsonDecode(await req.readAsString());
       if (decoded is! Map<String, dynamic>) {
-        return Response(400,
-            body: '{"error":"expected_json_object"}',
-            headers: {'content-type': 'application/json'});
+        return Response(
+          400,
+          body: '{"error":"expected_json_object"}',
+          headers: {'content-type': 'application/json'},
+        );
       }
       body = decoded;
     } catch (_) {
-      return Response(400,
-          body: '{"error":"invalid_json"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"invalid_json"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     try {
       final touched = await applyDisplayOperatorSettingsPut(db, body);
       if (!touched) {
-        return Response(400,
-            body: '{"error":"no_display_settings_fields"}',
-            headers: {'content-type': 'application/json'});
+        return Response(
+          400,
+          body: '{"error":"no_display_settings_fields"}',
+          headers: {'content-type': 'application/json'},
+        );
       }
     } on DisplayThemeUnknownIdException {
-      return Response(400,
-          body: '{"error":"unknown_display_theme_id"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"unknown_display_theme_id"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     await onConfigChanged();
     return Response.ok('{}', headers: {'content-type': 'application/json'});
@@ -462,35 +514,45 @@ void registerOperatorRestRoutes(
     try {
       final decoded = jsonDecode(await req.readAsString());
       if (decoded is! Map<String, dynamic>) {
-        return Response(400,
-            body: '{"error":"expected_json_object"}',
-            headers: {'content-type': 'application/json'});
+        return Response(
+          400,
+          body: '{"error":"expected_json_object"}',
+          headers: {'content-type': 'application/json'},
+        );
       }
       body = decoded;
     } catch (_) {
-      return Response(400,
-          body: '{"error":"invalid_json"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"invalid_json"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     final id = '${body['id'] ?? ''}'.trim();
     final label = '${body['label'] ?? ''}'.trim();
     if (id.isEmpty || label.isEmpty) {
-      return Response(400,
-          body: '{"error":"id_and_label_required"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"id_and_label_required"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     if (!_isValidCuratorCategoryId(id)) {
-      return Response(400,
-          body: '{"error":"invalid_category_id"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"invalid_category_id"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
-    final existing = await (db.select(db.contentCategories)
-          ..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final existing = await (db.select(
+      db.contentCategories,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (existing != null) {
-      return Response(409,
-          body: '{"error":"category_id_exists"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        409,
+        body: '{"error":"category_id_exists"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     String? material;
     final rawMat = body['material_icon_name'];
@@ -504,7 +566,9 @@ void registerOperatorRestRoutes(
       final s = '$rawIcon'.trim();
       iconKey = s.isEmpty ? null : s;
     }
-    await db.into(db.contentCategories).insert(
+    await db
+        .into(db.contentCategories)
+        .insert(
           ContentCategoriesCompanion.insert(
             id: id,
             label: label,
@@ -517,35 +581,43 @@ void registerOperatorRestRoutes(
   });
 
   r.patch('/v1/curator/categories/<id>', (Request req, String id) async {
-    final existing = await (db.select(db.contentCategories)
-          ..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final existing = await (db.select(
+      db.contentCategories,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (existing == null) {
-      return Response(404,
-          body: '{"error":"not_found"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     Map<String, dynamic> body;
     try {
       final decoded = jsonDecode(await req.readAsString());
       if (decoded is! Map<String, dynamic>) {
-        return Response(400,
-            body: '{"error":"expected_json_object"}',
-            headers: {'content-type': 'application/json'});
+        return Response(
+          400,
+          body: '{"error":"expected_json_object"}',
+          headers: {'content-type': 'application/json'},
+        );
       }
       body = decoded;
     } catch (_) {
-      return Response(400,
-          body: '{"error":"invalid_json"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"invalid_json"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     final label = body.containsKey('label')
         ? '${body['label']}'.trim()
         : existing.label;
     if (label.isEmpty) {
-      return Response(400,
-          body: '{"error":"invalid_label"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"invalid_label"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     String? material;
     if (body.containsKey('material_icon_name')) {
@@ -567,7 +639,9 @@ void registerOperatorRestRoutes(
     } else {
       iconKey = existing.iconBlobKey;
     }
-    await (db.update(db.contentCategories)..where((t) => t.id.equals(id))).write(
+    await (db.update(
+      db.contentCategories,
+    )..where((t) => t.id.equals(id))).write(
       ContentCategoriesCompanion(
         label: Value(label),
         materialIconName: Value(material),
@@ -580,31 +654,37 @@ void registerOperatorRestRoutes(
 
   r.delete('/v1/curator/categories/<id>', (Request req, String id) async {
     if (_reservedCuratorCategoryIds.contains(id)) {
-      return Response(403,
-          body: '{"error":"reserved_category"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        403,
+        body: '{"error":"reserved_category"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     if (await calendarCategoryIdInUse(db, id)) {
-      return Response(409,
-          body: '{"error":"category_in_use_calendar"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        409,
+        body: '{"error":"category_in_use_calendar"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
-    final n =
-        await (db.delete(db.contentCategories)..where((t) => t.id.equals(id)))
-            .go();
+    final n = await (db.delete(
+      db.contentCategories,
+    )..where((t) => t.id.equals(id))).go();
     if (n == 0) {
-      return Response(404,
-          body: '{"error":"not_found"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     await onConfigChanged();
     return Response.ok('{}', headers: {'content-type': 'application/json'});
   });
 
   r.get('/v1/config/key-values', (Request req) async {
-    final rows = await (db.select(db.configKeyValues)
-          ..orderBy([(t) => OrderingTerm.asc(t.key)]))
-        .get();
+    final rows = await (db.select(
+      db.configKeyValues,
+    )..orderBy([(t) => OrderingTerm.asc(t.key)])).get();
     return Response.ok(
       jsonEncode({
         'items': [
@@ -620,39 +700,48 @@ void registerOperatorRestRoutes(
     try {
       final decoded = jsonDecode(await req.readAsString());
       if (decoded is! Map<String, dynamic>) {
-        return Response(400,
-            body: '{"error":"expected_json_object"}',
-            headers: {'content-type': 'application/json'});
+        return Response(
+          400,
+          body: '{"error":"expected_json_object"}',
+          headers: {'content-type': 'application/json'},
+        );
       }
       body = decoded;
     } catch (_) {
-      return Response(400,
-          body: '{"error":"invalid_json"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"invalid_json"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     final key = '${body['key'] ?? ''}'.trim();
     if (key.isEmpty) {
-      return Response(400,
-          body: '{"error":"key_required"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"key_required"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     if (key.length > 512) {
-      return Response(400,
-          body: '{"error":"key_too_long"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"key_too_long"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     final rawVal = body['value'];
     final value = rawVal == null ? '' : '$rawVal';
     if (value.length > 262144) {
-      return Response(400,
-          body: '{"error":"value_too_long"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"value_too_long"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
-          ConfigKeyValuesCompanion.insert(
-            key: key,
-            value: value,
-          ),
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(key: key, value: value),
         );
     await onConfigChanged();
     return Response.ok('{}', headers: {'content-type': 'application/json'});
@@ -661,59 +750,74 @@ void registerOperatorRestRoutes(
   r.delete('/v1/config/key-values', (Request req) async {
     final key = req.url.queryParameters['key']?.trim() ?? '';
     if (key.isEmpty) {
-      return Response(400,
-          body: '{"error":"key_required"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"key_required"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
-    final n =
-        await (db.delete(db.configKeyValues)..where((t) => t.key.equals(key)))
-            .go();
+    final n = await (db.delete(
+      db.configKeyValues,
+    )..where((t) => t.key.equals(key))).go();
     if (n == 0) {
-      return Response(404,
-          body: '{"error":"not_found"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     await onConfigChanged();
     return Response.ok('{}', headers: {'content-type': 'application/json'});
   });
 
   r.patch('/v1/integrations/<id>', (Request req, String id) async {
-    final existing = await (db.select(db.integrations)
-          ..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final existing = await (db.select(
+      db.integrations,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (existing == null) {
-      return Response(404,
-          body: '{"error":"not_found"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     Map<String, dynamic> map;
     try {
       final decoded = jsonDecode(await req.readAsString());
       if (decoded is! Map<String, dynamic>) {
-        return Response(400,
-            body: '{"error":"expected_json_object"}',
-            headers: {'content-type': 'application/json'});
+        return Response(
+          400,
+          body: '{"error":"expected_json_object"}',
+          headers: {'content-type': 'application/json'},
+        );
       }
       map = decoded;
     } catch (_) {
-      return Response(400,
-          body: '{"error":"invalid_json"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"invalid_json"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     final poll = map.containsKey('poll_seconds')
         ? (map['poll_seconds'] as num?)?.toInt()
         : existing.pollSeconds;
     if (poll == null) {
-      return Response(400,
-          body: '{"error":"invalid_poll_seconds"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"invalid_poll_seconds"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
-    final enabled =
-        map.containsKey('enabled') ? map['enabled'] as bool? : existing.enabled;
+    final enabled = map.containsKey('enabled')
+        ? map['enabled'] as bool?
+        : existing.enabled;
     if (enabled == null) {
-      return Response(400,
-          body: '{"error":"invalid_enabled"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"invalid_enabled"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     if (enabled) {
       if (integrationSecretSlotsForType(existing.integrationType).isNotEmpty &&
@@ -752,9 +856,11 @@ void registerOperatorRestRoutes(
       } else if (v is Map) {
         configJson = jsonEncode(v);
       } else {
-        return Response(400,
-            body: '{"error":"config_json_must_be_string_or_object"}',
-            headers: {'content-type': 'application/json'});
+        return Response(
+          400,
+          body: '{"error":"config_json_must_be_string_or_object"}',
+          headers: {'content-type': 'application/json'},
+        );
       }
     }
     if (map.containsKey('base_url')) {
@@ -781,76 +887,96 @@ void registerOperatorRestRoutes(
     try {
       final decoded = jsonDecode(await req.readAsString());
       if (decoded is! Map<String, dynamic>) {
-        return Response(400,
-            body: '{"error":"expected_json_object"}',
-            headers: {'content-type': 'application/json'});
+        return Response(
+          400,
+          body: '{"error":"expected_json_object"}',
+          headers: {'content-type': 'application/json'},
+        );
       }
       map = decoded;
     } catch (_) {
-      return Response(400,
-          body: '{"error":"invalid_json"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"invalid_json"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     var id = (map['id'] as String?)?.trim() ?? '';
     final label = (map['label'] as String?)?.trim() ?? '';
     final screenType = (map['screen_type'] as String?)?.trim() ?? '';
     if (screenType.isEmpty) {
-      return Response(400,
-          body: '{"error":"screen_type_required"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"screen_type_required"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     if (id.isEmpty) {
       if (label.isEmpty) {
-        return Response(400,
-            body: '{"error":"label_required"}',
-            headers: {'content-type': 'application/json'});
+        return Response(
+          400,
+          body: '{"error":"label_required"}',
+          headers: {'content-type': 'application/json'},
+        );
       }
       final existingIds = await (db.select(db.screens)).map((r) => r.id).get();
       id = allocateScreenIdFromName(label, existingIds);
       if (id.isEmpty) {
-        return Response(400,
-            body: '{"error":"invalid_label"}',
-            headers: {'content-type': 'application/json'});
+        return Response(
+          400,
+          body: '{"error":"invalid_label"}',
+          headers: {'content-type': 'application/json'},
+        );
       }
     }
     await ensureScreenTypes(db);
     if (!await screenTypeExists(db, screenType)) {
-      return Response(400,
-          body: '{"error":"unknown_screen_type"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"unknown_screen_type"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
-    final dup = await (db.select(db.screens)
-          ..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final dup = await (db.select(
+      db.screens,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (dup != null) {
-      return Response(409,
-          body: '{"error":"id_already_exists"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        409,
+        body: '{"error":"id_already_exists"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     late final String configJsonStr;
     try {
       configJsonStr = _configJsonStringFromBody(map['config_json']);
     } on FormatException catch (e) {
-      return Response(400,
-          body: jsonEncode({'error': 'invalid_config_json', 'detail': e.message}),
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: jsonEncode({'error': 'invalid_config_json', 'detail': e.message}),
+        headers: {'content-type': 'application/json'},
+      );
     }
     final layout = synthesizeLayoutJson(
       screenType: screenType,
       configJson: configJsonStr,
     );
     if (parseScreenLayoutWidgets(layout).isEmpty) {
-      return Response(400,
-          body: '{"error":"invalid_screen_layout"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"invalid_screen_layout"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     final description = (map['description'] as String?)?.trim() ?? '';
     final minDwell = (map['min_dwell_seconds'] as num?)?.toInt() ?? 8;
     final maxDwell = (map['max_dwell_seconds'] as num?)?.toInt() ?? 15;
     if (minDwell <= 0 || maxDwell <= 0 || minDwell > maxDwell) {
-      return Response(400,
-          body: '{"error":"invalid_dwell_seconds"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"invalid_dwell_seconds"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     final frequencyWeight = (map['frequency_weight'] as num?)?.toInt() ?? 100;
     final minGap = (map['min_gap_between_shows_seconds'] as num?)?.toInt() ?? 0;
@@ -859,7 +985,9 @@ void registerOperatorRestRoutes(
     final maxPlacements = (map['max_placements_per_program'] as num?)?.toInt();
     final dataKey = (map['data_key'] as String?)?.trim() ?? '';
     final resolvedLabel = label.isEmpty ? id : label;
-    await db.into(db.screens).insert(
+    await db
+        .into(db.screens)
+        .insert(
           ScreensCompanion.insert(
             id: id,
             label: resolvedLabel,
@@ -882,36 +1010,44 @@ void registerOperatorRestRoutes(
   });
 
   r.patch('/v1/screens/<id>', (Request req, String id) async {
-    final existing = await (db.select(db.screens)
-          ..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final existing = await (db.select(
+      db.screens,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (existing == null) {
-      return Response(404,
-          body: '{"error":"not_found"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     Map<String, dynamic> map;
     try {
       final decoded = jsonDecode(await req.readAsString());
       if (decoded is! Map<String, dynamic>) {
-        return Response(400,
-            body: '{"error":"expected_json_object"}',
-            headers: {'content-type': 'application/json'});
+        return Response(
+          400,
+          body: '{"error":"expected_json_object"}',
+          headers: {'content-type': 'application/json'},
+        );
       }
       map = decoded;
     } catch (_) {
-      return Response(400,
-          body: '{"error":"invalid_json"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"invalid_json"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     final screenType = map.containsKey('screen_type')
         ? (map['screen_type'] as String?)?.trim() ?? existing.screenType
         : existing.screenType;
     await ensureScreenTypes(db);
     if (!await screenTypeExists(db, screenType)) {
-      return Response(400,
-          body: '{"error":"unknown_screen_type"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"unknown_screen_type"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     late final String resolvedConfigJson;
     try {
@@ -919,18 +1055,22 @@ void registerOperatorRestRoutes(
           ? _configJsonStringFromBody(map['config_json'])
           : existing.configJson;
     } on FormatException catch (e) {
-      return Response(400,
-          body: jsonEncode({'error': 'invalid_config_json', 'detail': e.message}),
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: jsonEncode({'error': 'invalid_config_json', 'detail': e.message}),
+        headers: {'content-type': 'application/json'},
+      );
     }
     final layout = synthesizeLayoutJson(
       screenType: screenType,
       configJson: resolvedConfigJson,
     );
     if (parseScreenLayoutWidgets(layout).isEmpty) {
-      return Response(400,
-          body: '{"error":"invalid_screen_layout"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"invalid_screen_layout"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     final label = map.containsKey('label')
         ? ((map['label'] as String?)?.trim() ?? '')
@@ -947,20 +1087,23 @@ void registerOperatorRestRoutes(
       maxDwell = (map['max_dwell_seconds'] as num?)?.toInt() ?? maxDwell;
     }
     if (minDwell <= 0 || maxDwell <= 0 || minDwell > maxDwell) {
-      return Response(400,
-          body: '{"error":"invalid_dwell_seconds"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"invalid_dwell_seconds"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     final frequencyWeight = map.containsKey('frequency_weight')
-        ? ((map['frequency_weight'] as num?)?.toInt() ?? existing.frequencyWeight)
+        ? ((map['frequency_weight'] as num?)?.toInt() ??
+              existing.frequencyWeight)
         : existing.frequencyWeight;
     final minGap = map.containsKey('min_gap_between_shows_seconds')
         ? ((map['min_gap_between_shows_seconds'] as num?)?.toInt() ??
-            existing.minGapBetweenShowsSeconds)
+              existing.minGapBetweenShowsSeconds)
         : existing.minGapBetweenShowsSeconds;
     final minPlacements = map.containsKey('min_placements_per_program')
         ? ((map['min_placements_per_program'] as num?)?.toInt() ??
-            existing.minPlacementsPerProgram)
+              existing.minPlacementsPerProgram)
         : existing.minPlacementsPerProgram;
     final maxPlacements = map.containsKey('max_placements_per_program')
         ? (map['max_placements_per_program'] as num?)?.toInt()
@@ -988,13 +1131,13 @@ void registerOperatorRestRoutes(
   });
 
   r.delete('/v1/screens/<id>', (Request req, String id) async {
-    final n = await (db.delete(db.screens)
-          ..where((t) => t.id.equals(id)))
-        .go();
+    final n = await (db.delete(db.screens)..where((t) => t.id.equals(id))).go();
     if (n == 0) {
-      return Response(404,
-          body: '{"error":"not_found"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     await onConfigChanged();
     return Response.ok('{}', headers: {'content-type': 'application/json'});

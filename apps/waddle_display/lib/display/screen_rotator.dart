@@ -29,6 +29,7 @@ import 'screens/photo/photo_collage_slide_widget.dart';
 import 'screens/photo/photo_slide_widget.dart';
 import 'screens/photo/video_slide_widget.dart';
 import 'screens/news/news_columns_slide_widget.dart';
+import 'screens/news/news_grid_slide_widget.dart';
 import 'screens/news/news_slide_widget.dart';
 import 'screens/news/news_stack_slide_widget.dart';
 import 'screens/web_page/web_page_slide_widget.dart';
@@ -1014,6 +1015,19 @@ class _SlideContent extends StatelessWidget {
       final w = widgets.first;
       return SizedBox.expand(
         child: NewsStackSlideWidget(
+          db: db,
+          blobs: blobs,
+          slide: slide,
+          spec: w,
+          theme: theme,
+          onReportDesiredDwell: (ms) => onReportDesiredDwell(slideIndex, ms),
+        ),
+      );
+    }
+    if (widgets.length == 1 && widgets.first.type == 'news_grid') {
+      final w = widgets.first;
+      return SizedBox.expand(
+        child: NewsGridSlideWidget(
           db: db,
           blobs: blobs,
           slide: slide,

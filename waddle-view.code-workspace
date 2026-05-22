@@ -33,16 +33,18 @@
 		],
 		"sqltools.useNodeRuntime": true,
 		"cSpell.words": [
-			"waddleview",
-			"sqltools",
-			"LOCALAPPDATA",
 			"APPDATA",
+			"geolocation",
 			"headshot",
+			"LOCALAPPDATA",
+			"pexels",
+			"photoless",
 			"Playout",
 			"PREVIEWABLE",
 			"repoints",
 			"rjsf",
-			"geolocation"
+			"sqltools",
+			"waddleview"
 		]
 	}
 }

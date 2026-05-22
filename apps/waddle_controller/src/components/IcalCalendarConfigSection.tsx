@@ -24,6 +24,7 @@ import {
   type IcalCalendarConfigState,
   type IcalFeedConfig,
 } from '@/util/icalCalendarConfig';
+import { IntegrationConfigSection } from '@/components/IntegrationConfigSection';
 import {
   feedFromSuggestion,
   feedListHasUrl,
@@ -121,9 +122,10 @@ export function IcalCalendarConfigSection({
   const canAddFeeds = !disabled && categories.length > 0;
 
   return (
-    <Stack spacing={2}>
-      <Typography variant="subtitle2">iCal / ICS feeds</Typography>
-
+    <IntegrationConfigSection
+      title="iCal / ICS feeds"
+      description="Subscribe to public ICS feeds or add your own URLs. Each feed maps to a content category."
+    >
       <Alert severity="info">
         {kWebcalGuruSignupMessage}{' '}
         <Link href={kWebcalGuruSignupUrl} target="_blank" rel="noopener noreferrer">
@@ -263,6 +265,6 @@ export function IcalCalendarConfigSection({
           </Stack>
         ))
       )}
-    </Stack>
+    </IntegrationConfigSection>
   );
 }

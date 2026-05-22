@@ -71,7 +71,6 @@ import 'display/viewer_invite_runtime.dart';
 import 'marquee_cycle_gate.dart';
 import 'persistence/flutter_query_executor.dart';
 import 'sleeper.dart';
-import 'package:waddle_shared/theme/display_theme_kv.dart';
 
 import 'theme/display_theme.dart';
 import 'theme/tv_overscan.dart';
@@ -96,8 +95,9 @@ void main() {
       await _waddleBootstrap();
     },
     onZoneFatalError,
-    zoneSpecification:
-        kDebugMode ? DebugConsoleDiskLogger.debugZoneSpecification() : null,
+    zoneSpecification: kDebugMode
+        ? DebugConsoleDiskLogger.debugZoneSpecification()
+        : null,
   );
 }
 
@@ -115,7 +115,9 @@ Future<void> _waddleBootstrap() async {
       } else {
         final rnd = Random.secure();
         final bytes = List<int>.generate(32, (_) => rnd.nextInt(256));
-        final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+        final hex = bytes
+            .map((b) => b.toRadixString(16).padLeft(2, '0'))
+            .join();
         await instanceIdFile.writeAsString('$hex\n', flush: true);
       }
     }
@@ -151,7 +153,9 @@ Future<void> _waddleBootstrap() async {
     );
     final resolver = ProviderConfigResolver(db, secrets);
     final telemetryHub = OperatorTelemetryHub();
-    final collectDiag = defaultDisplayCollectDiagnostics(telemetryHub: telemetryHub);
+    final collectDiag = defaultDisplayCollectDiagnostics(
+      telemetryHub: telemetryHub,
+    );
     final ctx = DataWriteContextImpl(
       db: db,
       blobs: blobs,
@@ -232,6 +236,7 @@ Future<void> _waddleBootstrap() async {
         await curatorSelectionRefresh.notify();
       });
     }
+
     applyDisplayLivePreviewEnvDefaults(envMap);
     final databaseFile = File(p.join(support.path, 'waddle_display.db'));
     final handler = buildRootHandler(
@@ -269,10 +274,9 @@ Future<void> _waddleBootstrap() async {
       isDebug: kDebugMode,
       allowFullscreen: true,
     );
-    final WindowChromeController chrome =
-        !kIsWeb && Platform.isLinux
-            ? LinuxWindowChromeController()
-            : NoOpWindowChromeController();
+    final WindowChromeController chrome = !kIsWeb && Platform.isLinux
+        ? LinuxWindowChromeController()
+        : NoOpWindowChromeController();
     await chrome.initialize();
     await chrome.applyStartupPolicy(windowPolicy);
 
@@ -292,8 +296,8 @@ Future<void> _waddleBootstrap() async {
         telemetryHub: telemetryHub,
         navigationBus: navigationBus,
         viewerInviteRuntime: ViewerInviteRuntime(
-          controllerPublicUrl:
-              (envMap[kDisplayControllerPublicUrlEnv] ?? '').trim(),
+          controllerPublicUrl: (envMap[kDisplayControllerPublicUrlEnv] ?? '')
+              .trim(),
           viewerRegistrationSecret:
               (envMap[kDisplayViewerRegistrationSecretEnv] ?? '').trim(),
         ),
@@ -354,8 +358,9 @@ class _WaddleRootState extends State<WaddleRoot> {
   /// [build] (or on every parent rebuild) makes [StreamBuilder] tear down and
   /// resubscribe repeatedly and can leak native resources (Linux: EMFILE /
   /// GLib GWakeup pipe exhaustion on long-running displays).
-  late final Stream<List<ConfigKeyValue>> _configKvStream =
-      widget.db.select(widget.db.configKeyValues).watch();
+  late final Stream<List<ConfigKeyValue>> _configKvStream = widget.db
+      .select(widget.db.configKeyValues)
+      .watch();
 
   @override
   Widget build(BuildContext context) {
@@ -490,20 +495,20 @@ class _WaddleHomeState extends State<WaddleHome> {
         .select(widget.db.curatorConfigurationMembers)
         .watch()
         .listen((_) {
-      unawaited(_refreshCuratorSelection());
-    });
+          unawaited(_refreshCuratorSelection());
+        });
     _curatorConfigsSub = widget.db
         .select(widget.db.curatorConfigurations)
         .watch()
         .listen((_) {
-      unawaited(_refreshCuratorSelection());
-    });
+          unawaited(_refreshCuratorSelection());
+        });
     _curatorRulesSub = widget.db
         .select(widget.db.curatorScheduleRules)
         .watch()
         .listen((_) {
-      unawaited(_refreshCuratorSelection());
-    });
+          unawaited(_refreshCuratorSelection());
+        });
     _curatorSchedulePollTimer = Timer.periodic(
       _curatorSchedulePollInterval,
       (_) => unawaited(_refreshCuratorSelection()),
@@ -525,8 +530,8 @@ class _WaddleHomeState extends State<WaddleHome> {
     setState(() {
       _tickerEnabled = primary.tickerEnabled;
       _allowedOverlayIds = selection.effectiveOverlayMemberIds;
-      _curatorThemeOverride =
-          selection.primary.configuration.themeIdOverride?.trim();
+      _curatorThemeOverride = selection.primary.configuration.themeIdOverride
+          ?.trim();
       if (_curatorThemeOverride != null && _curatorThemeOverride!.isEmpty) {
         _curatorThemeOverride = null;
       }
@@ -586,8 +591,9 @@ class _WaddleHomeState extends State<WaddleHome> {
             kDisplayThemeIdKvKey: themeOverride,
           })
         : Theme.of(context);
-    final globalViewportReserve =
-        parseDisplayViewportReservePctFromKv(widget.dashboardKv);
+    final globalViewportReserve = parseDisplayViewportReservePctFromKv(
+      widget.dashboardKv,
+    );
     final effectiveViewportReserve = mergeDisplayViewportReservePct(
       globalViewportReserve,
       topOverride: _viewportReserveTopPctOverride,
@@ -601,84 +607,85 @@ class _WaddleHomeState extends State<WaddleHome> {
       child: RepaintBoundary(
         key: livePreviewBoundaryKey,
         child: Scaffold(
-      body: Focus(
-        canRequestFocus: false,
-        skipTraversal: true,
-        onKeyEvent: (_, event) {
-          if (event is! KeyDownEvent) {
-            return KeyEventResult.ignored;
-          }
-          if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-            _tickerNavigationController.navigateBackward();
-            return KeyEventResult.handled;
-          }
-          if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-            _tickerNavigationController.navigateForward();
-            return KeyEventResult.handled;
-          }
-          return KeyEventResult.ignored;
-        },
-        child: MediaQuery(
-          data: mq.copyWith(textScaler: screenScaler),
-            child: AlertOverlayHost(
-              repository: widget.alerts,
-              clock: const SystemClock(),
-              severityIconsKv: widget.dashboardKv[kAlertSeverityIconsKvKey],
-              child: CelebrationOverlayHost(
-                db: widget.db,
-                blobs: widget.blobs,
+          body: Focus(
+            canRequestFocus: false,
+            skipTraversal: true,
+            onKeyEvent: (_, event) {
+              if (event is! KeyDownEvent) {
+                return KeyEventResult.ignored;
+              }
+              if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                _tickerNavigationController.navigateBackward();
+                return KeyEventResult.handled;
+              }
+              if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                _tickerNavigationController.navigateForward();
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.ignored;
+            },
+            child: MediaQuery(
+              data: mq.copyWith(textScaler: screenScaler),
+              child: AlertOverlayHost(
+                repository: widget.alerts,
                 clock: const SystemClock(),
-                dashboardKv: widget.dashboardKv,
-                allowedOverlayIds: _allowedOverlayIds,
-                overlayRegistry: widget.overlayRegistry,
-                runtimeSignals: widget.runtimeSignals,
-                child: DashboardDataBoundShell(
-                  overscan: const TvOverscanInsets(),
-                  viewportConfig: const DisplayViewportConfig(),
-                  viewportReserve: effectiveViewportReserve,
-                  showTicker: _tickerEnabled,
-                  body: ScreenRotator(
-                    db: widget.db,
-                    blobs: widget.blobs,
-                    localRestBaseUrl: widget.server.baseUrl,
-                    adminBaseUrl: widget.server.displayBaseUrl,
-                    instanceIdFile: widget.instanceIdFile,
-                    viewerInviteRuntime: widget.viewerInviteRuntime,
-                    telemetryHub: widget.telemetryHub,
-                    navigationBus: widget.navigationBus,
-                  ),
-                  ticker: MediaQuery(
-                    data: mq.copyWith(textScaler: tickerScaler),
-                    child: Builder(
-                      builder: (context) {
-                        final s = DashboardViewportScope.scaleOf(context);
-                        final px =
-                            (widget.curatorMembership.tickerPixelsPerSecond ??
-                                    kDisplayTickerPixelsPerSecondDefault)
-                                .toDouble();
-                        final tickerSettings = parseDisplayTickerSettingsFromKv(
-                          widget.dashboardKv,
-                        );
-                        return TickerMarquee(
-                          repository: widget.tickerCurated,
-                          pixelsPerSecond: px * s,
-                          itemSeparator: tickerSettings.itemSeparator,
-                          programSeparator: tickerSettings.programSeparator,
-                          cycleGate: widget.marqueeCycleGate,
-                          navigationController: _tickerNavigationController,
-                          telemetryHub: widget.telemetryHub,
-                          navigationBus: widget.navigationBus,
-                        );
-                      },
+                severityIconsKv: widget.dashboardKv[kAlertSeverityIconsKvKey],
+                child: CelebrationOverlayHost(
+                  db: widget.db,
+                  blobs: widget.blobs,
+                  clock: const SystemClock(),
+                  dashboardKv: widget.dashboardKv,
+                  allowedOverlayIds: _allowedOverlayIds,
+                  overlayRegistry: widget.overlayRegistry,
+                  runtimeSignals: widget.runtimeSignals,
+                  child: DashboardDataBoundShell(
+                    overscan: const TvOverscanInsets(),
+                    viewportConfig: const DisplayViewportConfig(),
+                    viewportReserve: effectiveViewportReserve,
+                    showTicker: _tickerEnabled,
+                    body: ScreenRotator(
+                      db: widget.db,
+                      blobs: widget.blobs,
+                      localRestBaseUrl: widget.server.baseUrl,
+                      adminBaseUrl: widget.server.displayBaseUrl,
+                      instanceIdFile: widget.instanceIdFile,
+                      viewerInviteRuntime: widget.viewerInviteRuntime,
+                      telemetryHub: widget.telemetryHub,
+                      navigationBus: widget.navigationBus,
+                    ),
+                    ticker: MediaQuery(
+                      data: mq.copyWith(textScaler: tickerScaler),
+                      child: Builder(
+                        builder: (context) {
+                          final s = DashboardViewportScope.scaleOf(context);
+                          final px =
+                              (widget.curatorMembership.tickerPixelsPerSecond ??
+                                      kDisplayTickerPixelsPerSecondDefault)
+                                  .toDouble();
+                          final tickerSettings =
+                              parseDisplayTickerSettingsFromKv(
+                                widget.dashboardKv,
+                              );
+                          return TickerMarquee(
+                            repository: widget.tickerCurated,
+                            pixelsPerSecond: px * s,
+                            itemSeparator: tickerSettings.itemSeparator,
+                            programSeparator: tickerSettings.programSeparator,
+                            cycleGate: widget.marqueeCycleGate,
+                            navigationController: _tickerNavigationController,
+                            telemetryHub: widget.telemetryHub,
+                            navigationBus: widget.navigationBus,
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
+          ),
         ),
       ),
-      ),
-        ),
     );
   }
 }
@@ -690,8 +697,9 @@ void _applyCuratorTickerMembership(
   DisplayTickerSettings displayTicker,
 ) {
   filter.tickerCurationEnabled = primary.tickerEnabled;
-  filter.tickerTapeIds =
-      primary.tickerEnabled ? effectiveTickerMemberIds : const {};
+  filter.tickerTapeIds = primary.tickerEnabled
+      ? effectiveTickerMemberIds
+      : const {};
   final merged = mergeDisplayTickerSettings(
     displayTicker,
     programDurationSecondsOverride: primary.tickerProgramDurationSeconds,
@@ -718,4 +726,3 @@ Future<void> _rescanRejectListOnStartup(AppDatabase db) async {
     AppDebugLog.startup('reject rescan failed: $e\n$st');
   }
 }
-

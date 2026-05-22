@@ -7,7 +7,6 @@ import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/theme/display_text_scale_kv.dart';
 import 'package:waddle_shared/theme/display_custom_themes.dart';
 import 'package:waddle_shared/theme/display_custom_themes_store.dart';
-import 'package:waddle_shared/theme/display_theme_ids.dart';
 import 'package:waddle_shared/display/display_ticker_settings.dart';
 import 'package:waddle_shared/display/display_weather_temperature_unit_kv.dart';
 import 'package:waddle_shared/display/display_viewport_reserve.dart';
@@ -84,9 +83,9 @@ Future<bool> applyDisplayOperatorSettingsPut(
 
   if (body.containsKey('display_theme_id')) {
     final rawId = '${body['display_theme_id']}'.trim().toLowerCase().replaceAll(
-          RegExp(r'[\s-]+'),
-          '_',
-        );
+      RegExp(r'[\s-]+'),
+      '_',
+    );
     final customThemes = await readDisplayCustomThemes(db);
     if (!isKnownDisplayThemeId(rawId, customThemes)) {
       throw DisplayThemeUnknownIdException();
@@ -372,7 +371,9 @@ Future<bool> applyDisplayOperatorSettingsPut(
     touched = true;
   }
   if (body.containsKey('display_live_preview_enabled')) {
-    final enabled = parseDisplayLivePreviewEnabled(body['display_live_preview_enabled']);
+    final enabled = parseDisplayLivePreviewEnabled(
+      body['display_live_preview_enabled'],
+    );
     await db
         .into(db.configKeyValues)
         .insertOnConflictUpdate(
@@ -384,7 +385,9 @@ Future<bool> applyDisplayOperatorSettingsPut(
     touched = true;
   }
   if (body.containsKey('display_live_preview_fps')) {
-    final fps = normalizeDisplayLivePreviewFps(body['display_live_preview_fps']);
+    final fps = normalizeDisplayLivePreviewFps(
+      body['display_live_preview_fps'],
+    );
     await db
         .into(db.configKeyValues)
         .insertOnConflictUpdate(
@@ -396,7 +399,9 @@ Future<bool> applyDisplayOperatorSettingsPut(
     touched = true;
   }
   if (body.containsKey('display_live_preview_width')) {
-    final width = normalizeDisplayLivePreviewWidth(body['display_live_preview_width']);
+    final width = normalizeDisplayLivePreviewWidth(
+      body['display_live_preview_width'],
+    );
     await db
         .into(db.configKeyValues)
         .insertOnConflictUpdate(
@@ -408,8 +413,9 @@ Future<bool> applyDisplayOperatorSettingsPut(
     touched = true;
   }
   if (body.containsKey('display_live_preview_quality')) {
-    final quality =
-        normalizeDisplayLivePreviewQuality(body['display_live_preview_quality']);
+    final quality = normalizeDisplayLivePreviewQuality(
+      body['display_live_preview_quality'],
+    );
     await db
         .into(db.configKeyValues)
         .insertOnConflictUpdate(

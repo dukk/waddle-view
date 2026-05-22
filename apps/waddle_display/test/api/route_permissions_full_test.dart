@@ -12,6 +12,11 @@ void main() {
       WaddlePermission.integrationsRead,
     ),
     (
+      'GET',
+      '/v1/integration-accounts/personal/google/calendars',
+      WaddlePermission.integrationsRead,
+    ),
+    (
       'POST',
       '/v1/integration-accounts/work/google-photos/picker/sessions',
       WaddlePermission.integrationsWrite,

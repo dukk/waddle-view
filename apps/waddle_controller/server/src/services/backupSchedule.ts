@@ -1,5 +1,3 @@
-import { randomInt } from 'node:crypto';
-
 export type BackupScheduleFrequency = 'daily' | 'weekly';
 
 export type BackupScheduleFields = {
@@ -12,15 +10,85 @@ export type BackupScheduleFields = {
 
 export type BackupSchedulePublic = BackupScheduleFields;
 
-/** Default: once per week on a random night (02:00–04:59 local). */
-export function buildDefaultBackupSchedule(): BackupScheduleFields {
+export const BACKUP_SCHEDULE_STAGGER_MINUTES = 5;
+export const BACKUP_SCHEDULE_BASE_HOUR = 2;
+export const BACKUP_SCHEDULE_BASE_MINUTE = 0;
+export const BACKUP_SCHEDULE_BASE_DAY_OF_WEEK = 0;
+
+const MINUTES_PER_DAY = 24 * 60;
+
+/** Controller host timezone for all backup_targets.timezone values. */
+export function controllerBackupTimezone(): string {
+  const envTz = process.env.TZ?.trim();
+  if (envTz) return envTz;
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
+
+function scheduleMinutesSinceMidnight(schedule: BackupScheduleFields): number {
+  return schedule.hour * 60 + schedule.minute;
+}
+
+function mostCommonDayOfWeek(schedules: BackupScheduleFields[]): number {
+  if (schedules.length === 0) return BACKUP_SCHEDULE_BASE_DAY_OF_WEEK;
+  const counts = new Map<number, number>();
+  for (const s of schedules) {
+    if (s.frequency === 'weekly' && s.dayOfWeek != null) {
+      const d = s.dayOfWeek;
+      counts.set(d, (counts.get(d) ?? 0) + 1);
+    }
+  }
+  let best = BACKUP_SCHEDULE_BASE_DAY_OF_WEEK;
+  let bestCount = 0;
+  for (const [d, c] of counts) {
+    if (c > bestCount) {
+      bestCount = c;
+      best = d;
+    }
+  }
+  return best;
+}
+
+/**
+ * Assigns a weekly slot for a new backup target, staggered +5 minutes after existing targets
+ * in the same scope (controller local time).
+ */
+export function allocateBackupScheduleForNewTarget(
+  existingTargets: BackupScheduleFields[],
+): BackupScheduleFields {
+  const dayOfWeek = mostCommonDayOfWeek(existingTargets);
+  const n = existingTargets.length;
+
+  let baseMinutes = BACKUP_SCHEDULE_BASE_HOUR * 60 + BACKUP_SCHEDULE_BASE_MINUTE;
+  if (existingTargets.length > 0) {
+    const sameDay = existingTargets.filter(
+      (s) => s.frequency === 'weekly' && (s.dayOfWeek ?? 0) === dayOfWeek,
+    );
+    const pool = sameDay.length > 0 ? sameDay : existingTargets;
+    let maxMin = baseMinutes;
+    for (const s of pool) {
+      const m = scheduleMinutesSinceMidnight(s);
+      if (m > maxMin) maxMin = m;
+    }
+    baseMinutes = maxMin;
+  }
+
+  const totalMinutes = (baseMinutes + BACKUP_SCHEDULE_STAGGER_MINUTES * n) % MINUTES_PER_DAY;
   return {
     frequency: 'weekly',
     interval: 1,
-    dayOfWeek: randomInt(0, 7),
-    hour: 2 + randomInt(0, 3),
-    minute: randomInt(0, 60),
+    dayOfWeek,
+    hour: Math.floor(totalMinutes / 60),
+    minute: totalMinutes % 60,
   };
+}
+
+/** Fallback when no row exists and allocation context is unavailable. */
+export function buildDefaultBackupSchedule(): BackupScheduleFields {
+  return allocateBackupScheduleForNewTarget([]);
 }
 
 export function clampScheduleInterval(interval: number, frequency: BackupScheduleFrequency): number {

@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
+import 'package:waddle_integrations/calendar_google/google_calendar_list.dart';
+import 'package:waddle_integrations/calendar_google/google_oauth.dart';
 import 'package:waddle_integrations/microsoft_graph/microsoft_graph_base_url.dart';
 import 'package:waddle_integrations/microsoft_graph/microsoft_graph_calendars.dart';
 import 'package:waddle_integrations/microsoft_graph/microsoft_graph_drive_children.dart';
@@ -421,6 +423,83 @@ void registerIntegrationAccountsRestRoutes(
         502,
         body: jsonEncode({
           'error': 'graph_calendars_failed',
+          'status': e.statusCode,
+        }),
+        headers: _jsonHeaders,
+      );
+    }
+  });
+
+  r.get('/v1/integration-accounts/<accountId>/google/calendars', (
+    Request req,
+    String accountId,
+  ) async {
+    final account = await (db.select(
+      db.integrationAccounts,
+    )..where((t) => t.id.equals(accountId))).getSingleOrNull();
+    if (account == null) {
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: _jsonHeaders,
+      );
+    }
+    if (account.accountType != kIntegrationAccountTypeGoogle) {
+      return Response(
+        400,
+        body: '{"error":"not_google_account"}',
+        headers: _jsonHeaders,
+      );
+    }
+    final clientId = await readGoogleClientIdFromStore(secrets);
+    if (clientId == null || clientId.isEmpty) {
+      return Response(
+        503,
+        body: '{"error":"google_client_id_not_configured"}',
+        headers: _jsonHeaders,
+      );
+    }
+    final oauth = GoogleOAuth(httpClient: graphHttp);
+    final token = await oauth.ensureAccessToken(
+      db: db,
+      secrets: secrets,
+      clientId: clientId,
+      googleAccountKey: accountId,
+      pollDeviceCode: false,
+    );
+    if (token == null || token.isEmpty) {
+      return Response(
+        503,
+        body: '{"error":"access_token_unavailable"}',
+        headers: _jsonHeaders,
+      );
+    }
+    final googleRow =
+        await (db.select(db.integrations)
+              ..where((t) => t.id.equals(kDefaultCalendarGoogleIntegrationId)))
+            .getSingleOrNull();
+    final calendarBase = normalizeGoogleCalendarBaseUrl(
+      integrationBaseUrlFromConfigJson(googleRow?.configJson),
+    );
+    try {
+      final calendars = await listGoogleCalendars(
+        httpClient: graphHttp,
+        calendarApiBaseUrl: calendarBase,
+        accessToken: token,
+      );
+      return Response.ok(
+        jsonEncode({
+          'items': [
+            for (final c in calendars) {'id': c.id, 'name': c.name},
+          ],
+        }),
+        headers: _jsonHeaders,
+      );
+    } on GoogleCalendarsException catch (e) {
+      return Response(
+        502,
+        body: jsonEncode({
+          'error': 'google_calendars_failed',
           'status': e.statusCode,
         }),
         headers: _jsonHeaders,

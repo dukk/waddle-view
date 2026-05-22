@@ -55,9 +55,7 @@ void main() {
 
   test('buildProgram fills budget with dwell slices', () {
     final slides = ScreenProgramCurator.buildProgram(
-      screens: [
-        _c(id: 'a', dwellMs: 50000),
-      ],
+      screens: [_c(id: 'a', dwellMs: 50000)],
       programDurationMs: 180000,
       recentScreenIdsOldestFirst: const [],
       historyDepth: 5,
@@ -85,7 +83,8 @@ void main() {
   });
 
   test('dedupes joke picks across slides in one program', () {
-    const layout = '{"v":1,"layout":"single","widgets":['
+    const layout =
+        '{"v":1,"layout":"single","widgets":['
         '{"type":"joke","slot":"main","config":{}}'
         ']}';
     final slides = ScreenProgramCurator.buildProgram(
@@ -110,7 +109,8 @@ void main() {
   });
 
   test('dedupes news picks across slides in one program', () {
-    const layout = '{"v":1,"layout":"single","widgets":['
+    const layout =
+        '{"v":1,"layout":"single","widgets":['
         '{"type":"news","slot":"main","config":{}}'
         ']}';
     final slides = ScreenProgramCurator.buildProgram(
@@ -135,7 +135,8 @@ void main() {
   });
 
   test('news_columns assigns one distinct rss id per column', () {
-    const layout = '{"v":1,"layout":"single","widgets":['
+    const layout =
+        '{"v":1,"layout":"single","widgets":['
         '{"type":"news_columns","slot":"main","config":{"columnCount":3}}'
         ']}';
     final slides = ScreenProgramCurator.buildProgram(
@@ -159,8 +160,31 @@ void main() {
     expect({a, b, c}.length, 3);
   });
 
+  test('news_grid assigns six distinct rss ids', () {
+    const layout =
+        '{"v":1,"layout":"single","widgets":['
+        '{"type":"news_grid","slot":"main","config":{}}'
+        ']}';
+    final slides = ScreenProgramCurator.buildProgram(
+      screens: [_c(id: 'ng', dwellMs: 30000, layout: layout)],
+      programDurationMs: 30000,
+      recentScreenIdsOldestFirst: const [],
+      historyDepth: 5,
+      random: Random(23),
+      randomPools: {
+        'rss': ['r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7'],
+      },
+    );
+    expect(slides, hasLength(1));
+    final m = slides.single.randomChoices;
+    final ids = <String?>[for (var i = 0; i < 6; i++) m['main_news_grid_$i']];
+    expect(ids.every((id) => id != null && id.isNotEmpty), isTrue);
+    expect(ids.toSet().length, 6);
+  });
+
   test('news_stack assigns two distinct rss ids', () {
-    const layout = '{"v":1,"layout":"single","widgets":['
+    const layout =
+        '{"v":1,"layout":"single","widgets":['
         '{"type":"news_stack","slot":"main","config":{}}'
         ']}';
     final slides = ScreenProgramCurator.buildProgram(
@@ -189,9 +213,7 @@ void main() {
   {"type":"photo_random","slot":"right","config":{"pool":"pix"}}
 ]}''';
     final slides = ScreenProgramCurator.buildProgram(
-      screens: [
-        _c(id: 'photos', dwellMs: 30000, layout: layout),
-      ],
+      screens: [_c(id: 'photos', dwellMs: 30000, layout: layout)],
       programDurationMs: 30000,
       recentScreenIdsOldestFirst: const [],
       historyDepth: 5,
@@ -223,51 +245,51 @@ void main() {
 
   test('historyWindowSlice returns oldest→newest tail', () {
     expect(
-      ScreenProgramCurator.historyWindowSlice(
-        const ['a', 'b', 'c', 'd'],
-        2,
-      ),
+      ScreenProgramCurator.historyWindowSlice(const ['a', 'b', 'c', 'd'], 2),
       const ['c', 'd'],
     );
-    expect(
-      ScreenProgramCurator.historyWindowSlice(const ['a'], 5),
-      const ['a'],
-    );
+    expect(ScreenProgramCurator.historyWindowSlice(const ['a'], 5), const [
+      'a',
+    ]);
     expect(ScreenProgramCurator.historyWindowSlice(const [], 3), isEmpty);
     expect(ScreenProgramCurator.historyWindowSlice(const ['x'], 0), isEmpty);
   });
 
-  test('curatedProgramDebugLogLines describes slides and consecutive dupes', () {
-    final slides = ScreenProgramCurator.buildProgram(
-      screens: [
-        _c(id: 'a', dwellMs: 50000),
-      ],
-      programDurationMs: 100000,
-      recentScreenIdsOldestFirst: const ['x', 'y'],
-      historyDepth: 5,
-      random: Random(0),
-    );
-    final lines = ScreenProgramCurator.curatedProgramDebugLogLines(
-      program: slides,
-      programDurationMs: 100000,
-      historyDepth: 5,
-      recentScreenIdsOldestFirst: const ['x', 'y'],
-    );
-    expect(lines.length, greaterThanOrEqualTo(2));
-    expect(lines.first, contains('curated slides: 2'));
-    expect(lines.first, contains('weightWindow(oldest→newest)=[x, y]'));
-    expect(lines[1], contains('[0] a'));
-    expect(lines[1], contains('[1] a'));
-    expect(lines, contains('consecutive duplicate screenId="a" at slide indices 0→1'));
+  test(
+    'curatedProgramDebugLogLines describes slides and consecutive dupes',
+    () {
+      final slides = ScreenProgramCurator.buildProgram(
+        screens: [_c(id: 'a', dwellMs: 50000)],
+        programDurationMs: 100000,
+        recentScreenIdsOldestFirst: const ['x', 'y'],
+        historyDepth: 5,
+        random: Random(0),
+      );
+      final lines = ScreenProgramCurator.curatedProgramDebugLogLines(
+        program: slides,
+        programDurationMs: 100000,
+        historyDepth: 5,
+        recentScreenIdsOldestFirst: const ['x', 'y'],
+      );
+      expect(lines.length, greaterThanOrEqualTo(2));
+      expect(lines.first, contains('curated slides: 2'));
+      expect(lines.first, contains('weightWindow(oldest→newest)=[x, y]'));
+      expect(lines[1], contains('[0] a'));
+      expect(lines[1], contains('[1] a'));
+      expect(
+        lines,
+        contains('consecutive duplicate screenId="a" at slide indices 0→1'),
+      );
 
-    final emptyLines = ScreenProgramCurator.curatedProgramDebugLogLines(
-      program: const [],
-      programDurationMs: 1000,
-      historyDepth: 3,
-      recentScreenIdsOldestFirst: const [],
-    );
-    expect(emptyLines.single, contains('curated slides: 0'));
-  });
+      final emptyLines = ScreenProgramCurator.curatedProgramDebugLogLines(
+        program: const [],
+        programDurationMs: 1000,
+        historyDepth: 3,
+        recentScreenIdsOldestFirst: const [],
+      );
+      expect(emptyLines.single, contains('curated slides: 0'));
+    },
+  );
 
   test('screen max placements per program is respected', () {
     final slides = ScreenProgramCurator.buildProgram(
@@ -314,7 +336,9 @@ void main() {
         'news': DataKeyProgramLimit(maxPlacementsPerProgram: 1),
       },
     );
-    final newsCount = slides.where((s) => s.screenId.startsWith('news_')).length;
+    final newsCount = slides
+        .where((s) => s.screenId.startsWith('news_'))
+        .length;
     expect(newsCount, lessThanOrEqualTo(1));
   });
 
@@ -333,7 +357,9 @@ void main() {
         'clock': DataKeyProgramLimit(minPlacementsPerProgram: 2),
       },
     );
-    final clockCount = slides.where((s) => s.screenId.startsWith('clock_')).length;
+    final clockCount = slides
+        .where((s) => s.screenId.startsWith('clock_'))
+        .length;
     expect(clockCount, greaterThanOrEqualTo(2));
   });
 
@@ -355,19 +381,7 @@ void main() {
       historyDepth: 5,
       random: Random(0),
       randomPools: {
-        'photo': [
-          'wide',
-          'tall',
-          'a',
-          'b',
-          'c',
-          'd',
-          'e',
-          'f',
-          'g',
-          'h',
-          'i',
-        ],
+        'photo': ['wide', 'tall', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'],
       },
       photoMetrics: {
         'wide': const PhotoCuratorMetric(pixelWidth: 1920, pixelHeight: 1080),
@@ -411,7 +425,9 @@ void main() {
       recentScreenIdsOldestFirst: const [],
       historyDepth: 5,
       random: Random(0),
-      randomPools: const {'photo:nature': ['a1']},
+      randomPools: const {
+        'photo:nature': ['a1'],
+      },
     );
     expect(photoSlides.single.randomChoices['main_photo'], 'a1');
 
@@ -421,59 +437,64 @@ void main() {
       recentScreenIdsOldestFirst: const [],
       historyDepth: 5,
       random: Random(0),
-      randomPools: const {'video': ['v1']},
+      randomPools: const {
+        'video': ['v1'],
+      },
     );
     expect(videoSlides.single.randomChoices['main_video'], 'v1');
   });
 
-  test('joint metrics path can rotate among multiple rss news screen definitions', () {
-    const layout =
-        '{"v":1,"widgets":[{"type":"news","slot":"main","config":{"summaryCapacityChars":500}}]}';
-    final seenIds = <String>{};
-    for (var seed = 0; seed < 40; seed++) {
-      final slides = ScreenProgramCurator.buildProgram(
-        screens: [
-          _c(id: 'news_a', dwellMs: 30000, layout: layout),
-          _c(id: 'news_b', dwellMs: 30000, layout: layout),
-        ],
-        programDurationMs: 60000,
-        recentScreenIdsOldestFirst: const [],
-        historyDepth: 5,
-        random: Random(seed),
-        randomPools: const {
-          'rss': ['a1', 'a2', 'a3', 'a4'],
-        },
-        rssArticleMetrics: const {
-          'a1': RssArticleMetric(
-            hasImage: true,
-            summaryLength: 200,
-            categoryId: 'general',
-          ),
-          'a2': RssArticleMetric(
-            hasImage: true,
-            summaryLength: 200,
-            categoryId: 'general',
-          ),
-          'a3': RssArticleMetric(
-            hasImage: true,
-            summaryLength: 200,
-            categoryId: 'general',
-          ),
-          'a4': RssArticleMetric(
-            hasImage: true,
-            summaryLength: 200,
-            categoryId: 'general',
-          ),
-        },
-        requirePhotoForRssScreens: true,
-      );
-      expect(slides, hasLength(2));
-      seenIds.add(slides[0].screenId);
-      seenIds.add(slides[1].screenId);
-    }
-    expect(seenIds.contains('news_a'), isTrue);
-    expect(seenIds.contains('news_b'), isTrue);
-  });
+  test(
+    'joint metrics path can rotate among multiple rss news screen definitions',
+    () {
+      const layout =
+          '{"v":1,"widgets":[{"type":"news","slot":"main","config":{"summaryCapacityChars":500}}]}';
+      final seenIds = <String>{};
+      for (var seed = 0; seed < 40; seed++) {
+        final slides = ScreenProgramCurator.buildProgram(
+          screens: [
+            _c(id: 'news_a', dwellMs: 30000, layout: layout),
+            _c(id: 'news_b', dwellMs: 30000, layout: layout),
+          ],
+          programDurationMs: 60000,
+          recentScreenIdsOldestFirst: const [],
+          historyDepth: 5,
+          random: Random(seed),
+          randomPools: const {
+            'rss': ['a1', 'a2', 'a3', 'a4'],
+          },
+          rssArticleMetrics: const {
+            'a1': RssArticleMetric(
+              hasImage: true,
+              summaryLength: 200,
+              categoryId: 'general',
+            ),
+            'a2': RssArticleMetric(
+              hasImage: true,
+              summaryLength: 200,
+              categoryId: 'general',
+            ),
+            'a3': RssArticleMetric(
+              hasImage: true,
+              summaryLength: 200,
+              categoryId: 'general',
+            ),
+            'a4': RssArticleMetric(
+              hasImage: true,
+              summaryLength: 200,
+              categoryId: 'general',
+            ),
+          },
+          requirePhotoForRssScreens: true,
+        );
+        expect(slides, hasLength(2));
+        seenIds.add(slides[0].screenId);
+        seenIds.add(slides[1].screenId);
+      }
+      expect(seenIds.contains('news_a'), isTrue);
+      expect(seenIds.contains('news_b'), isTrue);
+    },
+  );
 
   test('joint best-fit prefers news screen whose capacity fits summary length', () {
     const layoutBig =
@@ -489,7 +510,9 @@ void main() {
       recentScreenIdsOldestFirst: const [],
       historyDepth: 5,
       random: Random(0),
-      randomPools: const {'rss': ['a1']},
+      randomPools: const {
+        'rss': ['a1'],
+      },
       rssArticleMetrics: const {
         'a1': RssArticleMetric(
           hasImage: true,
@@ -508,14 +531,14 @@ void main() {
     const layout =
         '{"v":1,"widgets":[{"type":"news","slot":"main","config":{}}]}';
     final slides = ScreenProgramCurator.buildProgram(
-      screens: [
-        _c(id: 'rss_only', dwellMs: 60000, layout: layout),
-      ],
+      screens: [_c(id: 'rss_only', dwellMs: 60000, layout: layout)],
       programDurationMs: 60000,
       recentScreenIdsOldestFirst: const [],
       historyDepth: 5,
       random: Random(0),
-      randomPools: const {'rss': ['n1']},
+      randomPools: const {
+        'rss': ['n1'],
+      },
       rssArticleMetrics: const {
         'n1': RssArticleMetric(
           hasImage: false,
@@ -544,7 +567,9 @@ void main() {
       recentScreenIdsOldestFirst: const [],
       historyDepth: 5,
       random: Random(0),
-      randomPools: const {'rss': ['n1']},
+      randomPools: const {
+        'rss': ['n1'],
+      },
       rssArticleMetrics: const {
         'n1': RssArticleMetric(
           hasImage: false,
@@ -560,7 +585,8 @@ void main() {
   });
 
   test('news_columns picks one category for global rss pool', () {
-    const layout = '{"v":1,"layout":"single","widgets":['
+    const layout =
+        '{"v":1,"layout":"single","widgets":['
         '{"type":"news_columns","slot":"main","config":{"columnCount":3}}'
         ']}';
     final slides = ScreenProgramCurator.buildProgram(
@@ -636,37 +662,39 @@ void main() {
       final id = m['main_news_columns_$i']!;
       expect(metrics[id]!.categoryId, screenCat);
     }
-    expect(
-      m['main_news_columns_0'] != m['main_news_columns_1'],
-      isTrue,
-    );
+    expect(m['main_news_columns_0'] != m['main_news_columns_1'], isTrue);
   });
 
-  test('rss categoryId config sets screen category and uses rss_category pool', () {
-    const layout = '{"v":1,"layout":"single","widgets":['
-        '{"type":"news","slot":"main","config":{"categoryId":"technology"}}'
-        ']}';
-    final slides = ScreenProgramCurator.buildProgram(
-      screens: [_c(id: 'n', dwellMs: 30000, layout: layout)],
-      programDurationMs: 30000,
-      recentScreenIdsOldestFirst: const [],
-      historyDepth: 5,
-      random: Random(1),
-      randomPools: {
-        'rss_category:technology': ['t1'],
-      },
-      rssArticleMetrics: const {
-        't1': RssArticleMetric(
-          hasImage: true,
-          summaryLength: 200,
-          categoryId: 'technology',
-        ),
-      },
-    );
-    expect(slides.single.randomChoices['main_news'], 't1');
-    expect(
-      slides.single.randomChoices[ScreenProgramCurator.rssScreenCategoryChoiceKey],
-      'technology',
-    );
-  });
+  test(
+    'rss categoryId config sets screen category and uses rss_category pool',
+    () {
+      const layout =
+          '{"v":1,"layout":"single","widgets":['
+          '{"type":"news","slot":"main","config":{"categoryId":"technology"}}'
+          ']}';
+      final slides = ScreenProgramCurator.buildProgram(
+        screens: [_c(id: 'n', dwellMs: 30000, layout: layout)],
+        programDurationMs: 30000,
+        recentScreenIdsOldestFirst: const [],
+        historyDepth: 5,
+        random: Random(1),
+        randomPools: {
+          'rss_category:technology': ['t1'],
+        },
+        rssArticleMetrics: const {
+          't1': RssArticleMetric(
+            hasImage: true,
+            summaryLength: 200,
+            categoryId: 'technology',
+          ),
+        },
+      );
+      expect(slides.single.randomChoices['main_news'], 't1');
+      expect(
+        slides.single.randomChoices[ScreenProgramCurator
+            .rssScreenCategoryChoiceKey],
+        'technology',
+      );
+    },
+  );
 }

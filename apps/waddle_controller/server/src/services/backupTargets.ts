@@ -4,7 +4,8 @@ import type { AppDatabase } from '../db/database.js';
 import { decryptDisplayApiKey, encryptDisplayApiKey } from './displaySecrets.js';
 import { normalizeDisplayBaseUrl } from '../constants/proxyHeaders.js';
 import {
-  buildDefaultBackupSchedule,
+  allocateBackupScheduleForNewTarget,
+  controllerBackupTimezone,
   normalizeScheduleInput,
   scheduleToCronExpr,
   type BackupScheduleFields,
@@ -138,7 +139,7 @@ export function upsertBackupTarget(
     baseUrl: string;
     apiKey: string;
     schedule?: Partial<BackupScheduleFields>;
-    timezone: string;
+    timezone?: string;
     retentionCount: number;
     enabled: boolean;
   },
@@ -148,12 +149,13 @@ export function upsertBackupTarget(
   const { ciphertext, iv } = encryptDisplayApiKey(config.sessionSecret, input.apiKey);
   const existing = findBackupTargetByDisplayId(db, input.displayId, input.userId);
 
-  const schedule = normalizeScheduleInput(
-    input.schedule,
-    existing ? rowScheduleFields(existing) : buildDefaultBackupSchedule(),
-  );
+  const existingSchedules = listBackupTargets(db, input.userId).map((t) => t.schedule);
+  const scheduleFallback = existing
+    ? rowScheduleFields(existing)
+    : allocateBackupScheduleForNewTarget(existingSchedules);
+  const schedule = normalizeScheduleInput(input.schedule, scheduleFallback);
   const cronExpr = scheduleToCronExpr(schedule);
-  const tz = input.timezone.trim() || 'UTC';
+  const tz = controllerBackupTimezone();
   const retention = Math.max(1, Math.min(100, input.retentionCount));
 
   if (existing) {

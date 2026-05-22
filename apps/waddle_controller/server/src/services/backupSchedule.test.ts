@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  allocateBackupScheduleForNewTarget,
   buildDefaultBackupSchedule,
+  controllerBackupTimezone,
   isBackupScheduleDue,
   normalizeScheduleInput,
   parseCronToSchedule,
@@ -8,14 +10,62 @@ import {
 } from './backupSchedule.js';
 
 describe('backupSchedule', () => {
-  it('buildDefaultBackupSchedule returns weekly night window', () => {
+  it('buildDefaultBackupSchedule returns Sunday 02:00 weekly', () => {
     const s = buildDefaultBackupSchedule();
-    expect(s.frequency).toBe('weekly');
-    expect(s.interval).toBe(1);
-    expect(s.dayOfWeek).toBeGreaterThanOrEqual(0);
-    expect(s.dayOfWeek).toBeLessThanOrEqual(6);
-    expect(s.hour).toBeGreaterThanOrEqual(2);
-    expect(s.hour).toBeLessThanOrEqual(5);
+    expect(s).toEqual({
+      frequency: 'weekly',
+      interval: 1,
+      dayOfWeek: 0,
+      hour: 2,
+      minute: 0,
+    });
+  });
+
+  it('allocateBackupScheduleForNewTarget staggers by 5 minutes', () => {
+    expect(allocateBackupScheduleForNewTarget([])).toEqual({
+      frequency: 'weekly',
+      interval: 1,
+      dayOfWeek: 0,
+      hour: 2,
+      minute: 0,
+    });
+    const first = allocateBackupScheduleForNewTarget([]);
+    expect(allocateBackupScheduleForNewTarget([first])).toEqual({
+      frequency: 'weekly',
+      interval: 1,
+      dayOfWeek: 0,
+      hour: 2,
+      minute: 5,
+    });
+    const second = allocateBackupScheduleForNewTarget([first]);
+    expect(allocateBackupScheduleForNewTarget([first, second])).toEqual({
+      frequency: 'weekly',
+      interval: 1,
+      dayOfWeek: 0,
+      hour: 2,
+      minute: 15,
+    });
+  });
+
+  it('allocateBackupScheduleForNewTarget wraps past midnight', () => {
+    const late = {
+      frequency: 'weekly' as const,
+      interval: 1,
+      dayOfWeek: 0,
+      hour: 23,
+      minute: 55,
+    };
+    expect(allocateBackupScheduleForNewTarget([late])).toEqual({
+      frequency: 'weekly',
+      interval: 1,
+      dayOfWeek: 0,
+      hour: 0,
+      minute: 0,
+    });
+  });
+
+  it('controllerBackupTimezone returns a non-empty string', () => {
+    expect(controllerBackupTimezone().length).toBeGreaterThan(0);
   });
 
   it('scheduleToCronExpr encodes daily and weekly', () => {

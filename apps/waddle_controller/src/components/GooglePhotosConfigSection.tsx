@@ -25,6 +25,7 @@ import { ApiError } from '@/api/client';
 import type { SavedDisplay } from '@/storage/displays';
 import type { IntegrationAccountRow } from '@/util/integrationAccounts';
 import { ContentCategorySelect } from '@/components/config/ContentCategorySelectField';
+import { IntegrationConfigSection } from '@/components/IntegrationConfigSection';
 import { DISPLAY_SETTINGS_ACCOUNTS_LABEL } from '@/constants/displaySettingsTabs';
 import {
   mergePickedMediaIds,
@@ -41,6 +42,7 @@ type Props = {
   googleAccounts: IntegrationAccountRow[];
   categories: ContentCategoryOption[];
   mediaKind: 'photo' | 'video';
+  disabled?: boolean;
 };
 
 function errMsg(e: unknown): string {
@@ -68,6 +70,7 @@ export function GooglePhotosConfigSection({
   googleAccounts,
   categories,
   mediaKind,
+  disabled = false,
 }: Props) {
   const [pickerBusySourceId, setPickerBusySourceId] = useState<string | null>(null);
   const [pickerError, setPickerError] = useState<string | null>(null);
@@ -163,25 +166,31 @@ export function GooglePhotosConfigSection({
     [display, value.googleAccountKey, mediaKind],
   );
 
+  const mediaLabel = mediaKind === 'photo' ? 'photos' : 'videos';
+
   return (
-    <Stack spacing={2}>
-      <Typography variant="subtitle2">Google Photos album sources</Typography>
-      <Typography variant="body2" color="text.secondary">
-        Shared albums: open Google Photos, search for your album name, then select items. New
-        photos in a shared album require <strong>Refresh selection</strong>.
-      </Typography>
+    <IntegrationConfigSection
+      title={`Google Photos album sources (${mediaLabel})`}
+      description={
+        <>
+          Shared albums: open Google Photos, search for your album name, then select items. New{' '}
+          {mediaLabel} in a shared album require <strong>Refresh selection</strong>.
+        </>
+      }
+    >
       {configuredGoogleAccounts.length === 0 ? (
         <Alert severity="info">
           Add a Google account under <strong>{DISPLAY_SETTINGS_ACCOUNTS_LABEL}</strong>, complete
           sign-in on the display, then return here.
         </Alert>
       ) : (
-        <FormControl fullWidth size="small">
+        <FormControl fullWidth size="small" disabled={disabled}>
           <InputLabel id="google-photos-account-label">Google account</InputLabel>
           <Select
             labelId="google-photos-account-label"
             label="Google account"
             value={value.googleAccountKey}
+            disabled={disabled}
             onChange={(e) => patch({ googleAccountKey: e.target.value })}
           >
             {configuredGoogleAccounts.map((a) => (
@@ -193,15 +202,17 @@ export function GooglePhotosConfigSection({
         </FormControl>
       )}
       <TextField
-        label="Global per-poll download cap"
+        label="Max downloads per sync"
         type="number"
         size="small"
         fullWidth
+        disabled={disabled}
         value={value.globalPerPollLimit}
         onChange={(e) =>
           patch({ globalPerPollLimit: Math.max(1, Number(e.target.value) || 50) })
         }
         inputProps={{ min: 1 }}
+        helperText="Shared cap per collect across all album sources (default 50)."
       />
       {pickerError ? <Alert severity="error">{pickerError}</Alert> : null}
       {value.sources.map((source) => (
@@ -222,6 +233,7 @@ export function GooglePhotosConfigSection({
               <IconButton
                 size="small"
                 aria-label="Remove source"
+                disabled={disabled}
                 onClick={() => removeSource(source.sourceId)}
               >
                 <DeleteOutlineIcon fontSize="small" />
@@ -231,6 +243,7 @@ export function GooglePhotosConfigSection({
               label="Label"
               size="small"
               fullWidth
+              disabled={disabled}
               value={source.albumLabel}
               onChange={(e) => patchSource(source.sourceId, { albumLabel: e.target.value })}
             />
@@ -238,6 +251,7 @@ export function GooglePhotosConfigSection({
               label="Search hint (album name in Google Photos)"
               size="small"
               fullWidth
+              disabled={disabled}
               value={source.albumSearchHint}
               onChange={(e) =>
                 patchSource(source.sourceId, { albumSearchHint: e.target.value })
@@ -250,6 +264,7 @@ export function GooglePhotosConfigSection({
               value={source.category}
               onChange={(category) => patchSource(source.sourceId, { category })}
               categories={categories}
+              disabled={disabled}
             />
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <TextField
@@ -257,6 +272,7 @@ export function GooglePhotosConfigSection({
                 type="number"
                 size="small"
                 fullWidth
+                disabled={disabled}
                 value={source.maxFiles}
                 onChange={(e) =>
                   patchSource(source.sourceId, {
@@ -270,6 +286,7 @@ export function GooglePhotosConfigSection({
                 type="number"
                 size="small"
                 fullWidth
+                disabled={disabled}
                 value={source.perPollLimit}
                 onChange={(e) =>
                   patchSource(source.sourceId, {
@@ -287,7 +304,7 @@ export function GooglePhotosConfigSection({
               <Button
                 variant="outlined"
                 size="small"
-                disabled={!value.googleAccountKey || pickerBusySourceId != null}
+                disabled={disabled || !value.googleAccountKey || pickerBusySourceId != null}
                 onClick={() => void runPicker(source, true)}
               >
                 {pickerBusySourceId === source.sourceId ? (
@@ -299,6 +316,7 @@ export function GooglePhotosConfigSection({
                 variant="text"
                 size="small"
                 disabled={
+                  disabled ||
                   !value.googleAccountKey ||
                   pickerBusySourceId != null ||
                   source.mediaItemIds.length === 0
@@ -311,9 +329,9 @@ export function GooglePhotosConfigSection({
           </Stack>
         </Box>
       ))}
-      <Button variant="outlined" size="small" onClick={addSource}>
+      <Button variant="outlined" size="small" disabled={disabled} onClick={addSource}>
         Add album source
       </Button>
-    </Stack>
+    </IntegrationConfigSection>
   );
 }

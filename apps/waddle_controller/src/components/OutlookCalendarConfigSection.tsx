@@ -22,6 +22,7 @@ import {
   CategoryMultiSelect,
   type ContentCategoryOption,
 } from '@/components/CategoryMultiSelect';
+import { IntegrationConfigSection } from '@/components/IntegrationConfigSection';
 import {
   mergeOutlookCalendarsWithSaved,
   type OutlookCalendarConfigState,
@@ -35,6 +36,7 @@ type Props = {
   onChange: (next: OutlookCalendarConfigState) => void;
   microsoftAccounts: IntegrationAccountRow[];
   categories: ContentCategoryOption[];
+  disabled?: boolean;
 };
 
 function errMsg(e: unknown): string {
@@ -47,6 +49,7 @@ export function OutlookCalendarConfigSection({
   onChange,
   microsoftAccounts,
   categories,
+  disabled = false,
 }: Props) {
   const [calendarsLoading, setCalendarsLoading] = useState(false);
   const [calendarsError, setCalendarsError] = useState<string | null>(null);
@@ -111,15 +114,17 @@ export function OutlookCalendarConfigSection({
   };
 
   return (
-    <Stack spacing={2}>
-      <Typography variant="subtitle2">Outlook calendar sync</Typography>
+    <IntegrationConfigSection
+      title="Outlook calendar sync"
+      description="Choose a signed-in Microsoft account and select which calendars to sync into event categories."
+    >
       {configuredMicrosoftAccounts.length === 0 ? (
         <Alert severity="info">
           Add a Microsoft account under <strong>{DISPLAY_SETTINGS_ACCOUNTS_LABEL}</strong>, complete
           sign-in on the display, then return here.
         </Alert>
       ) : (
-        <FormControl fullWidth size="small">
+        <FormControl fullWidth size="small" disabled={disabled}>
           <InputLabel id="outlook-ms-account-label">Microsoft account</InputLabel>
           <Select
             labelId="outlook-ms-account-label"
@@ -144,6 +149,7 @@ export function OutlookCalendarConfigSection({
           type="number"
           size="small"
           fullWidth
+          disabled={disabled}
           value={value.pastDays}
           onChange={(e) => patch({ pastDays: Number(e.target.value) || 1 })}
           inputProps={{ min: 1 }}
@@ -153,6 +159,7 @@ export function OutlookCalendarConfigSection({
           type="number"
           size="small"
           fullWidth
+          disabled={disabled}
           value={value.futureDays}
           onChange={(e) => patch({ futureDays: Number(e.target.value) || 1 })}
           inputProps={{ min: 1 }}
@@ -172,6 +179,7 @@ export function OutlookCalendarConfigSection({
                 variant="caption"
                 color="primary"
                 sx={{ border: 0, background: 'none', cursor: 'pointer', p: 0 }}
+                disabled={disabled}
                 onClick={() => void loadCalendars(value.graphAccountKey)}
               >
                 Refresh list
@@ -198,6 +206,7 @@ export function OutlookCalendarConfigSection({
                 control={
                   <Checkbox
                     checked={cal.selected}
+                    disabled={disabled}
                     onChange={(_, checked) => patchCalendar(cal.id, { selected: checked })}
                   />
                 }
@@ -209,12 +218,12 @@ export function OutlookCalendarConfigSection({
                 value={cal.categoryIds}
                 onChange={(categoryIds) => patchCalendar(cal.id, { categoryIds })}
                 categories={categories}
-                disabled={!cal.selected}
+                disabled={disabled || !cal.selected}
               />
             </Box>
           ))}
         </Stack>
       ) : null}
-    </Stack>
+    </IntegrationConfigSection>
   );
 }

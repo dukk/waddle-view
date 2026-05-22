@@ -97,6 +97,28 @@ void main() {
     expect((snap[1]['message'] as String).contains('FAIL eng'), isTrue);
   });
 
+  test('default hub evicts screen programs beyond cap', () {
+    final hub = OperatorTelemetryHub();
+    for (var i = 0; i < 15; i++) {
+      hub.recordScreenProgram(
+        reason: 'r$i',
+        slides: const [
+          ResolvedSlide(
+            screenId: 's',
+            dwellMs: 1,
+            layoutJson: '{}',
+            randomChoices: {},
+          ),
+        ],
+        screenTypeById: const {'s': 'weather'},
+      );
+    }
+    final snap = hub.snapshotScreenPrograms();
+    expect(snap.length, kDefaultOperatorTelemetryProgramLimit);
+    expect(snap.first['reason'], 'r5');
+    expect(snap.last['reason'], 'r14');
+  });
+
   test('snapshotPrograms respects limit', () {
     final hub = OperatorTelemetryHub(maxScreenPrograms: 2);
     for (var i = 0; i < 5; i++) {
@@ -117,4 +139,3 @@ void main() {
     expect(limited.length, 2);
   });
 }
-

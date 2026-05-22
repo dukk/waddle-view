@@ -41,8 +41,7 @@ export async function saveBackupTarget(input: {
   label: string;
   baseUrl: string;
   apiKey: string;
-  schedule: BackupTargetSchedule;
-  timezone: string;
+  schedule?: BackupTargetSchedule;
   retentionCount: number;
   enabled: boolean;
 }): Promise<BackupTarget> {

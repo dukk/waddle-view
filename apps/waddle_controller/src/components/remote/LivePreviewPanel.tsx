@@ -10,6 +10,7 @@ import {
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { createLivePreviewSession } from '@/api/displayLivePreview';
 import type { SavedDisplay } from '@/storage/displays';
+import { openLivePreviewPopOut } from '@/util/openLivePreviewPopOut';
 import {
   buildLivePreviewWebSocketUrl,
   consumeLivePreviewTestPayload,
@@ -57,27 +58,45 @@ function parseLivePreviewFrame(buf: ArrayBuffer): {
   };
 }
 
+export type LivePreviewConnectionStatus = 'idle' | 'connecting' | 'connected' | 'error';
+
 type Props = {
   display: SavedDisplay;
   popOutPath?: string;
   onDisconnect?: () => void;
+  onStatusChange?: (status: LivePreviewConnectionStatus) => void;
   initialTicket?: string;
   autoConnect?: boolean;
+  showPopOut?: boolean;
+  /** Fills parent height without fixed min-heights (pop-out window). */
+  layout?: 'default' | 'embedded';
 };
 
 export function LivePreviewPanel({
   display,
   popOutPath = '/remote/view',
   onDisconnect,
+  onStatusChange,
   initialTicket,
   autoConnect = false,
+  showPopOut = true,
+  layout = 'default',
 }: Props) {
+  const embedded = layout === 'embedded';
   const imgRef = useRef<HTMLImageElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const blobUrlRef = useRef<string | null>(null);
-  const [status, setStatus] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
+  const [status, setStatus] = useState<LivePreviewConnectionStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const [tinyFrameWarning, setTinyFrameWarning] = useState(false);
+
+  const setConnectionStatus = useCallback(
+    (next: LivePreviewConnectionStatus) => {
+      setStatus(next);
+      onStatusChange?.(next);
+    },
+    [onStatusChange],
+  );
 
   const revokeBlob = useCallback(() => {
     if (blobUrlRef.current) {
@@ -90,14 +109,14 @@ export function LivePreviewPanel({
     wsRef.current?.close();
     wsRef.current = null;
     revokeBlob();
-    setStatus('idle');
+    setConnectionStatus('idle');
     onDisconnect?.();
-  }, [onDisconnect, revokeBlob]);
+  }, [onDisconnect, revokeBlob, setConnectionStatus]);
 
   const connect = useCallback(
     async (ticketOverride?: string) => {
       setError(null);
-      setStatus('connecting');
+      setConnectionStatus('connecting');
       try {
         const testPayload = consumeLivePreviewTestPayload(display.id);
         let ticket = ticketOverride ?? initialTicket ?? testPayload?.ticket;
@@ -114,13 +133,13 @@ export function LivePreviewPanel({
         ws.binaryType = 'arraybuffer';
         wsRef.current = ws;
 
-        ws.onopen = () => setStatus('connected');
+        ws.onopen = () => setConnectionStatus('connected');
         ws.onclose = () => {
-          setStatus('idle');
+          setConnectionStatus('idle');
           onDisconnect?.();
         };
         ws.onerror = () => {
-          setStatus('error');
+          setConnectionStatus('error');
           setError('Live preview connection failed.');
         };
         ws.onmessage = (ev) => {
@@ -140,11 +159,11 @@ export function LivePreviewPanel({
           }
         };
       } catch (e) {
-        setStatus('error');
+        setConnectionStatus('error');
         setError(String(e));
       }
     },
-    [display, initialTicket, onDisconnect, revokeBlob],
+    [display, initialTicket, onDisconnect, revokeBlob, setConnectionStatus],
   );
 
   useEffect(() => {
@@ -161,21 +180,28 @@ export function LivePreviewPanel({
   const openPopOut = useCallback(async () => {
     try {
       const session = await createLivePreviewSession(display);
-      const params = new URLSearchParams({
-        displayId: display.id,
-        ticket: session.ticket,
-      });
-      window.open(`${popOutPath}?${params.toString()}`, '_blank', 'noopener,noreferrer');
+      openLivePreviewPopOut(
+        { displayId: display.id, ticket: session.ticket },
+        popOutPath,
+      );
     } catch (e) {
       setError(String(e));
-      setStatus('error');
+      setConnectionStatus('error');
     }
-  }, [display, popOutPath]);
+  }, [display, popOutPath, setConnectionStatus]);
 
   const showPlaceholder = status !== 'connected';
 
   return (
-    <Stack spacing={1} sx={{ height: '100%', minHeight: 320 }}>
+    <Stack
+      spacing={1}
+      sx={{
+        height: embedded ? '100%' : undefined,
+        minHeight: embedded ? 0 : 320,
+        flex: embedded ? 1 : undefined,
+        minWidth: 0,
+      }}
+    >
       {error && (
         <Alert severity="error" onClose={() => setError(null)}>
           {error}
@@ -191,7 +217,8 @@ export function LivePreviewPanel({
       <Box
         sx={{
           flex: 1,
-          minHeight: 280,
+          minHeight: embedded ? 0 : 280,
+          flexShrink: embedded ? 1 : undefined,
           bgcolor: 'grey.900',
           borderRadius: 1,
           overflow: 'hidden',
@@ -229,7 +256,7 @@ export function LivePreviewPanel({
           </Stack>
         )}
       </Box>
-      <Stack direction="row" spacing={1} flexWrap="wrap">
+      <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ flexShrink: 0 }}>
         {status === 'connected' ? (
           <Button variant="outlined" onClick={disconnect}>
             Disconnect
@@ -239,13 +266,15 @@ export function LivePreviewPanel({
             Connect
           </Button>
         )}
-        <Button
-          variant="outlined"
-          startIcon={<OpenInNewIcon />}
-          onClick={() => void openPopOut()}
-        >
-          Open in new window
-        </Button>
+        {showPopOut && (
+          <Button
+            variant="outlined"
+            startIcon={<OpenInNewIcon />}
+            onClick={() => void openPopOut()}
+          >
+            Open in new window
+          </Button>
+        )}
       </Stack>
     </Stack>
   );

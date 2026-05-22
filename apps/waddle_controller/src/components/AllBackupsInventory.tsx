@@ -7,6 +7,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Paper,
   Stack,
   Table,
   TableBody,
@@ -23,7 +24,10 @@ import {
   restoreBackupSnapshot,
   type BackupSnapshot,
 } from '@/api/bffBackups';
+import { DataViewEmptyState } from '@/components/dataView/DataViewEmptyState';
+import { DataViewPagination } from '@/components/dataView/DataViewPagination';
 import { DataViewToolbar } from '@/components/dataView/DataViewToolbar';
+import { catalogCardGridSx } from '@/constants/catalogLayout';
 import { useClientDataView } from '@/hooks/useClientDataView';
 import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import { completeDialogSave } from '@/util/dialogSave';
@@ -59,6 +63,69 @@ function formatBytes(n: number): string {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function SnapshotActions({
+  snapshot: s,
+  busy,
+  onRestore,
+  onDelete,
+}: {
+  snapshot: BackupSnapshot;
+  busy: boolean;
+  onRestore: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+      <Button
+        size="small"
+        component="a"
+        href={backupSnapshotDownloadUrl(s.id)}
+        download
+      >
+        Download
+      </Button>
+      <Button size="small" color="warning" disabled={busy} onClick={onRestore}>
+        Restore
+      </Button>
+      <Button size="small" color="error" disabled={busy} onClick={onDelete}>
+        Delete
+      </Button>
+    </Stack>
+  );
+}
+
+function BackupSnapshotCard({
+  snapshot: s,
+  busy,
+  onRestore,
+  onDelete,
+}: {
+  snapshot: BackupSnapshot;
+  busy: boolean;
+  onRestore: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <Paper variant="outlined" sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Stack spacing={1} sx={{ flexGrow: 1 }}>
+        <Typography variant="subtitle2" fontWeight={600}>
+          {s.displayLabel}
+        </Typography>
+        <Typography variant="body2">{s.fileName}</Typography>
+        <Typography variant="caption" color="text.secondary">
+          {formatBytes(s.byteSize)} · {s.source}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          {new Date(s.createdAt).toLocaleString()}
+        </Typography>
+      </Stack>
+      <Box sx={{ mt: 1.5 }}>
+        <SnapshotActions snapshot={s} busy={busy} onRestore={onRestore} onDelete={onDelete} />
+      </Box>
+    </Paper>
+  );
+}
+
 export function AllBackupsInventory({
   displayFilterId,
   onChanged,
@@ -71,9 +138,11 @@ export function AllBackupsInventory({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [restoreSnap, setRestoreSnap] = useState<BackupSnapshot | null>(null);
+  const [reloadBusy, setReloadBusy] = useState(false);
 
   const reload = useCallback(async () => {
     setError(null);
+    setReloadBusy(true);
     try {
       const all = await listAllBackupSnapshots();
       setSnapshots(
@@ -81,6 +150,8 @@ export function AllBackupsInventory({
       );
     } catch (e) {
       setError(String(e));
+    } finally {
+      setReloadBusy(false);
     }
   }, [displayFilterId]);
 
@@ -88,7 +159,7 @@ export function AllBackupsInventory({
     void reload();
   }, [reload]);
 
-  const { layout, setLayout } = useListLayoutPreference('controller-all-backups');
+  const { layout, setLayout } = useListLayoutPreference('display-ops-backups');
   const dataView = useClientDataView({
     items: snapshots,
     sortOptions: SNAPSHOT_SORT,
@@ -96,6 +167,8 @@ export function AllBackupsInventory({
     searchMatches: (s, q) =>
       `${s.displayLabel} ${s.fileName} ${s.source} ${s.createdAt}`.toLowerCase().includes(q),
   });
+
+  const displayRows = dataView.paginated.items;
 
   const runRestore = async () => {
     if (!restoreSnap) return;
@@ -107,6 +180,26 @@ export function AllBackupsInventory({
         onChanged?.();
         await reload();
       }, () => setRestoreSnap(null));
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const deleteSnapshot = async (s: BackupSnapshot) => {
+    const ok = await confirm({
+      title: 'Delete backup?',
+      message: `Delete backup ${s.fileName}?`,
+      confirmLabel: 'Delete',
+      severity: 'error',
+    });
+    if (!ok) return;
+    setBusy(true);
+    try {
+      await deleteBackupSnapshot(s.id);
+      onChanged?.();
+      await reload();
     } catch (e) {
       setError(String(e));
     } finally {
@@ -133,86 +226,76 @@ export function AllBackupsInventory({
         onLayoutChange={setLayout}
         search={dataView.search}
         onSearchChange={dataView.setSearch}
+        searchPlaceholder="Search backups…"
         sortOptions={SNAPSHOT_SORT.map((o) => ({ id: o.id, label: o.label }))}
         sortId={dataView.sortId}
         onSortChange={dataView.setSortId}
         onReload={() => void reload()}
+        reloadDisabled={reloadBusy}
+        reloadAriaLabel="Reload stored backups"
       />
-      {dataView.filteredTotal === 0 ? (
-        <Typography variant="body2" color="text.secondary">
-          No backups stored yet. Save a schedule and pull, or upload from Display settings.
-        </Typography>
-      ) : (
-        <TableContainer>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Display</TableCell>
-                <TableCell>File</TableCell>
-                <TableCell>Size</TableCell>
-                <TableCell>Source</TableCell>
-                <TableCell>Taken</TableCell>
-                <TableCell align="right">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {dataView.paginated.items.map((s) => (
-                <TableRow key={s.id}>
-                  <TableCell>{s.displayLabel}</TableCell>
-                  <TableCell>{s.fileName}</TableCell>
-                  <TableCell>{formatBytes(s.byteSize)}</TableCell>
-                  <TableCell>{s.source}</TableCell>
-                  <TableCell>{new Date(s.createdAt).toLocaleString()}</TableCell>
-                  <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                    <Button
-                      size="small"
-                      component="a"
-                      href={backupSnapshotDownloadUrl(s.id)}
-                      download
-                    >
-                      Download
-                    </Button>
-                    <Button
-                      size="small"
-                      color="warning"
-                      disabled={busy}
-                      onClick={() => setRestoreSnap(s)}
-                    >
-                      Restore
-                    </Button>
-                    <Button
-                      size="small"
-                      color="error"
-                      disabled={busy}
-                      onClick={async () => {
-                        const ok = await confirm({
-                          title: 'Delete backup?',
-                          message: `Delete backup ${s.fileName}?`,
-                          confirmLabel: 'Delete',
-                          severity: 'error',
-                        });
-                        if (!ok) return;
-                        setBusy(true);
-                        try {
-                          await deleteBackupSnapshot(s.id);
-                          onChanged?.();
-                          await reload();
-                        } catch (e) {
-                          setError(String(e));
-                        } finally {
-                          setBusy(false);
-                        }
-                      }}
-                    >
-                      Delete
-                    </Button>
-                  </TableCell>
+      <Stack spacing={2}>
+        <DataViewEmptyState
+          hasItems={snapshots.length > 0}
+          hasFilteredMatches={displayRows.length > 0}
+          emptyMessage="No backups stored yet. Save a schedule and pull, or upload from Display settings."
+          noMatchesMessage="No backups match your search."
+        />
+        {displayRows.length > 0 && layout === 'card' ? (
+          <Box sx={catalogCardGridSx}>
+            {displayRows.map((s) => (
+              <BackupSnapshotCard
+                key={s.id}
+                snapshot={s}
+                busy={busy}
+                onRestore={() => setRestoreSnap(s)}
+                onDelete={() => void deleteSnapshot(s)}
+              />
+            ))}
+          </Box>
+        ) : displayRows.length > 0 ? (
+          <TableContainer component={Paper} variant="outlined">
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Display</TableCell>
+                  <TableCell>File</TableCell>
+                  <TableCell>Size</TableCell>
+                  <TableCell>Source</TableCell>
+                  <TableCell>Taken</TableCell>
+                  <TableCell align="right">Actions</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+              </TableHead>
+              <TableBody>
+                {displayRows.map((s) => (
+                  <TableRow key={s.id}>
+                    <TableCell>{s.displayLabel}</TableCell>
+                    <TableCell>{s.fileName}</TableCell>
+                    <TableCell>{formatBytes(s.byteSize)}</TableCell>
+                    <TableCell>{s.source}</TableCell>
+                    <TableCell>{new Date(s.createdAt).toLocaleString()}</TableCell>
+                    <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                      <SnapshotActions
+                        snapshot={s}
+                        busy={busy}
+                        onRestore={() => setRestoreSnap(s)}
+                        onDelete={() => void deleteSnapshot(s)}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        ) : null}
+        <DataViewPagination
+          count={dataView.filteredTotal}
+          page={dataView.paginated.page}
+          pageSize={dataView.paginated.pageSize}
+          onPageChange={dataView.setPage}
+          onPageSizeChange={dataView.setPageSize}
+        />
+      </Stack>
 
       <Dialog
         open={restoreSnap != null}

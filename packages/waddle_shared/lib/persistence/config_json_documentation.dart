@@ -1310,6 +1310,13 @@ const Map<String, String> kNewsQrModeEnumLabels = {
   'image_overlay_bottom': 'Over bottom of article image',
 };
 
+/// QR placement for [news_grid] (over article image edges).
+const Map<String, String> kNewsGridQrModeEnumLabels = {
+  'hidden': 'Hidden',
+  'image_overlay_left': 'Over left of article image',
+  'image_overlay_right': 'Over right of article image',
+};
+
 /// News article image fit modes (maps to Flutter BoxFit).
 const Map<String, String> kNewsImageFitEnumLabels = {
   'cover': 'Fill (crop)',
@@ -1466,6 +1473,7 @@ const List<String> kScreenLayoutWidgetTypes = [
   'news',
   'news_columns',
   'news_stack',
+  'news_grid',
   'local_api',
   'admin_setup',
   'controller_invite',
@@ -1918,6 +1926,63 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
       'imageFit': 'cover',
       'qrLogicalSize': 112,
       'summaryCapacityCharsPerSlot': 320,
+    }),
+  ),
+  'news_grid': ScreenConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'RssArticleGridScreenConfig',
+        description:
+            '3×2 RSS grid: image, headline, and source per cell; optional summary; '
+            'QR over left or right of image.',
+        properties: {
+          'categoryNames': _kJsonSchemaContentCategoryNames,
+          'showSummary': {
+            'type': 'boolean',
+            'description':
+                'When false (default), hide article body and show only image, '
+                'headline, and source.',
+          },
+          'minReadMs': {'type': 'integer', 'minimum': 0},
+          'qrMode': {
+            'type': 'string',
+            'enum': ['hidden', 'image_overlay_left', 'image_overlay_right'],
+            'x-waddle-enum-labels': kNewsGridQrModeEnumLabels,
+          },
+          'qrLogicalSize': {
+            'type': 'number',
+            'minimum': 36,
+            'maximum': 72,
+            'description': 'QR size in logical pixels (clamped in UI).',
+          },
+          'imageFit': {
+            'type': 'string',
+            'enum': [
+              'cover',
+              'contain',
+              'fill',
+              'fitWidth',
+              'fitHeight',
+              'scaleDown',
+            ],
+            'x-waddle-enum-labels': kNewsImageFitEnumLabels,
+          },
+          'summaryCapacityCharsPerSlot': {
+            'type': 'integer',
+            'minimum': 0,
+            'description':
+                'Curator summary-fit hint per cell when showSummary is true.',
+          },
+        },
+      ),
+    ),
+    example: jsonEncode({
+      'categoryNames': ['News'],
+      'showSummary': false,
+      'minReadMs': 10000,
+      'qrMode': 'hidden',
+      'qrLogicalSize': 52,
+      'imageFit': 'cover',
     }),
   ),
   'local_api': ScreenConfigJsonDoc(

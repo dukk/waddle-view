@@ -87,6 +87,8 @@ import {
 } from '@/util/onedriveConfig';
 import { MealviewerCalendarConfigSection } from '@/components/MealviewerCalendarConfigSection';
 import { IcalCalendarConfigSection } from '@/components/IcalCalendarConfigSection';
+import { GoogleCalendarConfigSection } from '@/components/GoogleCalendarConfigSection';
+import { IntegrationConfigSection } from '@/components/IntegrationConfigSection';
 import {
   buildMealviewerCalendarConfigJson,
   mealviewerConfigReady,
@@ -99,6 +101,12 @@ import {
   parseIcalCalendarConfig,
   type IcalCalendarConfigState,
 } from '@/util/icalCalendarConfig';
+import {
+  buildGoogleCalendarConfigJson,
+  googleCalendarConfigReady,
+  parseGoogleCalendarConfig,
+  type GoogleCalendarConfigState,
+} from '@/util/googleCalendarConfig';
 import type { IntegrationAccountRow } from '@/util/integrationAccounts';
 import {
   integrationAccountsSatisfiedForEnable,
@@ -812,6 +820,7 @@ function IntegrationCard({
 }
 
 const kOutlookCalendarIntegrationType = 'calendar_outlook';
+const kGoogleCalendarIntegrationType = 'calendar_google';
 const kMealviewerCalendarIntegrationType = 'calendar_mealviewer';
 const kIcalCalendarIntegrationType = 'calendar_ical';
 const kPhotoGoogleIntegrationType = 'photo_google';
@@ -854,6 +863,7 @@ function EditIntegrationDialog({
 }) {
   const { active } = useDisplay();
   const isOutlookCalendar = row.integration_type === kOutlookCalendarIntegrationType;
+  const isGoogleCalendar = row.integration_type === kGoogleCalendarIntegrationType;
   const isMealviewerCalendar =
     row.integration_type === kMealviewerCalendarIntegrationType;
   const isIcalCalendar = row.integration_type === kIcalCalendarIntegrationType;
@@ -876,6 +886,9 @@ function EditIntegrationDialog({
   );
   const [outlookConfig, setOutlookConfig] = useState<OutlookCalendarConfigState>(() =>
     parseOutlookCalendarConfig(parseJsonObject(row.config_json)),
+  );
+  const [googleCalendarConfig, setGoogleCalendarConfig] = useState<GoogleCalendarConfigState>(
+    () => parseGoogleCalendarConfig(parseJsonObject(row.config_json)),
   );
   const [googlePhotosConfig, setGooglePhotosConfig] = useState<GooglePhotosConfigState>(() =>
     parseGooglePhotosConfig(parseJsonObject(row.config_json)),
@@ -921,6 +934,7 @@ function EditIntegrationDialog({
     if (
       !active ||
       (!isOutlookCalendar &&
+        !isGoogleCalendar &&
         !isGooglePhotos &&
         !isOneDrive &&
         !isMealviewerCalendar &&
@@ -950,6 +964,7 @@ function EditIntegrationDialog({
   }, [
     active,
     isOutlookCalendar,
+    isGoogleCalendar,
     isGooglePhotos,
     isOneDrive,
     isMealviewerCalendar,
@@ -1011,6 +1026,11 @@ function EditIntegrationDialog({
     return outlookConfig.calendars.some((c) => c.selected);
   }, [isOutlookCalendar, outlookConfig, microsoftAccounts]);
 
+  const googleCalendarConfigReadyState = useMemo(() => {
+    if (!isGoogleCalendar) return true;
+    return googleCalendarConfigReady(googleCalendarConfig, googleAccounts);
+  }, [isGoogleCalendar, googleCalendarConfig, googleAccounts]);
+
   const googlePhotosConfigReady = useMemo(() => {
     if (!isGooglePhotos) return true;
     if (!googlePhotosConfig.googleAccountKey) return false;
@@ -1040,6 +1060,9 @@ function EditIntegrationDialog({
     if (isOutlookCalendar) {
       return outlookConfigReady;
     }
+    if (isGoogleCalendar) {
+      return googleCalendarConfigReadyState;
+    }
     if (isMealviewerCalendar) {
       return mealviewerConfigReadyState;
     }
@@ -1055,12 +1078,14 @@ function EditIntegrationDialog({
     return integrationAccountsSatisfiedForEnable(accountDetail);
   }, [
     isOutlookCalendar,
+    isGoogleCalendar,
     isMealviewerCalendar,
     isIcalCalendar,
     isGooglePhotos,
     isOneDrive,
     accountDetail,
     outlookConfigReady,
+    googleCalendarConfigReadyState,
     mealviewerConfigReadyState,
     icalConfigReadyState,
     googlePhotosConfigReady,
@@ -1070,7 +1095,9 @@ function EditIntegrationDialog({
   const configForSave = useMemo(() => {
     const built = isOutlookCalendar
       ? buildOutlookCalendarConfigJson(outlookConfig)
-      : isMealviewerCalendar
+      : isGoogleCalendar
+        ? buildGoogleCalendarConfigJson(googleCalendarConfig)
+        : isMealviewerCalendar
         ? buildMealviewerCalendarConfigJson(mealviewerConfig)
         : isIcalCalendar
           ? buildIcalCalendarConfigJson(icalConfig)
@@ -1082,12 +1109,14 @@ function EditIntegrationDialog({
     return mergeIntegrationConfigForSave(built, row.config_json);
   }, [
     isOutlookCalendar,
+    isGoogleCalendar,
     isMealviewerCalendar,
     isIcalCalendar,
     isGooglePhotos,
     isOneDrive,
     oneDriveMediaKind,
     outlookConfig,
+    googleCalendarConfig,
     mealviewerConfig,
     icalConfig,
     googlePhotosConfig,
@@ -1112,6 +1141,10 @@ function EditIntegrationDialog({
       }
       if (isOutlookCalendar && !outlookConfigReady) {
         setErr('Choose a signed-in Microsoft account and at least one calendar to sync.');
+        return;
+      }
+      if (isGoogleCalendar && !googleCalendarConfigReadyState) {
+        setErr('Choose a signed-in Google account and at least one calendar to sync.');
         return;
       }
       if (isGooglePhotos && !googlePhotosConfigReady) {
@@ -1218,6 +1251,7 @@ function EditIntegrationDialog({
           ) : active &&
             accountDetail &&
             !isOutlookCalendar &&
+            !isGoogleCalendar &&
             !isMealviewerCalendar &&
             !isIcalCalendar &&
             !isGooglePhotos &&
@@ -1231,13 +1265,14 @@ function EditIntegrationDialog({
           {!accountsReady &&
           accountDetail &&
           !isOutlookCalendar &&
+          !isGoogleCalendar &&
           !isMealviewerCalendar &&
           !isIcalCalendar &&
           !isGooglePhotos &&
           !isOneDrive ? (
             <Alert severity="info">
               Add accounts under <strong>{DISPLAY_SETTINGS_ACCOUNTS_LABEL}</strong>, or link account
-              keys in <strong>Configuration</strong> below, then complete sign-in or enter API keys.
+              keys in the configuration section below, then complete sign-in or enter API keys.
             </Alert>
           ) : null}
           {!onedriveConfigReadyState && isOneDrive ? (
@@ -1255,6 +1290,12 @@ function EditIntegrationDialog({
           {!outlookConfigReady && isOutlookCalendar ? (
             <Alert severity="info">
               Choose a Microsoft account and at least one calendar below. Add accounts under{' '}
+              <strong>{DISPLAY_SETTINGS_ACCOUNTS_LABEL}</strong> if none are listed.
+            </Alert>
+          ) : null}
+          {!googleCalendarConfigReadyState && isGoogleCalendar ? (
+            <Alert severity="info">
+              Choose a Google account and at least one calendar below. Add accounts under{' '}
               <strong>{DISPLAY_SETTINGS_ACCOUNTS_LABEL}</strong> if none are listed.
             </Alert>
           ) : null}
@@ -1319,6 +1360,16 @@ function EditIntegrationDialog({
               onChange={setOutlookConfig}
               microsoftAccounts={microsoftAccounts}
               categories={curatorCategories}
+              disabled={saving}
+            />
+          ) : isGoogleCalendar && active ? (
+            <GoogleCalendarConfigSection
+              display={active}
+              value={googleCalendarConfig}
+              onChange={setGoogleCalendarConfig}
+              googleAccounts={googleAccounts}
+              categories={curatorCategories}
+              disabled={saving}
             />
           ) : isMealviewerCalendar && active ? (
             <MealviewerCalendarConfigSection
@@ -1343,6 +1394,7 @@ function EditIntegrationDialog({
               googleAccounts={googleAccounts}
               categories={curatorCategories}
               mediaKind={row.integration_type === kVideoGoogleIntegrationType ? 'video' : 'photo'}
+              disabled={saving}
             />
           ) : isOneDrive && active ? (
             <OneDriveConfigSection
@@ -1355,8 +1407,7 @@ function EditIntegrationDialog({
               disabled={saving}
             />
           ) : active ? (
-            <Stack spacing={1}>
-              <Typography variant="subtitle2">Configuration</Typography>
+            <IntegrationConfigSection title={displayName}>
               <SchemaConfigForm
                 display={active}
                 schema={operatorSchema}
@@ -1364,7 +1415,7 @@ function EditIntegrationDialog({
                 onChange={setFormData}
                 disabled={saving}
               />
-            </Stack>
+            </IntegrationConfigSection>
           ) : null}
         </Stack>
       </DialogContent>

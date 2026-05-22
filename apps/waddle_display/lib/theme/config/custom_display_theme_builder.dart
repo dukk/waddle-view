@@ -7,7 +7,9 @@ import 'nine_color_display_theme_builder.dart';
 
 Color _colorFromHex(String hex) {
   final normalized = hex.trim().toUpperCase();
-  final value = normalized.startsWith('#') ? normalized.substring(1) : normalized;
+  final value = normalized.startsWith('#')
+      ? normalized.substring(1)
+      : normalized;
   return Color(int.parse('FF$value', radix: 16));
 }
 
@@ -15,9 +17,7 @@ List<Color> _colorsFromHexList(List<String> hexes) =>
     hexes.map(_colorFromHex).toList();
 
 DisplayBackgroundFill _fillFromStops(List<Color> stops) {
-  final gradient = stops.length >= 2
-      ? stops
-      : [stops.first, stops.first];
+  final gradient = stops.length >= 2 ? stops : [stops.first, stops.first];
   return DisplayBackgroundFill(
     solidColor: gradient.first,
     gradientColors: gradient,
@@ -34,13 +34,15 @@ DisplayThemePalette displayThemePaletteFromChromeGroups(
   final accents = _colorsFromHexList(chrome.accents);
 
   final primaryForeground = primary.first;
-  final primaryGradientStops =
-      primary.length > 1 ? primary.sublist(1) : [primaryForeground];
+  final primaryGradientStops = primary.length > 1
+      ? primary.sublist(1)
+      : [primaryForeground];
   final primaryBackground = primaryGradientStops.first;
 
   final secondaryForeground = secondary.first;
-  final secondaryGradientStops =
-      secondary.length > 1 ? secondary.sublist(1) : [secondaryForeground];
+  final secondaryGradientStops = secondary.length > 1
+      ? secondary.sublist(1)
+      : [secondaryForeground];
   final secondaryBackground = secondaryGradientStops.first;
 
   final footerBar = Color.lerp(display.first, display.last, 0.55)!;
@@ -48,18 +50,9 @@ DisplayThemePalette displayThemePaletteFromChromeGroups(
   final mid = secondaryGradientStops.length > 1
       ? secondaryGradientStops[1]
       : secondaryBackground;
-  final mutedText = secondaryGradientStops.length > 2
-      ? secondaryGradientStops.last
-      : Color.lerp(secondaryForeground, secondaryBackground, 0.45)!;
 
   return DisplayThemePalette(
-    neutrals: [
-      display.first,
-      footerBar,
-      midDark,
-      mid,
-      primaryForeground,
-    ],
+    neutrals: [display.first, footerBar, midDark, mid, primaryForeground],
     accents: accents,
     displayBackground: display.first,
     displayBackgroundFill: _fillFromStops(display),

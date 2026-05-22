@@ -1,21 +1,25 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import type { SavedDisplay } from '@/storage/displays';
 import {
+  createHomeAssistantEntity,
   createJokeCategory,
   createRssFeed,
   createStockSymbol,
   createTriviaCategory,
   createWeatherLocation,
+  deleteHomeAssistantEntity,
   deleteJokeCategory,
   deleteRssFeed,
   deleteStockSymbol,
   deleteTriviaCategory,
   deleteWeatherLocation,
+  listHomeAssistantEntities,
   listJokeCategories,
   listRssFeeds,
   listStockSymbols,
   listTriviaCategories,
   listWeatherLocations,
+  patchHomeAssistantEntity,
   patchJokeCategory,
   patchRssFeed,
   patchStockSymbol,
@@ -220,6 +224,43 @@ describe('interests api', () => {
       display,
       '/v1/interests/trivia-categories/sci',
       expect.objectContaining({ method: 'DELETE' }),
+    );
+  });
+
+  it('home assistant entity CRUD uses /v1/interests/home-assistant-entities', async () => {
+    vi.mocked(apiJson).mockResolvedValue({
+      items: [{ id: 'ha1', entity_id: 'sensor.temp', display_name: 'Temp', enabled: true }],
+    });
+    const items = await listHomeAssistantEntities(display);
+    expect(items).toHaveLength(1);
+    expect(apiJson).toHaveBeenCalledWith(display, '/v1/interests/home-assistant-entities');
+
+    vi.mocked(apiFetch).mockResolvedValue(new Response('{}', { status: 200 }));
+    await createHomeAssistantEntity(display, {
+      id: 'ha1',
+      entity_id: 'sensor.temp',
+      display_name: 'Temp',
+    });
+    await patchHomeAssistantEntity(display, 'ha1', { enabled: false });
+    await deleteHomeAssistantEntity(display, 'ha1');
+
+    expect(apiFetch).toHaveBeenCalledWith(display, '/v1/interests/home-assistant-entities', {
+      method: 'POST',
+      body: JSON.stringify({
+        id: 'ha1',
+        entity_id: 'sensor.temp',
+        display_name: 'Temp',
+      }),
+    });
+    expect(apiFetch).toHaveBeenCalledWith(
+      display,
+      '/v1/interests/home-assistant-entities/ha1',
+      { method: 'PATCH', body: JSON.stringify({ enabled: false }) },
+    );
+    expect(apiFetch).toHaveBeenCalledWith(
+      display,
+      '/v1/interests/home-assistant-entities/ha1',
+      { method: 'DELETE' },
     );
   });
 });

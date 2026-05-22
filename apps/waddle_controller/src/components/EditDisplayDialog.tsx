@@ -22,6 +22,7 @@ import {
   createLivePreviewSessionForBaseUrl,
   putLivePreviewSettings,
 } from '@/api/displayLivePreview';
+import { openLivePreviewPopOut } from '@/util/openLivePreviewPopOut';
 import { storeLivePreviewTestPayload } from '@/util/livePreviewWsUrl';
 
 export type EditDisplayInput = {
@@ -168,11 +169,7 @@ export function EditDisplayDialog({ display, onClose, onSave }: Props) {
         ticket: sessionRes.ticket,
         baseUrl: normalized,
       });
-      const params = new URLSearchParams({
-        displayId: display.id,
-        ticket: sessionRes.ticket,
-      });
-      window.open(`/remote/view?${params.toString()}`, '_blank', 'noopener,noreferrer');
+      openLivePreviewPopOut({ displayId: display.id, ticket: sessionRes.ticket });
     } catch (e) {
       setError(String(e));
     } finally {

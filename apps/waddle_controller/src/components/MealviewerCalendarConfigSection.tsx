@@ -28,6 +28,7 @@ import {
   CategoryMultiSelect,
   type ContentCategoryOption,
 } from '@/components/CategoryMultiSelect';
+import { IntegrationConfigSection } from '@/components/IntegrationConfigSection';
 import {
   mergeSchoolIntoList,
   type MealviewerCalendarConfigState,
@@ -203,7 +204,10 @@ export function MealviewerCalendarConfigSection({
   };
 
   return (
-    <Stack spacing={2}>
+    <IntegrationConfigSection
+      title="MealViewer school menus"
+      description="Search or browse districts to add schools, then assign event categories for each school menu."
+    >
       <Typography variant="subtitle2">Sync window (days)</Typography>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
         <TextField
@@ -375,6 +379,6 @@ export function MealviewerCalendarConfigSection({
           </Stack>
         ))
       )}
-    </Stack>
+    </IntegrationConfigSection>
   );
 }

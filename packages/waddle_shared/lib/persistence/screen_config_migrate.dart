@@ -82,6 +82,7 @@ Map<String, dynamic> _migrateOneScreenConfig(
     case 'news':
     case 'news_columns':
     case 'news_stack':
+    case 'news_grid':
       out.remove('feedId');
       migrateCategoryIdToName();
       if (out.containsKey('imageOnRight')) {

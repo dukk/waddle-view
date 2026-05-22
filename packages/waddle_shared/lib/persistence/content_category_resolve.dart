@@ -1,5 +1,3 @@
-import 'package:drift/drift.dart';
-
 import 'database.dart';
 
 /// Sync resolver when [labelToId] is already loaded (curator / tests).

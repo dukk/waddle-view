@@ -21,6 +21,7 @@ import '../display/screens/photo/photo_collage_slide_widget.dart';
 import '../display/screens/photo/photo_slide_widget.dart';
 import '../display/screens/photo/video_slide_widget.dart';
 import '../display/screens/news/news_columns_slide_widget.dart';
+import '../display/screens/news/news_grid_slide_widget.dart';
 import '../display/screens/news/news_slide_widget.dart';
 import '../display/screens/news/news_stack_slide_widget.dart';
 import '../display/screens/plugin_template/plugin_template_slide_widget.dart';
@@ -153,6 +154,16 @@ class ScreenWidgetRegistry {
               );
             case 'news_stack':
               return NewsStackSlideWidget(
+                db: ctx.db,
+                blobs: ctx.blobs,
+                slide: ctx.slide,
+                spec: w,
+                theme: ctx.theme,
+                onReportDesiredDwell: (ms) =>
+                    ctx.onReportDesiredDwell(ctx.slideIndex, ms),
+              );
+            case 'news_grid':
+              return NewsGridSlideWidget(
                 db: ctx.db,
                 blobs: ctx.blobs,
                 slide: ctx.slide,

@@ -48,6 +48,28 @@ void main() {
       );
     });
 
+    test('news_grid returns 0 when showSummary is false', () {
+      expect(
+        defaultSummaryCapacityCharsFor('news_grid', {'showSummary': false}),
+        0,
+      );
+      expect(defaultSummaryCapacityCharsFor('news_grid', {}), 0);
+    });
+
+    test('news_grid uses per-slot key when showSummary is true', () {
+      expect(
+        defaultSummaryCapacityCharsFor(
+          'news_grid',
+          {'showSummary': true, 'summaryCapacityCharsPerSlot': 90},
+        ),
+        90,
+      );
+      expect(
+        defaultSummaryCapacityCharsFor('news_grid', {'showSummary': true}),
+        80,
+      );
+    });
+
     test('non-rss types return 0', () {
       expect(defaultSummaryCapacityCharsFor('static_text', {}), 0);
     });
@@ -93,6 +115,20 @@ void main() {
       expect(
         computeRssSummarySlotCapacities('news_stack', {'summaryCapacityCharsPerSlot': 111}),
         [111, 111],
+      );
+    });
+
+    test('news_grid always uses six slots', () {
+      expect(
+        computeRssSummarySlotCapacities('news_grid', {'showSummary': false}),
+        List<int>.filled(kNewsGridSlotCount, 0),
+      );
+      expect(
+        computeRssSummarySlotCapacities(
+          'news_grid',
+          {'showSummary': true, 'summaryCapacityCharsPerSlot': 55},
+        ),
+        List<int>.filled(kNewsGridSlotCount, 55),
       );
     });
 

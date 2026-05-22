@@ -90,14 +90,19 @@ void main() {
     final stack = await (db.select(db.screens)
           ..where((t) => t.id.equals('news_stack')))
         .getSingleOrNull();
+    final grid = await (db.select(db.screens)
+          ..where((t) => t.id.equals('news_grid')))
+        .getSingleOrNull();
     expect(left, isNotNull);
     expect(right, isNotNull);
     expect(columns, isNotNull);
     expect(stack, isNotNull);
+    expect(grid, isNotNull);
     expect(left!.dataKey, 'news');
     expect(right!.dataKey, 'news');
     expect(columns!.dataKey, 'news');
     expect(stack!.dataKey, 'news');
+    expect(grid!.dataKey, 'news');
     expect(left.configJson.contains('"imageOnRight":true'), isFalse);
     expect(right.configJson.contains('"imageOnRight":true'), isTrue);
     expect(columns.screenType, 'news_columns');
@@ -105,6 +110,8 @@ void main() {
     expect(columns.configJson.contains('"summaryCapacityCharsPerColumn":220'), isTrue);
     expect(left.configJson.contains('"summaryCapacityChars":1200'), isTrue);
     expect(stack.screenType, 'news_stack');
+    expect(grid.screenType, 'news_grid');
+    expect(grid.configJson.contains('"showSummary":false'), isTrue);
     await db.close();
   });
 

@@ -99,6 +99,11 @@ function summarizeWidget(
         headline: 'RSS stack',
         sub: curated ? `Article ${curated}` : undefined,
       };
+    case 'news_grid':
+      return {
+        headline: 'RSS grid (3×2)',
+        sub: curated ? `Primary article ${curated}` : undefined,
+      };
     case 'photo':
       return {
         headline: curated ? `Photo · ${curated}` : 'Pexels photo',
@@ -230,10 +235,15 @@ export function collectSlideContentIds(model: SlideCardModel): {
 
   for (const w of model.widgets) {
     const choiceKey = `${w.slot}_${w.type}`;
-    if (w.type === 'news' || w.type === 'news_columns' || w.type === 'news_stack') {
+    if (
+      w.type === 'news' ||
+      w.type === 'news_columns' ||
+      w.type === 'news_stack' ||
+      w.type === 'news_grid'
+    ) {
       const id = model.randomChoices[choiceKey];
       if (id) rssArticleIds.push(id);
-      if (w.type === 'news_columns' || w.type === 'news_stack') {
+      if (w.type === 'news_columns' || w.type === 'news_stack' || w.type === 'news_grid') {
         for (let i = 0; i < 12; i++) {
           const slotId = model.randomChoices[`${choiceKey}_${i}`];
           if (slotId) rssArticleIds.push(slotId);
@@ -297,6 +307,7 @@ export type SlideScreenPreviewKind =
   | 'news'
   | 'news_columns'
   | 'news_stack'
+  | 'news_grid'
   | 'local_api'
   | 'admin_setup'
   | 'controller_invite'
@@ -327,6 +338,7 @@ const SCREEN_TYPE_PREVIEW_KIND: Record<string, SlideScreenPreviewKind> = {
   news: 'news',
   news_columns: 'news_columns',
   news_stack: 'news_stack',
+  news_grid: 'news_grid',
   local_api: 'local_api',
   admin_setup: 'admin_setup',
   controller_invite: 'controller_invite',
@@ -350,6 +362,7 @@ const WIDGET_TYPE_PREVIEW_KIND: Record<string, SlideScreenPreviewKind> = {
   news: 'news',
   news_columns: 'news_columns',
   news_stack: 'news_stack',
+  news_grid: 'news_grid',
   local_api: 'local_api',
   admin_setup: 'admin_setup',
   controller_invite: 'controller_invite',

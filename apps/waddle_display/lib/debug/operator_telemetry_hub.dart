@@ -3,12 +3,15 @@ import 'dart:collection';
 import '../curator/screen_program_curator.dart';
 import '../curator/ticker_item.dart';
 
+/// Default cap for screen/ticker program telemetry ring buffers and REST `limit`.
+const int kDefaultOperatorTelemetryProgramLimit = 10;
+
 /// In-process ring buffers for operator REST / UI (not persisted to SQLite).
 final class OperatorTelemetryHub {
   OperatorTelemetryHub({
     this.maxIntegrationLines = 500,
-    this.maxScreenPrograms = 50,
-    this.maxTickerPrograms = 50,
+    this.maxScreenPrograms = kDefaultOperatorTelemetryProgramLimit,
+    this.maxTickerPrograms = kDefaultOperatorTelemetryProgramLimit,
   });
 
   final int maxIntegrationLines;
@@ -92,7 +95,9 @@ final class OperatorTelemetryHub {
   }
 
   void recordTickerProgram(List<TickerItem> items) {
-    final itemMaps = <Map<String, Object?>>[for (final i in items) _tickerItemJson(i)];
+    final itemMaps = <Map<String, Object?>>[
+      for (final i in items) _tickerItemJson(i),
+    ];
     _appendProgram(
       _tickerPrograms,
       TickerProgramRecord(atMs: _nowMs(), items: itemMaps),
@@ -100,15 +105,24 @@ final class OperatorTelemetryHub {
     );
   }
 
-  List<Map<String, Object?>> snapshotIntegrationLines({int? limit, int? sinceMs}) {
+  List<Map<String, Object?>> snapshotIntegrationLines({
+    int? limit,
+    int? sinceMs,
+  }) {
     return _snapshotLines(_integrationLines, limit: limit, sinceMs: sinceMs);
   }
 
-  List<Map<String, Object?>> snapshotScreenPrograms({int? limit, int? sinceMs}) {
+  List<Map<String, Object?>> snapshotScreenPrograms({
+    int? limit,
+    int? sinceMs,
+  }) {
     return _snapshotPrograms(_screenPrograms, limit: limit, sinceMs: sinceMs);
   }
 
-  List<Map<String, Object?>> snapshotTickerPrograms({int? limit, int? sinceMs}) {
+  List<Map<String, Object?>> snapshotTickerPrograms({
+    int? limit,
+    int? sinceMs,
+  }) {
     return _snapshotPrograms(_tickerPrograms, limit: limit, sinceMs: sinceMs);
   }
 }
@@ -120,7 +134,11 @@ String _stackHead(StackTrace stack) {
   return lines.isEmpty ? '' : lines.first.trim();
 }
 
-void _appendLine(ListQueue<TelemetryTextLine> q, TelemetryTextLine line, int max) {
+void _appendLine(
+  ListQueue<TelemetryTextLine> q,
+  TelemetryTextLine line,
+  int max,
+) {
   q.addLast(line);
   while (q.length > max) {
     q.removeFirst();
@@ -142,7 +160,10 @@ List<Map<String, Object?>> _snapshotLines(
   final list = q.toList();
   var filtered = list;
   if (sinceMs != null) {
-    filtered = [for (final e in list) if (e.atMs >= sinceMs) e];
+    filtered = [
+      for (final e in list)
+        if (e.atMs >= sinceMs) e,
+    ];
   }
   if (limit != null && limit < filtered.length) {
     filtered = filtered.sublist(filtered.length - limit);
@@ -158,7 +179,10 @@ List<Map<String, Object?>> _snapshotPrograms<T extends _HasAtMs>(
   final list = q.toList();
   var filtered = list;
   if (sinceMs != null) {
-    filtered = [for (final e in list) if (e.atMs >= sinceMs) e];
+    filtered = [
+      for (final e in list)
+        if (e.atMs >= sinceMs) e,
+    ];
   }
   if (limit != null && limit < filtered.length) {
     filtered = filtered.sublist(filtered.length - limit);
@@ -213,20 +237,14 @@ final class ScreenProgramRecord implements _HasAtMs {
 }
 
 final class TickerProgramRecord implements _HasAtMs {
-  TickerProgramRecord({
-    required this.atMs,
-    required this.items,
-  });
+  TickerProgramRecord({required this.atMs, required this.items});
 
   @override
   final int atMs;
   final List<Map<String, Object?>> items;
 
   @override
-  Map<String, Object?> toJson() => {
-    'at_ms': atMs,
-    'items': items,
-  };
+  Map<String, Object?> toJson() => {'at_ms': atMs, 'items': items};
 }
 
 Map<String, Object?> _tickerItemJson(TickerItem i) {

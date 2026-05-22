@@ -46,6 +46,10 @@ String? permissionForRoute(String method, String path) {
       m == 'GET') {
     return WaddlePermission.integrationsRead;
   }
+  if (RegExp(r'^/v1/integration-accounts/[^/]+/google/calendars$').hasMatch(p) &&
+      m == 'GET') {
+    return WaddlePermission.integrationsRead;
+  }
   if (RegExp(
         r'^/v1/integration-accounts/[^/]+/microsoft-graph/drive/children$',
       ).hasMatch(p) &&

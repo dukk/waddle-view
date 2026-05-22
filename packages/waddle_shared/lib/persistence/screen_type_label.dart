@@ -14,6 +14,7 @@ const Map<String, String> kScreenTypeTitles = {
   'news': 'News',
   'news_columns': 'News columns',
   'news_stack': 'News stack',
+  'news_grid': 'News grid',
   'local_api': 'Local API',
   'admin_setup': 'Admin setup',
   'controller_invite': 'Controller invite',

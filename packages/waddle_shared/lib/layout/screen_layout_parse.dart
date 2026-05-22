@@ -11,9 +11,25 @@ int defaultSummaryCapacityCharsFor(String type, Map<String, dynamic> config) {
       return _cfgInt(config, 'summaryCapacityCharsPerColumn', 220);
     case 'news_stack':
       return _cfgInt(config, 'summaryCapacityCharsPerSlot', 320);
+    case 'news_grid':
+      if (!_newsGridShowSummary(config)) {
+        return 0;
+      }
+      return _cfgInt(config, 'summaryCapacityCharsPerSlot', 80);
     default:
       return 0;
   }
+}
+
+/// Fixed article count for [news_grid] (3 columns × 2 rows).
+const int kNewsGridSlotCount = 6;
+
+bool _newsGridShowSummary(Map<String, dynamic> config) {
+  final v = config['showSummary'];
+  if (v is bool) {
+    return v;
+  }
+  return false;
 }
 
 int _cfgInt(Map<String, dynamic> c, String key, int def) {
@@ -50,6 +66,9 @@ List<int> computeRssSummarySlotCapacities(String type, Map<String, dynamic> conf
     case 'news_stack':
       final per = defaultSummaryCapacityCharsFor(type, config);
       return List<int>.filled(2, per);
+    case 'news_grid':
+      final per = defaultSummaryCapacityCharsFor(type, config);
+      return List<int>.filled(kNewsGridSlotCount, per);
     default:
       return const [];
   }
@@ -68,7 +87,7 @@ class ParsedWidgetSpec {
   final String slot;
   final Map<String, dynamic> config;
 
-  /// For `news` / `news_columns` / `news_stack`: capacity
+  /// For `news` / `news_columns` / `news_stack` / `news_grid`: capacity
   /// per slot (chars). Empty for other widget types.
   final List<int> rssSummarySlotCapacities;
 

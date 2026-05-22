@@ -10,8 +10,9 @@ export type BackupSchedule = {
 
 export const WEEKDAY_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
 
-export const NIGHT_HOUR_OPTIONS = [0, 1, 2, 3, 4, 5] as const;
+export const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => i);
 
+/** Preview fallback before the server allocates a slot on first save. */
 export function defaultBackupSchedule(): BackupSchedule {
   return {
     frequency: 'weekly',
@@ -40,17 +41,13 @@ export function scheduleFromTarget(
   };
 }
 
-export function formatScheduleSummary(schedule: BackupSchedule, timezone: string): string {
+export function formatScheduleSummary(schedule: BackupSchedule): string {
   const time = `${String(schedule.hour).padStart(2, '0')}:${String(schedule.minute).padStart(2, '0')}`;
   if (schedule.frequency === 'daily') {
     const every = schedule.interval === 2 ? 'every 2 days' : 'every day';
-    return `${every} at ${time} (${timezone})`;
+    return `${every} at ${time}`;
   }
   const dow = schedule.dayOfWeek != null ? WEEKDAY_LABELS[schedule.dayOfWeek] : 'Sunday';
   const every = schedule.interval === 2 ? 'every 2 weeks' : 'every week';
-  return `${every} on ${dow} at ${time} (${timezone})`;
-}
-
-export function isNightHour(hour: number): boolean {
-  return hour >= 0 && hour <= 5;
+  return `${every} on ${dow} at ${time}`;
 }

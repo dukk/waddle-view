@@ -79,7 +79,7 @@ When **user mode** is turned off, sign-in is disabled but server data remains. U
 
 **Scheduled backups and inventory** live under **Controller settings → Backup & restore** (`/controller-settings?tab=backup`):
 
-- Per-display schedule (every day/week or every 2 days/weeks, day-of-week, night-time window, timezone, retention count).
+- Per-display schedule (every day/week or every 2 days/weeks, day-of-week, time of day, retention count) with card/table search, sort, reload, and paging. Times use **controller local time**; new displays are staggered **5 minutes** apart automatically.
 - Pulls **`.zip`** archives from displays into `WADDLE_CONTROLLER_DATA_DIR/backups/{displayId}/` (filesystem; SQLite stores metadata only).
 - Bottom table lists all stored backups with download / restore / delete. Restore uses a confirmation dialog (overwrites display data).
 - Optional **Pi arm64** in-band upgrade when the display reports `upgrade_capable: true`.
@@ -89,13 +89,15 @@ When **user mode** is turned off, sign-in is disabled but server data remains. U
 | `GITHUB_TOKEN` or `GH_TOKEN` | — | Optional; raises GitHub API rate limits for release checks |
 | `WADDLE_CONTROLLER_BACKUP_MAX_BYTES` | `0` (no cap) | Reject pulled backups larger than this many bytes |
 
-Scheduled pulls use **`backup_targets`** (structured schedule fields + encrypted display API key). New targets default to **once per week** on a random weekday between 02:00–04:59 in the chosen timezone. When user mode is off, targets are global (`user_id` null); sign-in is not required for the BFF backup API in that mode.
+Scheduled pulls use **`backup_targets`** (structured schedule fields + encrypted display API key). New targets default to **once per week** on Sunday at **02:00** controller local time, with each additional display in the same scope offset by **+5 minutes**. When user mode is off, targets are global (`user_id` null); sign-in is not required for the BFF backup API in that mode.
 
 **Display list JSON** export/import on the Displays tab is separate from SQLite/media archives (`DisplaysBackupSection`).
 
 ### Live preview
 
 The **Remote** page shows a **live preview** when enabled on the display (view-only JPEG over WebSocket). Enable it under **Controller settings → Displays → Edit → Live preview**, then connect from the Remote page or **Test live preview**. The stream uses the ticket + API-key WebSocket proxy (`/bff/v1/proxy-ws/*`).
+
+**Open in new window** opens `/remote/view` in a popup-style browser window (best-effort: no toolbar/location bar; some browsers still show a minimal URL). Window **size and screen position** are remembered in **`localStorage`** (`waddle_live_preview_popout_bounds_v1`) while the pop-out is open and restored on the next open when the browser allows `left`/`top` in `window.open`. That route uses a **minimal layout** (no controller drawer or app bar): display picker, connect/disconnect, and **Remote controls** in a collapsible accordion below the stream. Keyboard shortcuts (← → slides, ↑ ↓ ticker, Enter dismiss alert) work in the pop-out the same as on the main Remote page.
 
 ### Display pairing
 
@@ -120,7 +122,11 @@ Offline displays are disabled in the picker; the transfer is blocked if the sour
 
 ### Integrations
 
-On **Integrations**, enable collectors and edit configuration per integration type. **iCal / ICS Calendar** uses a dedicated form: one-click **Suggested calendars (WebCal.Guru)** shortcuts (U.S. elections, awareness days, holidays, and more), a link to **sign up at WebCal.Guru** for additional calendars, manual feed URL entry, optional label per feed, and a **Category** dropdown (from **Curators → Categories** on the display). Feed ids are generated automatically; the sync window is always 30 days past and future (not shown in the form).
+On **Integrations**, enable collectors and edit configuration per integration type. Enable/edit dialogs use a uniform layout: integration-specific section title, short helper text, and **no service Base URL** field (API roots stay in seeded `config_json` on the display). **Outlook Calendar**, **Google Calendar**, **OneDrive Photos/Videos**, **Google Photos/Videos**, **MealViewer**, and **iCal / ICS Calendar** use dedicated forms with account pickers and browse-or-select workflows; other types use schema-driven fields with the same section shell.
+
+**iCal / ICS Calendar** adds one-click **Suggested calendars (WebCal.Guru)** shortcuts (U.S. elections, awareness days, holidays, and more), a link to **sign up at WebCal.Guru** for additional calendars, manual feed URL entry, optional label per feed, and a **Category** dropdown (from **Curators → Categories** on the display). Feed ids are generated automatically; the sync window is always 30 days past and future (not shown in the form).
+
+**Google Calendar** mirrors Outlook: choose a signed-in Google account, set past/future days, refresh the calendar list from the display (`GET /v1/integration-accounts/{id}/google/calendars`), and assign categories per selected calendar.
 
 ### Interests
 

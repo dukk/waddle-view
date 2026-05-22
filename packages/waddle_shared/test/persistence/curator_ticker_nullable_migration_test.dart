@@ -70,11 +70,11 @@ CREATE TABLE config_key_values (
       final kv = {for (final r in kvRows) r.key: r.value};
       expect(
         kv[kDisplayTickerProgramDurationSecondsKvKey],
-        '${kDisplayTickerProgramDurationSecondsDefault}',
+        kDisplayTickerProgramDurationSecondsDefault.toString(),
       );
       expect(
         kv[kDisplayTickerPixelsPerSecondKvKey],
-        '${kDisplayTickerPixelsPerSecondDefault}',
+        kDisplayTickerPixelsPerSecondDefault.toString(),
       );
 
       await db.close();

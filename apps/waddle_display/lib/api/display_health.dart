@@ -75,10 +75,9 @@ Map<String, dynamic> buildDisplayHealthJson({
     'cpu_count': host.numberOfProcessors,
     if (host.dartVersion.isNotEmpty) 'dart_version': host.dartVersion,
     'uptime_seconds': ?uptimeSeconds,
-    if (pluginsDirConfigured != null)
-      'plugins_dir_configured': pluginsDirConfigured,
+    'plugins_dir_configured': ?pluginsDirConfigured,
     'platform_arch': platformArch ?? detectPlatformArch(),
-    if (upgradeCapable != null) 'upgrade_capable': upgradeCapable,
+    'upgrade_capable': ?upgradeCapable,
   };
 }
 
@@ -90,15 +89,14 @@ String encodeDisplayHealthJson({
   bool? pluginsDirConfigured,
   String? platformArch,
   bool? upgradeCapable,
-}) =>
-    jsonEncode(
-      buildDisplayHealthJson(
-        schemaVersion: schemaVersion,
-        hostFacts: hostFacts,
-        serverStartedAt: serverStartedAt,
-        now: now,
-        pluginsDirConfigured: pluginsDirConfigured,
-        platformArch: platformArch,
-        upgradeCapable: upgradeCapable,
-      ),
-    );
+}) => jsonEncode(
+  buildDisplayHealthJson(
+    schemaVersion: schemaVersion,
+    hostFacts: hostFacts,
+    serverStartedAt: serverStartedAt,
+    now: now,
+    pluginsDirConfigured: pluginsDirConfigured,
+    platformArch: platformArch,
+    upgradeCapable: upgradeCapable,
+  ),
+);

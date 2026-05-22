@@ -3,7 +3,7 @@ import 'dart:math';
 import 'curator_content_pools.dart' show PhotoCuratorMetric, RssArticleMetric;
 import 'photo_collage_curation.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart'
-    show ParsedWidgetSpec, parseScreenLayoutWidgets;
+    show ParsedWidgetSpec, kNewsGridSlotCount, parseScreenLayoutWidgets;
 import 'package:waddle_shared/persistence/content_category_resolve.dart';
 
 class DataKeyProgramLimit {
@@ -377,15 +377,9 @@ class ScreenProgramCurator {
       if (w.rssSummarySlotCapacities.isEmpty) {
         continue;
       }
-      if (w.type == 'news_columns') {
-        final n = w.rssSummarySlotCapacities.length;
+      if (_newsUsesIndexedSlots(w.type)) {
+        final n = _indexedNewsSlotCount(w);
         for (var i = 0; i < n; i++) {
-          if ((choices['${w.choiceKey}_$i'] ?? '').isEmpty) {
-            return false;
-          }
-        }
-      } else if (w.type == 'news_stack') {
-        for (var i = 0; i < 2; i++) {
           if ((choices['${w.choiceKey}_$i'] ?? '').isEmpty) {
             return false;
           }
@@ -576,7 +570,7 @@ class ScreenProgramCurator {
         final len = rssArticleMetrics[id]?.summaryLength ?? 0;
         totalCost += _slotCost(len, cap);
 
-        if (w.type == 'news_columns' || w.type == 'news_stack') {
+        if (_newsUsesIndexedSlots(w.type)) {
           choices['${w.choiceKey}_$i'] = id;
         } else {
           choices[w.choiceKey] = id;
@@ -584,8 +578,7 @@ class ScreenProgramCurator {
 
         final hasImage = rssArticleMetrics[id]?.hasImage ?? false;
         if (!hasImage) {
-          final modeKey =
-              (w.type == 'news_columns' || w.type == 'news_stack')
+          final modeKey = _newsUsesIndexedSlots(w.type)
               ? '${w.choiceKey}_${i}_imageMode'
               : '${w.choiceKey}_imageMode';
           choices[modeKey] = 'icon';
@@ -670,8 +663,7 @@ class ScreenProgramCurator {
     for (final w in specs) {
       final n = w.rssSummarySlotCapacities.length;
       for (var i = 0; i < n; i++) {
-        final key =
-            (w.type == 'news_columns' || w.type == 'news_stack')
+        final key = _newsUsesIndexedSlots(w.type)
             ? '${w.choiceKey}_$i'
             : w.choiceKey;
         final id = choices[key];
@@ -1014,6 +1006,7 @@ class ScreenProgramCurator {
       case 'news':
       case 'news_columns':
       case 'news_stack':
+      case 'news_grid':
         return categoryPoolSuffix(w.config, 'rss_category:') ?? 'rss';
       case 'trivia':
         return categoryPoolSuffix(w.config, 'trivia:') ?? 'trivia';
@@ -1037,6 +1030,22 @@ class ScreenProgramCurator {
       return v.round().clamp(1, 6);
     }
     return 3;
+  }
+
+  static bool _newsUsesIndexedSlots(String type) =>
+      type == 'news_columns' || type == 'news_stack' || type == 'news_grid';
+
+  static int _indexedNewsSlotCount(ParsedWidgetSpec w) {
+    switch (w.type) {
+      case 'news_columns':
+        return _rssArticleColumnCount(w.config);
+      case 'news_stack':
+        return 2;
+      case 'news_grid':
+        return kNewsGridSlotCount;
+      default:
+        return 0;
+    }
   }
 
   static Map<String, String> _resolveCuratedWidgetChoices(
@@ -1091,12 +1100,14 @@ class ScreenProgramCurator {
         }
         continue;
       }
-      if (w.type == 'news_columns') {
+      if (w.type == 'news_columns' || w.type == 'news_grid') {
         final poolName = _poolNameForWidget(w);
         if (poolName == null || poolName.isEmpty) {
           continue;
         }
-        final n = _rssArticleColumnCount(w.config);
+        final n = w.type == 'news_grid'
+            ? kNewsGridSlotCount
+            : _rssArticleColumnCount(w.config);
         for (var i = 0; i < n; i++) {
           final choice = _pickUnusedFromPool(
             randomPools[poolName],

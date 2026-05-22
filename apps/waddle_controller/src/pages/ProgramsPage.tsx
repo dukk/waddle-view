@@ -471,7 +471,7 @@ function WidgetDetailBlock({
     );
   }
 
-  if (type === 'news_columns' || type === 'news_stack') {
+  if (type === 'news_columns' || type === 'news_stack' || type === 'news_grid') {
     const slots: { label: string; id: string }[] = [];
     for (let i = 0; i < 12; i++) {
       const id = model.randomChoices[`${choiceKey}_${i}`];
@@ -993,9 +993,12 @@ export function ProgramsPage() {
             Recent playout snapshots
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Read-only snapshots of recent screen and ticker programs the display already built—slide
-            order, curator reason, and item previews. Use this to debug playout; edit screens, tapes,
-            or integrations elsewhere to change what runs next.
+            Read-only snapshots of the last 10 in-memory screen and ticker programs the display
+            already built (not persisted)—slide order, curator reason, and item previews. This list is
+            separate from <strong>Display settings → Program history depth</strong>, which controls
+            keyboard back-navigation and how recent screens are weighted when building the next program
+            (default 5, range 1–10). Edit screens, tapes, or integrations elsewhere to change what runs
+            next.
           </Typography>
         </Box>
         <DataViewToolbar

@@ -391,7 +391,9 @@ export function DisplayOperatorSettingsProgramsFields({
       />
       <Typography variant="caption" color="text.secondary" sx={{ mt: -1.5, display: 'block' }}>
         How many past screen programs are kept for back-navigation and how many recent screen
-        placements influence frequency weighting. Shared across all curator configurations.
+        placements influence frequency weighting. Shared across all curator configurations. Does not
+        control how many entries appear on the Programs page (that page shows up to 10 recent
+        telemetry snapshots).
       </Typography>
       <Typography variant="subtitle2" fontWeight={600}>
         Ticker marquee

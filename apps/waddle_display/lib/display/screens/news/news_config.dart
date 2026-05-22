@@ -38,3 +38,24 @@ bool newsQrVisible(String mode) => mode != 'hidden';
 bool newsQrOnRight(String mode) => mode == 'right';
 
 bool newsQrImageOverlayBottom(String mode) => mode == 'image_overlay_bottom';
+
+bool newsQrImageOverlayLeft(String mode) => mode == 'image_overlay_left';
+
+bool newsQrImageOverlayRight(String mode) => mode == 'image_overlay_right';
+
+/// [news_grid] QR mode; defaults to [hidden].
+String readNewsGridQrMode(Map<String, dynamic> config) {
+  final raw = config['qrMode'];
+  if (raw is String && raw.trim().isNotEmpty) {
+    return raw.trim();
+  }
+  return 'hidden';
+}
+
+bool readNewsGridShowSummary(Map<String, dynamic> config) {
+  final v = config['showSummary'];
+  if (v is bool) {
+    return v;
+  }
+  return false;
+}

@@ -1,6 +1,7 @@
 import 'package:waddle_shared/blob/blob_store.dart';
 import '../curator/photo_collage_curation.dart';
-import 'package:waddle_shared/layout/screen_layout_parse.dart';
+import 'package:waddle_shared/layout/screen_layout_parse.dart'
+    show ParsedWidgetSpec, kNewsGridSlotCount, parseScreenLayoutWidgets;
 import '../curator/screen_program_curator.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'screens/photo/photo_slide_media.dart';
@@ -37,6 +38,8 @@ Future<void> _preloadWidget(
       await _preloadRssColumns(db, blobs, slide, w);
     case 'news_stack':
       await _preloadRssStack(db, blobs, slide, w);
+    case 'news_grid':
+      await _preloadRssGrid(db, blobs, slide, w);
     case 'photo':
       await _preloadPhoto(db, blobs, slide, w);
     case 'photo_collage':
@@ -136,6 +139,34 @@ Future<void> _preloadRssStack(
     }
   }
   await resolveRssDisplayCategoryId(db, slide, firstForCategory);
+}
+
+Future<void> _preloadRssGrid(
+  AppDatabase db,
+  BlobStore blobs,
+  ResolvedSlide slide,
+  ParsedWidgetSpec w,
+) async {
+  final n = w.rssSummarySlotCapacities.length.clamp(1, kNewsGridSlotCount);
+  final exclude = <String>{};
+  NewsArticle? firstArticle;
+  for (var i = 0; i < n; i++) {
+    final key = '${w.choiceKey}_$i';
+    final article = await loadRssArticleForSlideChoice(
+      db,
+      w,
+      slide,
+      key,
+      exclude,
+    );
+    if (article != null) {
+      exclude.add(article.id);
+      await loadRssArticleImage(db, blobs, article);
+      firstArticle ??= article;
+    }
+    await resolveRssArticleSourceLabel(db, article);
+  }
+  await resolveRssDisplayCategoryId(db, slide, firstArticle);
 }
 
 Future<void> _preloadPhoto(

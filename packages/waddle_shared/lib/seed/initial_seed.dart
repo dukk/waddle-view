@@ -57,6 +57,7 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureNewsRightImageScreen(db);
   await _ensureNewsColumnsScreen(db);
   await _ensureNewsStackScreen(db);
+  await _ensureNewsGridScreen(db);
   await _ensureClockDataKeyLimit(db);
   await _ensureClockDigitalScreen(db);
   await _ensureClockAnalogScreen(db);
@@ -623,6 +624,47 @@ Future<void> _ensureNewsStackScreen(AppDatabase db) async {
           screenType: 'news_stack',
           configJson: const Value(
             '{"minReadMs":12000,"imagePanelFraction":0.32,"qrLogicalSize":112,"summaryCapacityCharsPerSlot":320}',
+          ),
+          minDwellSeconds: const Value(14),
+          maxDwellSeconds: const Value(20),
+          dataKey: const Value('news'),
+        ),
+      );
+}
+
+Future<void> _ensureNewsGridScreen(AppDatabase db) async {
+  final row = await (db.select(
+    db.screens,
+  )..where((t) => t.id.equals('news_grid'))).getSingleOrNull();
+  if (row != null) {
+    await (db.update(
+      db.screens,
+    )..where((t) => t.id.equals('news_grid'))).write(
+      ScreensCompanion(
+        dataKey: const Value('news'),
+        screenType: const Value('news_grid'),
+        configJson: const Value(
+          '{"showSummary":false,"minReadMs":10000,"qrMode":"hidden",'
+          '"qrLogicalSize":52,"imageFit":"cover"}',
+        ),
+      ),
+    );
+    return;
+  }
+  await db
+      .into(db.screens)
+      .insert(
+        ScreensCompanion.insert(
+          id: 'news_grid',
+          label: 'News (3×2 grid)',
+          description: const Value(
+            'Six RSS stories in a 3×2 grid: image, headline, and source per cell; '
+            'optional summary and QR on the left or right of each image',
+          ),
+          screenType: 'news_grid',
+          configJson: const Value(
+            '{"showSummary":false,"minReadMs":10000,"qrMode":"hidden",'
+            '"qrLogicalSize":52,"imageFit":"cover"}',
           ),
           minDwellSeconds: const Value(14),
           maxDwellSeconds: const Value(20),

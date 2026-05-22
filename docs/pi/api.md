@@ -144,7 +144,7 @@ These routes use the same **Bearer session** auth as other protected `/v1/*` pat
 | Method | Path | Notes |
 |--------|------|--------|
 | GET | `/v1/telemetry/integrations` | Query: optional `limit` (default 200, max 2000), `since_ms`. Returns `{"items":[{at_ms, channel, message, integration_type?}, ...]}` — in-process ring buffer (`integration` + `engine` lines). `integration_type` is set on collector-scoped lines (matches `IDataProvider.id` / SQLite `integrations.integration_type`); omitted on global engine lines (cycle/sleep/start). |
-| GET | `/v1/telemetry/programs` | Query: optional `limit` (default 50, max 500), `since_ms`. Returns `{"items":[{at_ms, reason, slides:[...]}, ...]}` — recent screen programs. |
+| GET | `/v1/telemetry/programs` | Query: optional `limit` (default 10, max 500), `since_ms`. Returns `{"items":[{at_ms, reason, slides:[...]}, ...]}` — recent screen programs (in-process ring buffer; not persisted). |
 | GET | `/v1/telemetry/ticker-programs` | Same query shape as programs; `{"items":[{at_ms, items:[...]}, ...]}` for ticker rows. |
 | GET | `/v1/media/blob-by-key` | Query: **`key`** = `blob_metadata.blob_key` (URL-encoded). Returns raw bytes with `Content-Type` from metadata (or `application/octet-stream`). **404** when metadata or backing file is missing. Requires `telemetry.read`. Used by `waddle_controller` Programs view to show cached RSS/photo/video bytes. |
 | GET | `/v1/media/rss-articles/{id}` | JSON: `id`, `feed_id`, `title`, `summary`, `link`, `image_blob_key`, `published_at_ms`. **404** if missing or suppressed. |

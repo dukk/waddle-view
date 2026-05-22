@@ -3,11 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_display/theme/config/display_theme_registry.dart';
 import 'package:waddle_shared/theme/display_custom_themes.dart';
 import 'package:waddle_shared/theme/display_theme_kv.dart'
-    show
-        encodeDisplayCustomThemes,
-        kDefaultDisplayThemeId,
-        kDisplayThemeCustomKvKey,
-        kDisplayThemeIdKvKey;
+    show kDefaultDisplayThemeId, kDisplayThemeCustomKvKey, kDisplayThemeIdKvKey;
 
 void main() {
   test('normalizeDisplayThemeId trims and maps unknown to default', () {
@@ -17,14 +13,17 @@ void main() {
     expect(normalizeDisplayThemeId('not_a_real_theme'), kDefaultDisplayThemeId);
   });
 
-  test('normalizeDisplayThemeId accepts known ids with case/spacing variants', () {
-    expect(normalizeDisplayThemeId('NAVY_CORAL'), kDisplayThemeNavyCoral);
-    expect(normalizeDisplayThemeId('navy-coral'), kDisplayThemeNavyCoral);
-    expect(
-      normalizeDisplayThemeId(' Graphite_Amber '),
-      kDisplayThemeGraphiteAmber,
-    );
-  });
+  test(
+    'normalizeDisplayThemeId accepts known ids with case/spacing variants',
+    () {
+      expect(normalizeDisplayThemeId('NAVY_CORAL'), kDisplayThemeNavyCoral);
+      expect(normalizeDisplayThemeId('navy-coral'), kDisplayThemeNavyCoral);
+      expect(
+        normalizeDisplayThemeId(' Graphite_Amber '),
+        kDisplayThemeGraphiteAmber,
+      );
+    },
+  );
 
   test('registeredDisplayThemeIds includes 15 presets', () {
     expect(registeredDisplayThemeIds, hasLength(15));
@@ -43,19 +42,25 @@ void main() {
     );
   });
 
-  test('themeDataForNormalizedDisplayThemeId returns ThemeData for each registered id', () {
-    for (final id in registeredDisplayThemeIds) {
-      final t = themeDataForNormalizedDisplayThemeId(id);
-      expect(t.useMaterial3, isTrue);
-      expect(t.colorScheme.brightness, Brightness.dark);
-    }
-  });
+  test(
+    'themeDataForNormalizedDisplayThemeId returns ThemeData for each registered id',
+    () {
+      for (final id in registeredDisplayThemeIds) {
+        final t = themeDataForNormalizedDisplayThemeId(id);
+        expect(t.useMaterial3, isTrue);
+        expect(t.colorScheme.brightness, Brightness.dark);
+      }
+    },
+  );
 
-  test('themeDataForNormalizedDisplayThemeId falls back to default when id unknown', () {
-    final unknown = themeDataForNormalizedDisplayThemeId('__no_such_theme__');
-    final navy = themeDataForNormalizedDisplayThemeId(kDisplayThemeNavyCoral);
-    expect(unknown.colorScheme.primary, navy.colorScheme.primary);
-  });
+  test(
+    'themeDataForNormalizedDisplayThemeId falls back to default when id unknown',
+    () {
+      final unknown = themeDataForNormalizedDisplayThemeId('__no_such_theme__');
+      final navy = themeDataForNormalizedDisplayThemeId(kDisplayThemeNavyCoral);
+      expect(unknown.colorScheme.primary, navy.colorScheme.primary);
+    },
+  );
 
   test('themeDataForDisplayThemeId builds custom theme from chrome groups', () {
     const custom = [
@@ -70,7 +75,10 @@ void main() {
         ),
       ),
     ];
-    final t = themeDataForDisplayThemeId('custom_test_palette', customThemes: custom);
+    final t = themeDataForDisplayThemeId(
+      'custom_test_palette',
+      customThemes: custom,
+    );
     expect(t.brightness, Brightness.dark);
     expect(t.useMaterial3, isTrue);
   });

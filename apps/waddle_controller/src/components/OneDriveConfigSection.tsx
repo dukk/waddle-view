@@ -26,6 +26,7 @@ import {
   CategoryMultiSelect,
   type ContentCategoryOption,
 } from '@/components/CategoryMultiSelect';
+import { IntegrationConfigSection } from '@/components/IntegrationConfigSection';
 import {
   isWindowsLocalOneDrivePath,
   newOneDriveAccountBlock,
@@ -153,15 +154,16 @@ export function OneDriveConfigSection({
   );
 
   return (
-    <Stack spacing={2}>
-      <Typography variant="subtitle2">
-        OneDrive folder sources ({mediaLabel})
-      </Typography>
-      <Typography variant="body2" color="text.secondary">
-        Browse folders per Microsoft account (paths like <code>/Pictures/MyAlbum</code>, not{' '}
-        <code>C:\Users\...\OneDrive\...</code>). Supported {mediaLabel}: {mimeHint}. To sync both
-        photos and videos from the same folders, enable and configure both OneDrive integrations.
-      </Typography>
+    <IntegrationConfigSection
+      title={`OneDrive folder sources (${mediaLabel})`}
+      description={
+        <>
+          Browse folders per Microsoft account (paths like <code>/Pictures/MyAlbum</code>, not{' '}
+          <code>C:\Users\...\OneDrive\...</code>). Supported {mediaLabel}: {mimeHint}. To sync both
+          photos and videos from the same folders, enable and configure both OneDrive integrations.
+        </>
+      }
+    >
       {windowsPathSources.length > 0 ? (
         <Alert severity="warning">
           Remove folder sources that use a Windows local path. Use Browse folders so paths match
@@ -429,6 +431,6 @@ export function OneDriveConfigSection({
       <Button variant="outlined" size="small" disabled={disabled} onClick={addAccount}>
         Add Microsoft account
       </Button>
-    </Stack>
+    </IntegrationConfigSection>
   );
 }

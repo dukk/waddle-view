@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/theme/display_theme_kv.dart';
 
-import 'helpers/memory_database.dart';
 import 'helpers/rest_auth_helper.dart';
 
 void main() {
@@ -36,7 +35,8 @@ void main() {
     );
     expect(list.statusCode, 200);
     final items =
-        (jsonDecode(list.body) as Map<String, dynamic>)['items'] as List<dynamic>;
+        (jsonDecode(list.body) as Map<String, dynamic>)['items']
+            as List<dynamic>;
     expect(items.any((e) => (e as Map)['id'] == id), isTrue);
 
     final patch = await http.patch(

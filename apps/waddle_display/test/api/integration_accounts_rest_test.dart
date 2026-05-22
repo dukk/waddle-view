@@ -386,6 +386,59 @@ void main() {
     }
   });
 
+  test('GET google calendars requires configured token', () async {
+    final harness = await RestTestHarness.start();
+    try {
+      await harness.secrets.write(kGoogleClientIdSecretKey, 'google-client');
+      await harness.db.into(harness.db.integrationAccounts).insertOnConflictUpdate(
+            IntegrationAccountsCompanion.insert(
+              id: 'personal',
+              accountType: kIntegrationAccountTypeGoogle,
+              label: const Value('Personal'),
+              createdAtMs: DateTime.now().millisecondsSinceEpoch,
+            ),
+          );
+
+      final res = await http.get(
+        Uri.parse(
+          '${harness.baseUrl}/v1/integration-accounts/personal/google/calendars',
+        ),
+        headers: harness.authHeaders,
+      );
+      expect(res.statusCode, 503);
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      expect(body['error'], 'access_token_unavailable');
+    } finally {
+      await harness.dispose();
+    }
+  });
+
+  test('GET google calendars rejects non-Google accounts', () async {
+    final harness = await RestTestHarness.start();
+    try {
+      await harness.db.into(harness.db.integrationAccounts).insertOnConflictUpdate(
+            IntegrationAccountsCompanion.insert(
+              id: 'work',
+              accountType: kIntegrationAccountTypeMicrosoftGraph,
+              label: const Value('Work'),
+              createdAtMs: DateTime.now().millisecondsSinceEpoch,
+            ),
+          );
+
+      final res = await http.get(
+        Uri.parse(
+          '${harness.baseUrl}/v1/integration-accounts/work/google/calendars',
+        ),
+        headers: harness.authHeaders,
+      );
+      expect(res.statusCode, 400);
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      expect(body['error'], 'not_google_account');
+    } finally {
+      await harness.dispose();
+    }
+  });
+
   test('GET microsoft-graph calendars rejects non-Microsoft accounts', () async {
     final harness = await RestTestHarness.start();
     try {

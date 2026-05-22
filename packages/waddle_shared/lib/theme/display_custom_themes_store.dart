@@ -1,14 +1,12 @@
 import '../persistence/database.dart';
-import '../persistence/tables.dart';
 import 'display_custom_themes.dart';
-import 'display_theme_ids.dart';
 import 'display_theme_kv.dart';
 
 /// Reads custom themes from [kDisplayThemeCustomKvKey].
 Future<List<DisplayCustomTheme>> readDisplayCustomThemes(AppDatabase db) async {
-  final row = await (db.select(db.configKeyValues)
-        ..where((t) => t.key.equals(kDisplayThemeCustomKvKey)))
-      .getSingleOrNull();
+  final row = await (db.select(
+    db.configKeyValues,
+  )..where((t) => t.key.equals(kDisplayThemeCustomKvKey))).getSingleOrNull();
   return parseDisplayCustomThemesFromKvValue(row?.value);
 }
 
@@ -16,7 +14,9 @@ Future<void> writeDisplayCustomThemes(
   AppDatabase db,
   List<DisplayCustomTheme> themes,
 ) async {
-  await db.into(db.configKeyValues).insertOnConflictUpdate(
+  await db
+      .into(db.configKeyValues)
+      .insertOnConflictUpdate(
         ConfigKeyValuesCompanion.insert(
           key: kDisplayThemeCustomKvKey,
           value: encodeDisplayCustomThemes(themes),
@@ -86,12 +86,14 @@ Future<void> deleteDisplayCustomTheme(AppDatabase db, String id) async {
     existing.where((t) => t.id != id).toList(),
   );
 
-  final activeRow = await (db.select(db.configKeyValues)
-        ..where((t) => t.key.equals(kDisplayThemeIdKvKey)))
-      .getSingleOrNull();
+  final activeRow = await (db.select(
+    db.configKeyValues,
+  )..where((t) => t.key.equals(kDisplayThemeIdKvKey))).getSingleOrNull();
   final active = activeRow?.value.trim() ?? '';
   if (active == id) {
-    await db.into(db.configKeyValues).insertOnConflictUpdate(
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
           ConfigKeyValuesCompanion.insert(
             key: kDisplayThemeIdKvKey,
             value: kDefaultDisplayThemeId,

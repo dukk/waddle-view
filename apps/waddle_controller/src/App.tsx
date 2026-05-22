@@ -7,6 +7,7 @@ import { DisplayProvider } from '@/context/DisplayContext';
 import { DisplayFormatProvider } from '@/context/DisplayFormatContext';
 import { LoginDialog } from '@/components/LoginDialog';
 import { AppShell } from '@/layout/AppShell';
+import { RemoteViewShell } from '@/layout/RemoteViewShell';
 import { ProgramsOnlyOutlet } from '@/layout/ProgramsOnlyOutlet';
 import { ProgramsPage } from '@/pages/ProgramsPage';
 import { RemoteControlPage } from '@/pages/RemoteControlPage';
@@ -48,13 +49,17 @@ function MainAppRoutes() {
         <LoginDialog />
         <Routes>
           <Route path="/join" element={<ViewerJoinPage />} />
+          <Route element={<ProgramsOnlyOutlet />}>
+            <Route path="/remote/view" element={<RemoteViewShell />}>
+              <Route index element={<RemoteViewPage />} />
+            </Route>
+          </Route>
           <Route path="/" element={<AppShell />}>
             <Route element={<ProgramsOnlyOutlet />}>
               <Route index element={<DefaultHomeRedirect />} />
               <Route path="curators" element={<CuratorsPage />} />
               <Route path="programs" element={<ProgramsPage />} />
               <Route path="remote" element={<RemoteControlPage />} />
-              <Route path="remote/view" element={<RemoteViewPage />} />
               <Route path="screens" element={<ScreensPage />} />
               <Route path="ticker-tapes" element={<TickerPage />} />
               <Route path="overlays" element={<OverlaysPage />} />

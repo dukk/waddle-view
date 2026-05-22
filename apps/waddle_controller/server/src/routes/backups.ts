@@ -111,7 +111,6 @@ export function backupsRoutes() {
       baseUrl,
       apiKey,
       schedule: body.schedule,
-      timezone: body.timezone?.trim() || 'UTC',
       retentionCount: body.retentionCount ?? 3,
       enabled: body.enabled !== false,
     });
