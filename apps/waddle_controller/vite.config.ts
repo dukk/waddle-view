@@ -18,6 +18,15 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(appVersion),
   },
   plugins: tlsDisabled ? [react()] : [react(), basicSsl()],
+  // @novnc/novnc uses top-level await (browser.js); default Vite targets (es2020) cannot pre-bundle it.
+  build: {
+    target: 'es2022',
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      target: 'es2022',
+    },
+  },
   resolve: {
     alias: { '@': path.resolve(rootDir, 'src') },
   },

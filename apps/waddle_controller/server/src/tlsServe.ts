@@ -13,6 +13,16 @@ import { resolveSessionUser, SESSION_COOKIE } from './services/sessions.js';
 
 const PROXY_WS_PREFIX = '/bff/v1/proxy-ws';
 
+/** Actionable message when the BFF port is already bound (stale dev server or tsx restart race). */
+export function formatListenAddressInUseError(hostname: string, port: number): string {
+  return (
+    `Port ${port} on ${hostname} is already in use (EADDRINUSE).\n` +
+    'Stop any other waddle_controller BFF (Ctrl+C on `npm run dev`, or end the Node process ' +
+    `listening on ${port}), then retry.\n` +
+    `Or set PORT / WADDLE_CONTROLLER_PORT to a different port and match vite.config.ts proxy target.`
+  );
+}
+
 export function serveWithOptionalTls(options: {
   fetch: Parameters<typeof serve>[0]['fetch'];
   hostname: string;
@@ -20,7 +30,8 @@ export function serveWithOptionalTls(options: {
   tls: ResolvedTls;
   config?: AppConfig;
   db?: AppDatabase;
-}): void {
+  onListening?: () => void;
+}): Server {
   const listener = getRequestListener(options.fetch);
   const wss = new WebSocketServer({ noServer: true });
 
@@ -50,16 +61,33 @@ export function serveWithOptionalTls(options: {
     });
   };
 
-  if (options.tls.enabled && options.tls.pem) {
-    const server = createHttpsServer(options.tls.pem, listener);
-    attachUpgrade(server);
-    server.listen(options.port, options.hostname);
-    return;
-  }
+  const server =
+    options.tls.enabled && options.tls.pem
+      ? createHttpsServer(options.tls.pem, listener)
+      : createHttpServer(listener);
 
-  const server = createHttpServer(listener);
   attachUpgrade(server);
-  server.listen(options.port, options.hostname);
+  bindHttpServer(server, options.hostname, options.port, options.onListening);
+  return server;
+}
+
+function bindHttpServer(
+  server: Server,
+  hostname: string,
+  port: number,
+  onListening?: () => void,
+): void {
+  server.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(formatListenAddressInUseError(hostname, port));
+      process.exit(1);
+    }
+    throw err;
+  });
+
+  server.listen({ host: hostname, port, reuseAddress: true }, () => {
+    onListening?.();
+  });
 }
 
 function sessionUserFromUpgrade(
