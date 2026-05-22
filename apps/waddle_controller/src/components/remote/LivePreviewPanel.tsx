@@ -32,9 +32,7 @@ function parseLivePreviewFrame(buf: ArrayBuffer): {
   const legacy =
     bytes.length >= LIVE_PREVIEW_LEGACY_HEADER_BYTES + len &&
     bytes[LIVE_PREVIEW_LEGACY_HEADER_BYTES] === 0xff &&
-    bytes[LIVE_PREVIEW_LEGACY_HEADER_BYTES + 1] === 0xd8 &&
-    bytes[4] !== 0 &&
-    bytes[4] !== 1;
+    bytes[LIVE_PREVIEW_LEGACY_HEADER_BYTES + 1] === 0xd8;
 
   if (legacy) {
     return {

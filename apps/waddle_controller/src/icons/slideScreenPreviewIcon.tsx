@@ -5,6 +5,7 @@ import ArticleOutlined from '@mui/icons-material/ArticleOutlined';
 import CalendarMonth from '@mui/icons-material/CalendarMonth';
 import ChatBubbleOutline from '@mui/icons-material/ChatBubbleOutline';
 import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined';
+import GridOn from '@mui/icons-material/GridOn';
 import GridView from '@mui/icons-material/GridView';
 import HelpOutline from '@mui/icons-material/HelpOutline';
 import ImageOutlined from '@mui/icons-material/ImageOutlined';
@@ -36,6 +37,7 @@ const ICONS: Record<SlideScreenPreviewKind, SvgIconComponent> = {
   news: ArticleOutlined,
   news_columns: ViewColumn,
   news_stack: Layers,
+  news_grid: GridOn,
   local_api: Terminal,
   admin_setup: Settings,
   controller_invite: AddLink,
