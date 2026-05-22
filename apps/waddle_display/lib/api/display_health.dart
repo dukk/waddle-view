@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:waddle_display/api/display_about.dart';
+import 'package:waddle_display/api/display_platform_arch.dart';
 
 export 'package:waddle_display/api/display_about.dart'
     show kWaddleDisplayAppVersion, kWaddleDisplayBuildNumber;
@@ -51,6 +52,8 @@ Map<String, dynamic> buildDisplayHealthJson({
   DateTime? serverStartedAt,
   DateTime? now,
   bool? pluginsDirConfigured,
+  String? platformArch,
+  bool? upgradeCapable,
 }) {
   final host = hostFacts ?? DisplayHostFacts.fromPlatform();
   final clock = (now ?? DateTime.now()).toUtc();
@@ -74,6 +77,8 @@ Map<String, dynamic> buildDisplayHealthJson({
     'uptime_seconds': ?uptimeSeconds,
     if (pluginsDirConfigured != null)
       'plugins_dir_configured': pluginsDirConfigured,
+    'platform_arch': platformArch ?? detectPlatformArch(),
+    if (upgradeCapable != null) 'upgrade_capable': upgradeCapable,
   };
 }
 
@@ -83,6 +88,8 @@ String encodeDisplayHealthJson({
   DateTime? serverStartedAt,
   DateTime? now,
   bool? pluginsDirConfigured,
+  String? platformArch,
+  bool? upgradeCapable,
 }) =>
     jsonEncode(
       buildDisplayHealthJson(
@@ -91,5 +98,7 @@ String encodeDisplayHealthJson({
         serverStartedAt: serverStartedAt,
         now: now,
         pluginsDirConfigured: pluginsDirConfigured,
+        platformArch: platformArch,
+        upgradeCapable: upgradeCapable,
       ),
     );

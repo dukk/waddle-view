@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link as RouterLink } from 'react-router';
 
 import {
   Alert,
@@ -211,7 +212,7 @@ function DisplaysPageToolbar({
 
 export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
   const { layout, setLayout } = useListLayoutPreference('displays');
-  const { displays, active, refresh, removeDisplay, updateDisplay } = useDisplay();
+  const { displays, active, refresh, removeDisplay, updateDisplay, setActiveId } = useDisplay();
 
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -389,6 +390,19 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
                       )}
                     </TableCell>
                     <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                      <Button
+                        size="small"
+                        component={RouterLink}
+                        to="/display-ops"
+                        onClick={() => {
+                          if (active?.id !== d.id) {
+                            setActiveId(d.id);
+                          }
+                        }}
+                        disabled={!session}
+                      >
+                        Backup
+                      </Button>
                       <Button size="small" onClick={() => setEditDisplay(d)}>
                         Edit
                       </Button>

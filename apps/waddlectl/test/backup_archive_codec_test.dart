@@ -13,7 +13,7 @@ void main() {
       includeDatabase: true,
       includeBlobs: true,
       includeSecrets: false,
-      waddlectlVersion: 't',
+      creatorVersion: 't',
       createdAtUtcIso: 'u',
     );
     final ar = buildWaddleBackupArchive(
@@ -36,7 +36,7 @@ void main() {
       includeDatabase: false,
       includeBlobs: true,
       includeSecrets: false,
-      waddlectlVersion: 't',
+      creatorVersion: 't',
       createdAtUtcIso: 'u',
     );
     final ar = buildWaddleBackupArchive(
@@ -69,7 +69,7 @@ void main() {
       includeDatabase: false,
       includeBlobs: true,
       includeSecrets: false,
-      waddlectlVersion: '1',
+      creatorVersion: '1',
       createdAtUtcIso: 'x',
     );
     final ar = buildWaddleBackupArchive(

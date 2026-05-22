@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as p;
 import 'package:waddle_display/alerts/drift_alert_repository.dart';
 import 'package:waddle_display/api/http_tls.dart';
 import 'package:waddle_display/api/display_remote_view_ws.dart';
@@ -67,6 +69,8 @@ class RestTestHarness {
     List<String> seedCorsOrigins = const [],
     Map<String, String> env = const {},
     FakeBlobStore? blobStore,
+    File? databaseFile,
+    Directory? supportDirectory,
   }) async {
     return startWithApiKey(
       apiKey: apiKey,
@@ -80,6 +84,8 @@ class RestTestHarness {
       seedCorsOrigins: seedCorsOrigins,
       env: env,
       blobStore: blobStore,
+      databaseFile: databaseFile,
+      supportDirectory: supportDirectory,
     );
   }
 
@@ -95,6 +101,8 @@ class RestTestHarness {
     Future<void> Function()? onConfigChanged,
     Map<String, String> env = const {},
     FakeBlobStore? blobStore,
+    File? databaseFile,
+    Directory? supportDirectory,
   }) async {
     final db = database ?? openMemoryDatabase();
     if (database == null) {
@@ -109,6 +117,8 @@ class RestTestHarness {
       onConfigChanged: onConfigChanged,
       seedCorsOrigins: const [],
       blobStore: blobStore,
+      databaseFile: databaseFile,
+      supportDirectory: supportDirectory,
     );
 
     final adoptionHeaders = <String, String>{
@@ -180,6 +190,8 @@ class RestTestHarness {
     List<String> seedCorsOrigins = const [],
     Map<String, String> env = const {},
     FakeBlobStore? blobStore,
+    File? databaseFile,
+    Directory? supportDirectory,
   }) async {
     final db = database ?? openMemoryDatabase();
     if (database == null) {
@@ -205,6 +217,8 @@ class RestTestHarness {
       onConfigChanged: onConfigChanged,
       seedCorsOrigins: seedCorsOrigins,
       blobStore: blobStore,
+      databaseFile: databaseFile,
+      supportDirectory: supportDirectory,
     );
     return RestTestHarness._(
       db: db,
@@ -236,6 +250,8 @@ class RestTestHarness {
     Future<void> Function()? onConfigChanged,
     required List<String> seedCorsOrigins,
     FakeBlobStore? blobStore,
+    File? databaseFile,
+    Directory? supportDirectory,
   }) async {
     final adoption = AdoptionRepository(db, instanceId: instanceId);
     final corsOrigins = CorsOriginRepository(db);
@@ -250,6 +266,13 @@ class RestTestHarness {
       db: db,
       protector: InMemoryDekProtector(),
     );
+    File? dbFile = databaseFile;
+    Directory? supportDir = supportDirectory;
+    if (dbFile == null || supportDir == null) {
+      final tmp = Directory.systemTemp.createTempSync('waddle_rest_harness');
+      supportDir ??= tmp;
+      dbFile ??= File(p.join(supportDir.path, 'waddle_display.db'));
+    }
     final handler = buildRootHandler(
       db: db,
       alerts: alerts,
@@ -262,6 +285,8 @@ class RestTestHarness {
       env: env,
       telemetryHub: telemetryHub,
       navigationBus: navigationBus,
+      databaseFile: dbFile,
+      supportDirectory: supportDir,
     );
     final server = await LocalRestServer.bind(
       handler: handler,

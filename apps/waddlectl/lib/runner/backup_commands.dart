@@ -1,16 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
-import 'package:archive/archive.dart';
 import 'package:args/command_runner.dart';
 import 'package:path/path.dart' as p;
+import 'package:waddle_backup/waddle_backup_service.dart';
 
-import '../backup_archive_codec.dart';
-import '../backup_fs_sync.dart';
-import '../backup_manifest.dart';
-import '../backup_schedule.dart';
-import '../backup_sqlite_checkpoint.dart';
 import '../global_options.dart';
 import '../version.dart';
 import 'emit.dart';
@@ -52,29 +46,6 @@ String _readConfirmLine(Iterator<String>? testIt) {
     return testIt.current;
   }
   return stdin.readLineSync(encoding: utf8) ?? '';
-}
-
-void _validateArchiveMatchesManifest(
-  Archive archive,
-  WaddleBackupManifest m,
-  void Function(String message) fail,
-) {
-  if (m.includeDatabase) {
-    if (archive.find(m.dbArchivePath) == null) {
-      fail(
-        'Backup is inconsistent: manifest includes database but '
-        '"${m.dbArchivePath}" is missing from the archive.',
-      );
-    }
-  }
-  if (m.includeSecrets) {
-    if (archive.find(kBackupSecretsBundlePath) == null) {
-      fail(
-        'Backup is inconsistent: manifest includes secrets but '
-        '"$kBackupSecretsBundlePath" is missing from the archive.',
-      );
-    }
-  }
 }
 
 class BackupCommand extends Command<void> {
@@ -145,14 +116,18 @@ class _BackupCreate extends Command<void> {
     final includeDatabase = argResults!['include-database'] as bool;
     final includeBlobs = argResults!['include-blobs'] as bool;
 
-    if (!includeDatabase && !includeBlobs) {
-      usageException(
-        'Nothing to backup: enable at least one of --include-database, --include-blobs.',
+    final service = WaddleBackupService(databaseFile: globalOptions.databaseFile);
+    try {
+      service.validateCreateOptions(
+        WaddleBackupCreateOptions(
+          includeDatabase: includeDatabase,
+          includeBlobs: includeBlobs,
+          format: format,
+          creatorVersion: kWaddlectlPackageVersion,
+        ),
       );
-    }
-
-    if (includeDatabase && !await globalOptions.databaseFile.exists()) {
-      usageException('Database file not found: ${globalOptions.databaseFile.path}');
+    } on ArgumentError catch (e) {
+      usageException(e.message);
     }
 
     final createdAt = DateTime.now().toUtc();
@@ -164,34 +139,16 @@ class _BackupCreate extends Command<void> {
     );
     await outFile.parent.create(recursive: true);
 
-    Uint8List? sqliteBytes;
-    if (includeDatabase) {
-      await walCheckpointFull(globalOptions.databaseFile);
-      sqliteBytes = await globalOptions.databaseFile.readAsBytes();
-    }
-
-    final mediaRoot = mediaDirectoryNextToSqlite(globalOptions.databaseFile);
-    final mediaMap = includeBlobs ? await readMediaTreeForArchive(mediaRoot) : <String, Uint8List>{};
-    final includeEmptyMediaDir = includeBlobs && mediaMap.isEmpty;
-
-    final manifest = WaddleBackupManifest(
-      includeDatabase: includeDatabase,
-      includeBlobs: includeBlobs,
-      includeSecrets: false,
-      waddlectlVersion: kWaddlectlPackageVersion,
-      createdAtUtcIso: createdAt.toIso8601String(),
-      sqliteBasename: p.basename(globalOptions.databaseFile.path),
+    final result = await service.createArchive(
+      WaddleBackupCreateOptions(
+        includeDatabase: includeDatabase,
+        includeBlobs: includeBlobs,
+        format: format,
+        creatorVersion: kWaddlectlPackageVersion,
+        createdAt: createdAt,
+      ),
     );
-
-    final archive = buildWaddleBackupArchive(
-      manifest: manifest,
-      sqliteBytes: sqliteBytes,
-      secretBundleBytes: null,
-      mediaRelativePosixPaths: mediaMap,
-      includeEmptyMediaDirectory: includeEmptyMediaDir,
-    );
-    final encoded = encodeArchive(archive, format);
-    await outFile.writeAsBytes(encoded, flush: true);
+    await outFile.writeAsBytes(result.bytes, flush: true);
 
     CliEmit(globalOptions).emitJsonOrText({
       'file': outFile.path,
@@ -199,10 +156,10 @@ class _BackupCreate extends Command<void> {
       'include_database': includeDatabase,
       'include_blobs': includeBlobs,
       'include_secrets': false,
-      'bytes': encoded.length,
+      'bytes': result.bytes.length,
     });
     if (!globalOptions.outputJson) {
-      stdout.writeln('Wrote backup (${encoded.length} bytes) to ${outFile.path}.');
+      stdout.writeln('Wrote backup (${result.bytes.length} bytes) to ${outFile.path}.');
     }
   }
 }
@@ -237,10 +194,14 @@ class _BackupRestore extends Command<void> {
       usageException('Backup file not found: $path');
     }
 
-    final bytes = Uint8List.fromList(await backupFile.readAsBytes());
+    final bytes = await backupFile.readAsBytes();
     final archive = decodeWaddleBackupBytes(bytes);
     final manifest = readManifestFromArchive(archive);
-    _validateArchiveMatchesManifest(archive, manifest, usageException);
+    try {
+      WaddleBackupService.validateArchiveMatchesManifest(archive, manifest);
+    } on FormatException catch (e) {
+      usageException(e.message);
+    }
 
     try {
       if (!await confirmDestructiveRestore(
@@ -254,59 +215,24 @@ class _BackupRestore extends Command<void> {
       usageException(e.message);
     }
 
-    final staging = Directory.systemTemp.createTempSync('waddle_restore_');
-    try {
-      await extractArchiveToDirectory(archive, staging);
+    final service = WaddleBackupService(databaseFile: globalOptions.databaseFile);
+    final restored = await service.restoreArchive(bytes, confirmYes: yes);
 
-      if (manifest.includeDatabase) {
-        final srcDb = File(p.join(staging.path, manifest.dbArchivePath));
-        if (!await srcDb.exists()) {
-          usageException('Missing database file in archive: ${manifest.dbArchivePath}');
-        }
-        final dst = globalOptions.databaseFile;
-        await dst.parent.create(recursive: true);
-        await deleteSqliteSidecarsIfPresent(dst);
-        await srcDb.copy(dst.path);
-        await deleteSqliteSidecarsIfPresent(dst);
-      }
+    if (restored.secretsBundleIgnored) {
+      stderr.writeln(
+        'Warning: backup manifest lists encrypted secrets; secret bundles '
+        'are no longer restored. Database/media (if present) were restored.',
+      );
+    }
 
-      if (manifest.includeBlobs) {
-        final srcMedia = Directory(p.join(staging.path, 'media'));
-        final dstMedia = mediaDirectoryNextToSqlite(globalOptions.databaseFile);
-        if (await dstMedia.exists()) {
-          await dstMedia.delete(recursive: true);
-        }
-        if (await srcMedia.exists()) {
-          await copyDirectoryContents(srcMedia, dstMedia);
-        } else {
-          await dstMedia.create(recursive: true);
-        }
-      }
-
-      if (manifest.includeSecrets) {
-        stderr.writeln(
-          'Warning: backup manifest lists encrypted secrets; secret bundles '
-          'are no longer restored. Database/media (if present) were restored.',
-        );
-      }
-
-      CliEmit(globalOptions).emitJsonOrText({
-        'restored_from': backupFile.path,
-        'include_database': manifest.includeDatabase,
-        'include_blobs': manifest.includeBlobs,
-        'include_secrets': manifest.includeSecrets,
-      });
-      if (!globalOptions.outputJson) {
-        stdout.writeln('Restore completed from ${backupFile.path}.');
-      }
-    } finally {
-      try {
-        if (staging.existsSync()) {
-          staging.deleteSync(recursive: true);
-        }
-      } on Object {
-        // best-effort
-      }
+    CliEmit(globalOptions).emitJsonOrText({
+      'restored_from': backupFile.path,
+      'include_database': restored.manifest.includeDatabase,
+      'include_blobs': restored.manifest.includeBlobs,
+      'include_secrets': restored.manifest.includeSecrets,
+    });
+    if (!globalOptions.outputJson) {
+      stdout.writeln('Restore completed from ${backupFile.path}.');
     }
   }
 }

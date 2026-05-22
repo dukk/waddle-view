@@ -210,7 +210,41 @@ These routes use the same **Bearer session** auth as other protected `/v1/*` pat
 
 ### Health
 
-`GET /v1/health` returns JSON including `status` (`ok`), `app`, `version`, `build`, `schema_version`, optional host fields (`platform_os`, `platform_os_version`, `hostname`, `cpu_count`, `dart_version`), `uptime_seconds`, and **`plugins_dir_configured`** (boolean). The latter is `true` when the display process has a non-empty **`WADDLE_DISPLAY_PLUGINS_DIR`**; otherwise `false`. The controller hides its **Plugins** nav and redirects `/plugins` when the active display reports `plugins_dir_configured: false`. Older displays that omit the field are treated as configured for backward compatibility.
+`GET /v1/health` returns JSON including `status` (`ok`), `app`, `version`, `build`, `schema_version`, optional host fields (`platform_os`, `platform_os_version`, `hostname`, `cpu_count`, `dart_version`), **`platform_arch`** (`arm64`, `x64`, …), **`upgrade_capable`** (boolean, Linux arm64 with upgrade helper installed), `uptime_seconds`, and **`plugins_dir_configured`** (boolean). The latter is `true` when the display process has a non-empty **`WADDLE_DISPLAY_PLUGINS_DIR`**; otherwise `false`. The controller hides its **Plugins** nav and redirects `/plugins` when the active display reports `plugins_dir_configured: false`. Older displays that omit the field are treated as configured for backward compatibility.
+
+### Display backup and upgrade (`display.maintenance`, admin)
+
+Requires adopted **`admin`** role (`display.maintenance` permission).
+
+| Method | Path | Notes |
+|--------|------|-------|
+| GET | `/v1/display/backup/status` | Database path, jobs directory, last job summary |
+| POST | `/v1/display/backup/jobs` | Start async backup (`?format=zip\|tgz`, `include_database`, `include_blobs`); **202** `{ job_id }` |
+| GET | `/v1/display/backup/jobs/{id}` | Job status: `pending`, `running`, `ready`, `failed` |
+| GET | `/v1/display/backup/jobs/{id}/download` | Archive bytes (`application/zip` or gzip) |
+| DELETE | `/v1/display/backup/jobs/{id}` | Remove temp job file |
+| POST | `/v1/display/backup/restore?confirm=yes` | Raw archive body; overwrites DB/media; display exits for restart |
+| POST | `/v1/display/ops/upgrade` | Body `{ "download_url": "https://…" }`; Pi arm64 only when `upgrade_capable`; **202** `{ job_id }` |
+| GET | `/v1/display/ops/upgrade/{id}` | Upgrade job status |
+
+Archives use the same layout as **`waddlectl backup create`** (`manifest.json`, `db/waddle_display.db`, optional `media/…`).
+
+### Controller BFF backup store
+
+When the controller BFF runs, operators can register **backup targets** (display URL + encrypted API key) and schedule daily pulls. Stored archives live under `WADDLE_CONTROLLER_DATA_DIR/backups/`.
+
+| Method | Path | Notes |
+|--------|------|-------|
+| GET | `/bff/v1/releases/waddle-view` | Latest GitHub release for `dukk/waddle-view` (optional `GITHUB_TOKEN`) |
+| GET | `/bff/v1/backup-targets` | List targets for the session user (or global when auth off) |
+| PUT | `/bff/v1/backup-targets` | Upsert schedule (`displayId`, `baseUrl`, `apiKey`, `cronExpr`, `timezone`, `retentionCount`, `enabled`) |
+| DELETE | `/bff/v1/backup-targets/{id}` | Remove target and snapshots |
+| GET | `/bff/v1/backup-targets/{id}/snapshots` | Stored backups |
+| POST | `/bff/v1/backup-targets/{id}/pull-now` | Pull from display immediately |
+| GET | `/bff/v1/backup-snapshots/{id}/download` | Download stored archive |
+| POST | `/bff/v1/backup-snapshots/{id}/restore` | Push archive to display restore endpoint |
+| POST | `/bff/v1/backup-targets/{id}/upload` | Upload archive without pulling from display |
+| DELETE | `/bff/v1/backup-snapshots/{id}` | Delete stored file |
 
 ## Examples
 

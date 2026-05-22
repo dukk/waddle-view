@@ -34,6 +34,20 @@ sudo bash install.sh
 6. Configure **autostart** (`~/.config/autostart/*.desktop`) or install the sample **`waddle-view.service`** (edit `User`, `DISPLAY`, and paths).
 7. **Disable screen blanking** for display use (`xset s off`, `xset -dpms`, or Wayland equivalents).
 
+## In-band upgrade from the controller (Pi arm64)
+
+The controller **Backup & updates** page can trigger `POST /v1/display/ops/upgrade` when the display reports `upgrade_capable: true` in `GET /v1/health`. That requires:
+
+1. Copy [`deploy/linux-arm64/waddle-view-upgrade.sh`](../../deploy/linux-arm64/waddle-view-upgrade.sh) to the Pi (for example `/opt/waddle-view/waddle-view-upgrade.sh`) and `chmod +x`.
+2. Set **`WADDLE_DISPLAY_UPGRADE_SCRIPT`** to that path (see `apps/waddle_display/.env.example` and the sample **`waddle-view.service`** comment).
+3. Grant the display user **passwordless sudo** for that script only, for example in `/etc/sudoers.d/waddle-view`:
+
+```sudoers
+pi ALL=(root) NOPASSWD: /opt/waddle-view/waddle-view-upgrade.sh
+```
+
+Replace `pi` with the user running `waddle_display`. The script stops the user systemd unit, backs up `/opt/waddle-view/bundle`, extracts the release tarball, runs `install.sh`, and restarts the unit. Without sudo, the UI still shows “update available” with a link to GitHub; use [`deploy/pi-remote-upgrade.py`](../../deploy/pi-remote-upgrade.py) over SSH instead.
+
 ## Tier 2: flashable SD card image (Docker builder)
 
 For a single **`.img`** you can write with **Raspberry Pi Imager** or **balenaEtcher**, use the privileged Docker workflow under **[`deploy/pi-image/README.md`](../../deploy/pi-image/README.md)**. You still need a **pre-built ARM64 Linux bundle** (Tier 1 produces the same `bundle/` tree); the Docker builder downloads official **Raspberry Pi OS arm64**, installs the bundle into **`/opt/waddle-view`**, enables **LightDM auto-login** for the configured user (default **`pi`**), and adds an **`/etc/xdg/autostart`** entry for **`waddle_display`**.

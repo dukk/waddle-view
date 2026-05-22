@@ -20,6 +20,8 @@ dependencies:
     sdk: flutter
   waddle_shared:
     path: ../../packages/waddle_shared
+  waddle_backup:
+    path: ../../packages/waddle_backup
   waddle_integrations:
     path: ../../packages/waddle_integrations
   meta: ^1.17.0

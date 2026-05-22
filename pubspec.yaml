@@ -9,6 +9,7 @@ workspace:
   - apps/waddle_display
   - apps/waddlectl
   - packages/waddle_shared
+  - packages/waddle_backup
   - packages/waddle_integrations
   - packages/waddle_plugin_sdk
   - packages/waddle_plugin_example

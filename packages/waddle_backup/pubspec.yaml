@@ -1,0 +1,19 @@
+name: waddle_backup
+description: Shared Waddle View backup archive format (SQLite + media blobs).
+publish_to: none
+version: 1.0.0
+resolution: workspace
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  archive: ^4.0.9
+  path: ^1.9.1
+  sqlite3: ^3.3.1
+
+dev_dependencies:
+  test: ^1.26.0
+  waddle_shared:
+    path: ../waddle_shared
+  drift: ^2.33.0

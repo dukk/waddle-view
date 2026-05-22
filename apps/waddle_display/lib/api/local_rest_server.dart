@@ -43,6 +43,9 @@ import 'display_remote_view_ws.dart';
 import 'manual_bucket_rest_routes.dart';
 import 'operator_rest_routes.dart';
 import 'plugin_routes.dart';
+import 'display_backup_rest_routes.dart';
+import 'display_ops_rest_routes.dart';
+import 'display_platform_arch.dart';
 import 'runtime_signal_routes.dart';
 import '../plugins/plugin_loader.dart';
 import 'package:waddle_shared/runtime/runtime_signal_repository.dart';
@@ -64,6 +67,9 @@ Handler buildProtectedApiRouter({
   RuntimeSignalRepository? runtimeSignals,
   Future<void> Function()? onSignalsChanged,
   PluginLoader? pluginLoader,
+  File? databaseFile,
+  Directory? supportDirectory,
+  Map<String, String>? env,
 }) {
   final r = Router();
   if (adoption != null) {
@@ -735,6 +741,21 @@ Handler buildProtectedApiRouter({
 
   registerManualBucketRestRoutes(r, db: db, blobs: blobs);
 
+  if (databaseFile != null && supportDirectory != null) {
+    registerDisplayBackupRestRoutes(
+      r,
+      databaseFile: databaseFile,
+      supportDirectory: supportDirectory,
+      onAfterRestore: () async {
+        exit(0);
+      },
+    );
+    registerDisplayOpsRestRoutes(
+      r,
+      env: env ?? const {},
+    );
+  }
+
   return r.call;
 }
 
@@ -1083,16 +1104,23 @@ Handler buildRootHandler({
   RuntimeSignalRepository? runtimeSignals,
   Future<void> Function()? onSignalsChanged,
   PluginLoader? pluginLoader,
+  File? databaseFile,
+  Directory? supportDirectory,
 }) {
   final effectiveCorsPolicy = corsPolicy ?? CorsPolicy();
   final healthStartedAt = DateTime.now().toUtc();
   final pluginsDirConfigured =
       (env[kDisplayPluginsDirEnv] ?? '').trim().isNotEmpty;
+  final upgradeScript = (env[kDisplayUpgradeScriptEnv] ?? '').trim().isNotEmpty
+      ? (env[kDisplayUpgradeScriptEnv] ?? '').trim()
+      : '/usr/local/bin/waddle-view-upgrade.sh';
+  final upgradeCapable = isPiUpgradeCapable(upgradeScriptPath: upgradeScript);
   Response health(Request req) => Response.ok(
     encodeDisplayHealthJson(
       schemaVersion: db.schemaVersion,
       serverStartedAt: healthStartedAt,
       pluginsDirConfigured: pluginsDirConfigured,
+      upgradeCapable: upgradeCapable,
     ),
     headers: {'content-type': 'application/json'},
   );
@@ -1131,6 +1159,9 @@ Handler buildRootHandler({
             runtimeSignals: runtimeSignals,
             onSignalsChanged: onSignalsChanged,
             pluginLoader: pluginLoader,
+            databaseFile: databaseFile,
+            supportDirectory: supportDirectory,
+            env: env,
           ),
         );
   } else {

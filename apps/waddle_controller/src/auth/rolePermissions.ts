@@ -24,6 +24,7 @@ const ROLE_PERMISSIONS: Record<string, ReadonlySet<string>> = {
     'navigation.control',
     'telemetry.read',
     'meta.read',
+    'display.maintenance',
   ]),
   operator: new Set([
     'screens.read',

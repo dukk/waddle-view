@@ -76,5 +76,8 @@ Restart=on-failure
 # Drop-in plugin directories (manifest.json per folder); restart display after changes.
 # Environment=WADDLE_DISPLAY_PLUGINS_DIR=/opt/waddle-view/plugins
 
+# Pi in-band upgrade helper (POST /v1/display/ops/upgrade). Requires passwordless sudo for the script.
+# Environment=WADDLE_DISPLAY_UPGRADE_SCRIPT=/opt/waddle-view/waddle-view-upgrade.sh
+
 [Install]
 WantedBy=default.target

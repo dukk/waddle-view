@@ -17,6 +17,10 @@ export type DisplayHealthPayload = {
   uptime_seconds?: number;
   /** True when `WADDLE_DISPLAY_PLUGINS_DIR` is set on the display process. */
   plugins_dir_configured?: boolean;
+  /** CPU architecture hint (`arm64`, `x64`, …). */
+  platform_arch?: string;
+  /** True when Pi in-band upgrade helper is installed and executable. */
+  upgrade_capable?: boolean;
 };
 
 export type DisplayReachability =

@@ -16,7 +16,7 @@ function readCategoryNames(formData: unknown): string[] {
 }
 
 export function ContentCategoryMultiSelectField(props: Props) {
-  const { categories, formData, onChange, disabled, schema, rawErrors } = props;
+  const { categories, formData, onChange, disabled, schema, rawErrors: _rawErrors } = props;
   const value = readCategoryNames(formData);
   const label = (schema.title as string | undefined) ?? 'Categories';
   const fieldId = schema.$id != null ? String(schema.$id) : 'content-category-multi';

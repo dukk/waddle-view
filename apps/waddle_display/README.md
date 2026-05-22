@@ -86,7 +86,11 @@ The **`apps/waddlectl`** package is a shell tool against the same **SQLite** dat
 
 **Prebuilt `waddlectl`** is included in **GitHub Release** artifacts next to the display app: **Windows** (`…/waddlectl/bin/waddlectl.exe` inside the `.zip` Release tree), **Linux** (`…/bundle/waddlectl/bin/waddlectl` next to `waddle_display` in the tarball’s `bundle/`). From a dev checkout you can build the same layout with **`dart build cli`** (see *Build installable bundles* below).
 
-### Full backups (`backup create` / `backup restore` / `backup schedule`)
+### Full backups (`backup create` / `backup restore` / REST / controller)
+
+The **controller** can pull the same archives via **`/v1/display/backup/*`** (admin API key) and store them on the BFF. See **Backup & updates** in the controller UI.
+
+### CLI backups (`backup create` / `backup restore` / `backup schedule`)
 
 - **Create** (timestamped **`.zip`** or **`.tar.gz`** in the current directory, or under `--output`):
 

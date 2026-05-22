@@ -18,7 +18,7 @@ type Props = {
 
 export function ScreenConfigPanel({
   display,
-  screenType,
+  screenType: _screenType,
   schema,
   formData,
   onChange,

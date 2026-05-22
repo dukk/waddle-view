@@ -232,6 +232,7 @@ Future<void> _waddleBootstrap() async {
       });
     }
     applyDisplayRemoteViewEnvDefaults(envMap);
+    final databaseFile = File(p.join(support.path, 'waddle_display.db'));
     final handler = buildRootHandler(
       db: db,
       alerts: alerts,
@@ -247,6 +248,8 @@ Future<void> _waddleBootstrap() async {
       runtimeSignals: runtimeSignals,
       onSignalsChanged: dashboardCurator.refresh,
       pluginLoader: pluginLoader,
+      databaseFile: databaseFile,
+      supportDirectory: support,
     );
     final server = await LocalRestServer.bind(
       handler: handler,

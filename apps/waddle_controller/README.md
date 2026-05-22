@@ -73,6 +73,17 @@ When **user mode** is turned off, sign-in is disabled but server data remains. U
 
 **`WADDLE_CONTROLLER_PROXY_UPSTREAM_TIMEOUT_MS`** (default **180000**) caps how long the BFF waits for a proxied display HTTP response before returning **502** with `display_timeout`. Raise on slow hardware if read endpoints still time out during heavy display refresh; mutating routes should return quickly once the display defers post-save refresh work.
 
+### Backup, restore, and Pi upgrades
+
+The **Backup & updates** page (`/display-ops`) compares the active display to the latest [GitHub release](https://github.com/dukk/waddle-view/releases), pulls **`.zip`** backups from displays into `WADDLE_CONTROLLER_DATA_DIR/backups/`, restores from stored copies or uploads, and can trigger **Pi arm64** in-band upgrades when the display reports `upgrade_capable: true`.
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `GITHUB_TOKEN` or `GH_TOKEN` | — | Optional; raises GitHub API rate limits for release checks |
+| `WADDLE_CONTROLLER_BACKUP_MAX_BYTES` | `0` (no cap) | Reject pulled backups larger than this many bytes |
+
+Scheduled pulls use **`backup_targets`** in the BFF SQLite DB (cron `M H * * *` in the target timezone). Save a target from the UI (stores encrypted display API key on the server). When user mode is off, targets are global (`user_id` null); sign-in is not required for the BFF backup API in that mode.
+
 ### Remote view (VNC)
 
 The **Remote** page can show a live display desktop when the display has **remote view** enabled (Proxmox-style: ticketed session + WebSocket relay). Configure host/port/path on **Controller settings → Displays → Edit** (saved to the display via `PUT /v1/display/settings`). The display relays to a local **websockify** listener (not bundled). noVNC in the browser connects through **`/bff/v1/proxy-ws/*`** on the controller origin (Vite dev proxy sets `ws: true` for `/bff`). Use **Open in new window** or **Test remote connection** in the edit dialog for a pop-out viewer.

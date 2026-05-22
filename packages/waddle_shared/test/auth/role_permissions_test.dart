@@ -7,6 +7,13 @@ void main() {
     expect(userHasPermission(kUserRoleAdmin, WaddlePermission.usersManage), isTrue);
   });
 
+  test('display.maintenance is admin-only', () {
+    expect(userHasPermission(kUserRoleAdmin, WaddlePermission.displayMaintenance), isTrue);
+    expect(userHasPermission(kUserRoleOperator, WaddlePermission.displayMaintenance), isFalse);
+    expect(userHasPermission(kUserRolePowerViewer, WaddlePermission.displayMaintenance), isFalse);
+    expect(userHasPermission(kUserRoleViewer, WaddlePermission.displayMaintenance), isFalse);
+  });
+
   test('power_viewer can read telemetry, navigate, and browse catalog (not moderate)', () {
     expect(
       userHasPermission(kUserRolePowerViewer, WaddlePermission.telemetryRead),

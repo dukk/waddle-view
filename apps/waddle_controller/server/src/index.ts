@@ -2,10 +2,12 @@ import { loadConfig } from './config.js';
 import { openDatabase } from './db/database.js';
 import { createApp } from './app.js';
 import { serveWithOptionalTls } from './tlsServe.js';
+import { startBackupScheduler } from './services/backupScheduler.js';
 
 const config = loadConfig();
 const db = openDatabase(config);
 const app = createApp(config, db);
+startBackupScheduler(config, db);
 
 const scheme = config.tls.enabled ? 'https' : 'http';
 console.error(

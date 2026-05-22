@@ -13,6 +13,7 @@ export const LIST_LAYOUT_PAGE_KEYS = [
   'activity',
   'curators',
   'users',
+  'display-ops-backups',
 ] as const;
 
 /** Pages that default to table layout when no preference is stored. */

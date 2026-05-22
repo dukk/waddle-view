@@ -24,6 +24,8 @@ abstract final class WaddlePermission {
   static const navigationControl = 'navigation.control';
   static const telemetryRead = 'telemetry.read';
   static const metaRead = 'meta.read';
+  /// Backup, restore, and host upgrade operations on the display.
+  static const displayMaintenance = 'display.maintenance';
 }
 
 const _adminPermissions = <String>{
@@ -47,6 +49,7 @@ const _adminPermissions = <String>{
   WaddlePermission.navigationControl,
   WaddlePermission.telemetryRead,
   WaddlePermission.metaRead,
+  WaddlePermission.displayMaintenance,
 };
 
 const _operatorPermissions = <String>{

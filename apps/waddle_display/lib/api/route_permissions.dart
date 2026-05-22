@@ -226,6 +226,29 @@ String? permissionForRoute(String method, String path) {
     return WaddlePermission.curatorWrite;
   }
 
+  if (p == '/v1/display/backup/status' && m == 'GET') {
+    return WaddlePermission.displayMaintenance;
+  }
+  if (p == '/v1/display/backup/jobs' && m == 'POST') {
+    return WaddlePermission.displayMaintenance;
+  }
+  if (RegExp(r'^/v1/display/backup/jobs/[^/]+$').hasMatch(p) &&
+      (m == 'GET' || m == 'DELETE')) {
+    return WaddlePermission.displayMaintenance;
+  }
+  if (RegExp(r'^/v1/display/backup/jobs/[^/]+/download$').hasMatch(p) && m == 'GET') {
+    return WaddlePermission.displayMaintenance;
+  }
+  if (p == '/v1/display/backup/restore' && m == 'POST') {
+    return WaddlePermission.displayMaintenance;
+  }
+  if (p == '/v1/display/ops/upgrade' && m == 'POST') {
+    return WaddlePermission.displayMaintenance;
+  }
+  if (RegExp(r'^/v1/display/ops/upgrade/[^/]+$').hasMatch(p) && m == 'GET') {
+    return WaddlePermission.displayMaintenance;
+  }
+
   if (p.startsWith('/v1/media/') && m == 'GET') {
     return WaddlePermission.telemetryRead;
   }

@@ -23,6 +23,9 @@ const String kDisplayAppleClientIdEnv = 'WADDLE_DISPLAY_APPLE_CLIENT_ID';
 /// Directory scanned for drop-in plugin folders (`manifest.json` each).
 const String kDisplayPluginsDirEnv = 'WADDLE_DISPLAY_PLUGINS_DIR';
 
+/// Path to the Pi upgrade helper script (`waddle-view-upgrade.sh`).
+const String kDisplayUpgradeScriptEnv = 'WADDLE_DISPLAY_UPGRADE_SCRIPT';
+
 /// Remote desktop (websockify) defaults when KV keys are unset.
 const String kDisplayRemoteViewEnabledEnv = 'WADDLE_DISPLAY_REMOTE_VIEW_ENABLED';
 const String kDisplayRemoteViewHostEnv = 'WADDLE_DISPLAY_REMOTE_VIEW_HOST';

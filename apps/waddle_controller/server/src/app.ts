@@ -13,6 +13,7 @@ import { usersRoutes } from './routes/users.js';
 import { proxyRoutes } from './routes/proxy.js';
 import { userDisplaysRoutes } from './routes/userDisplays.js';
 import { recoveryRoutes } from './routes/recovery.js';
+import { backupsRoutes } from './routes/backups.js';
 import { DISPLAY_ID_HEADER, DISPLAY_URL_HEADER } from './constants/proxyHeaders.js';
 
 export function createApp(config: AppConfig, db: AppDatabase) {
@@ -40,6 +41,7 @@ export function createApp(config: AppConfig, db: AppDatabase) {
   v1.route('/', usersRoutes());
   v1.route('/', userDisplaysRoutes());
   v1.route('/', recoveryRoutes());
+  v1.route('/', backupsRoutes());
 
   // Mount separately so other v1 sub-apps' `use('*')` middleware cannot block /proxy/*.
   app.route('/bff/v1', proxyRoutes());
