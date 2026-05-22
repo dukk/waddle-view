@@ -70,6 +70,7 @@ export function RemoteViewPanel({
         const rfb = new RFB(containerRef.current, wsUrl, {
           credentials: password ? { password } : undefined,
         });
+        rfb.viewOnly = true;
         rfb.scaleViewport = true;
         rfb.resizeSession = true;
         rfb.addEventListener('connect', () => setStatus('connected'));

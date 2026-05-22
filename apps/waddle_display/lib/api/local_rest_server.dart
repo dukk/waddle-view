@@ -39,6 +39,7 @@ import 'cors_policy.dart';
 import '../config/display_env.dart';
 import 'display_about.dart';
 import 'display_health.dart';
+import 'display_live_preview_ws.dart';
 import 'display_remote_view_ws.dart';
 import 'manual_bucket_rest_routes.dart';
 import 'operator_rest_routes.dart';
@@ -1276,6 +1277,7 @@ class LocalRestServer {
     String? displayHost,
     HttpTlsConfig tls = const HttpTlsConfig(enabled: true),
     DisplayRemoteViewWebSocketGateway? remoteViewGateway,
+    DisplayLivePreviewWebSocketGateway? livePreviewGateway,
   }) async {
     final addr = address ?? InternetAddress.loopbackIPv4;
     final HttpServer server;
@@ -1287,10 +1289,20 @@ class LocalRestServer {
       }
       final ctx = securityContextFromPaths(certPath: certPath, keyPath: keyPath);
       server = await HttpServer.bindSecure(addr, port, ctx);
-      _listen(server, handler, remoteViewGateway: remoteViewGateway);
+      _listen(
+        server,
+        handler,
+        remoteViewGateway: remoteViewGateway,
+        livePreviewGateway: livePreviewGateway,
+      );
     } else {
       server = await HttpServer.bind(addr, port);
-      _listen(server, handler, remoteViewGateway: remoteViewGateway);
+      _listen(
+        server,
+        handler,
+        remoteViewGateway: remoteViewGateway,
+        livePreviewGateway: livePreviewGateway,
+      );
     }
     final out = LocalRestServer._(
       server,
@@ -1306,13 +1318,19 @@ class LocalRestServer {
     HttpServer server,
     Handler handler, {
     DisplayRemoteViewWebSocketGateway? remoteViewGateway,
+    DisplayLivePreviewWebSocketGateway? livePreviewGateway,
   }) {
     server.listen((HttpRequest request) async {
-      if (remoteViewGateway != null &&
-          WebSocketTransformer.isUpgradeRequest(request) &&
-          remoteViewGateway.handlesPath(request.uri.path)) {
-        await remoteViewGateway.handle(request);
-        return;
+      if (WebSocketTransformer.isUpgradeRequest(request)) {
+        final path = request.uri.path;
+        if (remoteViewGateway != null && remoteViewGateway.handlesPath(path)) {
+          await remoteViewGateway.handle(request);
+          return;
+        }
+        if (livePreviewGateway != null && livePreviewGateway.handlesPath(path)) {
+          await livePreviewGateway.handle(request);
+          return;
+        }
       }
       await shelf_io.handleRequest(request, handler);
     });

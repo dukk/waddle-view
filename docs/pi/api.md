@@ -159,6 +159,9 @@ These routes use the same **Bearer session** auth as other protected `/v1/*` pat
 | GET (upgrade) | `/v1/display/remote-view/ws?ticket=…` | Authenticated WebSocket upgrade (Bearer API key + valid ticket). Relays frames to the configured websockify upstream. Ticket is single-use. |
 | PUT | `/v1/display/remote-view/password` | Body: `{ "value": "<vnc password>" }`. Stores encrypted password on the display. Requires `curator.write`. |
 | DELETE | `/v1/display/remote-view/password` | Clears stored VNC password. Requires `curator.write`. |
+| GET | `/v1/display/live-preview` | In-app live preview status: `configured`, `enabled`, `fps`, `width`, `quality`. Requires `navigation.control`. |
+| POST | `/v1/display/live-preview/session` | Creates a short-lived ticket for the JPEG WebSocket stream. Response: `{ "ticket", "expires_at_ms" }`. Requires live preview enabled and `navigation.control`. |
+| GET (upgrade) | `/v1/display/live-preview/ws?ticket=…` | Authenticated WebSocket (Bearer API key + valid ticket). Binary frames: 4-byte big-endian length + JPEG. View-only (no client input). Ticket is single-use. Capture starts when the socket opens and stops when it closes. |
 | GET | `/v1/meta/config-schemas` | Bundled type docs: `{screen_types, ticker_tape_types, overlay_types, integration_types}` — each item includes `label`, `config_json_schema`, and `example_config_json` (examples from code catalog; schemas/labels from SQLite type tables when present). `integration_types` items also include `requires_accounts`. Preferred for clients that cache schemas once per display session. |
 | GET | `/v1/meta/screen-types` | `{"items":[{screen_type, label, config_json_schema, example_config_json}, ...]}` from SQLite **`screen_types`**. |
 | GET | `/v1/meta/ticker-tape-types` | `{"items":[{ticker_type, label, config_json_schema, example_config_json}, ...]}` from SQLite **`ticker_tape_types`**. |

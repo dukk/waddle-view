@@ -94,6 +94,8 @@ void main() {
     ('POST', '/v1/display/remote-view/session', WaddlePermission.navigationControl),
     ('PUT', '/v1/display/remote-view/password', WaddlePermission.curatorWrite),
     ('DELETE', '/v1/display/remote-view/password', WaddlePermission.curatorWrite),
+    ('GET', '/v1/display/live-preview', WaddlePermission.navigationControl),
+    ('POST', '/v1/display/live-preview/session', WaddlePermission.navigationControl),
     ('GET', '/v1/display/overlays', WaddlePermission.overlaysRead),
     ('POST', '/v1/display/overlays', WaddlePermission.overlaysWrite),
     ('POST', '/v1/display/overlays/blobs', WaddlePermission.overlaysWrite),

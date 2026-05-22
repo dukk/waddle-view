@@ -40,6 +40,13 @@ Restart=on-failure
 # Environment=WADDLE_DISPLAY_REMOTE_VIEW_PORT=6080
 # Environment=WADDLE_DISPLAY_REMOTE_VIEW_PATH=/
 
+# Live preview (in-app window capture). Requires gstreamer1.0-tools on the device.
+# Environment=WADDLE_DISPLAY_LIVE_PREVIEW_ENABLED=1
+# Environment=WADDLE_DISPLAY_LIVE_PREVIEW_FPS=10
+# Environment=WADDLE_DISPLAY_LIVE_PREVIEW_WIDTH=1280
+# Environment=WADDLE_DISPLAY_LIVE_PREVIEW_QUALITY=75
+# Environment=WADDLE_DISPLAY_WINDOW_XID=
+
 # Shared secret for POST /v1/auth/register-viewer (/join QR). Unset disables self-service viewer signup.
 # Environment=WADDLE_DISPLAY_VIEWER_REGISTRATION_SECRET=change-me
 

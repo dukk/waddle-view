@@ -151,6 +151,36 @@ export function v1Router() {
     return c.json({});
   });
 
+  r.get('/display/live-preview', (c) => {
+    const scenario = c.get('scenario');
+    const bad = maybeErr(c, scenario);
+    if (bad) return bad;
+    const enabled = mockConfigKv.get('display.live_preview.enabled') === 'true';
+    return c.json({
+      configured: enabled,
+      enabled,
+      fps: Number(mockConfigKv.get('display.live_preview.fps') ?? '10'),
+      width: Number(mockConfigKv.get('display.live_preview.width') ?? '1280'),
+      quality: Number(mockConfigKv.get('display.live_preview.quality') ?? '75'),
+      capture_backend: 'test_pattern',
+      capture_ready: true,
+    });
+  });
+
+  r.post('/display/live-preview/session', (c) => {
+    const scenario = c.get('scenario');
+    const bad = maybeErr(c, scenario);
+    if (bad) return bad;
+    const enabled = mockConfigKv.get('display.live_preview.enabled') === 'true';
+    if (!enabled) {
+      return c.json({ error: 'live_preview_not_configured' }, 400);
+    }
+    return c.json({
+      ticket: 'mock-live-preview-ticket',
+      expires_at_ms: Date.now() + 300_000,
+    });
+  });
+
   r.get('/meta/screen-types', (c) => {
     const scenario = c.get('scenario');
     if (wantsEmpty(scenario)) return c.json({ items: [] });
@@ -307,6 +337,13 @@ export function v1Router() {
       display_remote_view_path: mockConfigKv.get('display.remote_view.path') ?? '/',
       display_remote_view_password_configured:
         mockConfigKv.get('display.remote_view.password') === '1',
+      display_live_preview_enabled:
+        mockConfigKv.get('display.live_preview.enabled') === 'true',
+      display_live_preview_fps: Number(mockConfigKv.get('display.live_preview.fps') ?? '10'),
+      display_live_preview_width: Number(mockConfigKv.get('display.live_preview.width') ?? '1280'),
+      display_live_preview_quality: Number(
+        mockConfigKv.get('display.live_preview.quality') ?? '75',
+      ),
     });
   });
 
@@ -473,6 +510,24 @@ export function v1Router() {
       }
       if (typeof body.display_remote_view_path === 'string') {
         mockConfigKv.set('display.remote_view.path', body.display_remote_view_path.trim());
+      }
+      if (typeof body.display_live_preview_enabled === 'boolean') {
+        mockConfigKv.set(
+          'display.live_preview.enabled',
+          body.display_live_preview_enabled ? 'true' : 'false',
+        );
+      }
+      if (typeof body.display_live_preview_fps === 'number') {
+        mockConfigKv.set('display.live_preview.fps', String(body.display_live_preview_fps));
+      }
+      if (typeof body.display_live_preview_width === 'number') {
+        mockConfigKv.set('display.live_preview.width', String(body.display_live_preview_width));
+      }
+      if (typeof body.display_live_preview_quality === 'number') {
+        mockConfigKv.set(
+          'display.live_preview.quality',
+          String(body.display_live_preview_quality),
+        );
       }
     } catch {
       /* ignore malformed body */

@@ -3,11 +3,13 @@ import { useSearchParams } from 'react-router-dom';
 import { Alert, Box, Typography } from '@mui/material';
 import { useDisplay } from '@/context/DisplayContext';
 import { useAuth } from '@/context/AuthContext';
+import { LivePreviewPanel } from '@/components/remote/LivePreviewPanel';
 import { RemoteViewPanel } from '@/components/remote/RemoteViewPanel';
 import { loadDisplays } from '@/storage/displays';
 
 export function RemoteViewPage() {
   const [params] = useSearchParams();
+  const mode = params.get('mode') ?? '';
   const { active, displays } = useDisplay();
   const { hasPermission } = useAuth();
 
@@ -51,15 +53,24 @@ export function RemoteViewPage() {
   return (
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', p: 1 }}>
       <Typography variant="subtitle2" sx={{ mb: 1 }}>
-        Remote view — {display.label}
+        {mode === 'live' ? 'Live preview' : 'Remote view'} — {display.label}
       </Typography>
       <Box sx={{ flex: 1, minHeight: 0 }}>
-        <RemoteViewPanel
-          display={display}
-          initialTicket={ticket}
-          autoConnect={Boolean(ticket)}
-          popOutPath="/remote/view"
-        />
+        {mode === 'live' ? (
+          <LivePreviewPanel
+            display={display}
+            initialTicket={ticket}
+            autoConnect={Boolean(ticket)}
+            popOutPath="/remote/view"
+          />
+        ) : (
+          <RemoteViewPanel
+            display={display}
+            initialTicket={ticket}
+            autoConnect={Boolean(ticket)}
+            popOutPath="/remote/view"
+          />
+        )}
       </Box>
     </Box>
   );

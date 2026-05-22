@@ -44,6 +44,10 @@ export type DisplaySettings = {
   display_remote_view_port?: number;
   display_remote_view_path?: string;
   display_remote_view_password_configured?: boolean;
+  display_live_preview_enabled?: boolean;
+  display_live_preview_fps?: number;
+  display_live_preview_width?: number;
+  display_live_preview_quality?: number;
 };
 
 export type DisplayTickerSeparator = 'dot' | 'diamond';

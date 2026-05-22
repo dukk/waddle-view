@@ -84,9 +84,11 @@ The **Backup & restore** tab under **Controller settings** (`/controller-setting
 
 Scheduled pulls use **`backup_targets`** in the BFF SQLite DB (cron `M H * * *` in the target timezone). Save a target from the UI (stores encrypted display API key on the server). When user mode is off, targets are global (`user_id` null); sign-in is not required for the BFF backup API in that mode.
 
-### Remote view (VNC)
+### Live preview and remote view
 
-The **Remote** page can show a live display desktop when the display has **remote view** enabled (Proxmox-style: ticketed session + WebSocket relay). Configure host/port/path on **Controller settings → Displays → Edit** (saved to the display via `PUT /v1/display/settings`). The display relays to a local **websockify** listener (not bundled). noVNC in the browser connects through **`/bff/v1/proxy-ws/*`** on the controller origin (Vite dev proxy sets `ws: true` for `/bff`). Use **Open in new window** or **Test remote connection** in the edit dialog for a pop-out viewer.
+The **Remote** page shows a **live preview** when enabled on the display (view-only JPEG over WebSocket; no VNC). Enable it under **Controller settings → Displays → Edit → Live preview**, then connect from the Remote page or **Test live preview**. The stream uses the same ticket + API-key WebSocket proxy as remote view (`/bff/v1/proxy-ws/*`).
+
+**Remote view (VNC)** remains available as a legacy option (websockify + noVNC, view-only in the controller). Configure host/port/path in the edit dialog when not using live preview.
 
 ### Display pairing
 

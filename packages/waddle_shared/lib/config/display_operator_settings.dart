@@ -13,6 +13,7 @@ import 'package:waddle_shared/display/display_weather_temperature_unit_kv.dart';
 import 'package:waddle_shared/display/display_viewport_reserve.dart';
 import 'package:waddle_shared/theme/display_program_history_kv.dart';
 import 'package:waddle_shared/theme/display_theme_kv.dart';
+import 'package:waddle_shared/config/display_live_preview.dart';
 import 'package:waddle_shared/config/display_remote_view.dart';
 import 'package:waddle_shared/secrets/secret_store.dart';
 
@@ -76,6 +77,7 @@ Future<Map<String, dynamic>> readDisplayOperatorSettings(
     'adoption_allowed_roles': adoptionRolesList,
     'adoption_allow_new_requests': adoptionAllowedRoles.isNotEmpty,
     ...displayRemoteViewSettingsJson(displayRemoteViewConfigFromKv(kv)),
+    ...displayLivePreviewSettingsJson(displayLivePreviewConfigFromKv(kv)),
     'display_remote_view_password_configured': secrets != null
         ? await _displayRemoteViewPasswordConfigured(secrets)
         : false,
@@ -427,6 +429,55 @@ Future<bool> applyDisplayOperatorSettingsPut(
           ConfigKeyValuesCompanion.insert(
             key: kDisplayRemoteViewPathKvKey,
             value: path,
+          ),
+        );
+    touched = true;
+  }
+  if (body.containsKey('display_live_preview_enabled')) {
+    final enabled = parseDisplayLivePreviewEnabled(body['display_live_preview_enabled']);
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kDisplayLivePreviewEnabledKvKey,
+            value: enabled ? 'true' : 'false',
+          ),
+        );
+    touched = true;
+  }
+  if (body.containsKey('display_live_preview_fps')) {
+    final fps = normalizeDisplayLivePreviewFps(body['display_live_preview_fps']);
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kDisplayLivePreviewFpsKvKey,
+            value: '$fps',
+          ),
+        );
+    touched = true;
+  }
+  if (body.containsKey('display_live_preview_width')) {
+    final width = normalizeDisplayLivePreviewWidth(body['display_live_preview_width']);
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kDisplayLivePreviewWidthKvKey,
+            value: '$width',
+          ),
+        );
+    touched = true;
+  }
+  if (body.containsKey('display_live_preview_quality')) {
+    final quality =
+        normalizeDisplayLivePreviewQuality(body['display_live_preview_quality']);
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kDisplayLivePreviewQualityKvKey,
+            value: '$quality',
           ),
         );
     touched = true;

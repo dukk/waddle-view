@@ -225,6 +225,12 @@ String? permissionForRoute(String method, String path) {
   if (p == '/v1/display/remote-view/password' && m == 'DELETE') {
     return WaddlePermission.curatorWrite;
   }
+  if (p == '/v1/display/live-preview' && m == 'GET') {
+    return WaddlePermission.navigationControl;
+  }
+  if (p == '/v1/display/live-preview/session' && m == 'POST') {
+    return WaddlePermission.navigationControl;
+  }
 
   if (p == '/v1/display/backup/status' && m == 'GET') {
     return WaddlePermission.displayMaintenance;

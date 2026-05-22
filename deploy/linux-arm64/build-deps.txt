@@ -10,3 +10,5 @@ libstdc++-12-dev
 libsecret-1-dev
 libjsoncpp-dev
 libmpv-dev
+gstreamer1.0-tools
+gstreamer1.0-plugins-good

@@ -31,3 +31,9 @@ const String kDisplayRemoteViewEnabledEnv = 'WADDLE_DISPLAY_REMOTE_VIEW_ENABLED'
 const String kDisplayRemoteViewHostEnv = 'WADDLE_DISPLAY_REMOTE_VIEW_HOST';
 const String kDisplayRemoteViewPortEnv = 'WADDLE_DISPLAY_REMOTE_VIEW_PORT';
 const String kDisplayRemoteViewPathEnv = 'WADDLE_DISPLAY_REMOTE_VIEW_PATH';
+
+/// In-app live preview (window capture + JPEG WebSocket) defaults when KV is unset.
+const String kDisplayLivePreviewEnabledEnv = 'WADDLE_DISPLAY_LIVE_PREVIEW_ENABLED';
+const String kDisplayLivePreviewFpsEnv = 'WADDLE_DISPLAY_LIVE_PREVIEW_FPS';
+const String kDisplayLivePreviewWidthEnv = 'WADDLE_DISPLAY_LIVE_PREVIEW_WIDTH';
+const String kDisplayLivePreviewQualityEnv = 'WADDLE_DISPLAY_LIVE_PREVIEW_QUALITY';

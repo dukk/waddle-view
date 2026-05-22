@@ -5,7 +5,10 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:waddle_display/alerts/drift_alert_repository.dart';
 import 'package:waddle_display/api/http_tls.dart';
+import 'package:waddle_display/api/display_live_preview_ws.dart';
 import 'package:waddle_display/api/display_remote_view_ws.dart';
+import 'package:waddle_display/preview/live_preview_capture.dart';
+import 'package:waddle_display/preview/live_preview_hub.dart';
 import 'package:waddle_display/api/local_rest_server.dart';
 import 'package:waddle_display/debug/operator_telemetry_hub.dart';
 import 'package:waddle_display/display/display_navigation_bus.dart';
@@ -293,6 +296,10 @@ class RestTestHarness {
       port: 0,
       tls: const HttpTlsConfig(enabled: false),
       remoteViewGateway: DisplayRemoteViewWebSocketGateway(adoption: adoption),
+      livePreviewGateway: DisplayLivePreviewWebSocketGateway(
+        adoption: adoption,
+        hub: LivePreviewHub(capture: TestPatternLivePreviewCapture()),
+      ),
     );
     return (
       server: server,

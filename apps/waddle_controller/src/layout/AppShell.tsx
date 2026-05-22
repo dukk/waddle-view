@@ -262,22 +262,6 @@ export function AppShell({ children }: { children?: ReactNode }) {
               );
             })}
           </List>
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            component={RouterLink}
-            to="/about"
-            onClick={() => setMobileOpen(false)}
-            sx={{
-              px: 1,
-              py: 0.5,
-              display: 'block',
-              textDecoration: 'none',
-              '&:hover': { color: 'text.primary', textDecoration: 'underline' },
-            }}
-          >
-            {drawerVersion}
-          </Typography>
           <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
           <List sx={{ px: 1, py: 1 }}>
             {!isProgramsOnlyControllerUser && (
@@ -329,6 +313,24 @@ export function AppShell({ children }: { children?: ReactNode }) {
               </>
             )}
           </List>
+          <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            component={RouterLink}
+            to="/about"
+            align="center"
+            onClick={() => setMobileOpen(false)}
+            sx={{
+              px: 1,
+              py: 0.5,
+              display: 'block',
+              textDecoration: 'none',
+              '&:hover': { color: 'text.primary', textDecoration: 'underline' },
+            }}
+          >
+            {drawerVersion}
+          </Typography>
         </>
       )}
     </Box>

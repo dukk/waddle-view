@@ -21,7 +21,10 @@ import KeyboardReturnIcon from '@mui/icons-material/KeyboardReturn';
 import { useDisplay } from '@/context/DisplayContext';
 import { useAuth } from '@/context/AuthContext';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
+import { LivePreviewPanel } from '@/components/remote/LivePreviewPanel';
 import { RemoteViewPanel } from '@/components/remote/RemoteViewPanel';
+import { fetchLivePreviewInfo } from '@/api/displayLivePreview';
+import type { LivePreviewInfo } from '@/api/displayLivePreview';
 import { fetchRemoteViewInfo } from '@/api/displayRemoteView';
 import type { RemoteViewInfo } from '@/api/displayRemoteView';
 import { dismissActiveDisplayAlert, postDisplayNavigation } from '@/util/displayRemote';
@@ -33,6 +36,7 @@ export function RemoteControlPage() {
   const wide = useMediaQuery(theme.breakpoints.up('md'));
   const [navSnack, setNavSnack] = useState<string | null>(null);
   const [remoteInfo, setRemoteInfo] = useState<RemoteViewInfo | null>(null);
+  const [livePreviewInfo, setLivePreviewInfo] = useState<LivePreviewInfo | null>(null);
   const [remoteLoadError, setRemoteLoadError] = useState<string | null>(null);
 
   const runRemote = useCallback(
@@ -47,19 +51,25 @@ export function RemoteControlPage() {
   useEffect(() => {
     if (!active || !hasPermission('navigation.control')) {
       setRemoteInfo(null);
+      setLivePreviewInfo(null);
       return;
     }
     let cancelled = false;
     void (async () => {
       try {
-        const info = await fetchRemoteViewInfo(active);
+        const [remote, live] = await Promise.all([
+          fetchRemoteViewInfo(active),
+          fetchLivePreviewInfo(active),
+        ]);
         if (!cancelled) {
-          setRemoteInfo(info);
+          setRemoteInfo(remote);
+          setLivePreviewInfo(live);
           setRemoteLoadError(null);
         }
       } catch (e) {
         if (!cancelled) {
           setRemoteInfo(null);
+          setLivePreviewInfo(null);
           setRemoteLoadError(String(e));
         }
       }
@@ -83,7 +93,9 @@ export function RemoteControlPage() {
   }
 
   const canDismissAlerts = hasPermission('alerts.write');
+  const livePreviewConfigured = livePreviewInfo?.configured === true;
   const remoteConfigured = remoteInfo?.configured === true;
+  const viewConfigured = livePreviewConfigured || remoteConfigured;
 
   const controls = (
     <Stack spacing={3} sx={{ maxWidth: wide ? 480 : undefined }}>
@@ -201,19 +213,23 @@ export function RemoteControlPage() {
     </Stack>
   );
 
-  const remoteViewSection = remoteConfigured ? (
+  const remoteViewSection = viewConfigured ? (
     <Paper variant="outlined" sx={{ p: 2, minHeight: 420 }}>
       <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
-        Remote view
+        {livePreviewConfigured ? 'Live preview' : 'Remote view (VNC)'}
       </Typography>
-      <RemoteViewPanel
-        display={active}
-        passwordConfigured={remoteInfo?.password_configured}
-      />
+      {livePreviewConfigured ? (
+        <LivePreviewPanel display={active} />
+      ) : (
+        <RemoteViewPanel
+          display={active}
+          passwordConfigured={remoteInfo?.password_configured}
+        />
+      )}
     </Paper>
   ) : null;
 
-  if (!remoteConfigured) {
+  if (!viewConfigured) {
     return controls;
   }
 

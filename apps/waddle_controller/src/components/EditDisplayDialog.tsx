@@ -19,11 +19,16 @@ import { loadSession } from '@/storage/sessions';
 import { completeDialogSave } from '@/util/dialogSave';
 import { fetchDisplaySettings } from '@/api/displaySettings';
 import {
+  createLivePreviewSessionForBaseUrl,
+  putLivePreviewSettings,
+} from '@/api/displayLivePreview';
+import {
   createRemoteViewSessionForBaseUrl,
   deleteRemoteViewPassword,
   putRemoteViewPassword,
   putRemoteViewSettings,
 } from '@/api/displayRemoteView';
+import { storeLivePreviewTestPayload } from '@/util/livePreviewWsUrl';
 import { storeRemoteViewTestPayload } from '@/util/remoteViewWsUrl';
 
 export type EditDisplayInput = {
@@ -45,6 +50,11 @@ export function EditDisplayDialog({ display, onClose, onSave }: Props) {
   const [busy, setBusy] = useState(false);
   const [remoteLoading, setRemoteLoading] = useState(false);
   const [remoteOpen, setRemoteOpen] = useState(false);
+  const [livePreviewOpen, setLivePreviewOpen] = useState(false);
+  const [livePreviewEnabled, setLivePreviewEnabled] = useState(false);
+  const [livePreviewFps, setLivePreviewFps] = useState('10');
+  const [livePreviewWidth, setLivePreviewWidth] = useState('1280');
+  const [livePreviewQuality, setLivePreviewQuality] = useState('75');
   const [remoteEnabled, setRemoteEnabled] = useState(false);
   const [remoteHost, setRemoteHost] = useState('127.0.0.1');
   const [remotePort, setRemotePort] = useState('6080');
@@ -81,6 +91,10 @@ export function EditDisplayDialog({ display, onClose, onSave }: Props) {
       setRemotePasswordConfigured(settings.display_remote_view_password_configured === true);
       setRemotePassword('');
       setClearRemotePassword(false);
+      setLivePreviewEnabled(settings.display_live_preview_enabled === true);
+      setLivePreviewFps(String(settings.display_live_preview_fps ?? 10));
+      setLivePreviewWidth(String(settings.display_live_preview_width ?? 1280));
+      setLivePreviewQuality(String(settings.display_live_preview_quality ?? 75));
     } catch (e) {
       setError(String(e));
     } finally {
@@ -94,6 +108,31 @@ export function EditDisplayDialog({ display, onClose, onSave }: Props) {
     setError(null);
     void loadRemoteSettings();
   }, [display.id, display.label, display.baseUrl, loadRemoteSettings]);
+
+  const persistLivePreviewSettings = async (targetBaseUrl: string) => {
+    const fps = Number.parseInt(livePreviewFps.trim(), 10);
+    const width = Number.parseInt(livePreviewWidth.trim(), 10);
+    const quality = Number.parseInt(livePreviewQuality.trim(), 10);
+    if (!Number.isFinite(fps) || fps < 1 || fps > 30) {
+      throw new Error('Live preview FPS must be between 1 and 30.');
+    }
+    if (!Number.isFinite(width) || width < 320 || width > 3840) {
+      throw new Error('Live preview width must be between 320 and 3840.');
+    }
+    if (!Number.isFinite(quality) || quality < 30 || quality > 95) {
+      throw new Error('Live preview JPEG quality must be between 30 and 95.');
+    }
+    const draftDisplay: SavedDisplay = {
+      ...display,
+      baseUrl: normalizeBaseUrl(targetBaseUrl),
+    };
+    await putLivePreviewSettings(draftDisplay, {
+      display_live_preview_enabled: livePreviewEnabled,
+      display_live_preview_fps: fps,
+      display_live_preview_width: width,
+      display_live_preview_quality: quality,
+    });
+  };
 
   const persistRemoteSettings = async (targetBaseUrl: string) => {
     const port = Number.parseInt(remotePort.trim(), 10);
@@ -134,6 +173,7 @@ export function EditDisplayDialog({ display, onClose, onSave }: Props) {
       await completeDialogSave(async () => {
         await onSave({ label: trimmedLabel, baseUrl: trimmedUrl });
         if (session) {
+          await persistLivePreviewSettings(trimmedUrl);
           await persistRemoteSettings(trimmedUrl);
         }
       }, onClose);
@@ -141,6 +181,48 @@ export function EditDisplayDialog({ display, onClose, onSave }: Props) {
       setError(String(e));
     } finally {
       setBusy(false);
+    }
+  };
+
+  const testLivePreviewConnection = async () => {
+    const trimmedUrl = baseUrl.trim();
+    if (!trimmedUrl) {
+      setError('Base URL is required to test live preview.');
+      return;
+    }
+    if (!session) {
+      setError('Adopt this display before testing live preview.');
+      return;
+    }
+    if (!livePreviewEnabled) {
+      setError('Enable live preview before testing.');
+      return;
+    }
+    setTestBusy(true);
+    setError(null);
+    try {
+      const normalized = normalizeBaseUrl(trimmedUrl);
+      await persistLivePreviewSettings(normalized);
+      const sessionRes = await createLivePreviewSessionForBaseUrl(
+        normalized,
+        display.id,
+        `Bearer ${session.apiKey}`,
+      );
+      storeLivePreviewTestPayload({
+        displayId: display.id,
+        ticket: sessionRes.ticket,
+        baseUrl: normalized,
+      });
+      const params = new URLSearchParams({
+        displayId: display.id,
+        ticket: sessionRes.ticket,
+        mode: 'live',
+      });
+      window.open(`/remote/view?${params.toString()}`, '_blank', 'noopener,noreferrer');
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setTestBusy(false);
     }
   };
 
@@ -248,10 +330,80 @@ export function EditDisplayDialog({ display, onClose, onSave }: Props) {
 
           <Button
             size="small"
+            onClick={() => setLivePreviewOpen((o) => !o)}
+            sx={{ alignSelf: 'flex-start' }}
+          >
+            {livePreviewOpen ? 'Hide' : 'Show'} live preview (in-app)
+          </Button>
+          <Collapse in={livePreviewOpen}>
+            <Stack spacing={2} sx={{ pl: 0.5, minHeight: remoteLoading ? 200 : undefined }}>
+              {!session ? (
+                <Typography variant="body2" color="text.secondary">
+                  Adopt this display to configure live preview on the device.
+                </Typography>
+              ) : remoteLoading ? (
+                <Typography variant="body2" color="text.secondary">
+                  Loading live preview settings…
+                </Typography>
+              ) : (
+                <>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={livePreviewEnabled}
+                        onChange={(e) => setLivePreviewEnabled(e.target.checked)}
+                        disabled={busy}
+                      />
+                    }
+                    label="Enable live preview"
+                  />
+                  <Typography variant="caption" color="text.secondary">
+                    View-only JPEG stream from the display window (GStreamer on Linux). No VNC or
+                    websockify required.
+                  </Typography>
+                  <TextField
+                    label="FPS"
+                    value={livePreviewFps}
+                    onChange={(e) => setLivePreviewFps(e.target.value)}
+                    fullWidth
+                    disabled={!livePreviewEnabled || busy}
+                    type="number"
+                  />
+                  <TextField
+                    label="Capture width (px)"
+                    value={livePreviewWidth}
+                    onChange={(e) => setLivePreviewWidth(e.target.value)}
+                    fullWidth
+                    disabled={!livePreviewEnabled || busy}
+                    type="number"
+                  />
+                  <TextField
+                    label="JPEG quality"
+                    value={livePreviewQuality}
+                    onChange={(e) => setLivePreviewQuality(e.target.value)}
+                    fullWidth
+                    disabled={!livePreviewEnabled || busy}
+                    type="number"
+                    helperText="30–95. Lower values reduce Pi CPU and bandwidth."
+                  />
+                  <Button
+                    variant="outlined"
+                    disabled={!livePreviewEnabled || busy || testBusy}
+                    onClick={() => void testLivePreviewConnection()}
+                  >
+                    {testBusy ? 'Testing…' : 'Test live preview'}
+                  </Button>
+                </>
+              )}
+            </Stack>
+          </Collapse>
+
+          <Button
+            size="small"
             onClick={() => setRemoteOpen((o) => !o)}
             sx={{ alignSelf: 'flex-start' }}
           >
-            {remoteOpen ? 'Hide' : 'Show'} remote view (VNC)
+            {remoteOpen ? 'Hide' : 'Show'} remote view (VNC, legacy)
           </Button>
           <Collapse in={remoteOpen}>
             <Stack

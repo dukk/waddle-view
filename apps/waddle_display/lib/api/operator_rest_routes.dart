@@ -28,6 +28,7 @@ import 'mealviewer_rest_routes.dart';
 import 'integration_oauth_providers_rest_routes.dart';
 import 'integration_kv_rest_routes.dart';
 import 'display_themes_rest_routes.dart';
+import 'display_live_preview_routes.dart';
 import 'display_remote_view_routes.dart';
 import 'integration_secrets_rest_routes.dart';
 
@@ -69,6 +70,7 @@ void registerOperatorRestRoutes(
     onConfigChanged: onConfigChanged,
   );
   registerDisplayRemoteViewRoutes(r, db: db, secrets: secrets);
+  registerDisplayLivePreviewRoutes(r, db: db);
   r.get('/v1/telemetry/integrations', (Request req) async {
     final limit = int.tryParse(req.url.queryParameters['limit'] ?? '') ?? 200;
     final sinceMs = int.tryParse(req.url.queryParameters['since_ms'] ?? '');
