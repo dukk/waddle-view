@@ -36,7 +36,7 @@ sudo bash install.sh
 
 ## In-band upgrade from the controller (Pi arm64)
 
-The controller **Backup & updates** page can trigger `POST /v1/display/ops/upgrade` when the display reports `upgrade_capable: true` in `GET /v1/health`. That requires:
+The controller **Backup & restore** tab (Controller settings) can trigger `POST /v1/display/ops/upgrade` when the display reports `upgrade_capable: true` in `GET /v1/health`. That requires:
 
 1. Copy [`deploy/linux-arm64/waddle-view-upgrade.sh`](../../deploy/linux-arm64/waddle-view-upgrade.sh) to the Pi (for example `/opt/waddle-view/waddle-view-upgrade.sh`) and `chmod +x`.
 2. Set **`WADDLE_DISPLAY_UPGRADE_SCRIPT`** to that path (see `apps/waddle_display/.env.example` and the sample **`waddle-view.service`** comment).

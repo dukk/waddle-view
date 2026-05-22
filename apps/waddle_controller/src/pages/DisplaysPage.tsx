@@ -393,7 +393,7 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
                       <Button
                         size="small"
                         component={RouterLink}
-                        to="/display-ops"
+                        to="/controller-settings?tab=backup"
                         onClick={() => {
                           if (active?.id !== d.id) {
                             setActiveId(d.id);

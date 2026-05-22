@@ -75,7 +75,7 @@ When **user mode** is turned off, sign-in is disabled but server data remains. U
 
 ### Backup, restore, and Pi upgrades
 
-The **Backup & updates** page (`/display-ops`) compares the active display to the latest [GitHub release](https://github.com/dukk/waddle-view/releases), pulls **`.zip`** backups from displays into `WADDLE_CONTROLLER_DATA_DIR/backups/`, restores from stored copies or uploads, and can trigger **Pi arm64** in-band upgrades when the display reports `upgrade_capable: true`.
+The **Backup & restore** tab under **Controller settings** (`/controller-settings?tab=backup`) compares the active display to the latest [GitHub release](https://github.com/dukk/waddle-view/releases), pulls **`.zip`** backups from displays into `WADDLE_CONTROLLER_DATA_DIR/backups/`, restores from stored copies or uploads, and can trigger **Pi arm64** in-band upgrades when the display reports `upgrade_capable: true`.
 
 | Variable | Default | Purpose |
 |----------|---------|---------|

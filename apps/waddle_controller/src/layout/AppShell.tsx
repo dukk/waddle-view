@@ -41,7 +41,6 @@ import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import SettingsRemoteIcon from '@mui/icons-material/SettingsRemote';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import SettingsIcon from '@mui/icons-material/Settings';
-import BackupIcon from '@mui/icons-material/Backup';
 import TuneIcon from '@mui/icons-material/Tune';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import LoginIcon from '@mui/icons-material/Login';
@@ -326,29 +325,6 @@ export function AppShell({ children }: { children?: ReactNode }) {
                     <SettingsIcon />
                   </ListItemIcon>
                   <ListItemText primary="Display Settings" />
-                </ListItemButton>
-                <ListItemButton
-                  component={RouterLink}
-                  to="/display-ops"
-                  selected={location.pathname.startsWith('/display-ops')}
-                  onClick={() => setMobileOpen(false)}
-                  sx={{
-                    borderRadius: 2,
-                    my: 0.5,
-                    '&.Mui-selected': { bgcolor: 'primary.main', color: 'primary.contrastText' },
-                  }}
-                >
-                  <ListItemIcon
-                    sx={{
-                      color: location.pathname.startsWith('/display-ops')
-                        ? 'inherit'
-                        : 'grey.400',
-                      minWidth: 40,
-                    }}
-                  >
-                    <BackupIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Backup & updates" />
                 </ListItemButton>
               </>
             )}

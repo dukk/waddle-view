@@ -88,7 +88,7 @@ The **`apps/waddlectl`** package is a shell tool against the same **SQLite** dat
 
 ### Full backups (`backup create` / `backup restore` / REST / controller)
 
-The **controller** can pull the same archives via **`/v1/display/backup/*`** (admin API key) and store them on the BFF. See **Backup & updates** in the controller UI.
+The **controller** can pull the same archives via **`/v1/display/backup/*`** (admin API key) and store them on the BFF. See **Backup & restore** under **Controller settings** in the controller UI.
 
 ### CLI backups (`backup create` / `backup restore` / `backup schedule`)
 

@@ -76,7 +76,8 @@ function isUpdateAvailable(
   return false;
 }
 
-export function DisplayOpsPage() {
+/** Backup, restore, and Pi update tools for the active display (controller settings tab). */
+export function DisplayBackupSection() {
   const { active } = useDisplay();
   const session = active ? loadSession(active.id) : null;
   const [health, setHealth] = useState<DisplayReachability | undefined>();
@@ -268,8 +269,8 @@ export function DisplayOpsPage() {
   if (!active) {
     return (
       <Alert severity="info">
-        Select a display first.{' '}
-        <RouterLink to="/controller-settings">Go to Displays</RouterLink>
+        Select a display on the Displays tab first.{' '}
+        <RouterLink to="/controller-settings?tab=displays">Go to Displays</RouterLink>
       </Alert>
     );
   }
@@ -277,7 +278,7 @@ export function DisplayOpsPage() {
   if (!session?.apiKey) {
     return (
       <Alert severity="warning">
-        Adopt this display with an admin API key to use backup and upgrade tools.
+        Adopt this display with an admin API key on the Displays tab to use backup and upgrade tools.
       </Alert>
     );
   }
@@ -285,8 +286,8 @@ export function DisplayOpsPage() {
   return (
     <Stack spacing={3}>
       <Box>
-        <Typography variant="h6" fontWeight={600} gutterBottom>
-          Backup & updates — {active.label}
+        <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+          Active display: {active.label}
         </Typography>
         <Typography variant="body2" color="text.secondary">
           Pull compressed backups from the display, store them on the controller, restore from saved
