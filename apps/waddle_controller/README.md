@@ -4,6 +4,8 @@ Browser **operator UI** for one or more **`waddle_display`** instances. Pair eac
 
 A colocated **BFF** (`server/`, Hono + SQLite) can optionally gate access to the controller SPA and manage local operator accounts. All display REST traffic goes through **`/bff/v1/proxy/*`** so the BFF can reach displays with self-signed TLS; the browser never talks to the display origin directly.
 
+For **operator UX conventions** (catalog lists, dialogs, schema-driven config), see **[`DESIGN.md`](DESIGN.md)**.
+
 ## Development
 
 From this directory:

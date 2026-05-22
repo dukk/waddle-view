@@ -5,6 +5,7 @@ globs: apps/waddle_controller/**/*
 
 # waddle_controller (`apps/waddle_controller`)
 
+- **Operator design language**: [`apps/waddle_controller/DESIGN.md`](../../apps/waddle_controller/DESIGN.md) (catalog lists, dialogs, schema forms; skills hold step-by-step checklists).
 - **SOLID**: keep API clients (`src/api/`), persistence (`src/storage/`), server logic (`server/src/`), and pure helpers (`src/util/`, `src/auth/`) free of React; pages compose those modules. Do not embed fetch or `localStorage`/`sessionStorage` directly in page components when a storage or API helper already exists.
 - **BFF**: optional Hono server in `server/`; SPA calls `/bff/v1/*` via `bffClient` with `credentials: 'include'`. Never store plaintext passwords in SQLite (Argon2 hashes only).
 - **TDD**: add or extend a failing Vitest test (`src/**/*.test.ts`) before production changes in gated paths (`auth/`, `api/`, `storage/`, `util/*.ts`, `constants/`).

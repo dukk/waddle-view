@@ -2,7 +2,7 @@
 
 Flutter **Linux** TV dashboard (Windows desktop supported for local development). Features: **Drift** SQLite, filesystem **blob** store, **encrypted integration secrets** in SQLite (configured from the controller UI; DEK wrapped with **DPAPI** on Windows and **machine-id** binding on Linux), sequential **data collection** engine, curated **bottom ticker** (RTL marquee), **RSS news slides** with an article-link **QR code** for scanning, **overlay alerts** (optional QR), configurable **festive display overlays** (hearts + short phrases driven from SQLite and theme accent colors), embedded **Shelf** REST API with per-deployment API key.
 
-For module boundaries, startup order, and **Mermaid** sequence diagrams (startup, data collection, REST alerts, ticker), see **[`ARCHITECTURE.md`](ARCHITECTURE.md)**.
+For module boundaries, startup order, and **Mermaid** sequence diagrams (startup, data collection, REST alerts, ticker), see **[`ARCHITECTURE.md`](ARCHITECTURE.md)**. For **how to extend slides, overlays, and ticker behavior** and display-runtime safety rules, see **[`DESIGN.md`](DESIGN.md)**.
 
 ## Prerequisites
 
