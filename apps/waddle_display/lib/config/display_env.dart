@@ -22,3 +22,9 @@ const String kDisplayAppleClientIdEnv = 'WADDLE_DISPLAY_APPLE_CLIENT_ID';
 
 /// Directory scanned for drop-in plugin folders (`manifest.json` each).
 const String kDisplayPluginsDirEnv = 'WADDLE_DISPLAY_PLUGINS_DIR';
+
+/// Remote desktop (websockify) defaults when KV keys are unset.
+const String kDisplayRemoteViewEnabledEnv = 'WADDLE_DISPLAY_REMOTE_VIEW_ENABLED';
+const String kDisplayRemoteViewHostEnv = 'WADDLE_DISPLAY_REMOTE_VIEW_HOST';
+const String kDisplayRemoteViewPortEnv = 'WADDLE_DISPLAY_REMOTE_VIEW_PORT';
+const String kDisplayRemoteViewPathEnv = 'WADDLE_DISPLAY_REMOTE_VIEW_PATH';

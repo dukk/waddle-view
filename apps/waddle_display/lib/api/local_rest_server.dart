@@ -39,6 +39,7 @@ import 'cors_policy.dart';
 import '../config/display_env.dart';
 import 'display_about.dart';
 import 'display_health.dart';
+import 'display_remote_view_ws.dart';
 import 'manual_bucket_rest_routes.dart';
 import 'operator_rest_routes.dart';
 import 'plugin_routes.dart';
@@ -1243,6 +1244,7 @@ class LocalRestServer {
     int port = 8787,
     String? displayHost,
     HttpTlsConfig tls = const HttpTlsConfig(enabled: true),
+    DisplayRemoteViewWebSocketGateway? remoteViewGateway,
   }) async {
     final addr = address ?? InternetAddress.loopbackIPv4;
     final HttpServer server;
@@ -1254,9 +1256,10 @@ class LocalRestServer {
       }
       final ctx = securityContextFromPaths(certPath: certPath, keyPath: keyPath);
       server = await HttpServer.bindSecure(addr, port, ctx);
-      shelf_io.serveRequests(server, handler);
+      _listen(server, handler, remoteViewGateway: remoteViewGateway);
     } else {
-      server = await shelf_io.serve(handler, addr, port);
+      server = await HttpServer.bind(addr, port);
+      _listen(server, handler, remoteViewGateway: remoteViewGateway);
     }
     final out = LocalRestServer._(
       server,
@@ -1266,6 +1269,22 @@ class LocalRestServer {
     );
     out._displayHost = displayHost;
     return out;
+  }
+
+  static void _listen(
+    HttpServer server,
+    Handler handler, {
+    DisplayRemoteViewWebSocketGateway? remoteViewGateway,
+  }) {
+    server.listen((HttpRequest request) async {
+      if (remoteViewGateway != null &&
+          WebSocketTransformer.isUpgradeRequest(request) &&
+          remoteViewGateway.handlesPath(request.uri.path)) {
+        await remoteViewGateway.handle(request);
+        return;
+      }
+      await shelf_io.handleRequest(request, handler);
+    });
   }
 }
 

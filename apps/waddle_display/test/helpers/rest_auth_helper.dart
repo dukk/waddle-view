@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:waddle_display/alerts/drift_alert_repository.dart';
 import 'package:waddle_display/api/http_tls.dart';
+import 'package:waddle_display/api/display_remote_view_ws.dart';
 import 'package:waddle_display/api/local_rest_server.dart';
 import 'package:waddle_display/debug/operator_telemetry_hub.dart';
 import 'package:waddle_display/display/display_navigation_bus.dart';
@@ -266,6 +267,7 @@ class RestTestHarness {
       handler: handler,
       port: 0,
       tls: const HttpTlsConfig(enabled: false),
+      remoteViewGateway: DisplayRemoteViewWebSocketGateway(adoption: adoption),
     );
     return (
       server: server,

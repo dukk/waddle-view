@@ -10,6 +10,7 @@ import { AppShell } from '@/layout/AppShell';
 import { ProgramsOnlyOutlet } from '@/layout/ProgramsOnlyOutlet';
 import { ProgramsPage } from '@/pages/ProgramsPage';
 import { RemoteControlPage } from '@/pages/RemoteControlPage';
+import { RemoteViewPage } from '@/pages/RemoteViewPage';
 import { ScreensPage } from '@/pages/ScreensPage';
 import { TickerPage } from '@/pages/TickerPage';
 import { OverlaysPage } from '@/pages/OverlaysPage';
@@ -53,6 +54,7 @@ function MainAppRoutes() {
               <Route path="curators" element={<CuratorsPage />} />
               <Route path="programs" element={<ProgramsPage />} />
               <Route path="remote" element={<RemoteControlPage />} />
+              <Route path="remote/view" element={<RemoteViewPage />} />
               <Route path="screens" element={<ScreensPage />} />
               <Route path="ticker-tapes" element={<TickerPage />} />
               <Route path="overlays" element={<OverlaysPage />} />

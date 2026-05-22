@@ -39,6 +39,11 @@ export type DisplaySettings = {
   adoption_allowed_roles?: string[];
   /** @deprecated Use `adoption_allowed_roles`; true when that list is non-empty. */
   adoption_allow_new_requests?: boolean;
+  display_remote_view_enabled?: boolean;
+  display_remote_view_host?: string;
+  display_remote_view_port?: number;
+  display_remote_view_path?: string;
+  display_remote_view_password_configured?: boolean;
 };
 
 export type DisplayTickerSeparator = 'dot' | 'diamond';

@@ -13,12 +13,17 @@ import 'package:waddle_shared/display/display_weather_temperature_unit_kv.dart';
 import 'package:waddle_shared/display/display_viewport_reserve.dart';
 import 'package:waddle_shared/theme/display_program_history_kv.dart';
 import 'package:waddle_shared/theme/display_theme_kv.dart';
+import 'package:waddle_shared/config/display_remote_view.dart';
+import 'package:waddle_shared/secrets/secret_store.dart';
 
 /// PUT rejected when [display_theme_id] is not builtin or a stored custom theme.
 class DisplayThemeUnknownIdException implements Exception {}
 
 /// Aggregated display-level operator settings from [config_key_values].
-Future<Map<String, dynamic>> readDisplayOperatorSettings(AppDatabase db) async {
+Future<Map<String, dynamic>> readDisplayOperatorSettings(
+  AppDatabase db, {
+  SecretStore? secrets,
+}) async {
   final kvRows = await db.select(db.configKeyValues).get();
   final kv = {for (final r in kvRows) r.key: r.value};
   final customThemes = parseDisplayCustomThemesFromKvValue(
@@ -70,7 +75,16 @@ Future<Map<String, dynamic>> readDisplayOperatorSettings(AppDatabase db) async {
     ),
     'adoption_allowed_roles': adoptionRolesList,
     'adoption_allow_new_requests': adoptionAllowedRoles.isNotEmpty,
+    ...displayRemoteViewSettingsJson(displayRemoteViewConfigFromKv(kv)),
+    'display_remote_view_password_configured': secrets != null
+        ? await _displayRemoteViewPasswordConfigured(secrets)
+        : false,
   };
+}
+
+Future<bool> _displayRemoteViewPasswordConfigured(SecretStore secrets) async {
+  final v = await secrets.read(kDisplayRemoteViewVncPasswordSecretKey);
+  return v != null && v.trim().isNotEmpty;
 }
 
 /// Applies a partial PUT body. Returns false when no recognized fields were present.
@@ -365,6 +379,54 @@ Future<bool> applyDisplayOperatorSettingsPut(
           ConfigKeyValuesCompanion.insert(
             key: kAdoptionAllowNewRequestsKvKey,
             value: flag ? 'true' : 'false',
+          ),
+        );
+    touched = true;
+  }
+  if (body.containsKey('display_remote_view_enabled')) {
+    final enabled = parseDisplayRemoteViewEnabled(body['display_remote_view_enabled']);
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kDisplayRemoteViewEnabledKvKey,
+            value: enabled ? 'true' : 'false',
+          ),
+        );
+    touched = true;
+  }
+  if (body.containsKey('display_remote_view_host')) {
+    final host = normalizeDisplayRemoteViewHost(body['display_remote_view_host']);
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kDisplayRemoteViewHostKvKey,
+            value: host,
+          ),
+        );
+    touched = true;
+  }
+  if (body.containsKey('display_remote_view_port')) {
+    final port = normalizeDisplayRemoteViewPort(body['display_remote_view_port']);
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kDisplayRemoteViewPortKvKey,
+            value: '$port',
+          ),
+        );
+    touched = true;
+  }
+  if (body.containsKey('display_remote_view_path')) {
+    final path = normalizeDisplayRemoteViewPath(body['display_remote_view_path']);
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kDisplayRemoteViewPathKvKey,
+            value: path,
           ),
         );
     touched = true;

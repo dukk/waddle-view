@@ -1,29 +1,42 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   Box,
   Button,
+  Grid,
   IconButton,
   Paper,
   Snackbar,
   Stack,
   Tooltip,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import KeyboardReturnIcon from '@mui/icons-material/KeyboardReturn';
+import DesktopWindowsIcon from '@mui/icons-material/DesktopWindows';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { useDisplay } from '@/context/DisplayContext';
 import { useAuth } from '@/context/AuthContext';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
+import { RemoteViewPanel } from '@/components/remote/RemoteViewPanel';
+import { fetchRemoteViewInfo, createRemoteViewSession } from '@/api/displayRemoteView';
+import type { RemoteViewInfo } from '@/api/displayRemoteView';
 import { dismissActiveDisplayAlert, postDisplayNavigation } from '@/util/displayRemote';
 
 export function RemoteControlPage() {
   const { active } = useDisplay();
   const { hasPermission } = useAuth();
+  const theme = useTheme();
+  const wide = useMediaQuery(theme.breakpoints.up('md'));
   const [navSnack, setNavSnack] = useState<string | null>(null);
+  const [remoteInfo, setRemoteInfo] = useState<RemoteViewInfo | null>(null);
+  const [showRemoteView, setShowRemoteView] = useState(false);
+  const [remoteLoadError, setRemoteLoadError] = useState<string | null>(null);
 
   const runRemote = useCallback(
     async (action: () => Promise<string | null>) => {
@@ -33,6 +46,49 @@ export function RemoteControlPage() {
     },
     [active],
   );
+
+  useEffect(() => {
+    if (!active || !hasPermission('navigation.control')) {
+      setRemoteInfo(null);
+      setShowRemoteView(false);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const info = await fetchRemoteViewInfo(active);
+        if (!cancelled) {
+          setRemoteInfo(info);
+          setRemoteLoadError(null);
+          if (info.configured && wide) {
+            setShowRemoteView(true);
+          }
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setRemoteInfo(null);
+          setRemoteLoadError(String(e));
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [active, hasPermission, wide]);
+
+  const openRemotePopOut = useCallback(async () => {
+    if (!active) return;
+    try {
+      const session = await createRemoteViewSession(active);
+      const params = new URLSearchParams({
+        displayId: active.id,
+        ticket: session.ticket,
+      });
+      window.open(`/remote/view?${params.toString()}`, '_blank', 'noopener,noreferrer');
+    } catch (e) {
+      setNavSnack(String(e));
+    }
+  }, [active]);
 
   if (!hasPermission('navigation.control')) {
     return (
@@ -48,9 +104,10 @@ export function RemoteControlPage() {
   }
 
   const canDismissAlerts = hasPermission('alerts.write');
+  const remoteConfigured = remoteInfo?.configured === true;
 
-  return (
-    <Stack spacing={3} sx={{ maxWidth: 480 }}>
+  const controls = (
+    <Stack spacing={3} sx={{ maxWidth: wide ? 480 : undefined }}>
       <Snackbar
         open={navSnack != null}
         autoHideDuration={6000}
@@ -68,6 +125,35 @@ export function RemoteControlPage() {
           {canDismissAlerts ? ', Enter to dismiss the active alert' : ''}.
         </Typography>
       </Box>
+
+      {remoteConfigured && (
+        <Paper variant="outlined" sx={{ p: 2 }}>
+          <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center">
+            <Button
+              variant={showRemoteView ? 'contained' : 'outlined'}
+              size="small"
+              startIcon={<DesktopWindowsIcon />}
+              onClick={() => setShowRemoteView((v) => !v)}
+            >
+              {showRemoteView ? 'Hide remote view' : 'Remote view'}
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<OpenInNewIcon />}
+              onClick={() => void openRemotePopOut()}
+            >
+              Open in new window
+            </Button>
+          </Stack>
+        </Paper>
+      )}
+
+      {remoteLoadError && (
+        <Alert severity="warning" sx={{ maxWidth: 720 }}>
+          Could not load remote view settings: {remoteLoadError}
+        </Alert>
+      )}
 
       <Paper variant="outlined" sx={{ p: 3 }}>
         <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 2 }}>
@@ -157,5 +243,29 @@ export function RemoteControlPage() {
         </Stack>
       </Paper>
     </Stack>
+  );
+
+  if (!remoteConfigured || !showRemoteView || !wide) {
+    return controls;
+  }
+
+  return (
+    <Grid container spacing={3} sx={{ alignItems: 'flex-start' }}>
+      <Grid item xs={12} md={5}>
+        {controls}
+      </Grid>
+      <Grid item xs={12} md={7}>
+        <Paper variant="outlined" sx={{ p: 2, minHeight: 420 }}>
+          <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
+            Display remote view
+          </Typography>
+          <RemoteViewPanel
+            display={active}
+            passwordConfigured={remoteInfo?.password_configured}
+            autoConnect
+          />
+        </Paper>
+      </Grid>
+    </Grid>
   );
 }

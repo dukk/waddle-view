@@ -73,6 +73,10 @@ When **user mode** is turned off, sign-in is disabled but server data remains. U
 
 **`WADDLE_CONTROLLER_PROXY_UPSTREAM_TIMEOUT_MS`** (default **180000**) caps how long the BFF waits for a proxied display HTTP response before returning **502** with `display_timeout`. Raise on slow hardware if read endpoints still time out during heavy display refresh; mutating routes should return quickly once the display defers post-save refresh work.
 
+### Remote view (VNC)
+
+The **Remote** page can show a live display desktop when the display has **remote view** enabled (Proxmox-style: ticketed session + WebSocket relay). Configure host/port/path on **Controller settings → Displays → Edit** (saved to the display via `PUT /v1/display/settings`). The display relays to a local **websockify** listener (not bundled). noVNC in the browser connects through **`/bff/v1/proxy-ws/*`** on the controller origin (Vite dev proxy sets `ws: true` for `/bff`). Use **Open in new window** or **Test remote connection** in the edit dialog for a pop-out viewer.
+
 ### Display pairing
 
 1. Add a display in the first-run dialog (base URL only), or open **Manage displays**.

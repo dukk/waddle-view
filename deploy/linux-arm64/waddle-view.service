@@ -34,6 +34,12 @@ Restart=on-failure
 # Public URL of the waddle_controller SPA (controller_invite slides).
 # Environment=WADDLE_DISPLAY_CONTROLLER_PUBLIC_URL=https://192.168.1.10:5173
 
+# Remote view (VNC via local websockify). Operator settings override when set in SQLite.
+# Environment=WADDLE_DISPLAY_REMOTE_VIEW_ENABLED=1
+# Environment=WADDLE_DISPLAY_REMOTE_VIEW_HOST=127.0.0.1
+# Environment=WADDLE_DISPLAY_REMOTE_VIEW_PORT=6080
+# Environment=WADDLE_DISPLAY_REMOTE_VIEW_PATH=/
+
 # Shared secret for POST /v1/auth/register-viewer (/join QR). Unset disables self-service viewer signup.
 # Environment=WADDLE_DISPLAY_VIEWER_REGISTRATION_SECRET=change-me
 

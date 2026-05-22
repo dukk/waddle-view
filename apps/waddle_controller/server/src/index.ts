@@ -17,4 +17,6 @@ serveWithOptionalTls({
   hostname: config.bindHost,
   port: config.port,
   tls: config.tls,
+  config,
+  db,
 });

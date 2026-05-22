@@ -14,7 +14,9 @@ import 'alerts/alert_overlay_host.dart';
 import 'alerts/alert_severity_icons_kv.dart';
 import 'alerts/drift_alert_repository.dart';
 import 'api/display_instance_id_source.dart';
+import 'api/display_remote_view_ws.dart';
 import 'api/local_rest_server.dart';
+import 'config/display_remote_view_env.dart';
 import 'package:waddle_shared/auth/adoption_repository.dart';
 import 'package:waddle_shared/auth/cors_origin_repository.dart';
 import 'api/network_addressing.dart';
@@ -229,6 +231,7 @@ Future<void> _waddleBootstrap() async {
         await curatorSelectionRefresh.notify();
       });
     }
+    applyDisplayRemoteViewEnvDefaults(envMap);
     final handler = buildRootHandler(
       db: db,
       alerts: alerts,
@@ -251,6 +254,9 @@ Future<void> _waddleBootstrap() async {
       port: httpConfig.port,
       displayHost: httpConfig.displayHost,
       tls: httpConfig.tls,
+      remoteViewGateway: adoption != null
+          ? DisplayRemoteViewWebSocketGateway(adoption: adoption)
+          : null,
     );
     AppDebugLog.startup('REST listening at ${server.baseUrl}');
 

@@ -188,6 +188,7 @@ Returns **`404`** when the target row does not exist.
 - Protected `/v1/*` routes return **401** without a valid API key, **403** when the adopted client’s role lacks permission.
 - **Operator UI**: **`apps/waddle_controller`** pairs via adoption and stores per-display API keys in the browser. Role semantics (`viewer`, `power_viewer`, `operator`, `admin`) are unchanged on protected routes — see **`docs/pi/api.md`**.
 - **Operator JSON API** (telemetry, navigation, screens, ticker, integrations, curator, catalog): **[`docs/pi/api.md`](../../docs/pi/api.md)**. **CORS**: adoption routes allow LAN/private origins; successful adoption stores the caller origin for protected routes. Optionally seed static origins with **`WADDLE_DISPLAY_HTTP_CORS_ORIGINS`** (see **`.env.example`**). The Vite dev proxy avoids CORS during local controller dev.
+- **Remote view (VNC)**: optional websockify relay on the display REST port (`GET`/`POST` `/v1/display/remote-view*`, WebSocket `/v1/display/remote-view/ws?ticket=…`). Settings live in `config_key_values` (`display.remote_view.*`) and optional **`WADDLE_DISPLAY_REMOTE_VIEW_*`** env defaults (see **`.env.example`**). Run **websockify** (or equivalent) on the device pointing at the desktop VNC server; the controller opens noVNC through its BFF WebSocket proxy.
 
 ### Display theme (`config_key_values`)
 

@@ -55,6 +55,7 @@ export default defineConfig({
         target: `${devScheme}://127.0.0.1:5199`,
         changeOrigin: true,
         secure: false,
+        ws: true,
       },
     },
   },
