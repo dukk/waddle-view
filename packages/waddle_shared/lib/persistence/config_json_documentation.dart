@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-
 import 'display_overlay_falling_images_settings.dart';
 import 'display_overlay_floating_balloons_settings.dart';
 import 'display_overlay_cloud_drift_settings.dart';
@@ -45,14 +44,13 @@ Map<String, Object?> _baseSchema({
 
 Map<String, Object?> _integrationConfigProperties(
   Map<String, Object?> properties,
-) =>
-    {
-      ...properties,
-      'baseUrl': {
-        'type': 'string',
-        'description': 'HTTP API or service root URL for this collector.',
-      },
-    };
+) => {
+  ...properties,
+  'baseUrl': {
+    'type': 'string',
+    'description': 'HTTP API or service root URL for this collector.',
+  },
+};
 
 /// Permissive schema for unknown provider types.
 final ProviderConfigJsonDoc kGenericProviderConfigJsonDoc =
@@ -75,7 +73,8 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
     schema: jsonEncode(
       _baseSchema(
         title: 'PexelsPhotoProviderConfig',
-        description: 'Photo rate limits, retention, and curated search sources.',
+        description:
+            'Photo rate limits, retention, and curated search sources.',
         properties: _integrationConfigProperties({
           'maxPhotos': {'type': 'integer', 'minimum': 1},
           'photosPerHour': {'type': 'integer', 'minimum': 1},
@@ -107,7 +106,8 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
     schema: jsonEncode(
       _baseSchema(
         title: 'PexelsVideoProviderConfig',
-        description: 'Video rate limits, retention, and curated search sources.',
+        description:
+            'Video rate limits, retention, and curated search sources.',
         properties: _integrationConfigProperties({
           'maxVideos': {'type': 'integer', 'minimum': 1},
           'videosPerHour': {'type': 'integer', 'minimum': 1},
@@ -734,12 +734,14 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
           'pastDays': {
             'type': 'integer',
             'minimum': 1,
-            'description': 'Days before today (UTC) in the sync window; default 30.',
+            'description':
+                'Days before today (UTC) in the sync window; default 30.',
           },
           'futureDays': {
             'type': 'integer',
             'minimum': 1,
-            'description': 'Days after today (UTC) in the sync window; default 30.',
+            'description':
+                'Days after today (UTC) in the sync window; default 30.',
           },
           'feeds': {
             'type': 'array',
@@ -755,7 +757,8 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
                 'url': {
                   'type': 'string',
                   'minLength': 1,
-                  'description': 'ICS subscription URL (http, https, or webcal).',
+                  'description':
+                      'ICS subscription URL (http, https, or webcal).',
                 },
                 'label': {
                   'type': 'string',
@@ -844,7 +847,9 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
             'Microsoft Graph OneDrive (read-only): delta sync of photo paths '
             'into [Photos]; JPEG/PNG/WebP/GIF/HEIC/HEIF; downloads use '
             'pre-auth URL or /items/{id}/content when delta omits downloadUrl; '
-            'retention and per-poll download caps. Paths are Graph '
+            'retention ([maxFiles]) and per-poll download caps '
+            '([perPollLimit] per source, default 20 when omitted; '
+            '[globalPerPollLimit] across all sources). Paths are Graph '
             'root-relative (/Pictures/...), not Windows C:\\ paths.',
         properties: _integrationConfigProperties({
           'globalPerPollLimit': {'type': 'integer', 'minimum': 1},
@@ -879,7 +884,9 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
         description:
             'Microsoft Graph OneDrive (read-only): delta sync of video paths '
             'into [Videos]; MP4/QuickTime; content-endpoint download fallback; '
-            'retention and per-poll download caps. Paths are Graph '
+            'retention ([maxFiles]) and per-poll download caps '
+            '([perPollLimit] per source, default 20 when omitted; '
+            '[globalPerPollLimit] across all sources). Paths are Graph '
             'root-relative (/Videos/...), not Windows C:\\ paths.',
         properties: _integrationConfigProperties({
           'globalPerPollLimit': {'type': 'integer', 'minimum': 1},
@@ -1137,11 +1144,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
           'retentionDays': {'type': 'integer'},
           'category': {'type': 'string', 'minLength': 1},
           'hd': {'type': 'boolean'},
-          'backfillDays': {
-            'type': 'integer',
-            'minimum': 0,
-            'maximum': 7,
-          },
+          'backfillDays': {'type': 'integer', 'minimum': 0, 'maximum': 7},
         }),
       ),
     ),
@@ -1165,12 +1168,7 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
             'type': 'array',
             'items': {
               'type': 'string',
-              'enum': [
-                'curiosity',
-                'opportunity',
-                'spirit',
-                'perseverance',
-              ],
+              'enum': ['curiosity', 'opportunity', 'spirit', 'perseverance'],
             },
           },
           'photosPerCollect': {'type': 'integer', 'minimum': 1, 'maximum': 20},
@@ -1332,110 +1330,106 @@ const Map<String, String> kInviteRoleEnumLabels = {
 
 /// JSON Schema properties shared by digital/analog clock overlays.
 Map<String, Object?> get _kOverlayClockPlacementProperties => {
-      'x': {
-        'type': 'number',
-        'minimum': 0,
-        'maximum': 1,
-        'x-waddle-widget': 'slider',
-        'description': 'Horizontal anchor (0 = left, 1 = right).',
-      },
-      'y': {
-        'type': 'number',
-        'minimum': 0,
-        'maximum': 1,
-        'x-waddle-widget': 'slider',
-        'description': 'Vertical anchor (0 = top, 1 = bottom).',
-      },
-      'scale': {
-        'type': 'number',
-        'minimum': kStaticImageOverlayScaleMin,
-        'maximum': kStaticImageOverlayScaleMax,
-        'x-waddle-widget': 'slider',
-        'description':
-            'Clock width (digital) or dial diameter (analog) as a fraction of '
-            'the viewport shortest side.',
-      },
-      'opacity': {
-        'type': 'number',
-        'minimum': 0,
-        'maximum': 1,
-        'x-waddle-widget': 'slider',
-        'description': 'Opacity (default 1).',
-      },
-    };
+  'x': {
+    'type': 'number',
+    'minimum': 0,
+    'maximum': 1,
+    'x-waddle-widget': 'slider',
+    'description': 'Horizontal anchor (0 = left, 1 = right).',
+  },
+  'y': {
+    'type': 'number',
+    'minimum': 0,
+    'maximum': 1,
+    'x-waddle-widget': 'slider',
+    'description': 'Vertical anchor (0 = top, 1 = bottom).',
+  },
+  'scale': {
+    'type': 'number',
+    'minimum': kStaticImageOverlayScaleMin,
+    'maximum': kStaticImageOverlayScaleMax,
+    'x-waddle-widget': 'slider',
+    'description':
+        'Clock width (digital) or dial diameter (analog) as a fraction of '
+        'the viewport shortest side.',
+  },
+  'opacity': {
+    'type': 'number',
+    'minimum': 0,
+    'maximum': 1,
+    'x-waddle-widget': 'slider',
+    'description': 'Opacity (default 1).',
+  },
+};
 
 /// JSON Schema placement properties for calendar overlays.
 Map<String, Object?> get _kOverlayCalendarPlacementProperties => {
-      'x': {
-        'type': 'number',
-        'minimum': 0,
-        'maximum': 1,
-        'x-waddle-widget': 'slider',
-        'description': 'Horizontal anchor (0 = left, 1 = right).',
-      },
-      'y': {
-        'type': 'number',
-        'minimum': 0,
-        'maximum': 1,
-        'x-waddle-widget': 'slider',
-        'description': 'Vertical anchor (0 = top, 1 = bottom).',
-      },
-      'scale': {
-        'type': 'number',
-        'minimum': kStaticImageOverlayScaleMin,
-        'maximum': kStaticImageOverlayScaleMax,
-        'x-waddle-widget': 'slider',
-        'description':
-            'Overlay block width as a fraction of the viewport shortest side.',
-      },
-      'opacity': {
-        'type': 'number',
-        'minimum': 0,
-        'maximum': 1,
-        'x-waddle-widget': 'slider',
-        'description': 'Opacity (default 1).',
-      },
-    };
+  'x': {
+    'type': 'number',
+    'minimum': 0,
+    'maximum': 1,
+    'x-waddle-widget': 'slider',
+    'description': 'Horizontal anchor (0 = left, 1 = right).',
+  },
+  'y': {
+    'type': 'number',
+    'minimum': 0,
+    'maximum': 1,
+    'x-waddle-widget': 'slider',
+    'description': 'Vertical anchor (0 = top, 1 = bottom).',
+  },
+  'scale': {
+    'type': 'number',
+    'minimum': kStaticImageOverlayScaleMin,
+    'maximum': kStaticImageOverlayScaleMax,
+    'x-waddle-widget': 'slider',
+    'description':
+        'Overlay block width as a fraction of the viewport shortest side.',
+  },
+  'opacity': {
+    'type': 'number',
+    'minimum': 0,
+    'maximum': 1,
+    'x-waddle-widget': 'slider',
+    'description': 'Opacity (default 1).',
+  },
+};
 
 /// Optional [ContentCategories.id] on screen widget config (controller: content-category picker).
 Map<String, Object?> _kOneDriveMediaAccountsSchema({
   required List<String> sourceKindEnum,
-}) =>
-    {
-      'type': 'array',
-      'items': {
-        'type': 'object',
-        'properties': {
-          'graphAccountKey': {'type': 'string', 'minLength': 1},
-          'sources': {
-            'type': 'array',
-            'items': {
-              'type': 'object',
-              'properties': {
-                'path': {'type': 'string'},
-                'folder': {'type': 'string'},
-                'kind': {
-                  'type': 'string',
-                  'enum': sourceKindEnum,
-                },
-                'category': {'type': 'string', 'minLength': 1},
-                'categoryIds': {
-                  'type': 'array',
-                  'items': {'type': 'string', 'minLength': 1},
-                  'minItems': 1,
-                },
-                'maxFiles': {'type': 'integer', 'minimum': 1},
-                'perPollLimit': {'type': 'integer', 'minimum': 1},
-              },
-              'required': ['kind'],
-              'additionalProperties': true,
+}) => {
+  'type': 'array',
+  'items': {
+    'type': 'object',
+    'properties': {
+      'graphAccountKey': {'type': 'string', 'minLength': 1},
+      'sources': {
+        'type': 'array',
+        'items': {
+          'type': 'object',
+          'properties': {
+            'path': {'type': 'string'},
+            'folder': {'type': 'string'},
+            'kind': {'type': 'string', 'enum': sourceKindEnum},
+            'category': {'type': 'string', 'minLength': 1},
+            'categoryIds': {
+              'type': 'array',
+              'items': {'type': 'string', 'minLength': 1},
+              'minItems': 1,
             },
+            'maxFiles': {'type': 'integer', 'minimum': 1},
+            'perPollLimit': {'type': 'integer', 'minimum': 1},
           },
+          'required': ['kind'],
+          'additionalProperties': true,
         },
-        'required': ['graphAccountKey'],
-        'additionalProperties': true,
       },
-    };
+    },
+    'required': ['graphAccountKey'],
+    'additionalProperties': true,
+  },
+};
 
 const Map<String, Object?> _kJsonSchemaOptionalContentCategoryName = {
   'type': 'string',
@@ -1447,10 +1441,7 @@ const Map<String, Object?> _kJsonSchemaOptionalContentCategoryName = {
 
 const Map<String, Object?> _kJsonSchemaContentCategoryNames = {
   'type': 'array',
-  'items': {
-    'type': 'string',
-    'minLength': 1,
-  },
+  'items': {'type': 'string', 'minLength': 1},
   'description':
       'Category display names; when more than one, the curator picks randomly '
       'among them per slide.',
@@ -1565,9 +1556,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
         title: 'JokeScreenConfig',
         description:
             'Optional content_categories id to scope the joke pool for curation.',
-        properties: {
-          'categoryName': _kJsonSchemaOptionalContentCategoryName,
-        },
+        properties: {'categoryName': _kJsonSchemaOptionalContentCategoryName},
       ),
     ),
     example: jsonEncode({'categoryName': 'General'}),
@@ -1579,9 +1568,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
         description:
             'Optional category display name to scope Quoterism quotes for '
             'curation; omit for the full catalog.',
-        properties: {
-          'categoryName': _kJsonSchemaOptionalContentCategoryName,
-        },
+        properties: {'categoryName': _kJsonSchemaOptionalContentCategoryName},
       ),
     ),
     example: jsonEncode({'categoryName': 'Wisdom'}),
@@ -1635,7 +1622,8 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
           'connection': {
             'type': 'string',
             'minLength': 1,
-            'description': 'Wi‑Fi DPP / ZXing-style connection string for the QR code.',
+            'description':
+                'Wi‑Fi DPP / ZXing-style connection string for the QR code.',
           },
           'headline': {'type': 'string'},
         },
@@ -1986,9 +1974,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
         title: 'PexelsPhotoScreenConfig',
         description:
             'Optional category display name; when omitted, any non-suppressed photo may be chosen.',
-        properties: {
-          'categoryName': _kJsonSchemaOptionalContentCategoryName,
-        },
+        properties: {'categoryName': _kJsonSchemaOptionalContentCategoryName},
       ),
     ),
     example: jsonEncode({'categoryName': 'Nature'}),
@@ -2024,8 +2010,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
         properties: {
           'categoryName': {
             ..._kJsonSchemaOptionalContentCategoryName,
-            'description':
-                'Restrict to videos in this category display name.',
+            'description': 'Restrict to videos in this category display name.',
           },
           'loop': {'type': 'boolean'},
           'unmuted': {'type': 'boolean'},
@@ -2193,7 +2178,8 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
               'trailingHoldMs': {
                 'type': 'integer',
                 'minimum': 0,
-                'description': 'Hold at bottom before advancing (default 1500).',
+                'description':
+                    'Hold at bottom before advancing (default 1500).',
               },
             },
           },
@@ -2216,7 +2202,8 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
               },
               'blockPopups': {
                 'type': 'boolean',
-                'description': 'Block window.open / target=_blank (default true).',
+                'description':
+                    'Block window.open / target=_blank (default true).',
               },
               'allowFileAccess': {
                 'type': 'boolean',
@@ -2333,6 +2320,8 @@ final Map<String, ScreenConfigJsonDoc> kTickerSlotConfigJsonMeta = {
               '12h_hm_tt',
             ],
             'description':
+                'Omit to follow Display settings time format (controller.time_format): '
+                '12h → 12h_hms_ampm, 24h → 24h_hms. '
                 '24h_hms=14:05:09, 24h_hm=14:05, 12h_hms_ampm=2:05:09 PM, '
                 '12h_hm_ampm=2:05 PM, 12h_hm_tt=2:05pm (compact am/pm).',
           },
@@ -2350,11 +2339,7 @@ final Map<String, ScreenConfigJsonDoc> kTickerSlotConfigJsonMeta = {
         },
       ),
     ),
-    example: jsonEncode({
-      'timeFormatPreset': '12h_hm_tt',
-      'timeZone': 'America/New_York',
-      'labelPrefix': 'NYC',
-    }),
+    example: jsonEncode({'timeZone': 'America/New_York', 'labelPrefix': 'NYC'}),
   ),
   'weather': ScreenConfigJsonDoc(
     schema: jsonEncode(
@@ -2377,15 +2362,13 @@ final Map<String, ScreenConfigJsonDoc> kTickerSlotConfigJsonMeta = {
           'temperatureUnit': {
             'type': 'string',
             'enum': ['c', 'f'],
-            'description': 'Override display weather temperature unit for this tape.',
+            'description':
+                'Override display weather temperature unit for this tape.',
           },
         },
       ),
     ),
-    example: jsonEncode({
-      'locationId': 'new_york_ny',
-      'temperatureUnit': 'f',
-    }),
+    example: jsonEncode({'locationId': 'new_york_ny', 'temperatureUnit': 'f'}),
   ),
   'quote': ScreenConfigJsonDoc(
     schema: jsonEncode(
@@ -2394,9 +2377,7 @@ final Map<String, ScreenConfigJsonDoc> kTickerSlotConfigJsonMeta = {
         description:
             'Quoterism quote lines from quoterism_quotes. Optional categoryId '
             'filters via quoterism_quote_categories; omit for random catalog.',
-        properties: {
-          'categoryId': _kJsonSchemaOptionalContentCategoryId,
-        },
+        properties: {'categoryId': _kJsonSchemaOptionalContentCategoryId},
       ),
     ),
     example: jsonEncode({'categoryId': 'quoterism_wisdom'}),
@@ -2421,10 +2402,7 @@ final Map<String, ScreenConfigJsonDoc> kTickerSlotConfigJsonMeta = {
         },
       ),
     ),
-    example: jsonEncode({
-      'categoryId': 'news',
-      'prefixFeedName': true,
-    }),
+    example: jsonEncode({'categoryId': 'news', 'prefixFeedName': true}),
   ),
   'stocks': ScreenConfigJsonDoc(
     schema: jsonEncode(
@@ -2555,7 +2533,8 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
               'minimum': 0.12,
               'maximum': 0.72,
               'x-waddle-widget': 'slider',
-              'description': 'Upper bound for confetti piece alpha (visibility).',
+              'description':
+                  'Upper bound for confetti piece alpha (visibility).',
             },
           },
         ),
@@ -2675,7 +2654,8 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
               'minimum': kFloatingBalloonsRiseSpeedPxPerSecMin,
               'maximum': kFloatingBalloonsRiseSpeedPxPerSecMax,
               'x-waddle-widget': 'slider',
-              'description': 'Vertical rise speed in logical pixels per second.',
+              'description':
+                  'Vertical rise speed in logical pixels per second.',
             },
             'max_active': {
               'type': 'integer',
@@ -2759,10 +2739,7 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
           },
         ),
       ),
-      example: jsonEncode({
-        'opacity': 0.35,
-        'fall_speed': 0.45,
-      }),
+      example: jsonEncode({'opacity': 0.35, 'fall_speed': 0.45}),
     );
   }
   if (k == kOverlayTypeStaticImage) {
@@ -2865,8 +2842,7 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
               'type': 'integer',
               'minimum': kPhotoSlideshowIntervalSecMin,
               'maximum': kPhotoSlideshowIntervalSecMax,
-              'description':
-                  'Seconds between random photo picks (default 60).',
+              'description': 'Seconds between random photo picks (default 60).',
             },
             'category_ids': {
               'type': 'array',
@@ -3269,7 +3245,8 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
             'font_family': {
               'type': 'string',
               'maxLength': 120,
-              'description': 'TextStyle.fontFamily; omit for the theme default.',
+              'description':
+                  'TextStyle.fontFamily; omit for the theme default.',
             },
             'font_size': {
               'type': 'number',
@@ -3328,7 +3305,8 @@ ProviderConfigJsonDoc displayOverlayConfigJsonDocForType(String overlayType) {
         },
       ),
     ),
-    example: jsonEncode({'messages': ['Hello']}),
+    example: jsonEncode({
+      'messages': ['Hello'],
+    }),
   );
 }
-

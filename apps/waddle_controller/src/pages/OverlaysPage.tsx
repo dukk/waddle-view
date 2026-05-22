@@ -37,6 +37,7 @@ import { DataViewEmptyState } from '@/components/dataView/DataViewEmptyState';
 import { DataViewPagination } from '@/components/dataView/DataViewPagination';
 import { DataViewToolbar } from '@/components/dataView/DataViewToolbar';
 import { useClientDataView } from '@/hooks/useClientDataView';
+import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import type { SortOption } from '@/util/clientListPipeline';
 import { CatalogPageHelp } from '@/components/CatalogPageHelp';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
@@ -693,6 +694,7 @@ function OverlayCatalogSection({
 }
 
 export function OverlaysPage() {
+  const { confirm, ConfirmDialogHost } = useConfirmDialog();
   const { active, displays } = useDisplay();
   const { layout, setLayout } = useListLayoutPreference('overlays');
   const { hasPermission } = useAuth();
@@ -774,7 +776,13 @@ export function OverlaysPage() {
       if (!active) return;
       const row = rows.find((r) => r.id === id);
       const title = row?.label.trim() || id;
-      if (!window.confirm(`Delete overlay “${title}”?`)) return;
+      const ok = await confirm({
+        title: 'Delete overlay?',
+        message: `Delete overlay “${title}”?`,
+        confirmLabel: 'Delete',
+        severity: 'error',
+      });
+      if (!ok) return;
       setError(null);
       try {
         await apiFetch(active, `/v1/display/overlays/${encodeURIComponent(id)}`, {
@@ -785,7 +793,7 @@ export function OverlaysPage() {
         setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
       }
     },
-    [active, load, rows],
+    [active, confirm, load, rows],
   );
 
   if (!active) {
@@ -920,6 +928,7 @@ export function OverlaysPage() {
           onSaved={() => void load()}
         />
       )}
+      <ConfirmDialogHost />
     </Stack>
   );
 }

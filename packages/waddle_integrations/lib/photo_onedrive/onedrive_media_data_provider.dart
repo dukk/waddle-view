@@ -39,11 +39,7 @@ int? _positivePixelDimension(Object? raw) {
   return null;
 }
 
-void _logGraphJsonError(
-  String context,
-  String body,
-  CollectDiagnostics d,
-) {
+void _logGraphJsonError(String context, String body, CollectDiagnostics d) {
   try {
     final j = jsonDecode(body);
     if (j is Map<String, dynamic> && j['error'] is Map<String, dynamic>) {
@@ -66,9 +62,9 @@ const String _onedriveDeltaSelect =
     'id,name,size,file,image,video,webUrl,lastModifiedDateTime,createdBy,@microsoft.graph.downloadUrl,folder';
 
 Map<String, String> _onedriveDeltaQueryParams() => {
-      r'$top': '200',
-      r'$select': _onedriveDeltaSelect,
-    };
+  r'$top': '200',
+  r'$select': _onedriveDeltaSelect,
+};
 
 Map<String, Map<String, dynamic>> _deltaItemsLastWins(List<dynamic> values) {
   final byId = <String, Map<String, dynamic>>{};
@@ -123,9 +119,7 @@ void _logOneDriveDeltaPageStats(
   if (parts.isEmpty) {
     return;
   }
-  d.provider(
-    'onedrive_media: delta page=$page tallies ${parts.join(' ')}',
-  );
+  d.provider('onedrive_media: delta page=$page tallies ${parts.join(' ')}');
 }
 
 /// Syncs photos/videos from OneDrive folders into [Photos] / [Videos] via Graph.
@@ -136,13 +130,8 @@ class OneDrivePhotosDataProvider implements IDataProvider {
     MicrosoftGraphOAuth? oauth,
   }) {
     final client = httpClient ?? http.Client();
-    final clock =
-        nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
-    return OneDrivePhotosDataProvider._(
-      client,
-      clock,
-      oauth,
-    );
+    final clock = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
+    return OneDrivePhotosDataProvider._(client, clock, oauth);
   }
 
   OneDrivePhotosDataProvider._(this._http, this._nowMs, this._oauth);
@@ -170,8 +159,10 @@ class OneDrivePhotosDataProvider implements IDataProvider {
       return false;
     }
     final kv = IntegrationKvRepository(db);
-    final lastValue =
-        await kv.getIntegrationValue(integrationId, kIntegrationLastCollectKey);
+    final lastValue = await kv.getIntegrationValue(
+      integrationId,
+      kIntegrationLastCollectKey,
+    );
     final last = int.tryParse(lastValue ?? '') ?? 0;
     if (nowMs - last >= pollSeconds * 1000) {
       return false;
@@ -181,14 +172,16 @@ class OneDrivePhotosDataProvider implements IDataProvider {
       if (a.sources.isEmpty) {
         continue;
       }
-      final access =
-          await secrets.read(microsoftGraphAccessTokenSecret(a.graphAccountKey));
+      final access = await secrets.read(
+        microsoftGraphAccessTokenSecret(a.graphAccountKey),
+      );
       final expiresValue = await kv.getAccountValue(
         a.graphAccountKey,
         kIntegrationAccessTokenExpiresAtKey,
       );
       final expiresAt = int.tryParse(expiresValue ?? '') ?? 0;
-      final fresh = access != null &&
+      final fresh =
+          access != null &&
           access.isNotEmpty &&
           expiresAt > nowMs + kMicrosoftGraphAccessTokenSkewMs;
       if (!fresh) {
@@ -200,9 +193,7 @@ class OneDrivePhotosDataProvider implements IDataProvider {
       }
     }
 
-    diagnostics.provider(
-      'onedrive_media: skip poll gate lastCollectMs=$last',
-    );
+    diagnostics.provider('onedrive_media: skip poll gate lastCollectMs=$last');
     return true;
   }
 
@@ -239,14 +230,14 @@ class OneDrivePhotosDataProvider implements IDataProvider {
     }
 
     if (await _shouldSkipForPollWindowOnly(
-          ctx.db,
-          ctx.secrets,
-          integrationId,
-          extra,
-          nowMs,
-          setting.pollSeconds,
-          ctx.diagnostics,
-        )) {
+      ctx.db,
+      ctx.secrets,
+      integrationId,
+      extra,
+      nowMs,
+      setting.pollSeconds,
+      ctx.diagnostics,
+    )) {
       ctx.diagnostics.provider(
         'onedrive_media: skip poll gate pollSeconds=${setting.pollSeconds}',
       );
@@ -273,7 +264,8 @@ class OneDrivePhotosDataProvider implements IDataProvider {
     var globalRemaining = extra.globalPerPollLimit;
 
     try {
-      final graphOAuth = _oauth ??
+      final graphOAuth =
+          _oauth ??
           MicrosoftGraphOAuth(
             httpClient: _http,
             nowMs: _nowMs,
@@ -340,7 +332,9 @@ class OneDrivePhotosDataProvider implements IDataProvider {
         }
       }
       if (didSync && collectComplete) {
-        ctx.diagnostics.provider('onedrive_media: collect ok, last_collect updated');
+        ctx.diagnostics.provider(
+          'onedrive_media: collect ok, last_collect updated',
+        );
         await _markCollectDone(ctx.db, integrationId, nowMs);
       } else {
         ctx.diagnostics.provider(
@@ -374,7 +368,7 @@ class OneDrivePhotosDataProvider implements IDataProvider {
   }
 
   Map<String, Map<String, List<OneDriveMediaSourceSpec>>>
-      _sourcesGroupedByAccountPath(OneDriveMediaExtraConfig extra) {
+  _sourcesGroupedByAccountPath(OneDriveMediaExtraConfig extra) {
     final out = <String, Map<String, List<OneDriveMediaSourceSpec>>>{};
     for (final account in extra.accounts) {
       final byPath = out.putIfAbsent(account.graphAccountKey, () => {});
@@ -391,15 +385,15 @@ class OneDrivePhotosDataProvider implements IDataProvider {
   }
 
   String _rootDeltaUrl(String graphBase) {
-    return Uri.parse('$graphBase/me/drive/root/delta')
-        .replace(queryParameters: _onedriveDeltaQueryParams())
-        .toString();
+    return Uri.parse(
+      '$graphBase/me/drive/root/delta',
+    ).replace(queryParameters: _onedriveDeltaQueryParams()).toString();
   }
 
   String _folderDeltaUrl(String graphBase, String folderId) {
-    return Uri.parse('$graphBase/me/drive/items/$folderId/delta')
-        .replace(queryParameters: _onedriveDeltaQueryParams())
-        .toString();
+    return Uri.parse(
+      '$graphBase/me/drive/items/$folderId/delta',
+    ).replace(queryParameters: _onedriveDeltaQueryParams()).toString();
   }
 
   Future<void> _clearDeltaKv(
@@ -407,7 +401,9 @@ class OneDrivePhotosDataProvider implements IDataProvider {
     String integrationId,
     String deltaKey,
   ) async {
-    await IntegrationKvRepository(db).deleteIntegrationKey(integrationId, deltaKey);
+    await IntegrationKvRepository(
+      db,
+    ).deleteIntegrationKey(integrationId, deltaKey);
   }
 
   Future<void> _persistDeltaLink(
@@ -434,11 +430,9 @@ class OneDrivePhotosDataProvider implements IDataProvider {
     final itemUrl = encodedPath.isEmpty
         ? '$graphBase/me/drive/root'
         : '$graphBase/me/drive/root:$encodedPath:';
-    final uri = Uri.parse(itemUrl).replace(
-      queryParameters: const {
-        r'$select': 'id,folder',
-      },
-    );
+    final uri = Uri.parse(
+      itemUrl,
+    ).replace(queryParameters: const {r'$select': 'id,folder'});
     ctx.diagnostics.provider(
       'onedrive_media: GET folder item ${safeHttpUriForLog(uri)}',
     );
@@ -450,7 +444,11 @@ class OneDrivePhotosDataProvider implements IDataProvider {
       ctx.diagnostics.provider(
         'onedrive_media: folder item status=${res.statusCode}',
       );
-      _logGraphJsonError('onedrive_media: folder item', res.body, ctx.diagnostics);
+      _logGraphJsonError(
+        'onedrive_media: folder item',
+        res.body,
+        ctx.diagnostics,
+      );
       return null;
     }
     final m = jsonDecode(res.body) as Map<String, dynamic>;
@@ -484,6 +482,24 @@ class OneDrivePhotosDataProvider implements IDataProvider {
     }
   }
 
+  bool _allMatchingSpecsExhausted(
+    List<OneDriveMediaSourceSpec> specs,
+    List<int> perSpecLeft,
+    String mimeLower,
+  ) {
+    var anyMatch = false;
+    for (var i = 0; i < specs.length; i++) {
+      if (!_specMatchesMime(specs[i], mimeLower)) {
+        continue;
+      }
+      anyMatch = true;
+      if (perSpecLeft[i] > 0) {
+        return false;
+      }
+    }
+    return anyMatch;
+  }
+
   Future<int> _deleteLocalDriveItem(
     DataWriteContext ctx,
     String graphAccountKey,
@@ -491,20 +507,16 @@ class OneDrivePhotosDataProvider implements IDataProvider {
   ) async {
     final rowId = kOneDriveMediaItemRowId(graphAccountKey, driveItemId);
     var removed = 0;
-    final photo =
-        await (ctx.db.select(
-              ctx.db.photos,
-            )..where((t) => t.id.equals(rowId)))
-            .getSingleOrNull();
+    final photo = await (ctx.db.select(
+      ctx.db.photos,
+    )..where((t) => t.id.equals(rowId))).getSingleOrNull();
     if (photo != null) {
       await _deletePhoto(ctx, photo);
       removed++;
     }
-    final video =
-        await (ctx.db.select(
-              ctx.db.videos,
-            )..where((t) => t.id.equals(rowId)))
-            .getSingleOrNull();
+    final video = await (ctx.db.select(
+      ctx.db.videos,
+    )..where((t) => t.id.equals(rowId))).getSingleOrNull();
     if (video != null) {
       await _deleteVideo(ctx, video);
       removed++;
@@ -515,7 +527,8 @@ class OneDrivePhotosDataProvider implements IDataProvider {
   /// Pull-only delta sync for one account path (recursive subtree). Returns
   /// updated [globalRemaining] after downloads. [syncComplete] is false when
   /// download caps were hit before the delta pass finished (checkpoint deferred).
-  Future<({int downloads, int globalRemaining, bool syncComplete})> _syncPathGroup(
+  Future<({int downloads, int globalRemaining, bool syncComplete})>
+  _syncPathGroup(
     DataWriteContext ctx, {
     required String integrationId,
     required String graphBase,
@@ -528,10 +541,9 @@ class OneDrivePhotosDataProvider implements IDataProvider {
     required RejectFilterContext rejectCtx,
   }) async {
     final deltaKey = oneDriveMediaDeltaLinkKey(normalizedPath);
-    final storedValue = await IntegrationKvRepository(ctx.db).getIntegrationValue(
-      integrationId,
-      deltaKey,
-    );
+    final storedValue = await IntegrationKvRepository(
+      ctx.db,
+    ).getIntegrationValue(integrationId, deltaKey);
     var url = storedValue?.trim();
     var downloaded = 0;
     var globalR = globalRemaining;
@@ -565,6 +577,13 @@ class OneDrivePhotosDataProvider implements IDataProvider {
       'path="${normalizedPath.isEmpty ? '(drive root)' : normalizedPath}" '
       'specs=${specs.length} resumeDelta=$hadStoredDelta',
     );
+    for (final s in specs) {
+      ctx.diagnostics.provider(
+        'onedrive_media: source limits maxFiles=${s.maxFiles} '
+        'perPollLimit=${s.perPollLimit} '
+        'effectivePerPoll=${s.effectivePerPollLimit}',
+      );
+    }
 
     var deltaPage = 0;
     var goneRetries = 0;
@@ -652,11 +671,8 @@ class OneDrivePhotosDataProvider implements IDataProvider {
           }
           if (item['deleted'] is Map<String, dynamic>) {
             pageStats.cloudTombstones++;
-            pageStats.localRowsRemovedForTombstone += await _deleteLocalDriveItem(
-              ctx,
-              graphAccountKey,
-              id,
-            );
+            pageStats.localRowsRemovedForTombstone +=
+                await _deleteLocalDriveItem(ctx, graphAccountKey, id);
             continue;
           }
           final file = item['file'];
@@ -686,7 +702,9 @@ class OneDrivePhotosDataProvider implements IDataProvider {
             pageStats.unsupportedMime++;
             continue;
           }
-          final anySpecWantsMime = specs.any((s) => _specMatchesMime(s, mimeLower));
+          final anySpecWantsMime = specs.any(
+            (s) => _specMatchesMime(s, mimeLower),
+          );
           if (!anySpecWantsMime) {
             pageStats.noSpecForMime++;
             continue;
@@ -700,9 +718,6 @@ class OneDrivePhotosDataProvider implements IDataProvider {
               break;
             }
             if (perSpecLeft[i] <= 0) {
-              if (_specMatchesMime(specs[i], mimeLower)) {
-                limitsExhausted = true;
-              }
               continue;
             }
             final spec = specs[i];
@@ -740,6 +755,10 @@ class OneDrivePhotosDataProvider implements IDataProvider {
               globalR--;
               perSpecLeft[i]--;
             }
+          }
+          if (_allMatchingSpecsExhausted(specs, perSpecLeft, mimeLower)) {
+            limitsExhausted = true;
+            break;
           }
         }
         _logOneDriveDeltaPageStats(deltaPage, pageStats, ctx.diagnostics);
@@ -781,7 +800,12 @@ class OneDrivePhotosDataProvider implements IDataProvider {
     } else if (syncComplete &&
         deltaLinkToPersist != null &&
         deltaLinkToPersist.isNotEmpty) {
-      await _persistDeltaLink(ctx.db, integrationId, deltaKey, deltaLinkToPersist);
+      await _persistDeltaLink(
+        ctx.db,
+        integrationId,
+        deltaKey,
+        deltaLinkToPersist,
+      );
       ctx.diagnostics.provider(
         'onedrive_media: delta checkpoint saved account=$graphAccountKey '
         'path="${normalizedPath.isEmpty ? '(drive root)' : normalizedPath}"',
@@ -830,7 +854,9 @@ class OneDrivePhotosDataProvider implements IDataProvider {
   }
 
   String _driveItemContentUrl(String graphBase, String itemId) {
-    final base = graphBase.endsWith('/') ? graphBase.substring(0, graphBase.length - 1) : graphBase;
+    final base = graphBase.endsWith('/')
+        ? graphBase.substring(0, graphBase.length - 1)
+        : graphBase;
     return '$base/me/drive/items/$itemId/content';
   }
 
@@ -916,11 +942,9 @@ class OneDrivePhotosDataProvider implements IDataProvider {
     required RejectFilterContext rejectCtx,
     required _OneDriveDeltaPageStats pageStats,
   }) async {
-    final exists =
-        await (ctx.db.select(
-              ctx.db.photos,
-            )..where((t) => t.id.equals(rowId)))
-            .getSingleOrNull();
+    final exists = await (ctx.db.select(
+      ctx.db.photos,
+    )..where((t) => t.id.equals(rowId))).getSingleOrNull();
     if (exists != null) {
       pageStats.skippedExistingPhoto++;
       return false;
@@ -963,7 +987,9 @@ class OneDrivePhotosDataProvider implements IDataProvider {
       pixelH = _positivePixelDimension(image['height']);
     }
 
-    await ctx.db.into(ctx.db.blobMetadata).insertOnConflictUpdate(
+    await ctx.db
+        .into(ctx.db.blobMetadata)
+        .insertOnConflictUpdate(
           BlobMetadataCompanion.insert(
             blobKey: logicalKey,
             sha256: ref.storageKey.split('/').last,
@@ -985,9 +1011,13 @@ class OneDrivePhotosDataProvider implements IDataProvider {
       urls: [pageUrl],
     );
 
-    final primaryCategory =
-        categoryIds.isEmpty ? 'general' : categoryIds.first;
-    await ctx.db.into(ctx.db.photos).insert(
+    final resolvedIds = await resolveMediaCategoryIds(ctx.db, categoryIds);
+    final primaryCategory = resolvedIds.isNotEmpty
+        ? resolvedIds.first
+        : 'general';
+    await ctx.db
+        .into(ctx.db.photos)
+        .insert(
           PhotosCompanion.insert(
             id: rowId,
             category: Value(primaryCategory),
@@ -1024,11 +1054,9 @@ class OneDrivePhotosDataProvider implements IDataProvider {
     required RejectFilterContext rejectCtx,
     required _OneDriveDeltaPageStats pageStats,
   }) async {
-    final exists =
-        await (ctx.db.select(
-              ctx.db.videos,
-            )..where((t) => t.id.equals(rowId)))
-            .getSingleOrNull();
+    final exists = await (ctx.db.select(
+      ctx.db.videos,
+    )..where((t) => t.id.equals(rowId))).getSingleOrNull();
     if (exists != null) {
       pageStats.skippedExistingVideo++;
       return false;
@@ -1058,7 +1086,9 @@ class OneDrivePhotosDataProvider implements IDataProvider {
       }
     }
 
-    await ctx.db.into(ctx.db.blobMetadata).insertOnConflictUpdate(
+    await ctx.db
+        .into(ctx.db.blobMetadata)
+        .insertOnConflictUpdate(
           BlobMetadataCompanion.insert(
             blobKey: logicalKey,
             sha256: ref.storageKey.split('/').last,
@@ -1079,9 +1109,13 @@ class OneDrivePhotosDataProvider implements IDataProvider {
       urls: [pageUrl],
     );
 
-    final primaryCategory =
-        categoryIds.isEmpty ? 'general' : categoryIds.first;
-    await ctx.db.into(ctx.db.videos).insert(
+    final resolvedIds = await resolveMediaCategoryIds(ctx.db, categoryIds);
+    final primaryCategory = resolvedIds.isNotEmpty
+        ? resolvedIds.first
+        : 'general';
+    await ctx.db
+        .into(ctx.db.videos)
+        .insert(
           VideosCompanion.insert(
             id: rowId,
             category: Value(primaryCategory),
@@ -1131,7 +1165,9 @@ class OneDrivePhotosDataProvider implements IDataProvider {
         );
         return null;
       }
-      diagnostics.provider('onedrive_media: download ok bytes=${res.bodyBytes.length}');
+      diagnostics.provider(
+        'onedrive_media: download ok bytes=${res.bodyBytes.length}',
+      );
       return res.bodyBytes;
     } on Object catch (e, st) {
       diagnostics.providerFail('onedrive_media: download', e, st);
@@ -1149,9 +1185,8 @@ class OneDrivePhotosDataProvider implements IDataProvider {
     }
     final primary = categoryIds.first;
     final rows =
-        await (ctx.db.select(
-              ctx.db.photos,
-            )..where(
+        await (ctx.db.select(ctx.db.photos)
+              ..where(
                 (t) =>
                     t.category.equals(primary) &
                     t.dataProvider.equals(kMediaDataProviderPhotoOneDrive),
@@ -1181,9 +1216,8 @@ class OneDrivePhotosDataProvider implements IDataProvider {
     }
     final primary = categoryIds.first;
     final rows =
-        await (ctx.db.select(
-              ctx.db.videos,
-            )..where(
+        await (ctx.db.select(ctx.db.videos)
+              ..where(
                 (t) =>
                     t.category.equals(primary) &
                     t.dataProvider.equals(kMediaDataProviderVideoOneDrive),
@@ -1205,41 +1239,33 @@ class OneDrivePhotosDataProvider implements IDataProvider {
 
   Future<void> _deletePhoto(DataWriteContext ctx, Photo row) async {
     final key = row.mediaBlobKey;
-    final meta =
-        await (ctx.db.select(
-              ctx.db.blobMetadata,
-            )..where((t) => t.blobKey.equals(key)))
-            .getSingleOrNull();
+    final meta = await (ctx.db.select(
+      ctx.db.blobMetadata,
+    )..where((t) => t.blobKey.equals(key))).getSingleOrNull();
     if (meta != null) {
       await ctx.blobs.delete(BlobRef(meta.relativePath));
       await (ctx.db.delete(
-            ctx.db.blobMetadata,
-          )..where((t) => t.blobKey.equals(key)))
-          .go();
+        ctx.db.blobMetadata,
+      )..where((t) => t.blobKey.equals(key))).go();
     }
     await (ctx.db.delete(
-          ctx.db.photos,
-        )..where((t) => t.id.equals(row.id)))
-        .go();
+      ctx.db.photos,
+    )..where((t) => t.id.equals(row.id))).go();
   }
 
   Future<void> _deleteVideo(DataWriteContext ctx, Video row) async {
     final key = row.mediaBlobKey;
-    final meta =
-        await (ctx.db.select(
-              ctx.db.blobMetadata,
-            )..where((t) => t.blobKey.equals(key)))
-            .getSingleOrNull();
+    final meta = await (ctx.db.select(
+      ctx.db.blobMetadata,
+    )..where((t) => t.blobKey.equals(key))).getSingleOrNull();
     if (meta != null) {
       await ctx.blobs.delete(BlobRef(meta.relativePath));
       await (ctx.db.delete(
-            ctx.db.blobMetadata,
-          )..where((t) => t.blobKey.equals(key)))
-          .go();
+        ctx.db.blobMetadata,
+      )..where((t) => t.blobKey.equals(key))).go();
     }
     await (ctx.db.delete(
-          ctx.db.videos,
-        )..where((t) => t.id.equals(row.id)))
-        .go();
+      ctx.db.videos,
+    )..where((t) => t.id.equals(row.id))).go();
   }
 }

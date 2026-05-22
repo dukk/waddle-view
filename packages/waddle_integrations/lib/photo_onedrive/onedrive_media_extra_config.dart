@@ -2,6 +2,9 @@ import 'dart:convert';
 
 import 'package:waddle_shared/persistence/media_category_ids.dart';
 
+/// Default new downloads per collect per folder when [OneDriveMediaSourceSpec.perPollLimit] is omitted.
+const int kOneDriveDefaultPerPollLimit = 20;
+
 /// One folder under the signed-in user's OneDrive (delegated `me` drive).
 class OneDriveMediaSourceSpec {
   const OneDriveMediaSourceSpec({
@@ -28,10 +31,10 @@ class OneDriveMediaSourceSpec {
   /// Retention cap: oldest OneDrive rows in this category are pruned after sync.
   final int maxFiles;
 
-  /// Max new downloads per collect for this source; `null` means [maxFiles].
+  /// Max new downloads per collect for this source; `null` uses [kOneDriveDefaultPerPollLimit].
   final int? perPollLimit;
 
-  int get effectivePerPollLimit => perPollLimit ?? maxFiles;
+  int get effectivePerPollLimit => perPollLimit ?? kOneDriveDefaultPerPollLimit;
 
   static OneDriveMediaSourceSpec? parse(Map<String, dynamic> m) {
     final pathRaw = m['path'] ?? m['folder'];

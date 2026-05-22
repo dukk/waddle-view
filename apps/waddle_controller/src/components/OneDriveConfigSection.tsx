@@ -185,7 +185,7 @@ export function OneDriveConfigSection({
           patch({ globalPerPollLimit: Math.max(1, Number(e.target.value) || 50) })
         }
         inputProps={{ min: 1 }}
-        helperText="Total new files downloaded per collect across all accounts and folders."
+        helperText="Shared cap per collect across all accounts and folders (default 50)."
       />
       <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 2 }}>
         <Stack spacing={1.5}>
@@ -387,6 +387,25 @@ export function OneDriveConfigSection({
                     disabled={disabled}
                   />
                   <TextField
+                    label="New downloads per folder per sync"
+                    type="number"
+                    size="small"
+                    fullWidth
+                    disabled={disabled}
+                    value={source.perPollLimit ?? ''}
+                    onChange={(e) => {
+                      const raw = e.target.value.trim();
+                      patchSource(accountIndex, source.sourceId, {
+                        perPollLimit:
+                          raw === ''
+                            ? undefined
+                            : Math.max(1, Number(raw) || 1),
+                      });
+                    }}
+                    inputProps={{ min: 1 }}
+                    helperText="Optional. Leave blank for default 20 per folder (not limited by retention below)."
+                  />
+                  <TextField
                     label="Max files kept (retention)"
                     type="number"
                     size="small"
@@ -399,6 +418,7 @@ export function OneDriveConfigSection({
                       })
                     }
                     inputProps={{ min: 1 }}
+                    helperText="Oldest synced items pruned after each collect; does not cap download batch size."
                   />
                 </Stack>
               </Box>

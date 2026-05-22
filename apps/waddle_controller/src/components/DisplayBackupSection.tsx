@@ -24,6 +24,7 @@ import { fetchDisplayUpgradeJob, startDisplayUpgrade } from '@/api/displayUpgrad
 import { AllBackupsInventory } from '@/components/AllBackupsInventory';
 import { DisplayBackupScheduleCard } from '@/components/DisplayBackupScheduleCard';
 import { completeDialogSave } from '@/util/dialogSave';
+import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { useDisplaysReachability } from '@/util/useDisplaysReachability';
 
 function isUpdateAvailable(
@@ -45,6 +46,7 @@ function isUpdateAvailable(
 
 /** Scheduled backups and stored archive inventory (controller settings tab). */
 export function DisplayBackupSection() {
+  const { confirm, ConfirmDialogHost } = useConfirmDialog();
   const { displays } = useDisplay();
   const [searchParams] = useSearchParams();
   const focusDisplayId = searchParams.get('display');
@@ -206,11 +208,13 @@ export function DisplayBackupSection() {
                 size="small"
                 color="error"
                 onClick={async () => {
-                  if (
-                    !window.confirm(
-                      `Remove backup schedule and stored snapshots for ${t.label}?`,
-                    )
-                  ) {
+                  const ok = await confirm({
+                    title: 'Remove backup schedule?',
+                    message: `Remove backup schedule and stored snapshots for ${t.label}?`,
+                    confirmLabel: 'Remove',
+                    severity: 'warning',
+                  });
+                  if (!ok) {
                     return;
                   }
                   await deleteBackupTarget(t.id);
@@ -246,6 +250,7 @@ export function DisplayBackupSection() {
           </Button>
         </DialogActions>
       </Dialog>
+      <ConfirmDialogHost />
     </Stack>
   );
 }

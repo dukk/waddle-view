@@ -33,6 +33,7 @@ import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import { sortByOption, type SortOption } from '@/util/clientListPipeline';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
+import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { AlertEntryDialog } from '@/components/data/AlertEntryDialog';
 import { CatalogBlobMedia } from '@/components/data/CatalogBlobMedia';
 import { DataCatalogCard } from '@/components/data/DataCatalogCard';
@@ -300,6 +301,7 @@ function rowMatchesToolbarSearch(row: Record<string, unknown>, q: string): boole
 }
 
 export function DataPage() {
+  const { confirm, ConfirmDialogHost } = useConfirmDialog();
   const { active } = useDisplay();
   const { formatDateTime } = useDisplayFormat();
   const { hasPermission } = useAuth();
@@ -487,7 +489,13 @@ export function DataPage() {
       const path = contentDeletePath(kind, row);
       if (!path) return;
       const summary = deleteRowSummary(kind, row);
-      if (!window.confirm(`Permanently delete “${summary}”? This cannot be undone.`)) return;
+      const ok = await confirm({
+        title: 'Permanently delete?',
+        message: `Permanently delete “${summary}”? This cannot be undone.`,
+        confirmLabel: 'Delete',
+        severity: 'error',
+      });
+      if (!ok) return;
       setError(null);
       try {
         await apiFetch(active, path, { method: 'DELETE' });
@@ -497,7 +505,7 @@ export function DataPage() {
         setError(msg);
       }
     },
-    [active, canModerate, kind, loadCatalog],
+    [active, canModerate, confirm, kind, loadCatalog],
   );
 
   const displayRows = useMemo(() => {
@@ -1142,6 +1150,7 @@ export function DataPage() {
           setPage(0);
         }}
       />
+      <ConfirmDialogHost />
     </Stack>
   );
 }

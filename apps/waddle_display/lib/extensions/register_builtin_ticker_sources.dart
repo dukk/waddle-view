@@ -9,7 +9,7 @@ import 'ticker_source_registry.dart';
 /// Registers built-in and plugin ticker expanders on [registry].
 void registerBuiltinTickerSources(TickerSourceRegistry registry) {
   registry.register('time', (def, ctx) {
-    return [buildTimeTickerItem(nowLocal: ctx.nowLocal, def: def)];
+    return [buildTimeTickerItem(nowLocal: ctx.nowLocal, def: def, kv: ctx.kv)];
   });
 
   registry.register('weather', (def, ctx) {
@@ -86,7 +86,9 @@ void registerBuiltinTickerSources(TickerSourceRegistry registry) {
           body: stockMarqueeBody(row),
           sourceId: row.symbolId,
           stockDisplay: TickerStockDisplay(
-            symbol: row.symbol.trim().isEmpty ? row.symbolId : row.symbol.trim(),
+            symbol: row.symbol.trim().isEmpty
+                ? row.symbolId
+                : row.symbol.trim(),
             displayName: row.displayName,
             currentPrice: row.currentPrice,
             percentChange: row.percentChange,
@@ -101,11 +103,7 @@ void registerBuiltinTickerSources(TickerSourceRegistry registry) {
       return const [];
     }
     return [
-      TickerItem(
-        kind: 'static_text',
-        body: raw,
-        sourceId: tapeSourceId(def),
-      ),
+      TickerItem(kind: 'static_text', body: raw, sourceId: tapeSourceId(def)),
     ];
   });
 

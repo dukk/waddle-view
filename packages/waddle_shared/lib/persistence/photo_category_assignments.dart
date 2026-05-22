@@ -4,7 +4,10 @@ import 'database.dart';
 import 'media_category_ids.dart';
 
 export 'media_category_ids.dart'
-    show normalizeMediaCategoryIds, parseMediaConfigCategoryIds;
+    show
+        normalizeMediaCategoryIds,
+        parseMediaConfigCategoryIds,
+        resolveMediaCategoryIds;
 
 /// Replaces junction rows; sets [Photos.category] to the primary (first) id.
 Future<void> replacePhotoCategoryAssignments(
@@ -12,16 +15,15 @@ Future<void> replacePhotoCategoryAssignments(
   required String photoId,
   required List<String> categoryIds,
 }) async {
-  final normalized = normalizeMediaCategoryIds(categoryIds);
-  await (db.delete(db.photoCategories)
-        ..where((t) => t.photoId.equals(photoId)))
-      .go();
+  final normalized = await resolveMediaCategoryIds(db, categoryIds);
+  await (db.delete(
+    db.photoCategories,
+  )..where((t) => t.photoId.equals(photoId))).go();
   for (final cat in normalized) {
-    await db.into(db.photoCategories).insert(
-          PhotoCategoriesCompanion.insert(
-            photoId: photoId,
-            categoryId: cat,
-          ),
+    await db
+        .into(db.photoCategories)
+        .insert(
+          PhotoCategoriesCompanion.insert(photoId: photoId, categoryId: cat),
           mode: InsertMode.insertOrIgnore,
         );
   }
@@ -35,16 +37,18 @@ Future<void> replacePhotoCategoryAssignments(
 
 /// Returns true when [categoryId] is linked to any photo (junction or legacy).
 Future<bool> photoCategoryIdInUse(AppDatabase db, String categoryId) async {
-  final junction = await (db.select(db.photoCategories)
-        ..where((t) => t.categoryId.equals(categoryId))
-        ..limit(1))
-      .getSingleOrNull();
+  final junction =
+      await (db.select(db.photoCategories)
+            ..where((t) => t.categoryId.equals(categoryId))
+            ..limit(1))
+          .getSingleOrNull();
   if (junction != null) {
     return true;
   }
-  final legacy = await (db.select(db.photos)
-        ..where((t) => t.category.equals(categoryId))
-        ..limit(1))
-      .getSingleOrNull();
+  final legacy =
+      await (db.select(db.photos)
+            ..where((t) => t.category.equals(categoryId))
+            ..limit(1))
+          .getSingleOrNull();
   return legacy != null;
 }

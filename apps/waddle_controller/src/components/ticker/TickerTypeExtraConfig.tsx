@@ -21,7 +21,14 @@ import {
 import { listStockSymbols, listWeatherLocations, type StockSymbolRow } from '@/api/interests';
 import type { ContentCategoryOption } from '@/components/config/ContentCategorySelectField';
 import { ContentCategorySelect } from '@/components/config/ContentCategorySelectField';
+import { useDisplayFormat } from '@/context/DisplayFormatContext';
 import type { SavedDisplay } from '@/storage/displays';
+import {
+  tickerTimeFormatPresetForControllerTimeFormat,
+  tickerTimeFormatPresetLabel,
+} from '@/util/tickerTimeFormat';
+
+const USE_DISPLAY_TIME_FORMAT = '';
 
 const DEVICE_LOCAL_TIMEZONE: DisplayTimezoneOption = {
   id: '',
@@ -126,9 +133,16 @@ export function TickerTypeExtraConfig({
     };
   }, [display, type]);
 
+  const { prefs: displayFormatPrefs } = useDisplayFormat();
+
   const patch = (partial: Record<string, unknown>) => {
     onChange({ ...formData, ...partial });
   };
+
+  const displayDefaultTimePreset = useMemo(
+    () => tickerTimeFormatPresetForControllerTimeFormat(displayFormatPrefs.timeFormat),
+    [displayFormatPrefs.timeFormat],
+  );
 
   const timeZone = type === 'time' ? readString(formData.timeZone) : '';
   const timezoneOptions = useMemo(() => {
@@ -151,7 +165,8 @@ export function TickerTypeExtraConfig({
   }, [type, timeZone, timezoneOptions]);
 
   if (type === 'time') {
-    const preset = readString(formData.timeFormatPreset, '24h_hms');
+    const configuredPreset = readString(formData.timeFormatPreset);
+    const selectValue = configuredPreset || USE_DISPLAY_TIME_FORMAT;
 
     return (
       <Stack spacing={1.5}>
@@ -160,9 +175,22 @@ export function TickerTypeExtraConfig({
           <Select
             labelId="ticker-time-preset"
             label="Time format"
-            value={preset}
-            onChange={(e) => patch({ timeFormatPreset: e.target.value })}
+            value={selectValue}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === USE_DISPLAY_TIME_FORMAT) {
+                const next = { ...formData };
+                delete next.timeFormatPreset;
+                onChange(next);
+              } else {
+                patch({ timeFormatPreset: v });
+              }
+            }}
           >
+            <MenuItem value={USE_DISPLAY_TIME_FORMAT}>
+              Use display default (
+              {tickerTimeFormatPresetLabel(displayDefaultTimePreset)})
+            </MenuItem>
             {TIME_FORMAT_PRESETS.map((o) => (
               <MenuItem key={o.value} value={o.value}>
                 {o.label}

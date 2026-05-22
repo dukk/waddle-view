@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:waddle_shared/config/controller_datetime_format_kv.dart';
 import 'package:waddle_shared/display/display_weather_temperature_unit_kv.dart';
 import 'package:waddle_shared/display/ticker_tape_config.dart';
 
@@ -12,10 +13,34 @@ void main() {
     expect(cfg.labelPrefix, 'London');
   });
 
-  test('parseTickerTapeTimeConfig defaults preset', () {
+  test('parseTickerTapeTimeConfig leaves preset null when absent', () {
     final cfg = parseTickerTapeTimeConfig('{}');
-    expect(cfg.timeFormatPreset, kDefaultTickerTimeFormatPreset);
+    expect(cfg.timeFormatPreset, isNull);
     expect(cfg.timeZone, isNull);
+  });
+
+  test('effectiveTickerTimeFormatPreset follows controller.time_format', () {
+    expect(
+      effectiveTickerTimeFormatPreset(
+        kv: const {},
+        tape: const TickerTapeTimeConfig(),
+      ),
+      '12h_hms_ampm',
+    );
+    expect(
+      effectiveTickerTimeFormatPreset(
+        kv: {kControllerTimeFormatKvKey: kControllerTimeFormat24h},
+        tape: const TickerTapeTimeConfig(),
+      ),
+      '24h_hms',
+    );
+    expect(
+      effectiveTickerTimeFormatPreset(
+        kv: {kControllerTimeFormatKvKey: kControllerTimeFormat24h},
+        tape: const TickerTapeTimeConfig(timeFormatPreset: '12h_hm_tt'),
+      ),
+      '12h_hm_tt',
+    );
   });
 
   test('parseTickerTapeWeatherConfig and stock symbol ids', () {
@@ -25,10 +50,10 @@ void main() {
     expect(w.locationId, 'sea');
     expect(w.temperatureUnit, 'f');
 
-    expect(
-      parseTickerTapeStockSymbolIds('{"symbolIds":["a","b"]}'),
-      ['a', 'b'],
-    );
+    expect(parseTickerTapeStockSymbolIds('{"symbolIds":["a","b"]}'), [
+      'a',
+      'b',
+    ]);
     expect(parseTickerTapeStockSymbolIds('{}'), isNull);
   });
 
@@ -41,10 +66,7 @@ void main() {
   });
 
   test('weatherIconCodeFromBlobKey', () {
-    expect(
-      weatherIconCodeFromBlobKey('weather/icons/10d'),
-      '10d',
-    );
+    expect(weatherIconCodeFromBlobKey('weather/icons/10d'), '10d');
     expect(weatherIconCodeFromBlobKey(null), isNull);
   });
 

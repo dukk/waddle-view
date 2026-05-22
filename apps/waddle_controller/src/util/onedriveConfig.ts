@@ -4,6 +4,8 @@ export type OneDriveSourceState = {
   path: string;
   categoryIds: string[];
   maxFiles: number;
+  /** Omit to use display default (20) at collect time. */
+  perPollLimit?: number;
 };
 
 export type OneDriveAccountState = {
@@ -50,12 +52,18 @@ function sourceFromRaw(raw: unknown): OneDriveSourceState | null {
   const categoryIds = parseCategoryIds(m);
   if (categoryIds.length === 0) return null;
   const sourceId = String(m.sourceId ?? (path || 'source')).trim() || newOneDriveSourceId();
+  const perPollRaw = m.perPollLimit;
+  const perPollLimit =
+    typeof perPollRaw === 'number' && Number.isFinite(perPollRaw) && perPollRaw > 0
+      ? Math.floor(perPollRaw)
+      : undefined;
   return {
     sourceId,
     folderLabel: String(m.folderLabel ?? m.label ?? (path || 'Folder')).trim(),
     path,
     categoryIds,
     maxFiles: positiveInt(m.maxFiles, 50),
+    perPollLimit,
   };
 }
 
@@ -101,14 +109,20 @@ export function buildOneDriveConfigJson(
       .filter((a) => a.graphAccountKey.trim() !== '')
       .map((a) => ({
         graphAccountKey: a.graphAccountKey,
-        sources: a.sources.map((s) => ({
-          sourceId: s.sourceId,
-          folderLabel: s.folderLabel,
-          path: s.path,
-          kind: mediaKind,
-          categoryIds: s.categoryIds,
-          maxFiles: s.maxFiles,
-        })),
+        sources: a.sources.map((s) => {
+          const entry: Record<string, unknown> = {
+            sourceId: s.sourceId,
+            folderLabel: s.folderLabel,
+            path: s.path,
+            kind: mediaKind,
+            categoryIds: s.categoryIds,
+            maxFiles: s.maxFiles,
+          };
+          if (s.perPollLimit != null && s.perPollLimit > 0) {
+            entry.perPollLimit = s.perPollLimit;
+          }
+          return entry;
+        }),
       })),
   };
 }

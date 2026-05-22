@@ -1,3 +1,6 @@
+import 'content_category_resolve.dart';
+import 'database.dart';
+
 /// Normalizes curator category ids: trim, drop empties, preserve first-seen order.
 List<String> normalizeMediaCategoryIds(Iterable<String?> raw) {
   final out = <String>[];
@@ -22,9 +25,22 @@ List<String> parseMediaConfigCategoryIds(Object? raw) {
     return normalizeMediaCategoryIds([raw]);
   }
   if (raw is List<dynamic>) {
-    return normalizeMediaCategoryIds(
-      raw.map((e) => e is String ? e : null),
-    );
+    return normalizeMediaCategoryIds(raw.map((e) => e is String ? e : null));
   }
   return const [];
+}
+
+/// Maps integration config values ([ContentCategories.id] or display [label]) to ids.
+Future<List<String>> resolveMediaCategoryIds(
+  AppDatabase db,
+  Iterable<String?> raw, {
+  Map<String, String>? labelToIdCache,
+  Set<String>? idSetCache,
+}) async {
+  return resolveContentCategoryIds(
+    db,
+    normalizeMediaCategoryIds(raw),
+    labelToIdCache: labelToIdCache,
+    idSetCache: idSetCache,
+  );
 }

@@ -36,6 +36,7 @@ import {
   type ApiClientListItem,
 } from '@/api/apiClients';
 import { resolveClientIdentifier } from '@/util/clientIdentifier';
+import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { suggestAdoptionIdentifier } from '@/util/adoptionDisplayIdentity';
 import type { SavedDisplay } from '@/storage/displays';
 import { useAuth } from '@/context/AuthContext';
@@ -354,6 +355,7 @@ function ApiClientsManagementSection({
   display: SavedDisplay;
   sessionIdentifier?: string;
 }) {
+  const { confirm, ConfirmDialogHost } = useConfirmDialog();
   const { status } = useControllerAuth();
   const clientId = resolveClientIdentifier(status, 'controller');
   const { formatDateTime } = useDisplayFormat();
@@ -421,7 +423,13 @@ function ApiClientsManagementSection({
       sessionIdentifier && client.identifier === sessionIdentifier
         ? `Revoke API key for "${client.identifier}"? This may end your current controller session for this display.`
         : `Revoke API key for "${client.identifier}"?`;
-    if (!window.confirm(revokeMessage)) {
+    const ok = await confirm({
+      title: 'Revoke API key?',
+      message: revokeMessage,
+      confirmLabel: 'Revoke',
+      severity: 'warning',
+    });
+    if (!ok) {
       return;
     }
     setRevokeBusyId(client.id);
@@ -569,6 +577,7 @@ function ApiClientsManagementSection({
           )}
         </DialogActions>
       </Dialog>
+      <ConfirmDialogHost />
     </Box>
   );
 }

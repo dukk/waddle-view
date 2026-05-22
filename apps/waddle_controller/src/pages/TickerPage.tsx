@@ -36,6 +36,7 @@ import { DataViewEmptyState } from '@/components/dataView/DataViewEmptyState';
 import { DataViewPagination } from '@/components/dataView/DataViewPagination';
 import { DataViewToolbar } from '@/components/dataView/DataViewToolbar';
 import { useClientDataView } from '@/hooks/useClientDataView';
+import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import type { SortOption } from '@/util/clientListPipeline';
 import { CatalogPageHelp } from '@/components/CatalogPageHelp';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
@@ -221,6 +222,7 @@ function TickerTapeTable({
 }
 
 export function TickerPage() {
+  const { confirm, ConfirmDialogHost } = useConfirmDialog();
   const { active, displays } = useDisplay();
   const { hasPermission } = useAuth();
   const canWrite = hasPermission('ticker.write');
@@ -314,7 +316,13 @@ export function TickerPage() {
   const deleteTape = useCallback(
     async (id: string) => {
       if (!active) return;
-      if (!confirm(`Delete ticker tape ${id}?`)) return;
+      const ok = await confirm({
+        title: 'Delete ticker tape?',
+        message: `Delete ticker tape ${id}?`,
+        confirmLabel: 'Delete',
+        severity: 'error',
+      });
+      if (!ok) return;
       try {
         await apiFetch(active, `/v1/ticker/tapes/${encodeURIComponent(id)}`, {
           method: 'DELETE',
@@ -324,7 +332,7 @@ export function TickerPage() {
         setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
       }
     },
-    [active, load],
+    [active, confirm, load],
   );
 
   if (!active) {
@@ -454,6 +462,7 @@ export function TickerPage() {
           }}
         />
       )}
+      <ConfirmDialogHost />
     </Stack>
   );
 }

@@ -82,6 +82,7 @@ import { DataViewToolbar } from '@/components/dataView/DataViewToolbar';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { catalogCardGridSx } from '@/constants/catalogLayout';
 import { useClientDataView } from '@/hooks/useClientDataView';
+import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import type { SortOption } from '@/util/clientListPipeline';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
@@ -283,6 +284,7 @@ function CuratorConfigurationsSection({
   canRead: boolean;
   canWrite: boolean;
 }) {
+  const { confirm, ConfirmDialogHost } = useConfirmDialog();
   const { layout, setLayout } = useListLayoutPreference('curators');
   const { loading, wrapRefresh } = useDisplayRefresh();
   const [error, setError] = useState<string | null>(null);
@@ -325,7 +327,13 @@ function CuratorConfigurationsSection({
   const displayRows = dataView.paginated.items;
 
   const deleteConfig = async (id: string) => {
-    if (!confirm(`Delete curator configuration "${id}"?`)) return;
+    const ok = await confirm({
+      title: 'Delete configuration?',
+      message: `Delete curator configuration "${id}"?`,
+      confirmLabel: 'Delete',
+      severity: 'error',
+    });
+    if (!ok) return;
     try {
       await deleteCuratorConfiguration(display, id);
       await load();
@@ -503,6 +511,7 @@ function CuratorConfigurationsSection({
           }}
         />
       )}
+      <ConfirmDialogHost />
     </Stack>
   );
 }

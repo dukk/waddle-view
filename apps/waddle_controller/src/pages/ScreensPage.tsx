@@ -21,6 +21,7 @@ import { DataViewEmptyState } from '@/components/dataView/DataViewEmptyState';
 import { DataViewPagination } from '@/components/dataView/DataViewPagination';
 import { DataViewToolbar } from '@/components/dataView/DataViewToolbar';
 import { useClientDataView } from '@/hooks/useClientDataView';
+import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import type { SortOption } from '@/util/clientListPipeline';
 import { CatalogPageHelp } from '@/components/CatalogPageHelp';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
@@ -200,6 +201,7 @@ function ScreenTable({
 }
 
 export function ScreensPage() {
+  const { confirm, ConfirmDialogHost } = useConfirmDialog();
   const { active, displays } = useDisplay();
   const { hasPermission } = useAuth();
   const canWrite = hasPermission('screens.write');
@@ -272,7 +274,13 @@ export function ScreensPage() {
   const deleteScreen = useCallback(
     async (id: string) => {
       if (!active) return;
-      if (!confirm(`Delete screen ${id}?`)) return;
+      const ok = await confirm({
+        title: 'Delete screen?',
+        message: `Delete screen ${id}?`,
+        confirmLabel: 'Delete',
+        severity: 'error',
+      });
+      if (!ok) return;
       try {
         await apiFetch(active, `/v1/screens/${encodeURIComponent(id)}`, {
           method: 'DELETE',
@@ -282,7 +290,7 @@ export function ScreensPage() {
         setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
       }
     },
-    [active, load],
+    [active, confirm, load],
   );
 
   if (!active) {
@@ -415,6 +423,7 @@ export function ScreensPage() {
           }}
         />
       )}
+      <ConfirmDialogHost />
     </Stack>
   );
 }

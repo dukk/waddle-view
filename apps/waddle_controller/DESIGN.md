@@ -130,6 +130,7 @@ Details: [`README.md`](README.md#copy-screens-overlays-and-ticker-tapes-between-
 
 ## Anti-patterns
 
+- Native `alert()`, `confirm()`, or `prompt()` — use [`useConfirmDialog`](src/hooks/useConfirmDialog.tsx) / [`ConfirmDialog`](src/components/ConfirmDialog.tsx) for destructive or irreversible actions.
 - `disabled={loading}` on Save when `loading` only tracks fetch-on-open (use `saving`).
 - Omitting `finally { setSaving(false) }` after errors.
 - Closing the dialog before the API succeeds (except explicit auth flows).
@@ -146,6 +147,7 @@ Use skills for full checklists; this table is the entry point.
 | New overlay type (controller UI) | [add-display-overlay](../../.cursor/skills/add-display-overlay/SKILL.md) |
 | List / catalog page | [controller-data-view](../../.cursor/skills/controller-data-view/SKILL.md) |
 | Save / Create / Confirm dialog | [controller-dialog-submit](../../.cursor/skills/controller-dialog-submit/SKILL.md) |
+| Destructive confirm (delete, revoke) | [`useConfirmDialog`](src/hooks/useConfirmDialog.tsx) |
 | Schema-driven `config_json` form | [schema-config-form](../../.cursor/skills/schema-config-form/SKILL.md) |
 | New REST route on display (proxy consumer) | [add-rest-route](../../.cursor/skills/add-rest-route/SKILL.md) |
 

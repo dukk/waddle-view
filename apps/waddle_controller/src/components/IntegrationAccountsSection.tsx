@@ -34,6 +34,7 @@ import {
 } from '@/api/integrationAccounts';
 import { listOAuthProviders, type OAuthProviderStatus } from '@/api/oauthProviders';
 import { completeDialogSave } from '@/util/dialogSave';
+import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { integrationAccountIdFromName } from '@/util/integrationAccountSlug';
 import type { SavedDisplay } from '@/storage/displays';
 import {
@@ -441,6 +442,7 @@ function ConfigureAccountDialog({
   onError: (msg: string) => void;
   display: SavedDisplay;
 }) {
+  const { confirm, ConfirmDialogHost } = useConfirmDialog();
   const [name, setName] = useState('');
   const [apiKeyDraft, setApiKeyDraft] = useState('');
   const [busy, setBusy] = useState(false);
@@ -494,9 +496,13 @@ function ConfigureAccountDialog({
   };
 
   const deleteAccount = async () => {
-    if (
-      !window.confirm(`Delete account "${account.label}"? This cannot be undone.`)
-    ) {
+    const ok = await confirm({
+      title: 'Delete account?',
+      message: `Delete account "${account.label}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      severity: 'error',
+    });
+    if (!ok) {
       return;
     }
     setBusy(true);
@@ -511,6 +517,7 @@ function ConfigureAccountDialog({
   };
 
   return (
+    <>
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>{account.account_type_label}</DialogTitle>
       <DialogContent>
@@ -586,5 +593,7 @@ function ConfigureAccountDialog({
         </Stack>
       </DialogActions>
     </Dialog>
+    <ConfirmDialogHost />
+    </>
   );
 }

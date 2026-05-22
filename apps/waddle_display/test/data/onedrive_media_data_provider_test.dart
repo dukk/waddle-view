@@ -458,6 +458,42 @@ void main() {
     await db.close();
   });
 
+  test('low maxFiles retention does not cap downloads per collect', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await _seedProvider(
+      db,
+      globalPerPoll: 50,
+      accountsJson:
+          '[{"graphAccountKey":"u","sources":[{"path":"/a","kind":"photo","category":"c","maxFiles":2}]}]',
+    );
+    final secrets = InMemorySecretStore();
+    await secrets.write(microsoftGraphAccessTokenSecret('u'), 'tok');
+    await seedIntegrationKvForTest(
+      db,
+      accountId: 'u',
+      key: kIntegrationAccessTokenExpiresAtKey,
+      value: '${DateTime.now().millisecondsSinceEpoch + 86400000 * 365}',
+    );
+    final httpClient = _GraphAndDownloadClient(
+      deltaPages: [
+        _deltaPage([
+          _drivePhoto('id1', 'https://dl.example.com/1'),
+          _drivePhoto('id2', 'https://dl.example.com/2'),
+          _drivePhoto('id3', 'https://dl.example.com/3'),
+          _drivePhoto('id4', 'https://dl.example.com/4'),
+          _drivePhoto('id5', 'https://dl.example.com/5'),
+        ]),
+      ],
+    );
+    final ctx = await _ctx(db, secrets);
+    await OneDrivePhotosDataProvider(httpClient: httpClient).collect(ctx);
+    expect(httpClient.downloadGets, 5);
+    final photos = await db.select(db.photos).get();
+    expect(photos.length, 2);
+    await db.close();
+  });
+
   test('perPollLimit caps downloads per collect', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);

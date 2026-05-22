@@ -1,5 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waddle_integrations/photo_onedrive/onedrive_media_extra_config.dart';
+import 'package:waddle_integrations/photo_onedrive/onedrive_media_extra_config.dart'
+    show
+        OneDriveMediaExtraConfig,
+        kOneDriveDefaultPerPollLimit;
 
 void main() {
   test('defaults when null or empty', () {
@@ -26,7 +29,22 @@ void main() {
     expect(c.accounts.single.sources.first.perPollLimit, 2);
     expect(c.accounts.single.sources.first.effectivePerPollLimit, 2);
     expect(c.accounts.single.sources.last.kind, 'video');
-    expect(c.accounts.single.sources.last.effectivePerPollLimit, 3);
+    expect(c.accounts.single.sources.last.effectivePerPollLimit,
+        kOneDriveDefaultPerPollLimit);
+  });
+
+  test('effectivePerPollLimit defaults to kOneDriveDefaultPerPollLimit not maxFiles',
+      () {
+    final c = OneDriveMediaExtraConfig.parse(
+      '{"accounts":[{"graphAccountKey":"a","sources":['
+      '{"path":"/p","kind":"photo","category":"c","maxFiles":2}'
+      ']}]}',
+    );
+    expect(
+      c.accounts.single.sources.single.effectivePerPollLimit,
+      kOneDriveDefaultPerPollLimit,
+    );
+    expect(c.accounts.single.sources.single.maxFiles, 2);
   });
 
   test('invalid kind drops source', () {

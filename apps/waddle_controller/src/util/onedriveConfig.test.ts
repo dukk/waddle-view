@@ -7,6 +7,50 @@ import {
 } from '@/util/onedriveConfig';
 
 describe('onedriveConfig', () => {
+  it('parse and build round-trip perPollLimit when set', () => {
+    const state = parseOneDriveConfig(
+      {
+        accounts: [
+          {
+            graphAccountKey: 'home',
+            sources: [
+              {
+                path: '/Pictures',
+                categoryIds: ['family'],
+                maxFiles: 5,
+                perPollLimit: 12,
+              },
+            ],
+          },
+        ],
+      },
+      'photo',
+    );
+    expect(state.accounts[0]?.sources[0]?.perPollLimit).toBe(12);
+    expect(state.accounts[0]?.sources[0]?.maxFiles).toBe(5);
+    const built = buildOneDriveConfigJson(state, 'photo');
+    const sources = (built.accounts as Record<string, unknown>[])[0]
+      ?.sources as Record<string, unknown>[];
+    expect(sources[0]?.perPollLimit).toBe(12);
+    expect(sources[0]?.maxFiles).toBe(5);
+
+    const noPerPoll = parseOneDriveConfig(
+      {
+        accounts: [
+          {
+            graphAccountKey: 'home',
+            sources: [{ path: '/P', categoryIds: ['c'], maxFiles: 5 }],
+          },
+        ],
+      },
+      'photo',
+    );
+    const builtNoPerPoll = buildOneDriveConfigJson(noPerPoll, 'photo');
+    const src = (builtNoPerPoll.accounts as Record<string, unknown>[])[0]
+      ?.sources as Record<string, unknown>[];
+    expect(src[0]?.perPollLimit).toBeUndefined();
+  });
+
   it('parse and build round-trip with categoryIds', () => {
     const raw = {
       globalPerPollLimit: 30,

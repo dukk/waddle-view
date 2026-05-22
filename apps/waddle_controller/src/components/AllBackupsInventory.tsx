@@ -27,6 +27,7 @@ import { DataViewToolbar } from '@/components/dataView/DataViewToolbar';
 import { useClientDataView } from '@/hooks/useClientDataView';
 import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import { completeDialogSave } from '@/util/dialogSave';
+import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import type { SortOption } from '@/util/clientListPipeline';
 
 const SNAPSHOT_SORT: SortOption<BackupSnapshot>[] = [
@@ -65,6 +66,7 @@ export function AllBackupsInventory({
   displayFilterId?: string | null;
   onChanged?: () => void;
 }) {
+  const { confirm, ConfirmDialogHost } = useConfirmDialog();
   const [snapshots, setSnapshots] = useState<BackupSnapshot[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -183,7 +185,13 @@ export function AllBackupsInventory({
                       color="error"
                       disabled={busy}
                       onClick={async () => {
-                        if (!window.confirm(`Delete backup ${s.fileName}?`)) return;
+                        const ok = await confirm({
+                          title: 'Delete backup?',
+                          message: `Delete backup ${s.fileName}?`,
+                          confirmLabel: 'Delete',
+                          severity: 'error',
+                        });
+                        if (!ok) return;
                         setBusy(true);
                         try {
                           await deleteBackupSnapshot(s.id);
@@ -246,6 +254,7 @@ export function AllBackupsInventory({
           </Button>
         </DialogActions>
       </Dialog>
+      <ConfirmDialogHost />
     </Box>
   );
 }

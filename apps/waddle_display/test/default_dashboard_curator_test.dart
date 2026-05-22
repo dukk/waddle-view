@@ -34,7 +34,7 @@ class _MapRead implements CuratorReadPort {
 
   @override
   Future<Map<String, CurrentWeatherTickerData>>
-      loadWeatherByLocationIdForTicker() async {
+  loadWeatherByLocationIdForTicker() async {
     if (currentWeather == null) {
       return const {};
     }
@@ -46,8 +46,8 @@ class _MapRead implements CuratorReadPort {
       currentWeather;
 
   @override
-  Future<List<WeatherGovAlertTickerItem>> loadWeatherGovAlertsForTicker() async =>
-      weatherGovAlerts ?? const [];
+  Future<List<WeatherGovAlertTickerItem>>
+  loadWeatherGovAlertsForTicker() async => weatherGovAlerts ?? const [];
 
   @override
   Future<List<TickerTapeForCuration>> loadTickerTapesForCuration() async =>
@@ -140,84 +140,90 @@ void main() {
     await curator.refresh();
     expect(store.last, isNotNull);
     expect(store.last!.map((e) => e.kind).toList(), ['time']);
-    expect(store.last![0].body, 'time|24h_hms');
+    expect(store.last![0].body, 'time|12h_hms_ampm');
     expect(store.last![0].timeDisplay, isNotNull);
   });
 
-  test('refresh includes stock quotes when ticker_tapes includes stocks', () async {
-    final store = _RecordingTickerStore();
-    final curator = DefaultDashboardCurator(
-      read: _MapRead(
-        const {},
-        tickerDefs: const [
-          TickerTapeForCuration(
-            id: kDefaultStockFinnhubIntegrationId,
-            tickerType: 'stocks',
-            frequencyWeight: 1,
-            sortOrder: 0,
-          ),
-        ],
-        stockRows: [
-          (
-            symbolId: 'x',
-            symbol: 'XX',
-            displayName: '',
-            currentPrice: 10,
-            percentChange: 0.25,
-          ),
-        ],
-      ),
-      tickerStore: store,
-      clock: FakeClock(DateTime(2026, 1, 2, 15, 0, 0)),
-    );
-    await curator.refresh();
-    expect(store.last, isNotNull);
-    final stock = store.last!.singleWhere((e) => e.kind == 'stocks');
-    expect(stock.sourceId, 'x');
-    expect(stock.body.contains('XX'), isTrue);
-    expect(stock.body.contains(r'$10.00'), isTrue);
-  });
-
-  test('refresh prefers live current weather for ticker weather item', () async {
-    final store = _RecordingTickerStore();
-    final curator = DefaultDashboardCurator(
-      read: _MapRead(
-        const {},
-        tickerDefs: const [
-          TickerTapeForCuration(
-            id: 'ticker_time',
-            tickerType: 'time',
-            frequencyWeight: 1,
-            sortOrder: 0,
-          ),
-          TickerTapeForCuration(
-            id: 'ticker_weather',
-            tickerType: 'weather',
-            frequencyWeight: 1,
-            sortOrder: 10,
-          ),
-          TickerTapeForCuration(
-            id: 'ticker_news',
-            tickerType: 'news',
-            frequencyWeight: 1,
-            sortOrder: 20,
-          ),
-        ],
-        currentWeather: const CurrentWeatherTickerData(
-          locationId: 'denver',
-          locationName: 'Atlanta, GA',
-          temperatureC: 23,
-          description: 'cloudy',
+  test(
+    'refresh includes stock quotes when ticker_tapes includes stocks',
+    () async {
+      final store = _RecordingTickerStore();
+      final curator = DefaultDashboardCurator(
+        read: _MapRead(
+          const {},
+          tickerDefs: const [
+            TickerTapeForCuration(
+              id: kDefaultStockFinnhubIntegrationId,
+              tickerType: 'stocks',
+              frequencyWeight: 1,
+              sortOrder: 0,
+            ),
+          ],
+          stockRows: [
+            (
+              symbolId: 'x',
+              symbol: 'XX',
+              displayName: '',
+              currentPrice: 10,
+              percentChange: 0.25,
+            ),
+          ],
         ),
-      ),
-      tickerStore: store,
-      clock: FakeClock(DateTime(2026, 1, 2, 15, 0, 0)),
-    );
-    await curator.refresh();
-    expect(store.last, isNotNull);
-    expect(store.last![1].kind, 'weather');
-    expect(store.last![1].body, 'Atlanta, GA: 23°C · cloudy');
-  });
+        tickerStore: store,
+        clock: FakeClock(DateTime(2026, 1, 2, 15, 0, 0)),
+      );
+      await curator.refresh();
+      expect(store.last, isNotNull);
+      final stock = store.last!.singleWhere((e) => e.kind == 'stocks');
+      expect(stock.sourceId, 'x');
+      expect(stock.body.contains('XX'), isTrue);
+      expect(stock.body.contains(r'$10.00'), isTrue);
+    },
+  );
+
+  test(
+    'refresh prefers live current weather for ticker weather item',
+    () async {
+      final store = _RecordingTickerStore();
+      final curator = DefaultDashboardCurator(
+        read: _MapRead(
+          const {},
+          tickerDefs: const [
+            TickerTapeForCuration(
+              id: 'ticker_time',
+              tickerType: 'time',
+              frequencyWeight: 1,
+              sortOrder: 0,
+            ),
+            TickerTapeForCuration(
+              id: 'ticker_weather',
+              tickerType: 'weather',
+              frequencyWeight: 1,
+              sortOrder: 10,
+            ),
+            TickerTapeForCuration(
+              id: 'ticker_news',
+              tickerType: 'news',
+              frequencyWeight: 1,
+              sortOrder: 20,
+            ),
+          ],
+          currentWeather: const CurrentWeatherTickerData(
+            locationId: 'denver',
+            locationName: 'Atlanta, GA',
+            temperatureC: 23,
+            description: 'cloudy',
+          ),
+        ),
+        tickerStore: store,
+        clock: FakeClock(DateTime(2026, 1, 2, 15, 0, 0)),
+      );
+      await curator.refresh();
+      expect(store.last, isNotNull);
+      expect(store.last![1].kind, 'weather');
+      expect(store.last![1].body, 'Atlanta, GA: 23°C · cloudy');
+    },
+  );
 
   test('refresh includes NWS alert lines in weather ticker bundle', () async {
     final store = _RecordingTickerStore();

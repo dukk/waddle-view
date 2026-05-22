@@ -48,7 +48,7 @@ List<TickerItem> buildTickerItemsFromKv({
     );
   }
 
-  addIfNew(buildTimeTickerItem(nowLocal: nowLocal));
+  addIfNew(buildTimeTickerItem(nowLocal: nowLocal, kv: kv));
 
   return out;
 }
@@ -83,12 +83,18 @@ String composeTickerNewsBody({
   return '$feedName $title: $sum';
 }
 
-String formatTickerClock(DateTime now) =>
-    formatTickerTimePreset(now, kDefaultTickerTimeFormatPreset);
+String formatTickerClock(DateTime now, {Map<String, String> kv = const {}}) =>
+    formatTickerTimePreset(
+      now,
+      effectiveTickerTimeFormatPreset(
+        kv: kv,
+        tape: const TickerTapeTimeConfig(),
+      ),
+    );
 
 /// Formats [Clock.now] for tests that do not need full curation.
-String formatTickerTime(Clock clock) =>
-    formatTickerClock(clock.now().toLocal());
+String formatTickerTime(Clock clock, {Map<String, String> kv = const {}}) =>
+    formatTickerClock(clock.now().toLocal(), kv: kv);
 
 String _timeTickerStableBody({
   required String timeFormatPreset,
@@ -108,13 +114,15 @@ TickerItem buildTimeTickerItem({
   required DateTime nowLocal,
   TickerTapeForCuration? def,
   String? sourceId,
+  Map<String, String> kv = const {},
 }) {
   final cfg = def == null
-      ? const TickerTapeTimeConfig(timeFormatPreset: kDefaultTickerTimeFormatPreset)
+      ? const TickerTapeTimeConfig()
       : parseTickerTapeTimeConfig(def.configJson);
+  final preset = effectiveTickerTimeFormatPreset(kv: kv, tape: cfg);
   final prefix = cfg.labelPrefix?.trim() ?? '';
   final stable = _timeTickerStableBody(
-    timeFormatPreset: cfg.timeFormatPreset,
+    timeFormatPreset: preset,
     timeZone: cfg.timeZone,
     labelPrefix: prefix.isEmpty ? null : prefix,
   );
@@ -124,7 +132,7 @@ TickerItem buildTimeTickerItem({
     body: body,
     sourceId: sourceId ?? (def == null ? 'clock' : tapeSourceId(def)),
     timeDisplay: TickerTimeDisplay(
-      timeFormatPreset: cfg.timeFormatPreset,
+      timeFormatPreset: preset,
       timeZone: cfg.timeZone,
       labelPrefix: prefix.isEmpty ? null : prefix,
     ),
@@ -226,10 +234,7 @@ class CuratorTickerConfig {
         'curator.ticker.newsSeparatorPaddingPx',
         _defaultNewsSeparatorPaddingPx,
       ),
-      newsPrefixCategory: parseBool(
-        'curator.ticker.newsPrefixCategory',
-        true,
-      ),
+      newsPrefixCategory: parseBool('curator.ticker.newsPrefixCategory', true),
     );
   }
 }
@@ -261,12 +266,12 @@ List<TickerNewsCandidate> interleaveNewsByFeed(
         return;
       }
       final head = q.first;
-      if (best == null ||
-          head.publishedAtMs > best!.publishedAtMs) {
+      if (best == null || head.publishedAtMs > best!.publishedAtMs) {
         best = head;
         bestFeed = fid;
       }
     }
+
     for (final fid in feedIds) {
       consider(fid, allowSameAsLast: false);
     }
@@ -406,8 +411,11 @@ String stockMarqueeBody(StockTickerRowForMarquee row) {
   return '$label $priceText $pctText';
 }
 
-List<TickerItem> _tickerItemsTimeOnly(DateTime nowLocal) {
-  final item = buildTimeTickerItem(nowLocal: nowLocal);
+List<TickerItem> _tickerItemsTimeOnly(
+  DateTime nowLocal, {
+  Map<String, String> kv = const {},
+}) {
+  final item = buildTimeTickerItem(nowLocal: nowLocal, kv: kv);
   final redacted = redactTickerBody(item.body);
   if (redacted.isEmpty) {
     return const [];
@@ -434,7 +442,8 @@ void _addTickerIfNew(
   if (redacted.isEmpty) {
     return;
   }
-  final body = (rejectCtx == null || rejectCtx.isEmpty || redacted == '[redacted]')
+  final body =
+      (rejectCtx == null || rejectCtx.isEmpty || redacted == '[redacted]')
       ? redacted
       : rejectCtx.censor(redacted);
   if (seenBodies.contains(body)) {
@@ -488,15 +497,17 @@ List<TickerItem> _buildTickerItemsForMarqueeLegacy({
   _addTickerIfNew(
     out,
     seenBodies,
-    buildTimeTickerItem(nowLocal: nowLocal),
+    buildTimeTickerItem(nowLocal: nowLocal, kv: kv),
   );
 
   final currentWeather = weatherByLocationId.isEmpty
       ? null
       : weatherByLocationId.values.first;
   final liveWeatherBody =
-      currentWeather?.toTickerBody(temperatureUnit: displayTemperatureUnit).trim() ??
-          '';
+      currentWeather
+          ?.toTickerBody(temperatureUnit: displayTemperatureUnit)
+          .trim() ??
+      '';
   if (liveWeatherBody.isNotEmpty) {
     _addTickerIfNew(
       out,
@@ -512,8 +523,12 @@ List<TickerItem> _buildTickerItemsForMarqueeLegacy({
       rejectCtx: rejectCtx,
     );
   }
-  _appendWeatherGovAlertTickerItems(out, seenBodies, weatherGovAlerts,
-      rejectCtx: rejectCtx);
+  _appendWeatherGovAlertTickerItems(
+    out,
+    seenBodies,
+    weatherGovAlerts,
+    rejectCtx: rejectCtx,
+  );
 
   if (rssItems.isNotEmpty) {
     for (final it in rssItems) {
@@ -542,8 +557,8 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
   final cfg = CuratorTickerConfig.fromKv(kv);
 
   List<TickerItem> expandTime(TickerTapeForCuration def) => [
-        buildTimeTickerItem(nowLocal: nowLocal, def: def),
-      ];
+    buildTimeTickerItem(nowLocal: nowLocal, def: def, kv: kv),
+  ];
 
   List<TickerItem> expandWeather(TickerTapeForCuration def) {
     final tapeCfg = parseTickerTapeWeatherConfig(def.configJson);
@@ -567,9 +582,7 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
       );
     }
     for (final a in weatherGovAlerts) {
-      out.add(
-        TickerItem(kind: 'weather', body: a.body, sourceId: a.sourceId),
-      );
+      out.add(TickerItem(kind: 'weather', body: a.body, sourceId: a.sourceId));
     }
     return out;
   }
@@ -609,7 +622,9 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
           body: stockMarqueeBody(row),
           sourceId: row.symbolId,
           stockDisplay: TickerStockDisplay(
-            symbol: row.symbol.trim().isEmpty ? row.symbolId : row.symbol.trim(),
+            symbol: row.symbol.trim().isEmpty
+                ? row.symbolId
+                : row.symbol.trim(),
             displayName: row.displayName,
             currentPrice: row.currentPrice,
             percentChange: row.percentChange,
@@ -624,11 +639,7 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
       return const [];
     }
     return [
-      TickerItem(
-        kind: 'static_text',
-        body: raw,
-        sourceId: tapeSourceId(def),
-      ),
+      TickerItem(kind: 'static_text', body: raw, sourceId: tapeSourceId(def)),
     ];
   }
 
@@ -699,7 +710,7 @@ List<TickerItem> _buildTickerItemsForMarqueeFromDefinitions({
       'ticker build definitions: expanded to 0 items (empty defs, dedupe, or '
       'zero-weight); using time-only fallback',
     );
-    return _tickerItemsTimeOnly(nowLocal);
+    return _tickerItemsTimeOnly(nowLocal, kv: kv);
   }
   return out;
 }
@@ -774,7 +785,7 @@ List<TickerItem> buildTickerItemsForMarquee({
     AppDebugLog.curator(
       'ticker build: path=time_only (all ticker_tapes disabled)',
     );
-    return _tickerItemsTimeOnly(nowLocal);
+    return _tickerItemsTimeOnly(nowLocal, kv: kv);
   }
 
   final fromDefs = _buildTickerItemsForMarqueeFromDefinitions(

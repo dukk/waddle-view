@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
+import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import {
   Autocomplete,
   Box,
@@ -202,6 +203,7 @@ export function DisplayOperatorSettingsThemeFields({
   settings: DisplayOperatorSettingsState;
   onKvChanged: () => void;
 }) {
+  const { confirm, ConfirmDialogHost } = useConfirmDialog();
   const { themeOptions, displayThemeOptionById: themeById } = settings;
 
   return (
@@ -310,14 +312,16 @@ export function DisplayOperatorSettingsThemeFields({
                   color="error"
                   disabled={!canWrite}
                   onClick={() => {
-                    if (
-                      !window.confirm(
-                        `Delete custom theme "${t.label}"? The display will fall back to the default if it is active.`,
-                      )
-                    ) {
-                      return;
-                    }
-                    void settings.deleteCustomTheme(t).catch(() => {});
+                    void (async () => {
+                      const ok = await confirm({
+                        title: 'Delete custom theme?',
+                        message: `Delete custom theme "${t.label}"? The display will fall back to the default if it is active.`,
+                        confirmLabel: 'Delete',
+                        severity: 'error',
+                      });
+                      if (!ok) return;
+                      await settings.deleteCustomTheme(t).catch(() => {});
+                    })();
                   }}
                 >
                   Delete
@@ -334,6 +338,7 @@ export function DisplayOperatorSettingsThemeFields({
         onClose={() => settings.setThemeDialogOpen(false)}
         onSaved={onKvChanged}
       />
+      <ConfirmDialogHost />
       <FormControl fullWidth disabled={!canWrite}>
         <InputLabel id="screen-scale">Screen text scale</InputLabel>
         <Select
