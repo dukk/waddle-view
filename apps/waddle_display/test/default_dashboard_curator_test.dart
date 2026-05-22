@@ -221,7 +221,7 @@ void main() {
       await curator.refresh();
       expect(store.last, isNotNull);
       expect(store.last![1].kind, 'weather');
-      expect(store.last![1].body, 'Atlanta, GA: 23°C · cloudy');
+      expect(store.last![1].body, 'Atlanta, GA: 73°F · cloudy');
     },
   );
 
@@ -257,7 +257,7 @@ void main() {
     await curator.refresh();
     final weatherItems = store.last!.where((e) => e.kind == 'weather').toList();
     expect(weatherItems, hasLength(2));
-    expect(weatherItems[0].body, 'Atlanta, GA: 25°C · fair');
+    expect(weatherItems[0].body, 'Atlanta, GA: 77°F · fair');
     expect(weatherItems[1].sourceId, 'nws.alert.urn:x');
   });
 }

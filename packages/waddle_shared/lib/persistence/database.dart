@@ -972,9 +972,8 @@ Future<void> _ensureCuratorCategoriesTable(
     await _ensureIntegrationAccountsConfiguredView(db);
     return;
   }
-  if (migrator != null) {
-    await migrator.createTable(db.contentCategories);
-  }
+  final m = migrator ?? Migrator(db);
+  await m.createTable(db.contentCategories);
 }
 
 /// Ensures [RejectTerms] is stored as `curator_rejected_terms`.
@@ -991,9 +990,8 @@ Future<void> _ensureCuratorRejectedTermsTable(
     );
     return;
   }
-  if (migrator != null) {
-    await migrator.createTable(db.rejectTerms);
-  }
+  final m = migrator ?? Migrator(db);
+  await m.createTable(db.rejectTerms);
 }
 
 /// Renames legacy interest catalog tables to `interests_*` (schema 1 → 2).
@@ -2841,6 +2839,9 @@ Future<void> _migrateV46ToV47CuratorScreensEnabled(AppDatabase db) async {
 }
 
 Future<void> _migrateV47ToV48ScreenConfigJson(AppDatabase db) async {
+  // v48 screen config rewrite reads categories; table may not exist yet on
+  // legacy snapshots (beforeOpen also ensures it, but migrations run first).
+  await _ensureCuratorCategoriesTable(db);
   await migrateScreenConfigJsonV48(db);
 }
 

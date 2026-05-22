@@ -164,7 +164,7 @@ void main() {
       ],
     );
     final weather = items.firstWhere((e) => e.kind == 'weather');
-    expect(weather.body, 'Denver, CO: 20°C · sunny');
+    expect(weather.body, 'Denver, CO: 67°F · sunny');
     expect(weather.sourceId, 'ticker_tape:w');
   });
 
@@ -200,7 +200,7 @@ void main() {
       );
       final weatherItems = items.where((e) => e.kind == 'weather').toList();
       expect(weatherItems, hasLength(2));
-      expect(weatherItems[0].body, 'Denver, CO: 20°C · sunny');
+      expect(weatherItems[0].body, 'Denver, CO: 68°F · sunny');
       expect(weatherItems[1].body, contains('Heat Advisory'));
       expect(weatherItems[1].sourceId, 'nws.alert.urn:test');
     },

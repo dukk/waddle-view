@@ -83,6 +83,7 @@ import {
 } from '@/util/interestSlug';
 import { categorySeasonPayload, formatCategorySeason } from '@/util/categorySeason';
 import { completeDialogSave } from '@/util/dialogSave';
+import { geolocationErrorMessage } from '@/util/geolocationErrorMessage';
 import {
   interestCategoryLabel,
   weatherLocationCategoryFromName,
@@ -546,7 +547,7 @@ export function InterestsPage() {
       });
       await loadLocations();
     } catch (e) {
-      setError(errMsg(e));
+      setError(e instanceof ApiError ? errMsg(e) : geolocationErrorMessage(e));
     } finally {
       setAddingCurrentLocation(false);
     }

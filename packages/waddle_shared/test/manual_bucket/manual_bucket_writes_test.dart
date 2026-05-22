@@ -74,6 +74,7 @@ void main() {
     )..where((t) => t.blobKey.equals(result.mediaBlobKey!))).getSingle();
     expect(meta.mimeType, 'image/png');
     expect(meta.bytes, bytes.length);
+    await db.close();
   });
 
   test('writeManualBucketPhoto rejects unknown category', () async {
@@ -95,6 +96,7 @@ void main() {
         ),
       ),
     );
+    await db.close();
   });
 
   test('writeManualBucketJoke stores joke row', () async {
@@ -114,6 +116,7 @@ void main() {
     )..where((t) => t.id.equals(result.id))).getSingle();
     expect(row.categoryId, 'dad');
     expect(row.setup, contains('chicken'));
+    await db.close();
   });
 
   test(
@@ -139,6 +142,7 @@ void main() {
       )..where((t) => t.id.equals(result.id))).getSingle();
       expect(row.integrationId, isNull);
       expect(row.correctOption, 'B');
+      await db.close();
     },
   );
 
@@ -171,6 +175,7 @@ void main() {
     )..where((t) => t.eventId.equals(result.id))).get();
     expect(junction, hasLength(1));
     expect(junction.single.categoryId, 'family');
+    await db.close();
   });
 
   test('writeManualBucketQuote stores quote and categories', () async {
@@ -186,17 +191,18 @@ void main() {
     );
 
     expect(result.id, startsWith('bucket_quote_'));
-    final row = await (db.select(db.quoterismQuotes)
-          ..where((t) => t.id.equals(result.id)))
-        .getSingle();
+    final row = await (db.select(
+      db.quoterismQuotes,
+    )..where((t) => t.id.equals(result.id))).getSingle();
     expect(row.quoteText, 'To be or not to be.');
     expect(row.authorName, 'Shakespeare');
     expect(row.integrationId, isNull);
 
-    final junction = await (db.select(db.quoterismQuoteCategories)
-          ..where((t) => t.quoteId.equals(result.id)))
-        .get();
+    final junction = await (db.select(
+      db.quoterismQuoteCategories,
+    )..where((t) => t.quoteId.equals(result.id))).get();
     expect(junction, hasLength(1));
     expect(junction.single.categoryId, 'wisdom');
+    await db.close();
   });
 }

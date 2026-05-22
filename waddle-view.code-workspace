@@ -31,6 +31,18 @@
 				"group": "Waddle View"
 			}
 		],
-		"sqltools.useNodeRuntime": true
+		"sqltools.useNodeRuntime": true,
+		"cSpell.words": [
+			"waddleview",
+			"sqltools",
+			"LOCALAPPDATA",
+			"APPDATA",
+			"headshot",
+			"Playout",
+			"PREVIEWABLE",
+			"repoints",
+			"rjsf",
+			"geolocation"
+		]
 	}
 }
