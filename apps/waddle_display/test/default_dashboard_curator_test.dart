@@ -33,6 +33,15 @@ class _MapRead implements CuratorReadPort {
       const [];
 
   @override
+  Future<Map<String, CurrentWeatherTickerData>>
+      loadWeatherByLocationIdForTicker() async {
+    if (currentWeather == null) {
+      return const {};
+    }
+    return {currentWeather!.locationId: currentWeather!};
+  }
+
+  @override
   Future<CurrentWeatherTickerData?> loadCurrentWeatherForTicker() async =>
       currentWeather;
 
@@ -131,7 +140,8 @@ void main() {
     await curator.refresh();
     expect(store.last, isNotNull);
     expect(store.last!.map((e) => e.kind).toList(), ['time']);
-    expect(store.last![0].body, '15:00:00');
+    expect(store.last![0].body, 'time|24h_hms');
+    expect(store.last![0].timeDisplay, isNotNull);
   });
 
   test('refresh includes stock quotes when ticker_tapes includes stocks', () async {
@@ -194,6 +204,7 @@ void main() {
           ),
         ],
         currentWeather: const CurrentWeatherTickerData(
+          locationId: 'denver',
           locationName: 'Atlanta, GA',
           temperatureC: 23,
           description: 'cloudy',
@@ -205,7 +216,7 @@ void main() {
     await curator.refresh();
     expect(store.last, isNotNull);
     expect(store.last![1].kind, 'weather');
-    expect(store.last![1].body, 'Atlanta, GA: 23° · cloudy');
+    expect(store.last![1].body, 'Atlanta, GA: 23°C · cloudy');
   });
 
   test('refresh includes NWS alert lines in weather ticker bundle', () async {
@@ -214,6 +225,7 @@ void main() {
       read: _MapRead(
         const {},
         currentWeather: const CurrentWeatherTickerData(
+          locationId: 'denver',
           locationName: 'Atlanta, GA',
           temperatureC: 25,
           description: 'fair',
@@ -239,7 +251,7 @@ void main() {
     await curator.refresh();
     final weatherItems = store.last!.where((e) => e.kind == 'weather').toList();
     expect(weatherItems, hasLength(2));
-    expect(weatherItems[0].body, 'Atlanta, GA: 25° · fair');
+    expect(weatherItems[0].body, 'Atlanta, GA: 25°C · fair');
     expect(weatherItems[1].sourceId, 'nws.alert.urn:x');
   });
 }

@@ -1,0 +1,8 @@
+{
+  "name": "waddle-view",
+  "private": true,
+  "description": "Monorepo root — npm scripts delegate to apps; Flutter workspace uses pubspec.yaml.",
+  "scripts": {
+    "dev": "npm run dev --prefix apps/waddle_controller"
+  }
+}

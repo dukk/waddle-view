@@ -59,3 +59,42 @@ String formatDigitalClockTime(
 /// 24-hour time with seconds (legacy helper for tests and fixed-format use).
 String formatClockTime24(DateTime local) =>
     formatDigitalClockTime(local, hour24: true, showSeconds: true);
+
+/// Ticker marquee time presets (see [kTickerTimeFormatPresets] in waddle_shared).
+String formatTickerTimePreset(DateTime local, String preset) {
+  switch (preset) {
+    case '24h_hm':
+      return formatDigitalClockTime(local, hour24: true, showSeconds: false);
+    case '12h_hms_ampm':
+      return formatDigitalClockTime(local, hour24: false, showSeconds: true);
+    case '12h_hm_ampm':
+      return formatDigitalClockTime(local, hour24: false, showSeconds: false);
+    case '12h_hm_tt':
+      return _formatTickerCompact12h(local, showSeconds: false);
+    case '24h_hms':
+    default:
+      return formatDigitalClockTime(local, hour24: true, showSeconds: true);
+  }
+}
+
+bool tickerTimePresetShowsSeconds(String preset) {
+  switch (preset) {
+    case '24h_hm':
+    case '12h_hm_ampm':
+    case '12h_hm_tt':
+      return false;
+    default:
+      return true;
+  }
+}
+
+String _formatTickerCompact12h(DateTime local, {required bool showSeconds}) {
+  final h12 = local.hour % 12 == 0 ? 12 : local.hour % 12;
+  final min = local.minute.toString().padLeft(2, '0');
+  final period = local.hour < 12 ? 'am' : 'pm';
+  if (showSeconds) {
+    final s = local.second.toString().padLeft(2, '0');
+    return '$h12:$min:$s$period';
+  }
+  return '$h12:$min$period';
+}

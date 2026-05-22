@@ -2175,13 +2175,42 @@ final Map<String, ScreenConfigJsonDoc> kTickerSlotConfigJsonMeta = {
       _baseSchema(
         title: 'TickerTimeSlotDoc',
         description:
-            'Local wall clock (HH:MM:SS). No config_key_values keys; slot is '
-            'controlled only by ticker_tapes enabled / frequency_weight / '
-            'sort_order.',
-        properties: {},
+            'Live wall clock in the marquee (seconds tick while scrolling). '
+            'Optional IANA timeZone overrides device local for this tape only. '
+            'labelPrefix appears before the time (e.g. city name).',
+        properties: {
+          'timeFormatPreset': {
+            'type': 'string',
+            'enum': [
+              '24h_hms',
+              '24h_hm',
+              '12h_hms_ampm',
+              '12h_hm_ampm',
+              '12h_hm_tt',
+            ],
+            'description':
+                '24h_hms=14:05:09, 24h_hm=14:05, 12h_hms_ampm=2:05:09 PM, '
+                '12h_hm_ampm=2:05 PM, 12h_hm_tt=2:05pm (compact am/pm).',
+          },
+          'timeZone': {
+            'type': 'string',
+            'minLength': 1,
+            'description':
+                'Optional IANA zone (e.g. America/Chicago). Empty uses device local.',
+          },
+          'labelPrefix': {
+            'type': 'string',
+            'description':
+                'Optional label before the clock (e.g. NYC or London).',
+          },
+        },
       ),
     ),
-    example: jsonEncode({}),
+    example: jsonEncode({
+      'timeFormatPreset': '12h_hm_tt',
+      'timeZone': 'America/New_York',
+      'labelPrefix': 'NYC',
+    }),
   ),
   'weather': ScreenConfigJsonDoc(
     schema: jsonEncode(
@@ -2189,12 +2218,30 @@ final Map<String, ScreenConfigJsonDoc> kTickerSlotConfigJsonMeta = {
         title: 'TickerWeatherSlotDoc',
         description:
             'Live weather line plus optional NWS active-alert lines when '
-            'interests_locations.include_weather_alerts is enabled. No marquee '
-            'line when live data is empty.',
-        properties: {},
+            'interests_locations.include_weather_alerts is enabled. Uses '
+            'display.weather.temperature_unit (Display settings) unless '
+            'temperatureUnit is set on this tape. No marquee line when live '
+            'data is empty.',
+        properties: {
+          'locationId': {
+            'type': 'string',
+            'minLength': 1,
+            'description':
+                'interests_locations id with include_weather; omit for first '
+                'location with current data.',
+          },
+          'temperatureUnit': {
+            'type': 'string',
+            'enum': ['c', 'f'],
+            'description': 'Override display weather temperature unit for this tape.',
+          },
+        },
       ),
     ),
-    example: jsonEncode({}),
+    example: jsonEncode({
+      'locationId': 'new_york_ny',
+      'temperatureUnit': 'f',
+    }),
   ),
   'quote': ScreenConfigJsonDoc(
     schema: jsonEncode(
@@ -2216,28 +2263,45 @@ final Map<String, ScreenConfigJsonDoc> kTickerSlotConfigJsonMeta = {
         title: 'TickerNewsSlotDoc',
         description:
             'RSS headlines from stored articles when available; no line when '
-            'the RSS slice is empty. Curator KV keys in config_key_values '
-            '(curator.ticker.*) tune scroll width and cadence (string values, '
-            'parsed as numbers/bools). Operator UI may also set '
-            'display_text_scale_ticker for ticker font scale. Controller '
-            'date/time display uses controller.time_format (12h|24h) and '
-            'controller.date_order (mdy|dmy|ymd) via GET/PUT /v1/display/settings.',
-        properties: {},
+            'the RSS slice is empty. Optional categoryId limits to feeds in that '
+            'content category. prefixFeedName controls [feed] prefix in headlines. '
+            'Curator KV keys (curator.ticker.*) still tune scroll width and cadence.',
+        properties: {
+          'categoryId': _kJsonSchemaOptionalContentCategoryId,
+          'prefixFeedName': {
+            'type': 'boolean',
+            'description':
+                'When true, prefix headlines with feed name; when false, omit. '
+                'Omit to use curator.ticker.newsPrefixCategory default.',
+          },
+        },
       ),
     ),
-    example: jsonEncode({}),
+    example: jsonEncode({
+      'categoryId': 'news',
+      'prefixFeedName': true,
+    }),
   ),
   'stocks': ScreenConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
         title: 'TickerStocksSlotDoc',
         description:
-            'One line per enabled interests_stock_symbols row with latest stock_quotes; '
-            'no ticker.marquee.* keys.',
-        properties: {},
+            'One line per enabled interests_stock_symbols row with latest '
+            'stock_quotes. symbolIds limits to specific symbols; omit or [] for all enabled.',
+        properties: {
+          'symbolIds': {
+            'type': 'array',
+            'items': {'type': 'string', 'minLength': 1},
+            'description':
+                'interests_stock_symbols ids to include; empty = all enabled.',
+          },
+        },
       ),
     ),
-    example: jsonEncode({}),
+    example: jsonEncode({
+      'symbolIds': ['aapl', 'msft'],
+    }),
   ),
   'static_text': ScreenConfigJsonDoc(
     schema: jsonEncode(

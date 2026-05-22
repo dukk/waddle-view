@@ -17,7 +17,10 @@ void main() {
 
   test('CurrentWeatherTickerData toTickerBody is location when no temp or description', () {
     expect(
-      const CurrentWeatherTickerData(locationName: 'Paris').toTickerBody(),
+      const CurrentWeatherTickerData(
+        locationId: 'paris',
+        locationName: 'Paris',
+      ).toTickerBody(temperatureUnit: 'c'),
       'Paris',
     );
   });
@@ -81,7 +84,8 @@ void main() {
       nowLocal: t,
     );
     expect(items.map((e) => e.kind).toList(), ['time']);
-    expect(items.single.body, '09:08:07');
+    expect(items.single.body, 'time|24h_hms');
+    expect(items.single.timeDisplay?.timeFormatPreset, '24h_hms');
   });
 
   test('composeTickerNewsBody covers prefix and summary branches', () {
@@ -135,11 +139,14 @@ void main() {
       kv: const {},
       nowLocal: DateTime(2026, 5, 1, 10, 0, 0),
       newsCandidates: const [],
-      currentWeather: const CurrentWeatherTickerData(
-        locationName: 'Denver, CO',
-        temperatureC: 19.6,
-        description: 'sunny',
-      ),
+      weatherByLocationId: {
+        'denver': const CurrentWeatherTickerData(
+          locationId: 'denver',
+          locationName: 'Denver, CO',
+          temperatureC: 19.6,
+          description: 'sunny',
+        ),
+      },
       definitions: const [
         TickerTapeForCuration(
           id: 'w',
@@ -151,7 +158,7 @@ void main() {
       ],
     );
     final weather = items.firstWhere((e) => e.kind == 'weather');
-    expect(weather.body, 'Denver, CO: 20° · sunny');
+    expect(weather.body, 'Denver, CO: 20°C · sunny');
     expect(weather.sourceId, 'ticker_tape:w');
   });
 
@@ -160,11 +167,14 @@ void main() {
       kv: const {},
       nowLocal: DateTime(2026, 5, 1, 10, 0, 0),
       newsCandidates: const [],
-      currentWeather: const CurrentWeatherTickerData(
-        locationName: 'Denver, CO',
-        temperatureC: 20,
-        description: 'sunny',
-      ),
+      weatherByLocationId: {
+        'denver': const CurrentWeatherTickerData(
+          locationId: 'denver',
+          locationName: 'Denver, CO',
+          temperatureC: 20,
+          description: 'sunny',
+        ),
+      },
       weatherGovAlerts: const [
         WeatherGovAlertTickerItem(
           body: 'Denver, CO — Heat Advisory — Hot',
@@ -182,7 +192,7 @@ void main() {
     );
     final weatherItems = items.where((e) => e.kind == 'weather').toList();
     expect(weatherItems, hasLength(2));
-    expect(weatherItems[0].body, 'Denver, CO: 20° · sunny');
+    expect(weatherItems[0].body, 'Denver, CO: 20°C · sunny');
     expect(weatherItems[1].body, contains('Heat Advisory'));
     expect(weatherItems[1].sourceId, 'nws.alert.urn:test');
   });

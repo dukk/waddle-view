@@ -1,13 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
   Alert,
-  Autocomplete,
   Box,
   Button,
   Dialog,
@@ -47,40 +42,22 @@ import { useAuth } from '@/context/AuthContext';
 import { useControllerAuth } from '@/context/ControllerAuthContext';
 import { useDisplay } from '@/context/DisplayContext';
 import { apiFetch, apiJson, ApiError } from '@/api/client';
-import { CuratorSliderField } from '@/components/CuratorSliderField';
-import { DisplayThemePaletteSwatches } from '@/components/DisplayThemePaletteSwatches';
+import { DisplayOperatorSettingsTabContent } from '@/components/displaySettings/DisplayOperatorSettingsTabContent';
+import { DisplayOperatorSettingsProvider } from '@/context/DisplayOperatorSettingsContext';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
-import {
-  displayTimezoneSelectOptions,
-  filterDisplayTimezoneOptions,
-  type DisplayTimezoneOption,
-} from '@/constants/displayTimezoneOptions';
 import { putDisplaySettings, fetchDisplaySettings } from '@/api/displaySettings';
-import {
-  ADOPTION_ROLES,
-  CONTROLLER_DATE_ORDER_OPTIONS,
-  CONTROLLER_TIME_FORMAT_OPTIONS,
-  parseAdoptionAllowedRoles,
-  type DisplaySettings,
-} from '@/constants/displaySettings';
-import {
-  CURATOR_HISTORY_DEPTH,
-  CURATOR_TICKER_PIXELS_PER_SECOND,
-  CURATOR_TICKER_PROGRAM_DURATION,
-  VIEWPORT_RESERVE_PCT,
-  curatorThemeById,
-  curatorThemeIds,
-  curatorTextScaleIds,
-} from '@/constants/curatorDisplaySettings';
-import { TickerPixelsPerSecondField } from '@/components/TickerPixelsPerSecondField';
+import { ADOPTION_ROLES, parseAdoptionAllowedRoles } from '@/constants/displaySettings';
 import { useDisplayFormat } from '@/context/DisplayFormatContext';
 import { IntegrationAccountsSection } from '@/components/IntegrationAccountsSection';
 import { IntegrationOAuthSettingsSection } from '@/components/IntegrationOAuthSettingsSection';
 import {
   DISPLAY_SETTINGS_TAB_ACCOUNTS,
   DISPLAY_SETTINGS_TAB_ADOPTION,
+  DISPLAY_SETTINGS_TAB_ADVANCED,
   DISPLAY_SETTINGS_TAB_GENERAL,
+  DISPLAY_SETTINGS_TAB_PROGRAMS,
+  DISPLAY_SETTINGS_TAB_THEME,
   type DisplaySettingsTabId,
 } from '@/constants/displaySettingsTabs';
 
@@ -99,16 +76,26 @@ export function DisplaySettingsPage() {
   const showApiClientManagement = Boolean(active && hasPermission('users.manage'));
   const displayLabel = active?.label ?? 'Display';
 
+  const onKvChanged = useCallback(() => setKvWriteTick((t) => t + 1), []);
+
   const visibleTabs = useMemo(() => {
-    const tabs: { id: DisplaySettingsTabId; label: string }[] = [
-      { id: DISPLAY_SETTINGS_TAB_GENERAL, label: 'General' },
-    ];
+    const tabs: { id: DisplaySettingsTabId; label: string }[] = [];
+    if (showDisplaySettings) {
+      tabs.push(
+        { id: DISPLAY_SETTINGS_TAB_GENERAL, label: 'General' },
+        { id: DISPLAY_SETTINGS_TAB_THEME, label: 'Theme' },
+        { id: DISPLAY_SETTINGS_TAB_PROGRAMS, label: 'Programs' },
+        { id: DISPLAY_SETTINGS_TAB_ADVANCED, label: 'Advanced' },
+      );
+    } else {
+      tabs.push({ id: DISPLAY_SETTINGS_TAB_GENERAL, label: 'General' });
+    }
     if (showIntegrationSettings) {
       tabs.push({ id: DISPLAY_SETTINGS_TAB_ACCOUNTS, label: 'Accounts' });
     }
     tabs.push({ id: DISPLAY_SETTINGS_TAB_ADOPTION, label: 'Adoption' });
     return tabs;
-  }, [showIntegrationSettings]);
+  }, [showDisplaySettings, showIntegrationSettings]);
 
   const tabParam = searchParams.get('tab');
   const tab: DisplaySettingsTabId = visibleTabs.some((t) => t.id === tabParam)
@@ -136,9 +123,9 @@ export function DisplaySettingsPage() {
           Curator & display setup — {displayLabel}
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Theme, program duration, ticker speed, adoption roles, and REST API keys for{' '}
-          <strong>{displayLabel}</strong>. Layered curator programs and categories live under{' '}
-          <strong>Curators</strong> in the sidebar.
+          General, theme, programs, and advanced display tuning, plus adoption roles and REST API
+          keys for <strong>{displayLabel}</strong>. Layered curator programs and categories live
+          under <strong>Curators</strong> in the sidebar.
         </Typography>
       </Box>
       <Paper sx={{ px: 2, pt: 1 }}>
@@ -156,42 +143,142 @@ export function DisplaySettingsPage() {
       </Paper>
 
       <Paper sx={{ p: 2 }}>
+        {showDisplaySettings && active ? (
+          <DisplayOperatorSettingsProvider
+            display={active}
+            kvWriteTick={kvWriteTick}
+            onKvChanged={onKvChanged}
+          >
+            <DisplaySettingsTabPanels
+              tab={tab}
+              active={active}
+              canCuratorRead={canCuratorRead}
+              showDisplaySettings={showDisplaySettings}
+              canCuratorWrite={canCuratorWrite}
+              onKvChanged={onKvChanged}
+              showIntegrationSettings={showIntegrationSettings}
+              canIntegrationsRead={canIntegrationsRead}
+              canIntegrationsWrite={canIntegrationsWrite}
+              showAdoptionSettings={showAdoptionSettings}
+              showApiClientManagement={showApiClientManagement}
+              sessionIdentifier={session?.identifier}
+            />
+          </DisplayOperatorSettingsProvider>
+        ) : (
+          <DisplaySettingsTabPanels
+            tab={tab}
+            active={active}
+            canCuratorRead={canCuratorRead}
+            showDisplaySettings={showDisplaySettings}
+            canCuratorWrite={canCuratorWrite}
+            onKvChanged={onKvChanged}
+            showIntegrationSettings={showIntegrationSettings}
+            canIntegrationsRead={canIntegrationsRead}
+            canIntegrationsWrite={canIntegrationsWrite}
+            showAdoptionSettings={showAdoptionSettings}
+            showApiClientManagement={showApiClientManagement}
+            sessionIdentifier={session?.identifier}
+          />
+        )}
+      </Paper>
+    </Stack>
+  );
+}
+
+function DisplaySettingsTabPanels({
+  tab,
+  active,
+  canCuratorRead,
+  showDisplaySettings,
+  canCuratorWrite,
+  onKvChanged,
+  showIntegrationSettings,
+  canIntegrationsRead,
+  canIntegrationsWrite,
+  showAdoptionSettings,
+  showApiClientManagement,
+  sessionIdentifier,
+}: {
+  tab: DisplaySettingsTabId;
+  active: SavedDisplay | null;
+  canCuratorRead: boolean;
+  showDisplaySettings: boolean;
+  canCuratorWrite: boolean;
+  onKvChanged: () => void;
+  showIntegrationSettings: boolean;
+  canIntegrationsRead: boolean;
+  canIntegrationsWrite: boolean;
+  showAdoptionSettings: boolean;
+  showApiClientManagement: boolean;
+  sessionIdentifier?: string;
+}) {
+  return (
+    <>
         {tab === DISPLAY_SETTINGS_TAB_GENERAL && (
-          <Stack spacing={3}>
-            {!active && (
-              <Alert severity="info">Select a display in the toolbar to edit display settings.</Alert>
+          <CuratorSettingsTabShell
+            active={active}
+            canCuratorRead={canCuratorRead}
+            showContent={showDisplaySettings}
+          >
+            {active && (
+              <DisplayOperatorSettingsTabContent
+                display={active}
+                canWrite={canCuratorWrite}
+                variant="general"
+                onKvChanged={onKvChanged}
+              />
             )}
-            {active && !canCuratorRead && (
-              <Alert severity="warning">
-                Your adopted role does not include <strong>curator.read</strong>, so display tuning
-                is not available.
-              </Alert>
+          </CuratorSettingsTabShell>
+        )}
+
+        {tab === DISPLAY_SETTINGS_TAB_THEME && (
+          <CuratorSettingsTabShell
+            active={active}
+            canCuratorRead={canCuratorRead}
+            showContent={showDisplaySettings}
+          >
+            {active && (
+              <DisplayOperatorSettingsTabContent
+                display={active}
+                canWrite={canCuratorWrite}
+                variant="theme"
+                onKvChanged={onKvChanged}
+              />
             )}
-            {showDisplaySettings && active && (
-              <>
-                <DisplayOperatorSettingsSection
-                  display={active}
-                  canWrite={canCuratorWrite}
-                  kvWriteTick={kvWriteTick}
-                />
-                <Accordion disableGutters elevation={0} sx={{ '&:before': { display: 'none' } }}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="subtitle2" fontWeight={600}>
-                      Advanced: config key–values
-                    </Typography>
-                  </AccordionSummary>
-                  <AccordionDetails sx={{ pt: 0 }}>
-                    <AdvancedConfigKeyValuesSection
-                      display={active}
-                      canWrite={canCuratorWrite}
-                      embedded
-                      onApplied={() => setKvWriteTick((t) => t + 1)}
-                    />
-                  </AccordionDetails>
-                </Accordion>
-              </>
+          </CuratorSettingsTabShell>
+        )}
+
+        {tab === DISPLAY_SETTINGS_TAB_PROGRAMS && (
+          <CuratorSettingsTabShell
+            active={active}
+            canCuratorRead={canCuratorRead}
+            showContent={showDisplaySettings}
+          >
+            {active && (
+              <DisplayOperatorSettingsTabContent
+                display={active}
+                canWrite={canCuratorWrite}
+                variant="programs"
+                onKvChanged={onKvChanged}
+              />
             )}
-          </Stack>
+          </CuratorSettingsTabShell>
+        )}
+
+        {tab === DISPLAY_SETTINGS_TAB_ADVANCED && (
+          <CuratorSettingsTabShell
+            active={active}
+            canCuratorRead={canCuratorRead}
+            showContent={showDisplaySettings}
+          >
+            {active && (
+              <AdvancedConfigKeyValuesSection
+                display={active}
+                canWrite={canCuratorWrite}
+                onApplied={onKvChanged}
+              />
+            )}
+          </CuratorSettingsTabShell>
         )}
 
         {tab === DISPLAY_SETTINGS_TAB_ACCOUNTS && (
@@ -228,7 +315,7 @@ export function DisplaySettingsPage() {
               <DisplayAdoptionSettingsSection display={active} />
             )}
             {showApiClientManagement && active && (
-              <ApiClientsManagementSection display={active} sessionIdentifier={session?.identifier} />
+              <ApiClientsManagementSection display={active} sessionIdentifier={sessionIdentifier} />
             )}
             {active && !showAdoptionSettings && !showApiClientManagement && (
               <Alert severity="warning">
@@ -237,8 +324,7 @@ export function DisplaySettingsPage() {
             )}
           </Stack>
         )}
-      </Paper>
-    </Stack>
+    </>
   );
 }
 
@@ -475,6 +561,33 @@ function ApiClientsManagementSection({
   );
 }
 
+function CuratorSettingsTabShell({
+  active,
+  canCuratorRead,
+  showContent,
+  children,
+}: {
+  active: SavedDisplay | null;
+  canCuratorRead: boolean;
+  showContent: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <Stack spacing={3}>
+      {!active && (
+        <Alert severity="info">Select a display in the toolbar to edit display settings.</Alert>
+      )}
+      {active && !canCuratorRead && (
+        <Alert severity="warning">
+          Your adopted role does not include <strong>curator.read</strong>, so display tuning is not
+          available.
+        </Alert>
+      )}
+      {showContent && active && children}
+    </Stack>
+  );
+}
+
 function DisplayAdoptionSettingsSection({ display }: { display: SavedDisplay }) {
   const { loading, wrapRefresh } = useDisplayRefresh();
   const [initialized, setInitialized] = useState(false);
@@ -582,365 +695,6 @@ function DisplayAdoptionSettingsSection({ display }: { display: SavedDisplay }) 
           Save adoption settings
         </Button>
       </Box>
-    </Box>
-  );
-}
-
-function DisplayOperatorSettingsSection({
-  display,
-  canWrite,
-  kvWriteTick,
-}: {
-  display: SavedDisplay;
-  canWrite: boolean;
-  kvWriteTick: number;
-}) {
-  const { refresh: refreshFormat } = useDisplayFormat();
-  const { loading, wrapRefresh } = useDisplayRefresh();
-  const [initialized, setInitialized] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
-  const [form, setForm] = useState<DisplaySettings | null>(null);
-
-  const timezoneOptions = useMemo(
-    () => (form ? displayTimezoneSelectOptions(form.display_timezone) : []),
-    [form],
-  );
-
-  const selectedTimezone = useMemo((): DisplayTimezoneOption | null => {
-    if (!form) return null;
-    return (
-      timezoneOptions.find((o) => o.id === form.display_timezone) ?? {
-        id: form.display_timezone,
-        label: `${form.display_timezone} (custom)`,
-      }
-    );
-  }, [form, timezoneOptions]);
-
-  const load = useCallback(async () => {
-    await wrapRefresh(async () => {
-      setError(null);
-      try {
-        const data = await fetchDisplaySettings(display);
-        const tz =
-          typeof data.display_timezone === 'string' && data.display_timezone.trim() !== ''
-            ? data.display_timezone.trim()
-            : 'America/New_York';
-        const historyDepth =
-          typeof data.display_program_history_depth === 'number' &&
-          Number.isFinite(data.display_program_history_depth)
-            ? data.display_program_history_depth
-            : CURATOR_HISTORY_DEPTH.default;
-        const reservePct = (raw: unknown) =>
-          typeof raw === 'number' && Number.isFinite(raw) ? raw : VIEWPORT_RESERVE_PCT.default;
-        const tickerDuration =
-          typeof data.display_ticker_program_duration_seconds === 'number' &&
-          Number.isFinite(data.display_ticker_program_duration_seconds)
-            ? data.display_ticker_program_duration_seconds
-            : CURATOR_TICKER_PROGRAM_DURATION.default;
-        const tickerPx =
-          typeof data.display_ticker_pixels_per_second === 'number' &&
-          Number.isFinite(data.display_ticker_pixels_per_second)
-            ? data.display_ticker_pixels_per_second
-            : CURATOR_TICKER_PIXELS_PER_SECOND.default;
-        setForm({
-          ...data,
-          display_timezone: tz,
-          display_program_history_depth: historyDepth,
-          display_viewport_reserve_top_pct: reservePct(data.display_viewport_reserve_top_pct),
-          display_viewport_reserve_right_pct: reservePct(data.display_viewport_reserve_right_pct),
-          display_viewport_reserve_bottom_pct: reservePct(data.display_viewport_reserve_bottom_pct),
-          display_viewport_reserve_left_pct: reservePct(data.display_viewport_reserve_left_pct),
-          display_ticker_program_duration_seconds: tickerDuration,
-          display_ticker_pixels_per_second: tickerPx,
-        });
-        setInitialized(true);
-      } catch (e) {
-        setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
-      }
-    });
-  }, [display, wrapRefresh]);
-
-  useEffect(() => {
-    void load();
-  }, [load, kvWriteTick]);
-
-  const save = async () => {
-    if (!form) return;
-    setError(null);
-    setSaved(false);
-    try {
-      await putDisplaySettings(display, {
-        display_theme_id: form.display_theme_id,
-        display_program_history_depth: form.display_program_history_depth,
-        display_text_scale_screen: form.display_text_scale_screen,
-        display_text_scale_ticker: form.display_text_scale_ticker,
-        display_timezone: form.display_timezone,
-        controller_time_format: form.controller_time_format,
-        controller_date_order: form.controller_date_order,
-        display_viewport_reserve_top_pct: form.display_viewport_reserve_top_pct,
-        display_viewport_reserve_right_pct: form.display_viewport_reserve_right_pct,
-        display_viewport_reserve_bottom_pct: form.display_viewport_reserve_bottom_pct,
-        display_viewport_reserve_left_pct: form.display_viewport_reserve_left_pct,
-        display_ticker_program_duration_seconds: form.display_ticker_program_duration_seconds,
-        display_ticker_pixels_per_second: form.display_ticker_pixels_per_second,
-      });
-      await refreshFormat();
-      setSaved(true);
-    } catch (e) {
-      setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
-    }
-  };
-
-  if ((!initialized && loading) || !form) {
-    return (
-      <Stack spacing={1}>
-        <DisplayRefreshIndicator loading={loading} />
-        <Typography variant="body2" color="text.secondary">
-          Loading display settings…
-        </Typography>
-      </Stack>
-    );
-  }
-
-  return (
-    <Box>
-      <DisplayRefreshIndicator loading={loading} />
-      <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-        Display settings
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Theme, typography, wall-clock timezone, and how timestamps appear in this controller for
-        this display.
-      </Typography>
-      {error && (
-        <Alert severity="error" sx={{ mb: 1 }}>
-          {error}
-        </Alert>
-      )}
-      {saved && (
-        <Alert severity="success" sx={{ mb: 1 }} onClose={() => setSaved(false)}>
-          Saved.
-        </Alert>
-      )}
-      <Stack spacing={2.5}>
-        <FormControl fullWidth disabled={!canWrite}>
-          <InputLabel id="time-format-label">Time format</InputLabel>
-          <Select
-            labelId="time-format-label"
-            label="Time format"
-            value={form.controller_time_format}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                controller_time_format: e.target.value as DisplaySettings['controller_time_format'],
-              })
-            }
-          >
-            {CONTROLLER_TIME_FORMAT_OPTIONS.map((o) => (
-              <MenuItem key={o.value} value={o.value}>
-                {o.label}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl fullWidth disabled={!canWrite}>
-          <InputLabel id="date-order-label">Date format</InputLabel>
-          <Select
-            labelId="date-order-label"
-            label="Date format"
-            value={form.controller_date_order}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                controller_date_order: e.target.value as DisplaySettings['controller_date_order'],
-              })
-            }
-          >
-            {CONTROLLER_DATE_ORDER_OPTIONS.map((o) => (
-              <MenuItem key={o.value} value={o.value}>
-                {o.label}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <Box>
-          <Autocomplete
-            fullWidth
-            disabled={!canWrite}
-            options={timezoneOptions}
-            value={selectedTimezone}
-            onChange={(_, option) => {
-              if (option) setForm({ ...form, display_timezone: option.id });
-            }}
-            getOptionLabel={(option) => option.label}
-            isOptionEqualToValue={(a, b) => a.id === b.id}
-            filterOptions={(options, state) =>
-              filterDisplayTimezoneOptions(options, state.inputValue)
-            }
-            renderInput={(params) => <TextField {...params} label="Display timezone" />}
-          />
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75, display: 'block' }}>
-            Stored as <code>display.timezone</code>. Invalid ids fall back on the display. Type to
-            filter {timezoneOptions.length} IANA zones.
-          </Typography>
-        </Box>
-        <FormControl fullWidth disabled={!canWrite}>
-          <InputLabel id="theme-label">Display theme</InputLabel>
-          <Select
-            labelId="theme-label"
-            label="Display theme"
-            value={form.display_theme_id}
-            onChange={(e) => setForm({ ...form, display_theme_id: String(e.target.value) })}
-            renderValue={(value) => {
-              const theme = curatorThemeById(String(value));
-              if (!theme) {
-                return value;
-              }
-              return (
-                <Stack
-                  direction="row"
-                  alignItems="center"
-                  spacing={1}
-                  sx={{ width: '100%', pr: 0.5 }}
-                >
-                  <Box component="span" sx={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {theme.label}
-                  </Box>
-                  <DisplayThemePaletteSwatches groups={theme.preview} />
-                </Stack>
-              );
-            }}
-          >
-            {curatorThemeIds.map((t) => (
-              <MenuItem key={t.id} value={t.id} sx={{ gap: 1 }}>
-                <Box component="span" sx={{ flex: 1 }}>
-                  {t.label}
-                </Box>
-                <DisplayThemePaletteSwatches groups={t.preview} />
-              </MenuItem>
-            ))}
-          </Select>
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75, display: 'block' }}>
-            Swatches (left to right): display background gradient, primary container (slide),
-            secondary container (ticker), then four accents.
-          </Typography>
-        </FormControl>
-        <CuratorSliderField
-          label="Program history depth"
-          value={form.display_program_history_depth}
-          onChange={(v) => setForm({ ...form, display_program_history_depth: v })}
-          min={CURATOR_HISTORY_DEPTH.min}
-          max={CURATOR_HISTORY_DEPTH.max}
-          step={CURATOR_HISTORY_DEPTH.step}
-          disabled={!canWrite}
-        />
-        <Typography variant="caption" color="text.secondary" sx={{ mt: -1.5, display: 'block' }}>
-          How many past screen programs are kept for back-navigation and how many recent screen
-          placements influence frequency weighting. Shared across all curator configurations.
-        </Typography>
-        <Typography variant="subtitle2" fontWeight={600}>
-          Ticker marquee
-        </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: -1 }}>
-          Default scroll speed and RSS scroll budget for the bottom ticker. Curator configurations
-          can override these when they are the active primary program.
-        </Typography>
-        <CuratorSliderField
-          label="Ticker program duration"
-          value={form.display_ticker_program_duration_seconds}
-          onChange={(v) => setForm({ ...form, display_ticker_program_duration_seconds: v })}
-          min={CURATOR_TICKER_PROGRAM_DURATION.min}
-          max={CURATOR_TICKER_PROGRAM_DURATION.max}
-          step={CURATOR_TICKER_PROGRAM_DURATION.step}
-          disabled={!canWrite}
-          formatValue={(v) => `${v}s`}
-        />
-        <TickerPixelsPerSecondField
-          value={form.display_ticker_pixels_per_second}
-          onChange={(v) => setForm({ ...form, display_ticker_pixels_per_second: v })}
-          disabled={!canWrite}
-        />
-        <Typography variant="subtitle2" fontWeight={600}>
-          Viewport edge reserve
-        </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: -1 }}>
-          Percent of the letterboxed TV viewport reserved on each edge. Shrinks both screen slides
-          and the ticker so you can place always-on overlays (for example a clock or date) in the
-          margin. Use display overlays for the widgets themselves.
-        </Typography>
-        <CuratorSliderField
-          label="Top reserve (%)"
-          value={form.display_viewport_reserve_top_pct}
-          onChange={(v) => setForm({ ...form, display_viewport_reserve_top_pct: v })}
-          min={VIEWPORT_RESERVE_PCT.min}
-          max={VIEWPORT_RESERVE_PCT.max}
-          step={VIEWPORT_RESERVE_PCT.step}
-          disabled={!canWrite}
-        />
-        <CuratorSliderField
-          label="Right reserve (%)"
-          value={form.display_viewport_reserve_right_pct}
-          onChange={(v) => setForm({ ...form, display_viewport_reserve_right_pct: v })}
-          min={VIEWPORT_RESERVE_PCT.min}
-          max={VIEWPORT_RESERVE_PCT.max}
-          step={VIEWPORT_RESERVE_PCT.step}
-          disabled={!canWrite}
-        />
-        <CuratorSliderField
-          label="Bottom reserve (%)"
-          value={form.display_viewport_reserve_bottom_pct}
-          onChange={(v) => setForm({ ...form, display_viewport_reserve_bottom_pct: v })}
-          min={VIEWPORT_RESERVE_PCT.min}
-          max={VIEWPORT_RESERVE_PCT.max}
-          step={VIEWPORT_RESERVE_PCT.step}
-          disabled={!canWrite}
-        />
-        <CuratorSliderField
-          label="Left reserve (%)"
-          value={form.display_viewport_reserve_left_pct}
-          onChange={(v) => setForm({ ...form, display_viewport_reserve_left_pct: v })}
-          min={VIEWPORT_RESERVE_PCT.min}
-          max={VIEWPORT_RESERVE_PCT.max}
-          step={VIEWPORT_RESERVE_PCT.step}
-          disabled={!canWrite}
-        />
-        <FormControl fullWidth disabled={!canWrite}>
-          <InputLabel id="screen-scale">Screen text scale</InputLabel>
-          <Select
-            labelId="screen-scale"
-            label="Screen text scale"
-            value={form.display_text_scale_screen}
-            onChange={(e) => setForm({ ...form, display_text_scale_screen: String(e.target.value) })}
-          >
-            {curatorTextScaleIds.map((id) => (
-              <MenuItem key={id} value={id}>
-                {id}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl fullWidth disabled={!canWrite}>
-          <InputLabel id="ticker-scale">Ticker text scale</InputLabel>
-          <Select
-            labelId="ticker-scale"
-            label="Ticker text scale"
-            value={form.display_text_scale_ticker}
-            onChange={(e) => setForm({ ...form, display_text_scale_ticker: String(e.target.value) })}
-          >
-            {curatorTextScaleIds.map((id) => (
-              <MenuItem key={`t-${id}`} value={id}>
-                {id}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        {canWrite && (
-          <Button variant="contained" onClick={() => void save()}>
-            Save display settings
-          </Button>
-        )}
-      </Stack>
     </Box>
   );
 }

@@ -39,6 +39,9 @@ export const curatorThemeIds: readonly CuratorThemeOption[] = [
   themeOption('dopamine_pop', 'Dopamine pop'),
   themeOption('sage_wellness', 'Sage wellness'),
   themeOption('warm_minimal', 'Warm minimal'),
+  themeOption('morning_coffee', 'Morning coffee'),
+  themeOption('dark_night', 'Dark night'),
+  themeOption('sunny_day', 'Sunny day'),
 ];
 
 /** Default sort order for new curator configurations (matches display POST default). */

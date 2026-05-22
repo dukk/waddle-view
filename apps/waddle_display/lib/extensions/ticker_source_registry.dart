@@ -1,7 +1,9 @@
 import 'package:waddle_shared/curation/reject_filter_context.dart';
 
 import '../curator/curator_read_port.dart';
+import '../curator/ticker_curation.dart';
 import '../curator/ticker_item.dart';
+import '../curator/ticker_news_candidate.dart';
 
 /// Expands one [TickerTapeForCuration] into marquee items.
 typedef TickerSourceExpander = List<TickerItem> Function(
@@ -13,10 +15,12 @@ class TickerExpandContext {
   const TickerExpandContext({
     required this.kv,
     required this.nowLocal,
-    required this.rssItems,
+    required this.newsCandidates,
+    required this.curatorTickerConfig,
     this.quoteTickerItems = const [],
     this.quoteCategoryIdsByQuoteId = const {},
-    this.currentWeather,
+    this.weatherByLocationId = const {},
+    required this.displayTemperatureUnit,
     this.stockRows = const [],
     this.weatherGovAlerts = const [],
     this.rejectCtx,
@@ -24,10 +28,12 @@ class TickerExpandContext {
 
   final Map<String, String> kv;
   final DateTime nowLocal;
-  final List<TickerItem> rssItems;
+  final List<TickerNewsCandidate> newsCandidates;
+  final CuratorTickerConfig curatorTickerConfig;
   final List<TickerItem> quoteTickerItems;
   final Map<String, Set<String>> quoteCategoryIdsByQuoteId;
-  final CurrentWeatherTickerData? currentWeather;
+  final Map<String, CurrentWeatherTickerData> weatherByLocationId;
+  final String displayTemperatureUnit;
   final List<StockTickerRowForMarquee> stockRows;
   final List<WeatherGovAlertTickerItem> weatherGovAlerts;
   final RejectFilterContext? rejectCtx;

@@ -5,22 +5,27 @@ import 'config/display_theme_registry.dart';
 export 'config/display_theme_registry.dart'
     show
         DisplayThemeOption,
+        kDisplayThemeDarkNight,
         kDisplayThemeDopaminePop,
         kDisplayThemeForestCream,
         kDisplayThemeGraphiteAmber,
         kDisplayThemeHeritageCoast,
+        kDisplayThemeMorningCoffee,
         kDisplayThemeNavyCoral,
         kDisplayThemeOceanDepth,
         kDisplayThemeOptions,
         kDisplayThemePlumEmber,
         kDisplayThemeSageWellness,
         kDisplayThemeSlateCrimson,
+        kDisplayThemeSunnyDay,
         kDisplayThemeTealGoldSunset,
         kDisplayThemeWarmMinimal,
         kDisplayThemeWineEmber,
         normalizeDisplayThemeId,
         registeredDisplayThemeIds,
+        themeDataForDashboardKv,
         themeDataForDashboardKvValue,
+        themeDataForDisplayThemeId,
         themeDataForNormalizedDisplayThemeId;
 export 'config/palettes/navy_coral_palette.dart' show NavyCoralPalette;
 export 'package:waddle_shared/theme/display_text_scale_kv.dart'
@@ -79,18 +84,22 @@ class DisplayTheme {
   static TextScaler wrapTextScaler(TextScaler platform) =>
       DisplayTextScaler(platform, textScale);
 
-  /// Builds the active [ThemeData] for [themeId] (normalized).
+  /// Builds the active [ThemeData] for [themeId] (builtin ids only).
   static ThemeData buildForId(String themeId) {
     return themeDataForNormalizedDisplayThemeId(
       normalizeDisplayThemeId(themeId),
     );
   }
 
+  /// Resolves theme from dashboard KV (active id + custom theme catalog).
+  static ThemeData buildFromKv(Map<String, String> kv) =>
+      themeDataForDashboardKv(kv);
+
   /// Default navy/coral preset (same as [buildForId] with default id).
   static ThemeData build() =>
       themeDataForNormalizedDisplayThemeId(kDisplayThemeNavyCoral);
 
-  /// Resolves theme from a raw [config_key_values] value.
+  /// Resolves theme from a raw theme id only (no custom catalog).
   static ThemeData buildFromKvValue(String? value) =>
       themeDataForDashboardKvValue(value);
 }

@@ -5,17 +5,26 @@ import 'package:waddle_shared/config/controller_datetime_format_kv.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/theme/display_text_scale_kv.dart';
+import 'package:waddle_shared/theme/display_custom_themes.dart';
+import 'package:waddle_shared/theme/display_custom_themes_store.dart';
 import 'package:waddle_shared/theme/display_theme_ids.dart';
 import 'package:waddle_shared/display/display_ticker_settings.dart';
+import 'package:waddle_shared/display/display_weather_temperature_unit_kv.dart';
 import 'package:waddle_shared/display/display_viewport_reserve.dart';
 import 'package:waddle_shared/theme/display_program_history_kv.dart';
 import 'package:waddle_shared/theme/display_theme_kv.dart';
+
+/// PUT rejected when [display_theme_id] is not builtin or a stored custom theme.
+class DisplayThemeUnknownIdException implements Exception {}
 
 /// Aggregated display-level operator settings from [config_key_values].
 Future<Map<String, dynamic>> readDisplayOperatorSettings(AppDatabase db) async {
   final kvRows = await db.select(db.configKeyValues).get();
   final kv = {for (final r in kvRows) r.key: r.value};
-  final themeId = normalizeDisplayThemeId(kv[kDisplayThemeIdKvKey]);
+  final customThemes = parseDisplayCustomThemesFromKvValue(
+    kv[kDisplayThemeCustomKvKey],
+  );
+  final themeId = resolveDisplayThemeId(kv[kDisplayThemeIdKvKey], customThemes);
   final screenTextScale = normalizeDisplayTextScaleOption(
     kv[kDisplayTextScaleScreenKvKey],
   );
@@ -38,6 +47,7 @@ Future<Map<String, dynamic>> readDisplayOperatorSettings(AppDatabase db) async {
     });
   return {
     'display_theme_id': themeId,
+    'display_custom_themes': displayCustomThemesToJson(customThemes),
     'display_program_history_depth': programHistoryDepth,
     'display_text_scale_screen': screenTextScale,
     'display_text_scale_ticker': tickerTextScale,
@@ -49,6 +59,7 @@ Future<Map<String, dynamic>> readDisplayOperatorSettings(AppDatabase db) async {
     'display_ticker_program_duration_seconds':
         tickerSettings.programDurationSeconds,
     'display_ticker_pixels_per_second': tickerSettings.pixelsPerSecond,
+    'display_weather_temperature_unit': displayWeatherTemperatureUnitFromKv(kv),
     'controller_time_format': normalizeControllerTimeFormat(
       kv[kControllerTimeFormatKvKey],
     ),
@@ -68,7 +79,15 @@ Future<bool> applyDisplayOperatorSettingsPut(
   var touched = false;
 
   if (body.containsKey('display_theme_id')) {
-    final themeId = normalizeDisplayThemeId('${body['display_theme_id']}');
+    final rawId = '${body['display_theme_id']}'.trim().toLowerCase().replaceAll(
+          RegExp(r'[\s-]+'),
+          '_',
+        );
+    final customThemes = await readDisplayCustomThemes(db);
+    if (!isKnownDisplayThemeId(rawId, customThemes)) {
+      throw DisplayThemeUnknownIdException();
+    }
+    final themeId = resolveDisplayThemeId(rawId, customThemes);
     await db
         .into(db.configKeyValues)
         .insertOnConflictUpdate(
@@ -164,6 +183,20 @@ Future<bool> applyDisplayOperatorSettingsPut(
           ConfigKeyValuesCompanion.insert(
             key: kDisplayTickerPixelsPerSecondKvKey,
             value: '$px',
+          ),
+        );
+    touched = true;
+  }
+  if (body.containsKey('display_weather_temperature_unit')) {
+    final unit = normalizeDisplayWeatherTemperatureUnit(
+      body['display_weather_temperature_unit'],
+    );
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kDisplayWeatherTemperatureUnitKvKey,
+            value: unit,
           ),
         );
     touched = true;

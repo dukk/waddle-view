@@ -139,6 +139,19 @@ String? permissionForRoute(String method, String path) {
     return WaddlePermission.curatorWrite;
   }
 
+  if (p == '/v1/display/themes' && m == 'GET') {
+    return WaddlePermission.curatorRead;
+  }
+  if (p == '/v1/display/themes' && m == 'POST') {
+    return WaddlePermission.curatorWrite;
+  }
+  if (p.startsWith('/v1/display/themes/') && m == 'PATCH') {
+    return WaddlePermission.curatorWrite;
+  }
+  if (p.startsWith('/v1/display/themes/') && m == 'DELETE') {
+    return WaddlePermission.curatorWrite;
+  }
+
   if (p == '/v1/config/key-values' && m == 'GET') {
     return WaddlePermission.curatorRead;
   }

@@ -6,9 +6,12 @@ import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/seed/initial_seed.dart';
 import 'package:waddle_shared/display/display_ticker_settings.dart';
+import 'package:waddle_shared/display/display_weather_temperature_unit_kv.dart';
 import 'package:waddle_shared/display/display_viewport_reserve.dart';
 import 'package:waddle_shared/theme/display_program_history_kv.dart';
 import 'package:waddle_shared/theme/display_text_scale_kv.dart';
+import 'package:waddle_shared/theme/display_custom_themes.dart';
+import 'package:waddle_shared/theme/display_custom_themes_store.dart';
 import 'package:waddle_shared/theme/display_theme_kv.dart';
 
 import '../helpers/memory_database.dart';
@@ -226,6 +229,88 @@ void main() {
     expect(body['adoption_allowed_roles'], isEmpty);
     expect(body['adoption_allow_new_requests'], isFalse);
   });
+
+  test('readDisplayOperatorSettings includes display_custom_themes', () async {
+    final db = openMemoryDatabase();
+    addTearDown(db.close);
+    await ensureInitialSeed(db);
+    await createDisplayCustomTheme(
+      db,
+      label: 'Operator',
+      chrome: const DisplayThemeChromeGroups(
+        display: ['#0D1B2A', '#1B263B'],
+        primaryContainer: ['#E0E1DD', '#1B263B'],
+        secondaryContainer: ['#E0E1DD', '#415A77'],
+        accents: ['#83AF84', '#E05C6C', '#FFE356', '#966CB3'],
+      ),
+    );
+
+    final body = await readDisplayOperatorSettings(db);
+    final customs = body['display_custom_themes'] as List<dynamic>;
+    expect(customs, hasLength(1));
+    expect((customs.first as Map)['label'], 'Operator');
+  });
+
+  test('applyDisplayOperatorSettingsPut rejects unknown display_theme_id', () async {
+    final db = openMemoryDatabase();
+    addTearDown(db.close);
+    await ensureInitialSeed(db);
+
+    expect(
+      () => applyDisplayOperatorSettingsPut(db, {
+        'display_theme_id': 'not_registered',
+      }),
+      throwsA(isA<DisplayThemeUnknownIdException>()),
+    );
+  });
+
+  test('applyDisplayOperatorSettingsPut accepts custom display_theme_id', () async {
+    final db = openMemoryDatabase();
+    addTearDown(db.close);
+    await ensureInitialSeed(db);
+    final created = await createDisplayCustomTheme(
+      db,
+      label: 'Night',
+      chrome: const DisplayThemeChromeGroups(
+        display: ['#000000', '#111111'],
+        primaryContainer: ['#FFFFFF', '#222222'],
+        secondaryContainer: ['#FFFFFF', '#333333'],
+        accents: ['#444444', '#555555', '#666666', '#777777'],
+      ),
+    );
+
+    await applyDisplayOperatorSettingsPut(db, {
+      'display_theme_id': created.id,
+    });
+    final body = await readDisplayOperatorSettings(db);
+    expect(body['display_theme_id'], created.id);
+  });
+
+  test(
+    'applyDisplayOperatorSettingsPut round-trips display_weather_temperature_unit',
+    () async {
+      final db = openMemoryDatabase();
+      addTearDown(db.close);
+      await ensureInitialSeed(db);
+
+      final body0 = await readDisplayOperatorSettings(db);
+      expect(
+        body0['display_weather_temperature_unit'],
+        kDefaultDisplayWeatherTemperatureUnit,
+      );
+
+      await applyDisplayOperatorSettingsPut(db, {
+        'display_weather_temperature_unit': 'f',
+      });
+      final body = await readDisplayOperatorSettings(db);
+      expect(body['display_weather_temperature_unit'], 'f');
+
+      final row = await (db.select(db.configKeyValues)
+            ..where((t) => t.key.equals(kDisplayWeatherTemperatureUnitKvKey)))
+          .getSingleOrNull();
+      expect(row?.value, 'f');
+    },
+  );
 
   test('adoption_allow_new_requests true grants all valid roles', () async {
     final db = openMemoryDatabase();

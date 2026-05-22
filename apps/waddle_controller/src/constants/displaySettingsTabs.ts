@@ -2,11 +2,17 @@
 export const DISPLAY_SETTINGS_ACCOUNTS_LABEL = 'Display settings → Accounts';
 
 export const DISPLAY_SETTINGS_TAB_ACCOUNTS = 'accounts';
-export const DISPLAY_SETTINGS_TAB_GENERAL = 'general';
 export const DISPLAY_SETTINGS_TAB_ADOPTION = 'adoption';
+export const DISPLAY_SETTINGS_TAB_ADVANCED = 'advanced';
+export const DISPLAY_SETTINGS_TAB_GENERAL = 'general';
+export const DISPLAY_SETTINGS_TAB_PROGRAMS = 'programs';
+export const DISPLAY_SETTINGS_TAB_THEME = 'theme';
 
 export type DisplaySettingsTabId =
   | typeof DISPLAY_SETTINGS_TAB_GENERAL
+  | typeof DISPLAY_SETTINGS_TAB_THEME
+  | typeof DISPLAY_SETTINGS_TAB_PROGRAMS
+  | typeof DISPLAY_SETTINGS_TAB_ADVANCED
   | typeof DISPLAY_SETTINGS_TAB_ACCOUNTS
   | typeof DISPLAY_SETTINGS_TAB_ADOPTION;
 

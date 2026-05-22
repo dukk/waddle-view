@@ -27,6 +27,7 @@ import 'integration_accounts_rest_routes.dart';
 import 'mealviewer_rest_routes.dart';
 import 'integration_oauth_providers_rest_routes.dart';
 import 'integration_kv_rest_routes.dart';
+import 'display_themes_rest_routes.dart';
 import 'integration_secrets_rest_routes.dart';
 
 final Set<String> _reservedCuratorCategoryIds = {
@@ -61,6 +62,11 @@ void registerOperatorRestRoutes(
   registerIntegrationAccountsRestRoutes(r, db: db, secrets: secrets);
   registerIntegrationOAuthProvidersRestRoutes(r, secrets: secrets);
   registerMealviewerRestRoutes(r);
+  registerDisplayThemesRestRoutes(
+    r,
+    db: db,
+    onConfigChanged: onConfigChanged,
+  );
   r.get('/v1/telemetry/integrations', (Request req) async {
     final limit = int.tryParse(req.url.queryParameters['limit'] ?? '') ?? 200;
     final sinceMs = int.tryParse(req.url.queryParameters['since_ms'] ?? '');
@@ -414,10 +420,16 @@ void registerOperatorRestRoutes(
           body: '{"error":"invalid_json"}',
           headers: {'content-type': 'application/json'});
     }
-    final touched = await applyDisplayOperatorSettingsPut(db, body);
-    if (!touched) {
+    try {
+      final touched = await applyDisplayOperatorSettingsPut(db, body);
+      if (!touched) {
+        return Response(400,
+            body: '{"error":"no_display_settings_fields"}',
+            headers: {'content-type': 'application/json'});
+      }
+    } on DisplayThemeUnknownIdException {
       return Response(400,
-          body: '{"error":"no_display_settings_fields"}',
+          body: '{"error":"unknown_display_theme_id"}',
           headers: {'content-type': 'application/json'});
     }
     await onConfigChanged();

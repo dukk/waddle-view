@@ -46,6 +46,7 @@ import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { TickerTapesHelpContent } from '@/components/help/TickerTapesHelpContent';
 import { TickerTapeIcon } from '@/icons/TickerTapeIcon';
 import { CuratorSliderField } from '@/components/CuratorSliderField';
+import type { ContentCategoryOption } from '@/components/config/ContentCategorySelectField';
 import { TickerConfigPanel } from '@/components/ticker/TickerConfigPanel';
 import { completeDialogSave } from '@/util/dialogSave';
 import { parseJsonObject } from '@/util/json';
@@ -230,6 +231,7 @@ export function TickerPage() {
   const [error, setError] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [editRow, setEditRow] = useState<TickerTapeRow | null>(null);
+  const [categories, setCategories] = useState<ContentCategoryOption[]>([]);
 
   const load = useCallback(async () => {
     if (!active) return;
@@ -254,6 +256,28 @@ export function TickerPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!active) {
+      setCategories([]);
+      return;
+    }
+    let cancelled = false;
+    void apiJson<{ items: { id: string; label: string }[] }>(active, '/v1/curator/categories')
+      .then((body) => {
+        if (!cancelled) {
+          setCategories(
+            (body.items ?? []).map((c) => ({ id: c.id, label: c.label || c.id })),
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setCategories([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [active]);
 
   const tickerTypes = schemas?.ticker_tape_types ?? [];
 
@@ -407,6 +431,7 @@ export function TickerPage() {
         <AddTickerTapeDialog
           active={active}
           tickerTypes={schemas.ticker_tape_types}
+          categories={categories}
           existingTickerIds={rows.map((r) => r.id)}
           onClose={() => setAddOpen(false)}
           onSaved={async () => {
@@ -421,6 +446,7 @@ export function TickerPage() {
           active={active}
           row={editRow}
           tickerTypes={schemas.ticker_tape_types}
+          categories={categories}
           onClose={() => setEditRow(null)}
           onSaved={async () => {
             setEditRow(null);
@@ -513,12 +539,14 @@ function tickerSchemaBundle(tickerTypes: TickerTypeSchemaMeta[]): ConfigSchemasB
 function AddTickerTapeDialog({
   active,
   tickerTypes,
+  categories,
   existingTickerIds,
   onClose,
   onSaved,
 }: {
   active: NonNullable<ReturnType<typeof useDisplay>['active']>;
   tickerTypes: TickerTypeSchemaMeta[];
+  categories: ContentCategoryOption[];
   existingTickerIds: string[];
   onClose: () => void;
   onSaved: () => Promise<void>;
@@ -670,10 +698,12 @@ function AddTickerTapeDialog({
               </Typography>
               <TickerConfigPanel
                 display={active}
+                tickerType={tickerType}
                 schema={configSchema}
                 formData={configForm}
                 onChange={setConfigForm}
                 disabled={saving}
+                categories={categories}
               />
             </>
           ) : null}
@@ -693,12 +723,14 @@ function EditTickerTapeDialog({
   active,
   row,
   tickerTypes,
+  categories,
   onClose,
   onSaved,
 }: {
   active: NonNullable<ReturnType<typeof useDisplay>['active']>;
   row: TickerTapeRow;
   tickerTypes: TickerTypeSchemaMeta[];
+  categories: ContentCategoryOption[];
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
@@ -815,10 +847,12 @@ function EditTickerTapeDialog({
           />
           <TickerConfigPanel
             display={active}
+            tickerType={tickerType}
             schema={configSchema}
             formData={configForm}
             onChange={setConfigForm}
             disabled={saving}
+            categories={categories}
           />
         </Stack>
       </DialogContent>

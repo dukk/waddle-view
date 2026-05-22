@@ -10,9 +10,11 @@ import '../display/display_navigation_bus.dart';
 import '../debug/app_debug_log.dart';
 import '../debug/operator_telemetry_hub.dart';
 import '../theme/display_theme.dart';
+import '../display/weather/weather_condition_icon.dart';
 import '../theme/ticker_marquee_style.dart';
 import '../marquee_cycle_gate.dart';
 import 'ticker_curated_repository.dart';
+import 'ticker_marquee_clock_line.dart';
 import 'ticker_marquee_duration.dart';
 
 /// Bottom strip: items scroll right-to-left at [pixelsPerSecond].
@@ -360,6 +362,17 @@ class _TickerMarqueeState extends State<TickerMarquee>
     if (_isWeatherAlertTickerItem(item)) {
       return _weatherAlertLine(context, item, base);
     }
+    final timeDisplay = item.timeDisplay;
+    if (timeDisplay != null) {
+      return TickerMarqueeClockLine(
+        timeDisplay: timeDisplay,
+        baseStyle: base,
+      );
+    }
+    final stock = item.stockDisplay;
+    if (stock != null) {
+      return _stockTickerLine(context, item.body, stock, base);
+    }
     final weatherIcon = _weatherIconForTicker(item);
     if (weatherIcon != null) {
       final s = DashboardViewportScope.scaleOf(context);
@@ -490,27 +503,78 @@ class _TickerMarqueeState extends State<TickerMarquee>
     );
   }
 
+  Widget _stockTickerLine(
+    BuildContext context,
+    String body,
+    TickerStockDisplay stock,
+    TextStyle? base,
+  ) {
+    final pct = stock.percentChange;
+    Color? trendColor;
+    IconData? trendIcon;
+    if (pct != null) {
+      if (pct > 0) {
+        trendColor = Colors.green.shade400;
+        trendIcon = Icons.trending_up;
+      } else if (pct < 0) {
+        trendColor = Colors.red.shade400;
+        trendIcon = Icons.trending_down;
+      }
+    }
+    if (trendColor == null) {
+      return Text(
+        body,
+        maxLines: 1,
+        overflow: TextOverflow.clip,
+        style: base,
+      );
+    }
+    final pctText = pct != null
+        ? '${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(2)}%'
+        : '';
+    final prefixEnd = body.lastIndexOf(pctText);
+    if (prefixEnd < 0 || pctText.isEmpty) {
+      return Text(
+        body,
+        maxLines: 1,
+        overflow: TextOverflow.clip,
+        style: base,
+      );
+    }
+    final prefix = body.substring(0, prefixEnd);
+    final s = DashboardViewportScope.scaleOf(context);
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(text: prefix, style: base),
+          if (trendIcon != null)
+            WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: Padding(
+                padding: EdgeInsets.only(left: 4 * s, right: 2 * s),
+                child: Icon(trendIcon, size: 18 * s, color: trendColor),
+              ),
+            ),
+          TextSpan(
+            text: pctText,
+            style: base?.copyWith(color: trendColor),
+          ),
+        ],
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.clip,
+    );
+  }
+
   IconData? _weatherIconForTicker(TickerItem item) {
     if (item.kind != 'weather') {
       return null;
     }
-    final value = item.body.toLowerCase();
-    if (value.contains('snow') || value.contains('sleet') || value.contains('ice')) {
-      return Icons.ac_unit;
+    final code = item.weatherDisplay?.iconCode;
+    if (code != null && code.isNotEmpty) {
+      return iconForWeatherCondition(code: code, description: item.body);
     }
-    if (value.contains('thunder') || value.contains('storm')) {
-      return Icons.thunderstorm;
-    }
-    if (value.contains('rain') || value.contains('drizzle') || value.contains('shower')) {
-      return Icons.umbrella;
-    }
-    if (value.contains('cloud') || value.contains('overcast')) {
-      return Icons.cloud;
-    }
-    if (value.contains('fog') || value.contains('mist') || value.contains('haze')) {
-      return Icons.foggy;
-    }
-    return Icons.wb_sunny;
+    return iconForWeatherCondition(description: item.body);
   }
 
   /// Non-empty programs for auto-scroll (newest first), up to history cap.

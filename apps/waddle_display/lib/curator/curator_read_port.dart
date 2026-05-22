@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 import 'package:waddle_shared/curation/reject_filter_context.dart';
+import 'package:waddle_shared/display/display_weather_temperature_unit_kv.dart';
 
 import 'ticker_item.dart';
 import 'ticker_news_candidate.dart';
@@ -49,19 +50,27 @@ class WeatherGovAlertTickerItem {
 
 class CurrentWeatherTickerData {
   const CurrentWeatherTickerData({
+    required this.locationId,
     required this.locationName,
     this.temperatureC,
     this.description,
+    this.iconCode,
   });
 
+  final String locationId;
   final String locationName;
   final double? temperatureC;
   final String? description;
+  final String? iconCode;
 
-  String toTickerBody() {
+  String toTickerBody({required String temperatureUnit}) {
     final parts = <String>[];
     if (temperatureC != null) {
-      parts.add('${temperatureC!.round()}\u00B0');
+      final displayTemp = formatWeatherTemperatureCelsius(
+        temperatureC,
+        unit: temperatureUnit,
+      );
+      parts.add('$displayTemp${weatherTemperatureSuffix(temperatureUnit)}');
     }
     final trimmedDescription = description?.trim() ?? '';
     if (trimmedDescription.isNotEmpty) {
@@ -91,7 +100,10 @@ abstract class CuratorReadPort {
   /// RSS articles (newest-first from storage), empty if none.
   Future<List<TickerNewsCandidate>> loadNewsCandidatesForTicker();
 
-  /// Current weather snapshot for ticker, null when unavailable.
+  /// Weather snapshots keyed by [InterestsLocations.id].
+  Future<Map<String, CurrentWeatherTickerData>> loadWeatherByLocationIdForTicker();
+
+  /// First available weather row (legacy convenience).
   Future<CurrentWeatherTickerData?> loadCurrentWeatherForTicker();
 
   /// Active NWS alerts for enabled weather locations (deduped by NWS id).

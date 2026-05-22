@@ -190,7 +190,7 @@ Returns **`404`** when the target row does not exist.
 ### Display theme (`config_key_values`)
 
 - **Key**: `display.theme.id`
-- **Values**: `navy_coral` (default), `graphite_amber`, plus ten Coolors trending presets: `teal_gold_sunset`, `ocean_depth`, `forest_cream`, `heritage_coast`, `plum_ember`, `slate_crimson`, `wine_ember`, `dopamine_pop`, `sage_wellness`, `warm_minimal` (hex sources in [`lib/theme/config/palettes/coolors_trending_palettes.dart`](lib/theme/config/palettes/coolors_trending_palettes.dart))
+- **Values**: `navy_coral` (default), `graphite_amber`, ten Coolors trending presets (`teal_gold_sunset`, `ocean_depth`, `forest_cream`, `heritage_coast`, `plum_ember`, `slate_crimson`, `wine_ember`, `dopamine_pop`, `sage_wellness`, `warm_minimal`; hex in [`lib/theme/config/palettes/coolors_trending_palettes.dart`](lib/theme/config/palettes/coolors_trending_palettes.dart)), three mood presets (`morning_coffee`, `dark_night`, `sunny_day` in [`lib/theme/config/palettes/mood_palettes.dart`](lib/theme/config/palettes/mood_palettes.dart)), and **custom** themes created in the controller (**Display settings** → **Custom themes**). Custom catalogs are stored in `display.theme.custom` (JSON); ids are `custom_<slug>`. REST: `GET`/`POST` `/v1/display/themes`, `PATCH`/`DELETE` `/v1/display/themes/{id}`.
 - **Operator UI**: **Display settings** → **Display theme** (global default). Per-curator override: **Curators** → edit configuration → **General** → **Theme while active** (`theme_id_override` on `curator_configurations`; applies when that configuration is the active primary base or exclusive curator). **Enhancement** layer configurations cannot set theme or hide the ticker; those follow the active base or exclusive program.
 
 ### Viewport edge reserve (`config_key_values` + curator overrides)
@@ -268,7 +268,18 @@ Each **`screens`** row stores **`screen_type`** (widget id, e.g. `weather`, `new
 
 ### Bottom ticker (`ticker_tapes`)
 
-SQLite table **`ticker_tapes`** configures the bottom marquee: which **types** run (`time`, `weather`, `news`, `quote`, `stocks`, `static_text`, `plugin`), **order** (`sort_order`, then id), **`enabled`**, and **`frequency_weight`** (repeat that type’s item bundle that many times when building the curated list; identical bodies are still deduplicated). Each row has **`config_json`**: **`static_text`** uses required **`text`** (same shape as screen static text); **`plugin`** may set **`pluginId`** and optional **`fallbackText`** when the plugin returns no lines. **`weather`** and **`news`** emit lines only when live weather or stored RSS articles are available (no fallback text).
+SQLite table **`ticker_tapes`** configures the bottom marquee: which **types** run (`time`, `weather`, `news`, `quote`, `stocks`, `static_text`, `plugin`), **order** (`sort_order`, then id), and **`frequency_weight`** (repeat that type’s item bundle that many times when building the curated list; identical bodies are still deduplicated). Membership in the active curator program controls which tapes run (not a per-row `enabled` column on the table). Each row has **`config_json`**:
+
+| Type | Config highlights |
+|------|-------------------|
+| **`time`** | **`timeFormatPreset`** (`24h_hms`, `12h_hm_tt`, …), optional **`timeZone`** (IANA), optional **`labelPrefix`**. The marquee clock **ticks every second** while scrolling when the preset includes seconds. |
+| **`weather`** | Optional **`locationId`** (`interests_locations`); optional **`temperatureUnit`** (`c`/`f`) overrides display default. |
+| **`news`** | Optional **`categoryId`** (RSS feeds in that content category); **`prefixFeedName`** toggles feed name in headlines. |
+| **`stocks`** | Optional **`symbolIds`** (omit for all enabled symbols). Percent change uses green/red in the marquee. |
+| **`static_text`** | Required **`text`**. |
+| **`plugin`** | **`pluginId`**, optional **`fallbackText`**. |
+
+**Display setting** **`display.weather.temperature_unit`** (`c` or `f`, via `GET`/`PUT /v1/display/settings` as `display_weather_temperature_unit`) is the default for weather ticker lines and weather slides unless a tape overrides **`temperatureUnit`**. When unset, the display defaults to **Fahrenheit (°F)**.
 
 Live weather plus **active NWS alerts** (same `weather` ticker kind), stored RSS articles for **`news`**, and enabled **`stock_symbols`** / **`stock_quotes`** for **`stocks`** are read from their domain tables. **`curator.ticker.*`** keys in **`config_key_values`** still tune RSS width budgeting for the news slice. If **`ticker_tapes`** has **no rows** (empty table), curation uses a legacy path: **time**, live weather (if any), and RSS news — **without** stock lines. If the table has rows but **none are enabled**, curation falls back to **time** only.
 

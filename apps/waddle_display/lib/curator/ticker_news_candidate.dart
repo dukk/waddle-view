@@ -9,11 +9,14 @@ class TickerNewsCandidate {
     required this.title,
     this.summary,
     this.categoryIconName,
+    this.categoryId,
     required this.publishedAtMs,
     required this.articleId,
   });
 
   final String feedId;
+  /// [InterestsRssFeeds.category] when set.
+  final String? categoryId;
   /// Feed channel label for `[…]` when prefixes are enabled (from RSS `channel` title when available).
   final String feedName;
   final String title;

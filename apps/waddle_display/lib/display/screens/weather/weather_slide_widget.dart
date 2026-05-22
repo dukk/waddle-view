@@ -15,6 +15,7 @@ import 'package:waddle_shared/theme/display_text_scale_kv.dart'
 import '../../../curator/screen_program_curator.dart';
 import '../../../theme/display_theme.dart';
 import '../../dashboard_viewport_scope.dart';
+import '../../weather/weather_condition_icon.dart';
 
 String? weatherLocationIdForSpec(ParsedWidgetSpec spec) {
   final raw = (spec.config['locationId'] as String?)?.trim();
@@ -497,54 +498,8 @@ class WeatherSlideWidget extends StatelessWidget {
     return '--\u00B0';
   }
 
-  IconData _iconForWeather({String? code, String? description}) {
-    final normalizedCode = (code ?? '').trim();
-    if (normalizedCode.isNotEmpty) {
-      if (normalizedCode.contains('01')) {
-        return Icons.wb_sunny;
-      }
-      if (normalizedCode.contains('02') ||
-          normalizedCode.contains('03') ||
-          normalizedCode.contains('04')) {
-        return Icons.cloud;
-      }
-      if (normalizedCode.contains('09') || normalizedCode.contains('10')) {
-        return Icons.umbrella;
-      }
-      if (normalizedCode.contains('11')) {
-        return Icons.thunderstorm;
-      }
-      if (normalizedCode.contains('13')) {
-        return Icons.ac_unit;
-      }
-      if (normalizedCode.contains('50')) {
-        return Icons.foggy;
-      }
-    }
-    final value = (description ?? '').toLowerCase();
-    if (value.contains('snow') ||
-        value.contains('sleet') ||
-        value.contains('ice')) {
-      return Icons.ac_unit;
-    }
-    if (value.contains('thunder') || value.contains('storm')) {
-      return Icons.thunderstorm;
-    }
-    if (value.contains('rain') ||
-        value.contains('drizzle') ||
-        value.contains('shower')) {
-      return Icons.umbrella;
-    }
-    if (value.contains('cloud') || value.contains('overcast')) {
-      return Icons.cloud;
-    }
-    if (value.contains('fog') ||
-        value.contains('mist') ||
-        value.contains('haze')) {
-      return Icons.foggy;
-    }
-    return Icons.wb_sunny;
-  }
+  IconData _iconForWeather({String? code, String? description}) =>
+      iconForWeatherCondition(code: code, description: description);
 
   Widget _empty(String text) {
     return Builder(

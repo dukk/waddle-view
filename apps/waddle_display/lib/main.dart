@@ -68,6 +68,8 @@ import 'display/viewer_invite_runtime.dart';
 import 'marquee_cycle_gate.dart';
 import 'persistence/flutter_query_executor.dart';
 import 'sleeper.dart';
+import 'package:waddle_shared/theme/display_theme_kv.dart';
+
 import 'theme/display_theme.dart';
 import 'theme/tv_overscan.dart';
 import 'ticker/memory_ticker_curated_repository.dart';
@@ -352,7 +354,7 @@ class _WaddleRootState extends State<WaddleRoot> {
       builder: (context, snapshot) {
         final rows = snapshot.data ?? const <ConfigKeyValue>[];
         final kv = {for (final r in rows) r.key: r.value};
-        final theme = DisplayTheme.buildFromKvValue(kv[kDisplayThemeIdKvKey]);
+        final theme = DisplayTheme.buildFromKv(kv);
         return MaterialApp(
           title: 'Waddle View',
           theme: theme,
@@ -569,7 +571,10 @@ class _WaddleHomeState extends State<WaddleHome> {
     );
     final themeOverride = _curatorThemeOverride;
     final effectiveTheme = themeOverride != null
-        ? DisplayTheme.buildFromKvValue(themeOverride)
+        ? DisplayTheme.buildFromKv({
+            ...widget.dashboardKv,
+            kDisplayThemeIdKvKey: themeOverride,
+          })
         : Theme.of(context);
     final globalViewportReserve =
         parseDisplayViewportReservePctFromKv(widget.dashboardKv);

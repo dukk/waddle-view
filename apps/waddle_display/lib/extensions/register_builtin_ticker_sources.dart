@@ -1,3 +1,4 @@
+import 'package:waddle_shared/display/ticker_tape_config.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 
 import '../curator/ticker_curation.dart';
@@ -8,24 +9,27 @@ import 'ticker_source_registry.dart';
 /// Registers built-in and plugin ticker expanders on [registry].
 void registerBuiltinTickerSources(TickerSourceRegistry registry) {
   registry.register('time', (def, ctx) {
-    return [
-      TickerItem(
-        kind: 'time',
-        body: formatTickerClock(ctx.nowLocal),
-        sourceId: 'clock',
-      ),
-    ];
+    return [buildTimeTickerItem(nowLocal: ctx.nowLocal, def: def)];
   });
 
   registry.register('weather', (def, ctx) {
-    final live = ctx.currentWeather?.toTickerBody().trim() ?? '';
+    final tapeCfg = parseTickerTapeWeatherConfig(def.configJson);
+    final unit = effectiveWeatherTemperatureUnitForTape(
+      displayUnit: ctx.displayTemperatureUnit,
+      tape: tapeCfg,
+    );
+    final data = weatherDataForTape(ctx.weatherByLocationId, def);
     final out = <TickerItem>[];
+    final live = data?.toTickerBody(temperatureUnit: unit).trim() ?? '';
     if (live.isNotEmpty) {
       out.add(
         TickerItem(
           kind: 'weather',
           body: live,
           sourceId: tapeSourceId(def),
+          weatherDisplay: data?.iconCode == null
+              ? null
+              : TickerWeatherDisplay(iconCode: data!.iconCode),
         ),
       );
     }
@@ -36,10 +40,20 @@ void registerBuiltinTickerSources(TickerSourceRegistry registry) {
   });
 
   registry.register('news', (def, ctx) {
-    if (ctx.rssItems.isNotEmpty) {
-      return ctx.rssItems;
+    final tapeCfg = parseTickerTapeNewsConfig(def.configJson);
+    final filtered = filterNewsCandidatesByCategory(
+      ctx.newsCandidates,
+      tapeCfg.categoryId,
+    );
+    if (filtered.isEmpty) {
+      return const [];
     }
-    return const [];
+    return pickNewsTickerItemsByWidthBudget(
+      interleaved: interleaveNewsByFeed(filtered),
+      config: ctx.curatorTickerConfig,
+      rejectCtx: ctx.rejectCtx,
+      prefixFeedNameOverride: tapeCfg.prefixFeedName,
+    );
   });
 
   registry.register('quote', (def, ctx) {
@@ -55,15 +69,28 @@ void registerBuiltinTickerSources(TickerSourceRegistry registry) {
   });
 
   registry.register('stocks', (def, ctx) {
-    if (ctx.stockRows.isEmpty) {
+    final symbolIds = parseTickerTapeStockSymbolIds(def.configJson);
+    final rows = symbolIds == null
+        ? ctx.stockRows
+        : [
+            for (final row in ctx.stockRows)
+              if (symbolIds.contains(row.symbolId)) row,
+          ];
+    if (rows.isEmpty) {
       return const [];
     }
     return [
-      for (final row in ctx.stockRows)
+      for (final row in rows)
         TickerItem(
           kind: 'stocks',
           body: stockMarqueeBody(row),
           sourceId: row.symbolId,
+          stockDisplay: TickerStockDisplay(
+            symbol: row.symbol.trim().isEmpty ? row.symbolId : row.symbol.trim(),
+            displayName: row.displayName,
+            currentPrice: row.currentPrice,
+            percentChange: row.percentChange,
+          ),
         ),
     ];
   });

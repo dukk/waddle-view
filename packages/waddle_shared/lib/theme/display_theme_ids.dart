@@ -16,6 +16,10 @@ const String kDisplayThemeDopaminePop = 'dopamine_pop';
 const String kDisplayThemeSageWellness = 'sage_wellness';
 const String kDisplayThemeWarmMinimal = 'warm_minimal';
 
+const String kDisplayThemeMorningCoffee = 'morning_coffee';
+const String kDisplayThemeDarkNight = 'dark_night';
+const String kDisplayThemeSunnyDay = 'sunny_day';
+
 const Set<String> kRegisteredDisplayThemeIdSet = {
   kDisplayThemeNavyCoral,
   kDisplayThemeGraphiteAmber,
@@ -29,9 +33,13 @@ const Set<String> kRegisteredDisplayThemeIdSet = {
   kDisplayThemeDopaminePop,
   kDisplayThemeSageWellness,
   kDisplayThemeWarmMinimal,
+  kDisplayThemeMorningCoffee,
+  kDisplayThemeDarkNight,
+  kDisplayThemeSunnyDay,
 };
 
-/// Normalizes a raw KV value to a known theme id (see [kRegisteredDisplayThemeIdSet]).
+/// Normalizes a raw KV value to a known builtin theme id only.
+/// For custom themes use [resolveDisplayThemeId] with parsed KV catalog.
 String normalizeDisplayThemeId(String? raw) {
   if (raw == null) {
     return kDefaultDisplayThemeId;

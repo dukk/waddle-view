@@ -1,3 +1,5 @@
+import 'package:waddle_shared/display/display_weather_temperature_unit_kv.dart';
+
 import '../clock.dart';
 import '../debug/app_debug_log.dart';
 import '../ticker/ticker_curated_repository.dart';
@@ -41,7 +43,8 @@ class DefaultDashboardCurator implements DashboardCurator {
       kv['curator.ticker.newsPixelsPerSecond'] = '$tickerPx';
     }
     final news = await _read.loadNewsCandidatesForTicker();
-    final currentWeather = await _read.loadCurrentWeatherForTicker();
+    final weatherByLocationId = await _read.loadWeatherByLocationIdForTicker();
+    final displayTemperatureUnit = displayWeatherTemperatureUnitFromKv(kv);
     final weatherGovAlerts = await _read.loadWeatherGovAlertsForTicker();
     final tickerDefs = await _read.loadTickerTapesForCuration();
     final stockRows = await _read.loadStockRowsForTicker();
@@ -50,14 +53,15 @@ class DefaultDashboardCurator implements DashboardCurator {
     AppDebugLog.curator(
       'ticker refresh: loaded inputs kvKeys=${kv.length} newsCandidates=${news.length} '
       'tickerTapes=${tickerDefs.length} stockRows=${stockRows.length} '
-      'govAlerts=${weatherGovAlerts.length} liveWeather=${currentWeather != null} '
+      'govAlerts=${weatherGovAlerts.length} liveWeather=${weatherByLocationId.length} '
       'rejectFilter=${rejectCtx.isEmpty ? "off" : "on"}',
     );
     final items = buildTickerItemsForMarquee(
       kv: kv,
       nowLocal: _clock.now().toLocal(),
       newsCandidates: news,
-      currentWeather: currentWeather,
+      weatherByLocationId: weatherByLocationId,
+      displayTemperatureUnit: displayTemperatureUnit,
       definitions: tickerDefs,
       stockRows: stockRows,
       weatherGovAlerts: weatherGovAlerts,

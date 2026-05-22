@@ -57,4 +57,11 @@ void main() {
       );
     });
   });
+
+  test('formatTickerTimePreset compact 12h', () {
+    expect(
+      formatTickerTimePreset(DateTime(2026, 5, 4, 14, 5, 0), '12h_hm_tt'),
+      '2:05pm',
+    );
+  });
 }

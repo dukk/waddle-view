@@ -6,8 +6,12 @@ export type DateTimeFormatPrefs = {
   dateOrder: ControllerDateOrder;
 };
 
+import type { DisplayCustomTheme } from '@/constants/displayThemes';
+
 export type DisplaySettings = {
   display_theme_id: string;
+  /** Operator-defined themes (also available via GET /v1/display/themes). */
+  display_custom_themes?: DisplayCustomTheme[];
   /** Max screen programs for back-nav; shared across all curator configurations. */
   display_program_history_depth: number;
   display_text_scale_screen: string;
@@ -23,6 +27,8 @@ export type DisplaySettings = {
   display_ticker_program_duration_seconds: number;
   /** Bottom marquee scroll speed (pixels per second). */
   display_ticker_pixels_per_second: number;
+  /** `c` or `f` from `display.weather.temperature_unit`. */
+  display_weather_temperature_unit: 'c' | 'f';
   controller_time_format: ControllerTimeFormat;
   controller_date_order: ControllerDateOrder;
   /** Roles that may start adoption challenges. */
@@ -30,6 +36,24 @@ export type DisplaySettings = {
   /** @deprecated Use `adoption_allowed_roles`; true when that list is non-empty. */
   adoption_allow_new_requests?: boolean;
 };
+
+export const DEFAULT_DISPLAY_WEATHER_TEMPERATURE_UNIT = 'f' as const;
+
+export function normalizeDisplayWeatherTemperatureUnit(raw: unknown): 'c' | 'f' {
+  const s = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
+  if (s === 'f' || s === 'fahrenheit' || s === 'imperial') {
+    return 'f';
+  }
+  if (s === 'c' || s === 'celsius') {
+    return 'c';
+  }
+  return DEFAULT_DISPLAY_WEATHER_TEMPERATURE_UNIT;
+}
+
+export const DISPLAY_WEATHER_TEMPERATURE_UNIT_OPTIONS = [
+  { value: 'c' as const, label: 'Celsius (°C)' },
+  { value: 'f' as const, label: 'Fahrenheit (°F)' },
+] as const;
 
 export const DEFAULT_CONTROLLER_TIME_FORMAT: ControllerTimeFormat = '12h';
 export const DEFAULT_CONTROLLER_DATE_ORDER: ControllerDateOrder = 'mdy';

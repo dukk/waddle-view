@@ -65,9 +65,13 @@ import {
   CURATOR_TICKER_PIXELS_PER_SECOND,
   CURATOR_TICKER_PROGRAM_DURATION,
   VIEWPORT_RESERVE_PCT,
-  curatorThemeById,
   curatorThemeIds,
 } from '@/constants/curatorDisplaySettings';
+import { useDisplayFormat } from '@/context/DisplayFormatContext';
+import {
+  displayThemeOptionById,
+  mergeBuiltinAndCustomThemes,
+} from '@/util/displayThemeOptions';
 import { TickerPixelsPerSecondField } from '@/components/TickerPixelsPerSecondField';
 import { completeDialogSave } from '@/util/dialogSave';
 import { curatorConfigurationIdFromName } from '@/util/interestSlug';
@@ -545,6 +549,15 @@ function CuratorConfigurationDialog({
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
+  const { settings: displaySettings } = useDisplayFormat();
+  const themeOptions = useMemo(
+    () =>
+      mergeBuiltinAndCustomThemes(
+        curatorThemeIds,
+        displaySettings?.display_custom_themes ?? [],
+      ),
+    [displaySettings?.display_custom_themes],
+  );
   const isNew = configurationId == null;
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
@@ -874,7 +887,7 @@ function CuratorConfigurationDialog({
                         if (id === DISPLAY_DEFAULT_THEME_VALUE) {
                           return 'Use display default';
                         }
-                        const theme = curatorThemeById(id);
+                        const theme = displayThemeOptionById(themeOptions, id);
                         if (!theme) {
                           return id;
                         }
@@ -897,10 +910,11 @@ function CuratorConfigurationDialog({
                       }}
                     >
                       <MenuItem value={DISPLAY_DEFAULT_THEME_VALUE}>Use display default</MenuItem>
-                      {curatorThemeIds.map((t) => (
+                      {themeOptions.map((t) => (
                         <MenuItem key={t.id} value={t.id} sx={{ gap: 1 }}>
                           <Box component="span" sx={{ flex: 1 }}>
                             {t.label}
+                            {t.isCustom ? ' (custom)' : ''}
                           </Box>
                           <DisplayThemePaletteSwatches groups={t.preview} />
                         </MenuItem>

@@ -90,6 +90,24 @@ export const displayThemePreviewById: Readonly<
     secondaryContainer: ['#F7F1E8', '#8B4513', '#D2691E'],
     accents: ['#E8B577', '#2F1B14', '#F7F1E8'],
   },
+  morning_coffee: {
+    display: ['#2C1810', '#513625'],
+    primaryContainer: ['#F0E6D2', '#513625', '#6F4E37'],
+    secondaryContainer: ['#F0E6D2', '#6F4E37', '#D2691E', '#D2691E'],
+    accents: ['#D2691E', '#2C1810', '#C4A882', '#6F4E37'],
+  },
+  dark_night: {
+    display: ['#0B0C10', '#141421'],
+    primaryContainer: ['#EAE7DC', '#141421', '#1B1B2F'],
+    secondaryContainer: ['#EAE7DC', '#1B1B2F', '#4A4E69', '#1B1B2F'],
+    accents: ['#1B1B2F', '#0B0C10', '#4A4E69', '#9A8C98'],
+  },
+  sunny_day: {
+    display: ['#001A28', '#1F2312'],
+    primaryContainer: ['#FFF8E7', '#1F2312', '#382B00'],
+    secondaryContainer: ['#FFF8E7', '#382B00', '#90E0EF', '#0077B6'],
+    accents: ['#0077B6', '#FFD60A', '#FFC300', '#90E0EF'],
+  },
 };
 
 /** Flat deduped list for compact previews and tests. */

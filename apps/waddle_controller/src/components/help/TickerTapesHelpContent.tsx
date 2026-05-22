@@ -1,5 +1,10 @@
 import { Link as RouterLink } from 'react-router-dom';
 import { Link, Typography } from '@mui/material';
+import {
+  DISPLAY_SETTINGS_TAB_GENERAL,
+  DISPLAY_SETTINGS_TAB_PROGRAMS,
+  displaySettingsPath,
+} from '@/constants/displaySettingsTabs';
 
 export function TickerTapesHelpContent() {
   return (
@@ -16,17 +21,21 @@ export function TickerTapesHelpContent() {
         one at 100.
       </Typography>
       <Typography variant="body2" component="div">
-        <strong>Ticker types</strong> — <code>time</code> (clock), <code>weather</code>,{' '}
-        <code>news</code> (RSS), <code>stocks</code>, <code>static_text</code> (fixed{' '}
-        <code>text</code> in <code>config_json</code>), and <code>plugin</code>. Weather and news
-        show lines only when live/RSS data exists; plugins may use <code>fallbackText</code> when
-        they return no lines.
+        <strong>Ticker types</strong> — <code>time</code> (live clock with format presets and optional
+        zone/prefix), <code>weather</code> (optional location and °F/°C override),{' '}
+        <code>news</code> (optional RSS category filter and feed prefix),{' '}
+        <code>stocks</code> (optional symbol list; colored up/down), <code>quote</code>,{' '}
+        <code>static_text</code>, and <code>plugin</code>. Global weather temperature unit is under{' '}
+        <Link component={RouterLink} to={displaySettingsPath(DISPLAY_SETTINGS_TAB_GENERAL)}>
+          Display settings → General
+        </Link>
+        .
       </Typography>
       <Typography variant="body2" component="div">
         Default <strong>ticker program duration</strong> (RSS scroll budget) and{' '}
         <strong>pixels per second</strong> are under{' '}
-        <Link component={RouterLink} to="/display-settings">
-          Display settings
+        <Link component={RouterLink} to={displaySettingsPath(DISPLAY_SETTINGS_TAB_PROGRAMS)}>
+          Display settings → Programs
         </Link>
         ; curators can override when active. Disabled tapes are omitted from the marquee until
         enabled again.

@@ -4,6 +4,19 @@ import { wantsEmpty, wantsError } from '../lib/scenario.js';
 
 const mockConfigKv = new Map<string, string>([['display.timezone', 'America/New_York']]);
 
+type MockCustomTheme = {
+  id: string;
+  label: string;
+  preview: {
+    display: string[];
+    primaryContainer: string[];
+    secondaryContainer: string[];
+    accents: string[];
+  };
+};
+
+const mockCustomThemes: MockCustomTheme[] = [];
+
 function maybeErr(c: { json: (a: unknown, s: number) => Response }, scenario: Scenario) {
   if (wantsError(scenario)) {
     return c.json({ error: 'mock_error' }, 500);
@@ -213,6 +226,7 @@ export function v1Router() {
     const controller_date_order = mockConfigKv.get('controller.date_order') ?? 'mdy';
     return c.json({
       display_theme_id: mockConfigKv.get('display.theme.id') ?? 'navy_coral',
+      display_custom_themes: mockCustomThemes,
       display_text_scale_screen: mockConfigKv.get('display.text_scale.screen') ?? 'normal',
       display_text_scale_ticker: mockConfigKv.get('display.text_scale.ticker') ?? 'normal',
       display_timezone,
@@ -241,6 +255,67 @@ export function v1Router() {
     });
   });
 
+  r.get('/display/themes', (c) => {
+    const scenario = c.get('scenario');
+    const bad = maybeErr(c, scenario);
+    if (bad) return bad;
+    return c.json({ items: mockCustomThemes });
+  });
+
+  r.post('/display/themes', async (c) => {
+    const scenario = c.get('scenario');
+    const bad = maybeErr(c, scenario);
+    if (bad) return bad;
+    const body = (await c.req.json()) as {
+      label?: string;
+      preview?: MockCustomTheme['preview'];
+    };
+    const id = `custom_${(body.label ?? 'theme').toLowerCase().replace(/[^a-z0-9]+/g, '_')}`;
+    const theme: MockCustomTheme = {
+      id,
+      label: body.label ?? 'Theme',
+      preview: body.preview ?? {
+        display: ['#0D1B2A', '#1B263B'],
+        primaryContainer: ['#E0E1DD', '#1B263B'],
+        secondaryContainer: ['#E0E1DD', '#415A77'],
+        accents: ['#83AF84', '#E05C6C', '#FFE356', '#966CB3'],
+      },
+    };
+    mockCustomThemes.push(theme);
+    return c.json(theme);
+  });
+
+  r.patch('/display/themes/:id', async (c) => {
+    const scenario = c.get('scenario');
+    const bad = maybeErr(c, scenario);
+    if (bad) return bad;
+    const id = c.req.param('id');
+    const body = (await c.req.json()) as Partial<MockCustomTheme>;
+    const idx = mockCustomThemes.findIndex((t) => t.id === id);
+    if (idx < 0) return c.json({ error: 'display_theme_not_found' }, 404);
+    const cur = mockCustomThemes[idx]!;
+    mockCustomThemes[idx] = {
+      ...cur,
+      label: body.label ?? cur.label,
+      preview: body.preview ?? cur.preview,
+    };
+    return c.json(mockCustomThemes[idx]);
+  });
+
+  r.delete('/display/themes/:id', (c) => {
+    const scenario = c.get('scenario');
+    const bad = maybeErr(c, scenario);
+    if (bad) return bad;
+    const id = c.req.param('id');
+    const idx = mockCustomThemes.findIndex((t) => t.id === id);
+    if (idx < 0) return c.json({ error: 'display_theme_not_found' }, 404);
+    mockCustomThemes.splice(idx, 1);
+    if (mockConfigKv.get('display.theme.id') === id) {
+      mockConfigKv.set('display.theme.id', 'navy_coral');
+    }
+    return c.json({});
+  });
+
   r.put('/display/settings', async (c) => {
     const scenario = c.get('scenario');
     const bad = maybeErr(c, scenario);
@@ -253,7 +328,21 @@ export function v1Router() {
         else mockConfigKv.delete('display.timezone');
       }
       if (typeof body.display_theme_id === 'string') {
-        mockConfigKv.set('display.theme.id', body.display_theme_id);
+        const themeId = body.display_theme_id;
+        const knownBuiltin = new Set([
+          'navy_coral',
+          'graphite_amber',
+          'morning_coffee',
+          'dark_night',
+          'sunny_day',
+        ]);
+        if (
+          !knownBuiltin.has(themeId) &&
+          !mockCustomThemes.some((t) => t.id === themeId)
+        ) {
+          return c.json({ error: 'unknown_display_theme_id' }, 400);
+        }
+        mockConfigKv.set('display.theme.id', themeId);
       }
       if (typeof body.display_text_scale_screen === 'string') {
         mockConfigKv.set('display.text_scale.screen', body.display_text_scale_screen);

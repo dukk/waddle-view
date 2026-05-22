@@ -18,6 +18,9 @@ void main() {
     );
     expect(normalizeDisplayThemeId('Ocean-Depth'), kDisplayThemeOceanDepth);
     expect(normalizeDisplayThemeId('dopamine pop'), kDisplayThemeDopaminePop);
+    expect(normalizeDisplayThemeId('Morning Coffee'), kDisplayThemeMorningCoffee);
+    expect(normalizeDisplayThemeId('dark-night'), kDisplayThemeDarkNight);
+    expect(normalizeDisplayThemeId('sunny day'), kDisplayThemeSunnyDay);
   });
 
   test('normalizeDisplayThemeId maps spaces and hyphens to underscores', () {

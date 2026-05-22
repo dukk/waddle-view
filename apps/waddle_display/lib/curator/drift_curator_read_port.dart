@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:waddle_shared/curation/reject_filter_context.dart';
 
+import 'package:waddle_shared/display/ticker_tape_config.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'curator_membership_filter.dart';
@@ -73,6 +74,7 @@ class DriftCuratorReadPort implements CuratorReadPort {
           title: a.title,
           summary: a.summary,
           categoryIconName: categoryIconById[feedById[a.sourceId]?.category],
+          categoryId: feedById[a.sourceId]?.category,
           publishedAtMs: a.publishedAt.millisecondsSinceEpoch,
           articleId: a.id,
         ),
@@ -150,29 +152,42 @@ class DriftCuratorReadPort implements CuratorReadPort {
   }
 
   @override
-  Future<CurrentWeatherTickerData?> loadCurrentWeatherForTicker() async {
+  Future<Map<String, CurrentWeatherTickerData>>
+      loadWeatherByLocationIdForTicker() async {
     final locations = await (_db.select(
       _db.interestsLocations,
     )..where((t) => t.includeWeather.equals(true))).get();
     if (locations.isEmpty) {
-      return null;
+      return const {};
     }
     final locationById = {for (final location in locations) location.id: location};
     final weatherRows = await (_db.select(
       _db.weatherCurrent,
     )..orderBy([(t) => OrderingTerm.desc(t.observedAtMs)])).get();
+    final out = <String, CurrentWeatherTickerData>{};
     for (final weather in weatherRows) {
       final location = locationById[weather.locationId];
-      if (location == null) {
+      if (location == null || out.containsKey(weather.locationId)) {
         continue;
       }
-      return CurrentWeatherTickerData(
+      out[weather.locationId] = CurrentWeatherTickerData(
+        locationId: weather.locationId,
         locationName: location.name,
         temperatureC: weather.currentTemp,
         description: weather.currentDescription,
+        iconCode: weatherIconCodeFromBlobKey(weather.currentIconBlobKey),
       );
     }
-    return null;
+    return out;
+  }
+
+  @override
+  Future<CurrentWeatherTickerData?> loadCurrentWeatherForTicker() async {
+    final byId = await loadWeatherByLocationIdForTicker();
+    if (byId.isEmpty) {
+      return null;
+    }
+    return byId.values.first;
   }
 
   @override
