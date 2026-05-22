@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { DisplayUpstreamError, insecureNodeFetch } from './insecureFetch.js';
 
 describe('insecureNodeFetch', () => {

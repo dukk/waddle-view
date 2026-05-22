@@ -109,7 +109,7 @@ describe('users lifecycle', () => {
     const t = createTestApp();
     cleanup = t.cleanup;
     const adminCookie = await bootstrapAdmin(t);
-    const headers = adminCookie ? { Cookie: adminCookie } : {};
+    const headers: Record<string, string> = adminCookie ? { Cookie: adminCookie } : {};
 
     const notFound = await t.app.request('/bff/v1/users/missing-id', {
       method: 'DELETE',
