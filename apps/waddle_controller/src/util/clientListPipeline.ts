@@ -1,3 +1,5 @@
+import { applySortOrder, type ServerSortOrder } from '@/util/dataViewColumnSort';
+
 export type SortOption<T> = {
   id: string;
   label: string;
@@ -29,8 +31,19 @@ export function applyClientListPipeline<T>(params: {
   searchMatches: (item: T, normalizedQuery: string) => boolean;
   sortOptions: readonly SortOption<T>[];
   sortId: string;
+  /** When set, re-applies asc/desc to the selected field compare (for column + Order toolbar). */
+  order?: ServerSortOrder;
 }): T[] {
   const filtered = filterBySearch(params.items, params.search, params.searchMatches);
-  const sortOption = params.sortOptions.find((o) => o.id === params.sortId) ?? params.sortOptions[0];
+  const base =
+    params.sortOptions.find((o) => o.id === params.sortId) ?? params.sortOptions[0];
+  if (!base) return filtered;
+  const sortOption: SortOption<T> =
+    params.order != null
+      ? {
+          ...base,
+          compare: (a, b) => applySortOrder(base.compare(a, b), params.order!),
+        }
+      : base;
   return sortByOption(filtered, sortOption);
 }

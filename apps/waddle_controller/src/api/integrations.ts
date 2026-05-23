@@ -27,7 +27,12 @@ export type IntegrationsListResponse = {
   };
 };
 
-export type IntegrationsSortField = 'id' | 'integration_type' | 'poll_seconds' | 'enabled';
+export type IntegrationsSortField =
+  | 'id'
+  | 'integration_type'
+  | 'integration_type_label'
+  | 'poll_seconds'
+  | 'enabled';
 
 export type IntegrationsListParams = {
   enabled?: boolean;

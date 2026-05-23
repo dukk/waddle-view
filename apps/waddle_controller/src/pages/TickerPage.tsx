@@ -37,7 +37,15 @@ import { DataViewPagination } from '@/components/dataView/DataViewPagination';
 import { DataViewToolbar } from '@/components/dataView/DataViewToolbar';
 import { useClientDataView } from '@/hooks/useClientDataView';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
-import type { SortOption } from '@/util/clientListPipeline';
+import {
+  buildColumnSortOptions,
+  columnSortToolbarOptions,
+  compareBool,
+  compareLocale,
+  compareNumber,
+  tieBreakLocale,
+  type ColumnSortField,
+} from '@/util/dataViewColumnSort';
 import { CatalogPageHelp } from '@/components/CatalogPageHelp';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { catalogCardGridSx } from '@/constants/catalogLayout';
@@ -84,24 +92,57 @@ type TickerTapeRow = {
   example_config_json?: unknown;
 };
 
-const TICKER_SORT_OPTIONS: SortOption<TickerTapeRow>[] = [
-  {
-    id: 'label_asc',
-    label: 'Name (A–Z)',
-    compare: (a, b) => tickerRowTitle(a).localeCompare(tickerRowTitle(b)),
-  },
-  {
-    id: 'label_desc',
-    label: 'Name (Z–A)',
-    compare: (a, b) => tickerRowTitle(b).localeCompare(tickerRowTitle(a)),
-  },
-  {
-    id: 'sort_order',
-    label: 'Sort order',
-    compare: (a, b) =>
-      a.sort_order - b.sort_order || tickerRowTitle(a).localeCompare(tickerRowTitle(b)),
-  },
-];
+function tickerSortFields(tickerTypes: TickerTypeSchemaMeta[]): ColumnSortField<TickerTapeRow>[] {
+  return [
+    {
+      id: 'name',
+      label: 'Name',
+      compare: (a, b) =>
+        tieBreakLocale(compareLocale(tickerRowTitle(a), tickerRowTitle(b)), a.id, b.id),
+    },
+    {
+      id: 'type',
+      label: 'Type',
+      compare: (a, b) =>
+        tieBreakLocale(
+          compareLocale(
+            tickerTypeLabel(a.ticker_type, tickerTypeMetaFor(tickerTypes, a.ticker_type)),
+            tickerTypeLabel(b.ticker_type, tickerTypeMetaFor(tickerTypes, b.ticker_type)),
+          ),
+          a.id,
+          b.id,
+        ),
+    },
+    {
+      id: 'weight',
+      label: 'Weight',
+      compare: (a, b) =>
+        tieBreakLocale(compareNumber(a.frequency_weight, b.frequency_weight), a.id, b.id),
+    },
+    {
+      id: 'sort_order',
+      label: 'Sort',
+      compare: (a, b) =>
+        tieBreakLocale(compareNumber(a.sort_order, b.sort_order), a.id, b.id),
+    },
+    {
+      id: 'enabled',
+      label: 'Enabled',
+      compare: (a, b) =>
+        tieBreakLocale(compareBool(a.enabled, b.enabled), a.id, b.id),
+    },
+    {
+      id: 'description',
+      label: 'Description',
+      compare: (a, b) =>
+        tieBreakLocale(
+          compareLocale(tickerRowDescription(a), tickerRowDescription(b)),
+          a.id,
+          b.id,
+        ),
+    },
+  ];
+}
 
 function trimOptionalString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -283,10 +324,20 @@ export function TickerPage() {
 
   const tickerTypes = schemas?.ticker_tape_types ?? [];
 
+  const tickerSortOptions = useMemo(
+    () => buildColumnSortOptions(tickerSortFields(tickerTypes)),
+    [tickerTypes],
+  );
+  const tickerSortToolbar = useMemo(
+    () => columnSortToolbarOptions(tickerSortFields(tickerTypes)),
+    [tickerTypes],
+  );
+
   const dataView = useClientDataView({
     items: rows,
-    sortOptions: TICKER_SORT_OPTIONS,
-    defaultSortId: 'label_asc',
+    sortOptions: tickerSortOptions,
+    defaultSortId: 'name',
+    useSortOrder: true,
     searchMatches: (row, q) => {
       const typeLabel = tickerTypeLabel(
         row.ticker_type,
@@ -369,9 +420,11 @@ export function TickerPage() {
             search={dataView.search}
             onSearchChange={dataView.setSearch}
             searchPlaceholder="Search ticker tapes…"
-            sortOptions={TICKER_SORT_OPTIONS}
+            sortOptions={tickerSortToolbar}
             sortId={dataView.sortId}
             onSortChange={dataView.setSortId}
+            order={dataView.order}
+            onOrderChange={dataView.setOrder}
             onReload={() => void load()}
             reloadDisabled={loading}
             reloadAriaLabel="Reload ticker tapes"

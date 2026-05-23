@@ -115,6 +115,7 @@ Allowed responses include **`Access-Control-Allow-Origin`** (mirrored origin), *
 | GET | `/v1/catalog/weather-alerts` | `event`, `headline`, `severity`, `excerpt` (description excerpt), `location_name`. Optional `location_id`. |
 | GET | `/v1/catalog/alerts` | `title`, `body`, `source`, `severity`. |
 | GET | `/v1/catalog/calendar-events` | `title`, `location`, `description`, `source`. Optional `category` (matches primary `category_id` or any junction assignment). No `suppressed` support. Items include `start_ms`, `end_ms`, `all_day`, `category_ids`, and `integration_type` derived from `source` (`calendar_google`, `calendar_outlook`, `calendar_ical`, or passthrough). |
+| GET | `/v1/catalog/category-options` | Required `kind` (`calendar_events`, `jokes`, `trivia`, `photos`, `videos`, `quoterism_quotes`). Returns `{"items":[{"id","label"},...]}` — distinct category ids that have at least one row for that kind (labels from `curator_categories`). Optional `suppressed` when permitted; same integration scope needles as the matching catalog list (`source`, `data_provider`, `integration_type`, etc.). **400** `missing_kind` / `invalid_kind`. |
 
 Response shape: `{"items":[...], "total": <int>, "limit": <int>, "offset": <int>}`.
 

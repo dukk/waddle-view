@@ -28,7 +28,14 @@ import { useDisplayFormat } from '@/context/DisplayFormatContext';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import { useClientDataView } from '@/hooks/useClientDataView';
-import type { SortOption } from '@/util/clientListPipeline';
+import {
+  buildColumnSortOptions,
+  columnSortToolbarOptions,
+  compareLocale,
+  compareNumber,
+  tieBreakLocale,
+  type ColumnSortField,
+} from '@/util/dataViewColumnSort';
 import { integrationDisplayName } from '@/util/integrationDisplayName';
 
 type Line = {
@@ -49,23 +56,38 @@ function integrationCell(type: string | null | undefined): string {
   return integrationTypeLabel(type);
 }
 
-const ACTIVITY_SORT_OPTIONS: SortOption<Line>[] = [
+const ACTIVITY_SORT_FIELDS: ColumnSortField<Line>[] = [
   {
-    id: 'newest',
-    label: 'Newest first',
-    compare: (a, b) => b.at_ms - a.at_ms,
-  },
-  {
-    id: 'oldest',
-    label: 'Oldest first',
-    compare: (a, b) => a.at_ms - b.at_ms,
+    id: 'time',
+    label: 'Time',
+    compare: (a, b) => compareNumber(a.at_ms, b.at_ms),
   },
   {
     id: 'channel',
     label: 'Channel',
-    compare: (a, b) => a.channel.localeCompare(b.channel) || b.at_ms - a.at_ms,
+    compare: (a, b) =>
+      tieBreakLocale(compareLocale(a.channel, b.channel), String(a.at_ms), String(b.at_ms)),
+  },
+  {
+    id: 'integration',
+    label: 'Integration',
+    compare: (a, b) =>
+      tieBreakLocale(
+        compareLocale(integrationCell(a.integration_type), integrationCell(b.integration_type)),
+        String(a.at_ms),
+        String(b.at_ms),
+      ),
+  },
+  {
+    id: 'message',
+    label: 'Message',
+    compare: (a, b) =>
+      tieBreakLocale(compareLocale(a.message, b.message), String(a.at_ms), String(b.at_ms)),
   },
 ];
+
+const ACTIVITY_SORT_OPTIONS = buildColumnSortOptions(ACTIVITY_SORT_FIELDS);
+const ACTIVITY_SORT_TOOLBAR = columnSortToolbarOptions(ACTIVITY_SORT_FIELDS);
 
 export function ActivityPage() {
   const { active } = useDisplay();
@@ -106,7 +128,9 @@ export function ActivityPage() {
   const dataView = useClientDataView({
     items: channelFiltered,
     sortOptions: ACTIVITY_SORT_OPTIONS,
-    defaultSortId: 'newest',
+    defaultSortId: 'time',
+    defaultOrder: 'desc',
+    useSortOrder: true,
     searchMatches: (row, q) => {
       const d = new Date(row.at_ms);
       const timeStr = Number.isNaN(d.getTime())
@@ -229,9 +253,11 @@ export function ActivityPage() {
         search={dataView.search}
         onSearchChange={dataView.setSearch}
         searchPlaceholder="Search log lines…"
-        sortOptions={ACTIVITY_SORT_OPTIONS}
+        sortOptions={ACTIVITY_SORT_TOOLBAR}
         sortId={dataView.sortId}
         onSortChange={dataView.setSortId}
+        order={dataView.order}
+        onOrderChange={dataView.setOrder}
         onReload={() => void load()}
         reloadDisabled={loading}
         reloadAriaLabel="Reload activity log"

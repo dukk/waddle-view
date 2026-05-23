@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import type { IntegrationRow } from '@/api/integrations';
 import {
   calendarCatalogSourceNeedle,
+  catalogCategoryOptionsParams,
   catalogDataKindForIntegrationType,
   catalogFilterParamsForIntegration,
   dataCatalogPath,
+  isCatalogKindWithCategoryFilter,
   parseDataCatalogSearchParams,
 } from './integrationDataCatalog';
 
@@ -89,5 +91,24 @@ describe('integrationDataCatalog', () => {
       integrationType: 'photo_pexels',
       integrationId: 'int-1',
     });
+  });
+
+  it('isCatalogKindWithCategoryFilter identifies category tabs', () => {
+    expect(isCatalogKindWithCategoryFilter('jokes')).toBe(true);
+    expect(isCatalogKindWithCategoryFilter('news')).toBe(false);
+  });
+
+  it('catalogCategoryOptionsParams mirrors integration scope without category', () => {
+    const integration = row({ integration_type: 'calendar_google', id: 'int-cal' });
+    const p = catalogCategoryOptionsParams({
+      kind: 'calendar_events',
+      suppressed: 'all',
+      includeSuppressedFilter: false,
+      integrationFilter: {
+        integrationType: integration.integration_type,
+        integrationId: integration.id,
+      },
+    });
+    expect(p.toString()).toBe('kind=calendar_events&source=google_calendar');
   });
 });

@@ -32,30 +32,45 @@ import { useClientDataView } from '@/hooks/useClientDataView';
 import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
 import { completeDialogSave } from '@/util/dialogSave';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
-import type { SortOption } from '@/util/clientListPipeline';
+import {
+  buildColumnSortOptions,
+  columnSortToolbarOptions,
+  compareLocale,
+  compareNumber,
+  tieBreakLocale,
+  type ColumnSortField,
+} from '@/util/dataViewColumnSort';
 
-const SNAPSHOT_SORT: SortOption<BackupSnapshot>[] = [
-  {
-    id: 'date',
-    label: 'Date',
-    compare: (a, b) => b.createdAt.localeCompare(a.createdAt),
-  },
+const SNAPSHOT_SORT_FIELDS: ColumnSortField<BackupSnapshot>[] = [
   {
     id: 'display',
     label: 'Display',
-    compare: (a, b) => a.displayLabel.localeCompare(b.displayLabel),
+    compare: (a, b) => tieBreakLocale(compareLocale(a.displayLabel, b.displayLabel), a.id, b.id),
+  },
+  {
+    id: 'file',
+    label: 'File',
+    compare: (a, b) => tieBreakLocale(compareLocale(a.fileName, b.fileName), a.id, b.id),
   },
   {
     id: 'size',
     label: 'Size',
-    compare: (a, b) => b.byteSize - a.byteSize,
+    compare: (a, b) => tieBreakLocale(compareNumber(a.byteSize, b.byteSize), a.id, b.id),
   },
   {
-    id: 'name',
-    label: 'Name',
-    compare: (a, b) => a.fileName.localeCompare(b.fileName),
+    id: 'source',
+    label: 'Source',
+    compare: (a, b) => tieBreakLocale(compareLocale(a.source, b.source), a.id, b.id),
+  },
+  {
+    id: 'taken',
+    label: 'Taken',
+    compare: (a, b) => tieBreakLocale(compareLocale(a.createdAt, b.createdAt), a.id, b.id),
   },
 ];
+
+const SNAPSHOT_SORT = buildColumnSortOptions(SNAPSHOT_SORT_FIELDS);
+const SNAPSHOT_SORT_TOOLBAR = columnSortToolbarOptions(SNAPSHOT_SORT_FIELDS);
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -163,7 +178,9 @@ export function AllBackupsInventory({
   const dataView = useClientDataView({
     items: snapshots,
     sortOptions: SNAPSHOT_SORT,
-    defaultSortId: 'date',
+    defaultSortId: 'taken',
+    defaultOrder: 'desc',
+    useSortOrder: true,
     searchMatches: (s, q) =>
       `${s.displayLabel} ${s.fileName} ${s.source} ${s.createdAt}`.toLowerCase().includes(q),
   });
@@ -227,9 +244,11 @@ export function AllBackupsInventory({
         search={dataView.search}
         onSearchChange={dataView.setSearch}
         searchPlaceholder="Search backups…"
-        sortOptions={SNAPSHOT_SORT.map((o) => ({ id: o.id, label: o.label }))}
+        sortOptions={SNAPSHOT_SORT_TOOLBAR}
         sortId={dataView.sortId}
         onSortChange={dataView.setSortId}
+        order={dataView.order}
+        onOrderChange={dataView.setOrder}
         onReload={() => void reload()}
         reloadDisabled={reloadBusy}
         reloadAriaLabel="Reload stored backups"

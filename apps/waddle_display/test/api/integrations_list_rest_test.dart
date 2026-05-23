@@ -15,7 +15,9 @@ Future<void> _insertIntegration(
   bool enabled = true,
   int pollSeconds = 60,
 }) async {
-  await h.db.into(h.db.integrations).insertOnConflictUpdate(
+  await h.db
+      .into(h.db.integrations)
+      .insertOnConflictUpdate(
         IntegrationsCompanion.insert(
           id: id,
           integrationType: integrationType,
@@ -26,38 +28,57 @@ Future<void> _insertIntegration(
 }
 
 void main() {
-  test('GET integrations without query returns full list (backward compat)', () async {
-    final h = await RestTestHarness.start();
-    addTearDown(h.dispose);
-    await _insertIntegration(
-      h,
-      id: 'list_compat_a',
-      integrationType: 'news_rss',
-    );
-    final res = await http.get(
-      Uri.parse('${h.baseUrl}/v1/integrations'),
-      headers: h.authHeaders,
-    );
-    expect(res.statusCode, 200);
-    final body = jsonDecode(res.body) as Map<String, dynamic>;
-    expect(body.containsKey('total'), isFalse);
-    final items = body['items'] as List<dynamic>;
-    expect(items.cast<Map<String, dynamic>>().any((e) => e['id'] == 'list_compat_a'), isTrue);
-  });
+  test(
+    'GET integrations without query returns full list (backward compat)',
+    () async {
+      final h = await RestTestHarness.start();
+      addTearDown(h.dispose);
+      await _insertIntegration(
+        h,
+        id: 'list_compat_a',
+        integrationType: 'news_rss',
+      );
+      final res = await http.get(
+        Uri.parse('${h.baseUrl}/v1/integrations'),
+        headers: h.authHeaders,
+      );
+      expect(res.statusCode, 200);
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      expect(body.containsKey('total'), isFalse);
+      final items = body['items'] as List<dynamic>;
+      expect(
+        items.cast<Map<String, dynamic>>().any(
+          (e) => e['id'] == 'list_compat_a',
+        ),
+        isTrue,
+      );
+    },
+  );
 
   test('enabled=true and enabled=false partition rows', () async {
     final h = await RestTestHarness.start();
     addTearDown(h.dispose);
-    await _insertIntegration(h, id: 'en_on', integrationType: 'news_rss', enabled: true);
-    await _insertIntegration(h, id: 'en_off', integrationType: 'stock_finnhub', enabled: false);
+    await _insertIntegration(
+      h,
+      id: 'en_on',
+      integrationType: 'news_rss',
+      enabled: true,
+    );
+    await _insertIntegration(
+      h,
+      id: 'en_off',
+      integrationType: 'stock_finnhub',
+      enabled: false,
+    );
 
     final enabledRes = await http.get(
       Uri.parse('${h.baseUrl}/v1/integrations?enabled=true'),
       headers: h.authHeaders,
     );
     final enabledBody = jsonDecode(enabledRes.body) as Map<String, dynamic>;
-    final enabledIds =
-        (enabledBody['items'] as List).map((e) => (e as Map)['id'] as String).toSet();
+    final enabledIds = (enabledBody['items'] as List)
+        .map((e) => (e as Map)['id'] as String)
+        .toSet();
     expect(enabledIds, contains('en_on'));
     expect(enabledIds, isNot(contains('en_off')));
 
@@ -66,8 +87,9 @@ void main() {
       headers: h.authHeaders,
     );
     final disabledBody = jsonDecode(disabledRes.body) as Map<String, dynamic>;
-    final disabledIds =
-        (disabledBody['items'] as List).map((e) => (e as Map)['id'] as String).toSet();
+    final disabledIds = (disabledBody['items'] as List)
+        .map((e) => (e as Map)['id'] as String)
+        .toSet();
     expect(disabledIds, contains('en_off'));
     expect(disabledIds, isNot(contains('en_on')));
   });
@@ -86,7 +108,9 @@ void main() {
     }
 
     final page0 = await http.get(
-      Uri.parse('${h.baseUrl}/v1/integrations?enabled=false&limit=2&offset=0&sort=id'),
+      Uri.parse(
+        '${h.baseUrl}/v1/integrations?enabled=false&limit=2&offset=0&sort=id',
+      ),
       headers: h.authHeaders,
     );
     final body0 = jsonDecode(page0.body) as Map<String, dynamic>;
@@ -96,7 +120,9 @@ void main() {
     expect((body0['items'] as List).length, 2);
 
     final page1 = await http.get(
-      Uri.parse('${h.baseUrl}/v1/integrations?enabled=false&limit=2&offset=2&sort=id'),
+      Uri.parse(
+        '${h.baseUrl}/v1/integrations?enabled=false&limit=2&offset=2&sort=id',
+      ),
       headers: h.authHeaders,
     );
     final body1 = jsonDecode(page1.body) as Map<String, dynamic>;
@@ -146,14 +172,73 @@ void main() {
     expect(descIds.indexOf('sort_b'), lessThan(descIds.indexOf('sort_a')));
   });
 
+  test('sort by integration_type_label uses integration_types.label', () async {
+    final h = await RestTestHarness.start();
+    addTearDown(h.dispose);
+    await h.db
+        .into(h.db.integrationTypes)
+        .insertOnConflictUpdate(
+          IntegrationTypesCompanion.insert(
+            integrationType: 'news_rss',
+            label: 'Zulu News',
+          ),
+        );
+    await h.db
+        .into(h.db.integrationTypes)
+        .insertOnConflictUpdate(
+          IntegrationTypesCompanion.insert(
+            integrationType: 'joke_openai',
+            label: 'Alpha Jokes',
+          ),
+        );
+    await _insertIntegration(
+      h,
+      id: 'label_sort_b',
+      integrationType: 'news_rss',
+      enabled: true,
+    );
+    await _insertIntegration(
+      h,
+      id: 'label_sort_a',
+      integrationType: 'joke_openai',
+      enabled: true,
+    );
+
+    final asc = await http.get(
+      Uri.parse(
+        '${h.baseUrl}/v1/integrations?enabled=true&sort=integration_type_label&order=asc&limit=100',
+      ),
+      headers: h.authHeaders,
+    );
+    final ascIds = ((jsonDecode(asc.body) as Map)['items'] as List)
+        .map((e) => (e as Map)['id'] as String)
+        .toList();
+    expect(
+      ascIds.indexOf('label_sort_a'),
+      lessThan(ascIds.indexOf('label_sort_b')),
+    );
+  });
+
   test('family and integration_type filters', () async {
     final h = await RestTestHarness.start();
     addTearDown(h.dispose);
-    await _insertIntegration(h, id: 'fam_news', integrationType: 'news_rss', enabled: true);
-    await _insertIntegration(h, id: 'fam_cal', integrationType: 'calendar_google', enabled: true);
+    await _insertIntegration(
+      h,
+      id: 'fam_news',
+      integrationType: 'news_rss',
+      enabled: true,
+    );
+    await _insertIntegration(
+      h,
+      id: 'fam_cal',
+      integrationType: 'calendar_google',
+      enabled: true,
+    );
 
     final familyRes = await http.get(
-      Uri.parse('${h.baseUrl}/v1/integrations?enabled=true&family=news&limit=100'),
+      Uri.parse(
+        '${h.baseUrl}/v1/integrations?enabled=true&family=news&limit=100',
+      ),
       headers: h.authHeaders,
     );
     final familyIds = ((jsonDecode(familyRes.body) as Map)['items'] as List)
@@ -177,8 +262,18 @@ void main() {
   test('q searches id and integration_type', () async {
     final h = await RestTestHarness.start();
     addTearDown(h.dispose);
-    await _insertIntegration(h, id: 'needle_id', integrationType: 'news_rss', enabled: true);
-    await _insertIntegration(h, id: 'other', integrationType: 'joke_openai', enabled: true);
+    await _insertIntegration(
+      h,
+      id: 'needle_id',
+      integrationType: 'news_rss',
+      enabled: true,
+    );
+    await _insertIntegration(
+      h,
+      id: 'other',
+      integrationType: 'joke_openai',
+      enabled: true,
+    );
 
     final res = await http.get(
       Uri.parse('${h.baseUrl}/v1/integrations?enabled=true&q=needle&limit=100'),
@@ -193,7 +288,12 @@ void main() {
   test('secrets_configured and accounts_configured filters', () async {
     final h = await RestTestHarness.start();
     addTearDown(h.dispose);
-    await _insertIntegration(h, id: 'ready_news', integrationType: 'news_rss', enabled: false);
+    await _insertIntegration(
+      h,
+      id: 'ready_news',
+      integrationType: 'news_rss',
+      enabled: false,
+    );
     await _insertIntegration(
       h,
       id: 'needs_google_setup',
@@ -349,67 +449,94 @@ void main() {
     expect(ids.toSet().length, 2);
   });
 
-  test('accounts_configured reflects stored token via view without column refresh', () async {
-    final h = await RestTestHarness.start();
-    addTearDown(h.dispose);
-    const accountId = 'ms-home';
-    await _insertIntegration(
-      h,
-      id: 'outlook_home',
-      integrationType: 'calendar_outlook',
-      enabled: false,
-    );
-    await h.db.into(h.db.integrationAccounts).insertOnConflictUpdate(
-          IntegrationAccountsCompanion.insert(
-            id: accountId,
-            accountType: kIntegrationAccountTypeMicrosoftGraph,
-            createdAtMs: DateTime.now().millisecondsSinceEpoch,
-          ),
-        );
-    await h.db.into(h.db.integrationAccountLinks).insertOnConflictUpdate(
-          IntegrationAccountLinksCompanion.insert(
-            integrationId: 'outlook_home',
-            accountId: accountId,
-          ),
-        );
-    await h.secrets.write(microsoftGraphAccessTokenSecret(accountId), 'test-token');
+  test(
+    'accounts_configured reflects stored token via view without column refresh',
+    () async {
+      final h = await RestTestHarness.start();
+      addTearDown(h.dispose);
+      const accountId = 'ms-home';
+      await _insertIntegration(
+        h,
+        id: 'outlook_home',
+        integrationType: 'calendar_outlook',
+        enabled: false,
+      );
+      await h.db
+          .into(h.db.integrationAccounts)
+          .insertOnConflictUpdate(
+            IntegrationAccountsCompanion.insert(
+              id: accountId,
+              accountType: kIntegrationAccountTypeMicrosoftGraph,
+              createdAtMs: DateTime.now().millisecondsSinceEpoch,
+            ),
+          );
+      await h.db
+          .into(h.db.integrationAccountLinks)
+          .insertOnConflictUpdate(
+            IntegrationAccountLinksCompanion.insert(
+              integrationId: 'outlook_home',
+              accountId: accountId,
+            ),
+          );
+      await h.secrets.write(
+        microsoftGraphAccessTokenSecret(accountId),
+        'test-token',
+      );
 
-    final missingRes = await http.get(
-      Uri.parse(
-        '${h.baseUrl}/v1/integrations?accounts_configured=false&limit=100',
-      ),
-      headers: h.authHeaders,
-    );
-    final missingIds = ((jsonDecode(missingRes.body) as Map)['items'] as List)
-        .map((e) => (e as Map)['id'] as String)
-        .toSet();
-    expect(missingIds, isNot(contains('outlook_home')));
+      final missingRes = await http.get(
+        Uri.parse(
+          '${h.baseUrl}/v1/integrations?accounts_configured=false&limit=100',
+        ),
+        headers: h.authHeaders,
+      );
+      final missingIds = ((jsonDecode(missingRes.body) as Map)['items'] as List)
+          .map((e) => (e as Map)['id'] as String)
+          .toSet();
+      expect(missingIds, isNot(contains('outlook_home')));
 
-    final readyRes = await http.get(
-      Uri.parse(
-        '${h.baseUrl}/v1/integrations?enabled=false&accounts_configured=true&limit=100',
-      ),
-      headers: h.authHeaders,
-    );
-    final readyIds = ((jsonDecode(readyRes.body) as Map)['items'] as List)
-        .map((e) => (e as Map)['id'] as String)
-        .toSet();
-    expect(readyIds, contains('outlook_home'));
+      final readyRes = await http.get(
+        Uri.parse(
+          '${h.baseUrl}/v1/integrations?enabled=false&accounts_configured=true&limit=100',
+        ),
+        headers: h.authHeaders,
+      );
+      final readyIds = ((jsonDecode(readyRes.body) as Map)['items'] as List)
+          .map((e) => (e as Map)['id'] as String)
+          .toSet();
+      expect(readyIds, contains('outlook_home'));
 
-    final item = ((readyRes.body.isNotEmpty ? jsonDecode(readyRes.body) : {}) as Map)['items']
-        as List;
-    final outlook = item.cast<Map<String, dynamic>>().firstWhere(
-          (e) => e['id'] == 'outlook_home',
-        );
-    expect(outlook['accounts_configured'], isTrue);
-  });
+      final item =
+          ((readyRes.body.isNotEmpty ? jsonDecode(readyRes.body) : {})
+                  as Map)['items']
+              as List;
+      final outlook = item.cast<Map<String, dynamic>>().firstWhere(
+        (e) => e['id'] == 'outlook_home',
+      );
+      expect(outlook['accounts_configured'], isTrue);
+    },
+  );
 
   test('facets=family returns counts', () async {
     final h = await RestTestHarness.start();
     addTearDown(h.dispose);
-    await _insertIntegration(h, id: 'facet_n1', integrationType: 'news_rss', enabled: true);
-    await _insertIntegration(h, id: 'facet_n2', integrationType: 'news_facebook', enabled: true);
-    await _insertIntegration(h, id: 'facet_j', integrationType: 'joke_openai', enabled: true);
+    await _insertIntegration(
+      h,
+      id: 'facet_n1',
+      integrationType: 'news_rss',
+      enabled: true,
+    );
+    await _insertIntegration(
+      h,
+      id: 'facet_n2',
+      integrationType: 'news_facebook',
+      enabled: true,
+    );
+    await _insertIntegration(
+      h,
+      id: 'facet_j',
+      integrationType: 'joke_openai',
+      enabled: true,
+    );
 
     final res = await http.get(
       Uri.parse(

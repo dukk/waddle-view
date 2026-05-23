@@ -89,7 +89,14 @@ import { catalogCardGridSx } from '@/constants/catalogLayout';
 import { useClientDataView } from '@/hooks/useClientDataView';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
-import type { SortOption } from '@/util/clientListPipeline';
+import {
+  buildColumnSortOptions,
+  columnSortToolbarOptions,
+  compareLocale,
+  compareNumber,
+  tieBreakLocale,
+  type ColumnSortField,
+} from '@/util/dataViewColumnSort';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import type { SavedDisplay } from '@/storage/displays';
@@ -270,15 +277,40 @@ export function CuratorsPage() {
   );
 }
 
-const CURATOR_CONFIG_SORT: SortOption<CuratorConfigurationSummary>[] = [
+const CURATOR_CONFIG_SORT_FIELDS: ColumnSortField<CuratorConfigurationSummary>[] = [
+  {
+    id: 'name',
+    label: 'Name',
+    compare: (a, b) => tieBreakLocale(compareLocale(a.name, b.name), a.id, b.id),
+  },
+  {
+    id: 'layer',
+    label: 'Layer',
+    compare: (a, b) => tieBreakLocale(compareLocale(a.layer, b.layer), a.id, b.id),
+  },
   {
     id: 'sort_order',
-    label: 'Sort order',
-    compare: (a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name),
+    label: 'Sort',
+    compare: (a, b) => tieBreakLocale(compareNumber(a.sort_order, b.sort_order), a.id, b.id),
   },
-  { id: 'name_asc', label: 'Name (A–Z)', compare: (a, b) => a.name.localeCompare(b.name) },
-  { id: 'name_desc', label: 'Name (Z–A)', compare: (a, b) => b.name.localeCompare(a.name) },
+  {
+    id: 'program',
+    label: 'Program',
+    compare: (a, b) =>
+      tieBreakLocale(
+        compareNumber(a.program_duration_seconds, b.program_duration_seconds) ||
+          compareNumber(
+            a.ticker_program_duration_seconds ?? 0,
+            b.ticker_program_duration_seconds ?? 0,
+          ),
+        a.id,
+        b.id,
+      ),
+  },
 ];
+
+const CURATOR_CONFIG_SORT_OPTIONS = buildColumnSortOptions(CURATOR_CONFIG_SORT_FIELDS);
+const CURATOR_CONFIG_SORT_TOOLBAR = columnSortToolbarOptions(CURATOR_CONFIG_SORT_FIELDS);
 
 function CuratorConfigurationsSection({
   display,
@@ -321,8 +353,9 @@ function CuratorConfigurationsSection({
 
   const dataView = useClientDataView({
     items: rows,
-    sortOptions: CURATOR_CONFIG_SORT,
+    sortOptions: CURATOR_CONFIG_SORT_OPTIONS,
     defaultSortId: 'sort_order',
+    useSortOrder: true,
     searchMatches: (row, q) =>
       row.name.toLowerCase().includes(q) ||
       row.id.toLowerCase().includes(q) ||
@@ -380,9 +413,11 @@ function CuratorConfigurationsSection({
         search={dataView.search}
         onSearchChange={dataView.setSearch}
         searchPlaceholder="Search configurations…"
-        sortOptions={CURATOR_CONFIG_SORT}
+        sortOptions={CURATOR_CONFIG_SORT_TOOLBAR}
         sortId={dataView.sortId}
         onSortChange={dataView.setSortId}
+        order={dataView.order}
+        onOrderChange={dataView.setOrder}
         onReload={() => void load()}
         reloadDisabled={loading}
         reloadAriaLabel="Reload curator configurations"

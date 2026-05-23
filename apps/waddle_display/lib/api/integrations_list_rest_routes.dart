@@ -30,7 +30,10 @@ void registerIntegrationsListRestRoutes(
   required AppDatabase db,
   required SecretStore secrets,
 }) {
-  r.get('/v1/integrations', (Request req) => listIntegrations(req, db: db, secrets: secrets));
+  r.get(
+    '/v1/integrations',
+    (Request req) => listIntegrations(req, db: db, secrets: secrets),
+  );
 }
 
 class IntegrationsListParams {
@@ -115,6 +118,7 @@ class IntegrationsListParams {
 enum IntegrationsSort {
   id('id'),
   integrationType('integration_type'),
+  integrationTypeLabel('integration_type_label'),
   pollSeconds('poll_seconds'),
   enabled('enabled');
 
@@ -181,10 +185,7 @@ Future<Response> listIntegrations(
           .where((m) => m['accounts_configured'] == params.accountsConfigured)
           .toList();
     }
-    return Response.ok(
-      jsonEncode({'items': filtered}),
-      headers: _jsonHeaders,
-    );
+    return Response.ok(jsonEncode({'items': filtered}), headers: _jsonHeaders);
   }
 
   if (params.secretsConfigured != null) {
@@ -225,9 +226,7 @@ Future<Response> listIntegrations(
   };
 
   if (params.facetsFamily) {
-    body['facets'] = {
-      'family': await _familyFacetCounts(db, secrets, params),
-    };
+    body['facets'] = {'family': await _familyFacetCounts(db, secrets, params)};
   }
 
   return Response.ok(jsonEncode(body), headers: _jsonHeaders);
@@ -278,9 +277,7 @@ Future<Response> _listIntegrationsPaginatedWithSecretsFilter(
   };
 
   if (params.facetsFamily) {
-    body['facets'] = {
-      'family': await _familyFacetCounts(db, secrets, params),
-    };
+    body['facets'] = {'family': await _familyFacetCounts(db, secrets, params)};
   }
 
   return Response.ok(jsonEncode(body), headers: _jsonHeaders);
@@ -327,16 +324,16 @@ Expression<bool> _integrationWhere(
   }
   if (params.family != null) {
     final f = params.family!;
-    expr = expr &
-        (t.integrationType.equals(f) | t.integrationType.like('${f}_%'));
+    expr =
+        expr & (t.integrationType.equals(f) | t.integrationType.like('${f}_%'));
   }
   if (params.q != null) {
     final pattern = '%${params.q!}%';
-    expr = expr &
-        (t.id.like(pattern) | t.integrationType.like(pattern));
+    expr = expr & (t.id.like(pattern) | t.integrationType.like(pattern));
   }
   if (params.accountsConfigured == true) {
-    expr = expr &
+    expr =
+        expr &
         const CustomExpression<bool>(
           '(NOT EXISTS (SELECT 1 FROM integration_types it '
           'WHERE it.integration_type = integrations.integration_type '
@@ -345,7 +342,8 @@ Expression<bool> _integrationWhere(
           'WHERE v.integration_id = integrations.id AND v.accounts_configured = 1))',
         );
   } else if (params.accountsConfigured == false) {
-    expr = expr &
+    expr =
+        expr &
         const CustomExpression<bool>(
           '(EXISTS (SELECT 1 FROM integration_types it '
           'WHERE it.integration_type = integrations.integration_type '
@@ -357,11 +355,23 @@ Expression<bool> _integrationWhere(
   return expr;
 }
 
-OrderingTerm _orderingTerm($IntegrationsTable t, IntegrationsListParams params) {
+OrderingTerm _orderingTerm(
+  $IntegrationsTable t,
+  IntegrationsListParams params,
+) {
   final dir = params.orderAsc ? OrderingMode.asc : OrderingMode.desc;
   switch (params.sort) {
     case IntegrationsSort.integrationType:
       return OrderingTerm(expression: t.integrationType, mode: dir);
+    case IntegrationsSort.integrationTypeLabel:
+      return OrderingTerm(
+        expression: const CustomExpression<String>(
+          "(SELECT COALESCE(it.label, integrations.integration_type) "
+          "FROM integration_types it "
+          "WHERE it.integration_type = integrations.integration_type)",
+        ),
+        mode: dir,
+      );
     case IntegrationsSort.pollSeconds:
       return OrderingTerm(expression: t.pollSeconds, mode: dir);
     case IntegrationsSort.enabled:
@@ -378,12 +388,15 @@ Future<Map<String, dynamic>> _enrichIntegrationRow(
   required bool accountsConfigured,
   bool includeConfigDocs = false,
 }) async {
-  final requiredAccountTypes =
-      integrationAccountTypesRequiredForIntegration(e.integrationType);
-  final typeRow = await (db.select(db.integrationTypes)
-        ..where((t) => t.integrationType.equals(e.integrationType)))
-      .getSingleOrNull();
-  final schemaRaw = typeRow?.configJsonSchema ??
+  final requiredAccountTypes = integrationAccountTypesRequiredForIntegration(
+    e.integrationType,
+  );
+  final typeRow =
+      await (db.select(db.integrationTypes)
+            ..where((t) => t.integrationType.equals(e.integrationType)))
+          .getSingleOrNull();
+  final schemaRaw =
+      typeRow?.configJsonSchema ??
       providerConfigJsonDocForType(e.integrationType).schema;
   return {
     'id': e.id,
@@ -399,11 +412,7 @@ Future<Map<String, dynamic>> _enrichIntegrationRow(
       e.integrationType,
     ),
     'accounts_configured': accountsConfigured,
-    'linked_accounts': await listAccountsForIntegrationJson(
-      db,
-      secrets,
-      e.id,
-    ),
+    'linked_accounts': await listAccountsForIntegrationJson(db, secrets, e.id),
     'required_account_types': [
       for (final typeId in requiredAccountTypes)
         {
@@ -449,9 +458,12 @@ Future<Map<String, int>> _familyFacetCounts(
       }
     }
     if (include && params.accountsConfigured != null) {
-      final requires = await integrationTypeRequiresAccounts(db, e.integrationType);
-      final accountsOk = !requires ||
-          (await integrationAccountsConfiguredFromView(db, e.id));
+      final requires = await integrationTypeRequiresAccounts(
+        db,
+        e.integrationType,
+      );
+      final accountsOk =
+          !requires || (await integrationAccountsConfiguredFromView(db, e.id));
       if (accountsOk != params.accountsConfigured) {
         include = false;
       }

@@ -145,3 +145,47 @@ export function integrationFilterFromSearchParams(
   if (!integrationType || !integrationId) return null;
   return { integrationType, integrationId };
 }
+
+/** Data browser tabs that expose a category filter (and `GET /v1/catalog/category-options`). */
+export const CATALOG_KINDS_WITH_CATEGORY_FILTER = [
+  'calendar_events',
+  'jokes',
+  'trivia',
+  'photos',
+  'videos',
+  'quoterism_quotes',
+] as const satisfies readonly CatalogDataKind[];
+
+export type CatalogKindWithCategoryFilter = (typeof CATALOG_KINDS_WITH_CATEGORY_FILTER)[number];
+
+export function isCatalogKindWithCategoryFilter(
+  kind: string,
+): kind is CatalogKindWithCategoryFilter {
+  return (CATALOG_KINDS_WITH_CATEGORY_FILTER as readonly string[]).includes(kind);
+}
+
+/** Query params for `GET /v1/catalog/category-options` (kind + scope, never `category`). */
+export function catalogCategoryOptionsParams(input: {
+  kind: CatalogKindWithCategoryFilter;
+  suppressed: 'all' | 'true' | 'false';
+  includeSuppressedFilter: boolean;
+  integrationFilter: DataCatalogIntegrationFilter | null;
+}): URLSearchParams {
+  const p = new URLSearchParams();
+  p.set('kind', input.kind);
+  if (input.includeSuppressedFilter && input.suppressed !== 'all') {
+    p.set('suppressed', input.suppressed);
+  }
+  if (
+    input.integrationFilter &&
+    catalogDataKindForIntegrationType(input.integrationFilter.integrationType) === input.kind
+  ) {
+    catalogFilterParamsForIntegration(input.kind, {
+      id: input.integrationFilter.integrationId,
+      integration_type: input.integrationFilter.integrationType,
+    }).forEach((value, key) => {
+      p.set(key, value);
+    });
+  }
+  return p;
+}

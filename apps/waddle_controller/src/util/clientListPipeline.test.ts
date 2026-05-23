@@ -66,4 +66,16 @@ describe('applyClientListPipeline', () => {
     });
     expect(out.map((r) => r.id)).toEqual(['a']);
   });
+
+  it('inverts sort when order is desc', () => {
+    const out = applyClientListPipeline({
+      items,
+      search: '',
+      searchMatches: () => true,
+      sortOptions,
+      sortId: 'label',
+      order: 'desc',
+    });
+    expect(out.map((r) => r.label)).toEqual(['Zulu', 'Mike', 'Alpha']);
+  });
 });

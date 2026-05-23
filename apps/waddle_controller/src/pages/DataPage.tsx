@@ -32,7 +32,14 @@ import { DataViewToolbar } from '@/components/dataView/DataViewToolbar';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { catalogCardGridSx } from '@/constants/catalogLayout';
 import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
-import { sortByOption, type SortOption } from '@/util/clientListPipeline';
+import { sortByOption } from '@/util/clientListPipeline';
+import { applySortOrder, type ServerSortOrder } from '@/util/dataViewColumnSort';
+import {
+  dataSortOptionsForKind,
+  dataSortToolbarForKind,
+  defaultDataSortIdForKind,
+  type DataCatalogKind,
+} from '@/util/dataCatalogSort';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
@@ -59,9 +66,11 @@ import {
   type CatalogDataKind,
   type DataCatalogIntegrationFilter,
   buildDataCatalogSearchParams,
+  catalogCategoryOptionsParams,
   catalogDataKindForIntegrationType,
   catalogFilterParamsForIntegration,
   integrationFilterFromSearchParams,
+  isCatalogKindWithCategoryFilter,
   parseDataCatalogSearchParams,
 } from '@/util/integrationDataCatalog';
 
@@ -295,19 +304,6 @@ function catalogRowKey(kind: DataKind, row: Record<string, unknown>, index: numb
   }
 }
 
-const DATA_ROW_SORT: SortOption<Record<string, unknown>>[] = [
-  { id: 'newest', label: 'Newest on page', compare: (a, b) => rowSortMs(b) - rowSortMs(a) },
-  { id: 'oldest', label: 'Oldest on page', compare: (a, b) => rowSortMs(a) - rowSortMs(b) },
-];
-
-function rowSortMs(row: Record<string, unknown>): number {
-  for (const key of ['created_at_ms', 'published_at', 'fetched_at_ms', 'observed_at_ms', 'start_ms', 'effective_at']) {
-    const v = row[key];
-    if (typeof v === 'number' && Number.isFinite(v)) return v;
-  }
-  return 0;
-}
-
 function rowMatchesToolbarSearch(row: Record<string, unknown>, q: string): boolean {
   for (const value of Object.values(row)) {
     if (value == null) continue;
@@ -345,7 +341,8 @@ export function DataPage() {
   const canAddManualEntry = canCuratorWrite && isManualEntryKind(kind);
   const canAddAlert = canAlertsWrite && kind === 'dashboard_alerts';
   const [toolbarSearch, setToolbarSearch] = useState('');
-  const [dataSortId, setDataSortId] = useState('newest');
+  const [dataSortId, setDataSortId] = useState(() => defaultDataSortIdForKind(initialKind as DataCatalogKind));
+  const [dataSortOrder, setDataSortOrder] = useState<ServerSortOrder>('desc');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(() => defaultRowsForKind(initialKind));
   const [suppressed, setSuppressed] = useState<'all' | 'true' | 'false'>('all');
@@ -358,9 +355,14 @@ export function DataPage() {
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const { loading: metadataLoading, wrapRefresh: wrapMetadataRefresh } = useDisplayRefresh();
+  const { loading: categoryFilterLoading, wrapRefresh: wrapCategoryFilterRefresh } =
+    useDisplayRefresh();
   const { loading: catalogLoading, wrapRefresh: wrapCatalogRefresh } = useDisplayRefresh();
 
   const [categories, setCategories] = useState<{ id: string; label: string }[]>([]);
+  const [categoryFilterOptions, setCategoryFilterOptions] = useState<
+    { id: string; label: string }[]
+  >([]);
   const [feeds, setFeeds] = useState<{ id: string; title: string | null; url: string }[]>([]);
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
@@ -376,7 +378,8 @@ export function DataPage() {
     setPage(0);
     setRowsPerPage(defaultRowsForKind(kind));
     setToolbarSearch('');
-    setDataSortId('newest');
+    setDataSortId(defaultDataSortIdForKind(kind as DataCatalogKind));
+    setDataSortOrder(kind === 'calendar_events' || kind === 'dashboard_alerts' ? 'desc' : 'asc');
   }, [kind]);
 
   /** Cancels stale catalog fetches so a slow tab (e.g. weather) cannot overwrite rows after switching kind. */
@@ -455,6 +458,47 @@ export function DataPage() {
   useEffect(() => {
     void loadMetadata();
   }, [loadMetadata]);
+
+  const loadCategoryFilterOptions = useCallback(async () => {
+    if (!active || !canBrowseData || !isCatalogKindWithCategoryFilter(kind)) {
+      setCategoryFilterOptions([]);
+      return;
+    }
+    await wrapCategoryFilterRefresh(async () => {
+      try {
+        const params = catalogCategoryOptionsParams({
+          kind,
+          suppressed,
+          includeSuppressedFilter: canModerate && canSuppress(kind),
+          integrationFilter,
+        });
+        const data = await apiJson<{ items: { id: string; label: string }[] }>(
+          active,
+          `/v1/catalog/category-options?${params.toString()}`,
+        );
+        const items = data.items ?? [];
+        setCategoryFilterOptions(items);
+        setCategoryId((prev) =>
+          prev && !items.some((c) => c.id === prev) ? '' : prev,
+        );
+      } catch {
+        setCategoryFilterOptions([]);
+        setCategoryId('');
+      }
+    });
+  }, [
+    active,
+    canBrowseData,
+    canModerate,
+    integrationFilter,
+    kind,
+    suppressed,
+    wrapCategoryFilterRefresh,
+  ]);
+
+  useEffect(() => {
+    void loadCategoryFilterOptions();
+  }, [loadCategoryFilterOptions]);
 
   const offset = page * rowsPerPage;
 
@@ -589,15 +633,30 @@ export function DataPage() {
     [active, canModerate, confirm, kind, loadCatalog],
   );
 
+  const dataSortOptions = useMemo(
+    () => dataSortOptionsForKind(kind as DataCatalogKind, categories),
+    [kind, categories],
+  );
+  const dataSortToolbar = useMemo(
+    () => dataSortToolbarForKind(kind as DataCatalogKind, categories),
+    [kind, categories],
+  );
+
   const displayRows = useMemo(() => {
     const q = toolbarSearch.trim().toLowerCase();
     let list = rows;
     if (q) {
       list = rows.filter((row) => rowMatchesToolbarSearch(row, q));
     }
-    const sortOption = DATA_ROW_SORT.find((o) => o.id === dataSortId) ?? DATA_ROW_SORT[0];
-    return sortByOption(list, sortOption);
-  }, [rows, toolbarSearch, dataSortId]);
+    const sortOption = dataSortOptions.find((o) => o.id === dataSortId) ?? dataSortOptions[0];
+    if (!sortOption) return list;
+    const ordered = {
+      ...sortOption,
+      compare: (a: Record<string, unknown>, b: Record<string, unknown>) =>
+        applySortOrder(sortOption.compare(a, b), dataSortOrder),
+    };
+    return sortByOption(list, ordered);
+  }, [rows, toolbarSearch, dataSortId, dataSortOrder, dataSortOptions]);
 
   if (!active) {
     return <NoDisplayPlaceholder />;
@@ -614,15 +673,9 @@ export function DataPage() {
   }
 
   const metadataFiltersBusy =
-    metadataLoading &&
-    (kind === 'calendar_events' ||
-      kind === 'jokes' ||
-      kind === 'trivia' ||
-      kind === 'photos' ||
-      kind === 'videos' ||
-      kind === 'news' ||
-      kind === 'weather' ||
-      kind === 'weather_alerts');
+    (metadataLoading &&
+      (kind === 'news' || kind === 'weather' || kind === 'weather_alerts')) ||
+    (categoryFilterLoading && isCatalogKindWithCategoryFilter(kind));
 
   return (
     <Stack spacing={2}>
@@ -662,9 +715,11 @@ export function DataPage() {
         search={toolbarSearch}
         onSearchChange={setToolbarSearch}
         searchPlaceholder="Search current page…"
-        sortOptions={DATA_ROW_SORT}
+        sortOptions={dataSortToolbar}
         sortId={dataSortId}
         onSortChange={setDataSortId}
+        order={dataSortOrder}
+        onOrderChange={setDataSortOrder}
         onReload={() => void loadCatalog()}
         reloadDisabled={catalogLoading}
         reloadAriaLabel="Reload catalog data"
@@ -716,12 +771,7 @@ export function DataPage() {
             </Select>
           </FormControl>
         )}
-        {(kind === 'calendar_events' ||
-        kind === 'jokes' ||
-        kind === 'trivia' ||
-        kind === 'photos' ||
-        kind === 'videos' ||
-        kind === 'quoterism_quotes') && (
+        {isCatalogKindWithCategoryFilter(kind) && (
           <FormControl size="small" sx={{ minWidth: 180 }}>
             <InputLabel id="cat-filter">Category</InputLabel>
             <Select
@@ -732,7 +782,7 @@ export function DataPage() {
               onChange={(e) => setCategoryId(e.target.value as string)}
             >
               <MenuItem value="">Any</MenuItem>
-              {categories.map((c) => (
+              {categoryFilterOptions.map((c) => (
                 <MenuItem key={c.id} value={c.id}>
                   {c.label}
                 </MenuItem>

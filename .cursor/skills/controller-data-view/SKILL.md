@@ -20,12 +20,12 @@ Any **list or catalog page** under `apps/waddle_controller/src/pages/` that show
 
 1. **Layout** — `useListLayoutPreference('<page-key>')` with a key in [`listLayoutPreference.ts`](../../../apps/waddle_controller/src/storage/listLayoutPreference.ts). Default **table** for `data` and `activity` only.
 2. **Toolbar** — [`DataViewToolbar`](../../../apps/waddle_controller/src/components/dataView/DataViewToolbar.tsx): search, sort, reload, card/table toggle; optional `filterSlot` for extra filters (channel, category chips, column filters).
-3. **Client lists** — [`useClientDataView`](../../../apps/waddle_controller/src/hooks/useClientDataView.ts) + [`DataViewPagination`](../../../apps/waddle_controller/src/components/dataView/DataViewPagination.tsx); define `SortOption<T>[]` and `searchMatches`.
+3. **Client lists** — [`useClientDataView`](../../../apps/waddle_controller/src/hooks/useClientDataView.ts) + [`DataViewPagination`](../../../apps/waddle_controller/src/components/dataView/DataViewPagination.tsx); define column sort fields via [`dataViewColumnSort.ts`](../../../apps/waddle_controller/src/util/dataViewColumnSort.ts) (`buildColumnSortOptions`, `columnSortToolbarOptions`), set `useSortOrder: true`, and wire toolbar `order` / `onOrderChange`.
 4. **Server-paged lists** — [`useServerDataView`](../../../apps/waddle_controller/src/hooks/useServerDataView.ts); pass `query` into API params (`q`, `sort`, `order`, `limit`, `offset`); refetch when controls change; reset section pages on filter/sort change.
 5. **Reload** — wire `onReload` to the page `load` function; `reloadDisabled` while `useDisplayRefresh().loading` (or page `loading` for BFF-only pages).
 6. **Empty states** — [`DataViewEmptyState`](../../../apps/waddle_controller/src/components/dataView/DataViewEmptyState.tsx) for “no data” vs “no matches”.
 7. **Both layouts** — implement **card** and **table** branches over the same `displayRows` / `paginated.items`.
-8. **Sort labels** — only offer sorts on fields operators see (name, label, type, dates, etc.). Do **not** add “ID” sort options; internal ids may still be used in `searchMatches` or compare tie-breakers.
+8. **Sort labels** — offer a toolbar sort option for every **visible data column** (not Actions / row-action switches / rich preview thumbnails unless a scalar proxy exists). Use human column titles. Do **not** add “ID” sort options; internal ids may still be used in `searchMatches` or `tieBreakLocale` tie-breakers.
 
 Reset page index when search, sort, or filter changes.
 
@@ -43,17 +43,30 @@ import { DataViewPagination } from '@/components/dataView/DataViewPagination';
 import { DataViewEmptyState } from '@/components/dataView/DataViewEmptyState';
 import { useClientDataView } from '@/hooks/useClientDataView';
 import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
-import type { SortOption } from '@/util/clientListPipeline';
+import {
+  buildColumnSortOptions,
+  columnSortToolbarOptions,
+  compareLocale,
+  tieBreakLocale,
+  type ColumnSortField,
+} from '@/util/dataViewColumnSort';
 
-const SORT_OPTIONS: SortOption<Row>[] = [
-  { id: 'name_asc', label: 'Name (A–Z)', compare: (a, b) => a.name.localeCompare(b.name) },
+const SORT_FIELDS: ColumnSortField<Row>[] = [
+  {
+    id: 'name',
+    label: 'Name',
+    compare: (a, b) => tieBreakLocale(compareLocale(a.name, b.name), a.id, b.id),
+  },
 ];
+const sortOptions = buildColumnSortOptions(SORT_FIELDS);
+const sortToolbar = columnSortToolbarOptions(SORT_FIELDS);
 
 const { layout, setLayout } = useListLayoutPreference('my-page');
 const dataView = useClientDataView({
   items: rows,
-  sortOptions: SORT_OPTIONS,
-  defaultSortId: 'name_asc',
+  sortOptions,
+  defaultSortId: 'name',
+  useSortOrder: true,
   searchMatches: (row, q) => row.name.toLowerCase().includes(q),
 });
 const displayRows = dataView.paginated.items;
@@ -63,9 +76,11 @@ const displayRows = dataView.paginated.items;
   onLayoutChange={setLayout}
   search={dataView.search}
   onSearchChange={dataView.setSearch}
-  sortOptions={SORT_OPTIONS}
+  sortOptions={sortToolbar}
   sortId={dataView.sortId}
   onSortChange={dataView.setSortId}
+  order={dataView.order}
+  onOrderChange={dataView.setOrder}
   onReload={() => void load()}
   reloadDisabled={loading}
 />
@@ -82,7 +97,7 @@ const displayRows = dataView.paginated.items;
 ## Server-paged template (Integrations-style)
 
 ```tsx
-const listControls = useServerDataView({ defaultSort: 'integration_type', defaultOrder: 'asc' });
+const listControls = useServerDataView({ defaultSort: 'integration_type_label', defaultOrder: 'asc' });
 
 // listParams: { ...listControls.query, enabled, ... }
 // useEffect deps include listControls.query
@@ -96,12 +111,14 @@ const listControls = useServerDataView({ defaultSort: 'integration_type', defaul
 
 ## Data browser note
 
-[`DataPage`](../../../apps/waddle_controller/src/pages/DataPage.tsx) uses **server** paging per tab; toolbar search and sort apply to the **current page** only until catalog APIs gain `sort`/`order` query params.
+[`DataPage`](../../../apps/waddle_controller/src/pages/DataPage.tsx) uses **server** paging per tab; toolbar search and per-column sort (via [`dataCatalogSort.ts`](../../../apps/waddle_controller/src/util/dataCatalogSort.ts)) apply to the **current page** only until catalog APIs gain `sort`/`order` query params.
 
 ## Shared utilities
 
 - [`listPagination.ts`](../../../apps/waddle_controller/src/util/listPagination.ts) — `paginateList`, default page size 25
 - [`clientListPipeline.ts`](../../../apps/waddle_controller/src/util/clientListPipeline.ts) — `applyClientListPipeline`, `filterBySearch`, `sortByOption` (unit-tested)
+- [`dataViewColumnSort.ts`](../../../apps/waddle_controller/src/util/dataViewColumnSort.ts) — `compareLocale`, `compareNumber`, `applySortOrder`, `buildColumnSortOptions`, `columnSortToolbarOptions`
+- [`interestTabSort.ts`](../../../apps/waddle_controller/src/util/interestTabSort.ts) — per-tab sort fields for Interests
 
 ## Verification
 

@@ -3,6 +3,7 @@ import {
   applyClientListPipeline,
   type SortOption,
 } from '@/util/clientListPipeline';
+import type { ServerSortOrder } from '@/util/dataViewColumnSort';
 import {
   DATA_VIEW_DEFAULT_PAGE_SIZE,
   paginateList,
@@ -13,6 +14,9 @@ export type UseClientDataViewParams<T> = {
   items: readonly T[];
   sortOptions: readonly SortOption<T>[];
   defaultSortId?: string;
+  defaultOrder?: ServerSortOrder;
+  /** When true, toolbar Order inverts the selected column compare (use neutral field compares). */
+  useSortOrder?: boolean;
   searchMatches: (item: T, normalizedQuery: string) => boolean;
   initialPageSize?: number;
 };
@@ -22,6 +26,8 @@ export type UseClientDataViewResult<T> = {
   setSearch: (value: string) => void;
   sortId: string;
   setSortId: (value: string) => void;
+  order: ServerSortOrder;
+  setOrder: (value: ServerSortOrder) => void;
   page: number;
   setPage: (value: number) => void;
   pageSize: number;
@@ -36,6 +42,7 @@ export function useClientDataView<T>(params: UseClientDataViewParams<T>): UseCli
   const defaultSortId = params.defaultSortId ?? params.sortOptions[0]?.id ?? '';
   const [search, setSearchState] = useState('');
   const [sortId, setSortIdState] = useState(defaultSortId);
+  const [order, setOrderState] = useState<ServerSortOrder>(params.defaultOrder ?? 'asc');
   const [page, setPageState] = useState(0);
   const [pageSize, setPageSizeState] = useState(
     params.initialPageSize ?? DATA_VIEW_DEFAULT_PAGE_SIZE,
@@ -61,6 +68,14 @@ export function useClientDataView<T>(params: UseClientDataViewParams<T>): UseCli
     [resetPage],
   );
 
+  const setOrder = useCallback(
+    (value: ServerSortOrder) => {
+      setOrderState(value);
+      resetPage();
+    },
+    [resetPage],
+  );
+
   const setPage = useCallback((value: number) => {
     setPageState(value);
   }, []);
@@ -81,8 +96,18 @@ export function useClientDataView<T>(params: UseClientDataViewParams<T>): UseCli
         searchMatches: params.searchMatches,
         sortOptions: params.sortOptions,
         sortId: sortId || defaultSortId,
+        order: params.useSortOrder ? order : undefined,
       }),
-    [params.items, params.searchMatches, params.sortOptions, search, sortId, defaultSortId],
+    [
+      params.items,
+      params.searchMatches,
+      params.sortOptions,
+      params.useSortOrder,
+      search,
+      sortId,
+      defaultSortId,
+      order,
+    ],
   );
 
   const paginated = useMemo(
@@ -107,6 +132,8 @@ export function useClientDataView<T>(params: UseClientDataViewParams<T>): UseCli
     setSearch,
     sortId: sortId || defaultSortId,
     setSortId,
+    order,
+    setOrder,
     page,
     setPage,
     pageSize,

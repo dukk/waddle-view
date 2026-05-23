@@ -24,7 +24,15 @@ import {
 } from '@mui/material';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { DataViewToolbar } from '@/components/dataView/DataViewToolbar';
-import { applyClientListPipeline, type SortOption } from '@/util/clientListPipeline';
+import { applyClientListPipeline } from '@/util/clientListPipeline';
+import {
+  buildColumnSortOptions,
+  columnSortToolbarOptions,
+  compareLocale,
+  compareNumber,
+  type ColumnSortField,
+  type ServerSortOrder,
+} from '@/util/dataViewColumnSort';
 import { useDisplay } from '@/context/DisplayContext';
 import { useDisplayFormat } from '@/context/DisplayFormatContext';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
@@ -48,18 +56,74 @@ import {
 import { formatIntervalDisplay } from '@/util/durationInput';
 import { screenTypeLabel, screenTypeMetaFor } from '@/util/screenTypeLabel';
 
-const PROGRAM_SORT_OPTIONS: SortOption<Record<string, unknown>>[] = [
+function programFirstSlide(row: Record<string, unknown>): Record<string, unknown> | undefined {
+  const slides = row['slides'];
+  if (!Array.isArray(slides) || slides.length === 0) return undefined;
+  const s = slides[0];
+  return s && typeof s === 'object' ? (s as Record<string, unknown>) : undefined;
+}
+
+function programFirstTickerItem(row: Record<string, unknown>): Record<string, unknown> | undefined {
+  const items = row['items'];
+  if (!Array.isArray(items) || items.length === 0) return undefined;
+  const s = items[0];
+  return s && typeof s === 'object' ? (s as Record<string, unknown>) : undefined;
+}
+
+function slideDwellMs(slide: Record<string, unknown> | undefined): number {
+  if (!slide) return 0;
+  const v = slide['dwell_ms'];
+  return typeof v === 'number' ? v : Number(v) || 0;
+}
+
+const PROGRAM_SORT_FIELDS: ColumnSortField<Record<string, unknown>>[] = [
   {
-    id: 'newest',
-    label: 'Newest first',
-    compare: (a, b) => programAtMs(b) - programAtMs(a),
+    id: 'curated',
+    label: 'Curated',
+    compare: (a, b) => compareNumber(programAtMs(a), programAtMs(b)),
   },
   {
-    id: 'oldest',
-    label: 'Oldest first',
-    compare: (a, b) => programAtMs(a) - programAtMs(b),
+    id: 'reason',
+    label: 'Reason',
+    compare: (a, b) => compareLocale(String(a['reason'] ?? ''), String(b['reason'] ?? '')),
+  },
+  {
+    id: 'screen',
+    label: 'Screen',
+    compare: (a, b) =>
+      compareLocale(
+        String(programFirstSlide(a)?.['screen_id'] ?? ''),
+        String(programFirstSlide(b)?.['screen_id'] ?? ''),
+      ),
+  },
+  {
+    id: 'type',
+    label: 'Type',
+    compare: (a, b) =>
+      compareLocale(
+        String(programFirstSlide(a)?.['screen_type'] ?? ''),
+        String(programFirstSlide(b)?.['screen_type'] ?? ''),
+      ),
+  },
+  {
+    id: 'dwell',
+    label: 'Dwell',
+    compare: (a, b) =>
+      compareNumber(slideDwellMs(programFirstSlide(a)), slideDwellMs(programFirstSlide(b))),
+  },
+  {
+    id: 'kind',
+    label: 'Kind',
+    compare: (a, b) =>
+      compareLocale(
+        String(programFirstTickerItem(a)?.['kind'] ?? programFirstTickerItem(a)?.['type'] ?? ''),
+        String(programFirstTickerItem(b)?.['kind'] ?? programFirstTickerItem(b)?.['type'] ?? ''),
+      ),
   },
 ];
+
+const PROGRAM_SORT_OPTIONS = buildColumnSortOptions(PROGRAM_SORT_FIELDS);
+const PROGRAM_SORT_TOOLBAR = columnSortToolbarOptions(PROGRAM_SORT_FIELDS);
 
 function programMatchesSearch(row: Record<string, unknown>, q: string): boolean {
   const reason = String(row['reason'] ?? '').toLowerCase();
@@ -806,7 +870,8 @@ export function ProgramsPage() {
   const [screenSelectedAtMs, setScreenSelectedAtMs] = useState<number | null>(null);
   const [tickerSelectedAtMs, setTickerSelectedAtMs] = useState<number | null>(null);
   const [search, setSearch] = useState('');
-  const [sortId, setSortId] = useState('newest');
+  const [sortId, setSortId] = useState('curated');
+  const [sortOrder, setSortOrder] = useState<ServerSortOrder>('desc');
 
   const lastScreenJson = useRef<string | null>(null);
   const lastTickerJson = useRef<string | null>(null);
@@ -909,8 +974,9 @@ export function ProgramsPage() {
         searchMatches: programMatchesSearch,
         sortOptions: PROGRAM_SORT_OPTIONS,
         sortId,
+        order: sortOrder,
       }),
-    [screen, search, sortId],
+    [screen, search, sortId, sortOrder],
   );
   const tickerProgramsDesc = useMemo(
     () =>
@@ -920,8 +986,9 @@ export function ProgramsPage() {
         searchMatches: programMatchesSearch,
         sortOptions: PROGRAM_SORT_OPTIONS,
         sortId,
+        order: sortOrder,
       }),
-    [ticker, search, sortId],
+    [ticker, search, sortId, sortOrder],
   );
 
   const handleSearchChange = useCallback((value: string) => {
@@ -1010,9 +1077,11 @@ export function ProgramsPage() {
           search={search}
           onSearchChange={handleSearchChange}
           searchPlaceholder="Search programs…"
-          sortOptions={PROGRAM_SORT_OPTIONS}
+          sortOptions={PROGRAM_SORT_TOOLBAR}
           sortId={sortId}
           onSortChange={handleSortChange}
+          order={sortOrder}
+          onOrderChange={setSortOrder}
           onReload={handleReload}
           reloadDisabled={screenLoading || tickerLoading}
           reloadAriaLabel="Reload programs"

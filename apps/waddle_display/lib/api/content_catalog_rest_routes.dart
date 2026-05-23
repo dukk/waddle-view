@@ -38,6 +38,10 @@ void registerContentCatalogRoutes(Router r, {required AppDatabase db}) {
     (Request req) => _listQuoterismQuotes(db, req),
   );
   r.get('/v1/catalog/tasks', (Request req) => _listTasks(db, req));
+  r.get(
+    '/v1/catalog/category-options',
+    (Request req) => _listCatalogCategoryOptions(db, req),
+  );
 }
 
 class _CatalogParams {
@@ -1431,4 +1435,242 @@ Future<Response> _listTasks(AppDatabase db, Request req) async {
     'limit': p.limit,
     'offset': p.offset,
   });
+}
+
+const Set<String> _kCatalogCategoryOptionKinds = {
+  'calendar_events',
+  'jokes',
+  'trivia',
+  'photos',
+  'videos',
+  'quoterism_quotes',
+};
+
+/// Scope for category-options: suppressed + integration needles, never [category].
+_CatalogParams _categoryOptionsScope(_CatalogParams parsed) => _CatalogParams(
+  limit: parsed.limit,
+  offset: parsed.offset,
+  suppressed: parsed.suppressed,
+);
+
+Future<Response> _listCatalogCategoryOptions(
+  AppDatabase db,
+  Request req,
+) async {
+  final kind = req.url.queryParameters['kind']?.trim() ?? '';
+  if (kind.isEmpty) {
+    return Response(
+      400,
+      body: '{"error":"missing_kind"}',
+      headers: {'content-type': 'application/json'},
+    );
+  }
+  if (!_kCatalogCategoryOptionKinds.contains(kind)) {
+    return Response(
+      400,
+      body: '{"error":"invalid_kind"}',
+      headers: {'content-type': 'application/json'},
+    );
+  }
+
+  final parsed = _CatalogParams.parse(req);
+  final prep = _prepareCatalogList(req, parsed);
+  if (prep.$1 != null) return prep.$1!;
+  final scope = _categoryOptionsScope(prep.$2);
+
+  final ids = switch (kind) {
+    'jokes' => await _distinctJokeCategoryIds(db, scope),
+    'trivia' => await _distinctTriviaCategoryIds(db, req, scope),
+    'photos' => await _distinctPhotoCategoryIds(db, req, scope),
+    'videos' => await _distinctVideoCategoryIds(db, req, scope),
+    'calendar_events' => await _distinctCalendarCategoryIds(db, req, scope),
+    'quoterism_quotes' => await _distinctQuoterismCategoryIds(db, req, scope),
+    _ => <String>{},
+  };
+
+  final items = await _labeledCategoryItems(db, ids);
+  return _jsonOk({'items': items});
+}
+
+Future<List<Map<String, String>>> _labeledCategoryItems(
+  AppDatabase db,
+  Set<String> ids,
+) async {
+  if (ids.isEmpty) return [];
+  final sortedIds = ids.toList()..sort();
+  final rows = await (db.select(
+    db.contentCategories,
+  )..where((c) => c.id.isIn(sortedIds))).get();
+  final labelById = {for (final r in rows) r.id: r.label};
+  final items = [
+    for (final id in sortedIds) {'id': id, 'label': labelById[id] ?? id},
+  ];
+  items.sort(
+    (a, b) => a['label']!.toLowerCase().compareTo(b['label']!.toLowerCase()),
+  );
+  return items;
+}
+
+Future<Set<String>> _distinctJokeCategoryIds(
+  AppDatabase db,
+  _CatalogParams scope,
+) async {
+  final col = db.jokes.categoryId;
+  final rows =
+      await (db.selectOnly(db.jokes)
+            ..addColumns([col])
+            ..where(_jokeWhere(db.jokes, scope, null, null))
+            ..groupBy([col]))
+          .get();
+  return _nonEmptyCategoryIds(rows, col);
+}
+
+Future<Set<String>> _distinctTriviaCategoryIds(
+  AppDatabase db,
+  Request req,
+  _CatalogParams scope,
+) async {
+  final integrationTypeNeedle = _queryNeedle(req, 'integration_type');
+  final col = db.triviaQuestions.categoryId;
+  final rows =
+      await (db.selectOnly(db.triviaQuestions)
+            ..addColumns([col])
+            ..where(
+              _triviaWhere(
+                db.triviaQuestions,
+                scope,
+                null,
+                null,
+                null,
+                null,
+                null,
+                integrationTypeNeedle,
+              ),
+            )
+            ..groupBy([col]))
+          .get();
+  return _nonEmptyCategoryIds(rows, col);
+}
+
+Future<Set<String>> _distinctPhotoCategoryIds(
+  AppDatabase db,
+  Request req,
+  _CatalogParams scope,
+) async {
+  final dataProviderNeedle = _queryNeedle(req, 'data_provider');
+  final col = db.photos.category;
+  final rows =
+      await (db.selectOnly(db.photos)
+            ..addColumns([col])
+            ..where(
+              _photoWhere(db.photos, scope, null, null, dataProviderNeedle),
+            )
+            ..groupBy([col]))
+          .get();
+  return _nonEmptyCategoryIds(rows, col);
+}
+
+Future<Set<String>> _distinctVideoCategoryIds(
+  AppDatabase db,
+  Request req,
+  _CatalogParams scope,
+) async {
+  final dataProviderNeedle = _queryNeedle(req, 'data_provider');
+  final col = db.videos.category;
+  final rows =
+      await (db.selectOnly(db.videos)
+            ..addColumns([col])
+            ..where(
+              _videoWhere(db.videos, scope, null, null, dataProviderNeedle),
+            )
+            ..groupBy([col]))
+          .get();
+  return _nonEmptyCategoryIds(rows, col);
+}
+
+Future<Set<String>> _distinctQuoterismCategoryIds(
+  AppDatabase db,
+  Request req,
+  _CatalogParams scope,
+) async {
+  final textNeedle = _queryNeedle(req, 'text');
+  final authorNeedle = _queryNeedle(req, 'author_name');
+  final quoteIds =
+      await (db.selectOnly(db.quoterismQuotes)
+            ..addColumns([db.quoterismQuotes.id])
+            ..where(
+              _quoterismQuoteWhere(
+                db.quoterismQuotes,
+                scope,
+                textNeedle,
+                authorNeedle,
+                db,
+              ),
+            ))
+          .map((r) => r.read(db.quoterismQuotes.id)!)
+          .get();
+  if (quoteIds.isEmpty) return {};
+  final col = db.quoterismQuoteCategories.categoryId;
+  final rows =
+      await (db.selectOnly(db.quoterismQuoteCategories)
+            ..addColumns([col])
+            ..where(db.quoterismQuoteCategories.quoteId.isIn(quoteIds))
+            ..groupBy([col]))
+          .get();
+  return _nonEmptyCategoryIds(rows, col);
+}
+
+Future<Set<String>> _distinctCalendarCategoryIds(
+  AppDatabase db,
+  Request req,
+  _CatalogParams scope,
+) async {
+  final titleNeedle = _queryNeedle(req, 'title');
+  final locationNeedle = _queryNeedle(req, 'location');
+  final descriptionNeedle = _queryNeedle(req, 'description');
+  final sourceNeedle = _queryNeedle(req, 'source');
+  final eventPred = _calendarEventWhere(
+    db,
+    db.calendarEvents,
+    scope,
+    titleNeedle,
+    locationNeedle,
+    descriptionNeedle,
+    sourceNeedle,
+  );
+
+  final primaryCol = db.calendarEvents.categoryId;
+  final primaryRows =
+      await (db.selectOnly(db.calendarEvents)
+            ..addColumns([primaryCol])
+            ..where(eventPred & primaryCol.isNotNull())
+            ..groupBy([primaryCol]))
+          .get();
+  final ids = _nonEmptyCategoryIds(primaryRows, primaryCol);
+
+  final junctionCol = db.calendarEventCategories.categoryId;
+  final junctionRows =
+      await (db.selectOnly(db.calendarEventCategories)
+            ..addColumns([junctionCol])
+            ..where(
+              db.calendarEventCategories.eventId.isInQuery(
+                db.selectOnly(db.calendarEvents)
+                  ..addColumns([db.calendarEvents.id])
+                  ..where(eventPred),
+              ),
+            )
+            ..groupBy([junctionCol]))
+          .get();
+  ids.addAll(_nonEmptyCategoryIds(junctionRows, junctionCol));
+  return ids;
+}
+
+Set<String> _nonEmptyCategoryIds(
+  List<TypedResult> rows,
+  GeneratedColumn<String> col,
+) {
+  return {
+    for (final r in rows)
+      if ((r.read(col) ?? '').trim().isNotEmpty) r.read(col)!,
+  };
 }

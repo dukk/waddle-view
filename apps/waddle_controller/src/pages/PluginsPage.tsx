@@ -27,7 +27,13 @@ import { catalogCardGridSx } from '@/constants/catalogLayout';
 import { useClientDataView } from '@/hooks/useClientDataView';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
-import type { SortOption } from '@/util/clientListPipeline';
+import {
+  buildColumnSortOptions,
+  columnSortToolbarOptions,
+  compareLocale,
+  tieBreakLocale,
+  type ColumnSortField,
+} from '@/util/dataViewColumnSort';
 
 type PluginRow = {
   id: string;
@@ -36,18 +42,32 @@ type PluginRow = {
   capabilities: string[];
 };
 
-const PLUGIN_SORT_OPTIONS: SortOption<PluginRow>[] = [
+const PLUGIN_SORT_FIELDS: ColumnSortField<PluginRow>[] = [
   {
     id: 'version',
     label: 'Version',
-    compare: (a, b) => a.version.localeCompare(b.version) || a.path.localeCompare(b.path),
+    compare: (a, b) =>
+      tieBreakLocale(compareLocale(a.version, b.version), a.id, b.id),
   },
   {
-    id: 'path_asc',
-    label: 'Path (A–Z)',
-    compare: (a, b) => a.path.localeCompare(b.path),
+    id: 'path',
+    label: 'Path',
+    compare: (a, b) => tieBreakLocale(compareLocale(a.path, b.path), a.id, b.id),
+  },
+  {
+    id: 'capabilities',
+    label: 'Capabilities',
+    compare: (a, b) =>
+      tieBreakLocale(
+        compareLocale(a.capabilities.join(', '), b.capabilities.join(', ')),
+        a.id,
+        b.id,
+      ),
   },
 ];
+
+const PLUGIN_SORT_OPTIONS = buildColumnSortOptions(PLUGIN_SORT_FIELDS);
+const PLUGIN_SORT_TOOLBAR = columnSortToolbarOptions(PLUGIN_SORT_FIELDS);
 
 function PluginTable({ rows }: { rows: PluginRow[] }) {
   return (
@@ -130,6 +150,7 @@ export function PluginsPage() {
     items,
     sortOptions: PLUGIN_SORT_OPTIONS,
     defaultSortId: 'version',
+    useSortOrder: true,
     searchMatches: (row, q) =>
       row.id.toLowerCase().includes(q) ||
       row.version.toLowerCase().includes(q) ||
@@ -169,9 +190,11 @@ export function PluginsPage() {
         search={dataView.search}
         onSearchChange={dataView.setSearch}
         searchPlaceholder="Search plugins…"
-        sortOptions={PLUGIN_SORT_OPTIONS}
+        sortOptions={PLUGIN_SORT_TOOLBAR}
         sortId={dataView.sortId}
         onSortChange={dataView.setSortId}
+        order={dataView.order}
+        onOrderChange={dataView.setOrder}
         onReload={() => void load()}
         reloadDisabled={loading}
         reloadAriaLabel="Reload plugins"

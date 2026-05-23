@@ -315,6 +315,129 @@ Future<void> _seedCalendarCatalogEvents(AppDatabase db) async {
 }
 
 void main() {
+  test('GET /v1/catalog/category-options lists only categories with data', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db
+        .into(db.contentCategories)
+        .insertOnConflictUpdate(
+          ContentCategoriesCompanion.insert(id: 'used', label: 'Used'),
+        );
+    await db
+        .into(db.contentCategories)
+        .insertOnConflictUpdate(
+          ContentCategoriesCompanion.insert(id: 'empty', label: 'Empty'),
+        );
+    await db
+        .into(db.interestsJokes)
+        .insert(InterestsJokesCompanion.insert(id: 'used', label: 'Used'));
+    await db
+        .into(db.interestsJokes)
+        .insert(InterestsJokesCompanion.insert(id: 'empty', label: 'Empty'));
+    await db
+        .into(db.jokes)
+        .insert(
+          JokesCompanion.insert(
+            id: 'j-used',
+            categoryId: 'used',
+            setup: 'setup',
+            punchline: 'punch',
+            createdAtMs: DateTime.fromMillisecondsSinceEpoch(10),
+          ),
+        );
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+
+    final res = await http.get(
+      Uri.parse('${h.baseUrl}/v1/catalog/category-options?kind=jokes'),
+      headers: h.authHeaders,
+    );
+    expect(res.statusCode, 200);
+    final items = (jsonDecode(res.body) as Map<String, dynamic>)['items'] as List;
+    expect(items.length, 1);
+    expect((items.first as Map)['id'], 'used');
+    expect((items.first as Map)['label'], 'Used');
+  });
+
+  test('GET /v1/catalog/category-options browse-only omits suppressed-only categories', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await _seedCatalogRows(db);
+    await db
+        .into(db.contentCategories)
+        .insertOnConflictUpdate(
+          ContentCategoriesCompanion.insert(
+            id: 'sup_only',
+            label: 'Suppressed only',
+          ),
+        );
+    await db
+        .into(db.interestsJokes)
+        .insert(
+          InterestsJokesCompanion.insert(id: 'sup_only', label: 'Suppressed only'),
+        );
+    await db
+        .into(db.jokes)
+        .insert(
+          JokesCompanion.insert(
+            id: 'j-sup-only',
+            categoryId: 'sup_only',
+            setup: 'x',
+            punchline: 'y',
+            createdAtMs: DateTime.fromMillisecondsSinceEpoch(30),
+            suppressed: const Value(true),
+          ),
+        );
+    final h = await RestTestHarness.start(
+      database: db,
+      role: kUserRolePowerViewer,
+    );
+    addTearDown(h.dispose);
+
+    final res = await http.get(
+      Uri.parse('${h.baseUrl}/v1/catalog/category-options?kind=jokes'),
+      headers: h.authHeaders,
+    );
+    expect(res.statusCode, 200);
+    final ids = ((jsonDecode(res.body) as Map<String, dynamic>)['items'] as List)
+        .map((e) => (e as Map)['id'] as String)
+        .toList();
+    expect(ids, ['general']);
+  });
+
+  test('GET /v1/catalog/category-options calendar includes junction categories', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await _seedCalendarCatalogEvents(db);
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+
+    final res = await http.get(
+      Uri.parse(
+        '${h.baseUrl}/v1/catalog/category-options?kind=calendar_events',
+      ),
+      headers: h.authHeaders,
+    );
+    expect(res.statusCode, 200);
+    final ids = ((jsonDecode(res.body) as Map<String, dynamic>)['items'] as List)
+        .map((e) => (e as Map)['id'] as String)
+        .toSet();
+    expect(ids, containsAll(['work', 'family']));
+  });
+
+  test('GET /v1/catalog/category-options rejects unknown kind', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+
+    final res = await http.get(
+      Uri.parse('${h.baseUrl}/v1/catalog/category-options?kind=news'),
+      headers: h.authHeaders,
+    );
+    expect(res.statusCode, 400);
+  });
+
   test('GET /v1/catalog/jokes paginates and filters', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);

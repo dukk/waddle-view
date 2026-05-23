@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link as RouterLink } from 'react-router';
 
 import {
@@ -27,8 +27,14 @@ import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { catalogCardGridSx } from '@/constants/catalogLayout';
 import { useClientDataView } from '@/hooks/useClientDataView';
 import { useListLayoutPreference } from '@/hooks/useListLayoutPreference';
-import type { SortOption } from '@/util/clientListPipeline';
 import type { DisplaysReachabilityMap } from '@/util/useDisplaysReachability';
+import {
+  buildColumnSortOptions,
+  columnSortToolbarOptions,
+  compareLocale,
+  tieBreakLocale,
+  type ColumnSortField,
+} from '@/util/dataViewColumnSort';
 
 import { AdoptDisplayDialog } from '@/components/AdoptDisplayDialog';
 
@@ -49,11 +55,43 @@ import { useDisplaysReachability } from '@/util/useDisplaysReachability';
 
 
 
-const DISPLAY_SORT_OPTIONS: SortOption<SavedDisplay>[] = [
-  { id: 'label_asc', label: 'Name (A–Z)', compare: (a, b) => a.label.localeCompare(b.label) },
-  { id: 'label_desc', label: 'Name (Z–A)', compare: (a, b) => b.label.localeCompare(a.label) },
-  { id: 'url_asc', label: 'URL (A–Z)', compare: (a, b) => a.baseUrl.localeCompare(b.baseUrl) },
-];
+function displaySortFields(
+  reachability: DisplaysReachabilityMap,
+): ColumnSortField<SavedDisplay>[] {
+  return [
+    {
+      id: 'display',
+      label: 'Display',
+      compare: (a, b) => tieBreakLocale(compareLocale(a.label, b.label), a.id, b.id),
+    },
+    {
+      id: 'status',
+      label: 'Status',
+      compare: (a, b) =>
+        tieBreakLocale(
+          compareLocale(reachability[a.id]?.state ?? '', reachability[b.id]?.state ?? ''),
+          a.id,
+          b.id,
+        ),
+    },
+    {
+      id: 'url',
+      label: 'Base URL',
+      compare: (a, b) => tieBreakLocale(compareLocale(a.baseUrl, b.baseUrl), a.id, b.id),
+    },
+    {
+      id: 'adoption',
+      label: 'Adoption',
+      compare: (a, b) => {
+        const sa = loadSession(a.id);
+        const sb = loadSession(b.id);
+        const aa = sa ? `${sa.identifier} (${sa.role})` : 'Not adopted';
+        const ab = sb ? `${sb.identifier} (${sb.role})` : 'Not adopted';
+        return tieBreakLocale(compareLocale(aa, ab), a.id, b.id);
+      },
+    },
+  ];
+}
 
 type DisplaysPageProps = {
 
@@ -175,6 +213,9 @@ function DisplaysPageToolbar({
   onSearchChange,
   sortId,
   onSortChange,
+  order,
+  onOrderChange,
+  sortOptions,
   onReload,
   reloadDisabled,
   onAdoptClick,
@@ -185,6 +226,9 @@ function DisplaysPageToolbar({
   onSearchChange: (value: string) => void;
   sortId: string;
   onSortChange: (id: string) => void;
+  order: 'asc' | 'desc';
+  onOrderChange: (order: 'asc' | 'desc') => void;
+  sortOptions: { id: string; label: string }[];
   onReload: () => void;
   reloadDisabled: boolean;
   onAdoptClick: () => void;
@@ -196,9 +240,11 @@ function DisplaysPageToolbar({
       search={search}
       onSearchChange={onSearchChange}
       searchPlaceholder="Search displays…"
-      sortOptions={DISPLAY_SORT_OPTIONS}
+      sortOptions={sortOptions}
       sortId={sortId}
       onSortChange={onSortChange}
+      order={order}
+      onOrderChange={onOrderChange}
       onReload={onReload}
       reloadDisabled={reloadDisabled}
       reloadAriaLabel="Reload displays"
@@ -226,10 +272,20 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
   const { reachability, refreshing: reachabilityRefreshing, refreshReachability } =
     useDisplaysReachability(displays);
 
+  const displaySortOptions = useMemo(
+    () => buildColumnSortOptions(displaySortFields(reachability)),
+    [reachability],
+  );
+  const displaySortToolbar = useMemo(
+    () => columnSortToolbarOptions(displaySortFields(reachability)),
+    [reachability],
+  );
+
   const dataView = useClientDataView({
     items: displays,
-    sortOptions: DISPLAY_SORT_OPTIONS,
-    defaultSortId: 'label_asc',
+    sortOptions: displaySortOptions,
+    defaultSortId: 'display',
+    useSortOrder: true,
     searchMatches: (d, q) =>
       d.id.toLowerCase().includes(q) ||
       d.label.toLowerCase().includes(q) ||
@@ -250,6 +306,9 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
     onSearchChange: dataView.setSearch,
     sortId: dataView.sortId,
     onSortChange: dataView.setSortId,
+    order: dataView.order,
+    onOrderChange: dataView.setOrder,
+    sortOptions: displaySortToolbar,
     onReload: handleReload,
     reloadDisabled: reachabilityRefreshing,
     onAdoptClick: () => setAdoptOpen(true),

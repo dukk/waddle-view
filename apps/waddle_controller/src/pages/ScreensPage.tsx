@@ -22,7 +22,14 @@ import { DataViewPagination } from '@/components/dataView/DataViewPagination';
 import { DataViewToolbar } from '@/components/dataView/DataViewToolbar';
 import { useClientDataView } from '@/hooks/useClientDataView';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
-import type { SortOption } from '@/util/clientListPipeline';
+import {
+  buildColumnSortOptions,
+  columnSortToolbarOptions,
+  compareLocale,
+  compareNumber,
+  tieBreakLocale,
+  type ColumnSortField,
+} from '@/util/dataViewColumnSort';
 import { CatalogPageHelp } from '@/components/CatalogPageHelp';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { catalogCardGridSx } from '@/constants/catalogLayout';
@@ -56,18 +63,72 @@ type ScreenRow = ScreenDialogRow & {
   data_key: string;
 };
 
-const SCREEN_SORT_OPTIONS: SortOption<ScreenRow>[] = [
-  {
-    id: 'label_asc',
-    label: 'Name (A–Z)',
-    compare: (a, b) => screenRowTitle(a).localeCompare(screenRowTitle(b)),
-  },
-  {
-    id: 'label_desc',
-    label: 'Name (Z–A)',
-    compare: (a, b) => screenRowTitle(b).localeCompare(screenRowTitle(a)),
-  },
-];
+function screenSortFields(
+  screenTypes: { screen_type: string; config_json_schema?: unknown }[],
+): ColumnSortField<ScreenRow>[] {
+  return [
+    {
+      id: 'name',
+      label: 'Name',
+      compare: (a, b) =>
+        tieBreakLocale(
+          compareLocale(screenRowTitle(a), screenRowTitle(b)),
+          a.id,
+          b.id,
+        ),
+    },
+    {
+      id: 'type',
+      label: 'Type',
+      compare: (a, b) =>
+        tieBreakLocale(
+          compareLocale(
+            screenTypeLabel(a.screen_type, screenTypeMetaFor(screenTypes, a.screen_type)),
+            screenTypeLabel(b.screen_type, screenTypeMetaFor(screenTypes, b.screen_type)),
+          ),
+          a.id,
+          b.id,
+        ),
+    },
+    {
+      id: 'dwell',
+      label: 'Dwell',
+      compare: (a, b) =>
+        tieBreakLocale(
+          compareNumber(a.min_dwell_seconds, b.min_dwell_seconds) ||
+            compareNumber(a.max_dwell_seconds, b.max_dwell_seconds),
+          a.id,
+          b.id,
+        ),
+    },
+    {
+      id: 'weight',
+      label: 'Weight',
+      compare: (a, b) =>
+        tieBreakLocale(compareNumber(a.frequency_weight, b.frequency_weight), a.id, b.id),
+    },
+    {
+      id: 'gap',
+      label: 'Gap',
+      compare: (a, b) =>
+        tieBreakLocale(
+          compareNumber(a.min_gap_between_shows_seconds, b.min_gap_between_shows_seconds),
+          a.id,
+          b.id,
+        ),
+    },
+    {
+      id: 'description',
+      label: 'Description',
+      compare: (a, b) =>
+        tieBreakLocale(
+          compareLocale(screenRowDescription(a), screenRowDescription(b)),
+          a.id,
+          b.id,
+        ),
+    },
+  ];
+}
 
 function screenMatchesSearch(row: ScreenRow, q: string, typeLabel: string): boolean {
   return (
@@ -251,10 +312,20 @@ export function ScreensPage() {
 
   const screenTypes = schemas?.screen_types ?? [];
 
+  const screenSortOptions = useMemo(
+    () => buildColumnSortOptions(screenSortFields(screenTypes)),
+    [screenTypes],
+  );
+  const screenSortToolbar = useMemo(
+    () => columnSortToolbarOptions(screenSortFields(screenTypes)),
+    [screenTypes],
+  );
+
   const dataView = useClientDataView({
     items: rows,
-    sortOptions: SCREEN_SORT_OPTIONS,
-    defaultSortId: 'label_asc',
+    sortOptions: screenSortOptions,
+    defaultSortId: 'name',
+    useSortOrder: true,
     searchMatches: (row, q) => {
       const meta = screenTypeMetaFor(screenTypes, row.screen_type);
       const typeLabel = screenTypeLabel(row.screen_type, meta);
@@ -329,9 +400,11 @@ export function ScreensPage() {
             search={dataView.search}
             onSearchChange={dataView.setSearch}
             searchPlaceholder="Search screens…"
-            sortOptions={SCREEN_SORT_OPTIONS}
+            sortOptions={screenSortToolbar}
             sortId={dataView.sortId}
             onSortChange={dataView.setSortId}
+            order={dataView.order}
+            onOrderChange={dataView.setOrder}
             onReload={() => void load()}
             reloadDisabled={loading}
             reloadAriaLabel="Reload screens"

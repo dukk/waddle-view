@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import { DATA_VIEW_DEFAULT_PAGE_SIZE } from '@/util/listPagination';
 
-export type ServerSortOrder = 'asc' | 'desc';
+export type { ServerSortOrder } from '@/util/dataViewColumnSort';
+import type { ServerSortOrder } from '@/util/dataViewColumnSort';
 
 export type UseServerDataViewParams = {
   defaultSort?: string;

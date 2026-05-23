@@ -47,6 +47,7 @@ import { useDisplaysReachability } from '@/util/useDisplaysReachability';
 import { loadSession } from '@/storage/sessions';
 import {
   BACKUP_SCHEDULE_SORT_OPTIONS,
+  BACKUP_SCHEDULE_SORT_TOOLBAR,
   backupScheduleSearchMatches,
   buildBackupScheduleRows,
   type BackupScheduleRow,
@@ -224,7 +225,8 @@ export function DisplayBackupSection() {
   const dataView = useClientDataView({
     items: scheduleRows,
     sortOptions: BACKUP_SCHEDULE_SORT_OPTIONS,
-    defaultSortId: 'label_asc',
+    defaultSortId: 'display',
+    useSortOrder: true,
     searchMatches: backupScheduleSearchMatches,
   });
 
@@ -324,9 +326,11 @@ export function DisplayBackupSection() {
         search={dataView.search}
         onSearchChange={dataView.setSearch}
         searchPlaceholder="Search schedules…"
-        sortOptions={BACKUP_SCHEDULE_SORT_OPTIONS}
+        sortOptions={BACKUP_SCHEDULE_SORT_TOOLBAR}
         sortId={dataView.sortId}
         onSortChange={dataView.setSortId}
+        order={dataView.order}
+        onOrderChange={dataView.setOrder}
         onReload={() => void reload()}
         reloadDisabled={reloadBusy}
         reloadAriaLabel="Reload backup schedules"

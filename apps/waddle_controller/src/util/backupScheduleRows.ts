@@ -2,7 +2,14 @@ import type { BackupTarget } from '@/api/bffBackups';
 import type { SavedDisplay } from '@/storage/displays';
 import type { DisplayReachability } from '@/util/displayHealth';
 import { formatScheduleSummary, scheduleFromTarget } from '@/util/backupSchedule';
-import type { SortOption } from '@/util/clientListPipeline';
+import {
+  buildColumnSortOptions,
+  columnSortToolbarOptions,
+  compareBool,
+  compareLocale,
+  tieBreakLocale,
+  type ColumnSortField,
+} from '@/util/dataViewColumnSort';
 
 export type BackupScheduleRow = {
   display: SavedDisplay;
@@ -13,35 +20,39 @@ export type BackupScheduleRow = {
   lastRunLabel: string;
 };
 
-export const BACKUP_SCHEDULE_SORT_OPTIONS: SortOption<BackupScheduleRow>[] = [
+export const BACKUP_SCHEDULE_SORT_FIELDS: ColumnSortField<BackupScheduleRow>[] = [
   {
-    id: 'label_asc',
-    label: 'Name (A–Z)',
-    compare: (a, b) => a.display.label.localeCompare(b.display.label),
-  },
-  {
-    id: 'label_desc',
-    label: 'Name (Z–A)',
-    compare: (a, b) => b.display.label.localeCompare(a.display.label),
-  },
-  {
-    id: 'last_run_desc',
-    label: 'Last run (newest)',
+    id: 'display',
+    label: 'Display',
     compare: (a, b) =>
-      (b.target?.lastRunAt ?? '').localeCompare(a.target?.lastRunAt ?? ''),
+      tieBreakLocale(compareLocale(a.display.label, b.display.label), a.display.id, b.display.id),
   },
   {
-    id: 'last_run_asc',
-    label: 'Last run (oldest)',
+    id: 'schedule',
+    label: 'Schedule',
     compare: (a, b) =>
-      (a.target?.lastRunAt ?? '').localeCompare(b.target?.lastRunAt ?? ''),
+      tieBreakLocale(compareLocale(a.scheduleSummary, b.scheduleSummary), a.display.id, b.display.id),
   },
   {
-    id: 'enabled_first',
-    label: 'Enabled first',
-    compare: (a, b) => Number(b.enabled) - Number(a.enabled),
+    id: 'last_run',
+    label: 'Last run',
+    compare: (a, b) =>
+      tieBreakLocale(
+        compareLocale(a.target?.lastRunAt ?? '', b.target?.lastRunAt ?? ''),
+        a.display.id,
+        b.display.id,
+      ),
+  },
+  {
+    id: 'scheduled_pulls',
+    label: 'Scheduled pulls',
+    compare: (a, b) =>
+      tieBreakLocale(compareBool(a.enabled, b.enabled), a.display.id, b.display.id),
   },
 ];
+
+export const BACKUP_SCHEDULE_SORT_OPTIONS = buildColumnSortOptions(BACKUP_SCHEDULE_SORT_FIELDS);
+export const BACKUP_SCHEDULE_SORT_TOOLBAR = columnSortToolbarOptions(BACKUP_SCHEDULE_SORT_FIELDS);
 
 export function buildBackupScheduleRows(
   displays: SavedDisplay[],

@@ -67,7 +67,13 @@ import {
 } from '@/api/interests';
 import { DataViewPagination } from '@/components/dataView/DataViewPagination';
 import { DataViewToolbar } from '@/components/dataView/DataViewToolbar';
-import { applyClientListPipeline, type SortOption } from '@/util/clientListPipeline';
+import { applyClientListPipeline } from '@/util/clientListPipeline';
+import type { ServerSortOrder } from '@/util/dataViewColumnSort';
+import {
+  INTEREST_DEFAULT_SORT_ID,
+  interestSortOptionsForTab,
+  interestSortToolbarForTab,
+} from '@/util/interestTabSort';
 import { paginateList } from '@/util/listPagination';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { NoDisplayPlaceholder } from '@/components/NoDisplayPlaceholder';
@@ -114,7 +120,8 @@ export function InterestsPage() {
 
   const [tab, setTab] = useState<TabId>('locations');
   const [search, setSearch] = useState('');
-  const [sortId, setSortId] = useState('name_asc');
+  const [sortId, setSortId] = useState(INTEREST_DEFAULT_SORT_ID.locations);
+  const [sortOrder, setSortOrder] = useState<ServerSortOrder>('asc');
   const [listPage, setListPage] = useState(0);
   const [listPageSize, setListPageSize] = useState(25);
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
@@ -338,51 +345,41 @@ export function InterestsPage() {
     [trivia],
   );
 
-  const interestNameSort = useMemo(
-    (): SortOption<{ label: string }>[] => [
-      {
-        id: 'name_asc',
-        label: 'Name (A–Z)',
-        compare: (a, b) => a.label.localeCompare(b.label),
-      },
-      {
-        id: 'name_desc',
-        label: 'Name (Z–A)',
-        compare: (a, b) => b.label.localeCompare(a.label),
-      },
-    ],
-    [],
-  );
+  const tabSortOptions = useMemo(() => interestSortOptionsForTab(tab), [tab]);
+  const tabSortToolbar = useMemo(() => interestSortToolbarForTab(tab), [tab]);
 
   const sortedLocations = useMemo(
     () =>
       applyClientListPipeline({
-        items: filteredWeather.map((r) => ({ ...r, label: r.name })),
+        items: filteredWeather,
         search,
         searchMatches: (row, q) =>
-          row.label.toLowerCase().includes(q) || row.id.toLowerCase().includes(q),
-        sortOptions: interestNameSort,
+          row.name.toLowerCase().includes(q) || row.id.toLowerCase().includes(q),
+        sortOptions: tabSortOptions,
         sortId,
+        order: sortOrder,
       }),
-    [filteredWeather, search, sortId, interestNameSort],
+    [filteredWeather, search, sortId, sortOrder, tabSortOptions],
   );
 
   const filteredRssForSearch = useMemo(() => {
     const pipeline = applyClientListPipeline({
-      items: rss.map((r) => ({
-        ...r,
-        label: (r.title?.trim() || r.url).toLowerCase(),
-      })),
+      items: rss,
       search,
-      searchMatches: (row, q) =>
-        row.label.includes(q) ||
-        row.id.toLowerCase().includes(q) ||
-        (row.url ?? '').toLowerCase().includes(q),
-      sortOptions: interestNameSort,
+      searchMatches: (row, q) => {
+        const feed = (row.title?.trim() || row.url).toLowerCase();
+        return (
+          feed.includes(q) ||
+          row.id.toLowerCase().includes(q) ||
+          row.url.toLowerCase().includes(q)
+        );
+      },
+      sortOptions: tabSortOptions,
       sortId,
+      order: sortOrder,
     });
     return pipeline;
-  }, [rss, search, sortId, interestNameSort]);
+  }, [rss, search, sortId, sortOrder, tabSortOptions]);
 
   const newsGroups = useMemo(() => {
     const byCategory = new Map<string, RssFeedRow[]>();
@@ -404,16 +401,17 @@ export function InterestsPage() {
   const filteredStocksForSearch = useMemo(
     () =>
       applyClientListPipeline({
-        items: stocks.map((r) => ({ ...r, label: r.symbol })),
+        items: stocks,
         search,
         searchMatches: (row, q) =>
           row.symbol.toLowerCase().includes(q) ||
           row.id.toLowerCase().includes(q) ||
           row.display_name.toLowerCase().includes(q),
-        sortOptions: interestNameSort,
+        sortOptions: tabSortOptions,
         sortId,
+        order: sortOrder,
       }),
-    [stocks, search, sortId, interestNameSort],
+    [stocks, search, sortId, sortOrder, tabSortOptions],
   );
 
   const stockGroups = useMemo(() => {
@@ -434,26 +432,28 @@ export function InterestsPage() {
   const sortedJokes = useMemo(
     () =>
       applyClientListPipeline({
-        items: filteredJokes.map((r) => ({ ...r, label: r.label })),
+        items: filteredJokes,
         search,
         searchMatches: (row, q) =>
           row.label.toLowerCase().includes(q) || row.id.toLowerCase().includes(q),
-        sortOptions: interestNameSort,
+        sortOptions: tabSortOptions,
         sortId,
+        order: sortOrder,
       }),
-    [filteredJokes, search, sortId, interestNameSort],
+    [filteredJokes, search, sortId, sortOrder, tabSortOptions],
   );
   const sortedTrivia = useMemo(
     () =>
       applyClientListPipeline({
-        items: filteredTrivia.map((r) => ({ ...r, label: r.label })),
+        items: filteredTrivia,
         search,
         searchMatches: (row, q) =>
           row.label.toLowerCase().includes(q) || row.id.toLowerCase().includes(q),
-        sortOptions: interestNameSort,
+        sortOptions: tabSortOptions,
         sortId,
+        order: sortOrder,
       }),
-    [filteredTrivia, search, sortId, interestNameSort],
+    [filteredTrivia, search, sortId, sortOrder, tabSortOptions],
   );
   const locationsPaged = useMemo(
     () => paginateList(sortedLocations, listPage, listPageSize),
@@ -470,7 +470,7 @@ export function InterestsPage() {
 
   useEffect(() => {
     setListPage(0);
-  }, [tab, search, sortId, filterCategory]);
+  }, [tab, search, sortId, sortOrder, filterCategory]);
 
   const tabLoading =
     tab === 'locations'
@@ -638,7 +638,15 @@ export function InterestsPage() {
         </Alert>
       )}
 
-      <Tabs value={tab} onChange={(_, v: TabId) => setTab(v)} variant="scrollable">
+      <Tabs
+        value={tab}
+        onChange={(_, v: TabId) => {
+          setTab(v);
+          setSortId(INTEREST_DEFAULT_SORT_ID[v]);
+          setSortOrder('asc');
+        }}
+        variant="scrollable"
+      >
         <Tab value="locations" label="Locations" />
         <Tab value="rss" label="News" />
         <Tab value="stocks" label="Stocks" />
@@ -652,9 +660,11 @@ export function InterestsPage() {
         search={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search interests…"
-        sortOptions={interestNameSort}
+        sortOptions={tabSortToolbar}
         sortId={sortId}
         onSortChange={setSortId}
+        order={sortOrder}
+        onOrderChange={setSortOrder}
         onReload={() => void reloadTab(tab)}
         reloadDisabled={tabLoading}
         reloadAriaLabel="Reload interests"
