@@ -1,41 +1,19 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:test/test.dart';
 import 'package:waddle_shared/curation/curator_configuration_loader.dart';
-import 'package:waddle_shared/curation/curator_schedule_resolver.dart';
+import 'package:waddle_shared/curation/curator_member_op.dart';
 import 'package:waddle_shared/curation/curator_runtime_state.dart';
+import 'package:waddle_shared/curation/curator_schedule_resolver.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/seed/initial_seed.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 import '../helpers/memory_database.dart';
 
+Set<String> _addIds(List<CuratorMemberOp> ops) =>
+    ops.where((o) => o.isAdd).map((o) => o.entityId).toSet();
+
 void main() {
-  test('effectiveCuratorMemberIdsForConfig unions ancestor members', () {
-    final merged = effectiveCuratorMemberIdsForConfig(
-      configId: 'morning',
-      ownByConfig: {
-        'default': {'clock_digital'},
-        'morning': {'news', 'weather'},
-      },
-      parentById: {
-        'default': null,
-        'morning': 'default',
-      },
-    );
-    expect(merged, {'news', 'weather', 'clock_digital'});
-  });
-
-  test('effectiveCuratorMemberIdsForConfig detects parent cycles', () {
-    expect(
-      () => effectiveCuratorMemberIdsForConfig(
-        configId: 'a',
-        ownByConfig: const {},
-        parentById: {'a': 'b', 'b': 'a'},
-      ),
-      throwsStateError,
-    );
-  });
-
   test('loadCuratorConfigurationInputs maps seeded configs members and rules', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
@@ -49,26 +27,40 @@ void main() {
     );
     expect(defaultConfig.layer, kCuratorLayerBase);
     expect(defaultConfig.rules, isEmpty);
-    expect(defaultConfig.screenMemberIds, kDefaultBaseCuratorScreenMemberIds.toSet());
-    expect(defaultConfig.tickerMemberIds, kDefaultBaseCuratorTickerMemberIds.toSet());
+    expect(
+      _addIds(defaultConfig.screenMemberOps),
+      kDefaultBaseCuratorScreenMemberIds.toSet(),
+    );
+    expect(
+      _addIds(defaultConfig.tickerMemberOps),
+      kDefaultBaseCuratorTickerMemberIds.toSet(),
+    );
 
     final bootstrap = inputs.singleWhere((c) => c.id == 'bootstrap');
     expect(bootstrap.layer, kCuratorLayerExclusive);
     expect(bootstrap.rules, isNotEmpty);
-    expect(bootstrap.screenMemberIds, isNotEmpty);
+    expect(_addIds(bootstrap.screenMemberOps), isNotEmpty);
 
     final evening = inputs.singleWhere((c) => c.id == 'evening');
     expect(evening.layer, kCuratorLayerBase);
     expect(evening.tickerEnabled, isTrue);
     expect(evening.tickerProgramDurationSeconds, isNull);
     expect(evening.tickerPixelsPerSecond, isNull);
-    expect(evening.screenMemberIds, contains('clock_digital'));
-    expect(evening.screenMemberIds, contains('jokes'));
-    expect(evening.tickerMemberIds, containsAll(['ticker_time', 'ticker_custom']));
+    expect(_addIds(evening.screenMemberOps), contains('jokes'));
+    expect(_addIds(evening.screenMemberOps), isNot(contains('clock_digital')));
+    expect(_addIds(evening.tickerMemberOps), contains('ticker_custom'));
 
     final morning = inputs.singleWhere((c) => c.id == 'morning');
-    expect(morning.screenMemberIds, containsAll(['news', 'clock_digital']));
-    expect(morning.tickerMemberIds, containsAll(['ticker_time', 'ticker_news']));
+    expect(_addIds(morning.screenMemberOps), contains('news'));
+    expect(_addIds(morning.screenMemberOps), isNot(contains('clock_digital')));
+
+    final weekday = inputs.singleWhere((c) => c.id == 'weekday');
+    expect(
+      weekday.screenMemberOps.any(
+        (o) => o.entityId == 'photo' && o.op == kCuratorMemberOpRemove,
+      ),
+      isTrue,
+    );
 
     await db.close();
   });
@@ -79,10 +71,17 @@ void main() {
     await ensureInitialSeed(db);
 
     final inputs = await loadCuratorConfigurationInputs(db);
-    final sel = CuratorScheduleResolver.resolve(
+    final byId = curatorConfigurationInputById(inputs);
+    final raw = CuratorScheduleResolver.resolve(
       localNow: DateTime(2026, 5, 13, 8),
       state: const CuratorRuntimeState(displayAdopted: true),
       configurations: inputs,
+    );
+    final sel = ResolvedCuratorSelection(
+      exclusive: raw.exclusive,
+      base: raw.base,
+      enhancements: raw.enhancements,
+      configById: byId,
     );
     expect(sel.base!.configuration.id, 'morning');
     expect(sel.effectiveScreenMemberIds, contains('clock_digital'));
@@ -91,7 +90,7 @@ void main() {
     await db.close();
   });
 
-  test('loadCuratorConfigurationInputs reads parent_configuration_id from db', () async {
+  test('loadCuratorConfigurationInputs reads own member ops only', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
 
@@ -127,7 +126,21 @@ void main() {
 
     final inputs = await loadCuratorConfigurationInputs(db);
     final child = inputs.singleWhere((c) => c.id == 'child_base');
-    expect(child.screenMemberIds, {'clock_digital', 'news'});
+    expect(_addIds(child.screenMemberOps), {'news'});
+
+    final byId = curatorConfigurationInputById(inputs);
+    final sel = ResolvedCuratorSelection(
+      base: ResolvedCuratorConfiguration(
+        configuration: child,
+        matchedRuleId: '',
+        matchReason: 'test',
+      ),
+      configById: byId,
+    );
+    expect(
+      sel.effectiveScreenMemberIds,
+      containsAll(['clock_digital', 'news']),
+    );
 
     await db.close();
   });

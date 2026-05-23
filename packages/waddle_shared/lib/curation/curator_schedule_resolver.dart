@@ -1,3 +1,5 @@
+import 'curator_member_op.dart';
+import 'curator_member_resolver.dart';
 import 'curator_runtime_state.dart';
 import 'curator_state_predicates.dart';
 import 'overlay_calendar_match.dart';
@@ -23,10 +25,11 @@ class CuratorConfigurationInput {
     this.viewportReserveBottomPctOverride,
     this.viewportReserveLeftPctOverride,
     required this.defaultConfig,
+    this.parentConfigurationId,
     required this.rules,
-    required this.screenMemberIds,
-    required this.tickerMemberIds,
-    required this.overlayMemberIds,
+    required this.screenMemberOps,
+    required this.tickerMemberOps,
+    required this.overlayMemberOps,
   });
 
   final String id;
@@ -46,10 +49,11 @@ class CuratorConfigurationInput {
   final int? viewportReserveBottomPctOverride;
   final int? viewportReserveLeftPctOverride;
   final bool defaultConfig;
+  final String? parentConfigurationId;
   final List<CuratorScheduleRuleInput> rules;
-  final Set<String> screenMemberIds;
-  final Set<String> tickerMemberIds;
-  final Set<String> overlayMemberIds;
+  final List<CuratorMemberOp> screenMemberOps;
+  final List<CuratorMemberOp> tickerMemberOps;
+  final List<CuratorMemberOp> overlayMemberOps;
 }
 
 class CuratorScheduleRuleInput {
@@ -101,54 +105,37 @@ class ResolvedCuratorConfiguration {
 }
 
 class ResolvedCuratorSelection {
-  const ResolvedCuratorSelection({
+  ResolvedCuratorSelection({
     this.exclusive,
-    required this.base,
+    this.base,
     this.enhancements = const [],
-  });
+    Map<String, CuratorConfigurationInput>? configById,
+  }) : configById = configById ?? const {};
 
   final ResolvedCuratorConfiguration? exclusive;
   final ResolvedCuratorConfiguration? base;
   final List<ResolvedCuratorConfiguration> enhancements;
+  final Map<String, CuratorConfigurationInput> configById;
 
   ResolvedCuratorConfiguration get primary => exclusive ?? base!;
 
-  Set<String> get effectiveOverlayMemberIds => _mergedMemberIds(
-    exclusive: (c) => c.overlayMemberIds,
-    base: (c) => c.overlayMemberIds,
-    enhancement: (c) => c.overlayMemberIds,
+  Set<String> get effectiveOverlayMemberIds => resolveEffectiveMemberIds(
+    selection: this,
+    configById: configById,
+    entityType: kCuratorMemberEntityOverlay,
   );
 
-  Set<String> get effectiveScreenMemberIds => _mergedMemberIds(
-    exclusive: (c) => c.screenMemberIds,
-    base: (c) => c.screenMemberIds,
-    enhancement: (c) => c.screenMemberIds,
+  Set<String> get effectiveScreenMemberIds => resolveEffectiveMemberIds(
+    selection: this,
+    configById: configById,
+    entityType: kCuratorMemberEntityScreen,
   );
 
-  Set<String> get effectiveTickerMemberIds => _mergedMemberIds(
-    exclusive: (c) => c.tickerMemberIds,
-    base: (c) => c.tickerMemberIds,
-    enhancement: (c) => c.tickerMemberIds,
+  Set<String> get effectiveTickerMemberIds => resolveEffectiveMemberIds(
+    selection: this,
+    configById: configById,
+    entityType: kCuratorMemberEntityTicker,
   );
-
-  Set<String> _mergedMemberIds({
-    required Set<String> Function(CuratorConfigurationInput) exclusive,
-    required Set<String> Function(CuratorConfigurationInput) base,
-    required Set<String> Function(CuratorConfigurationInput) enhancement,
-  }) {
-    final ids = <String>{};
-    if (this.exclusive != null) {
-      ids.addAll(exclusive(this.exclusive!.configuration));
-      return ids;
-    }
-    if (this.base != null) {
-      ids.addAll(base(this.base!.configuration));
-    }
-    for (final e in enhancements) {
-      ids.addAll(enhancement(e.configuration));
-    }
-    return ids;
-  }
 }
 
 class CuratorScheduleResolver {

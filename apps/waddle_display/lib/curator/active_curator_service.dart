@@ -25,10 +25,17 @@ class ActiveCuratorService {
   Future<ResolvedCuratorSelection> resolveAt(DateTime localNow) async {
     final state = await _stateBuilder.build();
     final configs = await loadCuratorConfigurationInputs(_db);
-    return CuratorScheduleResolver.resolve(
+    final byId = curatorConfigurationInputById(configs);
+    final resolved = CuratorScheduleResolver.resolve(
       localNow: localNow,
       state: state,
       configurations: configs,
+    );
+    return ResolvedCuratorSelection(
+      exclusive: resolved.exclusive,
+      base: resolved.base,
+      enhancements: resolved.enhancements,
+      configById: byId,
     );
   }
 }

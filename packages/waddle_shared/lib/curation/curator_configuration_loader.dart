@@ -1,31 +1,7 @@
+import 'package:waddle_shared/curation/curator_member_op.dart';
 import 'package:waddle_shared/curation/curator_schedule_resolver.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
-
-/// Unions [configId]'s own members with those of ancestor configurations.
-Set<String> effectiveCuratorMemberIdsForConfig({
-  required String configId,
-  required Map<String, Set<String>> ownByConfig,
-  required Map<String, String?> parentById,
-}) {
-  final merged = <String>{};
-  final visited = <String>{};
-  var current = configId;
-  while (true) {
-    if (!visited.add(current)) {
-      throw StateError(
-        'Curator configuration parent cycle detected at $current',
-      );
-    }
-    merged.addAll(ownByConfig[current] ?? const {});
-    final parent = parentById[current];
-    if (parent == null || parent.isEmpty) {
-      break;
-    }
-    current = parent;
-  }
-  return merged;
-}
 
 /// Loads curator rows from [db] for [CuratorScheduleResolver].
 Future<List<CuratorConfigurationInput>> loadCuratorConfigurationInputs(
@@ -58,29 +34,24 @@ Future<List<CuratorConfigurationInput>> loadCuratorConfigurationInputs(
     );
   }
 
-  final screensByConfig = <String, Set<String>>{};
-  final tickersByConfig = <String, Set<String>>{};
-  final overlaysByConfig = <String, Set<String>>{};
-  for (final m in members) {
-    switch (m.entityType) {
-      case kCuratorMemberEntityScreen:
-        screensByConfig
-            .putIfAbsent(m.configurationId, () => {})
-            .add(m.entityId);
-      case kCuratorMemberEntityTicker:
-        tickersByConfig
-            .putIfAbsent(m.configurationId, () => {})
-            .add(m.entityId);
-      case kCuratorMemberEntityOverlay:
-        overlaysByConfig
-            .putIfAbsent(m.configurationId, () => {})
-            .add(m.entityId);
+  List<CuratorMemberOp> opsFor(
+    String configId,
+    String entityType,
+  ) {
+    final list = <CuratorMemberOp>[];
+    for (final m in members) {
+      if (m.configurationId != configId || m.entityType != entityType) {
+        continue;
+      }
+      list.add(
+        CuratorMemberOp(
+          entityId: m.entityId,
+          op: normalizeCuratorMemberOp(m.op),
+        ),
+      );
     }
+    return list;
   }
-
-  final parentById = {
-    for (final c in configs) c.id: c.parentConfigurationId,
-  };
 
   return [
     for (final c in configs)
@@ -102,22 +73,18 @@ Future<List<CuratorConfigurationInput>> loadCuratorConfigurationInputs(
         viewportReserveBottomPctOverride: c.viewportReserveBottomPctOverride,
         viewportReserveLeftPctOverride: c.viewportReserveLeftPctOverride,
         defaultConfig: c.defaultConfig,
+        parentConfigurationId: c.parentConfigurationId,
         rules: rulesByConfig[c.id] ?? const [],
-        screenMemberIds: effectiveCuratorMemberIdsForConfig(
-          configId: c.id,
-          ownByConfig: screensByConfig,
-          parentById: parentById,
-        ),
-        tickerMemberIds: effectiveCuratorMemberIdsForConfig(
-          configId: c.id,
-          ownByConfig: tickersByConfig,
-          parentById: parentById,
-        ),
-        overlayMemberIds: effectiveCuratorMemberIdsForConfig(
-          configId: c.id,
-          ownByConfig: overlaysByConfig,
-          parentById: parentById,
-        ),
+        screenMemberOps: opsFor(c.id, kCuratorMemberEntityScreen),
+        tickerMemberOps: opsFor(c.id, kCuratorMemberEntityTicker),
+        overlayMemberOps: opsFor(c.id, kCuratorMemberEntityOverlay),
       ),
   ];
+}
+
+/// Builds a map of configuration id → input for member resolution.
+Map<String, CuratorConfigurationInput> curatorConfigurationInputById(
+  List<CuratorConfigurationInput> inputs,
+) {
+  return {for (final c in inputs) c.id: c};
 }

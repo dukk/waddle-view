@@ -1,4 +1,6 @@
 import 'package:test/test.dart';
+import 'package:waddle_shared/curation/curator_configuration_loader.dart';
+import 'package:waddle_shared/curation/curator_member_op.dart';
 import 'package:waddle_shared/curation/curator_runtime_state.dart';
 import 'package:waddle_shared/curation/curator_schedule_resolver.dart';
 import 'package:waddle_shared/curation/curator_state_predicates.dart';
@@ -28,9 +30,33 @@ CuratorConfigurationInput _config({
     tickerEnabled: true,
     defaultConfig: defaultConfig,
     rules: rules,
-    screenMemberIds: screens,
-    tickerMemberIds: tickers,
-    overlayMemberIds: overlays,
+    screenMemberOps: screens
+        .map((s) => CuratorMemberOp(entityId: s, op: kCuratorMemberOpAdd))
+        .toList(),
+    tickerMemberOps: tickers
+        .map((s) => CuratorMemberOp(entityId: s, op: kCuratorMemberOpAdd))
+        .toList(),
+    overlayMemberOps: overlays
+        .map((s) => CuratorMemberOp(entityId: s, op: kCuratorMemberOpAdd))
+        .toList(),
+  );
+}
+
+ResolvedCuratorSelection _resolve(
+  List<CuratorConfigurationInput> configs, {
+  required DateTime localNow,
+  CuratorRuntimeState state = const CuratorRuntimeState(displayAdopted: true),
+}) {
+  final raw = CuratorScheduleResolver.resolve(
+    localNow: localNow,
+    state: state,
+    configurations: configs,
+  );
+  return ResolvedCuratorSelection(
+    exclusive: raw.exclusive,
+    base: raw.base,
+    enhancements: raw.enhancements,
+    configById: curatorConfigurationInputById(configs),
   );
 }
 
@@ -69,10 +95,10 @@ void main() {
         screens: {'jokes'},
       ),
     ];
-    final sel = CuratorScheduleResolver.resolve(
+    final sel = _resolve(
+      configs,
       localNow: DateTime(2026, 5, 13, 19),
       state: const CuratorRuntimeState(displayAdopted: false),
-      configurations: configs,
     );
     expect(sel.exclusive, isNotNull);
     expect(sel.exclusive!.configuration.id, 'bootstrap');
@@ -114,11 +140,7 @@ void main() {
         overlays: {'overlay_confetti'},
       ),
     ];
-    final sel = CuratorScheduleResolver.resolve(
-      localNow: DateTime(2026, 5, 13, 19),
-      state: const CuratorRuntimeState(displayAdopted: true),
-      configurations: configs,
-    );
+    final sel = _resolve(configs, localNow: DateTime(2026, 5, 13, 19));
     expect(sel.exclusive, isNull);
     expect(sel.base!.configuration.id, 'evening');
     expect(sel.enhancements, hasLength(1));
@@ -126,7 +148,7 @@ void main() {
     expect(sel.effectiveOverlayMemberIds, contains('overlay_confetti'));
   });
 
-  test('enhancement unions screen and ticker members onto base', () {
+  test('enhancement applies screen and ticker ops onto base', () {
     final configs = [
       _config(
         id: 'evening',
@@ -163,11 +185,7 @@ void main() {
         overlays: {'overlay_confetti'},
       ),
     ];
-    final sel = CuratorScheduleResolver.resolve(
-      localNow: DateTime(2026, 5, 13, 19),
-      state: const CuratorRuntimeState(displayAdopted: true),
-      configurations: configs,
-    );
+    final sel = _resolve(configs, localNow: DateTime(2026, 5, 13, 19));
     expect(sel.effectiveScreenMemberIds, containsAll(['jokes', 'photos']));
     expect(sel.effectiveTickerMemberIds, containsAll(['tape_news', 'tape_sports']));
     expect(sel.effectiveOverlayMemberIds, contains('overlay_confetti'));
@@ -205,10 +223,10 @@ void main() {
         tickers: {'tape_sports'},
       ),
     ];
-    final sel = CuratorScheduleResolver.resolve(
+    final sel = _resolve(
+      configs,
       localNow: DateTime(2026, 5, 13, 19),
       state: const CuratorRuntimeState(displayAdopted: false),
-      configurations: configs,
     );
     expect(sel.effectiveScreenMemberIds, {'admin_setup'});
     expect(sel.effectiveTickerMemberIds, {'tape_setup'});

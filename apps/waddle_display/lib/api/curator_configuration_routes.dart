@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart' show OrderingTerm, Value;
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
+import 'package:waddle_shared/curation/curator_member_op.dart';
 import 'package:waddle_shared/curation/curator_schedule_resolver.dart';
 import 'package:waddle_shared/curation/curator_state_predicates.dart';
 import 'package:waddle_shared/display/display_ticker_settings.dart';
@@ -629,28 +630,28 @@ Future<Map<String, Object?>?> _loadConfigurationDetail(
           (t) => OrderingTerm.asc(t.entityId),
         ]))
       .get();
-  final screens = <String>[];
-  final tickers = <String>[];
-  final overlays = <String>[];
-  for (final m in members) {
-    switch (m.entityType) {
-      case kCuratorMemberEntityScreen:
-        screens.add(m.entityId);
-      case kCuratorMemberEntityTicker:
-        tickers.add(m.entityId);
-      case kCuratorMemberEntityOverlay:
-        overlays.add(m.entityId);
-    }
-  }
   return {
     ..._configurationSummaryJson(config),
     'rules': [for (final r in rules) _ruleJson(r)],
     'members': {
-      'screens': screens,
-      'tickers': tickers,
-      'overlays': overlays,
+      'screens': _memberOpsJson(members, kCuratorMemberEntityScreen),
+      'tickers': _memberOpsJson(members, kCuratorMemberEntityTicker),
+      'overlays': _memberOpsJson(members, kCuratorMemberEntityOverlay),
     },
   };
+}
+
+List<Map<String, Object?>> _memberOpsJson(
+  List<CuratorConfigurationMember> members,
+  String entityType,
+) {
+  return [
+    for (final m in members.where((t) => t.entityType == entityType))
+      <String, Object?>{
+        'id': m.entityId,
+        'op': normalizeCuratorMemberOp(m.op),
+      },
+  ];
 }
 
 Map<String, Object?> _ruleJson(CuratorScheduleRule r) {
@@ -757,18 +758,33 @@ Future<void> _replaceMembers(
       throw const FormatException('invalid_members');
     }
     for (final item in raw) {
-      final entityId = '$item'.trim();
+      if (!kCuratorMemberEntityTypes.contains(entityType)) {
+        throw const FormatException('invalid_entity_type');
+      }
+      late final String entityId;
+      late final String op;
+      if (item is String) {
+        entityId = item.trim();
+        op = kCuratorMemberOpAdd;
+      } else if (item is Map) {
+        final map = Map<String, dynamic>.from(item);
+        entityId = '${map['id'] ?? ''}'.trim();
+        op = normalizeCuratorMemberOp(map['op'] as String?);
+      } else {
+        throw const FormatException('invalid_members');
+      }
       if (entityId.isEmpty) {
         continue;
       }
-      if (!kCuratorMemberEntityTypes.contains(entityType)) {
-        throw const FormatException('invalid_entity_type');
+      if (!isValidCuratorMemberOp(op)) {
+        throw const FormatException('invalid_member_op');
       }
       await db.into(db.curatorConfigurationMembers).insert(
             CuratorConfigurationMembersCompanion.insert(
               configurationId: configurationId,
               entityType: entityType,
               entityId: entityId,
+              op: Value(op),
             ),
           );
     }

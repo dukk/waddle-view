@@ -133,8 +133,8 @@ class ConfigKeyValues extends Table {
 }
 
 /// Curator configuration layer: exclusive replaces all; base drives program,
-/// theme, screen program, and ticker visibility; enhancement stacks screen/ticker/overlay
-/// members on the active base (additive union at runtime).
+/// theme, screen program, and ticker visibility; enhancement configs contribute
+/// add/remove member ops merged by [CuratorConfigurations.sortOrder] at runtime.
 const String kCuratorLayerExclusive = 'exclusive';
 const String kCuratorLayerBase = 'base';
 const String kCuratorLayerEnhancement = 'enhancement';
@@ -175,6 +175,24 @@ const List<String> kCuratorMemberEntityTypes = [
   kCuratorMemberEntityTicker,
   kCuratorMemberEntityOverlay,
 ];
+
+/// [CuratorConfigurationMembers.op] — add or remove catalog id from active pool.
+const String kCuratorMemberOpAdd = 'add';
+const String kCuratorMemberOpRemove = 'remove';
+
+const List<String> kCuratorMemberOps = [
+  kCuratorMemberOpAdd,
+  kCuratorMemberOpRemove,
+];
+
+/// Screen types that honor [Screens.requireNewsPhoto] for RSS article selection.
+const Set<String> kNewsScreenTypesRequiringPhoto = {
+  'news',
+  'news_columns',
+  'news_stack',
+  'news_grid',
+  'news_right',
+};
 const String kAdminBootstrapDoneKvKey = 'admin.bootstrap_done';
 
 /// Global kill-switch for festive display overlays (`'true'` / `'false'`). Absent = enabled.
@@ -382,6 +400,10 @@ class Screens extends Table {
   IntColumn get maxPlacementsPerProgram => integer().nullable()();
   TextColumn get dataKey => text().withDefault(const Constant(''))();
 
+  /// When true, RSS article pools for news screen types prefer rows with images.
+  BoolColumn get requireNewsPhoto =>
+      boolean().withDefault(const Constant(true))();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
@@ -466,11 +488,12 @@ class CuratorScheduleRules extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-/// Catalog entity ids enabled while a [CuratorConfigurations] row is active.
+/// Catalog entity add/remove while a [CuratorConfigurations] row contributes ops.
 class CuratorConfigurationMembers extends Table {
   TextColumn get configurationId => text()();
   TextColumn get entityType => text()();
   TextColumn get entityId => text()();
+  TextColumn get op => text().withDefault(const Constant(kCuratorMemberOpAdd))();
 
   @override
   Set<Column<Object>> get primaryKey => {configurationId, entityType, entityId};

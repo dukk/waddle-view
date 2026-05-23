@@ -4,6 +4,8 @@ import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 
 const int _kAllDaysMask = 0x7F;
+const int _kWeekdayDaysMask = 0x1F;
+const int _kWeekendDaysMask = 0x60;
 
 Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
   final existing = await (db.select(db.curatorConfigurations)
@@ -34,8 +36,8 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
   await _members(
     db,
     'bootstrap',
-    screens: ['admin_setup', 'dev_local_api', 'controller_invite'],
-    tickers: ['ticker_time'],
+    screensAdd: ['admin_setup', 'dev_local_api', 'controller_invite'],
+    tickersAdd: ['ticker_time'],
   );
 
   await _insertConfig(
@@ -52,8 +54,69 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
   await _members(
     db,
     kDefaultBaseCuratorConfigurationId,
-    screens: kDefaultBaseCuratorScreenMemberIds,
-    tickers: kDefaultBaseCuratorTickerMemberIds,
+    screensAdd: kDefaultBaseCuratorScreenMemberIds,
+    tickersAdd: kDefaultBaseCuratorTickerMemberIds,
+  );
+
+  await _insertConfig(
+    db,
+    id: 'weekday',
+    name: 'Weekdays',
+    layer: kCuratorLayerEnhancement,
+    sortOrder: 10,
+    programDurationSeconds: 180,
+    historyDepth: 5,
+    requireNewsPhoto: true,
+    defaultConfig: false,
+  );
+  await _insertRule(
+    db,
+    id: 'weekday_days',
+    configurationId: 'weekday',
+    priority: 10,
+    daysOfWeekMask: _kWeekdayDaysMask,
+  );
+  await _members(
+    db,
+    'weekday',
+    screensRemove: [
+      'photo',
+      'photo_collage_nine_square',
+      'video',
+    ],
+  );
+
+  await _insertConfig(
+    db,
+    id: 'weekend',
+    name: 'Weekend',
+    layer: kCuratorLayerEnhancement,
+    sortOrder: 10,
+    programDurationSeconds: 180,
+    historyDepth: 5,
+    requireNewsPhoto: true,
+    defaultConfig: false,
+  );
+  await _insertRule(
+    db,
+    id: 'weekend_days',
+    configurationId: 'weekend',
+    priority: 10,
+    daysOfWeekMask: _kWeekendDaysMask,
+  );
+  await _members(
+    db,
+    'weekend',
+    screensAdd: [
+      'photo',
+      'photo_collage_nine_square',
+      'video',
+      'jokes',
+      'trivia',
+    ],
+    screensRemove: ['stock_quotes', 'news_columns', 'calendar'],
+    tickersAdd: ['ticker_custom'],
+    tickersRemove: ['ticker_stocks'],
   );
 
   await _insertConfig(
@@ -61,7 +124,7 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
     id: 'night',
     name: 'Night',
     layer: kCuratorLayerBase,
-    sortOrder: 10,
+    sortOrder: 100,
     programDurationSeconds: 120,
     historyDepth: 3,
     requireNewsPhoto: false,
@@ -80,7 +143,7 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
   await _members(
     db,
     'night',
-    screens: ['clock_analog', 'sleep_message'],
+    screensAdd: ['clock_analog', 'sleep_message'],
   );
 
   await _insertConfig(
@@ -88,7 +151,7 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
     id: 'morning',
     name: 'Morning',
     layer: kCuratorLayerBase,
-    sortOrder: 20,
+    sortOrder: 110,
     programDurationSeconds: 180,
     historyDepth: 5,
     requireNewsPhoto: true,
@@ -107,7 +170,7 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
   await _members(
     db,
     'morning',
-    screens: [
+    screensAdd: [
       'news',
       'news_right',
       'weather',
@@ -115,7 +178,7 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
       'trivia',
       'photo',
     ],
-    tickers: ['ticker_weather', 'ticker_news'],
+    tickersAdd: ['ticker_weather', 'ticker_news'],
   );
 
   await _insertConfig(
@@ -123,7 +186,7 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
     id: 'work',
     name: 'Work',
     layer: kCuratorLayerBase,
-    sortOrder: 30,
+    sortOrder: 120,
     programDurationSeconds: 180,
     historyDepth: 5,
     requireNewsPhoto: true,
@@ -142,14 +205,14 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
   await _members(
     db,
     'work',
-    screens: [
+    screensAdd: [
       'news',
       'news_columns',
       'stock_quotes',
       'weather',
       'calendar',
     ],
-    tickers: [
+    tickersAdd: [
       'ticker_weather',
       'ticker_news',
       'ticker_stocks',
@@ -161,7 +224,7 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
     id: 'evening',
     name: 'Evening',
     layer: kCuratorLayerBase,
-    sortOrder: 40,
+    sortOrder: 130,
     programDurationSeconds: 180,
     historyDepth: 5,
     requireNewsPhoto: false,
@@ -180,7 +243,7 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
   await _members(
     db,
     'evening',
-    screens: [
+    screensAdd: [
       'jokes',
       'trivia',
       'photo',
@@ -188,7 +251,7 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
       'video',
       'weather',
     ],
-    tickers: ['ticker_custom'],
+    tickersAdd: ['ticker_custom'],
   );
 
   await _insertConfig(
@@ -196,7 +259,7 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
     id: 'waddle_birthday',
     name: 'Waddle birthday',
     layer: kCuratorLayerEnhancement,
-    sortOrder: 100,
+    sortOrder: 200,
     programDurationSeconds: 180,
     historyDepth: 5,
     requireNewsPhoto: false,
@@ -214,7 +277,7 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
   await _members(
     db,
     'waddle_birthday',
-    overlays: [
+    overlaysAdd: [
       kDefaultBirthdayConfettiOverlayId,
       kDefaultWattleViewsBirthdayMessageOverlayId,
     ],
@@ -225,7 +288,7 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
     id: 'mothers_day',
     name: "Mother's Day",
     layer: kCuratorLayerEnhancement,
-    sortOrder: 110,
+    sortOrder: 210,
     programDurationSeconds: 180,
     historyDepth: 5,
     requireNewsPhoto: false,
@@ -245,7 +308,7 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
   await _members(
     db,
     'mothers_day',
-    overlays: [kDefaultMothersDayOverlayId],
+    overlaysAdd: [kDefaultMothersDayOverlayId],
   );
 }
 
@@ -320,34 +383,71 @@ Future<void> _insertRule(
 Future<void> _members(
   AppDatabase db,
   String configurationId, {
-  List<String> screens = const [],
-  List<String> tickers = const [],
-  List<String> overlays = const [],
+  List<String> screensAdd = const [],
+  List<String> screensRemove = const [],
+  List<String> tickersAdd = const [],
+  List<String> tickersRemove = const [],
+  List<String> overlaysAdd = const [],
+  List<String> overlaysRemove = const [],
 }) async {
-  for (final id in screens) {
+  await _insertMemberOps(
+    db,
+    configurationId,
+    kCuratorMemberEntityScreen,
+    screensAdd,
+    kCuratorMemberOpAdd,
+  );
+  await _insertMemberOps(
+    db,
+    configurationId,
+    kCuratorMemberEntityScreen,
+    screensRemove,
+    kCuratorMemberOpRemove,
+  );
+  await _insertMemberOps(
+    db,
+    configurationId,
+    kCuratorMemberEntityTicker,
+    tickersAdd,
+    kCuratorMemberOpAdd,
+  );
+  await _insertMemberOps(
+    db,
+    configurationId,
+    kCuratorMemberEntityTicker,
+    tickersRemove,
+    kCuratorMemberOpRemove,
+  );
+  await _insertMemberOps(
+    db,
+    configurationId,
+    kCuratorMemberEntityOverlay,
+    overlaysAdd,
+    kCuratorMemberOpAdd,
+  );
+  await _insertMemberOps(
+    db,
+    configurationId,
+    kCuratorMemberEntityOverlay,
+    overlaysRemove,
+    kCuratorMemberOpRemove,
+  );
+}
+
+Future<void> _insertMemberOps(
+  AppDatabase db,
+  String configurationId,
+  String entityType,
+  List<String> entityIds,
+  String op,
+) async {
+  for (final id in entityIds) {
     await db.into(db.curatorConfigurationMembers).insert(
           CuratorConfigurationMembersCompanion.insert(
             configurationId: configurationId,
-            entityType: kCuratorMemberEntityScreen,
+            entityType: entityType,
             entityId: id,
-          ),
-        );
-  }
-  for (final id in tickers) {
-    await db.into(db.curatorConfigurationMembers).insert(
-          CuratorConfigurationMembersCompanion.insert(
-            configurationId: configurationId,
-            entityType: kCuratorMemberEntityTicker,
-            entityId: id,
-          ),
-        );
-  }
-  for (final id in overlays) {
-    await db.into(db.curatorConfigurationMembers).insert(
-          CuratorConfigurationMembersCompanion.insert(
-            configurationId: configurationId,
-            entityType: kCuratorMemberEntityOverlay,
-            entityId: id,
+            op: Value(op),
           ),
         );
   }

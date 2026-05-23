@@ -28,6 +28,7 @@ class ScreenCandidate {
     this.maxPlacementsPerProgram,
     this.dataKey = '',
     required this.layoutJson,
+    this.requireNewsPhoto = true,
   });
 
   final String id;
@@ -39,6 +40,9 @@ class ScreenCandidate {
   final int? maxPlacementsPerProgram;
   final String dataKey;
   final String layoutJson;
+
+  /// When true, RSS pools for news layouts prefer articles with images.
+  final bool requireNewsPhoto;
 }
 
 /// One slide in a curated program (in order).
@@ -99,9 +103,9 @@ class ScreenProgramCurator {
   ///
   /// When [rssArticleMetrics] is non-empty and [layoutHasRssNews] for a screen,
   /// joint best-fit placement prefers screens whose per-slot summary capacity
-  /// matches article lengths. [requirePhotoForRssScreens] restricts pools to
-  /// rows with images unless min-placement fallback forces photo-less articles
-  /// (`*_imageMode` = `icon` in [ResolvedSlide.randomChoices]).
+  /// matches article lengths. Per-screen [ScreenCandidate.requireNewsPhoto]
+  /// restricts pools to rows with images unless min-placement fallback forces
+  /// photo-less articles (`*_imageMode` = `icon` in [ResolvedSlide.randomChoices]).
   static List<ResolvedSlide> buildProgram({
     required List<ScreenCandidate> screens,
     required int programDurationMs,
@@ -112,7 +116,6 @@ class ScreenProgramCurator {
     Map<String, DataKeyProgramLimit> dataKeyLimits = const {},
     Map<String, RssArticleMetric> rssArticleMetrics = const {},
     Map<String, PhotoCuratorMetric> photoMetrics = const {},
-    bool requirePhotoForRssScreens = true,
     Map<String, int> lastShownAtMsByScreenId = const {},
     int nowMs = 0,
     Map<String, String> categoryLabelToId = const {},
@@ -167,7 +170,6 @@ class ScreenProgramCurator {
             randomPools: randomPools,
             usedCuratedIds: usedCuratedIds,
             rssArticleMetrics: rssArticleMetrics,
-            requirePhotoForRssScreens: requirePhotoForRssScreens,
             needsMinFallback: _needsMinPlacementFallback(
               s,
               countByScreenId,
@@ -282,7 +284,6 @@ class ScreenProgramCurator {
                   randomPools: randomPools,
                   usedCuratedIds: usedCuratedIds,
                   rssArticleMetrics: rssArticleMetrics,
-                  requirePhotoForRssScreens: requirePhotoForRssScreens,
                   needsMinFallback: _needsMinPlacementFallback(
                     pick,
                     countByScreenId,
@@ -404,7 +405,6 @@ class ScreenProgramCurator {
     required Map<String, List<String>> randomPools,
     required Set<String> usedCuratedIds,
     required Map<String, RssArticleMetric> rssArticleMetrics,
-    required bool requirePhotoForRssScreens,
     required bool needsMinFallback,
     required Random random,
     Map<String, String> categoryLabelToId = const {},
@@ -417,8 +417,7 @@ class ScreenProgramCurator {
       return null;
     }
 
-    final requirePhoto =
-        requirePhotoForRssScreens && !needsMinFallback;
+    final requirePhoto = screen.requireNewsPhoto && !needsMinFallback;
     final reservedIds = {...usedCuratedIds};
     final totalSlots = specs.fold<int>(
       0,
@@ -545,7 +544,7 @@ class ScreenProgramCurator {
       }
 
       late List<String> pool;
-      if (!requirePhotoForRssScreens || needsMinFallback) {
+      if (!screen.requireNewsPhoto || needsMinFallback) {
         pool = availableAny();
       } else {
         pool = availablePhotoOk();

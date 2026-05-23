@@ -298,8 +298,6 @@ class _ScreenRotatorState extends State<ScreenRotator>
       kv[kDisplayProgramHistoryDepthKvKey],
     );
     _historyDepth = historyDepth;
-    final requireNewsPhotoForScreens = primary.requireNewsPhotoForScreens;
-
     final blobs = await widget.db.select(widget.db.blobMetadata).get();
     final loadedPools = await loadCuratorContentPools(widget.db);
     final pools = <String, List<String>>{
@@ -339,6 +337,7 @@ class _ScreenRotatorState extends State<ScreenRotator>
               screenType: r.screenType,
               configJson: r.configJson,
             ),
+            requireNewsPhoto: r.requireNewsPhoto,
           ),
         )
         .toList();
@@ -353,7 +352,6 @@ class _ScreenRotatorState extends State<ScreenRotator>
       dataKeyLimits: dataKeyLimits,
       rssArticleMetrics: loadedPools.rssArticleMetrics,
       photoMetrics: loadedPools.photoMetrics,
-      requirePhotoForRssScreens: requireNewsPhotoForScreens,
       lastShownAtMsByScreenId: _lastShownAtMsByScreenId,
       nowMs: nowMs,
       categoryLabelToId: categoryLabelToId,
@@ -373,7 +371,7 @@ class _ScreenRotatorState extends State<ScreenRotator>
         'screen program: build context screenRows=${defs.length} dwellEligible=$dwellOk '
         'budgetMs=$programMs historyDepth=$historyDepth dataKeyLimits=${dataKeyLimits.length} '
         'randomPoolKeys=${pools.length} rssArticleMetrics=${loadedPools.rssArticleMetrics.length} '
-        'photoMetrics=${loadedPools.photoMetrics.length} requireNewsPhoto=$requireNewsPhotoForScreens',
+        'photoMetrics=${loadedPools.photoMetrics.length}',
       );
       for (final line in ScreenProgramCurator.curatedProgramDebugLogLines(
         program: program,

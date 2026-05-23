@@ -250,6 +250,7 @@ Handler buildProtectedApiRouter({
             'min_placements_per_program': e.minPlacementsPerProgram,
             'max_placements_per_program': e.maxPlacementsPerProgram,
             'data_key': e.dataKey,
+            'require_news_photo': e.requireNewsPhoto,
             'data_key_min_placements_per_program':
                 e.dataKey.isEmpty
                     ? null
