@@ -210,18 +210,41 @@ Future<void> _waddleBootstrap() async {
     final tickerRegistry = TickerSourceRegistry();
     registerBuiltinTickerSources(tickerRegistry);
     globalTickerSourceRegistry = tickerRegistry;
-    final engine = DataCollectionEngine(
-      resolveProviders: () =>
-          providerRegistry.providersForEnabledIntegrations(db),
-      context: ctx,
-      sleeper: SystemSleeper(),
-      idleBetweenCycles: kDebugMode
-          ? const Duration(seconds: 5)
-          : const Duration(seconds: 30),
-      onCycleComplete: dashboardCurator.refresh,
-      diagnostics: collectDiag,
-    );
-    unawaited(engine.start());
+    final saasMode = readSaasModeEnabled(envMap);
+    DataCollectionEngine? engine;
+    SaasFeedSyncService? saasSync;
+    if (saasMode) {
+      final apiUrl = readSaasApiUrl(envMap);
+      final displayId = readSaasDisplayId(envMap);
+      final apiKey = readSaasApiKey(envMap);
+      if (apiUrl != null && displayId != null && apiKey != null) {
+        saasSync = SaasFeedSyncService(
+          db: db,
+          apiBaseUrl: apiUrl,
+          displayId: displayId,
+          apiKey: apiKey,
+        );
+        unawaited(saasSync.start());
+        AppDebugLog.startup('SaaS feed sync enabled displayId=$displayId');
+      } else {
+        AppDebugLog.startup(
+          'WADDLE_SAAS_MODE=1 but API URL, display id, or API key missing',
+        );
+      }
+    } else {
+      engine = DataCollectionEngine(
+        resolveProviders: () =>
+            providerRegistry.providersForEnabledIntegrations(db),
+        context: ctx,
+        sleeper: SystemSleeper(),
+        idleBetweenCycles: kDebugMode
+            ? const Duration(seconds: 5)
+            : const Duration(seconds: 30),
+        onCycleComplete: dashboardCurator.refresh,
+        diagnostics: collectDiag,
+      );
+      unawaited(engine.start());
+    }
 
     final alerts = DriftAlertRepository(db);
     final overlayRegistry = OverlayWidgetRegistry();

@@ -25,6 +25,7 @@ void registerContentCatalogRoutes(Router r, {required AppDatabase db}) {
   r.get('/v1/catalog/alerts', (Request req) => _listOperatorAlerts(db, req));
   r.get('/v1/catalog/calendar-events', (Request req) => _listCalendarEvents(db, req));
   r.get('/v1/catalog/quoterism-quotes', (Request req) => _listQuoterismQuotes(db, req));
+  r.get('/v1/catalog/tasks', (Request req) => _listTasks(db, req));
 }
 
 class _CatalogParams {
@@ -1197,4 +1198,99 @@ Future<int> _countQuoterismQuotes(
         ))
       .getSingle();
   return row.read<int>(db.quoterismQuotes.id.count()) ?? 0;
+}
+
+Future<Response> _listTasks(AppDatabase db, Request req) async {
+  final parsed = _CatalogParams.parse(req);
+  final prep = _prepareCatalogList(req, parsed);
+  if (prep.$1 != null) return prep.$1!;
+  final p = prep.$2;
+  final boardKey = (req.url.queryParameters['board_key'] ?? '').trim();
+  final taskListId = (req.url.queryParameters['task_list_id'] ?? '').trim();
+  final titleNeedle = _queryNeedle(req, 'title');
+  final descriptionNeedle = _queryNeedle(req, 'description');
+
+  Set<String>? listIdsForBoard;
+  if (boardKey.isNotEmpty) {
+    final listRows = await (db.select(db.taskLists)
+          ..where((l) => l.boardKey.equals(boardKey)))
+        .get();
+    listIdsForBoard = listRows.map((r) => r.id).toSet();
+    if (listIdsForBoard.isEmpty) {
+      return _jsonOk({
+        'items': <Map<String, Object?>>[],
+        'total': 0,
+        'limit': p.limit,
+        'offset': p.offset,
+      });
+    }
+  }
+
+  Expression<bool> taskWhere($TasksTable tbl) {
+    Expression<bool> e = const Constant(true);
+    if (listIdsForBoard != null) {
+      e = e & tbl.taskListId.isIn(listIdsForBoard);
+    }
+    if (taskListId.isNotEmpty) {
+      e = e & tbl.taskListId.equals(taskListId);
+    }
+    if (titleNeedle != null) {
+      e = e & tbl.title.like('%$titleNeedle%');
+    }
+    if (descriptionNeedle != null) {
+      e = e &
+          (tbl.description.isNotNull() &
+              tbl.description.like('%$descriptionNeedle%'));
+    }
+    return e;
+  }
+
+  final pred = taskWhere(db.tasks);
+  final rows = await (db.select(db.tasks)
+        ..where((t) => taskWhere(t))
+        ..orderBy([(t) => OrderingTerm.desc(t.updatedAtMs)])
+        ..limit(p.limit, offset: p.offset))
+      .get();
+  final countCol = countAll();
+  final totalRow = await (db.selectOnly(db.tasks)
+        ..addColumns([countCol])
+        ..where(pred))
+      .getSingle();
+  final total = totalRow.read(countCol) ?? 0;
+
+  final listIds = rows.map((r) => r.taskListId).toSet();
+  final listsById = <String, TaskList>{};
+  if (listIds.isNotEmpty) {
+    final listRows = await (db.select(db.taskLists)
+          ..where((l) => l.id.isIn(listIds)))
+        .get();
+    for (final list in listRows) {
+      listsById[list.id] = list;
+    }
+  }
+
+  return _jsonOk({
+    'items': [
+      for (final r in rows)
+        {
+          'id': r.id,
+          'title': r.title,
+          'description': r.description,
+          'task_list_id': r.taskListId,
+          'list_label': listsById[r.taskListId]?.label,
+          'board_key': listsById[r.taskListId]?.boardKey,
+          'column_order': listsById[r.taskListId]?.columnOrder,
+          'due_at_ms': r.dueAtMs?.millisecondsSinceEpoch,
+          'completed': r.completed,
+          'position': r.position,
+          'integration_type': r.integrationType,
+          'integration_id': r.integrationId,
+          'external_id': r.externalId,
+          'updated_at_ms': r.updatedAtMs.millisecondsSinceEpoch,
+        },
+    ],
+    'total': total,
+    'limit': p.limit,
+    'offset': p.offset,
+  });
 }

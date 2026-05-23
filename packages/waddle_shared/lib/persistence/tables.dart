@@ -1196,3 +1196,52 @@ class RuntimeSignals extends Table {
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
+
+/// Integration type id for the built-in Trello tasks collector.
+const String kTasksIntegrationTypeTrello = 'tasks_trello';
+
+/// One column on a task board (e.g. Trello list); generic across task providers.
+@TableIndex(
+  name: 'idx_task_lists_board_column',
+  columns: {#boardKey, #columnOrder},
+)
+@TableIndex(
+  name: 'idx_task_lists_integration_board',
+  columns: {#integrationId, #boardKey},
+)
+class TaskLists extends Table {
+  TextColumn get id => text()();
+  TextColumn get label => text()();
+  TextColumn get boardKey => text()();
+  IntColumn get columnOrder => integer()();
+  TextColumn get integrationType => text()();
+  TextColumn get integrationId => text()();
+  TextColumn get externalId => text()();
+  DateTimeColumn get updatedAtMs => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Task item within a [TaskLists] column; generic across task providers.
+@TableIndex(
+  name: 'idx_tasks_list_position',
+  columns: {#taskListId, #position},
+)
+class Tasks extends Table {
+  TextColumn get id => text()();
+  TextColumn get taskListId =>
+      text().references(TaskLists, #id, onDelete: KeyAction.cascade)();
+  TextColumn get title => text()();
+  TextColumn get description => text().nullable()();
+  DateTimeColumn get dueAtMs => dateTime().nullable()();
+  BoolColumn get completed => boolean().withDefault(const Constant(false))();
+  IntColumn get position => integer()();
+  TextColumn get integrationType => text()();
+  TextColumn get integrationId => text()();
+  TextColumn get externalId => text()();
+  DateTimeColumn get updatedAtMs => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}

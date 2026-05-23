@@ -43,6 +43,7 @@ const String kIntegrationAccountTypeApiKeyHomeAssistant =
     'api_key_home_assistant';
 const String kIntegrationAccountTypeApiKeyNasa = 'api_key_nasa';
 const String kIntegrationAccountTypeApiKeyQuoterism = 'api_key_quoterism';
+const String kIntegrationAccountTypeApiKeyTrello = 'api_key_trello';
 const String kIntegrationAccountTypeFacebook = 'facebook';
 const String kIntegrationAccountTypeTwitter = 'twitter';
 const String kIntegrationAccountTypeLinkedin = 'linkedin';
@@ -115,6 +116,12 @@ const Map<String, IntegrationAccountTypeDefinition> kIntegrationAccountTypes = {
     signupUrl: 'https://www.quoterism.com/developer',
     accessTokenSecretKey: _apiKeyAccessTokenSecret,
   ),
+  kIntegrationAccountTypeApiKeyTrello: IntegrationAccountTypeDefinition(
+    id: kIntegrationAccountTypeApiKeyTrello,
+    label: 'Trello member token',
+    signupUrl: 'https://trello.com/power-ups/admin',
+    accessTokenSecretKey: _apiKeyAccessTokenSecret,
+  ),
   kIntegrationAccountTypeFacebook: IntegrationAccountTypeDefinition(
     id: kIntegrationAccountTypeFacebook,
     label: 'Facebook account',
@@ -162,6 +169,7 @@ const Map<String, List<String>> kIntegrationAccountRequirementsByType = {
   'photo_nasa_mars_rover': [kIntegrationAccountTypeApiKeyNasa],
   'photo_nasa_earth_imagery': [kIntegrationAccountTypeApiKeyNasa],
   'quote_quoterism': [kIntegrationAccountTypeApiKeyQuoterism],
+  'tasks_trello': [kIntegrationAccountTypeApiKeyTrello],
   'news_facebook': [kIntegrationAccountTypeFacebook],
   'news_twitter': [kIntegrationAccountTypeTwitter],
   'news_linkedin': [kIntegrationAccountTypeLinkedin],

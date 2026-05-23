@@ -27,6 +27,7 @@ import 'package:waddle_integrations/photo_pexels/pexels_data_provider.dart';
 import 'package:waddle_integrations/news_rss/rss_news_data_provider.dart';
 
 import 'package:waddle_integrations/home_assistant/home_assistant_data_provider.dart';
+import 'package:waddle_integrations/tasks_trello/tasks_trello_data_provider.dart';
 
 import 'package:waddle_integrations/stock_finnhub/stock_quote_data_provider.dart';
 
@@ -73,6 +74,8 @@ void main() {
     expect(StockQuoteDataProvider().id, 'stock_finnhub');
 
     expect(HomeAssistantDataProvider().id, 'home_assistant');
+
+    expect(TasksTrelloDataProvider().id, 'tasks_trello');
 
     expect(PexelsPhotosDataProvider().id, 'photo_pexels');
 

@@ -20,6 +20,7 @@ class IntegrationSecretSlot {
 }
 
 const String kIntegrationSecretSlotApiKey = 'api_key';
+const String kIntegrationSecretSlotTrelloApiKey = 'trello_api_key';
 const String kIntegrationSecretSlotClientId = 'client_id';
 
 /// Google OAuth public client id ([SecretStore] key).
@@ -31,6 +32,21 @@ const String kMicrosoftGraphClientIdSecretKey =
 
 String providerAccessTokenSecretKey(String integrationId) =>
     '${ProviderConfigResolver.accessTokenKey}:$integrationId';
+
+String trelloApiKeySecretKey(String integrationId) =>
+    'provider:trello_api_key:$integrationId';
+
+Future<String?> readTrelloApiKeyForIntegration(
+  SecretStore store,
+  String integrationId,
+) async {
+  final v = await store.read(trelloApiKeySecretKey(integrationId));
+  final t = v?.trim();
+  if (t == null || t.isEmpty) {
+    return null;
+  }
+  return t;
+}
 
 /// Slots shown in controller UI per [Integrations.integrationType].
 ///
@@ -65,6 +81,13 @@ const Map<String, List<IntegrationSecretSlot>> kIntegrationSecretSlotsByType = {
       storageKey: kMicrosoftGraphClientIdSecretKey,
     ),
   ],
+  'tasks_trello': [
+    IntegrationSecretSlot(
+      id: kIntegrationSecretSlotTrelloApiKey,
+      label: 'Trello API key',
+      storageKey: 'provider:trello_api_key:placeholder',
+    ),
+  ],
 };
 
 List<IntegrationSecretSlot> integrationSecretSlotsForType(String integrationType) =>
@@ -81,6 +104,12 @@ List<IntegrationSecretSlot> integrationSecretSlotsForIntegration(
           id: slot.id,
           label: slot.label,
           storageKey: providerAccessTokenSecretKey(integrationId),
+        )
+      else if (slot.id == kIntegrationSecretSlotTrelloApiKey)
+        IntegrationSecretSlot(
+          id: slot.id,
+          label: slot.label,
+          storageKey: trelloApiKeySecretKey(integrationId),
         )
       else
         slot,

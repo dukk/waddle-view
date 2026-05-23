@@ -26,6 +26,7 @@ import '../display/screens/news/news_slide_widget.dart';
 import '../display/screens/news/news_stack_slide_widget.dart';
 import '../display/screens/plugin_template/plugin_template_slide_widget.dart';
 import '../display/screens/home_assistant/home_assistant_slide_widget.dart';
+import '../display/screens/task_board/task_board_slide_widget.dart';
 import '../display/screens/stock_quotes/stock_quotes_slide_widget.dart';
 import '../display/screens/trivia/trivia_slide_widget.dart';
 import '../display/screens/weather/weather_slide_widget.dart';
@@ -232,6 +233,12 @@ class ScreenWidgetRegistry {
                 theme: ctx.theme,
                 onReportDesiredDwell: (ms) =>
                     ctx.onReportDesiredDwell(ctx.slideIndex, ms),
+              );
+            case 'task_board':
+              return TaskBoardSlideWidget(
+                db: ctx.db,
+                spec: w,
+                theme: ctx.theme,
               );
             case 'home_assistant':
               return HomeAssistantSlideWidget(

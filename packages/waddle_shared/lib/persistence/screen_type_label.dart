@@ -23,6 +23,7 @@ const Map<String, String> kScreenTypeTitles = {
   'photo_collage': 'Photo collage',
   'video': 'Video',
   'stock_quotes': 'Stock quotes',
+  'task_board': 'Task board',
   'home_assistant': 'Home Assistant',
   'data_health': 'Data health',
   'web_page': 'Web page',

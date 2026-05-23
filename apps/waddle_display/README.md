@@ -427,6 +427,23 @@ The **`home_assistant`** provider polls your [Home Assistant](https://www.home-a
 
 **Screen:** widget type **`home_assistant`**. The slide lists every enabled interest row with friendly name, state, and unit when present.
 
+## Trello tasks (`tasks_trello`)
+
+The **`tasks_trello`** integration syncs configured Trello boards into generic SQLite tables **`task_lists`** (one row per board column / Trello list) and **`tasks`** (cards). The data model is provider-neutral so additional task systems can reuse the same tables and **`task_board`** screen later.
+
+**Setup (waddle_controller → Integrations → Trello Tasks):**
+
+1. Create a [Trello Power-Up](https://trello.com/power-ups/admin) and copy the **API key** into the integration **Trello API key** secret field.
+2. Generate a **member token** (Trello authorize URL with your key) and save it on a linked **Trello member token** integration account.
+3. Set **`boardIds`** in **`config_json`** to the Trello board id(s) to sync (from the board URL). Only listed boards are collected.
+4. Enable the integration and set **`poll_seconds`** as needed (default **300** when seeded).
+
+**Collect:** for each board, `GET /1/boards/{id}/lists` then `GET /1/lists/{id}/cards`; local rows are upserted and stale lists/cards for that board are removed.
+
+**Operator data:** **Data → Tasks** tab (`GET /v1/catalog/tasks`) shows title, list label, board key, due date, completion, and integration type. Filter by **board key** in the toolbar.
+
+**Screen:** widget type **`task_board`**. Set **`boardKey`** in screen config to the same id used in **`boardIds`**. Optional **`maxTasksPerColumn`** (default 12) and **`showCompleted`** (default false).
+
 ## Open-Meteo weather and air quality
 
 Two built-in integrations use the free [Open-Meteo](https://open-meteo.com/) APIs (**no API key** for non-commercial use). Attribute [Open-Meteo](https://open-meteo.com/) and [CAMS](https://open-meteo.com/en/docs/air-quality-api) per their documentation.

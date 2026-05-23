@@ -83,13 +83,15 @@ part 'database.g.dart';
     SecretStoreMeta,
     InstalledPlugins,
     RuntimeSignals,
+    TaskLists,
+    Tasks,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 48;
+  int get schemaVersion => 49;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -440,6 +442,13 @@ ORDER BY priority DESC, created_at DESC;
         }
         from = 48;
       }
+      if (from == 48 && to >= 49) {
+        await _migrateV48ToV49TaskTables(this, m);
+        if (to == 49) {
+          return;
+        }
+        from = 49;
+      }
       throw UnsupportedError(
         'Unsupported database upgrade from version $from to $to. '
         'Delete the SQLite file and reinstall (fresh seed).',
@@ -494,6 +503,7 @@ const String kDefaultPhotoPexelsIntegrationId = 'default_photo_pexels';
 const String kDefaultVideoPexelsIntegrationId = 'default_video_pexels';
 const String kDefaultStockFinnhubIntegrationId = 'default_stock_finnhub';
 const String kDefaultHomeAssistantIntegrationId = 'default_home_assistant';
+const String kDefaultTasksTrelloIntegrationId = 'default_tasks_trello';
 const String kDefaultCalendarGoogleIntegrationId = 'default_calendar_google';
 const String kDefaultCalendarOutlookIntegrationId = 'default_calendar_outlook';
 const String kDefaultCalendarIcalIntegrationId = 'default_calendar_ical';
@@ -2977,6 +2987,12 @@ Future<void> _migrateV32ToV33ViewportReserveOverrides(AppDatabase db) async {
       );
     }
   }
+}
+
+/// Schema 49: generic task board lists and tasks for integration collectors.
+Future<void> _migrateV48ToV49TaskTables(AppDatabase db, Migrator m) async {
+  await m.createTable(db.taskLists);
+  await m.createTable(db.tasks);
 }
 
 /// Opens a file-backed SQLite at [sqliteFile] (e.g. for `waddlectl --database`).

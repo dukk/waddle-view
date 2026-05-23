@@ -76,6 +76,8 @@ DataProviderRegistry buildBuiltinDataProviderRegistry() {
 
       HomeAssistantDataProvider(),
 
+      TasksTrelloDataProvider(),
+
       PluginHttpDataProvider(),
 
     ],

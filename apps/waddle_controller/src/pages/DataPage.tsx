@@ -19,6 +19,7 @@ import {
   TableHead,
   TableRow,
   Tabs,
+  TextField,
   Typography,
 } from '@mui/material';
 import { useAuth } from '@/context/AuthContext';
@@ -65,7 +66,8 @@ type DataKind =
   | 'stocks'
   | 'weather'
   | 'weather_alerts'
-  | 'dashboard_alerts';
+  | 'dashboard_alerts'
+  | 'tasks';
 
 type Paginated<T> = { items: T[]; total: number; limit?: number; offset?: number };
 
@@ -78,6 +80,7 @@ const DATA_TABS: { kind: DataKind; label: string }[] = [
   { kind: 'photos', label: 'Photos' },
   { kind: 'quoterism_quotes', label: 'Quotes' },
   { kind: 'stocks', label: 'Stocks' },
+  { kind: 'tasks', label: 'Tasks' },
   { kind: 'trivia', label: 'Trivia' },
   { kind: 'videos', label: 'Videos' },
   { kind: 'weather', label: 'Weather' },
@@ -118,6 +121,8 @@ function catalogPath(kind: DataKind): string {
       return '/v1/catalog/weather-alerts';
     case 'dashboard_alerts':
       return '/v1/catalog/alerts';
+    case 'tasks':
+      return '/v1/catalog/tasks';
   }
 }
 
@@ -219,6 +224,8 @@ function deleteRowSummary(kind: DataKind, row: Record<string, unknown>): string 
       return String(row.title ?? row.id ?? 'alert');
     case 'calendar_events':
       return String(row.title ?? row.id ?? 'event');
+    case 'tasks':
+      return String(row.title ?? row.id ?? 'task');
   }
 }
 
@@ -322,6 +329,7 @@ export function DataPage() {
   const [categoryId, setCategoryId] = useState('');
   const [feedId, setFeedId] = useState('');
   const [locationId, setLocationId] = useState('');
+  const [boardKey, setBoardKey] = useState('');
 
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [total, setTotal] = useState(0);
@@ -355,7 +363,7 @@ export function DataPage() {
 
   useEffect(() => {
     setPage(0);
-  }, [suppressed, categoryId, feedId, locationId, rowsPerPage, kind]);
+  }, [suppressed, categoryId, feedId, locationId, boardKey, rowsPerPage, kind]);
 
   const loadMetadata = useCallback(async () => {
     if (!active || !canBrowseData) return;
@@ -423,9 +431,12 @@ export function DataPage() {
     if ((kind === 'weather' || kind === 'weather_alerts') && locationId) {
       p.set('location_id', locationId);
     }
+    if (kind === 'tasks' && boardKey.trim()) {
+      p.set('board_key', boardKey.trim());
+    }
     const s = p.toString();
     return s ? `?${s}` : '';
-  }, [offset, suppressed, categoryId, feedId, locationId, kind, rowsPerPage, canModerate]);
+  }, [offset, suppressed, categoryId, feedId, locationId, boardKey, kind, rowsPerPage, canModerate]);
 
   useLayoutEffect(() => {
     setRows([]);
@@ -697,6 +708,16 @@ export function DataPage() {
             </Select>
           </FormControl>
         )}
+        {kind === 'tasks' && (
+          <TextField
+            size="small"
+            label="Board key"
+            value={boardKey}
+            onChange={(e) => setBoardKey(e.target.value)}
+            placeholder="Filter by board…"
+            sx={{ minWidth: 220 }}
+          />
+        )}
       </Stack>
 
       <DisplayRefreshIndicator loading={catalogLoading} />
@@ -828,6 +849,16 @@ export function DataPage() {
                   <TableCell>Category</TableCell>
                   <TableCell>Integration</TableCell>
                   <TableCell>Account / feed</TableCell>
+                </>
+              )}
+              {kind === 'tasks' && (
+                <>
+                  <TableCell>Title</TableCell>
+                  <TableCell>List</TableCell>
+                  <TableCell>Board</TableCell>
+                  <TableCell>Due</TableCell>
+                  <TableCell>Done</TableCell>
+                  <TableCell>Integration</TableCell>
                 </>
               )}
               {canModerate ? <TableCell align="right">Actions</TableCell> : null}
@@ -1078,6 +1109,22 @@ export function DataPage() {
                             ? formatDateTime(new Date(Number(row.created_at_ms)))
                             : '—'}
                         </TableCell>
+                      </>
+                    )}
+                    {kind === 'tasks' && (
+                      <>
+                        <TableCell sx={{ maxWidth: 260, wordBreak: 'break-word' }}>
+                          {String(row.title ?? '')}
+                        </TableCell>
+                        <TableCell>{String(row.list_label ?? '—')}</TableCell>
+                        <TableCell>{String(row.board_key ?? '—')}</TableCell>
+                        <TableCell>
+                          {row.due_at_ms != null
+                            ? formatDateTime(new Date(Number(row.due_at_ms)))
+                            : '—'}
+                        </TableCell>
+                        <TableCell>{row.completed ? 'Yes' : 'No'}</TableCell>
+                        <TableCell>{integrationCell(row)}</TableCell>
                       </>
                     )}
                     {kind === 'calendar_events' && (

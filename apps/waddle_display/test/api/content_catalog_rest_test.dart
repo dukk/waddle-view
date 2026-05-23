@@ -651,6 +651,75 @@ void main() {
     expect(cal2['integration_type'], 'calendar_outlook');
   });
 
+  test('GET /v1/catalog/tasks paginates and filters by board', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final updated = DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000);
+    await db.into(db.taskLists).insert(
+          TaskListsCompanion.insert(
+            id: 'list_a',
+            label: 'To Do',
+            boardKey: 'board1',
+            columnOrder: 1,
+            integrationType: 'tasks_trello',
+            integrationId: kDefaultTasksTrelloIntegrationId,
+            externalId: 'ext_list_a',
+            updatedAtMs: updated,
+          ),
+        );
+    await db.into(db.taskLists).insert(
+          TaskListsCompanion.insert(
+            id: 'list_b',
+            label: 'Done',
+            boardKey: 'board2',
+            columnOrder: 1,
+            integrationType: 'tasks_trello',
+            integrationId: kDefaultTasksTrelloIntegrationId,
+            externalId: 'ext_list_b',
+            updatedAtMs: updated,
+          ),
+        );
+    await db.into(db.tasks).insert(
+          TasksCompanion.insert(
+            id: 'task1',
+            taskListId: 'list_a',
+            title: 'Alpha task',
+            integrationType: 'tasks_trello',
+            integrationId: kDefaultTasksTrelloIntegrationId,
+            externalId: 'ext_card_1',
+            position: 1,
+            updatedAtMs: updated,
+          ),
+        );
+    await db.into(db.tasks).insert(
+          TasksCompanion.insert(
+            id: 'task2',
+            taskListId: 'list_b',
+            title: 'Other board',
+            integrationType: 'tasks_trello',
+            integrationId: kDefaultTasksTrelloIntegrationId,
+            externalId: 'ext_card_2',
+            position: 1,
+            updatedAtMs: updated.add(const Duration(seconds: 1)),
+          ),
+        );
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+
+    final byBoard = await http.get(
+      Uri.parse('${h.baseUrl}/v1/catalog/tasks?board_key=board1'),
+      headers: h.authHeaders,
+    );
+    expect(byBoard.statusCode, 200);
+    final boardBody = jsonDecode(byBoard.body) as Map<String, dynamic>;
+    expect(boardBody['total'], 1);
+    final item = (boardBody['items'] as List).first as Map<String, dynamic>;
+    expect(item['title'], 'Alpha task');
+    expect(item['list_label'], 'To Do');
+    expect(item['board_key'], 'board1');
+    expect(item['integration_type'], 'tasks_trello');
+  });
+
   test('power_viewer cannot use suppressed=true on calendar-events catalog', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);

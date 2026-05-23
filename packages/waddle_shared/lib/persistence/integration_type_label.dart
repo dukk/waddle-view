@@ -15,6 +15,7 @@ const Map<String, String> kIntegrationTypeTitles = {
   'trivia_opentdb': 'OpenTDB Trivia',
   'stock_finnhub': 'Finnhub Stock',
   'home_assistant': 'Home Assistant',
+  'tasks_trello': 'Trello Tasks',
   'calendar_outlook': 'Outlook Calendar',
   'calendar_google': 'Google Calendar',
   'calendar_ical': 'iCal / ICS Calendar',

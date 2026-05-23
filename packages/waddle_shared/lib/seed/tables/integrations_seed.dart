@@ -496,6 +496,24 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
 
   );
 
+  await _ensureIntegrationRow(
+
+    db,
+
+    id: kDefaultTasksTrelloIntegrationId,
+
+    integrationType: 'tasks_trello',
+
+    pollSeconds: 300,
+
+    enabled: false,
+
+    baseUrl: 'https://api.trello.com/1',
+
+    configJson: '{"boardIds":[],"requestTimeoutMs":15000}',
+
+  );
+
 
 
   await _ensureIntegrationRow(

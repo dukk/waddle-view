@@ -28,6 +28,8 @@ export 'stock_finnhub/stock_quote_data_provider.dart';
 
 export 'home_assistant/home_assistant_data_provider.dart';
 
+export 'tasks_trello/tasks_trello_data_provider.dart';
+
 export 'photo_pexels/pexels_data_provider.dart';
 
 export 'video_pexels/pexels_data_provider.dart';

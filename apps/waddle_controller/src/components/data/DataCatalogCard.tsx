@@ -34,7 +34,8 @@ export type DataCatalogKind =
   | 'stocks'
   | 'weather'
   | 'weather_alerts'
-  | 'dashboard_alerts';
+  | 'dashboard_alerts'
+  | 'tasks';
 
 type Props = {
   kind: DataCatalogKind;
@@ -237,6 +238,36 @@ export function DataCatalogCard({
             {String(row.text ?? '')}
           </Typography>
           <CategoryChips labels={categoryLabels} />
+          <Typography variant="caption" color="text.secondary">
+            {integrationCell(row)}
+          </Typography>
+        </Stack>
+        {footer}
+      </Paper>
+    );
+  }
+
+  if (kind === 'tasks') {
+    return (
+      <Paper variant="outlined" sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Stack spacing={1} sx={{ flexGrow: 1 }}>
+          <Typography variant="subtitle2" fontWeight={600}>
+            {String(row.title ?? '')}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {String(row.list_label ?? '—')} · {String(row.board_key ?? '—')}
+          </Typography>
+          {row.due_at_ms != null ? (
+            <Typography variant="caption" color="text.secondary">
+              Due {formatDateTime(new Date(Number(row.due_at_ms)))}
+            </Typography>
+          ) : null}
+          <Chip
+            size="small"
+            label={row.completed ? 'Completed' : 'Open'}
+            color={row.completed ? 'default' : 'primary'}
+            variant="outlined"
+          />
           <Typography variant="caption" color="text.secondary">
             {integrationCell(row)}
           </Typography>

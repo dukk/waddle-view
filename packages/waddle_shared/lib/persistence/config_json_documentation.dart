@@ -533,6 +533,30 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       ],
     }),
   ),
+  'tasks_trello': ProviderConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'TasksTrelloProviderConfig',
+        description:
+            'Syncs configured Trello boards into generic task_lists and tasks '
+            'rows. API key is an integration secret; member token is a linked '
+            'Trello account.',
+        properties: _integrationConfigProperties({
+          'boardIds': {
+            'type': 'array',
+            'items': {'type': 'string', 'minLength': 1},
+            'minItems': 1,
+          },
+          'requestTimeoutMs': {'type': 'integer', 'minimum': 1000},
+        }),
+      ),
+    ),
+    example: jsonEncode({
+      'baseUrl': 'https://api.trello.com/1',
+      'boardIds': ['YOUR_BOARD_ID'],
+      'requestTimeoutMs': 15000,
+    }),
+  ),
   'stock_finnhub': ProviderConfigJsonDoc(
     schema: jsonEncode(
       _baseSchema(
@@ -1482,6 +1506,7 @@ const List<String> kScreenLayoutWidgetTypes = [
   'photo_collage',
   'video',
   'stock_quotes',
+  'task_board',
   'home_assistant',
   'data_health',
   'web_page',
@@ -2129,6 +2154,39 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
       ),
     ),
     example: jsonEncode({}),
+  ),
+  'task_board': ScreenConfigJsonDoc(
+    schema: jsonEncode(
+      _baseSchema(
+        title: 'TaskBoardScreenConfig',
+        description:
+            'Kanban-style columns from synced task_lists and tasks for one '
+            'boardKey (matches integration board id).',
+        properties: {
+          'boardKey': {
+            'type': 'string',
+            'minLength': 1,
+            'description': 'Board id from the tasks integration (e.g. Trello board id).',
+          },
+          'maxTasksPerColumn': {
+            'type': 'integer',
+            'minimum': 1,
+            'maximum': 50,
+            'description': 'Maximum open tasks shown per column (default 12).',
+          },
+          'showCompleted': {
+            'type': 'boolean',
+            'description': 'When true, include completed tasks in each column.',
+          },
+        },
+        requiredKeys: ['boardKey'],
+      ),
+    ),
+    example: jsonEncode({
+      'boardKey': 'YOUR_BOARD_ID',
+      'maxTasksPerColumn': 12,
+      'showCompleted': false,
+    }),
   ),
   'controller_invite': ScreenConfigJsonDoc(
     schema: jsonEncode(
