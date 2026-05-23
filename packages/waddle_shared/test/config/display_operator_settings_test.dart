@@ -143,8 +143,14 @@ void main() {
       expect(touched, isTrue);
 
       final body = await readDisplayOperatorSettings(db);
-      expect(body['display_ticker_item_separator'], kDisplayTickerSeparatorDiamond);
-      expect(body['display_ticker_program_separator'], kDisplayTickerSeparatorDot);
+      expect(
+        body['display_ticker_item_separator'],
+        kDisplayTickerSeparatorDiamond,
+      );
+      expect(
+        body['display_ticker_program_separator'],
+        kDisplayTickerSeparatorDot,
+      );
 
       final kv = await db.select(db.configKeyValues).get();
       final map = {for (final r in kv) r.key: r.value};
@@ -283,40 +289,46 @@ void main() {
     expect((customs.first as Map)['label'], 'Operator');
   });
 
-  test('applyDisplayOperatorSettingsPut rejects unknown display_theme_id', () async {
-    final db = openMemoryDatabase();
-    addTearDown(db.close);
-    await ensureInitialSeed(db);
+  test(
+    'applyDisplayOperatorSettingsPut rejects unknown display_theme_id',
+    () async {
+      final db = openMemoryDatabase();
+      addTearDown(db.close);
+      await ensureInitialSeed(db);
 
-    expect(
-      () => applyDisplayOperatorSettingsPut(db, {
-        'display_theme_id': 'not_registered',
-      }),
-      throwsA(isA<DisplayThemeUnknownIdException>()),
-    );
-  });
+      expect(
+        () => applyDisplayOperatorSettingsPut(db, {
+          'display_theme_id': 'not_registered',
+        }),
+        throwsA(isA<DisplayThemeUnknownIdException>()),
+      );
+    },
+  );
 
-  test('applyDisplayOperatorSettingsPut accepts custom display_theme_id', () async {
-    final db = openMemoryDatabase();
-    addTearDown(db.close);
-    await ensureInitialSeed(db);
-    final created = await createDisplayCustomTheme(
-      db,
-      label: 'Night',
-      chrome: const DisplayThemeChromeGroups(
-        display: ['#000000', '#111111'],
-        primaryContainer: ['#FFFFFF', '#222222'],
-        secondaryContainer: ['#FFFFFF', '#333333'],
-        accents: ['#444444', '#555555', '#666666', '#777777'],
-      ),
-    );
+  test(
+    'applyDisplayOperatorSettingsPut accepts custom display_theme_id',
+    () async {
+      final db = openMemoryDatabase();
+      addTearDown(db.close);
+      await ensureInitialSeed(db);
+      final created = await createDisplayCustomTheme(
+        db,
+        label: 'Night',
+        chrome: const DisplayThemeChromeGroups(
+          display: ['#000000', '#111111'],
+          primaryContainer: ['#FFFFFF', '#222222'],
+          secondaryContainer: ['#FFFFFF', '#333333'],
+          accents: ['#444444', '#555555', '#666666', '#777777'],
+        ),
+      );
 
-    await applyDisplayOperatorSettingsPut(db, {
-      'display_theme_id': created.id,
-    });
-    final body = await readDisplayOperatorSettings(db);
-    expect(body['display_theme_id'], created.id);
-  });
+      await applyDisplayOperatorSettingsPut(db, {
+        'display_theme_id': created.id,
+      });
+      final body = await readDisplayOperatorSettings(db);
+      expect(body['display_theme_id'], created.id);
+    },
+  );
 
   test(
     'applyDisplayOperatorSettingsPut round-trips display_weather_temperature_unit',
@@ -337,9 +349,11 @@ void main() {
       final body = await readDisplayOperatorSettings(db);
       expect(body['display_weather_temperature_unit'], 'f');
 
-      final row = await (db.select(db.configKeyValues)
-            ..where((t) => t.key.equals(kDisplayWeatherTemperatureUnitKvKey)))
-          .getSingleOrNull();
+      final row =
+          await (db.select(db.configKeyValues)..where(
+                (t) => t.key.equals(kDisplayWeatherTemperatureUnitKvKey),
+              ))
+              .getSingleOrNull();
       expect(row?.value, 'f');
     },
   );
@@ -362,7 +376,7 @@ void main() {
       final body = await readDisplayOperatorSettings(db);
       expect(body['display_live_preview_enabled'], isTrue);
       expect(body['display_live_preview_fps'], 5);
-      expect(body['display_live_preview_width'], 960);
+      expect(body['display_live_preview_width'], 1024);
       expect(body['display_live_preview_quality'], 80);
     },
   );

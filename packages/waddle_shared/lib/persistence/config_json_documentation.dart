@@ -2118,8 +2118,9 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
       _baseSchema(
         title: 'StockQuotesScreenConfig',
         description:
-            'Optional symbol filter and vertical scroll timing when quotes '
-            'overflow the viewport.',
+            'Optional symbol filter. Quotes render in a centered right-to-left '
+            'wrapping grid; vertical auto-scroll timing applies when wrapped '
+            'rows overflow the viewport.',
         properties: {
           'symbols': {
             'type': 'array',
@@ -2137,7 +2138,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
     ),
     example: jsonEncode({
       'symbols': ['AAPL', 'MSFT'],
-      'scrollDelayMs': 500,
+      'scrollDelayMs': 2500,
       'scrollPixelsPerSecond': 48,
       'trailingHoldMs': 1500,
       'minReadMs': 6000,
@@ -2166,7 +2167,8 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
           'boardKey': {
             'type': 'string',
             'minLength': 1,
-            'description': 'Board id from the tasks integration (e.g. Trello board id).',
+            'description':
+                'Board id from the tasks integration (e.g. Trello board id).',
           },
           'maxTasksPerColumn': {
             'type': 'integer',

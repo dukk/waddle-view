@@ -95,7 +95,7 @@ Scheduled pulls use **`backup_targets`** (structured schedule fields + encrypted
 
 ### Live preview
 
-The **Remote** page shows a **live preview** when enabled on the display (view-only JPEG over WebSocket). Enable it under **Controller settings → Displays → Edit → Live preview**, then connect from the Remote page or **Test live preview**. The stream uses the ticket + API-key WebSocket proxy (`/bff/v1/proxy-ws/*`).
+The **Remote** page shows a **live preview** when enabled on the display (view-only JPEG over WebSocket). Enable it under **Controller settings → Displays → Edit → Live preview**, then connect from the Remote page or **Test live preview**. The stream uses the ticket + API-key WebSocket proxy (`/bff/v1/proxy-ws/*`). While connected, **Save frame** downloads the most recent preview frame as a JPEG or PNG file.
 
 **Open in new window** opens `/remote/view` in a popup-style browser window (best-effort: no toolbar/location bar; some browsers still show a minimal URL). Window **size and screen position** are remembered in **`localStorage`** (`waddle_live_preview_popout_bounds_v1`) while the pop-out is open and restored on the next open when the browser allows `left`/`top` in `window.open`. That route uses a **minimal layout** (no controller drawer or app bar): display picker, connect/disconnect, and **Remote controls** in a collapsible accordion below the stream. Keyboard shortcuts (← → slides, ↑ ↓ ticker, Enter dismiss alert) work in the pop-out the same as on the main Remote page.
 

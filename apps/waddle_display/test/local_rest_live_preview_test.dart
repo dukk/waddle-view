@@ -18,7 +18,7 @@ void main() {
     expect(body['configured'], isFalse);
     expect(body['enabled'], isFalse);
     expect(body['fps'], 10);
-    expect(body['width'], 1280);
+    expect(body['width'], 720);
     expect(body['capture_backend'], isA<String>());
     expect(body['capture_ready'], isTrue);
   });
@@ -47,7 +47,7 @@ void main() {
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     expect(body['configured'], isTrue);
     expect(body['fps'], 12);
-    expect(body['width'], 960);
+    expect(body['width'], 1024);
     expect(body['quality'], 80);
   });
 
@@ -87,7 +87,9 @@ void main() {
     final h = await RestTestHarness.start();
     addTearDown(h.dispose);
 
-    final res = await http.get(Uri.parse('${h.baseUrl}/v1/display/live-preview'));
+    final res = await http.get(
+      Uri.parse('${h.baseUrl}/v1/display/live-preview'),
+    );
     expect(res.statusCode, 401);
   });
 }

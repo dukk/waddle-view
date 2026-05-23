@@ -7,54 +7,20 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
+import DownloadIcon from '@mui/icons-material/Download';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { createLivePreviewSession } from '@/api/displayLivePreview';
 import type { SavedDisplay } from '@/storage/displays';
+import {
+  downloadLivePreviewFrameToBrowser,
+  parseLivePreviewFrame,
+  type LivePreviewFrame,
+} from '@/util/livePreviewFrame';
 import { openLivePreviewPopOut } from '@/util/openLivePreviewPopOut';
 import {
   buildLivePreviewWebSocketUrl,
   consumeLivePreviewTestPayload,
 } from '@/util/livePreviewWsUrl';
-
-const LIVE_PREVIEW_FRAME_HEADER_BYTES = 5;
-const LIVE_PREVIEW_LEGACY_HEADER_BYTES = 4;
-
-function parseLivePreviewFrame(buf: ArrayBuffer): {
-  mime: string;
-  payload: ArrayBuffer;
-} | null {
-  if (buf.byteLength < LIVE_PREVIEW_LEGACY_HEADER_BYTES) return null;
-  const view = new DataView(buf);
-  const len = view.getUint32(0, false);
-  if (len <= 0) return null;
-
-  const bytes = new Uint8Array(buf);
-  const legacy =
-    bytes.length >= LIVE_PREVIEW_LEGACY_HEADER_BYTES + len &&
-    bytes[LIVE_PREVIEW_LEGACY_HEADER_BYTES] === 0xff &&
-    bytes[LIVE_PREVIEW_LEGACY_HEADER_BYTES + 1] === 0xd8;
-
-  if (legacy) {
-    return {
-      mime: 'image/jpeg',
-      payload: buf.slice(
-        LIVE_PREVIEW_LEGACY_HEADER_BYTES,
-        LIVE_PREVIEW_LEGACY_HEADER_BYTES + len,
-      ),
-    };
-  }
-
-  if (buf.byteLength < LIVE_PREVIEW_FRAME_HEADER_BYTES + len) return null;
-  const format = view.getUint8(4);
-  const mime = format === 1 ? 'image/png' : 'image/jpeg';
-  return {
-    mime,
-    payload: buf.slice(
-      LIVE_PREVIEW_FRAME_HEADER_BYTES,
-      LIVE_PREVIEW_FRAME_HEADER_BYTES + len,
-    ),
-  };
-}
 
 export type LivePreviewConnectionStatus = 'idle' | 'connecting' | 'connected' | 'error';
 
@@ -84,8 +50,10 @@ export function LivePreviewPanel({
   const imgRef = useRef<HTMLImageElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const blobUrlRef = useRef<string | null>(null);
+  const latestFrameRef = useRef<LivePreviewFrame | null>(null);
   const [status, setStatus] = useState<LivePreviewConnectionStatus>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [hasFrame, setHasFrame] = useState(false);
   const [tinyFrameWarning, setTinyFrameWarning] = useState(false);
 
   const setConnectionStatus = useCallback(
@@ -103,13 +71,19 @@ export function LivePreviewPanel({
     }
   }, []);
 
+  const clearLatestFrame = useCallback(() => {
+    latestFrameRef.current = null;
+    setHasFrame(false);
+  }, []);
+
   const disconnect = useCallback(() => {
     wsRef.current?.close();
     wsRef.current = null;
     revokeBlob();
+    clearLatestFrame();
     setConnectionStatus('idle');
     onDisconnect?.();
-  }, [onDisconnect, revokeBlob, setConnectionStatus]);
+  }, [clearLatestFrame, onDisconnect, revokeBlob, setConnectionStatus]);
 
   const connect = useCallback(
     async (ticketOverride?: string) => {
@@ -144,6 +118,8 @@ export function LivePreviewPanel({
           if (!(ev.data instanceof ArrayBuffer)) return;
           const parsed = parseLivePreviewFrame(ev.data);
           if (!parsed) return;
+          latestFrameRef.current = parsed;
+          setHasFrame(true);
           revokeBlob();
           const blob = new Blob([parsed.payload], { type: parsed.mime });
           blobUrlRef.current = URL.createObjectURL(blob);
@@ -171,9 +147,16 @@ export function LivePreviewPanel({
       wsRef.current?.close();
       wsRef.current = null;
       revokeBlob();
+      latestFrameRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- connect once on mount
   }, []);
+
+  const saveFrame = useCallback(() => {
+    const frame = latestFrameRef.current;
+    if (!frame) return;
+    downloadLivePreviewFrameToBrowser(frame, display.id);
+  }, [display.id]);
 
   const openPopOut = useCallback(async () => {
     try {
@@ -264,6 +247,14 @@ export function LivePreviewPanel({
             Connect
           </Button>
         )}
+        <Button
+          variant="outlined"
+          startIcon={<DownloadIcon />}
+          disabled={status !== 'connected' || !hasFrame}
+          onClick={saveFrame}
+        >
+          Save frame
+        </Button>
         {showPopOut && (
           <Button
             variant="outlined"

@@ -7,12 +7,25 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
   FormControlLabel,
+  InputLabel,
+  MenuItem,
+  Select,
   Stack,
   Switch,
   TextField,
   Typography,
 } from '@mui/material';
+import { CuratorSliderField } from '@/components/CuratorSliderField';
+import {
+  DEFAULT_LIVE_PREVIEW_FPS,
+  DEFAULT_LIVE_PREVIEW_QUALITY,
+  DEFAULT_LIVE_PREVIEW_WIDTH,
+  isLivePreviewWidthPreset,
+  LIVE_PREVIEW_WIDTH_OPTIONS,
+  normalizeLivePreviewWidth,
+} from '@/constants/livePreviewSettings';
 import type { SavedDisplay } from '@/storage/displays';
 import { normalizeBaseUrl } from '@/storage/displays';
 import { loadSession } from '@/storage/sessions';
@@ -45,9 +58,9 @@ export function EditDisplayDialog({ display, onClose, onSave }: Props) {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [livePreviewOpen, setLivePreviewOpen] = useState(false);
   const [livePreviewEnabled, setLivePreviewEnabled] = useState(false);
-  const [livePreviewFps, setLivePreviewFps] = useState('10');
-  const [livePreviewWidth, setLivePreviewWidth] = useState('1280');
-  const [livePreviewQuality, setLivePreviewQuality] = useState('75');
+  const [livePreviewFps, setLivePreviewFps] = useState(DEFAULT_LIVE_PREVIEW_FPS);
+  const [livePreviewWidth, setLivePreviewWidth] = useState(DEFAULT_LIVE_PREVIEW_WIDTH);
+  const [livePreviewQuality, setLivePreviewQuality] = useState(DEFAULT_LIVE_PREVIEW_QUALITY);
   const [testBusy, setTestBusy] = useState(false);
 
   const originalBaseUrl = useMemo(
@@ -71,9 +84,13 @@ export function EditDisplayDialog({ display, onClose, onSave }: Props) {
     try {
       const settings = await fetchDisplaySettings(display);
       setLivePreviewEnabled(settings.display_live_preview_enabled === true);
-      setLivePreviewFps(String(settings.display_live_preview_fps ?? 10));
-      setLivePreviewWidth(String(settings.display_live_preview_width ?? 1280));
-      setLivePreviewQuality(String(settings.display_live_preview_quality ?? 75));
+      setLivePreviewFps(settings.display_live_preview_fps ?? DEFAULT_LIVE_PREVIEW_FPS);
+      setLivePreviewWidth(
+        normalizeLivePreviewWidth(settings.display_live_preview_width ?? DEFAULT_LIVE_PREVIEW_WIDTH),
+      );
+      setLivePreviewQuality(
+        settings.display_live_preview_quality ?? DEFAULT_LIVE_PREVIEW_QUALITY,
+      );
     } catch (e) {
       setError(String(e));
     } finally {
@@ -89,14 +106,14 @@ export function EditDisplayDialog({ display, onClose, onSave }: Props) {
   }, [display.id, display.label, display.baseUrl, loadPreviewSettings]);
 
   const persistLivePreviewSettings = async (targetBaseUrl: string) => {
-    const fps = Number.parseInt(livePreviewFps.trim(), 10);
-    const width = Number.parseInt(livePreviewWidth.trim(), 10);
-    const quality = Number.parseInt(livePreviewQuality.trim(), 10);
+    const fps = livePreviewFps;
+    const width = livePreviewWidth;
+    const quality = livePreviewQuality;
     if (!Number.isFinite(fps) || fps < 1 || fps > 30) {
       throw new Error('Live preview FPS must be between 1 and 30.');
     }
-    if (!Number.isFinite(width) || width < 320 || width > 3840) {
-      throw new Error('Live preview width must be between 320 and 3840.');
+    if (!isLivePreviewWidthPreset(width)) {
+      throw new Error('Live preview capture width must be a preset value.');
     }
     if (!Number.isFinite(quality) || quality < 30 || quality > 95) {
       throw new Error('Live preview JPEG quality must be between 30 and 95.');
@@ -248,31 +265,42 @@ export function EditDisplayDialog({ display, onClose, onSave }: Props) {
                     View-only JPEG stream from the display window (GStreamer on Linux, widget
                     capture on Windows/macOS dev).
                   </Typography>
-                  <TextField
+                  <CuratorSliderField
                     label="FPS"
                     value={livePreviewFps}
-                    onChange={(e) => setLivePreviewFps(e.target.value)}
-                    fullWidth
+                    onChange={setLivePreviewFps}
+                    min={1}
+                    max={30}
+                    step={1}
                     disabled={!livePreviewEnabled || busy}
-                    type="number"
                   />
-                  <TextField
-                    label="Capture width (px)"
-                    value={livePreviewWidth}
-                    onChange={(e) => setLivePreviewWidth(e.target.value)}
-                    fullWidth
-                    disabled={!livePreviewEnabled || busy}
-                    type="number"
-                  />
-                  <TextField
+                  <FormControl fullWidth disabled={!livePreviewEnabled || busy}>
+                    <InputLabel id="live-preview-width-label">Capture width</InputLabel>
+                    <Select
+                      labelId="live-preview-width-label"
+                      label="Capture width"
+                      value={livePreviewWidth}
+                      onChange={(e) => setLivePreviewWidth(Number(e.target.value))}
+                    >
+                      {LIVE_PREVIEW_WIDTH_OPTIONS.map((opt) => (
+                        <MenuItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <CuratorSliderField
                     label="JPEG quality"
                     value={livePreviewQuality}
-                    onChange={(e) => setLivePreviewQuality(e.target.value)}
-                    fullWidth
+                    onChange={setLivePreviewQuality}
+                    min={30}
+                    max={95}
+                    step={1}
                     disabled={!livePreviewEnabled || busy}
-                    type="number"
-                    helperText="30–95. Lower values reduce Pi CPU and bandwidth."
                   />
+                  <Typography variant="caption" color="text.secondary">
+                    Lower JPEG quality reduces Pi CPU and bandwidth (30–95).
+                  </Typography>
                   <Button
                     variant="outlined"
                     disabled={!livePreviewEnabled || busy || testBusy}

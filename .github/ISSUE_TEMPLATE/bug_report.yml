@@ -1,0 +1,119 @@
+name: Bug report
+description: Something is broken or incorrect
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please file **one bug per issue**.
+
+        **Do not** paste API keys, bearer tokens, adoption secrets, or other credentials. Redact or omit sensitive values from logs and curl output.
+
+  - type: checkboxes
+    id: affected-area
+    attributes:
+      label: Affected area
+      description: Select all that apply; note the primary component in your description if several apply.
+      options:
+        - label: Display (`apps/waddle_display`)
+        - label: Controller (`apps/waddle_controller`)
+        - label: Shared / Drift schema (`packages/waddle_shared`)
+        - label: Built-in integration (`packages/waddle_integrations`)
+        - label: Display plugin / plugin SDK
+        - label: Deploy / Pi / systemd
+        - label: Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear and concise summary of the problem.
+      placeholder: e.g. The news slide QR code does not render when the article URL is very long.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps so we can reproduce the issue.
+      placeholder: |
+        1. Start the display with …
+        2. Configure screen …
+        3. Wait for …
+        4. Observe …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead.
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ## Version and environment
+
+        Include as much of the following as applies. Redact secrets from pasted JSON.
+
+        - **Release**: GitHub release tag (e.g. `v1.2.3`) *or* branch `main` + git commit SHA for dev builds.
+        - **Display** (if applicable), on the display host:
+          ```bash
+          curl -sS http://<display-host>:<port>/v1/health | jq .
+          curl -sS http://<display-host>:<port>/v1/about | jq .
+          ```
+        - **Controller** (if applicable):
+          ```bash
+          curl -sS http://<controller-host>/bff/v1/about | jq .
+          ```
+        - **Dev build** (if applicable): output of `flutter --version`, `dart --version`, and `node -v` when relevant.
+
+  - type: textarea
+    id: version-info
+    attributes:
+      label: Build and version details
+      description: Paste health/about JSON, release tag, OS (Windows / Linux x64 / Pi arm64), and how the app was run.
+      placeholder: |
+        Release: v1.0.0 (or main @ abc1234)
+
+        Platform: Linux arm64 (Raspberry Pi), systemd unit waddle-view.service
+
+        GET /v1/health:
+        { "version": "...", "build": "...", "platform_os": "linux", ... }
+
+        How run: release bundle / flutter run -d windows / etc.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots
+      description: Optional. Attach images by dragging them into a comment after you submit this issue.
+      placeholder: |
+        Relevant log excerpts, stderr, or paths (e.g. debug_console_logs/ under the display app support directory).
+
+        Screenshots: add in a follow-up comment on this issue.
+
+  - type: checkboxes
+    id: searched
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues for duplicates

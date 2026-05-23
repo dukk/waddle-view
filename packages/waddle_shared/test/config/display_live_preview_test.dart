@@ -17,6 +17,7 @@ void main() {
     });
     expect(c.configured, isTrue);
     expect(c.fps, 10);
+    expect(c.width, 720);
   });
 
   test('normalizes fps width quality', () {
@@ -27,7 +28,14 @@ void main() {
       kDisplayLivePreviewQualityKvKey: '10',
     });
     expect(c.fps, 30);
-    expect(c.width, 320);
+    expect(c.width, 640);
     expect(c.quality, 30);
+  });
+
+  test('snapDisplayLivePreviewWidth', () {
+    expect(snapDisplayLivePreviewWidth(960), 1024);
+    expect(snapDisplayLivePreviewWidth(50), 640);
+    expect(snapDisplayLivePreviewWidth(720), 720);
+    expect(snapDisplayLivePreviewWidth(3840), 3840);
   });
 }

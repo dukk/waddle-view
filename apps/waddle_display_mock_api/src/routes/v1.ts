@@ -115,8 +115,8 @@ export function v1Router() {
       configured: enabled,
       enabled,
       fps: Number(mockConfigKv.get('display.live_preview.fps') ?? '10'),
-      width: Number(mockConfigKv.get('display.live_preview.width') ?? '1280'),
-      quality: Number(mockConfigKv.get('display.live_preview.quality') ?? '75'),
+      width: Number(mockConfigKv.get('display.live_preview.width') ?? '720'),
+      quality: Number(mockConfigKv.get('display.live_preview.quality') ?? '50'),
       capture_backend: 'test_pattern',
       capture_ready: true,
     });
@@ -289,9 +289,9 @@ export function v1Router() {
       display_live_preview_enabled:
         mockConfigKv.get('display.live_preview.enabled') === 'true',
       display_live_preview_fps: Number(mockConfigKv.get('display.live_preview.fps') ?? '10'),
-      display_live_preview_width: Number(mockConfigKv.get('display.live_preview.width') ?? '1280'),
+      display_live_preview_width: Number(mockConfigKv.get('display.live_preview.width') ?? '720'),
       display_live_preview_quality: Number(
-        mockConfigKv.get('display.live_preview.quality') ?? '75',
+        mockConfigKv.get('display.live_preview.quality') ?? '50',
       ),
     });
   });

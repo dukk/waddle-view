@@ -9,8 +9,22 @@ const String kDisplayLivePreviewWidthKvKey = 'display.live_preview.width';
 const String kDisplayLivePreviewQualityKvKey = 'display.live_preview.quality';
 
 const int kDefaultDisplayLivePreviewFps = 10;
-const int kDefaultDisplayLivePreviewWidth = 1280;
-const int kDefaultDisplayLivePreviewQuality = 75;
+const int kDefaultDisplayLivePreviewWidth = 720;
+const int kDefaultDisplayLivePreviewQuality = 50;
+
+/// Allowed capture widths (nearest preset wins for legacy values).
+const List<int> kDisplayLivePreviewWidthPresets = [
+  3840,
+  2560,
+  1920,
+  1680,
+  1600,
+  1280,
+  1024,
+  800,
+  720,
+  640,
+];
 
 /// Optional env fallbacks when KV is unset (see [DisplayLivePreviewEnvDefaults]).
 abstract final class DisplayLivePreviewEnvDefaults {
@@ -59,15 +73,32 @@ int normalizeDisplayLivePreviewFps(Object? raw) {
   return parsed.clamp(1, 30);
 }
 
+/// Snaps [value] to the nearest entry in [kDisplayLivePreviewWidthPresets].
+int snapDisplayLivePreviewWidth(int value) {
+  var best = kDisplayLivePreviewWidthPresets.first;
+  var bestDelta = (value - best).abs();
+  for (final preset in kDisplayLivePreviewWidthPresets) {
+    final delta = (value - preset).abs();
+    if (delta < bestDelta) {
+      best = preset;
+      bestDelta = delta;
+    }
+  }
+  return best;
+}
+
 int normalizeDisplayLivePreviewWidth(Object? raw) {
+  final int clamped;
   if (raw is int) {
-    return raw.clamp(320, 3840);
+    clamped = raw.clamp(320, 3840);
+  } else {
+    final parsed = int.tryParse('${raw ?? ''}'.trim());
+    if (parsed == null) {
+      return kDefaultDisplayLivePreviewWidth;
+    }
+    clamped = parsed.clamp(320, 3840);
   }
-  final parsed = int.tryParse('${raw ?? ''}'.trim());
-  if (parsed == null) {
-    return kDefaultDisplayLivePreviewWidth;
-  }
-  return parsed.clamp(320, 3840);
+  return snapDisplayLivePreviewWidth(clamped);
 }
 
 int normalizeDisplayLivePreviewQuality(Object? raw) {
@@ -81,8 +112,11 @@ int normalizeDisplayLivePreviewQuality(Object? raw) {
   return parsed.clamp(30, 95);
 }
 
-DisplayLivePreviewConfig displayLivePreviewConfigFromKv(Map<String, String> kv) {
-  final enabledRaw = kv[kDisplayLivePreviewEnabledKvKey] ??
+DisplayLivePreviewConfig displayLivePreviewConfigFromKv(
+  Map<String, String> kv,
+) {
+  final enabledRaw =
+      kv[kDisplayLivePreviewEnabledKvKey] ??
       DisplayLivePreviewEnvDefaults.enabled?.toString();
   final enabled = parseDisplayLivePreviewEnabled(enabledRaw);
   final fps = normalizeDisplayLivePreviewFps(
@@ -105,7 +139,9 @@ DisplayLivePreviewConfig displayLivePreviewConfigFromKv(Map<String, String> kv) 
   );
 }
 
-Map<String, dynamic> displayLivePreviewSettingsJson(DisplayLivePreviewConfig config) {
+Map<String, dynamic> displayLivePreviewSettingsJson(
+  DisplayLivePreviewConfig config,
+) {
   return {
     'display_live_preview_enabled': config.enabled,
     'display_live_preview_fps': config.fps,

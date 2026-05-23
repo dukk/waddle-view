@@ -1,0 +1,101 @@
+name: Feature request
+description: Suggest an improvement or new capability
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the **problem or goal** for operators, viewers, or plugin authors—not only a specific implementation.
+
+        **Do not** include API keys, tokens, or other secrets. Redact sensitive details from mockups and references.
+
+  - type: checkboxes
+    id: area
+    attributes:
+      label: Area
+      description: Select all that apply.
+      options:
+        - label: Display (`apps/waddle_display`)
+        - label: Controller (`apps/waddle_controller`)
+        - label: Shared / Drift schema (`packages/waddle_shared`)
+        - label: Built-in integration (`packages/waddle_integrations`)
+        - label: Display plugin / plugin SDK
+        - label: Deploy / Pi / systemd
+        - label: Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What you want and why, in a few sentences.
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation / use case
+      description: Who benefits and what workflow this improves.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: request-type
+    attributes:
+      label: Request type
+      options:
+        - Display UI / slides / overlays / ticker
+        - Controller operator UI
+        - Built-in integration / data collector
+        - Display plugin / plugin SDK
+        - API / REST / adoption
+        - Schema / persistence
+        - Deploy / packaging
+        - Other
+
+  - type: textarea
+    id: references
+    attributes:
+      label: References
+      description: Links, provider ids, SDK docs, related issues, or prior art.
+      placeholder: |
+        External API / vendor docs: https://…
+
+        Integration provider id (e.g. joke_openai): …
+        Repo path: packages/waddle_integrations/…
+
+        Plugin SDK: packages/waddle_plugin_sdk, packages/waddle_plugin_example
+        Docs: docs/pi/plugins.md
+
+        Related issues / PRs: #…
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed solution
+      description: Optional. How you imagine this working.
+      placeholder: e.g. Add a controller toggle that …
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: Mockups / attachments
+      description: Optional. Describe UI mockups; drag images into a comment after you submit this issue.
+      placeholder: |
+        Describe layout, copy, or operator workflow.
+
+        After submitting: edit the issue or add a comment and drag screenshot files into GitHub.
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria
+      description: Optional. When is this done?
+      placeholder: |
+        - [ ] Operator can …
+        - [ ] Display shows …
+        - [ ] Documented in README / runbook

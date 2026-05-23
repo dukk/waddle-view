@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import '../../../curator/screen_program_curator.dart';
@@ -34,7 +35,7 @@ List<String> _symbolFilterFromConfig(Map<String, dynamic> config) {
       .toList();
 }
 
-/// Lists latest [StockQuotes] for enabled symbols (optional filter + scroll).
+/// Lists latest [StockQuotes] for enabled symbols in a centered RTL wrap grid.
 class StockQuotesSlideWidget extends StatefulWidget {
   const StockQuotesSlideWidget({
     super.key,
@@ -56,9 +57,14 @@ class StockQuotesSlideWidget extends StatefulWidget {
 }
 
 class _StockQuotesSlideWidgetState extends State<StockQuotesSlideWidget> {
+  static const _scrollableEpsilon = 8.0;
+
   final ScrollController _scroll = ScrollController();
   Timer? _scrollDelayTimer;
   bool _dwellReported = false;
+  bool _scrollScheduled = false;
+  bool _dwellCheckQueued = false;
+  double _viewportScale = 1.0;
 
   late final List<String> _symbolFilter;
   late final int _scrollDelayMs;
@@ -71,60 +77,125 @@ class _StockQuotesSlideWidgetState extends State<StockQuotesSlideWidget> {
     super.initState();
     final c = widget.spec.config;
     _symbolFilter = _symbolFilterFromConfig(c);
-    _scrollDelayMs = _cfgInt(c, 'scrollDelayMs', 0);
+    _scrollDelayMs = _cfgInt(c, 'scrollDelayMs', 2500);
     _trailingHoldMs = _cfgInt(c, 'trailingHoldMs', 1500);
     _scrollPps = _cfgDouble(c, 'scrollPixelsPerSecond', 48);
     _minReadMs = _cfgInt(c, 'minReadMs', 6000);
-    _scroll.addListener(_onScrollMetrics);
   }
 
   @override
   void dispose() {
     _scrollDelayTimer?.cancel();
-    _scroll.removeListener(_onScrollMetrics);
     _scroll.dispose();
     super.dispose();
   }
 
-  void _onScrollMetrics() {
-    if (_dwellReported || widget.onReportDesiredDwell == null) return;
-    if (!_scroll.hasClients) return;
-    final extent = _scroll.position.maxScrollExtent;
-    if (extent <= 8) {
-      if (!_dwellReported && widget.onReportDesiredDwell != null) {
-        _dwellReported = true;
-        widget.onReportDesiredDwell!(
-          widget.slide.dwellMs > _minReadMs ? widget.slide.dwellMs : _minReadMs,
-        );
-      }
+  void _queueDwellAndScrollCheck(int symbolCount) {
+    if (_dwellReported ||
+        _dwellCheckQueued ||
+        widget.onReportDesiredDwell == null) {
       return;
     }
-    _scrollDelayTimer?.cancel();
-    _scrollDelayTimer = Timer(Duration(milliseconds: _scrollDelayMs), () {
-      if (!mounted || _dwellReported) return;
-      final desired = desiredDwellMsForVerticalScroll(
-        baseDwellMs: widget.slide.dwellMs,
-        minReadMs: _minReadMs,
-        scrollable: true,
-        scrollDelayMs: _scrollDelayMs,
-        trailingHoldMs: _trailingHoldMs,
-        maxScrollExtent: extent,
-        scrollPixelsPerSecond: _scrollPps,
+    _dwellCheckQueued = true;
+    SchedulerBinding.instance.scheduleFrameCallback((_) {
+      _dwellCheckQueued = false;
+      _evaluateDwellAndScroll(symbolCount);
+    });
+  }
+
+  void _evaluateDwellAndScroll(int symbolCount) {
+    if (!mounted || _dwellReported || widget.onReportDesiredDwell == null) {
+      return;
+    }
+    if (!_scroll.hasClients) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _evaluateDwellAndScroll(symbolCount);
+      });
+      return;
+    }
+
+    final extent = _scroll.position.maxScrollExtent;
+    final scrollable = extent > _scrollableEpsilon;
+    if (!scrollable && symbolCount >= 6) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _evaluateDwellAndScroll(symbolCount);
+      });
+      return;
+    }
+
+    _reportDwell(
+      scrollable: scrollable,
+      maxScrollExtent: scrollable ? extent : 0,
+    );
+
+    if (scrollable && !_scrollScheduled) {
+      _scrollScheduled = true;
+      _scrollDelayTimer?.cancel();
+      _scrollDelayTimer = Timer(Duration(milliseconds: _scrollDelayMs), () {
+        _runScrollAnimation();
+      });
+    }
+  }
+
+  void _reportDwell({
+    required bool scrollable,
+    required double maxScrollExtent,
+  }) {
+    if (_dwellReported || widget.onReportDesiredDwell == null) {
+      return;
+    }
+    final desired = desiredDwellMsForVerticalScroll(
+      baseDwellMs: widget.slide.dwellMs,
+      minReadMs: _minReadMs,
+      scrollable: scrollable,
+      scrollDelayMs: _scrollDelayMs,
+      trailingHoldMs: _trailingHoldMs,
+      maxScrollExtent: maxScrollExtent,
+      scrollPixelsPerSecond: _scrollPps * _viewportScale,
+    );
+    _dwellReported = true;
+    widget.onReportDesiredDwell!(desired);
+  }
+
+  void _runScrollAnimation() {
+    if (!mounted) {
+      return;
+    }
+    if (!_scroll.hasClients) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _runScrollAnimation(),
       );
-      _dwellReported = true;
-      widget.onReportDesiredDwell!(desired);
-      unawaited(
-        _scroll.animateTo(
-          extent,
-          duration: Duration(
-            milliseconds: scrollAnimationDurationMs(
-              maxScrollExtent: extent,
-              pixelsPerSecond: _scrollPps,
-            ),
-          ),
-          curve: Curves.linear,
-        ),
-      );
+      return;
+    }
+    final position = _scroll.position;
+    if (position.maxScrollExtent <= _scrollableEpsilon) {
+      return;
+    }
+    if (position.isScrollingNotifier.value) {
+      return;
+    }
+    if (position.pixels >= position.maxScrollExtent - 1) {
+      return;
+    }
+    final ms = scrollAnimationDurationMs(
+      maxScrollExtent: position.maxScrollExtent,
+      pixelsPerSecond: _scrollPps * _viewportScale,
+    );
+    unawaited(
+      _scroll.animateTo(
+        position.maxScrollExtent,
+        duration: Duration(milliseconds: ms < 200 ? 200 : ms),
+        curve: Curves.easeInOut,
+      ),
+    );
+  }
+
+  void _ensureScrolledAfterLayout() {
+    if (!_scrollScheduled) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _runScrollAnimation();
     });
   }
 
@@ -132,6 +203,29 @@ class _StockQuotesSlideWidgetState extends State<StockQuotesSlideWidget> {
     if (_symbolFilter.isEmpty) return all;
     final want = _symbolFilter.toSet();
     return all.where((s) => want.contains(s.symbol.toUpperCase())).toList();
+  }
+
+  Widget _quotesWrap({
+    required List<InterestsStockSymbol> symbols,
+    required Map<String, StockQuote> byId,
+    required double s,
+  }) {
+    return Wrap(
+      textDirection: TextDirection.rtl,
+      alignment: WrapAlignment.center,
+      runAlignment: WrapAlignment.center,
+      spacing: 24 * s,
+      runSpacing: 16 * s,
+      children: [
+        for (final sym in symbols)
+          StockQuoteTile(
+            symbol: sym,
+            quote: byId[sym.id],
+            theme: widget.theme,
+            scale: s,
+          ),
+      ],
+    );
   }
 
   @override
@@ -142,7 +236,10 @@ class _StockQuotesSlideWidgetState extends State<StockQuotesSlideWidget> {
     return StreamBuilder<List<InterestsStockSymbol>>(
       stream: symbolsQuery.watch(),
       builder: (context, symbolsSnap) {
-        final symbols = _filterSymbols(symbolsSnap.data ?? const []);
+        if (!symbolsSnap.hasData) {
+          return const SizedBox.shrink();
+        }
+        final symbols = _filterSymbols(symbolsSnap.data!);
         if (symbols.isEmpty) {
           return _empty('Stock quotes unavailable');
         }
@@ -152,6 +249,8 @@ class _StockQuotesSlideWidgetState extends State<StockQuotesSlideWidget> {
             final quotes = quotesSnap.data ?? const <StockQuote>[];
             final byId = {for (final q in quotes) q.symbolId: q};
             final s = DashboardViewportScope.scaleOf(context);
+            _viewportScale = s;
+
             return Padding(
               padding: EdgeInsets.symmetric(
                 horizontal: 24 * s,
@@ -163,19 +262,26 @@ class _StockQuotesSlideWidgetState extends State<StockQuotesSlideWidget> {
                   Text('Markets', style: widget.theme.textTheme.headlineSmall),
                   SizedBox(height: 18 * s),
                   Expanded(
-                    child: ListView.separated(
-                      controller: _scroll,
-                      padding: EdgeInsets.zero,
-                      itemCount: symbols.length,
-                      separatorBuilder: (_, _) => SizedBox(height: 16 * s),
-                      itemBuilder: (context, i) {
-                        final sym = symbols[i];
-                        return Center(
-                          child: StockQuoteTile(
-                            symbol: sym,
-                            quote: byId[sym.id],
-                            theme: widget.theme,
-                            scale: s,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final ih = constraints.maxHeight;
+                        if (!ih.isFinite || ih <= 0) {
+                          return const SizedBox.shrink();
+                        }
+                        _queueDwellAndScrollCheck(symbols.length);
+                        _ensureScrolledAfterLayout();
+                        return SingleChildScrollView(
+                          key: const Key('stock_quotes_wrap_scroll'),
+                          controller: _scroll,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(minHeight: ih),
+                            child: Center(
+                              child: _quotesWrap(
+                                symbols: symbols,
+                                byId: byId,
+                                s: s,
+                              ),
+                            ),
                           ),
                         );
                       },
@@ -191,6 +297,11 @@ class _StockQuotesSlideWidgetState extends State<StockQuotesSlideWidget> {
   }
 
   Widget _empty(String message) {
+    if (widget.onReportDesiredDwell != null && !_dwellReported) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _reportDwell(scrollable: false, maxScrollExtent: 0);
+      });
+    }
     return Center(
       child: Text(
         message,

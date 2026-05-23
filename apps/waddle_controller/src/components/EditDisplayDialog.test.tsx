@@ -20,8 +20,8 @@ describe('EditDisplayDialog', () => {
     vi.mocked(displaySettingsApi.fetchDisplaySettings).mockResolvedValue({
       display_live_preview_enabled: false,
       display_live_preview_fps: 10,
-      display_live_preview_width: 1280,
-      display_live_preview_quality: 75,
+      display_live_preview_width: 720,
+      display_live_preview_quality: 50,
     });
 
     render(
