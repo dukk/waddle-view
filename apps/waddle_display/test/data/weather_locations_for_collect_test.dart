@@ -7,64 +7,92 @@ import 'package:waddle_shared/persistence/database.dart';
 import '../helpers/memory_database.dart';
 
 void main() {
-  test('resolveWeatherLocationsForCollect uses default when no enabled rows',
-      () async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
-    const def = WeatherLocationConfig(
-      name: 'Fallback City',
-      latitude: 12.5,
-      longitude: -34.25,
-    );
-    final list = await resolveWeatherLocationsForCollect(db, def);
-    expect(list, hasLength(1));
-    expect(list.single.id, kSyntheticDefaultWeatherLocationId);
-    expect(list.single.name, 'Fallback City');
-    expect(list.single.lat, 12.5);
-    expect(list.single.lon, -34.25);
-    await db.close();
-  });
+  test(
+    'resolveWeatherLocationsForCollect uses default when no enabled rows',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
+      const def = WeatherLocationConfig(
+        name: 'Fallback City',
+        latitude: 12.5,
+        longitude: -34.25,
+      );
+      final list = await resolveWeatherLocationsForCollect(
+        db,
+        fallbackWhenEmpty: def,
+      );
+      expect(list, hasLength(1));
+      expect(list.single.id, kSyntheticDefaultWeatherLocationId);
+      expect(list.single.name, 'Fallback City');
+      expect(list.single.lat, 12.5);
+      expect(list.single.lon, -34.25);
+      await db.close();
+    },
+  );
 
-  test('resolveWeatherLocationsForCollect maps enabled rows in id order', () async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
-    await db.into(db.interestsLocations).insert(
-          InterestsLocationsCompanion.insert(
-            id: 'b',
-            name: 'Beta',
-            latitude: 2,
-            longitude: 2,
-            includeWeather: const Value(true),
-          ),
-        );
-    await db.into(db.interestsLocations).insert(
-          InterestsLocationsCompanion.insert(
-            id: 'a',
-            name: 'Alpha',
-            latitude: 1,
-            longitude: -1,
-            includeWeather: const Value(true),
-          ),
-        );
-    await db.into(db.interestsLocations).insert(
-          InterestsLocationsCompanion.insert(
-            id: 'off',
-            name: 'Off',
-            latitude: 0,
-            longitude: 0,
-            includeWeather: const Value(false),
-          ),
-        );
-    const def = WeatherLocationConfig(
-      name: 'Ignored',
-      latitude: 0,
-      longitude: 0,
-    );
-    final list = await resolveWeatherLocationsForCollect(db, def);
-    expect(list.map((e) => e.id).toList(), ['a', 'b']);
-    expect(list.first.name, 'Alpha');
-    await db.close();
-  });
+  test(
+    'resolveWeatherLocationsForCollect returns empty when no fallback',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
+      final list = await resolveWeatherLocationsForCollect(db);
+      expect(list, isEmpty);
+      await db.close();
+    },
+  );
+
+  test(
+    'resolveWeatherLocationsForCollect maps enabled rows in id order',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
+      await db
+          .into(db.interestsLocations)
+          .insert(
+            InterestsLocationsCompanion.insert(
+              id: 'b',
+              name: 'Beta',
+              latitude: 2,
+              longitude: 2,
+              includeWeather: const Value(true),
+            ),
+          );
+      await db
+          .into(db.interestsLocations)
+          .insert(
+            InterestsLocationsCompanion.insert(
+              id: 'a',
+              name: 'Alpha',
+              latitude: 1,
+              longitude: -1,
+              includeWeather: const Value(true),
+            ),
+          );
+      await db
+          .into(db.interestsLocations)
+          .insert(
+            InterestsLocationsCompanion.insert(
+              id: 'off',
+              name: 'Off',
+              latitude: 0,
+              longitude: 0,
+              includeWeather: const Value(false),
+            ),
+          );
+      const def = WeatherLocationConfig(
+        name: 'Ignored',
+        latitude: 0,
+        longitude: 0,
+      );
+      final list = await resolveWeatherLocationsForCollect(
+        db,
+        fallbackWhenEmpty: def,
+      );
+      expect(list.map((e) => e.id).toList(), ['a', 'b']);
+      expect(list.first.name, 'Alpha');
+      await db.close();
+    },
+  );
 
   test(
     'resolveWeatherLocationsForActiveAlertsCollect uses default when no enabled rows',
@@ -83,38 +111,39 @@ void main() {
     },
   );
 
-  test(
-    'resolveWeatherLocationsForActiveAlertsCollect omits rows with '
-    'include_weather_alerts false',
-    () async {
-      final db = openMemoryDatabase();
-      await warmDatabase(db);
-      await db.into(db.interestsLocations).insert(
-            InterestsLocationsCompanion.insert(
-              id: 'alerts_on',
-              name: 'A',
-              latitude: 1,
-              longitude: 1,
-              includeWeather: const Value(true),
-              includeWeatherAlerts: const Value(true),
-            ),
-          );
-      await db.into(db.interestsLocations).insert(
-            InterestsLocationsCompanion.insert(
-              id: 'alerts_off',
-              name: 'B',
-              latitude: 2,
-              longitude: 2,
-              includeWeather: const Value(true),
-              includeWeatherAlerts: const Value(false),
-            ),
-          );
-      const def = WeatherLocationConfig(name: 'X', latitude: 0, longitude: 0);
-      final list = await resolveWeatherLocationsForActiveAlertsCollect(db, def);
-      expect(list.map((e) => e.id).toList(), ['alerts_on']);
-      await db.close();
-    },
-  );
+  test('resolveWeatherLocationsForActiveAlertsCollect omits rows with '
+      'include_weather_alerts false', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db
+        .into(db.interestsLocations)
+        .insert(
+          InterestsLocationsCompanion.insert(
+            id: 'alerts_on',
+            name: 'A',
+            latitude: 1,
+            longitude: 1,
+            includeWeather: const Value(true),
+            includeWeatherAlerts: const Value(true),
+          ),
+        );
+    await db
+        .into(db.interestsLocations)
+        .insert(
+          InterestsLocationsCompanion.insert(
+            id: 'alerts_off',
+            name: 'B',
+            latitude: 2,
+            longitude: 2,
+            includeWeather: const Value(true),
+            includeWeatherAlerts: const Value(false),
+          ),
+        );
+    const def = WeatherLocationConfig(name: 'X', latitude: 0, longitude: 0);
+    final list = await resolveWeatherLocationsForActiveAlertsCollect(db, def);
+    expect(list.map((e) => e.id).toList(), ['alerts_on']);
+    await db.close();
+  });
 
   test(
     'ensureSyntheticDefaultInterestsLocation upserts interests_locations row',
@@ -128,9 +157,10 @@ void main() {
         lon: -34.25,
       );
       await ensureSyntheticDefaultInterestsLocation(db, loc);
-      final row = await (db.select(db.interestsLocations)
-            ..where((t) => t.id.equals(kSyntheticDefaultWeatherLocationId)))
-          .getSingle();
+      final row =
+          await (db.select(db.interestsLocations)
+                ..where((t) => t.id.equals(kSyntheticDefaultWeatherLocationId)))
+              .getSingle();
       expect(row.name, 'Fallback City');
       expect(row.latitude, 12.5);
       expect(row.longitude, -34.25);
@@ -140,26 +170,25 @@ void main() {
     },
   );
 
-  test(
-    'resolveWeatherLocationsForActiveAlertsCollect returns empty when every '
-    'enabled row opts out',
-    () async {
-      final db = openMemoryDatabase();
-      await warmDatabase(db);
-      await db.into(db.interestsLocations).insert(
-            InterestsLocationsCompanion.insert(
-              id: 'only',
-              name: 'Only',
-              latitude: 2,
-              longitude: 2,
-              includeWeather: const Value(true),
-              includeWeatherAlerts: const Value(false),
-            ),
-          );
-      const def = WeatherLocationConfig(name: 'X', latitude: 0, longitude: 0);
-      final list = await resolveWeatherLocationsForActiveAlertsCollect(db, def);
-      expect(list, isEmpty);
-      await db.close();
-    },
-  );
+  test('resolveWeatherLocationsForActiveAlertsCollect returns empty when every '
+      'enabled row opts out', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db
+        .into(db.interestsLocations)
+        .insert(
+          InterestsLocationsCompanion.insert(
+            id: 'only',
+            name: 'Only',
+            latitude: 2,
+            longitude: 2,
+            includeWeather: const Value(true),
+            includeWeatherAlerts: const Value(false),
+          ),
+        );
+    const def = WeatherLocationConfig(name: 'X', latitude: 0, longitude: 0);
+    final list = await resolveWeatherLocationsForActiveAlertsCollect(db, def);
+    expect(list, isEmpty);
+    await db.close();
+  });
 }

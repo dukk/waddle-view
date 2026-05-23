@@ -9,7 +9,8 @@ class IntegrationTypes extends Table {
   TextColumn get configJsonSchema => text().nullable()();
 
   /// True when this type requires linked integration accounts.
-  BoolColumn get requiresAccounts => boolean().withDefault(const Constant(false))();
+  BoolColumn get requiresAccounts =>
+      boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column<Object>> get primaryKey => {integrationType};
@@ -51,8 +52,11 @@ class IntegrationAccounts extends Table {
 class IntegrationAccountLinks extends Table {
   TextColumn get integrationId =>
       text().references(Integrations, #id, onDelete: KeyAction.cascade)();
-  TextColumn get accountId =>
-      text().references(IntegrationAccounts, #id, onDelete: KeyAction.cascade)();
+  TextColumn get accountId => text().references(
+    IntegrationAccounts,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
 
   @override
   Set<Column<Object>> get primaryKey => {integrationId, accountId};
@@ -66,12 +70,17 @@ class IntegrationAccountLinks extends Table {
 class IntegrationsKeyValue extends Table {
   IntColumn get id => integer().autoIncrement()();
 
-  TextColumn get integrationId =>
-      text().nullable().references(Integrations, #id, onDelete: KeyAction.cascade)();
+  TextColumn get integrationId => text().nullable().references(
+    Integrations,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
 
-  TextColumn get accountId => text()
-      .nullable()
-      .references(IntegrationAccounts, #id, onDelete: KeyAction.cascade)();
+  TextColumn get accountId => text().nullable().references(
+    IntegrationAccounts,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
 
   TextColumn get key => text()();
   TextColumn get value => text()();
@@ -411,8 +420,10 @@ class CuratorConfigurations extends Table {
   IntColumn get historyDepth => integer().withDefault(const Constant(5))();
   BoolColumn get requireNewsPhotoForScreens =>
       boolean().withDefault(const Constant(true))();
-  BoolColumn get screensEnabled => boolean().withDefault(const Constant(true))();
+  BoolColumn get screensEnabled =>
+      boolean().withDefault(const Constant(true))();
   BoolColumn get tickerEnabled => boolean().withDefault(const Constant(true))();
+
   /// Null uses display-level `display.ticker.program_duration_seconds`.
   IntColumn get tickerProgramDurationSeconds => integer().nullable()();
 
@@ -423,7 +434,8 @@ class CuratorConfigurations extends Table {
   IntColumn get viewportReserveRightPctOverride => integer().nullable()();
   IntColumn get viewportReserveBottomPctOverride => integer().nullable()();
   IntColumn get viewportReserveLeftPctOverride => integer().nullable()();
-  BoolColumn get defaultConfig => boolean().withDefault(const Constant(false))();
+  BoolColumn get defaultConfig =>
+      boolean().withDefault(const Constant(false))();
   TextColumn get parentConfigurationId =>
       text().nullable().references(CuratorConfigurations, #id)();
 
@@ -677,10 +689,7 @@ class QuoterismQuotes extends Table {
 }
 
 /// Many-to-many link between [QuoterismQuotes] and [ContentCategories].
-@TableIndex(
-  name: 'idx_quoterism_quote_categories_quote',
-  columns: {#quoteId},
-)
+@TableIndex(name: 'idx_quoterism_quote_categories_quote', columns: {#quoteId})
 @TableIndex(
   name: 'idx_quoterism_quote_categories_category',
   columns: {#categoryId},
@@ -788,8 +797,7 @@ class CalendarEvents extends Table {
 class CalendarEventCategories extends Table {
   TextColumn get eventId =>
       text().references(CalendarEvents, #id, onDelete: KeyAction.cascade)();
-  TextColumn get categoryId =>
-      text().references(ContentCategories, #id)();
+  TextColumn get categoryId => text().references(ContentCategories, #id)();
 
   @override
   Set<Column<Object>> get primaryKey => {eventId, categoryId};
@@ -805,10 +813,12 @@ class InterestsLocations extends Table {
   RealColumn get latitude => real()();
   RealColumn get longitude => real()();
   TextColumn get category => text().withDefault(const Constant('general'))();
-  BoolColumn get includeWeather => boolean().withDefault(const Constant(false))();
+  BoolColumn get includeWeather =>
+      boolean().withDefault(const Constant(false))();
   BoolColumn get includeWeatherAlerts =>
       boolean().withDefault(const Constant(false))();
-  BoolColumn get includeLocalNews => boolean().withDefault(const Constant(false))();
+  BoolColumn get includeLocalNews =>
+      boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -833,10 +843,7 @@ class WeatherCurrent extends Table {
 
 /// Active NWS (api.weather.gov) alerts for an [InterestsLocations] row, keyed by CAP id.
 /// SQLite `weather_alerts` (legacy `weather_gov_active_alerts`).
-@TableIndex(
-  name: 'idx_weather_alerts_location',
-  columns: {#locationId},
-)
+@TableIndex(name: 'idx_weather_alerts_location', columns: {#locationId})
 @DataClassName('WeatherGovActiveAlert')
 class WeatherAlerts extends Table {
   @override
@@ -888,7 +895,8 @@ const String kMediaDataProviderPhotoNasaApod = 'photo_nasa_apod';
 const String kMediaDataProviderPhotoNasaMarsRover = 'photo_nasa_mars_rover';
 
 /// NASA Landsat Earth imagery into [Photos].
-const String kMediaDataProviderPhotoNasaEarthImagery = 'photo_nasa_earth_imagery';
+const String kMediaDataProviderPhotoNasaEarthImagery =
+    'photo_nasa_earth_imagery';
 
 /// Operator-uploaded content (controller Data page, curator manual routes).
 const String kManualEntrySource = 'manual_entry';
@@ -921,8 +929,7 @@ class Photos extends Table {
 class PhotoCategories extends Table {
   TextColumn get photoId =>
       text().references(Photos, #id, onDelete: KeyAction.cascade)();
-  TextColumn get categoryId =>
-      text().references(ContentCategories, #id)();
+  TextColumn get categoryId => text().references(ContentCategories, #id)();
 
   @override
   Set<Column<Object>> get primaryKey => {photoId, categoryId};
@@ -957,8 +964,7 @@ class Videos extends Table {
 class VideoCategories extends Table {
   TextColumn get videoId =>
       text().references(Videos, #id, onDelete: KeyAction.cascade)();
-  TextColumn get categoryId =>
-      text().references(ContentCategories, #id)();
+  TextColumn get categoryId => text().references(ContentCategories, #id)();
 
   @override
   Set<Column<Object>> get primaryKey => {videoId, categoryId};
@@ -983,6 +989,9 @@ class InterestsStockSymbols extends Table {
   TextColumn get id => text()();
   TextColumn get symbol => text()();
   TextColumn get displayName => text().withDefault(const Constant(''))();
+
+  /// [ContentCategories.id] slug (same as [InterestsRssFeeds.category]).
+  TextColumn get category => text().withDefault(const Constant('general'))();
   BoolColumn get enabled => boolean().withDefault(const Constant(true))();
 
   @override
@@ -1224,10 +1233,7 @@ class TaskLists extends Table {
 }
 
 /// Task item within a [TaskLists] column; generic across task providers.
-@TableIndex(
-  name: 'idx_tasks_list_position',
-  columns: {#taskListId, #position},
-)
+@TableIndex(name: 'idx_tasks_list_position', columns: {#taskListId, #position})
 class Tasks extends Table {
   TextColumn get id => text()();
   TextColumn get taskListId =>

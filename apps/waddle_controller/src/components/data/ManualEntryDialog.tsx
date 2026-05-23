@@ -19,6 +19,7 @@ import { apiFetch, apiJson, ApiError } from '@/api/client';
 import { listJokeCategories, listTriviaCategories } from '@/api/interests';
 import type { ContentCategoryOption } from '@/components/OutlookCalendarConfigSection';
 import type { SavedDisplay } from '@/storage/displays';
+import { DurationInputField } from '@/components/DurationInputField';
 import { completeDialogSave } from '@/util/dialogSave';
 import {
   manualEntryDialogTitle,
@@ -341,13 +342,12 @@ export function ManualEntryDialog({ open, kind, display, onClose, onSaved }: Pro
           ) : null}
 
           {kind === 'videos' ? (
-            <TextField
-              label="Duration (seconds)"
-              type="number"
-              size="small"
-              fullWidth
-              value={durationSeconds}
-              onChange={(e) => setDurationSeconds(Number(e.target.value) || 0)}
+            <DurationInputField
+              label="Duration"
+              valueSeconds={durationSeconds}
+              onChange={setDurationSeconds}
+              allowedUnits={['sec', 'min', 'hr']}
+              minSeconds={1}
               disabled={saving}
             />
           ) : null}

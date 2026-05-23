@@ -96,6 +96,21 @@ describe('prepareIntegrationOperatorSchema', () => {
     expect(schemaHasHiddenUrlKeys(schema)).toBe(false);
   });
 
+  it('strips baseUrl and defaultLocation when saving weather_openweathermap', () => {
+    const saved = mergeIntegrationConfigForSave(
+      { units: 'metric', lang: 'en', hourlyCount: 4 },
+      {
+        baseUrl: 'https://api.openweathermap.org',
+        units: 'imperial',
+        defaultLocation: { name: 'Default', lat: 40.7, lon: -74.0 },
+      },
+      'weather_openweathermap',
+    );
+    expect(saved).toEqual({ units: 'metric', lang: 'en', hourlyCount: 4 });
+    expect(saved).not.toHaveProperty('baseUrl');
+    expect(saved).not.toHaveProperty('defaultLocation');
+  });
+
   it.each(INTEGRATION_TYPES_WITH_BASE_URL)(
     'operator schema for %s has no baseUrl keys',
     (integrationType) => {

@@ -270,13 +270,7 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
 
     enabled: false,
 
-    baseUrl: 'https://api.openweathermap.org',
-
-    configJson:
-
-        '{"units":"imperial","lang":"en","hourlyCount":6,'
-
-        '"defaultLocation":{"name":"Default","lat":40.7128,"lon":-74.0060}}',
+    configJson: '{"units":"imperial","lang":"en","hourlyCount":6}',
 
   );
 

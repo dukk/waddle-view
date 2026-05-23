@@ -444,6 +444,16 @@ The **`tasks_trello`** integration syncs configured Trello boards into generic S
 
 **Screen:** widget type **`task_board`**. Set **`boardKey`** in screen config to the same id used in **`boardIds`**. Optional **`maxTasksPerColumn`** (default 12) and **`showCompleted`** (default false).
 
+## OpenWeatherMap weather
+
+The **`weather_openweathermap`** integration (`default_weather_openweathermap`) calls the [OpenWeather Current Weather and Forecast 2.5 APIs](https://openweathermap.org/api). Configure an **OpenWeatherMap API key** on the integration row in **Integrations**.
+
+**Locations:** the collector only uses **`interests_locations`** rows with **`include_weather`** enabled (configure under **Interests → Weather locations** in waddle_controller). There is no integration-level default map; if no locations have weather enabled, collect is skipped. The API host is fixed to **`https://api.openweathermap.org`** (not operator-configurable).
+
+**Integration config:** **`units`**, **`lang`**, and **`hourlyCount`** only. **`integrations.poll_seconds`:** default **900** when seeded.
+
+**Storage:** **`weather_current`** (temp, description, icon blob key, hourly JSON). Disable **`weather_openweathermap`** if you switch to Open-Meteo — both write the same table keys.
+
 ## Open-Meteo weather and air quality
 
 Two built-in integrations use the free [Open-Meteo](https://open-meteo.com/) APIs (**no API key** for non-commercial use). Attribute [Open-Meteo](https://open-meteo.com/) and [CAMS](https://open-meteo.com/en/docs/air-quality-api) per their documentation.
@@ -453,7 +463,7 @@ Two built-in integrations use the free [Open-Meteo](https://open-meteo.com/) API
 | **`weather_openmeteo`** | `default_weather_openmeteo` | **`weather_current`** (same columns as OpenWeather: temp, description, hourly JSON) |
 | **`air_quality_openmeteo`** | `default_air_quality_openmeteo` | Integration KV per location |
 
-**Locations:** both collectors use **`interests_locations`** rows with **`include_weather`**, or **`defaultLocation`** in **`config_json`** when none are enabled (same shape as OpenWeather).
+**Locations:** both collectors use **`interests_locations`** rows with **`include_weather`**, or **`defaultLocation`** in **`config_json`** when none are enabled.
 
 **Weather:** enable **`weather_openmeteo`** (disable **`weather_openweathermap`** if you switch providers — both write the same **`weather_current`** keys). **`base_url`** defaults to **`https://api.open-meteo.com`**; requests **`GET /v1/forecast`** with WMO weather codes mapped to slide icons.
 

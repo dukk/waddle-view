@@ -101,12 +101,7 @@ Future<void> _ensureDefaultRainingHeartsOverlay(AppDatabase db) async {
 Future<void> _ensureDefaultBirthdayConfettiOverlay(AppDatabase db) async {
   await db.customStatement(kEnsureOverlaysTableSql);
   final configJson = jsonEncode(<String, Object?>{
-    'colors': <String>[
-      '#E53935',
-      '#FFEB3B',
-      '#00BCD4',
-      '#E91E63',
-    ],
+    'colors': <String>['#E53935', '#FFEB3B', '#00BCD4', '#E91E63'],
     'density': 0.36,
     'fall_speed': 0.12,
     'opacity': 0.48,
@@ -183,7 +178,9 @@ Future<void> _ensureDefaultFallingDucksOverlay(AppDatabase db) async {
   );
 }
 
-Future<void> _ensureDefaultWattleViewsBirthdayMessageOverlay(AppDatabase db) async {
+Future<void> _ensureDefaultWattleViewsBirthdayMessageOverlay(
+  AppDatabase db,
+) async {
   await db.customStatement(kEnsureOverlaysTableSql);
   final configJson = jsonEncode(<String, Object?>{
     'messages': <String>[kDefaultBouncingMessageOverlayPhrase],
@@ -246,14 +243,16 @@ Future<void> _ensureDisplayThemeKv(AppDatabase db) async {
 }
 
 Future<void> _ensureDisplayProgramHistoryDepthKv(AppDatabase db) async {
-  final row = await (db.select(
-    db.configKeyValues,
-  )..where((t) => t.key.equals(kDisplayProgramHistoryDepthKvKey)))
-      .getSingleOrNull();
+  final row =
+      await (db.select(db.configKeyValues)
+            ..where((t) => t.key.equals(kDisplayProgramHistoryDepthKvKey)))
+          .getSingleOrNull();
   if (row != null) {
     return;
   }
-  await db.into(db.configKeyValues).insert(
+  await db
+      .into(db.configKeyValues)
+      .insert(
         ConfigKeyValuesCompanion.insert(
           key: kDisplayProgramHistoryDepthKvKey,
           value: '$kDefaultDisplayProgramHistoryDepth',
@@ -324,8 +323,9 @@ Future<void> _ensureTickerTapes(AppDatabase db) async {
   }
 
   Future<void> ensureTapeStaticTextIfUnset(String id, String text) async {
-    final r = await (db.select(db.tickerTapes)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final r = await (db.select(
+      db.tickerTapes,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (r == null) {
       return;
     }
@@ -334,9 +334,7 @@ Future<void> _ensureTickerTapes(AppDatabase db) async {
       return;
     }
     await (db.update(db.tickerTapes)..where((t) => t.id.equals(id))).write(
-      TickerTapesCompanion(
-        configJson: Value(jsonEncode({'text': text})),
-      ),
+      TickerTapesCompanion(configJson: Value(jsonEncode({'text': text}))),
     );
   }
 
@@ -394,9 +392,7 @@ Future<void> _ensureWelcomeScreen(AppDatabase db) async {
           label: 'Welcome',
           description: const Value('Demo display screen'),
           screenType: 'static_text',
-          configJson: const Value(
-            '{"text":"Welcome to Waddle View"}',
-          ),
+          configJson: const Value('{"text":"Welcome to Waddle View"}'),
           minDwellSeconds: const Value(8),
           maxDwellSeconds: const Value(14),
           maxPlacementsPerProgram: const Value(1),
@@ -482,9 +478,7 @@ Future<void> _ensureNewsScreen(AppDatabase db) async {
     db.screens,
   )..where((t) => t.id.equals('news'))).getSingleOrNull();
   if (row != null) {
-    await (db.update(
-      db.screens,
-    )..where((t) => t.id.equals('news'))).write(
+    await (db.update(db.screens)..where((t) => t.id.equals('news'))).write(
       ScreensCompanion(
         dataKey: const Value('news'),
         maxPlacementsPerProgram: const Value(null),
@@ -637,9 +631,7 @@ Future<void> _ensureNewsGridScreen(AppDatabase db) async {
     db.screens,
   )..where((t) => t.id.equals('news_grid'))).getSingleOrNull();
   if (row != null) {
-    await (db.update(
-      db.screens,
-    )..where((t) => t.id.equals('news_grid'))).write(
+    await (db.update(db.screens)..where((t) => t.id.equals('news_grid'))).write(
       ScreensCompanion(
         dataKey: const Value('news'),
         screenType: const Value('news_grid'),
@@ -809,14 +801,16 @@ Future<void> _ensureLocalApiScreen(AppDatabase db) async {
 
 Future<void> _ensureGeneralOpenAiDemoScreen(AppDatabase db) async {
   const screenId = 'dev_general_openai_dashboard';
-  final row = await (db.select(db.screens)
-        ..where((t) => t.id.equals(screenId)))
-      .getSingleOrNull();
+  final row = await (db.select(
+    db.screens,
+  )..where((t) => t.id.equals(screenId))).getSingleOrNull();
   if (row != null) {
     return;
   }
   final doc = screenConfigJsonDocForType('general_2_column');
-  await db.into(db.screens).insert(
+  await db
+      .into(db.screens)
+      .insert(
         ScreensCompanion.insert(
           id: screenId,
           label: 'Developer — General OpenAI dashboard',
@@ -872,7 +866,9 @@ Future<void> _ensureSleepMessageScreen(AppDatabase db) async {
   if (row != null) {
     return;
   }
-  await db.into(db.screens).insert(
+  await db
+      .into(db.screens)
+      .insert(
         ScreensCompanion.insert(
           id: 'sleep_message',
           label: 'Sleep reminder',
@@ -895,7 +891,9 @@ Future<void> _ensureControllerInviteScreen(AppDatabase db) async {
   if (row != null) {
     return;
   }
-  await db.into(db.screens).insert(
+  await db
+      .into(db.screens)
+      .insert(
         ScreensCompanion.insert(
           id: 'controller_invite',
           label: 'Controller invite',
@@ -965,7 +963,6 @@ Future<void> _ensureWeatherScreen(AppDatabase db) async {
       );
 }
 
-
 /// Idempotent default symbol list (AAPL/MSFT enabled, the rest disabled to
 /// limit API hits). Operators can toggle [StockSymbols.enabled] from the admin
 /// surface without touching the provider config.
@@ -974,6 +971,7 @@ Future<void> _ensureDefaultInterestsStockSymbols(AppDatabase db) async {
     String id,
     String symbol,
     String displayName, {
+    required String category,
     required bool enabled,
   }) async {
     final existing = await (db.select(
@@ -989,28 +987,127 @@ Future<void> _ensureDefaultInterestsStockSymbols(AppDatabase db) async {
             id: id,
             symbol: symbol,
             displayName: Value(displayName),
+            category: Value(category),
             enabled: Value(enabled),
           ),
         );
   }
 
-  await ensure('aapl', 'AAPL', 'Apple', enabled: true);
-  await ensure('msft', 'MSFT', 'Microsoft', enabled: true);
-  await ensure('goog', 'GOOG', 'Alphabet', enabled: true);
-  await ensure('nvda', 'NVDA', 'NVIDIA', enabled: true);
-  await ensure('amzn', 'AMZN', 'Amazon', enabled: false);
-  await ensure('tsla', 'TSLA', 'Tesla', enabled: false);
-  await ensure('meta', 'META', 'Meta', enabled: false);
-  await ensure('nflx', 'NFLX', 'Netflix', enabled: false);
-  await ensure('dis', 'DIS', 'Disney', enabled: false);
-  await ensure('ibm', 'IBM', 'IBM', enabled: false);
-  await ensure('csco', 'CSCO', 'Cisco', enabled: false);
-  await ensure('intc', 'INTC', 'Intel', enabled: false);
-  await ensure('orcl', 'ORCL', 'Oracle', enabled: false);
-  await ensure('voo', 'VOO', 'Vanguard S&P 500 ETF', enabled: true);
-  await ensure('spy', 'SPY', 'SPDR S&P 500 ETF', enabled: true);
-  await ensure('qqq', 'QQQ', 'Invesco QQQ Trust', enabled: false);
-  await ensure('iwm', 'IWM', 'iShares Russell 2000 ETF', enabled: false);
+  // Technology
+  await ensure('aapl', 'AAPL', 'Apple', category: 'technology', enabled: true);
+  await ensure(
+    'msft',
+    'MSFT',
+    'Microsoft',
+    category: 'technology',
+    enabled: true,
+  );
+  await ensure(
+    'goog',
+    'GOOG',
+    'Alphabet',
+    category: 'technology',
+    enabled: true,
+  );
+  await ensure('nvda', 'NVDA', 'NVIDIA', category: 'technology', enabled: true);
+  await ensure('meta', 'META', 'Meta', category: 'technology', enabled: false);
+  await ensure('intc', 'INTC', 'Intel', category: 'technology', enabled: false);
+  await ensure('csco', 'CSCO', 'Cisco', category: 'technology', enabled: false);
+  await ensure(
+    'orcl',
+    'ORCL',
+    'Oracle',
+    category: 'technology',
+    enabled: false,
+  );
+  await ensure('ibm', 'IBM', 'IBM', category: 'technology', enabled: false);
+  await ensure(
+    'amzn',
+    'AMZN',
+    'Amazon',
+    category: 'technology',
+    enabled: false,
+  );
+  // Finance
+  await ensure(
+    'jpm',
+    'JPM',
+    'JPMorgan Chase',
+    category: 'finance',
+    enabled: false,
+  );
+  await ensure('v', 'V', 'Visa', category: 'finance', enabled: false);
+  await ensure('ma', 'MA', 'Mastercard', category: 'finance', enabled: false);
+  await ensure(
+    'spy',
+    'SPY',
+    'SPDR S&P 500 ETF',
+    category: 'finance',
+    enabled: true,
+  );
+  await ensure(
+    'voo',
+    'VOO',
+    'Vanguard S&P 500 ETF',
+    category: 'finance',
+    enabled: true,
+  );
+  await ensure(
+    'qqq',
+    'QQQ',
+    'Invesco QQQ Trust',
+    category: 'finance',
+    enabled: false,
+  );
+  await ensure(
+    'iwm',
+    'IWM',
+    'iShares Russell 2000 ETF',
+    category: 'finance',
+    enabled: false,
+  );
+  // Entertainment
+  await ensure(
+    'nflx',
+    'NFLX',
+    'Netflix',
+    category: 'entertainment',
+    enabled: false,
+  );
+  await ensure(
+    'dis',
+    'DIS',
+    'Disney',
+    category: 'entertainment',
+    enabled: false,
+  );
+  // Automotive
+  await ensure('tsla', 'TSLA', 'Tesla', category: 'automotive', enabled: false);
+  // Health
+  await ensure(
+    'jnj',
+    'JNJ',
+    'Johnson & Johnson',
+    category: 'health',
+    enabled: false,
+  );
+  await ensure(
+    'unh',
+    'UNH',
+    'UnitedHealth',
+    category: 'health',
+    enabled: false,
+  );
+  // General / diversified
+  await ensure(
+    'xom',
+    'XOM',
+    'Exxon Mobil',
+    category: 'general',
+    enabled: false,
+  );
+  await ensure('wmt', 'WMT', 'Walmart', category: 'general', enabled: false);
+  await ensure('ko', 'KO', 'Coca-Cola', category: 'general', enabled: false);
 }
 
 Future<void> _ensureStockQuotesScreen(AppDatabase db) async {
@@ -1157,4 +1254,3 @@ Future<void> _ensurePhotoCollageScreens(AppDatabase db) async {
     template: kCollageTemplateTwelveCircleBand,
   );
 }
-

@@ -128,7 +128,7 @@ Response shape: `{"items":[...], "total": <int>, "limit": <int>, "offset": <int>
 | PATCH/DELETE | `/v1/interests/weather-locations/{id}` | **409** if `weather_current` or `weather_alerts` rows reference the id. |
 | GET/POST | `/v1/interests/rss-feeds` | Feed sources: `id`, `url`, `category`, `poll_seconds`, `max_articles`, `enabled`, optional `title`; list also returns provider fields (`last_fetched_at`, `consecutive_failures`, `next_retry_at`). |
 | PATCH/DELETE | `/v1/interests/rss-feeds/{id}` | **409** if `rss_articles` exist for the feed. |
-| GET/POST | `/v1/interests/stock-symbols` | `id`, `symbol`, `display_name`, `enabled`. |
+| GET/POST | `/v1/interests/stock-symbols` | `id`, `symbol`, `display_name`, `category` (content category slug, default `general`), `enabled`. |
 | PATCH/DELETE | `/v1/interests/stock-symbols/{id}` | **409** if `stock_quotes` exist for the symbol id. |
 | GET/POST | `/v1/interests/joke-categories` | Category pool config; `id` must match a `curator_categories` row. |
 | PATCH/DELETE | `/v1/interests/joke-categories/{id}` | **409** if `jokes` reference the category. |

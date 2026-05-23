@@ -3,6 +3,8 @@ import {
   defaultDurationUnit,
   durationPartsToSeconds,
   formatDurationSummary,
+  formatIntervalDisplay,
+  resolveDurationUnit,
   secondsToDurationParts,
 } from './durationInput';
 
@@ -18,5 +20,15 @@ describe('durationInput', () => {
 
   it('formatDurationSummary combines parts', () => {
     expect(formatDurationSummary(195)).toBe('3 min 15 sec');
+  });
+
+  it('formatIntervalDisplay uses full words via poll formatter', () => {
+    expect(formatIntervalDisplay(125)).toBe('2 minutes 5 seconds');
+  });
+
+  it('resolveDurationUnit prefers default when allowed', () => {
+    expect(resolveDurationUnit(3600, ['sec', 'min', 'hr'], 'min')).toBe('min');
+    expect(resolveDurationUnit(3600, ['sec', 'min', 'hr'], 'hr')).toBe('hr');
+    expect(resolveDurationUnit(45, ['sec', 'min'], 'min')).toBe('min');
   });
 });

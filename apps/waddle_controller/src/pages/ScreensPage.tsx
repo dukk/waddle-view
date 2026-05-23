@@ -47,6 +47,7 @@ import {
   exampleForScreenType,
   schemaForScreenType,
 } from '@/storage/configSchemaCache';
+import { formatIntervalDisplay } from '@/util/durationInput';
 import { screenTypeLabel, screenTypeMetaFor } from '@/util/screenTypeLabel';
 
 type ScreenRow = ScreenDialogRow & {
@@ -176,10 +177,11 @@ function ScreenTable({
                 <TableCell sx={{ fontWeight: screenRowHasCustomTitle(row) ? 600 : 400 }}>{title}</TableCell>
                 <TableCell>{screenTypeLabel(row.screen_type, meta)}</TableCell>
                 <TableCell>
-                  {row.min_dwell_seconds}–{row.max_dwell_seconds}s
+                  {formatIntervalDisplay(row.min_dwell_seconds)} –{' '}
+                  {formatIntervalDisplay(row.max_dwell_seconds)}
                 </TableCell>
                 <TableCell>{row.frequency_weight}</TableCell>
-                <TableCell>{row.min_gap_between_shows_seconds}s</TableCell>
+                <TableCell>{formatIntervalDisplay(row.min_gap_between_shows_seconds)}</TableCell>
                 <TableCell sx={{ maxWidth: 280, wordBreak: 'break-word' }}>
                   {screenRowDescription(row)}
                 </TableCell>
@@ -480,8 +482,9 @@ function ScreenCard({
           </Typography>
           <Chip size="small" label={typeLabel} variant="outlined" sx={{ alignSelf: 'flex-start' }} />
           <Typography variant="caption" color="text.secondary" display="block">
-            Dwell {row.min_dwell_seconds}–{row.max_dwell_seconds}s · weight {row.frequency_weight} ·
-            gap {row.min_gap_between_shows_seconds}s
+            Dwell {formatIntervalDisplay(row.min_dwell_seconds)} –{' '}
+            {formatIntervalDisplay(row.max_dwell_seconds)} · weight {row.frequency_weight} · gap{' '}
+            {formatIntervalDisplay(row.min_gap_between_shows_seconds)}
           </Typography>
           {description ? (
             <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-word' }}>

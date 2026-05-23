@@ -73,7 +73,10 @@ Future<DataWriteContextImpl> _ctx(
   String? apiKey,
 }) async {
   if (apiKey != null) {
-    await secrets.write(providerAccessTokenSecretKey(kDefaultStockFinnhubIntegrationId), apiKey);
+    await secrets.write(
+      providerAccessTokenSecretKey(kDefaultStockFinnhubIntegrationId),
+      apiKey,
+    );
   }
   final resolver = ProviderConfigResolver(db, secrets);
   return DataWriteContextImpl(
@@ -89,7 +92,9 @@ Future<void> _seedProviderRow(
   bool enabled = true,
   String? configJson,
 }) async {
-  await db.into(db.integrations).insert(
+  await db
+      .into(db.integrations)
+      .insert(
         IntegrationsCompanion.insert(
           id: kDefaultStockFinnhubIntegrationId,
           integrationType: kStockProviderId,
@@ -108,7 +113,9 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedProviderRow(db);
-    await db.into(db.interestsStockSymbols).insert(
+    await db
+        .into(db.interestsStockSymbols)
+        .insert(
           InterestsStockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
         );
     final secrets = InMemorySecretStore();
@@ -129,7 +136,9 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedProviderRow(db, enabled: false);
-    await db.into(db.interestsStockSymbols).insert(
+    await db
+        .into(db.interestsStockSymbols)
+        .insert(
           InterestsStockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
         );
     final secrets = InMemorySecretStore();
@@ -150,21 +159,27 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedProviderRow(db);
-    await db.into(db.interestsStockSymbols).insert(
+    await db
+        .into(db.interestsStockSymbols)
+        .insert(
           InterestsStockSymbolsCompanion.insert(
             id: 'aapl',
             symbol: 'AAPL',
             displayName: const Value('Apple'),
           ),
         );
-    await db.into(db.interestsStockSymbols).insert(
+    await db
+        .into(db.interestsStockSymbols)
+        .insert(
           InterestsStockSymbolsCompanion.insert(
             id: 'msft',
             symbol: 'MSFT',
             displayName: const Value('Microsoft'),
           ),
         );
-    await db.into(db.interestsStockSymbols).insert(
+    await db
+        .into(db.interestsStockSymbols)
+        .insert(
           InterestsStockSymbolsCompanion.insert(
             id: 'goog',
             symbol: 'GOOG',
@@ -219,7 +234,9 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedProviderRow(db);
-    await db.into(db.interestsStockSymbols).insert(
+    await db
+        .into(db.interestsStockSymbols)
+        .insert(
           InterestsStockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
         );
     final secrets = InMemorySecretStore();
@@ -240,35 +257,41 @@ void main() {
     await db.close();
   });
 
-  test('collect falls back to defaultSymbols when interests_stock_symbols empty', () async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
-    await _seedProviderRow(
-      db,
-      configJson: jsonEncode({
-        'maxSymbolsPerCollect': 10,
-        'defaultSymbols': [
-          {'symbol': 'TSLA', 'displayName': 'Tesla'},
-          {'symbol': 'NFLX', 'displayName': 'Netflix'},
-        ],
-      }),
-    );
-    final secrets = InMemorySecretStore();
-    final ctx = await _ctx(db, secrets, apiKey: 'finnhub-key');
-    final client = _FinnhubClient(
-      (_) => http.Response(_quotePayload(current: 50), 200),
-    );
-    final provider = StockQuoteDataProvider(httpClient: client);
+  test(
+    'collect falls back to defaultSymbols when interests_stock_symbols empty',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
+      await _seedProviderRow(
+        db,
+        configJson: jsonEncode({
+          'maxSymbolsPerCollect': 10,
+          'defaultSymbols': [
+            {'symbol': 'TSLA', 'displayName': 'Tesla'},
+            {'symbol': 'NFLX', 'displayName': 'Netflix'},
+          ],
+        }),
+      );
+      final secrets = InMemorySecretStore();
+      final ctx = await _ctx(db, secrets, apiKey: 'finnhub-key');
+      final client = _FinnhubClient(
+        (_) => http.Response(_quotePayload(current: 50), 200),
+      );
+      final provider = StockQuoteDataProvider(httpClient: client);
 
-    await provider.collect(ctx);
+      await provider.collect(ctx);
 
-    expect(client.sends, 2);
-    final symbols = await db.select(db.interestsStockSymbols).get();
-    expect(symbols.map((r) => r.symbol).toSet(), {'TSLA', 'NFLX'});
-    final quotes = await db.select(db.stockQuotes).get();
-    expect(quotes, hasLength(2));
-    await db.close();
-  });
+      expect(client.sends, 2);
+      final symbols = await db.select(db.interestsStockSymbols).get();
+      expect(symbols.map((r) => r.symbol).toSet(), {'TSLA', 'NFLX'});
+      for (final row in symbols) {
+        expect(row.category, 'general');
+      }
+      final quotes = await db.select(db.stockQuotes).get();
+      expect(quotes, hasLength(2));
+      await db.close();
+    },
+  );
 
   test('collect honors maxSymbolsPerCollect ceiling', () async {
     final db = openMemoryDatabase();
@@ -277,10 +300,14 @@ void main() {
       db,
       configJson: jsonEncode({'maxSymbolsPerCollect': 1}),
     );
-    await db.into(db.interestsStockSymbols).insert(
+    await db
+        .into(db.interestsStockSymbols)
+        .insert(
           InterestsStockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
         );
-    await db.into(db.interestsStockSymbols).insert(
+    await db
+        .into(db.interestsStockSymbols)
+        .insert(
           InterestsStockSymbolsCompanion.insert(id: 'msft', symbol: 'MSFT'),
         );
     final secrets = InMemorySecretStore();
@@ -301,10 +328,14 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedProviderRow(db);
-    await db.into(db.interestsStockSymbols).insert(
+    await db
+        .into(db.interestsStockSymbols)
+        .insert(
           InterestsStockSymbolsCompanion.insert(id: 'good', symbol: 'GOOD'),
         );
-    await db.into(db.interestsStockSymbols).insert(
+    await db
+        .into(db.interestsStockSymbols)
+        .insert(
           InterestsStockSymbolsCompanion.insert(id: 'bad', symbol: 'BAD'),
         );
     final secrets = InMemorySecretStore();
@@ -330,14 +361,14 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedProviderRow(db);
-    await db.into(db.interestsStockSymbols).insert(
+    await db
+        .into(db.interestsStockSymbols)
+        .insert(
           InterestsStockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
         );
     final secrets = InMemorySecretStore();
     final ctx = await _ctx(db, secrets, apiKey: 'finnhub-key');
-    final client = _FinnhubClient(
-      (_) => http.Response('rate limited', 429),
-    );
+    final client = _FinnhubClient((_) => http.Response('rate limited', 429));
     final provider = StockQuoteDataProvider(httpClient: client);
 
     await provider.collect(ctx);
@@ -351,14 +382,14 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedProviderRow(db);
-    await db.into(db.interestsStockSymbols).insert(
+    await db
+        .into(db.interestsStockSymbols)
+        .insert(
           InterestsStockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
         );
     final secrets = InMemorySecretStore();
     final ctx = await _ctx(db, secrets, apiKey: 'finnhub-key');
-    final client = _FinnhubClient(
-      (_) => http.Response('not-json', 200),
-    );
+    final client = _FinnhubClient((_) => http.Response('not-json', 200));
     final provider = StockQuoteDataProvider(httpClient: client);
 
     await provider.collect(ctx);
@@ -371,7 +402,9 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedProviderRow(db);
-    await db.into(db.interestsStockSymbols).insert(
+    await db
+        .into(db.interestsStockSymbols)
+        .insert(
           InterestsStockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
         );
     final secrets = InMemorySecretStore();
@@ -395,14 +428,14 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedProviderRow(db);
-    await db.into(db.interestsStockSymbols).insert(
+    await db
+        .into(db.interestsStockSymbols)
+        .insert(
           InterestsStockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
         );
     final secrets = InMemorySecretStore();
     final ctx = await _ctx(db, secrets, apiKey: 'finnhub-key');
-    final client = _ThrowingFinnhubClient(
-      const SocketException('no network'),
-    );
+    final client = _ThrowingFinnhubClient(const SocketException('no network'));
     final provider = StockQuoteDataProvider(httpClient: client);
 
     await provider.collect(ctx);
@@ -416,7 +449,9 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedProviderRow(db);
-    await db.into(db.interestsStockSymbols).insert(
+    await db
+        .into(db.interestsStockSymbols)
+        .insert(
           InterestsStockSymbolsCompanion.insert(id: 'aapl', symbol: 'AAPL'),
         );
     final secrets = InMemorySecretStore();
@@ -435,10 +470,14 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedProviderRow(db);
-    await db.into(db.interestsStockSymbols).insert(
+    await db
+        .into(db.interestsStockSymbols)
+        .insert(
           InterestsStockSymbolsCompanion.insert(id: 'first', symbol: 'FIRST'),
         );
-    await db.into(db.interestsStockSymbols).insert(
+    await db
+        .into(db.interestsStockSymbols)
+        .insert(
           InterestsStockSymbolsCompanion.insert(id: 'second', symbol: 'SECOND'),
         );
     final secrets = InMemorySecretStore();
@@ -448,7 +487,9 @@ void main() {
       if (s == 'FIRST') {
         // Drop the symbol mid-flight so the FK-bound upsert fails for FIRST
         // but the loop must keep going and finish SECOND successfully.
-        db.customStatement('DELETE FROM interests_stock_symbols WHERE id = ?', ['first']);
+        db.customStatement('DELETE FROM interests_stock_symbols WHERE id = ?', [
+          'first',
+        ]);
       }
       return http.Response(_quotePayload(current: 50), 200);
     });
@@ -462,24 +503,27 @@ void main() {
     await db.close();
   });
 
-  test('collect persists symbol rows for default symbols on first run', () async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
-    await _seedProviderRow(db);
-    final secrets = InMemorySecretStore();
-    final ctx = await _ctx(db, secrets, apiKey: 'finnhub-key');
-    final client = _FinnhubClient(
-      (_) => http.Response(_quotePayload(current: 50), 200),
-    );
-    final provider = StockQuoteDataProvider(httpClient: client);
+  test(
+    'collect persists symbol rows for default symbols on first run',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
+      await _seedProviderRow(db);
+      final secrets = InMemorySecretStore();
+      final ctx = await _ctx(db, secrets, apiKey: 'finnhub-key');
+      final client = _FinnhubClient(
+        (_) => http.Response(_quotePayload(current: 50), 200),
+      );
+      final provider = StockQuoteDataProvider(httpClient: client);
 
-    await provider.collect(ctx);
+      await provider.collect(ctx);
 
-    final symbols = await db.select(db.interestsStockSymbols).get();
-    expect(symbols, isNotEmpty);
-    for (final s in symbols) {
-      expect(s.enabled, isTrue);
-    }
-    await db.close();
-  });
+      final symbols = await db.select(db.interestsStockSymbols).get();
+      expect(symbols, isNotEmpty);
+      for (final s in symbols) {
+        expect(s.enabled, isTrue);
+      }
+      await db.close();
+    },
+  );
 }

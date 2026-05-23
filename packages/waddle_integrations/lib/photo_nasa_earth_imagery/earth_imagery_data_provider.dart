@@ -23,9 +23,9 @@ class NasaEarthImageryDataProvider implements IDataProvider {
     http.Client? httpClient,
     DateTime Function()? nowUtc,
     Duration? requestTimeout,
-  })  : _http = httpClient ?? http.Client(),
-        _nowUtc = nowUtc ?? (() => DateTime.now().toUtc()),
-        _requestTimeout = requestTimeout ?? kNasaHttpTimeout;
+  }) : _http = httpClient ?? http.Client(),
+       _nowUtc = nowUtc ?? (() => DateTime.now().toUtc()),
+       _requestTimeout = requestTimeout ?? kNasaHttpTimeout;
 
   final http.Client _http;
   final DateTime Function() _nowUtc;
@@ -52,8 +52,10 @@ class NasaEarthImageryDataProvider implements IDataProvider {
     final kv = IntegrationKvRepository(ctx.db);
 
     if (setting.pollSeconds > 0) {
-      final lastValue =
-          await kv.getIntegrationValue(integrationId, kIntegrationLastCollectKey);
+      final lastValue = await kv.getIntegrationValue(
+        integrationId,
+        kIntegrationLastCollectKey,
+      );
       final last = int.tryParse(lastValue ?? '') ?? 0;
       if (nowMs - last < setting.pollSeconds * 1000) {
         ctx.diagnostics.provider(
@@ -96,7 +98,7 @@ class NasaEarthImageryDataProvider implements IDataProvider {
 
       final locations = await resolveWeatherLocationsForCollect(
         ctx.db,
-        extra.defaultLocation,
+        fallbackWhenEmpty: extra.defaultLocation,
       );
 
       var stored = 0;
@@ -169,9 +171,7 @@ class NasaEarthImageryDataProvider implements IDataProvider {
     }
     final results = assetsDecoded['results'];
     if (results is! List || results.isEmpty) {
-      ctx.diagnostics.provider(
-        'nasa_earth: no assets id=${location.id}',
-      );
+      ctx.diagnostics.provider('nasa_earth: no assets id=${location.id}');
       return 0;
     }
 
@@ -185,9 +185,9 @@ class NasaEarthImageryDataProvider implements IDataProvider {
     }
     final assetDate = earthAssetDateFromIso(dateIso);
     final photoId = 'earth_${location.id}_$assetDate';
-    final exists = await (ctx.db.select(ctx.db.photos)
-          ..where((t) => t.id.equals(photoId)))
-        .getSingleOrNull();
+    final exists = await (ctx.db.select(
+      ctx.db.photos,
+    )..where((t) => t.id.equals(photoId))).getSingleOrNull();
     if (exists != null) {
       return 0;
     }
@@ -228,18 +228,21 @@ class NasaEarthImageryDataProvider implements IDataProvider {
     // NASA returns a URL that may need api_key appended for download.
     final downloadUri = Uri.parse(downloadUrl);
     if (!downloadUri.queryParameters.containsKey('api_key')) {
-      downloadUrl = downloadUri.replace(
-        queryParameters: {
-          ...downloadUri.queryParameters,
-          'api_key': apiKey,
-        },
-      ).toString();
+      downloadUrl = downloadUri
+          .replace(
+            queryParameters: {
+              ...downloadUri.queryParameters,
+              'api_key': apiKey,
+            },
+          )
+          .toString();
     }
 
     List<int> bytes;
     try {
-      final imgRes =
-          await _http.get(Uri.parse(downloadUrl)).timeout(_requestTimeout);
+      final imgRes = await _http
+          .get(Uri.parse(downloadUrl))
+          .timeout(_requestTimeout);
       if (imgRes.statusCode != 200 || imgRes.bodyBytes.isEmpty) {
         ctx.diagnostics.provider(
           'nasa_earth: image status=${imgRes.statusCode} id=${location.id}',

@@ -25,9 +25,9 @@ class WeatherCollectLocation {
 }
 
 Future<List<WeatherCollectLocation>> resolveWeatherLocationsForCollect(
-  AppDatabase db,
-  WeatherLocationConfig defaultLocation,
-) async {
+  AppDatabase db, {
+  WeatherLocationConfig? fallbackWhenEmpty,
+}) async {
   final rows = await (db.select(db.interestsLocations)
         ..where((t) => t.includeWeather.equals(true))
         ..orderBy([(t) => OrderingTerm.asc(t.id)]))
@@ -44,12 +44,16 @@ Future<List<WeatherCollectLocation>> resolveWeatherLocationsForCollect(
         )
         .toList();
   }
+  final fallback = fallbackWhenEmpty;
+  if (fallback == null) {
+    return const [];
+  }
   return [
     WeatherCollectLocation(
       id: kSyntheticDefaultWeatherLocationId,
-      name: defaultLocation.name,
-      lat: defaultLocation.latitude,
-      lon: defaultLocation.longitude,
+      name: fallback.name,
+      lat: fallback.latitude,
+      lon: fallback.longitude,
     ),
   ];
 }

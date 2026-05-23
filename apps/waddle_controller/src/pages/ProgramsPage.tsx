@@ -45,6 +45,7 @@ import {
   resolveProgramSelectionAtMs,
   type SlideCardModel,
 } from '@/util/programTelemetry';
+import { formatIntervalDisplay } from '@/util/durationInput';
 import { screenTypeLabel, screenTypeMetaFor } from '@/util/screenTypeLabel';
 
 const PROGRAM_SORT_OPTIONS: SortOption<Record<string, unknown>>[] = [
@@ -589,7 +590,9 @@ function WidgetDetailBlock({
       <Stack spacing={1}>
         <Typography variant="body2" color="text.secondary">
           {row.photographer_name}
-          {row.duration_seconds != null ? ` · ${row.duration_seconds}s` : ''}
+          {row.duration_seconds != null
+            ? ` · ${formatIntervalDisplay(row.duration_seconds)}`
+            : ''}
         </Typography>
         {row.pexels_page_url && (
           <Link href={row.pexels_page_url} target="_blank" rel="noreferrer">

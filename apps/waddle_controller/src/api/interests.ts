@@ -29,6 +29,7 @@ export type StockSymbolRow = {
   id: string;
   symbol: string;
   display_name: string;
+  category: string;
   enabled: boolean;
 };
 
@@ -142,7 +143,8 @@ export async function listStockSymbols(display: SavedDisplay): Promise<StockSymb
 
 export async function createStockSymbol(
   display: SavedDisplay,
-  row: Pick<StockSymbolRow, 'id' | 'symbol'> & Partial<Pick<StockSymbolRow, 'display_name' | 'enabled'>>,
+  row: Pick<StockSymbolRow, 'id' | 'symbol'> &
+    Partial<Pick<StockSymbolRow, 'category' | 'display_name' | 'enabled'>>,
 ): Promise<void> {
   await apiFetch(display, '/v1/interests/stock-symbols', {
     method: 'POST',

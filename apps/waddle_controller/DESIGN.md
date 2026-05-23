@@ -104,7 +104,7 @@ Prefer **[`SchemaConfigForm`](src/components/config/SchemaConfigForm.tsx)** when
 |---------------|------------|
 | `type: boolean` | MUI `Switch` (`WaddleSwitchWidget`) |
 | `integer` / `number` + `minimum` / `maximum` | MUI `Slider` (`WaddleSliderWidget`); optional `x-waddle-widget: slider` |
-| `x-waddle-widget: duration` | [`DurationInputField`](src/components/DurationInputField.tsx) — values stored as **seconds** |
+| `x-waddle-widget: duration` | [`DurationInputField`](src/components/DurationInputField.tsx) — values stored as **seconds**; unit picker defaults to **minutes**; lists use [`formatIntervalDisplay`](src/util/durationInput.ts) for human-readable labels |
 | `format: waddle-overlay-blob-key` on array items | `OverlayBlobKeysField` — upload via `POST /v1/display/overlays/blobs` |
 | `enum` | RJSF select |
 

@@ -114,6 +114,7 @@ import {
 } from '@/util/integrationAccountStatus';
 import { integrationDisplayName } from '@/util/integrationDisplayName';
 import { integrationConfigBaseUrl } from '@/util/integrationConfig';
+import { DurationInputField } from '@/components/DurationInputField';
 import { formatPollInterval } from '@/util/pollIntervalFormat';
 import { useConfigSchemas } from '@/hooks/useConfigSchemas';
 import {
@@ -1106,7 +1107,7 @@ function EditIntegrationDialog({
           : isOneDrive
             ? buildOneDriveConfigJson(onedriveConfig, oneDriveMediaKind)
             : formData;
-    return mergeIntegrationConfigForSave(built, row.config_json);
+    return mergeIntegrationConfigForSave(built, row.config_json, row.integration_type);
   }, [
     isOutlookCalendar,
     isGoogleCalendar,
@@ -1345,12 +1346,12 @@ function EditIntegrationDialog({
               ))}
             </Stack>
           ) : null}
-          <TextField
-            label="Poll interval (seconds)"
-            type="number"
-            value={poll}
-            onChange={(e) => setPoll(Number(e.target.value) || 0)}
-            fullWidth
+          <DurationInputField
+            label="Poll interval"
+            valueSeconds={poll}
+            onChange={setPoll}
+            allowedUnits={['sec', 'min', 'hr', 'day']}
+            minSeconds={1}
             disabled={saving}
           />
           {isOutlookCalendar && active ? (

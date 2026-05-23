@@ -26,11 +26,9 @@ class _ResolvedSymbol {
 /// for every enabled row in `interests_stock_symbols` (or the seeded `defaultSymbols`
 /// when none are present), and upserts one row per symbol into `stock_quotes`.
 class StockQuoteDataProvider implements IDataProvider {
-  StockQuoteDataProvider({
-    http.Client? httpClient,
-    int Function()? nowMs,
-  })  : _http = httpClient ?? http.Client(),
-        _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
+  StockQuoteDataProvider({http.Client? httpClient, int Function()? nowMs})
+    : _http = httpClient ?? http.Client(),
+      _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
 
   final http.Client _http;
   final int Function() _nowMs;
@@ -53,7 +51,8 @@ class StockQuoteDataProvider implements IDataProvider {
       return;
     }
     final extra = StockQuoteProviderExtraConfig.parse(config.configJson);
-    final baseUrl = (config.baseUrl != null && config.baseUrl!.trim().isNotEmpty)
+    final baseUrl =
+        (config.baseUrl != null && config.baseUrl!.trim().isNotEmpty)
         ? config.baseUrl!.trim()
         : kDefaultFinnhubBaseUrl;
 
@@ -64,16 +63,17 @@ class StockQuoteDataProvider implements IDataProvider {
     );
     for (final symbol in symbols) {
       try {
-        final uri = Uri.parse('$baseUrl/api/v1/quote').replace(
-          queryParameters: {
-            'symbol': symbol.symbol,
-            'token': token,
-          },
-        );
+        final uri = Uri.parse(
+          '$baseUrl/api/v1/quote',
+        ).replace(queryParameters: {'symbol': symbol.symbol, 'token': token});
         ctx.diagnostics.provider(
           'stocks: GET quote symbol=${symbol.symbol} ${safeHttpUriForLog(uri)}',
         );
-        final res = await _safeGet(uri, symbol: symbol.symbol, diagnostics: ctx.diagnostics);
+        final res = await _safeGet(
+          uri,
+          symbol: symbol.symbol,
+          diagnostics: ctx.diagnostics,
+        );
         if (res == null) {
           continue;
         }
@@ -93,7 +93,9 @@ class StockQuoteDataProvider implements IDataProvider {
         ctx.diagnostics.provider(
           'stocks: upsert quote symbol=${symbol.symbol} price=${parsed.currentPrice}',
         );
-        await ctx.db.into(ctx.db.stockQuotes).insertOnConflictUpdate(
+        await ctx.db
+            .into(ctx.db.stockQuotes)
+            .insertOnConflictUpdate(
               StockQuotesCompanion.insert(
                 symbolId: symbol.id,
                 currentPrice: Value(parsed.currentPrice),
@@ -121,10 +123,11 @@ class StockQuoteDataProvider implements IDataProvider {
     AppDatabase db,
     StockQuoteProviderExtraConfig extra,
   ) async {
-    final rows = await (db.select(db.interestsStockSymbols)
-          ..where((t) => t.enabled.equals(true))
-          ..orderBy([(t) => OrderingTerm.asc(t.id)]))
-        .get();
+    final rows =
+        await (db.select(db.interestsStockSymbols)
+              ..where((t) => t.enabled.equals(true))
+              ..orderBy([(t) => OrderingTerm.asc(t.id)]))
+            .get();
     if (rows.isNotEmpty) {
       return rows
           .take(extra.maxSymbolsPerCollect)
@@ -134,11 +137,14 @@ class StockQuoteDataProvider implements IDataProvider {
     final out = <_ResolvedSymbol>[];
     for (final entry in extra.defaultSymbols.take(extra.maxSymbolsPerCollect)) {
       final id = entry.symbol.toLowerCase();
-      await db.into(db.interestsStockSymbols).insertOnConflictUpdate(
+      await db
+          .into(db.interestsStockSymbols)
+          .insertOnConflictUpdate(
             InterestsStockSymbolsCompanion.insert(
               id: id,
               symbol: entry.symbol,
               displayName: Value(entry.displayName),
+              category: const Value('general'),
               enabled: const Value(true),
             ),
           );
@@ -184,18 +190,10 @@ class StockQuoteDataProvider implements IDataProvider {
     try {
       return await _http.get(uri);
     } on http.ClientException catch (e, st) {
-      diagnostics.providerFail(
-        'stocks: request failed symbol=$symbol',
-        e,
-        st,
-      );
+      diagnostics.providerFail('stocks: request failed symbol=$symbol', e, st);
       return null;
     } on SocketException catch (e, st) {
-      diagnostics.providerFail(
-        'stocks: socket failed symbol=$symbol',
-        e,
-        st,
-      );
+      diagnostics.providerFail('stocks: socket failed symbol=$symbol', e, st);
       return null;
     } on Object catch (e, st) {
       diagnostics.providerFail(

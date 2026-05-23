@@ -44,13 +44,14 @@ class WeatherDataProvider implements IDataProvider {
       return;
     }
     final extra = WeatherProviderExtraConfig.parse(config.configJson);
-    final baseUrl = (config.baseUrl != null && config.baseUrl!.trim().isNotEmpty)
-        ? config.baseUrl!.trim()
-        : kDefaultOpenWeatherBaseUrl;
-    final locations = await resolveWeatherLocationsForCollect(
-      ctx.db,
-      extra.defaultLocation,
-    );
+    const baseUrl = kDefaultOpenWeatherBaseUrl;
+    final locations = await resolveWeatherLocationsForCollect(ctx.db);
+    if (locations.isEmpty) {
+      ctx.diagnostics.provider(
+        'weather: skip (no interest locations with include_weather)',
+      );
+      return;
+    }
     final now = _nowMs();
     ctx.diagnostics.provider(
       'weather: collect locations=${locations.length} base=${safeHttpUriForLog(Uri.parse(baseUrl))}',
@@ -58,7 +59,6 @@ class WeatherDataProvider implements IDataProvider {
 
     for (final location in locations) {
       try {
-        await ensureSyntheticDefaultInterestsLocation(ctx.db, location);
         final weatherUri = Uri.parse('$baseUrl/data/2.5/weather').replace(
           queryParameters: {
             'lat': location.lat.toStringAsFixed(4),

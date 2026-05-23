@@ -44,7 +44,7 @@ class OpenMeteoWeatherDataProvider implements IDataProvider {
     );
     final locations = await resolveWeatherLocationsForCollect(
       ctx.db,
-      extra.defaultLocation,
+      fallbackWhenEmpty: extra.defaultLocation,
     );
     final tempUnit = _temperatureUnit(extra.units);
     ctx.diagnostics.provider(

@@ -6,6 +6,12 @@ import { normalizeSchemaFieldLabels } from '@/util/schemaFieldLabel';
 
 const HIDDEN_INTEGRATION_CONFIG_KEYS = new Set(['baseUrl', 'base_url']);
 
+const WEATHER_OPENWEATHERMAP_STRIP_ON_SAVE = new Set([
+  'baseUrl',
+  'base_url',
+  'defaultLocation',
+]);
+
 type SchemaNode = Record<string, unknown>;
 
 function asSchemaObject(value: unknown): SchemaNode | null {
@@ -60,12 +66,31 @@ export function preserveIntegrationConfigForSave(
   return { ...formData, baseUrl };
 }
 
+/** Removes integration-specific keys that must not persist after operator save. */
+export function stripIntegrationConfigKeysForSave(
+  integrationType: string,
+  config: Record<string, unknown>,
+): Record<string, unknown> {
+  if (integrationType !== 'weather_openweathermap') {
+    return config;
+  }
+  const out = { ...config };
+  for (const key of WEATHER_OPENWEATHERMAP_STRIP_ON_SAVE) {
+    delete out[key];
+  }
+  return out;
+}
+
 /** Merges operator form edits with fields hidden from the form. */
 export function mergeIntegrationConfigForSave(
   formData: Record<string, unknown>,
   originalConfigJson: unknown,
+  integrationType?: string,
 ): Record<string, unknown> {
   const original = parseJsonObject(originalConfigJson);
   const merged = { ...original, ...preserveIntegrationConfigForSave(formData, originalConfigJson) };
-  return merged;
+  if (integrationType == null) {
+    return merged;
+  }
+  return stripIntegrationConfigKeysForSave(integrationType, merged);
 }

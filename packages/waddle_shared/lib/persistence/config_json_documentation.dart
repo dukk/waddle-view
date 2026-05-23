@@ -151,30 +151,19 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
       _baseSchema(
         title: 'WeatherProviderConfig',
         description:
-            'OpenWeather units, language, hourly columns, default map.',
-        properties: _integrationConfigProperties({
+            'OpenWeather units, language, and hourly forecast columns. '
+            'Locations come from Interests weather locations with include_weather enabled.',
+        properties: {
           'units': {'type': 'string'},
           'lang': {'type': 'string'},
           'hourlyCount': {'type': 'integer', 'minimum': 0},
-          'defaultLocation': {
-            'type': 'object',
-            'properties': {
-              'name': {'type': 'string'},
-              'lat': {'type': 'number'},
-              'lon': {'type': 'number'},
-            },
-            'required': ['lat', 'lon'],
-            'additionalProperties': true,
-          },
-        }),
+        },
       ),
     ),
     example: jsonEncode({
-      'baseUrl': 'https://api.openweathermap.org',
       'units': 'imperial',
       'lang': 'en',
       'hourlyCount': 6,
-      'defaultLocation': {'name': 'Default', 'lat': 40.7128, 'lon': -74.006},
     }),
   ),
   'weather_openmeteo': ProviderConfigJsonDoc(

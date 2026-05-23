@@ -90,8 +90,9 @@ void main() {
     final calendarMonth = displayOverlayConfigJsonDocForType('calendar_month');
     expect(jsonDecode(calendarMonth.schema), isA<Map<String, dynamic>>());
     expect(jsonDecode(calendarMonth.example), isA<Map<String, dynamic>>());
-    final calendarUpcoming =
-        displayOverlayConfigJsonDocForType('calendar_upcoming');
+    final calendarUpcoming = displayOverlayConfigJsonDocForType(
+      'calendar_upcoming',
+    );
     expect(jsonDecode(calendarUpcoming.schema), isA<Map<String, dynamic>>());
     final stockQuote = displayOverlayConfigJsonDocForType('stock_quote');
     expect(jsonDecode(stockQuote.schema), isA<Map<String, dynamic>>());
@@ -99,8 +100,9 @@ void main() {
     final qrCode = displayOverlayConfigJsonDocForType('qr_code');
     expect(jsonDecode(qrCode.schema), isA<Map<String, dynamic>>());
     expect(jsonDecode(qrCode.example), isA<Map<String, dynamic>>());
-    final photoSlideshow =
-        displayOverlayConfigJsonDocForType('photo_slideshow');
+    final photoSlideshow = displayOverlayConfigJsonDocForType(
+      'photo_slideshow',
+    );
     expect(jsonDecode(photoSlideshow.schema), isA<Map<String, dynamic>>());
     expect(jsonDecode(photoSlideshow.example), isA<Map<String, dynamic>>());
     final slideshowSchema =
@@ -128,13 +130,27 @@ void main() {
     final falling = displayOverlayConfigJsonDocForType('falling_images');
     final fallingSchema = jsonDecode(falling.schema) as Map<String, dynamic>;
     final fallingProps = fallingSchema['properties'] as Map<String, dynamic>;
-    final dropInterval = fallingProps['drop_interval_sec'] as Map<String, dynamic>;
+    final dropInterval =
+        fallingProps['drop_interval_sec'] as Map<String, dynamic>;
     expect(dropInterval['minimum'], kFallingImagesDropIntervalSecMin);
     final imageScale = fallingProps['image_scale'] as Map<String, dynamic>;
     expect(imageScale['maximum'], kFallingImagesImageScaleMax);
     final fallSpeed = fallingProps['fall_speed'] as Map<String, dynamic>;
     expect(fallSpeed['minimum'], kFallingImagesFallSpeedPxPerSecMin);
     expect(fallSpeed['maximum'], kFallingImagesFallSpeedPxPerSecMax);
+  });
+
+  test('weather_openweathermap schema has no baseUrl or defaultLocation', () {
+    final doc = kProviderConfigJsonMeta['weather_openweathermap']!;
+    final schema = jsonDecode(doc.schema) as Map<String, dynamic>;
+    final properties = schema['properties'] as Map<String, dynamic>;
+    expect(properties.containsKey('baseUrl'), isFalse);
+    expect(properties.containsKey('defaultLocation'), isFalse);
+    expect(properties.containsKey('units'), isTrue);
+    expect(properties.containsKey('hourlyCount'), isTrue);
+    final example = jsonDecode(doc.example) as Map<String, dynamic>;
+    expect(example.containsKey('baseUrl'), isFalse);
+    expect(example.containsKey('defaultLocation'), isFalse);
   });
 
   test('seeded provider types have explicit meta entries', () {

@@ -84,6 +84,8 @@ import {
 import { categorySeasonPayload, formatCategorySeason } from '@/util/categorySeason';
 import { completeDialogSave } from '@/util/dialogSave';
 import { geolocationErrorMessage } from '@/util/geolocationErrorMessage';
+import { DurationInputField } from '@/components/DurationInputField';
+import { formatIntervalDisplay } from '@/util/durationInput';
 import {
   interestCategoryLabel,
   weatherLocationCategoryFromName,
@@ -119,6 +121,7 @@ export function InterestsPage() {
   const [error, setError] = useState<string | null>(null);
   const [addingCurrentLocation, setAddingCurrentLocation] = useState(false);
   const [expandedNewsCategories, setExpandedNewsCategories] = useState<string[]>([]);
+  const [expandedStockCategories, setExpandedStockCategories] = useState<string[]>([]);
 
   const [weather, setWeather] = useState<WeatherLocationRow[]>([]);
   const [rss, setRss] = useState<RssFeedRow[]>([]);
@@ -398,34 +401,36 @@ export function InterestsPage() {
       .sort((a, b) => categoryLabel(a.id).localeCompare(categoryLabel(b.id)));
   }, [filteredRssForSearch, categoryLabel]);
 
-  const stocksInterested = useMemo(
+  const filteredStocksForSearch = useMemo(
     () =>
       applyClientListPipeline({
-        items: stocks
-          .filter((r) => r.enabled)
-          .map((r) => ({ ...r, label: r.symbol })),
+        items: stocks.map((r) => ({ ...r, label: r.symbol })),
         search,
         searchMatches: (row, q) =>
-          row.symbol.toLowerCase().includes(q) || row.id.toLowerCase().includes(q),
+          row.symbol.toLowerCase().includes(q) ||
+          row.id.toLowerCase().includes(q) ||
+          row.display_name.toLowerCase().includes(q),
         sortOptions: interestNameSort,
         sortId,
       }),
     [stocks, search, sortId, interestNameSort],
   );
-  const stocksNotInterested = useMemo(
-    () =>
-      applyClientListPipeline({
-        items: stocks
-          .filter((r) => !r.enabled)
-          .map((r) => ({ ...r, label: r.symbol })),
-        search,
-        searchMatches: (row, q) =>
-          row.symbol.toLowerCase().includes(q) || row.id.toLowerCase().includes(q),
-        sortOptions: interestNameSort,
-        sortId,
-      }),
-    [stocks, search, sortId, interestNameSort],
-  );
+
+  const stockGroups = useMemo(() => {
+    const byCategory = new Map<string, StockSymbolRow[]>();
+    for (const row of filteredStocksForSearch) {
+      const category = row.category || 'general';
+      const list = byCategory.get(category) ?? [];
+      list.push(row);
+      byCategory.set(category, list);
+    }
+    return [...byCategory.entries()]
+      .map(([id, rows]) => ({
+        id,
+        rows: [...rows].sort((a, b) => a.symbol.localeCompare(b.symbol)),
+      }))
+      .sort((a, b) => categoryLabel(a.id).localeCompare(categoryLabel(b.id)));
+  }, [filteredStocksForSearch, categoryLabel]);
   const sortedJokes = useMemo(
     () =>
       applyClientListPipeline({
@@ -454,15 +459,6 @@ export function InterestsPage() {
     () => paginateList(sortedLocations, listPage, listPageSize),
     [sortedLocations, listPage, listPageSize],
   );
-  const stocksPaged = useMemo(
-    () =>
-      paginateList(
-        [...stocksInterested, ...stocksNotInterested],
-        listPage,
-        listPageSize,
-      ),
-    [stocksInterested, stocksNotInterested, listPage, listPageSize],
-  );
   const jokesPaged = useMemo(
     () => paginateList(sortedJokes, listPage, listPageSize),
     [sortedJokes, listPage, listPageSize],
@@ -488,16 +484,6 @@ export function InterestsPage() {
             : triviaLoading;
 
   const pagedLocations = locationsPaged.items;
-
-  const pagedStocksInterested = useMemo(() => {
-    const ids = new Set(stocksInterested.map((r) => r.id));
-    return stocksPaged.items.filter((r) => ids.has(r.id));
-  }, [stocksPaged.items, stocksInterested]);
-
-  const pagedStocksNotInterested = useMemo(() => {
-    const ids = new Set(stocksNotInterested.map((r) => r.id));
-    return stocksPaged.items.filter((r) => ids.has(r.id));
-  }, [stocksPaged.items, stocksNotInterested]);
 
   const pagedJokes = jokesPaged.items;
   const pagedTrivia = triviaPaged.items;
@@ -579,6 +565,16 @@ export function InterestsPage() {
       await loadStocks();
     },
     [active, loadStocks],
+  );
+
+  const patchStockCategory = useCallback(
+    async (categoryId: string, enabled: boolean) => {
+      if (!active) return;
+      const rows = stocks.filter((r) => (r.category || 'general') === categoryId);
+      await Promise.all(rows.map((row) => patchStockSymbol(active, row.id, { enabled })));
+      await loadStocks();
+    },
+    [active, loadStocks, stocks],
   );
 
   const deleteWeather = useCallback(
@@ -751,11 +747,10 @@ export function InterestsPage() {
             </Typography>
           ) : newsGroups.length > 0 ? (
             newsGroups.map((group) => (
-              <NewsCategoryAccordion
+              <CategoryGroupAccordion
                 key={group.id}
                 title={categoryLabel(group.id)}
-                rows={group.rows}
-                layout={layout}
+                rowCount={group.rows.length}
                 expanded={expandedNewsCategories.includes(group.id)}
                 onExpandedChange={(expanded) => {
                   setExpandedNewsCategories((prev) =>
@@ -767,81 +762,104 @@ export function InterestsPage() {
                   );
                 }}
                 canWrite={canWrite}
-                onEdit={openEditRss}
-                onDelete={(id) => void deleteRss(id)}
-                onPatch={(id, patch) =>
-                  patchRss(id, patch).catch((e) => setError(errMsg(e)))
-                }
+                interestedState={categoryInterestToggleState(group.rows)}
                 onCategoryPatch={(enabled) =>
                   patchRssCategory(group.id, enabled).catch((e) => setError(errMsg(e)))
                 }
-                labelForCategory={categoryLabel}
-              />
+              >
+                {layout === 'card' ? (
+                  <Box sx={catalogCardGridSx}>
+                    {group.rows.map((row) => (
+                      <RssInterestCard
+                        key={row.id}
+                        row={row}
+                        categoryLabel={categoryLabel(row.category)}
+                        canWrite={canWrite}
+                        onEdit={() => openEditRss(row)}
+                        onDelete={() => void deleteRss(row.id)}
+                        onPatch={(patch) =>
+                          patchRss(row.id, patch).catch((e) => setError(errMsg(e)))
+                        }
+                      />
+                    ))}
+                  </Box>
+                ) : (
+                  <RssInterestTable
+                    rows={group.rows}
+                    canWrite={canWrite}
+                    onEdit={openEditRss}
+                    onDelete={(id) => void deleteRss(id)}
+                    onPatch={(id, patch) =>
+                      patchRss(id, patch).catch((e) => setError(errMsg(e)))
+                    }
+                  />
+                )}
+              </CategoryGroupAccordion>
             ))
           ) : null}
         </Stack>
       )}
 
       {tab === 'stocks' && (
-        <Stack spacing={3}>
+        <Stack spacing={2}>
           <DisplayRefreshIndicator loading={stocksLoading} />
-          <CatalogSection
-            title="Interested"
-            empty="No stock symbols are marked interested."
-            layout={layout}
-            isEmpty={stocksInterested.length === 0}
-            cards={pagedStocksInterested.map((row) => (
-              <StockInterestCard
-                key={row.id}
-                row={row}
+          {stockGroups.length === 0 && !stocksLoading ? (
+            <Typography variant="body2" color="text.secondary">
+              No stock symbols configured.
+            </Typography>
+          ) : stockGroups.length > 0 ? (
+            stockGroups.map((group) => (
+              <CategoryGroupAccordion
+                key={group.id}
+                title={categoryLabel(group.id)}
+                rowCount={group.rows.length}
+                expanded={expandedStockCategories.includes(group.id)}
+                onExpandedChange={(expanded) => {
+                  setExpandedStockCategories((prev) =>
+                    expanded
+                      ? prev.includes(group.id)
+                        ? prev
+                        : [...prev, group.id]
+                      : prev.filter((id) => id !== group.id),
+                  );
+                }}
                 canWrite={canWrite}
-                onEdit={() => openEditStock(row)}
-                onDelete={() => void deleteStock(row.id)}
-                onPatch={(patch) => patchStock(row.id, patch).catch((e) => setError(errMsg(e)))}
-              />
-            ))}
-            table={
-              <StockInterestTable
-                rows={pagedStocksInterested}
-                canWrite={canWrite}
-                onEdit={openEditStock}
-                onDelete={(id) => void deleteStock(id)}
-                onPatch={(id, patch) => patchStock(id, patch).catch((e) => setError(errMsg(e)))}
-              />
-            }
-          />
-          <CatalogSection
-            title="Not interested"
-            empty="All stock symbols are marked interested."
-            layout={layout}
-            isEmpty={stocksNotInterested.length === 0}
-            cards={pagedStocksNotInterested.map((row) => (
-              <StockInterestCard
-                key={row.id}
-                row={row}
-                canWrite={canWrite}
-                onEdit={() => openEditStock(row)}
-                onDelete={() => void deleteStock(row.id)}
-                onPatch={(patch) => patchStock(row.id, patch).catch((e) => setError(errMsg(e)))}
-              />
-            ))}
-            table={
-              <StockInterestTable
-                rows={pagedStocksNotInterested}
-                canWrite={canWrite}
-                onEdit={openEditStock}
-                onDelete={(id) => void deleteStock(id)}
-                onPatch={(id, patch) => patchStock(id, patch).catch((e) => setError(errMsg(e)))}
-              />
-            }
-          />
-          <DataViewPagination
-            count={stocksPaged.total}
-            page={stocksPaged.page}
-            pageSize={stocksPaged.pageSize}
-            onPageChange={setListPage}
-            onPageSizeChange={setListPageSize}
-          />
+                interestedState={categoryInterestToggleState(group.rows)}
+                onCategoryPatch={(enabled) =>
+                  patchStockCategory(group.id, enabled).catch((e) => setError(errMsg(e)))
+                }
+              >
+                {layout === 'card' ? (
+                  <Box sx={catalogCardGridSx}>
+                    {group.rows.map((row) => (
+                      <StockInterestCard
+                        key={row.id}
+                        row={row}
+                        categoryLabel={categoryLabel(row.category)}
+                        canWrite={canWrite}
+                        onEdit={() => openEditStock(row)}
+                        onDelete={() => void deleteStock(row.id)}
+                        onPatch={(patch) =>
+                          patchStock(row.id, patch).catch((e) => setError(errMsg(e)))
+                        }
+                      />
+                    ))}
+                  </Box>
+                ) : (
+                  <StockInterestTable
+                    rows={group.rows}
+                    labelForCategory={categoryLabel}
+                    canWrite={canWrite}
+                    onEdit={openEditStock}
+                    onDelete={(id) => void deleteStock(id)}
+                    onPatch={(id, patch) =>
+                      patchStock(id, patch).catch((e) => setError(errMsg(e)))
+                    }
+                  />
+                )}
+              </CategoryGroupAccordion>
+            ))
+          ) : null}
         </Stack>
       )}
 
@@ -1127,40 +1145,32 @@ function CatalogCardActions({
   );
 }
 
-function rssCategoryToggleState(rows: RssFeedRow[]) {
+function categoryInterestToggleState(rows: { enabled: boolean }[]) {
   const on = rows.filter((r) => r.enabled).length;
   if (on === 0) return { checked: false, indeterminate: false };
   if (on === rows.length) return { checked: true, indeterminate: false };
   return { checked: false, indeterminate: true };
 }
 
-function NewsCategoryAccordion({
+function CategoryGroupAccordion({
   title,
-  rows,
-  layout,
+  rowCount,
   expanded,
   onExpandedChange,
   canWrite,
-  onEdit,
-  onDelete,
-  onPatch,
+  interestedState,
   onCategoryPatch,
-  labelForCategory,
+  children,
 }: {
   title: string;
-  rows: RssFeedRow[];
-  layout: ListLayoutMode;
+  rowCount: number;
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
   canWrite: boolean;
-  onEdit: (row: RssFeedRow) => void;
-  onDelete: (id: string) => void;
-  onPatch: (id: string, patch: Partial<RssFeedRow>) => void;
+  interestedState: { checked: boolean; indeterminate: boolean };
   onCategoryPatch: (enabled: boolean) => void;
-  labelForCategory: (categoryId: string) => string;
+  children: ReactNode;
 }) {
-  const interestedState = rssCategoryToggleState(rows);
-
   return (
     <Accordion
       expanded={expanded}
@@ -1176,7 +1186,7 @@ function NewsCategoryAccordion({
           sx={{ width: '100%', pr: 1 }}
         >
           <Typography variant="subtitle1" fontWeight={600} sx={{ flexGrow: 1 }}>
-            {title} ({rows.length})
+            {title} ({rowCount})
           </Typography>
           <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap onClick={(e) => e.stopPropagation()}>
             <FormControlLabel
@@ -1194,31 +1204,7 @@ function NewsCategoryAccordion({
           </Stack>
         </Stack>
       </AccordionSummary>
-      <AccordionDetails sx={{ pt: 0 }}>
-        {layout === 'card' ? (
-          <Box sx={catalogCardGridSx}>
-            {rows.map((row) => (
-              <RssInterestCard
-                key={row.id}
-                row={row}
-                categoryLabel={labelForCategory(row.category)}
-                canWrite={canWrite}
-                onEdit={() => onEdit(row)}
-                onDelete={() => onDelete(row.id)}
-                onPatch={(patch) => onPatch(row.id, patch)}
-              />
-            ))}
-          </Box>
-        ) : (
-          <RssInterestTable
-            rows={rows}
-            canWrite={canWrite}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            onPatch={onPatch}
-          />
-        )}
-      </AccordionDetails>
+      <AccordionDetails sx={{ pt: 0 }}>{children}</AccordionDetails>
     </Accordion>
   );
 }
@@ -1377,7 +1363,7 @@ function RssInterestTable({
           <TableRow>
             <TableCell>Feed name</TableCell>
             <TableCell>URL</TableCell>
-            <TableCell>Poll (s)</TableCell>
+            <TableCell>Poll interval</TableCell>
             <TableCell>Max</TableCell>
             <TableCell>Interested</TableCell>
             {canWrite ? <TableCell align="right">Actions</TableCell> : null}
@@ -1390,7 +1376,7 @@ function RssInterestTable({
               <TableRow key={row.id} hover>
                 <TableCell sx={{ fontWeight: feedName !== '—' ? 600 : 400 }}>{feedName}</TableCell>
                 <TableCell sx={{ maxWidth: 280, wordBreak: 'break-all' }}>{row.url}</TableCell>
-                <TableCell>{row.poll_seconds}</TableCell>
+                <TableCell>{formatIntervalDisplay(row.poll_seconds)}</TableCell>
                 <TableCell>{row.max_articles}</TableCell>
                 <InterestedToggleCell
                   checked={row.enabled}
@@ -1440,7 +1426,7 @@ function RssInterestCard({
             {row.url}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            Poll {row.poll_seconds}s · max {row.max_articles} articles
+            Poll {formatIntervalDisplay(row.poll_seconds)} · max {row.max_articles} articles
           </Typography>
           <FormControlLabel
             control={
@@ -1462,12 +1448,14 @@ function RssInterestCard({
 
 function StockInterestTable({
   rows,
+  labelForCategory,
   canWrite,
   onEdit,
   onDelete,
   onPatch,
 }: {
   rows: StockSymbolRow[];
+  labelForCategory: (categoryId: string) => string;
   canWrite: boolean;
   onEdit: (row: StockSymbolRow) => void;
   onDelete: (id: string) => void;
@@ -1480,6 +1468,7 @@ function StockInterestTable({
           <TableRow>
             <TableCell>Symbol</TableCell>
             <TableCell>Display name</TableCell>
+            <TableCell>Category</TableCell>
             <TableCell>Interested</TableCell>
             {canWrite ? <TableCell align="right">Actions</TableCell> : null}
           </TableRow>
@@ -1489,6 +1478,7 @@ function StockInterestTable({
             <TableRow key={row.id} hover>
               <TableCell sx={{ fontWeight: 600 }}>{row.symbol}</TableCell>
               <TableCell>{row.display_name}</TableCell>
+              <TableCell>{labelForCategory(row.category)}</TableCell>
               <InterestedToggleCell
                 checked={row.enabled}
                 disabled={!canWrite}
@@ -1510,12 +1500,14 @@ function StockInterestTable({
 
 function StockInterestCard({
   row,
+  categoryLabel,
   canWrite,
   onEdit,
   onDelete,
   onPatch,
 }: {
   row: StockSymbolRow;
+  categoryLabel: string;
   canWrite: boolean;
   onEdit: () => void;
   onDelete: () => void;
@@ -1528,6 +1520,7 @@ function StockInterestCard({
           <Typography variant="subtitle1" fontWeight={600}>
             {row.symbol}
           </Typography>
+          <Chip size="small" label={categoryLabel} variant="outlined" sx={{ alignSelf: 'flex-start' }} />
           {row.display_name.trim() ? (
             <Typography variant="body2" color="text.secondary">
               {row.display_name}
@@ -1683,13 +1676,14 @@ function InterestDialog({
     feedName: '',
     url: '',
     category: 'general',
-    poll_seconds: '3600',
+    poll_seconds: 3600,
     max_articles: '3',
     enabled: true,
   });
   const [stockForm, setStockForm] = useState({
     symbol: '',
     display_name: '',
+    category: 'general',
     enabled: true,
   });
   const [categoryForm, setCategoryForm] = useState({
@@ -1732,7 +1726,7 @@ function InterestDialog({
         feedName: editingRss.title?.trim() ?? '',
         url: editingRss.url,
         category: editingRss.category,
-        poll_seconds: String(editingRss.poll_seconds),
+        poll_seconds: editingRss.poll_seconds,
         max_articles: String(editingRss.max_articles),
         enabled: editingRss.enabled,
       });
@@ -1741,7 +1735,7 @@ function InterestDialog({
         feedName: '',
         url: '',
         category: curatorCategories[0]?.id ?? 'general',
-        poll_seconds: '3600',
+        poll_seconds: 3600,
         max_articles: '3',
         enabled: true,
       });
@@ -1750,10 +1744,16 @@ function InterestDialog({
       setStockForm({
         symbol: editingStock.symbol,
         display_name: editingStock.display_name,
+        category: editingStock.category,
         enabled: editingStock.enabled,
       });
     } else if (tab === 'stocks') {
-      setStockForm({ symbol: '', display_name: '', enabled: true });
+      setStockForm({
+        symbol: '',
+        display_name: '',
+        category: curatorCategories[0]?.id ?? 'general',
+        enabled: true,
+      });
     }
     const cat = editingJoke ?? editingTrivia;
     if (cat) {
@@ -1841,7 +1841,7 @@ function InterestDialog({
         const body = {
           url: rssForm.url,
           category: rssForm.category,
-          poll_seconds: Number.parseInt(rssForm.poll_seconds, 10),
+          poll_seconds: rssForm.poll_seconds,
           max_articles: Number.parseInt(rssForm.max_articles, 10),
           enabled: rssForm.enabled,
           title: feedName,
@@ -1866,6 +1866,7 @@ function InterestDialog({
           await patchStockSymbol(display, editingStock.id, {
             symbol,
             display_name: stockForm.display_name,
+            category: stockForm.category,
             enabled: stockForm.enabled,
           });
         } else {
@@ -1878,6 +1879,7 @@ function InterestDialog({
             id,
             symbol,
             display_name: stockForm.display_name,
+            category: stockForm.category,
             enabled: stockForm.enabled,
           });
         }
@@ -2040,11 +2042,13 @@ function InterestDialog({
                   ))}
                 </Select>
               </FormControl>
-              <TextField
-                label="Poll seconds"
-                value={rssForm.poll_seconds}
-                onChange={(e) => setRssForm((f) => ({ ...f, poll_seconds: e.target.value }))}
-                fullWidth
+              <DurationInputField
+                label="Poll interval"
+                valueSeconds={rssForm.poll_seconds}
+                onChange={(poll_seconds) => setRssForm((f) => ({ ...f, poll_seconds }))}
+                allowedUnits={['sec', 'min', 'hr', 'day']}
+                minSeconds={1}
+                disabled={saving}
               />
               <TextField
                 label="Max articles"
@@ -2077,6 +2081,21 @@ function InterestDialog({
                 onChange={(e) => setStockForm((f) => ({ ...f, display_name: e.target.value }))}
                 fullWidth
               />
+              <FormControl fullWidth>
+                <InputLabel id="stock-cat-label">Category</InputLabel>
+                <Select
+                  labelId="stock-cat-label"
+                  label="Category"
+                  value={stockForm.category}
+                  onChange={(e) => setStockForm((f) => ({ ...f, category: e.target.value }))}
+                >
+                  {curatorCategories.map((c) => (
+                    <MenuItem key={c.id} value={c.id}>
+                      {c.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
               <FormControlLabel
                 control={
                   <Switch

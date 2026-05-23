@@ -1,3 +1,5 @@
+import { formatPollInterval } from '@/util/pollIntervalFormat';
+
 export type DurationUnit = 'sec' | 'min' | 'hr' | 'day';
 
 export const DURATION_UNIT_SECONDS: Record<DurationUnit, number> = {
@@ -18,6 +20,24 @@ export function durationUnitLabel(unit: DurationUnit): string {
     case 'day':
       return 'Days';
   }
+}
+
+/** Operator-facing interval label (stored value is seconds). */
+export function formatIntervalDisplay(seconds: number): string {
+  return formatPollInterval(seconds);
+}
+
+/** Resolves the unit dropdown default: [preferred] when allowed, else heuristic. */
+export function resolveDurationUnit(
+  totalSeconds: number,
+  allowedUnits: readonly DurationUnit[],
+  preferred?: DurationUnit,
+): DurationUnit {
+  const units = allowedUnits.length > 0 ? allowedUnits : (['sec'] as const);
+  if (preferred != null && units.includes(preferred)) {
+    return preferred;
+  }
+  return defaultDurationUnit(totalSeconds, units);
 }
 
 /** Picks a sensible default unit for displaying [totalSeconds]. */

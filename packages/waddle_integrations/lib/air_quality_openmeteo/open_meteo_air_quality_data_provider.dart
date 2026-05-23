@@ -25,8 +25,8 @@ class OpenMeteoAirQualityDataProvider implements IDataProvider {
   OpenMeteoAirQualityDataProvider({
     http.Client? httpClient,
     int Function()? nowMs,
-  })  : _http = httpClient ?? http.Client(),
-        _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
+  }) : _http = httpClient ?? http.Client(),
+       _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
 
   final http.Client _http;
   final int Function() _nowMs;
@@ -73,7 +73,7 @@ class OpenMeteoAirQualityDataProvider implements IDataProvider {
     );
     final locations = await resolveWeatherLocationsForCollect(
       ctx.db,
-      extra.defaultLocation,
+      fallbackWhenEmpty: extra.defaultLocation,
     );
     ctx.diagnostics.provider(
       'open_meteo_air_quality: collect id=$integrationId '
@@ -153,10 +153,7 @@ class OpenMeteoAirQualityDataProvider implements IDataProvider {
 }
 
 class _AirQualitySnapshot {
-  const _AirQualitySnapshot({
-    required this.current,
-    required this.hourly,
-  });
+  const _AirQualitySnapshot({required this.current, required this.hourly});
 
   final Map<String, Object?> current;
   final List<Map<String, Object?>> hourly;

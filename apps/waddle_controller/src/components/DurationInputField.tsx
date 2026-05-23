@@ -10,10 +10,10 @@ import {
 } from '@mui/material';
 import {
   clampDurationSeconds,
-  defaultDurationUnit,
   durationPartsToSeconds,
   durationUnitLabel,
-  formatDurationSummary,
+  formatIntervalDisplay,
+  resolveDurationUnit,
   secondsToDurationParts,
   type DurationUnit,
 } from '@/util/durationInput';
@@ -23,6 +23,8 @@ type Props = {
   valueSeconds: number;
   onChange: (seconds: number) => void;
   allowedUnits?: readonly DurationUnit[];
+  /** Initial unit when [preferred] is allowed; defaults to minutes. */
+  defaultUnit?: DurationUnit;
   minSeconds?: number;
   maxSeconds?: number;
   disabled?: boolean;
@@ -33,7 +35,8 @@ export function DurationInputField({
   label,
   valueSeconds,
   onChange,
-  allowedUnits = ['sec', 'min', 'hr'],
+  allowedUnits = ['sec', 'min', 'hr', 'day'],
+  defaultUnit = 'min',
   minSeconds,
   maxSeconds,
   disabled,
@@ -44,7 +47,7 @@ export function DurationInputField({
     [allowedUnits],
   );
   const clampedSeconds = clampDurationSeconds(valueSeconds, minSeconds, maxSeconds);
-  const initialUnit = defaultDurationUnit(clampedSeconds, units);
+  const initialUnit = resolveDurationUnit(clampedSeconds, units, defaultUnit);
   const initialParts = secondsToDurationParts(clampedSeconds, initialUnit);
   const [amount, setAmount] = useState(String(initialParts.amount));
   const [unit, setUnit] = useState<DurationUnit>(initialParts.unit);
@@ -67,7 +70,7 @@ export function DurationInputField({
     onChange(secs);
   };
 
-  const summary = formatDurationSummary(clampedSeconds);
+  const summary = formatIntervalDisplay(clampedSeconds);
 
   return (
     <Stack spacing={0.5}>
@@ -107,7 +110,7 @@ export function DurationInputField({
           </Select>
         </FormControl>
         <Typography variant="body2" color="text.secondary" sx={{ pt: 1 }}>
-          ({summary} · {clampedSeconds}s stored)
+          ({summary})
         </Typography>
       </Stack>
       {helperText ? (

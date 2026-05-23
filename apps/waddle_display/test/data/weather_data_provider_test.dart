@@ -7,7 +7,6 @@ import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_integrations/weather_openweathermap/weather_data_provider.dart';
-import 'package:waddle_integrations/weather_openweathermap/weather_locations_for_collect.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 
@@ -129,53 +128,31 @@ void main() {
     await db.close();
   });
 
-  test(
-    'collect writes weather_current for synthetic default when no interest rows',
-    () async {
-      final db = openMemoryDatabase();
-      await warmDatabase(db);
-      await db.into(db.integrations).insert(
-            IntegrationsCompanion.insert(
-              id: kDefaultWeatherOpenWeatherMapIntegrationId,
-              integrationType: 'weather_openweathermap',
-              pollSeconds: const Value(60),
-              configJson: integrationConfigJsonValue(
-                configJson:
-                    '{"defaultLocation":{"name":"Fallback","lat":41.0,"lon":-75.0},"hourlyCount":1}',
-                baseUrl: 'https://api.openweathermap.org',
-              ),
+  test('collect skips when no interest rows with include_weather', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db.into(db.integrations).insert(
+          IntegrationsCompanion.insert(
+            id: kDefaultWeatherOpenWeatherMapIntegrationId,
+            integrationType: 'weather_openweathermap',
+            pollSeconds: const Value(60),
+            configJson: const Value(
+              '{"defaultLocation":{"name":"Fallback","lat":41.0,"lon":-75.0},"hourlyCount":1}',
             ),
-          );
-      final secrets = InMemorySecretStore();
-      final ctx = await _ctx(db, secrets, apiKey: 'owm-key');
-      final client = _WeatherClient((uri) {
-        if (uri.path.endsWith('/data/2.5/forecast')) {
-          return http.Response(_forecastPayload(baseTemp: 50), 200);
-        }
-        return http.Response(_payload(temp: 50, desc: 'cloudy'), 200);
-      });
-      final provider = WeatherDataProvider(
-        httpClient: client,
-        nowMs: () => 3000,
-      );
+          ),
+        );
+    final secrets = InMemorySecretStore();
+    final ctx = await _ctx(db, secrets, apiKey: 'owm-key');
+    final client = _WeatherClient((_) => http.Response(_payload(temp: 50, desc: 'cloudy'), 200));
+    final provider = WeatherDataProvider(httpClient: client);
 
-      await provider.collect(ctx);
+    await provider.collect(ctx);
 
-      final loc = await (db.select(db.interestsLocations)
-            ..where((t) => t.id.equals(kSyntheticDefaultWeatherLocationId)))
-          .getSingleOrNull();
-      expect(loc, isNotNull);
-      expect(loc!.name, 'Fallback');
-
-      final row = await (db.select(db.weatherCurrent)
-            ..where((t) => t.locationId.equals(kSyntheticDefaultWeatherLocationId)))
-          .getSingleOrNull();
-      expect(row, isNotNull);
-      expect(row!.currentTemp, closeTo(50, 0.001));
-      expect(row.currentDescription, 'cloudy');
-      await db.close();
-    },
-  );
+    expect(client.sends, 0);
+    final rows = await db.select(db.weatherCurrent).get();
+    expect(rows, isEmpty);
+    await db.close();
+  });
 
   test('collect writes weather payload to weather tables', () async {
     final db = openMemoryDatabase();

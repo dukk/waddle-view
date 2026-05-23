@@ -75,6 +75,7 @@ import {
 import { TickerPixelsPerSecondField } from '@/components/TickerPixelsPerSecondField';
 import { completeDialogSave } from '@/util/dialogSave';
 import { curatorConfigurationIdFromName } from '@/util/interestSlug';
+import { formatIntervalDisplay } from '@/util/durationInput';
 import { formatProgramDurationWithSeconds } from '@/util/programDurationFormat';
 import { DataViewEmptyState } from '@/components/dataView/DataViewEmptyState';
 import { DataViewPagination } from '@/components/dataView/DataViewPagination';
@@ -415,7 +416,7 @@ function CuratorConfigurationsSection({
                     <Chip size="small" variant="outlined" label={`Sort ${row.sort_order}`} />
                   </Stack>
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                    Program {row.program_duration_seconds}s / ticker{' '}
+                    Program {formatIntervalDisplay(row.program_duration_seconds)} / ticker{' '}
                     {formatTickerProgramDurationSummary(row.ticker_program_duration_seconds)}
                   </Typography>
                 </CardContent>
@@ -459,7 +460,7 @@ function CuratorConfigurationsSection({
                     </TableCell>
                     <TableCell>{row.sort_order}</TableCell>
                     <TableCell>
-                      {row.program_duration_seconds}s /{' '}
+                      {formatIntervalDisplay(row.program_duration_seconds)} /{' '}
                       {formatTickerProgramDurationSummary(row.ticker_program_duration_seconds)}
                     </TableCell>
                     <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
@@ -540,7 +541,7 @@ function tickerTapeDisplayLabel(label: string | undefined | null): string {
 }
 
 function formatTickerProgramDurationSummary(seconds: number | null): string {
-  return seconds == null ? 'display default' : `${seconds}s`;
+  return seconds == null ? 'display default' : formatIntervalDisplay(seconds);
 }
 
 function CuratorConfigurationDialog({

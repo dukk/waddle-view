@@ -91,7 +91,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 49;
+  int get schemaVersion => 51;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -449,6 +449,20 @@ ORDER BY priority DESC, created_at DESC;
         }
         from = 49;
       }
+      if (from == 49 && to >= 50) {
+        await _migrateV49ToV50StockSymbolCategories(this);
+        if (to == 50) {
+          return;
+        }
+        from = 50;
+      }
+      if (from == 50 && to >= 51) {
+        await _migrateV50ToV51InterestsStockSymbolCategoryBackfill(this);
+        if (to == 51) {
+          return;
+        }
+        from = 51;
+      }
       throw UnsupportedError(
         'Unsupported database upgrade from version $from to $to. '
         'Delete the SQLite file and reinstall (fresh seed).',
@@ -464,6 +478,7 @@ ORDER BY priority DESC, created_at DESC;
       await _ensureCuratorConfigurationsTickerPixelsPerSecond(this);
       await _ensureIntegrationAccountsConfiguredView(this);
       await _ensureAdoptionApiTables(this);
+      await _ensureInterestsStockSymbolCategoriesPopulated(this);
     },
   );
 }
@@ -2993,6 +3008,81 @@ Future<void> _migrateV32ToV33ViewportReserveOverrides(AppDatabase db) async {
 Future<void> _migrateV48ToV49TaskTables(AppDatabase db, Migrator m) async {
   await m.createTable(db.taskLists);
   await m.createTable(db.tasks);
+}
+
+/// Category slugs for legacy stock symbol ids (matches initial seed mapping).
+const _kStockSymbolCategoryBackfill = <String, String>{
+  'aapl': 'technology',
+  'msft': 'technology',
+  'goog': 'technology',
+  'nvda': 'technology',
+  'meta': 'technology',
+  'intc': 'technology',
+  'csco': 'technology',
+  'orcl': 'technology',
+  'ibm': 'technology',
+  'amzn': 'technology',
+  'jpm': 'finance',
+  'v': 'finance',
+  'ma': 'finance',
+  'spy': 'finance',
+  'voo': 'finance',
+  'qqq': 'finance',
+  'iwm': 'finance',
+  'nflx': 'entertainment',
+  'dis': 'entertainment',
+  'tsla': 'automotive',
+  'jnj': 'health',
+  'unh': 'health',
+  'xom': 'general',
+  'wmt': 'general',
+  'ko': 'general',
+};
+
+Future<void> _migrateV49ToV50StockSymbolCategories(AppDatabase db) async {
+  if (!await _sqliteTableExists(db, 'interests_stock_symbols')) {
+    return;
+  }
+  if (!await _sqliteColumnExists(db, 'interests_stock_symbols', 'category')) {
+    await db.customStatement(
+      "ALTER TABLE interests_stock_symbols ADD COLUMN category TEXT NOT NULL DEFAULT 'general'",
+    );
+  }
+  for (final entry in _kStockSymbolCategoryBackfill.entries) {
+    await db.customStatement(
+      'UPDATE interests_stock_symbols SET category = ? WHERE id = ?',
+      [entry.value, entry.key],
+    );
+  }
+  await _backfillNullInterestsStockSymbolCategories(db);
+}
+
+/// Schema 51: repair rows where [InterestsStockSymbols.category] was left NULL
+/// (e.g. nullable column add or upsert without category before defaults applied).
+Future<void> _migrateV50ToV51InterestsStockSymbolCategoryBackfill(
+  AppDatabase db,
+) async {
+  await _backfillNullInterestsStockSymbolCategories(db);
+}
+
+Future<void> _ensureInterestsStockSymbolCategoriesPopulated(
+  AppDatabase db,
+) async {
+  await _backfillNullInterestsStockSymbolCategories(db);
+}
+
+Future<void> _backfillNullInterestsStockSymbolCategories(AppDatabase db) async {
+  if (!await _sqliteTableExists(db, 'interests_stock_symbols')) {
+    return;
+  }
+  if (!await _sqliteColumnExists(db, 'interests_stock_symbols', 'category')) {
+    return;
+  }
+  await db.customStatement(
+    "UPDATE interests_stock_symbols "
+    "SET category = 'general' "
+    "WHERE category IS NULL OR trim(category) = ''",
+  );
 }
 
 /// Opens a file-backed SQLite at [sqliteFile] (e.g. for `waddlectl --database`).
