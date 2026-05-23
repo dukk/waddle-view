@@ -27,6 +27,8 @@ import 'bootstrap/webview_platform_bootstrap.dart';
 import 'clock.dart';
 import 'config/dev_dotenv_secrets.dart';
 import 'config/display_env.dart';
+import 'config/saas_env.dart';
+import 'saas/saas_feed_sync_service.dart';
 import 'config/display_timezone.dart';
 import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/blob/filesystem_blob_store.dart';
@@ -314,6 +316,7 @@ Future<void> _waddleBootstrap() async {
         server: server,
         instanceIdFile: instanceIdFile,
         engine: engine,
+        saasSync: saasSync,
         tickerCurated: tickerCurated,
         marqueeCycleGate: marqueeCycleGate,
         telemetryHub: telemetryHub,
@@ -344,7 +347,8 @@ class WaddleRoot extends StatefulWidget {
     required this.overlayRegistry,
     required this.server,
     required this.instanceIdFile,
-    required this.engine,
+    this.engine,
+    this.saasSync,
     required this.tickerCurated,
     required this.marqueeCycleGate,
     required this.telemetryHub,
@@ -362,7 +366,8 @@ class WaddleRoot extends StatefulWidget {
   final OverlayWidgetRegistry overlayRegistry;
   final LocalRestServer server;
   final File instanceIdFile;
-  final DataCollectionEngine engine;
+  final DataCollectionEngine? engine;
+  final SaasFeedSyncService? saasSync;
   final MemoryTickerCuratedRepository tickerCurated;
   final MarqueeCycleGate marqueeCycleGate;
   final OperatorTelemetryHub telemetryHub;
@@ -416,6 +421,7 @@ class _WaddleRootState extends State<WaddleRoot> {
             server: widget.server,
             instanceIdFile: widget.instanceIdFile,
             engine: widget.engine,
+            saasSync: widget.saasSync,
             tickerCurated: widget.tickerCurated,
             marqueeCycleGate: widget.marqueeCycleGate,
             telemetryHub: widget.telemetryHub,
@@ -442,7 +448,8 @@ class WaddleHome extends StatefulWidget {
     required this.overlayRegistry,
     required this.server,
     required this.instanceIdFile,
-    required this.engine,
+    this.engine,
+    this.saasSync,
     required this.tickerCurated,
     required this.marqueeCycleGate,
     required this.telemetryHub,
@@ -461,7 +468,8 @@ class WaddleHome extends StatefulWidget {
   final OverlayWidgetRegistry overlayRegistry;
   final LocalRestServer server;
   final File instanceIdFile;
-  final DataCollectionEngine engine;
+  final DataCollectionEngine? engine;
+  final SaasFeedSyncService? saasSync;
   final MemoryTickerCuratedRepository tickerCurated;
   final MarqueeCycleGate marqueeCycleGate;
   final OperatorTelemetryHub telemetryHub;
@@ -582,7 +590,8 @@ class _WaddleHomeState extends State<WaddleHome> {
     AppDebugLog.startup('dispose: stopping engine, closing REST and DB');
     widget.tickerCurated.dispose();
     widget.marqueeCycleGate.dispose();
-    widget.engine.stop();
+    widget.engine?.stop();
+    widget.saasSync?.stop();
     _tickerNavigationController.dispose();
     unawaited(widget.server.close());
     unawaited(widget.db.close());

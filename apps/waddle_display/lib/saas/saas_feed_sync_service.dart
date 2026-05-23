@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
-import 'package:waddle_shared/persistence/calendar_event_upsert.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 /// Subscribes to SaaS SSE and applies feed deltas into local SQLite.
@@ -71,14 +71,20 @@ class SaasFeedSyncService {
       final externalId = map['externalId']?.toString() ?? map['id']?.toString();
       final title = map['title']?.toString();
       if (externalId == null || title == null) continue;
-      await upsertCalendarEvent(
-        db,
-        externalId: externalId,
-        title: title,
-        startsAt: _parseDate(map['startsAt']),
-        endsAt: _parseDate(map['endsAt']),
-        source: map['source']?.toString() ?? 'saas',
-      );
+      final start = _parseDate(map['startsAt']) ?? DateTime.now().toUtc();
+      final end = _parseDate(map['endsAt']) ?? start.add(const Duration(hours: 1));
+      final id = 'saas:$externalId';
+      await db.into(db.calendarEvents).insertOnConflictUpdate(
+            CalendarEventsCompanion(
+              id: Value(id),
+              title: Value(title),
+              startMs: Value(start),
+              endMs: Value(end),
+              source: Value(map['source']?.toString() ?? 'saas'),
+              externalId: Value(externalId),
+              updatedAtMs: Value(DateTime.now().toUtc()),
+            ),
+          );
     }
   }
 
