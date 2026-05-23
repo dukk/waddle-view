@@ -22,10 +22,19 @@ export type CuratorScheduleRule = {
   nth_weekday: number | null;
 };
 
+export type CuratorMemberOp = 'add' | 'remove';
+
+export type CuratorMemberRef =
+  | string
+  | {
+      id: string;
+      op?: CuratorMemberOp;
+    };
+
 export type CuratorConfigurationMembers = {
-  screens: string[];
-  tickers: string[];
-  overlays: string[];
+  screens: CuratorMemberRef[];
+  tickers: CuratorMemberRef[];
+  overlays: CuratorMemberRef[];
 };
 
 export type CuratorConfigurationSummary = {

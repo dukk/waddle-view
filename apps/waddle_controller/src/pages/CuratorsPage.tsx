@@ -74,6 +74,10 @@ import {
 } from '@/util/displayThemeOptions';
 import { TickerPixelsPerSecondField } from '@/components/TickerPixelsPerSecondField';
 import { completeDialogSave } from '@/util/dialogSave';
+import {
+  curatorMemberRefsFromLists,
+  splitCuratorMemberRefs,
+} from '@/util/curatorMemberRefs';
 import { curatorConfigurationIdFromName } from '@/util/interestSlug';
 import { formatIntervalDisplay } from '@/util/durationInput';
 import { formatProgramDurationWithSeconds } from '@/util/programDurationFormat';
@@ -404,9 +408,6 @@ function CuratorConfigurationsSection({
                   <Typography variant="subtitle1" fontWeight={600}>
                     {row.name}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    {row.id}
-                  </Typography>
                   <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap">
                     <Chip
                       size="small"
@@ -439,7 +440,6 @@ function CuratorConfigurationsSection({
               <TableHead>
                 <TableRow>
                   <TableCell>Name</TableCell>
-                  <TableCell>ID</TableCell>
                   <TableCell>Layer</TableCell>
                   <TableCell>Sort</TableCell>
                   <TableCell>Program</TableCell>
@@ -450,7 +450,6 @@ function CuratorConfigurationsSection({
                 {displayRows.map((row) => (
                   <TableRow key={row.id} hover>
                     <TableCell sx={{ fontWeight: 600 }}>{row.name}</TableCell>
-                    <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.id}</TableCell>
                     <TableCell>
                       <Chip
                         size="small"
@@ -600,15 +599,17 @@ function CuratorConfigurationDialog({
     VIEWPORT_RESERVE_PCT.default,
   );
   const [dialogTab, setDialogTab] = useState<ConfigDialogTabId>('general');
-  const [requireNewsPhoto, setRequireNewsPhoto] = useState(true);
   const [screensEnabled, setScreensEnabled] = useState(true);
   const [tickerEnabled, setTickerEnabled] = useState(true);
   const [defaultConfig, setDefaultConfig] = useState(false);
   const [parentConfigurationId, setParentConfigurationId] = useState<string | null>(null);
   const [rules, setRules] = useState<Omit<CuratorScheduleRule, 'configuration_id'>[]>([]);
-  const [screenIds, setScreenIds] = useState<string[]>([]);
-  const [tickerIds, setTickerIds] = useState<string[]>([]);
-  const [overlayIds, setOverlayIds] = useState<string[]>([]);
+  const [screenAddIds, setScreenAddIds] = useState<string[]>([]);
+  const [screenRemoveIds, setScreenRemoveIds] = useState<string[]>([]);
+  const [tickerAddIds, setTickerAddIds] = useState<string[]>([]);
+  const [tickerRemoveIds, setTickerRemoveIds] = useState<string[]>([]);
+  const [overlayAddIds, setOverlayAddIds] = useState<string[]>([]);
+  const [overlayRemoveIds, setOverlayRemoveIds] = useState<string[]>([]);
   const [predicates, setPredicates] = useState<CuratorStatePredicateMeta[]>([]);
   const [screenOptions, setScreenOptions] = useState<CatalogOption[]>([]);
   const [tickerOptions, setTickerOptions] = useState<CatalogOption[]>([]);
@@ -621,16 +622,18 @@ function CuratorConfigurationDialog({
       try {
         const [preds, screens, tickers, overlays] = await Promise.all([
           fetchCuratorStatePredicates(display),
-          apiJson<{ items: { id: string; name: string }[] }>(display, '/v1/screens'),
+          apiJson<{ items: { id: string; label: string }[] }>(display, '/v1/screens'),
           apiJson<{ items: { id: string; label?: string | null }[] }>(display, '/v1/ticker/tapes'),
-          apiJson<{ items: { id: string; name: string }[] }>(display, '/v1/display/overlays'),
+          apiJson<{ items: { id: string; label: string }[] }>(display, '/v1/display/overlays'),
         ]);
         if (cancelled) return;
         setPredicates(preds);
         setScreenOptions(
           (screens.items ?? []).map((s) => ({
             id: s.id,
-            label: catalogMemberDisplayLabel(s.name, s.id),
+            label: catalogMemberDisplayLabel(s.label, s.id, {
+              unnamedLabel: 'Unnamed screen',
+            }),
           })),
         );
         setTickerOptions(
@@ -642,7 +645,9 @@ function CuratorConfigurationDialog({
         setOverlayOptions(
           (overlays.items ?? []).map((o) => ({
             id: o.id,
-            label: catalogMemberDisplayLabel(o.name, o.id),
+            label: catalogMemberDisplayLabel(o.label, o.id, {
+              unnamedLabel: 'Unnamed overlay',
+            }),
           })),
         );
         if (configurationId) {
@@ -684,7 +689,6 @@ function CuratorConfigurationDialog({
           setViewportReserveLeftOverride(
             detail.viewport_reserve_left_pct_override ?? VIEWPORT_RESERVE_PCT.default,
           );
-          setRequireNewsPhoto(detail.require_news_photo_for_screens);
           setScreensEnabled(detail.screens_enabled);
           setTickerEnabled(detail.ticker_enabled);
           setDefaultConfig(detail.default_config);
@@ -707,9 +711,15 @@ function CuratorConfigurationDialog({
               nth_weekday: r.nth_weekday,
             })),
           );
-          setScreenIds(detail.members.screens ?? []);
-          setTickerIds(detail.members.tickers ?? []);
-          setOverlayIds(detail.members.overlays ?? []);
+          const screenMembers = splitCuratorMemberRefs(detail.members.screens);
+          setScreenAddIds(screenMembers.add);
+          setScreenRemoveIds(screenMembers.remove);
+          const tickerMembers = splitCuratorMemberRefs(detail.members.tickers);
+          setTickerAddIds(tickerMembers.add);
+          setTickerRemoveIds(tickerMembers.remove);
+          const overlayMembers = splitCuratorMemberRefs(detail.members.overlays);
+          setOverlayAddIds(overlayMembers.add);
+          setOverlayRemoveIds(overlayMembers.remove);
         }
       } catch (e) {
         if (!cancelled) {
@@ -729,13 +739,33 @@ function CuratorConfigurationDialog({
 
   const mergedTickerOptions = useMemo(() => {
     const byId = new Map(tickerOptions.map((o) => [o.id, o]));
-    for (const id of tickerIds) {
+    for (const id of [...tickerAddIds, ...tickerRemoveIds]) {
       if (!byId.has(id)) {
         byId.set(id, { id, label: 'Removed tape' });
       }
     }
     return [...byId.values()].sort((a, b) => a.label.localeCompare(b.label));
-  }, [tickerOptions, tickerIds]);
+  }, [tickerOptions, tickerAddIds, tickerRemoveIds]);
+
+  const mergedScreenOptions = useMemo(() => {
+    const byId = new Map(screenOptions.map((o) => [o.id, o]));
+    for (const id of [...screenAddIds, ...screenRemoveIds]) {
+      if (!byId.has(id)) {
+        byId.set(id, { id, label: 'Removed screen' });
+      }
+    }
+    return [...byId.values()].sort((a, b) => a.label.localeCompare(b.label));
+  }, [screenOptions, screenAddIds, screenRemoveIds]);
+
+  const mergedOverlayOptions = useMemo(() => {
+    const byId = new Map(overlayOptions.map((o) => [o.id, o]));
+    for (const id of [...overlayAddIds, ...overlayRemoveIds]) {
+      if (!byId.has(id)) {
+        byId.set(id, { id, label: 'Removed overlay' });
+      }
+    }
+    return [...byId.values()].sort((a, b) => a.label.localeCompare(b.label));
+  }, [overlayOptions, overlayAddIds, overlayRemoveIds]);
 
   const buildBody = (configId: string): CuratorConfigurationWriteBody => ({
     name: name.trim(),
@@ -757,7 +787,6 @@ function CuratorConfigurationDialog({
         : viewportReserveBottomOverride,
     viewport_reserve_left_pct_override:
       isEnhancementLayer || useDisplayViewportReserveDefaults ? null : viewportReserveLeftOverride,
-    require_news_photo_for_screens: requireNewsPhoto,
     screens_enabled: isEnhancementLayer ? true : screensEnabled,
     ticker_enabled: isEnhancementLayer ? true : tickerEnabled,
     default_config: defaultConfig,
@@ -767,9 +796,18 @@ function CuratorConfigurationDialog({
       configuration_id: configId,
     })),
     members: {
-      screens: screenIds,
-      tickers: tickerIds,
-      overlays: overlayIds,
+      screens: curatorMemberRefsFromLists({
+        add: screenAddIds,
+        remove: screenRemoveIds,
+      }),
+      tickers: curatorMemberRefsFromLists({
+        add: tickerAddIds,
+        remove: tickerRemoveIds,
+      }),
+      overlays: curatorMemberRefsFromLists({
+        add: overlayAddIds,
+        remove: overlayRemoveIds,
+      }),
     },
   });
 
@@ -1010,14 +1048,21 @@ function CuratorConfigurationDialog({
                   {isEnhancementLayer ? (
                     <>
                       <Typography variant="body2" color="text.secondary">
-                        Screens added here stack on the active base program when this enhancement
-                        matches its schedule.
+                        Add or remove screens relative to the active base program when this
+                        enhancement matches its schedule. Higher sort order wins conflicts.
                       </Typography>
                       <MemberAutocomplete
-                        label="Screens"
-                        options={screenOptions}
-                        value={screenIds}
-                        onChange={setScreenIds}
+                        label="Add screens"
+                        options={mergedScreenOptions}
+                        value={screenAddIds}
+                        onChange={setScreenAddIds}
+                        disabled={formDisabled}
+                      />
+                      <MemberAutocomplete
+                        label="Remove screens"
+                        options={mergedScreenOptions}
+                        value={screenRemoveIds}
+                        onChange={setScreenRemoveIds}
                         disabled={formDisabled}
                       />
                     </>
@@ -1043,21 +1088,18 @@ function CuratorConfigurationDialog({
                         disabled={formDisabled || !screensEnabled}
                         formatValue={formatProgramDurationWithSeconds}
                       />
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={requireNewsPhoto}
-                            onChange={(_, v) => setRequireNewsPhoto(v)}
-                            disabled={formDisabled || !screensEnabled}
-                          />
-                        }
-                        label="Require news photo for news screens"
+                      <MemberAutocomplete
+                        label="Add screens"
+                        options={mergedScreenOptions}
+                        value={screenAddIds}
+                        onChange={setScreenAddIds}
+                        disabled={formDisabled || !screensEnabled}
                       />
                       <MemberAutocomplete
-                        label="Screens"
-                        options={screenOptions}
-                        value={screenIds}
-                        onChange={setScreenIds}
+                        label="Remove screens"
+                        options={mergedScreenOptions}
+                        value={screenRemoveIds}
+                        onChange={setScreenRemoveIds}
                         disabled={formDisabled || !screensEnabled}
                       />
                     </>
@@ -1069,14 +1111,21 @@ function CuratorConfigurationDialog({
                   {isEnhancementLayer ? (
                     <>
                       <Typography variant="body2" color="text.secondary">
-                        Ticker tapes added here stack on the active base program. Marquee visibility
-                        and scroll speed follow the base or exclusive configuration.
+                        Add or remove ticker tapes relative to the active base program. Marquee
+                        visibility and scroll speed follow the base or exclusive configuration.
                       </Typography>
                       <MemberAutocomplete
-                        label="Ticker tapes"
+                        label="Add ticker tapes"
                         options={mergedTickerOptions}
-                        value={tickerIds}
-                        onChange={setTickerIds}
+                        value={tickerAddIds}
+                        onChange={setTickerAddIds}
+                        disabled={formDisabled}
+                      />
+                      <MemberAutocomplete
+                        label="Remove ticker tapes"
+                        options={mergedTickerOptions}
+                        value={tickerRemoveIds}
+                        onChange={setTickerRemoveIds}
                         disabled={formDisabled}
                       />
                     </>
@@ -1126,10 +1175,17 @@ function CuratorConfigurationDialog({
                         configuration is the active primary curator (base or exclusive).
                       </Typography>
                       <MemberAutocomplete
-                        label="Ticker tapes"
+                        label="Add ticker tapes"
                         options={mergedTickerOptions}
-                        value={tickerIds}
-                        onChange={setTickerIds}
+                        value={tickerAddIds}
+                        onChange={setTickerAddIds}
+                        disabled={formDisabled || !tickerEnabled}
+                      />
+                      <MemberAutocomplete
+                        label="Remove ticker tapes"
+                        options={mergedTickerOptions}
+                        value={tickerRemoveIds}
+                        onChange={setTickerRemoveIds}
                         disabled={formDisabled || !tickerEnabled}
                       />
                     </>
@@ -1137,13 +1193,25 @@ function CuratorConfigurationDialog({
                 </Stack>
               )}
               {dialogTab === 'overlay' && (
-                <MemberAutocomplete
-                  label="Overlays"
-                  options={overlayOptions}
-                  value={overlayIds}
-                  onChange={setOverlayIds}
-                  disabled={formDisabled}
-                />
+                <Stack spacing={2}>
+                  <Typography variant="body2" color="text.secondary">
+                    Add or remove celebration overlays when this configuration is active.
+                  </Typography>
+                  <MemberAutocomplete
+                    label="Add overlays"
+                    options={mergedOverlayOptions}
+                    value={overlayAddIds}
+                    onChange={setOverlayAddIds}
+                    disabled={formDisabled}
+                  />
+                  <MemberAutocomplete
+                    label="Remove overlays"
+                    options={mergedOverlayOptions}
+                    value={overlayRemoveIds}
+                    onChange={setOverlayRemoveIds}
+                    disabled={formDisabled}
+                  />
+                </Stack>
               )}
               {dialogTab === 'advanced' && (
                 <Stack spacing={2}>

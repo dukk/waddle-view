@@ -984,6 +984,7 @@ void registerOperatorRestRoutes(
         (map['min_placements_per_program'] as num?)?.toInt() ?? 0;
     final maxPlacements = (map['max_placements_per_program'] as num?)?.toInt();
     final dataKey = (map['data_key'] as String?)?.trim() ?? '';
+    final requireNewsPhoto = _readScreenRequireNewsPhoto(map);
     final resolvedLabel = label.isEmpty ? id : label;
     await db
         .into(db.screens)
@@ -1003,6 +1004,7 @@ void registerOperatorRestRoutes(
                 ? const Value.absent()
                 : Value(maxPlacements),
             dataKey: Value(dataKey),
+            requireNewsPhoto: Value(requireNewsPhoto),
           ),
         );
     await onConfigChanged();
@@ -1111,6 +1113,9 @@ void registerOperatorRestRoutes(
     final dataKey = map.containsKey('data_key')
         ? ((map['data_key'] as String?)?.trim() ?? '')
         : existing.dataKey;
+    final requireNewsPhoto = map.containsKey('require_news_photo')
+        ? _readScreenRequireNewsPhoto(map)
+        : existing.requireNewsPhoto;
     await (db.update(db.screens)..where((t) => t.id.equals(id))).write(
       ScreensCompanion(
         label: Value(label),
@@ -1124,6 +1129,7 @@ void registerOperatorRestRoutes(
         minPlacementsPerProgram: Value(minPlacements),
         maxPlacementsPerProgram: Value(maxPlacements),
         dataKey: Value(dataKey),
+        requireNewsPhoto: Value(requireNewsPhoto),
       ),
     );
     await onConfigChanged();
@@ -1161,4 +1167,15 @@ String _configJsonStringFromBody(dynamic v) {
     return jsonEncode(v);
   }
   throw const FormatException('config_json_must_be_string_or_object');
+}
+
+bool _readScreenRequireNewsPhoto(Map<String, dynamic> map) {
+  final v = map['require_news_photo'];
+  if (v is bool) {
+    return v;
+  }
+  if (v is num) {
+    return v != 0;
+  }
+  return true;
 }

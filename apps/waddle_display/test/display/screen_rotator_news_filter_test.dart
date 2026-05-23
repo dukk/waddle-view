@@ -5,7 +5,7 @@ import 'package:waddle_display/curator/curator_content_pools.dart';
 import 'package:waddle_display/curator/screen_program_curator.dart';
 
 /// Photo gating for RSS screen slides is enforced by [ScreenProgramCurator]
-/// ([rssArticleMetrics], [requirePhotoForRssScreens]); the ticker is unchanged.
+/// via per-screen [ScreenCandidate.requireNewsPhoto]; the ticker is unchanged.
 void main() {
   test('photo requirement drops rss-only program when no images available', () {
     const layout =
@@ -25,7 +25,9 @@ void main() {
       recentScreenIdsOldestFirst: const [],
       historyDepth: 5,
       random: Random(1),
-      randomPools: const {'rss': ['x']},
+      randomPools: const {
+        'rss': ['x'],
+      },
       rssArticleMetrics: const {
         'x': RssArticleMetric(
           hasImage: false,
@@ -33,7 +35,6 @@ void main() {
           categoryId: 'general',
         ),
       },
-      requirePhotoForRssScreens: true,
     );
     expect(slides, isEmpty);
   });
@@ -56,7 +57,9 @@ void main() {
       recentScreenIdsOldestFirst: const [],
       historyDepth: 5,
       random: Random(1),
-      randomPools: const {'rss': ['x']},
+      randomPools: const {
+        'rss': ['x'],
+      },
       rssArticleMetrics: const {
         'x': RssArticleMetric(
           hasImage: true,
@@ -64,7 +67,6 @@ void main() {
           categoryId: 'general',
         ),
       },
-      requirePhotoForRssScreens: true,
     );
     expect(slides, hasLength(1));
     expect(slides.single.randomChoices['main_news'], 'x');

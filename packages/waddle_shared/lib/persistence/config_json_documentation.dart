@@ -30,6 +30,7 @@ Map<String, Object?> _baseSchema({
   required String description,
   required Map<String, Object?> properties,
   List<String> requiredKeys = const [],
+  bool allowAdditionalProperties = true,
 }) {
   return {
     r'$schema': _kJsonSchemaDraft,
@@ -37,7 +38,7 @@ Map<String, Object?> _baseSchema({
     'description': description,
     'type': 'object',
     'properties': properties,
-    'additionalProperties': true,
+    'additionalProperties': allowAdditionalProperties,
     if (requiredKeys.isNotEmpty) 'required': requiredKeys,
   };
 }
@@ -158,13 +159,10 @@ final Map<String, ProviderConfigJsonDoc> kProviderConfigJsonMeta = {
           'lang': {'type': 'string'},
           'hourlyCount': {'type': 'integer', 'minimum': 0},
         },
+        allowAdditionalProperties: false,
       ),
     ),
-    example: jsonEncode({
-      'units': 'imperial',
-      'lang': 'en',
-      'hourlyCount': 6,
-    }),
+    example: jsonEncode({'units': 'imperial', 'lang': 'en', 'hourlyCount': 6}),
   ),
   'weather_openmeteo': ProviderConfigJsonDoc(
     schema: jsonEncode(

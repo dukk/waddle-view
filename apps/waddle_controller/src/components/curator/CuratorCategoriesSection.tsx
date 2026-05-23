@@ -6,7 +6,6 @@ import {
   Chip,
   IconButton,
   Stack,
-  Switch,
   Table,
   TableBody,
   TableCell,
@@ -19,19 +18,11 @@ import {
 } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import type { SavedDisplay } from '@/storage/displays';
-import {
-  listCuratorConfigurations,
-  updateCuratorConfiguration,
-} from '@/api/curatorConfigurations';
 import { apiJson, ApiError } from '@/api/client';
 import { DataViewPagination } from '@/components/dataView/DataViewPagination';
 import { DisplayRefreshIndicator } from '@/components/DisplayRefreshIndicator';
 import { useDisplayRefresh } from '@/hooks/useDisplayRefresh';
 import { curatorCategoryMaterialIconComponent } from '@/util/curatorCategoryMaterialIcon';
-
-type CuratorSettings = {
-  require_news_photo_for_screens: boolean;
-};
 
 type CuratorCategoryRow = {
   id: string;
@@ -53,10 +44,6 @@ export function CuratorCategoriesSection({
   const { loading, wrapRefresh } = useDisplayRefresh();
   const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
-  const [photoForm, setPhotoForm] = useState<CuratorSettings | null>(null);
-  const [defaultConfigId, setDefaultConfigId] = useState<string | null>(null);
-
   const [categories, setCategories] = useState<CuratorCategoryRow[]>([]);
   const [catEdits, setCatEdits] = useState<Record<string, { label: string; material: string }>>({});
   const [newCat, setNewCat] = useState({ id: '', label: '', material: '' });
@@ -68,15 +55,6 @@ export function CuratorCategoriesSection({
     await wrapRefresh(async () => {
       setError(null);
       try {
-        const configs = await listCuratorConfigurations(display);
-        const defaultConfig =
-          configs.find((c) => c.default_config) ?? configs[0] ?? null;
-        setDefaultConfigId(defaultConfig?.id ?? null);
-        setPhotoForm({
-          require_news_photo_for_screens:
-            defaultConfig?.require_news_photo_for_screens ?? true,
-        });
-
         const catBody = await apiJson<{ items: CuratorCategoryRow[] }>(display, '/v1/curator/categories');
         setCategories(catBody.items);
         const next: Record<string, { label: string; material: string }> = {};
@@ -126,20 +104,6 @@ export function CuratorCategoriesSection({
     const last = Math.max(0, Math.ceil(filteredCategories.length / catRowsPerPage) - 1);
     if (catPage > last) setCatPage(last);
   }, [filteredCategories.length, catRowsPerPage, catPage]);
-
-  const saveNewsPhoto = async () => {
-    if (!photoForm || !canWrite || !defaultConfigId) return;
-    setError(null);
-    setSaved(false);
-    try {
-      await updateCuratorConfiguration(display, defaultConfigId, {
-        require_news_photo_for_screens: photoForm.require_news_photo_for_screens,
-      });
-      setSaved(true);
-    } catch (e) {
-      setError(e instanceof ApiError ? `${e.status}: ${e.message}` : String(e));
-    }
-  };
 
   const saveCategoryRow = async (id: string) => {
     if (!canWrite) return;
@@ -210,31 +174,6 @@ export function CuratorCategoriesSection({
         <Alert severity="error" onClose={() => setError(null)}>
           {error}
         </Alert>
-      )}
-
-      {canWrite && photoForm && (
-        <Box>
-          <Typography variant="subtitle2" gutterBottom>
-            News slides
-          </Typography>
-          {saved && (
-            <Alert severity="success" sx={{ mb: 1 }} onClose={() => setSaved(false)}>
-              News photo setting saved.
-            </Alert>
-          )}
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <Switch
-              checked={photoForm.require_news_photo_for_screens}
-              onChange={(_, v) =>
-                setPhotoForm({ ...photoForm, require_news_photo_for_screens: v })
-              }
-            />
-            <Typography variant="body2">Require news photo for screen slides</Typography>
-          </Stack>
-          <Button variant="contained" size="small" sx={{ mt: 1 }} onClick={() => void saveNewsPhoto()}>
-            Save news photo setting
-          </Button>
-        </Box>
       )}
 
       <Box>

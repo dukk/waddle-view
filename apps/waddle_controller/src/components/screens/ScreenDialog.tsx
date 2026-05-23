@@ -6,7 +6,9 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Checkbox,
   FormControl,
+  FormControlLabel,
   InputLabel,
   MenuItem,
   Select,
@@ -40,6 +42,7 @@ export type ScreenDialogRow = {
   min_gap_between_shows_seconds: number;
   min_placements_per_program: number;
   max_placements_per_program?: number | null;
+  require_news_photo?: boolean;
 };
 
 export type ScreenDialogMode = 'create' | 'edit';
@@ -48,6 +51,14 @@ const UNSELECTED_TYPE = '';
 const DEFAULT_MIN_DWELL = 8;
 const DEFAULT_MAX_DWELL = 15;
 const DEFAULT_WEIGHT = 100;
+
+const NEWS_SCREEN_TYPES = new Set([
+  'news',
+  'news_columns',
+  'news_stack',
+  'news_grid',
+  'news_right',
+]);
 
 type Props = {
   open: boolean;
@@ -86,7 +97,10 @@ export function ScreenDialog({
   const [minPlacements, setMinPlacements] = useState(0);
   const [maxPlacements, setMaxPlacements] = useState(0);
   const [configForm, setConfigForm] = useState<Record<string, unknown>>({});
+  const [requireNewsPhoto, setRequireNewsPhoto] = useState(true);
   const [categories, setCategories] = useState<ContentCategoryOption[]>([]);
+
+  const showRequireNewsPhoto = NEWS_SCREEN_TYPES.has(screenType);
 
   const previewId = useMemo(() => {
     if (mode !== 'create') return '';
@@ -125,6 +139,7 @@ export function ScreenDialog({
       setMinPlacements(initial.min_placements_per_program);
       setMaxPlacements(initial.max_placements_per_program ?? 0);
       setConfigForm(parseJsonObject(initial.config_json));
+      setRequireNewsPhoto(initial.require_news_photo ?? true);
     } else {
       setLabel('');
       setDescription('');
@@ -136,6 +151,7 @@ export function ScreenDialog({
       setMinPlacements(0);
       setMaxPlacements(0);
       setConfigForm({});
+      setRequireNewsPhoto(true);
     }
   }, [open, initial]);
 
@@ -210,6 +226,7 @@ export function ScreenDialog({
             min_placements_per_program: minPlacements,
             max_placements_per_program: maxPlacements <= 0 ? null : maxPlacements,
             config_json: configForm,
+            ...(showRequireNewsPhoto ? { require_news_photo: requireNewsPhoto } : {}),
           }),
         });
       } else if (initial) {
@@ -225,6 +242,7 @@ export function ScreenDialog({
             min_placements_per_program: minPlacements,
             max_placements_per_program: maxPlacements <= 0 ? null : maxPlacements,
             config_json: configForm,
+            ...(showRequireNewsPhoto ? { require_news_photo: requireNewsPhoto } : {}),
           }),
         });
       }
@@ -291,6 +309,18 @@ export function ScreenDialog({
             <Typography variant="body2" color="text.secondary">
               Type: {editTypeLabel || screenType}
             </Typography>
+          )}
+          {showRequireNewsPhoto && (
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={requireNewsPhoto}
+                  onChange={(_, v) => setRequireNewsPhoto(v)}
+                  disabled={saving}
+                />
+              }
+              label="Require news photo for RSS articles on this screen"
+            />
           )}
           {screenType ? (
             <>

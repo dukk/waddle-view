@@ -57,6 +57,7 @@ import {
 } from '@/constants/displaySettingsTabs';
 import {
   mergeIntegrationConfigForSave,
+  operatorIntegrationFormData,
   prepareIntegrationOperatorSchema,
 } from '@/util/integrationOperatorSchema';
 import { prepareRjsfSchema } from '@/util/rjsfSchema';
@@ -202,6 +203,7 @@ function integrationOperatorSchema(
 ): RJSFSchema {
   return prepareIntegrationOperatorSchema(
     schemaForIntegrationType(schemas, row.integration_type),
+    row.integration_type,
   );
 }
 
@@ -883,7 +885,7 @@ function EditIntegrationDialog({
   const saveEnabled = intent === 'enable' ? true : row.enabled;
   const [poll, setPoll] = useState(row.poll_seconds);
   const [formData, setFormData] = useState<Record<string, unknown>>(() =>
-    parseJsonObject(row.config_json),
+    operatorIntegrationFormData(row.integration_type, row.config_json),
   );
   const [outlookConfig, setOutlookConfig] = useState<OutlookCalendarConfigState>(() =>
     parseOutlookCalendarConfig(parseJsonObject(row.config_json)),

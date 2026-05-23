@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:test/test.dart';
 import 'package:waddle_shared/persistence/database.dart';
@@ -28,6 +29,16 @@ CREATE TABLE curator_configuration_members (
 );
 ''';
 
+const _kCuratorScheduleRulesV51Ddl = '''
+CREATE TABLE curator_schedule_rules (
+  id TEXT NOT NULL PRIMARY KEY,
+  configuration_id TEXT NOT NULL,
+  priority INTEGER NOT NULL DEFAULT 0,
+  days_of_week_mask INTEGER,
+  repeat_annually INTEGER NOT NULL DEFAULT 1
+);
+''';
+
 const _kScreensV51Ddl = '''
 CREATE TABLE screens (
   id TEXT NOT NULL PRIMARY KEY,
@@ -46,61 +57,66 @@ CREATE TABLE screens (
 ''';
 
 void main() {
-  test('schema 51 to 52 adds op column, rebalances sort, inserts weekday/weekend',
-      () async {
-    final executor = NativeDatabase.memory(setup: (raw) {
-      raw.execute(_kCuratorConfigurationsV51Ddl);
-      raw.execute(_kCuratorConfigurationMembersV51Ddl);
-      raw.execute(_kScreensV51Ddl);
-      raw.execute(
-        "INSERT INTO curator_configurations (id, name, layer, sort_order) "
-        "VALUES ('night', 'Night', 'base', 10)",
+  test(
+    'schema 51 to 52 adds op column, rebalances sort, inserts weekday/weekend',
+    () async {
+      final executor = NativeDatabase.memory(
+        setup: (raw) {
+          raw.execute(_kCuratorConfigurationsV51Ddl);
+          raw.execute(_kCuratorConfigurationMembersV51Ddl);
+          raw.execute(_kCuratorScheduleRulesV51Ddl);
+          raw.execute(_kScreensV51Ddl);
+          raw.execute(
+            "INSERT INTO curator_configurations (id, name, layer, sort_order) "
+            "VALUES ('night', 'Night', 'base', 10)",
+          );
+          raw.execute(
+            "INSERT INTO curator_configurations (id, name, layer, sort_order) "
+            "VALUES ('waddle_birthday', 'Birthday', 'enhancement', 100)",
+          );
+          raw.execute(
+            "INSERT INTO screens (id, label, screen_type) "
+            "VALUES ('news', 'News', 'news')",
+          );
+          raw.execute(
+            'INSERT INTO curator_configuration_members '
+            "(configuration_id, entity_type, entity_id) VALUES ('night', 'screen', 'news')",
+          );
+          raw.execute('PRAGMA user_version = 51');
+        },
       );
-      raw.execute(
-        "INSERT INTO curator_configurations (id, name, layer, sort_order) "
-        "VALUES ('waddle_birthday', 'Birthday', 'enhancement', 100)",
+      final db = AppDatabase(
+        DatabaseConnection(executor, closeStreamsSynchronously: true),
       );
-      raw.execute(
-        "INSERT INTO screens (id, label, screen_type) "
-        "VALUES ('news', 'News', 'news')",
-      );
-      raw.execute(
-        'INSERT INTO curator_configuration_members '
-        "(configuration_id, entity_type, entity_id) VALUES ('night', 'screen', 'news')",
-      );
-      raw.execute('PRAGMA user_version = 51');
-    });
-    final db = AppDatabase(
-      DatabaseConnection(executor, closeStreamsSynchronously: true),
-    );
-    await db.customStatement('SELECT 1');
+      await db.customStatement('SELECT 1');
 
-    final night = await (db.select(db.curatorConfigurations)
-          ..where((t) => t.id.equals('night')))
-        .getSingle();
-    expect(night.sortOrder, 100);
+      final night = await (db.select(
+        db.curatorConfigurations,
+      )..where((t) => t.id.equals('night'))).getSingle();
+      expect(night.sortOrder, 100);
 
-    final birthday = await (db.select(db.curatorConfigurations)
-          ..where((t) => t.id.equals('waddle_birthday')))
-        .getSingle();
-    expect(birthday.sortOrder, 200);
+      final birthday = await (db.select(
+        db.curatorConfigurations,
+      )..where((t) => t.id.equals('waddle_birthday'))).getSingle();
+      expect(birthday.sortOrder, 200);
 
-    final member = await (db.select(db.curatorConfigurationMembers)
-          ..where((t) => t.configurationId.equals('night')))
-        .getSingle();
-    expect(member.op, kCuratorMemberOpAdd);
+      final member = await (db.select(
+        db.curatorConfigurationMembers,
+      )..where((t) => t.configurationId.equals('night'))).getSingle();
+      expect(member.op, kCuratorMemberOpAdd);
 
-    final weekday = await (db.select(db.curatorConfigurations)
-          ..where((t) => t.id.equals('weekday')))
-        .getSingleOrNull();
-    expect(weekday, isNotNull);
-    expect(weekday!.sortOrder, 10);
+      final weekday = await (db.select(
+        db.curatorConfigurations,
+      )..where((t) => t.id.equals('weekday'))).getSingleOrNull();
+      expect(weekday, isNotNull);
+      expect(weekday!.sortOrder, 10);
 
-    final screen = await (db.select(db.screens)
-          ..where((t) => t.id.equals('news')))
-        .getSingle();
-    expect(screen.requireNewsPhoto, isTrue);
+      final screen = await (db.select(
+        db.screens,
+      )..where((t) => t.id.equals('news'))).getSingle();
+      expect(screen.requireNewsPhoto, isTrue);
 
-    await db.close();
-  });
+      await db.close();
+    },
+  );
 }

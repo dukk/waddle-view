@@ -1,4 +1,4 @@
-const STORAGE_PREFIX = 'waddle_controller_config_schemas_v8:';
+const STORAGE_PREFIX = 'waddle_controller_config_schemas_v9:';
 
 export type ConfigSchemaMetaItem = {
   config_json_schema?: unknown;

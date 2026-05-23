@@ -16,6 +16,7 @@ ScreenCandidate _c({
   int? maxPlacementsPerProgram,
   String dataKey = '',
   String layout = '{"v":1,"layout":"single","widgets":[]}',
+  bool requireNewsPhoto = true,
 }) {
   return ScreenCandidate(
     id: id,
@@ -27,6 +28,7 @@ ScreenCandidate _c({
     maxPlacementsPerProgram: maxPlacementsPerProgram,
     dataKey: dataKey,
     layoutJson: layout,
+    requireNewsPhoto: requireNewsPhoto,
   );
 }
 
@@ -485,7 +487,6 @@ void main() {
               categoryId: 'general',
             ),
           },
-          requirePhotoForRssScreens: true,
         );
         expect(slides, hasLength(2));
         seenIds.add(slides[0].screenId);
@@ -520,7 +521,6 @@ void main() {
           categoryId: 'general',
         ),
       },
-      requirePhotoForRssScreens: true,
     );
     expect(slides, hasLength(1));
     expect(slides.single.screenId, 'news_big');
@@ -546,7 +546,6 @@ void main() {
           categoryId: 'general',
         ),
       },
-      requirePhotoForRssScreens: true,
     );
     expect(slides, isEmpty);
   });
@@ -577,7 +576,6 @@ void main() {
           categoryId: 'general',
         ),
       },
-      requirePhotoForRssScreens: true,
     );
     expect(slides, hasLength(1));
     expect(slides.single.randomChoices['main_news'], 'n1');
@@ -625,7 +623,6 @@ void main() {
           categoryId: 'usa',
         ),
       },
-      requirePhotoForRssScreens: true,
     );
     expect(slides, hasLength(1));
     final m = slides.single.randomChoices;

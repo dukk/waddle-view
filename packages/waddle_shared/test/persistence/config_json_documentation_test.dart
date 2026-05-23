@@ -146,6 +146,7 @@ void main() {
     final properties = schema['properties'] as Map<String, dynamic>;
     expect(properties.containsKey('baseUrl'), isFalse);
     expect(properties.containsKey('defaultLocation'), isFalse);
+    expect(schema['additionalProperties'], isFalse);
     expect(properties.containsKey('units'), isTrue);
     expect(properties.containsKey('hourlyCount'), isTrue);
     final example = jsonDecode(doc.example) as Map<String, dynamic>;

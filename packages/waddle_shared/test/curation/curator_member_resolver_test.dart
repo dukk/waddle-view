@@ -46,18 +46,18 @@ void main() {
       sortOrder: 5,
       screenOps: [_add('clock_digital')],
     );
-    final weekday = _config(
-      id: 'weekday',
-      layer: kCuratorLayerEnhancement,
-      sortOrder: 10,
-      screenOps: [_remove('photo')],
-    );
     final morning = _config(
       id: 'morning',
       layer: kCuratorLayerBase,
       sortOrder: 110,
       parentConfigurationId: 'default',
       screenOps: [_add('news'), _add('photo')],
+    );
+    final weekday = _config(
+      id: 'weekday',
+      layer: kCuratorLayerEnhancement,
+      sortOrder: 200,
+      screenOps: [_remove('photo')],
     );
     final byId = {
       'default': defaultCfg,
@@ -76,7 +76,7 @@ void main() {
           matchedRuleId: 'w',
           matchReason: 'test',
         ),
-      ],
+      ], // weekday remove at 200 overrides morning add at 110
       configById: byId,
     );
     final screens = resolveEffectiveMemberIds(

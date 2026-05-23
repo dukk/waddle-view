@@ -28,26 +28,30 @@ void main() {
     ),
   ];
 
-  test('welcome still plays when rss articles lack photos for screen slides', () {
-    final slides = ScreenProgramCurator.buildProgram(
-      screens: candidates,
-      programDurationMs: 70000,
-      recentScreenIdsOldestFirst: const [],
-      historyDepth: 5,
-      random: Random(0),
-      randomPools: const {'rss': ['x']},
-      rssArticleMetrics: const {
-        'x': RssArticleMetric(
-          hasImage: false,
-          summaryLength: 10,
-          categoryId: 'general',
-        ),
-      },
-      requirePhotoForRssScreens: true,
-    );
-    expect(slides.isNotEmpty, isTrue);
-    expect(slides.every((s) => s.screenId == 'welcome'), isTrue);
-  });
+  test(
+    'welcome still plays when rss articles lack photos for screen slides',
+    () {
+      final slides = ScreenProgramCurator.buildProgram(
+        screens: candidates,
+        programDurationMs: 70000,
+        recentScreenIdsOldestFirst: const [],
+        historyDepth: 5,
+        random: Random(0),
+        randomPools: const {
+          'rss': ['x'],
+        },
+        rssArticleMetrics: const {
+          'x': RssArticleMetric(
+            hasImage: false,
+            summaryLength: 10,
+            categoryId: 'general',
+          ),
+        },
+      );
+      expect(slides.isNotEmpty, isTrue);
+      expect(slides.every((s) => s.screenId == 'welcome'), isTrue);
+    },
+  );
 
   test('news slide resolves when rss article has image', () {
     final slides = ScreenProgramCurator.buildProgram(
@@ -56,7 +60,9 @@ void main() {
       recentScreenIdsOldestFirst: const [],
       historyDepth: 5,
       random: Random(0),
-      randomPools: const {'rss': ['x']},
+      randomPools: const {
+        'rss': ['x'],
+      },
       rssArticleMetrics: const {
         'x': RssArticleMetric(
           hasImage: true,
@@ -64,7 +70,6 @@ void main() {
           categoryId: 'general',
         ),
       },
-      requirePhotoForRssScreens: true,
     );
     expect(slides.single.screenId, 'news');
     expect(slides.single.randomChoices['main_news'], 'x');
@@ -72,12 +77,24 @@ void main() {
 
   test('news slide resolves without images when requirePhoto disabled', () {
     final slides = ScreenProgramCurator.buildProgram(
-      screens: [candidates[0]],
+      screens: [
+        ScreenCandidate(
+          id: candidates[0].id,
+          minDwellMs: candidates[0].minDwellMs,
+          maxDwellMs: candidates[0].maxDwellMs,
+          frequencyWeight: candidates[0].frequencyWeight,
+          minGapBetweenShowsMs: candidates[0].minGapBetweenShowsMs,
+          layoutJson: candidates[0].layoutJson,
+          requireNewsPhoto: false,
+        ),
+      ],
       programDurationMs: 60000,
       recentScreenIdsOldestFirst: const [],
       historyDepth: 5,
       random: Random(0),
-      randomPools: const {'rss': ['x']},
+      randomPools: const {
+        'rss': ['x'],
+      },
       rssArticleMetrics: const {
         'x': RssArticleMetric(
           hasImage: false,
@@ -85,7 +102,6 @@ void main() {
           categoryId: 'general',
         ),
       },
-      requirePhotoForRssScreens: false,
     );
     expect(slides.single.screenId, 'news');
   });
@@ -109,7 +125,9 @@ void main() {
       recentScreenIdsOldestFirst: const [],
       historyDepth: 5,
       random: Random(0),
-      randomPools: const {'rss': ['x', 'y']},
+      randomPools: const {
+        'rss': ['x', 'y'],
+      },
       rssArticleMetrics: const {
         'x': RssArticleMetric(
           hasImage: false,
@@ -122,7 +140,6 @@ void main() {
           categoryId: 'general',
         ),
       },
-      requirePhotoForRssScreens: true,
     );
     expect(slides.every((s) => s.screenId == 'welcome'), isTrue);
   });

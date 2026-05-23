@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import validator from '@rjsf/validator-ajv8';
 import {
   mergeIntegrationConfigForSave,
+  operatorIntegrationFormData,
   prepareIntegrationOperatorSchema,
 } from './integrationOperatorSchema';
 import { prepareRjsfSchema } from './rjsfSchema';
@@ -94,6 +95,36 @@ describe('prepareIntegrationOperatorSchema', () => {
     };
     const schema = prepareIntegrationOperatorSchema(nested);
     expect(schemaHasHiddenUrlKeys(schema)).toBe(false);
+  });
+
+  it('hides defaultLocation and disallows additional properties for weather_openweathermap', () => {
+    const raw = {
+      type: 'object',
+      additionalProperties: true,
+      properties: {
+        units: { type: 'string' },
+        defaultLocation: {
+          type: 'object',
+          properties: { name: { type: 'string' }, lat: { type: 'number' }, lon: { type: 'number' } },
+        },
+        baseUrl: { type: 'string' },
+      },
+    };
+    const schema = prepareIntegrationOperatorSchema(raw, 'weather_openweathermap');
+    expect(schema.properties).not.toHaveProperty('defaultLocation');
+    expect(schema.properties).not.toHaveProperty('baseUrl');
+    expect(schema.additionalProperties).toBe(false);
+  });
+
+  it('operatorIntegrationFormData drops legacy weather_openweathermap keys', () => {
+    const form = operatorIntegrationFormData('weather_openweathermap', {
+      units: 'imperial',
+      lang: 'en',
+      hourlyCount: 6,
+      baseUrl: 'https://api.openweathermap.org',
+      defaultLocation: { name: 'Default', lat: 40.7128, lon: -74.006 },
+    });
+    expect(form).toEqual({ units: 'imperial', lang: 'en', hourlyCount: 6 });
   });
 
   it('strips baseUrl and defaultLocation when saving weather_openweathermap', () => {
