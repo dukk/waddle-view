@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Alert,
   Box,
@@ -54,6 +55,15 @@ import { alertSeverityIconComponent } from '@/util/alertSeverityIcon';
 import { parseIcalCalendarConfig } from '@/util/icalCalendarConfig';
 import { integrationDisplayName } from '@/util/integrationDisplayName';
 import { isManualEntryKind } from '@/util/manualEntryApi';
+import {
+  type CatalogDataKind,
+  type DataCatalogIntegrationFilter,
+  buildDataCatalogSearchParams,
+  catalogDataKindForIntegrationType,
+  catalogFilterParamsForIntegration,
+  integrationFilterFromSearchParams,
+  parseDataCatalogSearchParams,
+} from '@/util/integrationDataCatalog';
 
 type DataKind =
   | 'calendar_events'
@@ -307,24 +317,37 @@ function rowMatchesToolbarSearch(row: Record<string, unknown>, q: string): boole
   return false;
 }
 
+function dataKindFromSearchParams(params: URLSearchParams): DataKind {
+  const parsed = parseDataCatalogSearchParams(params);
+  if (parsed.kind && DATA_TABS.some((t) => t.kind === parsed.kind)) {
+    return parsed.kind;
+  }
+  return 'jokes';
+}
+
 export function DataPage() {
   const { confirm, ConfirmDialogHost } = useConfirmDialog();
   const { active } = useDisplay();
   const { formatDateTime } = useDisplayFormat();
   const { hasPermission } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { layout, setLayout } = useListLayoutPreference('data');
   const canModerate = hasPermission('content.moderate');
   const canBrowseData = canModerate || hasPermission('content.catalog_read');
   const canCuratorWrite = hasPermission('curator.write');
   const canAlertsWrite = hasPermission('alerts.write');
 
-  const [kind, setKind] = useState<DataKind>('jokes');
+  const initialKind = dataKindFromSearchParams(searchParams);
+  const [kind, setKind] = useState<DataKind>(initialKind);
+  const [integrationFilter, setIntegrationFilter] = useState<DataCatalogIntegrationFilter | null>(
+    () => integrationFilterFromSearchParams(searchParams),
+  );
   const canAddManualEntry = canCuratorWrite && isManualEntryKind(kind);
   const canAddAlert = canAlertsWrite && kind === 'dashboard_alerts';
   const [toolbarSearch, setToolbarSearch] = useState('');
   const [dataSortId, setDataSortId] = useState('newest');
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(() => defaultRowsForKind('jokes'));
+  const [rowsPerPage, setRowsPerPage] = useState(() => defaultRowsForKind(initialKind));
   const [suppressed, setSuppressed] = useState<'all' | 'true' | 'false'>('all');
   const [categoryId, setCategoryId] = useState('');
   const [feedId, setFeedId] = useState('');
@@ -363,7 +386,31 @@ export function DataPage() {
 
   useEffect(() => {
     setPage(0);
-  }, [suppressed, categoryId, feedId, locationId, boardKey, rowsPerPage, kind]);
+  }, [suppressed, categoryId, feedId, locationId, boardKey, rowsPerPage, kind, integrationFilter]);
+
+  useEffect(() => {
+    const nextKind = dataKindFromSearchParams(searchParams);
+    setKind(nextKind);
+    setIntegrationFilter(integrationFilterFromSearchParams(searchParams));
+  }, [searchParams]);
+
+  const setKindAndUrl = useCallback(
+    (nextKind: DataKind) => {
+      setKind(nextKind);
+      setIntegrationFilter(null);
+      setSearchParams(buildDataCatalogSearchParams({ kind: nextKind, integrationFilter: null }), {
+        replace: true,
+      });
+    },
+    [setSearchParams],
+  );
+
+  const clearIntegrationFilter = useCallback(() => {
+    setIntegrationFilter(null);
+    setSearchParams(buildDataCatalogSearchParams({ kind, integrationFilter: null }), {
+      replace: true,
+    });
+  }, [kind, setSearchParams]);
 
   const loadMetadata = useCallback(async () => {
     if (!active || !canBrowseData) return;
@@ -434,9 +481,32 @@ export function DataPage() {
     if (kind === 'tasks' && boardKey.trim()) {
       p.set('board_key', boardKey.trim());
     }
+    if (
+      integrationFilter &&
+      catalogDataKindForIntegrationType(integrationFilter.integrationType) === kind
+    ) {
+      const extra = catalogFilterParamsForIntegration(kind as CatalogDataKind, {
+        id: integrationFilter.integrationId,
+        integration_type: integrationFilter.integrationType,
+      });
+      extra.forEach((value, key) => {
+        p.set(key, value);
+      });
+    }
     const s = p.toString();
     return s ? `?${s}` : '';
-  }, [offset, suppressed, categoryId, feedId, locationId, boardKey, kind, rowsPerPage, canModerate]);
+  }, [
+    offset,
+    suppressed,
+    categoryId,
+    feedId,
+    locationId,
+    boardKey,
+    kind,
+    rowsPerPage,
+    canModerate,
+    integrationFilter,
+  ]);
 
   useLayoutEffect(() => {
     setRows([]);
@@ -575,7 +645,7 @@ export function DataPage() {
       <Paper sx={{ px: 2, pt: 1 }}>
         <Tabs
           value={kind}
-          onChange={(_, v) => setKind(v as DataKind)}
+          onChange={(_, v) => setKindAndUrl(v as DataKind)}
           variant="scrollable"
           scrollButtons="auto"
           sx={{ borderBottom: 1, borderColor: 'divider' }}
@@ -718,6 +788,15 @@ export function DataPage() {
             sx={{ minWidth: 220 }}
           />
         )}
+        {integrationFilter &&
+        catalogDataKindForIntegrationType(integrationFilter.integrationType) === kind ? (
+          <Chip
+            size="small"
+            label={`Integration: ${integrationDisplayName(integrationFilter.integrationType)}`}
+            onDelete={clearIntegrationFilter}
+            sx={{ alignSelf: 'center' }}
+          />
+        ) : null}
       </Stack>
 
       <DisplayRefreshIndicator loading={catalogLoading} />

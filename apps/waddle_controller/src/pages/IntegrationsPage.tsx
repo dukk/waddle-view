@@ -28,6 +28,7 @@ import {
 } from '@mui/material';
 import validator from '@rjsf/validator-ajv8';
 import type { RJSFSchema } from '@rjsf/utils';
+import { useAuth } from '@/context/AuthContext';
 import { useDisplay } from '@/context/DisplayContext';
 import { apiFetch, apiJson, ApiError } from '@/api/client';
 import {
@@ -114,6 +115,7 @@ import {
   type IntegrationAccountsDetail,
 } from '@/util/integrationAccountStatus';
 import { integrationDisplayName } from '@/util/integrationDisplayName';
+import { dataCatalogPath } from '@/util/integrationDataCatalog';
 import { integrationConfigBaseUrl } from '@/util/integrationConfig';
 import { DurationInputField } from '@/components/DurationInputField';
 import { formatPollInterval } from '@/util/pollIntervalFormat';
@@ -217,6 +219,34 @@ function configJsonSatisfiesSchema(
   return errors.length === 0;
 }
 
+function IntegrationTitleLink({
+  row,
+  schemas,
+  canViewData,
+  variant = 'subtitle1',
+}: {
+  row: IntegrationRow;
+  schemas: ConfigSchemasBundle | null;
+  canViewData: boolean;
+  variant?: 'subtitle1' | 'body2';
+}) {
+  const displayName = integrationTitle(row, schemas);
+  const dataPath = canViewData ? dataCatalogPath(row) : null;
+  const sx = { wordBreak: 'break-word' as const, fontWeight: 600 };
+  if (dataPath) {
+    return (
+      <MuiLink component={RouterLink} to={dataPath} variant={variant} sx={sx} underline="hover">
+        {displayName}
+      </MuiLink>
+    );
+  }
+  return (
+    <Typography variant={variant} sx={sx}>
+      {displayName}
+    </Typography>
+  );
+}
+
 function IntegrationTable({
   schemas,
   rows,
@@ -224,6 +254,8 @@ function IntegrationTable({
   actionLabelForRow,
   onAction,
   onDisable,
+  onAccountsChanged,
+  canViewData,
 }: {
   schemas: ConfigSchemasBundle | null;
   rows: IntegrationRow[];
@@ -231,7 +263,10 @@ function IntegrationTable({
   actionLabelForRow?: (row: IntegrationRow) => string | null;
   onAction: (row: IntegrationRow) => void;
   onDisable?: (row: IntegrationRow) => void;
+  onAccountsChanged?: () => Promise<void>;
+  canViewData: boolean;
 }) {
+  const { active } = useDisplay();
   const labelFor = (row: IntegrationRow): string | null =>
     actionLabelForRow?.(row) ?? actionLabel ?? 'Open';
   return (
@@ -247,13 +282,37 @@ function IntegrationTable({
         </TableHead>
         <TableBody>
           {rows.map((row) => {
-            const displayName = integrationTitle(row, schemas);
+            const accountDetail = accountsDetailFromRow(row);
             const configOk = configJsonSatisfiesSchema(schemas, row);
             const rowActionLabel = labelFor(row);
             const showConfigHint = rowActionLabel === 'Enable' && !configOk;
             return (
               <TableRow key={row.id} hover>
-                <TableCell sx={{ fontWeight: 600 }}>{displayName}</TableCell>
+                <TableCell>
+                  <Stack spacing={1}>
+                    <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                      <IntegrationBrandIcon
+                        integrationType={row.integration_type}
+                        baseUrl={integrationConfigBaseUrl(row.config_json)}
+                      />
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <IntegrationTitleLink
+                          row={row}
+                          schemas={schemas}
+                          canViewData={canViewData}
+                        />
+                      </Box>
+                    </Stack>
+                    {active && accountDetail ? (
+                      <IntegrationAccountChips
+                        display={active}
+                        detail={accountDetail}
+                        onChanged={onAccountsChanged ?? (async () => {})}
+                        compact
+                      />
+                    ) : null}
+                  </Stack>
+                </TableCell>
                 <TableCell>{formatPollInterval(row.poll_seconds)}</TableCell>
                 <TableCell>
                   {showConfigHint ? (
@@ -298,6 +357,9 @@ function errMsg(e: unknown): string {
 
 export function IntegrationsPage() {
   const { active } = useDisplay();
+  const { hasPermission } = useAuth();
+  const canViewData =
+    hasPermission('content.moderate') || hasPermission('content.catalog_read');
   const { schemas, error: schemasError } = useConfigSchemas(active);
   const { loading, wrapRefresh } = useDisplayRefresh();
   const { wrapRefresh: wrapAuxRefresh } = useDisplayRefresh();
@@ -564,6 +626,7 @@ export function IntegrationsPage() {
                 row={r}
                 schemas={schemas}
                 actionLabel="Edit"
+                canViewData={canViewData}
                 onAccountsChanged={reloadAll}
                 onDisable={() => setDisabling(r)}
                 onAction={() => {
@@ -578,6 +641,8 @@ export function IntegrationsPage() {
             schemas={schemas}
             rows={enabledRows}
             actionLabel="Edit"
+            canViewData={canViewData}
+            onAccountsChanged={reloadAll}
             onDisable={(r) => setDisabling(r)}
             onAction={(r) => {
               setDialogIntent('edit');
@@ -614,6 +679,7 @@ export function IntegrationsPage() {
                 row={r}
                 schemas={schemas}
                 actionLabel="Enable"
+                canViewData={canViewData}
                 onAccountsChanged={reloadAll}
                 onAction={() => {
                   setDialogIntent('enable');
@@ -627,6 +693,8 @@ export function IntegrationsPage() {
             schemas={schemas}
             rows={availableRows}
             actionLabel="Enable"
+            canViewData={canViewData}
+            onAccountsChanged={reloadAll}
             onAction={(r) => {
               setDialogIntent('enable');
               setEdit(r);
@@ -673,6 +741,7 @@ export function IntegrationsPage() {
                 row={r}
                 schemas={schemas}
                 actionLabel={missingAccountsActionLabel(r)}
+                canViewData={canViewData}
                 onAccountsChanged={reloadAll}
                 onAction={() => {
                   const label = missingAccountsActionLabel(r);
@@ -686,6 +755,8 @@ export function IntegrationsPage() {
           <IntegrationTable
             schemas={schemas}
             rows={missingRows}
+            canViewData={canViewData}
+            onAccountsChanged={reloadAll}
             actionLabelForRow={missingAccountsActionLabel}
             onAction={(r) => {
               const label = missingAccountsActionLabel(r);
@@ -758,6 +829,7 @@ function IntegrationCard({
   onAction,
   onDisable,
   onAccountsChanged,
+  canViewData,
 }: {
   row: IntegrationRow;
   schemas: ConfigSchemasBundle | null;
@@ -765,16 +837,16 @@ function IntegrationCard({
   onAction: () => void;
   onDisable?: () => void;
   onAccountsChanged?: () => Promise<void>;
+  canViewData: boolean;
 }) {
   const { active } = useDisplay();
-  const displayName = integrationTitle(row, schemas);
   const accountDetail = accountsDetailFromRow(row);
 
   return (
     <Card
       variant="outlined"
       sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}
-      aria-label={`${displayName} integration`}
+      aria-label={`${integrationTitle(row, schemas)} integration`}
     >
       <CardContent sx={{ flexGrow: 1 }}>
         <Stack spacing={1}>
@@ -783,13 +855,9 @@ function IntegrationCard({
               integrationType={row.integration_type}
               baseUrl={integrationConfigBaseUrl(row.config_json)}
             />
-            <Typography
-              variant="subtitle1"
-              fontWeight={600}
-              sx={{ wordBreak: 'break-word', flex: 1, minWidth: 0, pt: 0.25 }}
-            >
-              {displayName}
-            </Typography>
+            <Box sx={{ flex: 1, minWidth: 0, pt: 0.25 }}>
+              <IntegrationTitleLink row={row} schemas={schemas} canViewData={canViewData} />
+            </Box>
           </Stack>
           <Typography variant="caption" color="text.secondary" display="block">
             Poll every {formatPollInterval(row.poll_seconds)}

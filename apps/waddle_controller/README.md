@@ -128,13 +128,15 @@ On **Integrations**, enable collectors and edit configuration per integration ty
 
 **Google Calendar** mirrors Outlook: choose a signed-in Google account, set past/future days, refresh the calendar list from the display (`GET /v1/integration-accounts/{id}/google/calendars`), and assign categories per selected calendar.
 
+Integration titles link to **Data** when the user has **`content.catalog_read`** or **`content.moderate`** and the integration type has a catalog tab (for example photos, calendar, trivia). The URL opens `/data?kind=…&integration_type=…&integration_id=…` with server-side filters where the catalog API supports them. Account status chips appear in both card and table layout.
+
 ### Interests
 
 Use **Interests** (Config nav, between Integrations and Data) to manage what the display collects: weather locations, RSS feeds, stock symbols, joke categories, and trivia categories. Changes call `GET` / `POST` / `PATCH` / `DELETE` on `/v1/interests/*` on the active display (requires **`interests.write`**; **`interests.read`** for view-only, including power_viewer filter dropdowns on **Data**). Joke and trivia category ids must match an existing **Curators → Categories** slug.
 
 ### Data (collected content browser)
 
-**Data** lists ingested rows from `GET /v1/catalog/*` (requires **`content.catalog_read`** or **`content.moderate`**). Card layout shows category chips, human-readable sources (integration, RSS feed, calendar account, alert severity/source), and a **Suppressed** switch when moderation is allowed; row ids are not shown on cards. With **`curator.write`**, use **Add** on Calendar, Jokes, Photos, Trivia, Videos, or Quotes (`POST /v1/curator/manual/*`; manual quotes use `POST /v1/curator/manual/quoterism-quotes`). With **`alerts.write`**, use **Add** on the Alerts tab (`POST /v1/alerts`). With **`content.moderate`** (operator or admin), suppress catalog rows (`PATCH /v1/content/*`) or delete (`DELETE /v1/content/*`; dashboard alerts use `DELETE /v1/alerts/{id}`). **power_viewer** can browse but not delete, suppress, or add.
+**Data** lists ingested rows from `GET /v1/catalog/*` (requires **`content.catalog_read`** or **`content.moderate`**). Deep links from **Integrations** set the active tab and an integration filter via URL query params (`kind`, `integration_type`, `integration_id`); a removable chip shows the active integration scope. Card layout shows category chips, human-readable sources (integration, RSS feed, calendar account, alert severity/source), and a **Suppressed** switch when moderation is allowed; row ids are not shown on cards. With **`curator.write`**, use **Add** on Calendar, Jokes, Photos, Trivia, Videos, or Quotes (`POST /v1/curator/manual/*`; manual quotes use `POST /v1/curator/manual/quoterism-quotes`). With **`alerts.write`**, use **Add** on the Alerts tab (`POST /v1/alerts`). With **`content.moderate`** (operator or admin), suppress catalog rows (`PATCH /v1/content/*`) or delete (`DELETE /v1/content/*`; dashboard alerts use `DELETE /v1/alerts/{id}`). **power_viewer** can browse but not delete, suppress, or add.
 
 ## Join from a display QR (`/join`)
 

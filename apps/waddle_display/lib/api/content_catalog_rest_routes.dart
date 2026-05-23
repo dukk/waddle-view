@@ -20,11 +20,23 @@ void registerContentCatalogRoutes(Router r, {required AppDatabase db}) {
   r.get('/v1/catalog/photos', (Request req) => _listPhotos(db, req));
   r.get('/v1/catalog/videos', (Request req) => _listVideos(db, req));
   r.get('/v1/catalog/stock-quotes', (Request req) => _listStockQuotes(db, req));
-  r.get('/v1/catalog/weather-current', (Request req) => _listWeatherCurrent(db, req));
-  r.get('/v1/catalog/weather-alerts', (Request req) => _listWeatherAlerts(db, req));
+  r.get(
+    '/v1/catalog/weather-current',
+    (Request req) => _listWeatherCurrent(db, req),
+  );
+  r.get(
+    '/v1/catalog/weather-alerts',
+    (Request req) => _listWeatherAlerts(db, req),
+  );
   r.get('/v1/catalog/alerts', (Request req) => _listOperatorAlerts(db, req));
-  r.get('/v1/catalog/calendar-events', (Request req) => _listCalendarEvents(db, req));
-  r.get('/v1/catalog/quoterism-quotes', (Request req) => _listQuoterismQuotes(db, req));
+  r.get(
+    '/v1/catalog/calendar-events',
+    (Request req) => _listCalendarEvents(db, req),
+  );
+  r.get(
+    '/v1/catalog/quoterism-quotes',
+    (Request req) => _listQuoterismQuotes(db, req),
+  );
   r.get('/v1/catalog/tasks', (Request req) => _listTasks(db, req));
 }
 
@@ -54,10 +66,10 @@ class _CatalogParams {
     final bool? suppressed = suppressedRaw == null || suppressedRaw.isEmpty
         ? null
         : suppressedRaw == 'true'
-            ? true
-            : suppressedRaw == 'false'
-                ? false
-                : null;
+        ? true
+        : suppressedRaw == 'false'
+        ? false
+        : null;
     final category = qp['category']?.trim();
     final feedId = qp['feed_id']?.trim();
     final locationId = qp['location_id']?.trim();
@@ -67,7 +79,9 @@ class _CatalogParams {
       suppressed: suppressed,
       category: category != null && category.isNotEmpty ? category : null,
       feedId: feedId != null && feedId.isNotEmpty ? feedId : null,
-      locationId: locationId != null && locationId.isNotEmpty ? locationId : null,
+      locationId: locationId != null && locationId.isNotEmpty
+          ? locationId
+          : null,
     );
   }
 }
@@ -101,6 +115,7 @@ String _catalogTriviaIntegrationType(String triviaId, String? integrationId) {
   }
   return raw;
 }
+
 const String _kCatalogNewsIntegrationType = 'news_rss';
 const String _kCatalogStockIntegrationType = 'stock_finnhub';
 const String _kCatalogWeatherCurrentIntegrationType = 'weather_openweathermap';
@@ -123,10 +138,10 @@ String? _likeNeedle(String q) {
 }
 
 Response _jsonCatalogForbidden() => Response(
-      403,
-      body: '{"error":"forbidden"}',
-      headers: {'content-type': 'application/json'},
-    );
+  403,
+  body: '{"error":"forbidden"}',
+  headers: {'content-type': 'application/json'},
+);
 
 bool _catalogFullModeration(Request req) {
   final role = apiClientRole(req);
@@ -135,16 +150,19 @@ bool _catalogFullModeration(Request req) {
 }
 
 _CatalogParams _catalogParamsActiveOnly(_CatalogParams p) => _CatalogParams(
-      limit: p.limit,
-      offset: p.offset,
-      suppressed: false,
-      category: p.category,
-      feedId: p.feedId,
-      locationId: p.locationId,
-    );
+  limit: p.limit,
+  offset: p.offset,
+  suppressed: false,
+  category: p.category,
+  feedId: p.feedId,
+  locationId: p.locationId,
+);
 
 /// Returns `(error response, effective params, browse_only_json)`; on error, ignore other fields.
-(Response?, _CatalogParams, bool) _prepareCatalogList(Request req, _CatalogParams parsed) {
+(Response?, _CatalogParams, bool) _prepareCatalogList(
+  Request req,
+  _CatalogParams parsed,
+) {
   if (_catalogFullModeration(req)) {
     return (null, parsed, false);
   }
@@ -155,9 +173,9 @@ _CatalogParams _catalogParamsActiveOnly(_CatalogParams p) => _CatalogParams(
 }
 
 Response _jsonOk(Object body) => Response.ok(
-      jsonEncode(body),
-      headers: {'content-type': 'application/json'},
-    );
+  jsonEncode(body),
+  headers: {'content-type': 'application/json'},
+);
 
 Future<Response> _listJokes(AppDatabase db, Request req) async {
   final parsed = _CatalogParams.parse(req);
@@ -167,11 +185,12 @@ Future<Response> _listJokes(AppDatabase db, Request req) async {
   final browseOnly = prep.$3;
   final setupNeedle = _queryNeedle(req, 'setup');
   final punchlineNeedle = _queryNeedle(req, 'punchline');
-  final rows = await (db.select(db.jokes)
-        ..where((t) => _jokeWhere(t, p, setupNeedle, punchlineNeedle))
-        ..orderBy([(t) => OrderingTerm.desc(t.createdAtMs)])
-        ..limit(p.limit, offset: p.offset))
-      .get();
+  final rows =
+      await (db.select(db.jokes)
+            ..where((t) => _jokeWhere(t, p, setupNeedle, punchlineNeedle))
+            ..orderBy([(t) => OrderingTerm.desc(t.createdAtMs)])
+            ..limit(p.limit, offset: p.offset))
+          .get();
   final total = await _countJokes(db, p, setupNeedle, punchlineNeedle);
   return _jsonOk({
     'items': [
@@ -221,10 +240,11 @@ Future<int> _countJokes(
   String? punchlineNeedle,
 ) async {
   final count = db.jokes.id.count();
-  final row = await (db.selectOnly(db.jokes)
-        ..addColumns([count])
-        ..where(_jokeWhere(db.jokes, p, setupNeedle, punchlineNeedle)))
-      .getSingle();
+  final row =
+      await (db.selectOnly(db.jokes)
+            ..addColumns([count])
+            ..where(_jokeWhere(db.jokes, p, setupNeedle, punchlineNeedle)))
+          .getSingle();
   return row.read(count) ?? 0;
 }
 
@@ -240,22 +260,23 @@ Future<Response> _listTrivia(AppDatabase db, Request req) async {
   final optionCNeedle = _queryNeedle(req, 'option_c');
   final optionDNeedle = _queryNeedle(req, 'option_d');
   final integrationTypeNeedle = _queryNeedle(req, 'integration_type');
-  final rows = await (db.select(db.triviaQuestions)
-        ..where(
-          (t) => _triviaWhere(
-            t,
-            p,
-            questionNeedle,
-            optionANeedle,
-            optionBNeedle,
-            optionCNeedle,
-            optionDNeedle,
-            integrationTypeNeedle,
-          ),
-        )
-        ..orderBy([(t) => OrderingTerm.desc(t.createdAtMs)])
-        ..limit(p.limit, offset: p.offset))
-      .get();
+  final rows =
+      await (db.select(db.triviaQuestions)
+            ..where(
+              (t) => _triviaWhere(
+                t,
+                p,
+                questionNeedle,
+                optionANeedle,
+                optionBNeedle,
+                optionCNeedle,
+                optionDNeedle,
+                integrationTypeNeedle,
+              ),
+            )
+            ..orderBy([(t) => OrderingTerm.desc(t.createdAtMs)])
+            ..limit(p.limit, offset: p.offset))
+          .get();
   final total = await _countTrivia(
     db,
     p,
@@ -341,21 +362,22 @@ Future<int> _countTrivia(
   String? integrationTypeNeedle,
 ) async {
   final count = db.triviaQuestions.id.count();
-  final row = await (db.selectOnly(db.triviaQuestions)
-        ..addColumns([count])
-        ..where(
-          _triviaWhere(
-            db.triviaQuestions,
-            p,
-            questionNeedle,
-            optionANeedle,
-            optionBNeedle,
-            optionCNeedle,
-            optionDNeedle,
-            integrationTypeNeedle,
-          ),
-        ))
-      .getSingle();
+  final row =
+      await (db.selectOnly(db.triviaQuestions)
+            ..addColumns([count])
+            ..where(
+              _triviaWhere(
+                db.triviaQuestions,
+                p,
+                questionNeedle,
+                optionANeedle,
+                optionBNeedle,
+                optionCNeedle,
+                optionDNeedle,
+                integrationTypeNeedle,
+              ),
+            ))
+          .getSingle();
   return row.read(count) ?? 0;
 }
 
@@ -369,12 +391,29 @@ Future<Response> _listRssArticles(AppDatabase db, Request req) async {
   final summaryNeedle = _queryNeedle(req, 'summary');
   final linkNeedle = _queryNeedle(req, 'link');
   final guidNeedle = _queryNeedle(req, 'guid');
-  final rows = await (db.select(db.news)
-        ..where((t) => _rssWhere(t, p, titleNeedle, summaryNeedle, linkNeedle, guidNeedle))
-        ..orderBy([(t) => OrderingTerm.desc(t.publishedAt)])
-        ..limit(p.limit, offset: p.offset))
-      .get();
-  final total = await _countRss(db, p, titleNeedle, summaryNeedle, linkNeedle, guidNeedle);
+  final rows =
+      await (db.select(db.news)
+            ..where(
+              (t) => _rssWhere(
+                t,
+                p,
+                titleNeedle,
+                summaryNeedle,
+                linkNeedle,
+                guidNeedle,
+              ),
+            )
+            ..orderBy([(t) => OrderingTerm.desc(t.publishedAt)])
+            ..limit(p.limit, offset: p.offset))
+          .get();
+  final total = await _countRss(
+    db,
+    p,
+    titleNeedle,
+    summaryNeedle,
+    linkNeedle,
+    guidNeedle,
+  );
   return _jsonOk({
     'items': [
       for (final r in rows)
@@ -411,7 +450,8 @@ Expression<bool> _rssWhere(
     e = e & t.suppressed.equals(p.suppressed!);
   }
   if (p.feedId != null) {
-    e = e &
+    e =
+        e &
         t.sourceType.equals(kNewsSourceTypeRss) &
         t.sourceId.equals(p.feedId!);
   }
@@ -419,8 +459,7 @@ Expression<bool> _rssWhere(
     e = e & t.title.like('%$titleNeedle%');
   }
   if (summaryNeedle != null) {
-    e = e &
-        (t.summary.isNotNull() & t.summary.like('%$summaryNeedle%'));
+    e = e & (t.summary.isNotNull() & t.summary.like('%$summaryNeedle%'));
   }
   if (linkNeedle != null) {
     e = e & t.link.like('%$linkNeedle%');
@@ -440,10 +479,20 @@ Future<int> _countRss(
   String? guidNeedle,
 ) async {
   final count = db.news.id.count();
-  final row = await (db.selectOnly(db.news)
-        ..addColumns([count])
-        ..where(_rssWhere(db.news, p, titleNeedle, summaryNeedle, linkNeedle, guidNeedle)))
-      .getSingle();
+  final row =
+      await (db.selectOnly(db.news)
+            ..addColumns([count])
+            ..where(
+              _rssWhere(
+                db.news,
+                p,
+                titleNeedle,
+                summaryNeedle,
+                linkNeedle,
+                guidNeedle,
+              ),
+            ))
+          .getSingle();
   return row.read(count) ?? 0;
 }
 
@@ -456,12 +505,27 @@ Future<Response> _listPhotos(AppDatabase db, Request req) async {
   final altNeedle = _queryNeedle(req, 'alt_text');
   final photographerNeedle = _queryNeedle(req, 'photographer_name');
   final dataProviderNeedle = _queryNeedle(req, 'data_provider');
-  final rows = await (db.select(db.photos)
-        ..where((t) => _photoWhere(t, p, altNeedle, photographerNeedle, dataProviderNeedle))
-        ..orderBy([(t) => OrderingTerm.desc(t.fetchedAtMs)])
-        ..limit(p.limit, offset: p.offset))
-      .get();
-  final total = await _countPhotos(db, p, altNeedle, photographerNeedle, dataProviderNeedle);
+  final rows =
+      await (db.select(db.photos)
+            ..where(
+              (t) => _photoWhere(
+                t,
+                p,
+                altNeedle,
+                photographerNeedle,
+                dataProviderNeedle,
+              ),
+            )
+            ..orderBy([(t) => OrderingTerm.desc(t.fetchedAtMs)])
+            ..limit(p.limit, offset: p.offset))
+          .get();
+  final total = await _countPhotos(
+    db,
+    p,
+    altNeedle,
+    photographerNeedle,
+    dataProviderNeedle,
+  );
   return _jsonOk({
     'items': [
       for (final r in rows)
@@ -519,10 +583,19 @@ Future<int> _countPhotos(
   String? dataProviderNeedle,
 ) async {
   final count = db.photos.id.count();
-  final row = await (db.selectOnly(db.photos)
-        ..addColumns([count])
-        ..where(_photoWhere(db.photos, p, altNeedle, photographerNeedle, dataProviderNeedle)))
-      .getSingle();
+  final row =
+      await (db.selectOnly(db.photos)
+            ..addColumns([count])
+            ..where(
+              _photoWhere(
+                db.photos,
+                p,
+                altNeedle,
+                photographerNeedle,
+                dataProviderNeedle,
+              ),
+            ))
+          .getSingle();
   return row.read(count) ?? 0;
 }
 
@@ -535,12 +608,27 @@ Future<Response> _listVideos(AppDatabase db, Request req) async {
   final altNeedle = _queryNeedle(req, 'alt_text');
   final photographerNeedle = _queryNeedle(req, 'photographer_name');
   final dataProviderNeedle = _queryNeedle(req, 'data_provider');
-  final rows = await (db.select(db.videos)
-        ..where((t) => _videoWhere(t, p, altNeedle, photographerNeedle, dataProviderNeedle))
-        ..orderBy([(t) => OrderingTerm.desc(t.fetchedAtMs)])
-        ..limit(p.limit, offset: p.offset))
-      .get();
-  final total = await _countVideos(db, p, altNeedle, photographerNeedle, dataProviderNeedle);
+  final rows =
+      await (db.select(db.videos)
+            ..where(
+              (t) => _videoWhere(
+                t,
+                p,
+                altNeedle,
+                photographerNeedle,
+                dataProviderNeedle,
+              ),
+            )
+            ..orderBy([(t) => OrderingTerm.desc(t.fetchedAtMs)])
+            ..limit(p.limit, offset: p.offset))
+          .get();
+  final total = await _countVideos(
+    db,
+    p,
+    altNeedle,
+    photographerNeedle,
+    dataProviderNeedle,
+  );
   return _jsonOk({
     'items': [
       for (final r in rows)
@@ -599,10 +687,19 @@ Future<int> _countVideos(
   String? dataProviderNeedle,
 ) async {
   final count = db.videos.id.count();
-  final row = await (db.selectOnly(db.videos)
-        ..addColumns([count])
-        ..where(_videoWhere(db.videos, p, altNeedle, photographerNeedle, dataProviderNeedle)))
-      .getSingle();
+  final row =
+      await (db.selectOnly(db.videos)
+            ..addColumns([count])
+            ..where(
+              _videoWhere(
+                db.videos,
+                p,
+                altNeedle,
+                photographerNeedle,
+                dataProviderNeedle,
+              ),
+            ))
+          .getSingle();
   return row.read(count) ?? 0;
 }
 
@@ -630,40 +727,43 @@ Future<Response> _listStockQuotes(AppDatabase db, Request req) async {
   final displayNameNeedle = _queryNeedle(req, 'display_name');
   List<String>? symbolFilterIds;
   if (symbolNeedle != null || displayNameNeedle != null) {
-    symbolFilterIds = await (db.select(db.interestsStockSymbols)..where((s) {
-      Expression<bool> e = const Constant(true);
-      if (symbolNeedle != null) {
-        e = e & s.symbol.like('%$symbolNeedle%');
-      }
-      if (displayNameNeedle != null) {
-        e = e & s.displayName.like('%$displayNameNeedle%');
-      }
-      return e;
-    }))
-        .map((s) => s.id)
-        .get();
+    symbolFilterIds =
+        await (db.select(db.interestsStockSymbols)..where((s) {
+              Expression<bool> e = const Constant(true);
+              if (symbolNeedle != null) {
+                e = e & s.symbol.like('%$symbolNeedle%');
+              }
+              if (displayNameNeedle != null) {
+                e = e & s.displayName.like('%$displayNameNeedle%');
+              }
+              return e;
+            }))
+            .map((s) => s.id)
+            .get();
   }
   final pred = _stockQuotesWhere(db.stockQuotes, symbolFilterIds);
 
-  final rows = await (db.select(db.stockQuotes)
-        ..where((q) => _stockQuotesWhere(q, symbolFilterIds))
-        ..orderBy([(q) => OrderingTerm.desc(q.observedAtMs)])
-        ..limit(p.limit, offset: p.offset))
-      .get();
+  final rows =
+      await (db.select(db.stockQuotes)
+            ..where((q) => _stockQuotesWhere(q, symbolFilterIds))
+            ..orderBy([(q) => OrderingTerm.desc(q.observedAtMs)])
+            ..limit(p.limit, offset: p.offset))
+          .get();
   final countCol = db.stockQuotes.symbolId.count();
-  final totalRow = await (db.selectOnly(db.stockQuotes)
-        ..addColumns([countCol])
-        ..where(pred))
-      .getSingle();
+  final totalRow =
+      await (db.selectOnly(db.stockQuotes)
+            ..addColumns([countCol])
+            ..where(pred))
+          .getSingle();
   final total = totalRow.read(countCol) ?? 0;
 
   final symIds = rows.map((r) => r.symbolId).toSet().toList();
   final symbols = symIds.isEmpty
       ? <String, (String, String)>{}
       : {
-          for (final s in await (db.select(db.interestsStockSymbols)
-                ..where((t) => t.id.isIn(symIds)))
-              .get())
+          for (final s in await (db.select(
+            db.interestsStockSymbols,
+          )..where((t) => t.id.isIn(symIds))).get())
             s.id: (s.symbol, s.displayName),
         };
 
@@ -706,7 +806,8 @@ Expression<bool> _weatherCurrentWhere(
     e = e & t.locationId.isIn(locNameMatch.toList());
   }
   if (descriptionNeedle != null) {
-    e = e &
+    e =
+        e &
         (t.currentDescription.isNotNull() &
             t.currentDescription.like('%$descriptionNeedle%'));
   }
@@ -722,11 +823,12 @@ Future<Response> _listWeatherCurrent(AppDatabase db, Request req) async {
   final locationNameNeedle = _queryNeedle(req, 'location_name');
   Set<String>? locNameMatch;
   if (locationNameNeedle != null) {
-    locNameMatch = (await (db.select(db.interestsLocations)
-              ..where((l) => l.name.like('%$locationNameNeedle%')))
-            .map((l) => l.id)
-            .get())
-        .toSet();
+    locNameMatch =
+        (await (db.select(db.interestsLocations)
+                  ..where((l) => l.name.like('%$locationNameNeedle%')))
+                .map((l) => l.id)
+                .get())
+            .toSet();
   }
 
   final pred = _weatherCurrentWhere(
@@ -736,25 +838,30 @@ Future<Response> _listWeatherCurrent(AppDatabase db, Request req) async {
     locNameMatch,
   );
 
-  final rows = await (db.select(db.weatherCurrent)
-        ..where((t) => _weatherCurrentWhere(t, p, descriptionNeedle, locNameMatch))
-        ..orderBy([(t) => OrderingTerm.desc(t.observedAtMs)])
-        ..limit(p.limit, offset: p.offset))
-      .get();
+  final rows =
+      await (db.select(db.weatherCurrent)
+            ..where(
+              (t) =>
+                  _weatherCurrentWhere(t, p, descriptionNeedle, locNameMatch),
+            )
+            ..orderBy([(t) => OrderingTerm.desc(t.observedAtMs)])
+            ..limit(p.limit, offset: p.offset))
+          .get();
   final countCol = db.weatherCurrent.locationId.count();
-  final totalRow = await (db.selectOnly(db.weatherCurrent)
-        ..addColumns([countCol])
-        ..where(pred))
-      .getSingle();
+  final totalRow =
+      await (db.selectOnly(db.weatherCurrent)
+            ..addColumns([countCol])
+            ..where(pred))
+          .getSingle();
   final total = totalRow.read(countCol) ?? 0;
 
   final locIds = rows.map((r) => r.locationId).toSet().toList();
   final names = locIds.isEmpty
       ? <String, String>{}
       : {
-          for (final l in await (db.select(db.interestsLocations)
-                ..where((t) => t.id.isIn(locIds)))
-              .get())
+          for (final l in await (db.select(
+            db.interestsLocations,
+          )..where((t) => t.id.isIn(locIds))).get())
             l.id: l.name,
         };
 
@@ -801,11 +908,11 @@ Expression<bool> _weatherAlertWhere(
     e = e & (t.headline.isNotNull() & t.headline.like('%$headlineNeedle%'));
   }
   if (severityNeedle != null) {
-    e = e &
-        (t.severity.isNotNull() & t.severity.like('%$severityNeedle%'));
+    e = e & (t.severity.isNotNull() & t.severity.like('%$severityNeedle%'));
   }
   if (excerptNeedle != null) {
-    e = e &
+    e =
+        e &
         (t.descriptionExcerpt.isNotNull() &
             t.descriptionExcerpt.like('%$excerptNeedle%'));
   }
@@ -824,11 +931,12 @@ Future<Response> _listWeatherAlerts(AppDatabase db, Request req) async {
   final locationNameNeedle = _queryNeedle(req, 'location_name');
   Set<String>? locNameMatch;
   if (locationNameNeedle != null) {
-    locNameMatch = (await (db.select(db.interestsLocations)
-              ..where((l) => l.name.like('%$locationNameNeedle%')))
-            .map((l) => l.id)
-            .get())
-        .toSet();
+    locNameMatch =
+        (await (db.select(db.interestsLocations)
+                  ..where((l) => l.name.like('%$locationNameNeedle%')))
+                .map((l) => l.id)
+                .get())
+            .toSet();
   }
 
   final pred = _weatherAlertWhere(
@@ -841,35 +949,37 @@ Future<Response> _listWeatherAlerts(AppDatabase db, Request req) async {
     locNameMatch,
   );
 
-  final rows = await (db.select(db.weatherAlerts)
-        ..where(
-          (t) => _weatherAlertWhere(
-            t,
-            p,
-            eventNeedle,
-            headlineNeedle,
-            severityNeedle,
-            excerptNeedle,
-            locNameMatch,
-          ),
-        )
-        ..orderBy([(t) => OrderingTerm.desc(t.effectiveAt)])
-        ..limit(p.limit, offset: p.offset))
-      .get();
+  final rows =
+      await (db.select(db.weatherAlerts)
+            ..where(
+              (t) => _weatherAlertWhere(
+                t,
+                p,
+                eventNeedle,
+                headlineNeedle,
+                severityNeedle,
+                excerptNeedle,
+                locNameMatch,
+              ),
+            )
+            ..orderBy([(t) => OrderingTerm.desc(t.effectiveAt)])
+            ..limit(p.limit, offset: p.offset))
+          .get();
   final countCol = countAll();
-  final totalRow = await (db.selectOnly(db.weatherAlerts)
-        ..addColumns([countCol])
-        ..where(pred))
-      .getSingle();
+  final totalRow =
+      await (db.selectOnly(db.weatherAlerts)
+            ..addColumns([countCol])
+            ..where(pred))
+          .getSingle();
   final total = totalRow.read(countCol) ?? 0;
 
   final locIds = rows.map((r) => r.locationId).toSet().toList();
   final names = locIds.isEmpty
       ? <String, String>{}
       : {
-          for (final l in await (db.select(db.interestsLocations)
-                ..where((t) => t.id.isIn(locIds)))
-              .get())
+          for (final l in await (db.select(
+            db.interestsLocations,
+          )..where((t) => t.id.isIn(locIds))).get())
             l.id: l.name,
         };
 
@@ -928,17 +1038,35 @@ Future<Response> _listOperatorAlerts(AppDatabase db, Request req) async {
   final bodyNeedle = _queryNeedle(req, 'body');
   final sourceNeedle = _queryNeedle(req, 'source');
   final severityNeedle = _queryNeedle(req, 'severity');
-  final pred = _operatorAlertWhere(db.alerts, p, titleNeedle, bodyNeedle, sourceNeedle, severityNeedle);
-  final rows = await (db.select(db.alerts)
-        ..where((t) => _operatorAlertWhere(t, p, titleNeedle, bodyNeedle, sourceNeedle, severityNeedle))
-        ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
-        ..limit(p.limit, offset: p.offset))
-      .get();
+  final pred = _operatorAlertWhere(
+    db.alerts,
+    p,
+    titleNeedle,
+    bodyNeedle,
+    sourceNeedle,
+    severityNeedle,
+  );
+  final rows =
+      await (db.select(db.alerts)
+            ..where(
+              (t) => _operatorAlertWhere(
+                t,
+                p,
+                titleNeedle,
+                bodyNeedle,
+                sourceNeedle,
+                severityNeedle,
+              ),
+            )
+            ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
+            ..limit(p.limit, offset: p.offset))
+          .get();
   final countCol = countAll();
-  final totalRow = await (db.selectOnly(db.alerts)
-        ..addColumns([countCol])
-        ..where(pred))
-      .getSingle();
+  final totalRow =
+      await (db.selectOnly(db.alerts)
+            ..addColumns([countCol])
+            ..where(pred))
+          .getSingle();
   final total = totalRow.read(countCol) ?? 0;
 
   return _jsonOk({
@@ -990,10 +1118,9 @@ Expression<bool> _calendarEventWhere(
   if (p.category != null) {
     final category = p.category!;
     final junctionMatch = existsQuery(
-      db.select(db.calendarEventCategories)
-        ..where(
-          (j) => j.eventId.equalsExp(t.id) & j.categoryId.equals(category),
-        ),
+      db.select(db.calendarEventCategories)..where(
+        (j) => j.eventId.equalsExp(t.id) & j.categoryId.equals(category),
+      ),
     );
     e = e & (t.categoryId.equals(category) | junctionMatch);
   }
@@ -1001,11 +1128,11 @@ Expression<bool> _calendarEventWhere(
     e = e & t.title.like('%$titleNeedle%');
   }
   if (locationNeedle != null) {
-    e = e &
-        (t.location.isNotNull() & t.location.like('%$locationNeedle%'));
+    e = e & (t.location.isNotNull() & t.location.like('%$locationNeedle%'));
   }
   if (descriptionNeedle != null) {
-    e = e &
+    e =
+        e &
         (t.description.isNotNull() &
             t.description.like('%$descriptionNeedle%'));
   }
@@ -1034,34 +1161,36 @@ Future<Response> _listCalendarEvents(AppDatabase db, Request req) async {
     sourceNeedle,
   );
 
-  final rows = await (db.select(db.calendarEvents)
-        ..where(
-          (t) => _calendarEventWhere(
-            db,
-            t,
-            p,
-            titleNeedle,
-            locationNeedle,
-            descriptionNeedle,
-            sourceNeedle,
-          ),
-        )
-        ..orderBy([(t) => OrderingTerm.desc(t.startMs)])
-        ..limit(p.limit, offset: p.offset))
-      .get();
+  final rows =
+      await (db.select(db.calendarEvents)
+            ..where(
+              (t) => _calendarEventWhere(
+                db,
+                t,
+                p,
+                titleNeedle,
+                locationNeedle,
+                descriptionNeedle,
+                sourceNeedle,
+              ),
+            )
+            ..orderBy([(t) => OrderingTerm.desc(t.startMs)])
+            ..limit(p.limit, offset: p.offset))
+          .get();
   final countCol = countAll();
-  final totalRow = await (db.selectOnly(db.calendarEvents)
-        ..addColumns([countCol])
-        ..where(pred))
-      .getSingle();
+  final totalRow =
+      await (db.selectOnly(db.calendarEvents)
+            ..addColumns([countCol])
+            ..where(pred))
+          .getSingle();
   final total = totalRow.read(countCol) ?? 0;
 
   final eventIds = rows.map((r) => r.id).toList();
   final categoryIdsByEvent = <String, List<String>>{};
   if (eventIds.isNotEmpty) {
-    final junctionRows = await (db.select(db.calendarEventCategories)
-          ..where((j) => j.eventId.isIn(eventIds)))
-        .get();
+    final junctionRows = await (db.select(
+      db.calendarEventCategories,
+    )..where((j) => j.eventId.isIn(eventIds))).get();
     for (final j in junctionRows) {
       categoryIdsByEvent.putIfAbsent(j.eventId, () => []).add(j.categoryId);
     }
@@ -1081,7 +1210,8 @@ Future<Response> _listCalendarEvents(AppDatabase db, Request req) async {
           'source': r.source,
           'integration_type': _calendarCatalogIntegrationType(r.source),
           'category_id': r.categoryId,
-          'category_ids': categoryIdsByEvent[r.id] ??
+          'category_ids':
+              categoryIdsByEvent[r.id] ??
               (r.categoryId != null ? [r.categoryId!] : <String>[]),
           'external_id': r.externalId,
           'ical_uid': r.icalUid,
@@ -1103,24 +1233,22 @@ Future<Response> _listQuoterismQuotes(AppDatabase db, Request req) async {
   final textNeedle = _queryNeedle(req, 'text');
   final authorNeedle = _queryNeedle(req, 'author_name');
 
-  final rows = await (db.select(db.quoterismQuotes)
-        ..where((t) => _quoterismQuoteWhere(t, p, textNeedle, authorNeedle, db))
-        ..orderBy([(t) => OrderingTerm.desc(t.fetchedAtMs)])
-        ..limit(p.limit, offset: p.offset))
-      .get();
-  final total = await _countQuoterismQuotes(
-    db,
-    p,
-    textNeedle,
-    authorNeedle,
-  );
+  final rows =
+      await (db.select(db.quoterismQuotes)
+            ..where(
+              (t) => _quoterismQuoteWhere(t, p, textNeedle, authorNeedle, db),
+            )
+            ..orderBy([(t) => OrderingTerm.desc(t.fetchedAtMs)])
+            ..limit(p.limit, offset: p.offset))
+          .get();
+  final total = await _countQuoterismQuotes(db, p, textNeedle, authorNeedle);
 
   final quoteIds = rows.map((r) => r.id).toList();
   final categoryIdsByQuote = <String, List<String>>{};
   if (quoteIds.isNotEmpty) {
-    final junction = await (db.select(db.quoterismQuoteCategories)
-          ..where((j) => j.quoteId.isIn(quoteIds)))
-        .get();
+    final junction = await (db.select(
+      db.quoterismQuoteCategories,
+    )..where((j) => j.quoteId.isIn(quoteIds))).get();
     for (final j in junction) {
       categoryIdsByQuote.putIfAbsent(j.quoteId, () => []).add(j.categoryId);
     }
@@ -1163,7 +1291,8 @@ Expression<bool> _quoterismQuoteWhere(
   }
   if (p.category != null) {
     final cat = p.category!;
-    e = e &
+    e =
+        e &
         t.id.isInQuery(
           db.selectOnly(db.quoterismQuoteCategories)
             ..addColumns([db.quoterismQuoteCategories.quoteId])
@@ -1185,18 +1314,19 @@ Future<int> _countQuoterismQuotes(
   String? textNeedle,
   String? authorNeedle,
 ) async {
-  final row = await (db.selectOnly(db.quoterismQuotes)
-        ..addColumns([db.quoterismQuotes.id.count()])
-        ..where(
-          _quoterismQuoteWhere(
-            db.quoterismQuotes,
-            p,
-            textNeedle,
-            authorNeedle,
-            db,
-          ),
-        ))
-      .getSingle();
+  final row =
+      await (db.selectOnly(db.quoterismQuotes)
+            ..addColumns([db.quoterismQuotes.id.count()])
+            ..where(
+              _quoterismQuoteWhere(
+                db.quoterismQuotes,
+                p,
+                textNeedle,
+                authorNeedle,
+                db,
+              ),
+            ))
+          .getSingle();
   return row.read<int>(db.quoterismQuotes.id.count()) ?? 0;
 }
 
@@ -1207,14 +1337,16 @@ Future<Response> _listTasks(AppDatabase db, Request req) async {
   final p = prep.$2;
   final boardKey = (req.url.queryParameters['board_key'] ?? '').trim();
   final taskListId = (req.url.queryParameters['task_list_id'] ?? '').trim();
+  final integrationId = (req.url.queryParameters['integration_id'] ?? '')
+      .trim();
   final titleNeedle = _queryNeedle(req, 'title');
   final descriptionNeedle = _queryNeedle(req, 'description');
 
   Set<String>? listIdsForBoard;
   if (boardKey.isNotEmpty) {
-    final listRows = await (db.select(db.taskLists)
-          ..where((l) => l.boardKey.equals(boardKey)))
-        .get();
+    final listRows = await (db.select(
+      db.taskLists,
+    )..where((l) => l.boardKey.equals(boardKey))).get();
     listIdsForBoard = listRows.map((r) => r.id).toSet();
     if (listIdsForBoard.isEmpty) {
       return _jsonOk({
@@ -1234,11 +1366,15 @@ Future<Response> _listTasks(AppDatabase db, Request req) async {
     if (taskListId.isNotEmpty) {
       e = e & tbl.taskListId.equals(taskListId);
     }
+    if (integrationId.isNotEmpty) {
+      e = e & tbl.integrationId.equals(integrationId);
+    }
     if (titleNeedle != null) {
       e = e & tbl.title.like('%$titleNeedle%');
     }
     if (descriptionNeedle != null) {
-      e = e &
+      e =
+          e &
           (tbl.description.isNotNull() &
               tbl.description.like('%$descriptionNeedle%'));
     }
@@ -1246,24 +1382,26 @@ Future<Response> _listTasks(AppDatabase db, Request req) async {
   }
 
   final pred = taskWhere(db.tasks);
-  final rows = await (db.select(db.tasks)
-        ..where((t) => taskWhere(t))
-        ..orderBy([(t) => OrderingTerm.desc(t.updatedAtMs)])
-        ..limit(p.limit, offset: p.offset))
-      .get();
+  final rows =
+      await (db.select(db.tasks)
+            ..where((t) => taskWhere(t))
+            ..orderBy([(t) => OrderingTerm.desc(t.updatedAtMs)])
+            ..limit(p.limit, offset: p.offset))
+          .get();
   final countCol = countAll();
-  final totalRow = await (db.selectOnly(db.tasks)
-        ..addColumns([countCol])
-        ..where(pred))
-      .getSingle();
+  final totalRow =
+      await (db.selectOnly(db.tasks)
+            ..addColumns([countCol])
+            ..where(pred))
+          .getSingle();
   final total = totalRow.read(countCol) ?? 0;
 
   final listIds = rows.map((r) => r.taskListId).toSet();
   final listsById = <String, TaskList>{};
   if (listIds.isNotEmpty) {
-    final listRows = await (db.select(db.taskLists)
-          ..where((l) => l.id.isIn(listIds)))
-        .get();
+    final listRows = await (db.select(
+      db.taskLists,
+    )..where((l) => l.id.isIn(listIds))).get();
     for (final list in listRows) {
       listsById[list.id] = list;
     }

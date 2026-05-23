@@ -13,19 +13,28 @@ import '../helpers/rest_auth_helper.dart';
 
 Future<void> _seedCatalogRows(AppDatabase db) async {
   const cat = 'general';
-  await db.into(db.contentCategories).insertOnConflictUpdate(
+  await db
+      .into(db.contentCategories)
+      .insertOnConflictUpdate(
         ContentCategoriesCompanion.insert(id: cat, label: 'General'),
       );
-  await db.into(db.interestsJokes).insert(
-        InterestsJokesCompanion.insert(id: cat, label: 'General'),
+  await db
+      .into(db.interestsJokes)
+      .insert(InterestsJokesCompanion.insert(id: cat, label: 'General'));
+  await db
+      .into(db.interestsTrivia)
+      .insert(InterestsTriviaCompanion.insert(id: cat, label: 'General'));
+  await db
+      .into(db.interestsRssFeeds)
+      .insert(
+        InterestsRssFeedsCompanion.insert(
+          id: 'f1',
+          url: 'https://example.com/feed.xml',
+        ),
       );
-  await db.into(db.interestsTrivia).insert(
-        InterestsTriviaCompanion.insert(id: cat, label: 'General'),
-      );
-  await db.into(db.interestsRssFeeds).insert(
-        InterestsRssFeedsCompanion.insert(id: 'f1', url: 'https://example.com/feed.xml'),
-      );
-  await db.into(db.jokes).insert(
+  await db
+      .into(db.jokes)
+      .insert(
         JokesCompanion.insert(
           id: 'j1',
           categoryId: cat,
@@ -34,7 +43,9 @@ Future<void> _seedCatalogRows(AppDatabase db) async {
           createdAtMs: DateTime.fromMillisecondsSinceEpoch(10),
         ),
       );
-  await db.into(db.jokes).insert(
+  await db
+      .into(db.jokes)
+      .insert(
         JokesCompanion.insert(
           id: 'j2',
           categoryId: cat,
@@ -48,7 +59,9 @@ Future<void> _seedCatalogRows(AppDatabase db) async {
 
 Future<void> _seedExtendedCatalog(AppDatabase db) async {
   await _seedCatalogRows(db);
-  await db.into(db.news).insert(
+  await db
+      .into(db.news)
+      .insert(
         NewsCompanion.insert(
           id: 'art2',
           sourceType: kNewsSourceTypeRss,
@@ -61,7 +74,9 @@ Future<void> _seedExtendedCatalog(AppDatabase db) async {
           fetchedAt: DateTime.fromMillisecondsSinceEpoch(101),
         ),
       );
-  await db.into(db.news).insert(
+  await db
+      .into(db.news)
+      .insert(
         NewsCompanion.insert(
           id: 'art3',
           sourceType: kNewsSourceTypeRss,
@@ -73,7 +88,9 @@ Future<void> _seedExtendedCatalog(AppDatabase db) async {
           fetchedAt: DateTime.fromMillisecondsSinceEpoch(103),
         ),
       );
-  await db.into(db.triviaQuestions).insert(
+  await db
+      .into(db.triviaQuestions)
+      .insert(
         TriviaQuestionsCompanion.insert(
           id: 'tq1',
           categoryId: 'general',
@@ -87,7 +104,9 @@ Future<void> _seedExtendedCatalog(AppDatabase db) async {
           integrationId: const Value('trivia_openai'),
         ),
       );
-  await db.into(db.triviaQuestions).insert(
+  await db
+      .into(db.triviaQuestions)
+      .insert(
         TriviaQuestionsCompanion.insert(
           id: 'tq2',
           categoryId: 'general',
@@ -102,7 +121,9 @@ Future<void> _seedExtendedCatalog(AppDatabase db) async {
           integrationId: const Value('trivia_opentdb'),
         ),
       );
-  await db.into(db.photos).insert(
+  await db
+      .into(db.photos)
+      .insert(
         PhotosCompanion.insert(
           id: 'ph1',
           category: const Value('general'),
@@ -115,7 +136,9 @@ Future<void> _seedExtendedCatalog(AppDatabase db) async {
           fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(200),
         ),
       );
-  await db.into(db.videos).insert(
+  await db
+      .into(db.videos)
+      .insert(
         VideosCompanion.insert(
           id: 'vid1',
           category: const Value('general'),
@@ -129,35 +152,45 @@ Future<void> _seedExtendedCatalog(AppDatabase db) async {
           fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(201),
         ),
       );
-  await db.into(db.interestsStockSymbols).insert(
+  await db
+      .into(db.interestsStockSymbols)
+      .insert(
         InterestsStockSymbolsCompanion.insert(
           id: 'sym_aapl',
           symbol: 'AAPL',
           displayName: const Value('Apple Inc'),
         ),
       );
-  await db.into(db.interestsStockSymbols).insert(
+  await db
+      .into(db.interestsStockSymbols)
+      .insert(
         InterestsStockSymbolsCompanion.insert(
           id: 'sym_msft',
           symbol: 'MSFT',
           displayName: const Value('Microsoft'),
         ),
       );
-  await db.into(db.stockQuotes).insert(
+  await db
+      .into(db.stockQuotes)
+      .insert(
         StockQuotesCompanion.insert(
           symbolId: 'sym_aapl',
           currentPrice: const Value(111),
           observedAtMs: DateTime.fromMillisecondsSinceEpoch(300),
         ),
       );
-  await db.into(db.stockQuotes).insert(
+  await db
+      .into(db.stockQuotes)
+      .insert(
         StockQuotesCompanion.insert(
           symbolId: 'sym_msft',
           currentPrice: const Value(222),
           observedAtMs: DateTime.fromMillisecondsSinceEpoch(301),
         ),
       );
-  await db.into(db.interestsLocations).insert(
+  await db
+      .into(db.interestsLocations)
+      .insert(
         InterestsLocationsCompanion.insert(
           id: 'seattle',
           name: 'Seattle, WA',
@@ -166,7 +199,9 @@ Future<void> _seedExtendedCatalog(AppDatabase db) async {
           includeWeather: const Value(true),
         ),
       );
-  await db.into(db.interestsLocations).insert(
+  await db
+      .into(db.interestsLocations)
+      .insert(
         InterestsLocationsCompanion.insert(
           id: 'denver',
           name: 'Denver, CO',
@@ -175,7 +210,9 @@ Future<void> _seedExtendedCatalog(AppDatabase db) async {
           includeWeather: const Value(true),
         ),
       );
-  await db.into(db.weatherCurrent).insert(
+  await db
+      .into(db.weatherCurrent)
+      .insert(
         WeatherCurrentCompanion.insert(
           locationId: 'seattle',
           observedAtMs: DateTime.fromMillisecondsSinceEpoch(500),
@@ -184,7 +221,9 @@ Future<void> _seedExtendedCatalog(AppDatabase db) async {
           hourlyJson: const Value('[]'),
         ),
       );
-  await db.into(db.weatherAlerts).insert(
+  await db
+      .into(db.weatherAlerts)
+      .insert(
         WeatherAlertsCompanion.insert(
           locationId: 'seattle',
           nwsAlertId: 'urn:test:1',
@@ -195,7 +234,9 @@ Future<void> _seedExtendedCatalog(AppDatabase db) async {
           effectiveAt: Value(DateTime.fromMillisecondsSinceEpoch(400)),
         ),
       );
-  await db.into(db.weatherAlerts).insert(
+  await db
+      .into(db.weatherAlerts)
+      .insert(
         WeatherAlertsCompanion.insert(
           locationId: 'denver',
           nwsAlertId: 'urn:test:2',
@@ -205,7 +246,9 @@ Future<void> _seedExtendedCatalog(AppDatabase db) async {
           effectiveAt: Value(DateTime.fromMillisecondsSinceEpoch(350)),
         ),
       );
-  await db.into(db.alerts).insert(
+  await db
+      .into(db.alerts)
+      .insert(
         AlertsCompanion.insert(
           title: 'Body match',
           body: 'contains needle token',
@@ -221,7 +264,9 @@ Future<void> _seedCalendarCatalogEvents(AppDatabase db) async {
   final t1 = DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000);
   final t2 = DateTime.fromMillisecondsSinceEpoch(1_700_010_000_000);
   final t3 = DateTime.fromMillisecondsSinceEpoch(1_700_005_000_000);
-  await db.into(db.calendarEvents).insert(
+  await db
+      .into(db.calendarEvents)
+      .insert(
         CalendarEventsCompanion.insert(
           id: 'cal1',
           title: 'Team standup alpha',
@@ -234,7 +279,9 @@ Future<void> _seedCalendarCatalogEvents(AppDatabase db) async {
           updatedAtMs: t1,
         ),
       );
-  await db.into(db.calendarEvents).insert(
+  await db
+      .into(db.calendarEvents)
+      .insert(
         CalendarEventsCompanion.insert(
           id: 'cal2',
           title: 'Personal errand',
@@ -244,7 +291,9 @@ Future<void> _seedCalendarCatalogEvents(AppDatabase db) async {
           updatedAtMs: t2,
         ),
       );
-  await db.into(db.calendarEvents).insert(
+  await db
+      .into(db.calendarEvents)
+      .insert(
         CalendarEventsCompanion.insert(
           id: 'cal3',
           title: 'Family dinner',
@@ -255,7 +304,9 @@ Future<void> _seedCalendarCatalogEvents(AppDatabase db) async {
           updatedAtMs: t3,
         ),
       );
-  await db.into(db.calendarEventCategories).insert(
+  await db
+      .into(db.calendarEventCategories)
+      .insert(
         CalendarEventCategoriesCompanion.insert(
           eventId: 'cal2',
           categoryId: 'family',
@@ -303,7 +354,9 @@ void main() {
   test('GET /v1/catalog/alerts paginates and filters', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.alerts).insert(
+    await db
+        .into(db.alerts)
+        .insert(
           AlertsCompanion.insert(
             title: 'Sign-in',
             body: 'Use code ABC',
@@ -311,7 +364,9 @@ void main() {
             source: const Value('google_calendar'),
           ),
         );
-    await db.into(db.alerts).insert(
+    await db
+        .into(db.alerts)
+        .insert(
           AlertsCompanion.insert(
             title: 'Other',
             body: 'Nothing',
@@ -356,10 +411,7 @@ void main() {
       headers: auth,
     );
     expect(jokesClamp.statusCode, 200);
-    expect(
-      (jsonDecode(jokesClamp.body) as Map<String, dynamic>)['limit'],
-      100,
-    );
+    expect((jsonDecode(jokesClamp.body) as Map<String, dynamic>)['limit'], 100);
 
     final jokesPunch = await http.get(
       Uri.parse('$base/v1/catalog/jokes?punchline=beta'),
@@ -373,7 +425,10 @@ void main() {
       headers: auth,
     );
     expect(jokesSupFalse.statusCode, 200);
-    expect((jsonDecode(jokesSupFalse.body) as Map<String, dynamic>)['total'], 1);
+    expect(
+      (jsonDecode(jokesSupFalse.body) as Map<String, dynamic>)['total'],
+      1,
+    );
 
     final jokesLongNeedle = await http.get(
       Uri.parse('$base/v1/catalog/jokes?setup=$longNeedle'),
@@ -386,7 +441,10 @@ void main() {
       headers: auth,
     );
     expect(jokesCategory.statusCode, 200);
-    expect((jsonDecode(jokesCategory.body) as Map<String, dynamic>)['total'], 2);
+    expect(
+      (jsonDecode(jokesCategory.body) as Map<String, dynamic>)['total'],
+      2,
+    );
 
     final trivia = await http.get(
       Uri.parse(
@@ -429,7 +487,10 @@ void main() {
       headers: auth,
     );
     expect(rssSummaryOnly.statusCode, 200);
-    expect((jsonDecode(rssSummaryOnly.body) as Map<String, dynamic>)['total'], 1);
+    expect(
+      (jsonDecode(rssSummaryOnly.body) as Map<String, dynamic>)['total'],
+      1,
+    );
 
     final photos = await http.get(
       Uri.parse(
@@ -480,7 +541,10 @@ void main() {
       headers: auth,
     );
     expect(wxLoc.statusCode, 200);
-    expect((jsonDecode(wxLoc.body) as Map<String, dynamic>)['items'], hasLength(2));
+    expect(
+      (jsonDecode(wxLoc.body) as Map<String, dynamic>)['items'],
+      hasLength(2),
+    );
 
     final wxCur = await http.get(
       Uri.parse(
@@ -560,7 +624,10 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedCatalogRows(db);
-    final h = await RestTestHarness.start(database: db, role: kUserRolePowerViewer);
+    final h = await RestTestHarness.start(
+      database: db,
+      role: kUserRolePowerViewer,
+    );
     addTearDown(h.dispose);
 
     final res = await http.get(
@@ -580,7 +647,10 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedCatalogRows(db);
-    final h = await RestTestHarness.start(database: db, role: kUserRolePowerViewer);
+    final h = await RestTestHarness.start(
+      database: db,
+      role: kUserRolePowerViewer,
+    );
     addTearDown(h.dispose);
 
     final res = await http.get(
@@ -594,7 +664,10 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await _seedCatalogRows(db);
-    final h = await RestTestHarness.start(database: db, role: kUserRolePowerViewer);
+    final h = await RestTestHarness.start(
+      database: db,
+      role: kUserRolePowerViewer,
+    );
     addTearDown(h.dispose);
 
     final res = await http.patch(
@@ -613,7 +686,9 @@ void main() {
     addTearDown(h.dispose);
 
     final page = await http.get(
-      Uri.parse('${h.baseUrl}/v1/catalog/calendar-events?limit=1&offset=0&title=alpha'),
+      Uri.parse(
+        '${h.baseUrl}/v1/catalog/calendar-events?limit=1&offset=0&title=alpha',
+      ),
       headers: h.authHeaders,
     );
     expect(page.statusCode, 200);
@@ -632,7 +707,9 @@ void main() {
     expect(all.statusCode, 200);
     final allBody = jsonDecode(all.body) as Map<String, dynamic>;
     expect(allBody['total'], 3);
-    final ids = (allBody['items'] as List).map((e) => (e as Map)['id']).toList();
+    final ids = (allBody['items'] as List)
+        .map((e) => (e as Map)['id'])
+        .toList();
     expect(ids, ['cal2', 'cal3', 'cal1']);
 
     final byCategory = await http.get(
@@ -642,7 +719,9 @@ void main() {
     expect(byCategory.statusCode, 200);
     final catBody = jsonDecode(byCategory.body) as Map<String, dynamic>;
     expect(catBody['total'], 2);
-    final catIds = (catBody['items'] as List).map((e) => (e as Map)['id']).toSet();
+    final catIds = (catBody['items'] as List)
+        .map((e) => (e as Map)['id'])
+        .toSet();
     expect(catIds, {'cal2', 'cal3'});
     final cal2 = (catBody['items'] as List)
         .cast<Map<String, dynamic>>()
@@ -655,7 +734,9 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     final updated = DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000);
-    await db.into(db.taskLists).insert(
+    await db
+        .into(db.taskLists)
+        .insert(
           TaskListsCompanion.insert(
             id: 'list_a',
             label: 'To Do',
@@ -667,7 +748,9 @@ void main() {
             updatedAtMs: updated,
           ),
         );
-    await db.into(db.taskLists).insert(
+    await db
+        .into(db.taskLists)
+        .insert(
           TaskListsCompanion.insert(
             id: 'list_b',
             label: 'Done',
@@ -679,7 +762,9 @@ void main() {
             updatedAtMs: updated,
           ),
         );
-    await db.into(db.tasks).insert(
+    await db
+        .into(db.tasks)
+        .insert(
           TasksCompanion.insert(
             id: 'task1',
             taskListId: 'list_a',
@@ -691,7 +776,9 @@ void main() {
             updatedAtMs: updated,
           ),
         );
-    await db.into(db.tasks).insert(
+    await db
+        .into(db.tasks)
+        .insert(
           TasksCompanion.insert(
             id: 'task2',
             taskListId: 'list_b',
@@ -701,6 +788,20 @@ void main() {
             externalId: 'ext_card_2',
             position: 1,
             updatedAtMs: updated.add(const Duration(seconds: 1)),
+          ),
+        );
+    await db
+        .into(db.tasks)
+        .insert(
+          TasksCompanion.insert(
+            id: 'task3',
+            taskListId: 'list_b',
+            title: 'Other integration',
+            integrationType: 'tasks_trello',
+            integrationId: 'int-other',
+            externalId: 'ext_card_3',
+            position: 2,
+            updatedAtMs: updated.add(const Duration(seconds: 2)),
           ),
         );
     final h = await RestTestHarness.start(database: db);
@@ -718,19 +819,40 @@ void main() {
     expect(item['list_label'], 'To Do');
     expect(item['board_key'], 'board1');
     expect(item['integration_type'], 'tasks_trello');
-  });
 
-  test('power_viewer cannot use suppressed=true on calendar-events catalog', () async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
-    await _seedCalendarCatalogEvents(db);
-    final h = await RestTestHarness.start(database: db, role: kUserRolePowerViewer);
-    addTearDown(h.dispose);
-
-    final res = await http.get(
-      Uri.parse('${h.baseUrl}/v1/catalog/calendar-events?suppressed=true'),
+    final byIntegration = await http.get(
+      Uri.parse(
+        '${h.baseUrl}/v1/catalog/tasks?integration_id=$kDefaultTasksTrelloIntegrationId',
+      ),
       headers: h.authHeaders,
     );
-    expect(res.statusCode, 403);
+    expect(byIntegration.statusCode, 200);
+    final integrationBody =
+        jsonDecode(byIntegration.body) as Map<String, dynamic>;
+    expect(integrationBody['total'], 2);
+    final integrationTitles = (integrationBody['items'] as List)
+        .map((e) => (e as Map)['title'] as String)
+        .toSet();
+    expect(integrationTitles, {'Alpha task', 'Other board'});
   });
+
+  test(
+    'power_viewer cannot use suppressed=true on calendar-events catalog',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
+      await _seedCalendarCatalogEvents(db);
+      final h = await RestTestHarness.start(
+        database: db,
+        role: kUserRolePowerViewer,
+      );
+      addTearDown(h.dispose);
+
+      final res = await http.get(
+        Uri.parse('${h.baseUrl}/v1/catalog/calendar-events?suppressed=true'),
+        headers: h.authHeaders,
+      );
+      expect(res.statusCode, 403);
+    },
+  );
 }
