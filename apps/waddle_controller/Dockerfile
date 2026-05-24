@@ -9,9 +9,10 @@ WORKDIR /app
 COPY packages/waddle_node_tls /packages/waddle_node_tls
 RUN npm ci --prefix /packages/waddle_node_tls
 COPY apps/waddle_controller/package.json apps/waddle_controller/package-lock.json ./
-RUN npm ci
+# postinstall runs npm ci under ../../packages/waddle_node_tls (monorepo path); skip until sources are copied.
+RUN npm ci --ignore-scripts
 COPY apps/waddle_controller/ .
-RUN npm run build && npm run build:server && npm prune --omit=dev
+RUN node tool/rebuild-native-modules.mjs && npm run build && npm run build:server && npm prune --omit=dev
 
 FROM node:22-alpine
 RUN apk add --no-cache nginx openssl wget

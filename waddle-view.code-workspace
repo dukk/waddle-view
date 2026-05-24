@@ -40,9 +40,11 @@
 			"FLICKR",
 			"geolocation",
 			"getpid",
+			"googleusercontent",
 			"headshot",
 			"HWDEC",
 			"LOCALAPPDATA",
+			"openweathermap",
 			"pexels",
 			"photoless",
 			"pkill",
@@ -53,7 +55,10 @@
 			"rjsf",
 			"SPDR",
 			"sqltools",
+			"sslmode",
 			"unmuted",
+			"Vite",
+			"waddlectl",
 			"waddleview"
 		]
 	}

@@ -29,12 +29,7 @@ String? waddleDisplayDatabaseUrlFromEnvironment([Map<String, String>? env]) {
 
 /// Parses a Postgres URL into a [pg.Endpoint].
 pg.Endpoint postgresEndpointFromUrl(String databaseUrl) {
-  final uri = Uri.parse(databaseUrl);
-  if (uri.scheme != 'postgres' && uri.scheme != 'postgresql') {
-    throw ArgumentError(
-      'WADDLE_DISPLAY_DATABASE_URL must use postgres:// or postgresql://',
-    );
-  }
+  final uri = _postgresUriFromDatabaseUrl(databaseUrl);
   final userInfo = uri.userInfo.split(':');
   final username = userInfo.isNotEmpty
       ? Uri.decodeComponent(userInfo.first)
@@ -54,8 +49,63 @@ pg.Endpoint postgresEndpointFromUrl(String databaseUrl) {
   );
 }
 
+/// SSL settings for [createPostgresExecutorFromUrl].
+///
+/// Honors `sslmode` in the URL query (`disable`, `require`, `verify-ca`,
+/// `verify-full`). When omitted, loopback hosts use [pg.SslMode.disable] so
+/// local dev and CI Postgres services without TLS keep working.
+pg.ConnectionSettings postgresConnectionSettingsFromUrl(String databaseUrl) {
+  return pg.ConnectionSettings(sslMode: postgresSslModeFromUrl(databaseUrl));
+}
+
+/// Resolves [pg.SslMode] from a Postgres database URL.
+pg.SslMode postgresSslModeFromUrl(String databaseUrl) {
+  final uri = _postgresUriFromDatabaseUrl(databaseUrl);
+  final sslModeParam = uri.queryParameters['sslmode']?.trim();
+  if (sslModeParam != null && sslModeParam.isNotEmpty) {
+    switch (sslModeParam) {
+      case 'disable':
+        return pg.SslMode.disable;
+      case 'require':
+        return pg.SslMode.require;
+      case 'verify-ca':
+      case 'verify-full':
+        return pg.SslMode.verifyFull;
+      default:
+        throw ArgumentError(
+          'Invalid sslmode value: $sslModeParam. '
+          'Expected: disable, require, verify-ca, verify-full',
+        );
+    }
+  }
+  final host = uri.host.isEmpty ? 'localhost' : uri.host;
+  if (_isLoopbackPostgresHost(host)) {
+    return pg.SslMode.disable;
+  }
+  return pg.SslMode.require;
+}
+
+Uri _postgresUriFromDatabaseUrl(String databaseUrl) {
+  final uri = Uri.parse(databaseUrl);
+  if (uri.scheme != 'postgres' && uri.scheme != 'postgresql') {
+    throw ArgumentError(
+      'WADDLE_DISPLAY_DATABASE_URL must use postgres:// or postgresql://',
+    );
+  }
+  return uri;
+}
+
+bool _isLoopbackPostgresHost(String host) {
+  if (host == 'localhost') return true;
+  if (host == '127.0.0.1' || host == '::1') return true;
+  return false;
+}
+
 QueryExecutor createPostgresExecutorFromUrl(String databaseUrl) {
-  return PgDatabase(endpoint: postgresEndpointFromUrl(databaseUrl));
+  return PgDatabase(
+    endpoint: postgresEndpointFromUrl(databaseUrl),
+    settings: postgresConnectionSettingsFromUrl(databaseUrl),
+  );
 }
 
 /// Picks SQLite file or Postgres URL from environment.

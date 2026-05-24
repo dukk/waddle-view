@@ -7,7 +7,7 @@ WORKDIR /app
 COPY packages/waddle_node_tls /packages/waddle_node_tls
 RUN npm ci --prefix /packages/waddle_node_tls
 COPY apps/waddle_display_mock_api/package.json apps/waddle_display_mock_api/package-lock.json ./
-RUN npm ci
+RUN npm ci --ignore-scripts
 COPY apps/waddle_display_mock_api/tsconfig.json ./
 COPY apps/waddle_display_mock_api/src ./src
 RUN npm run build && npm prune --omit=dev
