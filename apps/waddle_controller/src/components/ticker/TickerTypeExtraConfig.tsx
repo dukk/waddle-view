@@ -24,10 +24,7 @@ import { ContentCategorySelect } from '@/components/config/ContentCategorySelect
 import { useDisplayFormat } from '@/context/DisplayFormatContext';
 import type { SavedDisplay } from '@/storage/displays';
 import { CONTROLLER_DATE_ORDER_OPTIONS } from '@/constants/displaySettings';
-import {
-  tickerDisplayDefaultDateTimeLabel,
-  tickerTimeFormatPresetLabel,
-} from '@/util/tickerTimeFormat';
+import { tickerDisplayDefaultDateTimeLabel } from '@/util/tickerTimeFormat';
 
 const USE_DISPLAY_DEFAULT = '';
 

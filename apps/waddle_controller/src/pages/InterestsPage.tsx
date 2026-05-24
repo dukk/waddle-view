@@ -345,7 +345,6 @@ export function InterestsPage() {
     [trivia],
   );
 
-  const tabSortOptions = useMemo(() => interestSortOptionsForTab(tab), [tab]);
   const tabSortToolbar = useMemo(() => interestSortToolbarForTab(tab), [tab]);
 
   const sortedLocations = useMemo(
@@ -355,11 +354,11 @@ export function InterestsPage() {
         search,
         searchMatches: (row, q) =>
           row.name.toLowerCase().includes(q) || row.id.toLowerCase().includes(q),
-        sortOptions: tabSortOptions,
+        sortOptions: interestSortOptionsForTab('locations'),
         sortId,
         order: sortOrder,
       }),
-    [filteredWeather, search, sortId, sortOrder, tabSortOptions],
+    [filteredWeather, search, sortId, sortOrder],
   );
 
   const filteredRssForSearch = useMemo(() => {
@@ -374,12 +373,12 @@ export function InterestsPage() {
           row.url.toLowerCase().includes(q)
         );
       },
-      sortOptions: tabSortOptions,
+      sortOptions: interestSortOptionsForTab('rss'),
       sortId,
       order: sortOrder,
     });
     return pipeline;
-  }, [rss, search, sortId, sortOrder, tabSortOptions]);
+  }, [rss, search, sortId, sortOrder]);
 
   const newsGroups = useMemo(() => {
     const byCategory = new Map<string, RssFeedRow[]>();
@@ -407,11 +406,11 @@ export function InterestsPage() {
           row.symbol.toLowerCase().includes(q) ||
           row.id.toLowerCase().includes(q) ||
           row.display_name.toLowerCase().includes(q),
-        sortOptions: tabSortOptions,
+        sortOptions: interestSortOptionsForTab('stocks'),
         sortId,
         order: sortOrder,
       }),
-    [stocks, search, sortId, sortOrder, tabSortOptions],
+    [stocks, search, sortId, sortOrder],
   );
 
   const stockGroups = useMemo(() => {
@@ -436,11 +435,11 @@ export function InterestsPage() {
         search,
         searchMatches: (row, q) =>
           row.label.toLowerCase().includes(q) || row.id.toLowerCase().includes(q),
-        sortOptions: tabSortOptions,
+        sortOptions: interestSortOptionsForTab('jokes'),
         sortId,
         order: sortOrder,
       }),
-    [filteredJokes, search, sortId, sortOrder, tabSortOptions],
+    [filteredJokes, search, sortId, sortOrder],
   );
   const sortedTrivia = useMemo(
     () =>
@@ -449,11 +448,11 @@ export function InterestsPage() {
         search,
         searchMatches: (row, q) =>
           row.label.toLowerCase().includes(q) || row.id.toLowerCase().includes(q),
-        sortOptions: tabSortOptions,
+        sortOptions: interestSortOptionsForTab('trivia'),
         sortId,
         order: sortOrder,
       }),
-    [filteredTrivia, search, sortId, sortOrder, tabSortOptions],
+    [filteredTrivia, search, sortId, sortOrder],
   );
   const locationsPaged = useMemo(
     () => paginateList(sortedLocations, listPage, listPageSize),

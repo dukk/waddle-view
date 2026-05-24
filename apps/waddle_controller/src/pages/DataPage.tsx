@@ -217,6 +217,8 @@ function contentDeletePath(kind: DataKind, row: Record<string, unknown>): string
       if (id == null || id === '') return null;
       return `/v1/alerts/${encodeURIComponent(String(id))}`;
     }
+    case 'tasks':
+      return null;
   }
 }
 

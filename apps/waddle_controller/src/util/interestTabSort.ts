@@ -5,6 +5,7 @@ import type {
   WeatherLocationRow,
 } from '@/api/interests';
 import { formatCategorySeason } from '@/util/categorySeason';
+import type { SortOption } from '@/util/clientListPipeline';
 import {
   buildColumnSortOptions,
   columnSortToolbarOptions,
@@ -141,6 +142,12 @@ const CATEGORY_INTEREST_SORT_FIELDS: ColumnSortField<CategoryInterestRow>[] = [
   },
 ];
 
+export function interestSortOptionsForTab(tab: 'locations'): SortOption<WeatherLocationRow>[];
+export function interestSortOptionsForTab(tab: 'rss'): SortOption<RssFeedRow>[];
+export function interestSortOptionsForTab(tab: 'stocks'): SortOption<StockSymbolRow>[];
+export function interestSortOptionsForTab(
+  tab: 'jokes' | 'trivia',
+): SortOption<CategoryInterestRow>[];
 export function interestSortOptionsForTab(tab: InterestTabId) {
   switch (tab) {
     case 'locations':
