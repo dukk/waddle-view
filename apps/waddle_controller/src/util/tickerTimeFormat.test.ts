@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   tickerDisplayDefaultDateTimeLabel,
   tickerTimeFormatPresetForControllerTimeFormat,
+  tickerTimeFormatPresetLabel,
 } from './tickerTimeFormat';
 
 describe('tickerTimeFormatPresetForControllerTimeFormat', () => {
@@ -28,5 +29,16 @@ describe('tickerDisplayDefaultDateTimeLabel', () => {
     });
     expect(label).not.toMatch(/PM|AM/);
     expect(label.length).toBeGreaterThan(5);
+  });
+});
+
+describe('tickerTimeFormatPresetLabel', () => {
+  it('returns human label for known presets', () => {
+    expect(tickerTimeFormatPresetLabel('24h_hms')).toContain('24-hour');
+    expect(tickerTimeFormatPresetLabel('12h_hm_ampm')).toContain('12-hour');
+  });
+
+  it('passes through unknown preset ids', () => {
+    expect(tickerTimeFormatPresetLabel('custom_preset')).toBe('custom_preset');
   });
 });
