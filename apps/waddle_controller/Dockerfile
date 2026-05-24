@@ -3,6 +3,8 @@
 # Build from repository root: docker build -f apps/waddle_controller/Dockerfile .
 
 FROM node:22-alpine AS build
+ARG WADDLE_CONTROLLER_BUILD_NUMBER=dev
+ENV WADDLE_CONTROLLER_BUILD_NUMBER=$WADDLE_CONTROLLER_BUILD_NUMBER
 WORKDIR /app
 COPY packages/waddle_node_tls /packages/waddle_node_tls
 RUN npm ci --prefix /packages/waddle_node_tls

@@ -1,0 +1,132 @@
+# Linux desktop release bundle (x64 or arm64). Callable from release.yml and ci.yml.
+name: Release build — Linux desktop
+
+on:
+  workflow_call:
+    inputs:
+      arch:
+        type: string
+        required: true
+        description: 'x64 or arm64 (generic Linux desktop; Pi uses release-pi.yml)'
+      build_number:
+        type: string
+        required: true
+      dist_basename:
+        type: string
+        required: false
+        default: ''
+      artifact_name:
+        type: string
+        required: false
+        default: ''
+
+defaults:
+  run:
+    working-directory: apps/waddle_display
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ${{ inputs.arch == 'arm64' && 'ubuntu-22.04-arm' || 'ubuntu-latest' }}
+    timeout-minutes: 30
+    env:
+      LINUX_BUILD_DEPS_FILE: ${{ github.workspace }}/deploy/linux-arm64/build-deps.txt
+      LINUX_ARCH: ${{ inputs.arch }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.9'
+          channel: stable
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          xargs -a "$LINUX_BUILD_DEPS_FILE" sudo apt-get install -y
+      - run: flutter config --enable-linux-desktop
+      - run: flutter pub get
+        working-directory: ${{ github.workspace }}
+      - name: Generate code
+        run: dart run build_runner build --delete-conflicting-outputs
+        working-directory: ${{ github.workspace }}/packages/waddle_shared
+      - run: flutter build linux --release --build-number "${{ inputs.build_number }}"
+      - name: Build waddlectl CLI
+        working-directory: ${{ github.workspace }}/apps/waddlectl
+        run: dart build cli -o build/waddlectl_release
+      - name: Merge waddlectl into Linux bundle
+        working-directory: ${{ github.workspace }}/apps/waddle_display
+        run: |
+          src="${{ github.workspace }}/apps/waddlectl/build/waddlectl_release/bundle"
+          dst="build/linux/${LINUX_ARCH}/release/bundle/waddlectl"
+          test -f "$src/bin/waddlectl"
+          chmod +x "$src/bin/waddlectl"
+          rm -rf "$dst"
+          cp -a "$src" "$dst"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/waddle_controller/package-lock.json
+      - name: Lint, test, coverage, and build waddle_controller SPA
+        working-directory: ${{ github.workspace }}/apps/waddle_controller
+        run: npm ci && npm run lint && npm run test:coverage && npm run coverage:check && npm run build
+      - name: Merge waddle_controller into Linux bundle
+        working-directory: ${{ github.workspace }}/apps/waddle_display
+        run: |
+          src="${{ github.workspace }}/apps/waddle_controller/dist"
+          dst="build/linux/${LINUX_ARCH}/release/bundle/waddle_controller"
+          test -f "$src/index.html"
+          rm -rf "$dst"
+          mkdir -p "$dst"
+          cp -a "$src"/. "$dst/"
+      - name: Audit Linux runtime dependencies
+        run: |
+          APP_BIN="build/linux/${LINUX_ARCH}/release/bundle/waddle_display"
+          WCTL_BIN="build/linux/${LINUX_ARCH}/release/bundle/waddlectl/bin/waddlectl"
+          CTRL_IDX="build/linux/${LINUX_ARCH}/release/bundle/waddle_controller/index.html"
+          test -x "$APP_BIN"
+          test -x "$WCTL_BIN"
+          test -f "$CTRL_IDX"
+          ldd "$APP_BIN" | tee /tmp/waddle-ldd.txt
+          if grep -q "not found" /tmp/waddle-ldd.txt; then
+            echo "Missing runtime shared libraries detected."
+            exit 1
+          fi
+          ldd "$WCTL_BIN" | tee /tmp/waddlectl-ldd.txt
+          if grep -q "not found" /tmp/waddlectl-ldd.txt; then
+            echo "Missing runtime shared libraries detected (waddlectl)."
+            exit 1
+          fi
+      - name: Package dist
+        env:
+          DIST_BASENAME_INPUT: ${{ inputs.dist_basename }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$DIST_BASENAME_INPUT" ]]; then
+            DIST="$DIST_BASENAME_INPUT"
+          elif [[ "$LINUX_ARCH" == "arm64" ]]; then
+            DIST="waddle-view-linux-arm64-desktop-${GITHUB_REF_NAME}"
+          else
+            DIST="waddle-view-linux-x64-${GITHUB_REF_NAME}"
+          fi
+          mkdir -p "../../dist/${DIST}"
+          cp -r "build/linux/${LINUX_ARCH}/release/bundle" "../../dist/${DIST}/"
+          cp ../../deploy/linux-arm64/install.sh ../../deploy/linux-arm64/waddle-view.service "../../dist/${DIST}/"
+          cd ../../dist && tar czf "${DIST}.tar.gz" "${DIST}"
+      - name: Resolve artifact name
+        id: artifact
+        env:
+          ARTIFACT_NAME_INPUT: ${{ inputs.artifact_name }}
+        run: |
+          if [[ -n "$ARTIFACT_NAME_INPUT" ]]; then
+            echo "name=$ARTIFACT_NAME_INPUT" >> "$GITHUB_OUTPUT"
+          elif [[ "$LINUX_ARCH" == "arm64" ]]; then
+            echo "name=linux-arm64-desktop-bundle-${{ inputs.build_number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=linux-x64-bundle-${{ inputs.build_number }}" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ${{ steps.artifact.outputs.name }}
+          path: ${{ github.workspace }}/dist/*.tar.gz

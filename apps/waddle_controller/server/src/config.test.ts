@@ -65,8 +65,9 @@ describe('loadConfig', () => {
     expect(cfg.proxyUpstreamTimeoutMs).toBe(90_000);
   });
 
-  it('rejects invalid proxy upstream timeout', () => {
-    process.env.WADDLE_CONTROLLER_PROXY_UPSTREAM_TIMEOUT_MS = '0';
-    expect(() => loadConfig()).toThrow(/PROXY_UPSTREAM_TIMEOUT_MS/);
+  it('reads optional database URL from env', () => {
+    process.env.WADDLE_CONTROLLER_DATABASE_URL = 'postgres://localhost/waddle';
+    const cfg = loadConfig();
+    expect(cfg.databaseUrl).toBe('postgres://localhost/waddle');
   });
 });

@@ -29,7 +29,7 @@ export function isAllowedDuringBootstrap(method: string, path: string): boolean 
 export const bootstrapGuard = createMiddleware<{ Variables: AppVariables }>(async (c, next) => {
   const db = c.get('db');
   const config = c.get('config');
-  if (!needsBootstrap(db, config)) {
+  if (!(await needsBootstrap(db, config))) {
     await next();
     return;
   }
@@ -49,7 +49,7 @@ export const requireAuthEnabled = createMiddleware<{ Variables: AppVariables }>(
         403,
       );
     }
-    if (!isEffectiveUserMode(c.get('config'), c.get('db'))) {
+    if (!(await isEffectiveUserMode(c.get('config'), c.get('db')))) {
       return c.json({ error: 'User mode is disabled', code: 'user_mode_disabled' }, 403);
     }
     await next();
@@ -84,7 +84,7 @@ export const requireAdmin = createMiddleware<{ Variables: AppVariables }>(async 
 });
 
 export const requireUserManagement = createMiddleware<{ Variables: AppVariables }>(async (c, next) => {
-  if (!isEffectiveUserMode(c.get('config'), c.get('db'))) {
+  if (!(await isEffectiveUserMode(c.get('config'), c.get('db')))) {
     return c.json({ error: 'User mode is disabled', code: 'user_mode_disabled' }, 403);
   }
   await next();

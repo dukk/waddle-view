@@ -5,10 +5,10 @@ import { DISPLAY_URL_HEADER } from '../constants/proxyHeaders.js';
 import * as displayProxy from '../services/displayProxy.js';
 
 describe('proxy routes', () => {
-  let cleanup: (() => void) | undefined;
+  let cleanup: (() => void | Promise<void>) | undefined;
 
-  afterEach(() => {
-    cleanup?.();
+  afterEach(async () => {
+    await cleanup?.();
     cleanup = undefined;
     vi.restoreAllMocks();
   });
@@ -16,7 +16,7 @@ describe('proxy routes', () => {
   it('requires auth for normal API when auth enabled', async () => {
     const t = createTestApp();
     cleanup = t.cleanup;
-    setUserManagementEnabled(t.db, true);
+    await setUserManagementEnabled(t.db, true);
     await t.app.request('/bff/v1/bootstrap/admin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -31,7 +31,7 @@ describe('proxy routes', () => {
   it('forwards authenticated display API calls', async () => {
     const t = createTestApp();
     cleanup = t.cleanup;
-    setUserManagementEnabled(t.db, true);
+    await setUserManagementEnabled(t.db, true);
     const boot = await t.app.request('/bff/v1/bootstrap/admin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

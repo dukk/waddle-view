@@ -67,12 +67,12 @@ export function backupsRoutes() {
     await next();
   });
 
-  protectedRoutes.get('/backup-targets', (c) => {
+  protectedRoutes.get('/backup-targets', async (c) => {
     const uid = userIdForRequest(c);
     if (c.get('config').authEnabled && uid == null) {
       return c.json({ error: 'Unauthorized', code: 'unauthorized' }, 401);
     }
-    return c.json({ targets: listBackupTargets(c.get('db'), uid) });
+    return c.json({ targets: await listBackupTargets(c.get('db'), uid) });
   });
 
   protectedRoutes.put('/backup-targets', async (c) => {
@@ -104,7 +104,7 @@ export function backupsRoutes() {
     if (!displayId || !baseUrl || !apiKey) {
       return c.json({ error: 'displayId, baseUrl, and apiKey are required', code: 'invalid_request' }, 400);
     }
-    const target = upsertBackupTarget(c.get('config'), c.get('db'), {
+    const target = await upsertBackupTarget(c.get('config'), c.get('db'), {
       userId: user?.id ?? null,
       displayId,
       label,
@@ -117,40 +117,40 @@ export function backupsRoutes() {
     return c.json({ target });
   });
 
-  protectedRoutes.get('/backup-snapshots', (c) => {
+  protectedRoutes.get('/backup-snapshots', async (c) => {
     const uid = userIdForRequest(c);
     if (c.get('config').authEnabled && uid == null) {
       return c.json({ error: 'Unauthorized', code: 'unauthorized' }, 401);
     }
-    return c.json({ snapshots: listAllBackupSnapshots(c.get('db'), uid) });
+    return c.json({ snapshots: await listAllBackupSnapshots(c.get('db'), uid) });
   });
 
-  protectedRoutes.delete('/backup-targets/:id', (c) => {
+  protectedRoutes.delete('/backup-targets/:id', async (c) => {
     const uid = userIdForRequest(c);
     if (c.get('config').authEnabled && uid == null) {
       return c.json({ error: 'Unauthorized', code: 'unauthorized' }, 401);
     }
-    const ok = deleteBackupTarget(c.get('db'), c.req.param('id'), uid);
+    const ok = await deleteBackupTarget(c.get('db'), c.req.param('id'), uid);
     if (!ok) {
       return c.json({ error: 'Not found', code: 'not_found' }, 404);
     }
     return c.json({ ok: true });
   });
 
-  protectedRoutes.get('/backup-targets/:id/snapshots', (c) => {
+  protectedRoutes.get('/backup-targets/:id/snapshots', async (c) => {
     const uid = userIdForRequest(c);
-    const target = findBackupTarget(c.get('db'), c.req.param('id'), uid);
+    const target = await findBackupTarget(c.get('db'), c.req.param('id'), uid);
     if (!target) {
       return c.json({ error: 'Not found', code: 'not_found' }, 404);
     }
     return c.json({
-      snapshots: listSnapshotsForTarget(c.get('db'), target.id, target.label),
+      snapshots: await listSnapshotsForTarget(c.get('db'), target.id, target.label),
     });
   });
 
   protectedRoutes.post('/backup-targets/:id/pull-now', async (c) => {
     const uid = userIdForRequest(c);
-    const target = findBackupTarget(c.get('db'), c.req.param('id'), uid);
+    const target = await findBackupTarget(c.get('db'), c.req.param('id'), uid);
     if (!target) {
       return c.json({ error: 'Not found', code: 'not_found' }, 404);
     }
@@ -163,13 +163,13 @@ export function backupsRoutes() {
     }
   });
 
-  protectedRoutes.get('/backup-snapshots/:id/download', (c) => {
+  protectedRoutes.get('/backup-snapshots/:id/download', async (c) => {
     const uid = userIdForRequest(c);
-    const snap = findSnapshot(c.get('db'), c.req.param('id'));
+    const snap = await findSnapshot(c.get('db'), c.req.param('id'));
     if (!snap) {
       return c.json({ error: 'Not found', code: 'not_found' }, 404);
     }
-    const target = findBackupTarget(c.get('db'), snap.target_id, uid);
+    const target = await findBackupTarget(c.get('db'), snap.target_id, uid);
     if (!target) {
       return c.json({ error: 'Not found', code: 'not_found' }, 404);
     }
@@ -183,17 +183,17 @@ export function backupsRoutes() {
     });
   });
 
-  protectedRoutes.delete('/backup-snapshots/:id', (c) => {
+  protectedRoutes.delete('/backup-snapshots/:id', async (c) => {
     const uid = userIdForRequest(c);
-    const snap = findSnapshot(c.get('db'), c.req.param('id'));
+    const snap = await findSnapshot(c.get('db'), c.req.param('id'));
     if (!snap) {
       return c.json({ error: 'Not found', code: 'not_found' }, 404);
     }
-    const target = findBackupTarget(c.get('db'), snap.target_id, uid);
+    const target = await findBackupTarget(c.get('db'), snap.target_id, uid);
     if (!target) {
       return c.json({ error: 'Not found', code: 'not_found' }, 404);
     }
-    deleteSnapshot(c.get('db'), snap.id);
+    await deleteSnapshot(c.get('db'), snap.id);
     return c.json({ ok: true });
   });
 
@@ -207,11 +207,11 @@ export function backupsRoutes() {
 
   adminRestore.post('/backup-snapshots/:id/restore', async (c) => {
     const uid = userIdForRequest(c);
-    const snap = findSnapshot(c.get('db'), c.req.param('id'));
+    const snap = await findSnapshot(c.get('db'), c.req.param('id'));
     if (!snap) {
       return c.json({ error: 'Not found', code: 'not_found' }, 404);
     }
-    const target = findBackupTarget(c.get('db'), snap.target_id, uid);
+    const target = await findBackupTarget(c.get('db'), snap.target_id, uid);
     if (!target) {
       return c.json({ error: 'Not found', code: 'not_found' }, 404);
     }
@@ -226,7 +226,7 @@ export function backupsRoutes() {
 
   adminRestore.post('/backup-targets/:id/upload', async (c) => {
     const uid = userIdForRequest(c);
-    const target = findBackupTarget(c.get('db'), c.req.param('id'), uid);
+    const target = await findBackupTarget(c.get('db'), c.req.param('id'), uid);
     if (!target) {
       return c.json({ error: 'Not found', code: 'not_found' }, 404);
     }
@@ -234,14 +234,14 @@ export function backupsRoutes() {
     if (buf.length === 0) {
       return c.json({ error: 'Empty body', code: 'invalid_request' }, 400);
     }
-    const snap = insertSnapshot(c.get('db'), c.get('config'), {
+    const snap = await insertSnapshot(c.get('db'), c.get('config'), {
       targetId: target.id,
       displayId: target.display_id,
       bytes: buf,
       fileName: `upload_${Date.now()}.zip`,
       source: 'upload',
     });
-    pruneSnapshotsForTarget(c.get('db'), target.id, target.retention_count);
+    await pruneSnapshotsForTarget(c.get('db'), target.id, target.retention_count);
     return c.json({ snapshot: { ...snap, displayLabel: target.label } });
   });
 

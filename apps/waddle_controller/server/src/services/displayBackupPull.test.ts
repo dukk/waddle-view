@@ -6,11 +6,11 @@ import { pullBackupFromDisplay, restoreSnapshotToDisplay } from './displayBackup
 import * as insecureFetch from './insecureFetch.js';
 
 describe('displayBackupPull', () => {
-  let cleanup: (() => void) | undefined;
+  let cleanup: (() => void | Promise<void>) | undefined;
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.restoreAllMocks();
-    cleanup?.();
+    await cleanup?.();
     cleanup = undefined;
   });
 
@@ -18,7 +18,7 @@ describe('displayBackupPull', () => {
     const t = createTestApp({ authEnabled: false });
     cleanup = t.cleanup;
 
-    const publicTarget = upsertBackupTarget(t.config, t.db, {
+    const publicTarget = await upsertBackupTarget(t.config, t.db, {
       userId: null,
       displayId: 'd_pull',
       label: 'Pull',
@@ -28,7 +28,7 @@ describe('displayBackupPull', () => {
       retentionCount: 3,
       enabled: true,
     });
-    const target = findBackupTarget(t.db, publicTarget.id, null)!;
+    const target = (await findBackupTarget(t.db, publicTarget.id, null))!;
 
     const zip = Buffer.from([0x50, 0x4b, 0x05, 0x06]);
     const fetchMock = vi.spyOn(insecureFetch, 'insecureNodeFetch').mockImplementation(
@@ -57,11 +57,11 @@ describe('displayBackupPull', () => {
 
     expect(result.byteSize).toBe(zip.length);
     expect(fetchMock).toHaveBeenCalled();
-    const snaps = listSnapshotsForTarget(t.db, target.id);
+    const snaps = await listSnapshotsForTarget(t.db, target.id);
     expect(snaps).toHaveLength(1);
     expect(snaps[0]!.source).toBe('manual');
 
-    const row = findBackupTarget(t.db, target.id, null)!;
+    const row = (await findBackupTarget(t.db, target.id, null))!;
     expect(row.last_status).toBe('ok');
     expect(row.last_error).toBeNull();
   });
@@ -70,7 +70,7 @@ describe('displayBackupPull', () => {
     const t = createTestApp({ authEnabled: false });
     cleanup = t.cleanup;
 
-    const publicTarget = upsertBackupTarget(t.config, t.db, {
+    const publicTarget = await upsertBackupTarget(t.config, t.db, {
       userId: null,
       displayId: 'd_nojob',
       label: 'No job',
@@ -80,7 +80,7 @@ describe('displayBackupPull', () => {
       retentionCount: 3,
       enabled: true,
     });
-    const target = findBackupTarget(t.db, publicTarget.id, null)!;
+    const target = (await findBackupTarget(t.db, publicTarget.id, null))!;
 
     vi.spyOn(insecureFetch, 'insecureNodeFetch').mockResolvedValue(
       new Response('{}', { status: 202 }),
@@ -95,7 +95,7 @@ describe('displayBackupPull', () => {
     const t = createTestApp({ authEnabled: false });
     cleanup = t.cleanup;
 
-    const publicTarget = upsertBackupTarget(t.config, t.db, {
+    const publicTarget = await upsertBackupTarget(t.config, t.db, {
       userId: null,
       displayId: 'd_fail',
       label: 'Fail',
@@ -105,7 +105,7 @@ describe('displayBackupPull', () => {
       retentionCount: 3,
       enabled: true,
     });
-    const target = findBackupTarget(t.db, publicTarget.id, null)!;
+    const target = (await findBackupTarget(t.db, publicTarget.id, null))!;
 
     vi.spyOn(insecureFetch, 'insecureNodeFetch').mockResolvedValue(
       new Response('denied', { status: 403 }),
@@ -120,7 +120,7 @@ describe('displayBackupPull', () => {
     const t = createTestApp({ authEnabled: false });
     cleanup = t.cleanup;
 
-    const publicTarget = upsertBackupTarget(t.config, t.db, {
+    const publicTarget = await upsertBackupTarget(t.config, t.db, {
       userId: null,
       displayId: 'd_poll_fail',
       label: 'Poll fail',
@@ -130,7 +130,7 @@ describe('displayBackupPull', () => {
       retentionCount: 3,
       enabled: true,
     });
-    const target = findBackupTarget(t.db, publicTarget.id, null)!;
+    const target = (await findBackupTarget(t.db, publicTarget.id, null))!;
 
     vi.spyOn(insecureFetch, 'insecureNodeFetch').mockImplementation(async (url: string | URL) => {
       const path = String(url);
@@ -154,7 +154,7 @@ describe('displayBackupPull', () => {
     const t = createTestApp({ authEnabled: false });
     cleanup = t.cleanup;
 
-    const publicTarget = upsertBackupTarget(t.config, t.db, {
+    const publicTarget = await upsertBackupTarget(t.config, t.db, {
       userId: null,
       displayId: 'd_wrong_snap',
       label: 'Wrong snap',
@@ -164,7 +164,7 @@ describe('displayBackupPull', () => {
       retentionCount: 3,
       enabled: true,
     });
-    const target = findBackupTarget(t.db, publicTarget.id, null)!;
+    const target = (await findBackupTarget(t.db, publicTarget.id, null))!;
 
     await expect(
       restoreSnapshotToDisplay(t.config, t.db, 'nonexistent-snapshot', target),
@@ -175,7 +175,7 @@ describe('displayBackupPull', () => {
     const t = createTestApp({ authEnabled: false });
     cleanup = t.cleanup;
 
-    const publicTarget = upsertBackupTarget(t.config, t.db, {
+    const publicTarget = await upsertBackupTarget(t.config, t.db, {
       userId: null,
       displayId: 'd_restore',
       label: 'Restore',
@@ -185,10 +185,10 @@ describe('displayBackupPull', () => {
       retentionCount: 3,
       enabled: true,
     });
-    const target = findBackupTarget(t.db, publicTarget.id, null)!;
+    const target = (await findBackupTarget(t.db, publicTarget.id, null))!;
 
     const { insertSnapshot } = await import('./backupSnapshots.js');
-    const snap = insertSnapshot(t.db, t.config, {
+    const snap = await insertSnapshot(t.db, t.config, {
       targetId: target.id,
       displayId: target.display_id,
       bytes: Buffer.from([0x50, 0x4b]),
@@ -206,7 +206,7 @@ describe('displayBackupPull', () => {
       'https://127.0.0.1:8787/v1/display/backup/restore?confirm=yes',
       expect.objectContaining({ method: 'POST' }),
     );
-    const row = findSnapshot(t.db, snap.id);
+    const row = await findSnapshot(t.db, snap.id);
     expect(row).not.toBeNull();
   });
 });

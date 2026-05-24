@@ -1,4 +1,4 @@
-# Windows x64 release bundle. Callable from release.yml only.
+# Back-compat shim — use release-windows-desktop.yml with arch x64.
 name: Release build — Windows x64
 
 on:
@@ -8,74 +8,12 @@ on:
         type: string
         required: true
 
-defaults:
-  run:
-    working-directory: apps/waddle_display
-
-permissions:
-  contents: read
-
 jobs:
   build:
-    runs-on: windows-2025
-    steps:
-      - uses: actions/checkout@v5
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.41.9'
-          channel: stable
-      - run: flutter pub get
-        working-directory: ${{ github.workspace }}
-      - name: Generate code
-        run: dart run build_runner build --delete-conflicting-outputs
-        working-directory: ${{ github.workspace }}/packages/waddle_shared
-      - run: flutter build windows --release --build-number "${{ inputs.build_number }}"
-      - name: Build waddlectl CLI
-        working-directory: ${{ github.workspace }}/apps/waddlectl
-        run: dart build cli -o build/waddlectl_release
-      - name: Merge waddlectl into Windows Release bundle
-        shell: pwsh
-        working-directory: ${{ github.workspace }}/apps/waddle_display
-        run: |
-          $releaseDir = "build/windows/x64/runner/Release"
-          $src = "${{ github.workspace }}/apps/waddlectl/build/waddlectl_release/bundle"
-          if (-not (Test-Path "$src/bin/waddlectl.exe")) { throw "Missing $src/bin/waddlectl.exe" }
-          $dst = Join-Path $releaseDir "waddlectl"
-          if (Test-Path $dst) { Remove-Item -Recurse -Force $dst }
-          New-Item -ItemType Directory -Force $dst | Out-Null
-          Copy-Item -Path (Join-Path $src "*") -Destination $dst -Recurse
-      - uses: actions/setup-node@v5
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: apps/waddle_controller/package-lock.json
-      - name: Lint, test, coverage, and build waddle_controller SPA
-        working-directory: ${{ github.workspace }}/apps/waddle_controller
-        run: npm ci && npm run lint && npm run test:coverage && npm run coverage:check && npm run build
-      - name: Merge waddle_controller into Windows Release bundle
-        shell: pwsh
-        working-directory: ${{ github.workspace }}/apps/waddle_display
-        run: |
-          $releaseDir = "build/windows/x64/runner/Release"
-          $src = "${{ github.workspace }}/apps/waddle_controller/dist"
-          if (-not (Test-Path "$src/index.html")) { throw "Missing waddle_controller dist at $src" }
-          $dst = Join-Path $releaseDir "waddle_controller"
-          if (Test-Path $dst) { Remove-Item -Recurse -Force $dst }
-          New-Item -ItemType Directory -Force $dst | Out-Null
-          Copy-Item -Path (Join-Path $src "*") -Destination $dst -Recurse
-      - name: Package dist
-        shell: pwsh
-        run: |
-          $version = "${{ github.ref_name }}"
-          $distName = "waddle-view-windows-x64-$version"
-          $releaseDir = "build/windows/x64/runner/Release"
-          if (-not (Test-Path "$releaseDir/waddle_display.exe")) { throw "Missing $releaseDir/waddle_display.exe" }
-          if (-not (Test-Path "$releaseDir/waddlectl/bin/waddlectl.exe")) { throw "Missing $releaseDir/waddlectl/bin/waddlectl.exe" }
-          if (-not (Test-Path "$releaseDir/waddle_controller/index.html")) { throw "Missing $releaseDir/waddle_controller/index.html" }
-          New-Item -ItemType Directory -Force "../../dist" | Out-Null
-          $zip = "../../dist/$distName.zip"
-          Compress-Archive -Path "$releaseDir/*" -DestinationPath $zip -Force
-      - uses: actions/upload-artifact@v6
-        with:
-          name: windows-x64-bundle-${{ inputs.build_number }}
-          path: dist/*.zip
+    permissions:
+      actions: write
+      contents: read
+    uses: ./.github/workflows/release-windows-desktop.yml
+    with:
+      arch: x64
+      build_number: ${{ inputs.build_number }}

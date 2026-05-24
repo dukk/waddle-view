@@ -104,7 +104,7 @@ export async function pullBackupFromDisplay(
     throw new Error(`Backup exceeds WADDLE_CONTROLLER_BACKUP_MAX_BYTES (${maxBytes})`);
   }
 
-  const snap = insertSnapshot(db, config, {
+  const snap = await insertSnapshot(db, config, {
     targetId: target.id,
     displayId: target.display_id,
     bytes: buf,
@@ -112,8 +112,8 @@ export async function pullBackupFromDisplay(
     source,
     manifest,
   });
-  pruneSnapshotsForTarget(db, target.id, target.retention_count);
-  updateBackupTargetRunStatus(db, target.id, 'ok', null);
+  await pruneSnapshotsForTarget(db, target.id, target.retention_count);
+  await updateBackupTargetRunStatus(db, target.id, 'ok', null);
   return { snapshotId: snap.id, byteSize: snap.byteSize };
 }
 
@@ -124,7 +124,7 @@ export async function restoreSnapshotToDisplay(
   target: BackupTargetRow,
 ): Promise<void> {
   const { findSnapshot, readSnapshotBytes } = await import('./backupSnapshots.js');
-  const row = findSnapshot(db, snapshotId);
+  const row = await findSnapshot(db, snapshotId);
   if (!row || row.target_id !== target.id) {
     throw new Error('Snapshot not found for target');
   }

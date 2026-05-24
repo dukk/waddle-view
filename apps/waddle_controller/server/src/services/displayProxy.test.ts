@@ -10,10 +10,10 @@ import {
 import { DISPLAY_ID_HEADER, DISPLAY_URL_HEADER } from '../constants/proxyHeaders.js';
 
 describe('displayProxy', () => {
-  let cleanup: (() => void) | undefined;
+  let cleanup: (() => void | Promise<void>) | undefined;
 
-  afterEach(() => {
-    cleanup?.();
+  afterEach(async () => {
+    await cleanup?.();
     cleanup = undefined;
   });
 
@@ -22,11 +22,11 @@ describe('displayProxy', () => {
     expect(upstreamPathFromProxyRequest('/proxy/v1/adoption/request')).toBe('/v1/adoption/request');
   });
 
-  it('resolves adoption target without auth', () => {
+  it('resolves adoption target without auth', async () => {
     const t = createTestApp({ authEnabled: false });
     cleanup = t.cleanup;
     const headers = new Headers({ [DISPLAY_URL_HEADER]: 'https://127.0.0.1:8787' });
-    const result = resolveProxyTarget(
+    const result = await resolveProxyTarget(
       t.config,
       t.db,
       null,
@@ -39,11 +39,11 @@ describe('displayProxy', () => {
     }
   });
 
-  it('requires display URL for adoption paths', () => {
+  it('requires display URL for adoption paths', async () => {
     const t = createTestApp({ authEnabled: false });
     cleanup = t.cleanup;
     const headers = new Headers();
-    const result = resolveProxyTarget(
+    const result = await resolveProxyTarget(
       t.config,
       t.db,
       null,
@@ -59,13 +59,13 @@ describe('displayProxy', () => {
   it('resolves active display for authenticated users without URL header', async () => {
     const t = createTestApp();
     cleanup = t.cleanup;
-    setUserManagementEnabled(t.db, true);
+    await setUserManagementEnabled(t.db, true);
     const admin = await createUser(t.db, {
       username: 'admin',
       password: 'test-password1',
       role: 'admin',
     });
-    upsertUserDisplay(t.db, t.config.sessionSecret, admin.id, {
+    await upsertUserDisplay(t.db, t.config.sessionSecret, admin.id, {
       displayId: 'd_active',
       label: 'Display',
       baseUrl: 'https://display.test:8787',
@@ -75,9 +75,9 @@ describe('displayProxy', () => {
       permissions: [],
     });
     const { setActiveUserDisplay } = await import('./userDisplays.js');
-    setActiveUserDisplay(t.db, admin.id, 'd_active');
+    await setActiveUserDisplay(t.db, admin.id, 'd_active');
     const headers = new Headers({ [DISPLAY_ID_HEADER]: 'd_active' });
-    const result = resolveProxyTarget(
+    const result = await resolveProxyTarget(
       t.config,
       t.db,
       admin,
@@ -94,13 +94,13 @@ describe('displayProxy', () => {
   it('rejects URL mismatch for registered display', async () => {
     const t = createTestApp();
     cleanup = t.cleanup;
-    setUserManagementEnabled(t.db, true);
+    await setUserManagementEnabled(t.db, true);
     const admin = await createUser(t.db, {
       username: 'admin',
       password: 'test-password1',
       role: 'admin',
     });
-    upsertUserDisplay(t.db, t.config.sessionSecret, admin.id, {
+    await upsertUserDisplay(t.db, t.config.sessionSecret, admin.id, {
       displayId: 'd_one',
       label: 'One',
       baseUrl: 'https://127.0.0.1:8787',
@@ -113,7 +113,7 @@ describe('displayProxy', () => {
       [DISPLAY_URL_HEADER]: 'http://evil.test',
       [DISPLAY_ID_HEADER]: 'd_one',
     });
-    const result = resolveProxyTarget(t.config, t.db, admin, '/v1/screens', headers);
+    const result = await resolveProxyTarget(t.config, t.db, admin, '/v1/screens', headers);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.code).toBe('display_url_mismatch');

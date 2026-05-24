@@ -8,6 +8,7 @@ export type AppConfig = {
   port: number;
   dataDir: string;
   dbPath: string;
+  databaseUrl: string | null;
   sessionSecret: string;
   clientIdentifier: string | null;
   secureCookies: boolean;
@@ -68,6 +69,7 @@ export function loadConfig(): AppConfig {
     port: Number(process.env.PORT || process.env.WADDLE_CONTROLLER_PORT || 5199),
     dataDir,
     dbPath: path.join(dataDir, 'waddle_controller.db'),
+    databaseUrl: process.env.WADDLE_CONTROLLER_DATABASE_URL?.trim() || null,
     sessionSecret: sessionSecret || 'dev-insecure-secret',
     clientIdentifier,
     secureCookies,

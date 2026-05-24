@@ -1,5 +1,5 @@
-# Builds Windows, Linux x64, and Pi (Linux arm64) bundles; publishes a GitHub Release on v* tags.
-# Reusable jobs: release-windows.yml, release-linux-x64.yml, release-pi.yml.
+# Desktop (Windows/Linux x64+arm64), Pi arm64, mobile compile, controller Docker; GitHub Release on v* tags.
+# Reusable: release-windows-desktop, release-linux-desktop, release-pi, release-android, release-ios, release-macos, release-controller-docker.
 name: Release
 
 on:
@@ -11,23 +11,94 @@ permissions:
   contents: read
 
 jobs:
-  windows:
-    uses: ./.github/workflows/release-windows.yml
+  windows-x64:
+    permissions:
+      actions: write
+      contents: read
+    uses: ./.github/workflows/release-windows-desktop.yml
     with:
+      arch: x64
       build_number: ${{ github.run_number }}
 
-  linux:
-    uses: ./.github/workflows/release-linux-x64.yml
+  windows-arm64:
+    permissions:
+      actions: write
+      contents: read
+    uses: ./.github/workflows/release-windows-desktop.yml
     with:
+      arch: arm64
+      build_number: ${{ github.run_number }}
+
+  linux-x64:
+    permissions:
+      actions: write
+      contents: read
+    uses: ./.github/workflows/release-linux-desktop.yml
+    with:
+      arch: x64
+      build_number: ${{ github.run_number }}
+
+  linux-arm64-desktop:
+    permissions:
+      actions: write
+      contents: read
+    uses: ./.github/workflows/release-linux-desktop.yml
+    with:
+      arch: arm64
       build_number: ${{ github.run_number }}
 
   pi:
+    permissions:
+      actions: write
+      contents: read
     uses: ./.github/workflows/release-pi.yml
     with:
       build_number: ${{ github.run_number }}
 
+  android:
+    permissions:
+      actions: write
+      contents: read
+    uses: ./.github/workflows/release-android.yml
+    with:
+      build_number: ${{ github.run_number }}
+
+  ios:
+    permissions:
+      actions: write
+      contents: read
+    uses: ./.github/workflows/release-ios.yml
+    with:
+      build_number: ${{ github.run_number }}
+
+  macos:
+    permissions:
+      actions: write
+      contents: read
+    uses: ./.github/workflows/release-macos.yml
+    with:
+      build_number: ${{ github.run_number }}
+
+  controller-docker:
+    permissions:
+      actions: write
+      contents: read
+    uses: ./.github/workflows/release-controller-docker.yml
+    with:
+      build_number: ${{ github.run_number }}
+      artifact_name: release-controller-docker-${{ github.run_number }}
+
   publish:
-    needs: [windows, linux, pi]
+    needs:
+      - windows-x64
+      - windows-arm64
+      - linux-x64
+      - linux-arm64-desktop
+      - pi
+      - android
+      - ios
+      - macos
+      - controller-docker
     runs-on: ubuntu-latest
     if: github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/v')
     permissions:
@@ -39,11 +110,35 @@ jobs:
           path: release-assets
       - uses: actions/download-artifact@v6
         with:
+          name: windows-arm64-bundle-${{ github.run_number }}
+          path: release-assets
+      - uses: actions/download-artifact@v6
+        with:
           name: linux-x64-bundle-${{ github.run_number }}
           path: release-assets
       - uses: actions/download-artifact@v6
         with:
+          name: linux-arm64-desktop-bundle-${{ github.run_number }}
+          path: release-assets
+      - uses: actions/download-artifact@v6
+        with:
           name: linux-arm64-bundle-${{ github.run_number }}
+          path: release-assets
+      - uses: actions/download-artifact@v6
+        with:
+          name: android-bundle-${{ github.run_number }}
+          path: release-assets
+      - uses: actions/download-artifact@v6
+        with:
+          name: ios-bundle-${{ github.run_number }}
+          path: release-assets
+      - uses: actions/download-artifact@v6
+        with:
+          name: macos-bundle-${{ github.run_number }}
+          path: release-assets
+      - uses: actions/download-artifact@v6
+        with:
+          name: release-controller-docker-${{ github.run_number }}
           path: release-assets
       - uses: softprops/action-gh-release@v2
         with:
@@ -53,3 +148,4 @@ jobs:
           files: |
             release-assets/*.zip
             release-assets/*.tar.gz
+            release-assets/*.apk

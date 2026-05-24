@@ -18,7 +18,7 @@ export function createAppContext(config: AppConfig, db: AppDatabase) {
     c.set('db', db);
     const sessionId = getCookie(c, SESSION_COOKIE) ?? null;
     c.set('sessionId', sessionId);
-    c.set('user', resolveSessionUser(db, sessionId ?? undefined));
+    c.set('user', await resolveSessionUser(db, sessionId ?? undefined));
     await next();
   });
 }

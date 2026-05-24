@@ -4,7 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import 'webview_platform_register_stub.dart'
-    if (dart.library.io) 'webview_platform_register_io.dart' as platform_register;
+    if (dart.library.io) 'webview_platform_register_desktop.dart'
+    as platform_register;
 
 /// Ensures [WebViewPlatform.instance] is set on Windows and Linux before any
 /// [WebViewController] is created.
@@ -36,8 +37,8 @@ Future<void> ensureEmbeddedWebViewPlatform() async {
   }
 
   platform_register.registerDesktopWebViewPlatform();
-  _nativePluginVerified =
-      await platform_register.verifyDesktopWebViewNativePlugin();
+  _nativePluginVerified = await platform_register
+      .verifyDesktopWebViewNativePlugin();
 }
 
 var _bootstrapComplete = false;

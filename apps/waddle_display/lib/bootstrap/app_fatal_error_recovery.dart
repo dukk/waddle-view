@@ -6,7 +6,32 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../debug/debug_console_disk_logger.dart';
+import '../debug/fatal_disk_logger.dart';
 import 'embedded_webview_dispose.dart';
+
+@visibleForTesting
+bool Function()? usesExternalProcessSupervisorForRestartOverride;
+
+/// When true, fatal handling logs and [exit]s with code 1 so systemd (or another
+/// supervisor) restarts the process instead of spawning a detached child.
+@visibleForTesting
+bool usesExternalProcessSupervisorForRestart() {
+  final override = usesExternalProcessSupervisorForRestartOverride;
+  if (override != null) {
+    return override();
+  }
+  if (kIsWeb) {
+    return false;
+  }
+  if (!Platform.isLinux) {
+    return false;
+  }
+  final env = Platform.environment;
+  if (env['WADDLE_DISPLAY_SYSTEMD'] == '1') {
+    return true;
+  }
+  return env.containsKey('INVOCATION_ID');
+}
 
 /// Prevents nested fatal handling (e.g. errors during logging or restart).
 final class FatalHandlingGate {
@@ -63,6 +88,7 @@ void _defaultLogFatal(String channel, Object error, StackTrace? stack) {
       DebugConsoleDiskLogger.appendMultiline(stack.toString());
     }
   }
+  unawaited(FatalDiskLogger.appendFatal(channel, error, stack));
   stderr.writeln('[Fatal][$channel] ${Error.safeToString(error)}');
   if (stack != null) {
     stderr.writeln(stack.toString());
@@ -145,6 +171,9 @@ bool isRecoverableMediaKitFlutterError(FlutterErrorDetails details) {
 Future<void> _defaultRestartProcess() async {
   if (kIsWeb) {
     stderr.writeln('[Fatal] restart skipped on web');
+    exit(1);
+  }
+  if (usesExternalProcessSupervisorForRestart()) {
     exit(1);
   }
   try {

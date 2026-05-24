@@ -1,0 +1,62 @@
+# waddle_controller Docker image (linux/amd64). Callable from CI and Release workflows.
+name: Release build — waddle_controller Docker
+
+on:
+  workflow_call:
+    inputs:
+      build_number:
+        type: string
+        required: true
+      # CI: unique tarball base (e.g. waddle-controller-docker-ci-run-…). Empty = release layout using GITHUB_REF_NAME.
+      dist_basename:
+        type: string
+        required: false
+        default: ''
+      # CI: actions/upload-artifact name. Empty = controller-docker-bundle-<build_number> (release).
+      artifact_name:
+        type: string
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build Docker image
+        env:
+          BUILD_NUMBER: ${{ inputs.build_number }}
+          DIST_BASENAME_INPUT: ${{ inputs.dist_basename }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$DIST_BASENAME_INPUT" ]]; then
+            IMAGE_TAG=ci
+            DIST="$DIST_BASENAME_INPUT"
+          else
+            IMAGE_TAG="${GITHUB_REF_NAME}"
+            DIST="waddle-controller-docker-${GITHUB_REF_NAME}"
+          fi
+          echo "IMAGE_TAG=$IMAGE_TAG" >> "$GITHUB_ENV"
+          echo "DIST_BASENAME=$DIST" >> "$GITHUB_ENV"
+          docker build \
+            -f apps/waddle_controller/Dockerfile \
+            --build-arg "WADDLE_CONTROLLER_BUILD_NUMBER=${BUILD_NUMBER}" \
+            -t "waddle-controller:${IMAGE_TAG}" \
+            .
+      - name: Package Docker image tarball
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          docker save "waddle-controller:${IMAGE_TAG}" | gzip > "dist/${DIST_BASENAME}.tar.gz"
+          ls -lh "dist/${DIST_BASENAME}.tar.gz"
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ${{ inputs.artifact_name || format('controller-docker-bundle-{0}', inputs.build_number) }}
+          path: dist/*.tar.gz

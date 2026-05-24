@@ -3,10 +3,10 @@ import { createTestApp, sessionCookieHeader } from '../testHelpers.js';
 import { setUserManagementEnabled } from '../services/settings.js';
 
 describe('userDisplays routes', () => {
-  let cleanup: (() => void) | undefined;
+  let cleanup: (() => void | Promise<void>) | undefined;
 
-  afterEach(() => {
-    cleanup?.();
+  afterEach(async () => {
+    await cleanup?.();
     cleanup = undefined;
   });
 
@@ -34,7 +34,7 @@ describe('userDisplays routes', () => {
   it('patches active display', async () => {
     const t = createTestApp();
     cleanup = t.cleanup;
-    setUserManagementEnabled(t.db, true);
+    await setUserManagementEnabled(t.db, true);
     const boot = await t.app.request('/bff/v1/bootstrap/admin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -73,7 +73,7 @@ describe('userDisplays routes', () => {
   it('deletes a saved display', async () => {
     const t = createTestApp();
     cleanup = t.cleanup;
-    setUserManagementEnabled(t.db, true);
+    await setUserManagementEnabled(t.db, true);
     const boot = await t.app.request('/bff/v1/bootstrap/admin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

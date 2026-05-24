@@ -87,6 +87,8 @@ case "$arch" in
     ASSET_PREFIX="waddle-view-linux-x64"
     ;;
   aarch64 | arm64)
+    # Pi/Raspberry Pi OS release (Bookworm-tuned). Generic ARM64 Linux desktops:
+    # waddle-view-linux-arm64-desktop-<tag>.tar.gz from GitHub Releases.
     ASSET_PREFIX="waddle-view-linux-arm64"
     ;;
   *)

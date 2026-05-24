@@ -29,11 +29,11 @@ export function settingsRoutes() {
       );
     }
     const db = c.get('db');
-    setUserModeEnabled(db, enabled);
+    await setUserModeEnabled(db, enabled);
     return c.json({
       userModeEnabled: enabled,
       userManagementEnabled: enabled,
-      needsBootstrap: needsBootstrap(db, config),
+      needsBootstrap: await needsBootstrap(db, config),
     });
   });
 

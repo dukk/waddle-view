@@ -22,10 +22,10 @@ export function userDisplaysRoutes() {
   const authed = new Hono<{ Variables: AppVariables }>();
   authed.use('*', requireAuthEnabled, requireAuth);
 
-  authed.get('/', (c) => {
+  authed.get('/', async (c) => {
     const user = sessionUser(c);
     if (user instanceof Response) return user;
-    return c.json({ displays: listUserDisplays(c.get('db'), user.id) });
+    return c.json({ displays: await listUserDisplays(c.get('db'), user.id) });
   });
 
   authed.put('/', async (c) => {
@@ -61,7 +61,7 @@ export function userDisplaysRoutes() {
     } catch {
       return c.json({ error: 'Invalid base URL', code: 'invalid_request' }, 400);
     }
-    const display = upsertUserDisplay(c.get('db'), c.get('config').sessionSecret, user.id, {
+    const display = await upsertUserDisplay(c.get('db'), c.get('config').sessionSecret, user.id, {
       displayId,
       label: body.label?.trim() ?? baseUrl,
       baseUrl,
@@ -83,18 +83,18 @@ export function userDisplaysRoutes() {
     if (!displayId) {
       return c.json({ error: 'displayId required', code: 'invalid_request' }, 400);
     }
-    const display = setActiveUserDisplay(c.get('db'), user.id, displayId);
+    const display = await setActiveUserDisplay(c.get('db'), user.id, displayId);
     if (!display) {
       return c.json({ error: 'Display not found', code: 'not_found' }, 404);
     }
     return c.json({ display });
   });
 
-  authed.delete('/:displayId', (c) => {
+  authed.delete('/:displayId', async (c) => {
     const user = sessionUser(c);
     if (user instanceof Response) return user;
     const displayId = c.req.param('displayId');
-    const ok = deleteUserDisplay(c.get('db'), user.id, displayId);
+    const ok = await deleteUserDisplay(c.get('db'), user.id, displayId);
     if (!ok) {
       return c.json({ error: 'Display not found', code: 'not_found' }, 404);
     }

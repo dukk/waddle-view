@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { AppConfig } from '../config.js';
-import type { AppDatabase } from '../db/database.js';
+import type { DbClient } from '../db/client.js';
 import type { PublicUser } from '../types.js';
 import { findUserById } from './users.js';
 
@@ -14,29 +14,35 @@ type SessionRow = {
   created_at: string;
 };
 
-export function createSession(db: AppDatabase, userId: string): string {
+export async function createSession(db: DbClient, userId: string): Promise<string> {
   const id = randomUUID();
   const now = new Date();
   const expiresAt = new Date(now.getTime() + SESSION_TTL_MS).toISOString();
-  db.prepare(
-    `INSERT INTO sessions (id, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)`,
-  ).run(id, userId, expiresAt, now.toISOString());
+  await db.run(`INSERT INTO sessions (id, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)`, [
+    id,
+    userId,
+    expiresAt,
+    now.toISOString(),
+  ]);
   return id;
 }
 
-export function deleteSession(db: AppDatabase, sessionId: string): void {
-  db.prepare('DELETE FROM sessions WHERE id = ?').run(sessionId);
+export async function deleteSession(db: DbClient, sessionId: string): Promise<void> {
+  await db.run('DELETE FROM sessions WHERE id = ?', [sessionId]);
 }
 
-export function resolveSessionUser(db: AppDatabase, sessionId: string | undefined): PublicUser | null {
+export async function resolveSessionUser(
+  db: DbClient,
+  sessionId: string | undefined,
+): Promise<PublicUser | null> {
   if (!sessionId) return null;
-  const row = db.prepare('SELECT * FROM sessions WHERE id = ?').get(sessionId) as SessionRow | undefined;
+  const row = await db.queryOne<SessionRow>('SELECT * FROM sessions WHERE id = ?', [sessionId]);
   if (!row) return null;
   if (new Date(row.expires_at).getTime() <= Date.now()) {
-    deleteSession(db, sessionId);
+    await deleteSession(db, sessionId);
     return null;
   }
-  const user = findUserById(db, row.user_id);
+  const user = await findUserById(db, row.user_id);
   if (!user || user.disabled) return null;
   return user;
 }

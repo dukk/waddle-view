@@ -12,7 +12,7 @@ export function recoveryRoutes() {
   app.post('/recovery/export-displays', async (c) => {
     const config = c.get('config');
     const db = c.get('db');
-    if (!isRecoveryExportAvailable(config, db)) {
+    if (!(await isRecoveryExportAvailable(config, db))) {
       return c.json(
         { error: 'Recovery export is not available', code: 'recovery_unavailable' },
         403,
@@ -30,7 +30,7 @@ export function recoveryRoutes() {
     if (!username || !password) {
       return c.json({ error: 'Username and password required', code: 'invalid_request' }, 400);
     }
-    const record = findUserByUsername(db, username);
+    const record = await findUserByUsername(db, username);
     if (!record || record.disabled) {
       return c.json({ error: 'Invalid credentials', code: 'invalid_credentials' }, 401);
     }
@@ -38,7 +38,7 @@ export function recoveryRoutes() {
     if (!ok) {
       return c.json({ error: 'Invalid credentials', code: 'invalid_credentials' }, 401);
     }
-    const payload = buildRecoveryExport(config, db, record.id);
+    const payload = await buildRecoveryExport(config, db, record.id);
     return c.json(payload);
   });
 

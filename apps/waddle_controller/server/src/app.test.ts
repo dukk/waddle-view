@@ -6,10 +6,10 @@ import { DISPLAY_URL_HEADER } from './constants/proxyHeaders.js';
 import * as displayProxy from './services/displayProxy.js';
 
 describe('controller BFF', () => {
-  let cleanup: (() => void) | undefined;
+  let cleanup: (() => void | Promise<void>) | undefined;
 
-  afterEach(() => {
-    cleanup?.();
+  afterEach(async () => {
+    await cleanup?.();
     cleanup = undefined;
   });
 
@@ -29,7 +29,7 @@ describe('controller BFF', () => {
   it('blocks routes with needs_bootstrap until admin is created', async () => {
     const t = createTestApp();
     cleanup = t.cleanup;
-    setUserManagementEnabled(t.db, true);
+    await setUserManagementEnabled(t.db, true);
     const blocked = await t.app.request('/bff/v1/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -54,7 +54,7 @@ describe('controller BFF', () => {
   it('allows adoption proxy during bootstrap before admin exists', async () => {
     const t = createTestApp();
     cleanup = t.cleanup;
-    setUserManagementEnabled(t.db, true);
+    await setUserManagementEnabled(t.db, true);
     const status = await t.app.request('/bff/v1/status');
     const statusBody = (await status.json()) as StatusResponse;
     expect(statusBody.needsBootstrap).toBe(true);
@@ -78,7 +78,7 @@ describe('controller BFF', () => {
   it('login and logout lifecycle', async () => {
     const t = createTestApp();
     cleanup = t.cleanup;
-    setUserManagementEnabled(t.db, true);
+    await setUserManagementEnabled(t.db, true);
     const boot = await t.app.request('/bff/v1/bootstrap/admin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -118,13 +118,13 @@ describe('controller BFF', () => {
   it('rejects unauthenticated settings update when auth enabled but user mode disabled', async () => {
     const t = createTestApp();
     cleanup = t.cleanup;
-    setUserManagementEnabled(t.db, true);
+    await setUserManagementEnabled(t.db, true);
     await t.app.request('/bff/v1/bootstrap/admin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: 'admin', password: 'passwordpassword' }),
     });
-    setUserManagementEnabled(t.db, false);
+    await setUserManagementEnabled(t.db, false);
     const res = await t.app.request('/bff/v1/settings', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -136,14 +136,14 @@ describe('controller BFF', () => {
   it('admin can update settings when user mode is disabled', async () => {
     const t = createTestApp();
     cleanup = t.cleanup;
-    setUserManagementEnabled(t.db, true);
+    await setUserManagementEnabled(t.db, true);
     const boot = await t.app.request('/bff/v1/bootstrap/admin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: 'admin', password: 'passwordpassword' }),
     });
     const cookie = sessionCookieHeader(boot.headers.get('set-cookie') ?? undefined);
-    setUserManagementEnabled(t.db, false);
+    await setUserManagementEnabled(t.db, false);
     const res = await t.app.request('/bff/v1/settings', {
       method: 'PUT',
       headers: {
@@ -160,7 +160,7 @@ describe('controller BFF', () => {
   it('admin can manage users when user management is enabled', async () => {
     const t = createTestApp();
     cleanup = t.cleanup;
-    setUserManagementEnabled(t.db, true);
+    await setUserManagementEnabled(t.db, true);
     const boot = await t.app.request('/bff/v1/bootstrap/admin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -190,7 +190,7 @@ describe('controller BFF', () => {
   it('requires auth when user mode is enabled', async () => {
     const t = createTestApp();
     cleanup = t.cleanup;
-    setUserManagementEnabled(t.db, true);
+    await setUserManagementEnabled(t.db, true);
     await t.app.request('/bff/v1/bootstrap/admin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -203,14 +203,14 @@ describe('controller BFF', () => {
   it('returns user_mode_disabled for users when user mode is off', async () => {
     const t = createTestApp();
     cleanup = t.cleanup;
-    setUserManagementEnabled(t.db, true);
+    await setUserManagementEnabled(t.db, true);
     const boot = await t.app.request('/bff/v1/bootstrap/admin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: 'admin', password: 'passwordpassword' }),
     });
     const cookie = sessionCookieHeader(boot.headers.get('set-cookie') ?? undefined);
-    setUserManagementEnabled(t.db, false);
+    await setUserManagementEnabled(t.db, false);
     const res = await t.app.request('/bff/v1/users', {
       headers: cookie ? { Cookie: cookie } : {},
     });
@@ -220,7 +220,7 @@ describe('controller BFF', () => {
   it('serves status and display proxy with URL header when user mode is off', async () => {
     const t = createTestApp();
     cleanup = t.cleanup;
-    setUserManagementEnabled(t.db, false);
+    await setUserManagementEnabled(t.db, false);
     const status = await t.app.request('/bff/v1/status');
     expect(status.status).toBe(200);
 

@@ -4,15 +4,15 @@ import { setUserManagementEnabled } from '../services/settings.js';
 import { upsertUserDisplay } from './userDisplays.js';
 
 describe('users lifecycle', () => {
-  let cleanup: (() => void) | undefined;
+  let cleanup: (() => void | Promise<void>) | undefined;
 
-  afterEach(() => {
-    cleanup?.();
+  afterEach(async () => {
+    await cleanup?.();
     cleanup = undefined;
   });
 
   async function bootstrapAdmin(t: ReturnType<typeof createTestApp>) {
-    setUserManagementEnabled(t.db, true);
+    await setUserManagementEnabled(t.db, true);
     const boot = await t.app.request('/bff/v1/bootstrap/admin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -138,24 +138,24 @@ describe('users lifecycle', () => {
 });
 
 describe('recovery export', () => {
-  let cleanup: (() => void) | undefined;
+  let cleanup: (() => void | Promise<void>) | undefined;
 
-  afterEach(() => {
-    cleanup?.();
+  afterEach(async () => {
+    await cleanup?.();
     cleanup = undefined;
   });
 
   it('exports displays when user mode is off', async () => {
     const t = createTestApp();
     cleanup = t.cleanup;
-    setUserManagementEnabled(t.db, true);
+    await setUserManagementEnabled(t.db, true);
     const boot = await t.app.request('/bff/v1/bootstrap/admin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: 'admin', password: 'passwordpassword' }),
     });
     const bootBody = (await boot.json()) as { user: { id: string } };
-    upsertUserDisplay(t.db, t.config.sessionSecret, bootBody.user.id, {
+    await upsertUserDisplay(t.db, t.config.sessionSecret, bootBody.user.id, {
       displayId: 'd1',
       label: 'Kitchen',
       baseUrl: 'https://127.0.0.1:8787',
@@ -164,7 +164,7 @@ describe('recovery export', () => {
       apiKey: 'test-api-key-value',
       permissions: ['screens.read'],
     });
-    setUserManagementEnabled(t.db, false);
+    await setUserManagementEnabled(t.db, false);
     const res = await t.app.request('/bff/v1/recovery/export-displays', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -182,7 +182,7 @@ describe('recovery export', () => {
   it('rejects recovery when user mode is on', async () => {
     const t = createTestApp();
     cleanup = t.cleanup;
-    setUserManagementEnabled(t.db, true);
+    await setUserManagementEnabled(t.db, true);
     await t.app.request('/bff/v1/bootstrap/admin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -54,16 +54,16 @@ export type ProxyWsResolveResult =
   | { ok: true; upstreamWsUrl: string; authorization?: string }
   | { ok: false; status: number; code: string; error: string };
 
-export function resolveProxyWebSocketTarget(
+export async function resolveProxyWebSocketTarget(
   config: AppConfig,
   db: AppDatabase,
   user: PublicUser | null,
   request: IncomingMessage,
-): ProxyWsResolveResult {
+): Promise<ProxyWsResolveResult> {
   const url = new URL(request.url ?? '/', 'http://localhost');
   const proxyPath = upstreamPathFromProxyWsRequest(url.pathname);
   const headers = headersFromWebSocketUpgrade(request);
-  const resolved = resolveProxyTarget(config, db, user, proxyPath, headers);
+  const resolved = await resolveProxyTarget(config, db, user, proxyPath, headers);
   if (!resolved.ok) {
     return resolved;
   }
@@ -92,7 +92,7 @@ export async function pipeDisplayWebSocketProxy(
   clientWs: WebSocket,
   request: IncomingMessage,
 ): Promise<void> {
-  const resolved = resolveProxyWebSocketTarget(config, db, user, request);
+  const resolved = await resolveProxyWebSocketTarget(config, db, user, request);
   if (!resolved.ok) {
     clientWs.close(1008, resolved.error);
     return;

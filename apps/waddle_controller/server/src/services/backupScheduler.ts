@@ -46,7 +46,7 @@ async function tick(config: AppConfig, db: AppDatabase): Promise<void> {
   running = true;
   try {
     const now = new Date();
-    for (const target of listEnabledBackupTargets(db)) {
+    for (const target of await listEnabledBackupTargets(db)) {
       const schedule = rowScheduleFields(target);
       if (!isBackupScheduleDue(schedule, target.timezone, target.last_run_at, now)) {
         continue;
@@ -60,7 +60,7 @@ async function tick(config: AppConfig, db: AppDatabase): Promise<void> {
         await pullBackupFromDisplay(config, db, target, 'scheduled');
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        updateBackupTargetRunStatus(db, target.id, 'error', msg);
+        await updateBackupTargetRunStatus(db, target.id, 'error', msg);
       }
     }
   } finally {

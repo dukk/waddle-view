@@ -40,7 +40,8 @@ Commit the updated files under `public/` so Docker builds (which only copy this 
 |----------|---------|---------|
 | `WADDLE_CONTROLLER_AUTH_ENABLED` | `0` | Enable BFF sign-in capability (user mode is toggled in Settings) |
 | `WADDLE_CONTROLLER_SESSION_SECRET` | — | Required when auth is enabled (session signing) |
-| `WADDLE_CONTROLLER_DATA_DIR` | `./data` | SQLite directory (`waddle_controller.db`) |
+| `WADDLE_CONTROLLER_DATA_DIR` | `./data` | SQLite directory (`waddle_controller.db`) and backup files |
+| `WADDLE_CONTROLLER_DATABASE_URL` | — | Optional Postgres URL (`postgres://…`); when set, BFF uses Postgres instead of SQLite |
 | `WADDLE_CONTROLLER_BIND` | `127.0.0.1` | BFF listen host |
 | `PORT` / `WADDLE_CONTROLLER_PORT` | `5199` | BFF listen port |
 | `WADDLE_CONTROLLER_TLS` | `1` | Self-signed HTTPS on the BFF (`0` = plain HTTP) |
@@ -198,6 +199,79 @@ docker run --rm -p 8443:443 \
 nginx serves the SPA over **HTTPS** (self-signed cert generated on first start) and proxies **`/bff/`** to the embedded Node BFF on loopback HTTP. Persist **`WADDLE_CONTROLLER_DATA_DIR`** with a volume.
 
 After adoption, the display remembers your controller origin. Optionally set **`WADDLE_DISPLAY_HTTP_CORS_ORIGINS`** on the display for additional static origins.
+
+### Deploy from GitHub builds
+
+CI and Release publish **separate** Docker image tarballs (linux/amd64 only). Each tarball is a gzip-compressed `docker save` of one image tag.
+
+#### CI artifacts (testing on main / PRs)
+
+1. Open **Actions** → **CI** → a completed run.
+2. Download the artifact **`ci-controller-docker-<run_id>-<attempt>`** (contains `waddle-controller-docker-ci-run-….tar.gz`).
+3. Load and run:
+
+```bash
+gunzip -c waddle-controller-docker-ci-run-*.tar.gz | docker load
+docker images waddle-controller   # tag is waddle-controller:ci
+docker run --rm -p 8443:443 \
+  -v waddle-controller-data:/var/lib/waddle-controller \
+  -e WADDLE_CONTROLLER_AUTH_ENABLED=1 \
+  -e WADDLE_CONTROLLER_SESSION_SECRET=change-me \
+  waddle-controller:ci
+```
+
+Open **`https://127.0.0.1:8443`** (accept the self-signed certificate). Health: **`https://127.0.0.1:8443/bff/health`**.
+
+#### Release artifacts (version tags)
+
+1. On a **`v*`** tag, open the GitHub **Releases** page for that version and download **`waddle-controller-docker-vX.Y.Z.tar.gz`**, **or** open **Actions** → **Release** → download artifact **`release-controller-docker-<run_number>`**.
+2. Load and run (image tag matches the git tag, e.g. `v1.2.3`):
+
+```bash
+gunzip -c waddle-controller-docker-v1.2.3.tar.gz | docker load
+docker images waddle-controller   # tag is waddle-controller:v1.2.3
+docker run -d --name waddle-controller \
+  -p 8443:443 \
+  -v waddle-controller-data:/var/lib/waddle-controller \
+  -e WADDLE_CONTROLLER_AUTH_ENABLED=1 \
+  -e WADDLE_CONTROLLER_SESSION_SECRET=change-me-in-production \
+  --restart unless-stopped \
+  waddle-controller:v1.2.3
+```
+
+Use the **Optional controller authentication** env vars above for production. The BFF build number in **About** reflects the GitHub Actions run number baked in at image build time.
+
+**Notes:** Images are **linux/amd64** (built on `ubuntu-latest`). For ARM hosts, build locally from this directory or use a registry with multi-arch if you add that later. Map host **8443** → container **443** as shown, or choose another host port.
+
+### PostgreSQL (optional)
+
+By default the BFF stores operator data in SQLite under `WADDLE_CONTROLLER_DATA_DIR`. Set **`WADDLE_CONTROLLER_DATABASE_URL`** to use PostgreSQL instead (for example `postgres://waddle:secret@db:5432/waddle_controller`). Backup zip files still live on disk under `{dataDir}/backups/`; only BFF metadata moves to Postgres.
+
+Migrate an existing SQLite file:
+
+```bash
+npm run db:migrate-to-postgres -- --from ./data/waddle_controller.db --to "$WADDLE_CONTROLLER_DATABASE_URL"
+```
+
+Add `--dry-run` to compare row counts without writing, or `--force` to replace data in a non-empty Postgres database.
+
+Example Compose service:
+
+```yaml
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: waddle
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: waddle_controller
+  waddle-controller:
+    image: waddle-controller:latest
+    environment:
+      WADDLE_CONTROLLER_DATABASE_URL: postgres://waddle:secret@db:5432/waddle_controller
+    volumes:
+      - controller-data:/var/lib/waddle-controller
+```
 
 ## Security
 

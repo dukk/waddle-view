@@ -72,6 +72,8 @@ import 'display/overlay/celebration_overlay_host.dart';
 import 'display/screen_rotator.dart';
 import 'display/viewer_invite_runtime.dart';
 import 'marquee_cycle_gate.dart';
+import 'package:waddle_shared/persistence/database_backend.dart';
+
 import 'persistence/flutter_query_executor.dart';
 import 'sleeper.dart';
 
@@ -129,7 +131,10 @@ Future<void> _waddleBootstrap() async {
       await mediaDir.create(recursive: true);
     }
 
-    final db = AppDatabase(createQueryExecutor());
+    final db = AppDatabase(
+      createQueryExecutor(),
+      backend: displayDatabaseBackend(),
+    );
     final blobs = FileSystemBlobStore(mediaDir);
     await ensureInitialSeed(db);
     await ensureOverlayBlobSeed(db: db, blobs: blobs);
@@ -264,7 +269,10 @@ Future<void> _waddleBootstrap() async {
     }
 
     applyDisplayLivePreviewEnvDefaults(envMap);
-    final databaseFile = File(p.join(support.path, 'waddle_display.db'));
+    final databaseFile =
+        displayDatabaseBackend() == WaddleDatabaseBackend.sqlite
+        ? File(p.join(support.path, 'waddle_display.db'))
+        : null;
     final handler = buildRootHandler(
       db: db,
       alerts: alerts,

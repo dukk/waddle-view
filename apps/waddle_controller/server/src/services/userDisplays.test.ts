@@ -10,10 +10,10 @@ import {
 } from './userDisplays.js';
 
 describe('userDisplays', () => {
-  let cleanup: (() => void) | undefined;
+  let cleanup: (() => void | Promise<void>) | undefined;
 
-  afterEach(() => {
-    cleanup?.();
+  afterEach(async () => {
+    await cleanup?.();
     cleanup = undefined;
   });
 
@@ -25,7 +25,7 @@ describe('userDisplays', () => {
       password: 'secret-password',
       role: 'admin',
     });
-    const row = upsertUserDisplay(t.db, t.config.sessionSecret, admin.id, {
+    const row = await upsertUserDisplay(t.db, t.config.sessionSecret, admin.id, {
       displayId: 'd_abc',
       label: 'Lobby',
       baseUrl: 'https://display.local:8787',
@@ -36,9 +36,9 @@ describe('userDisplays', () => {
     });
     expect(row.hasApiKey).toBe(true);
     expect(row.adoptedRole).toBe('admin');
-    const stored = findUserDisplayByDisplayId(t.db, admin.id, 'd_abc')!;
+    const stored = (await findUserDisplayByDisplayId(t.db, admin.id, 'd_abc'))!;
     expect(stored.api_key_ciphertext).not.toContain('plain-api-key');
-    const list = listUserDisplays(t.db, admin.id);
+    const list = await listUserDisplays(t.db, admin.id);
     expect(list).toHaveLength(1);
     expect(list[0]!.displayId).toBe('d_abc');
   });
@@ -51,7 +51,7 @@ describe('userDisplays', () => {
       password: 'test-password1',
       role: 'admin',
     });
-    upsertUserDisplay(t.db, t.config.sessionSecret, admin.id, {
+    await upsertUserDisplay(t.db, t.config.sessionSecret, admin.id, {
       displayId: 'd_one',
       label: 'One',
       baseUrl: 'https://127.0.0.1:8787',
@@ -60,7 +60,7 @@ describe('userDisplays', () => {
       apiKey: 'key1',
       permissions: [],
     });
-    upsertUserDisplay(t.db, t.config.sessionSecret, admin.id, {
+    await upsertUserDisplay(t.db, t.config.sessionSecret, admin.id, {
       displayId: 'd_two',
       label: 'Two',
       baseUrl: 'http://127.0.0.1:8788',
@@ -69,8 +69,8 @@ describe('userDisplays', () => {
       apiKey: 'key2',
       permissions: [],
     });
-    setActiveUserDisplay(t.db, admin.id, 'd_two');
-    const list = listUserDisplays(t.db, admin.id);
+    await setActiveUserDisplay(t.db, admin.id, 'd_two');
+    const list = await listUserDisplays(t.db, admin.id);
     expect(list.find((d) => d.displayId === 'd_two')?.isActive).toBe(true);
     expect(list.find((d) => d.displayId === 'd_one')?.isActive).toBe(false);
   });
@@ -78,7 +78,7 @@ describe('userDisplays', () => {
   it('exposes REST routes when authenticated', async () => {
     const t = createTestApp();
     cleanup = t.cleanup;
-    setUserManagementEnabled(t.db, true);
+    await setUserManagementEnabled(t.db, true);
     const boot = await t.app.request('/bff/v1/bootstrap/admin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

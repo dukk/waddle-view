@@ -9,10 +9,10 @@ import {
 import * as displayBackupPull from './displayBackupPull.js';
 
 describe('backupScheduler', () => {
-  let cleanup: (() => void) | undefined;
+  let cleanup: (() => void | Promise<void>) | undefined;
   const priorTz = process.env.TZ;
 
-  afterEach(() => {
+  afterEach(async () => {
     stopBackupScheduler();
     resetSchedulerStateForTests();
     vi.restoreAllMocks();
@@ -21,7 +21,7 @@ describe('backupScheduler', () => {
     } else {
       process.env.TZ = priorTz;
     }
-    cleanup?.();
+    await cleanup?.();
     cleanup = undefined;
   });
 
@@ -34,7 +34,7 @@ describe('backupScheduler', () => {
     cleanup = t.cleanup;
 
     const now = new Date('2026-05-22T03:15:00.000Z');
-    upsertBackupTarget(t.config, t.db, {
+    await upsertBackupTarget(t.config, t.db, {
       userId: null,
       displayId: 'd_sched',
       label: 'Sched',
@@ -75,7 +75,7 @@ describe('backupScheduler', () => {
     cleanup = t.cleanup;
 
     const now = new Date('2026-05-22T04:00:00.000Z');
-    const created = upsertBackupTarget(t.config, t.db, {
+    const created = await upsertBackupTarget(t.config, t.db, {
       userId: null,
       displayId: 'd_sched_err',
       label: 'Sched err',
@@ -102,7 +102,7 @@ describe('backupScheduler', () => {
     vi.useRealTimers();
     stopBackupScheduler();
 
-    const row = findBackupTarget(t.db, created.id, null)!;
+    const row = (await findBackupTarget(t.db, created.id, null))!;
     expect(row.last_status).toBe('error');
     expect(row.last_error).toBe('display offline');
   });

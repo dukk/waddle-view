@@ -9,7 +9,7 @@ TV dashboard and related applications for Raspberry Pi and development machines.
 | Path | Description |
 | --- | --- |
 | [`apps/waddle_display`](apps/waddle_display) | Flutter **Linux** (and **Windows** for dev) TV dashboard: SQLite persistence, ticker, overlay alerts, local REST API, data collection loop. Architecture: [`apps/waddle_display/ARCHITECTURE.md`](apps/waddle_display/ARCHITECTURE.md). |
-| [`apps/waddle_controller`](apps/waddle_controller) | Operator web UI (optional; separate Node/npm setup). |
+| [`apps/waddle_controller`](apps/waddle_controller) | Operator web UI (optional; separate Node/npm setup). Docker image published on [CI and Release](apps/waddle_controller/README.md#deploy-from-github-builds). |
 | [`apps/waddlectl`](apps/waddlectl) | CLI helper bundled with Linux releases. |
 | [`packages/waddle_shared`](packages/waddle_shared) | Drift schema, persistence, and shared libraries (codegen runs here). |
 | [`packages/waddle_integrations`](packages/waddle_integrations) | Built-in integration data collectors. |

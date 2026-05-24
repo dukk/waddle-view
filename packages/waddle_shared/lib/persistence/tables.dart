@@ -373,6 +373,18 @@ class OverlayTypes extends Table {
   Set<Column<Object>> get primaryKey => {overlayType};
 }
 
+/// Operator-defined display overlay instance (`overlay_type` + `config_json`).
+class Overlays extends Table {
+  TextColumn get id => text()();
+  TextColumn get overlayType => text()();
+  TextColumn get label => text().withDefault(const Constant(''))();
+  TextColumn get description => text().withDefault(const Constant(''))();
+  TextColumn get configJson => text().withDefault(const Constant('{}'))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 /// TV display screen definition (single widget type + config + scheduling hints).
 /// Runtime layout JSON for the curator is synthesized when mapping rows to slides.
 /// SQLite `screens` (legacy name `screen_definitions`).
@@ -493,7 +505,8 @@ class CuratorConfigurationMembers extends Table {
   TextColumn get configurationId => text()();
   TextColumn get entityType => text()();
   TextColumn get entityId => text()();
-  TextColumn get op => text().withDefault(const Constant(kCuratorMemberOpAdd))();
+  TextColumn get op =>
+      text().withDefault(const Constant(kCuratorMemberOpAdd))();
 
   @override
   Set<Column<Object>> get primaryKey => {configurationId, entityType, entityId};

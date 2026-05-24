@@ -7,7 +7,6 @@ import 'package:waddle_shared/layout/collage_template_ids.dart';
 import 'package:waddle_shared/persistence/config_json_documentation.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/display_overlay_floating_balloons_settings.dart';
-import 'package:waddle_shared/persistence/display_overlay_sql.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/seed/tables/config_key_values_seed.dart';
 import 'package:waddle_shared/theme/display_text_scale_kv.dart';
@@ -76,55 +75,56 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await ensureDefaultCuratorConfigurations(db);
 }
 
+Future<void> _seedOverlayIfMissing(
+  AppDatabase db, {
+  required String id,
+  required String overlayType,
+  required String label,
+  required String configJson,
+}) {
+  return db
+      .into(db.overlays)
+      .insert(
+        OverlaysCompanion.insert(
+          id: id,
+          overlayType: overlayType,
+          label: Value(label),
+          configJson: Value(configJson),
+        ),
+        mode: InsertMode.insertOrIgnore,
+      );
+}
+
 Future<void> _ensureDefaultRainingHeartsOverlay(AppDatabase db) async {
-  await db.customStatement(kEnsureOverlaysTableSql);
   final configJson = jsonEncode(<String, Object?>{
     'shapes': <String>['heart', 'raindrop', 'cat', 'dog'],
   });
-  await db.customStatement(
-    '''INSERT OR IGNORE INTO overlays (
-      id,
-      overlay_type,
-      label,
-      config_json
-    )
-    VALUES (?, ?, ?, ?)''',
-    <Object?>[
-      kDefaultMothersDayOverlayId,
-      kOverlayTypeShapeRain,
-      'Raining Hearts',
-      configJson,
-    ],
+  await _seedOverlayIfMissing(
+    db,
+    id: kDefaultMothersDayOverlayId,
+    overlayType: kOverlayTypeShapeRain,
+    label: 'Raining Hearts',
+    configJson: configJson,
   );
 }
 
 Future<void> _ensureDefaultBirthdayConfettiOverlay(AppDatabase db) async {
-  await db.customStatement(kEnsureOverlaysTableSql);
   final configJson = jsonEncode(<String, Object?>{
     'colors': <String>['#E53935', '#FFEB3B', '#00BCD4', '#E91E63'],
     'density': 0.36,
     'fall_speed': 0.12,
     'opacity': 0.48,
   });
-  await db.customStatement(
-    '''INSERT OR IGNORE INTO overlays (
-      id,
-      overlay_type,
-      label,
-      config_json
-    )
-    VALUES (?, ?, ?, ?)''',
-    <Object?>[
-      kDefaultBirthdayConfettiOverlayId,
-      kOverlayTypeBirthdayConfetti,
-      'Default Birthday Confetti',
-      configJson,
-    ],
+  await _seedOverlayIfMissing(
+    db,
+    id: kDefaultBirthdayConfettiOverlayId,
+    overlayType: kOverlayTypeBirthdayConfetti,
+    label: 'Default Birthday Confetti',
+    configJson: configJson,
   );
 }
 
 Future<void> _ensureDefaultFloatingBalloonsOverlay(AppDatabase db) async {
-  await db.customStatement(kEnsureOverlaysTableSql);
   final configJson = jsonEncode(<String, Object?>{
     'colors': kFloatingBalloonsDefaultColorHexes,
     'spawn_interval_sec': 22,
@@ -135,25 +135,16 @@ Future<void> _ensureDefaultFloatingBalloonsOverlay(AppDatabase db) async {
     'scale_jitter': 0.25,
     'opacity': 0.92,
   });
-  await db.customStatement(
-    '''INSERT OR IGNORE INTO overlays (
-      id,
-      overlay_type,
-      label,
-      config_json
-    )
-    VALUES (?, ?, ?, ?)''',
-    <Object?>[
-      kDefaultFloatingBalloonsOverlayId,
-      kOverlayTypeFloatingBalloons,
-      'Default Floating Balloons',
-      configJson,
-    ],
+  await _seedOverlayIfMissing(
+    db,
+    id: kDefaultFloatingBalloonsOverlayId,
+    overlayType: kOverlayTypeFloatingBalloons,
+    label: 'Default Floating Balloons',
+    configJson: configJson,
   );
 }
 
 Future<void> _ensureDefaultFallingDucksOverlay(AppDatabase db) async {
-  await db.customStatement(kEnsureOverlaysTableSql);
   final configJson = jsonEncode(<String, Object?>{
     'image_blob_keys': kSeededDuckOverlayBlobKeys,
     'drop_interval_sec': 45,
@@ -161,27 +152,18 @@ Future<void> _ensureDefaultFallingDucksOverlay(AppDatabase db) async {
     'image_scale': 0.12,
     'scale_jitter': 0.33,
   });
-  await db.customStatement(
-    '''INSERT OR IGNORE INTO overlays (
-      id,
-      overlay_type,
-      label,
-      config_json
-    )
-    VALUES (?, ?, ?, ?)''',
-    <Object?>[
-      kDefaultFallingDucksOverlayId,
-      kOverlayTypeFallingImages,
-      'Default Falling Ducks',
-      configJson,
-    ],
+  await _seedOverlayIfMissing(
+    db,
+    id: kDefaultFallingDucksOverlayId,
+    overlayType: kOverlayTypeFallingImages,
+    label: 'Default Falling Ducks',
+    configJson: configJson,
   );
 }
 
 Future<void> _ensureDefaultWattleViewsBirthdayMessageOverlay(
   AppDatabase db,
 ) async {
-  await db.customStatement(kEnsureOverlaysTableSql);
   final configJson = jsonEncode(<String, Object?>{
     'messages': <String>[kDefaultBouncingMessageOverlayPhrase],
     'color': '#5C6BC0',
@@ -191,20 +173,12 @@ Future<void> _ensureDefaultWattleViewsBirthdayMessageOverlay(
     'shadow': true,
     'speed': 0.95,
   });
-  await db.customStatement(
-    '''INSERT OR IGNORE INTO overlays (
-      id,
-      overlay_type,
-      label,
-      config_json
-    )
-    VALUES (?, ?, ?, ?)''',
-    <Object?>[
-      kDefaultWattleViewsBirthdayMessageOverlayId,
-      kOverlayTypeBouncingMessage,
-      "Wattle View's Birthday Message!",
-      configJson,
-    ],
+  await _seedOverlayIfMissing(
+    db,
+    id: kDefaultWattleViewsBirthdayMessageOverlayId,
+    overlayType: kOverlayTypeBouncingMessage,
+    label: "Wattle View's Birthday Message!",
+    configJson: configJson,
   );
 }
 

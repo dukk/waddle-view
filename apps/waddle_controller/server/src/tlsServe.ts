@@ -48,7 +48,7 @@ export function serveWithOptionalTls(options: {
       }
       wss.handleUpgrade(request, socket, head, (clientWs: WebSocket) => {
         void (async () => {
-          const user = sessionUserFromUpgrade(options.config!, options.db!, request);
+          const user = await sessionUserFromUpgrade(options.config!, options.db!, request);
           await pipeDisplayWebSocketProxy(
             options.config!,
             options.db!,
@@ -90,11 +90,11 @@ function bindHttpServer(
   });
 }
 
-function sessionUserFromUpgrade(
+async function sessionUserFromUpgrade(
   config: AppConfig,
   db: AppDatabase,
   request: IncomingMessage,
-): PublicUser | null {
+): Promise<PublicUser | null> {
   if (!config.authEnabled) {
     return null;
   }

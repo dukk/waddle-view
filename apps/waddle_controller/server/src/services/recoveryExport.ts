@@ -1,5 +1,5 @@
 import type { AppConfig } from '../config.js';
-import type { AppDatabase } from '../db/database.js';
+import type { DbClient } from '../db/client.js';
 import {
   findUserDisplayByDisplayId,
   getDecryptedApiKey,
@@ -28,16 +28,16 @@ export type RecoveryExportPayload = {
   sessions: Record<string, RecoverySessionRow>;
 };
 
-export function buildRecoveryExport(
+export async function buildRecoveryExport(
   config: AppConfig,
-  db: AppDatabase,
+  db: DbClient,
   userId: string,
-): RecoveryExportPayload {
+): Promise<RecoveryExportPayload> {
   const displays: RecoveryDisplayRow[] = [];
   const sessions: Record<string, RecoverySessionRow> = {};
   const expiresAtMs = Date.now() + 365 * 24 * 60 * 60 * 1000;
 
-  for (const pub of listUserDisplays(db, userId)) {
+  for (const pub of await listUserDisplays(db, userId)) {
     const displayId = pub.displayId;
     const entry: RecoveryDisplayRow = {
       id: displayId,
@@ -47,7 +47,7 @@ export function buildRecoveryExport(
       identifier: pub.clientIdentifier,
     };
     if (pub.hasApiKey) {
-      const row = findUserDisplayByDisplayId(db, userId, displayId);
+      const row = await findUserDisplayByDisplayId(db, userId, displayId);
       if (row) {
         const apiKey = getDecryptedApiKey(config.sessionSecret, row);
         entry.apiKey = apiKey;

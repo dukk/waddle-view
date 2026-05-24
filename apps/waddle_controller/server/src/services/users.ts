@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import type { AppDatabase } from '../db/database.js';
+import type { DbClient } from '../db/client.js';
+import { isUniqueConstraintError } from '../db/client.js';
+import { orderByUsername, sqlBool, sqlInactiveFlag, usernameEquals } from '../db/sqlDialect.js';
 import type { ControllerRole, PublicUser } from '../types.js';
 import { hashPassword } from './password.js';
 
@@ -8,69 +10,77 @@ type UserRow = {
   username: string;
   password_hash: string;
   role: ControllerRole;
-  disabled: number;
-  must_change_password: number;
+  disabled: number | boolean;
+  must_change_password: number | boolean;
   last_login_at: string | null;
   created_at: string;
   updated_at: string;
 };
+
+function isTruthyFlag(value: number | boolean): boolean {
+  return value === true || value === 1;
+}
 
 function toPublicUser(row: UserRow): PublicUser {
   return {
     id: row.id,
     username: row.username,
     role: row.role,
-    disabled: row.disabled !== 0,
-    mustChangePassword: row.must_change_password !== 0,
+    disabled: isTruthyFlag(row.disabled),
+    mustChangePassword: isTruthyFlag(row.must_change_password),
     lastLoginAt: row.last_login_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
-export function countUsers(db: AppDatabase): number {
-  const row = db.prepare('SELECT COUNT(*) AS c FROM users').get() as { c: number };
-  return row.c;
+export async function countUsers(db: DbClient): Promise<number> {
+  const row = await db.queryOne<{ c: number }>('SELECT COUNT(*) AS c FROM users');
+  return row?.c ?? 0;
 }
 
-export function listUsers(db: AppDatabase): PublicUser[] {
-  const rows = db
-    .prepare('SELECT * FROM users ORDER BY username COLLATE NOCASE')
-    .all() as UserRow[];
+export async function listUsers(db: DbClient): Promise<PublicUser[]> {
+  const rows = await db.query<UserRow>(
+    `SELECT * FROM users ORDER BY ${orderByUsername(db.dialect)}`,
+  );
   return rows.map(toPublicUser);
 }
 
-export function findUserById(db: AppDatabase, id: string): PublicUser | null {
-  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as UserRow | undefined;
+export async function findUserById(db: DbClient, id: string): Promise<PublicUser | null> {
+  const row = await db.queryOne<UserRow>('SELECT * FROM users WHERE id = ?', [id]);
   return row ? toPublicUser(row) : null;
 }
 
-export function findUserByUsername(db: AppDatabase, username: string): (PublicUser & { passwordHash: string }) | null {
-  const row = db
-    .prepare('SELECT * FROM users WHERE username = ? COLLATE NOCASE')
-    .get(username.trim()) as UserRow | undefined;
+export async function findUserByUsername(
+  db: DbClient,
+  username: string,
+): Promise<(PublicUser & { passwordHash: string }) | null> {
+  const row = await db.queryOne<UserRow>(`SELECT * FROM users WHERE ${usernameEquals(db.dialect)}`, [
+    username.trim(),
+  ]);
   if (!row) return null;
   return { ...toPublicUser(row), passwordHash: row.password_hash };
 }
 
-export function countAdmins(db: AppDatabase): number {
-  const row = db
-    .prepare("SELECT COUNT(*) AS c FROM users WHERE role = 'admin' AND disabled = 0")
-    .get() as { c: number };
-  return row.c;
+export async function countAdmins(db: DbClient): Promise<number> {
+  const row = await db.queryOne<{ c: number }>(
+    "SELECT COUNT(*) AS c FROM users WHERE role = 'admin' AND disabled = ?",
+    [sqlInactiveFlag(db.dialect)],
+  );
+  return row?.c ?? 0;
 }
 
-export function recordUserLogin(db: AppDatabase, userId: string): void {
+export async function recordUserLogin(db: DbClient, userId: string): Promise<void> {
   const now = new Date().toISOString();
-  db.prepare('UPDATE users SET last_login_at = ?, updated_at = ? WHERE id = ?').run(
+  await db.run('UPDATE users SET last_login_at = ?, updated_at = ? WHERE id = ?', [
     now,
     now,
     userId,
-  );
+  ]);
 }
 
 export async function createUser(
-  db: AppDatabase,
+  db: DbClient,
   input: {
     username: string;
     password: string;
@@ -81,23 +91,26 @@ export async function createUser(
   const now = new Date().toISOString();
   const id = randomUUID();
   const passwordHash = await hashPassword(input.password);
-  const mustChange = input.mustChangePassword ? 1 : 0;
+  const mustChange = sqlBool(db.dialect, Boolean(input.mustChangePassword));
   try {
-    db.prepare(
+    await db.run(
       `INSERT INTO users (id, username, password_hash, role, disabled, must_change_password, created_at, updated_at)
        VALUES (?, ?, ?, ?, 0, ?, ?, ?)`,
-    ).run(id, input.username.trim(), passwordHash, input.role, mustChange, now, now);
+      [id, input.username.trim(), passwordHash, input.role, mustChange, now, now],
+    );
   } catch (e: unknown) {
-    if (e && typeof e === 'object' && 'code' in e && (e as { code: string }).code === 'SQLITE_CONSTRAINT_UNIQUE') {
+    if (isUniqueConstraintError(e, db.dialect)) {
       throw new Error('Username already exists');
     }
     throw e;
   }
-  return findUserById(db, id)!;
+  const user = await findUserById(db, id);
+  if (!user) throw new Error('User not found');
+  return user;
 }
 
 export async function updateUser(
-  db: AppDatabase,
+  db: DbClient,
   id: string,
   patch: {
     role?: ControllerRole;
@@ -106,43 +119,56 @@ export async function updateUser(
     mustChangePassword?: boolean;
   },
 ): Promise<PublicUser> {
-  const existing = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as UserRow | undefined;
+  const existing = await db.queryOne<UserRow>('SELECT * FROM users WHERE id = ?', [id]);
   if (!existing) throw new Error('User not found');
 
   const role = patch.role ?? existing.role;
-  const disabled = patch.disabled !== undefined ? (patch.disabled ? 1 : 0) : existing.disabled;
+  const disabled =
+    patch.disabled !== undefined
+      ? sqlBool(db.dialect, patch.disabled)
+      : isTruthyFlag(existing.disabled)
+        ? sqlBool(db.dialect, true)
+        : sqlBool(db.dialect, false);
   const mustChangePassword =
     patch.mustChangePassword !== undefined
-      ? patch.mustChangePassword
-        ? 1
-        : 0
-      : existing.must_change_password;
+      ? sqlBool(db.dialect, patch.mustChangePassword)
+      : isTruthyFlag(existing.must_change_password)
+        ? sqlBool(db.dialect, true)
+        : sqlBool(db.dialect, false);
   const now = new Date().toISOString();
   let passwordHash = existing.password_hash;
   if (patch.password) {
     passwordHash = await hashPassword(patch.password);
   }
 
-  if (existing.role === 'admin' && role !== 'admin' && countAdmins(db) <= 1 && existing.disabled === 0) {
+  if (
+    existing.role === 'admin' &&
+    role !== 'admin' &&
+    (await countAdmins(db)) <= 1 &&
+    !isTruthyFlag(existing.disabled)
+  ) {
     throw new Error('Cannot remove the last active admin');
   }
-  if (existing.role === 'admin' && disabled === 1 && countAdmins(db) <= 1) {
+  if (existing.role === 'admin' && disabled === sqlBool(db.dialect, true) && (await countAdmins(db)) <= 1) {
     throw new Error('Cannot disable the last active admin');
   }
 
-  db.prepare(
+  await db.run(
     `UPDATE users SET role = ?, disabled = ?, password_hash = ?, must_change_password = ?, updated_at = ? WHERE id = ?`,
-  ).run(role, disabled, passwordHash, mustChangePassword, now, id);
-  return findUserById(db, id)!;
+    [role, disabled, passwordHash, mustChangePassword, now, id],
+  );
+  const user = await findUserById(db, id);
+  if (!user) throw new Error('User not found');
+  return user;
 }
 
 export async function changeUserPassword(
-  db: AppDatabase,
+  db: DbClient,
   userId: string,
   currentPassword: string,
   newPassword: string,
 ): Promise<PublicUser> {
-  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as UserRow | undefined;
+  const row = await db.queryOne<UserRow>('SELECT * FROM users WHERE id = ?', [userId]);
   if (!row) throw new Error('User not found');
   const { verifyPassword } = await import('./password.js');
   const ok = await verifyPassword(currentPassword, row.password_hash);
@@ -150,11 +176,11 @@ export async function changeUserPassword(
   return updateUser(db, userId, { password: newPassword, mustChangePassword: false });
 }
 
-export function deleteUser(db: AppDatabase, id: string): void {
-  const existing = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as UserRow | undefined;
+export async function deleteUser(db: DbClient, id: string): Promise<void> {
+  const existing = await db.queryOne<UserRow>('SELECT * FROM users WHERE id = ?', [id]);
   if (!existing) throw new Error('User not found');
-  if (existing.role === 'admin' && countAdmins(db) <= 1) {
+  if (existing.role === 'admin' && (await countAdmins(db)) <= 1) {
     throw new Error('Cannot delete the last active admin');
   }
-  db.prepare('DELETE FROM users WHERE id = ?').run(id);
+  await db.run('DELETE FROM users WHERE id = ?', [id]);
 }

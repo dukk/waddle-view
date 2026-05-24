@@ -6,14 +6,20 @@ After=graphical-session.target
 Type=simple
 # Required for GTK on the local graphical session.
 Environment=DISPLAY=:0
+# Let app_fatal_error_recovery exit(1) so systemd restarts (no detached orphan).
+Environment=WADDLE_DISPLAY_SYSTEMD=1
 WorkingDirectory=/opt/waddle-view/bundle
 ExecStart=/opt/waddle-view/bundle/waddle_display
 Restart=on-failure
+RestartSec=3
 
 # --- waddle_display environment (WADDLE_DISPLAY_*)
 # Uncomment and set values below, or merge from apps/waddle_display/.env.development
 # via deploy/dev-pi/install_main_to_pi.py (dotenv overrides these commented defaults).
 # Names must match apps/waddle_display/.env.example and lib/config/display_env.dart.
+
+# Optional PostgreSQL instead of local SQLite (default: file under application support):
+# Environment=WADDLE_DISPLAY_DATABASE_URL=postgres://waddle:secret@localhost:5432/waddle_display
 
 # Optional operator OAuth (login routes return 501 until implemented):
 # Environment=WADDLE_DISPLAY_APPLE_CLIENT_ID=

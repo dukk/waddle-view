@@ -1,5 +1,7 @@
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 
+import 'database.dart';
+
 String _readConfigJson(QueryRow row) {
   final Object? raw = row.data['config_json'];
   if (raw == null) {
@@ -8,7 +10,7 @@ String _readConfigJson(QueryRow row) {
   return raw as String;
 }
 
-/// One row of [overlays] (custom SQL backed).
+/// One row of [overlays].
 class DisplayOverlayRow {
   const DisplayOverlayRow({
     required this.id,
@@ -23,6 +25,14 @@ class DisplayOverlayRow {
   final String label;
   final String description;
   final String configJson;
+
+  factory DisplayOverlayRow.fromData(Overlay data) => DisplayOverlayRow(
+    id: data.id,
+    overlayType: data.overlayType,
+    label: data.label,
+    description: data.description,
+    configJson: data.configJson,
+  );
 
   static DisplayOverlayRow fromQueryRow(QueryRow row) {
     String description = '';

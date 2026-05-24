@@ -14,18 +14,18 @@ import {
 } from './backupTargets.js';
 
 describe('backupTargets', () => {
-  let cleanup: (() => void) | undefined;
+  let cleanup: (() => void | Promise<void>) | undefined;
 
-  afterEach(() => {
-    cleanup?.();
+  afterEach(async () => {
+    await cleanup?.();
     cleanup = undefined;
   });
 
-  it('upserts, lists, updates, and deletes targets when auth is disabled', () => {
+  it('upserts, lists, updates, and deletes targets when auth is disabled', async () => {
     const t = createTestApp({ authEnabled: false });
     cleanup = t.cleanup;
 
-    const created = upsertBackupTarget(t.config, t.db, {
+    const created = await upsertBackupTarget(t.config, t.db, {
       userId: null,
       displayId: 'd_lab',
       label: 'Lab',
@@ -40,12 +40,12 @@ describe('backupTargets', () => {
     expect(created.retentionCount).toBe(5);
     expect(created.enabled).toBe(true);
 
-    const row = findBackupTarget(t.db, created.id, null);
+    const row = await findBackupTarget(t.db, created.id, null);
     expect(row).not.toBeNull();
     expect(getDecryptedApiKey(t.config, row!)).toBe('wk_test_key');
     expect(rowScheduleFields(row!).frequency).toBe('weekly');
 
-    const updated = upsertBackupTarget(t.config, t.db, {
+    const updated = await upsertBackupTarget(t.config, t.db, {
       userId: null,
       displayId: 'd_lab',
       label: 'Lab renamed',
@@ -63,20 +63,20 @@ describe('backupTargets', () => {
     expect(updated.schedule.frequency).toBe('daily');
     expect(updated.schedule.minute).toBe(15);
 
-    expect(listBackupTargets(t.db, null)).toHaveLength(1);
-    expect(findBackupTargetByDisplayId(t.db, 'd_lab', null)?.id).toBe(created.id);
-    expect(getDecryptedApiKey(t.config, findBackupTarget(t.db, created.id, null)!)).toBe(
+    expect(await listBackupTargets(t.db, null)).toHaveLength(1);
+    expect((await findBackupTargetByDisplayId(t.db, 'd_lab', null))?.id).toBe(created.id);
+    expect(getDecryptedApiKey(t.config, (await findBackupTarget(t.db, created.id, null))!)).toBe(
       'wk_rotated',
     );
 
-    updateBackupTargetRunStatus(t.db, created.id, 'error', 'pull failed');
-    const afterRun = findBackupTarget(t.db, created.id, null)!;
+    await updateBackupTargetRunStatus(t.db, created.id, 'error', 'pull failed');
+    const afterRun = (await findBackupTarget(t.db, created.id, null))!;
     expect(afterRun.last_status).toBe('error');
     expect(afterRun.last_error).toBe('pull failed');
 
-    expect(deleteBackupTarget(t.db, created.id, null)).toBe(true);
-    expect(deleteBackupTarget(t.db, created.id, null)).toBe(false);
-    expect(listBackupTargets(t.db, null)).toHaveLength(0);
+    expect(await deleteBackupTarget(t.db, created.id, null)).toBe(true);
+    expect(await deleteBackupTarget(t.db, created.id, null)).toBe(false);
+    expect(await listBackupTargets(t.db, null)).toHaveLength(0);
   });
 
   it('scopes targets by user when auth is enabled', async () => {
@@ -88,7 +88,7 @@ describe('backupTargets', () => {
       role: 'admin',
     });
 
-    upsertBackupTarget(t.config, t.db, {
+    await upsertBackupTarget(t.config, t.db, {
       userId: user.id,
       displayId: 'd_user',
       label: 'User display',
@@ -99,16 +99,17 @@ describe('backupTargets', () => {
       enabled: true,
     });
 
-    expect(listBackupTargets(t.db, user.id)).toHaveLength(1);
-    expect(listBackupTargets(t.db, null)).toHaveLength(0);
-    expect(findBackupTarget(t.db, listBackupTargets(t.db, user.id)[0]!.id, null)).toBeNull();
+    const userTargets = await listBackupTargets(t.db, user.id);
+    expect(userTargets).toHaveLength(1);
+    expect(await listBackupTargets(t.db, null)).toHaveLength(0);
+    expect(await findBackupTarget(t.db, userTargets[0]!.id, null)).toBeNull();
   });
 
-  it('listEnabledBackupTargets returns only enabled rows', () => {
+  it('listEnabledBackupTargets returns only enabled rows', async () => {
     const t = createTestApp({ authEnabled: false });
     cleanup = t.cleanup;
 
-    upsertBackupTarget(t.config, t.db, {
+    await upsertBackupTarget(t.config, t.db, {
       userId: null,
       displayId: 'd_on',
       label: 'On',
@@ -118,7 +119,7 @@ describe('backupTargets', () => {
       retentionCount: 3,
       enabled: true,
     });
-    upsertBackupTarget(t.config, t.db, {
+    await upsertBackupTarget(t.config, t.db, {
       userId: null,
       displayId: 'd_off',
       label: 'Off',
@@ -129,15 +130,16 @@ describe('backupTargets', () => {
       enabled: false,
     });
 
-    expect(listEnabledBackupTargets(t.db)).toHaveLength(1);
-    expect(listEnabledBackupTargets(t.db)[0]!.display_id).toBe('d_on');
+    const enabled = await listEnabledBackupTargets(t.db);
+    expect(enabled).toHaveLength(1);
+    expect(enabled[0]!.display_id).toBe('d_on');
   });
 
-  it('staggers schedule times for new targets in the same scope', () => {
+  it('staggers schedule times for new targets in the same scope', async () => {
     const t = createTestApp({ authEnabled: false });
     cleanup = t.cleanup;
 
-    const first = upsertBackupTarget(t.config, t.db, {
+    const first = await upsertBackupTarget(t.config, t.db, {
       userId: null,
       displayId: 'd_a',
       label: 'A',
@@ -154,7 +156,7 @@ describe('backupTargets', () => {
       minute: 0,
     });
 
-    const second = upsertBackupTarget(t.config, t.db, {
+    const second = await upsertBackupTarget(t.config, t.db, {
       userId: null,
       displayId: 'd_b',
       label: 'B',

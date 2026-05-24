@@ -12,13 +12,17 @@ const String kDisplayHttpTlsDirEnv = 'WADDLE_DISPLAY_HTTP_TLS_DIR';
 const String kDisplayHttpTlsCertEnv = 'WADDLE_DISPLAY_HTTP_TLS_CERT';
 const String kDisplayHttpTlsKeyEnv = 'WADDLE_DISPLAY_HTTP_TLS_KEY';
 const String kDisplayHttpCorsOriginsEnv = 'WADDLE_DISPLAY_HTTP_CORS_ORIGINS';
-const String kDisplayControllerPublicUrlEnv = 'WADDLE_DISPLAY_CONTROLLER_PUBLIC_URL';
+const String kDisplayControllerPublicUrlEnv =
+    'WADDLE_DISPLAY_CONTROLLER_PUBLIC_URL';
 const String kDisplayViewerRegistrationSecretEnv =
     'WADDLE_DISPLAY_VIEWER_REGISTRATION_SECRET';
 const String kDisplayPexelsVideoMaxTexturePixelsEnv =
     'WADDLE_DISPLAY_PEXELS_VIDEO_MAX_TEXTURE_PIXELS';
 const String kDisplayPexelsVideoHwdecEnv = 'WADDLE_DISPLAY_PEXELS_VIDEO_HWDEC';
 const String kDisplayAppleClientIdEnv = 'WADDLE_DISPLAY_APPLE_CLIENT_ID';
+
+/// When set, use PostgreSQL instead of the local SQLite file (`postgres://…`).
+const String kDisplayDatabaseUrlEnv = 'WADDLE_DISPLAY_DATABASE_URL';
 
 /// Directory scanned for drop-in plugin folders (`manifest.json` each).
 const String kDisplayPluginsDirEnv = 'WADDLE_DISPLAY_PLUGINS_DIR';
@@ -27,7 +31,9 @@ const String kDisplayPluginsDirEnv = 'WADDLE_DISPLAY_PLUGINS_DIR';
 const String kDisplayUpgradeScriptEnv = 'WADDLE_DISPLAY_UPGRADE_SCRIPT';
 
 /// In-app live preview (window capture + JPEG WebSocket) defaults when KV is unset.
-const String kDisplayLivePreviewEnabledEnv = 'WADDLE_DISPLAY_LIVE_PREVIEW_ENABLED';
+const String kDisplayLivePreviewEnabledEnv =
+    'WADDLE_DISPLAY_LIVE_PREVIEW_ENABLED';
 const String kDisplayLivePreviewFpsEnv = 'WADDLE_DISPLAY_LIVE_PREVIEW_FPS';
 const String kDisplayLivePreviewWidthEnv = 'WADDLE_DISPLAY_LIVE_PREVIEW_WIDTH';
-const String kDisplayLivePreviewQualityEnv = 'WADDLE_DISPLAY_LIVE_PREVIEW_QUALITY';
+const String kDisplayLivePreviewQualityEnv =
+    'WADDLE_DISPLAY_LIVE_PREVIEW_QUALITY';

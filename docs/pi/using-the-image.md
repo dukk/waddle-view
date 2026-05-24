@@ -56,7 +56,37 @@ For a single **`.img`** you can write with **Raspberry Pi Imager** or **balenaEt
 
 ## Data locations
 
-- **SQLite** and **`media/`** live under the Flutter app support directory for the user running the app (see `path_provider` / `XDG` paths on Linux).
+- **SQLite** and **`media/`** live under the Flutter app support directory for the user running the app (see `path_provider` / `XDG` paths on Linux). On typical Linux installs this is **`~/.local/share/waddle_display/`** (for example `waddle_display.db`, `media/`, `waddle_instance.id`, TLS material).
+
+## Logs and crashes (systemd user unit)
+
+When **`waddle_display`** runs under the sample **`waddle-view.service`** user unit (see [`deploy/linux-arm64/waddle-view.service`](../../deploy/linux-arm64/waddle-view.service) or [`deploy/dev-pi/install_main_to_pi.py`](../../deploy/dev-pi/install_main_to_pi.py)):
+
+```bash
+systemctl --user status waddle-view
+journalctl _UID=$(id -u) -t waddle_display --since today --no-pager
+journalctl _UID=$(id -u) -t waddle_display -f
+```
+
+Over **SSH**, `journalctl --user -u waddle-view` may return **"No journal files were found"** because the SSH session is not the same logind journal namespace as the graphical user session. Prefer **`systemctl --user status`** (recent lines are embedded) or **`journalctl _UID=… -t waddle_display`** as above.
+
+**Release builds** do not write `debug_console_logs/` (debug-only). Fatals are still printed to stderr and appended under **`fatal_logs/fatal_<UTC>.log`** in the app support directory. Provider collect detail is mainly on **`GET /v1/telemetry/integrations`**, not in the journal.
+
+**Fatal restart under systemd:** the app exits with a non-zero code so **`Restart=on-failure`** starts a new supervised process (`WADDLE_DISPLAY_SYSTEMD=1` in the unit template). Older builds that detached a replacement process and exited 0 could leave the unit **inactive (dead)** with no window while an orphan died later — upgrade if you see that pattern.
+
+**Kernel / OOM / native crashes** (no `[Fatal]` in the app journal):
+
+```bash
+journalctl -k -b --no-pager | grep -iE 'oom|killed|segfault|waddle'
+```
+
+**Quick recovery** when the TV window is empty:
+
+```bash
+systemctl --user restart waddle-view
+```
+
+See also fatal-restart behavior in [`apps/waddle_display/README.md`](../../apps/waddle_display/README.md).
 
 ## Troubleshooting
 

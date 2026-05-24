@@ -15,6 +15,7 @@ export function testConfig(dir: string, overrides: Partial<AppConfig> = {}): App
     port: 5199,
     dataDir,
     dbPath: path.join(dataDir, 'waddle_controller.db'),
+    databaseUrl: null,
     sessionSecret: 'test-secret',
     clientIdentifier: null,
     secureCookies: false,
@@ -35,8 +36,8 @@ export function createTestApp(overrides: Partial<AppConfig> = {}) {
     db,
     config,
     dir,
-    cleanup: () => {
-      db.close();
+    cleanup: async () => {
+      await db.close();
       fs.rmSync(dir, { recursive: true, force: true });
     },
   };

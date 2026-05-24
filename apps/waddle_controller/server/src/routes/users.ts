@@ -9,7 +9,7 @@ export function usersRoutes() {
   const adminOnly = new Hono<{ Variables: AppVariables }>();
   adminOnly.use('*', requireAuth, requireAdmin, requireUserManagement);
 
-  adminOnly.get('/', (c) => c.json({ users: listUsers(c.get('db')) }));
+  adminOnly.get('/', async (c) => c.json({ users: await listUsers(c.get('db')) }));
 
   adminOnly.post('/', async (c) => {
     const body = (await c.req.json<{
@@ -82,9 +82,9 @@ export function usersRoutes() {
     }
   });
 
-  adminOnly.delete('/:id', (c) => {
+  adminOnly.delete('/:id', async (c) => {
     try {
-      deleteUser(c.get('db'), c.req.param('id'));
+      await deleteUser(c.get('db'), c.req.param('id'));
       return c.json({ ok: true });
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Delete failed';

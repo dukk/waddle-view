@@ -4,23 +4,23 @@ import { createTestApp, sessionCookieHeader } from '../testHelpers.js';
 import { setUserManagementEnabled } from '../services/settings.js';
 
 describe('requireAuth / requireAdmin', () => {
-  let cleanup: (() => void) | undefined;
+  let cleanup: (() => void | Promise<void>) | undefined;
 
-  afterEach(() => {
-    cleanup?.();
+  afterEach(async () => {
+    await cleanup?.();
     cleanup = undefined;
   });
 
   it('returns 401 for unauthenticated PUT /settings when auth is on but user mode is off', async () => {
     const t = createTestApp();
     cleanup = t.cleanup;
-    setUserManagementEnabled(t.db, true);
+    await setUserManagementEnabled(t.db, true);
     await t.app.request('/bff/v1/bootstrap/admin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: 'admin', password: 'passwordpassword' }),
     });
-    setUserManagementEnabled(t.db, false);
+    await setUserManagementEnabled(t.db, false);
     const res = await t.app.request('/bff/v1/settings', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -32,14 +32,14 @@ describe('requireAuth / requireAdmin', () => {
   it('allows admin PUT /settings when auth is on and user mode is off', async () => {
     const t = createTestApp();
     cleanup = t.cleanup;
-    setUserManagementEnabled(t.db, true);
+    await setUserManagementEnabled(t.db, true);
     const boot = await t.app.request('/bff/v1/bootstrap/admin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: 'admin', password: 'passwordpassword' }),
     });
     const cookie = sessionCookieHeader(boot.headers.get('set-cookie') ?? undefined);
-    setUserManagementEnabled(t.db, false);
+    await setUserManagementEnabled(t.db, false);
     const res = await t.app.request('/bff/v1/settings', {
       method: 'PUT',
       headers: {

@@ -1,9 +1,9 @@
 import type { AppConfig } from '../config.js';
-import type { AppDatabase } from '../db/database.js';
+import type { DbClient } from '../db/client.js';
 import { countUsers } from './users.js';
 import { isEffectiveUserMode } from './userMode.js';
 
-export function needsBootstrap(db: AppDatabase, config: AppConfig): boolean {
-  if (!isEffectiveUserMode(config, db)) return false;
-  return countUsers(db) === 0;
+export async function needsBootstrap(db: DbClient, config: AppConfig): Promise<boolean> {
+  if (!(await isEffectiveUserMode(config, db))) return false;
+  return (await countUsers(db)) === 0;
 }

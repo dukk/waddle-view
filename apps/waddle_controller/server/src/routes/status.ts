@@ -7,17 +7,17 @@ import type { StatusResponse } from '../types.js';
 export function statusRoutes() {
   const app = new Hono<{ Variables: AppVariables }>();
 
-  app.get('/status', (c) => {
+  app.get('/status', async (c) => {
     const config = c.get('config');
     const db = c.get('db');
     const user = c.get('user');
-    const userModeEnabled = isUserModeEnabled(db);
+    const userModeEnabled = await isUserModeEnabled(db);
     const body: StatusResponse = {
       authEnabled: config.authEnabled,
       userModeEnabled,
       userManagementEnabled: userModeEnabled,
-      needsBootstrap: needsBootstrap(db, config),
-      recoveryExportAvailable: isRecoveryExportAvailable(config, db),
+      needsBootstrap: await needsBootstrap(db, config),
+      recoveryExportAvailable: await isRecoveryExportAvailable(config, db),
     };
     if (config.clientIdentifier) {
       body.clientIdentifier = config.clientIdentifier;

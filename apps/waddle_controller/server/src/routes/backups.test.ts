@@ -6,11 +6,11 @@ import * as displayBackupPull from '../services/displayBackupPull.js';
 import * as githubReleases from '../services/githubReleases.js';
 
 describe('backups routes', () => {
-  let cleanup: (() => void) | undefined;
+  let cleanup: (() => void | Promise<void>) | undefined;
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.restoreAllMocks();
-    cleanup?.();
+    await cleanup?.();
     cleanup = undefined;
   });
 
@@ -123,7 +123,7 @@ describe('backups routes', () => {
     const t = createTestApp({ authEnabled: false });
     cleanup = t.cleanup;
 
-    const target = upsertBackupTarget(t.config, t.db, {
+    const target = await upsertBackupTarget(t.config, t.db, {
       userId: null,
       displayId: 'd_pull_fail',
       label: 'Pull fail',
@@ -150,7 +150,7 @@ describe('backups routes', () => {
     const t = createTestApp({ authEnabled: false });
     cleanup = t.cleanup;
 
-    const target = upsertBackupTarget(t.config, t.db, {
+    const target = await upsertBackupTarget(t.config, t.db, {
       userId: null,
       displayId: 'd_pull_route',
       label: 'Pull route',
@@ -177,7 +177,7 @@ describe('backups routes', () => {
   it('PUT backup-targets requires session when auth is enabled', async () => {
     const t = createTestApp({ authEnabled: true });
     cleanup = t.cleanup;
-    setUserManagementEnabled(t.db, true);
+    await setUserManagementEnabled(t.db, true);
 
     const res = await t.app.request('/bff/v1/backup-targets', {
       method: 'PUT',
@@ -211,7 +211,7 @@ describe('backups routes', () => {
   it('authenticated admin can save backup targets', async () => {
     const t = createTestApp({ authEnabled: true });
     cleanup = t.cleanup;
-    setUserManagementEnabled(t.db, true);
+    await setUserManagementEnabled(t.db, true);
 
     const boot = await t.app.request('/bff/v1/bootstrap/admin', {
       method: 'POST',

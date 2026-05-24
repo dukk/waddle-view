@@ -74,14 +74,14 @@ function fail(
   return { ok: false, status, code, error };
 }
 
-function resolveRowForAuth(
+async function resolveRowForAuth(
   db: AppDatabase,
   userId: string,
   displayId: string,
   urlHeader: string,
-): UserDisplayRow | null {
+): Promise<UserDisplayRow | null> {
   if (displayId) {
-    const byId = findUserDisplayByDisplayId(db, userId, displayId);
+    const byId = await findUserDisplayByDisplayId(db, userId, displayId);
     if (byId) return byId;
   }
   if (urlHeader) {
@@ -90,14 +90,14 @@ function resolveRowForAuth(
   return findActiveUserDisplay(db, userId);
 }
 
-export function resolveProxyTarget(
+export async function resolveProxyTarget(
   config: AppConfig,
   db: AppDatabase,
   user: PublicUser | null,
   proxyPath: string,
   headers: Headers,
-): ProxyResolveResult {
-  const userMode = isEffectiveUserMode(config, db);
+): Promise<ProxyResolveResult> {
+  const userMode = await isEffectiveUserMode(config, db);
   const adoption = isAdoptionProxyPath(proxyPath);
   const urlHeader = headers.get(DISPLAY_URL_HEADER)?.trim() ?? '';
   const displayId = headers.get(DISPLAY_ID_HEADER)?.trim() ?? '';
@@ -120,7 +120,7 @@ export function resolveProxyTarget(
       return fail(401, 'unauthorized', 'Unauthorized');
     }
     if (!urlHeader && !displayId) {
-      const active = findActiveUserDisplay(db, user.id);
+      const active = await findActiveUserDisplay(db, user.id);
       if (!active) {
         return fail(400, 'display_target_required', 'Display URL or id required');
       }
@@ -132,7 +132,7 @@ export function resolveProxyTarget(
       return { ok: true, upstreamUrl: validated.upstreamUrl, authorization };
     }
 
-    const row = resolveRowForAuth(db, user.id, displayId, urlHeader);
+    const row = await resolveRowForAuth(db, user.id, displayId, urlHeader);
     const baseUrl = urlHeader || row?.base_url;
     if (!baseUrl) {
       return fail(400, 'display_target_required', 'Display URL or id required');
@@ -178,7 +178,7 @@ export async function forwardDisplayProxy(
   request: Request,
   proxyPath: string,
 ): Promise<Response> {
-  const resolved = resolveProxyTarget(config, db, user, proxyPath, request.headers);
+  const resolved = await resolveProxyTarget(config, db, user, proxyPath, request.headers);
   if (!resolved.ok) {
     return Response.json(
       { error: resolved.error, code: resolved.code },

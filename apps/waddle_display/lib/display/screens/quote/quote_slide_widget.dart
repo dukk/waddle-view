@@ -10,6 +10,8 @@ import 'package:waddle_shared/persistence/database.dart';
 import '../../../curator/screen_program_curator.dart';
 import '../../content_category_slide_header.dart';
 import '../../dashboard_viewport_scope.dart';
+import '../../display_decode_image_bytes.dart';
+import '../../display_memory_image.dart';
 import '../../slide_content_quote.dart';
 
 /// Inspirational quote with optional author portrait.
@@ -46,30 +48,29 @@ class _QuoteSlideWidgetState extends State<QuoteSlideWidget> {
   }
 
   Future<void> _bootstrap() async {
-    final quote = await loadQuoteForSlide(
-      widget.db,
-      widget.spec,
-      widget.slide,
-    );
+    final quote = await loadQuoteForSlide(widget.db, widget.spec, widget.slide);
     List<String> cats = const [];
     Uint8List? bytes;
     if (quote != null) {
-      final catRows = await (widget.db.select(widget.db.quoterismQuoteCategories)
-            ..where((t) => t.quoteId.equals(quote.id)))
-          .get();
+      final catRows = await (widget.db.select(
+        widget.db.quoterismQuoteCategories,
+      )..where((t) => t.quoteId.equals(quote.id))).get();
       cats = catRows.map((r) => r.categoryId).toList();
       final key = quote.authorImageBlobKey?.trim();
       if (key != null && key.isNotEmpty) {
-        final meta = await (widget.db.select(widget.db.blobMetadata)
-              ..where((t) => t.blobKey.equals(key)))
-            .getSingleOrNull();
+        final meta = await (widget.db.select(
+          widget.db.blobMetadata,
+        )..where((t) => t.blobKey.equals(key))).getSingleOrNull();
         if (meta != null) {
           final read = await readDisplayBlobBytes(
             widget.blobs,
             BlobRef(meta.relativePath),
           );
-          if (read.isOk) {
-            bytes = read.bytes;
+          if (read.isOk && read.bytes != null) {
+            final raw = read.bytes!;
+            if (await canDecodeDisplayImageBytes(raw)) {
+              bytes = raw;
+            }
           }
         }
       }
@@ -170,9 +171,15 @@ class _QuoteSlideWidgetState extends State<QuoteSlideWidget> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (_authorBytes != null)
-                      CircleAvatar(
-                        radius: 28 * s,
-                        backgroundImage: MemoryImage(_authorBytes!),
+                      ClipOval(
+                        child: SizedBox(
+                          width: 56 * s,
+                          height: 56 * s,
+                          child: DisplayMemoryImage(
+                            bytes: _authorBytes!,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
                       ),
                     if (_authorBytes != null && author.isNotEmpty)
                       SizedBox(width: 12 * s),

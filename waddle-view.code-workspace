@@ -34,16 +34,26 @@
 		"sqltools.useNodeRuntime": true,
 		"cSpell.words": [
 			"APPDATA",
+			"dotenv",
+			"FINHUB",
+			"Finnhub",
+			"FLICKR",
 			"geolocation",
+			"getpid",
 			"headshot",
+			"HWDEC",
 			"LOCALAPPDATA",
 			"pexels",
 			"photoless",
+			"pkill",
 			"Playout",
 			"PREVIEWABLE",
+			"quoterism",
 			"repoints",
 			"rjsf",
+			"SPDR",
 			"sqltools",
+			"unmuted",
 			"waddleview"
 		]
 	}

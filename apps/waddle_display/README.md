@@ -58,7 +58,7 @@ flutter run -d linux      # Linux desktop or Pi with Flutter toolchain
 
 `flutter run` defaults to **debug**: asserts, tracing, and **hot reload** (`r` in the terminal) / **hot restart** (`R`). In debug, the data collection engine uses a **shorter idle** between cycles than in profile or release (see `lib/main.dart`). Each debug session also creates a **timestamped console log file** under the app support directory: `debug_console_logs/debug_console_<UTC>.log` (see `lib/debug/debug_console_disk_logger.dart`). It captures `print` output, `debugPrint`, `AppDebugLog` lines from `lib/debug/app_debug_log.dart`, and fatal / recoverable Flutter error summaries written through the global handlers.
 
-**Unhandled errors (release display):** most framework, async isolate, and root-zone failures are logged to **stderr** and the Dart **developer log** (name `Fatal.*`), then the process **restarts** by spawning the same executable with the same arguments (`lib/bootstrap/app_fatal_error_recovery.dart`). If restart fails, the process exits with a non-zero code so a supervisor (e.g. **systemd**) can start a fresh instance. Common **layout overflow** assertions (for example `RenderFlex overflowed`) are logged under **`Flutter.recoverable`** and **do not** trigger that restart so the dashboard keeps running. This does not apply to **flutter test** (tests do not run `main()`).
+**Unhandled errors (release display):** most framework, async isolate, and root-zone failures are logged to **stderr**, the Dart **developer log** (name `Fatal.*`), and an append-only file under app support **`fatal_logs/fatal_<UTC>.log`** (`lib/debug/fatal_disk_logger.dart`). On Linux under **systemd** (`WADDLE_DISPLAY_SYSTEMD=1` or `INVOCATION_ID`), the process **exits with code 1** so **`Restart=on-failure`** starts a fresh supervised instance (`lib/bootstrap/app_fatal_error_recovery.dart`). Otherwise it spawns a detached copy of the same executable and exits 0. If detached restart fails, the process exits with a non-zero code so a supervisor can start a fresh instance. Common **layout overflow** assertions (for example `RenderFlex overflowed`) are logged under **`Flutter.recoverable`** and **do not** trigger that restart so the dashboard keeps running. This does not apply to **flutter test** (tests do not run `main()`).
 
 Useful variants:
 
@@ -83,6 +83,15 @@ Per-test wall time is capped at **60s** by `dart_test.yaml` (and CI uses the sam
 ## Operator CLI (`waddlectl`)
 
 The **`apps/waddlectl`** package is a shell tool against the same **SQLite** database as the display app. Use **`backup create`** for a single-file archive of the database and **`media/`** blobs; it is **not** a substitute for backing up the whole machine.
+
+### PostgreSQL (optional)
+
+By default the display stores data in **`{applicationSupport}/waddle_display.db`**. Set **`WADDLE_DISPLAY_DATABASE_URL`** (`postgres://…`) to use PostgreSQL instead. Blob files remain on disk under **`media/`** next to application support. SQLite file backup/restore REST routes are **not** registered in Postgres mode — use external **`pg_dump`** / **`pg_restore`** (or **`waddlectl db migrate-to-postgres`** when moving off SQLite).
+
+```bash
+# Copy an existing SQLite display DB to Postgres (display process must be stopped):
+dart run waddlectl --database=/path/to/waddle_display.db db migrate-to-postgres --to "$WADDLE_DISPLAY_DATABASE_URL"
+```
 
 **Prebuilt `waddlectl`** is included in **GitHub Release** artifacts next to the display app: **Windows** (`…/waddlectl/bin/waddlectl.exe` inside the `.zip` Release tree), **Linux** (`…/bundle/waddlectl/bin/waddlectl` next to `waddle_display` in the tarball’s `bundle/`). From a dev checkout you can build the same layout with **`dart build cli`** (see *Build installable bundles* below).
 
@@ -119,9 +128,22 @@ flutter build linux --release
 - **Windows**: runnable under `build/windows/x64/runner/Release/` (launch `waddle_display.exe` from Explorer or a terminal). CI and release workflows also place **`waddlectl/bin/waddlectl.exe`** (and **`waddlectl/lib/`** native libs) under that same `Release/` directory.
 - **Linux**: bundle under `build/linux/<arch>/release/bundle/` (e.g. `arm64` on an ARM64 host). Run the `waddle_display` executable from that **bundle** directory so assets resolve correctly. Release and CI merges add **`waddlectl/bin/waddlectl`** (and **`waddlectl/lib/`**) beside `waddle_display` inside `bundle/`.
 
-**GitHub Releases:** pushing a **`v*`** tag runs **[`release.yml`](../../.github/workflows/release.yml)**, which calls **[`release-windows.yml`](../../.github/workflows/release-windows.yml)** (Windows **`.zip`**), **[`release-linux-x64.yml`](../../.github/workflows/release-linux-x64.yml)** (Linux x64 **`.tar.gz`**), and **[`release-pi.yml`](../../.github/workflows/release-pi.yml)** (Linux arm64 **`.tar.gz`**) and attaches all three to the GitHub Release. Each desktop bundle includes the display binary plus a native **`waddlectl`** tree (**`dart build cli`**). CI passes **`flutter build … --build-number`** using GitHub Actions **`github.run_number`**, so each workflow run gets a monotonic integer build id; **`pubspec.yaml`** `version: …+N` is **not** auto-synced to that number. The reusable release workflows are only invoked from **`release.yml`**; use **`workflow_dispatch`** on **`release.yml`** if you want CI builds without creating a GitHub Release (the publish step still runs only on **`v*`** tag pushes).
+**GitHub Releases:** pushing a **`v*`** tag runs **[`release.yml`](../../.github/workflows/release.yml)** and attaches desktop, Pi, mobile compile, and controller Docker assets. **32-bit x86 (ia32)** is not supported by Flutter/Dart; desktop and Android use **x64** / **arm64** (and Android **arm** 32-bit ABI where applicable).
 
-**PR / branch CI:** **[`ci.yml`](../../.github/workflows/ci.yml)** runs tests and analysis, then compiles a **Linux arm64 (Pi)** release bundle via **[`release-pi.yml`](../../.github/workflows/release-pi.yml)** (with **`waddlectl`** merged like tagged releases). **Linux x64** and **Windows** compile checks are **not** run in CI right now; catch desktop breakages locally or via a **`v*`** tag push (**`release.yml`** still builds all three platforms).
+| Platform | Asset prefix (example `v1.0.0`) | Notes |
+|----------|----------------------------------|--------|
+| Linux x64 | `waddle-view-linux-x64-v1.0.0.tar.gz` | Desktop + **waddlectl** + bundled controller SPA |
+| Linux arm64 (generic desktop) | `waddle-view-linux-arm64-desktop-v1.0.0.tar.gz` | Native **arm64** Linux desktop (not Pi Bookworm build) |
+| Linux arm64 (Pi) | `waddle-view-linux-arm64-v1.0.0.tar.gz` | **[`release-pi.yml`](../../.github/workflows/release-pi.yml)** Bookworm/glibc-checked bundle + `install.sh` |
+| Windows x64 / arm64 | `waddle-view-windows-x64-…zip`, `waddle-view-windows-arm64-…zip` | **[`release-windows-desktop.yml`](../../.github/workflows/release-windows-desktop.yml)** |
+| Android | `waddle-view-android-v1.0.0.zip` | Split APKs (**arm**, **arm64**, **x64**); compile smoke, not a supported product target |
+| iOS | `waddle-view-ios-v1.0.0.zip` | `Runner.app`, **no codesign** |
+| macOS | `waddle-view-macos-v1.0.0.zip` | `.app` bundle |
+| Controller Docker | `waddle-controller-docker-v1.0.0.tar.gz` | See [`apps/waddle_controller/README.md`](../waddle_controller/README.md#deploy-from-github-builds) |
+
+CI passes **`flutter build … --build-number`** using GitHub Actions **`github.run_number`**. Use **`workflow_dispatch`** on **`release.yml`** to build without publishing (publish still runs only on **`v*`** tag pushes).
+
+**PR / branch CI:** **[`ci.yml`](../../.github/workflows/ci.yml)** runs tests, then release-mode compiles for **Linux x64**, **Linux arm64 desktop**, **Windows x64/arm64**, **Pi arm64**, **Android**, **iOS**, and **macOS** (separate artifacts per platform; Pi workflow unchanged).
 
 Tagged **Pi** tarballs and `install.sh` are produced in CI and documented under [`../../docs/pi/`](../../docs/pi/); templates live in [`../../deploy/linux-arm64/`](../../deploy/linux-arm64/).
 

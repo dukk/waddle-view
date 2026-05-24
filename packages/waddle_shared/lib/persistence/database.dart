@@ -1,9 +1,7 @@
 import 'dart:convert';
-import 'dart:developer' show log;
 import 'dart:io';
 
 import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
 
 import '../config/integration_config_json.dart';
 import '../theme/display_program_history_kv.dart';
@@ -22,6 +20,9 @@ import 'display_overlay_sql.dart';
 import 'display_overlay_static_image_settings.dart';
 import '../seed/tables/overlay_types_seed.dart';
 import 'reject_term_defaults.dart';
+import 'database_backend.dart';
+import 'database_executor.dart';
+import 'postgres_baseline.dart';
 import 'tables.dart';
 import 'weather_location_category.dart';
 
@@ -35,6 +36,7 @@ part 'database.g.dart';
     ScreenTypes,
     TickerTapeTypes,
     OverlayTypes,
+    Overlays,
     Integrations,
     IntegrationAccounts,
     IntegrationAccountLinks,
@@ -88,13 +90,19 @@ part 'database.g.dart';
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase(super.e);
+  AppDatabase(
+    super.e, {
+    WaddleDatabaseBackend backend = WaddleDatabaseBackend.sqlite,
+  }) : _backend = backend;
+
+  final WaddleDatabaseBackend _backend;
+
+  WaddleDatabaseBackend get databaseBackend => _backend;
 
   @override
-  int get schemaVersion => 52;
+  int get schemaVersion => _backend == WaddleDatabaseBackend.postgres ? 1 : 52;
 
-  @override
-  MigrationStrategy get migration => MigrationStrategy(
+  MigrationStrategy get _sqliteMigrationStrategy => MigrationStrategy(
     onCreate: (Migrator m) async {
       await m.createAll();
       await customStatement('''
@@ -104,7 +112,6 @@ FROM alerts
 WHERE dismissed_at IS NULL
 ORDER BY priority DESC, created_at DESC;
 ''');
-      await customStatement(kEnsureOverlaysTableSql);
       await customStatement(kEnsureOverlayTypesTableSql);
       await _ensureIntegrationsKeyValueIndexes(this);
       await ensureDefaultRejectTerms(this);
@@ -488,6 +495,25 @@ ORDER BY priority DESC, created_at DESC;
       await _ensureInterestsStockSymbolCategoriesPopulated(this);
     },
   );
+
+  @override
+  MigrationStrategy get migration {
+    if (_backend == WaddleDatabaseBackend.postgres) {
+      return MigrationStrategy(
+        onCreate: (m) => applyPostgresOnCreate(m, this),
+        onUpgrade: (m, from, to) async {
+          if (from >= 1 && to >= 1) return;
+          throw UnsupportedError(
+            'Unsupported postgres database upgrade from version $from to $to.',
+          );
+        },
+        beforeOpen: (details) async {
+          await applyPostgresBeforeOpen(this);
+        },
+      );
+    }
+    return _sqliteMigrationStrategy;
+  }
 }
 
 /// Integration ids that require operator-configured secrets (schema 2 → 3 cutover).
@@ -3305,9 +3331,5 @@ Future<void> _ensureWeekdayWeekendCuratorConfigurationsV52(
 }
 
 /// Opens a file-backed SQLite at [sqliteFile] (e.g. for `waddlectl --database`).
-QueryExecutor createQueryExecutorForFile(File sqliteFile) {
-  return LazyDatabase(() async {
-    log('SQLite database file: ${sqliteFile.path}', name: 'waddle_shared');
-    return NativeDatabase.createInBackground(sqliteFile);
-  });
-}
+QueryExecutor createQueryExecutorForFile(File sqliteFile) =>
+    createSqliteExecutorForFile(sqliteFile);

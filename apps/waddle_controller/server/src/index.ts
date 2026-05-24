@@ -1,6 +1,6 @@
 import type { Server } from 'node:http';
 import { loadConfig } from './config.js';
-import { openDatabase } from './db/database.js';
+import { openDatabaseAsync } from './db/database.js';
 import { createApp } from './app.js';
 import { serveWithOptionalTls } from './tlsServe.js';
 import {
@@ -9,7 +9,7 @@ import {
 } from './services/backupScheduler.js';
 
 const config = loadConfig();
-const db = openDatabase(config);
+const db = await openDatabaseAsync(config);
 const app = createApp(config, db);
 startBackupScheduler(config, db);
 
@@ -23,9 +23,10 @@ const server: Server = serveWithOptionalTls({
   config,
   db,
   onListening: () => {
+    const backend = config.databaseUrl ? 'postgres' : 'sqlite';
     console.error(
       `waddle_controller BFF listening on ${scheme}://${config.bindHost}:${config.port} ` +
-        `(auth=${config.authEnabled}, tls=${config.tls.enabled})`,
+        `(auth=${config.authEnabled}, tls=${config.tls.enabled}, db=${backend})`,
     );
   },
 });
@@ -39,9 +40,9 @@ function shutdown(signal: string): void {
   shuttingDown = true;
   console.error(`waddle_controller BFF shutting down (${signal})…`);
   stopBackupScheduler();
-  server.close((err) => {
+  server.close(async (err) => {
     try {
-      db.close();
+      await db.close();
     } catch {
       // ignore close races during tsx watch restart
     }

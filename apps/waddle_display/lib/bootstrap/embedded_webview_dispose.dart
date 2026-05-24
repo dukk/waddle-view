@@ -3,7 +3,6 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'package:webview_win_floating/webview_plugin.dart';
 
 /// [webview_win_floating] returns this when [WinWebViewController.dispose] runs
 /// after native teardown (app exit, hot restart `init`, or a prior dispose).
@@ -31,8 +30,9 @@ Future<void> disposeEmbeddedWebViewController(
   }
   try {
     final platform = controller.platform;
-    if (platform is WindowsPlatformWebViewController) {
-      await platform.controller.dispose();
+    final typeName = platform.runtimeType.toString();
+    if (typeName.contains('WindowsPlatformWebViewController')) {
+      await (platform as dynamic).controller.dispose();
     }
   } on PlatformException catch (error) {
     if (!isBenignEmbeddedWebViewDisposePlatformException(error)) {

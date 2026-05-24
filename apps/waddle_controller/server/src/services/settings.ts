@@ -1,17 +1,19 @@
-import type { AppDatabase } from '../db/database.js';
+import type { DbClient } from '../db/client.js';
 
 export const USER_MANAGEMENT_KEY = 'user_management_enabled';
 
-export function isUserManagementEnabled(db: AppDatabase): boolean {
-  const row = db
-    .prepare('SELECT value FROM settings WHERE key = ?')
-    .get(USER_MANAGEMENT_KEY) as { value: string } | undefined;
+export async function isUserManagementEnabled(db: DbClient): Promise<boolean> {
+  const row = await db.queryOne<{ value: string }>(
+    'SELECT value FROM settings WHERE key = ?',
+    [USER_MANAGEMENT_KEY],
+  );
   return row?.value === 'true' || row?.value === '1';
 }
 
-export function setUserManagementEnabled(db: AppDatabase, enabled: boolean): void {
-  db.prepare(
+export async function setUserManagementEnabled(db: DbClient, enabled: boolean): Promise<void> {
+  await db.run(
     `INSERT INTO settings (key, value) VALUES (?, ?)
      ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-  ).run(USER_MANAGEMENT_KEY, enabled ? 'true' : 'false');
+    [USER_MANAGEMENT_KEY, enabled ? 'true' : 'false'],
+  );
 }

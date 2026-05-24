@@ -1,0 +1,72 @@
+# iOS compile (no codesign). Callable from release.yml and ci.yml.
+name: Release build — iOS
+
+on:
+  workflow_call:
+    inputs:
+      build_number:
+        type: string
+        required: true
+      dist_basename:
+        type: string
+        required: false
+        default: ''
+      artifact_name:
+        type: string
+        required: false
+        default: ''
+
+defaults:
+  run:
+    working-directory: apps/waddle_display
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.9'
+          channel: stable
+      - run: flutter pub get
+        working-directory: ${{ github.workspace }}
+      - name: Generate code
+        run: dart run build_runner build --delete-conflicting-outputs
+        working-directory: ${{ github.workspace }}/packages/waddle_shared
+      - run: flutter build ios --release --no-codesign --build-number "${{ inputs.build_number }}"
+      - name: Package Runner.app
+        env:
+          DIST_BASENAME_INPUT: ${{ inputs.dist_basename }}
+        run: |
+          set -euo pipefail
+          APP="build/ios/iphoneos/Runner.app"
+          if [[ ! -d "$APP" ]]; then
+            echo "Missing $APP"
+            exit 1
+          fi
+          if [[ -n "$DIST_BASENAME_INPUT" ]]; then
+            DIST="$DIST_BASENAME_INPUT"
+          else
+            DIST="waddle-view-ios-${GITHUB_REF_NAME}"
+          fi
+          mkdir -p "${GITHUB_WORKSPACE}/dist"
+          (cd build/ios/iphoneos && zip -r "${GITHUB_WORKSPACE}/dist/${DIST}.zip" Runner.app)
+      - name: Resolve artifact name
+        id: artifact
+        env:
+          ARTIFACT_NAME_INPUT: ${{ inputs.artifact_name }}
+        run: |
+          if [[ -n "$ARTIFACT_NAME_INPUT" ]]; then
+            echo "name=$ARTIFACT_NAME_INPUT" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=ios-bundle-${{ inputs.build_number }}" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ${{ steps.artifact.outputs.name }}
+          path: ${{ github.workspace }}/dist/*.zip

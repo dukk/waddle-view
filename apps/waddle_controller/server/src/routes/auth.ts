@@ -34,7 +34,7 @@ export function authRoutes() {
   app.post('/auth/login', async (c) => {
     const config = c.get('config');
     const db = c.get('db');
-    if (!isEffectiveUserMode(config, db)) {
+    if (!(await isEffectiveUserMode(config, db))) {
       return c.json({ error: 'User mode is disabled', code: 'user_mode_disabled' }, 403);
     }
     const ip = c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || 'local';
@@ -49,7 +49,7 @@ export function authRoutes() {
     if (!username || !password) {
       return c.json({ error: 'Username and password required', code: 'invalid_request' }, 400);
     }
-    const record = findUserByUsername(db, username);
+    const record = await findUserByUsername(db, username);
     if (!record || record.disabled) {
       return c.json({ error: 'Invalid credentials', code: 'invalid_credentials' }, 401);
     }
@@ -57,21 +57,21 @@ export function authRoutes() {
     if (!ok) {
       return c.json({ error: 'Invalid credentials', code: 'invalid_credentials' }, 401);
     }
-    recordUserLogin(db, record.id);
-    const sessionId = createSession(db, record.id);
+    await recordUserLogin(db, record.id);
+    const sessionId = await createSession(db, record.id);
     setCookie(c, SESSION_COOKIE, sessionId, sessionCookieOptions(config));
     return c.json({ user: userPayload(record) });
   });
 
-  app.post('/auth/logout', requireAuth, (c) => {
+  app.post('/auth/logout', requireAuth, async (c) => {
     const sessionId = c.get('sessionId');
-    if (sessionId) deleteSession(c.get('db'), sessionId);
+    if (sessionId) await deleteSession(c.get('db'), sessionId);
     deleteCookie(c, SESSION_COOKIE, { path: '/' });
     return c.json({ ok: true });
   });
 
-  app.get('/auth/me', requireAuth, (c) => {
-    if (!isEffectiveUserMode(c.get('config'), c.get('db'))) {
+  app.get('/auth/me', requireAuth, async (c) => {
+    if (!(await isEffectiveUserMode(c.get('config'), c.get('db')))) {
       return c.json({ user: null });
     }
     const user = c.get('user');

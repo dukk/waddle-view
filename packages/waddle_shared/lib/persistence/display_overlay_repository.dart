@@ -23,14 +23,13 @@ import 'display_overlay_digital_clock_settings.dart';
 import 'display_overlay_photo_slideshow_settings.dart';
 import 'display_overlay_static_image_settings.dart';
 import 'display_overlay_row.dart';
-import 'display_overlay_sql.dart';
 import 'overlay_type_label.dart';
 import 'tables.dart';
 
 /// Broadcast when `overlays` rows change (`upsertOverlay` / `deleteOverlay`).
 ///
-/// The table is managed via custom SQL (not a generated Drift table), so writes
-/// must notify explicitly for [watchDisplayOverlaySchedules] subscribers.
+/// Drift [watchDisplayOverlaySchedules] also emits on table changes; this stream
+/// remains for callers that only listen to explicit write notifications.
 final StreamController<void> _overlayTableChanges =
     StreamController<void>.broadcast();
 
@@ -41,9 +40,9 @@ void _notifyOverlayTableChanged() {
 }
 
 Selectable<DisplayOverlayRow> _overlaySelectable(AppDatabase db) {
-  return db.customSelect(
-    'SELECT * FROM overlays ORDER BY id ASC',
-  ).map(DisplayOverlayRow.fromQueryRow);
+  return (db.select(
+    db.overlays,
+  )..orderBy([(t) => OrderingTerm.asc(t.id)])).map(DisplayOverlayRow.fromData);
 }
 
 Future<List<DisplayOverlayRow>> fetchDisplayOverlays(AppDatabase db) =>
@@ -75,7 +74,8 @@ Stream<List<DisplayOverlayRow>> watchDisplayOverlaySchedules(AppDatabase db) {
 }
 
 Future<void> ensureOverlaysTableExists(AppDatabase db) async {
-  await db.customStatement(kEnsureOverlaysTableSql);
+  final migrator = Migrator(db);
+  await migrator.createTable(db.overlays);
 }
 
 /// Returns `false` only for explicit disables (`false`, `0`, `no`, `off`).
@@ -94,9 +94,8 @@ bool parseDisplayOverlayGloballyEnabled(String? kv) {
   }
 }
 
-({Map<String, dynamic> rest, List<String> messages}) _splitOverlayConfigForNormalize(
-  String configJson,
-) {
+({Map<String, dynamic> rest, List<String> messages})
+_splitOverlayConfigForNormalize(String configJson) {
   dynamic decoded;
   try {
     decoded = jsonDecode(configJson.trim().isEmpty ? '{}' : configJson);
@@ -131,7 +130,9 @@ String _mergeMessagesIntoConfigJsonString(
 ) {
   dynamic decoded;
   try {
-    decoded = jsonDecode(normalizedInnerJson.trim().isEmpty ? '{}' : normalizedInnerJson);
+    decoded = jsonDecode(
+      normalizedInnerJson.trim().isEmpty ? '{}' : normalizedInnerJson,
+    );
   } on Object {
     return jsonEncode(<String, Object?>{'messages': messages});
   }
@@ -197,56 +198,59 @@ String normalizeOverlayConfigForUpsert({
   final restJson = jsonEncode(split.rest);
   return switch (trimmedType) {
     kOverlayTypeShapeRain || kOverlayTypeHeartsRain =>
-        normalizeShapeRainSettingsJsonString(restJson) ??
-            (throw FormatException('invalid_config_json')),
+      normalizeShapeRainSettingsJsonString(restJson) ??
+          (throw FormatException('invalid_config_json')),
     kOverlayTypeBirthdayConfetti =>
-        normalizeBirthdayConfettiSettingsJsonString(restJson) ??
-            (throw FormatException('invalid_config_json')),
+      normalizeBirthdayConfettiSettingsJsonString(restJson) ??
+          (throw FormatException('invalid_config_json')),
     kOverlayTypeBouncingMessage => () {
-        final normalizedInner =
-            normalizeBouncingMessageConfigJsonString(restJson) ??
-                (throw FormatException('invalid_config_json'));
-        return _mergeMessagesIntoConfigJsonString(normalizedInner, split.messages);
-      }(),
+      final normalizedInner =
+          normalizeBouncingMessageConfigJsonString(restJson) ??
+          (throw FormatException('invalid_config_json'));
+      return _mergeMessagesIntoConfigJsonString(
+        normalizedInner,
+        split.messages,
+      );
+    }(),
     kOverlayTypeFallingImages =>
-        normalizeFallingImagesConfigJsonString(restJson) ??
-            (throw FormatException('invalid_config_json')),
+      normalizeFallingImagesConfigJsonString(restJson) ??
+          (throw FormatException('invalid_config_json')),
     kOverlayTypeFloatingBalloons =>
-        normalizeFloatingBalloonsConfigJsonString(restJson) ??
-            (throw FormatException('invalid_config_json')),
+      normalizeFloatingBalloonsConfigJsonString(restJson) ??
+          (throw FormatException('invalid_config_json')),
     kOverlayTypeMatrixRain =>
-        normalizeMatrixRainSettingsJsonString(restJson) ??
-            (throw FormatException('invalid_config_json')),
+      normalizeMatrixRainSettingsJsonString(restJson) ??
+          (throw FormatException('invalid_config_json')),
     kOverlayTypeEdgeGlow =>
-        normalizeEdgeGlowSettingsJsonString(restJson) ??
-            (throw FormatException('invalid_config_json')),
+      normalizeEdgeGlowSettingsJsonString(restJson) ??
+          (throw FormatException('invalid_config_json')),
     kOverlayTypeCloudDrift =>
-        normalizeCloudDriftSettingsJsonString(restJson) ??
-            (throw FormatException('invalid_config_json')),
+      normalizeCloudDriftSettingsJsonString(restJson) ??
+          (throw FormatException('invalid_config_json')),
     kOverlayTypeStaticImage =>
-        normalizeStaticImageSettingsJsonString(restJson) ??
-            (throw FormatException('invalid_config_json')),
+      normalizeStaticImageSettingsJsonString(restJson) ??
+          (throw FormatException('invalid_config_json')),
     kOverlayTypeDigitalClock =>
-        normalizeDigitalClockOverlayConfigJsonString(restJson) ??
-            (throw FormatException('invalid_config_json')),
+      normalizeDigitalClockOverlayConfigJsonString(restJson) ??
+          (throw FormatException('invalid_config_json')),
     kOverlayTypeAnalogClock =>
-        normalizeAnalogClockOverlayConfigJsonString(restJson) ??
-            (throw FormatException('invalid_config_json')),
+      normalizeAnalogClockOverlayConfigJsonString(restJson) ??
+          (throw FormatException('invalid_config_json')),
     kOverlayTypeCalendarMonth =>
-        normalizeCalendarMonthOverlayConfigJsonString(restJson) ??
-            (throw FormatException('invalid_config_json')),
+      normalizeCalendarMonthOverlayConfigJsonString(restJson) ??
+          (throw FormatException('invalid_config_json')),
     kOverlayTypeCalendarUpcoming =>
-        normalizeCalendarUpcomingOverlayConfigJsonString(restJson) ??
-            (throw FormatException('invalid_config_json')),
+      normalizeCalendarUpcomingOverlayConfigJsonString(restJson) ??
+          (throw FormatException('invalid_config_json')),
     kOverlayTypeStockQuote =>
-        normalizeStockQuoteOverlayConfigJsonString(restJson) ??
-            (throw FormatException('invalid_config_json')),
+      normalizeStockQuoteOverlayConfigJsonString(restJson) ??
+          (throw FormatException('invalid_config_json')),
     kOverlayTypePhotoSlideshow =>
-        normalizePhotoSlideshowSettingsJsonString(restJson) ??
-            (throw FormatException('invalid_config_json')),
+      normalizePhotoSlideshowSettingsJsonString(restJson) ??
+          (throw FormatException('invalid_config_json')),
     kOverlayTypeQrCode =>
-        normalizeQrCodeOverlayConfigJsonString(restJson) ??
-            (throw FormatException('invalid_config_json')),
+      normalizeQrCodeOverlayConfigJsonString(restJson) ??
+          (throw FormatException('invalid_config_json')),
     _ => _normalizeUnknownOverlayConfigJson(split.rest, split.messages),
   };
 }
@@ -306,10 +310,7 @@ Future<String> upsertOverlay(
   String description = '',
   required String configJson,
 }) async {
-  final err = validateOverlayUpsertDraft(
-    id: id,
-    overlayType: overlayType,
-  );
+  final err = validateOverlayUpsertDraft(id: id, overlayType: overlayType);
   if (err != null) {
     throw FormatException(err);
   }
@@ -328,7 +329,9 @@ Future<String> upsertOverlay(
   await ensureOverlayTypes(db);
   if (!await overlayTypeExists(db, trimmedType)) {
     final doc = displayOverlayConfigJsonDocForType(trimmedType);
-    await db.into(db.overlayTypes).insert(
+    await db
+        .into(db.overlayTypes)
+        .insert(
           OverlayTypesCompanion.insert(
             overlayType: trimmedType,
             label: overlayTypeLabel(trimmedType),
@@ -337,18 +340,17 @@ Future<String> upsertOverlay(
         );
   }
   final trimmedId = id.trim();
-  await db.customStatement(
-    'INSERT OR REPLACE INTO overlays ('
-    'id, overlay_type, label, description, config_json) '
-    'VALUES (?, ?, ?, ?, ?)',
-    <Object?>[
-      trimmedId,
-      trimmedType,
-      label,
-      description.trim(),
-      configNorm,
-    ],
-  );
+  await db
+      .into(db.overlays)
+      .insertOnConflictUpdate(
+        OverlaysCompanion.insert(
+          id: trimmedId,
+          overlayType: trimmedType,
+          label: Value(label),
+          description: Value(description.trim()),
+          configJson: Value(configNorm),
+        ),
+      );
   _notifyOverlayTableChanged();
   return trimmedId;
 }
@@ -368,20 +370,16 @@ Future<void> upsertOverlaySchedule(
   int? endDay,
   int? nthWeekOfMonth,
   int? nthWeekday,
-}) =>
-    upsertOverlay(
-      db,
-      id: id,
-      overlayType: overlayType,
-      label: label,
-      configJson: configJson,
-    );
+}) => upsertOverlay(
+  db,
+  id: id,
+  overlayType: overlayType,
+  label: label,
+  configJson: configJson,
+);
 
 Future<void> deleteOverlay(AppDatabase db, String id) async {
-  await db.customStatement(
-    'DELETE FROM overlays WHERE id = ?',
-    <Object?>[id.trim()],
-  );
+  await (db.delete(db.overlays)..where((t) => t.id.equals(id.trim()))).go();
   _notifyOverlayTableChanged();
 }
 
@@ -391,18 +389,15 @@ Future<void> deleteOverlaySchedule(AppDatabase db, String id) =>
 
 Future<DisplayOverlayRow?> overlayById(AppDatabase db, String id) async {
   final trimmed = id.trim();
-  final rows =
-      await db
-          .customSelect(
-            'SELECT * FROM overlays WHERE id = ? LIMIT 1',
-            variables: [Variable<String>(trimmed)],
-          )
-          .map(DisplayOverlayRow.fromQueryRow)
-          .get();
-  if (rows.isEmpty) {
+  final row =
+      await (db.select(db.overlays)
+            ..where((t) => t.id.equals(trimmed))
+            ..limit(1))
+          .getSingleOrNull();
+  if (row == null) {
     return null;
   }
-  return rows.first;
+  return DisplayOverlayRow.fromData(row);
 }
 
 /// Back-compat alias.

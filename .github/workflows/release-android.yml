@@ -1,0 +1,83 @@
+# Android APK compile (arm, arm64, x64 ABIs). Callable from release.yml and ci.yml.
+name: Release build — Android
+
+on:
+  workflow_call:
+    inputs:
+      build_number:
+        type: string
+        required: true
+      dist_basename:
+        type: string
+        required: false
+        default: ''
+      artifact_name:
+        type: string
+        required: false
+        default: ''
+
+defaults:
+  run:
+    working-directory: apps/waddle_display
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.9'
+          channel: stable
+      - run: flutter pub get
+        working-directory: ${{ github.workspace }}
+      - name: Generate code
+        run: dart run build_runner build --delete-conflicting-outputs
+        working-directory: ${{ github.workspace }}/packages/waddle_shared
+      - run: >
+          flutter build apk --release
+          --build-number "${{ inputs.build_number }}"
+          --split-per-abi
+          --target-platform=android-arm,android-arm64,android-x64
+      - name: Package APKs
+        env:
+          DIST_BASENAME_INPUT: ${{ inputs.dist_basename }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$DIST_BASENAME_INPUT" ]]; then
+            PREFIX="$DIST_BASENAME_INPUT"
+          else
+            PREFIX="waddle-view-android-${GITHUB_REF_NAME}"
+          fi
+          mkdir -p "${GITHUB_WORKSPACE}/dist/${PREFIX}"
+          shopt -s nullglob
+          for apk in build/app/outputs/flutter-apk/app-*-release.apk; do
+            cp "$apk" "${GITHUB_WORKSPACE}/dist/${PREFIX}/"
+          done
+          if [[ -z "$(ls -A "${GITHUB_WORKSPACE}/dist/${PREFIX}")" ]]; then
+            echo "No release APKs found under build/app/outputs/flutter-apk/"
+            exit 1
+          fi
+          (cd "${GITHUB_WORKSPACE}/dist/${PREFIX}" && zip -r "../${PREFIX}.zip" .)
+      - name: Resolve artifact name
+        id: artifact
+        env:
+          ARTIFACT_NAME_INPUT: ${{ inputs.artifact_name }}
+        run: |
+          if [[ -n "$ARTIFACT_NAME_INPUT" ]]; then
+            echo "name=$ARTIFACT_NAME_INPUT" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=android-bundle-${{ inputs.build_number }}" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ${{ steps.artifact.outputs.name }}
+          path: ${{ github.workspace }}/dist/*.zip

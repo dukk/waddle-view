@@ -13,6 +13,7 @@ import 'integrations_commands.dart';
 import 'reject_commands.dart';
 import 'screens_commands.dart';
 import 'sqlite_commands.dart';
+import 'db_commands.dart';
 import 'tickers_commands.dart';
 
 /// Handles `waddlectl help ...` without registering a second `help` command on
@@ -59,6 +60,7 @@ class WaddlectlRootRunner extends CommandRunner<void> {
     addCommand(BackupCommand(globalOptions));
     addCommand(RejectCommand(globalOptions));
     addCommand(SqliteCommand(globalOptions));
+    addCommand(DbCommand(globalOptions));
   }
 
   final GlobalCliOptions globalOptions;

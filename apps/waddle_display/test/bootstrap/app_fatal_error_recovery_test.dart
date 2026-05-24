@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:waddle_display/bootstrap/app_fatal_error_recovery.dart';
 import 'package:waddle_display/debug/debug_console_disk_logger.dart';
+import 'package:waddle_display/debug/fatal_disk_logger.dart';
 
 FlutterErrorDetails _flutterDetails(
   Object exception, {
@@ -34,8 +35,11 @@ StackTrace _hardwareKeyboardStack() {
 
 void main() {
   tearDown(() async {
+    usesExternalProcessSupervisorForRestartOverride = null;
     DebugConsoleDiskLogger.setSupportDirectoryOverrideForTest(null);
     await DebugConsoleDiskLogger.closeForTest();
+    FatalDiskLogger.setSupportDirectoryOverrideForTest(null);
+    await FatalDiskLogger.closeForTest();
   });
 
   tearDown(resetFatalHandlingGateForTest);
@@ -72,6 +76,13 @@ void main() {
     expect(lastError, isA<StateError>());
     await Future<void>.delayed(Duration.zero);
     expect(restartCount, 1);
+  });
+
+  test('usesExternalProcessSupervisorForRestart respects override', () {
+    usesExternalProcessSupervisorForRestartOverride = () => true;
+    expect(usesExternalProcessSupervisorForRestart(), isTrue);
+    usesExternalProcessSupervisorForRestartOverride = () => false;
+    expect(usesExternalProcessSupervisorForRestart(), isFalse);
   });
 
   test('FatalHandlingGate allows a new sequence after resetForTest', () {
