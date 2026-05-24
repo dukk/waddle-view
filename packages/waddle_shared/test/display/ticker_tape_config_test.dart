@@ -4,20 +4,70 @@ import 'package:waddle_shared/display/display_weather_temperature_unit_kv.dart';
 import 'package:waddle_shared/display/ticker_tape_config.dart';
 
 void main() {
-  test('parseTickerTapeTimeConfig reads preset zone and prefix', () {
+  test('parseTickerTapeTimeConfig reads preset date order zone and prefix', () {
     final cfg = parseTickerTapeTimeConfig('''
-{"timeFormatPreset":"12h_hm_tt","timeZone":"Europe/London","labelPrefix":"London"}
+{"timeFormatPreset":"12h_hm_tt","dateOrder":"dmy","timeZone":"Europe/London","labelPrefix":"London"}
 ''');
     expect(cfg.timeFormatPreset, '12h_hm_tt');
+    expect(cfg.dateOrder, 'dmy');
     expect(cfg.timeZone, 'Europe/London');
     expect(cfg.labelPrefix, 'London');
   });
 
-  test('parseTickerTapeTimeConfig leaves preset null when absent', () {
-    final cfg = parseTickerTapeTimeConfig('{}');
-    expect(cfg.timeFormatPreset, isNull);
-    expect(cfg.timeZone, isNull);
+  test(
+    'parseTickerTapeTimeConfig leaves preset and date order null when absent',
+    () {
+      final cfg = parseTickerTapeTimeConfig('{}');
+      expect(cfg.timeFormatPreset, isNull);
+      expect(cfg.dateOrder, isNull);
+      expect(cfg.timeZone, isNull);
+    },
+  );
+
+  test('parseTickerTapeTimeConfig ignores invalid dateOrder', () {
+    final cfg = parseTickerTapeTimeConfig('{"dateOrder":"invalid"}');
+    expect(cfg.dateOrder, isNull);
   });
+
+  test('effectiveTickerDateOrder follows controller.date_order', () {
+    expect(
+      effectiveTickerDateOrder(
+        kv: const {},
+        tape: const TickerTapeTimeConfig(),
+      ),
+      kDefaultControllerDateOrder,
+    );
+    expect(
+      effectiveTickerDateOrder(
+        kv: {kControllerDateOrderKvKey: kControllerDateOrderDmy},
+        tape: const TickerTapeTimeConfig(),
+      ),
+      kControllerDateOrderDmy,
+    );
+    expect(
+      effectiveTickerDateOrder(
+        kv: {kControllerDateOrderKvKey: kControllerDateOrderMdy},
+        tape: const TickerTapeTimeConfig(dateOrder: kControllerDateOrderYmd),
+      ),
+      kControllerDateOrderYmd,
+    );
+  });
+
+  test(
+    'effectiveTickerTimeFormatPresetOverride returns null when preset absent',
+    () {
+      expect(
+        effectiveTickerTimeFormatPresetOverride(const TickerTapeTimeConfig()),
+        isNull,
+      );
+      expect(
+        effectiveTickerTimeFormatPresetOverride(
+          const TickerTapeTimeConfig(timeFormatPreset: '12h_hm_tt'),
+        ),
+        '12h_hm_tt',
+      );
+    },
+  );
 
   test('effectiveTickerTimeFormatPreset follows controller.time_format', () {
     expect(

@@ -282,7 +282,7 @@ SQLite table **`ticker_tapes`** configures the bottom marquee: which **types** r
 
 | Type | Config highlights |
 |------|-------------------|
-| **`time`** | Optional **`timeFormatPreset`** (`24h_hms`, `12h_hm_tt`, …); when omitted, follows **Display settings** **`controller.time_format`** (`12h` → `12h_hms_ampm`, `24h` → `24h_hms`). Optional **`timeZone`** (IANA), optional **`labelPrefix`**. The marquee clock **ticks every second** while scrolling when the preset includes seconds. |
+| **`time`** (Date and time) | When **`timeFormatPreset`** and **`dateOrder`** are omitted, follows **Display settings** **`controller.date_order`** + **`controller.time_format`** (medium date and short time, no seconds). Optional **`timeFormatPreset`** (`24h_hms`, `12h_hm_tt`, …) overrides the time portion; optional **`dateOrder`** (`mdy` / `dmy` / `ymd`) overrides the date portion. Optional **`timeZone`** (IANA), optional **`labelPrefix`**. The marquee **ticks every second** when the time preset includes seconds; otherwise it refreshes about once per minute. |
 | **`weather`** | Optional **`locationId`** (`interests_locations`); optional **`temperatureUnit`** (`c`/`f`) overrides display default. |
 | **`news`** | Optional **`categoryId`** (RSS feeds in that content category); **`prefixFeedName`** toggles feed name in headlines. |
 | **`stocks`** | Optional **`symbolIds`** (omit for all enabled symbols). Percent change uses green/red in the marquee. |

@@ -21,8 +21,9 @@ export function TickerTapesHelpContent() {
         one at 100.
       </Typography>
       <Typography variant="body2" component="div">
-        <strong>Ticker types</strong> — <code>time</code> (live clock with format presets and optional
-        zone/prefix), <code>weather</code> (optional location and °F/°C override),{' '}
+        <strong>Ticker types</strong> — <code>time</code> (live date and time; follows Display
+        settings by default, with optional date/time presets, zone, and prefix),{' '}
+        <code>weather</code> (optional location and °F/°C override),{' '}
         <code>news</code> (optional RSS category filter and feed prefix),{' '}
         <code>stocks</code> (optional symbol list; colored up/down), <code>quote</code>,{' '}
         <code>static_text</code>, and <code>plugin</code>. Global weather temperature unit is under{' '}

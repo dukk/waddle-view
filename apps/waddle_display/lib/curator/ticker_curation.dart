@@ -84,12 +84,13 @@ String composeTickerNewsBody({
 }
 
 String formatTickerClock(DateTime now, {Map<String, String> kv = const {}}) =>
-    formatTickerTimePreset(
+    formatTickerDateTimeDisplayStyle(
       now,
-      effectiveTickerTimeFormatPreset(
+      dateOrder: effectiveTickerDateOrder(
         kv: kv,
         tape: const TickerTapeTimeConfig(),
       ),
+      controllerTimeFormat: controllerTimeFormatFromKv(kv),
     );
 
 /// Formats [Clock.now] for tests that do not need full curation.
@@ -97,13 +98,17 @@ String formatTickerTime(Clock clock, {Map<String, String> kv = const {}}) =>
     formatTickerClock(clock.now().toLocal(), kv: kv);
 
 String _timeTickerStableBody({
-  required String timeFormatPreset,
+  required String dateOrder,
+  required String controllerTimeFormat,
+  String? timeFormatPreset,
   String? timeZone,
   String? labelPrefix,
 }) {
   final parts = <String>[
     'time',
-    timeFormatPreset,
+    timeFormatPreset ?? 'default',
+    dateOrder,
+    if (timeFormatPreset == null) controllerTimeFormat,
     if (timeZone != null && timeZone.isNotEmpty) timeZone,
     if (labelPrefix != null && labelPrefix.isNotEmpty) labelPrefix,
   ];
@@ -119,10 +124,14 @@ TickerItem buildTimeTickerItem({
   final cfg = def == null
       ? const TickerTapeTimeConfig()
       : parseTickerTapeTimeConfig(def.configJson);
-  final preset = effectiveTickerTimeFormatPreset(kv: kv, tape: cfg);
+  final dateOrder = effectiveTickerDateOrder(kv: kv, tape: cfg);
+  final controllerTimeFormat = controllerTimeFormatFromKv(kv);
+  final timeFormatPreset = effectiveTickerTimeFormatPresetOverride(cfg);
   final prefix = cfg.labelPrefix?.trim() ?? '';
   final stable = _timeTickerStableBody(
-    timeFormatPreset: preset,
+    dateOrder: dateOrder,
+    controllerTimeFormat: controllerTimeFormat,
+    timeFormatPreset: timeFormatPreset,
     timeZone: cfg.timeZone,
     labelPrefix: prefix.isEmpty ? null : prefix,
   );
@@ -132,7 +141,9 @@ TickerItem buildTimeTickerItem({
     body: body,
     sourceId: sourceId ?? (def == null ? 'clock' : tapeSourceId(def)),
     timeDisplay: TickerTimeDisplay(
-      timeFormatPreset: preset,
+      dateOrder: dateOrder,
+      controllerTimeFormat: controllerTimeFormat,
+      timeFormatPreset: timeFormatPreset,
       timeZone: cfg.timeZone,
       labelPrefix: prefix.isEmpty ? null : prefix,
     ),

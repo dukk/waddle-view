@@ -1,7 +1,72 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:waddle_shared/config/controller_datetime_format_kv.dart';
 import 'package:waddle_display/display/screens/clock/clock_date_format.dart';
 
 void main() {
+  group('formatTickerDateMedium', () {
+    final t = DateTime(2026, 5, 4, 14, 5, 9);
+
+    test('mdy', () {
+      expect(formatTickerDateMedium(t, kControllerDateOrderMdy), 'May 4, 2026');
+    });
+
+    test('dmy', () {
+      expect(formatTickerDateMedium(t, kControllerDateOrderDmy), '4 May 2026');
+    });
+
+    test('ymd', () {
+      expect(formatTickerDateMedium(t, kControllerDateOrderYmd), '2026-05-04');
+    });
+  });
+
+  group('formatTickerDateTimeDisplayStyle', () {
+    final t = DateTime(2026, 5, 4, 14, 5, 9);
+
+    test('12h mdy', () {
+      expect(
+        formatTickerDateTimeDisplayStyle(
+          t,
+          dateOrder: kControllerDateOrderMdy,
+          controllerTimeFormat: kControllerTimeFormat12h,
+        ),
+        'May 4, 2026, 2:05 PM',
+      );
+    });
+
+    test('24h dmy', () {
+      expect(
+        formatTickerDateTimeDisplayStyle(
+          t,
+          dateOrder: kControllerDateOrderDmy,
+          controllerTimeFormat: kControllerTimeFormat24h,
+        ),
+        '4 May 2026, 14:05',
+      );
+    });
+  });
+
+  group('formatTickerDateTime', () {
+    test('combines medium date with preset time', () {
+      expect(
+        formatTickerDateTime(
+          DateTime(2026, 5, 4, 14, 5, 0),
+          dateOrder: kControllerDateOrderMdy,
+          timeFormatPreset: '12h_hm_tt',
+        ),
+        'May 4, 2026, 2:05pm',
+      );
+    });
+  });
+
+  group('tickerDateTimeNeedsSecondTimer', () {
+    test('false for display default', () {
+      expect(tickerDateTimeNeedsSecondTimer(null), isFalse);
+    });
+
+    test('true when preset includes seconds', () {
+      expect(tickerDateTimeNeedsSecondTimer('24h_hms'), isTrue);
+    });
+  });
   group('formatClockDate', () {
     test('formats weekday month day year in English', () {
       final t = DateTime(2026, 5, 4);

@@ -129,9 +129,13 @@ void main() {
     expect(createdBody['viewport_reserve_top_pct_override'], isNull);
     expect(createdBody['screens_enabled'], isTrue);
     expect(createdBody['ticker_enabled'], isTrue);
+    final screenMembers =
+        (createdBody['members'] as Map)['screens'] as List<dynamic>;
     expect(
-      (createdBody['members'] as Map)['screens'] as List,
-      contains('jokes'),
+      screenMembers.any(
+        (e) => e is Map && e['id'] == 'jokes' && e['op'] == 'add',
+      ),
+      isTrue,
     );
 
     final patch = await http.patch(

@@ -14,16 +14,20 @@ const List<String> kTickerTimeFormatPresets = [
 /// Ticker preset when [controller.time_format] is `12h` (display default).
 const String kDefaultTickerTimeFormatPreset = '12h_hms_ampm';
 
-/// Resolved time ticker tape settings from `config_json`.
+/// Resolved date-and-time ticker tape settings from `config_json`.
 class TickerTapeTimeConfig {
   const TickerTapeTimeConfig({
     this.timeFormatPreset,
+    this.dateOrder,
     this.timeZone,
     this.labelPrefix,
   });
 
-  /// When null, the marquee uses [effectiveTickerTimeFormatPreset] from display KV.
+  /// When null, the marquee uses Display settings date + time (medium date, short time).
   final String? timeFormatPreset;
+
+  /// When null, the marquee uses [controller.date_order] from display KV.
+  final String? dateOrder;
   final String? timeZone;
   final String? labelPrefix;
 }
@@ -86,10 +90,25 @@ String? _optionalTrimmedString(Object? raw) {
   return t.isEmpty ? null : t;
 }
 
+String? _parseTickerDateOrder(Object? raw) {
+  if (raw == null) {
+    return null;
+  }
+  final s = '$raw'.trim().toLowerCase();
+  if (s.isEmpty) {
+    return null;
+  }
+  if (kControllerDateOrderOptions.contains(s)) {
+    return s;
+  }
+  return null;
+}
+
 TickerTapeTimeConfig parseTickerTapeTimeConfig(String rawConfigJson) {
   final m = parseTickerTapeConfigJsonMap(rawConfigJson);
   return TickerTapeTimeConfig(
     timeFormatPreset: _parseTickerTimeFormatPreset(m['timeFormatPreset']),
+    dateOrder: _parseTickerDateOrder(m['dateOrder']),
     timeZone: _optionalTrimmedString(m['timeZone']),
     labelPrefix: _optionalTrimmedString(m['labelPrefix']),
   );
@@ -98,6 +117,25 @@ TickerTapeTimeConfig parseTickerTapeTimeConfig(String rawConfigJson) {
 /// Reads [kControllerTimeFormatKvKey] from a KV map (`12h` / `24h`).
 String controllerTimeFormatFromKv(Map<String, String> kv) {
   return normalizeControllerTimeFormat(kv[kControllerTimeFormatKvKey]);
+}
+
+/// Reads [kControllerDateOrderKvKey] from a KV map (`mdy` / `dmy` / `ymd`).
+String controllerDateOrderFromKv(Map<String, String> kv) {
+  return normalizeControllerDateOrder(kv[kControllerDateOrderKvKey]);
+}
+
+/// Tape override when set; otherwise [controller.date_order] from [kv].
+String effectiveTickerDateOrder({
+  required Map<String, String> kv,
+  TickerTapeTimeConfig? tape,
+}) {
+  final override = tape?.dateOrder?.trim();
+  if (override != null &&
+      override.isNotEmpty &&
+      kControllerDateOrderOptions.contains(override)) {
+    return override;
+  }
+  return controllerDateOrderFromKv(kv);
 }
 
 /// Maps display [controller.time_format] to a live marquee ticker preset (with seconds).
@@ -110,15 +148,27 @@ String tickerTimeFormatPresetForControllerTimeFormat(
       : '12h_hms_ampm';
 }
 
-/// Tape override when set; otherwise [controller.time_format] from [kv].
-String effectiveTickerTimeFormatPreset({
-  required Map<String, String> kv,
-  TickerTapeTimeConfig? tape,
-}) {
+/// Tape [timeFormatPreset] when set; otherwise null (display-style date + time).
+String? effectiveTickerTimeFormatPresetOverride(TickerTapeTimeConfig? tape) {
   final override = tape?.timeFormatPreset?.trim();
   if (override != null &&
       override.isNotEmpty &&
       kTickerTimeFormatPresets.contains(override)) {
+    return override;
+  }
+  return null;
+}
+
+/// Tape override when set; otherwise [controller.time_format] from [kv].
+///
+/// Prefer [effectiveTickerTimeFormatPresetOverride] for marquee rendering; this
+/// helper remains for callers that need a resolved preset string.
+String effectiveTickerTimeFormatPreset({
+  required Map<String, String> kv,
+  TickerTapeTimeConfig? tape,
+}) {
+  final override = effectiveTickerTimeFormatPresetOverride(tape);
+  if (override != null) {
     return override;
   }
   return tickerTimeFormatPresetForControllerTimeFormat(

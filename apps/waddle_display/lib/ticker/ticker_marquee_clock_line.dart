@@ -56,10 +56,11 @@ class _TickerMarqueeClockLineState extends State<TickerMarqueeClockLine> {
 
   void _armTimer() {
     _timer?.cancel();
-    if (!tickerTimePresetShowsSeconds(widget.timeDisplay.timeFormatPreset)) {
-      return;
-    }
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+    final preset = widget.timeDisplay.timeFormatPreset;
+    final interval = tickerDateTimeNeedsSecondTimer(preset)
+        ? const Duration(seconds: 1)
+        : const Duration(minutes: 1);
+    _timer = Timer.periodic(interval, (_) {
       if (!mounted) {
         return;
       }
@@ -75,10 +76,26 @@ class _TickerMarqueeClockLineState extends State<TickerMarqueeClockLine> {
     super.dispose();
   }
 
+  String _formatTick() {
+    final display = widget.timeDisplay;
+    final preset = display.timeFormatPreset;
+    if (preset == null) {
+      return formatTickerDateTimeDisplayStyle(
+        _tick,
+        dateOrder: display.dateOrder,
+        controllerTimeFormat: display.controllerTimeFormat,
+      );
+    }
+    return formatTickerDateTime(
+      _tick,
+      dateOrder: display.dateOrder,
+      timeFormatPreset: preset,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final formatted =
-        formatTickerTimePreset(_tick, widget.timeDisplay.timeFormatPreset);
+    final formatted = _formatTick();
     final prefix = widget.timeDisplay.labelPrefix?.trim() ?? '';
     final text = prefix.isEmpty ? formatted : '$prefix $formatted';
     return Text(

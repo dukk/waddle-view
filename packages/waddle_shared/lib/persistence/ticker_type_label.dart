@@ -3,7 +3,7 @@ import 'tables.dart';
 
 /// Human-facing labels for [TickerTapes.tickerType] / [TickerTapeTypes] rows.
 const Map<String, String> kTickerTypeTitles = {
-  'time': 'Time',
+  'time': 'Date and time',
   'weather': 'Weather',
   'news': 'News',
   'quote': 'Quote',

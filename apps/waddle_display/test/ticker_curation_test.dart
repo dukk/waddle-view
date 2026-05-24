@@ -10,17 +10,27 @@ import 'package:waddle_display/curator/ticker_curation.dart';
 import 'package:waddle_display/curator/ticker_news_candidate.dart';
 
 void main() {
-  test('formatTickerTime formats clock local time from display default', () {
+  test('formatTickerTime formats date and time from display default', () {
     expect(
       formatTickerTime(FakeClock(DateTime(2026, 6, 1, 14, 5, 9))),
-      '2:05:09 PM',
+      'June 1, 2026, 2:05 PM',
     );
     expect(
       formatTickerTime(
         FakeClock(DateTime(2026, 6, 1, 14, 5, 9)),
         kv: {kControllerTimeFormatKvKey: '24h'},
       ),
-      '14:05:09',
+      'June 1, 2026, 14:05',
+    );
+    expect(
+      formatTickerTime(
+        FakeClock(DateTime(2026, 6, 1, 14, 5, 9)),
+        kv: {
+          kControllerTimeFormatKvKey: '24h',
+          kControllerDateOrderKvKey: 'dmy',
+        },
+      ),
+      '1 June 2026, 14:05',
     );
   });
 
@@ -116,8 +126,10 @@ void main() {
       nowLocal: t,
     );
     expect(items.map((e) => e.kind).toList(), ['time']);
-    expect(items.single.body, 'time|12h_hms_ampm');
-    expect(items.single.timeDisplay?.timeFormatPreset, '12h_hms_ampm');
+    expect(items.single.body, 'time|default|mdy|12h');
+    expect(items.single.timeDisplay?.timeFormatPreset, isNull);
+    expect(items.single.timeDisplay?.dateOrder, 'mdy');
+    expect(items.single.timeDisplay?.controllerTimeFormat, '12h');
   });
 
   test('composeTickerNewsBody covers prefix and summary branches', () {

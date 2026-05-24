@@ -28,20 +28,34 @@ class TickerRssSegments {
       other.showSource == showSource;
 
   @override
-  int get hashCode =>
-      Object.hash(sourceTitle, sourceIconName, articleTitle, summary, showSource);
+  int get hashCode => Object.hash(
+    sourceTitle,
+    sourceIconName,
+    articleTitle,
+    summary,
+    showSource,
+  );
 }
 
-/// Live clock rendering config for marquee `time` items.
+/// Live date-and-time rendering config for marquee `time` items.
 @immutable
 class TickerTimeDisplay {
   const TickerTimeDisplay({
-    required this.timeFormatPreset,
+    required this.dateOrder,
+    required this.controllerTimeFormat,
+    this.timeFormatPreset,
     this.timeZone,
     this.labelPrefix,
   });
 
-  final String timeFormatPreset;
+  /// When null, uses Display settings style (medium date + short time).
+  final String? timeFormatPreset;
+
+  /// Resolved `mdy` / `dmy` / `ymd` (tape override or display KV).
+  final String dateOrder;
+
+  /// Resolved `12h` / `24h` from display KV (for display-style formatting).
+  final String controllerTimeFormat;
   final String? timeZone;
   final String? labelPrefix;
 
@@ -49,11 +63,19 @@ class TickerTimeDisplay {
   bool operator ==(Object other) =>
       other is TickerTimeDisplay &&
       other.timeFormatPreset == timeFormatPreset &&
+      other.dateOrder == dateOrder &&
+      other.controllerTimeFormat == controllerTimeFormat &&
       other.timeZone == timeZone &&
       other.labelPrefix == labelPrefix;
 
   @override
-  int get hashCode => Object.hash(timeFormatPreset, timeZone, labelPrefix);
+  int get hashCode => Object.hash(
+    timeFormatPreset,
+    dateOrder,
+    controllerTimeFormat,
+    timeZone,
+    labelPrefix,
+  );
 }
 
 /// Structured stock line for colored marquee rendering.
@@ -148,13 +170,13 @@ class TickerItem {
 
   @override
   int get hashCode => Object.hash(
-        kind,
-        body,
-        sourceId,
-        rss,
-        articleId,
-        timeDisplay,
-        stockDisplay,
-        weatherDisplay,
-      );
+    kind,
+    body,
+    sourceId,
+    rss,
+    articleId,
+    timeDisplay,
+    stockDisplay,
+    weatherDisplay,
+  );
 }

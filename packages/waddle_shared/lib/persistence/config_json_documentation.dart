@@ -2496,10 +2496,21 @@ final Map<String, ScreenConfigJsonDoc> kTickerSlotConfigJsonMeta = {
       _baseSchema(
         title: 'TickerTimeSlotDoc',
         description:
-            'Live wall clock in the marquee (seconds tick while scrolling). '
+            'Live date and time in the marquee. When timeFormatPreset and '
+            'dateOrder are both omitted, follows Display settings '
+            '(controller.date_order + controller.time_format): medium date '
+            'and short time (no seconds). Optional timeFormatPreset uses '
+            'ticker time presets (seconds tick when the preset includes them). '
             'Optional IANA timeZone overrides device local for this tape only. '
-            'labelPrefix appears before the time (e.g. city name).',
+            'labelPrefix appears before the line (e.g. city name).',
         properties: {
+          'dateOrder': {
+            'type': 'string',
+            'enum': ['mdy', 'dmy', 'ymd'],
+            'description':
+                'Omit to follow Display settings date format (controller.date_order). '
+                'mdy=May 4, 2026, dmy=4 May 2026, ymd=2026-05-04.',
+          },
           'timeFormatPreset': {
             'type': 'string',
             'enum': [
@@ -2510,9 +2521,8 @@ final Map<String, ScreenConfigJsonDoc> kTickerSlotConfigJsonMeta = {
               '12h_hm_tt',
             ],
             'description':
-                'Omit to follow Display settings time format (controller.time_format): '
-                '12h → 12h_hms_ampm, 24h → 24h_hms. '
-                '24h_hms=14:05:09, 24h_hm=14:05, 12h_hms_ampm=2:05:09 PM, '
+                'Omit to follow Display settings (medium date + short time). '
+                'When set: 24h_hms=14:05:09, 24h_hm=14:05, 12h_hms_ampm=2:05:09 PM, '
                 '12h_hm_ampm=2:05 PM, 12h_hm_tt=2:05pm (compact am/pm).',
           },
           'timeZone': {

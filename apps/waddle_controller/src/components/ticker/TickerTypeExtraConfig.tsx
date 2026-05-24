@@ -23,12 +23,13 @@ import type { ContentCategoryOption } from '@/components/config/ContentCategoryS
 import { ContentCategorySelect } from '@/components/config/ContentCategorySelectField';
 import { useDisplayFormat } from '@/context/DisplayFormatContext';
 import type { SavedDisplay } from '@/storage/displays';
+import { CONTROLLER_DATE_ORDER_OPTIONS } from '@/constants/displaySettings';
 import {
-  tickerTimeFormatPresetForControllerTimeFormat,
+  tickerDisplayDefaultDateTimeLabel,
   tickerTimeFormatPresetLabel,
 } from '@/util/tickerTimeFormat';
 
-const USE_DISPLAY_TIME_FORMAT = '';
+const USE_DISPLAY_DEFAULT = '';
 
 const DEVICE_LOCAL_TIMEZONE: DisplayTimezoneOption = {
   id: '',
@@ -139,9 +140,9 @@ export function TickerTypeExtraConfig({
     onChange({ ...formData, ...partial });
   };
 
-  const displayDefaultTimePreset = useMemo(
-    () => tickerTimeFormatPresetForControllerTimeFormat(displayFormatPrefs.timeFormat),
-    [displayFormatPrefs.timeFormat],
+  const displayDefaultDateTimeLabel = useMemo(
+    () => tickerDisplayDefaultDateTimeLabel(displayFormatPrefs),
+    [displayFormatPrefs],
   );
 
   const timeZone = type === 'time' ? readString(formData.timeZone) : '';
@@ -166,19 +167,55 @@ export function TickerTypeExtraConfig({
 
   if (type === 'time') {
     const configuredPreset = readString(formData.timeFormatPreset);
-    const selectValue = configuredPreset || USE_DISPLAY_TIME_FORMAT;
+    const timeSelectValue = configuredPreset || USE_DISPLAY_DEFAULT;
+    const configuredDateOrder = readString(formData.dateOrder);
+    const dateSelectValue = configuredDateOrder || USE_DISPLAY_DEFAULT;
 
     return (
       <Stack spacing={1.5}>
+        <Typography variant="subtitle2" color="text.secondary">
+          Date and time
+        </Typography>
+        <FormControl fullWidth disabled={disabled}>
+          <InputLabel id="ticker-date-order">Date format</InputLabel>
+          <Select
+            labelId="ticker-date-order"
+            label="Date format"
+            value={dateSelectValue}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === USE_DISPLAY_DEFAULT) {
+                const next = { ...formData };
+                delete next.dateOrder;
+                onChange(next);
+              } else {
+                patch({ dateOrder: v });
+              }
+            }}
+          >
+            <MenuItem value={USE_DISPLAY_DEFAULT}>
+              Use display default (
+              {CONTROLLER_DATE_ORDER_OPTIONS.find(
+                (o) => o.value === displayFormatPrefs.dateOrder,
+              )?.label ?? displayFormatPrefs.dateOrder}
+              )
+            </MenuItem>
+            {CONTROLLER_DATE_ORDER_OPTIONS.map((o) => (
+              <MenuItem key={o.value} value={o.value}>
+                {o.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
         <FormControl fullWidth disabled={disabled}>
           <InputLabel id="ticker-time-preset">Time format</InputLabel>
           <Select
             labelId="ticker-time-preset"
             label="Time format"
-            value={selectValue}
+            value={timeSelectValue}
             onChange={(e) => {
               const v = e.target.value;
-              if (v === USE_DISPLAY_TIME_FORMAT) {
+              if (v === USE_DISPLAY_DEFAULT) {
                 const next = { ...formData };
                 delete next.timeFormatPreset;
                 onChange(next);
@@ -187,9 +224,8 @@ export function TickerTypeExtraConfig({
               }
             }}
           >
-            <MenuItem value={USE_DISPLAY_TIME_FORMAT}>
-              Use display default (
-              {tickerTimeFormatPresetLabel(displayDefaultTimePreset)})
+            <MenuItem value={USE_DISPLAY_DEFAULT}>
+              Use display default ({displayDefaultDateTimeLabel})
             </MenuItem>
             {TIME_FORMAT_PRESETS.map((o) => (
               <MenuItem key={o.value} value={o.value}>
@@ -198,6 +234,11 @@ export function TickerTypeExtraConfig({
             ))}
           </Select>
         </FormControl>
+        <Typography variant="caption" color="text.secondary">
+          When both use display default, the marquee shows medium date and short time
+          from Display settings (same as lists in the controller). Time presets add
+          seconds and override only the time portion.
+        </Typography>
         <Box>
           <Autocomplete
             fullWidth

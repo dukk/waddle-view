@@ -1,3 +1,75 @@
+import 'package:waddle_shared/config/controller_datetime_format_kv.dart';
+
+const _tickerMediumMonthNames = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+/// Medium-style date for the ticker marquee (no intl dependency).
+///
+/// [dateOrder] is `mdy`, `dmy`, or `ymd` (see [kControllerDateOrderOptions]).
+String formatTickerDateMedium(DateTime local, String dateOrder) {
+  final month = _tickerMediumMonthNames[local.month - 1];
+  switch (normalizeControllerDateOrder(dateOrder)) {
+    case kControllerDateOrderDmy:
+      return '${local.day} $month ${local.year}';
+    case kControllerDateOrderYmd:
+      final m = local.month.toString().padLeft(2, '0');
+      final d = local.day.toString().padLeft(2, '0');
+      return '${local.year}-$m-$d';
+    case kControllerDateOrderMdy:
+    default:
+      return '$month ${local.day}, ${local.year}';
+  }
+}
+
+/// Date and time matching Display settings (medium date + short time).
+String formatTickerDateTimeDisplayStyle(
+  DateTime local, {
+  required String dateOrder,
+  required String controllerTimeFormat,
+}) {
+  final date = formatTickerDateMedium(local, dateOrder);
+  final hour24 =
+      normalizeControllerTimeFormat(controllerTimeFormat) ==
+      kControllerTimeFormat24h;
+  final time = formatDigitalClockTime(
+    local,
+    hour24: hour24,
+    showSeconds: false,
+  );
+  return '$date, $time';
+}
+
+/// Date and time with an explicit ticker [timeFormatPreset].
+String formatTickerDateTime(
+  DateTime local, {
+  required String dateOrder,
+  required String timeFormatPreset,
+}) {
+  final date = formatTickerDateMedium(local, dateOrder);
+  final time = formatTickerTimePreset(local, timeFormatPreset);
+  return '$date, $time';
+}
+
+/// True when the marquee should refresh every second.
+bool tickerDateTimeNeedsSecondTimer(String? timeFormatPreset) {
+  if (timeFormatPreset == null) {
+    return false;
+  }
+  return tickerTimePresetShowsSeconds(timeFormatPreset);
+}
+
 /// English long-form date for clock slides (no intl dependency).
 String formatClockDate(DateTime local) {
   const weekdays = [

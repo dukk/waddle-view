@@ -140,7 +140,7 @@ void main() {
     await curator.refresh();
     expect(store.last, isNotNull);
     expect(store.last!.map((e) => e.kind).toList(), ['time']);
-    expect(store.last![0].body, 'time|12h_hms_ampm');
+    expect(store.last![0].body, 'time|default|mdy|12h');
     expect(store.last![0].timeDisplay, isNotNull);
   });
 
