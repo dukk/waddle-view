@@ -4,6 +4,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_shared/display/display_weather_temperature_unit_kv.dart';
 import 'package:waddle_shared/integrations/integration_collect.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
@@ -16,11 +17,9 @@ const String kWeatherOpenMeteoProviderId = 'weather_openmeteo';
 const String kDefaultOpenMeteoWeatherBaseUrl = 'https://api.open-meteo.com';
 
 class OpenMeteoWeatherDataProvider implements IDataProvider {
-  OpenMeteoWeatherDataProvider({
-    http.Client? httpClient,
-    int Function()? nowMs,
-  })  : _http = httpClient ?? http.Client(),
-        _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
+  OpenMeteoWeatherDataProvider({http.Client? httpClient, int Function()? nowMs})
+    : _http = httpClient ?? http.Client(),
+      _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
 
   final http.Client _http;
   final int Function() _nowMs;
@@ -89,16 +88,33 @@ class OpenMeteoWeatherDataProvider implements IDataProvider {
           continue;
         }
         final now = _nowMs();
-        await ctx.db.into(ctx.db.weatherCurrent).insertOnConflictUpdate(
+        final hourlyC = [
+          for (final point in normalized.hourly)
+            {
+              ...point,
+              'temp': normalizeCollectedWeatherTempToCelsius(
+                (point['temp'] as num?)?.toDouble(),
+                collectUnits: extra.units,
+              ),
+            },
+        ];
+        await ctx.db
+            .into(ctx.db.weatherCurrent)
+            .insertOnConflictUpdate(
               WeatherCurrentCompanion.insert(
                 locationId: location.id,
                 observedAtMs: DateTime.fromMillisecondsSinceEpoch(
                   normalized.observedAtMs ?? now,
                 ),
-                currentTemp: Value(normalized.currentTemp),
+                currentTemp: Value(
+                  normalizeCollectedWeatherTempToCelsius(
+                    normalized.currentTemp,
+                    collectUnits: extra.units,
+                  ),
+                ),
                 currentDescription: Value(normalized.currentDescription),
                 currentIconBlobKey: const Value.absent(),
-                hourlyJson: Value(jsonEncode(normalized.hourly)),
+                hourlyJson: Value(jsonEncode(hourlyC)),
               ),
             );
       } on Object catch (e, st) {

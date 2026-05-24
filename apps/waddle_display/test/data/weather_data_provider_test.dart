@@ -108,7 +108,9 @@ void main() {
   test('collect skips when weather token missing', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.integrations).insert(
+    await db
+        .into(db.integrations)
+        .insert(
           IntegrationsCompanion.insert(
             id: kDefaultWeatherOpenWeatherMapIntegrationId,
             integrationType: 'weather_openweathermap',
@@ -117,7 +119,9 @@ void main() {
         );
     final secrets = InMemorySecretStore();
     final ctx = await _ctx(db, secrets);
-    final client = _WeatherClient((_) => http.Response(_payload(temp: 70, desc: 'clear'), 200));
+    final client = _WeatherClient(
+      (_) => http.Response(_payload(temp: 70, desc: 'clear'), 200),
+    );
     final provider = WeatherDataProvider(httpClient: client);
 
     await provider.collect(ctx);
@@ -131,7 +135,9 @@ void main() {
   test('collect skips when no interest rows with include_weather', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.integrations).insert(
+    await db
+        .into(db.integrations)
+        .insert(
           IntegrationsCompanion.insert(
             id: kDefaultWeatherOpenWeatherMapIntegrationId,
             integrationType: 'weather_openweathermap',
@@ -143,7 +149,9 @@ void main() {
         );
     final secrets = InMemorySecretStore();
     final ctx = await _ctx(db, secrets, apiKey: 'owm-key');
-    final client = _WeatherClient((_) => http.Response(_payload(temp: 50, desc: 'cloudy'), 200));
+    final client = _WeatherClient(
+      (_) => http.Response(_payload(temp: 50, desc: 'cloudy'), 200),
+    );
     final provider = WeatherDataProvider(httpClient: client);
 
     await provider.collect(ctx);
@@ -157,18 +165,23 @@ void main() {
   test('collect writes weather payload to weather tables', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.integrations).insert(
+    await db
+        .into(db.integrations)
+        .insert(
           IntegrationsCompanion.insert(
             id: kDefaultWeatherOpenWeatherMapIntegrationId,
             integrationType: 'weather_openweathermap',
             pollSeconds: const Value(60),
             configJson: integrationConfigJsonValue(
-              configJson: '{"defaultLocation":{"name":"NYC","lat":40.7128,"lon":-74.0060},"hourlyCount":2}',
+              configJson:
+                  '{"defaultLocation":{"name":"NYC","lat":40.7128,"lon":-74.0060},"hourlyCount":2}',
               baseUrl: 'https://api.openweathermap.org',
             ),
           ),
         );
-    await db.into(db.interestsLocations).insert(
+    await db
+        .into(db.interestsLocations)
+        .insert(
           InterestsLocationsCompanion.insert(
             id: 'nyc',
             name: 'NYC',
@@ -194,18 +207,15 @@ void main() {
         headers: {'content-type': 'application/json'},
       );
     });
-    final provider = WeatherDataProvider(
-      httpClient: client,
-      nowMs: () => 2000,
-    );
+    final provider = WeatherDataProvider(httpClient: client, nowMs: () => 2000);
     await provider.collect(ctx);
 
     expect(client.sends, 3);
-    final nyc = await (db.select(db.weatherCurrent)
-          ..where((t) => t.locationId.equals('nyc')))
-        .getSingleOrNull();
+    final nyc = await (db.select(
+      db.weatherCurrent,
+    )..where((t) => t.locationId.equals('nyc'))).getSingleOrNull();
     expect(nyc, isNotNull);
-    expect(nyc!.currentTemp, closeTo(71.5, 0.001));
+    expect(nyc!.currentTemp, closeTo(21.944, 0.001));
     expect(nyc.currentDescription, 'light rain');
     expect(nyc.observedAtMs, DateTime.fromMillisecondsSinceEpoch(2000));
     final hourly = jsonDecode(nyc.hourlyJson ?? '[]') as List<dynamic>;
@@ -217,18 +227,23 @@ void main() {
   test('collect fetches all enabled configured weather locations', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.integrations).insert(
+    await db
+        .into(db.integrations)
+        .insert(
           IntegrationsCompanion.insert(
             id: kDefaultWeatherOpenWeatherMapIntegrationId,
             integrationType: 'weather_openweathermap',
             pollSeconds: const Value(60),
             configJson: integrationConfigJsonValue(
-              configJson: '{"defaultLocation":{"name":"NYC","lat":40.7128,"lon":-74.0060},"hourlyCount":2}',
+              configJson:
+                  '{"defaultLocation":{"name":"NYC","lat":40.7128,"lon":-74.0060},"hourlyCount":2}',
               baseUrl: 'https://api.openweathermap.org',
             ),
           ),
         );
-    await db.into(db.interestsLocations).insert(
+    await db
+        .into(db.interestsLocations)
+        .insert(
           InterestsLocationsCompanion.insert(
             id: 'nyc',
             name: 'NYC',
@@ -237,7 +252,9 @@ void main() {
             includeWeather: const Value(true),
           ),
         );
-    await db.into(db.interestsLocations).insert(
+    await db
+        .into(db.interestsLocations)
+        .insert(
           InterestsLocationsCompanion.insert(
             id: 'denver',
             name: 'Denver',
@@ -270,12 +287,12 @@ void main() {
     await provider.collect(ctx);
 
     expect(client.sends, 6);
-    final nyc = await (db.select(db.weatherCurrent)
-          ..where((t) => t.locationId.equals('nyc')))
-        .getSingleOrNull();
-    final denver = await (db.select(db.weatherCurrent)
-          ..where((t) => t.locationId.equals('denver')))
-        .getSingleOrNull();
+    final nyc = await (db.select(
+      db.weatherCurrent,
+    )..where((t) => t.locationId.equals('nyc'))).getSingleOrNull();
+    final denver = await (db.select(
+      db.weatherCurrent,
+    )..where((t) => t.locationId.equals('denver'))).getSingleOrNull();
     expect(nyc, isNotNull);
     expect(denver, isNotNull);
     expect(seen.any((u) => u.contains('lat=39.7392')), isTrue);
@@ -285,7 +302,9 @@ void main() {
   test('collect stores weather icon in blob metadata', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.integrations).insert(
+    await db
+        .into(db.integrations)
+        .insert(
           IntegrationsCompanion.insert(
             id: kDefaultWeatherOpenWeatherMapIntegrationId,
             integrationType: 'weather_openweathermap',
@@ -295,7 +314,9 @@ void main() {
             ),
           ),
         );
-    await db.into(db.interestsLocations).insert(
+    await db
+        .into(db.interestsLocations)
+        .insert(
           InterestsLocationsCompanion.insert(
             id: 'nyc',
             name: 'NYC',
@@ -329,43 +350,50 @@ void main() {
     await db.close();
   });
 
-  test('collect swallows client socket failures and continues safely', () async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
-    await db.into(db.integrations).insert(
-          IntegrationsCompanion.insert(
-            id: kDefaultWeatherOpenWeatherMapIntegrationId,
-            integrationType: 'weather_openweathermap',
-            pollSeconds: const Value(60),
-            configJson: integrationConfigJsonValue(
-              baseUrl: 'https://api.openweathermap.org',
+  test(
+    'collect swallows client socket failures and continues safely',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
+      await db
+          .into(db.integrations)
+          .insert(
+            IntegrationsCompanion.insert(
+              id: kDefaultWeatherOpenWeatherMapIntegrationId,
+              integrationType: 'weather_openweathermap',
+              pollSeconds: const Value(60),
+              configJson: integrationConfigJsonValue(
+                baseUrl: 'https://api.openweathermap.org',
+              ),
             ),
-          ),
-        );
-    await db.into(db.interestsLocations).insert(
-          InterestsLocationsCompanion.insert(
-            id: 'nyc',
-            name: 'NYC',
-            latitude: 40.7128,
-            longitude: -74.0060,
-            includeWeather: const Value(true),
-          ),
-        );
-    final secrets = InMemorySecretStore();
-    final ctx = await _ctx(db, secrets, apiKey: 'owm-key');
-    final client = _ThrowingWeatherClient(
-      http.ClientException(
-        'socket failed',
-        Uri.parse('https://api.openweathermap.org/data/2.5/weather'),
-      ),
-    );
-    final provider = WeatherDataProvider(httpClient: client);
+          );
+      await db
+          .into(db.interestsLocations)
+          .insert(
+            InterestsLocationsCompanion.insert(
+              id: 'nyc',
+              name: 'NYC',
+              latitude: 40.7128,
+              longitude: -74.0060,
+              includeWeather: const Value(true),
+            ),
+          );
+      final secrets = InMemorySecretStore();
+      final ctx = await _ctx(db, secrets, apiKey: 'owm-key');
+      final client = _ThrowingWeatherClient(
+        http.ClientException(
+          'socket failed',
+          Uri.parse('https://api.openweathermap.org/data/2.5/weather'),
+        ),
+      );
+      final provider = WeatherDataProvider(httpClient: client);
 
-    await provider.collect(ctx);
+      await provider.collect(ctx);
 
-    expect(client.sends, 1);
-    final rows = await db.select(db.weatherCurrent).get();
-    expect(rows, isEmpty);
-    await db.close();
-  });
+      expect(client.sends, 1);
+      final rows = await db.select(db.weatherCurrent).get();
+      expect(rows, isEmpty);
+      await db.close();
+    },
+  );
 }

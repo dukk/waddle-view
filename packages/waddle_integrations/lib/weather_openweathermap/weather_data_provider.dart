@@ -9,6 +9,7 @@ import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_shared/display/display_weather_temperature_unit_kv.dart';
 import 'package:waddle_shared/integrations/integration_collect.dart';
 import 'weather_locations_for_collect.dart';
 import 'weather_provider_extra_config.dart';
@@ -17,11 +18,9 @@ const String kWeatherProviderId = 'weather_openweathermap';
 const String kDefaultOpenWeatherBaseUrl = 'https://api.openweathermap.org';
 
 class WeatherDataProvider implements IDataProvider {
-  WeatherDataProvider({
-    http.Client? httpClient,
-    int Function()? nowMs,
-  })  : _http = httpClient ?? http.Client(),
-        _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
+  WeatherDataProvider({http.Client? httpClient, int Function()? nowMs})
+    : _http = httpClient ?? http.Client(),
+      _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
 
   final http.Client _http;
   final int Function() _nowMs;
@@ -131,18 +130,41 @@ class WeatherDataProvider implements IDataProvider {
           baseUrl: baseUrl,
           iconCode: currentIconCode,
         );
-        await ctx.db.into(ctx.db.weatherCurrent).insertOnConflictUpdate(
+        final hourlyC = [
+          for (final point in hourly ?? const <Map<String, dynamic>>[])
+            {
+              ...point,
+              'temp': normalizeCollectedWeatherTempToCelsius(
+                (point['temp'] as num?)?.toDouble(),
+                collectUnits: extra.units,
+              ),
+            },
+        ];
+        await ctx.db
+            .into(ctx.db.weatherCurrent)
+            .insertOnConflictUpdate(
               WeatherCurrentCompanion.insert(
                 locationId: location.id,
                 observedAtMs: DateTime.fromMillisecondsSinceEpoch(now),
-                currentTemp: Value((current['temp'] as num?)?.toDouble()),
-                currentDescription: Value((current['description'] as String?)?.trim()),
+                currentTemp: Value(
+                  normalizeCollectedWeatherTempToCelsius(
+                    (current['temp'] as num?)?.toDouble(),
+                    collectUnits: extra.units,
+                  ),
+                ),
+                currentDescription: Value(
+                  (current['description'] as String?)?.trim(),
+                ),
                 currentIconBlobKey: Value(currentIconBlobKey),
-                hourlyJson: Value(jsonEncode(hourly ?? const <Map<String, dynamic>>[])),
+                hourlyJson: Value(jsonEncode(hourlyC)),
               ),
             );
       } on Object catch (e, st) {
-        ctx.diagnostics.providerFail('weather: collect id=${location.id}', e, st);
+        ctx.diagnostics.providerFail(
+          'weather: collect id=${location.id}',
+          e,
+          st,
+        );
       }
     }
   }
@@ -176,20 +198,21 @@ class WeatherDataProvider implements IDataProvider {
       return null;
     }
     final logicalKey = 'weather/icons/$code@2x.png';
-    final ref = await ctx.blobs.putBytes(
-      res.bodyBytes,
-      logicalKey: logicalKey,
-    );
+    final ref = await ctx.blobs.putBytes(res.bodyBytes, logicalKey: logicalKey);
     ctx.diagnostics.provider(
       'weather: stored icon code=$code bytes=${res.bodyBytes.length} blobKey=$logicalKey',
     );
-    await ctx.db.into(ctx.db.blobMetadata).insertOnConflictUpdate(
+    await ctx.db
+        .into(ctx.db.blobMetadata)
+        .insertOnConflictUpdate(
           BlobMetadataCompanion.insert(
             blobKey: logicalKey,
             sha256: ref.storageKey.split('/').last,
             relativePath: ref.storageKey,
             bytes: res.bodyBytes.length,
-            mimeType: Value(res.headers['content-type']?.split(';').first.trim()),
+            mimeType: Value(
+              res.headers['content-type']?.split(';').first.trim(),
+            ),
             capturedAt: DateTime.fromMillisecondsSinceEpoch(_nowMs()),
           ),
         );
@@ -221,7 +244,10 @@ class WeatherDataProvider implements IDataProvider {
 
   /// Normalizes [OpenWeather Forecast 2.5](https://openweathermap.org/forecast5)
   /// JSON into a compact list used by [WeatherSlideWidget].
-  List<Map<String, dynamic>>? _normalizeForecastPayload(String body, int hourlyCount) {
+  List<Map<String, dynamic>>? _normalizeForecastPayload(
+    String body,
+    int hourlyCount,
+  ) {
     try {
       final decoded = jsonDecode(body);
       if (decoded is! Map<String, dynamic>) {
@@ -239,7 +265,9 @@ class WeatherDataProvider implements IDataProvider {
         final main = item['main'];
         hourlyOut.add({
           'dt': (item['dt'] as num?)?.toInt(),
-          'temp': (main is Map<String, dynamic>) ? (main['temp'] as num?)?.toDouble() : null,
+          'temp': (main is Map<String, dynamic>)
+              ? (main['temp'] as num?)?.toDouble()
+              : null,
           'description': _weatherDescription(item),
           'icon': _weatherIcon(item),
         });

@@ -37,11 +37,31 @@ bool isFahrenheitTemperatureUnit(String unit) =>
 /// Converts Celsius to Fahrenheit for display.
 double celsiusToFahrenheit(double celsius) => celsius * 9 / 5 + 32;
 
-/// Rounds [celsius] for ticker/slide display in the requested [unit].
-int formatWeatherTemperatureCelsius(
-  double? celsius, {
-  required String unit,
+/// Converts Fahrenheit to Celsius for persistence.
+double fahrenheitToCelsius(double fahrenheit) => (fahrenheit - 32) * 5 / 9;
+
+/// Whether a weather provider `units` value requests imperial/Fahrenheit from the API.
+bool isImperialWeatherCollectUnits(String units) {
+  final u = units.trim().toLowerCase();
+  return u == 'imperial' || u == 'fahrenheit' || u == 'f';
+}
+
+/// Normalizes a collected temperature to Celsius for [WeatherCurrent.currentTemp].
+double? normalizeCollectedWeatherTempToCelsius(
+  double? temp, {
+  required String collectUnits,
 }) {
+  if (temp == null) {
+    return null;
+  }
+  if (isImperialWeatherCollectUnits(collectUnits)) {
+    return fahrenheitToCelsius(temp);
+  }
+  return temp;
+}
+
+/// Rounds [celsius] for ticker/slide display in the requested [unit].
+int formatWeatherTemperatureCelsius(double? celsius, {required String unit}) {
   if (celsius == null) {
     return 0;
   }

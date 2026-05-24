@@ -37,8 +37,10 @@ class _NoOpBlobs implements BlobStore {
   Future<List<int>> readBytes(BlobRef ref) async => const [];
 
   @override
-  Future<BlobRef> putBytes(List<int> bytes, {required String logicalKey}) async =>
-      BlobRef(logicalKey);
+  Future<BlobRef> putBytes(
+    List<int> bytes, {
+    required String logicalKey,
+  }) async => BlobRef(logicalKey);
 
   @override
   File? tryLocalFile(BlobRef ref) => null;
@@ -95,7 +97,9 @@ void main() {
       ),
     );
     await db.customStatement('select 1');
-    await db.into(db.integrations).insert(
+    await db
+        .into(db.integrations)
+        .insert(
           IntegrationsCompanion.insert(
             id: kDefaultWeatherOpenMeteoIntegrationId,
             integrationType: kWeatherOpenMeteoProviderId,
@@ -115,15 +119,50 @@ void main() {
     await provider.collect(await _ctx(db));
     expect(client.sends, 1);
 
-    final row = await (db.select(db.weatherCurrent)
-          ..where((t) => t.locationId.equals('default')))
-        .getSingleOrNull();
+    final row = await (db.select(
+      db.weatherCurrent,
+    )..where((t) => t.locationId.equals('default'))).getSingleOrNull();
     expect(row, isNotNull);
-    expect(row!.currentTemp, closeTo(72.5, 0.01));
+    expect(row!.currentTemp, closeTo(22.5, 0.01));
     expect(row.currentDescription, 'Clear sky');
     final hourly = jsonDecode(row.hourlyJson ?? '[]') as List<dynamic>;
     expect(hourly.length, 2);
     expect((hourly.first as Map)['description'], 'Mainly clear');
+    expect((hourly.first as Map)['temp'], closeTo(22.778, 0.01));
+    expect((hourly[1] as Map)['temp'], closeTo(23.333, 0.01));
+    await db.close();
+  });
+
+  test('collect stores metric API temperatures as Celsius unchanged', () async {
+    final db = AppDatabase(
+      DatabaseConnection(
+        NativeDatabase.memory(),
+        closeStreamsSynchronously: true,
+      ),
+    );
+    await db.customStatement('select 1');
+    await db
+        .into(db.integrations)
+        .insert(
+          IntegrationsCompanion.insert(
+            id: kDefaultWeatherOpenMeteoIntegrationId,
+            integrationType: kWeatherOpenMeteoProviderId,
+            pollSeconds: const Value(60),
+            enabled: const Value(true),
+            configJson: const Value(
+              '{"units":"metric","hourlyCount":1,'
+              '"defaultLocation":{"name":"Default","lat":40.71,"lon":-74.01}}',
+            ),
+          ),
+        );
+    final client = _ForecastClient(_openMeteoForecastBody());
+    final provider = OpenMeteoWeatherDataProvider(httpClient: client);
+    await provider.collect(await _ctx(db));
+
+    final row = await (db.select(
+      db.weatherCurrent,
+    )..where((t) => t.locationId.equals('default'))).getSingleOrNull();
+    expect(row!.currentTemp, closeTo(72.5, 0.01));
     await db.close();
   });
 }

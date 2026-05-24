@@ -37,6 +37,29 @@ void main() {
     },
   );
 
+  test(
+    'CurrentWeatherTickerData toTickerBody treats temperatureC as Celsius for display',
+    () {
+      expect(
+        const CurrentWeatherTickerData(
+          locationId: 'denver',
+          locationName: 'Denver, CO',
+          temperatureC: 22.2,
+          description: 'sunny',
+        ).toTickerBody(temperatureUnit: 'f'),
+        'Denver, CO: 72°F · sunny',
+      );
+      expect(
+        const CurrentWeatherTickerData(
+          locationId: 'denver',
+          locationName: 'Denver, CO',
+          temperatureC: 22.2,
+        ).toTickerBody(temperatureUnit: 'c'),
+        'Denver, CO: 22°C',
+      );
+    },
+  );
+
   test('TickerNewsCandidate publishedAt is UTC from epoch ms', () {
     final c = TickerNewsCandidate(
       feedId: 'f',
