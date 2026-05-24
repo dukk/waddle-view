@@ -39,6 +39,24 @@ void main() {
     final activeBody = jsonDecode(active.body) as Map<String, dynamic>;
     expect(activeBody['base'], isNotNull);
 
+    final programControls =
+        activeBody['program_controls'] as Map<String, dynamic>;
+    expect(programControls['screens_enabled'], isA<bool>());
+    expect(programControls['ticker_enabled'], isA<bool>());
+
+    final effectiveMembers =
+        activeBody['effective_members'] as Map<String, dynamic>;
+    for (final key in ['screens', 'tickers', 'overlays']) {
+      final items = effectiveMembers[key] as List;
+      expect(items, isA<List>());
+      for (final item in items) {
+        final m = item as Map<String, dynamic>;
+        expect(m['id'], isA<String>());
+        expect(m['label'], isA<String>());
+      }
+    }
+    expect((effectiveMembers['screens'] as List), isNotEmpty);
+
     final list = await http.get(
       Uri.parse('${h.baseUrl}/v1/curator/configurations'),
       headers: h.authHeaders,

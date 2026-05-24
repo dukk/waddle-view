@@ -3098,18 +3098,14 @@ Future<void> _migrateV51ToV52CuratorMemberOpsAndSortRebalance(
   AppDatabase db,
 ) async {
   if (await _sqliteTableExists(db, 'curator_configuration_members')) {
-    if (!await _sqliteColumnExists(
-      db,
-      'curator_configuration_members',
-      'op',
-    )) {
+    if (!await _sqliteColumnExists(db, 'curator_configuration_members', 'op')) {
       await db.customStatement(
         "ALTER TABLE curator_configuration_members ADD COLUMN op "
-        "TEXT NOT NULL DEFAULT '${kCuratorMemberOpAdd}'",
+        "TEXT NOT NULL DEFAULT '$kCuratorMemberOpAdd'",
       );
     }
     await db.customStatement(
-      "UPDATE curator_configuration_members SET op = '${kCuratorMemberOpAdd}' "
+      "UPDATE curator_configuration_members SET op = '$kCuratorMemberOpAdd' "
       "WHERE op IS NULL OR trim(op) = ''",
     );
   }
@@ -3123,9 +3119,9 @@ Future<void> _migrateV51ToV52CuratorMemberOpsAndSortRebalance(
     }
     if (await _sqliteTableExists(db, 'curator_configurations') &&
         await _sqliteTableExists(db, 'curator_configuration_members')) {
-      final newsTypes = kNewsScreenTypesRequiringPhoto.map((t) => "'$t'").join(
-        ', ',
-      );
+      final newsTypes = kNewsScreenTypesRequiringPhoto
+          .map((t) => "'$t'")
+          .join(', ');
       await db.customStatement('''
 UPDATE screens SET require_news_photo = 0
 WHERE screen_type IN ($newsTypes)
@@ -3133,7 +3129,7 @@ AND id IN (
   SELECT DISTINCT m.entity_id
   FROM curator_configuration_members m
   INNER JOIN curator_configurations c ON c.id = m.configuration_id
-  WHERE m.entity_type = '${kCuratorMemberEntityScreen}'
+  WHERE m.entity_type = '$kCuratorMemberEntityScreen'
     AND c.require_news_photo_for_screens = 0
 )
 ''');
@@ -3157,10 +3153,22 @@ AND id IN (
 const int _kWeekdayDaysMask = 0x1F;
 const int _kWeekendDaysMask = 0x60;
 
-Future<void> _ensureWeekdayWeekendCuratorConfigurationsV52(AppDatabase db) async {
+Future<void> _ensureWeekdayWeekendCuratorConfigurationsV52(
+  AppDatabase db,
+) async {
   if (!await _sqliteTableExists(db, 'curator_configurations')) {
     return;
   }
+  await _ensureCuratorConfigurationsScreensEnabled(db);
+  await _ensureCuratorConfigurationsTickerEnabled(db);
+  final hasScheduleRules = await _sqliteTableExists(
+    db,
+    'curator_schedule_rules',
+  );
+  final hasMembers = await _sqliteTableExists(
+    db,
+    'curator_configuration_members',
+  );
   final weekdayExists = await db
       .customSelect(
         "SELECT 1 FROM curator_configurations WHERE id = 'weekday' LIMIT 1",
@@ -3185,27 +3193,27 @@ Future<void> _ensureWeekdayWeekendCuratorConfigurationsV52(AppDatabase db) async
         0,
       ],
     );
-    await db.customStatement(
-      'INSERT INTO curator_schedule_rules '
-      '(id, configuration_id, priority, days_of_week_mask, repeat_annually) '
-      'VALUES (?, ?, ?, ?, 1)',
-      <Object?>['weekday_days', 'weekday', 10, _kWeekdayDaysMask],
-    );
-    for (final screenId in [
-      'photo',
-      'photo_collage_nine_square',
-      'video',
-    ]) {
+    if (hasScheduleRules) {
       await db.customStatement(
-        'INSERT OR IGNORE INTO curator_configuration_members '
-        '(configuration_id, entity_type, entity_id, op) VALUES (?, ?, ?, ?)',
-        <Object?>[
-          'weekday',
-          kCuratorMemberEntityScreen,
-          screenId,
-          kCuratorMemberOpRemove,
-        ],
+        'INSERT INTO curator_schedule_rules '
+        '(id, configuration_id, priority, days_of_week_mask, repeat_annually) '
+        'VALUES (?, ?, ?, ?, 1)',
+        <Object?>['weekday_days', 'weekday', 10, _kWeekdayDaysMask],
       );
+    }
+    if (hasMembers) {
+      for (final screenId in ['photo', 'photo_collage_nine_square', 'video']) {
+        await db.customStatement(
+          'INSERT OR IGNORE INTO curator_configuration_members '
+          '(configuration_id, entity_type, entity_id, op) VALUES (?, ?, ?, ?)',
+          <Object?>[
+            'weekday',
+            kCuratorMemberEntityScreen,
+            screenId,
+            kCuratorMemberOpRemove,
+          ],
+        );
+      }
     }
   }
 
@@ -3233,62 +3241,66 @@ Future<void> _ensureWeekdayWeekendCuratorConfigurationsV52(AppDatabase db) async
         0,
       ],
     );
-    await db.customStatement(
-      'INSERT INTO curator_schedule_rules '
-      '(id, configuration_id, priority, days_of_week_mask, repeat_annually) '
-      'VALUES (?, ?, ?, ?, 1)',
-      <Object?>['weekend_days', 'weekend', 10, _kWeekendDaysMask],
-    );
-    for (final screenId in [
-      'photo',
-      'photo_collage_nine_square',
-      'video',
-      'jokes',
-      'trivia',
-    ]) {
+    if (hasScheduleRules) {
+      await db.customStatement(
+        'INSERT INTO curator_schedule_rules '
+        '(id, configuration_id, priority, days_of_week_mask, repeat_annually) '
+        'VALUES (?, ?, ?, ?, 1)',
+        <Object?>['weekend_days', 'weekend', 10, _kWeekendDaysMask],
+      );
+    }
+    if (hasMembers) {
+      for (final screenId in [
+        'photo',
+        'photo_collage_nine_square',
+        'video',
+        'jokes',
+        'trivia',
+      ]) {
+        await db.customStatement(
+          'INSERT OR IGNORE INTO curator_configuration_members '
+          '(configuration_id, entity_type, entity_id, op) VALUES (?, ?, ?, ?)',
+          <Object?>[
+            'weekend',
+            kCuratorMemberEntityScreen,
+            screenId,
+            kCuratorMemberOpAdd,
+          ],
+        );
+      }
+      for (final screenId in ['stock_quotes', 'news_columns', 'calendar']) {
+        await db.customStatement(
+          'INSERT OR IGNORE INTO curator_configuration_members '
+          '(configuration_id, entity_type, entity_id, op) VALUES (?, ?, ?, ?)',
+          <Object?>[
+            'weekend',
+            kCuratorMemberEntityScreen,
+            screenId,
+            kCuratorMemberOpRemove,
+          ],
+        );
+      }
       await db.customStatement(
         'INSERT OR IGNORE INTO curator_configuration_members '
         '(configuration_id, entity_type, entity_id, op) VALUES (?, ?, ?, ?)',
         <Object?>[
           'weekend',
-          kCuratorMemberEntityScreen,
-          screenId,
+          kCuratorMemberEntityTicker,
+          'ticker_custom',
           kCuratorMemberOpAdd,
         ],
       );
-    }
-    for (final screenId in ['stock_quotes', 'news_columns', 'calendar']) {
       await db.customStatement(
         'INSERT OR IGNORE INTO curator_configuration_members '
         '(configuration_id, entity_type, entity_id, op) VALUES (?, ?, ?, ?)',
         <Object?>[
           'weekend',
-          kCuratorMemberEntityScreen,
-          screenId,
+          kCuratorMemberEntityTicker,
+          'ticker_stocks',
           kCuratorMemberOpRemove,
         ],
       );
     }
-    await db.customStatement(
-      'INSERT OR IGNORE INTO curator_configuration_members '
-      '(configuration_id, entity_type, entity_id, op) VALUES (?, ?, ?, ?)',
-      <Object?>[
-        'weekend',
-        kCuratorMemberEntityTicker,
-        'ticker_custom',
-        kCuratorMemberOpAdd,
-      ],
-    );
-    await db.customStatement(
-      'INSERT OR IGNORE INTO curator_configuration_members '
-      '(configuration_id, entity_type, entity_id, op) VALUES (?, ?, ?, ?)',
-      <Object?>[
-        'weekend',
-        kCuratorMemberEntityTicker,
-        'ticker_stocks',
-        kCuratorMemberOpRemove,
-      ],
-    );
   }
 }
 

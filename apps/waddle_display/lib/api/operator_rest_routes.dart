@@ -969,8 +969,8 @@ void registerOperatorRestRoutes(
       );
     }
     final description = (map['description'] as String?)?.trim() ?? '';
-    final minDwell = (map['min_dwell_seconds'] as num?)?.toInt() ?? 8;
-    final maxDwell = (map['max_dwell_seconds'] as num?)?.toInt() ?? 15;
+    final minDwell = (map['min_dwell_seconds'] as num?)?.toInt() ?? 10;
+    final maxDwell = (map['max_dwell_seconds'] as num?)?.toInt() ?? 25;
     if (minDwell <= 0 || maxDwell <= 0 || minDwell > maxDwell) {
       return Response(
         400,
@@ -979,7 +979,7 @@ void registerOperatorRestRoutes(
       );
     }
     final frequencyWeight = (map['frequency_weight'] as num?)?.toInt() ?? 100;
-    final minGap = (map['min_gap_between_shows_seconds'] as num?)?.toInt() ?? 0;
+    final minGap = (map['min_gap_between_shows_seconds'] as num?)?.toInt() ?? 60;
     final minPlacements =
         (map['min_placements_per_program'] as num?)?.toInt() ?? 0;
     final maxPlacements = (map['max_placements_per_program'] as num?)?.toInt();

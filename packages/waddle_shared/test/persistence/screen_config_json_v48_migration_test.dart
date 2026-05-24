@@ -59,7 +59,7 @@ CREATE TABLE screens (
     expect(config['categoryId'], isNull);
     expect(config['categoryName'], 'Work');
 
-    expect(db.schemaVersion, 48);
+    expect(db.schemaVersion, 52);
     await db.close();
   });
 }

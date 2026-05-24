@@ -77,10 +77,25 @@ export type ActiveCuratorMatch = {
   match_reason: string;
 };
 
+export type ActiveCatalogMember = { id: string; label: string };
+
+export type ActiveCuratorProgramControls = {
+  screens_enabled: boolean;
+  ticker_enabled: boolean;
+};
+
+export type ActiveCuratorEffectiveMembers = {
+  screens: ActiveCatalogMember[];
+  tickers: ActiveCatalogMember[];
+  overlays: ActiveCatalogMember[];
+};
+
 export type ActiveCuratorResponse = {
   exclusive: ActiveCuratorMatch | null;
   base: ActiveCuratorMatch | null;
   enhancements: ActiveCuratorMatch[];
+  program_controls: ActiveCuratorProgramControls;
+  effective_members: ActiveCuratorEffectiveMembers;
 };
 
 export type CuratorConfigurationWriteBody = {

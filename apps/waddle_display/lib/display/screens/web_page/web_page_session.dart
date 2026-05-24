@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 
+import '../../../bootstrap/embedded_webview_dispose.dart';
 import '../../../bootstrap/webview_platform_bootstrap.dart';
 import 'web_page_config.dart';
 
@@ -31,10 +32,11 @@ abstract class WebPagePreparedSession {
   void dispose();
 }
 
-typedef WebPageSessionLoader = Future<WebPagePreparedSession> Function(
-  ParsedWidgetSpec spec,
-  WebPageConfig config,
-);
+typedef WebPageSessionLoader =
+    Future<WebPagePreparedSession> Function(
+      ParsedWidgetSpec spec,
+      WebPageConfig config,
+    );
 
 /// Preloads [web_page] slides before the rotator shows them.
 class WebPagePrepareCache {
@@ -55,7 +57,10 @@ class WebPagePrepareCache {
         (config.uri!.scheme != 'http' && config.uri!.scheme != 'https')) {
       throw WebPageLoadException('config.url must be http or https');
     }
-    final key = webPagePrepareCacheKey(choiceKey: spec.choiceKey, config: config);
+    final key = webPagePrepareCacheKey(
+      choiceKey: spec.choiceKey,
+      config: config,
+    );
     if (_ready.containsKey(key)) {
       return;
     }
@@ -84,7 +89,10 @@ class WebPagePrepareCache {
 
   WebPagePreparedSession? takeReady(ParsedWidgetSpec spec) {
     final config = parseWebPageConfig(spec.config);
-    final key = webPagePrepareCacheKey(choiceKey: spec.choiceKey, config: config);
+    final key = webPagePrepareCacheKey(
+      choiceKey: spec.choiceKey,
+      config: config,
+    );
     return _ready.remove(key);
   }
 
@@ -159,10 +167,7 @@ Future<WebPagePreparedSession> _loadWithWebView(
     ),
   );
 
-  await controller.loadRequest(
-    uri,
-    headers: config.requestHeaders,
-  );
+  await controller.loadRequest(uri, headers: config.requestHeaders);
 
   try {
     await loadCompleter.future.timeout(
@@ -173,7 +178,7 @@ Future<WebPagePreparedSession> _loadWithWebView(
     );
     await _waitForDocumentReady(controller, config.loadTimeoutSeconds);
   } catch (e) {
-    // Best-effort cleanup; controller has no explicit dispose API.
+    await disposeEmbeddedWebViewController(controller);
     rethrow;
   }
 
@@ -200,10 +205,7 @@ Future<void> _waitForDocumentReady(
 }
 
 class _WebViewPreparedSession implements WebPagePreparedSession {
-  _WebViewPreparedSession({
-    required this.controller,
-    required this.config,
-  });
+  _WebViewPreparedSession({required this.controller, required this.config});
 
   final WebViewController controller;
   @override
@@ -242,7 +244,7 @@ class _WebViewPreparedSession implements WebPagePreparedSession {
 
   @override
   void dispose() {
-    // Platform WebView is released when the widget tree drops [WebViewWidget].
+    unawaited(disposeEmbeddedWebViewController(controller));
   }
 }
 
@@ -256,14 +258,11 @@ class WebPageFailedSession implements WebPagePreparedSession {
 
   @override
   Widget buildView() => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            message,
-            textAlign: TextAlign.center,
-          ),
-        ),
-      );
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Text(message, textAlign: TextAlign.center),
+    ),
+  );
 
   @override
   Future<double> measureScrollableExtent() async => 0;
@@ -278,10 +277,7 @@ class WebPageFailedSession implements WebPagePreparedSession {
 /// Test-only session that avoids platform WebView channels.
 @visibleForTesting
 class FakeWebPagePreparedSession implements WebPagePreparedSession {
-  FakeWebPagePreparedSession({
-    required this.config,
-    this.scrollableExtent = 0,
-  });
+  FakeWebPagePreparedSession({required this.config, this.scrollableExtent = 0});
 
   @override
   final WebPageConfig config;

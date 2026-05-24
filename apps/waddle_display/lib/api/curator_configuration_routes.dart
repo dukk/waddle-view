@@ -11,6 +11,7 @@ import 'package:waddle_shared/display/display_viewport_reserve.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 
+import '../curator/active_curator_active_json.dart';
 import '../curator/active_curator_service.dart';
 import '../curator/curator_runtime_state_builder.dart';
 
@@ -56,6 +57,10 @@ void registerCuratorConfigurationRoutes(
 
   r.get('/v1/curator/active', (Request req) async {
     final selection = await curator.resolveAt(DateTime.now());
+    final extended = await activeCuratorExtendedJson(
+      db: db,
+      selection: selection,
+    );
     return Response.ok(
       jsonEncode({
         'exclusive': _activeMatchJson(selection.exclusive),
@@ -63,18 +68,19 @@ void registerCuratorConfigurationRoutes(
         'enhancements': [
           for (final e in selection.enhancements) _activeMatchJson(e)!,
         ],
+        ...extended,
       }),
       headers: {'content-type': 'application/json'},
     );
   });
 
   r.get('/v1/curator/configurations', (Request req) async {
-    final rows = await (db.select(db.curatorConfigurations)
-          ..orderBy([
-            (t) => OrderingTerm.asc(t.sortOrder),
-            (t) => OrderingTerm.asc(t.id),
-          ]))
-        .get();
+    final rows =
+        await (db.select(db.curatorConfigurations)..orderBy([
+              (t) => OrderingTerm.asc(t.sortOrder),
+              (t) => OrderingTerm.asc(t.id),
+            ]))
+            .get();
     return Response.ok(
       jsonEncode({
         'items': [for (final c in rows) _configurationSummaryJson(c)],
@@ -86,9 +92,11 @@ void registerCuratorConfigurationRoutes(
   r.get('/v1/curator/configurations/<id>', (Request req, String id) async {
     final detail = await _loadConfigurationDetail(db, id);
     if (detail == null) {
-      return Response(404,
-          body: '{"error":"not_found"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     return Response.ok(
       jsonEncode(detail),
@@ -99,30 +107,38 @@ void registerCuratorConfigurationRoutes(
   r.post('/v1/curator/configurations', (Request req) async {
     final map = await _readJsonObject(req);
     if (map == null) {
-      return Response(400,
-          body: '{"error":"expected_json_object"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"expected_json_object"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     final id = '${map['id'] ?? ''}'.trim();
     final name = '${map['name'] ?? ''}'.trim();
     final layer = '${map['layer'] ?? ''}'.trim();
     if (id.isEmpty || name.isEmpty || layer.isEmpty) {
-      return Response(400,
-          body: '{"error":"id_name_and_layer_required"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"id_name_and_layer_required"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     if (!kCuratorConfigurationLayers.contains(layer)) {
-      return Response(400,
-          body: '{"error":"invalid_layer"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"invalid_layer"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
-    final dup = await (db.select(db.curatorConfigurations)
-          ..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final dup = await (db.select(
+      db.curatorConfigurations,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (dup != null) {
-      return Response(409,
-          body: '{"error":"id_already_exists"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        409,
+        body: '{"error":"id_already_exists"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     final parentId = _readOptionalTrimmedString(map['parent_configuration_id']);
     final parentError = await _validateParentConfigurationWrite(
@@ -132,22 +148,31 @@ void registerCuratorConfigurationRoutes(
       parentId: parentId,
     );
     if (parentError != null) {
-      return Response(400,
-          body: jsonEncode({'error': parentError}),
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: jsonEncode({'error': parentError}),
+        headers: {'content-type': 'application/json'},
+      );
     }
-    await db.into(db.curatorConfigurations).insert(
+    await db
+        .into(db.curatorConfigurations)
+        .insert(
           CuratorConfigurationsCompanion.insert(
             id: id,
             name: name,
             layer: layer,
             sortOrder: Value(
-              _readInt(map['sort_order']) ?? kDefaultCuratorConfigurationSortOrder,
+              _readInt(map['sort_order']) ??
+                  kDefaultCuratorConfigurationSortOrder,
             ),
-            programDurationSeconds:
-                Value(_readInt(map['program_duration_seconds']) ?? 180),
+            programDurationSeconds: Value(
+              _readInt(map['program_duration_seconds']) ?? 180,
+            ),
             requireNewsPhotoForScreens: Value(
-              _readBool(map['require_news_photo_for_screens'], defaultValue: true),
+              _readBool(
+                map['require_news_photo_for_screens'],
+                defaultValue: true,
+              ),
             ),
             screensEnabled: Value(
               _screensEnabledForWrite(
@@ -202,13 +227,19 @@ void registerCuratorConfigurationRoutes(
                 map['viewport_reserve_left_pct_override'],
               ),
             ),
-            defaultConfig: Value(_readBool(map['default_config'], defaultValue: false)),
+            defaultConfig: Value(
+              _readBool(map['default_config'], defaultValue: false),
+            ),
             parentConfigurationId: Value(parentId),
           ),
         );
     try {
       if (map['rules'] is List) {
-        await _replaceRules(db, configurationId: id, rules: map['rules'] as List);
+        await _replaceRules(
+          db,
+          configurationId: id,
+          rules: map['rules'] as List,
+        );
       }
       if (map['members'] is Map) {
         await _replaceMembers(
@@ -219,39 +250,49 @@ void registerCuratorConfigurationRoutes(
       }
     } on FormatException catch (e) {
       await _deleteConfiguration(db, id);
-      return Response(400,
-          body: jsonEncode({'error': e.message}),
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: jsonEncode({'error': e.message}),
+        headers: {'content-type': 'application/json'},
+      );
     }
     await onConfigChanged();
     return Response.ok('{}', headers: {'content-type': 'application/json'});
   });
 
   r.patch('/v1/curator/configurations/<id>', (Request req, String id) async {
-    final existing = await (db.select(db.curatorConfigurations)
-          ..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final existing = await (db.select(
+      db.curatorConfigurations,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (existing == null) {
-      return Response(404,
-          body: '{"error":"not_found"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     final map = await _readJsonObject(req);
     if (map == null) {
-      return Response(400,
-          body: '{"error":"expected_json_object"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"expected_json_object"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     final layer = map.containsKey('layer')
         ? '${map['layer']}'.trim()
         : existing.layer;
     if (!kCuratorConfigurationLayers.contains(layer)) {
-      return Response(400,
-          body: '{"error":"invalid_layer"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"invalid_layer"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     if (map.containsKey('parent_configuration_id')) {
-      final parentId = _readOptionalTrimmedString(map['parent_configuration_id']);
+      final parentId = _readOptionalTrimmedString(
+        map['parent_configuration_id'],
+      );
       final parentError = await _validateParentConfigurationWrite(
         db,
         childId: id,
@@ -259,12 +300,16 @@ void registerCuratorConfigurationRoutes(
         parentId: parentId,
       );
       if (parentError != null) {
-        return Response(400,
-            body: jsonEncode({'error': parentError}),
-            headers: {'content-type': 'application/json'});
+        return Response(
+          400,
+          body: jsonEncode({'error': parentError}),
+          headers: {'content-type': 'application/json'},
+        );
       }
     }
-    await (db.update(db.curatorConfigurations)..where((t) => t.id.equals(id))).write(
+    await (db.update(
+      db.curatorConfigurations,
+    )..where((t) => t.id.equals(id))).write(
       CuratorConfigurationsCompanion(
         name: map.containsKey('name')
             ? Value('${map['name']}'.trim())
@@ -279,7 +324,8 @@ void registerCuratorConfigurationRoutes(
                     existing.programDurationSeconds,
               )
             : const Value.absent(),
-        requireNewsPhotoForScreens: map.containsKey('require_news_photo_for_screens')
+        requireNewsPhotoForScreens:
+            map.containsKey('require_news_photo_for_screens')
             ? Value(
                 _readBool(
                   map['require_news_photo_for_screens'],
@@ -290,29 +336,29 @@ void registerCuratorConfigurationRoutes(
         screensEnabled: _isEnhancementLayer(layer)
             ? const Value(true)
             : map.containsKey('screens_enabled')
-                ? Value(
-                    _readBool(
-                      map['screens_enabled'],
-                      defaultValue: existing.screensEnabled,
-                    ),
-                  )
-                : const Value.absent(),
+            ? Value(
+                _readBool(
+                  map['screens_enabled'],
+                  defaultValue: existing.screensEnabled,
+                ),
+              )
+            : const Value.absent(),
         tickerEnabled: _isEnhancementLayer(layer)
             ? const Value(true)
             : map.containsKey('ticker_enabled')
-                ? Value(
-                    _readBool(
-                      map['ticker_enabled'],
-                      defaultValue: existing.tickerEnabled,
-                    ),
-                  )
-                : const Value.absent(),
+            ? Value(
+                _readBool(
+                  map['ticker_enabled'],
+                  defaultValue: existing.tickerEnabled,
+                ),
+              )
+            : const Value.absent(),
         tickerProgramDurationSeconds:
             _tickerProgramDurationOverrideCompanionForPatch(
-          layer: layer,
-          map: map,
-          key: 'ticker_program_duration_seconds',
-        ),
+              layer: layer,
+              map: map,
+              key: 'ticker_program_duration_seconds',
+            ),
         tickerPixelsPerSecond: _tickerPixelsPerSecondOverrideCompanionForPatch(
           layer: layer,
           map: map,
@@ -321,32 +367,39 @@ void registerCuratorConfigurationRoutes(
         themeIdOverride: _isEnhancementLayer(layer)
             ? const Value(null)
             : map.containsKey('theme_id_override')
-                ? Value(_readOptionalTrimmedString(map['theme_id_override']))
-                : const Value.absent(),
-        viewportReserveTopPctOverride: _viewportReserveOverrideCompanionForPatch(
-          layer: layer,
-          map: map,
-          key: 'viewport_reserve_top_pct_override',
-        ),
+            ? Value(_readOptionalTrimmedString(map['theme_id_override']))
+            : const Value.absent(),
+        viewportReserveTopPctOverride:
+            _viewportReserveOverrideCompanionForPatch(
+              layer: layer,
+              map: map,
+              key: 'viewport_reserve_top_pct_override',
+            ),
         viewportReserveRightPctOverride:
             _viewportReserveOverrideCompanionForPatch(
-          layer: layer,
-          map: map,
-          key: 'viewport_reserve_right_pct_override',
-        ),
+              layer: layer,
+              map: map,
+              key: 'viewport_reserve_right_pct_override',
+            ),
         viewportReserveBottomPctOverride:
             _viewportReserveOverrideCompanionForPatch(
-          layer: layer,
-          map: map,
-          key: 'viewport_reserve_bottom_pct_override',
-        ),
-        viewportReserveLeftPctOverride: _viewportReserveOverrideCompanionForPatch(
-          layer: layer,
-          map: map,
-          key: 'viewport_reserve_left_pct_override',
-        ),
+              layer: layer,
+              map: map,
+              key: 'viewport_reserve_bottom_pct_override',
+            ),
+        viewportReserveLeftPctOverride:
+            _viewportReserveOverrideCompanionForPatch(
+              layer: layer,
+              map: map,
+              key: 'viewport_reserve_left_pct_override',
+            ),
         defaultConfig: map.containsKey('default_config')
-            ? Value(_readBool(map['default_config'], defaultValue: existing.defaultConfig))
+            ? Value(
+                _readBool(
+                  map['default_config'],
+                  defaultValue: existing.defaultConfig,
+                ),
+              )
             : const Value.absent(),
         parentConfigurationId: map.containsKey('parent_configuration_id')
             ? Value(_readOptionalTrimmedString(map['parent_configuration_id']))
@@ -355,7 +408,11 @@ void registerCuratorConfigurationRoutes(
     );
     try {
       if (map['rules'] is List) {
-        await _replaceRules(db, configurationId: id, rules: map['rules'] as List);
+        await _replaceRules(
+          db,
+          configurationId: id,
+          rules: map['rules'] as List,
+        );
       }
       if (map['members'] is Map) {
         await _replaceMembers(
@@ -365,173 +422,214 @@ void registerCuratorConfigurationRoutes(
         );
       }
     } on FormatException catch (e) {
-      return Response(400,
-          body: jsonEncode({'error': e.message}),
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: jsonEncode({'error': e.message}),
+        headers: {'content-type': 'application/json'},
+      );
     }
     await onConfigChanged();
     return Response.ok('{}', headers: {'content-type': 'application/json'});
   });
 
   r.delete('/v1/curator/configurations/<id>', (Request req, String id) async {
-    final existing = await (db.select(db.curatorConfigurations)
-          ..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final existing = await (db.select(
+      db.curatorConfigurations,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (existing == null) {
-      return Response(404,
-          body: '{"error":"not_found"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     await _deleteConfiguration(db, id);
     await onConfigChanged();
     return Response.ok('{}', headers: {'content-type': 'application/json'});
   });
 
-  r.post('/v1/curator/configurations/<configId>/rules', (Request req, String configId) async {
+  r.post('/v1/curator/configurations/<configId>/rules', (
+    Request req,
+    String configId,
+  ) async {
     if (!await _configurationExists(db, configId)) {
-      return Response(404,
-          body: '{"error":"not_found"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     final map = await _readJsonObject(req);
     if (map == null) {
-      return Response(400,
-          body: '{"error":"expected_json_object"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"expected_json_object"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     final ruleId = '${map['id'] ?? ''}'.trim();
     if (ruleId.isEmpty) {
-      return Response(400,
-          body: '{"error":"id_required"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"id_required"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
-    final dup = await (db.select(db.curatorScheduleRules)
-          ..where((t) => t.id.equals(ruleId)))
-        .getSingleOrNull();
+    final dup = await (db.select(
+      db.curatorScheduleRules,
+    )..where((t) => t.id.equals(ruleId))).getSingleOrNull();
     if (dup != null) {
-      return Response(409,
-          body: '{"error":"rule_id_exists"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        409,
+        body: '{"error":"rule_id_exists"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     final pred = _readOptionalTrimmedString(map['state_predicate']);
     if (!isKnownCuratorStatePredicate(pred)) {
-      return Response(400,
-          body: '{"error":"invalid_state_predicate"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"invalid_state_predicate"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
-    await db.into(db.curatorScheduleRules).insert(
-          _ruleCompanionFromMap(
-            map,
-            id: ruleId,
-            configurationId: configId,
-          ),
+    await db
+        .into(db.curatorScheduleRules)
+        .insert(
+          _ruleCompanionFromMap(map, id: ruleId, configurationId: configId),
         );
     await onConfigChanged();
     return Response.ok('{}', headers: {'content-type': 'application/json'});
   });
 
-  r.patch(
-    '/v1/curator/configurations/<configId>/rules/<ruleId>',
-    (Request req, String configId, String ruleId) async {
-      final existing = await (db.select(db.curatorScheduleRules)
-            ..where((t) => t.id.equals(ruleId)))
-          .getSingleOrNull();
-      if (existing == null || existing.configurationId != configId) {
-        return Response(404,
-            body: '{"error":"not_found"}',
-            headers: {'content-type': 'application/json'});
-      }
-      final map = await _readJsonObject(req);
-      if (map == null) {
-        return Response(400,
-            body: '{"error":"expected_json_object"}',
-            headers: {'content-type': 'application/json'});
-      }
-      String? pred = existing.statePredicate;
-      if (map.containsKey('state_predicate')) {
-        pred = _readOptionalTrimmedString(map['state_predicate']);
-        if (!isKnownCuratorStatePredicate(pred)) {
-          return Response(400,
-              body: '{"error":"invalid_state_predicate"}',
-              headers: {'content-type': 'application/json'});
-        }
-      }
-      await (db.update(db.curatorScheduleRules)..where((t) => t.id.equals(ruleId))).write(
-        CuratorScheduleRulesCompanion(
-          priority: map.containsKey('priority')
-              ? Value(_readInt(map['priority']) ?? existing.priority)
-              : const Value.absent(),
-          statePredicate: map.containsKey('state_predicate')
-              ? Value(pred)
-              : const Value.absent(),
-          daysOfWeekMask: map.containsKey('days_of_week_mask')
-              ? Value(_readNullableInt(map['days_of_week_mask']))
-              : const Value.absent(),
-          startTimeMinutes: map.containsKey('start_time_minutes')
-              ? Value(_readNullableInt(map['start_time_minutes']))
-              : const Value.absent(),
-          endTimeMinutes: map.containsKey('end_time_minutes')
-              ? Value(_readNullableInt(map['end_time_minutes']))
-              : const Value.absent(),
-          startMonth: map.containsKey('start_month')
-              ? Value(_readNullableInt(map['start_month']))
-              : const Value.absent(),
-          startDay: map.containsKey('start_day')
-              ? Value(_readNullableInt(map['start_day']))
-              : const Value.absent(),
-          endMonth: map.containsKey('end_month')
-              ? Value(_readNullableInt(map['end_month']))
-              : const Value.absent(),
-          endDay: map.containsKey('end_day')
-              ? Value(_readNullableInt(map['end_day']))
-              : const Value.absent(),
-          repeatAnnually: map.containsKey('repeat_annually')
-              ? Value(_readBool(map['repeat_annually'], defaultValue: existing.repeatAnnually))
-              : const Value.absent(),
-          yearExact: map.containsKey('year_exact')
-              ? Value(_readNullableInt(map['year_exact']))
-              : const Value.absent(),
-          nthWeekOfMonth: map.containsKey('nth_week_of_month')
-              ? Value(_readNullableInt(map['nth_week_of_month']))
-              : const Value.absent(),
-          nthWeekday: map.containsKey('nth_weekday')
-              ? Value(_readNullableInt(map['nth_weekday']))
-              : const Value.absent(),
-        ),
+  r.patch('/v1/curator/configurations/<configId>/rules/<ruleId>', (
+    Request req,
+    String configId,
+    String ruleId,
+  ) async {
+    final existing = await (db.select(
+      db.curatorScheduleRules,
+    )..where((t) => t.id.equals(ruleId))).getSingleOrNull();
+    if (existing == null || existing.configurationId != configId) {
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: {'content-type': 'application/json'},
       );
-      await onConfigChanged();
-      return Response.ok('{}', headers: {'content-type': 'application/json'});
-    },
-  );
-
-  r.delete(
-    '/v1/curator/configurations/<configId>/rules/<ruleId>',
-    (Request req, String configId, String ruleId) async {
-      final existing = await (db.select(db.curatorScheduleRules)
-            ..where((t) => t.id.equals(ruleId)))
-          .getSingleOrNull();
-      if (existing == null || existing.configurationId != configId) {
-        return Response(404,
-            body: '{"error":"not_found"}',
-            headers: {'content-type': 'application/json'});
-      }
-      await (db.delete(db.curatorScheduleRules)..where((t) => t.id.equals(ruleId))).go();
-      await onConfigChanged();
-      return Response.ok('{}', headers: {'content-type': 'application/json'});
-    },
-  );
-
-  r.put('/v1/curator/configurations/<configId>/members', (Request req, String configId) async {
-    if (!await _configurationExists(db, configId)) {
-      return Response(404,
-          body: '{"error":"not_found"}',
-          headers: {'content-type': 'application/json'});
     }
     final map = await _readJsonObject(req);
     if (map == null) {
-      return Response(400,
-          body: '{"error":"expected_json_object"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"expected_json_object"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    String? pred = existing.statePredicate;
+    if (map.containsKey('state_predicate')) {
+      pred = _readOptionalTrimmedString(map['state_predicate']);
+      if (!isKnownCuratorStatePredicate(pred)) {
+        return Response(
+          400,
+          body: '{"error":"invalid_state_predicate"}',
+          headers: {'content-type': 'application/json'},
+        );
+      }
+    }
+    await (db.update(
+      db.curatorScheduleRules,
+    )..where((t) => t.id.equals(ruleId))).write(
+      CuratorScheduleRulesCompanion(
+        priority: map.containsKey('priority')
+            ? Value(_readInt(map['priority']) ?? existing.priority)
+            : const Value.absent(),
+        statePredicate: map.containsKey('state_predicate')
+            ? Value(pred)
+            : const Value.absent(),
+        daysOfWeekMask: map.containsKey('days_of_week_mask')
+            ? Value(_readNullableInt(map['days_of_week_mask']))
+            : const Value.absent(),
+        startTimeMinutes: map.containsKey('start_time_minutes')
+            ? Value(_readNullableInt(map['start_time_minutes']))
+            : const Value.absent(),
+        endTimeMinutes: map.containsKey('end_time_minutes')
+            ? Value(_readNullableInt(map['end_time_minutes']))
+            : const Value.absent(),
+        startMonth: map.containsKey('start_month')
+            ? Value(_readNullableInt(map['start_month']))
+            : const Value.absent(),
+        startDay: map.containsKey('start_day')
+            ? Value(_readNullableInt(map['start_day']))
+            : const Value.absent(),
+        endMonth: map.containsKey('end_month')
+            ? Value(_readNullableInt(map['end_month']))
+            : const Value.absent(),
+        endDay: map.containsKey('end_day')
+            ? Value(_readNullableInt(map['end_day']))
+            : const Value.absent(),
+        repeatAnnually: map.containsKey('repeat_annually')
+            ? Value(
+                _readBool(
+                  map['repeat_annually'],
+                  defaultValue: existing.repeatAnnually,
+                ),
+              )
+            : const Value.absent(),
+        yearExact: map.containsKey('year_exact')
+            ? Value(_readNullableInt(map['year_exact']))
+            : const Value.absent(),
+        nthWeekOfMonth: map.containsKey('nth_week_of_month')
+            ? Value(_readNullableInt(map['nth_week_of_month']))
+            : const Value.absent(),
+        nthWeekday: map.containsKey('nth_weekday')
+            ? Value(_readNullableInt(map['nth_weekday']))
+            : const Value.absent(),
+      ),
+    );
+    await onConfigChanged();
+    return Response.ok('{}', headers: {'content-type': 'application/json'});
+  });
+
+  r.delete('/v1/curator/configurations/<configId>/rules/<ruleId>', (
+    Request req,
+    String configId,
+    String ruleId,
+  ) async {
+    final existing = await (db.select(
+      db.curatorScheduleRules,
+    )..where((t) => t.id.equals(ruleId))).getSingleOrNull();
+    if (existing == null || existing.configurationId != configId) {
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    await (db.delete(
+      db.curatorScheduleRules,
+    )..where((t) => t.id.equals(ruleId))).go();
+    await onConfigChanged();
+    return Response.ok('{}', headers: {'content-type': 'application/json'});
+  });
+
+  r.put('/v1/curator/configurations/<configId>/members', (
+    Request req,
+    String configId,
+  ) async {
+    if (!await _configurationExists(db, configId)) {
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    final map = await _readJsonObject(req);
+    if (map == null) {
+      return Response(
+        400,
+        body: '{"error":"expected_json_object"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     await _replaceMembers(db, configurationId: configId, members: map);
     await onConfigChanged();
@@ -590,9 +688,9 @@ Future<String?> _validateParentConfigurationWrite(
   if (layer != kCuratorLayerBase) {
     return 'parent_only_for_base_layer';
   }
-  final parent = await (db.select(db.curatorConfigurations)
-        ..where((t) => t.id.equals(parentId)))
-      .getSingleOrNull();
+  final parent = await (db.select(
+    db.curatorConfigurations,
+  )..where((t) => t.id.equals(parentId))).getSingleOrNull();
   if (parent == null) {
     return 'parent_not_found';
   }
@@ -610,26 +708,28 @@ Future<Map<String, Object?>?> _loadConfigurationDetail(
   AppDatabase db,
   String id,
 ) async {
-  final config = await (db.select(db.curatorConfigurations)
-        ..where((t) => t.id.equals(id)))
-      .getSingleOrNull();
+  final config = await (db.select(
+    db.curatorConfigurations,
+  )..where((t) => t.id.equals(id))).getSingleOrNull();
   if (config == null) {
     return null;
   }
-  final rules = await (db.select(db.curatorScheduleRules)
-        ..where((t) => t.configurationId.equals(id))
-        ..orderBy([
-          (t) => OrderingTerm.desc(t.priority),
-          (t) => OrderingTerm.asc(t.id),
-        ]))
-      .get();
-  final members = await (db.select(db.curatorConfigurationMembers)
-        ..where((t) => t.configurationId.equals(id))
-        ..orderBy([
-          (t) => OrderingTerm.asc(t.entityType),
-          (t) => OrderingTerm.asc(t.entityId),
-        ]))
-      .get();
+  final rules =
+      await (db.select(db.curatorScheduleRules)
+            ..where((t) => t.configurationId.equals(id))
+            ..orderBy([
+              (t) => OrderingTerm.desc(t.priority),
+              (t) => OrderingTerm.asc(t.id),
+            ]))
+          .get();
+  final members =
+      await (db.select(db.curatorConfigurationMembers)
+            ..where((t) => t.configurationId.equals(id))
+            ..orderBy([
+              (t) => OrderingTerm.asc(t.entityType),
+              (t) => OrderingTerm.asc(t.entityId),
+            ]))
+          .get();
   return {
     ..._configurationSummaryJson(config),
     'rules': [for (final r in rules) _ruleJson(r)],
@@ -647,10 +747,7 @@ List<Map<String, Object?>> _memberOpsJson(
 ) {
   return [
     for (final m in members.where((t) => t.entityType == entityType))
-      <String, Object?>{
-        'id': m.entityId,
-        'op': normalizeCuratorMemberOp(m.op),
-      },
+      <String, Object?>{'id': m.entityId, 'op': normalizeCuratorMemberOp(m.op)},
   ];
 }
 
@@ -675,20 +772,22 @@ Map<String, Object?> _ruleJson(CuratorScheduleRule r) {
 }
 
 Future<bool> _configurationExists(AppDatabase db, String id) async {
-  final row = await (db.select(db.curatorConfigurations)
-        ..where((t) => t.id.equals(id)))
-      .getSingleOrNull();
+  final row = await (db.select(
+    db.curatorConfigurations,
+  )..where((t) => t.id.equals(id))).getSingleOrNull();
   return row != null;
 }
 
 Future<void> _deleteConfiguration(AppDatabase db, String id) async {
-  await (db.delete(db.curatorConfigurationMembers)
-        ..where((t) => t.configurationId.equals(id)))
-      .go();
-  await (db.delete(db.curatorScheduleRules)
-        ..where((t) => t.configurationId.equals(id)))
-      .go();
-  await (db.delete(db.curatorConfigurations)..where((t) => t.id.equals(id))).go();
+  await (db.delete(
+    db.curatorConfigurationMembers,
+  )..where((t) => t.configurationId.equals(id))).go();
+  await (db.delete(
+    db.curatorScheduleRules,
+  )..where((t) => t.configurationId.equals(id))).go();
+  await (db.delete(
+    db.curatorConfigurations,
+  )..where((t) => t.id.equals(id))).go();
 }
 
 Future<void> _replaceRules(
@@ -696,9 +795,9 @@ Future<void> _replaceRules(
   required String configurationId,
   required List<dynamic> rules,
 }) async {
-  await (db.delete(db.curatorScheduleRules)
-        ..where((t) => t.configurationId.equals(configurationId)))
-      .go();
+  await (db.delete(
+    db.curatorScheduleRules,
+  )..where((t) => t.configurationId.equals(configurationId))).go();
   for (final raw in rules) {
     if (raw is! Map) {
       throw const FormatException('invalid_rule');
@@ -712,7 +811,9 @@ Future<void> _replaceRules(
     if (!isKnownCuratorStatePredicate(pred)) {
       throw const FormatException('invalid_state_predicate');
     }
-    await db.into(db.curatorScheduleRules).insert(
+    await db
+        .into(db.curatorScheduleRules)
+        .insert(
           _ruleCompanionFromMap(map, id: id, configurationId: configurationId),
         );
   }
@@ -735,7 +836,9 @@ CuratorScheduleRulesCompanion _ruleCompanionFromMap(
     startDay: Value(_readNullableInt(map['start_day'])),
     endMonth: Value(_readNullableInt(map['end_month'])),
     endDay: Value(_readNullableInt(map['end_day'])),
-    repeatAnnually: Value(_readBool(map['repeat_annually'], defaultValue: true)),
+    repeatAnnually: Value(
+      _readBool(map['repeat_annually'], defaultValue: true),
+    ),
     yearExact: Value(_readNullableInt(map['year_exact'])),
     nthWeekOfMonth: Value(_readNullableInt(map['nth_week_of_month'])),
     nthWeekday: Value(_readNullableInt(map['nth_weekday'])),
@@ -747,9 +850,9 @@ Future<void> _replaceMembers(
   required String configurationId,
   required Map<String, dynamic> members,
 }) async {
-  await (db.delete(db.curatorConfigurationMembers)
-        ..where((t) => t.configurationId.equals(configurationId)))
-      .go();
+  await (db.delete(
+    db.curatorConfigurationMembers,
+  )..where((t) => t.configurationId.equals(configurationId))).go();
   Future<void> insertList(String entityType, dynamic raw) async {
     if (raw == null) {
       return;
@@ -779,7 +882,9 @@ Future<void> _replaceMembers(
       if (!isValidCuratorMemberOp(op)) {
         throw const FormatException('invalid_member_op');
       }
-      await db.into(db.curatorConfigurationMembers).insert(
+      await db
+          .into(db.curatorConfigurationMembers)
+          .insert(
             CuratorConfigurationMembersCompanion.insert(
               configurationId: configurationId,
               entityType: entityType,

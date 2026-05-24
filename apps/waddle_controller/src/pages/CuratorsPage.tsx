@@ -46,6 +46,7 @@ import {
   fetchCuratorStatePredicates,
   listCuratorConfigurations,
   updateCuratorConfiguration,
+  type ActiveCatalogMember,
   type ActiveCuratorMatch,
   type ActiveCuratorResponse,
   type CuratorConfigurationDetail,
@@ -150,6 +151,47 @@ function emptyRule(): Omit<CuratorScheduleRule, 'configuration_id'> {
   };
 }
 
+function ActiveEffectiveMemberChips({
+  title,
+  members,
+  emptyLabel,
+  disabledCaption,
+}: {
+  title: string;
+  members: ActiveCatalogMember[];
+  emptyLabel: string;
+  disabledCaption?: string;
+}) {
+  return (
+    <Box>
+      <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+        {title}
+      </Typography>
+      {disabledCaption ? (
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          display="block"
+          sx={{ mb: 0.5 }}
+        >
+          {disabledCaption}
+        </Typography>
+      ) : null}
+      {members.length === 0 ? (
+        <Typography variant="body2" color="text.secondary">
+          {emptyLabel}
+        </Typography>
+      ) : (
+        <Stack direction="row" flexWrap="wrap" gap={0.5}>
+          {members.map((member) => (
+            <Chip key={member.id} size="small" label={member.label} title={member.id} />
+          ))}
+        </Stack>
+      )}
+    </Box>
+  );
+}
+
 function ActivePreviewCard({ active }: { active: ActiveCuratorResponse | null }) {
   if (!active) {
     return (
@@ -162,29 +204,74 @@ function ActivePreviewCard({ active }: { active: ActiveCuratorResponse | null })
   if (active.exclusive) rows.push(active.exclusive);
   else if (active.base) rows.push(active.base);
   rows.push(...active.enhancements);
-  if (rows.length === 0) {
-    return (
-      <Typography variant="body2" color="text.secondary">
-        No configuration matched at the display&apos;s current local time.
-      </Typography>
-    );
-  }
+
+  const effectiveMembers = active.effective_members;
+  const programControls = active.program_controls;
+
   return (
-    <Stack spacing={1}>
-      {rows.map((row) => (
-        <Stack key={`${row.layer}-${row.configuration_id}`} direction="row" spacing={1} alignItems="center">
-          <Chip size="small" label={layerLabel(row.layer)} color={LAYER_CHIP_COLOR[row.layer]} />
-          <Typography variant="body2" fontWeight={600}>
-            {row.configuration_name}
-          </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-            {row.configuration_id}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            — {row.match_reason}
-          </Typography>
+    <Stack spacing={2}>
+      {rows.length === 0 ? (
+        <Typography variant="body2" color="text.secondary">
+          No configuration matched at the display&apos;s current local time.
+        </Typography>
+      ) : (
+        <Stack spacing={1}>
+          {rows.map((row) => (
+            <Stack
+              key={`${row.layer}-${row.configuration_id}`}
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              flexWrap="wrap"
+            >
+              <Chip size="small" label={layerLabel(row.layer)} color={LAYER_CHIP_COLOR[row.layer]} />
+              <Typography variant="body2" fontWeight={600}>
+                {row.configuration_name}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+                {row.configuration_id}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                — {row.match_reason}
+              </Typography>
+            </Stack>
+          ))}
         </Stack>
-      ))}
+      )}
+
+      {effectiveMembers == null ? (
+        <Typography variant="caption" color="text.secondary">
+          Reload after display update to see active catalog membership.
+        </Typography>
+      ) : (
+        <Stack spacing={1.5}>
+          <ActiveEffectiveMemberChips
+            title="Screens"
+            members={effectiveMembers.screens}
+            emptyLabel="No screens in active program"
+            disabledCaption={
+              programControls && !programControls.screens_enabled
+                ? 'Screen program disabled by the active primary curator.'
+                : undefined
+            }
+          />
+          <ActiveEffectiveMemberChips
+            title="Ticker tapes"
+            members={effectiveMembers.tickers}
+            emptyLabel="No ticker tapes in active program"
+            disabledCaption={
+              programControls && !programControls.ticker_enabled
+                ? 'Ticker curation disabled by the active primary curator.'
+                : undefined
+            }
+          />
+          <ActiveEffectiveMemberChips
+            title="Overlays"
+            members={effectiveMembers.overlays}
+            emptyLabel="No overlays in active program"
+          />
+        </Stack>
+      )}
     </Stack>
   );
 }

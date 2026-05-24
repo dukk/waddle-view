@@ -54,7 +54,9 @@ import {
   exampleForScreenType,
   schemaForScreenType,
 } from '@/storage/configSchemaCache';
+import type { ContentCategoryOption } from '@/util/contentCategorySelect';
 import { formatIntervalDisplay } from '@/util/durationInput';
+import { screenListSchedulingSummary } from '@/util/screenListSummary';
 import { screenTypeLabel, screenTypeMetaFor } from '@/util/screenTypeLabel';
 
 type ScreenRow = ScreenDialogRow & {
@@ -65,6 +67,7 @@ type ScreenRow = ScreenDialogRow & {
 
 function screenSortFields(
   screenTypes: { screen_type: string; config_json_schema?: unknown }[],
+  categories: ContentCategoryOption[],
 ): ColumnSortField<ScreenRow>[] {
   return [
     {
@@ -118,6 +121,32 @@ function screenSortFields(
         ),
     },
     {
+      id: 'categories',
+      label: 'Categories',
+      compare: (a, b) =>
+        tieBreakLocale(
+          compareLocale(
+            screenListSchedulingSummary(a, categories).categories,
+            screenListSchedulingSummary(b, categories).categories,
+          ),
+          a.id,
+          b.id,
+        ),
+    },
+    {
+      id: 'placements',
+      label: 'Placements',
+      compare: (a, b) =>
+        tieBreakLocale(
+          compareLocale(
+            screenListSchedulingSummary(a, categories).placements,
+            screenListSchedulingSummary(b, categories).placements,
+          ),
+          a.id,
+          b.id,
+        ),
+    },
+    {
       id: 'description',
       label: 'Description',
       compare: (a, b) =>
@@ -130,13 +159,21 @@ function screenSortFields(
   ];
 }
 
-function screenMatchesSearch(row: ScreenRow, q: string, typeLabel: string): boolean {
+function screenMatchesSearch(
+  row: ScreenRow,
+  q: string,
+  typeLabel: string,
+  categories: ContentCategoryOption[],
+): boolean {
+  const summary = screenListSchedulingSummary(row, categories);
   return (
     row.id.toLowerCase().includes(q) ||
     screenRowTitle(row).toLowerCase().includes(q) ||
     row.screen_type.toLowerCase().includes(q) ||
     typeLabel.toLowerCase().includes(q) ||
-    screenRowDescription(row).toLowerCase().includes(q)
+    screenRowDescription(row).toLowerCase().includes(q) ||
+    summary.categories.toLowerCase().includes(q) ||
+    summary.placements.toLowerCase().includes(q)
   );
 }
 
@@ -185,8 +222,8 @@ function parseScreenRow(raw: Record<string, unknown>): ScreenRow | null {
     config_json: configJson,
     config_json_schema: readOptionalString(raw.config_json_schema),
     example_config_json: readOptionalString(raw.example_config_json),
-    min_dwell_seconds: readNumber(raw.min_dwell_seconds, 8),
-    max_dwell_seconds: readNumber(raw.max_dwell_seconds, 15),
+    min_dwell_seconds: readNumber(raw.min_dwell_seconds, 10),
+    max_dwell_seconds: readNumber(raw.max_dwell_seconds, 25),
     frequency_weight: readNumber(raw.frequency_weight, 100),
     min_gap_between_shows_seconds: readNumber(raw.min_gap_between_shows_seconds),
     min_placements_per_program: readNumber(raw.min_placements_per_program),
@@ -207,11 +244,13 @@ const screenCardPreviewSx = {
 function ScreenTable({
   rows,
   screenTypes,
+  categories,
   onEdit,
   onDelete,
 }: {
   rows: ScreenRow[];
   screenTypes: { screen_type: string; config_json_schema?: unknown }[];
+  categories: ContentCategoryOption[];
   onEdit: (row: ScreenRow) => void;
   onDelete: (id: string) => void;
 }) {
@@ -225,6 +264,8 @@ function ScreenTable({
             <TableCell>Dwell (min–max)</TableCell>
             <TableCell>Weight</TableCell>
             <TableCell>Gap</TableCell>
+            <TableCell>Categories</TableCell>
+            <TableCell>Placements</TableCell>
             <TableCell>Description</TableCell>
             <TableCell align="right">Actions</TableCell>
           </TableRow>
@@ -233,6 +274,7 @@ function ScreenTable({
           {rows.map((row) => {
             const title = screenRowTitle(row);
             const meta = screenTypeMetaFor(screenTypes, row.screen_type);
+            const summary = screenListSchedulingSummary(row, categories);
             return (
               <TableRow key={row.id} hover>
                 <TableCell sx={{ fontWeight: screenRowHasCustomTitle(row) ? 600 : 400 }}>{title}</TableCell>
@@ -243,6 +285,8 @@ function ScreenTable({
                 </TableCell>
                 <TableCell>{row.frequency_weight}</TableCell>
                 <TableCell>{formatIntervalDisplay(row.min_gap_between_shows_seconds)}</TableCell>
+                <TableCell sx={{ maxWidth: 200, wordBreak: 'break-word' }}>{summary.categories}</TableCell>
+                <TableCell>{summary.placements}</TableCell>
                 <TableCell sx={{ maxWidth: 280, wordBreak: 'break-word' }}>
                   {screenRowDescription(row)}
                 </TableCell>
@@ -275,6 +319,7 @@ export function ScreensPage() {
   const [error, setError] = useState<string | null>(null);
   const [dialogMode, setDialogMode] = useState<'create' | 'edit' | null>(null);
   const [editRow, setEditRow] = useState<ScreenRow | null>(null);
+  const [categories, setCategories] = useState<ContentCategoryOption[]>([]);
 
   const load = useCallback(async () => {
     if (!active) return;
@@ -300,6 +345,37 @@ export function ScreensPage() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    if (!active) {
+      setCategories([]);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await apiJson<{ items: ContentCategoryOption[] }>(
+          active,
+          '/v1/curator/categories',
+        );
+        if (!cancelled) {
+          setCategories(
+            (res.items ?? [])
+              .filter((c) => typeof c.id === 'string' && c.id.trim())
+              .map((c) => ({
+                id: c.id.trim(),
+                label: (c.label ?? c.id).trim() || c.id.trim(),
+              })),
+          );
+        }
+      } catch {
+        if (!cancelled) setCategories([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [active]);
+
   const schemaForType = useCallback(
     (screenType: string) => schemaForScreenType(schemas, screenType),
     [schemas],
@@ -313,12 +389,12 @@ export function ScreensPage() {
   const screenTypes = schemas?.screen_types ?? [];
 
   const screenSortOptions = useMemo(
-    () => buildColumnSortOptions(screenSortFields(screenTypes)),
-    [screenTypes],
+    () => buildColumnSortOptions(screenSortFields(screenTypes, categories)),
+    [screenTypes, categories],
   );
   const screenSortToolbar = useMemo(
-    () => columnSortToolbarOptions(screenSortFields(screenTypes)),
-    [screenTypes],
+    () => columnSortToolbarOptions(screenSortFields(screenTypes, categories)),
+    [screenTypes, categories],
   );
 
   const dataView = useClientDataView({
@@ -329,7 +405,7 @@ export function ScreensPage() {
     searchMatches: (row, q) => {
       const meta = screenTypeMetaFor(screenTypes, row.screen_type);
       const typeLabel = screenTypeLabel(row.screen_type, meta);
-      return screenMatchesSearch(row, q, typeLabel);
+      return screenMatchesSearch(row, q, typeLabel, categories);
     },
   });
 
@@ -435,6 +511,7 @@ export function ScreensPage() {
                   key={r.id}
                   row={r}
                   screenTypes={screenTypes}
+                  categories={categories}
                   onEdit={() => {
                     setEditRow(r);
                     setDialogMode('edit');
@@ -447,6 +524,7 @@ export function ScreensPage() {
             <ScreenTable
               rows={displayRows}
               screenTypes={screenTypes}
+              categories={categories}
               onEdit={(r) => {
                 setEditRow(r);
                 setDialogMode('edit');
@@ -506,11 +584,13 @@ export function ScreensPage() {
 function ScreenCard({
   row,
   screenTypes,
+  categories,
   onEdit,
   onDelete,
 }: {
   row: ScreenRow;
   screenTypes: { screen_type: string; config_json_schema?: unknown }[];
+  categories: ContentCategoryOption[];
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -519,6 +599,7 @@ function ScreenCard({
   const typeLabel = screenTypeLabel(row.screen_type, meta);
   const previewKind = screenTypePreviewKind(row.screen_type);
   const description = screenRowDescription(row);
+  const summary = screenListSchedulingSummary(row, categories);
 
   return (
     <Card
@@ -556,8 +637,9 @@ function ScreenCard({
           <Chip size="small" label={typeLabel} variant="outlined" sx={{ alignSelf: 'flex-start' }} />
           <Typography variant="caption" color="text.secondary" display="block">
             Dwell {formatIntervalDisplay(row.min_dwell_seconds)} –{' '}
-            {formatIntervalDisplay(row.max_dwell_seconds)} · weight {row.frequency_weight} · gap{' '}
-            {formatIntervalDisplay(row.min_gap_between_shows_seconds)}
+            {formatIntervalDisplay(row.max_dwell_seconds)} · gap{' '}
+            {formatIntervalDisplay(row.min_gap_between_shows_seconds)} · placements{' '}
+            {summary.placements} · {summary.categories} · weight {row.frequency_weight}
           </Typography>
           {description ? (
             <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-word' }}>

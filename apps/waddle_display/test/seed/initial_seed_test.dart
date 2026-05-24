@@ -29,9 +29,9 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await ensureInitialSeed(db);
-    final stub = await (db.select(db.integrations)
-          ..where((t) => t.id.equals('stub')))
-        .getSingleOrNull();
+    final stub = await (db.select(
+      db.integrations,
+    )..where((t) => t.id.equals('stub'))).getSingleOrNull();
     expect(stub, isNull);
     await db.close();
   });
@@ -40,9 +40,9 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     await ensureInitialSeed(db);
-    final rows = await (db.select(db.tickerTapes)
-          ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
-        .get();
+    final rows = await (db.select(
+      db.tickerTapes,
+    )..orderBy([(t) => OrderingTerm.asc(t.sortOrder)])).get();
     expect(rows.length, 5);
     expect(rows.map((r) => r.tickerType).toList(), [
       'time',
@@ -51,15 +51,16 @@ void main() {
       'stocks',
       'static_text',
     ]);
-    final custom =
-        rows.singleWhere((r) => r.id == 'ticker_custom');
+    final custom = rows.singleWhere((r) => r.id == 'ticker_custom');
     expect(custom.tickerType, 'static_text');
-    final bootstrapMembers = await (db.select(db.curatorConfigurationMembers)
-          ..where((t) => t.configurationId.equals('bootstrap')))
-        .get();
+    final bootstrapMembers = await (db.select(
+      db.curatorConfigurationMembers,
+    )..where((t) => t.configurationId.equals('bootstrap'))).get();
     expect(
       bootstrapMembers.any(
-        (m) => m.entityType == kCuratorMemberEntityTicker && m.entityId == 'ticker_custom',
+        (m) =>
+            m.entityType == kCuratorMemberEntityTicker &&
+            m.entityId == 'ticker_custom',
       ),
       isFalse,
     );
@@ -78,21 +79,21 @@ void main() {
 
     await ensureInitialSeed(db);
 
-    final left = await (db.select(db.screens)
-          ..where((t) => t.id.equals('news')))
-        .getSingleOrNull();
-    final right = await (db.select(db.screens)
-          ..where((t) => t.id.equals('news_right')))
-        .getSingleOrNull();
-    final columns = await (db.select(db.screens)
-          ..where((t) => t.id.equals('news_columns')))
-        .getSingleOrNull();
-    final stack = await (db.select(db.screens)
-          ..where((t) => t.id.equals('news_stack')))
-        .getSingleOrNull();
-    final grid = await (db.select(db.screens)
-          ..where((t) => t.id.equals('news_grid')))
-        .getSingleOrNull();
+    final left = await (db.select(
+      db.screens,
+    )..where((t) => t.id.equals('news'))).getSingleOrNull();
+    final right = await (db.select(
+      db.screens,
+    )..where((t) => t.id.equals('news_right'))).getSingleOrNull();
+    final columns = await (db.select(
+      db.screens,
+    )..where((t) => t.id.equals('news_columns'))).getSingleOrNull();
+    final stack = await (db.select(
+      db.screens,
+    )..where((t) => t.id.equals('news_stack'))).getSingleOrNull();
+    final grid = await (db.select(
+      db.screens,
+    )..where((t) => t.id.equals('news_grid'))).getSingleOrNull();
     expect(left, isNotNull);
     expect(right, isNotNull);
     expect(columns, isNotNull);
@@ -107,7 +108,10 @@ void main() {
     expect(right.configJson.contains('"imageOnRight":true'), isTrue);
     expect(columns.screenType, 'news_columns');
     expect(columns.configJson.contains('"columnCount":3'), isTrue);
-    expect(columns.configJson.contains('"summaryCapacityCharsPerColumn":220'), isTrue);
+    expect(
+      columns.configJson.contains('"summaryCapacityCharsPerColumn":220'),
+      isTrue,
+    );
     expect(left.configJson.contains('"summaryCapacityChars":1200'), isTrue);
     expect(stack.screenType, 'news_stack');
     expect(grid.screenType, 'news_grid');
@@ -128,68 +132,84 @@ void main() {
     final rows = await db.select(db.configKeyValues).get();
     final byKey = {for (final r in rows) r.key: r.value};
     expect(byKey[kDisplayTimezoneKvKey], kDefaultDisplayTimezoneIana);
-    expect(byKey.containsKey('curator.news.require_photo_for_curation'), isFalse);
+    expect(
+      byKey.containsKey('curator.news.require_photo_for_curation'),
+      isFalse,
+    );
     expect(byKey[kAlertSeverityIconsKvKey], kDefaultAlertSeverityIconsJson);
     await db.close();
   });
 
-  test('ensureInitialSeed seeds content_categories with material icons', () async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
+  test(
+    'ensureInitialSeed seeds content_categories with material icons',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
 
-    await ensureInitialSeed(db);
+      await ensureInitialSeed(db);
 
-    final rows = await db.select(db.contentCategories).get();
-    expect(rows.length, kContentCategoryDefaults.length);
-    final tech = await (db.select(db.contentCategories)
-          ..where((t) => t.id.equals('technology')))
-        .getSingle();
-    expect(tech.materialIconName, 'memory');
-    expect(tech.iconBlobKey, isNull);
-    await db.close();
-  });
+      final rows = await db.select(db.contentCategories).get();
+      expect(rows.length, kContentCategoryDefaults.length);
+      final tech = await (db.select(
+        db.contentCategories,
+      )..where((t) => t.id.equals('technology'))).getSingle();
+      expect(tech.materialIconName, 'memory');
+      expect(tech.iconBlobKey, isNull);
+      await db.close();
+    },
+  );
 
-  test('ensureInitialSeed inserts weather provider and weather screen', () async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
+  test(
+    'ensureInitialSeed inserts weather provider and weather screen',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
 
-    await ensureInitialSeed(db);
+      await ensureInitialSeed(db);
 
-    final provider = await (db.select(db.integrations)
-          ..where((t) => t.id.equals(kDefaultWeatherOpenWeatherMapIntegrationId)))
-        .getSingleOrNull();
-    expect(provider, isNotNull);
-    expect(provider!.integrationType, 'weather_openweathermap');
+      final provider =
+          await (db.select(db.integrations)..where(
+                (t) => t.id.equals(kDefaultWeatherOpenWeatherMapIntegrationId),
+              ))
+              .getSingleOrNull();
+      expect(provider, isNotNull);
+      expect(provider!.integrationType, 'weather_openweathermap');
 
-    final nws = await (db.select(db.integrations)
-          ..where((t) => t.id.equals(kDefaultWeatherAlertsNwsIntegrationId)))
-        .getSingleOrNull();
-    expect(nws, isNotNull);
-    expect(nws!.integrationType, 'weather_alerts_nws');
-    expect(nws.enabled, isTrue);
-    expect(
-      integrationBaseUrlFromConfigJson(nws.configJson),
-      'https://api.weather.gov',
-    );
+      final nws =
+          await (db.select(db.integrations)..where(
+                (t) => t.id.equals(kDefaultWeatherAlertsNwsIntegrationId),
+              ))
+              .getSingleOrNull();
+      expect(nws, isNotNull);
+      expect(nws!.integrationType, 'weather_alerts_nws');
+      expect(nws.enabled, isTrue);
+      expect(
+        integrationBaseUrlFromConfigJson(nws.configJson),
+        'https://api.weather.gov',
+      );
 
-    final screen = await (db.select(db.screens)
-          ..where((t) => t.id.equals('weather')))
-        .getSingleOrNull();
-    expect(screen, isNotNull);
-    expect(screen!.screenType, 'weather');
+      final screen = await (db.select(
+        db.screens,
+      )..where((t) => t.id.equals('weather'))).getSingleOrNull();
+      expect(screen, isNotNull);
+      expect(screen!.screenType, 'weather');
 
-    final locations = await (db.select(db.interestsLocations)
-          ..orderBy([(t) => OrderingTerm.asc(t.id)]))
-        .get();
-    expect(locations.map((e) => e.id), containsAll(<String>[
-      'tokyo_jp',
-      'delhi_in',
-      'shanghai_cn',
-      'sao_paulo_br',
-      'new_york_ny',
-    ]));
-    await db.close();
-  });
+      final locations = await (db.select(
+        db.interestsLocations,
+      )..orderBy([(t) => OrderingTerm.asc(t.id)])).get();
+      expect(
+        locations.map((e) => e.id),
+        containsAll(<String>[
+          'tokyo_jp',
+          'delhi_in',
+          'shanghai_cn',
+          'sao_paulo_br',
+          'new_york_ny',
+        ]),
+      );
+      await db.close();
+    },
+  );
 
   test('ensureInitialSeed inserts photo_onedrive provider disabled', () async {
     final db = openMemoryDatabase();
@@ -197,9 +217,10 @@ void main() {
 
     await ensureInitialSeed(db);
 
-    final row = await (db.select(db.integrations)
-          ..where((t) => t.id.equals(kDefaultPhotoOneDriveIntegrationId)))
-        .getSingleOrNull();
+    final row =
+        await (db.select(db.integrations)
+              ..where((t) => t.id.equals(kDefaultPhotoOneDriveIntegrationId)))
+            .getSingleOrNull();
     expect(row, isNotNull);
     expect(row!.enabled, isFalse);
     expect(row.integrationType, 'photo_onedrive');
@@ -213,9 +234,10 @@ void main() {
 
     await ensureInitialSeed(db);
 
-    final row = await (db.select(db.integrations)
-          ..where((t) => t.id.equals(kDefaultTriviaOpenTdbIntegrationId)))
-        .getSingleOrNull();
+    final row =
+        await (db.select(db.integrations)
+              ..where((t) => t.id.equals(kDefaultTriviaOpenTdbIntegrationId)))
+            .getSingleOrNull();
     expect(row, isNotNull);
     expect(row!.enabled, isFalse);
     expect(row.integrationType, 'trivia_opentdb');
@@ -233,9 +255,10 @@ void main() {
 
     await ensureInitialSeed(db);
 
-    final row = await (db.select(db.integrations)
-          ..where((t) => t.id.equals(kDefaultJokeJokeapiIntegrationId)))
-        .getSingleOrNull();
+    final row =
+        await (db.select(db.integrations)
+              ..where((t) => t.id.equals(kDefaultJokeJokeapiIntegrationId)))
+            .getSingleOrNull();
     expect(row, isNotNull);
     expect(row!.enabled, isFalse);
     expect(row.integrationType, 'joke_jokeapi');
@@ -254,9 +277,10 @@ void main() {
 
     await ensureInitialSeed(db);
 
-    final row = await (db.select(db.integrations)
-          ..where((t) => t.id.equals(kDefaultPhotoFlickrIntegrationId)))
-        .getSingleOrNull();
+    final row =
+        await (db.select(db.integrations)
+              ..where((t) => t.id.equals(kDefaultPhotoFlickrIntegrationId)))
+            .getSingleOrNull();
     expect(row, isNotNull);
     expect(row!.enabled, isFalse);
     expect(row.integrationType, 'photo_flickr');
@@ -277,50 +301,55 @@ void main() {
       'joke_bucket',
       'trivia_bucket',
     ]) {
-      final row = await (db.select(db.integrations)
-            ..where((t) => t.integrationType.equals(type)))
-          .getSingleOrNull();
+      final row = await (db.select(
+        db.integrations,
+      )..where((t) => t.integrationType.equals(type))).getSingleOrNull();
       expect(row, isNull, reason: type);
     }
 
     await db.close();
   });
 
-  test('ensureInitialSeed inserts photo_bing_image_of_the_day provider enabled', () async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
+  test(
+    'ensureInitialSeed inserts photo_bing_image_of_the_day provider enabled',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
 
-    await ensureInitialSeed(db);
+      await ensureInitialSeed(db);
 
-    final row = await (db.select(db.integrations)
-          ..where((t) => t.id.equals(kDefaultPhotoBingIotdIntegrationId)))
-        .getSingleOrNull();
-    expect(row, isNotNull);
-    expect(row!.enabled, isTrue);
-    expect(row.integrationType, 'photo_bing_image_of_the_day');
-    expect(
-      integrationBaseUrlFromConfigJson(row.configJson),
-      'https://www.bing.com',
-    );
-    expect(row.configJson, contains('"resolution":"UHD"'));
-    expect(row.configJson, contains('"category":"bing"'));
-    await db.close();
-  });
+      final row =
+          await (db.select(db.integrations)
+                ..where((t) => t.id.equals(kDefaultPhotoBingIotdIntegrationId)))
+              .getSingleOrNull();
+      expect(row, isNotNull);
+      expect(row!.enabled, isTrue);
+      expect(row.integrationType, 'photo_bing_image_of_the_day');
+      expect(
+        integrationBaseUrlFromConfigJson(row.configJson),
+        'https://www.bing.com',
+      );
+      expect(row.configJson, contains('"resolution":"UHD"'));
+      expect(row.configJson, contains('"category":"bing"'));
+      await db.close();
+    },
+  );
 
-  test('ensureInitialSeed seeds pexels source queries and categories', () async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
+  test(
+    'ensureInitialSeed seeds pexels source queries and categories',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
 
-    await ensureInitialSeed(db);
+      await ensureInitialSeed(db);
 
-    final photo = await (db.select(db.integrations)
-          ..where((t) => t.id.equals(kDefaultPhotoPexelsIntegrationId)))
-        .getSingleOrNull();
-    expect(photo, isNotNull);
-    final extra = PexelsPhotoProviderExtraConfig.parse(photo!.configJson);
-    expect(
-      extra.sources.map((e) => e.query).toList(),
-      [
+      final photo =
+          await (db.select(db.integrations)
+                ..where((t) => t.id.equals(kDefaultPhotoPexelsIntegrationId)))
+              .getSingleOrNull();
+      expect(photo, isNotNull);
+      final extra = PexelsPhotoProviderExtraConfig.parse(photo!.configJson);
+      expect(extra.sources.map((e) => e.query).toList(), [
         'Nature',
         'Flowers',
         'Landscape',
@@ -328,11 +357,8 @@ void main() {
         'Mountains',
         'Motivational',
         'Aquarium',
-      ],
-    );
-    expect(
-      extra.sources.map((e) => e.category).toList(),
-      [
+      ]);
+      expect(extra.sources.map((e) => e.category).toList(), [
         'nature',
         'flowers',
         'landscape',
@@ -340,61 +366,67 @@ void main() {
         'mountains',
         'motivational',
         'aquarium',
-      ],
-    );
-    await db.close();
-  });
+      ]);
+      await db.close();
+    },
+  );
 
-  test('ensureInitialSeed inserts calendar_google provider (no google client id KV)', () async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
-    await ensureInitialSeed(db);
+  test(
+    'ensureInitialSeed inserts calendar_google provider (no google client id KV)',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
+      await ensureInitialSeed(db);
 
-    final provider = await (db.select(db.integrations)
-          ..where((t) => t.id.equals(kDefaultCalendarGoogleIntegrationId)))
-        .getSingleOrNull();
-    expect(provider, isNotNull);
-    expect(provider!.integrationType, 'calendar_google');
-    expect(provider.enabled, isFalse);
+      final provider =
+          await (db.select(
+                db.integrations,
+              )..where((t) => t.id.equals(kDefaultCalendarGoogleIntegrationId)))
+              .getSingleOrNull();
+      expect(provider, isNotNull);
+      expect(provider!.integrationType, 'calendar_google');
+      expect(provider.enabled, isFalse);
 
-    final clientId = await (db.select(db.configKeyValues)
-          ..where((t) => t.key.equals(kGoogleClientIdKvKey)))
-        .getSingleOrNull();
-    expect(clientId, isNull);
+      final clientId = await (db.select(
+        db.configKeyValues,
+      )..where((t) => t.key.equals(kGoogleClientIdKvKey))).getSingleOrNull();
+      expect(clientId, isNull);
 
-    await db.close();
-  });
+      await db.close();
+    },
+  );
 
-  test('ensureInitialSeed inserts stocks provider, default symbols, screen', () async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
+  test(
+    'ensureInitialSeed inserts stocks provider, default symbols, screen',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
 
-    await ensureInitialSeed(db);
+      await ensureInitialSeed(db);
 
-    final provider = await (db.select(db.integrations)
-          ..where((t) => t.id.equals(kDefaultStockFinnhubIntegrationId)))
-        .getSingleOrNull();
-    expect(provider, isNotNull);
-    expect(provider!.integrationType, 'stock_finnhub');
-    expect(provider.enabled, isTrue);
-    expect(
-      integrationBaseUrlFromConfigJson(provider.configJson),
-      'https://finnhub.io',
-    );
+      final provider =
+          await (db.select(db.integrations)
+                ..where((t) => t.id.equals(kDefaultStockFinnhubIntegrationId)))
+              .getSingleOrNull();
+      expect(provider, isNotNull);
+      expect(provider!.integrationType, 'stock_finnhub');
+      expect(provider.enabled, isTrue);
+      expect(
+        integrationBaseUrlFromConfigJson(provider.configJson),
+        'https://finnhub.io',
+      );
 
-    final screen = await (db.select(db.screens)
-          ..where((t) => t.id.equals('stock_quotes')))
-        .getSingleOrNull();
-    expect(screen, isNotNull);
-    expect(screen!.screenType, 'stock_quotes');
-    expect(screen.dataKey, 'stocks');
+      final screen = await (db.select(
+        db.screens,
+      )..where((t) => t.id.equals('stock_quotes'))).getSingleOrNull();
+      expect(screen, isNotNull);
+      expect(screen!.screenType, 'stock_quotes');
+      expect(screen.dataKey, 'stocks');
 
-    final symbols = await (db.select(db.interestsStockSymbols)
-          ..orderBy([(t) => OrderingTerm.asc(t.id)]))
-        .get();
-    expect(
-      symbols.map((s) => s.symbol).toList(),
-      [
+      final symbols = await (db.select(
+        db.interestsStockSymbols,
+      )..orderBy([(t) => OrderingTerm.asc(t.id)])).get();
+      expect(symbols.map((s) => s.symbol).toList(), [
         'AAPL',
         'AMZN',
         'CSCO',
@@ -403,6 +435,10 @@ void main() {
         'IBM',
         'INTC',
         'IWM',
+        'JNJ',
+        'JPM',
+        'KO',
+        'MA',
         'META',
         'MSFT',
         'NFLX',
@@ -411,28 +447,38 @@ void main() {
         'QQQ',
         'SPY',
         'TSLA',
+        'UNH',
+        'V',
         'VOO',
-      ],
-    );
-    final enabled = symbols.where((s) => s.enabled).map((s) => s.symbol).toSet();
-    expect(enabled, {'AAPL', 'GOOG', 'MSFT', 'NVDA', 'SPY', 'VOO'});
-    await db.close();
-  });
+        'WMT',
+        'XOM',
+      ]);
+      final enabled = symbols
+          .where((s) => s.enabled)
+          .map((s) => s.symbol)
+          .toSet();
+      expect(enabled, {'AAPL', 'GOOG', 'MSFT', 'NVDA', 'SPY', 'VOO'});
+      await db.close();
+    },
+  );
 
-  test('ensureInitialSeed inserts May 13 birthday confetti example overlay', () async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
-    await ensureInitialSeed(db);
-    final rows = await fetchDisplayOverlays(db);
-    final birthday = rows
-        .where((r) => r.id == kDefaultBirthdayConfettiOverlayId)
-        .toList();
-    expect(birthday, isNotEmpty);
-    final r = birthday.single;
-    expect(r.label, 'Default Birthday Confetti');
-    expect(r.overlayType, kOverlayTypeBirthdayConfetti);
-    await db.close();
-  });
+  test(
+    'ensureInitialSeed inserts May 13 birthday confetti example overlay',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
+      await ensureInitialSeed(db);
+      final rows = await fetchDisplayOverlays(db);
+      final birthday = rows
+          .where((r) => r.id == kDefaultBirthdayConfettiOverlayId)
+          .toList();
+      expect(birthday, isNotEmpty);
+      final r = birthday.single;
+      expect(r.label, 'Default Birthday Confetti');
+      expect(r.overlayType, kOverlayTypeBirthdayConfetti);
+      await db.close();
+    },
+  );
 
   test('ensureInitialSeed inserts default floating balloons overlay', () async {
     final db = openMemoryDatabase();
@@ -456,7 +502,9 @@ void main() {
     await warmDatabase(db);
     await ensureInitialSeed(db);
     final rows = await fetchDisplayOverlays(db);
-    final ducks = rows.where((r) => r.id == kDefaultFallingDucksOverlayId).toList();
+    final ducks = rows
+        .where((r) => r.id == kDefaultFallingDucksOverlayId)
+        .toList();
     expect(ducks, isNotEmpty);
     final r = ducks.single;
     expect(r.label, 'Default Falling Ducks');
@@ -478,10 +526,9 @@ void main() {
     final r = bounce.single;
     expect(r.label, contains('Wattle View'));
     expect(r.overlayType, kOverlayTypeBouncingMessage);
-    expect(
-      (jsonDecode(r.configJson) as Map<String, dynamic>)['messages'],
-      [kDefaultBouncingMessageOverlayPhrase],
-    );
+    expect((jsonDecode(r.configJson) as Map<String, dynamic>)['messages'], [
+      kDefaultBouncingMessageOverlayPhrase,
+    ]);
     await db.close();
   });
 }

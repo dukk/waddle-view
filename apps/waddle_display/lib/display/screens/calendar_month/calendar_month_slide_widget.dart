@@ -56,11 +56,20 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
   Timer? _scrollDelayTimer;
   bool _dwellReported = false;
   String? _resolvedFilterCategoryId;
+  Map<String, String> _operatorKv = const {};
+
+  Future<void> _loadOperatorKv() async {
+    final rows = await widget.db.select(widget.db.configKeyValues).get();
+    final kv = {for (final r in rows) r.key: r.value};
+    if (mounted) {
+      setState(() => _operatorKv = kv);
+    }
+  }
 
   Future<void> _refreshDayBoundaryFromDb() async {
-    final row = await (widget.db.select(widget.db.configKeyValues)
-          ..where((t) => t.key.equals(kDisplayTimezoneKvKey)))
-        .getSingleOrNull();
+    final row = await (widget.db.select(
+      widget.db.configKeyValues,
+    )..where((t) => t.key.equals(kDisplayTimezoneKvKey))).getSingleOrNull();
     final zone = resolveDisplayTimeZoneLocation(row?.value);
     final next = startOfTodayInZoneMs(zone, widget.clock.now());
     if (next != _todayMsBoundary && mounted) {
@@ -76,6 +85,7 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
       widget.clock.now(),
     );
     unawaited(_refreshDayBoundaryFromDb());
+    unawaited(_loadOperatorKv());
     unawaited(_resolveFilterCategory());
     _boundaryTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       unawaited(_refreshDayBoundaryFromDb());
@@ -106,7 +116,10 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
   int get _upcomingDays {
     final v = widget.spec.config['upcomingDays'];
     if (v is int) {
-      return v.clamp(kCalendarUpcomingOverlayDaysMin, kCalendarUpcomingOverlayDaysMax);
+      return v.clamp(
+        kCalendarUpcomingOverlayDaysMin,
+        kCalendarUpcomingOverlayDaysMax,
+      );
     }
     if (v is double) {
       return v.round().clamp(
@@ -117,7 +130,7 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
     return kCalendarUpcomingOverlayDaysDefault;
   }
 
-  bool get _hidePastEvents => _cfgBool('hidePastEvents', false);
+  bool get _hidePastEvents => _cfgBool('hidePastEvents', true);
 
   void _onUpcomingScrollMetrics() {
     if (_dwellReported || widget.onReportDesiredDwell == null) return;
@@ -132,7 +145,8 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
     final scrollDelayMs = _cfgInt('upcomingScrollDelayMs', 0);
     final trailingHoldMs = _cfgInt('upcomingTrailingHoldMs', 0);
     final minReadMs = _cfgInt('upcomingMinReadMs', 8000);
-    final pps = (widget.spec.config['upcomingScrollPixelsPerSecond'] as num?)
+    final pps =
+        (widget.spec.config['upcomingScrollPixelsPerSecond'] as num?)
             ?.toDouble() ??
         48.0;
     _scrollDelayTimer?.cancel();
@@ -198,7 +212,10 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
   }
 
   CalendarMonthUpcomingTimeOptions get _upcomingTimeOptions =>
-      CalendarMonthUpcomingTimeOptions.fromConfig(widget.spec.config);
+      CalendarMonthUpcomingTimeOptions.fromConfig(
+        widget.spec.config,
+        kv: _operatorKv,
+      );
 
   String? get _filterCategoryId => _resolvedFilterCategoryId;
 
@@ -224,8 +241,7 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
           child: StreamBuilder<String?>(
             stream: watchDisplayTimezoneKv(widget.db),
             builder: (context, tzSnap) {
-              final displayZone =
-                  resolveDisplayTimeZoneLocation(tzSnap.data);
+              final displayZone = resolveDisplayTimeZoneLocation(tzSnap.data);
               final eventStreamStartMs = startOfMonthInZoneMs(
                 displayZone,
                 widget.clock.now(),
@@ -260,10 +276,15 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
                           ),
                         ),
                 builder: (context, snapshot) {
-                  final nowWall =
-                      calendarInstantInZone(widget.clock.now(), displayZone);
-                  final startOfToday =
-                      DateTime(nowWall.year, nowWall.month, nowWall.day);
+                  final nowWall = calendarInstantInZone(
+                    widget.clock.now(),
+                    displayZone,
+                  );
+                  final startOfToday = DateTime(
+                    nowWall.year,
+                    nowWall.month,
+                    nowWall.day,
+                  );
                   final todayStartZ = TZDateTime(
                     displayZone,
                     startOfToday.year,
@@ -271,48 +292,45 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
                     startOfToday.day,
                   );
                   final upcomingDays = _upcomingDays;
-                  final nextDaysEndZ =
-                      todayStartZ.add(Duration(days: upcomingDays));
+                  final nextDaysEndZ = todayStartZ.add(
+                    Duration(days: upcomingDays),
+                  );
                   final fromMs = todayStartZ.millisecondsSinceEpoch;
                   final toMs = nextDaysEndZ.millisecondsSinceEpoch;
-                  final windowEndDate =
-                      startOfToday.add(Duration(days: upcomingDays));
+                  final windowEndDate = startOfToday.add(
+                    Duration(days: upcomingDays),
+                  );
                   final nowWallMs = nowWall.millisecondsSinceEpoch;
                   final bundle = snapshot.data;
                   final allEvents = bundle?.events ?? [];
-                  final filtered = allEvents
-                      .where(
-                        (event) {
-                          if (event.allDay) {
-                            if (!_calendarAllDayInUpcomingWindow(
-                              event,
-                              startOfToday,
-                              windowEndDate,
-                            )) {
-                              return false;
-                            }
-                            if (_hidePastEvents) {
-                              return !calendarAllDayCivilRangesOverlap(
-                                event.startMs,
-                                event.endMs,
-                                startOfToday.subtract(const Duration(days: 1)),
-                                startOfToday,
-                              );
-                            }
-                            return true;
-                          }
-                          final ms =
-                              event.startMs.millisecondsSinceEpoch;
-                          if (ms < fromMs || ms >= toMs) {
-                            return false;
-                          }
-                          if (_hidePastEvents && ms < nowWallMs) {
-                            return false;
-                          }
-                          return true;
-                        },
-                      )
-                      .toList();
+                  final filtered = allEvents.where((event) {
+                    if (event.allDay) {
+                      if (!_calendarAllDayInUpcomingWindow(
+                        event,
+                        startOfToday,
+                        windowEndDate,
+                      )) {
+                        return false;
+                      }
+                      if (_hidePastEvents) {
+                        return !calendarAllDayCivilRangesOverlap(
+                          event.startMs,
+                          event.endMs,
+                          startOfToday.subtract(const Duration(days: 1)),
+                          startOfToday,
+                        );
+                      }
+                      return true;
+                    }
+                    final ms = event.startMs.millisecondsSinceEpoch;
+                    if (ms < fromMs || ms >= toMs) {
+                      return false;
+                    }
+                    if (_hidePastEvents && ms < nowWallMs) {
+                      return false;
+                    }
+                    return true;
+                  }).toList();
                   final deduped = dedupeCalendarEventsForDisplay(filtered);
                   final rowByEventId = {
                     for (final r in bundle?.rows ?? <CalendarSlideEventRow>[])
@@ -329,8 +347,11 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
                     displayZone: displayZone,
                     timeOptions: upcomingTime,
                   );
-                  final monthAnchor =
-                      DateTime(nowWall.year, nowWall.month, nowWall.day);
+                  final monthAnchor = DateTime(
+                    nowWall.year,
+                    nowWall.month,
+                    nowWall.day,
+                  );
                   final markersByDay = bundle == null
                       ? <int, CalendarMonthDayMarkers>{}
                       : buildCalendarMonthDayMarkersByDay(
@@ -348,8 +369,10 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
                     horizontal: 24.0 * s,
                     vertical: (layoutCompact ? 8.0 : 16.0) * s,
                   );
-                  final usableHeight =
-                      math.max(120.0, height - outerPad.vertical);
+                  final usableHeight = math.max(
+                    120.0,
+                    height - outerPad.vertical,
+                  );
 
                   return Padding(
                     padding: outerPad,
@@ -395,7 +418,8 @@ class _CalendarMonthSlideWidgetState extends State<CalendarMonthSlideWidget> {
                                       ? upcomingTime.timeWidthCompact * s
                                       : upcomingTime.timeWidth * s,
                                   scrollController: _upcomingScroll,
-                                  enableScroll: widget.onReportDesiredDwell != null,
+                                  enableScroll:
+                                      widget.onReportDesiredDwell != null,
                                 ),
                               ),
                             ),
@@ -440,4 +464,3 @@ bool _calendarAllDayInUpcomingWindow(
     windowEndDate,
   );
 }
-

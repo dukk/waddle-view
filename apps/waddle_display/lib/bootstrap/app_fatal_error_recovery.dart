@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../debug/debug_console_disk_logger.dart';
+import 'embedded_webview_dispose.dart';
 
 /// Prevents nested fatal handling (e.g. errors during logging or restart).
 final class FatalHandlingGate {
@@ -42,9 +43,7 @@ void invokeDefaultLogFatalForTest(
 }
 
 @visibleForTesting
-void invokeDefaultRecoverableFlutterLayoutForTest(
-  FlutterErrorDetails details,
-) {
+void invokeDefaultRecoverableFlutterLayoutForTest(FlutterErrorDetails details) {
   _defaultLogRecoverableFlutterLayout(details);
 }
 
@@ -111,20 +110,20 @@ bool isRecoverableHardwareKeyboardError(FlutterErrorDetails details) {
   if (details.exception is! AssertionError) return false;
   final stack = details.stack?.toString();
   if (stack == null) return false;
-  return stack.contains(
-    'package:flutter/src/services/hardware_keyboard.dart',
-  );
+  return stack.contains('package:flutter/src/services/hardware_keyboard.dart');
 }
 
-/// [webview_win_floating] may invoke `init` on its method channel before the
-/// native plugin is registered (import-time static init) or after hot restart.
-/// The web_page slide path surfaces a failed session instead of restarting.
+/// [webview_win_floating] missing-plugin init failures and benign dispose races
+/// (native webview already torn down) must not restart the display process.
 @visibleForTesting
 bool isRecoverableEmbeddedWebViewPluginError(Object error) {
-  if (error is! MissingPluginException) {
-    return false;
+  if (error is MissingPluginException) {
+    return error.toString().contains('webview_win_floating');
   }
-  return error.toString().contains('webview_win_floating');
+  if (error is PlatformException) {
+    return isBenignEmbeddedWebViewDisposePlatformException(error);
+  }
+  return false;
 }
 
 /// media_kit texture resize / platform teardown races during slide transitions
@@ -216,14 +215,10 @@ void installGlobalFatalErrorHandlers({
       final library = isRecoverableEmbeddedWebViewPluginError(error)
           ? 'webview_win_floating'
           : isRecoverableMediaKitFlutterError(details)
-              ? 'media_kit'
-              : 'services';
+          ? 'media_kit'
+          : 'services';
       logRecoverable(
-        FlutterErrorDetails(
-          exception: error,
-          stack: stack,
-          library: library,
-        ),
+        FlutterErrorDetails(exception: error, stack: stack, library: library),
       );
       return true;
     }

@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:waddle_shared/persistence/display_overlay_row.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+
+import '../../bootstrap/embedded_webview_dispose.dart';
 
 /// Transparent web layer for plugin overlays (`config_json.url`).
 class PluginWebOverlay extends StatefulWidget {
@@ -31,14 +34,22 @@ class _PluginWebOverlayState extends State<PluginWebOverlay> {
   }
 
   @override
+  void dispose() {
+    final controller = _controller;
+    _controller = null;
+    if (controller != null) {
+      unawaited(disposeEmbeddedWebViewController(controller));
+    }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final c = _controller;
     if (c == null) {
       return const SizedBox.shrink();
     }
-    return IgnorePointer(
-      child: WebViewWidget(controller: c),
-    );
+    return IgnorePointer(child: WebViewWidget(controller: c));
   }
 
   Map<String, dynamic> _parseConfig(String raw) {

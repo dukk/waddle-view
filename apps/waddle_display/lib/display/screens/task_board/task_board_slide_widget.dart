@@ -44,7 +44,11 @@ class TaskBoardSlideWidget extends StatelessWidget {
         ),
       );
     }
-    final maxPerColumn = _cfgInt(spec.config, 'maxTasksPerColumn', 12).clamp(1, 50);
+    final maxPerColumn = _cfgInt(
+      spec.config,
+      'maxTasksPerColumn',
+      12,
+    ).clamp(1, 50);
     final showCompleted = _cfgBool(spec.config, 'showCompleted', false);
     final s = DashboardViewportScope.scaleOf(context);
 
@@ -130,16 +134,25 @@ class _TaskColumn extends StatelessWidget {
           decoration: BoxDecoration(
             color: theme.slidePanelColor,
             borderRadius: BorderRadius.circular(12 * scale),
-            border: Border.all(color: theme.dividerColor.withValues(alpha: 0.35)),
+            border: Border.all(
+              color: theme.dividerColor.withValues(alpha: 0.35),
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: EdgeInsets.fromLTRB(12 * scale, 12 * scale, 12 * scale, 8 * scale),
+                padding: EdgeInsets.fromLTRB(
+                  12 * scale,
+                  12 * scale,
+                  12 * scale,
+                  8 * scale,
+                ),
                 child: Text(
                   list.label,
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -150,17 +163,28 @@ class _TaskColumn extends StatelessWidget {
                         child: Text(
                           'No tasks',
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.6,
+                            ),
                           ),
                         ),
                       )
                     : ListView.separated(
-                        padding: EdgeInsets.fromLTRB(10 * scale, 0, 10 * scale, 12 * scale),
+                        padding: EdgeInsets.fromLTRB(
+                          10 * scale,
+                          0,
+                          10 * scale,
+                          12 * scale,
+                        ),
                         itemCount: tasks.length,
-                        separatorBuilder: (_, __) => SizedBox(height: 8 * scale),
+                        separatorBuilder: (_, _) => SizedBox(height: 8 * scale),
                         itemBuilder: (context, index) {
                           final task = tasks[index];
-                          return _TaskCard(task: task, theme: theme, scale: scale);
+                          return _TaskCard(
+                            task: task,
+                            theme: theme,
+                            scale: scale,
+                          );
                         },
                       ),
               ),
@@ -197,7 +221,9 @@ class _TaskCard extends StatelessWidget {
         children: [
           Text(
             task.title,
-            style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
           ),

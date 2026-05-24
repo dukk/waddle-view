@@ -231,8 +231,9 @@ void registerInterestsRestRoutes(
     final alerts = await (db.select(
       db.weatherAlerts,
     )..where((t) => t.locationId.equals(id))).get();
-    if (alerts.isNotEmpty)
+    if (alerts.isNotEmpty) {
       return _jsonErr(409, 'location_in_use_weather_alerts');
+    }
     final n = await (db.delete(
       db.interestsLocations,
     )..where((t) => t.id.equals(id))).go();
@@ -403,8 +404,9 @@ void registerInterestsRestRoutes(
     if (body == null) return _jsonErr(400, 'expected_json_object');
     final id = '${body['id'] ?? ''}'.trim();
     final symbol = '${body['symbol'] ?? ''}'.trim().toUpperCase();
-    if (id.isEmpty || symbol.isEmpty)
+    if (id.isEmpty || symbol.isEmpty) {
       return _jsonErr(400, 'id_and_symbol_required');
+    }
     final existing = await (db.select(
       db.interestsStockSymbols,
     )..where((t) => t.id.equals(id))).getSingleOrNull();
@@ -605,8 +607,9 @@ void registerInterestsRestRoutes(
     if (body == null) return _jsonErr(400, 'expected_json_object');
     final id = '${body['id'] ?? ''}'.trim();
     final label = '${body['label'] ?? ''}'.trim();
-    if (id.isEmpty || label.isEmpty)
+    if (id.isEmpty || label.isEmpty) {
       return _jsonErr(400, 'id_and_label_required');
+    }
     if (!_isValidInterestCategoryId(id)) {
       return _jsonErr(400, 'invalid_category_id');
     }
@@ -672,8 +675,9 @@ void registerInterestsRestRoutes(
     if (body == null) return _jsonErr(400, 'expected_json_object');
     final id = '${body['id'] ?? ''}'.trim();
     final label = '${body['label'] ?? ''}'.trim();
-    if (id.isEmpty || label.isEmpty)
+    if (id.isEmpty || label.isEmpty) {
       return _jsonErr(400, 'id_and_label_required');
+    }
     if (!_isValidInterestCategoryId(id)) {
       return _jsonErr(400, 'invalid_category_id');
     }

@@ -9,7 +9,6 @@ import 'package:waddle_shared/integrations/integration_kv_repository.dart';
 import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import 'package:waddle_shared/net/http_debug_uri.dart';
 import 'package:waddle_shared/persistence/database.dart';
-import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/tasks/task_sync_upsert.dart';
 
@@ -19,11 +18,9 @@ const String kTasksTrelloProviderId = 'tasks_trello';
 const String kDefaultTrelloApiBaseUrl = 'https://api.trello.com/1';
 
 class TasksTrelloDataProvider implements IDataProvider {
-  TasksTrelloDataProvider({
-    http.Client? httpClient,
-    int Function()? nowMs,
-  })  : _http = httpClient ?? http.Client(),
-        _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
+  TasksTrelloDataProvider({http.Client? httpClient, int Function()? nowMs})
+    : _http = httpClient ?? http.Client(),
+      _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
 
   final http.Client _http;
   final int Function() _nowMs;
@@ -47,17 +44,24 @@ class TasksTrelloDataProvider implements IDataProvider {
     final nowMs = _nowMs();
     final kv = IntegrationKvRepository(ctx.db);
     if (setting.pollSeconds > 0) {
-      final lastValue =
-          await kv.getIntegrationValue(integrationId, kIntegrationLastCollectKey);
+      final lastValue = await kv.getIntegrationValue(
+        integrationId,
+        kIntegrationLastCollectKey,
+      );
       final last = int.tryParse(lastValue ?? '') ?? 0;
       if (nowMs - last < setting.pollSeconds * 1000) {
-        ctx.diagnostics.provider('tasks_trello: skip poll gate id=$integrationId');
+        ctx.diagnostics.provider(
+          'tasks_trello: skip poll gate id=$integrationId',
+        );
         return;
       }
     }
 
     final config = await ctx.resolveConfig(integrationId);
-    final apiKey = await readTrelloApiKeyForIntegration(ctx.secrets, integrationId);
+    final apiKey = await readTrelloApiKeyForIntegration(
+      ctx.secrets,
+      integrationId,
+    );
     final token = config.accessToken;
     if (apiKey == null || apiKey.isEmpty) {
       ctx.diagnostics.provider('tasks_trello: skip (no API key)');
@@ -177,11 +181,7 @@ class TasksTrelloDataProvider implements IDataProvider {
     required int timeoutMs,
   }) async {
     final uri = Uri.parse('$base/boards/$boardId/lists').replace(
-      queryParameters: {
-        'key': apiKey,
-        'token': token,
-        'fields': 'id,name,pos',
-      },
+      queryParameters: {'key': apiKey, 'token': token, 'fields': 'id,name,pos'},
     );
     return _getJsonList(
       diagnostics: diagnostics,
@@ -220,16 +220,10 @@ class TasksTrelloDataProvider implements IDataProvider {
     required String label,
     required int timeoutMs,
   }) async {
-    diagnostics.provider(
-      'tasks_trello: GET $label ${safeHttpUriForLog(uri)}',
-    );
-    final res = await _http
-        .get(uri)
-        .timeout(Duration(milliseconds: timeoutMs));
+    diagnostics.provider('tasks_trello: GET $label ${safeHttpUriForLog(uri)}');
+    final res = await _http.get(uri).timeout(Duration(milliseconds: timeoutMs));
     if (res.statusCode != 200) {
-      diagnostics.provider(
-        'tasks_trello: $label HTTP ${res.statusCode}',
-      );
+      diagnostics.provider('tasks_trello: $label HTTP ${res.statusCode}');
       return const [];
     }
     final decoded = jsonDecode(res.body);

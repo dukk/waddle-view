@@ -1,7 +1,6 @@
 import 'package:drift/drift.dart';
 
 import '../persistence/database.dart';
-import '../persistence/tables.dart';
 
 /// Stable Waddle id for a synced task list row.
 String taskListIdFor({
@@ -10,7 +9,10 @@ String taskListIdFor({
   required String externalListId,
 }) {
   final safeType = integrationType.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
-  final safeIntegration = integrationId.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+  final safeIntegration = integrationId.replaceAll(
+    RegExp(r'[^a-zA-Z0-9_]'),
+    '_',
+  );
   final safeExternal = externalListId.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
   return '${safeType}_${safeIntegration}_list_$safeExternal';
 }
@@ -22,7 +24,10 @@ String taskIdFor({
   required String externalTaskId,
 }) {
   final safeType = integrationType.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
-  final safeIntegration = integrationId.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+  final safeIntegration = integrationId.replaceAll(
+    RegExp(r'[^a-zA-Z0-9_]'),
+    '_',
+  );
   final safeExternal = externalTaskId.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
   return '${safeType}_${safeIntegration}_task_$safeExternal';
 }
@@ -82,7 +87,9 @@ Future<void> syncTaskBoardSnapshot(
       integrationId: integrationId,
       externalListId: listExternal,
     );
-    await db.into(db.taskLists).insertOnConflictUpdate(
+    await db
+        .into(db.taskLists)
+        .insertOnConflictUpdate(
           TaskListsCompanion.insert(
             id: listId,
             label: list.label.trim().isEmpty ? 'Column' : list.label.trim(),
@@ -107,11 +114,15 @@ Future<void> syncTaskBoardSnapshot(
         integrationId: integrationId,
         externalTaskId: taskExternal,
       );
-      await db.into(db.tasks).insertOnConflictUpdate(
+      await db
+          .into(db.tasks)
+          .insertOnConflictUpdate(
             TasksCompanion.insert(
               id: taskId,
               taskListId: listId,
-              title: task.title.trim().isEmpty ? '(Untitled)' : task.title.trim(),
+              title: task.title.trim().isEmpty
+                  ? '(Untitled)'
+                  : task.title.trim(),
               description: Value(task.description?.trim()),
               dueAtMs: Value(task.dueAtMs),
               completed: Value(task.completed),
@@ -125,41 +136,37 @@ Future<void> syncTaskBoardSnapshot(
     }
 
     if (seenTaskExternalIds.isEmpty) {
-      await (db.delete(db.tasks)
-            ..where(
-              (t) =>
-                  t.taskListId.equals(listId) &
-                  t.integrationId.equals(integrationId),
-            ))
+      await (db.delete(db.tasks)..where(
+            (t) =>
+                t.taskListId.equals(listId) &
+                t.integrationId.equals(integrationId),
+          ))
           .go();
     } else {
-      await (db.delete(db.tasks)
-            ..where(
-              (t) =>
-                  t.taskListId.equals(listId) &
-                  t.integrationId.equals(integrationId) &
-                  t.externalId.isNotIn(seenTaskExternalIds),
-            ))
+      await (db.delete(db.tasks)..where(
+            (t) =>
+                t.taskListId.equals(listId) &
+                t.integrationId.equals(integrationId) &
+                t.externalId.isNotIn(seenTaskExternalIds),
+          ))
           .go();
     }
   }
 
   if (seenListExternalIds.isEmpty) {
-    await (db.delete(db.taskLists)
-          ..where(
-            (t) =>
-                t.integrationId.equals(integrationId) &
-                t.boardKey.equals(boardKey),
-          ))
+    await (db.delete(db.taskLists)..where(
+          (t) =>
+              t.integrationId.equals(integrationId) &
+              t.boardKey.equals(boardKey),
+        ))
         .go();
   } else {
-    await (db.delete(db.taskLists)
-          ..where(
-            (t) =>
-                t.integrationId.equals(integrationId) &
-                t.boardKey.equals(boardKey) &
-                t.externalId.isNotIn(seenListExternalIds),
-          ))
+    await (db.delete(db.taskLists)..where(
+          (t) =>
+              t.integrationId.equals(integrationId) &
+              t.boardKey.equals(boardKey) &
+              t.externalId.isNotIn(seenListExternalIds),
+        ))
         .go();
   }
 }

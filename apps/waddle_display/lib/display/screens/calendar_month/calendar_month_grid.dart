@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:timezone/timezone.dart';
+import 'package:waddle_shared/display/calendar_screen_config.dart';
 
 /// ValueKey for an in-current-month day cell on [CalendarMonthSlideWidget] (tests).
 Key calendarMonthInMonthDayCellKey(int day) =>
@@ -110,8 +111,7 @@ List<MonthGridCell> buildMonthGridCells(
     );
   }
 
-  final nextFirst =
-      m < 12 ? DateTime(y, m + 1, 1) : DateTime(y + 1, 1, 1);
+  final nextFirst = m < 12 ? DateTime(y, m + 1, 1) : DateTime(y + 1, 1, 1);
   final last = nextFirst.subtract(const Duration(days: 1));
   final daysInMonth = last.day;
 
@@ -203,10 +203,10 @@ class CalendarMonthUpcomingTimeOptions {
   static const defaults = CalendarMonthUpcomingTimeOptions();
 
   static CalendarMonthUpcomingTimeOptions fromConfig(
-    Map<String, dynamic> config,
-  ) {
-    final twelve = config['upcomingTime12Hour'];
-    final use12 = twelve is bool ? twelve : true;
+    Map<String, dynamic> config, {
+    Map<String, String>? kv,
+  }) {
+    final use12 = calendarUpcomingUse12HourFromConfig(config, kv: kv);
     final noonRaw = config['upcomingTimeNoonLabel'];
     final noon = noonRaw is String && noonRaw.trim().isNotEmpty
         ? noonRaw.trim()

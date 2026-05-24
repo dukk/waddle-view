@@ -24,6 +24,7 @@ import 'api/network_addressing.dart';
 import 'bootstrap/app_fatal_error_recovery.dart';
 import 'bootstrap/deferred_config_changed.dart';
 import 'bootstrap/webview_platform_bootstrap.dart';
+import 'display/screens/web_page/web_page_session.dart';
 import 'clock.dart';
 import 'config/dev_dotenv_secrets.dart';
 import 'config/display_env.dart';
@@ -588,6 +589,7 @@ class _WaddleHomeState extends State<WaddleHome> {
       unawaited(DebugConsoleDiskLogger.close());
     }
     AppDebugLog.startup('dispose: stopping engine, closing REST and DB');
+    WebPagePrepareCache.instance.disposeAll();
     widget.tickerCurated.dispose();
     widget.marqueeCycleGate.dispose();
     widget.engine?.stop();

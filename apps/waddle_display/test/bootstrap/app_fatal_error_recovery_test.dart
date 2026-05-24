@@ -561,23 +561,46 @@ void main() {
       isFalse,
     );
     expect(
+      isRecoverableEmbeddedWebViewPluginError(
+        PlatformException(code: "webview hasn't created"),
+      ),
+      isTrue,
+    );
+    expect(
       isRecoverableEmbeddedWebViewPluginError(StateError('other')),
       isFalse,
     );
   });
 
-  test('onZoneFatalError does not restart on webview MissingPluginException',
-      () async {
-    var restarted = false;
-    onZoneFatalError(
-      MissingPluginException(
-        'No implementation found for method init on channel webview_win_floating',
-      ),
-      StackTrace.current,
-      restartProcess: () async {
-        restarted = true;
-      },
-    );
-    expect(restarted, isFalse);
-  });
+  test(
+    'onZoneFatalError does not restart on benign webview dispose race',
+    () async {
+      var restarted = false;
+      onZoneFatalError(
+        PlatformException(code: "webview hasn't created"),
+        StackTrace.current,
+        restartProcess: () async {
+          restarted = true;
+        },
+      );
+      expect(restarted, isFalse);
+    },
+  );
+
+  test(
+    'onZoneFatalError does not restart on webview MissingPluginException',
+    () async {
+      var restarted = false;
+      onZoneFatalError(
+        MissingPluginException(
+          'No implementation found for method init on channel webview_win_floating',
+        ),
+        StackTrace.current,
+        restartProcess: () async {
+          restarted = true;
+        },
+      );
+      expect(restarted, isFalse);
+    },
+  );
 }

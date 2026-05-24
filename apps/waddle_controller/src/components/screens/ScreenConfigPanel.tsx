@@ -1,9 +1,13 @@
+import { useMemo } from 'react';
 import { Stack, Typography } from '@mui/material';
 import type { SavedDisplay } from '@/storage/displays';
 import type { ContentCategoryOption } from '@/components/config/ContentCategorySelectField';
 import { SchemaConfigForm } from '@/components/config/SchemaConfigForm';
 import type { DisplayThemePreviewGroups } from '@/constants/displayThemePreview';
+import { partitionJsonSchemaProperties } from '@/util/schemaTabPartition';
 import { prepareRjsfSchema } from '@/util/rjsfSchema';
+
+export type ScreenConfigTab = 'basic' | 'advanced';
 
 type Props = {
   display: SavedDisplay;
@@ -14,6 +18,7 @@ type Props = {
   disabled?: boolean;
   categories?: ContentCategoryOption[];
   themePreview?: DisplayThemePreviewGroups;
+  tab?: ScreenConfigTab;
 };
 
 export function ScreenConfigPanel({
@@ -25,13 +30,25 @@ export function ScreenConfigPanel({
   disabled,
   categories = [],
   themePreview,
+  tab = 'basic',
 }: Props) {
-  const prepared = prepareRjsfSchema(schema);
+  const partitionedSchema = useMemo(
+    () => prepareRjsfSchema(partitionJsonSchemaProperties(schema, tab)),
+    [schema, tab],
+  );
+
+  const properties = partitionedSchema.properties as Record<string, unknown> | undefined;
+  if (!properties || Object.keys(properties).length === 0) {
+    return null;
+  }
+
   const sectionTitle =
-    typeof prepared.title === 'string' && prepared.title.trim()
-      ? prepared.title.trim()
-      : 'Configuration';
-  const schemaForForm = { ...prepared };
+    typeof partitionedSchema.title === 'string' && partitionedSchema.title.trim()
+      ? partitionedSchema.title.trim()
+      : tab === 'advanced'
+        ? 'Advanced configuration'
+        : 'Configuration';
+  const schemaForForm = { ...partitionedSchema };
   delete schemaForForm.title;
 
   return (

@@ -1466,6 +1466,9 @@ const Map<String, Object?> _kJsonSchemaContentCategoryNames = {
   'x-waddle-widget': 'content-category-multi',
 };
 
+/// Controller Screens dialog: show on Advanced tab ([schemaTabPartition]).
+const Map<String, Object?> _kWaddleAdvanced = {'x-waddle-advanced': true};
+
 /// Legacy schema key name for integrations still documenting `categoryId`.
 const Map<String, Object?> _kJsonSchemaOptionalContentCategoryId =
     _kJsonSchemaOptionalContentCategoryName;
@@ -1722,40 +1725,63 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
                 'When true, omit timed events that already ended today and '
                 'all-day events on past civil days.',
           },
-          'upcomingScrollDelayMs': {'type': 'integer', 'minimum': 0},
-          'upcomingScrollPixelsPerSecond': {'type': 'number', 'minimum': 0},
-          'upcomingTrailingHoldMs': {'type': 'integer', 'minimum': 0},
-          'upcomingMinReadMs': {'type': 'integer', 'minimum': 0},
+          'upcomingScrollDelayMs': {
+            'type': 'integer',
+            'minimum': 0,
+            ..._kWaddleAdvanced,
+          },
+          'upcomingScrollPixelsPerSecond': {
+            'type': 'number',
+            'minimum': 0,
+            ..._kWaddleAdvanced,
+          },
+          'upcomingTrailingHoldMs': {
+            'type': 'integer',
+            'minimum': 0,
+            ..._kWaddleAdvanced,
+          },
+          'upcomingMinReadMs': {
+            'type': 'integer',
+            'minimum': 0,
+            ..._kWaddleAdvanced,
+          },
           'leftFlex': {
             'type': 'integer',
             'minimum': 1,
             'description': 'Flex for the calendar (left) column.',
+            ..._kWaddleAdvanced,
           },
           'rightFlex': {
             'type': 'integer',
             'minimum': 1,
             'description': 'Flex for the upcoming-events column.',
+            ..._kWaddleAdvanced,
           },
           'upcomingTime12Hour': {
             'type': 'boolean',
-            'description': 'Use 12-hour times with AM/PM (default true).',
+            'description':
+                'Use 12-hour times with AM/PM. When unset, follows display '
+                'controller time format.',
           },
           'upcomingTimeNoonLabel': {
             'type': 'string',
             'minLength': 1,
             'description': 'Label for exactly 12:00 PM (default Noon).',
+            ..._kWaddleAdvanced,
           },
           'upcomingTimeWidthCompact': {
             'type': 'number',
             'minimum': 1,
             'description':
                 'Time column width in logical px when the slide is compact.',
+            ..._kWaddleAdvanced,
           },
           'upcomingTimeWidth': {
             'type': 'number',
             'minimum': 1,
             'description':
                 'Time column width in logical px for non-compact layout.',
+            ..._kWaddleAdvanced,
           },
         },
       ),
@@ -1764,6 +1790,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
       'leftFlex': 1,
       'rightFlex': 1,
       'upcomingDays': 5,
+      'hidePastEvents': true,
       'upcomingTime12Hour': true,
       'upcomingTimeNoonLabel': 'Noon',
       'upcomingTimeWidthCompact': 132,
@@ -1794,10 +1821,26 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
             'optional category filters for article selection.',
         properties: {
           'categoryNames': _kJsonSchemaContentCategoryNames,
-          'scrollDelayMs': {'type': 'integer', 'minimum': 0},
-          'trailingHoldMs': {'type': 'integer', 'minimum': 0},
-          'scrollPixelsPerSecond': {'type': 'number', 'minimum': 0},
-          'minReadMs': {'type': 'integer', 'minimum': 0},
+          'scrollDelayMs': {
+            'type': 'integer',
+            'minimum': 0,
+            ..._kWaddleAdvanced,
+          },
+          'trailingHoldMs': {
+            'type': 'integer',
+            'minimum': 0,
+            ..._kWaddleAdvanced,
+          },
+          'scrollPixelsPerSecond': {
+            'type': 'number',
+            'minimum': 0,
+            ..._kWaddleAdvanced,
+          },
+          'minReadMs': {
+            'type': 'integer',
+            'minimum': 0,
+            ..._kWaddleAdvanced,
+          },
           'qrMode': {
             'type': 'string',
             'enum': ['hidden', 'left', 'right', 'image_overlay_bottom'],
@@ -1823,8 +1866,13 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
             'maximum': 0.55,
             'description':
                 'Width fraction for the image panel (clamped in UI).',
+            ..._kWaddleAdvanced,
           },
-          'summaryCapacityChars': {'type': 'integer', 'minimum': 1},
+          'summaryCapacityChars': {
+            'type': 'integer',
+            'minimum': 1,
+            ..._kWaddleAdvanced,
+          },
         },
       ),
     ),
@@ -1848,8 +1896,17 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
             'Multi-column RSS layout; category filters; QR placement and size.',
         properties: {
           'categoryNames': _kJsonSchemaContentCategoryNames,
-          'columnCount': {'type': 'integer', 'minimum': 1, 'maximum': 6},
-          'minReadMs': {'type': 'integer', 'minimum': 0},
+          'columnCount': {
+            'type': 'integer',
+            'minimum': 1,
+            'maximum': 6,
+            ..._kWaddleAdvanced,
+          },
+          'minReadMs': {
+            'type': 'integer',
+            'minimum': 0,
+            ..._kWaddleAdvanced,
+          },
           'qrMode': {
             'type': 'string',
             'enum': ['hidden', 'left', 'right', 'image_overlay_bottom'],
@@ -1860,6 +1917,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
             'minimum': 48,
             'maximum': 140,
             'description': 'QR code size in logical pixels (clamped in UI).',
+            ..._kWaddleAdvanced,
           },
           'imageFit': {
             'type': 'string',
@@ -1873,7 +1931,11 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
             ],
             'x-waddle-enum-labels': kNewsImageFitEnumLabels,
           },
-          'summaryCapacityCharsPerColumn': {'type': 'integer', 'minimum': 1},
+          'summaryCapacityCharsPerColumn': {
+            'type': 'integer',
+            'minimum': 1,
+            ..._kWaddleAdvanced,
+          },
         },
       ),
     ),
@@ -1895,7 +1957,11 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
             'Two-row stacked RSS layout; category filters; QR and image options.',
         properties: {
           'categoryNames': _kJsonSchemaContentCategoryNames,
-          'minReadMs': {'type': 'integer', 'minimum': 0},
+          'minReadMs': {
+            'type': 'integer',
+            'minimum': 0,
+            ..._kWaddleAdvanced,
+          },
           'qrMode': {
             'type': 'string',
             'enum': ['hidden', 'left', 'right', 'image_overlay_bottom'],
@@ -1907,6 +1973,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
             'maximum': 0.48,
             'description':
                 'Per-row image panel width fraction (clamped in UI).',
+            ..._kWaddleAdvanced,
           },
           'imageFit': {
             'type': 'string',
@@ -1925,8 +1992,13 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
             'minimum': 72,
             'maximum': 200,
             'description': 'QR code size in logical pixels (clamped in UI).',
+            ..._kWaddleAdvanced,
           },
-          'summaryCapacityCharsPerSlot': {'type': 'integer', 'minimum': 1},
+          'summaryCapacityCharsPerSlot': {
+            'type': 'integer',
+            'minimum': 1,
+            ..._kWaddleAdvanced,
+          },
         },
       ),
     ),
@@ -1955,7 +2027,11 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
                 'When false (default), hide article body and show only image, '
                 'headline, and source.',
           },
-          'minReadMs': {'type': 'integer', 'minimum': 0},
+          'minReadMs': {
+            'type': 'integer',
+            'minimum': 0,
+            ..._kWaddleAdvanced,
+          },
           'qrMode': {
             'type': 'string',
             'enum': ['hidden', 'image_overlay_left', 'image_overlay_right'],
@@ -1966,6 +2042,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
             'minimum': 36,
             'maximum': 72,
             'description': 'QR size in logical pixels (clamped in UI).',
+            ..._kWaddleAdvanced,
           },
           'imageFit': {
             'type': 'string',
@@ -1984,6 +2061,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
             'minimum': 0,
             'description':
                 'Curator summary-fit hint per cell when showSummary is true.',
+            ..._kWaddleAdvanced,
           },
         },
       ),

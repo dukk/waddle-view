@@ -44,10 +44,18 @@ describe('curatorConfigurations api', () => {
 
   it('fetchActiveCurator and state predicates', async () => {
     vi.mocked(apiJson)
-      .mockResolvedValueOnce({ exclusive: null, base: null, enhancements: [] })
+      .mockResolvedValueOnce({
+        exclusive: null,
+        base: null,
+        enhancements: [],
+        program_controls: { screens_enabled: true, ticker_enabled: true },
+        effective_members: { screens: [], tickers: [], overlays: [] },
+      })
       .mockResolvedValueOnce({ items: [{ id: 'night', label: 'Night', implemented: true }] });
     const active = await fetchActiveCurator(display);
     expect(active.enhancements).toEqual([]);
+    expect(active.program_controls.screens_enabled).toBe(true);
+    expect(active.effective_members.screens).toEqual([]);
     const preds = await fetchCuratorStatePredicates(display);
     expect(preds[0]!.id).toBe('night');
   });
