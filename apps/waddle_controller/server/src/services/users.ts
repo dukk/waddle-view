@@ -92,11 +92,12 @@ export async function createUser(
   const id = randomUUID();
   const passwordHash = await hashPassword(input.password);
   const mustChange = sqlBool(db.dialect, Boolean(input.mustChangePassword));
+  const disabled = sqlInactiveFlag(db.dialect);
   try {
     await db.run(
       `INSERT INTO users (id, username, password_hash, role, disabled, must_change_password, created_at, updated_at)
-       VALUES (?, ?, ?, ?, 0, ?, ?, ?)`,
-      [id, input.username.trim(), passwordHash, input.role, mustChange, now, now],
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, input.username.trim(), passwordHash, input.role, disabled, mustChange, now, now],
     );
   } catch (e: unknown) {
     if (isUniqueConstraintError(e, db.dialect)) {

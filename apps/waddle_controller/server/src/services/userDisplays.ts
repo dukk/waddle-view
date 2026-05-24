@@ -145,7 +145,7 @@ export async function upsertUserDisplay(
     `INSERT INTO user_displays (
       id, user_id, display_id, label, base_url, client_identifier, adopted_role,
       api_key_ciphertext, api_key_iv, permissions_json, is_active, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       userId,
@@ -157,6 +157,7 @@ export async function upsertUserDisplay(
       enc.ciphertext,
       enc.iv,
       permissionsJson,
+      sqlInactiveFlag(db.dialect),
       now,
       now,
     ],
