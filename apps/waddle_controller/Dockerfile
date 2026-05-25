@@ -19,7 +19,8 @@ RUN npm ci --ignore-scripts
 COPY apps/waddle_controller/ .
 COPY LICENSE /waddle-repo/LICENSE
 ENV WADDLE_VIEW_REPO_ROOT=/waddle-repo
-RUN npm run postinstall \
+# Re-run npm ci with install scripts (matches host CI) now that sources, tool/, and LICENSE exist.
+RUN npm ci \
   && npm run build \
   && npm run build:server \
   && npm prune --omit=dev
