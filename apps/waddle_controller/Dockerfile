@@ -15,7 +15,7 @@ COPY apps/waddle_controller/package.json apps/waddle_controller/package-lock.jso
 RUN npm ci --ignore-scripts
 COPY apps/waddle_controller/ .
 RUN node tool/ensure-node-tls-deps.mjs \
-  && node tool/rebuild-native-modules.mjs \
+  && npm rebuild better-sqlite3 @node-rs/argon2 \
   && npm run build \
   && npm run build:server \
   && npm prune --omit=dev

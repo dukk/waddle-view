@@ -30,7 +30,7 @@ const String _vIntegrationAccountsConfiguredViewSelectSql =
 SELECT
   i.id AS integration_id,
   CASE
-    WHEN COALESCE(it.requires_accounts, 0) = 0 THEN 1
+    WHEN COALESCE(CAST(it.requires_accounts AS INTEGER), 0) = 0 THEN 1
     WHEN NOT EXISTS (
       SELECT 1
       FROM integration_type_required_accounts r
