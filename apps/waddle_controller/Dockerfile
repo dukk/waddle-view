@@ -5,6 +5,8 @@
 FROM node:22-alpine AS build
 ARG WADDLE_CONTROLLER_BUILD_NUMBER=dev
 ENV WADDLE_CONTROLLER_BUILD_NUMBER=$WADDLE_CONTROLLER_BUILD_NUMBER
+# better-sqlite3 / @node-rs/argon2 may compile from source when prebuilds miss musl.
+RUN apk add --no-cache python3 make g++
 WORKDIR /app
 COPY packages/waddle_node_tls /packages/waddle_node_tls
 RUN npm ci --prefix /packages/waddle_node_tls
@@ -12,7 +14,11 @@ COPY apps/waddle_controller/package.json apps/waddle_controller/package-lock.jso
 # postinstall runs npm ci under ../../packages/waddle_node_tls (monorepo path); skip until sources are copied.
 RUN npm ci --ignore-scripts
 COPY apps/waddle_controller/ .
-RUN node tool/rebuild-native-modules.mjs && npm run build && npm run build:server && npm prune --omit=dev
+RUN node tool/ensure-node-tls-deps.mjs \
+  && node tool/rebuild-native-modules.mjs \
+  && npm run build \
+  && npm run build:server \
+  && npm prune --omit=dev
 
 FROM node:22-alpine
 RUN apk add --no-cache nginx openssl wget

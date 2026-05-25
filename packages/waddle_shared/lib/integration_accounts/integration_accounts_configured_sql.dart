@@ -25,8 +25,8 @@ CREATE TABLE IF NOT EXISTS integration_type_required_accounts (
 )
 ''';
 
-const String kCreateVIntegrationAccountsConfiguredViewSql = '''
-CREATE VIEW IF NOT EXISTS v_integration_accounts_configured AS
+const String _vIntegrationAccountsConfiguredViewSelectSql =
+    '''
 SELECT
   i.id AS integration_id,
   CASE
@@ -57,15 +57,29 @@ FROM integrations i
 LEFT JOIN integration_types it ON it.integration_type = i.integration_type
 ''';
 
+/// SQLite baseline DDL ([CREATE VIEW IF NOT EXISTS] is not valid on Postgres).
+const String kCreateVIntegrationAccountsConfiguredViewSql =
+    'CREATE VIEW IF NOT EXISTS v_integration_accounts_configured AS\n'
+    '$_vIntegrationAccountsConfiguredViewSelectSql';
+
+/// Postgres baseline DDL ([CREATE OR REPLACE VIEW]).
+const String kCreateVIntegrationAccountsConfiguredViewPostgresSql =
+    'CREATE OR REPLACE VIEW v_integration_accounts_configured AS\n'
+    '$_vIntegrationAccountsConfiguredViewSelectSql';
+
 /// Inserts rows from [kIntegrationAccountRequirementsByType].
 Future<void> seedIntegrationTypeRequiredAccounts(AppDatabase db) async {
   for (final entry in kIntegrationAccountRequirementsByType.entries) {
     for (final accountType in entry.value) {
-      await db.customStatement(
-        'INSERT OR REPLACE INTO integration_type_required_accounts '
-        '(integration_type, account_type) VALUES (?, ?)',
-        [entry.key, accountType],
-      );
+      await db
+          .into(db.integrationTypeRequiredAccounts)
+          .insert(
+            IntegrationTypeRequiredAccountsCompanion.insert(
+              integrationType: entry.key,
+              accountType: accountType,
+            ),
+            mode: InsertMode.insertOrIgnore,
+          );
     }
   }
 }
@@ -75,11 +89,13 @@ Future<bool> integrationAccountsConfiguredFromView(
   AppDatabase db,
   String integrationId,
 ) async {
-  final row = await db.customSelect(
-    'SELECT accounts_configured FROM v_integration_accounts_configured '
-    'WHERE integration_id = ?',
-    variables: [Variable<String>(integrationId)],
-  ).getSingleOrNull();
+  final row = await db
+      .customSelect(
+        'SELECT accounts_configured FROM v_integration_accounts_configured '
+        'WHERE integration_id = ?',
+        variables: [Variable<String>(integrationId)],
+      )
+      .getSingleOrNull();
   if (row == null) {
     return false;
   }
@@ -90,10 +106,12 @@ Future<bool> integrationAccountsConfiguredFromView(
 Future<Map<String, bool>> integrationAccountsConfiguredViewMap(
   AppDatabase db,
 ) async {
-  final rows = await db.customSelect(
-    'SELECT integration_id, accounts_configured '
-    'FROM v_integration_accounts_configured',
-  ).get();
+  final rows = await db
+      .customSelect(
+        'SELECT integration_id, accounts_configured '
+        'FROM v_integration_accounts_configured',
+      )
+      .get();
   return {
     for (final row in rows)
       row.read<String>('integration_id'):

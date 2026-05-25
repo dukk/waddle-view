@@ -5,16 +5,19 @@ import 'database.dart';
 import 'display_overlay_sql.dart';
 import 'reject_term_defaults.dart';
 
-/// Fresh Postgres schema (version 1): Drift tables + views/indexes/seeds.
-Future<void> applyPostgresOnCreate(Migrator m, AppDatabase db) async {
-  await m.createAll();
-  await db.customStatement('''
-CREATE VIEW IF NOT EXISTS v_alert_active_candidates AS
+/// Postgres baseline DDL for [v_alert_active_candidates] (not SQLite `IF NOT EXISTS`).
+const String kCreateVAlertActiveCandidatesViewPostgresSql = '''
+CREATE OR REPLACE VIEW v_alert_active_candidates AS
 SELECT *
 FROM alerts
 WHERE dismissed_at IS NULL
 ORDER BY priority DESC, created_at DESC;
-''');
+''';
+
+/// Fresh Postgres schema (version 1): Drift tables + views/indexes/seeds.
+Future<void> applyPostgresOnCreate(Migrator m, AppDatabase db) async {
+  await m.createAll();
+  await db.customStatement(kCreateVAlertActiveCandidatesViewPostgresSql);
   await db.customStatement(kEnsureOverlayTypesTableSql);
   await db.customStatement('''
 CREATE UNIQUE INDEX IF NOT EXISTS integrations_key_value_integration_id_key
@@ -29,11 +32,15 @@ WHERE account_id IS NOT NULL;
   await ensureDefaultRejectTerms(db);
   await db.customStatement(kCreateIntegrationTypeRequiredAccountsTableSql);
   await seedIntegrationTypeRequiredAccounts(db);
-  await db.customStatement(kCreateVIntegrationAccountsConfiguredViewSql);
+  await db.customStatement(
+    kCreateVIntegrationAccountsConfiguredViewPostgresSql,
+  );
 }
 
 Future<void> applyPostgresBeforeOpen(AppDatabase db) async {
-  await db.customStatement(kCreateVIntegrationAccountsConfiguredViewSql);
+  await db.customStatement(
+    kCreateVIntegrationAccountsConfiguredViewPostgresSql,
+  );
   final migrator = Migrator(db);
   await migrator.createTable(db.adoptionPending);
   await migrator.createTable(db.apiClients);
