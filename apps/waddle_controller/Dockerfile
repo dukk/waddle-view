@@ -2,32 +2,28 @@
 # nginx :443 (self-signed) → static SPA + proxy /bff → Node BFF :5199 (HTTP loopback).
 # Build from repository root: docker build -f apps/waddle_controller/Dockerfile .
 
-FROM node:22-alpine AS build
+# glibc builder: native addons ship linux-x64 prebuilds (Alpine musl often misses them).
+FROM node:22-bookworm-slim AS build
 ARG WADDLE_CONTROLLER_BUILD_NUMBER=dev
 ENV WADDLE_CONTROLLER_BUILD_NUMBER=$WADDLE_CONTROLLER_BUILD_NUMBER
-# better-sqlite3 / @node-rs/argon2 may compile from source when prebuilds miss musl.
-RUN apk add --no-cache python3 make g++
 WORKDIR /app
 COPY packages/waddle_node_tls /packages/waddle_node_tls
 RUN npm ci --prefix /packages/waddle_node_tls
 COPY apps/waddle_controller/package.json apps/waddle_controller/package-lock.json ./
-# postinstall runs npm ci under ../../packages/waddle_node_tls (monorepo path); skip until sources are copied.
-RUN npm ci --ignore-scripts
+RUN npm ci
 COPY apps/waddle_controller/ .
-RUN node tool/ensure-node-tls-deps.mjs \
-  && npm rebuild better-sqlite3 @node-rs/argon2 \
-  && npm run build \
-  && npm run build:server \
-  && npm prune --omit=dev
+RUN npm run build && npm run build:server && npm prune --omit=dev
 
-FROM node:22-alpine
-RUN apk add --no-cache nginx openssl wget
+FROM node:22-bookworm-slim
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends nginx openssl wget ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app/package.json ./
 COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
+COPY --from=build /app/dist /usr/share/nginx/html
 COPY --from=build /app/server/dist ./server/dist
-COPY apps/waddle_controller/nginx/default.conf /etc/nginx/http.d/default.conf
+COPY apps/waddle_controller/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY apps/waddle_controller/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 ENV PORT=5199

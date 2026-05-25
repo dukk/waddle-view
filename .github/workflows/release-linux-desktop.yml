@@ -37,9 +37,18 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: subosito/flutter-action@v2
+        if: ${{ inputs.arch != 'arm64' }}
         with:
           flutter-version: '3.41.9'
           channel: stable
+      - name: Trust workspace for Git (Flutter / pub)
+        if: ${{ inputs.arch == 'arm64' }}
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Install Flutter SDK (arm64)
+        if: ${{ inputs.arch == 'arm64' }}
+        run: |
+          git clone --depth 1 --branch 3.41.9 https://github.com/flutter/flutter.git "$HOME/flutter"
+          echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
       - name: Install Linux build dependencies
         run: |
           sudo apt-get update
