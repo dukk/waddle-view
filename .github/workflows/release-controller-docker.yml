@@ -48,6 +48,7 @@ jobs:
           docker build \
             -f apps/waddle_controller/Dockerfile \
             --build-arg "WADDLE_CONTROLLER_BUILD_NUMBER=${BUILD_NUMBER}" \
+            --build-arg "DOCKER_BUILD_CACHE_BUST=${{ github.run_id }}" \
             -t "waddle-controller:${IMAGE_TAG}" \
             .
       - name: Package Docker image tarball
