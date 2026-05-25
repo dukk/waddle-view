@@ -10,9 +10,13 @@ WORKDIR /app
 COPY packages/waddle_node_tls /packages/waddle_node_tls
 RUN npm ci --prefix /packages/waddle_node_tls
 COPY apps/waddle_controller/package.json apps/waddle_controller/package-lock.json ./
-RUN npm ci
+# postinstall runs tool/*.mjs; copy sources before postinstall.
+RUN npm ci --ignore-scripts
 COPY apps/waddle_controller/ .
-RUN npm run build && npm run build:server && npm prune --omit=dev
+RUN npm run postinstall \
+  && npm run build \
+  && npm run build:server \
+  && npm prune --omit=dev
 
 FROM node:22-bookworm-slim
 RUN apt-get update \
