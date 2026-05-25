@@ -12,20 +12,23 @@ class DataCollectionEngine {
     required DataWriteContext context,
     required this.sleeper,
     required this.idleBetweenCycles,
+    Future<Duration> Function()? resolveIdleBetweenCycles,
     this.onCycleComplete,
     CollectDiagnostics diagnostics = const NoOpCollectDiagnostics(),
-  })  : assert(
-          providers != null || resolveProviders != null,
-          'providers or resolveProviders required',
-        ),
-        _providers = providers == null ? null : List.unmodifiable(providers),
-        _resolveProviders = resolveProviders,
-        _context = context,
-        _diagnostics = diagnostics;
+  }) : assert(
+         providers != null || resolveProviders != null,
+         'providers or resolveProviders required',
+       ),
+       _providers = providers == null ? null : List.unmodifiable(providers),
+       _resolveProviders = resolveProviders,
+       _context = context,
+       _resolveIdleBetweenCycles = resolveIdleBetweenCycles,
+       _diagnostics = diagnostics;
 
   final List<IDataProvider>? _providers;
   final Future<List<IDataProvider>> Function()? _resolveProviders;
   final DataWriteContext _context;
+  final Future<Duration> Function()? _resolveIdleBetweenCycles;
   final Sleeper sleeper;
   final Duration idleBetweenCycles;
   final CollectDiagnostics _diagnostics;
@@ -65,10 +68,9 @@ class DataCollectionEngine {
         }
       }
       if (_running) {
-        _diagnostics.engine(
-          'sleep ${idleBetweenCycles.inSeconds}s until next cycle',
-        );
-        await sleeper.sleep(idleBetweenCycles);
+        final idle = await _idleDurationForNextCycle();
+        _diagnostics.engine('sleep ${idle.inSeconds}s until next cycle');
+        await sleeper.sleep(idle);
       }
     }
     _diagnostics.engine('stop: loop exited');
@@ -118,5 +120,12 @@ class DataCollectionEngine {
       return _resolveProviders();
     }
     return _providers!;
+  }
+
+  Future<Duration> _idleDurationForNextCycle() async {
+    if (_resolveIdleBetweenCycles != null) {
+      return _resolveIdleBetweenCycles();
+    }
+    return idleBetweenCycles;
   }
 }

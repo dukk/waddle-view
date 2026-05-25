@@ -1,4 +1,3 @@
-import 'package:drift/drift.dart';
 import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
@@ -27,14 +26,14 @@ class CatalogDefaultsResetResult {
   final int overlaysSeeded;
 
   Map<String, int> toJson() => {
-        'screens_removed': screensRemoved,
-        'tickers_removed': tickersRemoved,
-        'overlays_removed': overlaysRemoved,
-        'members_removed': membersRemoved,
-        'screens_seeded': screensSeeded,
-        'tickers_seeded': tickersSeeded,
-        'overlays_seeded': overlaysSeeded,
-      };
+    'screens_removed': screensRemoved,
+    'tickers_removed': tickersRemoved,
+    'overlays_removed': overlaysRemoved,
+    'members_removed': membersRemoved,
+    'screens_seeded': screensSeeded,
+    'tickers_seeded': tickersSeeded,
+    'overlays_seeded': overlaysSeeded,
+  };
 }
 
 /// Deletes all screens, ticker tapes, and overlays plus curator membership for
@@ -47,15 +46,15 @@ Future<CatalogDefaultsResetResult> resetCatalogToSystemDefaults(
     final screensRemoved = await db.delete(db.screens).go();
     final tickersRemoved = await db.delete(db.tickerTapes).go();
     final overlaysRemoved = await db.delete(db.overlays).go();
-    final membersRemoved = await (db.delete(db.curatorConfigurationMembers)
-          ..where(
-            (t) => t.entityType.isIn([
-              kCuratorMemberEntityScreen,
-              kCuratorMemberEntityTicker,
-              kCuratorMemberEntityOverlay,
-            ]),
-          ))
-        .go();
+    final membersRemoved =
+        await (db.delete(db.curatorConfigurationMembers)..where(
+              (t) => t.entityType.isIn([
+                kCuratorMemberEntityScreen,
+                kCuratorMemberEntityTicker,
+                kCuratorMemberEntityOverlay,
+              ]),
+            ))
+            .go();
 
     await ensureDefaultTickerTapesSeed(db);
     await ensureDefaultOverlaysSeed(db);

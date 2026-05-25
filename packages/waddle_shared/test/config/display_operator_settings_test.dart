@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waddle_shared/auth/role_permissions.dart';
 import 'package:waddle_shared/config/controller_datetime_format_kv.dart';
+import 'package:waddle_shared/config/display_collect_settings.dart';
 import 'package:waddle_shared/config/display_operator_settings.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
@@ -378,6 +379,34 @@ void main() {
       expect(body['display_live_preview_fps'], 5);
       expect(body['display_live_preview_width'], 1024);
       expect(body['display_live_preview_quality'], 80);
+    },
+  );
+
+  test(
+    'applyDisplayOperatorSettingsPut round-trips collect idle and low power',
+    () async {
+      final db = openMemoryDatabase();
+      addTearDown(db.close);
+      await ensureInitialSeed(db);
+
+      await applyDisplayOperatorSettingsPut(db, {
+        'display_collect_idle_seconds': 90,
+        'display_low_power_enabled': true,
+      });
+      final body = await readDisplayOperatorSettings(db);
+      expect(body['display_collect_idle_seconds'], 90);
+      expect(body['display_low_power_enabled'], isTrue);
+
+      final idleRow =
+          await (db.select(db.configKeyValues)
+                ..where((t) => t.key.equals(kDisplayCollectIdleSecondsKvKey)))
+              .getSingleOrNull();
+      expect(idleRow?.value, '90');
+      final lowRow =
+          await (db.select(db.configKeyValues)
+                ..where((t) => t.key.equals(kDisplayLowPowerEnabledKvKey)))
+              .getSingleOrNull();
+      expect(lowRow?.value, 'true');
     },
   );
 

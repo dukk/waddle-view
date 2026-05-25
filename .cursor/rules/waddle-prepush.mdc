@@ -7,7 +7,7 @@ globs: scripts/pre_push_checks.py,scripts/post_commit_gate.py,.githooks/**,apps/
 
 - **Hook**: [`.githooks/pre-push`](../../.githooks/pre-push) runs [`scripts/pre_push_checks.py`](../../scripts/pre_push_checks.py). Install once: [`scripts/install-git-hooks.ps1`](../../scripts/install-git-hooks.ps1) or [`install-git-hooks.sh`](../../scripts/install-git-hooks.sh) (`core.hooksPath=.githooks`).
 - **Skip** (discouraged): `WADDLE_SKIP_PREPUSH_CHECKS=1`, or `git push --no-verify`.
-- **Cursor QA hook** (agent stop, not git): scoped unit tests via [`scripts/qa_scoped_tests.py`](../../scripts/qa_scoped_tests.py); skip with `WADDLE_SKIP_QA_HOOK_TESTS=1`. See [`.cursor/agents/qa.md`](../agents/qa.md).
+- **Cursor QA hook** (agent stop, not git): scoped **`dart analyze` / `flutter analyze` then unit tests** via [`scripts/qa_scoped_tests.py`](../../scripts/qa_scoped_tests.py); skip with `WADDLE_SKIP_QA_HOOK_TESTS=1` or analyze-only skip `WADDLE_SKIP_QA_HOOK_ANALYZE=1`. Pre-push/post-commit still run broader gates; see [`.cursor/agents/qa.md`](../agents/qa.md).
 - **Scoped by diff**: only runs suites for changed areas (`dart_workspace`, `controller`, `deploy`). Unknown or new-branch pushes run the full suite.
 
 ## Post-commit gate (`scripts/post_commit_gate.py`)

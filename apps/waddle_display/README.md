@@ -80,6 +80,18 @@ dart run tool/coverage_check.dart --min=85 --target=90
 
 Per-test wall time is capped at **60s** by `dart_test.yaml` (and CI uses the same `--timeout=60s`) so a stuck async test fails instead of blocking the suite. Override in code only when a test is genuinely slow: `test('...', () { ... }, timeout: Timeout(Duration(minutes: 2)));`
 
+## CPU usage and tuning
+
+Sustained CPU is usually **Flutter UI** (ticker marquee, animated overlays, video/WebView slides), not the collection engine. Use this quick check on the device:
+
+1. **`top`** while showing a static slide — steady high CPU → ticker/overlays/video/WebView; spikes every ~30s → collection or curator refresh.
+2. Confirm a **release** build on signage hardware (`flutter run` debug uses a **5s** collection idle vs **30s** in release).
+3. In the **controller** → Display settings → **Programs**, lower **Ticker** pixels/sec or enable **Low-power mode**; raise **Collection cycle idle** (KV `display.collect.idle_seconds`, env `WADDLE_DISPLAY_COLLECT_IDLE_SECONDS`, 15–600s).
+4. **Integrations**: disable unused types; raise **`poll_seconds`** on gated providers; for **weather**, **stocks**, and **Home Assistant**, `poll_seconds` is now honored (previously every engine cycle). RSS throttling is per **feed** `poll_seconds`, not the integration row.
+5. Turn off **live preview** when no operator is watching (`WADDLE_DISPLAY_LIVE_PREVIEW_ENABLED=0` or controller settings).
+
+Env fallbacks: `WADDLE_DISPLAY_COLLECT_IDLE_SECONDS`, `WADDLE_DISPLAY_LOW_POWER=1` (see `.env.example` and `deploy/linux-arm64/waddle-view.service`).
+
 ## Operator CLI (`waddlectl`)
 
 The **`apps/waddlectl`** package is a shell tool against the same **SQLite** database as the display app. Use **`backup create`** for a single-file archive of the database and **`media/`** blobs; it is **not** a substitute for backing up the whole machine.

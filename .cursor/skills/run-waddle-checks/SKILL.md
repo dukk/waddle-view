@@ -13,16 +13,21 @@ disable-model-invocation: true
 
 Mirror of [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) `analyze-test` job. CI fails on **any** `flutter analyze` issue (warnings included) and on coverage **below 80%** on gated libs (display, shared, integrations, plugin_sdk; **not** `waddle_plugin_example`). The **90%** line is a target: the checker warns but does not fail between 80% and 90%.
 
+After agent or local Dart edits, the Cursor stop hook runs the same package-scoped analyze via [`scripts/qa_scoped_tests.py`](../../../scripts/qa_scoped_tests.py) (analyze before mapped tests).
+
 ## Tiered script (recommended)
 
 From repo root:
 
 ```bash
-# Inner loop: analyze only (or --from-git / --test for scoped runs)
+# Inner loop: flutter analyze on waddle_display only
 python scripts/waddle_checks.py fast
 
-# Git-scoped packages + mapped tests; skips pub get/codegen when unchanged
+# Git-scoped: dart/flutter analyze per touched package + mapped tests
 python scripts/waddle_checks.py fast --from-git
+
+# Agent stop-hook equivalent (analyze + scoped tests for edited paths)
+python scripts/qa_scoped_tests.py --files packages/waddle_shared/lib/foo.dart
 
 # Single display test file
 python scripts/waddle_checks.py fast --test apps/waddle_display/test/util/html_entity_decode_test.dart
@@ -63,7 +68,7 @@ dart run tool/coverage_check.dart --min=80 --target=90 coverage/lcov.info ../../
 
 ## Notes
 
-- `flutter analyze` must report **zero** issues; warnings are fatal in CI.
+- `flutter analyze` / `dart analyze` must report **zero** issues in each touched package; warnings are fatal in CI. `fast --from-git` runs `dart analyze` on shared, integrations, plugin_sdk, and waddlectl when those paths change, and widens to `flutter analyze` on display when shared/integrations/plugin_sdk change.
 - Each test is capped at 60s by [`dart_test.yaml`](../../../apps/waddle_display/dart_test.yaml); the CI job has a 12-minute wall budget.
 - For the recurring test-file pitfalls (drift/`flutter_test` import ambiguity, orphaned `final` fields, redundant `!` after promotion), see [`waddle-view-tests.mdc`](../../../.cursor/rules/waddle-view-tests.mdc).
 - Coverage exclusions and broader contributor guidance live in [`AGENTS.md`](../../../AGENTS.md) and [`waddle-view-flutter.mdc`](../../../.cursor/rules/waddle-view-flutter.mdc).

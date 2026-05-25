@@ -12,6 +12,7 @@ import 'package:waddle_shared/display/display_weather_temperature_unit_kv.dart';
 import 'package:waddle_shared/display/display_viewport_reserve.dart';
 import 'package:waddle_shared/theme/display_program_history_kv.dart';
 import 'package:waddle_shared/theme/display_theme_kv.dart';
+import 'package:waddle_shared/config/display_collect_settings.dart';
 import 'package:waddle_shared/config/display_live_preview.dart';
 
 /// PUT rejected when [display_theme_id] is not builtin or a stored custom theme.
@@ -70,6 +71,10 @@ Future<Map<String, dynamic>> readDisplayOperatorSettings(AppDatabase db) async {
     ),
     'adoption_allowed_roles': adoptionRolesList,
     'adoption_allow_new_requests': adoptionAllowedRoles.isNotEmpty,
+    'display_collect_idle_seconds': resolveDisplayCollectIdleSeconds(kv),
+    'display_low_power_enabled': parseDisplayLowPowerEnabled(
+      kv[kDisplayLowPowerEnabledKvKey],
+    ),
     ...displayLivePreviewSettingsJson(displayLivePreviewConfigFromKv(kv)),
   };
 }
@@ -422,6 +427,34 @@ Future<bool> applyDisplayOperatorSettingsPut(
           ConfigKeyValuesCompanion.insert(
             key: kDisplayLivePreviewQualityKvKey,
             value: '$quality',
+          ),
+        );
+    touched = true;
+  }
+  if (body.containsKey('display_collect_idle_seconds')) {
+    final seconds = normalizeDisplayCollectIdleSeconds(
+      body['display_collect_idle_seconds'],
+    );
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kDisplayCollectIdleSecondsKvKey,
+            value: '$seconds',
+          ),
+        );
+    touched = true;
+  }
+  if (body.containsKey('display_low_power_enabled')) {
+    final enabled = parseDisplayLowPowerEnabled(
+      body['display_low_power_enabled'],
+    );
+    await db
+        .into(db.configKeyValues)
+        .insertOnConflictUpdate(
+          ConfigKeyValuesCompanion.insert(
+            key: kDisplayLowPowerEnabledKvKey,
+            value: enabled ? 'true' : 'false',
           ),
         );
     touched = true;

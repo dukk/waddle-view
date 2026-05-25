@@ -89,6 +89,33 @@ class TestQaScopedInference(unittest.TestCase):
             any("dialogSave.test.ts" in arg for arg in steps[0].argv),
         )
 
+    def test_build_qa_scoped_analyze_steps_shared_widens_display(self):
+        wcc = self.wcc
+        steps = wcc.build_qa_scoped_analyze_steps(
+            self.root,
+            ["packages/waddle_shared/lib/seed/catalog_defaults_reset.dart"],
+        )
+        labels = [s.label for s in steps]
+        self.assertIn("dart analyze (waddle_shared)", labels)
+        self.assertIn("flutter analyze (waddle_display)", labels)
+
+    def test_build_qa_scoped_analyze_steps_display_only(self):
+        wcc = self.wcc
+        steps = wcc.build_qa_scoped_analyze_steps(
+            self.root,
+            ["apps/waddle_display/lib/config/display_env.dart"],
+        )
+        labels = [s.label for s in steps]
+        self.assertEqual(labels, ["flutter analyze (waddle_display)"])
+
+    def test_build_qa_scoped_analyze_steps_skips_controller_ts(self):
+        wcc = self.wcc
+        steps = wcc.build_qa_scoped_analyze_steps(
+            self.root,
+            ["apps/waddle_controller/src/pages/FooPage.tsx"],
+        )
+        self.assertEqual(steps, [])
+
 
 class TestQaFailureReport(unittest.TestCase):
     @classmethod
@@ -154,6 +181,23 @@ class TestQaFailureReport(unittest.TestCase):
         self.assertIn("FIX", prompt)
         self.assertIn("/qa FIX", prompt)
         self.assertIn("FAIL expected true", prompt)
+
+    def test_build_qa_autofix_prompt_analyze_failure(self):
+        qa = self.qa_report
+        prompt = qa.build_qa_autofix_prompt(
+            {
+                "label": "dart analyze (waddle_shared)",
+                "exit_code": 1,
+                "cwd": "/repo/packages/waddle_shared",
+                "argv": ["dart", "analyze"],
+                "edited_files": ["packages/waddle_shared/lib/foo.dart"],
+                "test_paths": [],
+                "output_tail": "unused_import",
+            }
+        )
+        self.assertIn("analyze", prompt.lower())
+        self.assertIn("unused", prompt.lower())
+        self.assertIn("/qa FIX", prompt)
 
 
 if __name__ == "__main__":

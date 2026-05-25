@@ -11,6 +11,8 @@ import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_shared/display/display_weather_temperature_unit_kv.dart';
 import 'package:waddle_shared/integrations/integration_collect.dart';
+import 'package:waddle_shared/integrations/integration_kv_repository.dart';
+import 'package:waddle_shared/integrations/integration_poll_gate.dart';
 import 'weather_locations_for_collect.dart';
 import 'weather_provider_extra_config.dart';
 
@@ -36,7 +38,21 @@ class WeatherDataProvider implements IDataProvider {
       return;
     }
     final setting = settings.first;
-    final config = await ctx.resolveConfig(setting.id);
+    final integrationId = setting.id;
+    final now = _nowMs();
+    final kv = IntegrationKvRepository(ctx.db);
+    if (await shouldSkipIntegrationPoll(
+      kv: kv,
+      integrationId: integrationId,
+      pollSeconds: setting.pollSeconds,
+      nowMs: now,
+    )) {
+      ctx.diagnostics.provider(
+        'weather: skip poll ($integrationId ${setting.pollSeconds}s gate)',
+      );
+      return;
+    }
+    final config = await ctx.resolveConfig(integrationId);
     final token = config.accessToken;
     if (token == null || token.isEmpty) {
       ctx.diagnostics.provider('weather: skip (no API token)');
@@ -51,7 +67,6 @@ class WeatherDataProvider implements IDataProvider {
       );
       return;
     }
-    final now = _nowMs();
     ctx.diagnostics.provider(
       'weather: collect locations=${locations.length} base=${safeHttpUriForLog(Uri.parse(baseUrl))}',
     );
@@ -167,6 +182,11 @@ class WeatherDataProvider implements IDataProvider {
         );
       }
     }
+    await markIntegrationCollectDone(
+      kv: kv,
+      integrationId: integrationId,
+      nowMs: now,
+    );
   }
 
   Future<String?> _storeIconIfPresent(

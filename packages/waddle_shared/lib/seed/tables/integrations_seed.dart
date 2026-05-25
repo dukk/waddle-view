@@ -1,7 +1,5 @@
 import 'package:drift/drift.dart';
 
-
-
 import 'package:waddle_shared/config/integration_config_json.dart';
 
 import 'package:waddle_shared/persistence/database.dart';
@@ -9,10 +7,7 @@ import 'package:waddle_shared/persistence/tables.dart';
 
 import 'integration_types_seed.dart';
 
-
-
 Future<void> _ensureIntegrationRow(
-
   AppDatabase db, {
 
   required String id,
@@ -26,29 +21,22 @@ Future<void> _ensureIntegrationRow(
   String? baseUrl,
 
   String? configJson,
-
 }) async {
-
-  final row =
-
-      await (db.select(db.integrations)..where((t) => t.id.equals(id)))
-
-          .getSingleOrNull();
+  final row = await (db.select(
+    db.integrations,
+  )..where((t) => t.id.equals(id))).getSingleOrNull();
 
   if (row != null) {
-
     return;
-
   }
 
   final mergedConfig =
-
       mergeBaseUrlIntoIntegrationConfig(configJson, baseUrl) ?? configJson;
 
-  await db.into(db.integrations).insert(
-
+  await db
+      .into(db.integrations)
+      .insert(
         IntegrationsCompanion.insert(
-
           id: id,
 
           integrationType: integrationType,
@@ -58,25 +46,16 @@ Future<void> _ensureIntegrationRow(
           pollSeconds: Value(pollSeconds),
 
           configJson: mergedConfig == null
-
               ? const Value.absent()
-
               : Value(mergedConfig),
-
         ),
-
       );
-
 }
 
-
-
 Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
-
   await ensureIntegrationTypes(db);
 
   await _ensureIntegrationRow(
-
     db,
 
     id: kDefaultNewsRssIntegrationId,
@@ -84,13 +63,9 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
     integrationType: 'news_rss',
 
     pollSeconds: 3600,
-
   );
 
-
-
   await _ensureIntegrationRow(
-
     db,
 
     id: kDefaultNewsFacebookIntegrationId,
@@ -104,13 +79,9 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
     baseUrl: 'https://graph.facebook.com',
 
     configJson: '{"accounts":[]}',
-
   );
 
-
-
   await _ensureIntegrationRow(
-
     db,
 
     id: kDefaultNewsTwitterIntegrationId,
@@ -124,13 +95,9 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
     baseUrl: 'https://api.twitter.com',
 
     configJson: '{"accounts":[]}',
-
   );
 
-
-
   await _ensureIntegrationRow(
-
     db,
 
     id: kDefaultNewsLinkedinIntegrationId,
@@ -144,10 +111,7 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
     baseUrl: 'https://api.linkedin.com',
 
     configJson: '{"accounts":[]}',
-
   );
-
-
 
   await _ensureIntegrationRow(
     db,
@@ -165,7 +129,6 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
   );
 
   await _ensureIntegrationRow(
-
     db,
 
     id: kDefaultJokeOpenAiIntegrationId,
@@ -177,19 +140,12 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
     enabled: false,
 
     configJson:
-
         '{"jokesPerDay":10,"maxJokesPerTwoHours":20,"twoHourWindowMs":7200000,'
-
         '"jokeRetentionDays":14,"model":"gpt-4o-mini",'
-
         '"globalPrompt":"You write original, family-friendly jokes."}',
-
   );
 
-
-
   await _ensureIntegrationRow(
-
     db,
 
     id: kDefaultJokeJokeapiIntegrationId,
@@ -203,17 +159,11 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
     baseUrl: 'https://v2.jokeapi.dev/joke',
 
     configJson:
-
         '{"jokesPerPoll":5,"blacklistFlags":["nsfw","racist","sexist","explicit"],'
-
         '"categoryMap":{"general":"Misc","tech":"Programming"},"jokeRetentionDays":14}',
-
   );
 
-
-
   await _ensureIntegrationRow(
-
     db,
 
     id: kDefaultTriviaOpenAiIntegrationId,
@@ -225,19 +175,12 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
     enabled: false,
 
     configJson:
-
         '{"maxQuestionPerDay":200,"maxQuestionPerHour":20,'
-
         '"twoHourWindowMs":3600000,"questionRetentionDays":15,'
-
         '"model":"gpt-4o-mini"}',
-
   );
 
-
-
   await _ensureIntegrationRow(
-
     db,
 
     id: kDefaultTriviaOpenTdbIntegrationId,
@@ -251,15 +194,10 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
     baseUrl: 'https://opentdb.com/api.php',
 
     configJson:
-
         '{"amount":10,"questionType":"multiple","categoryMap":{"science":17,"history":23}}',
-
   );
 
-
-
   await _ensureIntegrationRow(
-
     db,
 
     id: kDefaultWeatherOpenWeatherMapIntegrationId,
@@ -271,13 +209,9 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
     enabled: false,
 
     configJson: '{"units":"imperial","lang":"en","hourlyCount":6}',
-
   );
 
-
-
   await _ensureIntegrationRow(
-
     db,
 
     id: kDefaultWeatherAlertsNwsIntegrationId,
@@ -289,17 +223,11 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
     baseUrl: 'https://api.weather.gov',
 
     configJson:
-
         '{"userAgent":"(waddle-display, operator@example.com)",'
-
         '"defaultLocation":{"name":"Default","lat":40.7128,"lon":-74.0060}}',
-
   );
 
-
-
   await _ensureIntegrationRow(
-
     db,
 
     id: kDefaultWeatherOpenMeteoIntegrationId,
@@ -313,17 +241,11 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
     baseUrl: 'https://api.open-meteo.com',
 
     configJson:
-
         '{"units":"imperial","lang":"en","hourlyCount":6,'
-
         '"defaultLocation":{"name":"Default","lat":40.7128,"lon":-74.0060}}',
-
   );
 
-
-
   await _ensureIntegrationRow(
-
     db,
 
     id: kDefaultAirQualityOpenMeteoIntegrationId,
@@ -337,35 +259,20 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
     baseUrl: 'https://air-quality-api.open-meteo.com',
 
     configJson:
-
         '{"hourlyCount":6,'
-
         '"defaultLocation":{"name":"Default","lat":40.7128,"lon":-74.0060}}',
-
   );
 
-
-
   const pexelsSources =
-
       '[{"query":"Nature","category":"nature"},'
-
       '{"query":"Flowers","category":"flowers"},'
-
       '{"query":"Landscape","category":"landscape"},'
-
       '{"query":"Beach","category":"beach"},'
-
       '{"query":"Mountains","category":"mountains"},'
-
       '{"query":"Motivational","category":"motivational"},'
-
       '{"query":"Aquarium","category":"aquarium"}]';
 
-
-
   await _ensureIntegrationRow(
-
     db,
 
     id: kDefaultPhotoPexelsIntegrationId,
@@ -378,16 +285,10 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
 
     baseUrl: 'https://api.pexels.com',
 
-    configJson:
-
-        '{"maxPhotos":100,"photosPerHour":2,"sources":$pexelsSources}',
-
+    configJson: '{"maxPhotos":100,"photosPerHour":2,"sources":$pexelsSources}',
   );
 
-
-
   await _ensureIntegrationRow(
-
     db,
 
     id: kDefaultVideoPexelsIntegrationId,
@@ -401,17 +302,11 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
     baseUrl: 'https://api.pexels.com',
 
     configJson:
-
         '{"maxVideos":100,"videosPerHour":2,"minVideoSeconds":5,"maxVideoSeconds":29,'
-
         '"sources":$pexelsSources}',
-
   );
 
-
-
   await _ensureIntegrationRow(
-
     db,
 
     id: kDefaultStockFinnhubIntegrationId,
@@ -425,73 +320,46 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
     baseUrl: 'https://finnhub.io',
 
     configJson:
-
         '{"maxSymbolsPerCollect":25,"defaultSymbols":['
-
         '{"symbol":"AAPL","displayName":"Apple"},'
-
         '{"symbol":"MSFT","displayName":"Microsoft"},'
-
         '{"symbol":"GOOG","displayName":"Alphabet"},'
-
         '{"symbol":"NVDA","displayName":"NVIDIA"},'
-
         '{"symbol":"AMZN","displayName":"Amazon"},'
-
         '{"symbol":"TSLA","displayName":"Tesla"},'
-
         '{"symbol":"META","displayName":"Meta"},'
-
         '{"symbol":"NFLX","displayName":"Netflix"},'
-
         '{"symbol":"DIS","displayName":"Disney"},'
-
         '{"symbol":"IBM","displayName":"IBM"},'
-
         '{"symbol":"CSCO","displayName":"Cisco"},'
-
         '{"symbol":"INTC","displayName":"Intel"},'
-
         '{"symbol":"ORCL","displayName":"Oracle"},'
-
         '{"symbol":"VOO","displayName":"Vanguard S&P 500 ETF"},'
-
         '{"symbol":"SPY","displayName":"SPDR S&P 500 ETF"},'
-
         '{"symbol":"QQQ","displayName":"Invesco QQQ Trust"},'
-
         '{"symbol":"IWM","displayName":"iShares Russell 2000 ETF"}'
-
         ']}',
-
   );
 
-
-
   await _ensureIntegrationRow(
-
     db,
 
     id: kDefaultHomeAssistantIntegrationId,
 
     integrationType: 'home_assistant',
 
-    pollSeconds: 60,
+    pollSeconds: 300,
 
     enabled: false,
 
     baseUrl: 'http://homeassistant.local:8123',
 
     configJson:
-
         '{"maxEntitiesPerCollect":50,"requestTimeoutMs":15000,'
-
         '"defaultEntities":[]}',
-
   );
 
   await _ensureIntegrationRow(
-
     db,
 
     id: kDefaultTasksTrelloIntegrationId,
@@ -505,13 +373,9 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
     baseUrl: 'https://api.trello.com/1',
 
     configJson: '{"boardIds":[],"requestTimeoutMs":15000}',
-
   );
 
-
-
   await _ensureIntegrationRow(
-
     db,
 
     id: kDefaultCalendarGoogleIntegrationId,
@@ -525,13 +389,9 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
     baseUrl: 'https://www.googleapis.com/calendar/v3',
 
     configJson: '{"accounts":[],"pastDays":30,"futureDays":30}',
-
   );
 
-
-
   await _ensureIntegrationRow(
-
     db,
 
     id: kDefaultCalendarOutlookIntegrationId,
@@ -545,13 +405,9 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
     baseUrl: 'https://graph.microsoft.com/v1.0',
 
     configJson: '{"accounts":[],"pastDays":30,"futureDays":30}',
-
   );
 
-
-
   await _ensureIntegrationRow(
-
     db,
 
     id: kDefaultCalendarIcalIntegrationId,
@@ -563,13 +419,9 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
     enabled: false,
 
     configJson: '{"feeds":[],"pastDays":30,"futureDays":30}',
-
   );
 
-
-
   await _ensureIntegrationRow(
-
     db,
 
     id: kDefaultCalendarMealviewerIntegrationId,
@@ -583,13 +435,9 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
     baseUrl: 'https://api.mealviewer.com',
 
     configJson: '{"schools":[],"pastDays":30,"futureDays":30}',
-
   );
 
-
-
   await _ensureIntegrationRow(
-
     db,
 
     id: kDefaultPhotoOneDriveIntegrationId,
@@ -603,13 +451,9 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
     baseUrl: 'https://graph.microsoft.com/v1.0',
 
     configJson: '{"accounts":[],"globalPerPollLimit":50}',
-
   );
 
-
-
   await _ensureIntegrationRow(
-
     db,
 
     id: kDefaultVideoOneDriveIntegrationId,
@@ -623,13 +467,9 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
     baseUrl: 'https://graph.microsoft.com/v1.0',
 
     configJson: '{"accounts":[],"globalPerPollLimit":50}',
-
   );
 
-
-
   await _ensureIntegrationRow(
-
     db,
 
     id: kDefaultPhotoFlickrIntegrationId,
@@ -643,12 +483,8 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
     baseUrl: 'https://api.flickr.com/services/rest',
 
     configJson:
-
         '{"groupIds":[],"category":"flickr","perPollLimit":20,"sort":"date-posted-desc"}',
-
   );
-
-
 
   await _ensureIntegrationRow(
     db,
@@ -669,7 +505,6 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
   );
 
   await _ensureIntegrationRow(
-
     db,
 
     id: kDefaultPhotoBingIotdIntegrationId,
@@ -681,9 +516,7 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
     baseUrl: 'https://www.bing.com',
 
     configJson:
-
         '{"retentionDays":1,"market":"en-US","resolution":"UHD","category":"bing"}',
-
   );
 
   await _ensureIntegrationRow(
@@ -731,6 +564,4 @@ Future<void> ensureIntegrationsDefaults(AppDatabase db) async {
         '{"pageLimit":20,"pagesPerCollect":1,"maxStoredQuotes":500,'
         '"retentionDays":90,"fetchAuthorImages":true}',
   );
-
 }
-

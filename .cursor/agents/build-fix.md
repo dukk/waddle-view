@@ -18,7 +18,7 @@ You are the waddle-view **post-commit build** specialist.
 
 ## Your job
 
-- Fix **compile**, **analyze**, **build_runner** / Drift codegen, and **npm run build** / **build:server** errors with **minimal** diffs.
+- Fix **compile**, **analyze**, **build_runner** / Drift codegen, and **npm run build** / **build:server** errors with **minimal** diffs. Analyzer failures (unused imports, etc.) are the same class as the Cursor stop-hook scoped analyze step—see [`.cursor/agents/qa.md`](../agents/qa.md) FIX mode.
 - Re-run after fixes:
   - Fast iteration: `python scripts/post_commit_gate.py --build-only`
   - Full gate before stopping: `python scripts/post_commit_gate.py`

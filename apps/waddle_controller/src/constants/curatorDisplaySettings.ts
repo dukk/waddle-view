@@ -71,6 +71,13 @@ export const CURATOR_HISTORY_DEPTH = {
   default: 5,
 } as const;
 
+export const DISPLAY_COLLECT_IDLE_SECONDS = {
+  min: 15,
+  max: 600,
+  default: 30,
+  step: 15,
+} as const;
+
 export const CURATOR_TICKER_PIXELS_PER_SECOND = {
   min: 20,
   max: 140,

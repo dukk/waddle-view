@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""After the agent stops, run scoped tests and invoke qa/docs subagents."""
+"""After the agent stops, run scoped analyze/tests and invoke qa/docs subagents."""
 
 from __future__ import annotations
 
@@ -99,16 +99,16 @@ def main() -> None:
                     sections.append(
                         "---\n\n"
                         "/qa FIX\n\n"
-                        f"Scoped unit tests failed after edits.\n\n"
+                        f"Scoped analyze or unit tests failed after edits.\n\n"
                         f"Edited files:\n{file_list}\n\n"
-                        "Read test output from the hook log, fix failures with minimal diffs, "
+                        "Read hook output, fix analyzer issues and/or test failures with minimal diffs, "
                         "and re-run `python scripts/qa_scoped_tests.py` with the same files."
                     )
             except Exception:
                 sections.append(
                     "---\n\n"
                     "/qa FIX\n\n"
-                    f"Scoped unit tests failed.\n\nEdited files:\n{file_list}"
+                    f"Scoped checks failed.\n\nEdited files:\n{file_list}"
                 )
         else:
             sections.extend(

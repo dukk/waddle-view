@@ -4,7 +4,9 @@ import {
   Autocomplete,
   Box,
   Button,
+  Checkbox,
   FormControl,
+  FormControlLabel,
   InputLabel,
   MenuItem,
   Select,
@@ -19,6 +21,7 @@ import { TickerPixelsPerSecondField } from '@/components/TickerPixelsPerSecondFi
 import {
   CURATOR_HISTORY_DEPTH,
   CURATOR_TICKER_PROGRAM_DURATION,
+  DISPLAY_COLLECT_IDLE_SECONDS,
   VIEWPORT_RESERVE_PCT,
   curatorTextScaleIds,
 } from '@/constants/curatorDisplaySettings';
@@ -465,6 +468,34 @@ export function DisplayOperatorSettingsProgramsFields({
           multiple past ticker programs.
         </Typography>
       </FormControl>
+      <Typography variant="subtitle2" fontWeight={600} sx={{ pt: 1 }}>
+        CPU / background load
+      </Typography>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: -1 }}>
+        Throttles integration polling and optional low-power UI caps on this display.
+      </Typography>
+      <CuratorSliderField
+        label="Collection cycle idle"
+        value={form.display_collect_idle_seconds ?? DISPLAY_COLLECT_IDLE_SECONDS.default}
+        onChange={(v) => setForm({ ...form, display_collect_idle_seconds: v })}
+        min={DISPLAY_COLLECT_IDLE_SECONDS.min}
+        max={DISPLAY_COLLECT_IDLE_SECONDS.max}
+        step={DISPLAY_COLLECT_IDLE_SECONDS.step}
+        disabled={!canWrite}
+        formatValue={(v) => `${v}s`}
+      />
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={form.display_low_power_enabled === true}
+            disabled={!canWrite}
+            onChange={(e) =>
+              setForm({ ...form, display_low_power_enabled: e.target.checked })
+            }
+          />
+        }
+        label="Low-power mode (floor collect idle at 60s, cap ticker at 40 px/s)"
+      />
     </>
   );
 }

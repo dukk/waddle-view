@@ -26,9 +26,9 @@ void main() {
   test('runs one provider then stops when sleeper stops engine', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.integrations).insert(
-          IntegrationsCompanion.insert(id: 'c', integrationType: 'x'),
-        );
+    await db
+        .into(db.integrations)
+        .insert(IntegrationsCompanion.insert(id: 'c', integrationType: 'x'));
     final secrets = InMemorySecretStore();
     final resolver = ProviderConfigResolver(db, secrets);
     final p = CountingProvider();
@@ -50,12 +50,47 @@ void main() {
     await db.close();
   });
 
-  test('onCycleComplete runs once per full provider round before idle', () async {
+  test(
+    'onCycleComplete runs once per full provider round before idle',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
+      await db
+          .into(db.integrations)
+          .insert(IntegrationsCompanion.insert(id: 'c', integrationType: 'x'));
+      final secrets = InMemorySecretStore();
+      final resolver = ProviderConfigResolver(db, secrets);
+      final p = CountingProvider();
+      final ctx = DataWriteContextImpl(
+        db: db,
+        blobs: FakeBlobStore(),
+        secrets: secrets,
+        resolve: resolver.resolve,
+      );
+      var cycles = 0;
+      DataCollectionEngine? engineRef;
+      engineRef = DataCollectionEngine(
+        providers: [p],
+        context: ctx,
+        sleeper: CallbackSleeper(() => engineRef?.stop()),
+        idleBetweenCycles: const Duration(days: 1),
+        onCycleComplete: () async {
+          cycles++;
+        },
+      );
+      await engineRef.start();
+      expect(p.count, 1);
+      expect(cycles, 1);
+      await db.close();
+    },
+  );
+
+  test('resolveIdleBetweenCycles overrides fixed idle', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.integrations).insert(
-          IntegrationsCompanion.insert(id: 'c', integrationType: 'x'),
-        );
+    await db
+        .into(db.integrations)
+        .insert(IntegrationsCompanion.insert(id: 'c', integrationType: 'x'));
     final secrets = InMemorySecretStore();
     final resolver = ProviderConfigResolver(db, secrets);
     final p = CountingProvider();
@@ -65,20 +100,21 @@ void main() {
       secrets: secrets,
       resolve: resolver.resolve,
     );
-    var cycles = 0;
+    var idleCalls = 0;
     DataCollectionEngine? engineRef;
     engineRef = DataCollectionEngine(
       providers: [p],
       context: ctx,
       sleeper: CallbackSleeper(() => engineRef?.stop()),
       idleBetweenCycles: const Duration(days: 1),
-      onCycleComplete: () async {
-        cycles++;
+      resolveIdleBetweenCycles: () async {
+        idleCalls++;
+        return const Duration(milliseconds: 1);
       },
     );
     await engineRef.start();
     expect(p.count, 1);
-    expect(cycles, 1);
+    expect(idleCalls, greaterThanOrEqualTo(1));
     await db.close();
   });
 }

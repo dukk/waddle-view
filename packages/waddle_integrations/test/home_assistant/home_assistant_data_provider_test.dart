@@ -11,6 +11,8 @@ import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'package:waddle_shared/integrations/integration_kv_repository.dart';
+import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import 'package:waddle_shared/secrets/in_memory_secret_store.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 
@@ -40,8 +42,10 @@ class _MemoryBlobStore implements BlobStore {
   Future<List<int>> readBytes(BlobRef ref) async => const [];
 
   @override
-  Future<BlobRef> putBytes(List<int> bytes, {required String logicalKey}) async =>
-      BlobRef(logicalKey);
+  Future<BlobRef> putBytes(
+    List<int> bytes, {
+    required String logicalKey,
+  }) async => BlobRef(logicalKey);
 
   @override
   File? tryLocalFile(BlobRef ref) => null;
@@ -68,17 +72,13 @@ Future<DataWriteContextImpl> _ctx(
 }
 
 AppDatabase _openDb() => AppDatabase(
-      DatabaseConnection(
-        NativeDatabase.memory(),
-        closeStreamsSynchronously: true,
-      ),
-    );
+  DatabaseConnection(NativeDatabase.memory(), closeStreamsSynchronously: true),
+);
 
-Future<void> _seedProvider(
-  AppDatabase db, {
-  bool enabled = true,
-}) async {
-  await db.into(db.integrations).insert(
+Future<void> _seedProvider(AppDatabase db, {bool enabled = true}) async {
+  await db
+      .into(db.integrations)
+      .insert(
         IntegrationsCompanion.insert(
           id: kHomeAssistantProviderId,
           integrationType: kHomeAssistantProviderId,
@@ -91,10 +91,7 @@ Future<void> _seedProvider(
       );
 }
 
-String _stateBody({
-  required String state,
-  String friendlyName = 'Test',
-}) {
+String _stateBody({required String state, String friendlyName = 'Test'}) {
   return jsonEncode({
     'entity_id': 'sensor.test',
     'state': state,
@@ -104,11 +101,45 @@ String _stateBody({
 }
 
 void main() {
+  test('collect skips when poll gate not due', () async {
+    final db = _openDb();
+    await db.customStatement('SELECT 1');
+    await _seedProvider(db);
+    await db
+        .into(db.interestsHomeAssistantEntities)
+        .insert(
+          InterestsHomeAssistantEntitiesCompanion.insert(
+            id: 's1',
+            entityId: 'sensor.temp',
+          ),
+        );
+    final kv = IntegrationKvRepository(db);
+    await kv.upsertIntegration(
+      integrationId: kHomeAssistantProviderId,
+      key: kIntegrationLastCollectKey,
+      value: '5000',
+      valueType: kIntegrationKvTypeIntMs,
+    );
+    final ctx = await _ctx(db, InMemorySecretStore(), token: 'ha-token');
+    final client = _HaClient((_) => http.Response(_stateBody(state: '1'), 200));
+    final provider = HomeAssistantDataProvider(
+      httpClient: client,
+      nowMs: () => 10_000,
+    );
+
+    await provider.collect(ctx);
+
+    expect(client.sends, 0);
+    await db.close();
+  });
+
   test('collect skips when access token missing', () async {
     final db = _openDb();
     await db.customStatement('SELECT 1');
     await _seedProvider(db);
-    await db.into(db.interestsHomeAssistantEntities).insert(
+    await db
+        .into(db.interestsHomeAssistantEntities)
+        .insert(
           InterestsHomeAssistantEntitiesCompanion.insert(
             id: 's1',
             entityId: 'sensor.temp',
@@ -129,7 +160,9 @@ void main() {
     final db = _openDb();
     await db.customStatement('SELECT 1');
     await _seedProvider(db, enabled: false);
-    await db.into(db.interestsHomeAssistantEntities).insert(
+    await db
+        .into(db.interestsHomeAssistantEntities)
+        .insert(
           InterestsHomeAssistantEntitiesCompanion.insert(
             id: 's1',
             entityId: 'sensor.temp',
@@ -149,7 +182,9 @@ void main() {
     final db = _openDb();
     await db.customStatement('SELECT 1');
     await _seedProvider(db);
-    await db.into(db.interestsHomeAssistantEntities).insert(
+    await db
+        .into(db.interestsHomeAssistantEntities)
+        .insert(
           InterestsHomeAssistantEntitiesCompanion.insert(
             id: 's1',
             entityId: 'sensor.kitchen_temp',
@@ -159,9 +194,15 @@ void main() {
     final ctx = await _ctx(db, InMemorySecretStore(), token: 'ha-token');
     final client = _HaClient((uri) {
       expect(uri.path, endsWith('/api/states/sensor.kitchen_temp'));
-      return http.Response(_stateBody(state: '22.1', friendlyName: 'Kitchen'), 200);
+      return http.Response(
+        _stateBody(state: '22.1', friendlyName: 'Kitchen'),
+        200,
+      );
     });
-    final provider = HomeAssistantDataProvider(httpClient: client, nowMs: () => 1000);
+    final provider = HomeAssistantDataProvider(
+      httpClient: client,
+      nowMs: () => 1_700_000_000_000,
+    );
 
     await provider.collect(ctx);
 
@@ -169,7 +210,7 @@ void main() {
     final rows = await db.select(db.homeAssistantEntityStates).get();
     expect(rows.length, 1);
     expect(rows.single.state, '22.1');
-    expect(rows.single.observedAtMs, 1000);
+    expect(rows.single.observedAtMs, 1_700_000_000_000);
     await db.close();
   });
 
@@ -177,13 +218,17 @@ void main() {
     final db = _openDb();
     await db.customStatement('SELECT 1');
     await _seedProvider(db);
-    await db.into(db.interestsHomeAssistantEntities).insert(
+    await db
+        .into(db.interestsHomeAssistantEntities)
+        .insert(
           InterestsHomeAssistantEntitiesCompanion.insert(
             id: 's1',
             entityId: 'sensor.missing',
           ),
         );
-    await db.into(db.interestsHomeAssistantEntities).insert(
+    await db
+        .into(db.interestsHomeAssistantEntities)
+        .insert(
           InterestsHomeAssistantEntitiesCompanion.insert(
             id: 's2',
             entityId: 'sensor.ok',
@@ -211,7 +256,9 @@ void main() {
     final db = _openDb();
     await db.customStatement('SELECT 1');
     await _seedProvider(db);
-    await db.into(db.interestsHomeAssistantEntities).insert(
+    await db
+        .into(db.interestsHomeAssistantEntities)
+        .insert(
           InterestsHomeAssistantEntitiesCompanion.insert(
             id: 'b1',
             entityId: 'binary_sensor.motion',

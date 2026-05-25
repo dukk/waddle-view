@@ -46,6 +46,16 @@ DART_PACKAGE_PREFIXES: tuple[tuple[str, str], ...] = (
 
 CONTROLLER_PREFIX = "apps/waddle_controller/"
 
+# When these packages change, also analyze waddle_display (downstream imports).
+QA_ANALYZE_DISPLAY_WIDEN_KEYS = frozenset({"shared", "integrations", "plugin_sdk"})
+
+DART_ANALYZE_PACKAGE_LABELS: tuple[tuple[str, str], ...] = (
+    ("dart analyze (waddle_shared)", "shared"),
+    ("dart analyze (waddle_integrations)", "integrations"),
+    ("dart analyze (waddle_plugin_sdk)", "plugin_sdk"),
+    ("dart analyze (waddlectl)", "waddlectl"),
+)
+
 
 _path_augmented = False
 # Node binary directory captured before augment_path_for_tooling() mutates PATH.
@@ -441,6 +451,98 @@ class QaScopedTestResult:
     failure_output: str | None = None
 
 
+def qa_hook_analyze_skipped() -> bool:
+    if os.environ.get("WADDLE_SKIP_QA_HOOK_TESTS", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }:
+        return True
+    return os.environ.get("WADDLE_SKIP_QA_HOOK_ANALYZE", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+
+
+def qa_scoped_analyze_widen_display(packages: set[str] | None) -> bool:
+    if packages is None:
+        return False
+    return bool(packages & QA_ANALYZE_DISPLAY_WIDEN_KEYS)
+
+
+def dart_workspace_analyze_include_display(
+    packages: set[str] | None,
+    package_enabled: Any,
+) -> bool:
+    if package_enabled("display"):
+        return True
+    return qa_scoped_analyze_widen_display(packages)
+
+
+def append_dart_analyze_steps(
+    steps: list[Step],
+    dirs: dict[str, Path],
+    package_enabled: Any,
+    *,
+    include_display: bool,
+) -> None:
+    for label, key in DART_ANALYZE_PACKAGE_LABELS:
+        if package_enabled(key):
+            steps.append(Step(label, ["dart", "analyze"], dirs[key]))
+    if include_display:
+        steps.append(
+            Step(
+                "flutter analyze (waddle_display)",
+                ["flutter", "analyze"],
+                dirs["display"],
+            )
+        )
+
+
+def build_qa_scoped_analyze_steps(root: Path, edited_files: list[str]) -> list[Step]:
+    """Package-scoped analyze for agent-edited Dart paths (optional build_runner first)."""
+    changed = [_normalize_path(f) for f in edited_files if f and f.strip()]
+    if not changed:
+        return []
+
+    packages = changed_dart_packages(changed)
+    if packages is not None and not packages:
+        return []
+
+    dirs = package_dirs(root)
+    steps: list[Step] = []
+
+    def package_enabled(key: str) -> bool:
+        return packages is None or key in packages
+
+    if needs_build_runner(changed):
+        steps.append(
+            Step(
+                "build_runner (waddle_shared)",
+                [
+                    "dart",
+                    "run",
+                    "build_runner",
+                    "build",
+                    "--delete-conflicting-outputs",
+                ],
+                dirs["shared"],
+            )
+        )
+
+    append_dart_analyze_steps(
+        steps,
+        dirs,
+        package_enabled,
+        include_display=dart_workspace_analyze_include_display(
+            packages,
+            package_enabled,
+        ),
+    )
+    return steps
+
+
 def build_qa_scoped_test_steps(root: Path, edited_files: list[str]) -> list[Step]:
     """Test-only steps for edited paths (no analyze, coverage, or pub get)."""
     changed = [_normalize_path(f) for f in edited_files if f and f.strip()]
@@ -559,15 +661,38 @@ def collect_qa_test_path_labels(steps: list[Step]) -> list[str]:
     return labels
 
 
-def run_qa_scoped_tests(root: Path, edited_files: list[str]) -> QaScopedTestResult:
-    """Run scoped unit tests for edited files; 0 pass/skip, non-zero on failure."""
-    normalized = [_normalize_path(f) for f in edited_files if f and f.strip()]
-    steps = build_qa_scoped_test_steps(root, normalized)
-    test_paths = collect_qa_test_path_labels(steps)
+def _qa_scoped_failure(
+    *,
+    normalized: list[str],
+    test_paths: list[str],
+    step: Step,
+    code: int,
+    output: str,
+) -> QaScopedTestResult:
+    return QaScopedTestResult(
+        exit_code=code,
+        skipped=False,
+        edited_files=normalized,
+        test_paths=test_paths,
+        failure_label=step.label,
+        failure_cwd=step.cwd,
+        failure_argv=list(step.argv),
+        failure_output=output,
+    )
 
-    if not steps:
+
+def run_qa_scoped_tests(root: Path, edited_files: list[str]) -> QaScopedTestResult:
+    """Run scoped analyze then unit tests for edited files; 0 pass/skip, non-zero on failure."""
+    normalized = [_normalize_path(f) for f in edited_files if f and f.strip()]
+    analyze_steps: list[Step] = []
+    if not qa_hook_analyze_skipped():
+        analyze_steps = build_qa_scoped_analyze_steps(root, normalized)
+    test_steps = build_qa_scoped_test_steps(root, normalized)
+    test_paths = collect_qa_test_path_labels(test_steps)
+
+    if not analyze_steps and not test_steps:
         print(
-            "QA scoped tests: skipped (no mappable unit tests for edited files).",
+            "QA scoped checks: skipped (no Dart analyze or mappable tests for edited files).",
             flush=True,
         )
         return QaScopedTestResult(
@@ -577,21 +702,29 @@ def run_qa_scoped_tests(root: Path, edited_files: list[str]) -> QaScopedTestResu
             test_paths=[],
         )
 
-    for step in steps:
+    for step in analyze_steps:
         code, output = run_step(step)
         if code != 0:
-            return QaScopedTestResult(
-                exit_code=code,
-                skipped=False,
-                edited_files=normalized,
+            return _qa_scoped_failure(
+                normalized=normalized,
                 test_paths=test_paths,
-                failure_label=step.label,
-                failure_cwd=step.cwd,
-                failure_argv=list(step.argv),
-                failure_output=output,
+                step=step,
+                code=code,
+                output=output,
             )
 
-    print("QA scoped tests: all passed.", flush=True)
+    for step in test_steps:
+        code, output = run_step(step)
+        if code != 0:
+            return _qa_scoped_failure(
+                normalized=normalized,
+                test_paths=test_paths,
+                step=step,
+                code=code,
+                output=output,
+            )
+
+    print("QA scoped checks: all passed.", flush=True)
     return QaScopedTestResult(
         exit_code=0,
         skipped=False,
@@ -770,28 +903,12 @@ def build_post_commit_build_steps(
                 flush=True,
             )
 
-        dart_analyze_packages: list[tuple[str, str, Path]] = [
-            ("dart analyze (waddle_shared)", "shared", dirs["shared"]),
-            (
-                "dart analyze (waddle_integrations)",
-                "integrations",
-                dirs["integrations"],
-            ),
-            ("dart analyze (waddle_plugin_sdk)", "plugin_sdk", dirs["plugin_sdk"]),
-            ("dart analyze (waddlectl)", "waddlectl", dirs["waddlectl"]),
-        ]
-        for label, key, cwd in dart_analyze_packages:
-            if package_enabled(key):
-                steps.append(Step(label, ["dart", "analyze"], cwd))
-
-        if package_enabled("display"):
-            steps.append(
-                Step(
-                    "flutter analyze (waddle_display)",
-                    ["flutter", "analyze"],
-                    dirs["display"],
-                )
-            )
+        append_dart_analyze_steps(
+            steps,
+            dirs,
+            package_enabled,
+            include_display=package_enabled("display"),
+        )
 
     if "controller" in scopes:
         controller = root / "apps" / "waddle_controller"
@@ -946,12 +1063,14 @@ def build_dart_workspace_steps(
                 ),
             )
 
-    steps.append(
-        Step(
-            "flutter analyze (waddle_display)",
-            ["flutter", "analyze"],
-            display,
-        )
+    append_dart_analyze_steps(
+        steps,
+        dirs,
+        package_enabled,
+        include_display=dart_workspace_analyze_include_display(
+            packages,
+            package_enabled,
+        ),
     )
 
     if package_enabled("display"):

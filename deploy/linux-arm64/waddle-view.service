@@ -80,6 +80,11 @@ RestartSec=3
 # Google Calendar OAuth public client id — not in SQLite
 # Environment=WADDLE_DISPLAY_GOOGLE_CLIENT_ID=
 
+# Data collection engine idle between full provider rounds (release default 30).
+# Environment=WADDLE_DISPLAY_COLLECT_IDLE_SECONDS=60
+# Low-power: longer collect idle floor and slower ticker cap.
+# Environment=WADDLE_DISPLAY_LOW_POWER=1
+
 # Drop-in plugin directories (manifest.json per folder); restart display after changes.
 # Environment=WADDLE_DISPLAY_PLUGINS_DIR=/opt/waddle-view/plugins
 

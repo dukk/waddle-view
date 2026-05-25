@@ -8,6 +8,8 @@ import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_shared/integrations/integration_collect.dart';
+import 'package:waddle_shared/integrations/integration_kv_repository.dart';
+import 'package:waddle_shared/integrations/integration_poll_gate.dart';
 import '../weather_openweathermap/weather_locations_for_collect.dart';
 import '../weather_openweathermap/weather_provider_extra_config.dart';
 
@@ -21,10 +23,14 @@ const String kDefaultNwsUserAgent =
     'see apps/waddle-display/README.md)';
 
 class NwsWeatherGovAlertsDataProvider implements IDataProvider {
-  NwsWeatherGovAlertsDataProvider({http.Client? httpClient})
-    : _http = httpClient ?? http.Client();
+  NwsWeatherGovAlertsDataProvider({
+    http.Client? httpClient,
+    int Function()? nowMs,
+  }) : _http = httpClient ?? http.Client(),
+       _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
 
   final http.Client _http;
+  final int Function() _nowMs;
 
   @override
   String get id => kWeatherAlertsNwsIntegrationType;
@@ -41,24 +47,39 @@ class NwsWeatherGovAlertsDataProvider implements IDataProvider {
     DataWriteContext ctx,
     Integration setting,
   ) async {
-    final config = await ctx.resolveConfig(setting.id);
-    final baseUrl = (config.baseUrl != null && config.baseUrl!.trim().isNotEmpty)
+    final integrationId = setting.id;
+    final nowMs = _nowMs();
+    final kv = IntegrationKvRepository(ctx.db);
+    if (await shouldSkipIntegrationPoll(
+      kv: kv,
+      integrationId: integrationId,
+      pollSeconds: setting.pollSeconds,
+      nowMs: nowMs,
+    )) {
+      ctx.diagnostics.provider(
+        'nws_alerts: skip poll ($integrationId ${setting.pollSeconds}s gate)',
+      );
+      return;
+    }
+    final config = await ctx.resolveConfig(integrationId);
+    final baseUrl =
+        (config.baseUrl != null && config.baseUrl!.trim().isNotEmpty)
         ? config.baseUrl!.trim()
         : kDefaultNwsWeatherGovBaseUrl;
     final extra = WeatherProviderExtraConfig.parse(config.configJson);
     final userAgent = _parseUserAgent(config.configJson);
-    final optedOut = await (ctx.db.select(ctx.db.interestsLocations)
-          ..where(
-            (t) => Expression.and([
-              t.includeWeather.equals(true),
-              t.includeWeatherAlerts.equals(false),
-            ]),
-          ))
-        .get();
+    final optedOut =
+        await (ctx.db.select(ctx.db.interestsLocations)..where(
+              (t) => Expression.and([
+                t.includeWeather.equals(true),
+                t.includeWeatherAlerts.equals(false),
+              ]),
+            ))
+            .get();
     for (final row in optedOut) {
-      await (ctx.db.delete(ctx.db.weatherAlerts)
-            ..where((t) => t.locationId.equals(row.id)))
-          .go();
+      await (ctx.db.delete(
+        ctx.db.weatherAlerts,
+      )..where((t) => t.locationId.equals(row.id))).go();
     }
 
     final locations = await resolveWeatherLocationsForActiveAlertsCollect(
@@ -76,6 +97,11 @@ class NwsWeatherGovAlertsDataProvider implements IDataProvider {
         'cleared stored alerts',
       );
       await ctx.db.delete(ctx.db.weatherAlerts).go();
+      await markIntegrationCollectDone(
+        kv: kv,
+        integrationId: integrationId,
+        nowMs: nowMs,
+      );
       return;
     }
 
@@ -84,7 +110,8 @@ class NwsWeatherGovAlertsDataProvider implements IDataProvider {
         await ensureSyntheticDefaultInterestsLocation(ctx.db, location);
         final uri = Uri.parse('$baseUrl/alerts/active').replace(
           queryParameters: {
-            'point': '${location.lat.toStringAsFixed(4)},${location.lon.toStringAsFixed(4)}',
+            'point':
+                '${location.lat.toStringAsFixed(4)},${location.lon.toStringAsFixed(4)}',
           },
         );
         ctx.diagnostics.provider(
@@ -92,10 +119,7 @@ class NwsWeatherGovAlertsDataProvider implements IDataProvider {
         );
         final res = await _http.get(
           uri,
-          headers: {
-            'Accept': 'application/geo+json',
-            'User-Agent': userAgent,
-          },
+          headers: {'Accept': 'application/geo+json', 'User-Agent': userAgent},
         );
         if (res.statusCode != 200) {
           ctx.diagnostics.provider(
@@ -105,9 +129,9 @@ class NwsWeatherGovAlertsDataProvider implements IDataProvider {
         }
         final companions = _parseGeoJsonFeatures(res.body, location.id);
         await ctx.db.transaction(() async {
-          await (ctx.db.delete(ctx.db.weatherAlerts)
-                ..where((t) => t.locationId.equals(location.id)))
-              .go();
+          await (ctx.db.delete(
+            ctx.db.weatherAlerts,
+          )..where((t) => t.locationId.equals(location.id))).go();
           for (final c in companions) {
             await ctx.db.into(ctx.db.weatherAlerts).insert(c);
           }
@@ -116,9 +140,18 @@ class NwsWeatherGovAlertsDataProvider implements IDataProvider {
           'nws_alerts: stored ${companions.length} alert(s) id=${location.id}',
         );
       } on Object catch (e, st) {
-        ctx.diagnostics.providerFail('nws_alerts: collect id=${location.id}', e, st);
+        ctx.diagnostics.providerFail(
+          'nws_alerts: collect id=${location.id}',
+          e,
+          st,
+        );
       }
     }
+    await markIntegrationCollectDone(
+      kv: kv,
+      integrationId: integrationId,
+      nowMs: nowMs,
+    );
   }
 }
 

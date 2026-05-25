@@ -6,6 +6,8 @@ import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_shared/integrations/integration_collect.dart';
+import 'package:waddle_shared/integrations/integration_kv_repository.dart';
+import 'package:waddle_shared/integrations/integration_poll_gate.dart';
 import 'package:waddle_shared/net/http_debug_uri.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/runtime/runtime_signal_repository.dart';
@@ -17,10 +19,7 @@ const String kHomeAssistantProviderId = 'home_assistant';
 const String kDefaultHomeAssistantBaseUrl = 'http://homeassistant.local:8123';
 
 class _ResolvedEntity {
-  const _ResolvedEntity({
-    required this.id,
-    required this.entityId,
-  });
+  const _ResolvedEntity({required this.id, required this.entityId});
 
   final String id;
   final String entityId;
@@ -28,11 +27,9 @@ class _ResolvedEntity {
 
 /// Polls Home Assistant REST API for configured entity states.
 class HomeAssistantDataProvider implements IDataProvider {
-  HomeAssistantDataProvider({
-    http.Client? httpClient,
-    int Function()? nowMs,
-  })  : _http = httpClient ?? http.Client(),
-        _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
+  HomeAssistantDataProvider({http.Client? httpClient, int Function()? nowMs})
+    : _http = httpClient ?? http.Client(),
+      _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
 
   final http.Client _http;
   final int Function() _nowMs;
@@ -48,7 +45,21 @@ class HomeAssistantDataProvider implements IDataProvider {
       return;
     }
     final setting = settings.first;
-    final config = await ctx.resolveConfig(setting.id);
+    final integrationId = setting.id;
+    final now = _nowMs();
+    final kv = IntegrationKvRepository(ctx.db);
+    if (await shouldSkipIntegrationPoll(
+      kv: kv,
+      integrationId: integrationId,
+      pollSeconds: setting.pollSeconds,
+      nowMs: now,
+    )) {
+      ctx.diagnostics.provider(
+        'home_assistant: skip poll ($integrationId ${setting.pollSeconds}s gate)',
+      );
+      return;
+    }
+    final config = await ctx.resolveConfig(integrationId);
     final token = config.accessToken;
     if (token == null || token.isEmpty) {
       ctx.diagnostics.provider('home_assistant: skip (no access token)');
@@ -65,7 +76,6 @@ class HomeAssistantDataProvider implements IDataProvider {
       ctx.diagnostics.provider('home_assistant: skip (no entities)');
       return;
     }
-    final now = _nowMs();
     final signals = RuntimeSignalRepository(ctx.db);
     ctx.diagnostics.provider(
       'home_assistant: collect entities=${entities.length} '
@@ -90,6 +100,11 @@ class HomeAssistantDataProvider implements IDataProvider {
         );
       }
     }
+    await markIntegrationCollectDone(
+      kv: kv,
+      integrationId: integrationId,
+      nowMs: now,
+    );
   }
 
   Future<void> _collectOne(
@@ -136,7 +151,9 @@ class HomeAssistantDataProvider implements IDataProvider {
       );
       return;
     }
-    await ctx.db.into(ctx.db.homeAssistantEntityStates).insertOnConflictUpdate(
+    await ctx.db
+        .into(ctx.db.homeAssistantEntityStates)
+        .insertOnConflictUpdate(
           HomeAssistantEntityStatesCompanion.insert(
             entityId: entity.entityId,
             state: parsed.state,
@@ -161,10 +178,11 @@ class HomeAssistantDataProvider implements IDataProvider {
     AppDatabase db,
     HomeAssistantProviderExtraConfig extra,
   ) async {
-    final rows = await (db.select(db.interestsHomeAssistantEntities)
-          ..where((t) => t.enabled.equals(true))
-          ..orderBy([(t) => OrderingTerm.asc(t.id)]))
-        .get();
+    final rows =
+        await (db.select(db.interestsHomeAssistantEntities)
+              ..where((t) => t.enabled.equals(true))
+              ..orderBy([(t) => OrderingTerm.asc(t.id)]))
+            .get();
     if (rows.isNotEmpty) {
       return rows
           .take(extra.maxEntitiesPerCollect)
@@ -172,10 +190,13 @@ class HomeAssistantDataProvider implements IDataProvider {
           .toList();
     }
     final out = <_ResolvedEntity>[];
-    for (final entry
-        in extra.defaultEntities.take(extra.maxEntitiesPerCollect)) {
+    for (final entry in extra.defaultEntities.take(
+      extra.maxEntitiesPerCollect,
+    )) {
       final id = _interestIdForEntity(entry.entityId);
-      await db.into(db.interestsHomeAssistantEntities).insertOnConflictUpdate(
+      await db
+          .into(db.interestsHomeAssistantEntities)
+          .insertOnConflictUpdate(
             InterestsHomeAssistantEntitiesCompanion.insert(
               id: id,
               entityId: entry.entityId,
@@ -196,8 +217,7 @@ class HomeAssistantDataProvider implements IDataProvider {
     return trimmed.replaceAll(RegExp(r'/+$'), '');
   }
 
-  String _interestIdForEntity(String entityId) =>
-      entityId.replaceAll('.', '_');
+  String _interestIdForEntity(String entityId) => entityId.replaceAll('.', '_');
 
   Future<http.Response?> _safeGet(
     Uri uri, {

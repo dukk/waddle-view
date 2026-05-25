@@ -30,6 +30,13 @@ const String kDisplayPluginsDirEnv = 'WADDLE_DISPLAY_PLUGINS_DIR';
 /// Path to the Pi upgrade helper script (`waddle-view-upgrade.sh`).
 const String kDisplayUpgradeScriptEnv = 'WADDLE_DISPLAY_UPGRADE_SCRIPT';
 
+/// Seconds between full data-collection engine rounds (release; debug uses 5s).
+const String kDisplayCollectIdleSecondsEnv =
+    'WADDLE_DISPLAY_COLLECT_IDLE_SECONDS';
+
+/// When `1`/`true`, applies low-power caps (longer collect idle floor, slower ticker).
+const String kDisplayLowPowerEnv = 'WADDLE_DISPLAY_LOW_POWER';
+
 /// In-app live preview (window capture + JPEG WebSocket) defaults when KV is unset.
 const String kDisplayLivePreviewEnabledEnv =
     'WADDLE_DISPLAY_LIVE_PREVIEW_ENABLED';

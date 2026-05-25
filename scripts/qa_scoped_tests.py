@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Run scoped unit tests for agent-edited files (Cursor stop hook).
+"""Run scoped analyze and unit tests for agent-edited files (Cursor stop hook).
 
 Examples (from repo root):
 
   python scripts/qa_scoped_tests.py --files apps/waddle_controller/src/api/foo.ts
   python scripts/qa_scoped_tests.py --files-json '["packages/waddle_shared/lib/foo.dart"]'
 
-Set WADDLE_SKIP_QA_HOOK_TESTS=1 to skip (exit 0).
+Set WADDLE_SKIP_QA_HOOK_TESTS=1 to skip analyze and tests (exit 0).
+Set WADDLE_SKIP_QA_HOOK_ANALYZE=1 to skip analyze only (tests still run).
 """
 
 from __future__ import annotations
@@ -25,7 +26,9 @@ from waddle_check_common import configure_stdio_encoding, repo_root, run_qa_scop
 
 def main(argv: list[str] | None = None) -> int:
     configure_stdio_encoding()
-    parser = argparse.ArgumentParser(description="Run scoped unit tests for edited files.")
+    parser = argparse.ArgumentParser(
+        description="Run scoped Dart analyze and unit tests for edited files.",
+    )
     parser.add_argument(
         "--files",
         nargs="*",
@@ -38,8 +41,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    if os.environ.get("WADDLE_SKIP_QA_HOOK_TESTS", "").strip() in {"1", "true", "yes"}:
-        print("QA scoped tests: skipped (WADDLE_SKIP_QA_HOOK_TESTS).", flush=True)
+    if os.environ.get("WADDLE_SKIP_QA_HOOK_TESTS", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }:
+        print("QA scoped checks: skipped (WADDLE_SKIP_QA_HOOK_TESTS).", flush=True)
         return 0
 
     files: list[str] = list(args.files)

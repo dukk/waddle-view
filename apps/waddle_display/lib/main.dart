@@ -37,6 +37,7 @@ import 'package:waddle_shared/collect/data_collection_engine.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_shared/config/provider_config_resolver.dart';
 import 'package:waddle_shared/curation/curator_schedule_resolver.dart';
+import 'package:waddle_shared/config/display_collect_settings.dart';
 import 'package:waddle_shared/display/display_ticker_settings.dart';
 import 'package:waddle_shared/display/display_viewport_reserve.dart';
 import 'package:waddle_shared/curation/reject_rescan.dart';
@@ -155,6 +156,7 @@ Future<void> _waddleBootstrap() async {
     );
     await syncIntegrationAccountLinks(db);
     final envMap = mergeBootstrapEnv();
+    applyDisplayCollectEnvDefaults(envMap);
     await corsOrigins.seedEnvOrigins(
       parseCorsAllowedOrigins(envMap[kDisplayHttpCorsOriginsEnv]),
       nowMs: DateTime.now().millisecondsSinceEpoch,
@@ -189,6 +191,7 @@ Future<void> _waddleBootstrap() async {
       bootstrapSelection.primary.configuration,
       bootstrapSelection.effectiveTickerMemberIds,
       parseDisplayTickerSettingsFromKv(bootstrapKv),
+      bootstrapKv,
     );
     final dashboardCuratorInner = DefaultDashboardCurator(
       read: DriftCuratorReadPort(db, membershipFilter: curatorMembership),
@@ -247,7 +250,22 @@ Future<void> _waddleBootstrap() async {
         sleeper: SystemSleeper(),
         idleBetweenCycles: kDebugMode
             ? const Duration(seconds: 5)
-            : const Duration(seconds: 30),
+            : Duration(
+                seconds: resolveDisplayCollectIdleSeconds(
+                  bootstrapKv,
+                  debugMode: false,
+                ),
+              ),
+        resolveIdleBetweenCycles: () async {
+          final rows = await db.select(db.configKeyValues).get();
+          final kv = {for (final r in rows) r.key: r.value};
+          return Duration(
+            seconds: resolveDisplayCollectIdleSeconds(
+              kv,
+              debugMode: kDebugMode,
+            ),
+          );
+        },
         onCycleComplete: dashboardCurator.refresh,
         diagnostics: collectDiag,
       );
@@ -566,6 +584,7 @@ class _WaddleHomeState extends State<WaddleHome> {
       primary,
       selection.effectiveTickerMemberIds,
       parseDisplayTickerSettingsFromKv(widget.dashboardKv),
+      widget.dashboardKv,
     );
     setState(() {
       _tickerEnabled = primary.tickerEnabled;
@@ -737,6 +756,7 @@ void _applyCuratorTickerMembership(
   CuratorConfigurationInput primary,
   Set<String> effectiveTickerMemberIds,
   DisplayTickerSettings displayTicker,
+  Map<String, String> dashboardKv,
 ) {
   filter.tickerCurationEnabled = primary.tickerEnabled;
   filter.tickerTapeIds = primary.tickerEnabled
@@ -748,7 +768,10 @@ void _applyCuratorTickerMembership(
     pixelsPerSecondOverride: primary.tickerPixelsPerSecond,
   );
   filter.tickerProgramDurationSeconds = merged.programDurationSeconds;
-  filter.tickerPixelsPerSecond = merged.pixelsPerSecond;
+  filter.tickerPixelsPerSecond = effectiveDisplayTickerPixelsPerSecond(
+    configuredPixelsPerSecond: merged.pixelsPerSecond,
+    kv: dashboardKv,
+  );
 }
 
 Future<void> _rescanRejectListOnStartup(AppDatabase db) async {

@@ -1,10 +1,10 @@
 ---
 name: qa
 description: >-
-  Quality assurance for waddle-view. After agent edits, runs scoped unit tests
-  via the stop hook; fixes failing tests/code (FIX mode) or audits changes
-  (REVIEW mode). Invoke when Dart, TypeScript, or schema files under apps/ or
-  packages/ were edited.
+  Quality assurance for waddle-view. After agent edits, runs scoped Dart analyze
+  and unit tests via the stop hook; fixes analyzer or test failures (FIX mode)
+  or audits changes (REVIEW mode). Invoke when Dart, TypeScript, or schema files
+  under apps/ or packages/ were edited.
 model: inherit
 readonly: false
 ---
@@ -17,8 +17,8 @@ The stop-hook follow-up starts with **FIX** or **REVIEW**:
 
 | Mode | When | Your job |
 | --- | --- | --- |
-| **FIX** | Scoped unit tests failed (see `.cursor/hooks/state/qa-test-failure.json`) | Minimal fixes to production code and/or tests; re-run the exact `argv` from the failure report until green |
-| **REVIEW** | Scoped tests passed or were skipped | Audit changes; report PASS / PASS WITH NOTES / FAIL; do **not** rewrite large sections |
+| **FIX** | Scoped analyze or tests failed (see `.cursor/hooks/state/qa-test-failure.json`) | Fix analyzer issues (unused imports/locals, etc.) and/or tests; re-run `python scripts/qa_scoped_tests.py` with the same edited paths until green |
+| **REVIEW** | Scoped checks passed or were skipped | Audit changes; report PASS / PASS WITH NOTES / FAIL; do **not** rewrite large sections |
 
 If the prompt does not say FIX or REVIEW, infer from whether `qa-test-failure.json` exists and is recent.
 
@@ -29,13 +29,14 @@ If the prompt does not say FIX or REVIEW, infer from whether `qa-test-failure.js
 3. **FIX**: read [`.cursor/hooks/state/qa-test-failure.json`](../hooks/state/qa-test-failure.json), fix failures, re-run the failing command (or `python scripts/qa_scoped_tests.py --files-json '…'` with the same edited paths).
 4. **REVIEW**: run targeted verification for the touched areas (see below). Prefer narrow commands over full-repo runs when the change is small.
 
-Skip running tests yourself in REVIEW if the hook already ran scoped tests successfully—focus on gaps (migrations, missing tests, conventions).
+Skip re-running analyze/tests in REVIEW if the hook already passed—focus on gaps (migrations, missing tests, conventions).
 
 ## Verification by area
 
 | Area | Checks |
 | --- | --- |
 | `packages/waddle_shared/lib/persistence/` | Migration present; migration tests updated; no secrets in SQLite |
+| `packages/waddle_shared/` (and other Dart packages) | `dart analyze` in that package (zero issues; warnings fail CI) |
 | `apps/waddle_display/` | `flutter analyze` (zero issues); relevant `flutter test`; coverage not regressed for touched lib paths |
 | `packages/waddle_integrations/` | `dart test` for affected collectors |
 | `apps/waddle_controller/` | `npm run lint`, `npm run test:coverage`, `npm run coverage:check` (≥ 80% on gated logic paths); `npm run build`; add/extend Vitest tests for new behavior in `auth/`, `api/`, `storage/`, `util/` |
@@ -62,6 +63,6 @@ For full CI parity before merge, follow [.cursor/skills/run-waddle-checks/SKILL.
 - …
 ```
 
-**FIX** mode: when tests pass, reply briefly with what you fixed and the command you re-ran.
+**FIX** mode: when analyze and tests pass, reply briefly with what you fixed and the command you re-ran.
 
 Be skeptical in REVIEW: confirm tests exist for new behavior, migrations are wired, and edge cases are covered. In FIX, change only what failures require.

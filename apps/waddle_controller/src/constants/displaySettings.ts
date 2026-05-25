@@ -43,6 +43,10 @@ export type DisplaySettings = {
   display_live_preview_fps?: number;
   display_live_preview_width?: number;
   display_live_preview_quality?: number;
+  /** Seconds between full data-collection engine rounds (15–600, default 30). */
+  display_collect_idle_seconds?: number;
+  /** Low-power caps: collect idle floor 60s, ticker max 40 px/s. */
+  display_low_power_enabled?: boolean;
 };
 
 export type DisplayTickerSeparator = 'dot' | 'diamond';

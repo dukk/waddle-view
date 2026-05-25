@@ -6,6 +6,8 @@ import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_shared/display/display_weather_temperature_unit_kv.dart';
 import 'package:waddle_shared/integrations/integration_collect.dart';
+import 'package:waddle_shared/integrations/integration_kv_repository.dart';
+import 'package:waddle_shared/integrations/integration_poll_gate.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 import '../weather_openweathermap/weather_locations_for_collect.dart';
@@ -29,13 +31,32 @@ class OpenMeteoWeatherDataProvider implements IDataProvider {
 
   @override
   Future<void> collect(DataWriteContext ctx) async {
-    final settings = await enabledIntegrationsForType(ctx.db, id);
-    if (settings.isEmpty) {
-      ctx.diagnostics.provider('open_meteo_weather: skip (disabled)');
+    final rows = await enabledIntegrationsForType(ctx.db, id);
+    for (final setting in rows) {
+      await _collectIntegration(ctx, setting);
+    }
+  }
+
+  Future<void> _collectIntegration(
+    DataWriteContext ctx,
+    Integration setting,
+  ) async {
+    final integrationId = setting.id;
+    final nowMs = _nowMs();
+    final kv = IntegrationKvRepository(ctx.db);
+    if (await shouldSkipIntegrationPoll(
+      kv: kv,
+      integrationId: integrationId,
+      pollSeconds: setting.pollSeconds,
+      nowMs: nowMs,
+    )) {
+      ctx.diagnostics.provider(
+        'open_meteo_weather: skip poll ($integrationId '
+        '${setting.pollSeconds}s gate)',
+      );
       return;
     }
-    final setting = settings.first;
-    final config = await ctx.resolveConfig(setting.id);
+    final config = await ctx.resolveConfig(integrationId);
     final extra = WeatherProviderExtraConfig.parse(config.configJson);
     final baseUrl = normalizeOpenMeteoBaseUrl(
       config.baseUrl,
@@ -87,7 +108,6 @@ class OpenMeteoWeatherDataProvider implements IDataProvider {
         if (normalized == null) {
           continue;
         }
-        final now = _nowMs();
         final hourlyC = [
           for (final point in normalized.hourly)
             {
@@ -104,7 +124,7 @@ class OpenMeteoWeatherDataProvider implements IDataProvider {
               WeatherCurrentCompanion.insert(
                 locationId: location.id,
                 observedAtMs: DateTime.fromMillisecondsSinceEpoch(
-                  normalized.observedAtMs ?? now,
+                  normalized.observedAtMs ?? nowMs,
                 ),
                 currentTemp: Value(
                   normalizeCollectedWeatherTempToCelsius(
@@ -125,6 +145,11 @@ class OpenMeteoWeatherDataProvider implements IDataProvider {
         );
       }
     }
+    await markIntegrationCollectDone(
+      kv: kv,
+      integrationId: integrationId,
+      nowMs: nowMs,
+    );
   }
 
   static String _temperatureUnit(String units) {

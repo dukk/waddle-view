@@ -10,6 +10,8 @@ import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_shared/integrations/integration_collect.dart';
+import 'package:waddle_shared/integrations/integration_kv_repository.dart';
+import 'package:waddle_shared/integrations/integration_poll_gate.dart';
 import 'stock_quote_provider_extra_config.dart';
 
 const String kStockProviderId = 'stock_finnhub';
@@ -44,7 +46,21 @@ class StockQuoteDataProvider implements IDataProvider {
       return;
     }
     final setting = settings.first;
-    final config = await ctx.resolveConfig(setting.id);
+    final integrationId = setting.id;
+    final now = _nowMs();
+    final kv = IntegrationKvRepository(ctx.db);
+    if (await shouldSkipIntegrationPoll(
+      kv: kv,
+      integrationId: integrationId,
+      pollSeconds: setting.pollSeconds,
+      nowMs: now,
+    )) {
+      ctx.diagnostics.provider(
+        'stocks: skip poll ($integrationId ${setting.pollSeconds}s gate)',
+      );
+      return;
+    }
+    final config = await ctx.resolveConfig(integrationId);
     final token = config.accessToken;
     if (token == null || token.isEmpty) {
       ctx.diagnostics.provider('stocks: skip (no API token)');
@@ -57,7 +73,6 @@ class StockQuoteDataProvider implements IDataProvider {
         : kDefaultFinnhubBaseUrl;
 
     final symbols = await _resolveSymbols(ctx.db, extra);
-    final now = _nowMs();
     ctx.diagnostics.provider(
       'stocks: collect symbols=${symbols.length} base=${safeHttpUriForLog(Uri.parse(baseUrl))}',
     );
@@ -117,6 +132,11 @@ class StockQuoteDataProvider implements IDataProvider {
         );
       }
     }
+    await markIntegrationCollectDone(
+      kv: kv,
+      integrationId: integrationId,
+      nowMs: now,
+    );
   }
 
   Future<List<_ResolvedSymbol>> _resolveSymbols(

@@ -6,6 +6,7 @@ import {
   CURATOR_HISTORY_DEPTH,
   CURATOR_TICKER_PIXELS_PER_SECOND,
   CURATOR_TICKER_PROGRAM_DURATION,
+  DISPLAY_COLLECT_IDLE_SECONDS,
   VIEWPORT_RESERVE_PCT,
   curatorThemeIds,
 } from '@/constants/curatorDisplaySettings';
@@ -111,6 +112,11 @@ export function useDisplayOperatorSettings(
           Number.isFinite(data.display_ticker_pixels_per_second)
             ? data.display_ticker_pixels_per_second
             : CURATOR_TICKER_PIXELS_PER_SECOND.default;
+        const collectIdle =
+          typeof data.display_collect_idle_seconds === 'number' &&
+          Number.isFinite(data.display_collect_idle_seconds)
+            ? data.display_collect_idle_seconds
+            : DISPLAY_COLLECT_IDLE_SECONDS.default;
         setForm({
           ...data,
           display_timezone: tz,
@@ -132,6 +138,8 @@ export function useDisplayOperatorSettings(
             data.display_ticker_program_separator,
             DEFAULT_DISPLAY_TICKER_PROGRAM_SEPARATOR,
           ),
+          display_collect_idle_seconds: collectIdle,
+          display_low_power_enabled: data.display_low_power_enabled === true,
         });
         setInitialized(true);
       } catch (e) {
@@ -166,6 +174,8 @@ export function useDisplayOperatorSettings(
         display_ticker_pixels_per_second: form.display_ticker_pixels_per_second,
         display_ticker_item_separator: form.display_ticker_item_separator,
         display_ticker_program_separator: form.display_ticker_program_separator,
+        display_collect_idle_seconds: form.display_collect_idle_seconds,
+        display_low_power_enabled: form.display_low_power_enabled,
       });
       await refreshFormat();
       setSaved(true);

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Persist QA scoped-test failures for Cursor stop-hook autofix."""
+"""Persist QA scoped-check failures (analyze or tests) for Cursor stop-hook autofix."""
 
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ def write_failure(root: Path, result: QaScopedTestResult) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     payload: dict[str, Any] = {
         "failed_at_ms": int(time.time() * 1000),
-        "label": result.failure_label or "scoped unit test",
+        "label": result.failure_label or "scoped check",
         "cwd": str(result.failure_cwd) if result.failure_cwd else "",
         "argv": result.failure_argv or [],
         "exit_code": result.exit_code,
@@ -70,13 +70,19 @@ def clear_failure(root: Path) -> None:
         pass
 
 
+def _failure_is_analyze(label: str) -> bool:
+    lower = label.lower()
+    return "analyze" in lower
+
+
 def build_qa_autofix_prompt(failure: dict[str, Any]) -> str:
-    label = str(failure.get("label") or "scoped unit test")
+    label = str(failure.get("label") or "scoped check")
     exit_code = failure.get("exit_code")
     cwd = failure.get("cwd") or ""
     edited = failure.get("edited_files") or []
     test_paths = failure.get("test_paths") or []
     tail = str(failure.get("output_tail") or "").strip()
+    is_analyze = _failure_is_analyze(label)
 
     edited_lines = "\n".join(f"- `{p}`" for p in edited[:25])
     if len(edited) > 25:
@@ -88,33 +94,60 @@ def build_qa_autofix_prompt(failure: dict[str, Any]) -> str:
 
     argv = failure.get("argv") or []
     rerun = " ".join(str(a) for a in argv) if argv else "python scripts/qa_scoped_tests.py"
+    if is_analyze and edited:
+        rerun_files = " ".join(f'"{p}"' for p in edited[:20])
+        rerun = f"python scripts/qa_scoped_tests.py --files {rerun_files}"
 
+    failure_kind = "analyze" if is_analyze else "unit tests"
     lines = [
-        "**Mode: FIX** — scoped unit tests failed after the last agent edit session.",
+        f"**Mode: FIX** — scoped {failure_kind} failed after the last agent edit session.",
         "",
         f"**Failed step:** {label} (exit {exit_code})",
         f"**Working directory:** `{cwd}`",
-        f"**Scoped tests:** {test_line}",
-        "",
-        "Read `.cursor/hooks/state/qa-test-failure.json` for full details.",
-        "",
-        f"**Edited files:**\n{edited_lines or '- (none listed)'}",
-        "",
-        "Fix production code and/or tests with **minimal** diffs. Re-run the exact failing command:",
-        f"`{rerun}` (from the repo root or cwd above).",
-        "Do not refactor unrelated files. Add tests for new behavior per AGENTS.md.",
-        "",
-        "Follow [AGENTS.md](AGENTS.md) and "
-        "[`.cursor/rules/waddle-view-tests.mdc`](.cursor/rules/waddle-view-tests.mdc) / "
-        "[`.cursor/rules/waddle-controller-tests.mdc`](.cursor/rules/waddle-controller-tests.mdc).",
     ]
+    if not is_analyze:
+        lines.append(f"**Scoped tests:** {test_line}")
+    lines.extend(
+        [
+            "",
+            "Read `.cursor/hooks/state/qa-test-failure.json` for full details.",
+            "",
+            f"**Edited files:**\n{edited_lines or '- (none listed)'}",
+            "",
+        ]
+    )
+    if is_analyze:
+        lines.extend(
+            [
+                "Fix **all** analyzer issues (warnings count in CI): remove unused imports, "
+                "unused locals, and dead code; run `dart fix --apply` in the package cwd when safe. "
+                "Re-run scoped checks:",
+                f"`{rerun}` (from repo root).",
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                "Fix production code and/or tests with **minimal** diffs. Re-run the exact failing command:",
+                f"`{rerun}` (from the repo root or cwd above).",
+                "Do not refactor unrelated files. Add tests for new behavior per AGENTS.md.",
+            ]
+        )
+    lines.extend(
+        [
+            "",
+            "Follow [AGENTS.md](AGENTS.md) and "
+            "[`.cursor/rules/waddle-view-tests.mdc`](.cursor/rules/waddle-view-tests.mdc) / "
+            "[`.cursor/rules/waddle-controller-tests.mdc`](.cursor/rules/waddle-controller-tests.mdc).",
+        ]
+    )
     if tail:
         lines.extend(["", "**Command output (tail):**", "```", tail, "```"])
 
     body = "\n".join(lines)
-    return (
-        f"{body}\n\n"
-        "---\n\n"
-        "/qa FIX\n\n"
-        "Repair the scoped test failures above. When tests pass, report briefly and stop."
+    fix_tail = (
+        "Repair the analyzer failures above (zero issues required). Report briefly and stop."
+        if is_analyze
+        else "Repair the scoped test failures above. When tests pass, report briefly and stop."
     )
+    return f"{body}\n\n---\n\n/qa FIX\n\n{fix_tail}"

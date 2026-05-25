@@ -35,9 +35,15 @@ python scripts/waddle_checks.py full --controller
 
 See [`run-waddle-checks`](.cursor/skills/run-waddle-checks/SKILL.md) for manual step-by-step equivalents. Optional: `WADDLE_TEST_CONCURRENCY`, `WADDLE_CHECKS_PARALLEL_ANALYZE=0`.
 
-## Cursor agent stop — scoped QA tests
+## Cursor agent stop — scoped analyze + QA tests
 
-When the Cursor agent edits tracked files under `apps/` or `packages/`, [`.cursor/hooks/agent_stop_followup.py`](.cursor/hooks/agent_stop_followup.py) runs [`scripts/qa_scoped_tests.py`](scripts/qa_scoped_tests.py) (mapped unit tests only—no full analyze/coverage). On failure, the **`/qa` FIX** subagent ([`.cursor/agents/qa.md`](.cursor/agents/qa.md)) receives output from [`.cursor/hooks/state/qa-test-failure.json`](.cursor/hooks/state/qa-test-failure.json); on pass, **`/qa` REVIEW** and **`/docs`** run as before. Manual rerun: `python scripts/qa_scoped_tests.py --files path/to/edited.dart`. Skip (discouraged): `WADDLE_SKIP_QA_HOOK_TESTS=1`.
+When the Cursor agent edits tracked files under `apps/` or `packages/`, [`.cursor/hooks/agent_stop_followup.py`](.cursor/hooks/agent_stop_followup.py) runs [`scripts/qa_scoped_tests.py`](scripts/qa_scoped_tests.py): **package-scoped `dart analyze` / `flutter analyze` first** (zero issues required—warnings fail CI), then mapped unit tests (no full-repo coverage). Edits under `packages/waddle_shared`, `packages/waddle_integrations`, or `packages/waddle_plugin_sdk` also run **`flutter analyze` on `waddle_display`** so downstream import breaks surface in the same pass. Drift/codegen edits may run `build_runner` before analyze. On failure, the **`/qa` FIX** subagent ([`.cursor/agents/qa.md`](.cursor/agents/qa.md)) receives output from [`.cursor/hooks/state/qa-test-failure.json`](.cursor/hooks/state/qa-test-failure.json); on pass, **`/qa` REVIEW** and **`/docs`** run as before.
+
+Manual rerun (from repo root): `python scripts/qa_scoped_tests.py --files path/to/edited.dart`. While implementing, use the IDE **ReadLints** tool on touched `.dart` files before ending the turn.
+
+Skip (discouraged): `WADDLE_SKIP_QA_HOOK_TESTS=1` (skips analyze and tests); `WADDLE_SKIP_QA_HOOK_ANALYZE=1` (skips analyze only).
+
+Common analyzer failures after edits: `unused_import`, `unused_local_variable`, `unused_element`, `unused_element_parameter`. Remove dead code; `dart fix --apply` in the package directory when appropriate.
 
 ## Post-commit build + test fix loop
 
@@ -49,7 +55,7 @@ With [`core.hooksPath=.githooks`](scripts/install-git-hooks.sh), **`git push`** 
 
 ## Before committing
 
-Run **`python scripts/waddle_checks.py full`** (and **`--controller`** when that app changed), or the [`run-waddle-checks`](.cursor/skills/run-waddle-checks/SKILL.md) skill. CI's `flutter analyze` step fails on **any** issue — **warnings count** — and `flutter test` runs the full suite, including drift migration tests. Recurring regressions to check for before pushing:
+Run **`python scripts/waddle_checks.py full`** (and **`--controller`** when that app changed), or the [`run-waddle-checks`](.cursor/skills/run-waddle-checks/SKILL.md) skill. After Dart edits, also run **`python scripts/waddle_checks.py fast --from-git`** or **`python scripts/qa_scoped_tests.py --files …`** so touched packages get **`dart analyze`** (not only display). CI's `flutter analyze` step fails on **any** issue — **warnings count** — and `flutter test` runs the full suite, including drift migration tests. Recurring regressions to check for before pushing:
 
 1. **`drift` + `flutter_test` import ambiguity**: both libraries export `isNull`/`isNotNull`. Use `show Value` or `hide isNull, isNotNull` on the drift import.
 2. **Test-fake constructor/field sync**: keep test helper constructors and fields aligned. For test-only defaults, prefer initializing the field inline (`final String folderId = 'folder1';`) over default-valued optional parameters that no caller overrides (avoids `final_not_initialized_constructor` and `unused_element_parameter`).
