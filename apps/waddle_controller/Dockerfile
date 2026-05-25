@@ -14,12 +14,9 @@ WORKDIR /app
 COPY packages/waddle_node_tls /packages/waddle_node_tls
 RUN npm ci --prefix /packages/waddle_node_tls
 COPY apps/waddle_controller/package.json apps/waddle_controller/package-lock.json ./
-# postinstall runs tool/*.mjs; copy sources before postinstall.
-RUN npm ci --ignore-scripts
 COPY apps/waddle_controller/ .
 COPY LICENSE /waddle-repo/LICENSE
 ENV WADDLE_VIEW_REPO_ROOT=/waddle-repo
-# Re-run npm ci with install scripts (matches host CI) now that sources, tool/, and LICENSE exist.
 RUN npm ci \
   && npm run build \
   && npm run build:server \
