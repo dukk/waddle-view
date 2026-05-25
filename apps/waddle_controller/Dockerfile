@@ -22,7 +22,9 @@ COPY LICENSE /waddle-repo/LICENSE
 ENV WADDLE_VIEW_REPO_ROOT=/waddle-repo
 ARG DOCKER_BUILD_CACHE_BUST
 RUN echo "docker-ci-cache-bust=${DOCKER_BUILD_CACHE_BUST}" \
-  && npm ci --include=dev \
+  && test -f /waddle-repo/LICENSE \
+  && npm ci --include=dev --ignore-scripts \
+  && npm rebuild better-sqlite3 @node-rs/argon2 \
   && npm run build \
   && npm run build:server \
   && npm prune --omit=dev
