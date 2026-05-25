@@ -50,6 +50,7 @@ Future<List<int>> readOverlayDuckSeedAssetBytes(String fileName) async {
 Future<List<int>> _readOverlayDuckSeedBytesFromDisk(String fileName) async {
   final cwd = Directory.current.path;
   final candidates = [
+    p.normalize(p.join(cwd, 'seed', 'assets', 'overlay_ducks')),
     p.normalize(
       p.join(
         cwd,
