@@ -16,6 +16,8 @@ COPY apps/waddle_controller/package.json apps/waddle_controller/package-lock.jso
 # postinstall runs tool/*.mjs; copy sources before postinstall.
 RUN npm ci --ignore-scripts
 COPY apps/waddle_controller/ .
+COPY LICENSE /waddle-repo/LICENSE
+ENV WADDLE_VIEW_REPO_ROOT=/waddle-repo
 RUN npm run postinstall \
   && npm run build \
   && npm run build:server \

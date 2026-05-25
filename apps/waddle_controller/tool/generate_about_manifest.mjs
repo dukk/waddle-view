@@ -3,15 +3,33 @@
  * Writes server/src/generated/aboutManifest.json for GET /bff/v1/about.
  * Run before build:server (see package.json).
  */
-import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const toolDir = path.dirname(fileURLToPath(import.meta.url));
 const appRoot = path.resolve(toolDir, '..');
-const repoRoot = path.resolve(appRoot, '../..');
 const outDir = path.join(appRoot, 'server', 'src', 'generated');
 const outFile = path.join(outDir, 'aboutManifest.json');
+
+/** Monorepo root in dev/CI; Docker sets WADDLE_VIEW_REPO_ROOT to a copied LICENSE tree. */
+function resolveRepoRoot() {
+  const envRoot = process.env.WADDLE_VIEW_REPO_ROOT?.trim();
+  if (envRoot) {
+    const licensePath = path.join(envRoot, 'LICENSE');
+    if (existsSync(licensePath)) return envRoot;
+  }
+  const monorepoRoot = path.resolve(appRoot, '../..');
+  const monorepoLicense = path.join(monorepoRoot, 'LICENSE');
+  if (existsSync(monorepoLicense)) return monorepoRoot;
+  throw new Error(
+    'LICENSE not found for about manifest generation. ' +
+      'Set WADDLE_VIEW_REPO_ROOT to a directory containing LICENSE (container builds), ' +
+      'or run from the waddle-view monorepo checkout.',
+  );
+}
+
+const repoRoot = resolveRepoRoot();
 
 const pkg = JSON.parse(readFileSync(path.join(appRoot, 'package.json'), 'utf8'));
 const lock = JSON.parse(readFileSync(path.join(appRoot, 'package-lock.json'), 'utf8'));

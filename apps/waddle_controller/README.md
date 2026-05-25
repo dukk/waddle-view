@@ -187,7 +187,7 @@ Static files land in **`dist/`**. The BFF compiles to **`server/dist/`**. Linux/
 
 ## Docker (nginx + BFF)
 
-From the **repository root**:
+From the **repository root** (build context must include root **`LICENSE`**; the Dockerfile copies it and sets **`WADDLE_VIEW_REPO_ROOT`** for `generate:about`):
 
 ```bash
 docker build -f apps/waddle_controller/Dockerfile -t waddle-controller .
