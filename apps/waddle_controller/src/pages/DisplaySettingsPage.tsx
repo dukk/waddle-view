@@ -52,6 +52,7 @@ import { ADOPTION_ROLES, parseAdoptionAllowedRoles } from '@/constants/displaySe
 import { useDisplayFormat } from '@/context/DisplayFormatContext';
 import { IntegrationAccountsSection } from '@/components/IntegrationAccountsSection';
 import { IntegrationOAuthSettingsSection } from '@/components/IntegrationOAuthSettingsSection';
+import { CatalogDefaultsResetSection } from '@/components/displaySettings/CatalogDefaultsResetSection';
 import { DisplayBackupTabContent } from '@/components/displaySettings/DisplayBackupTabContent';
 import { loadSession } from '@/storage/sessions';
 import {
@@ -885,6 +886,11 @@ function AdvancedConfigKeyValuesSection({
           </Stack>
         </Stack>
       )}
+      <CatalogDefaultsResetSection
+        display={display}
+        canWrite={canWrite}
+        onApplied={onApplied}
+      />
     </Box>
   );
 }

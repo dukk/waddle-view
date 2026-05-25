@@ -508,6 +508,24 @@ export function v1Router() {
     return c.json({});
   });
 
+  r.post('/display/catalog/reset-defaults', (c) => {
+    const scenario = c.get('scenario');
+    const bad = maybeErr(c, scenario);
+    if (bad) return bad;
+    if (c.req.query('confirm') !== 'yes') {
+      return c.json({ error: 'confirm_required', hint: 'Add ?confirm=yes' }, 400);
+    }
+    return c.json({
+      screens_removed: 0,
+      tickers_removed: 0,
+      overlays_removed: 0,
+      members_removed: 0,
+      screens_seeded: 1,
+      tickers_seeded: 5,
+      overlays_seeded: 5,
+    });
+  });
+
   r.get('/integrations', (c) => {
     const scenario = c.get('scenario');
     if (wantsEmpty(scenario)) return c.json({ items: [] });

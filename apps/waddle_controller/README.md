@@ -78,6 +78,8 @@ When **user mode** is turned off, sign-in is disabled but server data remains. U
 
 **One-time backup/restore** (download from the display or upload a restore archive) lives under **Display settings → Backup & restore** (`/display-settings?tab=backup`) for the active display. Requires an adopted **admin** API key (`display.maintenance` on the display).
 
+**Catalog defaults reset** (remove all custom screens, ticker tapes, and overlays; restore factory catalog and built-in program membership) is on **Display settings → Advanced** (`/display-settings?tab=advanced`). Requires **`curator.write`** on the display (`POST /v1/display/catalog/reset-defaults?confirm=yes`). Does not change themes, integrations, or config key–values.
+
 **Scheduled backups and inventory** live under **Controller settings → Backup & restore** (`/controller-settings?tab=backup`):
 
 - Per-display schedule (every day/week or every 2 days/weeks, day-of-week, time of day, retention count) with card/table search, sort, reload, and paging. Times use **controller local time**; new displays are staggered **5 minutes** apart automatically.

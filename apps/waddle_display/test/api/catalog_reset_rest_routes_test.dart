@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/persistence/database.dart';
-import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/seed/initial_seed.dart';
 
 import '../helpers/memory_database.dart';
@@ -27,7 +26,9 @@ void main() {
     await warmDatabase(db);
     await ensureInitialSeed(db);
 
-    await db.into(db.screens).insert(
+    await db
+        .into(db.screens)
+        .insert(
           ScreensCompanion.insert(
             id: 'custom_screen',
             label: 'Custom',
@@ -50,14 +51,14 @@ void main() {
     expect(body['tickers_seeded'], 5);
     expect(body['overlays_seeded'], 5);
 
-    final custom = await (db.select(db.screens)
-          ..where((t) => t.id.equals('custom_screen')))
-        .getSingleOrNull();
+    final custom = await (db.select(
+      db.screens,
+    )..where((t) => t.id.equals('custom_screen'))).getSingleOrNull();
     expect(custom, isNull);
 
-    final welcome = await (db.select(db.screens)
-          ..where((t) => t.id.equals('welcome')))
-        .getSingleOrNull();
+    final welcome = await (db.select(
+      db.screens,
+    )..where((t) => t.id.equals('welcome'))).getSingleOrNull();
     expect(welcome, isNotNull);
 
     await db.close();
