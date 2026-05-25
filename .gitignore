@@ -26,6 +26,13 @@ waddle-view.*.code-workspace
 !apps/waddle_display/.env.example
 apps/waddle_display/env.development
 
+# Display / operator secrets (never commit)
+**/waddle_instance.id
+**/waddle_api.key
+**/instance.id
+*.waddle-backup.zip
+**/secret_bundle.bin
+
 # OS
 .DS_Store
 Thumbs.db

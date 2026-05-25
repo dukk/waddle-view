@@ -249,17 +249,26 @@ When the controller BFF runs, operators can register **backup targets** (display
 ## Examples
 
 ```bash
-INSTANCE_ID=$(sudo tr -d '\n' < /etc/waddle-view/instance.id)
-TOKEN=$(curl -sS -H 'Content-Type: application/json' \
-  -d "{\"username\":\"display\",\"password\":\"$INSTANCE_ID\"}" \
-  https://127.0.0.1:8787/v1/auth/login | jq -r .session_token)
-curl -sS -H "Authorization: Bearer $TOKEN" https://127.0.0.1:8787/v1/health
-curl -sS -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+# Public health check (no API key)
+curl -sS -k https://127.0.0.1:8787/v1/health
+
+# Adoption: start pairing (challenge appears on the display)
+curl -sS -k -H 'Content-Type: application/json' \
+  -d '{"identifier":"curl-cli","role":"operator"}' \
+  https://127.0.0.1:8787/v1/adoption/request
+
+# After reading the on-screen challenge (e.g. ABCD-EFGH):
+API_KEY=$(curl -sS -k -H 'Content-Type: application/json' \
+  -d '{"identifier":"curl-cli","challenge_code":"ABCD-EFGH"}' \
+  https://127.0.0.1:8787/v1/adoption/confirm | jq -r .api_key)
+
+curl -sS -k -H "Authorization: Bearer $API_KEY" https://127.0.0.1:8787/v1/health
+curl -sS -k -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' \
   -d '{"title":"Door","body":"Open","qr_payload":"https://example.com/ack"}' \
   https://127.0.0.1:8787/v1/alerts
 
 # Example: birthday confetti overlay (fixed date, repeats every year)
-curl -sS -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+curl -sS -k -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' \
   -d '{
     "id":"birthday_alex",
     "enabled":true,
@@ -286,18 +295,18 @@ curl -sS -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
 # Global overlay kill-switch: SQLite `config_key_values` key `display.overlay.enabled`
 # = `false`, or use `GET`/`PUT`/`DELETE /v1/config/key-values` for arbitrary keys (same permission as curator read/write).
 
-curl -sS -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+curl -sS -k -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' \
   -X PATCH \
   -d '{"suppressed": true}' \
   https://127.0.0.1:8787/v1/content/videos/<video-row-id>
 ```
 
-Never log or commit the API key.
+Never log or commit API keys or `waddle_instance.id`.
 
 ### Example: remote navigation
 
 ```bash
-curl -sS -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+curl -sS -k -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' \
   -d '{"surface":"screen","direction":"forward"}' \
   https://127.0.0.1:8787/v1/display/navigation
 ```

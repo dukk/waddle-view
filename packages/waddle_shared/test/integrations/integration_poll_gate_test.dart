@@ -5,7 +5,6 @@ import 'package:waddle_shared/integrations/integration_kv_repository.dart';
 import 'package:waddle_shared/integrations/integration_kv_types.dart';
 import 'package:waddle_shared/integrations/integration_poll_gate.dart';
 import 'package:waddle_shared/persistence/database.dart';
-import 'package:waddle_shared/persistence/tables.dart';
 
 AppDatabase _db() => AppDatabase(
   DatabaseConnection(NativeDatabase.memory(), closeStreamsSynchronously: true),

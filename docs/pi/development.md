@@ -39,32 +39,28 @@ See [`AGENTS.md`](../../AGENTS.md) and [`.cursor/rules/waddle-view-flutter.mdc`]
 
 ## Secret storage on Linux
 
-`flutter_secure_storage` expects **D-Bus** and a compatible **Secret Service** (e.g. gnome-keyring) for **Google Calendar** and **Microsoft Graph** OAuth token persistence. Minimal images may lack this; document a fallback for your deployment rather than storing those tokens in SQLite.
+**Integration API keys** (OpenAI, Pexels, OpenWeatherMap, Finnhub, Flickr, etc.) are stored **encrypted in SQLite** (`integration_secrets`) and configured in **`apps/waddle_controller`** → **Integrations** (write-only over REST). Legacy **`WADDLE_DISPLAY_*` provider key env vars are deprecated and ignored at collect time** — see [`apps/waddle_display/.env.example`](../../apps/waddle_display/.env.example).
 
-**Static provider API keys** (see [`apps/waddle_display/.env.example`](../../apps/waddle_display/.env.example) for names such as **`WADDLE_DISPLAY_OPENAI_API_KEY`**, **`WADDLE_DISPLAY_OPEN_WEATHER_MAP_API_KEY`**, **`WADDLE_DISPLAY_PEXELS_API_KEY`**, **`WADDLE_DISPLAY_FINHUB_API_KEY`**, **`WADDLE_DISPLAY_FLICKR_API_KEY`**) are **not** stored in `SecretStore`; they are read from **environment variables** merged at startup (`Platform.environment` plus debug `.env` — see [`mergeBootstrapEnv`](../../apps/waddle_display/lib/config/dev_dotenv_secrets.dart) and [`provider_access_token_env.dart`](../../packages/waddle_shared/lib/config/provider_access_token_env.dart)).
+At runtime, [`ProviderConfigResolver`](../../packages/waddle_shared/lib/config/provider_config_resolver.dart) reads tokens from [`SecretStore`](../../packages/waddle_shared/lib/secrets/secret_store.dart) via [`readAccessTokenForIntegration`](../../packages/waddle_shared/lib/integration_accounts/integration_accounts_service.dart).
 
-## Joke data provider (OpenAI API key)
+**OAuth** (Google Calendar, Microsoft Graph / OneDrive): access and refresh tokens also live in **`SecretStore`** (device-code sign-in in the app, or `waddlectl secrets set` on Linux). `flutter_secure_storage` expects **D-Bus** and a compatible **Secret Service** (e.g. gnome-keyring) on Linux. Minimal images may lack this; document a fallback for your deployment.
 
-The joke collector ([`JokeDataProvider`](../../packages/waddle_integrations/lib/joke_openai/joke_data_provider.dart)) calls the OpenAI HTTP API using a bearer token. Tokens **must not** live in SQLite ([`AGENTS.md`](../../AGENTS.md)). At runtime, [`ProviderConfigResolver`](../../packages/waddle_shared/lib/config/provider_config_resolver.dart) fills `ProviderRuntimeConfig.accessToken` from the merged **env map** (not from `SecretStore`).
+**OAuth public client ids** still use process env (or merged debug `.env`): **`WADDLE_DISPLAY_GOOGLE_CLIENT_ID`**, **`WADDLE_DISPLAY_MICROSOFT_GRAPH_CLIENT_ID`** — not SQLite.
+
+**Display REST authentication** uses **adoption API keys** (`POST /v1/adoption/request` + confirm); see [`api.md`](api.md). **`waddle_instance.id`** in app support is the adoption HMAC secret (legacy **`waddle_api.key`** is renamed on upgrade) — not the bearer token.
+
+### Configuring integrations as a developer
+
+1. Run **`waddle_display`** and **`waddle_controller`**, adopt the display from the controller, then open **Integrations** and set each provider’s secret fields.
+2. On Linux bundles, use **`waddlectl secrets set`** for OAuth tokens when the UI is unavailable.
+3. **Tests**: use [`InMemorySecretStore`](../../packages/waddle_shared/lib/secrets/in_memory_secret_store.dart) or test helpers that seed `integration_secrets`; see [`provider_config_resolver_test.dart`](../../packages/waddle_shared/test/config/provider_config_resolver_test.dart).
+
+### Example: joke provider (`joke_openai`)
 
 | What | Value |
 |------|--------|
-| Provider id (also `integrations.id`) | `joke_openai` (see [`kJokeProviderId`](../../packages/waddle_integrations/lib/joke_openai/joke_data_provider.dart)) |
-| Env resolution | [`resolveProviderAccessTokenFromEnv`](../../packages/waddle_shared/lib/config/provider_access_token_env.dart) for static keys (e.g. **`WADDLE_DISPLAY_OPENAI_API_KEY`** for `joke_openai` / legacy `jokes`, trivia, and OpenTDB-backed trivia ids) |
-| Non-secret config | `integrations` row for `joke_openai`: `base_url` (optional override; default API root is defined on the provider), `config_json` for model and prompts — see seed and [`JokeProviderExtraConfig`](../../packages/waddle_integrations/lib/joke_openai/joke_provider_extra_config.dart) |
+| Provider id | `joke_openai` |
+| API token | Controller **Integrations** → OpenAI secret (encrypted in SQLite) |
+| Non-secret config | `integrations.config_json` — model, prompts ([`JokeProviderExtraConfig`](../../packages/waddle_integrations/lib/joke_openai/joke_provider_extra_config.dart)) |
 
-If no token is resolved (null or empty), [`collect`](../../packages/waddle_integrations/lib/joke_openai/joke_data_provider.dart) exits early and logs that the API token is missing.
-
-### How to set the key as a developer
-
-The UI does not expose a form for static provider API keys. Recommended onboarding paths:
-
-1. **`.env` file (debug)** — In **debug** desktop/server builds only (not web), the app loads a dotenv file from disk and merges it into the env map used by [`ProviderConfigResolver`](../../packages/waddle_shared/lib/config/provider_config_resolver.dart). Copy **[`apps/waddle_display/.env.example`](../../apps/waddle_display/.env.example)** to **`.env`** or **`.env.development`** in `apps/waddle_display/` (or add `assets/.env` / `assets/.env.development` in the same app directory). The first existing file in the [search order](../../apps/waddle_display/lib/config/dev_dotenv_secrets.dart) wins. Set **`WADDLE_DISPLAY_OPENAI_API_KEY`** (and other `WADDLE_DISPLAY_*` keys per provider). The file is [gitignored](../../.gitignore). **Release** and **profile** builds do not read `.env`; use **`Environment=`** in **systemd** (or your supervisor) for production keys.
-
-2. **Production / profile**: export the same variable names in the process environment before launching `waddle_display`.
-
-3. **Tests / fakes**: pass a `Map<String, String>` into `ProviderConfigResolver(db, env)`; see [`provider_config_resolver_test.dart`](../../packages/waddle_shared/test/config/provider_config_resolver_test.dart) and [`joke_data_provider_test.dart`](../../apps/waddle_display/test/data/joke_data_provider_test.dart). Use [`InMemorySecretStore`](../../packages/waddle_shared/lib/secrets/in_memory_secret_store.dart) only for **OAuth**-focused tests (Google / Microsoft Graph), not for jokes static keys.
-
-4. **OAuth (Google / Microsoft)**: access and refresh tokens live in **`SecretStore`** only (device-code sign-in in the app, or `waddlectl secrets set` on Linux). Public OAuth **client ids** use **`WADDLE_DISPLAY_GOOGLE_CLIENT_ID`** and **`WADDLE_DISPLAY_MICROSOFT_GRAPH_CLIENT_ID`** in the process environment (or merged debug `.env`) — not SQLite. Headless Linux needs a working Secret Service for token persistence.
-
-Note: this env flow configures static provider API keys. Operator REST authentication uses session tokens from **`POST /v1/auth/login`** (bootstrap user **`display`** / password = contents of **`waddle_instance.id`** in app support until the first named user is created). Legacy **`waddle_api.key`** is renamed to **`waddle_instance.id`** on upgrade.
+If no token is configured, [`collect`](../../packages/waddle_integrations/lib/joke_openai/joke_data_provider.dart) exits early and logs that the API token is missing.

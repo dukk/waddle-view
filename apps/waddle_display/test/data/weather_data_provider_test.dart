@@ -4,6 +4,7 @@ import 'package:drift/drift.dart' hide isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/config/provider_config_resolver.dart';
+import 'package:waddle_shared/integration_accounts/integration_accounts_service.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_integrations/weather_openweathermap/weather_data_provider.dart';
@@ -95,6 +96,7 @@ Future<DataWriteContextImpl> _ctx(
       apiKey,
     );
   }
+  await syncIntegrationAccountLinks(db);
   final resolver = ProviderConfigResolver(db, secrets);
   return DataWriteContextImpl(
     db: db,
@@ -114,7 +116,7 @@ void main() {
           IntegrationsCompanion.insert(
             id: kDefaultWeatherOpenWeatherMapIntegrationId,
             integrationType: 'weather_openweathermap',
-            pollSeconds: const Value(60),
+            pollSeconds: const Value(0),
           ),
         );
     final secrets = InMemorySecretStore();
@@ -141,7 +143,7 @@ void main() {
           IntegrationsCompanion.insert(
             id: kDefaultWeatherOpenWeatherMapIntegrationId,
             integrationType: 'weather_openweathermap',
-            pollSeconds: const Value(60),
+            pollSeconds: const Value(0),
             configJson: const Value(
               '{"defaultLocation":{"name":"Fallback","lat":41.0,"lon":-75.0},"hourlyCount":1}',
             ),
@@ -171,7 +173,7 @@ void main() {
           IntegrationsCompanion.insert(
             id: kDefaultWeatherOpenWeatherMapIntegrationId,
             integrationType: 'weather_openweathermap',
-            pollSeconds: const Value(60),
+            pollSeconds: const Value(0),
             configJson: integrationConfigJsonValue(
               configJson:
                   '{"defaultLocation":{"name":"NYC","lat":40.7128,"lon":-74.0060},"hourlyCount":2}',
@@ -233,7 +235,7 @@ void main() {
           IntegrationsCompanion.insert(
             id: kDefaultWeatherOpenWeatherMapIntegrationId,
             integrationType: 'weather_openweathermap',
-            pollSeconds: const Value(60),
+            pollSeconds: const Value(0),
             configJson: integrationConfigJsonValue(
               configJson:
                   '{"defaultLocation":{"name":"NYC","lat":40.7128,"lon":-74.0060},"hourlyCount":2}',
@@ -308,7 +310,7 @@ void main() {
           IntegrationsCompanion.insert(
             id: kDefaultWeatherOpenWeatherMapIntegrationId,
             integrationType: 'weather_openweathermap',
-            pollSeconds: const Value(60),
+            pollSeconds: const Value(0),
             configJson: integrationConfigJsonValue(
               baseUrl: 'https://api.openweathermap.org',
             ),
@@ -361,7 +363,7 @@ void main() {
             IntegrationsCompanion.insert(
               id: kDefaultWeatherOpenWeatherMapIntegrationId,
               integrationType: 'weather_openweathermap',
-              pollSeconds: const Value(60),
+              pollSeconds: const Value(0),
               configJson: integrationConfigJsonValue(
                 baseUrl: 'https://api.openweathermap.org',
               ),

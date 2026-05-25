@@ -36,8 +36,11 @@ Optional flags: **`-i` / `--identity`** (private key), **`-p` / `--port`**, **`-
 3. Start the app again.
 4. **Drift** runs migrations on startup (`schemaVersion` in `packages/waddle_shared/lib/persistence/database.dart`); back up the SQLite file before major upgrades.
 
-## Operator session rotation
+## Revoking display API keys
 
-1. Sign in to the controller (or call **`POST /v1/auth/login`**) as an admin.
-2. Change passwords via **Settings → Users** or **`POST /v1/users/<id>/password`**.
-3. **`POST /v1/auth/logout`** invalidates the current session token; other sessions for a user are cleared when an admin resets that user's password.
+Display REST auth uses **adoption API keys** (`wd_…`), not session tokens. To rotate or revoke access:
+
+1. Pair from the controller with an **admin** key, or complete adoption on the display for a new **identifier**.
+2. Revoke clients with **`DELETE /v1/adoption/clients/<id>`** (admin bearer) or issue a replacement via **`POST /v1/adoption/clients`** — see [`api.md`](api.md).
+
+When **controller user mode** is enabled, manage operator accounts under **Settings → Users** (BFF sessions are separate from display API keys).

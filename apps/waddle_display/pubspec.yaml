@@ -61,3 +61,5 @@ flutter:
   assets:
     - assets/icons/
     - assets/generated/third_party_licenses.txt
+    # Overlay duck SVGs from waddle_shared (relative path; keys are overlay_ducks/*).
+    - ../../packages/waddle_shared/seed/assets/overlay_ducks/

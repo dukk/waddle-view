@@ -5,6 +5,7 @@ import 'package:drift/drift.dart' hide isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:waddle_shared/config/provider_config_resolver.dart';
+import 'package:waddle_shared/integration_accounts/integration_accounts_service.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_integrations/stock_finnhub/stock_quote_data_provider.dart';
@@ -78,6 +79,7 @@ Future<DataWriteContextImpl> _ctx(
       apiKey,
     );
   }
+  await syncIntegrationAccountLinks(db);
   final resolver = ProviderConfigResolver(db, secrets);
   return DataWriteContextImpl(
     db: db,
@@ -98,7 +100,7 @@ Future<void> _seedProviderRow(
         IntegrationsCompanion.insert(
           id: kDefaultStockFinnhubIntegrationId,
           integrationType: kStockProviderId,
-          pollSeconds: const Value(60),
+          pollSeconds: const Value(0),
           enabled: Value(enabled),
           configJson: integrationConfigJsonValue(
             configJson: configJson,

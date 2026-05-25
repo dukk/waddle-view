@@ -60,7 +60,10 @@ String _geoJson({
   });
 }
 
-Future<DataWriteContextImpl> _ctx(AppDatabase db, InMemorySecretStore secrets) async {
+Future<DataWriteContextImpl> _ctx(
+  AppDatabase db,
+  InMemorySecretStore secrets,
+) async {
   final resolver = ProviderConfigResolver(db, secrets);
   return DataWriteContextImpl(
     db: db,
@@ -74,7 +77,9 @@ void main() {
   test('collect skips when provider disabled', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.integrations).insert(
+    await db
+        .into(db.integrations)
+        .insert(
           IntegrationsCompanion.insert(
             id: kDefaultWeatherAlertsNwsIntegrationId,
             integrationType: 'weather_alerts_nws',
@@ -86,7 +91,9 @@ void main() {
             ),
           ),
         );
-    await db.into(db.interestsLocations).insert(
+    await db
+        .into(db.interestsLocations)
+        .insert(
           InterestsLocationsCompanion.insert(
             id: 'nyc',
             name: 'NYC',
@@ -97,11 +104,9 @@ void main() {
           ),
         );
     final ctx = await _ctx(db, InMemorySecretStore());
-    final client = _NwsClient(
-      (uri, headers) {
-        throw StateError('unexpected HTTP $uri');
-      },
-    );
+    final client = _NwsClient((uri, headers) {
+      throw StateError('unexpected HTTP $uri');
+    });
     final provider = NwsWeatherGovAlertsDataProvider(httpClient: client);
 
     await provider.collect(ctx);
@@ -113,7 +118,9 @@ void main() {
   test('collect skips when provider row missing', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.interestsLocations).insert(
+    await db
+        .into(db.interestsLocations)
+        .insert(
           InterestsLocationsCompanion.insert(
             id: 'nyc',
             name: 'NYC',
@@ -124,11 +131,9 @@ void main() {
           ),
         );
     final ctx = await _ctx(db, InMemorySecretStore());
-    final client = _NwsClient(
-      (uri, headers) {
-        throw StateError('unexpected HTTP $uri');
-      },
-    );
+    final client = _NwsClient((uri, headers) {
+      throw StateError('unexpected HTTP $uri');
+    });
     final provider = NwsWeatherGovAlertsDataProvider(httpClient: client);
 
     await provider.collect(ctx);
@@ -140,7 +145,9 @@ void main() {
   test('collect writes NWS alerts for each enabled location', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.integrations).insert(
+    await db
+        .into(db.integrations)
+        .insert(
           IntegrationsCompanion.insert(
             id: kDefaultWeatherAlertsNwsIntegrationId,
             integrationType: 'weather_alerts_nws',
@@ -152,7 +159,9 @@ void main() {
             ),
           ),
         );
-    await db.into(db.interestsLocations).insert(
+    await db
+        .into(db.interestsLocations)
+        .insert(
           InterestsLocationsCompanion.insert(
             id: 'nyc',
             name: 'NYC',
@@ -193,7 +202,9 @@ void main() {
   test('collect replaces prior alerts for location', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.integrations).insert(
+    await db
+        .into(db.integrations)
+        .insert(
           IntegrationsCompanion.insert(
             id: kDefaultWeatherAlertsNwsIntegrationId,
             integrationType: 'weather_alerts_nws',
@@ -204,7 +215,9 @@ void main() {
             ),
           ),
         );
-    await db.into(db.interestsLocations).insert(
+    await db
+        .into(db.interestsLocations)
+        .insert(
           InterestsLocationsCompanion.insert(
             id: 'nyc',
             name: 'NYC',
@@ -216,27 +229,26 @@ void main() {
         );
     final ctx = await _ctx(db, InMemorySecretStore());
     var call = 0;
+    var nowMs = 1_000_000;
     final client = _NwsClient((uri, headers) {
       expect(uri.path, contains('/alerts/active'));
       expect(headers['Accept'], isNotNull);
       call += 1;
       if (call == 1) {
-        return http.Response(
-          _geoJson(alertId: 'urn:a', event: 'First'),
-          200,
-        );
+        return http.Response(_geoJson(alertId: 'urn:a', event: 'First'), 200);
       }
-      return http.Response(
-        _geoJson(alertId: 'urn:b', event: 'Second'),
-        200,
-      );
+      return http.Response(_geoJson(alertId: 'urn:b', event: 'Second'), 200);
     });
-    final provider = NwsWeatherGovAlertsDataProvider(httpClient: client);
+    final provider = NwsWeatherGovAlertsDataProvider(
+      httpClient: client,
+      nowMs: () => nowMs,
+    );
 
     await provider.collect(ctx);
     expect(await db.select(db.weatherAlerts).get(), hasLength(1));
     expect((await db.select(db.weatherAlerts).get()).single.event, 'First');
 
+    nowMs += 120_000;
     await provider.collect(ctx);
     final rows = await db.select(db.weatherAlerts).get();
     expect(rows, hasLength(1));
@@ -245,56 +257,67 @@ void main() {
     await db.close();
   });
 
-  test('collect clears stored alerts when API returns empty features', () async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
-    await db.into(db.integrations).insert(
-          IntegrationsCompanion.insert(
-            id: kDefaultWeatherAlertsNwsIntegrationId,
-            integrationType: 'weather_alerts_nws',
-            pollSeconds: const Value(60),
-            configJson: integrationConfigJsonValue(
-              configJson: '{}',
-              baseUrl: 'https://api.weather.gov',
+  test(
+    'collect clears stored alerts when API returns empty features',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
+      await db
+          .into(db.integrations)
+          .insert(
+            IntegrationsCompanion.insert(
+              id: kDefaultWeatherAlertsNwsIntegrationId,
+              integrationType: 'weather_alerts_nws',
+              pollSeconds: const Value(60),
+              configJson: integrationConfigJsonValue(
+                configJson: '{}',
+                baseUrl: 'https://api.weather.gov',
+              ),
             ),
-          ),
-        );
-    await db.into(db.interestsLocations).insert(
-          InterestsLocationsCompanion.insert(
-            id: 'nyc',
-            name: 'NYC',
-            latitude: 40.7128,
-            longitude: -74.0060,
-            includeWeather: const Value(true),
-            includeWeatherAlerts: const Value(true),
-          ),
-        );
-    await db.into(db.weatherAlerts).insert(
-          WeatherAlertsCompanion.insert(
-            locationId: 'nyc',
-            nwsAlertId: 'urn:old',
-            event: 'Old',
-          ),
-        );
-    final ctx = await _ctx(db, InMemorySecretStore());
-    final client = _NwsClient(
-      (uri, headers) => http.Response(
-        jsonEncode({'type': 'FeatureCollection', 'features': []}),
-        200,
-      ),
-    );
-    final provider = NwsWeatherGovAlertsDataProvider(httpClient: client);
+          );
+      await db
+          .into(db.interestsLocations)
+          .insert(
+            InterestsLocationsCompanion.insert(
+              id: 'nyc',
+              name: 'NYC',
+              latitude: 40.7128,
+              longitude: -74.0060,
+              includeWeather: const Value(true),
+              includeWeatherAlerts: const Value(true),
+            ),
+          );
+      await db
+          .into(db.weatherAlerts)
+          .insert(
+            WeatherAlertsCompanion.insert(
+              locationId: 'nyc',
+              nwsAlertId: 'urn:old',
+              event: 'Old',
+            ),
+          );
+      final ctx = await _ctx(db, InMemorySecretStore());
+      final client = _NwsClient(
+        (uri, headers) => http.Response(
+          jsonEncode({'type': 'FeatureCollection', 'features': []}),
+          200,
+        ),
+      );
+      final provider = NwsWeatherGovAlertsDataProvider(httpClient: client);
 
-    await provider.collect(ctx);
+      await provider.collect(ctx);
 
-    expect(await db.select(db.weatherAlerts).get(), isEmpty);
-    await db.close();
-  });
+      expect(await db.select(db.weatherAlerts).get(), isEmpty);
+      await db.close();
+    },
+  );
 
   test('collect does not clear alerts on HTTP error', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.integrations).insert(
+    await db
+        .into(db.integrations)
+        .insert(
           IntegrationsCompanion.insert(
             id: kDefaultWeatherAlertsNwsIntegrationId,
             integrationType: 'weather_alerts_nws',
@@ -305,7 +328,9 @@ void main() {
             ),
           ),
         );
-    await db.into(db.interestsLocations).insert(
+    await db
+        .into(db.interestsLocations)
+        .insert(
           InterestsLocationsCompanion.insert(
             id: 'nyc',
             name: 'NYC',
@@ -315,7 +340,9 @@ void main() {
             includeWeatherAlerts: const Value(true),
           ),
         );
-    await db.into(db.weatherAlerts).insert(
+    await db
+        .into(db.weatherAlerts)
+        .insert(
           WeatherAlertsCompanion.insert(
             locationId: 'nyc',
             nwsAlertId: 'urn:stale',
@@ -323,13 +350,11 @@ void main() {
           ),
         );
     final ctx = await _ctx(db, InMemorySecretStore());
-    final client = _NwsClient(
-      (uri, headers) {
-        expect(uri.host, isNotEmpty);
-        expect(headers['User-Agent'], isNotNull);
-        return http.Response('error', 503);
-      },
-    );
+    final client = _NwsClient((uri, headers) {
+      expect(uri.host, isNotEmpty);
+      expect(headers['User-Agent'], isNotNull);
+      return http.Response('error', 503);
+    });
     final provider = NwsWeatherGovAlertsDataProvider(httpClient: client);
 
     await provider.collect(ctx);
@@ -343,7 +368,9 @@ void main() {
   test('collect catches per-location errors without rethrowing', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.integrations).insert(
+    await db
+        .into(db.integrations)
+        .insert(
           IntegrationsCompanion.insert(
             id: kDefaultWeatherAlertsNwsIntegrationId,
             integrationType: 'weather_alerts_nws',
@@ -354,7 +381,9 @@ void main() {
             ),
           ),
         );
-    await db.into(db.interestsLocations).insert(
+    await db
+        .into(db.interestsLocations)
+        .insert(
           InterestsLocationsCompanion.insert(
             id: 'nyc',
             name: 'NYC',
@@ -379,7 +408,9 @@ void main() {
   test('collect stores truncated description excerpt for long text', () async {
     final db = openMemoryDatabase();
     await warmDatabase(db);
-    await db.into(db.integrations).insert(
+    await db
+        .into(db.integrations)
+        .insert(
           IntegrationsCompanion.insert(
             id: kDefaultWeatherAlertsNwsIntegrationId,
             integrationType: 'weather_alerts_nws',
@@ -390,7 +421,9 @@ void main() {
             ),
           ),
         );
-    await db.into(db.interestsLocations).insert(
+    await db
+        .into(db.interestsLocations)
+        .insert(
           InterestsLocationsCompanion.insert(
             id: 'nyc',
             name: 'NYC',
@@ -423,59 +456,67 @@ void main() {
     await db.close();
   });
 
-  test('collect skips HTTP and clears alerts when include_weather_alerts is false',
-      () async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
-    await db.into(db.integrations).insert(
-          IntegrationsCompanion.insert(
-            id: kDefaultWeatherAlertsNwsIntegrationId,
-            integrationType: 'weather_alerts_nws',
-            pollSeconds: const Value(60),
-            configJson: integrationConfigJsonValue(
-              configJson: '{}',
-              baseUrl: 'https://api.weather.gov',
+  test(
+    'collect skips HTTP and clears alerts when include_weather_alerts is false',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
+      await db
+          .into(db.integrations)
+          .insert(
+            IntegrationsCompanion.insert(
+              id: kDefaultWeatherAlertsNwsIntegrationId,
+              integrationType: 'weather_alerts_nws',
+              pollSeconds: const Value(60),
+              configJson: integrationConfigJsonValue(
+                configJson: '{}',
+                baseUrl: 'https://api.weather.gov',
+              ),
             ),
-          ),
-        );
-    await db.into(db.interestsLocations).insert(
-          InterestsLocationsCompanion.insert(
-            id: 'nyc',
-            name: 'NYC',
-            latitude: 40.7128,
-            longitude: -74.0060,
-            includeWeather: const Value(true),
-            includeWeatherAlerts: const Value(false),
-          ),
-        );
-    await db.into(db.weatherAlerts).insert(
-          WeatherAlertsCompanion.insert(
-            locationId: 'nyc',
-            nwsAlertId: 'urn:old',
-            event: 'Old',
-          ),
-        );
-    final ctx = await _ctx(db, InMemorySecretStore());
-    final client = _NwsClient(
-      (uri, headers) {
+          );
+      await db
+          .into(db.interestsLocations)
+          .insert(
+            InterestsLocationsCompanion.insert(
+              id: 'nyc',
+              name: 'NYC',
+              latitude: 40.7128,
+              longitude: -74.0060,
+              includeWeather: const Value(true),
+              includeWeatherAlerts: const Value(false),
+            ),
+          );
+      await db
+          .into(db.weatherAlerts)
+          .insert(
+            WeatherAlertsCompanion.insert(
+              locationId: 'nyc',
+              nwsAlertId: 'urn:old',
+              event: 'Old',
+            ),
+          );
+      final ctx = await _ctx(db, InMemorySecretStore());
+      final client = _NwsClient((uri, headers) {
         throw StateError('unexpected HTTP $uri');
-      },
-    );
-    final provider = NwsWeatherGovAlertsDataProvider(httpClient: client);
+      });
+      final provider = NwsWeatherGovAlertsDataProvider(httpClient: client);
 
-    await provider.collect(ctx);
+      await provider.collect(ctx);
 
-    expect(client.sends, 0);
-    expect(await db.select(db.weatherAlerts).get(), isEmpty);
-    await db.close();
-  });
+      expect(client.sends, 0);
+      expect(await db.select(db.weatherAlerts).get(), isEmpty);
+      await db.close();
+    },
+  );
 
   test(
     'collect writes alerts for synthetic default when no interest rows',
     () async {
       final db = openMemoryDatabase();
       await warmDatabase(db);
-      await db.into(db.integrations).insert(
+      await db
+          .into(db.integrations)
+          .insert(
             IntegrationsCompanion.insert(
               id: kDefaultWeatherAlertsNwsIntegrationId,
               integrationType: 'weather_alerts_nws',
@@ -488,22 +529,21 @@ void main() {
             ),
           );
       final ctx = await _ctx(db, InMemorySecretStore());
-      final client = _NwsClient(
-        (uri, headers) {
-          expect(uri.queryParameters['point'], '41.0000,-75.0000');
-          return http.Response(
-            _geoJson(alertId: 'urn:default', event: 'Flood Watch'),
-            200,
-          );
-        },
-      );
+      final client = _NwsClient((uri, headers) {
+        expect(uri.queryParameters['point'], '41.0000,-75.0000');
+        return http.Response(
+          _geoJson(alertId: 'urn:default', event: 'Flood Watch'),
+          200,
+        );
+      });
       final provider = NwsWeatherGovAlertsDataProvider(httpClient: client);
 
       await provider.collect(ctx);
 
-      final loc = await (db.select(db.interestsLocations)
-            ..where((t) => t.id.equals(kSyntheticDefaultWeatherLocationId)))
-          .getSingleOrNull();
+      final loc =
+          await (db.select(db.interestsLocations)
+                ..where((t) => t.id.equals(kSyntheticDefaultWeatherLocationId)))
+              .getSingleOrNull();
       expect(loc, isNotNull);
       expect(loc!.name, 'Fallback');
       expect(loc.includeWeather, isTrue);
@@ -517,56 +557,64 @@ void main() {
     },
   );
 
-  test('collect requests only locations with include_weather_alerts true',
-      () async {
-    final db = openMemoryDatabase();
-    await warmDatabase(db);
-    await db.into(db.integrations).insert(
-          IntegrationsCompanion.insert(
-            id: kDefaultWeatherAlertsNwsIntegrationId,
-            integrationType: 'weather_alerts_nws',
-            pollSeconds: const Value(60),
-            configJson: integrationConfigJsonValue(
-              configJson: '{}',
-              baseUrl: 'https://api.weather.gov',
+  test(
+    'collect requests only locations with include_weather_alerts true',
+    () async {
+      final db = openMemoryDatabase();
+      await warmDatabase(db);
+      await db
+          .into(db.integrations)
+          .insert(
+            IntegrationsCompanion.insert(
+              id: kDefaultWeatherAlertsNwsIntegrationId,
+              integrationType: 'weather_alerts_nws',
+              pollSeconds: const Value(60),
+              configJson: integrationConfigJsonValue(
+                configJson: '{}',
+                baseUrl: 'https://api.weather.gov',
+              ),
             ),
-          ),
+          );
+      await db
+          .into(db.interestsLocations)
+          .insert(
+            InterestsLocationsCompanion.insert(
+              id: 'nyc',
+              name: 'NYC',
+              latitude: 40.7128,
+              longitude: -74.0060,
+              includeWeather: const Value(true),
+              includeWeatherAlerts: const Value(false),
+            ),
+          );
+      await db
+          .into(db.interestsLocations)
+          .insert(
+            InterestsLocationsCompanion.insert(
+              id: 'bos',
+              name: 'Boston',
+              latitude: 42.3601,
+              longitude: -71.0589,
+              includeWeather: const Value(true),
+              includeWeatherAlerts: const Value(true),
+            ),
+          );
+      final ctx = await _ctx(db, InMemorySecretStore());
+      final requested = <String>[];
+      final client = _NwsClient((uri, headers) {
+        requested.add(uri.queryParameters['point']!);
+        return http.Response(
+          jsonEncode({'type': 'FeatureCollection', 'features': []}),
+          200,
         );
-    await db.into(db.interestsLocations).insert(
-          InterestsLocationsCompanion.insert(
-            id: 'nyc',
-            name: 'NYC',
-            latitude: 40.7128,
-            longitude: -74.0060,
-            includeWeather: const Value(true),
-            includeWeatherAlerts: const Value(false),
-          ),
-        );
-    await db.into(db.interestsLocations).insert(
-          InterestsLocationsCompanion.insert(
-            id: 'bos',
-            name: 'Boston',
-            latitude: 42.3601,
-            longitude: -71.0589,
-            includeWeather: const Value(true),
-            includeWeatherAlerts: const Value(true),
-          ),
-        );
-    final ctx = await _ctx(db, InMemorySecretStore());
-    final requested = <String>[];
-    final client = _NwsClient((uri, headers) {
-      requested.add(uri.queryParameters['point']!);
-      return http.Response(
-        jsonEncode({'type': 'FeatureCollection', 'features': []}),
-        200,
-      );
-    });
-    final provider = NwsWeatherGovAlertsDataProvider(httpClient: client);
+      });
+      final provider = NwsWeatherGovAlertsDataProvider(httpClient: client);
 
-    await provider.collect(ctx);
+      await provider.collect(ctx);
 
-    expect(client.sends, 1);
-    expect(requested, ['42.3601,-71.0589']);
-    await db.close();
-  });
+      expect(client.sends, 1);
+      expect(requested, ['42.3601,-71.0589']);
+      await db.close();
+    },
+  );
 }

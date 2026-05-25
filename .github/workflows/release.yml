@@ -140,6 +140,12 @@ jobs:
         with:
           name: release-controller-docker-${{ github.run_number }}
           path: release-assets
+      - name: SHA256 checksums
+        run: |
+          cd release-assets
+          find . -maxdepth 1 \( -name '*.zip' -o -name '*.tar.gz' -o -name '*.apk' \) -print0 \
+            | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+          cat SHA256SUMS.txt
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
@@ -149,3 +155,4 @@ jobs:
             release-assets/*.zip
             release-assets/*.tar.gz
             release-assets/*.apk
+            release-assets/SHA256SUMS.txt
