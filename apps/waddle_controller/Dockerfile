@@ -4,6 +4,8 @@
 
 # glibc builder: native addons ship linux-x64 prebuilds (Alpine musl often misses them).
 FROM node:22-bookworm-slim AS build
+# Official node images default NODE_ENV=production, which omits devDependencies (tsc, vite).
+ENV NODE_ENV=development
 ARG WADDLE_CONTROLLER_BUILD_NUMBER=dev
 ENV WADDLE_CONTROLLER_BUILD_NUMBER=$WADDLE_CONTROLLER_BUILD_NUMBER
 RUN apt-get update \
