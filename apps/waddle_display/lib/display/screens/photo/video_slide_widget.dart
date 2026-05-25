@@ -15,6 +15,7 @@ import 'package:waddle_shared/persistence/database.dart';
 import '../../../theme/display_theme.dart';
 import '../../dashboard_viewport_scope.dart';
 import 'photo_attribution_overlay.dart';
+import 'photo_screen_config.dart';
 import 'photo_video_materialize.dart';
 import 'photo_video_playback.dart';
 import 'photo_video_playback_gate.dart';
@@ -53,26 +54,6 @@ Future<Video?> loadPexelsVideoForSlide(
         ])
         ..limit(1))
       .getSingleOrNull();
-}
-
-bool pexelsVideoSlideConfigBool(Map<String, dynamic> c, String key, bool def) {
-  final v = c[key];
-  if (v is bool) {
-    return v;
-  }
-  if (v is int) {
-    return v != 0;
-  }
-  if (v is String) {
-    final n = v.trim().toLowerCase();
-    if (n == '1' || n == 'true' || n == 'yes' || n == 'on') {
-      return true;
-    }
-    if (n == '0' || n == 'false' || n == 'no' || n == 'off') {
-      return false;
-    }
-  }
-  return def;
 }
 
 /// Full-bleed Pexels video; autoplays (muted by default for signage).
@@ -144,8 +125,8 @@ class _VideoSlideWidgetState extends State<VideoSlideWidget> {
 
   Future<void> _prepareMedia() async {
     final c = widget.spec.config;
-    _unmuted = pexelsVideoSlideConfigBool(c, 'unmuted', false);
-    _loop = pexelsVideoSlideConfigBool(c, 'loop', true);
+    _unmuted = photoScreenConfigBool(c, 'unmuted', defaultValue: false);
+    _loop = photoScreenConfigBool(c, 'loop', defaultValue: true);
 
     try {
       final row = await loadPexelsVideoForSlide(
@@ -365,6 +346,7 @@ class _VideoSlideWidgetState extends State<VideoSlideWidget> {
     }
     final row = _row!;
     final vc = _videoController;
+    final showOverlay = showPhotographerOverlayFromConfig(widget.spec.config);
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -396,19 +378,20 @@ class _VideoSlideWidgetState extends State<VideoSlideWidget> {
             );
           },
         ),
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: PexelsAttributionOverlay(
-            photographerName: row.photographerName,
-            photographerUrl: row.photographerUrl,
-            altText: row.altText,
-            theme: widget.theme,
-            scale: s,
-            onOpenUrl: _openUrl,
+        if (showOverlay)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: PexelsAttributionOverlay(
+              photographerName: row.photographerName,
+              photographerUrl: row.photographerUrl,
+              altText: row.altText,
+              theme: widget.theme,
+              scale: s,
+              onOpenUrl: _openUrl,
+            ),
           ),
-        ),
       ],
     );
   }

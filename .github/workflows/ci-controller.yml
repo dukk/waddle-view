@@ -1,0 +1,44 @@
+# waddle_controller Vitest, coverage, and BFF compile. Runs in parallel with ci-controller-docker.
+name: CI — waddle_controller
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    paths:
+      - 'apps/waddle_controller/**'
+      - 'packages/waddle_node_tls/**'
+      - '.github/workflows/ci-controller.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  waddle-controller:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: waddle
+          POSTGRES_PASSWORD: waddle
+          POSTGRES_DB: waddle_controller_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U waddle -d waddle_controller_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/waddle_controller/package-lock.json
+      - name: npm ci + lint + test + coverage + build (waddle_controller)
+        working-directory: apps/waddle_controller
+        env:
+          WADDLE_CONTROLLER_TEST_DATABASE_URL: postgres://waddle:waddle@localhost:5432/waddle_controller_test
+        run: npm ci && npm run lint && npm run test:coverage && npm run coverage:check && npm run build && npm run build:server

@@ -142,6 +142,9 @@ String? permissionForRoute(String method, String path) {
   if (p == '/v1/display/settings' && m == 'PUT') {
     return WaddlePermission.curatorWrite;
   }
+  if (p == '/v1/display/catalog/reset-defaults' && m == 'POST') {
+    return WaddlePermission.curatorWrite;
+  }
 
   if (p == '/v1/display/themes' && m == 'GET') {
     return WaddlePermission.curatorRead;

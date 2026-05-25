@@ -11,6 +11,7 @@ import 'package:waddle_shared/persistence/database.dart';
 import '../../../theme/display_theme.dart';
 import '../../dashboard_viewport_scope.dart';
 import 'photo_attribution_overlay.dart';
+import 'photo_screen_config.dart';
 import 'photo_slide_media.dart';
 
 /// Full-bleed Pexels still with attribution bar at the bottom.
@@ -99,6 +100,7 @@ class _PhotoSlideWidgetState extends State<PhotoSlideWidget> {
     }
     final row = _row!;
     final bytes = _bytes!;
+    final showOverlay = showPhotographerOverlayFromConfig(widget.spec.config);
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -107,19 +109,20 @@ class _PhotoSlideWidgetState extends State<PhotoSlideWidget> {
           fit: BoxFit.contain,
           gaplessPlayback: true,
         ),
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: PexelsAttributionOverlay(
-            photographerName: row.photographerName,
-            photographerUrl: row.photographerUrl,
-            altText: row.altText,
-            theme: widget.theme,
-            scale: s,
-            onOpenUrl: _openUrl,
+        if (showOverlay)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: PexelsAttributionOverlay(
+              photographerName: row.photographerName,
+              photographerUrl: row.photographerUrl,
+              altText: row.altText,
+              theme: widget.theme,
+              scale: s,
+              onOpenUrl: _openUrl,
+            ),
           ),
-        ),
       ],
     );
   }

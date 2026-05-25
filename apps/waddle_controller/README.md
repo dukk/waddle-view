@@ -171,7 +171,7 @@ npm run test:coverage     # lcov under coverage/
 npm run coverage:check    # CI floor: ≥ 80% lines on auth, api, storage, util/*.ts, constants, server/src
 ```
 
-CI also runs `npm run lint`, `npm run build`, and `npm run build:server`. Prefer extracting testable logic out of large page components into `src/util/`, `src/storage/`, or `src/api/` so coverage stays maintainable.
+GitHub **CI — waddle_controller** ([`ci-controller.yml`](../../.github/workflows/ci-controller.yml)) also runs `npm run lint`, `npm run build`, and `npm run build:server` on a clean runner with Postgres. Prefer extracting testable logic out of large page components into `src/util/`, `src/storage/`, or `src/api/` so coverage stays maintainable.
 
 ## Production build
 
@@ -202,11 +202,11 @@ After adoption, the display remembers your controller origin. Optionally set **`
 
 ### Deploy from GitHub builds
 
-CI and Release publish **separate** Docker image tarballs (linux/amd64 only). Each tarball is a gzip-compressed `docker save` of one image tag.
+**CI — waddle_controller** runs Vitest and builds; **CI — waddle_controller Docker** and **Release** publish **separate** Docker image tarballs (linux/amd64 only). Each tarball is a gzip-compressed `docker save` of one image tag.
 
 #### CI artifacts (testing on main / PRs)
 
-1. Open **Actions** → **CI** → a completed run.
+1. Open **Actions** → **CI — waddle_controller Docker** → a completed run.
 2. Download the artifact **`ci-controller-docker-<run_id>-<attempt>`** (contains `waddle-controller-docker-ci-run-….tar.gz`).
 3. Load and run:
 

@@ -1,0 +1,102 @@
+# waddle_controller Docker image CI (linux/amd64). Runs in parallel with CI — waddle_controller tests.
+name: CI — waddle_controller Docker
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    paths:
+      - 'apps/waddle_controller/**'
+      - 'packages/waddle_node_tls/**'
+      - '.github/workflows/ci-controller-docker.yml'
+      - '.github/workflows/release-controller-docker.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-controller-docker:
+    permissions:
+      actions: write
+      contents: read
+    uses: ./.github/workflows/release-controller-docker.yml
+    with:
+      build_number: ${{ github.run_number }}
+      dist_basename: waddle-controller-docker-ci-run-${{ github.run_id }}-att-${{ github.run_attempt }}
+      artifact_name: ci-controller-docker-${{ github.run_id }}-${{ github.run_attempt }}
+
+  cleanup-controller-docker-artifacts:
+    runs-on: ubuntu-latest
+    needs: build-controller-docker
+    if: always() && !cancelled()
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Prune old CI controller Docker artifacts (keep newest 5)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 <<'PY'
+          import json, os, subprocess, sys
+
+          repo = os.environ["GITHUB_REPOSITORY"]
+          token = os.environ.get("GH_TOKEN", "")
+          if not token:
+              print("No GH_TOKEN; skipping cleanup")
+              sys.exit(0)
+
+          prefixes = ("ci-controller-docker-",)
+          keep = 5
+
+          def list_artifacts():
+              page = 1
+              out = []
+              while True:
+                  raw = subprocess.check_output(
+                      [
+                          "gh",
+                          "api",
+                          f"/repos/{repo}/actions/artifacts?per_page=100&page={page}",
+                      ],
+                      text=True,
+                  )
+                  data = json.loads(raw)
+                  batch = data.get("artifacts") or []
+                  out.extend(batch)
+                  if len(batch) < 100:
+                      break
+                  page += 1
+              return out
+
+          def delete_artifact(aid: int):
+              subprocess.check_call(
+                  [
+                      "gh",
+                      "api",
+                      "--method",
+                      "DELETE",
+                      f"/repos/{repo}/actions/artifacts/{aid}",
+                  ],
+              )
+
+          try:
+              all_arts = list_artifacts()
+          except subprocess.CalledProcessError as e:
+              print("Artifact list failed (non-fatal):", e)
+              sys.exit(0)
+
+          for prefix in prefixes:
+              matching = [a for a in all_arts if a.get("name", "").startswith(prefix)]
+              matching.sort(key=lambda a: a.get("created_at") or "", reverse=True)
+              for a in matching[keep:]:
+                  aid = a.get("id")
+                  if aid is None:
+                      continue
+                  print("Deleting artifact", aid, a.get("name"))
+                  try:
+                      delete_artifact(int(aid))
+                  except subprocess.CalledProcessError as e:
+                      print("Delete failed:", e)
+          PY

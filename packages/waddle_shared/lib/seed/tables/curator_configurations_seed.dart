@@ -33,13 +33,6 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
     priority: 10000,
     statePredicate: kCuratorPredicateDisplayNotAdopted,
   );
-  await _members(
-    db,
-    'bootstrap',
-    screensAdd: ['admin_setup', 'dev_local_api', 'controller_invite'],
-    tickersAdd: ['ticker_time'],
-  );
-
   await _insertConfig(
     db,
     id: kDefaultBaseCuratorConfigurationId,
@@ -51,13 +44,6 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
     requireNewsPhoto: true,
     defaultConfig: false,
   );
-  await _members(
-    db,
-    kDefaultBaseCuratorConfigurationId,
-    screensAdd: kDefaultBaseCuratorScreenMemberIds,
-    tickersAdd: kDefaultBaseCuratorTickerMemberIds,
-  );
-
   await _insertConfig(
     db,
     id: 'weekday',
@@ -76,16 +62,6 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
     priority: 10,
     daysOfWeekMask: _kWeekdayDaysMask,
   );
-  await _members(
-    db,
-    'weekday',
-    screensRemove: [
-      'photo',
-      'photo_collage_nine_square',
-      'video',
-    ],
-  );
-
   await _insertConfig(
     db,
     id: 'weekend',
@@ -104,21 +80,6 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
     priority: 10,
     daysOfWeekMask: _kWeekendDaysMask,
   );
-  await _members(
-    db,
-    'weekend',
-    screensAdd: [
-      'photo',
-      'photo_collage_nine_square',
-      'video',
-      'jokes',
-      'trivia',
-    ],
-    screensRemove: ['stock_quotes', 'news_columns', 'calendar'],
-    tickersAdd: ['ticker_custom'],
-    tickersRemove: ['ticker_stocks'],
-  );
-
   await _insertConfig(
     db,
     id: 'night',
@@ -140,12 +101,6 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
     endTimeMinutes: 6 * 60,
     daysOfWeekMask: _kAllDaysMask,
   );
-  await _members(
-    db,
-    'night',
-    screensAdd: ['clock_analog', 'sleep_message'],
-  );
-
   await _insertConfig(
     db,
     id: 'morning',
@@ -167,20 +122,6 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
     endTimeMinutes: 10 * 60,
     daysOfWeekMask: _kAllDaysMask,
   );
-  await _members(
-    db,
-    'morning',
-    screensAdd: [
-      'news',
-      'news_right',
-      'weather',
-      'jokes',
-      'trivia',
-      'photo',
-    ],
-    tickersAdd: ['ticker_weather', 'ticker_news'],
-  );
-
   await _insertConfig(
     db,
     id: 'work',
@@ -202,23 +143,6 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
     endTimeMinutes: 18 * 60,
     daysOfWeekMask: _kAllDaysMask,
   );
-  await _members(
-    db,
-    'work',
-    screensAdd: [
-      'news',
-      'news_columns',
-      'stock_quotes',
-      'weather',
-      'calendar',
-    ],
-    tickersAdd: [
-      'ticker_weather',
-      'ticker_news',
-      'ticker_stocks',
-    ],
-  );
-
   await _insertConfig(
     db,
     id: 'evening',
@@ -240,20 +164,6 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
     endTimeMinutes: 22 * 60,
     daysOfWeekMask: _kAllDaysMask,
   );
-  await _members(
-    db,
-    'evening',
-    screensAdd: [
-      'jokes',
-      'trivia',
-      'photo',
-      'photo_collage_nine_square',
-      'video',
-      'weather',
-    ],
-    tickersAdd: ['ticker_custom'],
-  );
-
   await _insertConfig(
     db,
     id: 'waddle_birthday',
@@ -274,15 +184,6 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
     startDay: 13,
     repeatAnnually: true,
   );
-  await _members(
-    db,
-    'waddle_birthday',
-    overlaysAdd: [
-      kDefaultBirthdayConfettiOverlayId,
-      kDefaultWattleViewsBirthdayMessageOverlayId,
-    ],
-  );
-
   await _insertConfig(
     db,
     id: 'mothers_day',
@@ -304,6 +205,101 @@ Future<void> ensureDefaultCuratorConfigurations(AppDatabase db) async {
     nthWeekOfMonth: 2,
     nthWeekday: DateTime.sunday,
     repeatAnnually: true,
+  );
+  await reseedDefaultCuratorCatalogMembers(db);
+}
+
+/// Re-applies factory screen/ticker/overlay membership ops for built-in curator configs.
+Future<void> reseedDefaultCuratorCatalogMembers(AppDatabase db) async {
+  await _members(
+    db,
+    'bootstrap',
+    screensAdd: ['admin_setup', 'dev_local_api', 'controller_invite'],
+    tickersAdd: ['ticker_time'],
+  );
+  await _members(
+    db,
+    kDefaultBaseCuratorConfigurationId,
+    screensAdd: kDefaultBaseCuratorScreenMemberIds,
+    tickersAdd: kDefaultBaseCuratorTickerMemberIds,
+  );
+  await _members(
+    db,
+    'weekday',
+    screensRemove: [
+      'photo',
+      'photo_collage_nine_square',
+      'video',
+    ],
+  );
+  await _members(
+    db,
+    'weekend',
+    screensAdd: [
+      'photo',
+      'photo_collage_nine_square',
+      'video',
+      'jokes',
+      'trivia',
+    ],
+    screensRemove: ['stock_quotes', 'news_columns', 'calendar'],
+    tickersAdd: ['ticker_custom'],
+    tickersRemove: ['ticker_stocks'],
+  );
+  await _members(
+    db,
+    'night',
+    screensAdd: ['clock_analog', 'sleep_message'],
+  );
+  await _members(
+    db,
+    'morning',
+    screensAdd: [
+      'news',
+      'news_right',
+      'weather',
+      'jokes',
+      'trivia',
+      'photo',
+    ],
+    tickersAdd: ['ticker_weather', 'ticker_news'],
+  );
+  await _members(
+    db,
+    'work',
+    screensAdd: [
+      'news',
+      'news_columns',
+      'stock_quotes',
+      'weather',
+      'calendar',
+    ],
+    tickersAdd: [
+      'ticker_weather',
+      'ticker_news',
+      'ticker_stocks',
+    ],
+  );
+  await _members(
+    db,
+    'evening',
+    screensAdd: [
+      'jokes',
+      'trivia',
+      'photo',
+      'photo_collage_nine_square',
+      'video',
+      'weather',
+    ],
+    tickersAdd: ['ticker_custom'],
+  );
+  await _members(
+    db,
+    'waddle_birthday',
+    overlaysAdd: [
+      kDefaultBirthdayConfettiOverlayId,
+      kDefaultWattleViewsBirthdayMessageOverlayId,
+    ],
   );
   await _members(
     db,

@@ -27,9 +27,11 @@ import 'integration_accounts_rest_routes.dart';
 import 'mealviewer_rest_routes.dart';
 import 'integration_oauth_providers_rest_routes.dart';
 import 'integration_kv_rest_routes.dart';
+import 'catalog_reset_rest_routes.dart';
 import 'display_themes_rest_routes.dart';
 import 'display_live_preview_routes.dart';
 import 'integration_secrets_rest_routes.dart';
+import 'package:waddle_shared/blob/blob_store.dart';
 
 final Set<String> _reservedCuratorCategoryIds = {
   for (final d in kContentCategoryDefaults) d.id,
@@ -55,6 +57,7 @@ void registerOperatorRestRoutes(
   required AppDatabase db,
   required SecretStore secrets,
   required Future<void> Function() onConfigChanged,
+  BlobStore? blobs,
   OperatorTelemetryHub? telemetryHub,
   DisplayNavigationBus? navigationBus,
 }) {
@@ -65,6 +68,12 @@ void registerOperatorRestRoutes(
   registerMealviewerRestRoutes(r);
   registerDisplayThemesRestRoutes(r, db: db, onConfigChanged: onConfigChanged);
   registerDisplayLivePreviewRoutes(r, db: db);
+  registerCatalogResetRestRoutes(
+    r,
+    db: db,
+    onConfigChanged: onConfigChanged,
+    blobs: blobs,
+  );
   r.get('/v1/telemetry/integrations', (Request req) async {
     final limit = int.tryParse(req.url.queryParameters['limit'] ?? '') ?? 200;
     final sinceMs = int.tryParse(req.url.queryParameters['since_ms'] ?? '');

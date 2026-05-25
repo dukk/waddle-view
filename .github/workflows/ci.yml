@@ -1,4 +1,4 @@
-name: CI
+name: CI — waddle_display
 
 on:
   push:
@@ -7,12 +7,10 @@ on:
     paths:
       - 'apps/waddle_display/**'
       - 'apps/waddle_display_mock_api/**'
-      - 'apps/waddle_controller/**'
       - 'apps/waddlectl/**'
       - 'packages/waddle_shared/**'
       - 'packages/waddle_integrations/**'
       - 'packages/waddle_plugin_sdk/**'
-      - 'packages/waddle_node_tls/**'
       - 'pubspec.yaml'
       - 'deploy/**'
       - 'docs/pi/**'
@@ -186,47 +184,6 @@ jobs:
       dist_basename: waddle-view-macos-ci-run-${{ github.run_id }}-att-${{ github.run_attempt }}
       artifact_name: ci-bundle-macos-${{ github.run_id }}-${{ github.run_attempt }}
 
-  waddle-controller:
-    runs-on: ubuntu-latest
-    needs: validate-linux-build-deps
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: waddle
-          POSTGRES_PASSWORD: waddle
-          POSTGRES_DB: waddle_controller_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U waddle -d waddle_controller_test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: apps/waddle_controller/package-lock.json
-      - name: npm ci + lint + test + coverage + build (waddle_controller)
-        working-directory: apps/waddle_controller
-        env:
-          WADDLE_CONTROLLER_TEST_DATABASE_URL: postgres://waddle:waddle@localhost:5432/waddle_controller_test
-        run: npm ci && npm run lint && npm run test:coverage && npm run coverage:check && npm run build && npm run build:server
-
-  build-controller-docker:
-    needs: waddle-controller
-    permissions:
-      actions: write
-      contents: read
-    uses: ./.github/workflows/release-controller-docker.yml
-    with:
-      build_number: ${{ github.run_number }}
-      dist_basename: waddle-controller-docker-ci-run-${{ github.run_id }}-att-${{ github.run_attempt }}
-      artifact_name: ci-controller-docker-${{ github.run_id }}-${{ github.run_attempt }}
-
   waddle-display-mock-api:
     runs-on: ubuntu-latest
     needs: validate-linux-build-deps
@@ -242,9 +199,7 @@ jobs:
         run: npm ci && npm run build && npm run lint
 
   build-pi:
-    needs:
-      - analyze-test
-      - waddle-controller
+    needs: analyze-test
     permissions:
       actions: write
       contents: read
@@ -262,8 +217,6 @@ jobs:
         working-directory: ${{ github.workspace }}
     needs:
       - analyze-test
-      - waddle-controller
-      - build-controller-docker
       - waddle-display-mock-api
       - build-linux-x64
       - build-linux-arm64-desktop
@@ -301,7 +254,6 @@ jobs:
               "ci-bundle-android-",
               "ci-bundle-ios-",
               "ci-bundle-macos-",
-              "ci-controller-docker-",
           )
           keep = 5
 

@@ -1,4 +1,4 @@
-# waddle_controller Docker image (linux/amd64). Callable from CI and Release workflows.
+# waddle_controller Docker image (linux/amd64). Callable from ci-controller-docker, Release, and legacy callers.
 name: Release build — waddle_controller Docker
 
 on:

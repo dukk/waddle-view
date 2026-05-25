@@ -1449,6 +1449,12 @@ Map<String, Object?> _kOneDriveMediaAccountsSchema({
   },
 };
 
+const Map<String, Object?> _kJsonSchemaShowPhotographerOverlay = {
+  'type': 'boolean',
+  'description':
+      'Show photographer name, profile link, and alt text overlay (default off).',
+};
+
 const Map<String, Object?> _kJsonSchemaOptionalContentCategoryName = {
   'type': 'string',
   'minLength': 1,
@@ -2129,7 +2135,10 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
         title: 'PexelsPhotoScreenConfig',
         description:
             'Optional category display name; when omitted, any non-suppressed photo may be chosen.',
-        properties: {'categoryName': _kJsonSchemaOptionalContentCategoryName},
+        properties: {
+          'categoryName': _kJsonSchemaOptionalContentCategoryName,
+          'showPhotographerOverlay': _kJsonSchemaShowPhotographerOverlay,
+        },
       ),
     ),
     example: jsonEncode({'categoryName': 'Nature'}),
@@ -2147,6 +2156,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
             'description':
                 'Optional category display name for the Pexels photo pool.',
           },
+          'showPhotographerOverlay': _kJsonSchemaShowPhotographerOverlay,
         },
         requiredKeys: ['template'],
       ),
@@ -2169,6 +2179,7 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
           },
           'loop': {'type': 'boolean'},
           'unmuted': {'type': 'boolean'},
+          'showPhotographerOverlay': _kJsonSchemaShowPhotographerOverlay,
         },
       ),
     ),

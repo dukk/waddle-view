@@ -11,6 +11,7 @@ import '../../../curator/screen_program_curator.dart';
 import '../../../theme/display_theme.dart';
 import '../../dashboard_viewport_scope.dart';
 import 'package:waddle_shared/persistence/database.dart';
+import 'photo_screen_config.dart';
 import 'photo_slide_media.dart';
 
 class _CollageCell {
@@ -156,6 +157,7 @@ class _PhotoCollageSlideWidgetState
   Widget _cellTile(_CollageCell cell, double scale, {BoxFit fit = BoxFit.cover}) {
     final row = cell.row;
     final bytes = cell.bytes;
+    final showOverlay = showPhotographerOverlayFromConfig(widget.spec.config);
     if (row == null || bytes == null) {
       return ColoredBox(
         color: widget.theme.slidePanelColor,
@@ -172,46 +174,50 @@ class _PhotoCollageSlideWidgetState
       fit: StackFit.expand,
       children: [
         Image.memory(bytes, fit: fit, gaplessPlayback: true),
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: Material(
-            color: Colors.black.withValues(alpha: 0.45),
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 6 * scale, vertical: 4 * scale),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (row.photographerName.isNotEmpty)
-                    Text(
-                      row.photographerName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: widget.theme.textTheme.labelSmall?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  if (row.photographerUrl.isNotEmpty)
-                    InkWell(
-                      onTap: () => _openUrl(row.photographerUrl),
-                      child: Text(
-                        row.photographerUrl,
+        if (showOverlay)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Material(
+              color: Colors.black.withValues(alpha: 0.45),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: 6 * scale,
+                  vertical: 4 * scale,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (row.photographerName.isNotEmpty)
+                      Text(
+                        row.photographerName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: widget.theme.textTheme.labelSmall?.copyWith(
-                          color: Colors.lightBlueAccent,
-                          decoration: TextDecoration.underline,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ),
-                ],
+                    if (row.photographerUrl.isNotEmpty)
+                      InkWell(
+                        onTap: () => _openUrl(row.photographerUrl),
+                        child: Text(
+                          row.photographerUrl,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: widget.theme.textTheme.labelSmall?.copyWith(
+                            color: Colors.lightBlueAccent,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
       ],
     );
   }

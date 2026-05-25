@@ -143,7 +143,7 @@ flutter build linux --release
 
 CI passes **`flutter build … --build-number`** using GitHub Actions **`github.run_number`**. Use **`workflow_dispatch`** on **`release.yml`** to build without publishing (publish still runs only on **`v*`** tag pushes).
 
-**PR / branch CI:** **[`ci.yml`](../../.github/workflows/ci.yml)** runs tests, then release-mode compiles for **Linux x64**, **Linux arm64 desktop**, **Windows x64/arm64**, **Pi arm64**, **Android**, **iOS**, and **macOS** (separate artifacts per platform; Pi workflow unchanged).
+**PR / branch CI:** **Actions → CI — waddle_display** ([`ci.yml`](../../.github/workflows/ci.yml)) runs tests, then release-mode compiles for **Linux x64**, **Linux arm64 desktop**, **Windows x64/arm64**, **Pi arm64**, **Android**, **iOS**, and **macOS** (separate artifacts per platform; Pi workflow unchanged). Controller tests and Docker images use separate workflows — see [`apps/waddle_controller/README.md`](../waddle_controller/README.md).
 
 Tagged **Pi** tarballs and `install.sh` are produced in CI and documented under [`../../docs/pi/`](../../docs/pi/); templates live in [`../../deploy/linux-arm64/`](../../deploy/linux-arm64/).
 
@@ -419,7 +419,7 @@ The **Pexels** provider (`id` / `provider_type`: **`media_pexels`**) downloads c
 - **`minVideoSeconds`** / **`maxVideoSeconds`**: inclusive duration window for videos (defaults **11** and **29** seconds).
 - **`sources`**: optional list of `{ "query": "…", "category": "…" }` for `/v1/search` (photos) and `/v1/videos/search` (videos); results use that **category** string (the default curated/popular path uses category **`pexels`**).
 
-**Screens:** widget types **`photo`**, **`photo_collage`** (multi-tile layouts; `config.template` picks one of the built-in grids, and the curator matches **native aspect ratio** to each cell when **`blob_metadata.pixel_width` / `pixel_height`** are populated), and **`video`**. Optional `config.categoryId` selects the curator pool (`photo` vs `photo:<category>`). Seed adds **`photo`**, several collage screens, and **`video`** rows in **`screens`** disabled by default; enable after configuring the API key. Attribution (photographer name, profile URL, alt text) is shown on the photo slide; videos autoplay **muted** unless `config.unmuted` is true.
+**Screens:** widget types **`photo`**, **`photo_collage`** (multi-tile layouts; `config.template` picks one of the built-in grids, and the curator matches **native aspect ratio** to each cell when **`blob_metadata.pixel_width` / `pixel_height`** are populated), and **`video`**. Optional `config.categoryId` selects the curator pool (`photo` vs `photo:<category>`). Seed adds **`photo`**, several collage screens, and **`video`** rows in **`screens`** disabled by default; enable after configuring the API key. Photographer attribution (name, profile URL, alt text) is **off by default**; set `config.showPhotographerOverlay` to `true` on **`photo`**, **`photo_collage`**, or **`video`** screens to show it. Videos autoplay **muted** unless `config.unmuted` is true.
 
 ## Stock quote provider (Finnhub)
 

@@ -736,6 +736,7 @@ Handler buildProtectedApiRouter({
     db: db,
     secrets: secrets,
     onConfigChanged: onConfigChanged,
+    blobs: blobs,
     telemetryHub: telemetryHub,
     navigationBus: navigationBus,
   );

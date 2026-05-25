@@ -29,7 +29,7 @@ Pre-push controller steps (when `apps/waddle_controller/**` changed):
 - `npm run build`
 - `npm run lint`
 
-**CI** still runs `npm ci` on a clean runner ([`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) `analyze-test` job).
+**CI — waddle_controller** still runs `npm ci` on a clean runner ([`.github/workflows/ci-controller.yml`](../../.github/workflows/ci-controller.yml) `waddle-controller` job).
 
 ## After dependency / lockfile changes
 

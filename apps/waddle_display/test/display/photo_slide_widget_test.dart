@@ -50,7 +50,7 @@ void main() {
     const layout = ParsedWidgetSpec(
       type: 'photo',
       slot: 'main',
-      config: {},
+      config: {'showPhotographerOverlay': true},
     );
     final slide = ResolvedSlide(
       screenId: 's',
@@ -77,6 +77,67 @@ void main() {
     expect(find.text('Alex Shooter'), findsOneWidget);
     expect(find.textContaining('pexels.com/@alex'), findsOneWidget);
     expect(find.text('Sunrise'), findsOneWidget);
+    await db.close();
+  });
+
+  testWidgets('hides photographer attribution when overlay config is off', (
+    tester,
+  ) async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    final blobs = FakeBlobStore();
+    final logicalKey = 'pexels/photo/8/image';
+    final ref = await blobs.putBytes(_imageBytes, logicalKey: logicalKey);
+    await db.into(db.blobMetadata).insert(
+          BlobMetadataCompanion.insert(
+            blobKey: logicalKey,
+            sha256: ref.storageKey.split('/').last,
+            relativePath: ref.storageKey,
+            bytes: _imageBytes.length,
+            capturedAt: DateTime.fromMillisecondsSinceEpoch(1),
+          ),
+        );
+    await db.into(db.photos).insert(
+          PhotosCompanion.insert(
+            id: '8',
+            category: const Value('pexels'),
+            mediaBlobKey: logicalKey,
+            photographerName: 'Alex Shooter',
+            photographerUrl: 'https://www.pexels.com/@alex',
+            pageUrl: 'https://www.pexels.com/photo/8/',
+            altText: const Value('Sunrise'),
+            fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(1),
+          ),
+        );
+
+    const layout = ParsedWidgetSpec(
+      type: 'photo',
+      slot: 'main',
+      config: {},
+    );
+    final slide = ResolvedSlide(
+      screenId: 's',
+      dwellMs: 5000,
+      layoutJson: '',
+      randomChoices: const {'main_photo': '8'},
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: Scaffold(
+          body: PhotoSlideWidget(
+            db: db,
+            blobs: blobs,
+            slide: slide,
+            spec: layout,
+            theme: ThemeData.dark(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Alex Shooter'), findsNothing);
     await db.close();
   });
 }

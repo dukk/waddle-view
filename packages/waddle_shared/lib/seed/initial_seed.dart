@@ -34,19 +34,35 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await ensureDefaultInterestsJokes(db);
   await ensureDefaultInterestsTrivia(db);
   await ensureDefaultInterestsRssFeeds(db);
-  await _ensureTickerTapes(db);
+  await ensureDefaultTickerTapesSeed(db);
   await _ensureDisplayThemeKv(db);
   await _ensureDisplayTimezoneKv(db);
   await _ensureDisplayTextScaleKv(db);
   await _ensureDisplayProgramHistoryDepthKv(db);
   await ensureControllerDatetimeFormatKvs(db);
   await _ensureAlertSeverityIconsKv(db);
+  await ensureDefaultOverlaysSeed(db);
+  await ensureDefaultScreensSeed(db);
+  await ensureDefaultCuratorConfigurations(db);
+}
+
+/// Idempotent default ticker tape catalog rows.
+Future<void> ensureDefaultTickerTapesSeed(AppDatabase db) async {
+  await _ensureTickerTapes(db);
+}
+
+/// Idempotent default overlay type catalog and instance rows.
+Future<void> ensureDefaultOverlaysSeed(AppDatabase db) async {
   await ensureOverlayTypes(db);
   await _ensureDefaultRainingHeartsOverlay(db);
   await _ensureDefaultBirthdayConfettiOverlay(db);
   await _ensureDefaultFloatingBalloonsOverlay(db);
   await _ensureDefaultWattleViewsBirthdayMessageOverlay(db);
   await _ensureDefaultFallingDucksOverlay(db);
+}
+
+/// Idempotent default screen catalog rows and clock data-key limit.
+Future<void> ensureDefaultScreensSeed(AppDatabase db) async {
   await ensureScreenTypes(db);
   await _ensureWelcomeScreen(db);
   await _ensureJokeScreen(db);
@@ -72,7 +88,6 @@ Future<void> ensureInitialSeed(AppDatabase db) async {
   await _ensureStockQuotesScreen(db);
   await _ensureSleepMessageScreen(db);
   await _ensureControllerInviteScreen(db);
-  await ensureDefaultCuratorConfigurations(db);
 }
 
 Future<void> _seedOverlayIfMissing(
