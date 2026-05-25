@@ -6,6 +6,9 @@
 FROM node:22-bookworm-slim AS build
 ARG WADDLE_CONTROLLER_BUILD_NUMBER=dev
 ENV WADDLE_CONTROLLER_BUILD_NUMBER=$WADDLE_CONTROLLER_BUILD_NUMBER
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY packages/waddle_node_tls /packages/waddle_node_tls
 RUN npm ci --prefix /packages/waddle_node_tls

@@ -21,12 +21,7 @@ function probeNativeModules() {
     try {
       require(pkg);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (msg.includes('NODE_MODULE_VERSION')) {
-        mismatches.push({ pkg, err: e });
-      } else {
-        throw e;
-      }
+      mismatches.push({ pkg, err: e });
     }
   }
   return mismatches;
