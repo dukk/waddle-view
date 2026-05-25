@@ -15,7 +15,7 @@
   "dependencies": {
     "@waddle/node-tls": "file:../../packages/waddle_node_tls",
     "@hono/node-server": "^1.14.0",
-    "hono": "^4.7.0"
+    "hono": "^4.12.23"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
