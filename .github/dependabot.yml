@@ -1,0 +1,31 @@
+# Dependabot version updates — see CONTRIBUTING.md for maintainer security_audit.py cadence.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /apps/waddle_controller
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      controller-production:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "@types/*"
+          - "eslint*"
+          - "typescript"
+          - "vitest*"
+          - "vite"
+          - "@vitejs/*"
+
+  - package-ecosystem: npm
+    directory: /apps/waddle_display_mock_api
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: pub
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10

@@ -275,6 +275,20 @@ services:
       - controller-data:/var/lib/waddle-controller
 ```
 
+## Production checklist
+
+When deploying the BFF with authentication enabled:
+
+| Requirement | Notes |
+|-------------|--------|
+| `WADDLE_CONTROLLER_AUTH_ENABLED=1` | Enables sign-in capability; admins still toggle **User mode** in Settings |
+| `WADDLE_CONTROLLER_SESSION_SECRET` | **Required** when auth is on — use a long random value; never use `change-me` or `change-me-in-production` in real deployments |
+| `NODE_ENV=production` | Enforces session secret presence at BFF startup |
+| TLS | Default self-signed HTTPS on port 443 in Docker; map host port (e.g. 8443) and protect network access |
+| Display pairing | Adopt each display with an admin or operator API key; store integration secrets in **Integrations**, not in display `.env` |
+
+Report security issues per [SECURITY.md](../../SECURITY.md).
+
 ## Security
 
 - Display list (base URLs, labels, and adopted **API keys** / **roles** when paired) is stored in **`localStorage`** per display row.

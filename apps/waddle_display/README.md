@@ -165,7 +165,7 @@ Tagged **Pi** tarballs and `install.sh` are produced in CI and documented under 
 2. On 64-bit Raspberry Pi OS, extract and run **`install.sh`** (installs under `/opt/waddle-view` by default, creates **`/etc/waddle-view/instance.id`** for operator reference—see REST section below).
 3. Start the app from **`/opt/waddle-view/bundle/waddle_display`** with a graphical session (`DISPLAY` set for systemd/display). The same install includes **`/opt/waddle-view/bundle/waddlectl/bin/waddlectl`** for operator tasks against the SQLite file. Optional: **`waddle-view.service`** in `deploy/linux-arm64/`, autostart `.desktop`, disable screen blanking for display use.
 
-Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../docs/pi/using-the-image.md)**, **[`docs/pi/upgrade.md`](../../docs/pi/upgrade.md)**, **[`docs/pi/api.md`](../../docs/pi/api.md)**.
+Full steps, upgrades, and API examples: **[`docs/pi/using-the-image.md`](../../docs/pi/using-the-image.md)**, **[`docs/pi/pi-remote-upgrade.md`](../../docs/pi/pi-remote-upgrade.md)**, **[`docs/pi/api.md`](../../docs/pi/api.md)**.
 
 ### Content suppression (operator)
 
@@ -418,9 +418,7 @@ Generated text must stay short (enforced in prompts and validation): question **
 
 ## Pexels photos / videos provider
 
-The **Pexels** provider (`id` / `provider_type`: **`media_pexels`**) downloads curated photos (`GET /v1/curated`) and popular videos (`GET /v1/videos/popular` with duration bounds), stores binaries in the **blob** store, and keeps metadata in **`photos`** and **`videos`** (with **`data_provider`** set to the provider id, e.g. **`media_pexels`**). API key: **`WADDLE_DISPLAY_PEXELS_API_KEY`** environment variable (never in SQLite).
-
-**Debug `.env`:** **`WADDLE_DISPLAY_PEXELS_API_KEY`** (see [`.env.example`](.env.example)).
+The **Pexels** provider (`id` / `provider_type`: **`media_pexels`**) downloads curated photos (`GET /v1/curated`) and popular videos (`GET /v1/videos/popular` with duration bounds), stores binaries in the **blob** store, and keeps metadata in **`photos`** and **`videos`** (with **`data_provider`** set to the provider id, e.g. **`media_pexels`**). API key: **controller Integrations** → Pexels secret (encrypted in SQLite; **`WADDLE_DISPLAY_PEXELS_API_KEY`** env is deprecated).
 
 **`integrations.config_json`** (JSON) holds the runtime payload. **`config_json_schema`** and **`example_config_json`** are documentation columns (JSON Schema and sample JSON) populated per row type.
 
@@ -435,9 +433,7 @@ The **Pexels** provider (`id` / `provider_type`: **`media_pexels`**) downloads c
 
 ## Stock quote provider (Finnhub)
 
-The **stocks** provider (`id` / `provider_type`: **`stock_finnhub`**) calls [Finnhub](https://finnhub.io/docs/api/quote) **`GET /api/v1/quote?symbol=...&token=...`** for every enabled row in **`stock_symbols`** and upserts the latest quote into **`stock_quotes`** (one row per symbol). API key: **`WADDLE_DISPLAY_FINHUB_API_KEY`** (never in SQLite).
-
-**Debug `.env`:** **`WADDLE_DISPLAY_FINHUB_API_KEY`** (see [`.env.example`](.env.example)).
+The **stocks** provider (`id` / `provider_type`: **`stock_finnhub`**) calls [Finnhub](https://finnhub.io/docs/api/quote) **`GET /api/v1/quote?symbol=...&token=...`** for every enabled row in **`stock_symbols`** and upserts the latest quote into **`stock_quotes`** (one row per symbol). API key: **controller Integrations** → Finnhub secret (encrypted in SQLite; **`WADDLE_DISPLAY_FINHUB_API_KEY`** env is deprecated).
 
 **Symbol management:** seed inserts AAPL / MSFT / GOOG / NVDA / AMZN with **AAPL** and **MSFT** enabled by default; toggle [`StockSymbols.enabled`](../../packages/waddle_shared/lib/persistence/tables.dart) to add or remove symbols at runtime. When `stock_symbols` has no enabled rows the provider falls back to **`config_json.defaultSymbols`** and writes those entries into the table on first collect so the slide widget can display them.
 
@@ -672,7 +668,7 @@ The **Flickr** provider … **API key:** **`WADDLE_DISPLAY_FLICKR_API_KEY`** (ne
 
 **`integrations.poll_seconds`:** default **3600** when seeded.
 
-**Debug `.env`:** **`WADDLE_DISPLAY_FLICKR_API_KEY`** (see [`.env.example`](.env.example)).
+API key: **controller Integrations** → Flickr secret (encrypted in SQLite; **`WADDLE_DISPLAY_FLICKR_API_KEY`** env is deprecated).
 
 ## Bing image of the day
 

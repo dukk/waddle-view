@@ -1,8 +1,10 @@
 # Waddle View
 
-This is a re-imagioned [quackview](https://github.com/dukk/quackview) with the goal of better visual performance on the raspberry pi. It's using a completly different architecture and technology stack.
+A reimagined [quackview](https://github.com/dukk/quackview) focused on better visual performance on Raspberry Pi, with a completely different architecture and technology stack.
 
 TV dashboard and related applications for Raspberry Pi and development machines.
+
+[![CI — waddle_display](https://github.com/dukk/waddle-view/actions/workflows/ci.yml/badge.svg)](https://github.com/dukk/waddle-view/actions/workflows/ci.yml)
 
 ## Applications
 
@@ -10,7 +12,7 @@ TV dashboard and related applications for Raspberry Pi and development machines.
 | --- | --- |
 | [`apps/waddle_display`](apps/waddle_display) | Flutter **Linux** (and **Windows** for dev) TV dashboard: SQLite persistence, ticker, overlay alerts, local REST API, data collection loop. Architecture: [`apps/waddle_display/ARCHITECTURE.md`](apps/waddle_display/ARCHITECTURE.md). |
 | [`apps/waddle_controller`](apps/waddle_controller) | Operator web UI (optional; separate Node/npm setup). Docker image published on [CI and Release](apps/waddle_controller/README.md#deploy-from-github-builds). |
-| [`apps/waddlectl`](apps/waddlectl) | CLI helper bundled with Linux releases. |
+| [`apps/waddlectl`](apps/waddlectl) | CLI helper bundled with Linux releases ([README](apps/waddlectl/README.md)). |
 | [`packages/waddle_shared`](packages/waddle_shared) | Drift schema, persistence, and shared libraries (codegen runs here). |
 | [`packages/waddle_integrations`](packages/waddle_integrations) | Built-in integration data collectors. |
 
@@ -63,8 +65,17 @@ Coverage floor: **≥ 80%** line coverage on gated libs (display, shared, plugin
 
 ## Raspberry Pi
 
-See [`docs/pi/`](docs/pi/) for using the release artifact, upgrading, development, and HTTP API.
+See [`docs/pi/`](docs/pi/) for using the release artifact, upgrading, development, and HTTP API. Install the latest release with [`deploy/install-latest-release.sh`](deploy/install-latest-release.sh) (documented in [`docs/pi/using-the-image.md`](docs/pi/using-the-image.md)).
 
-## Agent / contributor rules
+## License
 
-Read [`AGENTS.md`](AGENTS.md) and [`.cursor/rules/`](.cursor/rules/) before large changes.
+This project is released under the **[Open Non-Commercial License (ONC) v1.0](LICENSE)**. You may use, modify, and distribute it for **non-commercial** purposes with attribution. **Commercial use** requires a separate agreement — contact **dukk@dukk.org** (see LICENSE section 6).
+
+## Contributing and security
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) — development setup, quality checks, releases
+- [SECURITY.md](SECURITY.md) — vulnerability reporting and deployment threat model
+- [CHANGELOG.md](CHANGELOG.md) — release history
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+
+For large code changes, also read [`AGENTS.md`](AGENTS.md). Optional Cursor rules live under [`.cursor/`](.cursor/) (see [`.cursor/README.md`](.cursor/README.md)).
