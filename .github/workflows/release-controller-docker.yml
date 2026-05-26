@@ -37,7 +37,7 @@ jobs:
           test -s apps/waddle_controller/package-lock.json
           test -s packages/waddle_node_tls/package-lock.json
           test -s LICENSE
-          head -1 apps/waddle_controller/package-lock.json | grep -q '"lockfileVersion"'
+          grep -q '"lockfileVersion"' apps/waddle_controller/package-lock.json
       - name: Build Docker image
         env:
           BUILD_NUMBER: ${{ inputs.build_number }}
