@@ -11,7 +11,9 @@ const controllerRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
 );
-const tlsRoot = path.resolve(controllerRoot, '../../packages/waddle_node_tls');
+const tlsRoot = process.env.WADDLE_NODE_TLS_ROOT?.trim()
+  ? path.resolve(process.env.WADDLE_NODE_TLS_ROOT.trim())
+  : path.resolve(controllerRoot, '../../packages/waddle_node_tls');
 const selfsignedEntry = path.join(tlsRoot, 'node_modules', 'selfsigned', 'package.json');
 
 function depsPresent() {

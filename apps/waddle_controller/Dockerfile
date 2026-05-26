@@ -9,6 +9,7 @@ ENV NODE_ENV=development
 ARG WADDLE_CONTROLLER_BUILD_NUMBER=dev
 ARG DOCKER_BUILD_CACHE_BUST=0
 ENV WADDLE_CONTROLLER_BUILD_NUMBER=$WADDLE_CONTROLLER_BUILD_NUMBER
+ENV WADDLE_NODE_TLS_ROOT=/packages/waddle_node_tls
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     python3 make g++ libsqlite3-dev \
@@ -21,11 +22,14 @@ COPY apps/waddle_controller/ .
 COPY LICENSE /waddle-repo/LICENSE
 ENV WADDLE_VIEW_REPO_ROOT=/waddle-repo
 ARG DOCKER_BUILD_CACHE_BUST
+RUN test -f /waddle-repo/LICENSE
+ARG DOCKER_BUILD_CACHE_BUST
 RUN echo "docker-ci-cache-bust=${DOCKER_BUILD_CACHE_BUST}" \
-  && test -f /waddle-repo/LICENSE \
-  && npm ci --include=dev --ignore-scripts \
-  && npm rebuild better-sqlite3 @node-rs/argon2 \
-  && npm run build \
+  && npm ci --include=dev
+ARG DOCKER_BUILD_CACHE_BUST
+RUN npm rebuild better-sqlite3 @node-rs/argon2
+ARG DOCKER_BUILD_CACHE_BUST
+RUN npm run build \
   && npm run build:server \
   && npm prune --omit=dev
 
@@ -41,6 +45,7 @@ COPY --from=build /app/server/dist ./server/dist
 COPY apps/waddle_controller/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY apps/waddle_controller/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
+ENV NODE_ENV=production
 ENV PORT=5199
 ENV WADDLE_CONTROLLER_BIND=127.0.0.1
 ENV WADDLE_CONTROLLER_DATA_DIR=/var/lib/waddle-controller
