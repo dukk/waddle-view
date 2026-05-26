@@ -6,5 +6,6 @@
 **/.env.*
 **/*.log
 **/coverage
-**/data
+# BFF SQLite/TLS runtime dir only (do not use **/data; it drops src/components/data/).
+apps/waddle_controller/data/
 **/.DS_Store

@@ -53,7 +53,7 @@ deploy/dev-pi/*.tar.gz
 
 **/node_modules/**
 
-# Controller BFF runtime data (SQLite, TLS cache; also excluded in repo-root .dockerignore via **/data)
+# Controller BFF runtime data (SQLite, TLS cache; also excluded in repo-root .dockerignore)
 apps/waddle_controller/data/
 
 *.pem
