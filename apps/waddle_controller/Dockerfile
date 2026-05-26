@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# nginx :443 (self-signed) → static SPA + proxy /bff → Node BFF :5199 (HTTP loopback).
+# nginx :443 (self-signed) -> static SPA + proxy /bff -> Node BFF :5199 (HTTP loopback).
 # Build from repository root: docker build -f apps/waddle_controller/Dockerfile .
 
 # glibc builder: native addons ship linux-x64 prebuilds (Alpine musl often misses them).
@@ -8,21 +8,23 @@ FROM node:22-bookworm-slim AS build
 ENV NODE_ENV=development
 ARG WADDLE_CONTROLLER_BUILD_NUMBER=dev
 ENV WADDLE_CONTROLLER_BUILD_NUMBER=$WADDLE_CONTROLLER_BUILD_NUMBER
-ENV WADDLE_NODE_TLS_ROOT=/packages/waddle_node_tls
+ENV WADDLE_NODE_TLS_ROOT=/waddle-repo/packages/waddle_node_tls
+ENV WADDLE_VIEW_REPO_ROOT=/waddle-repo
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     python3 make g++ libsqlite3-dev \
   && rm -rf /var/lib/apt/lists/*
-WORKDIR /app
-COPY packages/waddle_node_tls /packages/waddle_node_tls
-RUN npm ci --prefix /packages/waddle_node_tls
-# Install deps before copying the rest of the tree (layer cache + postinstall needs tool/*.mjs).
-COPY apps/waddle_controller/package.json apps/waddle_controller/package-lock.json ./
-RUN test -s package-lock.json
+# Keep monorepo paths so package-lock.json file:../../packages/waddle_node_tls resolves for npm ci.
+WORKDIR /waddle-repo
+COPY packages/waddle_node_tls packages/waddle_node_tls
+RUN npm ci --prefix packages/waddle_node_tls
+COPY apps/waddle_controller/package.json apps/waddle_controller/package-lock.json apps/waddle_controller/
+WORKDIR /waddle-repo/apps/waddle_controller
+RUN test -s package-lock.json \
+  && node -e "const p=require('./package-lock.json'); if (!p.lockfileVersion) process.exit(1)"
 RUN npm ci --ignore-scripts
 COPY apps/waddle_controller/ .
 COPY LICENSE /waddle-repo/LICENSE
-ENV WADDLE_VIEW_REPO_ROOT=/waddle-repo
 RUN npm run postinstall \
   && npm run build \
   && npm run build:server \
@@ -33,10 +35,10 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends nginx openssl wget ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY --from=build /app/package.json ./
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist /usr/share/nginx/html
-COPY --from=build /app/server/dist ./server/dist
+COPY --from=build /waddle-repo/apps/waddle_controller/package.json ./
+COPY --from=build /waddle-repo/apps/waddle_controller/node_modules ./node_modules
+COPY --from=build /waddle-repo/apps/waddle_controller/dist /usr/share/nginx/html
+COPY --from=build /waddle-repo/apps/waddle_controller/server/dist ./server/dist
 COPY apps/waddle_controller/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY apps/waddle_controller/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
