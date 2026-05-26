@@ -1,12 +1,12 @@
 ---
-description: Waddle View test conventions — drift/flutter_test imports, fakes, null promotion
+description: Waddle View test conventions, drift/flutter_test imports, fakes, null promotion
 globs: apps/waddle_display/test/**
 alwaysApply: false
 ---
 
 # waddle_display tests (analyzer-clean conventions)
 
-CI runs `flutter analyze` (workspace) and package `dart analyze` and fails on **any** issue (warning or error). Test files (`*_test.dart`) are in scope—unused imports in tests fail the hook and CI. Three patterns recur in this repo and have caused green-locally / red-on-CI regressions; keep them in mind on every test edit.
+CI runs `flutter analyze` (workspace) and package `dart analyze` and fails on **any** issue (warning or error). Test files (`*_test.dart`) are in scope, unused imports in tests fail the hook and CI. Three patterns recur in this repo and have caused green-locally / red-on-CI regressions; keep them in mind on every test edit.
 
 ## 1. `drift` + `flutter_test` import collision
 
@@ -26,18 +26,18 @@ When pruning unused parameters from test helper classes (`_RoutingBingClient`, `
 
 ## 3. Dart 3 null-assertion promotion
 
-After `final x = ...; expect(x, isNotNull);`, the local is **not** promoted — the matcher is opaque to flow analysis. Use `x!` **once** on the first dereference; subsequent uses of the same local should be plain `x.field`. Repeated `x!.field` triggers `unnecessary_non_null_assertion`.
+After `final x = ...; expect(x, isNotNull);`, the local is **not** promoted. The matcher is opaque to flow analysis. Use `x!` **once** on the first dereference; subsequent uses of the same local should be plain `x.field`. Repeated `x!.field` triggers `unnecessary_non_null_assertion`.
 
 ```dart
 final row = await query.getSingleOrNull();
 expect(row, isNotNull);
-expect(row!.dataKey, 'news');         // first ! promotes
-expect(row.configJson.contains(...));  // no ! after that
+expect(row!.dataKey, 'news'); // first ! promotes
+expect(row.configJson.contains(...)); // no ! after that
 ```
 
 ## 4. Drift migration tests must seed every legacy table the migrations read
 
-`AppDatabase` runs **all** `from < N` blocks up to the current schema, even when a migration test bootstraps a snapshot at a recent `user_version`. If any later migration does an unconditional `customSelect('SELECT … FROM legacy_table')` (e.g. the v27 `screen_definitions` rewrite that reads `layout_json` / `data_key`), every legacy migration test must seed a stub for that table or the open will fail with `no such table: …` from inside `beforeOpen`.
+`AppDatabase` runs **all** `from < N` blocks up to the current schema, even when a migration test bootstraps a snapshot at a recent `user_version`. If any later migration does an unconditional `customSelect('SELECT ... FROM legacy_table')` (e.g. the v27 `screen_definitions` rewrite that reads `layout_json` / `data_key`), every legacy migration test must seed a stub for that table or the open will fail with `no such table: ...` from inside `beforeOpen`.
 
 - Use the helpers in [`test/helpers/legacy_migration_schema_stubs.dart`](../../packages/waddle_shared/test/helpers/legacy_migration_schema_stubs.dart) (`stubCalendarEventsAndBlobMetadataForMigration`, `stubContentCategoriesForMigration`, `stubLegacyScreenDefinitionsForMigration`) before constructing `AppDatabase(NativeDatabase.opened(raw))`.
 - When you add a new schema-rewrite migration that reads a legacy table, add a matching stub helper in the same task and wire it into existing migration tests.
@@ -46,7 +46,7 @@ expect(row.configJson.contains(...));  // no ! after that
 
 `db.customStatement(sql, args)` forwards `args` directly to the `sqlite3` driver, which only accepts `null`, `bool`, `int`, `num`, `String`, or `List<int>`. Passing `Variable<String>(x)` works in some Drift versions but throws `Invalid argument: Instance of 'Variable<String>'` on the version pinned in this repo.
 
-- Use raw values inside `customStatement` arg lists: `customStatement('UPDATE … SET … WHERE id = ?', <Object?>[id]);`.
+- Use raw values inside `customStatement` arg lists: `customStatement('UPDATE ... SET ... WHERE id = ?', <Object?>[id]);`.
 - `Variable<T>` only belongs inside Drift's typed query builder (`update(...).write(Companion(...))`, `select(...).where(...)`, etc.).
 
 ## 6. Tests using `calendar_events.category_id` must seed `content_categories`
@@ -57,8 +57,8 @@ expect(row.configJson.contains(...));  // no ! after that
 
 ## 7. New `kContentCategoryDefaults` icons must be wired in `contentCategoryMaterialIcon`
 
-`every default materialIconName resolves to a non-fallback icon` enforces that every `materialIconName` in [`kContentCategoryDefaults`](../../packages/waddle_shared/lib/persistence/content_category_defaults.dart) has a matching `case` in [`contentCategoryMaterialIcon`](../../apps/waddle_display/lib/display/content_category_material_icon.dart). When you add or rename a default icon, add the corresponding switch case in the same task — otherwise that test fails with `Expected: not IconData(U+0E364)` (the `Icons.label_outline` fallback).
+`every default materialIconName resolves to a non-fallback icon` enforces that every `materialIconName` in [`kContentCategoryDefaults`](../../packages/waddle_shared/lib/persistence/content_category_defaults.dart) has a matching `case` in [`contentCategoryMaterialIcon`](../../apps/waddle_display/lib/display/content_category_material_icon.dart). When you add or rename a default icon, add the corresponding switch case in the same task. Otherwise that test fails with `Expected: not IconData(U+0E364)` (the `Icons.label_outline` fallback).
 
 ## Verification
 
-Before pushing test changes, run `flutter analyze` from `apps/waddle_display/` and confirm zero issues — see [`waddle-view-flutter.mdc`](waddle-view-flutter.mdc) and the [`run-waddle-checks`](../../.cursor/skills/run-waddle-checks/SKILL.md) skill.
+Before pushing test changes, run `flutter analyze` from `apps/waddle_display/` and confirm zero issues. See [`waddle-view-flutter.mdc`](waddle-view-flutter.mdc) and the [`run-waddle-checks`](../../.cursor/skills/run-waddle-checks/SKILL.md) skill.

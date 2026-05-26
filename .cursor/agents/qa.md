@@ -26,10 +26,10 @@ If the prompt does not say FIX or REVIEW, infer from whether `qa-test-failure.js
 
 1. Read [AGENTS.md](../../AGENTS.md) scope and the checklist in [.cursor/rules/waddle-view-tests.mdc](../rules/waddle-view-tests.mdc) when Dart/tests are in scope.
 2. Inspect the changed files listed in the task (use `git diff` / read files; do not assume the parent summary is complete).
-3. **FIX**: read [`.cursor/hooks/state/qa-test-failure.json`](../hooks/state/qa-test-failure.json), fix failures, re-run the failing command (or `python scripts/qa_scoped_tests.py --files-json '…'` with the same edited paths).
+3. **FIX**: read [`.cursor/hooks/state/qa-test-failure.json`](../hooks/state/qa-test-failure.json), fix failures, re-run the failing command (or `python scripts/qa_scoped_tests.py --files-json '...'` with the same edited paths).
 4. **REVIEW**: run targeted verification for the touched areas (see below). Prefer narrow commands over full-repo runs when the change is small.
 
-Skip re-running analyze/tests in REVIEW if the hook already passed—focus on gaps (migrations, missing tests, conventions).
+Skip re-running analyze/tests in REVIEW if the hook already passed, focus on gaps (migrations, missing tests, conventions).
 
 ## Verification by area
 
@@ -52,15 +52,15 @@ For full CI parity before merge, follow [.cursor/skills/run-waddle-checks/SKILL.
 **Verdict:** PASS | PASS WITH NOTES | FAIL
 
 ### Verified
-- …
+- ...
 
 ### Issues
-- 🔴 **Critical** — must fix before merge
-- 🟡 **Suggestion** — should fix
-- 🟢 **Note** — optional
+- 🔴 **Critical**: must fix before merge
+- 🟡 **Suggestion**: should fix
+- 🟢 **Note**: optional
 
 ### Commands run
-- …
+- ...
 ```
 
 **FIX** mode: when analyze and tests pass, reply briefly with what you fixed and the command you re-ran.

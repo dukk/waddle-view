@@ -9,7 +9,7 @@ By contributing, you agree that your contributions are licensed under the [Open 
 ## How to contribute
 
 1. Fork the repository and create a branch from `main`.
-2. Make focused changes with tests for new behavior (see [AGENTS.md](AGENTS.md) — tests first for new features).
+2. Make focused changes with tests for new behavior (see [AGENTS.md](AGENTS.md); tests first for new features).
 3. Run quality checks before opening a pull request.
 4. Open a PR with a clear description and test plan.
 

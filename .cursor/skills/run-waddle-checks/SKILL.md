@@ -39,8 +39,8 @@ python scripts/waddle_checks.py full --controller
 
 Environment overrides:
 
-- `WADDLE_TEST_CONCURRENCY` — `flutter test` / `dart test` workers (default `min(4, cpu_count)`).
-- `WADDLE_CHECKS_PARALLEL_ANALYZE=0` — disable parallel `flutter analyze` + display tests (default on).
+- `WADDLE_TEST_CONCURRENCY`: `flutter test` / `dart test` workers (default `min(4, cpu_count)`).
+- `WADDLE_CHECKS_PARALLEL_ANALYZE=0`: disable parallel `flutter analyze` + display tests (default on).
 
 Pre-push ([`scripts/pre_push_checks.py`](../../../scripts/pre_push_checks.py)) uses the same fast optimizations (no coverage, conditional `pub get` / `build_runner`, test concurrency) but always runs the **full** Dart test suites for each workspace package in scope.
 
@@ -75,7 +75,7 @@ dart run tool/coverage_check.dart --min=80 --target=90 coverage/lcov.info ../../
 
 ## waddle_controller (when that app changed)
 
-Full mirror of CI `analyze-test` for the controller (includes **`npm ci`**). **Git pre-push does not run `npm ci`** — only `build` + `lint` — so dev (`npm run dev`) does not block push with Windows `EPERM`. Run this block manually before merge-quality pushes and after lockfile changes.
+Full mirror of CI `analyze-test` for the controller (includes **`npm ci`**). **Git pre-push does not run `npm ci`**. Only `build` + `lint`, so dev (`npm run dev`) does not block push with Windows `EPERM`. Run this block manually before merge-quality pushes and after lockfile changes.
 
 ```bash
 cd apps/waddle_controller

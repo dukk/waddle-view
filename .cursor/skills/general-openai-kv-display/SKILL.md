@@ -13,9 +13,9 @@ disable-model-invocation: true
 ## Architecture
 
 1. **`general_openai` collector** (`packages/waddle_integrations/lib/general_openai/`) runs prompts on `pollSeconds`, calls OpenAI **Responses API** (`POST /v1/responses`), optional remote HTTP **MCP** tools, and writes:
-   - `prompt.{promptId}.latest` — upserted latest payload
-   - `prompt.{promptId}.history.{collectedAtMs}` — immutable history rows
-   - `prompt.{promptId}.last_collect_ms` — poll gate
+   - `prompt.{promptId}.latest`: upserted latest payload
+   - `prompt.{promptId}.history.{collectedAtMs}`: immutable history rows
+   - `prompt.{promptId}.last_collect_ms`: poll gate
 2. **`general_*` screens** (`general_full_screen`, `general_2_column`, `general_3_column`, `general_2x2`, `general_3x2`) store a `slots[]` array in `screens.config_json`. Runtime [synthesizeLayoutJson](packages/waddle_shared/lib/layout/screen_layout_parse.dart) flattens slots into layout JSON consumed by [GeneralLayoutSlideWidget](apps/waddle_display/lib/display/screens/general_layout/general_layout_slide_widget.dart).
 3. **`kv_*` widgets** read `integrationId` + `valueKey` (+ optional `jsonPath`) via [integration_kv_read.dart](packages/waddle_shared/lib/integrations/integration_kv_read.dart).
 
@@ -53,9 +53,9 @@ Per-prompt `mcpServers[]` maps to Responses API MCP tools. Authorization:
 
 ## Operator debugging
 
-- `GET /v1/integrations/{id}/kv?prefix=prompt.` — list keys (metadata only)
-- `GET /v1/integrations/{id}/kv/{key}` — read value
-- `DELETE /v1/integrations/{id}/kv/{key}` — purge one key
+- `GET /v1/integrations/{id}/kv?prefix=prompt.`: list keys (metadata only)
+- `GET /v1/integrations/{id}/kv/{key}`: read value
+- `DELETE /v1/integrations/{id}/kv/{key}`: purge one key
 
 ## Checklist (new widget or screen)
 
@@ -63,10 +63,10 @@ Per-prompt `mcpServers[]` maps to Responses API MCP tools. Authorization:
 2. Implement slide widget under `apps/waddle_display/lib/display/screens/kv/`.
 3. Register `case` in [screen_widget_registry.dart](apps/waddle_display/lib/extensions/screen_widget_registry.dart).
 4. Extend [kv_schema_documentation_test.dart](packages/waddle_shared/test/persistence/kv_schema_documentation_test.dart).
-5. Update this skill’s matrix.
+5. Update this skill's matrix.
 
 ## Related skills
 
-- [add-provider](add-provider/SKILL.md) — new collectors
-- [add-display-screen](add-display-screen/SKILL.md) — standalone screen types (not `kv_*` children)
-- [schema-config-form](schema-config-form/SKILL.md) — controller RJSF forms
+- [add-provider](add-provider/SKILL.md): new collectors
+- [add-display-screen](add-display-screen/SKILL.md): standalone screen types (not `kv_*` children)
+- [schema-config-form](schema-config-form/SKILL.md): controller RJSF forms

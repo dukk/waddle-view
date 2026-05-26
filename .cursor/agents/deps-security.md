@@ -32,21 +32,21 @@ Do not rely on stale summaries from the parent agent.
 | **npm** | `apps/waddle_controller/`, `apps/waddle_display_mock_api/` | `npm audit` (via script) |
 | **Dart / Pub** | Root `pubspec.lock` (workspace) | `osv-scanner` on lockfile when installed |
 
-If `osv-scanner` is missing, state records a skip for Dart — note that in your report and link to [OSV-Scanner install](https://google.github.io/osv-scanner/).
+If `osv-scanner` is missing, state records a skip for Dart. Note that in your report and link to [OSV-Scanner install](https://google.github.io/osv-scanner/).
 
 ## When invoked
 
 1. Run `python scripts/security_audit.py` (or confirm it ran since the triggering change).
 2. Load `security-audit.json` and compare `summary` / per-ecosystem `vulnerabilities`.
 3. For each finding: package name, severity, affected path, and whether a fix is available (`npm audit` / advisory id).
-4. Recommend **minimal** upgrades (patch/minor) or documented accept-risk — do not mass-bump unrelated deps.
+4. Recommend **minimal** upgrades (patch/minor) or documented accept-risk. Do not mass-bump unrelated deps.
 5. Re-run the script after any lockfile change you suggest so state stays current.
 
 ## Rules
 
 - Never commit secrets, tokens, or registry credentials.
 - Do not run `npm audit fix --force` without explicit user approval.
-- Dart workspace uses a single root **`pubspec.lock`** — scan that, not per-package locks.
+- Dart workspace uses a single root **`pubspec.lock`**. Scan that, not per-package locks.
 - Report when audit tooling is missing or skipped; that is a gap, not a pass.
 
 ## Report format
@@ -63,21 +63,21 @@ If `osv-scanner` is missing, state records a skip for Dart — note that in your
 ### Summary counts
 | Severity | Count |
 | --- | --- |
-| critical | … |
-| high | … |
-| … | … |
+| critical | ... |
+| high | ... |
+| ... | ... |
 
-### npm — waddle_controller
-- …
+### npm - waddle_controller
+- ...
 
-### npm — waddle_display_mock_api
-- …
+### npm - waddle_display_mock_api
+- ...
 
 ### Dart (pubspec.lock / osv-scanner)
-- …
+- ...
 
 ### Recommended actions
-1. …
+1. ...
 ```
 
 If clean, say so briefly and note when state was last updated.

@@ -1,5 +1,5 @@
 ---
-description: Git pre-push and post-commit hooks — scoped checks, no npm ci on controller, Windows EPERM
+description: Git pre-push and post-commit hooks, scoped checks, no npm ci on controller, Windows EPERM
 globs: scripts/pre_push_checks.py,scripts/post_commit_gate.py,.githooks/**,apps/waddle_controller/package.json,apps/waddle_controller/package-lock.json
 ---
 
@@ -13,14 +13,14 @@ globs: scripts/pre_push_checks.py,scripts/post_commit_gate.py,.githooks/**,apps/
 ## Post-commit gate (`scripts/post_commit_gate.py`)
 
 - **Hook**: [`.githooks/post-commit`](../../.githooks/post-commit) runs [`scripts/post_commit_gate.py`](../../scripts/post_commit_gate.py). The commit **always succeeds** (`exit 0`); failures are saved for Cursor.
-- **Phase 1 — build:** codegen, `dart analyze` / `flutter analyze`, controller `npm run build` + `build:server` (no `npm ci`, same EPERM rules as pre-push).
-- **Phase 2 — test:** pre-push-equivalent unit tests for paths in `HEAD~1..HEAD` (tests skipped while build fails).
+- **Phase 1: build:** codegen, `dart analyze` / `flutter analyze`, controller `npm run build` + `build:server` (no `npm ci`, same EPERM rules as pre-push).
+- **Phase 2: test:** pre-push-equivalent unit tests for paths in `HEAD~1..HEAD` (tests skipped while build fails).
 - **Cursor fix loop:** [`session_start_commit_fix.py`](../hooks/session_start_commit_fix.py) + commit phase in [`agent_stop_followup.py`](../hooks/agent_stop_followup.py) chain [`build-fix`](../agents/build-fix.md) then [`test-fix`](../agents/test-fix.md). State: `commit-build-failure.json`, `commit-test-failure.json`, `commit-fix-loop.json`.
 - **20-minute cap:** auto-fix stops and asks for user help (`WADDLE_COMMIT_FIX_MAX_WALL_MS` to override in tests).
 - **Skip** (discouraged): `WADDLE_SKIP_POST_COMMIT_CHECKS=1`.
 - Helpers: [`deploy/test_post_commit_gate.py`](../../deploy/test_post_commit_gate.py).
 
-## waddle_controller — no `npm ci` on push
+## waddle_controller: no `npm ci` on push
 
 Pre-push **never** runs `npm ci` in `apps/waddle_controller/`. A running **`npm run dev`** (Vite, `tsx watch`, `concurrently`) keeps native binaries under `node_modules` open; on Windows, `npm ci` then fails with **`EPERM`** when unlinking `esbuild.exe` or `@node-rs/argon2` artifacts.
 
@@ -29,7 +29,7 @@ Pre-push controller steps (when `apps/waddle_controller/**` changed):
 - `npm run build`
 - `npm run lint`
 
-**CI — waddle_controller** still runs `npm ci` on a clean runner ([`.github/workflows/ci-controller.yml`](../../.github/workflows/ci-controller.yml) `waddle-controller` job).
+**CI - waddle_controller** still runs `npm ci` on a clean runner ([`.github/workflows/ci-controller.yml`](../../.github/workflows/ci-controller.yml) `waddle-controller` job).
 
 ## After dependency / lockfile changes
 
@@ -37,7 +37,7 @@ Pre-push controller steps (when `apps/waddle_controller/**` changed):
 2. Run **`npm ci`** there (also refreshes `packages/waddle_node_tls` via `postinstall`).
 3. Run the full controller gate from [`run-waddle-checks`](../skills/run-waddle-checks/SKILL.md) (`lint`, `test:coverage`, `coverage:check`, `build`) before pushing.
 
-If `package-lock.json` is newer than `node_modules/.package-lock.json`, pre-push prints a **non-blocking WARNING** (stronger hint when dev processes are still detected). Do not re-add `npm ci` to pre-push to “fix” EPERM — use manual `npm ci` after stopping dev.
+If `package-lock.json` is newer than `node_modules/.package-lock.json`, pre-push prints a **non-blocking WARNING** (stronger hint when dev processes are still detected). Do not re-add `npm ci` to pre-push to "fix" EPERM. Use manual `npm ci` after stopping dev.
 
 ## Agents fixing a blocked push
 

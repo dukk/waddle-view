@@ -6,8 +6,8 @@
 FROM node:22-bookworm-slim AS build
 # Official node images default NODE_ENV=production, which omits devDependencies (tsc, vite).
 ENV NODE_ENV=development
+ENV NPM_CONFIG_PRODUCTION=false
 ARG WADDLE_CONTROLLER_BUILD_NUMBER=dev
-ARG DOCKER_BUILD_CACHE_BUST=0
 ENV WADDLE_CONTROLLER_BUILD_NUMBER=$WADDLE_CONTROLLER_BUILD_NUMBER
 ENV WADDLE_NODE_TLS_ROOT=/packages/waddle_node_tls
 RUN apt-get update \
@@ -21,15 +21,9 @@ COPY apps/waddle_controller/package.json apps/waddle_controller/package-lock.jso
 COPY apps/waddle_controller/ .
 COPY LICENSE /waddle-repo/LICENSE
 ENV WADDLE_VIEW_REPO_ROOT=/waddle-repo
-ARG DOCKER_BUILD_CACHE_BUST
-RUN test -f /waddle-repo/LICENSE
-ARG DOCKER_BUILD_CACHE_BUST
-RUN echo "docker-ci-cache-bust=${DOCKER_BUILD_CACHE_BUST}" \
-  && npm ci --include=dev
-ARG DOCKER_BUILD_CACHE_BUST
-RUN npm rebuild better-sqlite3 @node-rs/argon2
-ARG DOCKER_BUILD_CACHE_BUST
-RUN npm run build \
+RUN test -f /waddle-repo/LICENSE \
+  && npm ci --include=dev \
+  && npm run build \
   && npm run build:server \
   && npm prune --omit=dev
 

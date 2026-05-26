@@ -1,7 +1,7 @@
 ---
 name: controller-data-view
 description: >-
-  waddle_controller list/catalog page UX — DataViewToolbar (card/table, reload,
+  waddle_controller list/catalog page UX: DataViewToolbar (card/table, reload,
   search, sort, paging). Use when adding or editing operator list pages.
 disable-model-invocation: true
 ---
@@ -18,20 +18,20 @@ Any **list or catalog page** under `apps/waddle_controller/src/pages/` that show
 
 ## Checklist
 
-1. **Layout** — `useListLayoutPreference('<page-key>')` with a key in [`listLayoutPreference.ts`](../../../apps/waddle_controller/src/storage/listLayoutPreference.ts). Default **table** for `data` and `activity` only.
-2. **Toolbar** — [`DataViewToolbar`](../../../apps/waddle_controller/src/components/dataView/DataViewToolbar.tsx): search, sort, reload, card/table toggle; optional `filterSlot` for extra filters (channel, category chips, column filters).
-3. **Client lists** — [`useClientDataView`](../../../apps/waddle_controller/src/hooks/useClientDataView.ts) + [`DataViewPagination`](../../../apps/waddle_controller/src/components/dataView/DataViewPagination.tsx); define column sort fields via [`dataViewColumnSort.ts`](../../../apps/waddle_controller/src/util/dataViewColumnSort.ts) (`buildColumnSortOptions`, `columnSortToolbarOptions`), set `useSortOrder: true`, and wire toolbar `order` / `onOrderChange`.
-4. **Server-paged lists** — [`useServerDataView`](../../../apps/waddle_controller/src/hooks/useServerDataView.ts); pass `query` into API params (`q`, `sort`, `order`, `limit`, `offset`); refetch when controls change; reset section pages on filter/sort change.
-5. **Reload** — wire `onReload` to the page `load` function; `reloadDisabled` while `useDisplayRefresh().loading` (or page `loading` for BFF-only pages).
-6. **Empty states** — [`DataViewEmptyState`](../../../apps/waddle_controller/src/components/dataView/DataViewEmptyState.tsx) for “no data” vs “no matches”.
-7. **Both layouts** — implement **card** and **table** branches over the same `displayRows` / `paginated.items`.
-8. **Sort labels** — offer a toolbar sort option for every **visible data column** (not Actions / row-action switches / rich preview thumbnails unless a scalar proxy exists). Use human column titles. Do **not** add “ID” sort options; internal ids may still be used in `searchMatches` or `tieBreakLocale` tie-breakers.
+1. **Layout**: `useListLayoutPreference('<page-key>')` with a key in [`listLayoutPreference.ts`](../../../apps/waddle_controller/src/storage/listLayoutPreference.ts). Default **table** for `data` and `activity` only.
+2. **Toolbar**: [`DataViewToolbar`](../../../apps/waddle_controller/src/components/dataView/DataViewToolbar.tsx): search, sort, reload, card/table toggle; optional `filterSlot` for extra filters (channel, category chips, column filters).
+3. **Client lists**: [`useClientDataView`](../../../apps/waddle_controller/src/hooks/useClientDataView.ts) + [`DataViewPagination`](../../../apps/waddle_controller/src/components/dataView/DataViewPagination.tsx); define column sort fields via [`dataViewColumnSort.ts`](../../../apps/waddle_controller/src/util/dataViewColumnSort.ts) (`buildColumnSortOptions`, `columnSortToolbarOptions`), set `useSortOrder: true`, and wire toolbar `order` / `onOrderChange`.
+4. **Server-paged lists**: [`useServerDataView`](../../../apps/waddle_controller/src/hooks/useServerDataView.ts); pass `query` into API params (`q`, `sort`, `order`, `limit`, `offset`); refetch when controls change; reset section pages on filter/sort change.
+5. **Reload**: wire `onReload` to the page `load` function; `reloadDisabled` while `useDisplayRefresh().loading` (or page `loading` for BFF-only pages).
+6. **Empty states**: [`DataViewEmptyState`](../../../apps/waddle_controller/src/components/dataView/DataViewEmptyState.tsx) for "no data" vs "no matches".
+7. **Both layouts**: implement **card** and **table** branches over the same `displayRows` / `paginated.items`.
+8. **Sort labels**: offer a toolbar sort option for every **visible data column** (not Actions / row-action switches / rich preview thumbnails unless a scalar proxy exists). Use human column titles. Do **not** add "ID" sort options; internal ids may still be used in `searchMatches` or `tieBreakLocale` tie-breakers.
 
 Reset page index when search, sort, or filter changes.
 
 ## Toolbar layout
 
-`[Search] [filterSlot…] [Sort] [Order?] [Reload] [Card|Table] [page actions]`
+`[Search] [filterSlot...] [Sort] [Order?] [Reload] [Card|Table] [page actions]`
 
 Pagination below the list (card or table).
 
@@ -115,10 +115,10 @@ const listControls = useServerDataView({ defaultSort: 'integration_type_label', 
 
 ## Shared utilities
 
-- [`listPagination.ts`](../../../apps/waddle_controller/src/util/listPagination.ts) — `paginateList`, default page size 25
-- [`clientListPipeline.ts`](../../../apps/waddle_controller/src/util/clientListPipeline.ts) — `applyClientListPipeline`, `filterBySearch`, `sortByOption` (unit-tested)
-- [`dataViewColumnSort.ts`](../../../apps/waddle_controller/src/util/dataViewColumnSort.ts) — `compareLocale`, `compareNumber`, `applySortOrder`, `buildColumnSortOptions`, `columnSortToolbarOptions`
-- [`interestTabSort.ts`](../../../apps/waddle_controller/src/util/interestTabSort.ts) — per-tab sort fields for Interests
+- [`listPagination.ts`](../../../apps/waddle_controller/src/util/listPagination.ts): `paginateList`, default page size 25
+- [`clientListPipeline.ts`](../../../apps/waddle_controller/src/util/clientListPipeline.ts): `applyClientListPipeline`, `filterBySearch`, `sortByOption` (unit-tested)
+- [`dataViewColumnSort.ts`](../../../apps/waddle_controller/src/util/dataViewColumnSort.ts): `compareLocale`, `compareNumber`, `applySortOrder`, `buildColumnSortOptions`, `columnSortToolbarOptions`
+- [`interestTabSort.ts`](../../../apps/waddle_controller/src/util/interestTabSort.ts): per-tab sort fields for Interests
 
 ## Verification
 

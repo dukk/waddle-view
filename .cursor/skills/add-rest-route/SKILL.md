@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 # Add REST route (Shelf)
 
-Repo constraints: [AGENTS.md](../../../AGENTS.md) (default app **`apps/waddle_display/`**; tests-first; coverage; deployment API keys must not be committed—document paths only).
+Repo constraints: [AGENTS.md](../../../AGENTS.md) (default app **`apps/waddle_display/`**; tests-first; coverage; deployment API keys must not be committed, document paths only).
 
 ## Forbidden
 

@@ -1,5 +1,5 @@
 # waddle_controller Docker image CI (linux/amd64). Runs in parallel with CI — waddle_controller tests.
-name: CI — waddle_controller Docker
+name: CI - waddle_controller Docker
 
 on:
   push:

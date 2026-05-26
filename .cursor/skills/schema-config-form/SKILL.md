@@ -12,10 +12,10 @@ disable-model-invocation: true
 
 ## When to use
 
-- **Use [`SchemaConfigForm`](../../../apps/waddle_controller/src/components/config/SchemaConfigForm.tsx)** for operator `config_json` editing when the shape is documented in [`config_json_documentation.dart`](../../../packages/waddle_shared/lib/persistence/config_json_documentation.dart). The controller loads **type-level** `config_json_schema` from SQLite **`overlay_types`** via `GET /v1/meta/config-schemas` → `overlay_types`, cached in [`configSchemaCache.ts`](../../../apps/waddle_controller/src/storage/configSchemaCache.ts) (not on every catalog page refresh). New built-in overlay types require DB sync (`ensureOverlayTypes`) plus a cache prefix bump — see [add-display-overlay](../add-display-overlay/SKILL.md).
-- For a **new built-in overlay type** end-to-end (registry, widget, normalize, icons), use [add-display-overlay](../add-display-overlay/SKILL.md) — this skill covers schema-driven form controls only.
-- **Do not** use for one-off composite UIs (Outlook calendar section, adoption flows) — keep bespoke sections there.
-- Inside a dialog that saves via API, pass **`disabled={saving}`** (or `busy`) while submit is in-flight — see [controller-dialog-submit](../controller-dialog-submit/SKILL.md).
+- **Use [`SchemaConfigForm`](../../../apps/waddle_controller/src/components/config/SchemaConfigForm.tsx)** for operator `config_json` editing when the shape is documented in [`config_json_documentation.dart`](../../../packages/waddle_shared/lib/persistence/config_json_documentation.dart). The controller loads **type-level** `config_json_schema` from SQLite **`overlay_types`** via `GET /v1/meta/config-schemas` → `overlay_types`, cached in [`configSchemaCache.ts`](../../../apps/waddle_controller/src/storage/configSchemaCache.ts) (not on every catalog page refresh). New built-in overlay types require DB sync (`ensureOverlayTypes`) plus a cache prefix bump. See [add-display-overlay](../add-display-overlay/SKILL.md).
+- For a **new built-in overlay type** end-to-end (registry, widget, normalize, icons), use [add-display-overlay](../add-display-overlay/SKILL.md). this skill covers schema-driven form controls only.
+- **Do not** use for one-off composite UIs (Outlook calendar section, adoption flows). keep bespoke sections there.
+- Inside a dialog that saves via API, pass **`disabled={saving}`** (or `busy`) while submit is in-flight. See [controller-dialog-submit](../controller-dialog-submit/SKILL.md).
 
 ## JSON Schema → control mapping
 
@@ -27,10 +27,10 @@ disable-model-invocation: true
 | `format: waddle-overlay-blob-key` on `items` (array) | `OverlayBlobKeysField` | Upload via `POST /v1/display/overlays/blobs`; stores `image_blob_keys` |
 | `'x-waddle-widget': 'content-category'` | `ContentCategorySelectField` | Stores **category display name** (label), not id |
 | `'x-waddle-widget': 'content-category-multi'` | `ContentCategoryMultiSelectField` | Array of category display names |
-| `'x-waddle-widget': 'theme-accent'` | `ThemeAccentSelectField` | Swatches from `themePreview` prop (accent1–3) |
+| `'x-waddle-widget': 'theme-accent'` | `ThemeAccentSelectField` | Swatches from `themePreview` prop (accent1-3) |
 | `'x-waddle-widget': 'weather-location'` | `WeatherLocationSelectField` | Stores location **name** |
 | `'x-waddle-widget': 'stock-symbols-multi'` | `StockSymbolsMultiSelectField` | Ticker symbols (e.g. AAPL) |
-| `enum` + `'x-waddle-enum-labels': { … }` | `WaddleEnumSelectWidget` | **Never** show raw slug values to operators |
+| `enum` + `'x-waddle-enum-labels': { ... }` | `WaddleEnumSelectWidget` | **Never** show raw slug values to operators |
 | Plain `string` / `array` of strings | RJSF defaults | e.g. `messages` phrase lists |
 
 Helpers live in [`schemaConfigForm.ts`](../../../apps/waddle_controller/src/util/schemaConfigForm.ts) (unit-tested).
@@ -44,7 +44,7 @@ Helpers live in [`schemaConfigForm.ts`](../../../apps/waddle_controller/src/util
 
 ## Canonical usage
 
-- **Overlays**: [`OverlaysPage.tsx`](../../../apps/waddle_controller/src/pages/OverlaysPage.tsx) — label → description → type → [`OverlayConfigPanel`](../../../apps/waddle_controller/src/components/config/OverlayConfigPanel.tsx).
+- **Overlays**: [`OverlaysPage.tsx`](../../../apps/waddle_controller/src/pages/OverlaysPage.tsx). label → description → type → [`OverlayConfigPanel`](../../../apps/waddle_controller/src/components/config/OverlayConfigPanel.tsx).
 - **Screens**: [`ScreenDialog.tsx`](../../../apps/waddle_controller/src/components/screens/ScreenDialog.tsx) + [`ScreenConfigPanel`](../../../apps/waddle_controller/src/components/screens/ScreenConfigPanel.tsx).
 - **Ticker tapes**: [`TickerPage.tsx`](../../../apps/waddle_controller/src/pages/TickerPage.tsx) + [`TickerConfigPanel`](../../../apps/waddle_controller/src/components/ticker/TickerConfigPanel.tsx).
 

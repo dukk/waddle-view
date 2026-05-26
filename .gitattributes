@@ -1,4 +1,6 @@
 # Shell entrypoints must stay LF (Docker/Linux); Windows checkouts often use CRLF otherwise.
+apps/waddle_controller/Dockerfile text eol=lf
+apps/waddle_controller/docker-entrypoint.sh text eol=lf
 deploy/pi-image/*.sh text eol=lf
 deploy/install-latest-release.sh text eol=lf
 deploy/linux-arm64/*.sh text eol=lf

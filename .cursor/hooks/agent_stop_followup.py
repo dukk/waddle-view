@@ -78,7 +78,7 @@ def main() -> None:
     def format_list(paths: list[str]) -> str:
         lines = "\n".join(f"- `{path}`" for path in paths[:30])
         if len(paths) > 30:
-            lines += f"\n- …and {len(paths) - 30} more"
+            lines += f"\n- ...and {len(paths) - 30} more"
         return lines
 
     sections: list[str] = []

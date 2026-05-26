@@ -1,5 +1,5 @@
 # waddle_controller Vitest, coverage, and BFF compile. Runs in parallel with ci-controller-docker.
-name: CI — waddle_controller
+name: CI - waddle_controller
 
 on:
   push:

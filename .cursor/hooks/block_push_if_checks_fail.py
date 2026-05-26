@@ -59,7 +59,7 @@ def main() -> None:
                 "permission": "deny",
                 "user_message": (
                     "Pre-push checks failed (tests/analyze). The agent will start fixing "
-                    "automatically—retry git push after checks pass."
+                    "automatically, retry git push after checks pass."
                 ),
                 "agent_message": agent_message,
             }

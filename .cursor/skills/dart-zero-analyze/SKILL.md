@@ -13,7 +13,7 @@ CI and the Cursor stop hook require **zero** analyzer issues per touched package
 
 ## Commands by package
 
-From repo root (or use [`scripts/qa_scoped_tests.py`](../../../scripts/qa_scoped_tests.py) with `--files` for the hook’s scoped sequence):
+From repo root (or use [`scripts/qa_scoped_tests.py`](../../../scripts/qa_scoped_tests.py) with `--files` for the hook's scoped sequence):
 
 | Package | Directory | Command |
 | --- | --- | --- |
@@ -35,7 +35,7 @@ Git-scoped local gate: `python scripts/waddle_checks.py fast --from-git` from re
 
 ## Hook skip (discouraged)
 
-- `WADDLE_SKIP_QA_HOOK_ANALYZE=1` — analyze only
-- `WADDLE_SKIP_QA_HOOK_TESTS=1` — analyze and tests
+- `WADDLE_SKIP_QA_HOOK_ANALYZE=1`: analyze only
+- `WADDLE_SKIP_QA_HOOK_TESTS=1`: analyze and tests
 
 See [AGENTS.md](../../../AGENTS.md) and [`run-waddle-checks`](../run-waddle-checks/SKILL.md).
