@@ -6,7 +6,6 @@
 FROM node:22-bookworm-slim AS build
 # Official node images default NODE_ENV=production, which omits devDependencies (tsc, vite).
 ENV NODE_ENV=development
-ENV NPM_CONFIG_PRODUCTION=false
 ARG WADDLE_CONTROLLER_BUILD_NUMBER=dev
 ENV WADDLE_CONTROLLER_BUILD_NUMBER=$WADDLE_CONTROLLER_BUILD_NUMBER
 ENV WADDLE_NODE_TLS_ROOT=/packages/waddle_node_tls
@@ -17,12 +16,14 @@ RUN apt-get update \
 WORKDIR /app
 COPY packages/waddle_node_tls /packages/waddle_node_tls
 RUN npm ci --prefix /packages/waddle_node_tls
+# Install deps before copying the rest of the tree (layer cache + postinstall needs tool/*.mjs).
 COPY apps/waddle_controller/package.json apps/waddle_controller/package-lock.json ./
+RUN test -s package-lock.json
+RUN npm ci --ignore-scripts
 COPY apps/waddle_controller/ .
 COPY LICENSE /waddle-repo/LICENSE
 ENV WADDLE_VIEW_REPO_ROOT=/waddle-repo
-RUN test -f /waddle-repo/LICENSE \
-  && npm ci --include=dev \
+RUN npm run postinstall \
   && npm run build \
   && npm run build:server \
   && npm prune --omit=dev

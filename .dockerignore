@@ -6,4 +6,5 @@
 **/.env.*
 **/*.log
 **/coverage
+**/data
 **/.DS_Store

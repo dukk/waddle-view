@@ -30,6 +30,14 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v5
+      - name: Verify controller Docker build inputs
+        run: |
+          set -euo pipefail
+          test -s apps/waddle_controller/package.json
+          test -s apps/waddle_controller/package-lock.json
+          test -s packages/waddle_node_tls/package-lock.json
+          test -s LICENSE
+          head -1 apps/waddle_controller/package-lock.json | grep -q '"lockfileVersion"'
       - name: Build Docker image
         env:
           BUILD_NUMBER: ${{ inputs.build_number }}
@@ -45,7 +53,13 @@ jobs:
           fi
           echo "IMAGE_TAG=$IMAGE_TAG" >> "$GITHUB_ENV"
           echo "DIST_BASENAME=$DIST" >> "$GITHUB_ENV"
+          CACHE_FLAG=
+          if [[ -n "$DIST_BASENAME_INPUT" ]]; then
+            CACHE_FLAG=--no-cache
+          fi
           docker build \
+            --progress=plain \
+            ${CACHE_FLAG} \
             -f apps/waddle_controller/Dockerfile \
             --build-arg "WADDLE_CONTROLLER_BUILD_NUMBER=${BUILD_NUMBER}" \
             -t "waddle-controller:${IMAGE_TAG}" \
