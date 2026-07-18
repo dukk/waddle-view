@@ -7,6 +7,9 @@ waddle-view.*.code-workspace
 # Mono-repo — nested Flutter / Dart
 .flutter-sdk/
 
+# Local portable toolchains (e.g. Node 22 for controller when system Node is wrong major)
+.tools/
+
 **/.dart_tool/
 **/build/
 **/coverage/
