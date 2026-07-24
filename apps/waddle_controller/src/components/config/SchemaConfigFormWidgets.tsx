@@ -32,7 +32,9 @@ export function WaddleSwitchWidget(props: WidgetProps) {
         <Stack spacing={0.25}>
           <span>{label || schema.title || id}</span>
           {schema.description ? (
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" sx={{
+              color: "text.secondary"
+            }}>
               {String(schema.description)}
             </Typography>
           ) : null}

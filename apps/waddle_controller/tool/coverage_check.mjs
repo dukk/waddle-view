@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Parses coverage/lcov.info and enforces a line hit ratio on controller logic
- * under src/auth, src/api, src/storage, src/util (*.ts), and src/constants.
+ * under src/auth, src/api, src/storage, src/util (*.ts), src/constants, and
+ * server/src (except index.ts, testHelpers.ts, and CLI tools under tools/).
  *
  * UI shells (pages, layout, components, context, App.tsx, main.tsx) are out of
  * scope for the CI floor — cover them with component tests over time.
@@ -42,6 +43,7 @@ function includeSourceFile(sf) {
     const serverRel = norm.slice(serverIdx);
     if (serverRel.endsWith('.test.ts')) return false;
     if (serverRel === 'server/src/index.ts') return false;
+    if (serverRel.startsWith('server/src/tools/')) return false;
     if (serverRel.startsWith('server/src/')) return true;
   }
   return false;

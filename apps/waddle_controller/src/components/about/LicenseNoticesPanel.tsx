@@ -16,7 +16,9 @@ export function LicenseNoticesPanel({
   return (
     <Accordion defaultExpanded={defaultExpanded} disableGutters variant="outlined">
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        <Typography fontWeight={600}>{title}</Typography>
+        <Typography sx={{
+          fontWeight: 600
+        }}>{title}</Typography>
       </AccordionSummary>
       <AccordionDetails>
         <Typography

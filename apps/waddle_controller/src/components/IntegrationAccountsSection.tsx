@@ -141,8 +141,17 @@ export function IntegrationAccountsSection({
 
   return (
     <Stack spacing={1.5}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
-        <Typography variant="subtitle1" fontWeight={600}>
+      <Stack
+        direction="row"
+        sx={{
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 1
+        }}>
+        <Typography variant="subtitle1" sx={{
+          fontWeight: 600
+        }}>
           Accounts & API keys
         </Typography>
         {canWrite ? (
@@ -151,7 +160,9 @@ export function IntegrationAccountsSection({
           </Button>
         ) : null}
       </Stack>
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" sx={{
+        color: "text.secondary"
+      }}>
         Shared sign-in identities and provider API keys used by integrations on this display.
       </Typography>
       {error ? (
@@ -160,7 +171,9 @@ export function IntegrationAccountsSection({
         </Alert>
       ) : null}
       {accounts.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           No accounts or API keys have been added yet.
         </Typography>
       ) : (
@@ -181,7 +194,9 @@ export function IntegrationAccountsSection({
                   <TableCell sx={{ fontWeight: 600 }}>{account.label}</TableCell>
                   <TableCell>{account.account_type_label}</TableCell>
                   <TableCell>
-                    <Stack direction="row" flexWrap="wrap" useFlexGap spacing={0.5}>
+                    <Stack direction="row" useFlexGap spacing={0.5} sx={{
+                      flexWrap: "wrap"
+                    }}>
                       {account.integration_types.map((t) => (
                         <Chip
                           key={t}
@@ -211,7 +226,9 @@ export function IntegrationAccountsSection({
                   </TableCell>
                   {canWrite ? (
                     <TableCell align="right">
-                      <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                      <Stack direction="row" spacing={0.5} sx={{
+                        justifyContent: "flex-end"
+                      }}>
                         {!account.configured && account.supports_oauth_sign_in ? (
                           <Button
                             size="small"
@@ -233,7 +250,6 @@ export function IntegrationAccountsSection({
           </Table>
         </TableContainer>
       )}
-
       <AddAccountDialog
         open={addAccountOpen}
         accountTypes={addableAccountTypes}
@@ -518,82 +534,86 @@ function ConfigureAccountDialog({
 
   return (
     <>
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>{account.account_type_label}</DialogTitle>
-      <DialogContent>
-        <Stack spacing={2} sx={{ pt: 1 }}>
-          <TextField
-            label="Account name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            fullWidth
-          />
-          {account.supports_oauth_sign_in ? (
-            <>
-              <Typography variant="body2" color="text.secondary">
-                Complete sign-in on the display (device code alert). If the code expired,
-                use Retry sign-in to show a new prompt.
-              </Typography>
-              {account.signup_url ? (
-                <Typography variant="body2">
-                  <Link href={account.signup_url} target="_blank" rel="noopener noreferrer">
-                    Create an account
-                  </Link>
+      <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+        <DialogTitle>{account.account_type_label}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <TextField
+              label="Account name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              fullWidth
+            />
+            {account.supports_oauth_sign_in ? (
+              <>
+                <Typography variant="body2" sx={{
+                  color: "text.secondary"
+                }}>
+                  Complete sign-in on the display (device code alert). If the code expired,
+                  use Retry sign-in to show a new prompt.
                 </Typography>
-              ) : null}
-              {account.configured ? (
-                <Alert severity="success">This account is signed in.</Alert>
-              ) : null}
-              <Button
-                variant="contained"
-                disabled={busy || account.configured}
-                onClick={() => void requestSignIn()}
-              >
-                Retry sign-in on display
-              </Button>
-            </>
-          ) : (
-            <>
-              <Typography variant="body2" color="text.secondary">
-                Enter the API key or token. It is stored encrypted on the display.
-              </Typography>
-              {account.signup_url ? (
-                <Typography variant="body2">
-                  <Link href={account.signup_url} target="_blank" rel="noopener noreferrer">
-                    Get an API key
-                  </Link>
+                {account.signup_url ? (
+                  <Typography variant="body2">
+                    <Link href={account.signup_url} target="_blank" rel="noopener noreferrer">
+                      Create an account
+                    </Link>
+                  </Typography>
+                ) : null}
+                {account.configured ? (
+                  <Alert severity="success">This account is signed in.</Alert>
+                ) : null}
+                <Button
+                  variant="contained"
+                  disabled={busy || account.configured}
+                  onClick={() => void requestSignIn()}
+                >
+                  Retry sign-in on display
+                </Button>
+              </>
+            ) : (
+              <>
+                <Typography variant="body2" sx={{
+                  color: "text.secondary"
+                }}>
+                  Enter the API key or token. It is stored encrypted on the display.
                 </Typography>
-              ) : null}
-              <TextField
-                type="password"
-                autoComplete="new-password"
-                label={account.account_type_label}
-                value={apiKeyDraft}
-                onChange={(e) => setApiKeyDraft(e.target.value)}
-                fullWidth
-                size="small"
-              />
-            </>
-          )}
-        </Stack>
-      </DialogContent>
-      <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2 }}>
-        <Button color="error" disabled={busy} onClick={() => void deleteAccount()}>
-          Delete account
-        </Button>
-        <Stack direction="row" spacing={1}>
-          <Button onClick={onClose}>Close</Button>
-          <Button
-            variant="contained"
-            disabled={busy || name.trim().length === 0}
-            onClick={() => void saveDetails()}
-          >
-            Save
+                {account.signup_url ? (
+                  <Typography variant="body2">
+                    <Link href={account.signup_url} target="_blank" rel="noopener noreferrer">
+                      Get an API key
+                    </Link>
+                  </Typography>
+                ) : null}
+                <TextField
+                  type="password"
+                  autoComplete="new-password"
+                  label={account.account_type_label}
+                  value={apiKeyDraft}
+                  onChange={(e) => setApiKeyDraft(e.target.value)}
+                  fullWidth
+                  size="small"
+                />
+              </>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2 }}>
+          <Button color="error" disabled={busy} onClick={() => void deleteAccount()}>
+            Delete account
           </Button>
-        </Stack>
-      </DialogActions>
-    </Dialog>
-    <ConfirmDialogHost />
+          <Stack direction="row" spacing={1}>
+            <Button onClick={onClose}>Close</Button>
+            <Button
+              variant="contained"
+              disabled={busy || name.trim().length === 0}
+              onClick={() => void saveDetails()}
+            >
+              Save
+            </Button>
+          </Stack>
+        </DialogActions>
+      </Dialog>
+      <ConfirmDialogHost />
     </>
   );
 }

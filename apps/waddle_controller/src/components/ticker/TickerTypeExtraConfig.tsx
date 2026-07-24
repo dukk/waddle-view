@@ -170,7 +170,9 @@ export function TickerTypeExtraConfig({
 
     return (
       <Stack spacing={1.5}>
-        <Typography variant="subtitle2" color="text.secondary">
+        <Typography variant="subtitle2" sx={{
+          color: "text.secondary"
+        }}>
           Date and time
         </Typography>
         <FormControl fullWidth disabled={disabled}>
@@ -231,7 +233,9 @@ export function TickerTypeExtraConfig({
             ))}
           </Select>
         </FormControl>
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{
+          color: "text.secondary"
+        }}>
           When both use display default, the marquee shows medium date and short time
           from Display settings (same as lists in the controller). Time presets add
           seconds and override only the time portion.
@@ -261,7 +265,13 @@ export function TickerTypeExtraConfig({
               <TextField {...params} label="Time zone (optional)" />
             )}
           />
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75, display: 'block' }}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              mt: 0.75,
+              display: 'block'
+            }}>
             Same IANA list as Display settings. Choose device local to use the display device clock.
           </Typography>
         </Box>
@@ -347,7 +357,9 @@ export function TickerTypeExtraConfig({
           }
           label="Prefix headlines with feed name"
         />
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{
+          color: "text.secondary"
+        }}>
           Leave category empty for all RSS feeds. Turn off prefix to show title only.
         </Typography>
       </Stack>
@@ -392,7 +404,9 @@ export function TickerTypeExtraConfig({
             </Select>
           </FormControl>
         )}
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{
+          color: "text.secondary"
+        }}>
           Select none to show all enabled symbols from Interests → Stocks.
         </Typography>
       </Stack>

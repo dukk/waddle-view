@@ -22,7 +22,9 @@ export function AccountPage() {
     session && active ? (
       <>
         <Box>
-          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+          <Typography variant="subtitle2" gutterBottom sx={{
+            color: "text.secondary"
+          }}>
             Client identifier
           </Typography>
           <Typography variant="body1" sx={{ fontFamily: 'monospace' }}>
@@ -30,13 +32,17 @@ export function AccountPage() {
           </Typography>
         </Box>
         <Box>
-          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+          <Typography variant="subtitle2" gutterBottom sx={{
+            color: "text.secondary"
+          }}>
             Role
           </Typography>
           <Typography variant="body1">{session.role}</Typography>
         </Box>
         <Box>
-          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+          <Typography variant="subtitle2" gutterBottom sx={{
+            color: "text.secondary"
+          }}>
             Permissions
           </Typography>
           <Typography variant="body2" component="div" sx={{ fontFamily: 'monospace' }}>
@@ -45,28 +51,39 @@ export function AccountPage() {
         </Box>
       </>
     ) : (
-      <Typography variant="body1" color="text.secondary">
+      <Typography variant="body1" sx={{
+        color: "text.secondary"
+      }}>
         Select a display and complete adoption to see session details.
       </Typography>
     );
 
   return (
     <Stack spacing={3} sx={{ maxWidth: 720 }}>
-      <Typography variant="h5" fontWeight={600} gutterBottom>
+      <Typography variant="h5" gutterBottom sx={{
+        fontWeight: 600
+      }}>
         Your session & preferences
       </Typography>
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" sx={{
+        color: "text.secondary"
+      }}>
         Your adopted display session (client id, role, and permissions) and controller appearance.
         Add or re-adopt displays on{' '}
         <RouterLink to="/controller-settings">Controller settings</RouterLink>; API keys stay in
         this browser only and are not included in display-list export.
       </Typography>
-
       <Box>
         <Typography variant="subtitle1" gutterBottom>
           Appearance
         </Typography>
-        <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: "text.secondary",
+            display: "block",
+            mb: 1
+          }}>
           Defaults to your device light/dark setting. Stored only in this browser.
         </Typography>
         <FormControl sx={{ minWidth: 240 }}>
@@ -83,7 +100,6 @@ export function AccountPage() {
           </Select>
         </FormControl>
       </Box>
-
       {adoptionBody}
     </Stack>
   );

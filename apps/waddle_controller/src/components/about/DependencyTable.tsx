@@ -37,7 +37,9 @@ export function DependencyTable({
 
   return (
     <>
-      <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+      <Typography variant="subtitle1" gutterBottom sx={{
+        fontWeight: 600
+      }}>
         {title}
       </Typography>
       <TextField
@@ -49,7 +51,9 @@ export function DependencyTable({
         sx={{ mb: 1.5, maxWidth: 400 }}
       />
       {filtered.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           {emptyMessage ?? 'No dependencies match the filter.'}
         </Typography>
       ) : (

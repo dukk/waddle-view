@@ -60,8 +60,12 @@ export function ControllerAccessSection() {
         User mode
       </Typography>
       <Stack spacing={1.5}>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Typography variant="body2" color="text.secondary">
+        <Stack direction="row" spacing={1} sx={{
+          alignItems: "center"
+        }}>
+          <Typography variant="body2" sx={{
+            color: "text.secondary"
+          }}>
             Server authentication capability
           </Typography>
           <Chip
@@ -87,23 +91,28 @@ export function ControllerAccessSection() {
           }
           label="User mode"
         />
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           When on, operators sign in to this controller and adopted displays are stored per account
           on the server. When off, use recovery on the Displays tab to copy server data into this
           browser once.
         </Typography>
         {userMode && isControllerAdmin && (
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{
+            color: "text.secondary"
+          }}>
             Manage accounts in the table below.
           </Typography>
         )}
         {userMode && status.user && (
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{
+            color: "text.secondary"
+          }}>
             Signed in as <strong>{status.user.username}</strong> ({status.user.role}).
           </Typography>
         )}
       </Stack>
-
       <Dialog open={confirmDisableOpen} onClose={() => setConfirmDisableOpen(false)}>
         <DialogTitle>Turn off user mode?</DialogTitle>
         <DialogContent>

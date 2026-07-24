@@ -77,7 +77,9 @@ function calendarEventWhen(
 function CategoryChips({ labels }: { labels: string[] }) {
   if (labels.length === 0) return null;
   return (
-    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+    <Stack direction="row" spacing={0.5} useFlexGap sx={{
+      flexWrap: "wrap"
+    }}>
       {labels.map((label) => (
         <Chip key={label} size="small" label={label} variant="outlined" />
       ))}
@@ -105,7 +107,15 @@ export function DataCatalogCard({
   const categoryLabels = categoryLabelsForRow(row, categories);
 
   const footer = (
-    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+    <Stack
+      direction="row"
+      spacing={1}
+      useFlexGap
+      sx={{
+        alignItems: "center",
+        flexWrap: "wrap",
+        mt: 1
+      }}>
       {canModerate && canSuppress && id ? (
         <FormControlLabel
           control={
@@ -130,14 +140,23 @@ export function DataCatalogCard({
     return (
       <Paper variant="outlined" sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
         <Stack spacing={1} sx={{ flexGrow: 1 }}>
-          <Typography variant="subtitle2" fontWeight={600}>
+          <Typography variant="subtitle2" sx={{
+            fontWeight: 600
+          }}>
             {String(row.setup ?? '')}
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              whiteSpace: 'pre-wrap'
+            }}>
             {String(row.punchline ?? '')}
           </Typography>
           <CategoryChips labels={categoryLabels} />
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{
+            color: "text.secondary"
+          }}>
             {integrationCell(row)}
           </Typography>
         </Stack>
@@ -152,9 +171,18 @@ export function DataCatalogCard({
     return (
       <Paper variant="outlined" sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
         <Stack spacing={1} sx={{ flexGrow: 1 }}>
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+          <Stack
+            direction="row"
+            spacing={1}
+            useFlexGap
+            sx={{
+              alignItems: "center",
+              flexWrap: "wrap"
+            }}>
             <SeverityIcon fontSize="small" color="action" />
-            <Typography variant="subtitle2" fontWeight={600}>
+            <Typography variant="subtitle2" sx={{
+              fontWeight: 600
+            }}>
               {String(row.title ?? '')}
             </Typography>
             <Chip
@@ -164,10 +192,17 @@ export function DataCatalogCard({
               variant="outlined"
             />
           </Stack>
-          <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              whiteSpace: 'pre-wrap'
+            }}>
             {String(row.body ?? '')}
           </Typography>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{
+            color: "text.secondary"
+          }}>
             {alertSeverityLabel(String(row.severity ?? ''))} · {alertSourceLabel(String(row.source ?? ''))}
           </Typography>
         </Stack>
@@ -184,20 +219,28 @@ export function DataCatalogCard({
     return (
       <Paper variant="outlined" sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
         <Stack spacing={1} sx={{ flexGrow: 1 }}>
-          <Typography variant="subtitle2" fontWeight={600}>
+          <Typography variant="subtitle2" sx={{
+            fontWeight: 600
+          }}>
             {String(row.title ?? '')}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{
+            color: "text.secondary"
+          }}>
             {calendarEventWhen(row.start_ms, Boolean(row.all_day), formatDateTime)}
             {row.end_ms != null ? ` → ${calendarEventWhen(row.end_ms, Boolean(row.all_day), formatDateTime)}` : ''}
           </Typography>
           {row.location ? (
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" sx={{
+              color: "text.secondary"
+            }}>
               {String(row.location)}
             </Typography>
           ) : null}
           <CategoryChips labels={categoryLabels} />
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{
+            color: "text.secondary"
+          }}>
             {sources.integrationLabel} · {sources.accountOrFeedLabel}
           </Typography>
         </Stack>
@@ -210,15 +253,24 @@ export function DataCatalogCard({
     return (
       <Paper variant="outlined" sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
         <Stack spacing={1} sx={{ flexGrow: 1 }}>
-          <Typography variant="subtitle2" fontWeight={600}>
+          <Typography variant="subtitle2" sx={{
+            fontWeight: 600
+          }}>
             {String(row.title ?? '')}
           </Typography>
           {row.summary ? (
-            <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+                wordBreak: 'break-word'
+              }}>
               {String(row.summary)}
             </Typography>
           ) : null}
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{
+            color: "text.secondary"
+          }}>
             {newsSourceLabel(row, feeds)}
           </Typography>
         </Stack>
@@ -231,14 +283,21 @@ export function DataCatalogCard({
     return (
       <Paper variant="outlined" sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
         <Stack spacing={1} sx={{ flexGrow: 1 }}>
-          <Typography variant="caption" color="text.secondary" fontWeight={600}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              fontWeight: 600
+            }}>
             {String(row.author_name ?? '—')}
           </Typography>
           <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
             {String(row.text ?? '')}
           </Typography>
           <CategoryChips labels={categoryLabels} />
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{
+            color: "text.secondary"
+          }}>
             {integrationCell(row)}
           </Typography>
         </Stack>
@@ -251,14 +310,20 @@ export function DataCatalogCard({
     return (
       <Paper variant="outlined" sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
         <Stack spacing={1} sx={{ flexGrow: 1 }}>
-          <Typography variant="subtitle2" fontWeight={600}>
+          <Typography variant="subtitle2" sx={{
+            fontWeight: 600
+          }}>
             {String(row.title ?? '')}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{
+            color: "text.secondary"
+          }}>
             {String(row.list_label ?? '—')} · {String(row.board_key ?? '—')}
           </Typography>
           {row.due_at_ms != null ? (
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" sx={{
+              color: "text.secondary"
+            }}>
               Due {formatDateTime(new Date(Number(row.due_at_ms)))}
             </Typography>
           ) : null}
@@ -268,7 +333,9 @@ export function DataCatalogCard({
             color={row.completed ? 'default' : 'primary'}
             variant="outlined"
           />
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{
+            color: "text.secondary"
+          }}>
             {integrationCell(row)}
           </Typography>
         </Stack>
@@ -285,14 +352,23 @@ export function DataCatalogCard({
     return (
       <Paper variant="outlined" sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
         <Stack spacing={1} sx={{ flexGrow: 1 }}>
-          <Typography variant="subtitle2" fontWeight={600}>
+          <Typography variant="subtitle2" sx={{
+            fontWeight: 600
+          }}>
             {String(row.question ?? '')}
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ fontSize: 12 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              fontSize: 12
+            }}>
             {options}
           </Typography>
           <CategoryChips labels={categoryLabels} />
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{
+            color: "text.secondary"
+          }}>
             {integrationCell(row)}
           </Typography>
         </Stack>
@@ -312,7 +388,9 @@ export function DataCatalogCard({
           />
           <Typography variant="body2">{String(row.alt_text ?? '')}</Typography>
           <CategoryChips labels={categoryLabels} />
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{
+            color: "text.secondary"
+          }}>
             {integrationCell(row)}
           </Typography>
         </Stack>
@@ -333,11 +411,15 @@ export function DataCatalogCard({
   return (
     <Paper variant="outlined" sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Stack spacing={1} sx={{ flexGrow: 1 }}>
-        <Typography variant="subtitle2" fontWeight={600}>
+        <Typography variant="subtitle2" sx={{
+          fontWeight: 600
+        }}>
           {summary}
         </Typography>
         <CategoryChips labels={categoryLabels} />
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{
+          color: "text.secondary"
+        }}>
           {integrationCell(row)}
         </Typography>
       </Stack>

@@ -80,11 +80,12 @@ export function DisplayBackupTabContent({ display }: { display: SavedDisplay }) 
 
   return (
     <Stack spacing={2}>
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" sx={{
+        color: "text.secondary"
+      }}>
         Download a one-time backup archive from this display or upload a prior archive to restore.
         Scheduled backups run on the controller.
       </Typography>
-
       {error && (
         <Alert severity="error" onClose={() => setError(null)}>
           {error}
@@ -95,8 +96,9 @@ export function DisplayBackupTabContent({ display }: { display: SavedDisplay }) 
           {msg}
         </Alert>
       )}
-
-      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+      <Stack direction="row" spacing={1} useFlexGap sx={{
+        flexWrap: "wrap"
+      }}>
         <Button variant="contained" disabled={busy} onClick={() => void runDownload()}>
           {busy ? 'Working…' : 'Download backup'}
         </Button>
@@ -104,9 +106,10 @@ export function DisplayBackupTabContent({ display }: { display: SavedDisplay }) 
           Upload restore file
         </Button>
       </Stack>
-
       <Box>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           To schedule automatic pulls and manage stored copies, use{' '}
           <RouterLink
             to={`/controller-settings?tab=backup&display=${encodeURIComponent(display.id)}`}
@@ -116,11 +119,15 @@ export function DisplayBackupTabContent({ display }: { display: SavedDisplay }) 
           .
         </Typography>
       </Box>
-
       <Dialog open={restoreOpen} onClose={() => !busy && setRestoreOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Upload restore file</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" color="text.secondary" paragraph>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              marginBottom: "16px"
+            }}>
             Choose a .zip or .tar.gz backup archive. Restoring overwrites the display database and
             media blobs, then restarts the display process.
           </Typography>
@@ -156,7 +163,6 @@ export function DisplayBackupTabContent({ display }: { display: SavedDisplay }) 
           </Button>
         </DialogActions>
       </Dialog>
-
       <Dialog
         open={confirmRestoreOpen}
         onClose={() => !busy && setConfirmRestoreOpen(false)}

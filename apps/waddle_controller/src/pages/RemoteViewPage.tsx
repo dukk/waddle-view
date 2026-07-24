@@ -157,11 +157,12 @@ export function RemoteViewPage() {
     >
       <Stack
         direction="row"
-        alignItems="center"
         spacing={1}
-        flexWrap="wrap"
-        sx={{ flexShrink: 0 }}
-      >
+        sx={{
+          alignItems: "center",
+          flexWrap: "wrap",
+          flexShrink: 0
+        }}>
         <CompactDisplayPicker
           displays={displays}
           active={display}
@@ -176,13 +177,11 @@ export function RemoteViewPage() {
         />
         {displaySwitchBusy && <CircularProgress size={20} />}
       </Stack>
-
       {displaySwitchError && (
         <Alert severity="error" onClose={() => setDisplaySwitchError(null)} sx={{ flexShrink: 0 }}>
           {displaySwitchError}
         </Alert>
       )}
-
       <Box
         sx={{
           flex: 1,
@@ -202,10 +201,11 @@ export function RemoteViewPage() {
           onStatusChange={setConnectionStatus}
         />
       </Box>
-
       <Accordion sx={{ flexShrink: 0 }}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography variant="subtitle2" fontWeight={600}>
+          <Typography variant="subtitle2" sx={{
+            fontWeight: 600
+          }}>
             Remote controls
           </Typography>
         </AccordionSummary>

@@ -250,20 +250,25 @@ export function CatalogDisplayTransferPanel({
 
   return (
     <Paper variant="outlined" sx={{ p: 2, width: '100%' }}>
-      <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+      <Typography variant="subtitle1" gutterBottom sx={{
+        fontWeight: 600
+      }}>
         Copy between displays
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          mb: 2
+        }}>
         Copy a {kindLabel} from another display into{' '}
         <strong>{active.label}</strong>, or send one from this display to others.
         Curator membership and feed/content rows are not copied.
       </Typography>
-
       <Alert severity="info" sx={{ mb: 2 }}>
         Screens and ticker tapes may reference data keys, integrations, or content that
         exists only on the source display. Overlay images are re-uploaded to each target.
       </Alert>
-
       <Stack spacing={2}>
         <FormControl>
           <FormLabel id="transfer-direction">Direction</FormLabel>
@@ -327,8 +332,16 @@ export function CatalogDisplayTransferPanel({
 
         {direction === 'send' ? (
           <Box>
-            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-              <Typography variant="body2" fontWeight={600}>
+            <Stack
+              direction="row"
+              sx={{
+                alignItems: "center",
+                justifyContent: "space-between",
+                mb: 1
+              }}>
+              <Typography variant="body2" sx={{
+                fontWeight: 600
+              }}>
                 Target displays
               </Typography>
               <Stack direction="row" spacing={1}>
@@ -409,7 +422,9 @@ export function CatalogDisplayTransferPanel({
               Transfer results
             </Typography>
             {results.map((r) => (
-              <Typography key={r.displayId} variant="body2" display="block">
+              <Typography key={r.displayId} variant="body2" sx={{
+                display: "block"
+              }}>
                 {formatResultLine(r)}
               </Typography>
             ))}

@@ -67,11 +67,25 @@ export function DisplaySelector() {
         aria-expanded={anchor ? 'true' : undefined}
       >
         <Box sx={{ textAlign: 'left', minWidth: 0 }}>
-          <Typography component="span" noWrap variant="body2" fontWeight={600} display="block">
+          <Typography
+            component="span"
+            noWrap
+            variant="body2"
+            sx={{
+              fontWeight: 600,
+              display: "block"
+            }}>
             {activeLabel}
           </Typography>
           {activeSession && (
-            <Typography component="span" noWrap variant="caption" color="text.secondary" display="block">
+            <Typography
+              component="span"
+              noWrap
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+                display: "block"
+              }}>
               {activeSession.identifier} ({activeSession.role})
             </Typography>
           )}
@@ -101,7 +115,9 @@ export function DisplaySelector() {
               <ListItemText
                 primary={d.label}
                 secondary={hint}
-                secondaryTypographyProps={{ noWrap: true }}
+                slotProps={{
+                  secondary: { noWrap: true }
+                }}
               />
             </MenuItem>
           );

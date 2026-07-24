@@ -28,7 +28,9 @@ import {
 function VersionLine({ label, version, build }: { label: string; version: string; build: string }) {
   return (
     <Typography variant="body1">
-      <Typography component="span" variant="subtitle2" color="text.secondary">
+      <Typography component="span" variant="subtitle2" sx={{
+        color: "text.secondary"
+      }}>
         {label}:{' '}
       </Typography>
       <Typography component="span" sx={{ fontFamily: 'monospace' }}>
@@ -45,19 +47,33 @@ function ProductLicenseBlock({
 }) {
   return (
     <Box>
-      <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+      <Typography variant="subtitle1" gutterBottom sx={{
+        fontWeight: 600
+      }}>
         Product license
       </Typography>
       <Typography variant="body2" gutterBottom>
         <strong>{license.name}</strong> ({license.id})
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap', mb: 1 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          whiteSpace: 'pre-wrap',
+          mb: 1
+        }}>
         {license.summary}
       </Typography>
       <Link href={license.url} target="_blank" rel="noopener noreferrer">
         View full license text
       </Link>
-      <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+      <Typography
+        variant="caption"
+        sx={{
+          color: "text.secondary",
+          display: "block",
+          mt: 1
+        }}>
         Third-party open-source components remain under their original licenses (see notices
         below).
       </Typography>
@@ -108,16 +124,21 @@ export function AboutPage() {
 
   return (
     <Stack spacing={3} sx={{ maxWidth: 960 }}>
-      <Typography variant="h5" fontWeight={600}>
+      <Typography variant="h5" sx={{
+        fontWeight: 600
+      }}>
         About
       </Typography>
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" sx={{
+        color: "text.secondary"
+      }}>
         Version and license information for the controller you are connected to and the display
         selected in the header.
       </Typography>
-
       <Box>
-        <Typography variant="h6" fontWeight={600} gutterBottom>
+        <Typography variant="h6" gutterBottom sx={{
+          fontWeight: 600
+        }}>
           Controller
         </Typography>
         {controllerLoading && !controllerAbout ? (
@@ -137,20 +158,29 @@ export function AboutPage() {
           </Stack>
         ) : null}
       </Box>
-
       <Box>
-        <Typography variant="h6" fontWeight={600} gutterBottom>
+        <Typography variant="h6" gutterBottom sx={{
+          fontWeight: 600
+        }}>
           Active display
         </Typography>
         {!active ? (
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{
+            color: "text.secondary"
+          }}>
             Select a display in the header to see its version and licenses.
           </Typography>
         ) : (
           <Stack spacing={1}>
             <Typography variant="body2">
               <strong>{active.label}</strong>
-              <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+              <Typography
+                component="span"
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                  ml: 1
+                }}>
                 {active.baseUrl}
               </Typography>
             </Typography>
@@ -159,7 +189,9 @@ export function AboutPage() {
             ) : (
               <>
                 {displayHealth?.state === 'online' && (
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{
+                    color: "text.secondary"
+                  }}>
                     {formatDisplayHostSummary(displayHealth.health)}
                   </Typography>
                 )}
@@ -199,12 +231,10 @@ export function AboutPage() {
           </Stack>
         )}
       </Box>
-
       {(() => {
         const license = displayAboutOk?.product_license ?? controllerAbout?.productLicense;
         return license ? <ProductLicenseBlock license={license} /> : null;
       })()}
-
       <Box>
         <Tabs value={depTab} onChange={(_, v) => setDepTab(v)} sx={{ mb: 2 }}>
           <Tab label="Controller dependencies" />
@@ -228,9 +258,10 @@ export function AboutPage() {
           />
         )}
       </Box>
-
       <Box>
-        <Typography variant="h6" fontWeight={600} gutterBottom>
+        <Typography variant="h6" gutterBottom sx={{
+          fontWeight: 600
+        }}>
           Open source notices
         </Typography>
         <Stack spacing={1}>

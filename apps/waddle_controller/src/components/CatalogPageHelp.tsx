@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutlined';
 import {
   Button,
   Dialog,

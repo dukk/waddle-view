@@ -42,7 +42,9 @@ export function ProgramSnapshotsCarousel({
 
   if (total === 0) {
     return (
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" sx={{
+        color: "text.secondary"
+      }}>
         {emptyMessage}
       </Typography>
     );
@@ -50,7 +52,13 @@ export function ProgramSnapshotsCarousel({
 
   return (
     <Stack spacing={1.5}>
-      <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap">
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          alignItems: "center",
+          flexWrap: "wrap"
+        }}>
         <IconButton
           aria-label="Previous program"
           onClick={goPrev}
@@ -59,7 +67,13 @@ export function ProgramSnapshotsCarousel({
         >
           <ChevronLeftIcon />
         </IconButton>
-        <Typography variant="body2" color="text.secondary" sx={{ minWidth: 120, textAlign: 'center' }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            minWidth: 120,
+            textAlign: 'center'
+          }}>
           Program {safeIndex + 1} of {total}
         </Typography>
         <IconButton

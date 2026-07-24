@@ -127,11 +127,15 @@ export function IntegrationAccountChips({
   return (
     <Stack spacing={compact ? 0.5 : 1}>
       {!compact ? (
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{
+          color: "text.secondary"
+        }}>
           Accounts
         </Typography>
       ) : null}
-      <Stack direction="row" flexWrap="wrap" useFlexGap spacing={0.5}>
+      <Stack direction="row" useFlexGap spacing={0.5} sx={{
+        flexWrap: "wrap"
+      }}>
         {detail.required_account_types.map((requiredType) => {
           const status = statusForRequiredAccountType(detail, requiredType.account_type);
           const linked = detail.linked_accounts.find(
@@ -154,12 +158,13 @@ export function IntegrationAccountChips({
       {detail.required_account_types.some(
         (t) => statusForRequiredAccountType(detail, t.account_type) === 'missing',
       ) ? (
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{
+          color: "text.secondary"
+        }}>
           Link account keys in <strong>Configuration</strong> below, save, then complete sign-in or
           enter API keys.
         </Typography>
       ) : null}
-
       <Dialog
         open={configure != null}
         onClose={() => setConfigure(null)}

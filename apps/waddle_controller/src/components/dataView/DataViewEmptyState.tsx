@@ -15,7 +15,9 @@ export function DataViewEmptyState({
 }: Props) {
   if (hasFilteredMatches) return null;
   return (
-    <Typography variant="body2" color="text.secondary">
+    <Typography variant="body2" sx={{
+      color: "text.secondary"
+    }}>
       {hasItems ? noMatchesMessage : emptyMessage}
     </Typography>
   );

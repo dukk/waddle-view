@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import {
   Alert,
   Autocomplete,
@@ -164,25 +164,35 @@ function ActiveEffectiveMemberChips({
 }) {
   return (
     <Box>
-      <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+      <Typography variant="subtitle2" gutterBottom sx={{
+        fontWeight: 600
+      }}>
         {title}
       </Typography>
       {disabledCaption ? (
         <Typography
           variant="caption"
-          color="text.secondary"
-          display="block"
-          sx={{ mb: 0.5 }}
-        >
+          sx={{
+            color: "text.secondary",
+            display: "block",
+            mb: 0.5
+          }}>
           {disabledCaption}
         </Typography>
       ) : null}
       {members.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           {emptyLabel}
         </Typography>
       ) : (
-        <Stack direction="row" flexWrap="wrap" gap={0.5}>
+        <Stack
+          direction="row"
+          sx={{
+            flexWrap: "wrap",
+            gap: 0.5
+          }}>
           {members.map((member) => (
             <Chip key={member.id} size="small" label={member.label} title={member.id} />
           ))}
@@ -195,9 +205,10 @@ function ActiveEffectiveMemberChips({
 function ActivePreviewCard({ active }: { active: ActiveCuratorResponse | null }) {
   if (!active) {
     return (
-      <Typography variant="body2" color="text.secondary">
-        No active curator resolution loaded.
-      </Typography>
+      <Typography variant="body2" sx={{
+        color: "text.secondary"
+      }}>No active curator resolution loaded.
+              </Typography>
     );
   }
   const rows: ActiveCuratorMatch[] = [];
@@ -211,7 +222,9 @@ function ActivePreviewCard({ active }: { active: ActiveCuratorResponse | null })
   return (
     <Stack spacing={2}>
       {rows.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           No configuration matched at the display&apos;s current local time.
         </Typography>
       ) : (
@@ -221,26 +234,37 @@ function ActivePreviewCard({ active }: { active: ActiveCuratorResponse | null })
               key={`${row.layer}-${row.configuration_id}`}
               direction="row"
               spacing={1}
-              alignItems="center"
-              flexWrap="wrap"
-            >
+              sx={{
+                alignItems: "center",
+                flexWrap: "wrap"
+              }}>
               <Chip size="small" label={layerLabel(row.layer)} color={LAYER_CHIP_COLOR[row.layer]} />
-              <Typography variant="body2" fontWeight={600}>
+              <Typography variant="body2" sx={{
+                fontWeight: 600
+              }}>
                 {row.configuration_name}
               </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                  fontFamily: 'monospace'
+                }}>
                 {row.configuration_id}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" sx={{
+                color: "text.secondary"
+              }}>
                 — {row.match_reason}
               </Typography>
             </Stack>
           ))}
         </Stack>
       )}
-
       {effectiveMembers == null ? (
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{
+          color: "text.secondary"
+        }}>
           Reload after display update to see active catalog membership.
         </Typography>
       ) : (
@@ -306,15 +330,18 @@ export function CuratorsPage() {
   return (
     <Stack spacing={2}>
       <Box>
-        <Typography variant="h6" fontWeight={600} gutterBottom>
+        <Typography variant="h6" gutterBottom sx={{
+          fontWeight: 600
+        }}>
           Curators — {active.label}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           Layered program configurations (exclusive, base, enhancement), schedule rules, and
           catalog membership. Categories and reject terms apply across all programs.
         </Typography>
       </Box>
-
       <Paper sx={{ px: 2, pt: 1 }}>
         <Tabs
           value={tab}
@@ -328,7 +355,6 @@ export function CuratorsPage() {
           ))}
         </Tabs>
       </Paper>
-
       <Paper sx={{ p: 2 }}>
         {tab === 'configurations' && (
           <CuratorConfigurationsSection
@@ -480,20 +506,21 @@ function CuratorConfigurationsSection({
     <Stack spacing={3}>
       <DisplayRefreshIndicator loading={loading} />
       {error && <Alert severity="error">{error}</Alert>}
-
       <Box>
-        <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+        <Typography variant="subtitle2" gutterBottom sx={{
+          fontWeight: 600
+        }}>
           Active now
         </Typography>
         <Paper variant="outlined" sx={{ p: 2 }}>
           <ActivePreviewCard active={activePreview} />
         </Paper>
       </Box>
-
-      <Typography variant="subtitle2" fontWeight={600}>
+      <Typography variant="subtitle2" sx={{
+        fontWeight: 600
+      }}>
         Configurations
       </Typography>
-
       <DataViewToolbar
         layout={layout}
         onLayoutChange={setLayout}
@@ -515,7 +542,6 @@ function CuratorConfigurationsSection({
           </Button>
         )}
       </DataViewToolbar>
-
       <Stack spacing={2}>
         <DataViewEmptyState
           hasItems={rows.length > 0}
@@ -527,10 +553,18 @@ function CuratorConfigurationsSection({
             {displayRows.map((row) => (
               <Card key={row.id} variant="outlined">
                 <CardContent>
-                  <Typography variant="subtitle1" fontWeight={600}>
+                  <Typography variant="subtitle1" sx={{
+                    fontWeight: 600
+                  }}>
                     {row.name}
                   </Typography>
-                  <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap">
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{
+                      flexWrap: "wrap",
+                      mt: 1
+                    }}>
                     <Chip
                       size="small"
                       label={layerLabel(row.layer)}
@@ -538,7 +572,12 @@ function CuratorConfigurationsSection({
                     />
                     <Chip size="small" variant="outlined" label={`Sort ${row.sort_order}`} />
                   </Stack>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.secondary",
+                      mt: 1
+                    }}>
                     Program {formatIntervalDisplay(row.program_duration_seconds)} / ticker{' '}
                     {formatTickerProgramDurationSummary(row.ticker_program_duration_seconds)}
                   </Typography>
@@ -608,7 +647,6 @@ function CuratorConfigurationsSection({
           onPageSizeChange={dataView.setPageSize}
         />
       </Stack>
-
       {addOpen && (
         <CuratorConfigurationDialog
           display={display}
@@ -979,7 +1017,9 @@ function CuratorConfigurationDialog({
         <Stack spacing={2} sx={{ mt: 1 }}>
           {err && <Alert severity="error">{err}</Alert>}
           {loading ? (
-            <Typography color="text.secondary">Loading…</Typography>
+            <Typography sx={{
+              color: "text.secondary"
+            }}>Loading…</Typography>
           ) : (
             <>
               <TextField
@@ -1067,10 +1107,12 @@ function CuratorConfigurationDialog({
                         return (
                           <Stack
                             direction="row"
-                            alignItems="center"
                             spacing={1}
-                            sx={{ width: '100%', pr: 0.5 }}
-                          >
+                            sx={{
+                              alignItems: "center",
+                              width: '100%',
+                              pr: 0.5
+                            }}>
                             <Box
                               component="span"
                               sx={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}
@@ -1093,7 +1135,13 @@ function CuratorConfigurationDialog({
                         </MenuItem>
                       ))}
                     </Select>
-                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75, display: 'block' }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                        mt: 0.75,
+                        display: 'block'
+                      }}>
                       When this configuration is the active primary curator (base or exclusive), this
                       theme replaces the display default from Display settings.
                     </Typography>
@@ -1151,14 +1199,18 @@ function CuratorConfigurationDialog({
                           />
                         </Stack>
                       )}
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" sx={{
+                        color: "text.secondary"
+                      }}>
                         When this configuration is the active primary curator, overrides the
                         viewport edge reserve from Display settings for screen and ticker layout.
                       </Typography>
                     </Stack>
                   )}
                   {isEnhancementLayer && (
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" sx={{
+                      color: "text.secondary"
+                    }}>
                       Theme, viewport reserve, and ticker visibility follow the active base or
                       exclusive configuration.
                     </Typography>
@@ -1169,7 +1221,9 @@ function CuratorConfigurationDialog({
                 <Stack spacing={2}>
                   {isEnhancementLayer ? (
                     <>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2" sx={{
+                        color: "text.secondary"
+                      }}>
                         Add or remove screens relative to the active base program when this
                         enhancement matches its schedule. Higher sort order wins conflicts.
                       </Typography>
@@ -1232,7 +1286,9 @@ function CuratorConfigurationDialog({
                 <Stack spacing={2}>
                   {isEnhancementLayer ? (
                     <>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2" sx={{
+                        color: "text.secondary"
+                      }}>
                         Add or remove ticker tapes relative to the active base program. Marquee
                         visibility and scroll speed follow the base or exclusive configuration.
                       </Typography>
@@ -1292,7 +1348,9 @@ function CuratorConfigurationDialog({
                           />
                         </>
                       )}
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" sx={{
+                        color: "text.secondary"
+                      }}>
                         Base values live in Display settings. Overrides apply when this
                         configuration is the active primary curator (base or exclusive).
                       </Typography>
@@ -1316,7 +1374,9 @@ function CuratorConfigurationDialog({
               )}
               {dialogTab === 'overlay' && (
                 <Stack spacing={2}>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{
+                    color: "text.secondary"
+                  }}>
                     Add or remove celebration overlays when this configuration is active.
                   </Typography>
                   <MemberAutocomplete
@@ -1351,8 +1411,15 @@ function CuratorConfigurationDialog({
               )}
               {dialogTab === 'schedule' && (
                 <>
-                  <Stack direction="row" alignItems="center" justifyContent="space-between">
-                    <Typography variant="subtitle2" fontWeight={600}>
+                  <Stack
+                    direction="row"
+                    sx={{
+                      alignItems: "center",
+                      justifyContent: "space-between"
+                    }}>
+                    <Typography variant="subtitle2" sx={{
+                      fontWeight: 600
+                    }}>
                       Schedule rules
                     </Typography>
                     {canWrite && (
@@ -1370,14 +1437,18 @@ function CuratorConfigurationDialog({
                     )}
                   </Stack>
                   {rules.length === 0 ? (
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" sx={{
+                      color: "text.secondary"
+                    }}>
                       No rules — configuration matches only when marked default fallback.
                     </Typography>
                   ) : (
                     rules.map((rule, index) => (
                   <Paper key={index} variant="outlined" sx={{ p: 2 }}>
                     <Stack spacing={1.5}>
-                      <Stack direction="row" spacing={1} alignItems="center">
+                      <Stack direction="row" spacing={1} sx={{
+                        alignItems: "center"
+                      }}>
                         <TextField
                           label="Rule id"
                           size="small"
@@ -1464,7 +1535,6 @@ function CuratorConfigurationDialog({
                           label="Start month"
                           size="small"
                           type="number"
-                          inputProps={{ min: 1, max: 12 }}
                           value={rule.start_month ?? ''}
                           onChange={(e) =>
                             updateRule(index, {
@@ -1473,12 +1543,14 @@ function CuratorConfigurationDialog({
                           }
                           disabled={formDisabled}
                           fullWidth
+                          slotProps={{
+                            htmlInput: { min: 1, max: 12 }
+                          }}
                         />
                         <TextField
                           label="Start day"
                           size="small"
                           type="number"
-                          inputProps={{ min: 1, max: 31 }}
                           value={rule.start_day ?? ''}
                           onChange={(e) =>
                             updateRule(index, {
@@ -1487,12 +1559,14 @@ function CuratorConfigurationDialog({
                           }
                           disabled={formDisabled}
                           fullWidth
+                          slotProps={{
+                            htmlInput: { min: 1, max: 31 }
+                          }}
                         />
                         <TextField
                           label="End month"
                           size="small"
                           type="number"
-                          inputProps={{ min: 1, max: 12 }}
                           value={rule.end_month ?? ''}
                           onChange={(e) =>
                             updateRule(index, {
@@ -1501,12 +1575,14 @@ function CuratorConfigurationDialog({
                           }
                           disabled={formDisabled}
                           fullWidth
+                          slotProps={{
+                            htmlInput: { min: 1, max: 12 }
+                          }}
                         />
                         <TextField
                           label="End day"
                           size="small"
                           type="number"
-                          inputProps={{ min: 1, max: 31 }}
                           value={rule.end_day ?? ''}
                           onChange={(e) =>
                             updateRule(index, {
@@ -1515,6 +1591,9 @@ function CuratorConfigurationDialog({
                           }
                           disabled={formDisabled}
                           fullWidth
+                          slotProps={{
+                            htmlInput: { min: 1, max: 31 }
+                          }}
                         />
                       </Stack>
                       <FormControlLabel

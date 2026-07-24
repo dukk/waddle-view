@@ -1,5 +1,5 @@
 import type { SvgIconComponent } from '@mui/icons-material';
-import ErrorOutline from '@mui/icons-material/ErrorOutline';
+import ErrorOutlined from '@mui/icons-material/ErrorOutlined';
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import LockOutlined from '@mui/icons-material/LockOutlined';
 import ReportProblemOutlined from '@mui/icons-material/ReportProblemOutlined';
@@ -12,7 +12,7 @@ const SEVERITY_ICON_BY_KEY: Record<string, SvgIconComponent> = {
   auth: LockOutlined,
   security: SecurityOutlined,
   warning: WarningAmberRounded,
-  error: ErrorOutline,
+  error: ErrorOutlined,
   critical: ReportProblemOutlined,
 };
 

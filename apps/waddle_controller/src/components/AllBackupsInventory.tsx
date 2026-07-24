@@ -90,7 +90,9 @@ function SnapshotActions({
   onDelete: () => void;
 }) {
   return (
-    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+    <Stack direction="row" spacing={0.5} useFlexGap sx={{
+      flexWrap: "wrap"
+    }}>
       <Button
         size="small"
         component="a"
@@ -123,14 +125,20 @@ function BackupSnapshotCard({
   return (
     <Paper variant="outlined" sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Stack spacing={1} sx={{ flexGrow: 1 }}>
-        <Typography variant="subtitle2" fontWeight={600}>
+        <Typography variant="subtitle2" sx={{
+          fontWeight: 600
+        }}>
           {s.displayLabel}
         </Typography>
         <Typography variant="body2">{s.fileName}</Typography>
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{
+          color: "text.secondary"
+        }}>
           {formatBytes(s.byteSize)} · {s.source}
         </Typography>
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{
+          color: "text.secondary"
+        }}>
           {new Date(s.createdAt).toLocaleString()}
         </Typography>
       </Stack>
@@ -226,10 +234,17 @@ export function AllBackupsInventory({
 
   return (
     <Box component="section">
-      <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+      <Typography variant="subtitle1" gutterBottom sx={{
+        fontWeight: 600
+      }}>
         Stored backups
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          mb: 2
+        }}>
         Archives kept on the controller filesystem. Restore pushes a copy to the display and
         restarts it.
       </Typography>
@@ -315,7 +330,6 @@ export function AllBackupsInventory({
           onPageSizeChange={dataView.setPageSize}
         />
       </Stack>
-
       <Dialog
         open={restoreSnap != null}
         onClose={() => !busy && setRestoreSnap(null)}
@@ -336,7 +350,9 @@ export function AllBackupsInventory({
               <Typography variant="body2">
                 File: <strong>{restoreSnap.fileName}</strong>
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" sx={{
+                color: "text.secondary"
+              }}>
                 Taken: {new Date(restoreSnap.createdAt).toLocaleString()}
               </Typography>
             </Stack>

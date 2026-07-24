@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import {
   Box,
@@ -90,7 +90,9 @@ export function StaticImageConfigForm({ display, formData, onChange, disabled }:
 
   return (
     <Stack spacing={2}>
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" sx={{
+        color: "text.secondary"
+      }}>
         Fixed logo or watermark at a viewport position. Assign this overlay on a curator
         configuration Overlay tab; the global overlay kill-switch in Display settings still
         applies.
@@ -167,12 +169,20 @@ export function StaticImageConfigForm({ display, formData, onChange, disabled }:
               <DeleteOutlineIcon fontSize="small" />
             </IconButton>
           </Box>
-          <Typography variant="caption" color="text.secondary" sx={{ pt: 0.5, wordBreak: 'break-all' }}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              pt: 0.5,
+              wordBreak: 'break-all'
+            }}>
             {blobKey}
           </Typography>
         </Box>
       ) : (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           Upload JPEG, PNG, WebP, GIF, or SVG (max 4 MB).
         </Typography>
       )}
@@ -186,7 +196,13 @@ export function StaticImageConfigForm({ display, formData, onChange, disabled }:
         disabled={disabled}
         formatValue={(v) => `${Math.round(v * 100)}%`}
       />
-      <Typography variant="caption" color="text.secondary" sx={{ mt: -1.5, display: 'block' }}>
+      <Typography
+        variant="caption"
+        sx={{
+          color: "text.secondary",
+          mt: -1.5,
+          display: 'block'
+        }}>
         0% = left edge; 100% = right edge (image anchors at top-left).
       </Typography>
       <CuratorSliderField
@@ -209,7 +225,13 @@ export function StaticImageConfigForm({ display, formData, onChange, disabled }:
         disabled={disabled}
         formatValue={(v) => v.toFixed(2)}
       />
-      <Typography variant="caption" color="text.secondary" sx={{ mt: -1.5, display: 'block' }}>
+      <Typography
+        variant="caption"
+        sx={{
+          color: "text.secondary",
+          mt: -1.5,
+          display: 'block'
+        }}>
         Image width as a fraction of the viewport shortest side (
         {STATIC_IMAGE_OVERLAY_SCALE_MIN}–{STATIC_IMAGE_OVERLAY_SCALE_MAX}).
       </Typography>

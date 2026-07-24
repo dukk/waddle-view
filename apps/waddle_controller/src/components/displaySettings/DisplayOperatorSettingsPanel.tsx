@@ -49,10 +49,17 @@ export function DisplayOperatorSettingsPanel({
   return (
     <Box>
       <DisplayRefreshIndicator loading={loading} />
-      <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+      <Typography variant="subtitle1" gutterBottom sx={{
+        fontWeight: 600
+      }}>
         {copy.title}
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          mb: 2
+        }}>
         {copy.description}
       </Typography>
       {error && (
@@ -101,7 +108,9 @@ export function DisplayOperatorSettingsPanel({
 export function DisplayOperatorSettingsLoading() {
   return (
     <Stack spacing={1}>
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" sx={{
+        color: "text.secondary"
+      }}>
         Loading display settings…
       </Typography>
     </Stack>

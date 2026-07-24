@@ -303,7 +303,9 @@ export function AdoptDisplayForm({
         </>
       )}
       {!pendingConfirm && (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           {apiKey.trim()
             ? 'The display is saved after the API key is validated against the display.'
             : 'Requesting adoption shows a challenge on the display. The display is saved only after you complete adoption successfully.'}

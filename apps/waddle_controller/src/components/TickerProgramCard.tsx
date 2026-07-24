@@ -59,11 +59,19 @@ export function TickerProgramCard({ index, item, kind, onDetails }: Props) {
     >
       <CardContent sx={{ flexGrow: 1 }}>
         <Stack spacing={1}>
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              alignItems: "center",
+              flexWrap: "wrap"
+            }}>
             <Chip size="small" label={`#${index + 1}`} />
             <Chip size="small" label={kindLabel} color="primary" variant="outlined" />
           </Stack>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{
+            color: "text.secondary"
+          }}>
             {caption}
           </Typography>
           <Divider />
@@ -80,16 +88,31 @@ export function TickerProgramCard({ index, item, kind, onDetails }: Props) {
             }}
           >
             <Stack spacing={0.5} sx={{ width: '100%' }}>
-              <Typography variant="subtitle2" fontWeight={600} sx={{ whiteSpace: 'pre-wrap' }}>
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  fontWeight: 600,
+                  whiteSpace: 'pre-wrap'
+                }}>
                 {headline}
               </Typography>
               {sub ? (
-                <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                    whiteSpace: 'pre-wrap'
+                  }}>
                   {sub}
                 </Typography>
               ) : null}
               {extraBody ? (
-                <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                    whiteSpace: 'pre-wrap'
+                  }}>
                   {extraBody}
                 </Typography>
               ) : null}

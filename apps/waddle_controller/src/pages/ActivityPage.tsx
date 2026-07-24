@@ -237,16 +237,19 @@ export function ActivityPage() {
   return (
     <Stack spacing={2}>
       <DisplayRefreshIndicator loading={loading} />
-      <Typography variant="h5" fontWeight={600}>
+      <Typography variant="h5" sx={{
+        fontWeight: 600
+      }}>
         Live integration log
       </Typography>
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" sx={{
+        color: "text.secondary"
+      }}>
         Live integration and engine log from the active display (refreshes about every four seconds).
         Filter by channel, integration type, or message text to trace collector errors, curation, and
         runtime events.
       </Typography>
       {error && <Alert severity="error">{error}</Alert>}
-
       <DataViewToolbar
         layout={layout}
         onLayoutChange={setLayout}
@@ -263,7 +266,6 @@ export function ActivityPage() {
         reloadAriaLabel="Reload activity log"
         filterSlot={filterSlot}
       />
-
       <Stack spacing={2}>
         <DataViewEmptyState
           hasItems={items.length > 0}
@@ -276,7 +278,9 @@ export function ActivityPage() {
               <Card key={`${row.at_ms}-${row.channel}-${i}`} variant="outlined">
                 <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
                   <Stack spacing={0.5}>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" sx={{
+                      color: "text.secondary"
+                    }}>
                       {Number.isNaN(new Date(row.at_ms).getTime())
                         ? String(row.at_ms)
                         : formatDateTimeWithMs(new Date(row.at_ms))}{' '}

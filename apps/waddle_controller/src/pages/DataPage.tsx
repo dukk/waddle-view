@@ -682,10 +682,14 @@ export function DataPage() {
   return (
     <Stack spacing={2}>
       <Box>
-        <Typography variant="h6" fontWeight={600} gutterBottom>
+        <Typography variant="h6" gutterBottom sx={{
+          fontWeight: 600
+        }}>
           Collected content browser
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           Browse content stored on the active display—calendar events, jokes, news, photos, stocks,
           weather, and alerts.
           Filter and paginate each tab; with <strong>content.moderate</strong> (operator or admin role)
@@ -710,7 +714,6 @@ export function DataPage() {
           ))}
         </Tabs>
       </Paper>
-
       <DataViewToolbar
         layout={layout}
         onLayoutChange={setLayout}
@@ -737,7 +740,6 @@ export function DataPage() {
           </Button>
         ) : null}
       </DataViewToolbar>
-
       {active && isManualEntryKind(kind) ? (
         <ManualEntryDialog
           open={manualEntryOpen}
@@ -747,7 +749,6 @@ export function DataPage() {
           onSaved={() => void loadCatalog()}
         />
       ) : null}
-
       {active && canAddAlert ? (
         <AlertEntryDialog
           open={alertEntryOpen}
@@ -756,8 +757,9 @@ export function DataPage() {
           onSaved={() => void loadCatalog()}
         />
       ) : null}
-
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} flexWrap="wrap" useFlexGap>
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} useFlexGap sx={{
+        flexWrap: "wrap"
+      }}>
         {canModerate && canSuppress(kind) && (
           <FormControl size="small" sx={{ minWidth: 160 }}>
             <InputLabel id="suppressed-filter">Suppressed</InputLabel>
@@ -850,7 +852,6 @@ export function DataPage() {
           />
         ) : null}
       </Stack>
-
       <DisplayRefreshIndicator loading={catalogLoading} />
       {layout === 'card' && displayRows.length > 0 ? (
         <Box sx={catalogCardGridSx}>
@@ -999,7 +1000,9 @@ export function DataPage() {
             {catalogLoading ? (
               <TableRow>
                 <TableCell colSpan={12}>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{
+                    color: "text.secondary"
+                  }}>
                     Loading…
                   </Typography>
                 </TableCell>
@@ -1028,7 +1031,9 @@ export function DataPage() {
                               size="small"
                               checked={sup}
                               onChange={(_, v) => void patchSuppressed(id, v)}
-                              inputProps={{ 'aria-label': `Suppress joke ${id}` }}
+                              slotProps={{
+                                input: { 'aria-label': `Suppress joke ${id}` }
+                              }}
                             />
                           </TableCell>
                         )}
@@ -1104,7 +1109,9 @@ export function DataPage() {
                               size="small"
                               checked={sup}
                               onChange={(_, v) => void patchSuppressed(id, v)}
-                              inputProps={{ 'aria-label': `Suppress quote ${id}` }}
+                              slotProps={{
+                                input: { 'aria-label': `Suppress quote ${id}` }
+                              }}
                             />
                           </TableCell>
                         )}
@@ -1117,7 +1124,9 @@ export function DataPage() {
                         </TableCell>
                         <TableCell sx={{ maxWidth: 280 }}>
                           <Typography variant="body2">{String(row.alt_text ?? '')}</Typography>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" sx={{
+                            color: "text.secondary"
+                          }}>
                             {String(row.photographer_name ?? '')}
                           </Typography>
                         </TableCell>
@@ -1136,7 +1145,9 @@ export function DataPage() {
                         </TableCell>
                         <TableCell sx={{ maxWidth: 240 }}>
                           <Typography variant="body2">{String(row.alt_text ?? '')}</Typography>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" sx={{
+                            color: "text.secondary"
+                          }}>
                             {String(row.photographer_name ?? '')}
                           </Typography>
                         </TableCell>
@@ -1223,7 +1234,9 @@ export function DataPage() {
                           {String(row.body ?? '')}
                         </TableCell>
                         <TableCell>
-                          <Stack direction="row" spacing={0.5} alignItems="center">
+                          <Stack direction="row" spacing={0.5} sx={{
+                            alignItems: "center"
+                          }}>
                             {(() => {
                               const Icon = alertSeverityIconComponent(String(row.severity ?? ''));
                               return <Icon fontSize="small" color="action" />;
@@ -1308,7 +1321,9 @@ export function DataPage() {
             {!catalogLoading && displayRows.length === 0 && (
               <TableRow>
                 <TableCell colSpan={12}>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{
+                    color: "text.secondary"
+                  }}>
                     No rows match the current filters.
                   </Typography>
                 </TableCell>

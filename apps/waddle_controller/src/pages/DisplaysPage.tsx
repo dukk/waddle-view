@@ -113,7 +113,14 @@ function DisplayStatusBlock({
 
   return (
     <Stack spacing={0.5} useFlexGap>
-      <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap flexWrap="wrap">
+      <Stack
+        direction="row"
+        spacing={0.75}
+        useFlexGap
+        sx={{
+          alignItems: "center",
+          flexWrap: "wrap"
+        }}>
         {status?.state === 'checking' && (
           <Chip label="Checking…" size="small" variant="outlined" />
         )}
@@ -130,15 +137,14 @@ function DisplayStatusBlock({
         <Tooltip title={hostSummary}>
           <Typography
             variant="caption"
-            color="text.secondary"
             sx={{
+              color: "text.secondary",
               display: 'block',
               maxWidth: 320,
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
+              whiteSpace: 'nowrap'
+            }}>
             {hostSummary}
           </Typography>
         </Tooltip>
@@ -173,8 +179,17 @@ function DisplayCard({
     <Card variant="outlined" sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <CardContent sx={{ flexGrow: 1 }}>
         <Stack spacing={1.5}>
-          <Stack direction="row" alignItems="center" spacing={1} useFlexGap flexWrap="wrap">
-            <Typography variant="subtitle1" fontWeight={isActive ? 600 : 500}>
+          <Stack
+            direction="row"
+            spacing={1}
+            useFlexGap
+            sx={{
+              alignItems: "center",
+              flexWrap: "wrap"
+            }}>
+            <Typography variant="subtitle1" sx={{
+              fontWeight: isActive ? 600 : 500
+            }}>
               {display.label}
             </Typography>
             {isActive && <Chip label="Active" size="small" color="primary" />}
@@ -183,7 +198,9 @@ function DisplayCard({
           <Typography variant="body2" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
             {display.baseUrl}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{
+            color: "text.secondary"
+          }}>
             {session ? (
               <>
                 {session.identifier} ({session.role})
@@ -341,10 +358,11 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
   return (
     <Stack spacing={2}>
       <DisplayRefreshIndicator loading={reachabilityRefreshing} />
-
       {!embedded && (
         <Stack spacing={1.5}>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{
+            color: "text.secondary"
+          }}>
             Pair displays with this browser, rename them, and switch which display the controller
             targets. Adopted API keys stay in local storage only—they are not included in backup
             export.
@@ -352,11 +370,7 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
           <DisplaysPageToolbar {...toolbarProps} />
         </Stack>
       )}
-
       {embedded && <DisplaysPageToolbar {...toolbarProps} />}
-
-
-
       {success && (
 
         <Alert severity="success" onClose={() => setSuccess(null)}>
@@ -366,7 +380,6 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
         </Alert>
 
       )}
-
       {labelError && (
 
         <Alert severity="error" onClose={() => setLabelError(null)}>
@@ -376,9 +389,6 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
         </Alert>
 
       )}
-
-
-
       <Stack spacing={2}>
         <DataViewEmptyState
           hasItems={displays.length > 0}
@@ -424,8 +434,17 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
                 return (
                   <TableRow key={d.id} selected={isActive}>
                     <TableCell>
-                      <Stack direction="row" alignItems="center" spacing={1} useFlexGap flexWrap="wrap">
-                        <Typography variant="body2" fontWeight={isActive ? 600 : 400}>
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        useFlexGap
+                        sx={{
+                          alignItems: "center",
+                          flexWrap: "wrap"
+                        }}>
+                        <Typography variant="body2" sx={{
+                          fontWeight: isActive ? 600 : 400
+                        }}>
                           {d.label}
                         </Typography>
                         {isActive && <Chip label="Active" size="small" color="primary" />}
@@ -443,7 +462,9 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
                           {session.identifier} ({session.role})
                         </Typography>
                       ) : (
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography variant="body2" sx={{
+                          color: "text.secondary"
+                        }}>
                           Not adopted
                         </Typography>
                       )}
@@ -484,12 +505,8 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
           onPageSizeChange={dataView.setPageSize}
         />
       </Stack>
-
       <DisplaysRecoverySection onChanged={refresh} />
       <DisplaysBackupSection onChanged={refresh} />
-
-
-
       {adoptOpen && (
 
         <AdoptDisplayDialog
@@ -505,9 +522,6 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
         />
 
       )}
-
-
-
       {editDisplay && (
 
         <EditDisplayDialog
@@ -530,9 +544,7 @@ export function DisplaysPage({ embedded = false }: DisplaysPageProps) {
         />
 
       )}
-
     </Stack>
-
   );
 
 }

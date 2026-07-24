@@ -19,7 +19,9 @@ export function TickerPixelsPerSecondField({
 
   return (
     <Box>
-      <Stack direction="row" spacing={1} alignItems="flex-start">
+      <Stack direction="row" spacing={1} sx={{
+        alignItems: "flex-start"
+      }}>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <CuratorSliderField
             label="Ticker pixels per second"

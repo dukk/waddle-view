@@ -37,7 +37,9 @@ export function CatalogBlobMedia({
 
   if (!url) {
     return (
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" sx={{
+        color: "text.secondary"
+      }}>
         {blobKey ? '…' : '—'}
       </Typography>
     );

@@ -116,7 +116,13 @@ export function DisplayOperatorSettingsGeneralFields({
           }
           renderInput={(params) => <TextField {...params} label="Display timezone" />}
         />
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75, display: 'block' }}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: "text.secondary",
+            mt: 0.75,
+            display: 'block'
+          }}>
           Stored as <code>display.timezone</code>. Invalid ids fall back on the display. Type to
           filter {timezoneOptions.length} IANA zones.
         </Typography>
@@ -141,15 +147,29 @@ export function DisplayOperatorSettingsGeneralFields({
             </MenuItem>
           ))}
         </Select>
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75, display: 'block' }}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: "text.secondary",
+            mt: 0.75,
+            display: 'block'
+          }}>
           Stored as <code>display.weather.temperature_unit</code>. Default is Fahrenheit when unset.
           Applies to ticker weather and weather slides unless a tape overrides it.
         </Typography>
       </FormControl>
-      <Typography variant="subtitle2" fontWeight={600}>
+      <Typography variant="subtitle2" sx={{
+        fontWeight: 600
+      }}>
         Viewport edge reserve
       </Typography>
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: -1 }}>
+      <Typography
+        variant="caption"
+        sx={{
+          color: "text.secondary",
+          display: 'block',
+          mt: -1
+        }}>
         Percent of the letterboxed TV viewport reserved on each edge. Shrinks both screen slides and
         the ticker so you can place always-on overlays (for example a clock or date) in the margin.
         Use display overlays for the widgets themselves.
@@ -226,10 +246,12 @@ export function DisplayOperatorSettingsThemeFields({
             return (
               <Stack
                 direction="row"
-                alignItems="center"
                 spacing={1}
-                sx={{ width: '100%', pr: 0.5 }}
-              >
+                sx={{
+                  alignItems: "center",
+                  width: '100%',
+                  pr: 0.5
+                }}>
                 <Box
                   component="span"
                   sx={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}
@@ -251,14 +273,28 @@ export function DisplayOperatorSettingsThemeFields({
             </MenuItem>
           ))}
         </Select>
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75, display: 'block' }}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: "text.secondary",
+            mt: 0.75,
+            display: 'block'
+          }}>
           Swatches (left to right): display background, screen chrome, ticker chrome, then four
           accents.
         </Typography>
       </FormControl>
       <Box>
-        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-          <Typography variant="subtitle2" fontWeight={600}>
+        <Stack
+          direction="row"
+          sx={{
+            alignItems: "center",
+            justifyContent: "space-between",
+            mb: 1
+          }}>
+          <Typography variant="subtitle2" sx={{
+            fontWeight: 600
+          }}>
             Custom themes
           </Typography>
           <Button
@@ -274,7 +310,9 @@ export function DisplayOperatorSettingsThemeFields({
           </Button>
         </Stack>
         {(form.display_custom_themes ?? []).length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{
+            color: "text.secondary"
+          }}>
             No custom themes yet. Built-in presets are always available above.
           </Typography>
         ) : (
@@ -283,19 +321,20 @@ export function DisplayOperatorSettingsThemeFields({
               <Stack
                 key={t.id}
                 direction="row"
-                alignItems="center"
                 spacing={1}
                 sx={{
+                  alignItems: "center",
                   py: 0.75,
                   px: 1,
                   borderRadius: 1,
                   border: '1px solid',
-                  borderColor: 'divider',
-                }}
-              >
+                  borderColor: 'divider'
+                }}>
                 <Box component="span" sx={{ flex: 1, minWidth: 0 }}>
                   <Typography variant="body2">{t.label}</Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" sx={{
+                    color: "text.secondary"
+                  }}>
                     {t.id}
                   </Typography>
                 </Box>
@@ -392,16 +431,30 @@ export function DisplayOperatorSettingsProgramsFields({
         step={CURATOR_HISTORY_DEPTH.step}
         disabled={!canWrite}
       />
-      <Typography variant="caption" color="text.secondary" sx={{ mt: -1.5, display: 'block' }}>
+      <Typography
+        variant="caption"
+        sx={{
+          color: "text.secondary",
+          mt: -1.5,
+          display: 'block'
+        }}>
         How many past screen programs are kept for back-navigation and how many recent screen
         placements influence frequency weighting. Shared across all curator configurations. Does not
         control how many entries appear on the Programs page (that page shows up to 10 recent
         telemetry snapshots).
       </Typography>
-      <Typography variant="subtitle2" fontWeight={600}>
+      <Typography variant="subtitle2" sx={{
+        fontWeight: 600
+      }}>
         Ticker marquee
       </Typography>
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: -1 }}>
+      <Typography
+        variant="caption"
+        sx={{
+          color: "text.secondary",
+          display: 'block',
+          mt: -1
+        }}>
         Default scroll speed and RSS scroll budget for the bottom ticker. Curator configurations
         can override these when they are the active primary program.
       </Typography>
@@ -439,7 +492,13 @@ export function DisplayOperatorSettingsProgramsFields({
             </MenuItem>
           ))}
         </Select>
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75, display: 'block' }}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: "text.secondary",
+            mt: 0.75,
+            display: 'block'
+          }}>
           Stored as <code>display.ticker.item_separator</code>. Separator between lines within one
           ticker program.
         </Typography>
@@ -463,15 +522,32 @@ export function DisplayOperatorSettingsProgramsFields({
             </MenuItem>
           ))}
         </Select>
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75, display: 'block' }}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: "text.secondary",
+            mt: 0.75,
+            display: 'block'
+          }}>
           Stored as <code>display.ticker.program_separator</code>. Separator when auto-scroll shows
           multiple past ticker programs.
         </Typography>
       </FormControl>
-      <Typography variant="subtitle2" fontWeight={600} sx={{ pt: 1 }}>
+      <Typography
+        variant="subtitle2"
+        sx={{
+          fontWeight: 600,
+          pt: 1
+        }}>
         CPU / background load
       </Typography>
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: -1 }}>
+      <Typography
+        variant="caption"
+        sx={{
+          color: "text.secondary",
+          display: 'block',
+          mt: -1
+        }}>
         Throttles integration polling and optional low-power UI caps on this display.
       </Typography>
       <CuratorSliderField
@@ -508,7 +584,9 @@ function TickerSeparatorMenuLabel({
   label: string;
 }) {
   return (
-    <Stack direction="row" alignItems="center" spacing={1}>
+    <Stack direction="row" spacing={1} sx={{
+      alignItems: "center"
+    }}>
       {kind === 'diamond' ? (
         <DiamondOutlinedIcon fontSize="small" />
       ) : (

@@ -450,15 +450,25 @@ export function ScreensPage() {
     <Stack spacing={3}>
       <DisplayRefreshIndicator loading={loading} />
       <Box>
-        <Stack direction="row" alignItems="center" spacing={0.25} sx={{ mb: 0.5 }}>
-          <Typography variant="h6" fontWeight={600}>
+        <Stack
+          direction="row"
+          spacing={0.25}
+          sx={{
+            alignItems: "center",
+            mb: 0.5
+          }}>
+          <Typography variant="h6" sx={{
+            fontWeight: 600
+          }}>
             Slideshow slide catalog
           </Typography>
           <CatalogPageHelp title="Screen scheduling">
             <ScreenSchedulingHelpContent />
           </CatalogPageHelp>
         </Stack>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           Catalog slide types in the main slideshow (RSS, weather, photos, and others). Set dwell
           time and frequency weight so the curator fills each program&apos;s time budget; the help
           icon explains how placement and recent-history deprioritization work.
@@ -467,7 +477,6 @@ export function ScreensPage() {
       {(error || schemasError) && (
         <Alert severity="error">{error ?? schemasError}</Alert>
       )}
-
       <CatalogListWithTransferSection
         toolbar={
           <DataViewToolbar
@@ -554,7 +563,6 @@ export function ScreensPage() {
           ) : null
         }
       />
-
       {dialogMode && schemas && (
         <ScreenDialog
           open
@@ -631,18 +639,33 @@ function ScreenCard({
               />
             )}
           </Box>
-          <Typography variant="subtitle1" fontWeight={600} sx={{ wordBreak: 'break-word' }}>
+          <Typography
+            variant="subtitle1"
+            sx={{
+              fontWeight: 600,
+              wordBreak: 'break-word'
+            }}>
             {title}
           </Typography>
           <Chip size="small" label={typeLabel} variant="outlined" sx={{ alignSelf: 'flex-start' }} />
-          <Typography variant="caption" color="text.secondary" display="block">
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              display: "block"
+            }}>
             Dwell {formatIntervalDisplay(row.min_dwell_seconds)} –{' '}
             {formatIntervalDisplay(row.max_dwell_seconds)} · gap{' '}
             {formatIntervalDisplay(row.min_gap_between_shows_seconds)} · placements{' '}
             {summary.placements} · {summary.categories} · weight {row.frequency_weight}
           </Typography>
           {description ? (
-            <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+                wordBreak: 'break-word'
+              }}>
               {description}
             </Typography>
           ) : null}

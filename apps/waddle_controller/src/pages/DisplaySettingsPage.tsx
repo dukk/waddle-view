@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import {
   Alert,
   Box,
@@ -129,10 +129,14 @@ export function DisplaySettingsPage() {
   return (
     <Stack spacing={2}>
       <Box>
-        <Typography variant="h6" fontWeight={600} gutterBottom>
+        <Typography variant="h6" gutterBottom sx={{
+          fontWeight: 600
+        }}>
           Curator & display setup — {displayLabel}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           General, theme, programs, and advanced display tuning, plus adoption roles and REST API
           keys for <strong>{displayLabel}</strong>. Layered curator programs and categories live
           under <strong>Curators</strong> in the sidebar.
@@ -151,7 +155,6 @@ export function DisplaySettingsPage() {
           ))}
         </Tabs>
       </Paper>
-
       <Paper sx={{ p: 2 }}>
         {showDisplaySettings && active ? (
           <DisplayOperatorSettingsProvider
@@ -448,10 +451,17 @@ function ApiClientsManagementSection({
   return (
     <Box>
       <DisplayRefreshIndicator loading={loading} />
-      <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+      <Typography variant="subtitle1" gutterBottom sx={{
+        fontWeight: 600
+      }}>
         API keys
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          mb: 2
+        }}>
         Adopted REST clients for this display. Plaintext keys are shown only when issued; stored keys
         are listed masked by fingerprint.
       </Typography>
@@ -469,11 +479,15 @@ function ApiClientsManagementSection({
         </Button>
       </Stack>
       {loading && !initialized ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           Loading API keys…
         </Typography>
       ) : clients.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           No API keys on this display yet.
         </Typography>
       ) : (
@@ -492,7 +506,9 @@ function ApiClientsManagementSection({
               {clients.map((client) => (
                 <TableRow key={client.id}>
                   <TableCell>
-                    <Typography variant="body2" fontFamily="monospace">
+                    <Typography variant="body2" sx={{
+                      fontFamily: "monospace"
+                    }}>
                       {client.masked_api_key}
                     </Typography>
                   </TableCell>
@@ -519,7 +535,6 @@ function ApiClientsManagementSection({
           </Table>
         </TableContainer>
       )}
-
       <Dialog open={issueOpen} onClose={() => setIssueOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Issue API key</DialogTitle>
         <DialogContent>
@@ -527,7 +542,13 @@ function ApiClientsManagementSection({
             {issuedKey ? (
               <Alert severity="warning">
                 Copy this API key now — it will not be shown again:
-                <Typography component="p" fontFamily="monospace" sx={{ mt: 1, wordBreak: 'break-all' }}>
+                <Typography
+                  component="p"
+                  sx={{
+                    fontFamily: "monospace",
+                    mt: 1,
+                    wordBreak: 'break-all'
+                  }}>
                   {issuedKey}
                 </Typography>
               </Alert>
@@ -669,7 +690,9 @@ function DisplayAdoptionSettingsSection({ display }: { display: SavedDisplay }) 
     return (
       <Stack spacing={1}>
         <DisplayRefreshIndicator loading={loading} />
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           Loading adoption settings…
         </Typography>
       </Stack>
@@ -679,10 +702,17 @@ function DisplayAdoptionSettingsSection({ display }: { display: SavedDisplay }) 
   return (
     <Box>
       <DisplayRefreshIndicator loading={loading} />
-      <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+      <Typography variant="subtitle1" gutterBottom sx={{
+        fontWeight: 600
+      }}>
         Controller adoption
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          mb: 2
+        }}>
         Choose which roles may start new adoption challenges from other controllers. Uncheck all
         roles to block public pairing; existing adopted sessions keep working and display admins
         can still grant access with an API key.
@@ -811,11 +841,18 @@ function AdvancedConfigKeyValuesSection({
   return (
     <Box>
       {!embedded && (
-        <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+        <Typography variant="subtitle1" gutterBottom sx={{
+          fontWeight: 600
+        }}>
           Advanced: config key–values
         </Typography>
       )}
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          mb: 2
+        }}>
         Direct access to SQLite <code>config_key_values</code> (curator defaults, theme, ticker copy,{' '}
         <code>display.timezone</code>, etc.). Use carefully; invalid keys can confuse the display.
       </Typography>
@@ -833,7 +870,9 @@ function AdvancedConfigKeyValuesSection({
       {!loading && (
         <Stack spacing={2}>
           {rows.map((row, idx) => (
-            <Stack key={idx} direction="row" spacing={1} alignItems="flex-start">
+            <Stack key={idx} direction="row" spacing={1} sx={{
+              alignItems: "flex-start"
+            }}>
               <TextField
                 label="Key"
                 value={row.key}
@@ -866,7 +905,9 @@ function AdvancedConfigKeyValuesSection({
               </IconButton>
             </Stack>
           ))}
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Stack direction="row" spacing={1} useFlexGap sx={{
+            flexWrap: "wrap"
+          }}>
             <Button
               size="small"
               variant="outlined"

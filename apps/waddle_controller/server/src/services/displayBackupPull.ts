@@ -137,7 +137,10 @@ export async function restoreSnapshotToDisplay(
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/zip',
     }),
-    body: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+    body: bytes.buffer.slice(
+      bytes.byteOffset,
+      bytes.byteOffset + bytes.byteLength,
+    ) as ArrayBuffer,
     timeoutMs: BACKUP_JOB_TIMEOUT_MS,
   });
   if (!res.ok) {

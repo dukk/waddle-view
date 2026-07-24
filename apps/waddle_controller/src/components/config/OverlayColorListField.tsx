@@ -1,5 +1,5 @@
 import AddIcon from '@mui/icons-material/Add';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import {
   Button,
   IconButton,
@@ -45,12 +45,16 @@ export function OverlayColorListField({
 
   return (
     <Stack spacing={1}>
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" sx={{
+        color: "text.secondary"
+      }}>
         Balloon fill colors are chosen at random. Each balloon in a cluster gets a
         distinct color when the palette has enough entries.
       </Typography>
       {colors.map((hex, index) => (
-        <Stack key={`${index}-${hex}`} direction="row" spacing={1} alignItems="center">
+        <Stack key={`${index}-${hex}`} direction="row" spacing={1} sx={{
+          alignItems: "center"
+        }}>
           <TextField
             type="color"
             value={hex.length === 9 ? hex.slice(0, 7) : hex}

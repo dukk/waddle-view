@@ -34,7 +34,9 @@ export function AnalogClockOverlayConfigForm({ formData, onChange, disabled }: P
 
   return (
     <Stack spacing={2}>
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" sx={{
+        color: "text.secondary"
+      }}>
         Analog clock and date at a viewport position. Options match the analog clock screen.
       </Typography>
       <FormControl fullWidth size="small" disabled={disabled}>

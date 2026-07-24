@@ -222,7 +222,9 @@ export function EditDisplayDialog({ display, onClose, onSave }: Props) {
             disabled={busy}
             helperText="HTTPS origin of the display REST API (e.g. https://192.168.1.10:8787)."
           />
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{
+            color: "text.secondary"
+          }}>
             {session ? (
               <>
                 Adopted as <strong>{session.identifier}</strong> ({session.role}).
@@ -242,11 +244,15 @@ export function EditDisplayDialog({ display, onClose, onSave }: Props) {
           <Collapse in={livePreviewOpen}>
             <Stack spacing={2} sx={{ pl: 0.5, minHeight: previewLoading ? 200 : undefined }}>
               {!session ? (
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" sx={{
+                  color: "text.secondary"
+                }}>
                   Adopt this display to configure live preview on the device.
                 </Typography>
               ) : previewLoading ? (
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" sx={{
+                  color: "text.secondary"
+                }}>
                   Loading live preview settings…
                 </Typography>
               ) : (
@@ -261,7 +267,9 @@ export function EditDisplayDialog({ display, onClose, onSave }: Props) {
                     }
                     label="Enable live preview"
                   />
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" sx={{
+                    color: "text.secondary"
+                  }}>
                     View-only JPEG stream from the display window (GStreamer on Linux, widget
                     capture on Windows/macOS dev).
                   </Typography>
@@ -298,7 +306,9 @@ export function EditDisplayDialog({ display, onClose, onSave }: Props) {
                     step={1}
                     disabled={!livePreviewEnabled || busy}
                   />
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" sx={{
+                    color: "text.secondary"
+                  }}>
                     Lower JPEG quality reduces Pi CPU and bandwidth (30–95).
                   </Typography>
                   <Button

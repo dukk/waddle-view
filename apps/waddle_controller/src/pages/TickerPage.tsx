@@ -394,15 +394,25 @@ export function TickerPage() {
     <Stack spacing={3}>
       <DisplayRefreshIndicator loading={loading} />
       <Box>
-        <Stack direction="row" alignItems="center" spacing={0.25} sx={{ mb: 0.5 }}>
-          <Typography variant="h6" fontWeight={600}>
+        <Stack
+          direction="row"
+          spacing={0.25}
+          sx={{
+            alignItems: "center",
+            mb: 0.5
+          }}>
+          <Typography variant="h6" sx={{
+            fontWeight: 600
+          }}>
             Bottom marquee feeds
           </Typography>
           <CatalogPageHelp title="Ticker tapes and the curator">
             <TickerTapesHelpContent />
           </CatalogPageHelp>
         </Stack>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           Configure feeds merged into the bottom marquee—clock, weather, RSS, stocks, quotes, or
           custom copy. Sort order and frequency weight control how often each tape repeats; scroll
           speed is under Display settings.
@@ -411,7 +421,6 @@ export function TickerPage() {
       {(error || schemasError) && (
         <Alert severity="error">{error ?? schemasError}</Alert>
       )}
-
       <CatalogListWithTransferSection
         toolbar={
           <DataViewToolbar
@@ -487,7 +496,6 @@ export function TickerPage() {
           ) : null
         }
       />
-
       {addOpen && schemas && active && (
         <AddTickerTapeDialog
           active={active}
@@ -501,7 +509,6 @@ export function TickerPage() {
           }}
         />
       )}
-
       {editRow && schemas && active && (
         <EditTickerTapeDialog
           active={active}
@@ -556,20 +563,37 @@ function TickerTapeCard({
               }}
             />
           </Box>
-          <Typography variant="subtitle1" fontWeight={600} sx={{ wordBreak: 'break-word' }}>
+          <Typography
+            variant="subtitle1"
+            sx={{
+              fontWeight: 600,
+              wordBreak: 'break-word'
+            }}>
             {title}
           </Typography>
-          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+          <Stack direction="row" spacing={0.5} useFlexGap sx={{
+            flexWrap: "wrap"
+          }}>
             <Chip size="small" label={typeLabel} variant="outlined" sx={{ alignSelf: 'flex-start' }} />
             {!row.enabled ? (
               <Chip size="small" label="Disabled" variant="outlined" color="warning" />
             ) : null}
           </Stack>
-          <Typography variant="caption" color="text.secondary" display="block">
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              display: "block"
+            }}>
             Weight {row.frequency_weight} · sort {row.sort_order}
           </Typography>
           {description ? (
-            <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+                wordBreak: 'break-word'
+              }}>
               {description}
             </Typography>
           ) : null}
@@ -729,7 +753,9 @@ function AddTickerTapeDialog({
           </FormControl>
           {tickerType ? (
             <>
-              <Stack direction="row" alignItems="center" spacing={1}>
+              <Stack direction="row" spacing={1} sx={{
+                alignItems: "center"
+              }}>
                 <Switch checked={enabled} onChange={(_, v) => setEnabled(v)} disabled={saving} />
                 <Typography>Enabled</Typography>
               </Stack>
@@ -742,7 +768,12 @@ function AddTickerTapeDialog({
                 step={5}
                 disabled={saving}
               />
-              <Typography variant="caption" color="text.secondary" sx={{ mt: -1 }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                  mt: -1
+                }}>
                 Repeat this tape&apos;s marquee bundle this many times when building the list (0 =
                 skip).
               </Typography>
@@ -755,7 +786,12 @@ function AddTickerTapeDialog({
                 step={1}
                 disabled={saving}
               />
-              <Typography variant="caption" color="text.secondary" sx={{ mt: -1 }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                  mt: -1
+                }}>
                 Lower numbers are merged into the marquee before higher numbers.
               </Typography>
               <TickerConfigPanel
@@ -872,7 +908,9 @@ function EditTickerTapeDialog({
             minRows={2}
             disabled={saving}
           />
-          <Stack direction="row" alignItems="center" spacing={1}>
+          <Stack direction="row" spacing={1} sx={{
+            alignItems: "center"
+          }}>
             <Switch checked={enabled} onChange={(_, v) => setEnabled(v)} disabled={saving} />
             <Typography>Enabled</Typography>
           </Stack>

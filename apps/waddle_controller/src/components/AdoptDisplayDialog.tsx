@@ -29,12 +29,21 @@ export function AdoptDisplayDialog({
       open={open}
       fullWidth
       maxWidth="sm"
-      onClose={handleClose}
-      disableEscapeKeyDown={!dismissible}
+      onClose={(_event, reason) => {
+        if (!dismissible && (reason === 'escapeKeyDown' || reason === 'backdropClick')) {
+          return;
+        }
+        handleClose?.();
+      }}
     >
       <DialogTitle>Adopt display</DialogTitle>
       <DialogContent>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            mb: 2
+          }}>
           Pair this browser with a display by requesting adoption on the display, then confirming
           the challenge code from the display alert.
         </Typography>

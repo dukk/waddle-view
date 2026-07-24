@@ -201,10 +201,22 @@ export function AppShell({ children }: { children?: ReactNode }) {
       <Toolbar sx={{ gap: 1.25, minHeight: { xs: 56, sm: 64 } }}>
         <WaddleBrandMark variant="headshot" size="sm" />
         <Box sx={{ minWidth: 0 }}>
-          <Typography variant="subtitle1" fontWeight={700} lineHeight={1.2} noWrap>
+          <Typography
+            variant="subtitle1"
+            noWrap
+            sx={{
+              fontWeight: 700,
+              lineHeight: 1.2
+            }}>
             Waddle View
           </Typography>
-          <Typography variant="caption" color="grey.400" lineHeight={1.2} noWrap>
+          <Typography
+            variant="caption"
+            noWrap
+            sx={{
+              color: "grey.400",
+              lineHeight: 1.2
+            }}>
             Controller
           </Typography>
         </Box>
@@ -316,19 +328,18 @@ export function AppShell({ children }: { children?: ReactNode }) {
           <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
           <Typography
             variant="body2"
-            color="text.secondary"
             component={RouterLink}
             to="/about"
             align="center"
             onClick={() => setMobileOpen(false)}
             sx={{
+              color: "text.secondary",
               px: 1,
               py: 0.5,
               display: 'block',
               textDecoration: 'none',
-              '&:hover': { color: 'text.primary', textDecoration: 'underline' },
-            }}
-          >
+              '&:hover': { color: 'text.primary', textDecoration: 'underline' }
+            }}>
             {drawerVersion}
           </Typography>
         </>
@@ -357,7 +368,12 @@ export function AppShell({ children }: { children?: ReactNode }) {
             </IconButton>
           )}
           
-          <Typography variant="h6" fontWeight={600} sx={{ flexGrow: 1 }}>
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 600,
+              flexGrow: 1
+            }}>
           {location.pathname.startsWith('/about')
               ? 'About'
               : location.pathname.startsWith('/controller-settings')
@@ -407,7 +423,9 @@ export function AppShell({ children }: { children?: ReactNode }) {
                     endIcon={<KeyboardArrowDownIcon />}
                     sx={{ fontWeight: 600, textTransform: 'none', maxWidth: { xs: 160, sm: 280 } }}
                   >
-                    <Typography component="span" noWrap variant="body1" fontWeight={600}>
+                    <Typography component="span" noWrap variant="body1" sx={{
+                      fontWeight: 600
+                    }}>
                       {session.identifier}
                     </Typography>
                   </Button>
@@ -498,7 +516,6 @@ export function AppShell({ children }: { children?: ReactNode }) {
           )}
         </Toolbar>
       </AppBar>
-
       {signedIn && (
         <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}>
           <Drawer
@@ -525,7 +542,6 @@ export function AppShell({ children }: { children?: ReactNode }) {
           </Drawer>
         </Box>
       )}
-
       <Box
         component="main"
         sx={{
@@ -545,13 +561,11 @@ export function AppShell({ children }: { children?: ReactNode }) {
         )}
         {children ?? <Outlet />}
       </Box>
-
       <Snackbar open={!!snack} autoHideDuration={6000} onClose={() => setSnack(null)}>
         <Alert severity="error" onClose={() => setSnack(null)}>
           {snack}
         </Alert>
       </Snackbar>
-
       <Dialog
         open={rolePreviewOpen}
         onClose={() => setRolePreviewOpen(false)}
@@ -561,7 +575,12 @@ export function AppShell({ children }: { children?: ReactNode }) {
       >
         <DialogTitle id="role-preview-title">View UI as role</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              mb: 2
+            }}>
             The controller hides controls you would not have with that role. API calls still use your
             signed-in session and server permission checks still apply.
           </Typography>

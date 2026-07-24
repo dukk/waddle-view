@@ -20,7 +20,9 @@ export function CalendarMonthOverlayConfigForm({ formData, onChange, disabled }:
 
   return (
     <Stack spacing={2}>
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" sx={{
+        color: "text.secondary"
+      }}>
         Compact month grid at a viewport position. Styling matches the calendar month screen.
       </Typography>
       <TextField

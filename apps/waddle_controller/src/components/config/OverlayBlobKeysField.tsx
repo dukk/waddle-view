@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FieldProps } from '@rjsf/utils';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import {
   Box,
@@ -31,7 +31,7 @@ type Props = FieldProps & {
 };
 
 export function OverlayBlobKeysField(props: Props) {
-  const { display, formData, onChange, disabled, schema, rawErrors } = props;
+  const { display, formData, onChange, path, disabled, schema, rawErrors } = props;
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
@@ -75,9 +75,9 @@ export function OverlayBlobKeysField(props: Props) {
 
   const setKeys = useCallback(
     (next: string[]) => {
-      onChange(next);
+      onChange(next, path);
     },
-    [onChange],
+    [onChange, path],
   );
 
   const onPickFiles = async (files: FileList | null) => {
@@ -114,7 +114,12 @@ export function OverlayBlobKeysField(props: Props) {
     <FormControl fullWidth margin="normal" error={Boolean(rawErrors?.length)}>
       <FormLabel>{label}</FormLabel>
       {schema.description ? (
-        <Typography variant="caption" color="text.secondary" sx={{ mb: 1 }}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: "text.secondary",
+            mb: 1
+          }}>
           {String(schema.description)}
         </Typography>
       ) : null}
@@ -143,7 +148,12 @@ export function OverlayBlobKeysField(props: Props) {
         </Typography>
       ) : null}
       {keys.length > 0 ? (
-        <Stack direction="row" flexWrap="wrap" gap={1}>
+        <Stack
+          direction="row"
+          sx={{
+            flexWrap: "wrap",
+            gap: 1
+          }}>
           {keys.map((key) => (
             <Box
               key={key}
@@ -196,7 +206,9 @@ export function OverlayBlobKeysField(props: Props) {
           ))}
         </Stack>
       ) : (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           No images uploaded yet.
         </Typography>
       )}

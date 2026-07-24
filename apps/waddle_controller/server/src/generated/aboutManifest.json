@@ -21,17 +21,17 @@
     },
     {
       "name": "@hono/node-server",
-      "version": "1.19.14",
+      "version": "2.0.11",
       "license": "MIT"
     },
     {
       "name": "@mui/icons-material",
-      "version": "6.5.0",
+      "version": "9.2.0",
       "license": "MIT"
     },
     {
       "name": "@mui/material",
-      "version": "6.5.0",
+      "version": "9.2.0",
       "license": "MIT"
     },
     {
@@ -41,22 +41,22 @@
     },
     {
       "name": "@rjsf/core",
-      "version": "5.24.13",
+      "version": "6.7.0",
       "license": "Apache-2.0"
     },
     {
       "name": "@rjsf/mui",
-      "version": "5.24.13",
+      "version": "6.7.0",
       "license": "Apache-2.0"
     },
     {
       "name": "@rjsf/utils",
-      "version": "5.24.13",
+      "version": "6.7.0",
       "license": "Apache-2.0"
     },
     {
       "name": "@rjsf/validator-ajv8",
-      "version": "5.24.13",
+      "version": "6.7.0",
       "license": "Apache-2.0"
     },
     {
@@ -65,27 +65,27 @@
     },
     {
       "name": "better-sqlite3",
-      "version": "11.10.0",
+      "version": "12.11.1",
       "license": "MIT"
     },
     {
       "name": "hono",
-      "version": "4.12.19",
+      "version": "4.12.32",
       "license": "MIT"
     },
     {
       "name": "pg",
-      "version": "8.21.0",
+      "version": "8.22.0",
       "license": "MIT"
     },
     {
       "name": "react",
-      "version": "19.2.6",
+      "version": "19.2.8",
       "license": "MIT"
     },
     {
       "name": "react-dom",
-      "version": "19.2.6",
+      "version": "19.2.8",
       "license": "MIT"
     },
     {
@@ -95,14 +95,14 @@
     },
     {
       "name": "react-router-dom",
-      "version": "7.15.1",
+      "version": "7.18.1",
       "license": "MIT"
     },
     {
       "name": "ws",
-      "version": "8.20.1",
+      "version": "8.21.1",
       "license": "MIT"
     }
   ],
-  "thirdPartyNotices": "@emotion/react@11.14.0 — MIT\n@emotion/styled@11.14.1 — MIT\n@hono/node-server@1.19.14 — MIT\n@mui/icons-material@6.5.0 — MIT\n@mui/material@6.5.0 — MIT\n@node-rs/argon2@2.0.2 — MIT\n@rjsf/core@5.24.13 — Apache-2.0\n@rjsf/mui@5.24.13 — Apache-2.0\n@rjsf/utils@5.24.13 — Apache-2.0\n@rjsf/validator-ajv8@5.24.13 — Apache-2.0\nbetter-sqlite3@11.10.0 — MIT\nhono@4.12.19 — MIT\npg@8.21.0 — MIT\nreact@19.2.6 — MIT\nreact-dom@19.2.6 — MIT\nreact-is@18.3.1 — MIT\nreact-router-dom@7.15.1 — MIT\nws@8.20.1 — MIT\n"
+  "thirdPartyNotices": "@emotion/react@11.14.0 — MIT\n@emotion/styled@11.14.1 — MIT\n@hono/node-server@2.0.11 — MIT\n@mui/icons-material@9.2.0 — MIT\n@mui/material@9.2.0 — MIT\n@node-rs/argon2@2.0.2 — MIT\n@rjsf/core@6.7.0 — Apache-2.0\n@rjsf/mui@6.7.0 — Apache-2.0\n@rjsf/utils@6.7.0 — Apache-2.0\n@rjsf/validator-ajv8@6.7.0 — Apache-2.0\nbetter-sqlite3@12.11.1 — MIT\nhono@4.12.32 — MIT\npg@8.22.0 — MIT\nreact@19.2.8 — MIT\nreact-dom@19.2.8 — MIT\nreact-is@18.3.1 — MIT\nreact-router-dom@7.18.1 — MIT\nws@8.21.1 — MIT\n"
 }

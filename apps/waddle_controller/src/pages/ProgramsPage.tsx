@@ -409,30 +409,52 @@ function SlideTelemetryDetail({
       </DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              alignItems: "center",
+              flexWrap: "wrap"
+            }}>
             <Chip size="small" label={primaryLabel} color="primary" variant="outlined" />
             <Chip size="small" label={`Dwell ${model.dwellLabel}`} />
           </Stack>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{
+            color: "text.secondary"
+          }}>
             Screen id: {model.screenId}
           </Typography>
           {err && <Alert severity="warning">{err}</Alert>}
-          {loading && <Typography color="text.secondary">Loading details…</Typography>}
+          {loading && <Typography sx={{
+            color: "text.secondary"
+          }}>Loading details…</Typography>}
 
           {model.summaries.map((s) => (
             <Paper key={`${s.slot}-${s.type}`} variant="outlined" sx={{ p: 2 }}>
               <Stack spacing={1}>
-                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{
+                    alignItems: "center",
+                    flexWrap: "wrap"
+                  }}>
                   <Chip size="small" label={s.type} />
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <Typography variant="subtitle2" sx={{
+                    color: "text.secondary"
+                  }}>
                     {s.slot}
                   </Typography>
                 </Stack>
-                <Typography variant="body1" fontWeight={600}>
+                <Typography variant="body1" sx={{
+                  fontWeight: 600
+                }}>
                   {s.headline}
                 </Typography>
                 {s.sub && (
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{
+                    color: "text.secondary"
+                  }}>
                     {s.sub}
                   </Typography>
                 )}
@@ -553,12 +575,16 @@ function WidgetDetailBlock({
           const src = row?.image_blob_key ? blobUrls[row.image_blob_key] : undefined;
           return (
             <Stack key={s.id} spacing={0.5}>
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" sx={{
+                color: "text.secondary"
+              }}>
                 {s.label}
               </Typography>
               {row ? (
                 <>
-                  <Typography variant="body2" fontWeight={600}>
+                  <Typography variant="body2" sx={{
+                    fontWeight: 600
+                  }}>
                     {row.title}
                   </Typography>
                   <Typography variant="body2">{row.summary}</Typography>
@@ -575,7 +601,9 @@ function WidgetDetailBlock({
                   )}
                 </>
               ) : (
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" sx={{
+                  color: "text.secondary"
+                }}>
                   No metadata for {s.id}
                 </Typography>
               )}
@@ -593,7 +621,9 @@ function WidgetDetailBlock({
     const src = row.media_blob_key ? blobUrls[row.media_blob_key] : undefined;
     return (
       <Stack spacing={1}>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           {row.photographer_name}
         </Typography>
         {row.page_url && (
@@ -620,7 +650,12 @@ function WidgetDetailBlock({
       if (pid) ids.push(pid);
     }
     return (
-      <Stack direction="row" flexWrap="wrap" gap={1}>
+      <Stack
+        direction="row"
+        sx={{
+          flexWrap: "wrap",
+          gap: 1
+        }}>
         {ids.map((id) => {
           const row = photoById[id];
           const src = row?.media_blob_key ? blobUrls[row.media_blob_key] : undefined;
@@ -652,7 +687,9 @@ function WidgetDetailBlock({
     const src = row.media_blob_key ? blobUrls[row.media_blob_key] : undefined;
     return (
       <Stack spacing={1}>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           {row.photographer_name}
           {row.duration_seconds != null
             ? ` · ${formatIntervalDisplay(row.duration_seconds)}`
@@ -677,7 +714,9 @@ function WidgetDetailBlock({
     return (
       <Stack spacing={0.5}>
         <Typography variant="body2">{row.setup}</Typography>
-        <Typography variant="body2" fontStyle="italic">
+        <Typography variant="body2" sx={{
+          fontStyle: "italic"
+        }}>
           {row.punchline}
         </Typography>
       </Stack>
@@ -690,14 +729,18 @@ function WidgetDetailBlock({
     if (!row) return null;
     return (
       <Stack spacing={0.5}>
-        <Typography variant="body2" fontWeight={600}>
+        <Typography variant="body2" sx={{
+          fontWeight: 600
+        }}>
           {row.question}
         </Typography>
         <Typography variant="body2">A) {row.option_a}</Typography>
         <Typography variant="body2">B) {row.option_b}</Typography>
         <Typography variant="body2">C) {row.option_c}</Typography>
         <Typography variant="body2">D) {row.option_d}</Typography>
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{
+          color: "text.secondary"
+        }}>
           Answer: {row.correct_option}
         </Typography>
       </Stack>
@@ -710,7 +753,9 @@ function WidgetDetailBlock({
     const wx = locId ? weatherById[locId] : undefined;
     if (!wx) {
       return (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           {locId ? `No live weather loaded for “${locId}”.` : 'No location selected in layout.'}
         </Typography>
       );
@@ -724,7 +769,9 @@ function WidgetDetailBlock({
     const ik = wx.current_icon_blob_key?.trim();
     const iconSrc = ik ? blobUrls[ik] : undefined;
     return (
-      <Stack direction="row" spacing={2} alignItems="center">
+      <Stack direction="row" spacing={2} sx={{
+        alignItems: "center"
+      }}>
         {iconSrc && (
           <Box
             component="img"
@@ -733,7 +780,9 @@ function WidgetDetailBlock({
             sx={{ width: 72, height: 72, objectFit: 'contain' }}
           />
         )}
-        <Typography variant="body1" fontWeight={600}>
+        <Typography variant="body1" sx={{
+          fontWeight: 600
+        }}>
           {line}
         </Typography>
       </Stack>
@@ -778,7 +827,9 @@ function TickerItemDetailDialog({
         <Stack spacing={2}>
           <Chip size="small" label={kind} color="secondary" variant="outlined" />
           {sourceId && (
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{
+              color: "text.secondary"
+            }}>
               Source id: {sourceId}
             </Typography>
           )}
@@ -787,7 +838,9 @@ function TickerItemDetailDialog({
               {(rss['show_source'] === true || rss['show_source'] === 'true') &&
               typeof rss['source_title'] === 'string' &&
               rss['source_title'].trim() !== '' ? (
-                <Typography variant="overline" color="text.secondary">
+                <Typography variant="overline" sx={{
+                  color: "text.secondary"
+                }}>
                   [{rss['source_title']}]
                 </Typography>
               ) : null}
@@ -798,7 +851,9 @@ function TickerItemDetailDialog({
                 <Typography variant="body2">{rss['summary']}</Typography>
               ) : null}
               <Divider />
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" sx={{
+                color: "text.secondary"
+              }}>
                 Plain body (dedupe key)
               </Typography>
               <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
@@ -1056,13 +1111,23 @@ export function ProgramsPage() {
   return (
     <Stack spacing={3}>
       {error && <Alert severity="error">{error}</Alert>}
-
-      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={2} flexWrap="wrap">
+      <Stack
+        direction="row"
+        sx={{
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 2,
+          flexWrap: "wrap"
+        }}>
         <Box sx={{ flex: 1, minWidth: 240 }}>
-          <Typography variant="h6" fontWeight={600} gutterBottom>
+          <Typography variant="h6" gutterBottom sx={{
+            fontWeight: 600
+          }}>
             Recent playout snapshots
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{
+            color: "text.secondary"
+          }}>
             Read-only snapshots of the last 10 in-memory screen and ticker programs the display
             already built (not persisted)—slide order, curator reason, and item previews. This list is
             separate from <strong>Display settings → Program history depth</strong>, which controls
@@ -1087,10 +1152,17 @@ export function ProgramsPage() {
           reloadAriaLabel="Reload programs"
         />
       </Stack>
-      <Typography variant="subtitle1" fontWeight={600}>
+      <Typography variant="subtitle1" sx={{
+        fontWeight: 600
+      }}>
         Screen programs
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          mb: 1
+        }}>
         Browse snapshots with the carousel; the live program is selected on first load and stays
         selected when new snapshots arrive.
       </Typography>
@@ -1116,15 +1188,20 @@ export function ProgramsPage() {
                   <Stack
                     direction={{ xs: 'column', sm: 'row' }}
                     spacing={1}
-                    justifyContent="space-between"
-                    alignItems={{ xs: 'flex-start', sm: 'center' }}
-                  >
+                    sx={{
+                      justifyContent: "space-between",
+                      alignItems: { xs: 'flex-start', sm: 'center' }
+                    }}>
                     <div>
-                      <Typography variant="subtitle1" fontWeight={600}>
+                      <Typography variant="subtitle1" sx={{
+                        fontWeight: 600
+                      }}>
                         Curated {formatTime(new Date(atMs))}
                       </Typography>
                       {reason && (
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography variant="body2" sx={{
+                          color: "text.secondary"
+                        }}>
                           Reason: {reason}
                         </Typography>
                       )}
@@ -1146,7 +1223,9 @@ export function ProgramsPage() {
                     })}
                   </Box>
                   {slides.length === 0 && (
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" sx={{
+                      color: "text.secondary"
+                    }}>
                       No slides in this program snapshot.
                     </Typography>
                   )}
@@ -1174,7 +1253,9 @@ export function ProgramsPage() {
                       <TableCell>{formatTime(new Date(atMs))}</TableCell>
                       <TableCell sx={{ maxWidth: 200, wordBreak: 'break-word' }}>{reason}</TableCell>
                       <TableCell colSpan={4}>
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography variant="body2" sx={{
+                          color: "text.secondary"
+                        }}>
                           No slides in this program snapshot.
                         </Typography>
                       </TableCell>
@@ -1225,11 +1306,20 @@ export function ProgramsPage() {
           );
         }}
       />
-
-      <Typography variant="subtitle1" fontWeight={600} sx={{ mt: 2 }}>
+      <Typography
+        variant="subtitle1"
+        sx={{
+          fontWeight: 600,
+          mt: 2
+        }}>
         Ticker programs
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          mb: 1
+        }}>
         Same carousel behavior as screen programs for ticker tape snapshots.
       </Typography>
       <DisplayRefreshIndicator loading={tickerLoading} />
@@ -1253,11 +1343,14 @@ export function ProgramsPage() {
                   <Stack
                     direction={{ xs: 'column', sm: 'row' }}
                     spacing={1}
-                    justifyContent="space-between"
-                    alignItems={{ xs: 'flex-start', sm: 'center' }}
-                  >
+                    sx={{
+                      justifyContent: "space-between",
+                      alignItems: { xs: 'flex-start', sm: 'center' }
+                    }}>
                     <div>
-                      <Typography variant="subtitle1" fontWeight={600}>
+                      <Typography variant="subtitle1" sx={{
+                        fontWeight: 600
+                      }}>
                         Curated {formatTime(new Date(atMs))}
                       </Typography>
                     </div>
@@ -1278,7 +1371,9 @@ export function ProgramsPage() {
                     })}
                   </Box>
                   {items.length === 0 && (
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" sx={{
+                      color: "text.secondary"
+                    }}>
                       No ticker items in this snapshot.
                     </Typography>
                   )}
@@ -1302,7 +1397,9 @@ export function ProgramsPage() {
                     <TableRow key={`${atMs}-tp-empty`} hover>
                       <TableCell>{formatTime(new Date(atMs))}</TableCell>
                       <TableCell colSpan={2}>
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography variant="body2" sx={{
+                          color: "text.secondary"
+                        }}>
                           No ticker items in this snapshot.
                         </Typography>
                       </TableCell>
@@ -1337,7 +1434,6 @@ export function ProgramsPage() {
           );
         }}
       />
-
       <SlideTelemetryDetail
         display={active}
         model={slideDetailModel}
@@ -1355,7 +1451,6 @@ export function ProgramsPage() {
           )
         }
       />
-
       <TickerItemDetailDialog
         open={tickerDetailLoc != null}
         onClose={() => setTickerDetailLoc(null)}

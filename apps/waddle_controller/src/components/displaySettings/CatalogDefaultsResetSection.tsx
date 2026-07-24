@@ -55,10 +55,17 @@ export function CatalogDefaultsResetSection({
   return (
     <Box sx={{ mt: 3 }}>
       <Divider sx={{ mb: 2 }} />
-      <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+      <Typography variant="subtitle1" gutterBottom sx={{
+        fontWeight: 600
+      }}>
         Catalog defaults
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          mb: 2
+        }}>
         Remove every custom screen, ticker tape, and overlay and restore the seeded factory catalog
         plus default curator membership for those items. Does not reset display themes,
         integrations, or key–value tuning above.
@@ -73,7 +80,9 @@ export function CatalogDefaultsResetSection({
           {savedMsg}
         </Alert>
       )}
-      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+      <Stack direction="row" spacing={1} useFlexGap sx={{
+        flexWrap: "wrap"
+      }}>
         <Button
           variant="outlined"
           color="warning"

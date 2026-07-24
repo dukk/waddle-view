@@ -18,7 +18,9 @@ export function BirthdayConfettiConfigForm({ formData, onChange, disabled }: Pro
   return (
     <Stack spacing={2}>
       <Typography variant="subtitle2">Configuration</Typography>
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" sx={{
+        color: "text.secondary"
+      }}>
         Thin rectangular confetti strips in red, yellow, cyan, and magenta unless custom colors
         are set in config JSON.
       </Typography>

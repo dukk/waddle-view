@@ -83,7 +83,7 @@ export function ContentCategorySelect({
 }
 
 export function ContentCategorySelectField(props: Props) {
-  const { categories, formData, onChange, disabled, schema, rawErrors } = props;
+  const { categories, formData, onChange, path, disabled, schema, rawErrors } = props;
   const stored = readCategoryStored(formData);
   const selectValue = useMemo(
     () => resolveCategoryLabel(stored, categories),
@@ -101,7 +101,7 @@ export function ContentCategorySelectField(props: Props) {
         value={selectValue}
         onChange={(e) => {
           const next = String(e.target.value);
-          onChange(next === '' ? undefined : next);
+          onChange(next === '' ? undefined : next, path);
         }}
       >
         <CategorySelectMenuItems categories={categories} selectValue={selectValue} />

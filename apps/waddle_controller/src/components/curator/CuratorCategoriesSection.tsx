@@ -16,7 +16,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import type { SavedDisplay } from '@/storage/displays';
 import { apiJson, ApiError } from '@/api/client';
 import { DataViewPagination } from '@/components/dataView/DataViewPagination';
@@ -160,7 +160,9 @@ export function CuratorCategoriesSection({
     return (
       <Stack spacing={1}>
         <DisplayRefreshIndicator loading={loading} />
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           Loading categories…
         </Typography>
       </Stack>
@@ -175,12 +177,16 @@ export function CuratorCategoriesSection({
           {error}
         </Alert>
       )}
-
       <Box>
         <Typography variant="subtitle2" gutterBottom>
           Content categories
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            mb: 2
+          }}>
           Shared labels for RSS, media, calendar, and other content. Ids are lowercase slugs; seeded
           defaults cannot be deleted.
         </Typography>
@@ -211,9 +217,17 @@ export function CuratorCategoriesSection({
                 return (
                   <TableRow key={c.id}>
                     <TableCell>
-                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        sx={{
+                          alignItems: "center",
+                          flexWrap: "wrap"
+                        }}>
                         <IconComp sx={{ fontSize: 22, color: 'action.active' }} aria-hidden />
-                        <Typography variant="body2" component="span" fontWeight={600}>
+                        <Typography variant="body2" component="span" sx={{
+                          fontWeight: 600
+                        }}>
                           {c.id}
                         </Typography>
                         {c.reserved && <Chip size="small" label="seeded" variant="outlined" />}
@@ -249,7 +263,9 @@ export function CuratorCategoriesSection({
                     </TableCell>
                     <TableCell align="right">
                       {canWrite && (
-                        <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                        <Stack direction="row" spacing={0.5} sx={{
+                          justifyContent: "flex-end"
+                        }}>
                           <Button size="small" onClick={() => void saveCategoryRow(c.id)}>
                             Save
                           </Button>
@@ -292,9 +308,10 @@ export function CuratorCategoriesSection({
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
             spacing={1}
-            sx={{ mt: 2 }}
-            alignItems="flex-start"
-          >
+            sx={{
+              alignItems: "flex-start",
+              mt: 2
+            }}>
             <TextField
               label="New id (slug)"
               size="small"

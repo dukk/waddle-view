@@ -291,7 +291,9 @@ function IntegrationTable({
               <TableRow key={row.id} hover>
                 <TableCell>
                   <Stack spacing={1}>
-                    <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                    <Stack direction="row" spacing={1.5} sx={{
+                      alignItems: "flex-start"
+                    }}>
                       <IntegrationBrandIcon
                         integrationType={row.integration_type}
                         baseUrl={integrationConfigBaseUrl(row.config_json)}
@@ -319,13 +321,17 @@ function IntegrationTable({
                   {showConfigHint ? (
                     <Chip size="small" color="warning" label="Schema mismatch" />
                   ) : (
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" sx={{
+                      color: "text.secondary"
+                    }}>
                       OK
                     </Typography>
                   )}
                 </TableCell>
                 <TableCell align="right">
-                  <Stack direction="row" spacing={1} justifyContent="flex-end">
+                  <Stack direction="row" spacing={1} sx={{
+                    justifyContent: "flex-end"
+                  }}>
                     {onDisable ? (
                       <Button
                         size="small"
@@ -578,10 +584,14 @@ export function IntegrationsPage() {
     <Stack spacing={3}>
       <DisplayRefreshIndicator loading={loading} />
       <Box>
-        <Typography variant="h6" fontWeight={600} gutterBottom>
+        <Typography variant="h6" gutterBottom sx={{
+          fontWeight: 600
+        }}>
           External data sources
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           Connect external data sources—calendars, news, weather, stocks, and more—that collectors
           poll into the display database. Enable providers and complete each integration&apos;s
           configuration.
@@ -592,9 +602,7 @@ export function IntegrationsPage() {
           {error ?? schemasError}
         </Alert>
       )}
-
       <AccountsSetupNotice />
-
       <DataViewToolbar
         layout={layout}
         onLayoutChange={setLayout}
@@ -610,13 +618,16 @@ export function IntegrationsPage() {
         reloadDisabled={loading}
         reloadAriaLabel="Reload integrations"
       />
-
       <Stack spacing={1.5}>
-        <Typography variant="subtitle1" fontWeight={600}>
+        <Typography variant="subtitle1" sx={{
+          fontWeight: 600
+        }}>
           Enabled
         </Typography>
         {enabledRows.length === 0 && !loading ? (
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{
+            color: "text.secondary"
+          }}>
             No integrations are enabled.
           </Typography>
         ) : layout === 'card' ? (
@@ -663,13 +674,16 @@ export function IntegrationsPage() {
           rowsPerPageOptions={[15, 25, 50]}
         />
       </Stack>
-
       <Stack spacing={1.5}>
-        <Typography variant="subtitle1" fontWeight={600}>
+        <Typography variant="subtitle1" sx={{
+          fontWeight: 600
+        }}>
           Available to enable
         </Typography>
         {availableRows.length === 0 && !loading ? (
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{
+            color: "text.secondary"
+          }}>
             All integrations are enabled.
           </Typography>
         ) : layout === 'card' ? (
@@ -714,12 +728,15 @@ export function IntegrationsPage() {
           rowsPerPageOptions={[15, 25, 50]}
         />
       </Stack>
-
       <Stack spacing={1.5}>
-        <Typography variant="subtitle1" fontWeight={600}>
+        <Typography variant="subtitle1" sx={{
+          fontWeight: 600
+        }}>
           Missing required accounts
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           These integrations need shared accounts before they can run or be enabled. Configure them
           under{' '}
           <MuiLink
@@ -731,7 +748,9 @@ export function IntegrationsPage() {
           .
         </Typography>
         {missingRows.length === 0 && !loading ? (
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{
+            color: "text.secondary"
+          }}>
             All integrations that require accounts are configured.
           </Typography>
         ) : layout === 'card' ? (
@@ -778,7 +797,6 @@ export function IntegrationsPage() {
           rowsPerPageOptions={[15, 25, 50]}
         />
       </Stack>
-
       <Dialog open={disabling != null} onClose={() => !disableBusy && setDisabling(null)}>
         <DialogTitle>Disable integration?</DialogTitle>
         <DialogContent>
@@ -802,7 +820,6 @@ export function IntegrationsPage() {
           </Button>
         </DialogActions>
       </Dialog>
-
       {edit && schemas && (
         <EditIntegrationDialog
           schemas={schemas}
@@ -818,7 +835,6 @@ export function IntegrationsPage() {
           }}
         />
       )}
-
     </Stack>
   );
 }
@@ -851,7 +867,9 @@ function IntegrationCard({
     >
       <CardContent sx={{ flexGrow: 1 }}>
         <Stack spacing={1}>
-          <Stack direction="row" spacing={1.5} alignItems="flex-start">
+          <Stack direction="row" spacing={1.5} sx={{
+            alignItems: "flex-start"
+          }}>
             <IntegrationBrandIcon
               integrationType={row.integration_type}
               baseUrl={integrationConfigBaseUrl(row.config_json)}
@@ -860,7 +878,12 @@ function IntegrationCard({
               <IntegrationTitleLink row={row} schemas={schemas} canViewData={canViewData} />
             </Box>
           </Stack>
-          <Typography variant="caption" color="text.secondary" display="block">
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              display: "block"
+            }}>
             Poll every {formatPollInterval(row.poll_seconds)}
           </Typography>
           {active && accountDetail ? (
@@ -1298,7 +1321,9 @@ function EditIntegrationDialog({
   return (
     <Dialog open onClose={onClose} fullWidth maxWidth="md">
       <DialogTitle>
-        <Stack direction="row" spacing={1.5} alignItems="center">
+        <Stack direction="row" spacing={1.5} sx={{
+          alignItems: "center"
+        }}>
           <IntegrationBrandIcon
             integrationType={row.integration_type}
             baseUrl={integrationConfigBaseUrl(row.config_json)}
@@ -1317,7 +1342,9 @@ function EditIntegrationDialog({
             </Alert>
           ) : null}
           {accountsLoading ? (
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{
+              color: "text.secondary"
+            }}>
               Loading accounts…
             </Typography>
           ) : active &&
@@ -1383,7 +1410,9 @@ function EditIntegrationDialog({
             </Alert>
           ) : null}
           {secretsLoading ? (
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{
+              color: "text.secondary"
+            }}>
               Loading secrets…
             </Typography>
           ) : secretSlots.length > 0 ? (
@@ -1391,7 +1420,9 @@ function EditIntegrationDialog({
               <Typography variant="subtitle2">Secrets</Typography>
               {secretSlots.map((slot) => (
                 <Stack key={slot.id} spacing={0.5}>
-                  <Stack direction="row" alignItems="center" spacing={1}>
+                  <Stack direction="row" spacing={1} sx={{
+                    alignItems: "center"
+                  }}>
                     <Typography variant="body2">{slot.label}</Typography>
                     {slot.configured ? (
                       <Chip size="small" color="success" label="Configured" />

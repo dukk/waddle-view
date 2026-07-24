@@ -43,10 +43,14 @@ export function ControllerSettingsPage() {
   return (
     <Stack spacing={2}>
       <Box>
-        <Typography variant="h6" fontWeight={600} gutterBottom>
+        <Typography variant="h6" gutterBottom sx={{
+          fontWeight: 600
+        }}>
           Controller settings
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           Pair and label displays, schedule controller-side backups and restores, export or import your
           display list, and—when BFF authentication is enabled—manage operator accounts.
         </Typography>
@@ -64,7 +68,6 @@ export function ControllerSettingsPage() {
           ))}
         </Tabs>
       </Paper>
-
       {tab === TAB_DISPLAYS && <DisplaysPage embedded />}
       {tab === TAB_BACKUP && <DisplayBackupSection />}
       {tab === TAB_USERS && showUsersTab && (

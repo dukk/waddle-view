@@ -27,15 +27,20 @@ export function AdoptionChallengeCodeField({
           onEnter();
         }
       }}
-      inputProps={{
-        autoComplete: 'off',
-        spellCheck: false,
-        style: {
-          fontFamily: 'monospace',
-          letterSpacing: '0.15em',
-          textTransform: 'uppercase',
+      slotProps={{
+        ...rest.slotProps,
+        htmlInput: {
+          autoComplete: 'off',
+          spellCheck: false,
+          style: {
+            fontFamily: 'monospace',
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase',
+          },
+          ...(typeof rest.slotProps?.htmlInput === 'object' && rest.slotProps.htmlInput != null
+            ? rest.slotProps.htmlInput
+            : {}),
         },
-        ...rest.inputProps,
       }}
     />
   );

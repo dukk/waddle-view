@@ -27,7 +27,7 @@ function accentHex(preview: DisplayThemePreviewGroups | undefined, accentIndex: 
 }
 
 export function ThemeAccentSelectField(props: Props) {
-  const { formData, onChange, disabled, schema, rawErrors, themePreview } = props;
+  const { formData, onChange, path, disabled, schema, rawErrors, themePreview } = props;
   const value = readAccentValue(formData);
   const label = (schema.title as string | undefined) ?? 'Hand accent';
   const fieldId = schema.$id != null ? String(schema.$id) : 'theme-accent';
@@ -41,7 +41,7 @@ export function ThemeAccentSelectField(props: Props) {
         value={value}
         onChange={(e) => {
           const next = String(e.target.value);
-          onChange(next);
+          onChange(next, path);
         }}
       >
         {THEME_ACCENT_OPTIONS.map((o) => {
