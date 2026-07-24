@@ -58,25 +58,34 @@ export function RemoteControlsPanel({
         onClose={closeSnack}
         message={snackMessage ?? ''}
       />
-
       {!compact && (
         <Box>
-          <Typography variant="h6" fontWeight={600} gutterBottom>
+          <Typography variant="h6" gutterBottom sx={{
+            fontWeight: 600
+          }}>
             Slideshow, ticker & alerts
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{
+            color: "text.secondary"
+          }}>
             Control the active display slideshow, ticker, and overlay alerts. Keyboard shortcuts:
             ← → slides, ↑ ↓ ticker
             {canDismissAlerts ? ', Enter to dismiss the active alert' : ''}.
           </Typography>
         </Box>
       )}
-
       <Paper variant="outlined" sx={{ p: compact ? 2 : 3 }}>
-        <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 2 }}>
+        <Typography
+          variant="subtitle2"
+          sx={{
+            fontWeight: 600,
+            mb: 2
+          }}>
           Slides
         </Typography>
-        <Stack direction="row" spacing={2} justifyContent="center">
+        <Stack direction="row" spacing={2} sx={{
+          justifyContent: "center"
+        }}>
           <Tooltip title="Previous slide (←)">
             <IconButton
               size="large"
@@ -101,12 +110,18 @@ export function RemoteControlsPanel({
           </Tooltip>
         </Stack>
       </Paper>
-
       <Paper variant="outlined" sx={{ p: compact ? 2 : 3 }}>
-        <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 2 }}>
+        <Typography
+          variant="subtitle2"
+          sx={{
+            fontWeight: 600,
+            mb: 2
+          }}>
           Ticker
         </Typography>
-        <Stack direction="row" spacing={2} justifyContent="center">
+        <Stack direction="row" spacing={2} sx={{
+          justifyContent: "center"
+        }}>
           <Tooltip title="Ticker backward (↑)">
             <IconButton
               size="large"
@@ -131,12 +146,18 @@ export function RemoteControlsPanel({
           </Tooltip>
         </Stack>
       </Paper>
-
       <Paper variant="outlined" sx={{ p: compact ? 2 : 3 }}>
-        <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 2 }}>
+        <Typography
+          variant="subtitle2"
+          sx={{
+            fontWeight: 600,
+            mb: 2
+          }}>
           Overlay alerts
         </Typography>
-        <Stack alignItems="center">
+        <Stack sx={{
+          alignItems: "center"
+        }}>
           <Tooltip
             title={
               canDismissAlerts

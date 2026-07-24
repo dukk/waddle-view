@@ -25,11 +25,22 @@ export function CuratorSliderField({
 
   return (
     <Box>
-      <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mb: 0.5 }}>
+      <Stack
+        direction="row"
+        sx={{
+          justifyContent: "space-between",
+          alignItems: "baseline",
+          mb: 0.5
+        }}>
         <Typography variant="body2" component="label">
           {label}
         </Typography>
-        <Typography variant="body2" color="text.secondary" fontFamily="monospace">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            fontFamily: "monospace"
+          }}>
           {display}
         </Typography>
       </Stack>

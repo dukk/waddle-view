@@ -62,12 +62,13 @@ export function DataViewToolbar({
   return (
     <Stack
       direction="row"
-      flexWrap="wrap"
-      alignItems="center"
-      justifyContent="flex-end"
-      gap={1}
-      sx={{ width: '100%' }}
-    >
+      sx={{
+        flexWrap: "wrap",
+        alignItems: "center",
+        justifyContent: "flex-end",
+        gap: 1,
+        width: '100%'
+      }}>
       {showSearch ? (
         <TextField
           size="small"

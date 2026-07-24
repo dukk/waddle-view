@@ -19,7 +19,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import type { SavedDisplay } from '@/storage/displays';
 import { apiJson, ApiError } from '@/api/client';
 import { DataViewPagination } from '@/components/dataView/DataViewPagination';
@@ -141,7 +141,9 @@ export function RejectTermsSection({ display }: { display: SavedDisplay }) {
     return (
       <Stack spacing={1}>
         <DisplayRefreshIndicator loading={loading} />
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           Loading rejected terms…
         </Typography>
       </Stack>
@@ -156,11 +158,15 @@ export function RejectTermsSection({ display }: { display: SavedDisplay }) {
           {rejectMsg}
         </Alert>
       )}
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" sx={{
+        color: "text.secondary"
+      }}>
         Terms matched in incoming content are censored or blocked according to each row&apos;s
         action. The mask format applies to censored terms in the UI and on displays.
       </Typography>
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="center">
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{
+        alignItems: "center"
+      }}>
         <FormControl size="small" sx={{ minWidth: 220 }}>
           <InputLabel id="censor-fmt">Censor mask format</InputLabel>
           <Select
@@ -243,7 +249,9 @@ export function RejectTermsSection({ display }: { display: SavedDisplay }) {
           </TableFooter>
         </Table>
       </TableContainer>
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="center">
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{
+        alignItems: "center"
+      }}>
         <TextField
           label="New term"
           size="small"

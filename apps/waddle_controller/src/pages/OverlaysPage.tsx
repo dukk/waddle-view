@@ -489,7 +489,9 @@ function OverlayDialog({
             </Select>
           </FormControl>
           {mode === 'edit' ? (
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" sx={{
+              color: "text.secondary"
+            }}>
               Overlay type cannot be changed after create. Delete and add a new overlay to switch
               types.
             </Typography>
@@ -527,7 +529,9 @@ function OverlayTypeChips({
   const meta = overlayTypeMetaFor(overlayTypes, row.overlay_type);
   const category = overlayTypeCategory(row.overlay_type, meta);
   return (
-    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+    <Stack direction="row" spacing={0.5} useFlexGap sx={{
+      flexWrap: "wrap"
+    }}>
       <Chip
         size="small"
         variant="outlined"
@@ -616,11 +620,15 @@ function OverlayCard({
               sx={{ fontSize: 56, color: 'primary.main', opacity: 0.72 }}
             />
           </Box>
-          <Typography variant="subtitle1" fontWeight={600}>
+          <Typography variant="subtitle1" sx={{
+            fontWeight: 600
+          }}>
             {row.label.trim() || row.id}
           </Typography>
           <OverlayTypeChips row={row} overlayTypes={overlayTypes} />
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{
+            color: "text.secondary"
+          }}>
             {configPreview(row)}
           </Typography>
         </Stack>
@@ -660,11 +668,15 @@ function OverlayCatalogSection({
 }) {
   return (
     <Stack spacing={1.5}>
-      <Typography variant="subtitle1" fontWeight={600}>
+      <Typography variant="subtitle1" sx={{
+        fontWeight: 600
+      }}>
         {title}
       </Typography>
       {rows.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           {emptyHint}
         </Typography>
       ) : layout === 'card' ? (
@@ -816,15 +828,25 @@ export function OverlaysPage() {
     <Stack spacing={3}>
       <DisplayRefreshIndicator loading={loading} />
       <Box>
-        <Stack direction="row" alignItems="center" spacing={0.25} sx={{ mb: 0.5 }}>
-          <Typography variant="h6" fontWeight={600}>
+        <Stack
+          direction="row"
+          spacing={0.25}
+          sx={{
+            alignItems: "center",
+            mb: 0.5
+          }}>
+          <Typography variant="h6" sx={{
+            fontWeight: 600
+          }}>
             Overlays
           </Typography>
           <CatalogPageHelp title="Overlays">
             <OverlaysHelpContent />
           </CatalogPageHelp>
         </Stack>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           Overlays are <strong>Effects</strong> (full-screen motion and celebration layers, no
           viewport position) or <strong>Widgets</strong> (clocks, calendars, images, stock quotes,
           QR codes — placed on the display with position and scale). Attach overlays to curator
@@ -839,7 +861,6 @@ export function OverlaysPage() {
           Skipped {skipped} row(s) with missing or invalid data.
         </Alert>
       )}
-
       <CatalogListWithTransferSection
         toolbar={
           <DataViewToolbar
@@ -915,7 +936,6 @@ export function OverlaysPage() {
           ) : null
         }
       />
-
       {schemas && (
         <OverlayDialog
           open={dialogOpen}

@@ -20,7 +20,7 @@ function readLocationName(formData: unknown): string {
 }
 
 export function WeatherLocationSelectField(props: Props) {
-  const { display, formData, onChange, disabled, schema, rawErrors } = props;
+  const { display, formData, onChange, path, disabled, schema, rawErrors } = props;
   const value = readLocationName(formData);
   const label = (schema.title as string | undefined) ?? 'Location';
   const fieldId = schema.$id != null ? String(schema.$id) : 'weather-location';
@@ -63,7 +63,7 @@ export function WeatherLocationSelectField(props: Props) {
         value={value}
         onChange={(e) => {
           const next = String(e.target.value);
-          onChange(next === '' ? undefined : next);
+          onChange(next === '' ? undefined : next, path);
         }}
       >
         {locations.map((l) => (

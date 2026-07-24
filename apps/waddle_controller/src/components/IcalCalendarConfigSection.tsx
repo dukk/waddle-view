@@ -12,7 +12,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import {
   ContentCategorySelect,
   type ContentCategoryOption,
@@ -132,7 +132,6 @@ export function IcalCalendarConfigSection({
           Sign up at WebCal.Guru
         </Link>
       </Alert>
-
       <Typography variant="subtitle2">Suggested calendars (WebCal.Guru)</Typography>
       {suggestedError ? (
         <Alert severity="warning" onClose={() => setSuggestedError(null)}>
@@ -160,21 +159,23 @@ export function IcalCalendarConfigSection({
               <ListItemText
                 primary={suggestion.label}
                 secondary={suggestion.url}
-                secondaryTypographyProps={{ noWrap: true, title: suggestion.url }}
+                slotProps={{
+                  secondary: { noWrap: true, title: suggestion.url }
+                }}
               />
             </ListItem>
           );
         })}
       </List>
-
       {categories.length === 0 ? (
         <Alert severity="info">
           No content categories are available yet. Seed or add categories on the display, then
           return to assign a category per feed.
         </Alert>
       ) : null}
-
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="flex-start">
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{
+        alignItems: "flex-start"
+      }}>
         <TextField
           label="Feed URL"
           placeholder="https://calendar.example.com/public/feed.ics"
@@ -204,7 +205,6 @@ export function IcalCalendarConfigSection({
           Add feed
         </Button>
       </Stack>
-
       <Typography variant="subtitle2">Configured feeds</Typography>
       {value.feeds.length === 0 ? (
         <Alert severity="info">Add at least one feed with a category before enabling.</Alert>
@@ -215,13 +215,22 @@ export function IcalCalendarConfigSection({
             spacing={1.5}
             sx={{ p: 1.5, border: 1, borderColor: 'divider', borderRadius: 1 }}
           >
-            <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
+            <Stack
+              direction="row"
+              sx={{
+                alignItems: "flex-start",
+                justifyContent: "space-between"
+              }}>
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography variant="body2" fontWeight={600} noWrap title={feed.url}>
+                <Typography variant="body2" noWrap title={feed.url} sx={{
+                  fontWeight: 600
+                }}>
                   {feed.label ?? feed.url}
                 </Typography>
                 {feed.label ? (
-                  <Typography variant="caption" color="text.secondary" noWrap title={feed.url}>
+                  <Typography variant="caption" noWrap title={feed.url} sx={{
+                    color: "text.secondary"
+                  }}>
                     {feed.url}
                   </Typography>
                 ) : null}

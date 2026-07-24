@@ -359,11 +359,19 @@ export function SlideProgramCard({ display, model, typeLabel, onDetails }: Props
     >
       <CardContent sx={{ flexGrow: 1 }}>
         <Stack spacing={1}>
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              alignItems: "center",
+              flexWrap: "wrap"
+            }}>
             <Chip size="small" label={`#${model.index + 1}`} />
             <Chip size="small" label={typeLabel} color="primary" variant="outlined" />
           </Stack>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{
+            color: "text.secondary"
+          }}>
             Dwell {model.dwellLabel}
           </Typography>
           <Divider />
@@ -385,7 +393,9 @@ export function SlideProgramCard({ display, model, typeLabel, onDetails }: Props
             }}
           >
             {loading && (
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" sx={{
+                color: "text.secondary"
+              }}>
                 Loading preview…
               </Typography>
             )}
@@ -459,7 +469,13 @@ export function SlideProgramCard({ display, model, typeLabel, onDetails }: Props
               />
             )}
             {!loading && !videoUrl && nPhotos === 0 && !rssImgUrl && wxIconUrl && (
-              <Stack direction="row" spacing={1} alignItems="center" sx={{ p: 1 }}>
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{
+                  alignItems: "center",
+                  p: 1
+                }}>
                 <Box
                   component="img"
                   src={wxIconUrl}

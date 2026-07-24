@@ -221,23 +221,39 @@ export function LivePreviewPanel({
           }}
         />
         {showPlaceholder && (
-          <Stack alignItems="center" spacing={2} sx={{ p: 2, textAlign: 'center' }}>
+          <Stack
+            spacing={2}
+            sx={{
+              alignItems: "center",
+              p: 2,
+              textAlign: 'center'
+            }}>
             {status === 'connecting' ? (
               <>
                 <CircularProgress color="inherit" />
-                <Typography variant="body2" color="grey.400">
+                <Typography variant="body2" sx={{
+                  color: "grey.400"
+                }}>
                   Connecting live preview…
                 </Typography>
               </>
             ) : (
-              <Typography variant="body2" color="grey.400">
+              <Typography variant="body2" sx={{
+                color: "grey.400"
+              }}>
                 View-only stream from the display app window.
               </Typography>
             )}
           </Stack>
         )}
       </Box>
-      <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ flexShrink: 0 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          flexWrap: "wrap",
+          flexShrink: 0
+        }}>
         {status === 'connected' ? (
           <Button variant="outlined" onClick={disconnect}>
             Disconnect

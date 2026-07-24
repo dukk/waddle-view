@@ -90,7 +90,9 @@ function PluginTable({ rows }: { rows: PluginRow[] }) {
                 {p.path}
               </TableCell>
               <TableCell>
-                <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                <Stack direction="row" spacing={0.5} useFlexGap sx={{
+                  flexWrap: "wrap"
+                }}>
                   {p.capabilities.map((c) => (
                     <Chip key={c} size="small" label={c} />
                   ))}
@@ -109,10 +111,18 @@ function PluginCard({ row }: { row: PluginRow }) {
     <Card variant="outlined" sx={{ height: '100%' }}>
       <CardContent>
         <Typography variant="h6">{row.id}</Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           v{row.version} — {row.path}
         </Typography>
-        <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap">
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            flexWrap: "wrap",
+            mt: 1
+          }}>
           {row.capabilities.map((c) => (
             <Chip key={c} size="small" label={c} />
           ))}
@@ -168,13 +178,23 @@ export function PluginsPage() {
     <Stack spacing={3}>
       <DisplayRefreshIndicator loading={loading} />
       <Box>
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            alignItems: "center",
+            mb: 0.5
+          }}>
           <ExtensionIcon color="action" />
-          <Typography variant="h6" fontWeight={600}>
+          <Typography variant="h6" sx={{
+            fontWeight: 600
+          }}>
             Plugins
           </Typography>
         </Stack>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           Extensions loaded on the active display (see WADDLE_DISPLAY_PLUGINS_DIR).
         </Typography>
       </Box>
@@ -183,7 +203,6 @@ export function PluginsPage() {
           {error}
         </Alert>
       ) : null}
-
       <DataViewToolbar
         layout={layout}
         onLayoutChange={setLayout}
@@ -199,7 +218,6 @@ export function PluginsPage() {
         reloadDisabled={loading}
         reloadAriaLabel="Reload plugins"
       />
-
       <Stack spacing={2}>
         <DataViewEmptyState
           hasItems={items.length > 0}

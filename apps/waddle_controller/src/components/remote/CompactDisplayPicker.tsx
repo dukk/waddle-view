@@ -26,9 +26,10 @@ export function CompactDisplayPicker({ displays, active, onSelect, disabled }: P
 
   if (displays.length === 0) {
     return (
-      <Typography variant="body2" color="text.secondary">
-        No displays configured
-      </Typography>
+      <Typography variant="body2" sx={{
+        color: "text.secondary"
+      }}>No displays configured
+              </Typography>
     );
   }
 
@@ -45,7 +46,9 @@ export function CompactDisplayPicker({ displays, active, onSelect, disabled }: P
         aria-haspopup="true"
         aria-expanded={anchor ? 'true' : undefined}
       >
-        <Typography component="span" noWrap variant="body2" fontWeight={600}>
+        <Typography component="span" noWrap variant="body2" sx={{
+          fontWeight: 600
+        }}>
           {activeLabel}
           {activeSession ? ` · ${activeSession.identifier}` : ''}
         </Typography>
@@ -74,7 +77,9 @@ export function CompactDisplayPicker({ displays, active, onSelect, disabled }: P
               <ListItemText
                 primary={d.label}
                 secondary={hint}
-                secondaryTypographyProps={{ noWrap: true }}
+                slotProps={{
+                  secondary: { noWrap: true }
+                }}
               />
             </MenuItem>
           );

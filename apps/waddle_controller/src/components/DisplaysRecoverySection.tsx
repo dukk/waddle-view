@@ -56,10 +56,17 @@ export function DisplaysRecoverySection({ onChanged }: DisplaysRecoverySectionPr
 
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
-      <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+      <Typography variant="subtitle1" gutterBottom sx={{
+        fontWeight: 600
+      }}>
         Recover display settings to this browser
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          mb: 2
+        }}>
         User mode is off, but display pairings still exist on the server. Sign in once with a
         controller account to copy that account&apos;s displays and API keys into this browser.
       </Typography>

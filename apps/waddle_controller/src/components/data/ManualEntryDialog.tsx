@@ -501,8 +501,10 @@ export function ManualEntryDialog({ open, kind, display, onClose, onSaved }: Pro
                 fullWidth
                 value={startLocal}
                 onChange={(e) => setStartLocal(e.target.value)}
-                InputLabelProps={{ shrink: true }}
                 disabled={saving}
+                slotProps={{
+                  inputLabel: { shrink: true }
+                }}
               />
               <TextField
                 label="End"
@@ -511,8 +513,10 @@ export function ManualEntryDialog({ open, kind, display, onClose, onSaved }: Pro
                 fullWidth
                 value={endLocal}
                 onChange={(e) => setEndLocal(e.target.value)}
-                InputLabelProps={{ shrink: true }}
                 disabled={saving}
+                slotProps={{
+                  inputLabel: { shrink: true }
+                }}
               />
               <FormControlLabel
                 control={

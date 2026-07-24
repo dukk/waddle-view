@@ -13,7 +13,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import {
   listMealviewerDistrictSchools,
   listMealviewerDistricts,
@@ -233,7 +233,6 @@ export function MealviewerCalendarConfigSection({
           fullWidth
         />
       </Stack>
-
       <Typography variant="subtitle2">Search schools</Typography>
       <TextField
         label="School name"
@@ -260,7 +259,6 @@ export function MealviewerCalendarConfigSection({
           ))}
         </List>
       ) : null}
-
       <Typography variant="subtitle2">Browse by district</Typography>
       <TextField
         label="Filter districts"
@@ -297,11 +295,21 @@ export function MealviewerCalendarConfigSection({
               <CircularProgress size={24} />
             </Box>
           ) : selectedDistrict == null ? (
-            <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+                p: 2
+              }}>
               Select a district to list schools.
             </Typography>
           ) : districtSchools.length === 0 ? (
-            <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+                p: 2
+              }}>
               No schools to add in this district.
             </Typography>
           ) : (
@@ -317,9 +325,10 @@ export function MealviewerCalendarConfigSection({
           )}
         </Box>
       </Stack>
-
       <Typography variant="subtitle2">Manual school slug</Typography>
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="flex-start">
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{
+        alignItems: "flex-start"
+      }}>
         <TextField
           label="School slug"
           placeholder="ElmwoodElementary"
@@ -338,7 +347,6 @@ export function MealviewerCalendarConfigSection({
         </Button>
       </Stack>
       {probeError ? <Alert severity="error">{probeError}</Alert> : null}
-
       <Typography variant="subtitle2">Configured schools</Typography>
       {value.schools.length === 0 ? (
         <Alert severity="info">Add at least one school before enabling this integration.</Alert>
@@ -349,12 +357,21 @@ export function MealviewerCalendarConfigSection({
             spacing={1}
             sx={{ p: 1.5, border: 1, borderColor: 'divider', borderRadius: 1 }}
           >
-            <Stack direction="row" alignItems="center" justifyContent="space-between">
+            <Stack
+              direction="row"
+              sx={{
+                alignItems: "center",
+                justifyContent: "space-between"
+              }}>
               <Box>
-                <Typography variant="body2" fontWeight={600}>
+                <Typography variant="body2" sx={{
+                  fontWeight: 600
+                }}>
                   {school.label}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" sx={{
+                  color: "text.secondary"
+                }}>
                   {school.schoolSlug}
                   {school.districtSlug ? ` · ${school.districtSlug}` : ''}
                 </Typography>

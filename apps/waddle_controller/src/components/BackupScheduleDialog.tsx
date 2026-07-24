@@ -90,7 +90,9 @@ export function BackupScheduleDialog({
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           {error && <Alert severity="error">{error}</Alert>}
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{
+            color: "text.secondary"
+          }}>
             {summary} (controller local time)
           </Typography>
           <FormControl size="small" fullWidth>
@@ -182,7 +184,6 @@ export function BackupScheduleDialog({
               type="number"
               size="small"
               disabled={saving}
-              inputProps={{ min: 0, max: 59 }}
               value={schedule.minute}
               onChange={(e) =>
                 setSchedule((s) => ({
@@ -191,6 +192,9 @@ export function BackupScheduleDialog({
                 }))
               }
               sx={{ width: 100 }}
+              slotProps={{
+                htmlInput: { min: 0, max: 59 }
+              }}
             />
           </Stack>
           <TextField
@@ -199,9 +203,11 @@ export function BackupScheduleDialog({
             size="small"
             fullWidth
             disabled={saving}
-            inputProps={{ min: 1, max: 100 }}
             value={retention}
             onChange={(e) => setRetention(Number(e.target.value) || 1)}
+            slotProps={{
+              htmlInput: { min: 1, max: 100 }
+            }}
           />
           <FormControlLabel
             control={

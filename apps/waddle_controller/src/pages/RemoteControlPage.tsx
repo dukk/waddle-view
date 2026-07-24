@@ -78,7 +78,12 @@ export function RemoteControlPage() {
 
   const livePreviewSection = livePreviewConfigured ? (
     <Paper variant="outlined" sx={{ p: 2, minHeight: 420 }}>
-      <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
+      <Typography
+        variant="subtitle2"
+        sx={{
+          fontWeight: 600,
+          mb: 1
+        }}>
         Live preview
       </Typography>
       <LivePreviewPanel display={active} />
@@ -92,12 +97,8 @@ export function RemoteControlPage() {
   if (wide) {
     return (
       <Grid container spacing={3} sx={{ alignItems: 'flex-start' }}>
-        <Grid item xs={12} md={5}>
-          {controls}
-        </Grid>
-        <Grid item xs={12} md={7}>
-          {livePreviewSection}
-        </Grid>
+        <Grid size={{ xs: 12, md: 5 }}>{controls}</Grid>
+        <Grid size={{ xs: 12, md: 7 }}>{livePreviewSection}</Grid>
       </Grid>
     );
   }

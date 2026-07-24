@@ -152,7 +152,9 @@ export function OutlookCalendarConfigSection({
           disabled={disabled}
           value={value.pastDays}
           onChange={(e) => patch({ pastDays: Number(e.target.value) || 1 })}
-          inputProps={{ min: 1 }}
+          slotProps={{
+            htmlInput: { min: 1 }
+          }}
         />
         <TextField
           label="Future days"
@@ -162,13 +164,19 @@ export function OutlookCalendarConfigSection({
           disabled={disabled}
           value={value.futureDays}
           onChange={(e) => patch({ futureDays: Number(e.target.value) || 1 })}
-          inputProps={{ min: 1 }}
+          slotProps={{
+            htmlInput: { min: 1 }
+          }}
         />
       </Stack>
       {value.graphAccountKey ? (
         <Stack spacing={1}>
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <Typography variant="body2" fontWeight={600}>
+          <Stack direction="row" spacing={1} sx={{
+            alignItems: "center"
+          }}>
+            <Typography variant="body2" sx={{
+              fontWeight: 600
+            }}>
               Calendars to sync
             </Typography>
             {calendarsLoading ? <CircularProgress size={16} /> : null}
@@ -188,7 +196,9 @@ export function OutlookCalendarConfigSection({
           </Stack>
           {calendarsError ? <Alert severity="error">{calendarsError}</Alert> : null}
           {!calendarsLoading && value.calendars.length === 0 && !calendarsError ? (
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{
+              color: "text.secondary"
+            }}>
               No calendars returned for this account. Complete sign-in on the display, then refresh.
             </Typography>
           ) : null}

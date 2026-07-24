@@ -80,10 +80,10 @@ export function createAppTheme(mode: 'light' | 'dark') {
         styleOverrides: {
           root: isDark
             ? {
-                '&.MuiButton-textPrimary': {
+                "&.MuiButton-text.MuiButton-colorPrimary": {
                   color: darkPrimary,
                 },
-                '&.MuiButton-textPrimary:hover': {
+                "&.MuiButton-text.MuiButton-colorPrimary:hover": {
                   backgroundColor: alpha(darkPrimary, 0.12),
                   color: darkPrimaryHover,
                 },
@@ -109,19 +109,28 @@ export function createAppTheme(mode: 'light' | 'dark') {
       },
       MuiAlert: {
         styleOverrides: {
-          standardInfo: infoAlertStyleOverrides(isDark),
-          filledInfo: infoAlertStyleOverrides(isDark),
-          outlinedInfo: isDark
-            ? {
-                color: alpha('#e8e9ef', 0.88),
-                borderColor: alpha(darkPrimary, 0.35),
-                '& .MuiAlert-icon': { color: darkPrimary },
-              }
-            : {
-                color: '#3d4460',
-                borderColor: alpha(lightPrimary, 0.35),
-                '& .MuiAlert-icon': { color: lightPrimary },
-              },
+          root: ({ ownerState }) => {
+            if (ownerState.color !== 'info') {
+              return {};
+            }
+            if (ownerState.variant === 'standard' || ownerState.variant === 'filled') {
+              return infoAlertStyleOverrides(isDark);
+            }
+            if (ownerState.variant === 'outlined') {
+              return isDark
+                ? {
+                    color: alpha('#e8e9ef', 0.88),
+                    borderColor: alpha(darkPrimary, 0.35),
+                    '& .MuiAlert-icon': { color: darkPrimary },
+                  }
+                : {
+                    color: '#3d4460',
+                    borderColor: alpha(lightPrimary, 0.35),
+                    '& .MuiAlert-icon': { color: lightPrimary },
+                  };
+            }
+            return {};
+          },
         },
       },
     },

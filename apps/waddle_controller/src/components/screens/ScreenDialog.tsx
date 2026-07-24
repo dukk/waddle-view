@@ -359,7 +359,9 @@ export function ScreenDialog({
                   </Select>
                 </FormControl>
               ) : (
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" sx={{
+                  color: "text.secondary"
+                }}>
                   Type: {editTypeLabel || screenType}
                 </Typography>
               )}
@@ -411,7 +413,12 @@ export function ScreenDialog({
                 disabled={saving}
                 formatValue={(v) => String(v)}
               />
-              <Typography variant="caption" color="text.secondary" sx={{ mt: -1 }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                  mt: -1
+                }}>
                 Higher values are chosen more often; recent appearances in the history window reduce
                 effective weight.
               </Typography>

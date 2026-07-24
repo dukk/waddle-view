@@ -38,7 +38,7 @@ import MenuBookOutlined from '@mui/icons-material/MenuBookOutlined';
 import MovieOutlined from '@mui/icons-material/MovieOutlined';
 import MusicNoteOutlined from '@mui/icons-material/MusicNoteOutlined';
 import PaletteOutlined from '@mui/icons-material/PaletteOutlined';
-import PersonOutline from '@mui/icons-material/PersonOutline';
+import PersonOutlined from '@mui/icons-material/PersonOutlined';
 import Pets from '@mui/icons-material/Pets';
 import PhotoCameraOutlined from '@mui/icons-material/PhotoCameraOutlined';
 import PhotoLibraryOutlined from '@mui/icons-material/PhotoLibraryOutlined';
@@ -59,7 +59,7 @@ import TvOutlined from '@mui/icons-material/TvOutlined';
 import VolunteerActivismOutlined from '@mui/icons-material/VolunteerActivismOutlined';
 import WallpaperOutlined from '@mui/icons-material/WallpaperOutlined';
 import WaterDropOutlined from '@mui/icons-material/WaterDropOutlined';
-import WorkOutline from '@mui/icons-material/WorkOutline';
+import WorkOutlined from '@mui/icons-material/WorkOutlined';
 import YardOutlined from '@mui/icons-material/YardOutlined';
 
 /** Mirrors `content_category_material_icon.dart` in waddle_display. */
@@ -82,7 +82,7 @@ const kCategoryMaterialIconByName: Record<string, SvgIconComponent> = {
   favorite: FavoriteBorder,
   pets: Pets,
   school: SchoolOutlined,
-  work: WorkOutline,
+  work: WorkOutlined,
   card_giftcard: CardGiftcard,
   egg_alt: EggOutlined,
   dark_mode: DarkModeOutlined,
@@ -91,7 +91,7 @@ const kCategoryMaterialIconByName: Record<string, SvgIconComponent> = {
   map: MapOutlined,
   stars: StarsOutlined,
   movie: MovieOutlined,
-  person: PersonOutline,
+  person: PersonOutlined,
   sports_soccer: SportsSoccer,
   menu_book: MenuBookOutlined,
   self_improvement: SelfImprovement,

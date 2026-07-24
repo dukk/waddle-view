@@ -3,15 +3,15 @@ import type { SvgIconComponent } from '@mui/icons-material';
 import AddLink from '@mui/icons-material/AddLink';
 import ArticleOutlined from '@mui/icons-material/ArticleOutlined';
 import CalendarMonth from '@mui/icons-material/CalendarMonth';
-import ChatBubbleOutline from '@mui/icons-material/ChatBubbleOutline';
+import ChatBubbleOutlined from '@mui/icons-material/ChatBubbleOutlined';
 import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined';
 import GridOn from '@mui/icons-material/GridOn';
 import GridView from '@mui/icons-material/GridView';
-import HelpOutline from '@mui/icons-material/HelpOutline';
+import HelpOutlined from '@mui/icons-material/HelpOutlined';
 import ImageOutlined from '@mui/icons-material/ImageOutlined';
 import Layers from '@mui/icons-material/Layers';
 import MonitorHeart from '@mui/icons-material/MonitorHeart';
-import PlayCircleOutline from '@mui/icons-material/PlayCircleOutline';
+import PlayCircleOutlined from '@mui/icons-material/PlayCircleOutlined';
 import Schedule from '@mui/icons-material/Schedule';
 import Settings from '@mui/icons-material/Settings';
 import Terminal from '@mui/icons-material/Terminal';
@@ -28,8 +28,8 @@ import { DigitalClockScreenIcon } from './DigitalClockScreenIcon';
 /** Stock MUI icons for screen catalog / program-card previews (custom SVGs live in git history). */
 const ICONS: Record<SlideScreenPreviewKind, SvgIconComponent> = {
   static_text: DescriptionOutlined,
-  joke: ChatBubbleOutline,
-  trivia: HelpOutline,
+  joke: ChatBubbleOutlined,
+  trivia: HelpOutlined,
   wifi: Wifi,
   clock: Schedule,
   digital_clock: DigitalClockScreenIcon,
@@ -46,7 +46,7 @@ const ICONS: Record<SlideScreenPreviewKind, SvgIconComponent> = {
   data_health: MonitorHeart,
   photo: ImageOutlined,
   photo_collage: GridView,
-  video: PlayCircleOutline,
+  video: PlayCircleOutlined,
 };
 
 export function SlideScreenPreviewIcon({

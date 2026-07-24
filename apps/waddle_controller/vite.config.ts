@@ -42,6 +42,7 @@ export default defineConfig({
       exclude: [
         'server/src/index.ts',
         'server/src/testHelpers.ts',
+        'server/src/tools/**',
         'src/main.tsx',
         'src/vite-env.d.ts',
         'src/App.tsx',

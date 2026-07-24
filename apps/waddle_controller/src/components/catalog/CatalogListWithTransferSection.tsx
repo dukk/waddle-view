@@ -36,7 +36,9 @@ export function CatalogListWithTransferSection({
         <Stack
           direction="row"
           spacing={CATALOG_CARD_GRID_GAP_SPACING}
-          alignItems="flex-start"
+          sx={{
+            alignItems: "flex-start"
+          }}
         >
           <Box sx={{ flex: 1, minWidth: 0 }}>{mainContent}</Box>
           <Box

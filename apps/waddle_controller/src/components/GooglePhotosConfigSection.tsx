@@ -13,7 +13,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import {
   createGooglePhotosPickerSession,
   deleteGooglePhotosPickerSession,
@@ -211,8 +211,10 @@ export function GooglePhotosConfigSection({
         onChange={(e) =>
           patch({ globalPerPollLimit: Math.max(1, Number(e.target.value) || 50) })
         }
-        inputProps={{ min: 1 }}
         helperText="Shared cap per collect across all album sources (default 50)."
+        slotProps={{
+          htmlInput: { min: 1 }
+        }}
       />
       {pickerError ? <Alert severity="error">{pickerError}</Alert> : null}
       {value.sources.map((source) => (
@@ -226,8 +228,15 @@ export function GooglePhotosConfigSection({
           }}
         >
           <Stack spacing={1.5}>
-            <Stack direction="row" alignItems="center" justifyContent="space-between">
-              <Typography variant="body2" fontWeight={600}>
+            <Stack
+              direction="row"
+              sx={{
+                alignItems: "center",
+                justifyContent: "space-between"
+              }}>
+              <Typography variant="body2" sx={{
+                fontWeight: 600
+              }}>
                 Album source
               </Typography>
               <IconButton
@@ -279,7 +288,9 @@ export function GooglePhotosConfigSection({
                     maxFiles: Math.max(1, Number(e.target.value) || 50),
                   })
                 }
-                inputProps={{ min: 1 }}
+                slotProps={{
+                  htmlInput: { min: 1 }
+                }}
               />
               <TextField
                 label="Per poll limit"
@@ -293,14 +304,20 @@ export function GooglePhotosConfigSection({
                     perPollLimit: Math.max(1, Number(e.target.value) || 10),
                   })
                 }
-                inputProps={{ min: 1 }}
+                slotProps={{
+                  htmlInput: { min: 1 }
+                }}
               />
             </Stack>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{
+              color: "text.secondary"
+            }}>
               {source.mediaItemIds.length} {mediaKind === 'photo' ? 'photo' : 'video'}
               {source.mediaItemIds.length === 1 ? '' : 's'} linked
             </Typography>
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Stack direction="row" spacing={1} useFlexGap sx={{
+              flexWrap: "wrap"
+            }}>
               <Button
                 variant="outlined"
                 size="small"

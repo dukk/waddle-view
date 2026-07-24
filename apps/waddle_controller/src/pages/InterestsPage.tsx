@@ -622,21 +622,23 @@ export function InterestsPage() {
   return (
     <Stack spacing={3}>
       <Box>
-        <Typography variant="h6" fontWeight={600} gutterBottom>
+        <Typography variant="h6" gutterBottom sx={{
+          fontWeight: 600
+        }}>
           Interests
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           Configure locations, news feeds, stocks, joke categories, and trivia categories the
           display collects.
         </Typography>
       </Box>
-
       {error && (
         <Alert severity="error" onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
-
       <Tabs
         value={tab}
         onChange={(_, v: TabId) => {
@@ -652,7 +654,6 @@ export function InterestsPage() {
         <Tab value="jokes" label="Jokes" />
         <Tab value="trivia" label="Trivia" />
       </Tabs>
-
       <DataViewToolbar
         layout={layout}
         onLayoutChange={setLayout}
@@ -684,7 +685,6 @@ export function InterestsPage() {
           </Button>
         )}
       </DataViewToolbar>
-
       {tab === 'jokes' && jokeCategoryOptions.length > 0 && (
         <InterestCategoryFilter
           categories={jokeCategoryOptions}
@@ -701,7 +701,6 @@ export function InterestsPage() {
           labelForCategory={categoryLabel}
         />
       )}
-
       {tab === 'locations' && (
         <Stack spacing={1.5}>
           <DisplayRefreshIndicator loading={locationsLoading} />
@@ -746,12 +745,13 @@ export function InterestsPage() {
           )}
         </Stack>
       )}
-
       {tab === 'rss' && (
         <Stack spacing={2}>
           <DisplayRefreshIndicator loading={rssLoading} />
           {newsGroups.length === 0 && !rssLoading ? (
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{
+              color: "text.secondary"
+            }}>
               No news feeds configured.
             </Typography>
           ) : newsGroups.length > 0 ? (
@@ -808,12 +808,13 @@ export function InterestsPage() {
           ) : null}
         </Stack>
       )}
-
       {tab === 'stocks' && (
         <Stack spacing={2}>
           <DisplayRefreshIndicator loading={stocksLoading} />
           {stockGroups.length === 0 && !stocksLoading ? (
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{
+              color: "text.secondary"
+            }}>
               No stock symbols configured.
             </Typography>
           ) : stockGroups.length > 0 ? (
@@ -871,7 +872,6 @@ export function InterestsPage() {
           ) : null}
         </Stack>
       )}
-
       {tab === 'jokes' && (
         <Stack spacing={1.5}>
           <DisplayRefreshIndicator loading={jokesLoading} />
@@ -921,7 +921,6 @@ export function InterestsPage() {
           />
         </Stack>
       )}
-
       {tab === 'trivia' && (
         <Stack spacing={1.5}>
           <DisplayRefreshIndicator loading={triviaLoading} />
@@ -971,7 +970,6 @@ export function InterestsPage() {
           />
         </Stack>
       )}
-
       <InterestDialog
         open={dialogOpen}
         title={dialogTitle}
@@ -1024,10 +1022,14 @@ function InterestCategoryFilter({
   );
   return (
     <Stack spacing={1}>
-      <Typography variant="subtitle2" color="text.secondary">
+      <Typography variant="subtitle2" sx={{
+        color: "text.secondary"
+      }}>
         Filter by category
       </Typography>
-      <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1}>
+      <Stack direction="row" useFlexGap spacing={1} sx={{
+        flexWrap: "wrap"
+      }}>
         <Chip
           label={`All (${total})`}
           onClick={() => onFilterChange(null)}
@@ -1070,11 +1072,15 @@ function CatalogSection({
 }) {
   return (
     <Stack spacing={1.5}>
-      <Typography variant="subtitle1" fontWeight={600}>
+      <Typography variant="subtitle1" sx={{
+        fontWeight: 600
+      }}>
         {title}
       </Typography>
       {isEmpty ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           {empty}
         </Typography>
       ) : layout === 'card' ? (
@@ -1104,7 +1110,9 @@ function InterestedToggleCell({
         checked={checked}
         disabled={disabled}
         onChange={(_, enabled) => onToggle(enabled)}
-        inputProps={{ 'aria-label': ariaLabel }}
+        slotProps={{
+          input: { 'aria-label': ariaLabel }
+        }}
       />
     </TableCell>
   );
@@ -1191,13 +1199,22 @@ function CategoryGroupAccordion({
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           spacing={1}
-          alignItems={{ xs: 'flex-start', sm: 'center' }}
-          sx={{ width: '100%', pr: 1 }}
-        >
-          <Typography variant="subtitle1" fontWeight={600} sx={{ flexGrow: 1 }}>
+          sx={{
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            width: '100%',
+            pr: 1
+          }}>
+          <Typography
+            variant="subtitle1"
+            sx={{
+              fontWeight: 600,
+              flexGrow: 1
+            }}>
             {title} ({rowCount})
           </Typography>
-          <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap onClick={(e) => e.stopPropagation()}>
+          <Stack direction="row" spacing={2} useFlexGap onClick={(e) => e.stopPropagation()} sx={{
+            flexWrap: "wrap"
+          }}>
             <FormControlLabel
               control={
                 <Checkbox
@@ -1303,11 +1320,15 @@ function WeatherInterestCard({
     <Card variant="outlined" sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <CardContent sx={{ flexGrow: 1 }}>
         <Stack spacing={1}>
-          <Typography variant="subtitle1" fontWeight={600}>
+          <Typography variant="subtitle1" sx={{
+            fontWeight: 600
+          }}>
             {row.name}
           </Typography>
           <Chip size="small" label={categoryLabel} variant="outlined" sx={{ alignSelf: 'flex-start' }} />
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{
+            color: "text.secondary"
+          }}>
             {row.latitude}, {row.longitude}
           </Typography>
           <FormControlLabel
@@ -1427,14 +1448,26 @@ function RssInterestCard({
     <Card variant="outlined" sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <CardContent sx={{ flexGrow: 1 }}>
         <Stack spacing={1}>
-          <Typography variant="subtitle1" fontWeight={600} sx={{ wordBreak: 'break-word' }}>
+          <Typography
+            variant="subtitle1"
+            sx={{
+              fontWeight: 600,
+              wordBreak: 'break-word'
+            }}>
             {feedName}
           </Typography>
           <Chip size="small" label={categoryLabel} variant="outlined" sx={{ alignSelf: 'flex-start' }} />
-          <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              wordBreak: 'break-all'
+            }}>
             {row.url}
           </Typography>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{
+            color: "text.secondary"
+          }}>
             Poll {formatIntervalDisplay(row.poll_seconds)} · max {row.max_articles} articles
           </Typography>
           <FormControlLabel
@@ -1526,12 +1559,16 @@ function StockInterestCard({
     <Card variant="outlined" sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <CardContent sx={{ flexGrow: 1 }}>
         <Stack spacing={1}>
-          <Typography variant="subtitle1" fontWeight={600}>
+          <Typography variant="subtitle1" sx={{
+            fontWeight: 600
+          }}>
             {row.symbol}
           </Typography>
           <Chip size="small" label={categoryLabel} variant="outlined" sx={{ alignSelf: 'flex-start' }} />
           {row.display_name.trim() ? (
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{
+              color: "text.secondary"
+            }}>
               {row.display_name}
             </Typography>
           ) : null}
@@ -1615,7 +1652,9 @@ function CategoryInterestCard({
     <Card variant="outlined" sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <CardContent sx={{ flexGrow: 1 }}>
         <Stack spacing={1}>
-          <Typography variant="subtitle1" fontWeight={600}>
+          <Typography variant="subtitle1" sx={{
+            fontWeight: 600
+          }}>
             {row.label}
           </Typography>
           {row.is_seasonal ? (
@@ -1626,7 +1665,9 @@ function CategoryInterestCard({
               sx={{ alignSelf: 'flex-start' }}
             />
           ) : null}
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{
+            color: "text.secondary"
+          }}>
             Pool {minPool ?? '—'}–{maxPool ?? '—'}
           </Typography>
         </Stack>
@@ -2118,7 +2159,9 @@ function InterestDialog({
           )}
           {(tab === 'jokes' || tab === 'trivia') && (
             <>
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" sx={{
+                color: "text.secondary"
+              }}>
                 Pick a curator category; its slug is used as the interest id (for icons and labels).
               </Typography>
               <FormControl fullWidth>
@@ -2198,51 +2241,61 @@ function InterestDialog({
               />
               {categoryForm.is_seasonal && (
                 <Stack spacing={1}>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" sx={{
+                    color: "text.secondary"
+                  }}>
                     Active between these calendar dates each year (month 1–12).
                   </Typography>
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
                     <TextField
                       label="Start month"
                       type="number"
-                      inputProps={{ min: 1, max: 12 }}
                       value={categoryForm.start_month}
                       onChange={(e) =>
                         setCategoryForm((f) => ({ ...f, start_month: e.target.value }))
                       }
                       fullWidth
+                      slotProps={{
+                        htmlInput: { min: 1, max: 12 }
+                      }}
                     />
                     <TextField
                       label="Start day"
                       type="number"
-                      inputProps={{ min: 1, max: 31 }}
                       value={categoryForm.start_day}
                       onChange={(e) =>
                         setCategoryForm((f) => ({ ...f, start_day: e.target.value }))
                       }
                       fullWidth
+                      slotProps={{
+                        htmlInput: { min: 1, max: 31 }
+                      }}
                     />
                   </Stack>
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
                     <TextField
                       label="End month"
                       type="number"
-                      inputProps={{ min: 1, max: 12 }}
                       value={categoryForm.end_month}
                       onChange={(e) =>
                         setCategoryForm((f) => ({ ...f, end_month: e.target.value }))
                       }
                       fullWidth
+                      slotProps={{
+                        htmlInput: { min: 1, max: 12 }
+                      }}
                     />
                     <TextField
                       label="End day"
                       type="number"
-                      inputProps={{ min: 1, max: 31 }}
                       value={categoryForm.end_day}
                       onChange={(e) =>
                         setCategoryForm((f) => ({ ...f, end_day: e.target.value }))
                       }
                       fullWidth
+                      slotProps={{
+                        htmlInput: { min: 1, max: 31 }
+                      }}
                     />
                   </Stack>
                 </Stack>

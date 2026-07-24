@@ -77,7 +77,9 @@ export function DurationInputField({
       <Typography variant="body2" component="label">
         {label}
       </Typography>
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="flex-start">
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{
+        alignItems: "flex-start"
+      }}>
         <TextField
           type="number"
           value={amount}
@@ -88,7 +90,9 @@ export function DurationInputField({
           disabled={disabled}
           size="small"
           sx={{ minWidth: 120 }}
-          inputProps={{ min: 0, step: unit === 'sec' ? 1 : 0.1 }}
+          slotProps={{
+            htmlInput: { min: 0, step: unit === 'sec' ? 1 : 0.1 }
+          }}
         />
         <FormControl size="small" sx={{ minWidth: 140 }} disabled={disabled}>
           <InputLabel id={`${label}-unit`}>Unit</InputLabel>
@@ -109,12 +113,19 @@ export function DurationInputField({
             ))}
           </Select>
         </FormControl>
-        <Typography variant="body2" color="text.secondary" sx={{ pt: 1 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            pt: 1
+          }}>
           ({summary})
         </Typography>
       </Stack>
       {helperText ? (
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{
+          color: "text.secondary"
+        }}>
           {helperText}
         </Typography>
       ) : null}

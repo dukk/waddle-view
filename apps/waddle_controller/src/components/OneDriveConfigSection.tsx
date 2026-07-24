@@ -15,7 +15,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import { fetchMicrosoftGraphDriveChildren } from '@/api/microsoftGraphDriveChildren';
 import { ApiError } from '@/api/client';
@@ -186,12 +186,16 @@ export function OneDriveConfigSection({
         onChange={(e) =>
           patch({ globalPerPollLimit: Math.max(1, Number(e.target.value) || 50) })
         }
-        inputProps={{ min: 1 }}
         helperText="Shared cap per collect across all accounts and folders (default 50)."
+        slotProps={{
+          htmlInput: { min: 1 }
+        }}
       />
       <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 2 }}>
         <Stack spacing={1.5}>
-          <Typography variant="body2" fontWeight={600}>
+          <Typography variant="body2" sx={{
+            fontWeight: 600
+          }}>
             Browse folders
           </Typography>
           <FormControl fullWidth size="small" disabled={disabled}>
@@ -235,21 +239,29 @@ export function OneDriveConfigSection({
               </Breadcrumbs>
               {foldersError ? <Alert severity="error">{foldersError}</Alert> : null}
               {foldersLoading ? (
-                <Stack direction="row" spacing={1} alignItems="center">
+                <Stack direction="row" spacing={1} sx={{
+                  alignItems: "center"
+                }}>
                   <CircularProgress size={20} />
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{
+                    color: "text.secondary"
+                  }}>
                     Loading folders…
                   </Typography>
                 </Stack>
               ) : (
                 <Stack spacing={0.5}>
                   {folderRows.length === 0 ? (
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" sx={{
+                      color: "text.secondary"
+                    }}>
                       No subfolders here.
                     </Typography>
                   ) : (
                     folderRows.map((f) => (
-                      <Stack key={f.id} direction="row" spacing={1} alignItems="center">
+                      <Stack key={f.id} direction="row" spacing={1} sx={{
+                        alignItems: "center"
+                      }}>
                         <Button
                           size="small"
                           startIcon={<FolderOpenIcon />}
@@ -316,8 +328,15 @@ export function OneDriveConfigSection({
           sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 2 }}
         >
           <Stack spacing={1.5}>
-            <Stack direction="row" alignItems="center" justifyContent="space-between">
-              <Typography variant="body2" fontWeight={600}>
+            <Stack
+              direction="row"
+              sx={{
+                alignItems: "center",
+                justifyContent: "space-between"
+              }}>
+              <Typography variant="body2" sx={{
+                fontWeight: 600
+              }}>
                 Account {accountIndex + 1}
               </Typography>
               <IconButton
@@ -356,8 +375,15 @@ export function OneDriveConfigSection({
                 }}
               >
                 <Stack spacing={1}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Typography variant="body2" fontWeight={600}>
+                  <Stack
+                    direction="row"
+                    sx={{
+                      justifyContent: "space-between",
+                      alignItems: "center"
+                    }}>
+                    <Typography variant="body2" sx={{
+                      fontWeight: 600
+                    }}>
                       {source.folderLabel || source.path || 'Folder'}
                     </Typography>
                     <IconButton
@@ -375,7 +401,9 @@ export function OneDriveConfigSection({
                       <DeleteOutlineIcon fontSize="small" />
                     </IconButton>
                   </Stack>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" sx={{
+                    color: "text.secondary"
+                  }}>
                     Path: {source.path.trim() === '' ? '(drive root)' : source.path}
                   </Typography>
                   <CategoryMultiSelect
@@ -404,8 +432,10 @@ export function OneDriveConfigSection({
                             : Math.max(1, Number(raw) || 1),
                       });
                     }}
-                    inputProps={{ min: 1 }}
                     helperText="Optional. Leave blank for default 20 per folder (not limited by retention below)."
+                    slotProps={{
+                      htmlInput: { min: 1 }
+                    }}
                   />
                   <TextField
                     label="Max files kept (retention)"
@@ -419,8 +449,10 @@ export function OneDriveConfigSection({
                         maxFiles: Math.max(1, Number(e.target.value) || 50),
                       })
                     }
-                    inputProps={{ min: 1 }}
                     helperText="Oldest synced items pruned after each collect; does not cap download batch size."
+                    slotProps={{
+                      htmlInput: { min: 1 }
+                    }}
                   />
                 </Stack>
               </Box>

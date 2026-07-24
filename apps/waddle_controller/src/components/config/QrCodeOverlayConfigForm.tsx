@@ -118,7 +118,9 @@ function TemplateFields({
       return (
         <Stack spacing={2}>
           {textField('fullName', 'Full name')}
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{
+            color: "text.secondary"
+          }}>
             Or use first + last name below instead of full name.
           </Typography>
           {textField('firstName', 'First name')}
@@ -167,7 +169,9 @@ export function QrCodeOverlayConfigForm({ formData, onChange, disabled }: Props)
 
   return (
     <Stack spacing={2}>
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" sx={{
+        color: "text.secondary"
+      }}>
         QR code with optional title above and description below. Position and scale match
         other placed overlays (clocks, stock quote).
       </Typography>
@@ -217,7 +221,9 @@ export function QrCodeOverlayConfigForm({ formData, onChange, disabled }: Props)
           minRows={3}
         />
       ) : null}
-      <Typography variant="caption" color="text.secondary" component="div">
+      <Typography variant="caption" component="div" sx={{
+        color: "text.secondary"
+      }}>
         Encoded payload (saved on submit)
       </Typography>
       <Typography

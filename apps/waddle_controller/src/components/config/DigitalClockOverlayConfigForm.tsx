@@ -17,7 +17,9 @@ export function DigitalClockOverlayConfigForm({ formData, onChange, disabled }: 
 
   return (
     <Stack spacing={2}>
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" sx={{
+        color: "text.secondary"
+      }}>
         Digital clock and date at a viewport position. Options match the digital clock screen.
       </Typography>
       <FormControlLabel

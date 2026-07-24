@@ -23,7 +23,7 @@ function symbolLabel(row: StockSymbolRow): string {
 }
 
 export function StockSymbolsMultiSelectField(props: Props) {
-  const { display, formData, onChange, disabled, schema, rawErrors } = props;
+  const { display, formData, onChange, path, disabled, schema, rawErrors } = props;
   const selected = readSymbols(formData);
   const label = (schema.title as string | undefined) ?? 'Stock symbols';
   const [rows, setRows] = useState<StockSymbolRow[]>([]);
@@ -70,7 +70,7 @@ export function StockSymbolsMultiSelectField(props: Props) {
       disabled={disabled}
       options={options}
       value={selected}
-      onChange={(_, next) => onChange(next.length === 0 ? undefined : next)}
+      onChange={(_, next) => onChange(next.length === 0 ? undefined : next, path)}
       getOptionLabel={(sym) => labelBySymbol.get(sym) ?? sym}
       isOptionEqualToValue={(a, b) => a === b}
       renderInput={(params) => (

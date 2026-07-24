@@ -30,7 +30,9 @@ export function EdgeGlowConfigForm({ formData, onChange, disabled }: Props) {
   return (
     <Stack spacing={2}>
       <Typography variant="subtitle2">Configuration</Typography>
-      <Stack direction="row" spacing={2} alignItems="center">
+      <Stack direction="row" spacing={2} sx={{
+        alignItems: "center"
+      }}>
         <TextField
           label="Glow color"
           type="color"

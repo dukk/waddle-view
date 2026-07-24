@@ -97,9 +97,13 @@ export function DisplayThemeDialog({
             disabled={saving}
             fullWidth
             required
-            inputProps={{ maxLength: 64 }}
+            slotProps={{
+              htmlInput: { maxLength: 64 }
+            }}
           />
-          <Stack direction="row" alignItems="center" spacing={1}>
+          <Stack direction="row" spacing={1} sx={{
+            alignItems: "center"
+          }}>
             <span style={{ flex: 1 }} />
             <DisplayThemePaletteSwatches groups={preview} size={18} />
           </Stack>

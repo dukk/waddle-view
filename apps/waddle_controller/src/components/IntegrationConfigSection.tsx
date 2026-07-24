@@ -13,7 +13,9 @@ export function IntegrationConfigSection({ title, description, children }: Props
     <Stack spacing={2}>
       <Typography variant="subtitle2">{title}</Typography>
       {description != null ? (
-        <Typography variant="body2" color="text.secondary" component="div">
+        <Typography variant="body2" component="div" sx={{
+          color: "text.secondary"
+        }}>
           {description}
         </Typography>
       ) : null}

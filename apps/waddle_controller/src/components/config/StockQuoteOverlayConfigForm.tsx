@@ -73,7 +73,9 @@ export function StockQuoteOverlayConfigForm({
 
   return (
     <Stack spacing={2}>
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" sx={{
+        color: "text.secondary"
+      }}>
         Single stock quote tile at a viewport position. Matches the stock quotes screen;
         requires stock_finnhub to collect quotes.
       </Typography>
@@ -103,7 +105,9 @@ export function StockQuoteOverlayConfigForm({
         </FormControl>
       )}
       {!loading && !loadError && symbols.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           Add stock symbols under Interests → Stocks first.
         </Typography>
       ) : null}

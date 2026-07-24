@@ -132,7 +132,14 @@ function ScheduleRowActions({
   };
 
   return (
-    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+    <Stack
+      direction="row"
+      spacing={1}
+      useFlexGap
+      sx={{
+        alignItems: "center",
+        flexWrap: "wrap"
+      }}>
       <FormControlLabel
         control={
           <Switch
@@ -303,23 +310,25 @@ export function DisplayBackupSection() {
   return (
     <Stack spacing={3}>
       <Box>
-        <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+        <Typography variant="subtitle1" gutterBottom sx={{
+          fontWeight: 600
+        }}>
           Scheduled backups
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           Configure automatic pulls per display in controller local time. New displays receive
           staggered run times (5 minutes apart). Archives are stored on the controller disk (not in
           SQLite). One-time download and restore live under{' '}
           <strong>Display settings → Backup &amp; restore</strong> for each display.
         </Typography>
       </Box>
-
       {error && (
         <Alert severity="error" onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
-
       <DataViewToolbar
         layout={layout}
         onLayoutChange={setLayout}
@@ -335,7 +344,6 @@ export function DisplayBackupSection() {
         reloadDisabled={reloadBusy}
         reloadAriaLabel="Reload backup schedules"
       />
-
       <Stack spacing={2}>
         <DataViewEmptyState
           hasItems={scheduleRows.length > 0}
@@ -354,16 +362,29 @@ export function DisplayBackupSection() {
               >
                 <CardContent sx={{ flexGrow: 1 }}>
                   <Stack spacing={1.5}>
-                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                      <Typography variant="subtitle1" fontWeight={600}>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      useFlexGap
+                      sx={{
+                        alignItems: "center",
+                        flexWrap: "wrap"
+                      }}>
+                      <Typography variant="subtitle1" sx={{
+                        fontWeight: 600
+                      }}>
                         {row.display.label}
                       </Typography>
                       <StatusChips row={row} />
                     </Stack>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" sx={{
+                      color: "text.secondary"
+                    }}>
                       {row.scheduleSummary}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" sx={{
+                      color: "text.secondary"
+                    }}>
                       Last run: {row.lastRunLabel}
                     </Typography>
                   </Stack>
@@ -400,8 +421,17 @@ export function DisplayBackupSection() {
                   return (
                     <TableRow key={row.display.id} id={`backup-schedule-${row.display.id}`}>
                       <TableCell>
-                        <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap" useFlexGap>
-                          <Typography variant="body2" fontWeight={600}>
+                        <Stack
+                          direction="row"
+                          spacing={0.5}
+                          useFlexGap
+                          sx={{
+                            alignItems: "center",
+                            flexWrap: "wrap"
+                          }}>
+                          <Typography variant="body2" sx={{
+                            fontWeight: 600
+                          }}>
                             {row.display.label}
                           </Typography>
                           <StatusChips row={row} />
@@ -476,7 +506,6 @@ export function DisplayBackupSection() {
           onPageSizeChange={dataView.setPageSize}
         />
       </Stack>
-
       {configureRow && (
         <BackupScheduleDialog
           display={configureRow.display}
@@ -486,13 +515,21 @@ export function DisplayBackupSection() {
           onSaved={() => void reload()}
         />
       )}
-
       {release && (
         <Box component="section">
-          <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+          <Typography variant="subtitle1" gutterBottom sx={{
+            fontWeight: 600
+          }}>
             Pi display upgrade
           </Typography>
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
+          <Stack
+            direction="row"
+            spacing={1}
+            useFlexGap
+            sx={{
+              flexWrap: "wrap",
+              alignItems: "center"
+            }}>
             <Chip label={`Latest: ${release.tag_name}`} size="small" />
             {updateAvailable && <Chip label="Update available" color="warning" size="small" />}
           </Stack>
@@ -510,16 +547,16 @@ export function DisplayBackupSection() {
           )}
         </Box>
       )}
-
       <AllBackupsInventory
         displayFilterId={focusDisplayId}
         onChanged={() => void reload()}
       />
-
       <Dialog open={upgradeOpen} onClose={() => !upgradeBusy && setUpgradeOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Upgrade display (Pi)</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" paragraph>
+          <Typography variant="body2" sx={{
+            marginBottom: "16px"
+          }}>
             Installs {release?.tag_name} from GitHub on {activeForUpgrade?.label ?? 'display'}.
             The display will stop briefly.
           </Typography>

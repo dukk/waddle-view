@@ -173,13 +173,26 @@ export function ViewerJoinPage() {
       }}
     >
       <Paper elevation={2} sx={{ width: '100%', maxWidth: 520, p: { xs: 2.5, sm: 3 } }}>
-        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
+        <Stack
+          direction="row"
+          spacing={1.5}
+          sx={{
+            alignItems: "center",
+            mb: 2
+          }}>
           <WaddleBrandMark variant="headshot" size="sm" />
           <Box sx={{ minWidth: 0 }}>
-            <Typography variant="h5" fontWeight={600}>
+            <Typography variant="h5" sx={{
+              fontWeight: 600
+            }}>
               Viewer pairing
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+                mt: 0.5
+              }}>
               Pair with the display using the challenge code from the alert.
               {roleLocked
                 ? ' Role is set by the invite QR and cannot be changed here.'
@@ -264,7 +277,9 @@ export function ViewerJoinPage() {
         <Button variant="outlined" onClick={onManageDisplays}>
           Manage displays (other roles)
         </Button>
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{
+          color: "text.secondary"
+        }}>
           Operator UI:{' '}
           <Link href="https://github.com/dukk/waddle-view/tree/main/apps/waddle_controller">
             waddle_controller

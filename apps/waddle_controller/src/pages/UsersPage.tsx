@@ -170,19 +170,24 @@ export function UsersPage() {
       <Box>
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
-          justifyContent="space-between"
-          alignItems={{ xs: 'flex-start', sm: 'center' }}
           spacing={1}
-          sx={{ mb: 1 }}
-        >
-          <Typography variant="h5" fontWeight={600}>
+          sx={{
+            justifyContent: "space-between",
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            mb: 1
+          }}>
+          <Typography variant="h5" sx={{
+            fontWeight: 600
+          }}>
             Controller accounts
           </Typography>
           <Button variant="contained" onClick={openCreateDialog}>
             Add user
           </Button>
         </Stack>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           Admin and operator accounts for signing in to this controller. Disabled users cannot sign
           in until re-enabled.
         </Typography>
@@ -221,7 +226,6 @@ export function UsersPage() {
           ))}
         </TableBody>
       </Table>
-
       <Dialog open={createOpen} onClose={closeCreateDialog} fullWidth maxWidth="xs">
         <DialogTitle>Add user</DialogTitle>
         <DialogContent>
@@ -271,7 +275,6 @@ export function UsersPage() {
           </Button>
         </DialogActions>
       </Dialog>
-
       <Dialog open={editUser !== null} onClose={closeEdit} fullWidth maxWidth="xs">
         <DialogTitle>Edit user</DialogTitle>
         <DialogContent>

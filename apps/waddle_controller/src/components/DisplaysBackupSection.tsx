@@ -102,19 +102,24 @@ export function DisplaysBackupSection({ onChanged }: DisplaysBackupSectionProps)
 
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
-      <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+      <Typography variant="subtitle1" gutterBottom sx={{
+        fontWeight: 600
+      }}>
         Display list backup
       </Typography>
-
       {msg && (
         <Alert severity={msg.level} onClose={() => setMsg(null)} sx={{ mb: 2 }}>
           {msg.text}
         </Alert>
       )}
-
       {showMigration && (
         <Box sx={{ mb: showBackup ? 2 : 0 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              mb: 2
+            }}>
             This browser still has display settings saved locally. Move them to your controller
             account on the server (API keys are included for adopted displays).
           </Typography>
@@ -123,15 +128,26 @@ export function DisplaysBackupSection({ onChanged }: DisplaysBackupSectionProps)
           </Button>
         </Box>
       )}
-
       {showBackup && (
         <Box>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              mb: 2
+            }}>
             {userModeEnabled
               ? 'Export or import your display list. Exports reflect the server copy for your account; imports update the server and refresh this browser.'
               : 'Export or import the display list stored in this browser (labels, base URLs, and adopted API keys when present).'}
           </Typography>
-          <Stack direction="row" spacing={1} sx={{ mb: 2 }} flexWrap="wrap" useFlexGap>
+          <Stack
+            direction="row"
+            spacing={1}
+            useFlexGap
+            sx={{
+              flexWrap: "wrap",
+              mb: 2
+            }}>
             <Button variant="outlined" disabled={exporting} onClick={() => void exportBlob()}>
               {exporting ? 'Exporting…' : 'Export JSON'}
             </Button>

@@ -33,14 +33,23 @@ export function AuthPageShell({ title, subtitle, children, maxWidth = 440 }: Pro
         }}
       >
         <Stack spacing={2.5}>
-          <Stack direction="row" spacing={1.5} alignItems="center">
+          <Stack direction="row" spacing={1.5} sx={{
+            alignItems: "center"
+          }}>
             <WaddleBrandMark variant="headshot" size="sm" />
             <Box sx={{ minWidth: 0 }}>
-              <Typography variant="h5" fontWeight={600}>
+              <Typography variant="h5" sx={{
+                fontWeight: 600
+              }}>
                 {title}
               </Typography>
               {subtitle != null && (
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                    mt: 0.5
+                  }}>
                   {subtitle}
                 </Typography>
               )}

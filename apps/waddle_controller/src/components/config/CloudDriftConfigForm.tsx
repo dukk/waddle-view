@@ -70,7 +70,9 @@ export function CloudDriftConfigForm({ formData, onChange, disabled }: Props) {
           ))}
         </Select>
       </FormControl>
-      <Stack direction="row" spacing={2} alignItems="center">
+      <Stack direction="row" spacing={2} sx={{
+        alignItems: "center"
+      }}>
         <TextField
           label="Cloud color"
           type="color"

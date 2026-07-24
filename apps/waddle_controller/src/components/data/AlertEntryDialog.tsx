@@ -158,11 +158,13 @@ export function AlertEntryDialog({ open, display, onClose, onSaved }: Props) {
             size="small"
             fullWidth
             required
-            inputProps={{ min: 1, max: 10080, step: 1 }}
             value={expireMinutes}
             onChange={(e) => setExpireMinutes(e.target.value)}
             disabled={saving}
             helperText="Alert stops showing after this many minutes (1–10080)."
+            slotProps={{
+              htmlInput: { min: 1, max: 10080, step: 1 }
+            }}
           />
           {err ? <Alert severity="error">{err}</Alert> : null}
         </Stack>

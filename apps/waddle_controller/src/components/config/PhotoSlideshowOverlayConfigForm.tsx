@@ -70,7 +70,9 @@ export function PhotoSlideshowOverlayConfigForm({
 
   return (
     <Stack spacing={2}>
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" sx={{
+        color: "text.secondary"
+      }}>
         Cycles random photos from the catalog at a viewport position. Assign on a curator
         configuration Overlay tab; respects the global overlay kill-switch.
       </Typography>
@@ -92,7 +94,12 @@ export function PhotoSlideshowOverlayConfigForm({
         categories={categories}
         disabled={disabled}
       />
-      <Typography variant="caption" color="text.secondary" sx={{ mt: -1 }}>
+      <Typography
+        variant="caption"
+        sx={{
+          color: "text.secondary",
+          mt: -1
+        }}>
         Leave empty to include all non-suppressed photos.
       </Typography>
       <FormControl fullWidth size="small" disabled={disabled}>
@@ -153,7 +160,9 @@ export function PhotoSlideshowOverlayConfigForm({
           onChange={(e) => patch({ max_height: readOptionalInt(e.target.value) })}
         />
       </Stack>
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" sx={{
+        color: "text.secondary"
+      }}>
         Dimension filters use blob metadata; photos without width/height are excluded when any
         filter is set.
       </Typography>
@@ -187,7 +196,13 @@ export function PhotoSlideshowOverlayConfigForm({
         disabled={disabled}
         formatValue={(v) => v.toFixed(2)}
       />
-      <Typography variant="caption" color="text.secondary" sx={{ mt: -1.5, display: 'block' }}>
+      <Typography
+        variant="caption"
+        sx={{
+          color: "text.secondary",
+          mt: -1.5,
+          display: 'block'
+        }}>
         Image width as a fraction of the viewport shortest side (
         {STATIC_IMAGE_OVERLAY_SCALE_MIN}–{STATIC_IMAGE_OVERLAY_SCALE_MAX}).
       </Typography>

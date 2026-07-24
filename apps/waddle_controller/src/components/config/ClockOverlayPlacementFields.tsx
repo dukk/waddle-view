@@ -42,7 +42,13 @@ export function ClockOverlayPlacementFields({
         disabled={disabled}
         formatValue={(v) => `${Math.round(v * 100)}%`}
       />
-      <Typography variant="caption" color="text.secondary" sx={{ mt: -1.5, display: 'block' }}>
+      <Typography
+        variant="caption"
+        sx={{
+          color: "text.secondary",
+          mt: -1.5,
+          display: 'block'
+        }}>
         0% = left edge; 100% = right edge (clock anchors at top-left).
       </Typography>
       <CuratorSliderField
@@ -65,7 +71,13 @@ export function ClockOverlayPlacementFields({
         disabled={disabled}
         formatValue={(v) => v.toFixed(2)}
       />
-      <Typography variant="caption" color="text.secondary" sx={{ mt: -1.5, display: 'block' }}>
+      <Typography
+        variant="caption"
+        sx={{
+          color: "text.secondary",
+          mt: -1.5,
+          display: 'block'
+        }}>
         {scaleHelp} ({CLOCK_OVERLAY_SCALE_MIN}–{CLOCK_OVERLAY_SCALE_MAX}; default{' '}
         {CLOCK_OVERLAY_SCALE_DEFAULT}).
       </Typography>

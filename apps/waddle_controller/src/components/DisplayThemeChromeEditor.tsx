@@ -1,5 +1,5 @@
 import AddIcon from '@mui/icons-material/Add';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import {
   Button,
   FormControl,
@@ -62,7 +62,9 @@ function ColorRow({
 }: ColorRowProps) {
   const colorInput = hex.length >= 7 ? hex.slice(0, 7) : fallback;
   return (
-    <Stack direction="row" spacing={1} alignItems="center">
+    <Stack direction="row" spacing={1} sx={{
+      alignItems: "center"
+    }}>
       <TextField
         type="color"
         value={colorInput}
@@ -114,7 +116,9 @@ function GradientStopsEditor({
 }: GradientStopsEditorProps) {
   return (
     <Stack spacing={1}>
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" sx={{
+        color: "text.secondary"
+      }}>
         {caption}
       </Typography>
       {colors.map((hex, index) => (
@@ -190,7 +194,9 @@ export function DisplayThemeChromeEditor({ preview, disabled, onChange }: Props)
   return (
     <Stack spacing={2.5}>
       <Stack spacing={1}>
-        <Typography variant="subtitle2" fontWeight={600}>
+        <Typography variant="subtitle2" sx={{
+          fontWeight: 600
+        }}>
           Display background
         </Typography>
         <FormControl disabled={disabled}>
@@ -231,12 +237,15 @@ export function DisplayThemeChromeEditor({ preview, disabled, onChange }: Props)
           />
         )}
       </Stack>
-
       <Stack spacing={1}>
-        <Typography variant="subtitle2" fontWeight={600}>
+        <Typography variant="subtitle2" sx={{
+          fontWeight: 600
+        }}>
           Screen chrome
         </Typography>
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{
+          color: "text.secondary"
+        }}>
           Text color on screen content panels, plus the panel background gradient behind it.
         </Typography>
         <ColorRow
@@ -264,9 +273,10 @@ export function DisplayThemeChromeEditor({ preview, disabled, onChange }: Props)
           }}
         />
       </Stack>
-
       <Stack spacing={1}>
-        <Typography variant="subtitle2" fontWeight={600}>
+        <Typography variant="subtitle2" sx={{
+          fontWeight: 600
+        }}>
           Ticker chrome
         </Typography>
         <ColorRow
@@ -294,12 +304,15 @@ export function DisplayThemeChromeEditor({ preview, disabled, onChange }: Props)
           }}
         />
       </Stack>
-
       <Stack spacing={1}>
-        <Typography variant="subtitle2" fontWeight={600}>
+        <Typography variant="subtitle2" sx={{
+          fontWeight: 600
+        }}>
           Accents
         </Typography>
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{
+          color: "text.secondary"
+        }}>
           Four accent colors used across screens and ticker highlights.
         </Typography>
         {preview.accents.map((hex, index) => (

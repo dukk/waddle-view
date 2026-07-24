@@ -54,7 +54,9 @@ export function OverlayEnumCheckboxGroup({
       <FormLabel component="legend">{label}</FormLabel>
       {helperText ? <FormHelperText sx={{ mt: 0.25, mb: 1 }}>{helperText}</FormHelperText> : null}
       <FormGroup>
-        <Stack direction="row" flexWrap="wrap" useFlexGap spacing={0.5}>
+        <Stack direction="row" useFlexGap spacing={0.5} sx={{
+          flexWrap: "wrap"
+        }}>
           {options.map((opt) => {
             const Icon = opt.icon;
             const checked = value.includes(opt.value);
@@ -69,7 +71,9 @@ export function OverlayEnumCheckboxGroup({
                     />
                   }
                   label={
-                    <Stack direction="row" spacing={0.75} alignItems="center">
+                    <Stack direction="row" spacing={0.75} sx={{
+                      alignItems: "center"
+                    }}>
                       {Icon ? <Icon sx={{ fontSize: 18, opacity: 0.85 }} /> : null}
                       <span>{opt.label}</span>
                     </Stack>

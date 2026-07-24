@@ -55,11 +55,13 @@ export function IntegrationBrandIcon({ integrationType, baseUrl, size = 40 }: Pr
     <Avatar
       src={imageUrl}
       sx={avatarSx(size)}
-      imgProps={{
-        alt: '',
-        onError: () => setImageFailed(true),
-      }}
       aria-hidden
+      slotProps={{
+        img: {
+          alt: '',
+          onError: () => setImageFailed(true),
+        }
+      }}
     />
   );
 }

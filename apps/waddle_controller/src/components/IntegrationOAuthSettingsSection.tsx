@@ -102,8 +102,17 @@ export function IntegrationOAuthSettingsSection({
 
   return (
     <Stack spacing={1.5}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
-        <Typography variant="subtitle1" fontWeight={600}>
+      <Stack
+        direction="row"
+        sx={{
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 1
+        }}>
+        <Typography variant="subtitle1" sx={{
+          fontWeight: 600
+        }}>
           Account provider client IDs
         </Typography>
         {canWrite ? (
@@ -117,23 +126,34 @@ export function IntegrationOAuthSettingsSection({
           </Button>
         ) : null}
       </Stack>
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" sx={{
+        color: "text.secondary"
+      }}>
         OAuth account providers (Google, Microsoft, Facebook, X, LinkedIn) require an app client ID
         before you can add a matching account below. Values are stored encrypted on the display and are
         never shown after saving.
       </Typography>
       {canWrite && addDisabledReason ? (
-        <Typography variant="caption" color="text.secondary" display="block">
+        <Typography
+          variant="caption"
+          sx={{
+            color: "text.secondary",
+            display: "block"
+          }}>
           {addDisabledReason}
         </Typography>
       ) : null}
       {error ? <Alert severity="error">{error}</Alert> : null}
       {loading ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           Loading account provider client IDs…
         </Typography>
       ) : configuredProviders.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{
+          color: "text.secondary"
+        }}>
           No account provider client IDs have been configured yet.
         </Typography>
       ) : (
@@ -166,7 +186,6 @@ export function IntegrationOAuthSettingsSection({
           </Table>
         </TableContainer>
       )}
-
       <ClientIdDialog
         open={addOpen}
         title="Add client ID"
@@ -272,12 +291,16 @@ function ClientIdDialog({
                   </Select>
                 </FormControl>
               ) : selected ? (
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" sx={{
+                  color: "text.secondary"
+                }}>
                   Provider: <strong>{selected.label}</strong>
                 </Typography>
               ) : null}
               {registrationGuide ? (
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" sx={{
+                  color: "text.secondary"
+                }}>
                   {registrationGuide.message}{' '}
                   <Link
                     href={registrationGuide.href}
