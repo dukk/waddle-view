@@ -44,14 +44,35 @@ jobs:
         if: ${{ inputs.arch == 'arm64' }}
         shell: pwsh
         run: |
+          # x64 PowerShell reports AMD64; force native ARM64 Dart/Flutter bootstrap.
+          $env:PROCESSOR_ARCHITECTURE = 'ARM64'
           git clone --depth 1 --branch 3.41.9 https://github.com/flutter/flutter.git "$env:USERPROFILE\flutter"
           Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\flutter\bin"
+          & "$env:USERPROFILE\flutter\bin\flutter.bat" --version
+      # JNI plugin links jvm.lib; match JDK arch to the Flutter Windows target.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          architecture: ${{ inputs.arch == 'arm64' && 'aarch64' || 'x64' }}
       - run: flutter pub get
         working-directory: ${{ github.workspace }}
       - name: Generate code
         run: dart run build_runner build --delete-conflicting-outputs
         working-directory: ${{ github.workspace }}/packages/waddle_shared
-      - run: flutter build windows --release --build-number "${{ inputs.build_number }}"
+      - name: Build Windows release
+        shell: pwsh
+        run: |
+          if ($env:WIN_ARCH -eq 'arm64') {
+            $env:PROCESSOR_ARCHITECTURE = 'ARM64'
+          }
+          flutter build windows --release --build-number "${{ inputs.build_number }}"
+          $expected = "build/windows/$env:WIN_ARCH/runner/Release"
+          if (-not (Test-Path "$expected/waddle_display.exe")) {
+            $found = Get-ChildItem -Path build/windows -Directory -ErrorAction SilentlyContinue |
+              ForEach-Object { $_.Name }
+            throw "Expected Windows build at $expected (found arch dirs: $($found -join ', ')). Flutter may have bootstrapped the wrong host arch."
+          }
       - name: Build waddlectl CLI
         working-directory: ${{ github.workspace }}/apps/waddlectl
         run: dart build cli -o build/waddlectl_release

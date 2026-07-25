@@ -1,7 +1,7 @@
 name: waddle_display
 description: Waddle Display TV dashboard
 publish_to: "none"
-version: 1.0.0+1
+version: 1.0.0-alpha2+2
 resolution: workspace
 repository: https://github.com/dukk/waddle-view
 homepage: https://github.com/dukk/waddle-view

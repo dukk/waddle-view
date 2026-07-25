@@ -1,7 +1,7 @@
 {
   "name": "waddle_controller",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.0-alpha2",
   "type": "module",
   "engines": {
     "node": "^22.0.0 <23"

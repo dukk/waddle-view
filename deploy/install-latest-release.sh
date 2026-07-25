@@ -113,7 +113,7 @@ with open(path, encoding="utf-8") as f:
     releases = json.load(f)
 want = ".tar.gz"
 for rel in releases:
-    if rel.get("draft"):
+    if rel.get("draft") or rel.get("prerelease"):
         continue
     tag = rel["tag_name"]
     name = f"{prefix}-{tag}{want}"
@@ -123,7 +123,7 @@ for rel in releases:
             print(tag)
             sys.exit(0)
 sys.stderr.write(
-    f"No non-draft release asset named {prefix}-<tag>.tar.gz found "
+    f"No non-draft, non-prerelease release asset named {prefix}-<tag>.tar.gz found "
     "(checked newest releases).\n"
 )
 sys.exit(1)

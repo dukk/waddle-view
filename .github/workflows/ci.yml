@@ -139,7 +139,9 @@ jobs:
       dist_basename: waddle-view-windows-x64-ci-run-${{ github.run_id }}-att-${{ github.run_attempt }}
       artifact_name: ci-bundle-windows-x64-${{ github.run_id }}-${{ github.run_attempt }}
 
+  # Best-effort: Flutter 3.41.9 on windows-11-arm may bootstrap x64 + JNI/JDK mismatch.
   build-windows-arm64:
+    continue-on-error: true
     needs: analyze-test
     permissions:
       actions: write

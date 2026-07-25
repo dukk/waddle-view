@@ -1,6 +1,6 @@
 {
   "app": "waddle_controller",
-  "version": "1.0.0",
+  "version": "1.0.0-alpha2",
   "build": "dev",
   "productLicense": {
     "id": "ONC",

@@ -20,7 +20,9 @@ jobs:
       arch: x64
       build_number: ${{ github.run_number }}
 
+  # Flutter 3.41.9 on windows-11-arm often bootstraps x64 tools; job is best-effort.
   windows-arm64:
+    continue-on-error: true
     permissions:
       actions: write
       contents: read
@@ -109,6 +111,7 @@ jobs:
           name: windows-x64-bundle-${{ github.run_number }}
           path: release-assets
       - uses: actions/download-artifact@v6
+        continue-on-error: true
         with:
           name: windows-arm64-bundle-${{ github.run_number }}
           path: release-assets
@@ -151,6 +154,9 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
           generate_release_notes: true
+          # Semver prerelease tags (v1.0.0-alpha2) contain '-'; keep them off Latest.
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          make_latest: false
           files: |
             release-assets/*.zip
             release-assets/*.tar.gz
