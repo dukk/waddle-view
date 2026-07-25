@@ -29,6 +29,8 @@ permissions:
 
 jobs:
   build:
+    # Reusable callers cannot set continue-on-error; arm64 is best-effort on Flutter 3.41.9.
+    continue-on-error: ${{ inputs.arch == 'arm64' }}
     runs-on: ${{ inputs.arch == 'arm64' && 'windows-11-arm' || 'windows-2025' }}
     timeout-minutes: 30
     env:

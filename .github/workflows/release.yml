@@ -20,9 +20,8 @@ jobs:
       arch: x64
       build_number: ${{ github.run_number }}
 
-  # Flutter 3.41.9 on windows-11-arm often bootstraps x64 tools; job is best-effort.
+  # Flutter 3.41.9 on windows-11-arm is best-effort (continue-on-error inside desktop workflow).
   windows-arm64:
-    continue-on-error: true
     permissions:
       actions: write
       contents: read
