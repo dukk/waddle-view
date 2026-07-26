@@ -147,7 +147,7 @@ flutter build linux --release
 | Linux x64 | `waddle-view-linux-x64-v1.0.0.tar.gz` | Desktop + **waddlectl** + bundled controller SPA |
 | Linux arm64 (generic desktop) | `waddle-view-linux-arm64-desktop-v1.0.0.tar.gz` | Native **arm64** Linux desktop (not Pi Bookworm build) |
 | Linux arm64 (Pi) | `waddle-view-linux-arm64-v1.0.0.tar.gz` | **[`release-pi.yml`](../../.github/workflows/release-pi.yml)** Bookworm/glibc-checked bundle + `install.sh` |
-| Windows x64 / arm64 | `waddle-view-windows-x64-…zip`, `waddle-view-windows-arm64-…zip` | **[`release-windows-desktop.yml`](../../.github/workflows/release-windows-desktop.yml)** |
+| Windows x64 | `waddle-view-windows-x64-…zip` | **[`release-windows-desktop.yml`](../../.github/workflows/release-windows-desktop.yml)** (`arch: x64`). Windows arm64 CI/Release is disabled until Flutter Win arm64 is ready; use the x64 zip under emulation on ARM64 Windows. |
 | Android | `waddle-view-android-v1.0.0.zip` | Split APKs (**arm**, **arm64**, **x64**); compile smoke, not a supported product target |
 | iOS | `waddle-view-ios-v1.0.0.zip` | `Runner.app`, **no codesign** |
 | macOS | `waddle-view-macos-v1.0.0.zip` | `.app` bundle |
@@ -155,7 +155,7 @@ flutter build linux --release
 
 CI passes **`flutter build … --build-number`** using GitHub Actions **`github.run_number`**. Use **`workflow_dispatch`** on **`release.yml`** to build without publishing (publish still runs only on **`v*`** tag pushes).
 
-**PR / branch CI:** **Actions → CI — waddle_display** ([`ci.yml`](../../.github/workflows/ci.yml)) runs tests, then release-mode compiles for **Linux x64**, **Linux arm64 desktop**, **Windows x64/arm64**, **Pi arm64**, **Android**, **iOS**, and **macOS** (separate artifacts per platform; Pi workflow unchanged). Controller tests and Docker images use separate workflows — see [`apps/waddle_controller/README.md`](../waddle_controller/README.md).
+**PR / branch CI:** **Actions → CI — waddle_display** ([`ci.yml`](../../.github/workflows/ci.yml)) runs tests, then release-mode compiles for **Linux x64**, **Linux arm64 desktop**, **Windows x64**, **Pi arm64**, **Android**, **iOS**, and **macOS** (separate artifacts per platform; Pi workflow unchanged). Controller tests and Docker images use separate workflows — see [`apps/waddle_controller/README.md`](../waddle_controller/README.md).
 
 Tagged **Pi** tarballs and `install.sh` are produced in CI and documented under [`../../docs/pi/`](../../docs/pi/); templates live in [`../../deploy/linux-arm64/`](../../deploy/linux-arm64/).
 

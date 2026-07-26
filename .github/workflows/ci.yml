@@ -139,19 +139,6 @@ jobs:
       dist_basename: waddle-view-windows-x64-ci-run-${{ github.run_id }}-att-${{ github.run_attempt }}
       artifact_name: ci-bundle-windows-x64-${{ github.run_id }}-${{ github.run_attempt }}
 
-  # Best-effort: continue-on-error is set inside release-windows-desktop for arch arm64.
-  build-windows-arm64:
-    needs: analyze-test
-    permissions:
-      actions: write
-      contents: read
-    uses: ./.github/workflows/release-windows-desktop.yml
-    with:
-      arch: arm64
-      build_number: ${{ github.run_number }}
-      dist_basename: waddle-view-windows-arm64-ci-run-${{ github.run_id }}-att-${{ github.run_attempt }}
-      artifact_name: ci-bundle-windows-arm64-${{ github.run_id }}-${{ github.run_attempt }}
-
   build-android:
     needs: analyze-test
     permissions:
@@ -222,7 +209,6 @@ jobs:
       - build-linux-x64
       - build-linux-arm64-desktop
       - build-windows-x64
-      - build-windows-arm64
       - build-android
       - build-ios
       - build-macos
@@ -251,7 +237,6 @@ jobs:
               "ci-bundle-linux-arm64-",
               "ci-bundle-linux-x64-",
               "ci-bundle-windows-x64-",
-              "ci-bundle-windows-arm64-",
               "ci-bundle-android-",
               "ci-bundle-ios-",
               "ci-bundle-macos-",

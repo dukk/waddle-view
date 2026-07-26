@@ -40,7 +40,7 @@ Second alpha cut from `main` (~200 commits after [v1.0.0-alpha1](https://github.
 
 ### Added
 
-- Full **Release** fan-out: Windows x64/arm64, Linux x64, Linux arm64 desktop, Pi arm64, Android/iOS/macOS compile bundles, and `waddle-controller-docker-<tag>.tar.gz` (`docker load` image tag `waddle-controller:v1.0.0-alpha2`).
+- Full **Release** fan-out: Windows x64, Linux x64, Linux arm64 desktop, Pi arm64, Android/iOS/macOS compile bundles, and `waddle-controller-docker-<tag>.tar.gz` (`docker load` image tag `waddle-controller:v1.0.0-alpha2`). Windows arm64 is not built in CI/Release yet.
 - Controller Docker image packaging in CI/Release; operator load instructions in `apps/waddle_controller/README.md`.
 - Shared catalog/data-view operator UI patterns, overlay and screen tooling, Dependabot-managed dependency bumps.
 
@@ -55,7 +55,7 @@ Second alpha cut from `main` (~200 commits after [v1.0.0-alpha1](https://github.
 
 ### Known limitations
 
-- **Windows arm64** release/CI build is best-effort on Flutter 3.41.9 (`windows-11-arm` may still bootstrap x64 tools); the Release publish job continues if that asset is missing. Prefer the Windows x64 zip on ARM64 Windows via emulation when the arm64 asset is absent.
+- **Windows arm64** CI/Release is disabled (Flutter 3.41.9 cannot reliably produce a native Win arm64 host build). Use the Windows x64 zip under emulation on ARM64 Windows. Re-enable by calling `release-windows-desktop.yml` with `arch: arm64` from `ci.yml` / `release.yml` once Flutter stable Win arm64 is usable (3.44+).
 
 [1.0.0-alpha2]: https://github.com/dukk/waddle-view/releases/tag/v1.0.0-alpha2
 [1.0.0]: https://github.com/dukk/waddle-view/releases

@@ -1,5 +1,6 @@
-# Desktop (Windows/Linux x64+arm64), Pi arm64, mobile compile, controller Docker; GitHub Release on v* tags.
+# Desktop (Windows x64, Linux x64+arm64), Pi arm64, mobile compile, controller Docker; GitHub Release on v* tags.
 # Reusable: release-windows-desktop, release-linux-desktop, release-pi, release-android, release-ios, release-macos, release-controller-docker.
+# Windows arm64 is not invoked from this workflow yet (Flutter 3.41.9); use x64 zip under emulation on ARM64 Windows.
 name: Release
 
 on:
@@ -18,16 +19,6 @@ jobs:
     uses: ./.github/workflows/release-windows-desktop.yml
     with:
       arch: x64
-      build_number: ${{ github.run_number }}
-
-  # Flutter 3.41.9 on windows-11-arm is best-effort (continue-on-error inside desktop workflow).
-  windows-arm64:
-    permissions:
-      actions: write
-      contents: read
-    uses: ./.github/workflows/release-windows-desktop.yml
-    with:
-      arch: arm64
       build_number: ${{ github.run_number }}
 
   linux-x64:
@@ -92,7 +83,6 @@ jobs:
   publish:
     needs:
       - windows-x64
-      - windows-arm64
       - linux-x64
       - linux-arm64-desktop
       - pi
@@ -108,11 +98,6 @@ jobs:
       - uses: actions/download-artifact@v6
         with:
           name: windows-x64-bundle-${{ github.run_number }}
-          path: release-assets
-      - uses: actions/download-artifact@v6
-        continue-on-error: true
-        with:
-          name: windows-arm64-bundle-${{ github.run_number }}
           path: release-assets
       - uses: actions/download-artifact@v6
         with:
