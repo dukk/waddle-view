@@ -13,7 +13,7 @@
     "dev:server": "node tool/ensure-node-tls-deps.mjs && tsx watch --ignore ../../packages/waddle_node_tls/node_modules server/src/index.ts",
     "generate:about": "node tool/generate_about_manifest.mjs",
     "build": "npm run generate:about && tsc -b && vite build",
-    "build:server": "npm run generate:about && tsc -p server/tsconfig.json",
+    "build:server": "npm run generate:about && tsc -p server/tsconfig.json && node -e \"const fs=require('fs');const path=require('path');const src='server/src/db/migrations';const dest='server/dist/db/migrations';fs.cpSync(src,dest,{recursive:true});\"",
     "db:migrate-to-postgres": "tsx server/src/tools/migrate_sqlite_to_postgres.ts",
     "preview": "vite preview",
     "lint": "eslint .",

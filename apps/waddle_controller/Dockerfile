@@ -28,7 +28,26 @@ COPY LICENSE /waddle-repo/LICENSE
 RUN npm run postinstall \
   && npm run build \
   && npm run build:server \
-  && npm prune --omit=dev
+  && mkdir -p /waddle-repo/packages/waddle_node_tls/dist \
+  && ./node_modules/.bin/tsc \
+    --ignoreConfig \
+    --module NodeNext \
+    --moduleResolution NodeNext \
+    --target ES2022 \
+    --rootDir /waddle-repo/packages/waddle_node_tls/src \
+    --outDir /waddle-repo/packages/waddle_node_tls/dist \
+    /waddle-repo/packages/waddle_node_tls/src/index.ts \
+    /waddle-repo/packages/waddle_node_tls/src/envFlag.ts \
+    /waddle-repo/packages/waddle_node_tls/src/resolveTls.ts \
+    /waddle-repo/packages/waddle_node_tls/src/selfSigned.ts \
+  && node -e "const fs=require('fs'); const p='/waddle-repo/packages/waddle_node_tls/package.json'; const j=JSON.parse(fs.readFileSync(p,'utf8')); j.exports='./dist/index.js'; fs.writeFileSync(p, JSON.stringify(j,null,2)+'\n');" \
+  && npm prune --omit=dev \
+  && npm rebuild better-sqlite3 @node-rs/argon2 \
+  && rm -rf node_modules/@waddle/node-tls \
+  && mkdir -p node_modules/@waddle \
+  && cp -a /waddle-repo/packages/waddle_node_tls node_modules/@waddle/node-tls \
+  && rm -rf node_modules/@waddle/node-tls/node_modules \
+  && npm ci --omit=dev --prefix node_modules/@waddle/node-tls
 
 FROM node:22-bookworm-slim
 RUN apt-get update \
@@ -39,6 +58,8 @@ COPY --from=build /waddle-repo/apps/waddle_controller/package.json ./
 COPY --from=build /waddle-repo/apps/waddle_controller/node_modules ./node_modules
 COPY --from=build /waddle-repo/apps/waddle_controller/dist /usr/share/nginx/html
 COPY --from=build /waddle-repo/apps/waddle_controller/server/dist ./server/dist
+# SQL migrations are not emitted by tsc; runtime looks beside dist/db via import.meta.url.
+COPY --from=build /waddle-repo/apps/waddle_controller/server/src/db/migrations ./server/dist/db/migrations
 COPY apps/waddle_controller/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY apps/waddle_controller/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
