@@ -60,6 +60,7 @@ jobs:
           fi
           docker build \
             --progress=plain \
+            --provenance=false \
             ${CACHE_FLAG} \
             -f apps/waddle_controller/Dockerfile \
             --build-arg "WADDLE_CONTROLLER_BUILD_NUMBER=${BUILD_NUMBER}" \
@@ -85,11 +86,25 @@ jobs:
           owner_lc=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
           ghcr="ghcr.io/${owner_lc}/waddle-controller"
           docker tag "waddle-controller:${IMAGE_TAG}" "${ghcr}:${IMAGE_TAG}"
-          docker push "${ghcr}:${IMAGE_TAG}"
+          # GHCR sometimes returns "unknown blob" on first push; retry a few times.
+          push_with_retry() {
+            local ref="$1"
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              if docker push "$ref"; then
+                return 0
+              fi
+              echo "docker push $ref failed (attempt ${attempt}); retrying in 10s..."
+              sleep 10
+            done
+            echo "docker push $ref failed after retries" >&2
+            return 1
+          }
+          push_with_retry "${ghcr}:${IMAGE_TAG}"
           # Stable tags (no hyphen) also update :latest; prereleases like v1.0.0-alpha2 do not.
           if [[ "${IMAGE_TAG}" != *-* ]]; then
             docker tag "waddle-controller:${IMAGE_TAG}" "${ghcr}:latest"
-            docker push "${ghcr}:latest"
+            push_with_retry "${ghcr}:latest"
           fi
       - name: Package Docker image tarball
         run: |
