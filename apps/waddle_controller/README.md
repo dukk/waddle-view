@@ -204,7 +204,32 @@ After adoption, the display remembers your controller origin. Optionally set **`
 
 ### Deploy from GitHub builds
 
-**CI — waddle_controller** runs Vitest and builds; **CI — waddle_controller Docker** and **Release** publish **separate** Docker image tarballs (linux/amd64 only). Each tarball is a gzip-compressed `docker save` of one image tag.
+**CI — waddle_controller** runs Vitest and builds; **CI — waddle_controller Docker** publishes a **CI-only** Docker image tarball (linux/amd64). **Release** on a **`v*`** tag pushes the image to **GHCR** and also attaches a gzip-compressed `docker save` tarball to the GitHub Release for offline installs.
+
+#### GHCR (version tags)
+
+On every **`v*`** tag, Release publishes:
+
+```text
+ghcr.io/dukk/waddle-controller:<git-tag>
+```
+
+Example for `v1.0.0-alpha2` / a stable `v1.2.3`:
+
+```bash
+docker pull ghcr.io/dukk/waddle-controller:v1.0.0-alpha2
+docker run -d --name waddle-controller \
+  -p 8443:443 \
+  -v waddle-controller-data:/var/lib/waddle-controller \
+  -e WADDLE_CONTROLLER_AUTH_ENABLED=1 \
+  -e WADDLE_CONTROLLER_SESSION_SECRET=change-me-in-production \
+  --restart unless-stopped \
+  ghcr.io/dukk/waddle-controller:v1.0.0-alpha2
+```
+
+Stable tags (no `-` in the git tag) also update **`ghcr.io/dukk/waddle-controller:latest`**. Prereleases such as `v1.0.0-alpha2` do not.
+
+The package may be **private** after the first push until an owner sets **Packages → waddle-controller → Package settings → Change visibility → Public** (needed for anonymous pulls).
 
 #### CI artifacts (testing on main / PRs)
 
@@ -224,7 +249,7 @@ docker run --rm -p 8443:443 \
 
 Open **`https://127.0.0.1:8443`** (accept the self-signed certificate). Health: **`https://127.0.0.1:8443/bff/health`**.
 
-#### Release artifacts (version tags)
+#### Release tarball (offline / air-gapped)
 
 1. On a **`v*`** tag, open the GitHub **Releases** page for that version and download **`waddle-controller-docker-vX.Y.Z.tar.gz`**, **or** open **Actions** → **Release** → download artifact **`release-controller-docker-<run_number>`**.
 2. Load and run (image tag matches the git tag, e.g. `v1.2.3`):

@@ -41,7 +41,7 @@ Second alpha cut from `main` (~200 commits after [v1.0.0-alpha1](https://github.
 ### Added
 
 - Full **Release** fan-out: Windows x64, Linux x64, Linux arm64 desktop, Pi arm64, Android/iOS/macOS compile bundles, and `waddle-controller-docker-<tag>.tar.gz` (`docker load` image tag `waddle-controller:v1.0.0-alpha2`). Windows arm64 is not built in CI/Release yet.
-- Controller Docker image packaging in CI/Release; operator load instructions in `apps/waddle_controller/README.md`.
+- Controller Docker image packaging in CI/Release; tagged Releases also push **`ghcr.io/dukk/waddle-controller:<tag>`** (and `:latest` for stable tags without `-`). Operator pull/load instructions in `apps/waddle_controller/README.md`.
 - Shared catalog/data-view operator UI patterns, overlay and screen tooling, Dependabot-managed dependency bumps.
 
 ### Changed

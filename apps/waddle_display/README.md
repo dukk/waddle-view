@@ -151,7 +151,7 @@ flutter build linux --release
 | Android | `waddle-view-android-v1.0.0.zip` | Split APKs (**arm**, **arm64**, **x64**); compile smoke, not a supported product target |
 | iOS | `waddle-view-ios-v1.0.0.zip` | `Runner.app`, **no codesign** |
 | macOS | `waddle-view-macos-v1.0.0.zip` | `.app` bundle |
-| Controller Docker | `waddle-controller-docker-v1.0.0.tar.gz` | See [`apps/waddle_controller/README.md`](../waddle_controller/README.md#deploy-from-github-builds) |
+| Controller Docker | `waddle-controller-docker-v1.0.0.tar.gz` and `ghcr.io/dukk/waddle-controller:v1.0.0` | Release pushes GHCR on `v*` tags; tarball remains for offline `docker load`. See [`apps/waddle_controller/README.md`](../waddle_controller/README.md#deploy-from-github-builds) |
 
 CI passes **`flutter build … --build-number`** using GitHub Actions **`github.run_number`**. Use **`workflow_dispatch`** on **`release.yml`** to build without publishing (publish still runs only on **`v*`** tag pushes).
 
