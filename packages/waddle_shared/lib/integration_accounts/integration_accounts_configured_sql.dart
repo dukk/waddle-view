@@ -67,6 +67,26 @@ const String kCreateVIntegrationAccountsConfiguredViewPostgresSql =
     'CREATE OR REPLACE VIEW v_integration_accounts_configured AS\n'
     '$_vIntegrationAccountsConfiguredViewSelectSql';
 
+/// SQL fragment: integrations whose required accounts are satisfied.
+///
+/// Casts [IntegrationTypes.requiresAccounts] to INTEGER so the predicate works
+/// on both SQLite (0/1) and Postgres (boolean). Comparing a Postgres boolean
+/// to `1` raises `operator does not exist: boolean = integer`.
+const String kIntegrationsAccountsConfiguredSqlPredicate =
+    '(NOT EXISTS (SELECT 1 FROM integration_types it '
+    'WHERE it.integration_type = integrations.integration_type '
+    'AND CAST(it.requires_accounts AS INTEGER) = 1) '
+    'OR EXISTS (SELECT 1 FROM v_integration_accounts_configured v '
+    'WHERE v.integration_id = integrations.id AND v.accounts_configured = 1))';
+
+/// SQL fragment: integrations that require accounts and are not yet configured.
+const String kIntegrationsAccountsMissingSqlPredicate =
+    '(EXISTS (SELECT 1 FROM integration_types it '
+    'WHERE it.integration_type = integrations.integration_type '
+    'AND CAST(it.requires_accounts AS INTEGER) = 1) '
+    'AND NOT EXISTS (SELECT 1 FROM v_integration_accounts_configured v '
+    'WHERE v.integration_id = integrations.id AND v.accounts_configured = 1))';
+
 /// Inserts rows from [kIntegrationAccountRequirementsByType].
 Future<void> seedIntegrationTypeRequiredAccounts(AppDatabase db) async {
   for (final entry in kIntegrationAccountRequirementsByType.entries) {

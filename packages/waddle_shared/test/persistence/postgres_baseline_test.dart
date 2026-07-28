@@ -26,6 +26,20 @@ void main() {
         contains('CREATE VIEW IF NOT EXISTS'),
       );
     });
+
+    test(
+      'accounts_configured list predicates cast requires_accounts for Postgres',
+      () {
+        for (final sql in [
+          kIntegrationsAccountsConfiguredSqlPredicate,
+          kIntegrationsAccountsMissingSqlPredicate,
+          kCreateVIntegrationAccountsConfiguredViewPostgresSql,
+        ]) {
+          expect(sql, contains('CAST(it.requires_accounts AS INTEGER)'));
+          expect(sql, isNot(contains('requires_accounts = 1')));
+        }
+      },
+    );
   });
 
   final testUrl =
@@ -48,6 +62,23 @@ void main() {
             .customSelect('SELECT COUNT(*) AS c FROM integration_types')
             .getSingle();
         expect(row.read<int>('c'), greaterThanOrEqualTo(0));
+
+        // Controller Integrations page always filters on accounts_configured.
+        // Bare `requires_accounts = 1` fails on Postgres boolean columns.
+        final configured = await db
+            .customSelect(
+              'SELECT COUNT(*) AS c FROM integrations '
+              'WHERE $kIntegrationsAccountsConfiguredSqlPredicate',
+            )
+            .getSingle();
+        expect(configured.read<int>('c'), greaterThanOrEqualTo(0));
+        final missing = await db
+            .customSelect(
+              'SELECT COUNT(*) AS c FROM integrations '
+              'WHERE $kIntegrationsAccountsMissingSqlPredicate',
+            )
+            .getSingle();
+        expect(missing.read<int>('c'), greaterThanOrEqualTo(0));
       } finally {
         await db.close();
       }

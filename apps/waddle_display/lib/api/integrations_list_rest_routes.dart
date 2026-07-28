@@ -335,22 +335,12 @@ Expression<bool> _integrationWhere(
     expr =
         expr &
         const CustomExpression<bool>(
-          '(NOT EXISTS (SELECT 1 FROM integration_types it '
-          'WHERE it.integration_type = integrations.integration_type '
-          'AND it.requires_accounts = 1) '
-          'OR EXISTS (SELECT 1 FROM v_integration_accounts_configured v '
-          'WHERE v.integration_id = integrations.id AND v.accounts_configured = 1))',
+          kIntegrationsAccountsConfiguredSqlPredicate,
         );
   } else if (params.accountsConfigured == false) {
     expr =
         expr &
-        const CustomExpression<bool>(
-          '(EXISTS (SELECT 1 FROM integration_types it '
-          'WHERE it.integration_type = integrations.integration_type '
-          'AND it.requires_accounts = 1) '
-          'AND NOT EXISTS (SELECT 1 FROM v_integration_accounts_configured v '
-          'WHERE v.integration_id = integrations.id AND v.accounts_configured = 1))',
-        );
+        const CustomExpression<bool>(kIntegrationsAccountsMissingSqlPredicate);
   }
   return expr;
 }
