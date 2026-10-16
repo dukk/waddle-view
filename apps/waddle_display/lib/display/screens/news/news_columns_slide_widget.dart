@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
@@ -11,6 +10,7 @@ import '../../content_category_slide_header.dart';
 import '../../../theme/display_theme.dart';
 import '../../dashboard_viewport_scope.dart';
 import 'news_config.dart';
+import 'news_image_panel.dart';
 import 'news_load.dart';
 
 int _cfgInt(Map<String, dynamic> c, String key, int def) {
@@ -77,12 +77,10 @@ class NewsColumnsSlideWidget extends StatefulWidget {
   final void Function(int desiredDwellMs) onReportDesiredDwell;
 
   @override
-  State<NewsColumnsSlideWidget> createState() =>
-      _NewsColumnsSlideWidgetState();
+  State<NewsColumnsSlideWidget> createState() => _NewsColumnsSlideWidgetState();
 }
 
-class _NewsColumnsSlideWidgetState
-    extends State<NewsColumnsSlideWidget> {
+class _NewsColumnsSlideWidgetState extends State<NewsColumnsSlideWidget> {
   bool _loading = true;
   bool _dwellReported = false;
   late final int _nColumns;
@@ -96,8 +94,9 @@ class _NewsColumnsSlideWidgetState
   @override
   void initState() {
     super.initState();
-    final slideCat =
-        widget.slide.randomChoices[ScreenProgramCurator.rssScreenCategoryChoiceKey];
+    final slideCat = widget
+        .slide
+        .randomChoices[ScreenProgramCurator.rssScreenCategoryChoiceKey];
     if (slideCat != null && slideCat.isNotEmpty) {
       _headerCategoryId = slideCat;
     }
@@ -127,7 +126,10 @@ class _NewsColumnsSlideWidgetState
         exclude.add(article.id);
         load = await loadRssArticleImage(widget.db, widget.blobs, article);
       }
-      final sourceLabel = await resolveRssArticleSourceLabel(widget.db, article);
+      final sourceLabel = await resolveRssArticleSourceLabel(
+        widget.db,
+        article,
+      );
       out.add(_ColumnArticle(article, load, sourceLabel));
     }
     String? inferred;
@@ -136,11 +138,7 @@ class _NewsColumnsSlideWidgetState
       if (a == null) {
         continue;
       }
-      inferred = await resolveRssDisplayCategoryId(
-        widget.db,
-        widget.slide,
-        a,
-      );
+      inferred = await resolveRssDisplayCategoryId(widget.db, widget.slide, a);
       break;
     }
     if (!mounted) {
@@ -252,7 +250,9 @@ class _NewsColumnsSlideWidgetState
                           imageFit: _imageFit,
                           data: _columns[i],
                           useNewsIcon:
-                              widget.slide.randomChoices['${widget.spec.choiceKey}_${i}_imageMode'] ==
+                              widget
+                                  .slide
+                                  .randomChoices['${widget.spec.choiceKey}_${i}_imageMode'] ==
                               'icon',
                         ),
                       ),
@@ -313,25 +313,27 @@ class _ArticleColumnCard extends StatelessWidget {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(9 * scale),
-              child: data.imageLoad.bytes != null
-                  ? Image.memory(
-                      data.imageLoad.bytes!,
-                      fit: imageFit,
-                      gaplessPlayback: true,
-                      errorBuilder: (context, error, stackTrace) =>
-                          _placeholder(
-                            theme,
-                            scale,
-                            blobReadFailed: false,
-                            useNewsIcon: useNewsIcon,
-                          ),
-                    )
-                  : _placeholder(
-                      theme,
-                      scale,
-                      blobReadFailed: data.imageLoad.blobReadFailed,
-                      useNewsIcon: useNewsIcon,
-                    ),
+              child: newsImageWithOptionalQrOverlay(
+                theme: theme,
+                scale: scale,
+                imageBytes: data.imageLoad.bytes,
+                imageFit: imageFit,
+                imageAlignment: newsImageAlignment(
+                  focalX: data.imageLoad.focalX,
+                  focalY: data.imageLoad.focalY,
+                ),
+                qrMode: qrMode,
+                link: article.link,
+                qrLogical: qrLogical,
+                qrKey: ValueKey('news_columns_overlay_qr_$columnIndex'),
+                placeholder: ({required bool blobReadFailed}) => _placeholder(
+                  theme,
+                  scale,
+                  blobReadFailed: blobReadFailed,
+                  useNewsIcon: useNewsIcon,
+                ),
+                blobReadFailed: data.imageLoad.blobReadFailed,
+              ),
             ),
           ),
         ),
@@ -445,15 +447,17 @@ class _ArticleColumnCard extends StatelessWidget {
       theme: theme,
       scale: scale,
     );
-    if (!newsQrVisible(qrMode) || link.trim().isEmpty) {
+    if (!newsQrVisible(qrMode) ||
+        newsQrImageOverlay(qrMode) ||
+        link.trim().isEmpty) {
       return body;
     }
-    final qr = _columnLinkQr(
+    final qr = newsArticleLinkQr(
       theme: theme,
       scale: scale,
       link: link,
       qrLogical: qrLogical,
-      columnIndex: columnIndex,
+      qrKey: ValueKey('news_columns_qr_$columnIndex'),
     );
     if (newsQrOnRight(qrMode)) {
       return Row(
@@ -472,43 +476,6 @@ class _ArticleColumnCard extends StatelessWidget {
         SizedBox(width: 8 * scale),
         Expanded(child: body),
       ],
-    );
-  }
-
-  static Widget _columnLinkQr({
-    required ThemeData theme,
-    required double scale,
-    required String link,
-    required double qrLogical,
-    required int columnIndex,
-  }) {
-    final url = link.trim();
-    if (url.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    final innerPad = 10 * scale;
-    return Padding(
-      padding: EdgeInsets.all(6 * scale),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8 * scale),
-          border: Border.all(
-            color: theme.colorScheme.outline.withValues(alpha: 0.3),
-          ),
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(innerPad),
-          child: QrImageView(
-            key: ValueKey('news_columns_qr_$columnIndex'),
-            data: url,
-            version: QrVersions.auto,
-            size: qrLogical * scale,
-            padding: EdgeInsets.all(4 * scale),
-            gapless: true,
-          ),
-        ),
-      ),
     );
   }
 

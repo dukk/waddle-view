@@ -87,7 +87,7 @@ void main() {
       DatabaseConnection(executor, closeStreamsSynchronously: true),
     );
     await db.customStatement('SELECT 1');
-    expect(db.schemaVersion, 52);
+    expect(db.schemaVersion, 53);
     expect(
       await db
           .customSelect(

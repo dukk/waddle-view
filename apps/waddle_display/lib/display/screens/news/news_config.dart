@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
-String readNewsQrMode(Map<String, dynamic> config, {bool legacyImageOnRight = false}) {
+String readNewsQrMode(
+  Map<String, dynamic> config, {
+  bool legacyImageOnRight = false,
+}) {
   final raw = config['qrMode'];
   if (raw is String && raw.trim().isNotEmpty) {
     return raw.trim();
@@ -37,11 +40,32 @@ bool newsQrVisible(String mode) => mode != 'hidden';
 
 bool newsQrOnRight(String mode) => mode == 'right';
 
-bool newsQrImageOverlayBottom(String mode) => mode == 'image_overlay_bottom';
+/// Image-overlay QR placement, or null when QR is hidden / beside text.
+Alignment? newsQrImageOverlayAlignment(String mode) {
+  switch (mode) {
+    case 'image_overlay_top_left':
+      return Alignment.topLeft;
+    case 'image_overlay_top':
+      return Alignment.topCenter;
+    case 'image_overlay_top_right':
+      return Alignment.topRight;
+    case 'image_overlay_bottom_left':
+      return Alignment.bottomLeft;
+    case 'image_overlay_bottom':
+      return Alignment.bottomCenter;
+    case 'image_overlay_bottom_right':
+      return Alignment.bottomRight;
+    case 'image_overlay_left':
+      return Alignment.centerLeft;
+    case 'image_overlay_right':
+      return Alignment.centerRight;
+    default:
+      return null;
+  }
+}
 
-bool newsQrImageOverlayLeft(String mode) => mode == 'image_overlay_left';
-
-bool newsQrImageOverlayRight(String mode) => mode == 'image_overlay_right';
+bool newsQrImageOverlay(String mode) =>
+    newsQrImageOverlayAlignment(mode) != null;
 
 /// [news_grid] QR mode; defaults to [hidden].
 String readNewsGridQrMode(Map<String, dynamic> config) {
@@ -58,4 +82,16 @@ bool readNewsGridShowSummary(Map<String, dynamic> config) {
     return v;
   }
   return false;
+}
+
+/// Flutter [Alignment] for [BoxFit.cover] from normalized focal (0..1), or a
+/// slight top bias when focal is unknown.
+Alignment newsImageAlignment({double? focalX, double? focalY}) {
+  if (focalX != null && focalY != null) {
+    return Alignment(
+      (focalX.clamp(0.0, 1.0) * 2) - 1,
+      (focalY.clamp(0.0, 1.0) * 2) - 1,
+    );
+  }
+  return const Alignment(0, -0.3);
 }

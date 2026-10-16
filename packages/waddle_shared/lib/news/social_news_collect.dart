@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../blob/blob_store.dart';
 import '../collect/data_write_context.dart';
 import '../curation/reject_filter_context.dart';
+import '../image/blob_crop_metadata.dart';
 import '../net/http_debug_uri.dart';
 import '../persistence/database.dart';
 import '../persistence/tables.dart';
@@ -34,13 +35,11 @@ Future<void> upsertSocialNewsPost(
   required String fallbackTitle,
 }) async {
   final articleId = newsArticleId(sourceType, sourceId, post.id);
-  final existing = await (ctx.db.select(ctx.db.news)
-        ..where((t) => t.id.equals(articleId)))
-      .getSingleOrNull();
+  final existing = await (ctx.db.select(
+    ctx.db.news,
+  )..where((t) => t.id.equals(articleId))).getSingleOrNull();
   var imageKey = existing?.imageBlobKey;
-  if (post.imageUrl != null &&
-      post.imageUrl!.isNotEmpty &&
-      imageKey == null) {
+  if (post.imageUrl != null && post.imageUrl!.isNotEmpty && imageKey == null) {
     imageKey = await _downloadAndStoreImage(
       ctx,
       httpClient: httpClient,
@@ -53,12 +52,15 @@ Future<void> upsertSocialNewsPost(
   }
 
   final title = socialNewsTitleFromText(post.text, fallback: fallbackTitle);
-  final summary =
-      post.text.trim().length > title.length ? post.text.trim() : null;
+  final summary = post.text.trim().length > title.length
+      ? post.text.trim()
+      : null;
   final isBlocked = rejectCtx.isBlockedAny([title, summary]);
   final suppressedForInsert = (existing?.suppressed ?? false) || isBlocked;
 
-  await ctx.db.into(ctx.db.news).insert(
+  await ctx.db
+      .into(ctx.db.news)
+      .insert(
         NewsCompanion.insert(
           id: articleId,
           sourceType: sourceType,
@@ -117,25 +119,24 @@ Future<String?> _downloadAndStoreImage(
       return null;
     }
     final logicalKey = '$blobPrefix/$sourceId/$articleId/image';
-    final ref = await ctx.blobs.putBytes(
-      res.bodyBytes,
-      logicalKey: logicalKey,
-    );
+    final ref = await ctx.blobs.putBytes(res.bodyBytes, logicalKey: logicalKey);
     final mime =
         res.headers['content-type']?.split(';').first.trim() ?? 'image/jpeg';
-    await ctx.db.into(ctx.db.blobMetadata).insertOnConflictUpdate(
-          BlobMetadataCompanion.insert(
-            blobKey: logicalKey,
-            sha256: ref.storageKey.split('/').last,
-            relativePath: ref.storageKey,
-            bytes: res.bodyBytes.length,
-            mimeType: Value(mime),
-            capturedAt: DateTime.fromMillisecondsSinceEpoch(nowMs),
-          ),
-        );
+    await writeBlobMetadataWithCropAnalysis(
+      db: ctx.db,
+      blobKey: logicalKey,
+      ref: ref,
+      bytes: res.bodyBytes,
+      mimeType: mime,
+      capturedAt: DateTime.fromMillisecondsSinceEpoch(nowMs),
+    );
     return logicalKey;
   } on Object catch (e, st) {
-    ctx.diagnostics.providerFail('$blobPrefix: image article=$articleId', e, st);
+    ctx.diagnostics.providerFail(
+      '$blobPrefix: image article=$articleId',
+      e,
+      st,
+    );
     return null;
   }
 }
@@ -149,12 +150,14 @@ Future<void> pruneSocialNewsArticles(
   if (maxArticles < 1) {
     return;
   }
-  final rows = await (ctx.db.select(ctx.db.news)
-        ..where(
-          (t) => t.sourceType.equals(sourceType) & t.sourceId.equals(sourceId),
-        )
-        ..orderBy([(t) => OrderingTerm.desc(t.publishedAt)]))
-      .get();
+  final rows =
+      await (ctx.db.select(ctx.db.news)
+            ..where(
+              (t) =>
+                  t.sourceType.equals(sourceType) & t.sourceId.equals(sourceId),
+            )
+            ..orderBy([(t) => OrderingTerm.desc(t.publishedAt)]))
+          .get();
   final nonsuppressed = rows.where((r) => !r.suppressed).toList();
   if (nonsuppressed.length <= maxArticles) {
     return;
@@ -164,17 +167,20 @@ Future<void> pruneSocialNewsArticles(
   }
 }
 
-Future<void> deleteSocialNewsArticle(DataWriteContext ctx, NewsArticle a) async {
+Future<void> deleteSocialNewsArticle(
+  DataWriteContext ctx,
+  NewsArticle a,
+) async {
   final key = a.imageBlobKey;
   if (key != null && key.isNotEmpty) {
-    final meta = await (ctx.db.select(ctx.db.blobMetadata)
-          ..where((t) => t.blobKey.equals(key)))
-        .getSingleOrNull();
+    final meta = await (ctx.db.select(
+      ctx.db.blobMetadata,
+    )..where((t) => t.blobKey.equals(key))).getSingleOrNull();
     if (meta != null) {
       await ctx.blobs.delete(BlobRef(meta.relativePath));
-      await (ctx.db.delete(ctx.db.blobMetadata)
-            ..where((t) => t.blobKey.equals(key)))
-          .go();
+      await (ctx.db.delete(
+        ctx.db.blobMetadata,
+      )..where((t) => t.blobKey.equals(key))).go();
     }
   }
   await (ctx.db.delete(ctx.db.news)..where((t) => t.id.equals(a.id))).go();

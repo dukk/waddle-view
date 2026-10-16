@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
@@ -11,6 +10,7 @@ import '../../content_category_slide_header.dart';
 import '../../../theme/display_theme.dart';
 import '../../dashboard_viewport_scope.dart';
 import 'news_config.dart';
+import 'news_image_panel.dart';
 import 'news_load.dart';
 import 'news_slide_timing.dart';
 
@@ -119,8 +119,9 @@ class _NewsSlideWidgetState extends State<NewsSlideWidget> {
       legacyImageOnRight: _cfgBool(c, 'imageOnRight', false),
     );
     _imageFit = readNewsImageFit(c);
-    final slideCat =
-        widget.slide.randomChoices[ScreenProgramCurator.rssScreenCategoryChoiceKey];
+    final slideCat = widget
+        .slide
+        .randomChoices[ScreenProgramCurator.rssScreenCategoryChoiceKey];
     if (slideCat != null && slideCat.isNotEmpty) {
       _headerCategoryId = slideCat;
     }
@@ -330,7 +331,18 @@ class _NewsSlideWidgetState extends State<NewsSlideWidget> {
                     style: theme.textTheme.titleMedium,
                     textAlign: TextAlign.center,
                   ),
-                  _articleLinkQr(theme, s, article.link, standalone: true),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Padding(
+                      padding: EdgeInsets.only(top: 10 * s),
+                      child: newsArticleLinkQr(
+                        theme: theme,
+                        scale: s,
+                        link: article.link,
+                        qrLogical: 176.0,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -400,6 +412,10 @@ class _NewsSlideWidgetState extends State<NewsSlideWidget> {
   }) {
     final hasImage = _imageLoad.bytes != null;
     final imageW = (w * _imageFraction).clamp(120.0 * s, w * 0.55);
+    final imageAlign = newsImageAlignment(
+      focalX: _imageLoad.focalX,
+      focalY: _imageLoad.focalY,
+    );
     final imagePanel = hasImage
         ? SizedBox(
             key: const Key('rss_article_image_panel'),
@@ -414,57 +430,28 @@ class _NewsSlideWidgetState extends State<NewsSlideWidget> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(11 * s),
-                child: newsQrImageOverlayBottom(_qrMode) &&
-                        article.link.trim().isNotEmpty
-                    ? Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          Image.memory(
-                            _imageLoad.bytes!,
-                            fit: _imageFit,
-                            gaplessPlayback: true,
-                            width: double.infinity,
-                            height: double.infinity,
-                            errorBuilder: (context, error, stackTrace) =>
-                                _imagePlaceholder(
-                                  theme,
-                                  s,
-                                  blobReadFailed: false,
-                                  useNewsIcon: widget.slide.randomChoices[
-                                          '${widget.spec.choiceKey}_imageMode'] ==
-                                      'icon',
-                                ),
-                          ),
-                          Positioned(
-                            left: 8 * s,
-                            right: 8 * s,
-                            bottom: 8 * s,
-                            child: Align(
-                              alignment: Alignment.bottomCenter,
-                              child: _articleLinkQr(
-                                theme,
-                                s,
-                                article.link,
-                                compact: true,
-                              ),
-                            ),
-                          ),
-                        ],
-                      )
-                    : Image.memory(
-                        _imageLoad.bytes!,
-                        fit: _imageFit,
-                        gaplessPlayback: true,
-                        errorBuilder: (context, error, stackTrace) =>
-                            _imagePlaceholder(
-                              theme,
-                              s,
-                              blobReadFailed: false,
-                              useNewsIcon: widget.slide.randomChoices[
-                                      '${widget.spec.choiceKey}_imageMode'] ==
-                                  'icon',
-                            ),
+                child: newsImageWithOptionalQrOverlay(
+                  theme: theme,
+                  scale: s,
+                  imageBytes: _imageLoad.bytes,
+                  imageFit: _imageFit,
+                  imageAlignment: imageAlign,
+                  qrMode: _qrMode,
+                  link: article.link,
+                  qrLogical: newsQrImageOverlay(_qrMode) ? 96.0 : 176.0,
+                  placeholder: ({required bool blobReadFailed}) =>
+                      _imagePlaceholder(
+                        theme,
+                        s,
+                        blobReadFailed: blobReadFailed,
+                        useNewsIcon:
+                            widget
+                                .slide
+                                .randomChoices['${widget.spec.choiceKey}_imageMode'] ==
+                            'icon',
                       ),
+                  blobReadFailed: _imageLoad.blobReadFailed,
+                ),
               ),
             ),
           )
@@ -541,7 +528,9 @@ class _NewsSlideWidgetState extends State<NewsSlideWidget> {
   }) {
     final url = link.trim();
     final showQr =
-        newsQrVisible(_qrMode) && !newsQrImageOverlayBottom(_qrMode) && url.isNotEmpty;
+        newsQrVisible(_qrMode) &&
+        !newsQrImageOverlay(_qrMode) &&
+        url.isNotEmpty;
     if (url.isEmpty) {
       if (summary.isEmpty) {
         return const SizedBox.shrink();
@@ -554,10 +543,7 @@ class _NewsSlideWidgetState extends State<NewsSlideWidget> {
           controller: _scroll,
           child: Padding(
             padding: EdgeInsets.only(bottom: 6 * s),
-            child: Text(
-              summary,
-              style: theme.textTheme.bodyLarge,
-            ),
+            child: Text(summary, style: theme.textTheme.bodyLarge),
           ),
         ),
       );
@@ -572,17 +558,19 @@ class _NewsSlideWidgetState extends State<NewsSlideWidget> {
               controller: _scroll,
               child: Padding(
                 padding: EdgeInsets.only(bottom: 6 * s),
-                child: Text(
-                  summary,
-                  style: theme.textTheme.bodyLarge,
-                ),
+                child: Text(summary, style: theme.textTheme.bodyLarge),
               ),
             ),
           );
     if (!showQr) {
       return summaryWidget;
     }
-    final qr = _articleLinkQr(theme, s, link);
+    final qr = newsArticleLinkQr(
+      theme: theme,
+      scale: s,
+      link: link,
+      qrLogical: 176.0,
+    );
     final gap = SizedBox(width: 12 * s);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -612,58 +600,5 @@ class _NewsSlideWidgetState extends State<NewsSlideWidget> {
         ),
       ),
     );
-  }
-
-  /// QR encoding the article URL for phone cameras. Omits when [link] is empty.
-  ///
-  /// When [standalone] is true (e.g. no body text), the code is right-aligned
-  /// with top padding. When false, the caller places this at the **start** of
-  /// a [Row] under the title so the summary sits to the right and wraps there.
-  static Widget _articleLinkQr(
-    ThemeData theme,
-    double s,
-    String link, {
-    bool standalone = false,
-    bool compact = false,
-  }) {
-    final url = link.trim();
-    if (url.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    final qrLogical = compact ? 96.0 : 176.0;
-    final innerPad = 14 * s;
-    final box = Padding(
-      padding: EdgeInsets.all(6 * s),
-      child: DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8 * s),
-        border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(innerPad),
-        child: QrImageView(
-          key: const Key('rss_article_link_qr'),
-          data: url,
-          version: QrVersions.auto,
-          size: qrLogical * s,
-          padding: EdgeInsets.all(4 * s),
-          gapless: true,
-        ),
-      ),
-      ),
-    );
-    if (standalone) {
-      return Align(
-        alignment: Alignment.centerRight,
-        child: Padding(
-          padding: EdgeInsets.only(top: 10 * s),
-          child: box,
-        ),
-      );
-    }
-    return box;
   }
 }

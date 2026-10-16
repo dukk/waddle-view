@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 
 import '../blob/blob_store.dart';
 import '../curation/reject_filter_context.dart';
+import '../image/blob_crop_metadata.dart';
 import '../persistence/calendar_event_categories.dart';
 import '../persistence/calendar_event_upsert.dart';
 import '../persistence/database.dart';
@@ -75,40 +76,49 @@ String normalizeManualBucketMime(String? raw, Set<String> allowed) {
   return mime;
 }
 
-Future<void> _assertContentCategoryExists(AppDatabase db, String categoryId) async {
+Future<void> _assertContentCategoryExists(
+  AppDatabase db,
+  String categoryId,
+) async {
   final id = categoryId.trim();
   if (id.isEmpty) {
     throw ManualBucketWriteException('category_required');
   }
-  final row = await (db.select(db.contentCategories)
-        ..where((t) => t.id.equals(id)))
-      .getSingleOrNull();
+  final row = await (db.select(
+    db.contentCategories,
+  )..where((t) => t.id.equals(id))).getSingleOrNull();
   if (row == null) {
     throw ManualBucketWriteException('unknown_category', id);
   }
 }
 
-Future<void> _assertJokeCategoryExists(AppDatabase db, String categoryId) async {
+Future<void> _assertJokeCategoryExists(
+  AppDatabase db,
+  String categoryId,
+) async {
   final id = categoryId.trim();
   if (id.isEmpty) {
     throw ManualBucketWriteException('category_id_required');
   }
-  final row = await (db.select(db.interestsJokes)
-        ..where((t) => t.id.equals(id)))
-      .getSingleOrNull();
+  final row = await (db.select(
+    db.interestsJokes,
+  )..where((t) => t.id.equals(id))).getSingleOrNull();
   if (row == null) {
     throw ManualBucketWriteException('unknown_joke_category', id);
   }
 }
 
-Future<void> _assertTriviaCategoryExists(AppDatabase db, String categoryId) async {
+Future<void> _assertTriviaCategoryExists(
+  AppDatabase db,
+  String categoryId,
+) async {
   final id = categoryId.trim();
   if (id.isEmpty) {
     throw ManualBucketWriteException('category_id_required');
   }
-  final row = await (db.select(db.interestsTrivia)
-        ..where((t) => t.id.equals(id)))
-      .getSingleOrNull();
+  final row = await (db.select(
+    db.interestsTrivia,
+  )..where((t) => t.id.equals(id))).getSingleOrNull();
   if (row == null) {
     throw ManualBucketWriteException('unknown_trivia_category', id);
   }
@@ -132,7 +142,10 @@ Future<ManualBucketWriteResult> writeManualBucketPhoto({
   }
   final cat = category.trim();
   await _assertContentCategoryExists(db, cat);
-  final mime = normalizeManualBucketMime(contentType, kManualBucketPhotoMimeTypes);
+  final mime = normalizeManualBucketMime(
+    contentType,
+    kManualBucketPhotoMimeTypes,
+  );
   final filter = rejectCtx ?? await RejectFilterContext.loadFromDb(db);
   final photographer = (photographerName ?? '').trim();
   final alt = (altText ?? '').trim();
@@ -140,22 +153,23 @@ Future<ManualBucketWriteResult> writeManualBucketPhoto({
   final id = newManualBucketId('photo');
   final logicalKey = 'bucket/photo/$id/image';
   final ref = await blobs.putBytes(bytes, logicalKey: logicalKey);
-  await db.into(db.blobMetadata).insertOnConflictUpdate(
-        BlobMetadataCompanion.insert(
-          blobKey: logicalKey,
-          sha256: ref.storageKey.split('/').last,
-          relativePath: ref.storageKey,
-          bytes: bytes.length,
-          mimeType: Value(mime),
-          capturedAt: now,
-        ),
-      );
+  await writeBlobMetadataWithCropAnalysis(
+    db: db,
+    blobKey: logicalKey,
+    ref: ref,
+    bytes: bytes,
+    mimeType: mime,
+    capturedAt: now,
+    hints: BlobCropProviderHints(altText: alt),
+  );
   final blocked = filter.isMediaRejected(
     photographer: photographer,
     altText: alt,
     urls: const [],
   );
-  await db.into(db.photos).insert(
+  await db
+      .into(db.photos)
+      .insert(
         PhotosCompanion.insert(
           id: id,
           category: Value(cat),
@@ -194,7 +208,10 @@ Future<ManualBucketWriteResult> writeManualBucketVideo({
   }
   final cat = category.trim();
   await _assertContentCategoryExists(db, cat);
-  final mime = normalizeManualBucketMime(contentType, kManualBucketVideoMimeTypes);
+  final mime = normalizeManualBucketMime(
+    contentType,
+    kManualBucketVideoMimeTypes,
+  );
   final filter = rejectCtx ?? await RejectFilterContext.loadFromDb(db);
   final photographer = (photographerName ?? '').trim();
   final alt = (altText ?? '').trim();
@@ -202,7 +219,9 @@ Future<ManualBucketWriteResult> writeManualBucketVideo({
   final id = newManualBucketId('video');
   final logicalKey = 'bucket/video/$id/media';
   final ref = await blobs.putBytes(bytes, logicalKey: logicalKey);
-  await db.into(db.blobMetadata).insertOnConflictUpdate(
+  await db
+      .into(db.blobMetadata)
+      .insertOnConflictUpdate(
         BlobMetadataCompanion.insert(
           blobKey: logicalKey,
           sha256: ref.storageKey.split('/').last,
@@ -217,7 +236,9 @@ Future<ManualBucketWriteResult> writeManualBucketVideo({
     altText: alt,
     urls: const [],
   );
-  await db.into(db.videos).insert(
+  await db
+      .into(db.videos)
+      .insert(
         VideosCompanion.insert(
           id: id,
           category: Value(cat),
@@ -253,7 +274,9 @@ Future<ManualBucketWriteResult> writeManualBucketJoke({
   final blocked = filter.isBlockedAny([s, p]);
   final id = newManualBucketId('joke');
   final now = DateTime.now();
-  await db.into(db.jokes).insert(
+  await db
+      .into(db.jokes)
+      .insert(
         JokesCompanion.insert(
           id: id,
           categoryId: cid,
@@ -295,7 +318,9 @@ Future<ManualBucketWriteResult> writeManualBucketTrivia({
   final blocked = filter.isBlockedAny([qt, a, b, c, d]);
   final id = newManualBucketId('trivia');
   final now = DateTime.now();
-  await db.into(db.triviaQuestions).insert(
+  await db
+      .into(db.triviaQuestions)
+      .insert(
         TriviaQuestionsCompanion.insert(
           id: id,
           categoryId: cid,
@@ -380,7 +405,9 @@ Future<ManualBucketWriteResult> writeManualBucketQuote({
   final blocked = filter.isBlocked(quoteText);
   final id = newManualBucketId('quote');
   final now = DateTime.now();
-  await db.into(db.quoterismQuotes).insert(
+  await db
+      .into(db.quoterismQuotes)
+      .insert(
         QuoterismQuotesCompanion.insert(
           id: id,
           quoteText: quoteText,
@@ -393,7 +420,9 @@ Future<ManualBucketWriteResult> writeManualBucketQuote({
         ),
       );
   for (final catId in normalizedCats) {
-    await db.into(db.quoterismQuoteCategories).insert(
+    await db
+        .into(db.quoterismQuoteCategories)
+        .insert(
           QuoterismQuoteCategoriesCompanion.insert(
             quoteId: id,
             categoryId: catId,

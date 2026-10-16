@@ -8,6 +8,7 @@ import 'package:waddle_shared/secrets/secret_store.dart';
 import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
+import 'package:waddle_shared/image/blob_crop_metadata.dart';
 import 'package:waddle_shared/net/http_debug_uri.dart';
 import 'package:http/http.dart' as http;
 
@@ -20,9 +21,9 @@ class FacebookNewsDataProvider implements IDataProvider {
     http.Client? httpClient,
     int Function()? nowMs,
     FacebookGraphClient? graph,
-  })  : _http = httpClient ?? http.Client(),
-        _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch),
-        _graph = graph ?? FacebookGraphClient(httpClient: httpClient);
+  }) : _http = httpClient ?? http.Client(),
+       _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch),
+       _graph = graph ?? FacebookGraphClient(httpClient: httpClient);
 
   final http.Client _http;
   final int Function() _nowMs;
@@ -33,9 +34,10 @@ class FacebookNewsDataProvider implements IDataProvider {
 
   @override
   Future<void> collect(DataWriteContext ctx) async {
-    final setting = await (ctx.db.select(ctx.db.integrations)
-          ..where((t) => t.id.equals(kDefaultNewsFacebookIntegrationId)))
-        .getSingleOrNull();
+    final setting =
+        await (ctx.db.select(ctx.db.integrations)
+              ..where((t) => t.id.equals(kDefaultNewsFacebookIntegrationId)))
+            .getSingleOrNull();
     if (setting == null || !setting.enabled) {
       ctx.diagnostics.provider('facebook_news: skip (disabled)');
       return;
@@ -43,11 +45,13 @@ class FacebookNewsDataProvider implements IDataProvider {
 
     final now = _nowMs();
     final rejectCtx = await RejectFilterContext.loadFromDb(ctx.db);
-    final sources = await (ctx.db.select(ctx.db.interestsFacebookSources)
-          ..where((t) => t.enabled.equals(true)))
-        .get();
+    final sources = await (ctx.db.select(
+      ctx.db.interestsFacebookSources,
+    )..where((t) => t.enabled.equals(true))).get();
     if (sources.isEmpty) {
-      ctx.diagnostics.provider('facebook_news: collect skip (no enabled sources)');
+      ctx.diagnostics.provider(
+        'facebook_news: collect skip (no enabled sources)',
+      );
       return;
     }
     ctx.diagnostics.provider(
@@ -56,7 +60,8 @@ class FacebookNewsDataProvider implements IDataProvider {
 
     for (final source in sources) {
       final last = source.lastFetchedAt;
-      final due = last == null ||
+      final due =
+          last == null ||
           (now - last.millisecondsSinceEpoch) >= source.pollSeconds * 1000;
       if (!due) {
         ctx.diagnostics.provider(
@@ -91,9 +96,9 @@ class FacebookNewsDataProvider implements IDataProvider {
           );
         }
         await _pruneSourceArticles(ctx, source.id, source.maxArticles);
-        await (ctx.db.update(ctx.db.interestsFacebookSources)
-              ..where((t) => t.id.equals(source.id)))
-            .write(
+        await (ctx.db.update(
+          ctx.db.interestsFacebookSources,
+        )..where((t) => t.id.equals(source.id))).write(
           InterestsFacebookSourcesCompanion(
             lastFetchedAt: Value(DateTime.fromMillisecondsSinceEpoch(now)),
             consecutiveFailures: const Value(0),
@@ -110,7 +115,10 @@ class FacebookNewsDataProvider implements IDataProvider {
     }
   }
 
-  Future<String?> _readAccessToken(SecretStore secrets, String accountId) async {
+  Future<String?> _readAccessToken(
+    SecretStore secrets,
+    String accountId,
+  ) async {
     final def = kIntegrationAccountTypes[kIntegrationAccountTypeFacebook];
     if (def == null) {
       return null;
@@ -130,9 +138,9 @@ class FacebookNewsDataProvider implements IDataProvider {
       source.id,
       post.id,
     );
-    final existing = await (ctx.db.select(ctx.db.news)
-          ..where((t) => t.id.equals(articleId)))
-        .getSingleOrNull();
+    final existing = await (ctx.db.select(
+      ctx.db.news,
+    )..where((t) => t.id.equals(articleId))).getSingleOrNull();
     var imageKey = existing?.imageBlobKey;
     if (post.fullPictureUrl != null &&
         post.fullPictureUrl!.isNotEmpty &&
@@ -146,13 +154,13 @@ class FacebookNewsDataProvider implements IDataProvider {
     }
 
     final title = _titleFromPost(post);
-    final summary = post.message.length > title.length
-        ? post.message
-        : null;
+    final summary = post.message.length > title.length ? post.message : null;
     final isBlocked = rejectCtx.isBlockedAny([title, summary]);
     final suppressedForInsert = (existing?.suppressed ?? false) || isBlocked;
 
-    await ctx.db.into(ctx.db.news).insert(
+    await ctx.db
+        .into(ctx.db.news)
+        .insert(
           NewsCompanion.insert(
             id: articleId,
             sourceType: kNewsSourceTypeFacebook,
@@ -185,8 +193,7 @@ class FacebookNewsDataProvider implements IDataProvider {
               ),
               fetchedAt: Value(DateTime.fromMillisecondsSinceEpoch(now)),
               imageBlobKey: Value(imageKey),
-              suppressed:
-                  isBlocked ? const Value(true) : const Value.absent(),
+              suppressed: isBlocked ? const Value(true) : const Value.absent(),
             ),
           ),
         );
@@ -227,16 +234,14 @@ class FacebookNewsDataProvider implements IDataProvider {
       );
       final mime =
           res.headers['content-type']?.split(';').first.trim() ?? 'image/jpeg';
-      await ctx.db.into(ctx.db.blobMetadata).insertOnConflictUpdate(
-            BlobMetadataCompanion.insert(
-              blobKey: logicalKey,
-              sha256: ref.storageKey.split('/').last,
-              relativePath: ref.storageKey,
-              bytes: res.bodyBytes.length,
-              mimeType: Value(mime),
-              capturedAt: DateTime.fromMillisecondsSinceEpoch(_nowMs()),
-            ),
-          );
+      await writeBlobMetadataWithCropAnalysis(
+        db: ctx.db,
+        blobKey: logicalKey,
+        ref: ref,
+        bytes: res.bodyBytes,
+        mimeType: mime,
+        capturedAt: DateTime.fromMillisecondsSinceEpoch(_nowMs()),
+      );
       return logicalKey;
     } on Object catch (e, st) {
       ctx.diagnostics.providerFail(
@@ -256,13 +261,15 @@ class FacebookNewsDataProvider implements IDataProvider {
     if (maxArticles < 1) {
       return;
     }
-    final rows = await (ctx.db.select(ctx.db.news)
-          ..where(
-            (t) => t.sourceType.equals(kNewsSourceTypeFacebook) &
-                t.sourceId.equals(sourceId),
-          )
-          ..orderBy([(t) => OrderingTerm.desc(t.publishedAt)]))
-        .get();
+    final rows =
+        await (ctx.db.select(ctx.db.news)
+              ..where(
+                (t) =>
+                    t.sourceType.equals(kNewsSourceTypeFacebook) &
+                    t.sourceId.equals(sourceId),
+              )
+              ..orderBy([(t) => OrderingTerm.desc(t.publishedAt)]))
+            .get();
     final nonsuppressed = rows.where((r) => !r.suppressed).toList();
     if (nonsuppressed.length <= maxArticles) {
       return;
@@ -275,14 +282,14 @@ class FacebookNewsDataProvider implements IDataProvider {
   Future<void> _deleteArticle(DataWriteContext ctx, NewsArticle a) async {
     final key = a.imageBlobKey;
     if (key != null && key.isNotEmpty) {
-      final meta = await (ctx.db.select(ctx.db.blobMetadata)
-            ..where((t) => t.blobKey.equals(key)))
-          .getSingleOrNull();
+      final meta = await (ctx.db.select(
+        ctx.db.blobMetadata,
+      )..where((t) => t.blobKey.equals(key))).getSingleOrNull();
       if (meta != null) {
         await ctx.blobs.delete(BlobRef(meta.relativePath));
-        await (ctx.db.delete(ctx.db.blobMetadata)
-              ..where((t) => t.blobKey.equals(key)))
-            .go();
+        await (ctx.db.delete(
+          ctx.db.blobMetadata,
+        )..where((t) => t.blobKey.equals(key))).go();
       }
     }
     await (ctx.db.delete(ctx.db.news)..where((t) => t.id.equals(a.id))).go();

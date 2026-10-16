@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
 import 'package:waddle_shared/persistence/database.dart';
@@ -11,6 +10,7 @@ import '../../../theme/display_theme.dart';
 import '../../content_category_slide_header.dart';
 import '../../dashboard_viewport_scope.dart';
 import 'news_config.dart';
+import 'news_image_panel.dart';
 import 'news_load.dart';
 
 int _cfgInt(Map<String, dynamic> c, String key, int def) {
@@ -84,8 +84,9 @@ class _NewsGridSlideWidgetState extends State<NewsGridSlideWidget> {
   @override
   void initState() {
     super.initState();
-    final slideCat =
-        widget.slide.randomChoices[ScreenProgramCurator.rssScreenCategoryChoiceKey];
+    final slideCat = widget
+        .slide
+        .randomChoices[ScreenProgramCurator.rssScreenCategoryChoiceKey];
     if (slideCat != null && slideCat.isNotEmpty) {
       _headerCategoryId = slideCat;
     }
@@ -115,7 +116,10 @@ class _NewsGridSlideWidgetState extends State<NewsGridSlideWidget> {
         exclude.add(article.id);
         load = await loadRssArticleImage(widget.db, widget.blobs, article);
       }
-      final sourceLabel = await resolveRssArticleSourceLabel(widget.db, article);
+      final sourceLabel = await resolveRssArticleSourceLabel(
+        widget.db,
+        article,
+      );
       out.add(_GridCellData(article, load, sourceLabel));
     }
     String? inferred;
@@ -124,11 +128,7 @@ class _NewsGridSlideWidgetState extends State<NewsGridSlideWidget> {
       if (a == null) {
         continue;
       }
-      inferred = await resolveRssDisplayCategoryId(
-        widget.db,
-        widget.slide,
-        a,
-      );
+      inferred = await resolveRssDisplayCategoryId(widget.db, widget.slide, a);
       break;
     }
     if (!mounted) {
@@ -179,8 +179,9 @@ class _NewsGridSlideWidgetState extends State<NewsGridSlideWidget> {
               showSummary: _showSummary,
               data: _cells[start + col],
               useNewsIcon:
-                  widget.slide.randomChoices[
-                      '${widget.spec.choiceKey}_${start + col}_imageMode'] ==
+                  widget
+                      .slide
+                      .randomChoices['${widget.spec.choiceKey}_${start + col}_imageMode'] ==
                   'icon',
             ),
           ),
@@ -298,69 +299,28 @@ class _GridCell extends StatelessWidget {
     final summary = article.summary?.trim() ?? '';
     final sourceLabel = data.sourceLabel?.trim() ?? '';
     final link = article.link.trim();
-    final showQr = newsQrVisible(qrMode) &&
-        link.isNotEmpty &&
-        (newsQrImageOverlayLeft(qrMode) || newsQrImageOverlayRight(qrMode));
-
-    Widget imageChild;
-    if (data.imageLoad.bytes != null) {
-      imageChild = Image.memory(
-        data.imageLoad.bytes!,
-        fit: imageFit,
-        gaplessPlayback: true,
-        width: double.infinity,
-        height: double.infinity,
-        errorBuilder: (context, error, stackTrace) => _placeholder(
-          theme,
-          scale,
-          blobReadFailed: false,
-          useNewsIcon: useNewsIcon,
-        ),
-      );
-    } else {
-      imageChild = _placeholder(
+    final imageChild = newsImageWithOptionalQrOverlay(
+      theme: theme,
+      scale: scale,
+      imageBytes: data.imageLoad.bytes,
+      imageFit: imageFit,
+      imageAlignment: newsImageAlignment(
+        focalX: data.imageLoad.focalX,
+        focalY: data.imageLoad.focalY,
+      ),
+      qrMode: qrMode,
+      link: link,
+      qrLogical: qrLogical,
+      overlayInset: 4,
+      qrKey: ValueKey('news_grid_qr_$cellIndex'),
+      placeholder: ({required bool blobReadFailed}) => _placeholder(
         theme,
         scale,
-        blobReadFailed: data.imageLoad.blobReadFailed,
+        blobReadFailed: blobReadFailed,
         useNewsIcon: useNewsIcon,
-      );
-    }
-
-    if (showQr) {
-      final qr = _gridLinkQr(
-        theme: theme,
-        scale: scale,
-        link: link,
-        qrLogical: qrLogical,
-        cellIndex: cellIndex,
-      );
-      imageChild = Stack(
-        fit: StackFit.expand,
-        children: [
-          imageChild,
-          if (newsQrImageOverlayLeft(qrMode))
-            Positioned(
-              left: 4 * scale,
-              top: 0,
-              bottom: 0,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: qr,
-              ),
-            ),
-          if (newsQrImageOverlayRight(qrMode))
-            Positioned(
-              right: 4 * scale,
-              top: 0,
-              bottom: 0,
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: qr,
-              ),
-            ),
-        ],
-      );
-    }
+      ),
+      blobReadFailed: data.imageLoad.blobReadFailed,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -428,40 +388,6 @@ class _GridCell extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-
-  static Widget _gridLinkQr({
-    required ThemeData theme,
-    required double scale,
-    required String link,
-    required double qrLogical,
-    required int cellIndex,
-  }) {
-    final url = link.trim();
-    if (url.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    final innerPad = 4 * scale;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6 * scale),
-        border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(innerPad),
-        child: QrImageView(
-          key: ValueKey('news_grid_qr_$cellIndex'),
-          data: url,
-          version: QrVersions.auto,
-          size: qrLogical * scale,
-          padding: EdgeInsets.all(2 * scale),
-          gapless: true,
-        ),
-      ),
     );
   }
 

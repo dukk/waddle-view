@@ -6,6 +6,7 @@ import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_shared/curation/reject_filter_context.dart';
+import 'package:waddle_shared/image/blob_crop_metadata.dart';
 import 'package:waddle_shared/integrations/integration_collect.dart';
 import 'package:waddle_shared/integrations/integration_kv_repository.dart';
 import 'package:waddle_shared/integrations/integration_kv_types.dart';
@@ -39,10 +40,10 @@ abstract class GooglePhotosMediaDataProvider implements IDataProvider {
     int Function()? nowMs,
     GoogleOAuth? oauth,
     GooglePhotosPickerApi? pickerApi,
-  })  : _http = httpClient ?? http.Client(),
-        _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch),
-        _oauth = oauth,
-        _pickerApi = pickerApi;
+  }) : _http = httpClient ?? http.Client(),
+       _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch),
+       _oauth = oauth,
+       _pickerApi = pickerApi;
 
   bool get ingestPhotos;
   bool get ingestVideos;
@@ -75,8 +76,10 @@ abstract class GooglePhotosMediaDataProvider implements IDataProvider {
     final kv = IntegrationKvRepository(ctx.db);
 
     if (setting.pollSeconds > 0) {
-      final lastValue =
-          await kv.getIntegrationValue(integrationId, kIntegrationLastCollectKey);
+      final lastValue = await kv.getIntegrationValue(
+        integrationId,
+        kIntegrationLastCollectKey,
+      );
       final last = int.tryParse(lastValue ?? '') ?? 0;
       if (nowMs - last < setting.pollSeconds * 1000) {
         ctx.diagnostics.provider(
@@ -255,9 +258,9 @@ abstract class GooglePhotosMediaDataProvider implements IDataProvider {
     required RejectFilterContext rejectCtx,
   }) async {
     final rowId = googlePhotosPhotoRowId(accountKey, item.id);
-    final exists = await (ctx.db.select(ctx.db.photos)
-          ..where((t) => t.id.equals(rowId)))
-        .getSingleOrNull();
+    final exists = await (ctx.db.select(
+      ctx.db.photos,
+    )..where((t) => t.id.equals(rowId))).getSingleOrNull();
     if (exists != null) {
       return false;
     }
@@ -276,28 +279,31 @@ abstract class GooglePhotosMediaDataProvider implements IDataProvider {
     final ref = await ctx.blobs.putBytes(bytes, logicalKey: logicalKey);
     final pw = _positivePixelDimension(item.width);
     final ph = _positivePixelDimension(item.height);
-
-    await ctx.db.into(ctx.db.blobMetadata).insertOnConflictUpdate(
-          BlobMetadataCompanion.insert(
-            blobKey: logicalKey,
-            sha256: ref.storageKey.split('/').last,
-            relativePath: ref.storageKey,
-            bytes: bytes.length,
-            mimeType: Value(item.mimeType),
-            capturedAt: DateTime.fromMillisecondsSinceEpoch(nowMs),
-            pixelWidth: pw != null ? Value(pw) : const Value.absent(),
-            pixelHeight: ph != null ? Value(ph) : const Value.absent(),
-          ),
-        );
-
     final altText = item.filename;
+
+    await writeBlobMetadataWithCropAnalysis(
+      db: ctx.db,
+      blobKey: logicalKey,
+      ref: ref,
+      bytes: bytes,
+      mimeType: item.mimeType,
+      capturedAt: DateTime.fromMillisecondsSinceEpoch(nowMs),
+      hints: BlobCropProviderHints(
+        altText: altText,
+        pixelWidth: pw,
+        pixelHeight: ph,
+      ),
+    );
+
     final blocked = rejectCtx.isMediaRejected(
       photographer: '',
       altText: altText,
       urls: const [],
     );
 
-    await ctx.db.into(ctx.db.photos).insert(
+    await ctx.db
+        .into(ctx.db.photos)
+        .insert(
           PhotosCompanion.insert(
             id: rowId,
             category: Value(category),
@@ -327,9 +333,9 @@ abstract class GooglePhotosMediaDataProvider implements IDataProvider {
     required RejectFilterContext rejectCtx,
   }) async {
     final rowId = googlePhotosVideoRowId(accountKey, item.id);
-    final exists = await (ctx.db.select(ctx.db.videos)
-          ..where((t) => t.id.equals(rowId)))
-        .getSingleOrNull();
+    final exists = await (ctx.db.select(
+      ctx.db.videos,
+    )..where((t) => t.id.equals(rowId))).getSingleOrNull();
     if (exists != null) {
       return false;
     }
@@ -347,7 +353,9 @@ abstract class GooglePhotosMediaDataProvider implements IDataProvider {
     final logicalKey = 'google_photos/video/$rowId/media';
     final ref = await ctx.blobs.putBytes(bytes, logicalKey: logicalKey);
 
-    await ctx.db.into(ctx.db.blobMetadata).insertOnConflictUpdate(
+    await ctx.db
+        .into(ctx.db.blobMetadata)
+        .insertOnConflictUpdate(
           BlobMetadataCompanion.insert(
             blobKey: logicalKey,
             sha256: ref.storageKey.split('/').last,
@@ -365,7 +373,9 @@ abstract class GooglePhotosMediaDataProvider implements IDataProvider {
       urls: const [],
     );
 
-    await ctx.db.into(ctx.db.videos).insert(
+    await ctx.db
+        .into(ctx.db.videos)
+        .insert(
           VideosCompanion.insert(
             id: rowId,
             category: Value(category),
@@ -407,11 +417,12 @@ abstract class GooglePhotosMediaDataProvider implements IDataProvider {
     String category,
     int max,
   ) async {
-    final rows = await (ctx.db.select(ctx.db.photos)
-          ..where((t) => t.category.equals(category))
-          ..where((t) => t.dataProvider.equals(dataProviderConstant))
-          ..orderBy([(t) => OrderingTerm.asc(t.fetchedAtMs)]))
-        .get();
+    final rows =
+        await (ctx.db.select(ctx.db.photos)
+              ..where((t) => t.category.equals(category))
+              ..where((t) => t.dataProvider.equals(dataProviderConstant))
+              ..orderBy([(t) => OrderingTerm.asc(t.fetchedAtMs)]))
+            .get();
     if (rows.length <= max) {
       return;
     }
@@ -420,18 +431,19 @@ abstract class GooglePhotosMediaDataProvider implements IDataProvider {
       final row = rows[i];
       final key = row.mediaBlobKey;
       if (key.isNotEmpty) {
-        final meta = await (ctx.db.select(ctx.db.blobMetadata)
-              ..where((t) => t.blobKey.equals(key)))
-            .getSingleOrNull();
-        await (ctx.db.delete(ctx.db.blobMetadata)
-              ..where((t) => t.blobKey.equals(key)))
-            .go();
+        final meta = await (ctx.db.select(
+          ctx.db.blobMetadata,
+        )..where((t) => t.blobKey.equals(key))).getSingleOrNull();
+        await (ctx.db.delete(
+          ctx.db.blobMetadata,
+        )..where((t) => t.blobKey.equals(key))).go();
         if (meta != null) {
           await ctx.blobs.delete(BlobRef(meta.relativePath));
         }
       }
-      await (ctx.db.delete(ctx.db.photos)..where((t) => t.id.equals(row.id)))
-          .go();
+      await (ctx.db.delete(
+        ctx.db.photos,
+      )..where((t) => t.id.equals(row.id))).go();
     }
   }
 
@@ -440,11 +452,12 @@ abstract class GooglePhotosMediaDataProvider implements IDataProvider {
     String category,
     int max,
   ) async {
-    final rows = await (ctx.db.select(ctx.db.videos)
-          ..where((t) => t.category.equals(category))
-          ..where((t) => t.dataProvider.equals(dataProviderConstant))
-          ..orderBy([(t) => OrderingTerm.asc(t.fetchedAtMs)]))
-        .get();
+    final rows =
+        await (ctx.db.select(ctx.db.videos)
+              ..where((t) => t.category.equals(category))
+              ..where((t) => t.dataProvider.equals(dataProviderConstant))
+              ..orderBy([(t) => OrderingTerm.asc(t.fetchedAtMs)]))
+            .get();
     if (rows.length <= max) {
       return;
     }
@@ -453,18 +466,19 @@ abstract class GooglePhotosMediaDataProvider implements IDataProvider {
       final row = rows[i];
       final key = row.mediaBlobKey;
       if (key.isNotEmpty) {
-        final meta = await (ctx.db.select(ctx.db.blobMetadata)
-              ..where((t) => t.blobKey.equals(key)))
-            .getSingleOrNull();
-        await (ctx.db.delete(ctx.db.blobMetadata)
-              ..where((t) => t.blobKey.equals(key)))
-            .go();
+        final meta = await (ctx.db.select(
+          ctx.db.blobMetadata,
+        )..where((t) => t.blobKey.equals(key))).getSingleOrNull();
+        await (ctx.db.delete(
+          ctx.db.blobMetadata,
+        )..where((t) => t.blobKey.equals(key))).go();
         if (meta != null) {
           await ctx.blobs.delete(BlobRef(meta.relativePath));
         }
       }
-      await (ctx.db.delete(ctx.db.videos)..where((t) => t.id.equals(row.id)))
-          .go();
+      await (ctx.db.delete(
+        ctx.db.videos,
+      )..where((t) => t.id.equals(row.id))).go();
     }
   }
 }

@@ -9,6 +9,7 @@ import 'package:waddle_shared/curation/reject_filter_context.dart';
 import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/config/integration_config_json.dart';
 import 'package:waddle_shared/config/microsoft_graph_kv.dart';
+import 'package:waddle_shared/image/blob_crop_metadata.dart';
 import 'package:waddle_shared/secrets/integration_secret_catalog.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/photo_category_assignments.dart';
@@ -987,24 +988,24 @@ class OneDrivePhotosDataProvider implements IDataProvider {
       pixelH = _positivePixelDimension(image['height']);
     }
 
-    await ctx.db
-        .into(ctx.db.blobMetadata)
-        .insertOnConflictUpdate(
-          BlobMetadataCompanion.insert(
-            blobKey: logicalKey,
-            sha256: ref.storageKey.split('/').last,
-            relativePath: ref.storageKey,
-            bytes: bytes.length,
-            mimeType: Value(mime),
-            capturedAt: DateTime.fromMillisecondsSinceEpoch(nowMs),
-            pixelWidth: pixelW != null ? Value(pixelW) : const Value.absent(),
-            pixelHeight: pixelH != null ? Value(pixelH) : const Value.absent(),
-          ),
-        );
-
     final photographer = _displayName(item);
     final pageUrl = webUrl is String ? webUrl : '';
     final altText = name is String ? name : '';
+
+    await writeBlobMetadataWithCropAnalysis(
+      db: ctx.db,
+      blobKey: logicalKey,
+      ref: ref,
+      bytes: bytes,
+      mimeType: mime,
+      capturedAt: DateTime.fromMillisecondsSinceEpoch(nowMs),
+      hints: BlobCropProviderHints(
+        altText: altText,
+        pixelWidth: pixelW,
+        pixelHeight: pixelH,
+      ),
+    );
+
     final blocked = rejectCtx.isMediaRejected(
       photographer: photographer,
       altText: altText,

@@ -4,9 +4,9 @@ import 'package:http/http.dart' as http;
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_shared/config/provider_runtime_config.dart';
+import 'package:waddle_shared/image/blob_crop_metadata.dart';
 import 'package:waddle_shared/integrations/integration_collect.dart';
 import 'package:waddle_shared/integrations/integration_kv_repository.dart';
-import 'package:drift/drift.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 
@@ -22,9 +22,9 @@ class QuoterismDataProvider implements IDataProvider {
     http.Client? httpClient,
     DateTime Function()? nowUtc,
     Duration? requestTimeout,
-  })  : _http = httpClient ?? http.Client(),
-        _nowUtc = nowUtc ?? (() => DateTime.now().toUtc()),
-        _requestTimeout = requestTimeout ?? kQuoterismHttpTimeout;
+  }) : _http = httpClient ?? http.Client(),
+       _nowUtc = nowUtc ?? (() => DateTime.now().toUtc()),
+       _requestTimeout = requestTimeout ?? kQuoterismHttpTimeout;
 
   final http.Client _http;
   final DateTime Function() _nowUtc;
@@ -51,8 +51,10 @@ class QuoterismDataProvider implements IDataProvider {
     final kv = IntegrationKvRepository(ctx.db);
 
     if (setting.pollSeconds > 0) {
-      final lastValue =
-          await kv.getIntegrationValue(integrationId, kIntegrationLastCollectKey);
+      final lastValue = await kv.getIntegrationValue(
+        integrationId,
+        kIntegrationLastCollectKey,
+      );
       final last = int.tryParse(lastValue ?? '') ?? 0;
       if (nowMs - last < setting.pollSeconds * 1000) {
         ctx.diagnostics.provider(
@@ -72,7 +74,9 @@ class QuoterismDataProvider implements IDataProvider {
 
     final apiKey = config.accessToken;
     if (apiKey == null || apiKey.isEmpty) {
-      ctx.diagnostics.provider('quoterism: skip (no API key) id=$integrationId');
+      ctx.diagnostics.provider(
+        'quoterism: skip (no API key) id=$integrationId',
+      );
       return;
     }
 
@@ -91,8 +95,12 @@ class QuoterismDataProvider implements IDataProvider {
         maxQuotes: extra.maxStoredQuotes,
       );
 
-      var page = int.tryParse(
-            await kv.getIntegrationValue(integrationId, kQuoterismLastPageKey) ??
+      var page =
+          int.tryParse(
+            await kv.getIntegrationValue(
+                  integrationId,
+                  kQuoterismLastPageKey,
+                ) ??
                 '',
           ) ??
           0;
@@ -102,10 +110,7 @@ class QuoterismDataProvider implements IDataProvider {
         final uri = buildQuoterismGetUri(
           baseUrl: base,
           path: '/api/quotes',
-          query: {
-            'page': '$page',
-            'limit': '${extra.pageLimit}',
-          },
+          query: {'page': '$page', 'limit': '${extra.pageLimit}'},
         );
         ctx.diagnostics.provider(
           'quoterism: GET ${safeQuoterismUriForLog(uri)}',
@@ -208,9 +213,9 @@ class QuoterismDataProvider implements IDataProvider {
               nowMs: nowMs,
             );
           } else {
-            final existing = await (ctx.db.select(ctx.db.quoterismQuotes)
-                  ..where((t) => t.id.equals(quoteId)))
-                .getSingleOrNull();
+            final existing = await (ctx.db.select(
+              ctx.db.quoterismQuotes,
+            )..where((t) => t.id.equals(quoteId))).getSingleOrNull();
             authorImageBlobKey = existing?.authorImageBlobKey;
           }
 
@@ -268,7 +273,9 @@ class QuoterismDataProvider implements IDataProvider {
       path: '/api/quotes/$quoteId',
     );
     try {
-      final res = await _http.get(uri, headers: headers).timeout(_requestTimeout);
+      final res = await _http
+          .get(uri, headers: headers)
+          .timeout(_requestTimeout);
       if (res.statusCode != 200) {
         return null;
       }
@@ -293,9 +300,9 @@ class QuoterismDataProvider implements IDataProvider {
   }) async {
     final logicalKey = 'quoterism/authors/$authorId/avatar';
     try {
-      final existing = await (ctx.db.select(ctx.db.blobMetadata)
-            ..where((t) => t.blobKey.equals(logicalKey)))
-          .getSingleOrNull();
+      final existing = await (ctx.db.select(
+        ctx.db.blobMetadata,
+      )..where((t) => t.blobKey.equals(logicalKey))).getSingleOrNull();
       if (existing != null) {
         return logicalKey;
       }
@@ -310,16 +317,15 @@ class QuoterismDataProvider implements IDataProvider {
         res.bodyBytes,
         logicalKey: logicalKey,
       );
-      await ctx.db.into(ctx.db.blobMetadata).insertOnConflictUpdate(
-            BlobMetadataCompanion.insert(
-              blobKey: logicalKey,
-              sha256: ref.storageKey.split('/').last,
-              relativePath: ref.storageKey,
-              bytes: res.bodyBytes.length,
-              mimeType: Value(mime.split(';').first.trim()),
-              capturedAt: DateTime.fromMillisecondsSinceEpoch(nowMs),
-            ),
-          );
+      await writeBlobMetadataWithCropAnalysis(
+        db: ctx.db,
+        blobKey: logicalKey,
+        ref: ref,
+        bytes: res.bodyBytes,
+        mimeType: mime.split(';').first.trim(),
+        capturedAt: DateTime.fromMillisecondsSinceEpoch(nowMs),
+        hints: const BlobCropProviderHints(preferFace: true),
+      );
       return logicalKey;
     } on Object catch (e, st) {
       ctx.diagnostics.providerFail('quoterism: author image', e, st);

@@ -101,6 +101,19 @@ class BlobMetadata extends Table {
   IntColumn get pixelWidth => integer().nullable()();
   IntColumn get pixelHeight => integer().nullable()();
 
+  /// Normalized smart-crop focal point (0..1, top-left origin) when analyzed.
+  RealColumn get focalX => real().nullable()();
+  RealColumn get focalY => real().nullable()();
+
+  /// Heuristic: image likely contains a face / person.
+  BoolColumn get hasFace => boolean().nullable()();
+
+  /// Heuristic: image likely contains readable text / graphics.
+  BoolColumn get hasText => boolean().nullable()();
+
+  /// Compact JSON crop signals (face centroid, text density, algorithm version).
+  TextColumn get cropHintsJson => text().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {blobKey};
 }

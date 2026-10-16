@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/layout/screen_layout_parse.dart';
@@ -10,6 +9,8 @@ import 'package:waddle_shared/persistence/database.dart';
 import '../../content_category_slide_header.dart';
 import '../../../theme/display_theme.dart';
 import '../../dashboard_viewport_scope.dart';
+import 'news_config.dart';
+import 'news_image_panel.dart';
 import 'news_load.dart';
 
 double _cfgDouble(Map<String, dynamic> c, String key, double def) {
@@ -57,8 +58,7 @@ class NewsStackSlideWidget extends StatefulWidget {
   final void Function(int desiredDwellMs) onReportDesiredDwell;
 
   @override
-  State<NewsStackSlideWidget> createState() =>
-      _NewsStackSlideWidgetState();
+  State<NewsStackSlideWidget> createState() => _NewsStackSlideWidgetState();
 }
 
 class _NewsStackSlideWidgetState extends State<NewsStackSlideWidget> {
@@ -67,6 +67,8 @@ class _NewsStackSlideWidgetState extends State<NewsStackSlideWidget> {
   late final int _minReadMs;
   late final double _imageFraction;
   late final double _qrLogical;
+  late final String _qrMode;
+  late final BoxFit _imageFit;
   final ScrollController _scroll0 = ScrollController();
   final ScrollController _scroll1 = ScrollController();
   final List<NewsArticle?> _articles = <NewsArticle?>[null, null];
@@ -91,8 +93,11 @@ class _NewsStackSlideWidgetState extends State<NewsStackSlideWidget> {
     _minReadMs = _cfgInt(c, 'minReadMs', 10000);
     _imageFraction = _cfgDouble(c, 'imagePanelFraction', 0.34).clamp(0.2, 0.48);
     _qrLogical = _cfgDouble(c, 'qrLogicalSize', 112).clamp(72, 200);
-    final slideCat =
-        widget.slide.randomChoices[ScreenProgramCurator.rssScreenCategoryChoiceKey];
+    _qrMode = readNewsQrMode(c);
+    _imageFit = readNewsImageFit(c);
+    final slideCat = widget
+        .slide
+        .randomChoices[ScreenProgramCurator.rssScreenCategoryChoiceKey];
     if (slideCat != null && slideCat.isNotEmpty) {
       _headerCategoryId = slideCat;
     }
@@ -116,9 +121,7 @@ class _NewsStackSlideWidgetState extends State<NewsStackSlideWidget> {
       arts.add(article);
       if (article != null) {
         exclude.add(article.id);
-        loads.add(
-          await loadRssArticleImage(widget.db, widget.blobs, article),
-        );
+        loads.add(await loadRssArticleImage(widget.db, widget.blobs, article));
       } else {
         loads.add(const NewsImageLoad.absent());
       }
@@ -129,11 +132,7 @@ class _NewsStackSlideWidgetState extends State<NewsStackSlideWidget> {
       if (a == null) {
         continue;
       }
-      inferred = await resolveRssDisplayCategoryId(
-        widget.db,
-        widget.slide,
-        a,
-      );
+      inferred = await resolveRssDisplayCategoryId(widget.db, widget.slide, a);
       break;
     }
     if (!mounted) {
@@ -245,15 +244,19 @@ class _NewsStackSlideWidgetState extends State<NewsStackSlideWidget> {
                         article: a0,
                         sourceLabel: _sourceLabels[0],
                         imageLoad: _imageLoads[0],
-                        imageOnRight: false,
+                        imageOnRight: newsQrOnRight(_qrMode),
                         theme: theme,
                         s: s,
                         imageFraction: _imageFraction,
                         qrLogical: _qrLogical,
+                        qrMode: _qrMode,
+                        imageFit: _imageFit,
                         stackIndex: 0,
                         summaryScroll: _scroll0,
                         useNewsIcon:
-                            widget.slide.randomChoices['${widget.spec.choiceKey}_0_imageMode'] ==
+                            widget
+                                .slide
+                                .randomChoices['${widget.spec.choiceKey}_0_imageMode'] ==
                             'icon',
                       ),
                     ),
@@ -265,15 +268,19 @@ class _NewsStackSlideWidgetState extends State<NewsStackSlideWidget> {
                         article: a1,
                         sourceLabel: _sourceLabels[1],
                         imageLoad: _imageLoads[1],
-                        imageOnRight: false,
+                        imageOnRight: newsQrOnRight(_qrMode),
                         theme: theme,
                         s: s,
                         imageFraction: _imageFraction,
                         qrLogical: _qrLogical,
+                        qrMode: _qrMode,
+                        imageFit: _imageFit,
                         stackIndex: 1,
                         summaryScroll: _scroll1,
                         useNewsIcon:
-                            widget.slide.randomChoices['${widget.spec.choiceKey}_1_imageMode'] ==
+                            widget
+                                .slide
+                                .randomChoices['${widget.spec.choiceKey}_1_imageMode'] ==
                             'icon',
                       ),
                     ),
@@ -302,6 +309,8 @@ class _RssStackArticleRow extends StatelessWidget {
     required this.s,
     required this.imageFraction,
     required this.qrLogical,
+    required this.qrMode,
+    required this.imageFit,
     required this.stackIndex,
     required this.summaryScroll,
     required this.useNewsIcon,
@@ -316,6 +325,8 @@ class _RssStackArticleRow extends StatelessWidget {
   final double s;
   final double imageFraction;
   final double qrLogical;
+  final String qrMode;
+  final BoxFit imageFit;
   final int stackIndex;
   final ScrollController summaryScroll;
   final bool useNewsIcon;
@@ -329,9 +340,7 @@ class _RssStackArticleRow extends StatelessWidget {
           border: Border.all(
             color: theme.colorScheme.outline.withValues(alpha: 0.25),
           ),
-          color: theme.slidePanelColor.withValues(
-            alpha: 0.35,
-          ),
+          color: theme.slidePanelColor.withValues(alpha: 0.35),
         ),
         child: Center(
           child: Text(
@@ -360,25 +369,27 @@ class _RssStackArticleRow extends StatelessWidget {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(9 * s),
-          child: imageLoad.bytes != null
-              ? Image.memory(
-                  imageLoad.bytes!,
-                  fit: BoxFit.cover,
-                  gaplessPlayback: true,
-                  errorBuilder: (context, error, stackTrace) =>
-                      _imagePlaceholder(
-                        theme,
-                        s,
-                        blobReadFailed: false,
-                        useNewsIcon: useNewsIcon,
-                      ),
-                )
-              : _imagePlaceholder(
-                  theme,
-                  s,
-                  blobReadFailed: imageLoad.blobReadFailed,
-                  useNewsIcon: useNewsIcon,
-                ),
+          child: newsImageWithOptionalQrOverlay(
+            theme: theme,
+            scale: s,
+            imageBytes: imageLoad.bytes,
+            imageFit: imageFit,
+            imageAlignment: newsImageAlignment(
+              focalX: imageLoad.focalX,
+              focalY: imageLoad.focalY,
+            ),
+            qrMode: qrMode,
+            link: article?.link ?? '',
+            qrLogical: qrLogical,
+            qrKey: ValueKey('news_stack_overlay_qr_$stackIndex'),
+            placeholder: ({required bool blobReadFailed}) => _imagePlaceholder(
+              theme,
+              s,
+              blobReadFailed: blobReadFailed,
+              useNewsIcon: useNewsIcon,
+            ),
+            blobReadFailed: imageLoad.blobReadFailed,
+          ),
         ),
       ),
     );
@@ -419,7 +430,16 @@ class _RssStackArticleRow extends StatelessWidget {
             if (title.isNotEmpty && (summary.isNotEmpty || url.isNotEmpty))
               SizedBox(height: 8 * s),
             Expanded(
-              child: url.isEmpty
+              child: url.isEmpty || newsQrImageOverlay(qrMode)
+                  ? _stackSummaryBody(
+                      theme: theme,
+                      s: s,
+                      stackIndex: stackIndex,
+                      summaryScroll: summaryScroll,
+                      title: title,
+                      summary: summary,
+                    )
+                  : !newsQrVisible(qrMode)
                   ? _stackSummaryBody(
                       theme: theme,
                       s: s,
@@ -430,26 +450,47 @@ class _RssStackArticleRow extends StatelessWidget {
                     )
                   : Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _stackLinkQr(
-                          theme: theme,
-                          s: s,
-                          link: a.link,
-                          qrLogical: qrLogical,
-                          stackIndex: stackIndex,
-                        ),
-                        SizedBox(width: 10 * s),
-                        Expanded(
-                          child: _stackSummaryBody(
-                            theme: theme,
-                            s: s,
-                            stackIndex: stackIndex,
-                            summaryScroll: summaryScroll,
-                            title: title,
-                            summary: summary,
-                          ),
-                        ),
-                      ],
+                      children: newsQrOnRight(qrMode)
+                          ? [
+                              Expanded(
+                                child: _stackSummaryBody(
+                                  theme: theme,
+                                  s: s,
+                                  stackIndex: stackIndex,
+                                  summaryScroll: summaryScroll,
+                                  title: title,
+                                  summary: summary,
+                                ),
+                              ),
+                              SizedBox(width: 10 * s),
+                              newsArticleLinkQr(
+                                theme: theme,
+                                scale: s,
+                                link: a.link,
+                                qrLogical: qrLogical,
+                                qrKey: ValueKey('news_stack_qr_$stackIndex'),
+                              ),
+                            ]
+                          : [
+                              newsArticleLinkQr(
+                                theme: theme,
+                                scale: s,
+                                link: a.link,
+                                qrLogical: qrLogical,
+                                qrKey: ValueKey('news_stack_qr_$stackIndex'),
+                              ),
+                              SizedBox(width: 10 * s),
+                              Expanded(
+                                child: _stackSummaryBody(
+                                  theme: theme,
+                                  s: s,
+                                  stackIndex: stackIndex,
+                                  summaryScroll: summaryScroll,
+                                  title: title,
+                                  summary: summary,
+                                ),
+                              ),
+                            ],
                     ),
             ),
           ],
@@ -458,16 +499,8 @@ class _RssStackArticleRow extends StatelessWidget {
     );
 
     final rowChildren = imageOnRight
-        ? <Widget>[
-            textBlock,
-            SizedBox(width: gapMain),
-            imagePanel,
-          ]
-        : <Widget>[
-            imagePanel,
-            SizedBox(width: gapMain),
-            textBlock,
-          ];
+        ? <Widget>[textBlock, SizedBox(width: gapMain), imagePanel]
+        : <Widget>[imagePanel, SizedBox(width: gapMain), textBlock];
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -497,43 +530,6 @@ class _RssStackArticleRow extends StatelessWidget {
     );
   }
 
-  static Widget _stackLinkQr({
-    required ThemeData theme,
-    required double s,
-    required String link,
-    required double qrLogical,
-    required int stackIndex,
-  }) {
-    final u = link.trim();
-    if (u.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    final innerPad = 12 * s;
-    return Padding(
-      padding: EdgeInsets.all(6 * s),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8 * s),
-          border: Border.all(
-            color: theme.colorScheme.outline.withValues(alpha: 0.3),
-          ),
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(innerPad),
-          child: QrImageView(
-            key: ValueKey('news_stack_qr_$stackIndex'),
-            data: u,
-            version: QrVersions.auto,
-            size: qrLogical * s,
-            padding: EdgeInsets.all(4 * s),
-            gapless: true,
-          ),
-        ),
-      ),
-    );
-  }
-
   static Widget _stackSummaryBody({
     required ThemeData theme,
     required double s,
@@ -551,10 +547,7 @@ class _RssStackArticleRow extends StatelessWidget {
           key: ValueKey('news_stack_summary_$stackIndex'),
           child: Padding(
             padding: EdgeInsets.only(bottom: 4 * s),
-            child: Text(
-              summary,
-              style: theme.textTheme.bodyMedium,
-            ),
+            child: Text(summary, style: theme.textTheme.bodyMedium),
           ),
         ),
       );
@@ -562,7 +555,7 @@ class _RssStackArticleRow extends StatelessWidget {
     if (title.isEmpty && summary.isEmpty) {
       return Center(
         child: Text(
-          '—',
+          '-',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),

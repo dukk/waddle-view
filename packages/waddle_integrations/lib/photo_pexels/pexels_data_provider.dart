@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/config/provider_runtime_config.dart';
 import 'package:waddle_shared/curation/reject_filter_context.dart';
+import 'package:waddle_shared/image/blob_crop_metadata.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/collect/collect_diagnostics.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
@@ -342,26 +343,25 @@ class PexelsPhotosDataProvider implements IDataProvider {
         'image/jpeg'; // Pexels JPEG/PNG; display code tolerates Image.memory
     final pw = _positivePixelDimension(photo['width']);
     final ph = _positivePixelDimension(photo['height']);
+    final altText = '${photo['alt'] ?? ''}';
 
-    await ctx.db
-        .into(ctx.db.blobMetadata)
-        .insertOnConflictUpdate(
-          BlobMetadataCompanion.insert(
-            blobKey: logicalKey,
-            sha256: ref.storageKey.split('/').last,
-            relativePath: ref.storageKey,
-            bytes: bytes.length,
-            mimeType: Value(mime),
-            capturedAt: DateTime.fromMillisecondsSinceEpoch(nowMs),
-            pixelWidth: pw != null ? Value(pw) : const Value.absent(),
-            pixelHeight: ph != null ? Value(ph) : const Value.absent(),
-          ),
-        );
+    await writeBlobMetadataWithCropAnalysis(
+      db: ctx.db,
+      blobKey: logicalKey,
+      ref: ref,
+      bytes: bytes,
+      mimeType: mime,
+      capturedAt: DateTime.fromMillisecondsSinceEpoch(nowMs),
+      hints: BlobCropProviderHints(
+        altText: altText,
+        pixelWidth: pw,
+        pixelHeight: ph,
+      ),
+    );
 
     final photographerName = '${photo['photographer'] ?? ''}';
     final photographerUrl = '${photo['photographer_url'] ?? ''}';
     final pageUrl = '${photo['url'] ?? ''}';
-    final altText = '${photo['alt'] ?? ''}';
     final blocked = rejectCtx.isMediaRejected(
       photographer: photographerName,
       altText: altText,

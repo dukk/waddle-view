@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:waddle_shared/curation/reject_filter_context.dart';
 
 import 'package:waddle_shared/blob/blob_store.dart';
+import 'package:waddle_shared/image/blob_crop_metadata.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
@@ -38,7 +39,8 @@ class RssNewsDataProvider implements IDataProvider {
     ctx.diagnostics.provider('rss: collect enabledFeeds=${feedRows.length}');
     for (final feed in feedRows) {
       final last = feed.lastFetchedAt;
-      final due = last == null ||
+      final due =
+          last == null ||
           (now - last.millisecondsSinceEpoch) >= feed.pollSeconds * 1000;
       if (!due) {
         ctx.diagnostics.provider(
@@ -64,11 +66,9 @@ class RssNewsDataProvider implements IDataProvider {
         final parsed = parseRssOrAtomXml(decodeRssHttpResponseBody(res));
         final title = parsed.channelTitle;
         if (title != null && title.isNotEmpty) {
-          await (ctx.db.update(
-            ctx.db.interestsRssFeeds,
-          )..where((t) => t.id.equals(feed.id))).write(
-            InterestsRssFeedsCompanion(title: Value(title)),
-          );
+          await (ctx.db.update(ctx.db.interestsRssFeeds)
+                ..where((t) => t.id.equals(feed.id)))
+              .write(InterestsRssFeedsCompanion(title: Value(title)));
         }
         ctx.diagnostics.provider(
           'rss: feed id=${feed.id} parsed entries=${parsed.entries.length}',
@@ -126,7 +126,9 @@ class RssNewsDataProvider implements IDataProvider {
     final isBlocked = rejectCtx.isBlockedAny([entry.title, entry.summary]);
     final suppressedForInsert = (existing?.suppressed ?? false) || isBlocked;
 
-    await ctx.db.into(ctx.db.news).insert(
+    await ctx.db
+        .into(ctx.db.news)
+        .insert(
           NewsCompanion.insert(
             id: articleId,
             sourceType: kNewsSourceTypeRss,
@@ -158,9 +160,7 @@ class RssNewsDataProvider implements IDataProvider {
               ),
               fetchedAt: Value(DateTime.fromMillisecondsSinceEpoch(now)),
               imageBlobKey: Value(imageKey),
-              suppressed: isBlocked
-                  ? const Value(true)
-                  : const Value.absent(),
+              suppressed: isBlocked ? const Value(true) : const Value.absent(),
             ),
           ),
         );
@@ -196,16 +196,14 @@ class RssNewsDataProvider implements IDataProvider {
       );
       final mime =
           res.headers['content-type']?.split(';').first.trim() ?? 'image/jpeg';
-      await ctx.db.into(ctx.db.blobMetadata).insertOnConflictUpdate(
-            BlobMetadataCompanion.insert(
-              blobKey: logicalKey,
-              sha256: ref.storageKey.split('/').last,
-              relativePath: ref.storageKey,
-              bytes: res.bodyBytes.length,
-              mimeType: Value(mime),
-              capturedAt: DateTime.fromMillisecondsSinceEpoch(_nowMs()),
-            ),
-          );
+      await writeBlobMetadataWithCropAnalysis(
+        db: ctx.db,
+        blobKey: logicalKey,
+        ref: ref,
+        bytes: res.bodyBytes,
+        mimeType: mime,
+        capturedAt: DateTime.fromMillisecondsSinceEpoch(_nowMs()),
+      );
       return logicalKey;
     } on Object catch (e, st) {
       ctx.diagnostics.providerFail('rss: image article=$articleId', e, st);
@@ -223,10 +221,12 @@ class RssNewsDataProvider implements IDataProvider {
     }
     final rows =
         await (ctx.db.select(ctx.db.news)
-              ..where((t) => t.sourceType.equals(kNewsSourceTypeRss) & t.sourceId.equals(feedId))
-              ..orderBy([
-                (t) => OrderingTerm.desc(t.publishedAt),
-              ]))
+              ..where(
+                (t) =>
+                    t.sourceType.equals(kNewsSourceTypeRss) &
+                    t.sourceId.equals(feedId),
+              )
+              ..orderBy([(t) => OrderingTerm.desc(t.publishedAt)]))
             .get();
     final nonsuppressed = rows.where((r) => !r.suppressed).toList();
     if (nonsuppressed.length <= maxArticles) {
@@ -250,8 +250,6 @@ class RssNewsDataProvider implements IDataProvider {
         )..where((t) => t.blobKey.equals(key))).go();
       }
     }
-    await (ctx.db.delete(
-      ctx.db.news,
-    )..where((t) => t.id.equals(a.id))).go();
+    await (ctx.db.delete(ctx.db.news)..where((t) => t.id.equals(a.id))).go();
   }
 }

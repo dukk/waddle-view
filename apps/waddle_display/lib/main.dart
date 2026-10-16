@@ -20,6 +20,7 @@ import 'config/display_live_preview_env.dart';
 import 'preview/live_preview_boundary.dart';
 import 'package:waddle_shared/auth/adoption_repository.dart';
 import 'package:waddle_shared/auth/cors_origin_repository.dart';
+import 'package:waddle_shared/image/blob_crop_metadata.dart';
 import 'api/network_addressing.dart';
 import 'bootstrap/app_fatal_error_recovery.dart';
 import 'bootstrap/deferred_config_changed.dart';
@@ -266,7 +267,14 @@ Future<void> _waddleBootstrap() async {
             ),
           );
         },
-        onCycleComplete: dashboardCurator.refresh,
+        onCycleComplete: () async {
+          await backfillMissingNewsImageCropMetadata(
+            db: db,
+            blobs: blobs,
+            limit: 5,
+          );
+          await dashboardCurator.refresh();
+        },
         diagnostics: collectDiag,
       );
       unawaited(engine.start());

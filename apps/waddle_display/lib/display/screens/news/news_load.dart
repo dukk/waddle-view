@@ -40,15 +40,14 @@ Future<NewsArticle?> loadRssArticleForSlideChoice(
   if (curatedId != null &&
       curatedId.isNotEmpty &&
       !excludeArticleIds.contains(curatedId)) {
-    final row = await (db.select(
-      db.news,
-    )..where(
-          (t) => Expression.and([
-            t.id.equals(curatedId),
-            t.suppressed.equals(false),
-          ]),
-        ))
-        .getSingleOrNull();
+    final row =
+        await (db.select(db.news)..where(
+              (t) => Expression.and([
+                t.id.equals(curatedId),
+                t.suppressed.equals(false),
+              ]),
+            ))
+            .getSingleOrNull();
     return row == null ? null : _censorArticle(row, ctx);
   }
   final feedId = spec.config['feedId'] as String?;
@@ -111,19 +110,27 @@ Future<NewsArticle?> loadRssArticleForSlideChoice(
 /// Result of loading an RSS article thumbnail from [BlobStore].
 final class NewsImageLoad {
   /// No image reference, missing metadata, or empty file on disk.
-  const NewsImageLoad.absent() : bytes = null, blobReadFailed = false;
+  const NewsImageLoad.absent()
+    : bytes = null,
+      blobReadFailed = false,
+      focalX = null,
+      focalY = null;
 
-  const NewsImageLoad.ok(Uint8List data)
+  const NewsImageLoad.ok(Uint8List data, {this.focalX, this.focalY})
     : bytes = data,
       blobReadFailed = false;
 
   /// [BlobStore.readBytes] threw (for example I/O or missing backing file).
   const NewsImageLoad.blobReadFailed()
     : bytes = null,
-      blobReadFailed = true;
+      blobReadFailed = true,
+      focalX = null,
+      focalY = null;
 
   final Uint8List? bytes;
   final bool blobReadFailed;
+  final double? focalX;
+  final double? focalY;
 }
 
 Future<NewsImageLoad> loadRssArticleImage(
@@ -143,7 +150,11 @@ Future<NewsImageLoad> loadRssArticleImage(
   }
   final read = await readDisplayBlobBytes(blobs, BlobRef(meta.relativePath));
   if (read.isOk) {
-    return NewsImageLoad.ok(read.bytes!);
+    return NewsImageLoad.ok(
+      read.bytes!,
+      focalX: meta.focalX,
+      focalY: meta.focalY,
+    );
   }
   if (read.readFailed) {
     return const NewsImageLoad.blobReadFailed();

@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/collect/data_write_context.dart';
 import 'package:waddle_shared/curation/reject_filter_context.dart';
+import 'package:waddle_shared/image/blob_crop_metadata.dart';
 import 'package:waddle_shared/persistence/database.dart';
 
 Future<void> pruneNasaPhotosByRetention(
@@ -15,12 +16,13 @@ Future<void> pruneNasaPhotosByRetention(
   }
   final cutoffMs = nowMs - Duration(days: retentionDays).inMilliseconds;
   final cutoff = DateTime.fromMillisecondsSinceEpoch(cutoffMs);
-  final rows = await (ctx.db.select(ctx.db.photos)..where(
-        (t) =>
-            t.dataProvider.equals(dataProvider) &
-            t.fetchedAtMs.isSmallerThanValue(cutoff),
-      ))
-      .get();
+  final rows =
+      await (ctx.db.select(ctx.db.photos)..where(
+            (t) =>
+                t.dataProvider.equals(dataProvider) &
+                t.fetchedAtMs.isSmallerThanValue(cutoff),
+          ))
+          .get();
   for (final row in rows) {
     await deleteNasaPhoto(ctx, row);
   }
@@ -34,10 +36,11 @@ Future<void> pruneNasaPhotosByMaxCount(
   if (maxPhotos < 1) {
     return;
   }
-  final rows = await (ctx.db.select(ctx.db.photos)
-        ..where((t) => t.dataProvider.equals(dataProvider))
-        ..orderBy([(t) => OrderingTerm.asc(t.fetchedAtMs)]))
-      .get();
+  final rows =
+      await (ctx.db.select(ctx.db.photos)
+            ..where((t) => t.dataProvider.equals(dataProvider))
+            ..orderBy([(t) => OrderingTerm.asc(t.fetchedAtMs)]))
+          .get();
   if (rows.length <= maxPhotos) {
     return;
   }
@@ -49,14 +52,14 @@ Future<void> pruneNasaPhotosByMaxCount(
 
 Future<void> deleteNasaPhoto(DataWriteContext ctx, Photo row) async {
   final key = row.mediaBlobKey;
-  final meta = await (ctx.db.select(ctx.db.blobMetadata)
-        ..where((t) => t.blobKey.equals(key)))
-      .getSingleOrNull();
+  final meta = await (ctx.db.select(
+    ctx.db.blobMetadata,
+  )..where((t) => t.blobKey.equals(key))).getSingleOrNull();
   if (meta != null) {
     await ctx.blobs.delete(BlobRef(meta.relativePath));
-    await (ctx.db.delete(ctx.db.blobMetadata)
-          ..where((t) => t.blobKey.equals(key)))
-        .go();
+    await (ctx.db.delete(
+      ctx.db.blobMetadata,
+    )..where((t) => t.blobKey.equals(key))).go();
   }
   await (ctx.db.delete(ctx.db.photos)..where((t) => t.id.equals(row.id))).go();
 }
@@ -82,18 +85,19 @@ Future<bool> storeNasaPhoto({
   );
 
   final ref = await ctx.blobs.putBytes(bytes, logicalKey: logicalKey);
-  await ctx.db.into(ctx.db.blobMetadata).insertOnConflictUpdate(
-        BlobMetadataCompanion.insert(
-          blobKey: logicalKey,
-          sha256: ref.storageKey.split('/').last,
-          relativePath: ref.storageKey,
-          bytes: bytes.length,
-          mimeType: Value(mimeType),
-          capturedAt: DateTime.fromMillisecondsSinceEpoch(nowMs),
-        ),
-      );
+  await writeBlobMetadataWithCropAnalysis(
+    db: ctx.db,
+    blobKey: logicalKey,
+    ref: ref,
+    bytes: bytes,
+    mimeType: mimeType,
+    capturedAt: DateTime.fromMillisecondsSinceEpoch(nowMs),
+    hints: BlobCropProviderHints(altText: altText),
+  );
 
-  await ctx.db.into(ctx.db.photos).insert(
+  await ctx.db
+      .into(ctx.db.photos)
+      .insert(
         PhotosCompanion.insert(
           id: photoId,
           category: Value(category),

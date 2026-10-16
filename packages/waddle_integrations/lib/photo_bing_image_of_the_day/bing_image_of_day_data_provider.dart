@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:waddle_shared/blob/blob_store.dart';
 import 'package:waddle_shared/config/provider_runtime_config.dart';
 import 'package:waddle_shared/curation/reject_filter_context.dart';
+import 'package:waddle_shared/image/blob_crop_metadata.dart';
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
 import 'package:waddle_shared/collect/data_provider.dart';
@@ -58,12 +59,7 @@ String _photographerFromCopyright(String copyright) {
 Uri _archiveUri(String base, String mkt) {
   final b = normalizeBingBaseUrl(base);
   return Uri.parse('$b/HPImageArchive.aspx').replace(
-    queryParameters: {
-      'format': 'js',
-      'idx': '0',
-      'n': '1',
-      'mkt': mkt,
-    },
+    queryParameters: {'format': 'js', 'idx': '0', 'n': '1', 'mkt': mkt},
   );
 }
 
@@ -111,8 +107,10 @@ class BingImageOfDayDataProvider implements IDataProvider {
     final kv = IntegrationKvRepository(ctx.db);
 
     if (setting.pollSeconds > 0) {
-      final lastValue =
-          await kv.getIntegrationValue(integrationId, kIntegrationLastCollectKey);
+      final lastValue = await kv.getIntegrationValue(
+        integrationId,
+        kIntegrationLastCollectKey,
+      );
       final last = int.tryParse(lastValue ?? '') ?? 0;
       if (nowMs - last < setting.pollSeconds * 1000) {
         ctx.diagnostics.provider(
@@ -183,11 +181,9 @@ class BingImageOfDayDataProvider implements IDataProvider {
       }
 
       final photoId = 'bing_${startdate}_${extra.market}';
-      final exists =
-          await (ctx.db.select(
-                ctx.db.photos,
-              )..where((t) => t.id.equals(photoId)))
-              .getSingleOrNull();
+      final exists = await (ctx.db.select(
+        ctx.db.photos,
+      )..where((t) => t.id.equals(photoId))).getSingleOrNull();
       if (exists != null) {
         ctx.diagnostics.provider('bing_iotd: already have id=$photoId');
         await kv.upsertIntegration(
@@ -239,15 +235,14 @@ class BingImageOfDayDataProvider implements IDataProvider {
       final ref = await ctx.blobs.putBytes(bytes, logicalKey: logicalKey);
       const mime = 'image/jpeg';
 
-      await ctx.db.into(ctx.db.blobMetadata).insertOnConflictUpdate(
-        BlobMetadataCompanion.insert(
-          blobKey: logicalKey,
-          sha256: ref.storageKey.split('/').last,
-          relativePath: ref.storageKey,
-          bytes: bytes.length,
-          mimeType: const Value(mime),
-          capturedAt: DateTime.fromMillisecondsSinceEpoch(nowMs),
-        ),
+      await writeBlobMetadataWithCropAnalysis(
+        db: ctx.db,
+        blobKey: logicalKey,
+        ref: ref,
+        bytes: bytes,
+        mimeType: mime,
+        capturedAt: DateTime.fromMillisecondsSinceEpoch(nowMs),
+        hints: BlobCropProviderHints(altText: title),
       );
 
       final rejectCtx = await RejectFilterContext.loadFromDb(ctx.db);
@@ -257,20 +252,22 @@ class BingImageOfDayDataProvider implements IDataProvider {
         urls: [copyrightLink],
       );
 
-      await ctx.db.into(ctx.db.photos).insert(
-        PhotosCompanion.insert(
-          id: photoId,
-          category: Value(extra.category),
-          dataProvider: const Value(kMediaDataProviderPhotoBingIotd),
-          mediaBlobKey: logicalKey,
-          photographerName: photographer,
-          photographerUrl: '',
-          pageUrl: copyrightLink,
-          altText: Value(title),
-          fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(nowMs),
-          suppressed: Value(blocked),
-        ),
-      );
+      await ctx.db
+          .into(ctx.db.photos)
+          .insert(
+            PhotosCompanion.insert(
+              id: photoId,
+              category: Value(extra.category),
+              dataProvider: const Value(kMediaDataProviderPhotoBingIotd),
+              mediaBlobKey: logicalKey,
+              photographerName: photographer,
+              photographerUrl: '',
+              pageUrl: copyrightLink,
+              altText: Value(title),
+              fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(nowMs),
+              suppressed: Value(blocked),
+            ),
+          );
 
       await kv.upsertIntegration(
         integrationId: integrationId,
@@ -297,13 +294,11 @@ class BingImageOfDayDataProvider implements IDataProvider {
     final cutoffMs = nowMs - Duration(days: retentionDays).inMilliseconds;
     final cutoff = DateTime.fromMillisecondsSinceEpoch(cutoffMs);
     final rows =
-        await (ctx.db.select(
-              ctx.db.photos,
-            )..where(
-                (t) =>
-                    t.dataProvider.equals(kMediaDataProviderPhotoBingIotd) &
-                    t.fetchedAtMs.isSmallerThanValue(cutoff),
-              ))
+        await (ctx.db.select(ctx.db.photos)..where(
+              (t) =>
+                  t.dataProvider.equals(kMediaDataProviderPhotoBingIotd) &
+                  t.fetchedAtMs.isSmallerThanValue(cutoff),
+            ))
             .get();
     for (final row in rows) {
       await _deleteBingPhoto(ctx, row);
@@ -312,21 +307,17 @@ class BingImageOfDayDataProvider implements IDataProvider {
 
   Future<void> _deleteBingPhoto(DataWriteContext ctx, Photo row) async {
     final key = row.mediaBlobKey;
-    final meta =
-        await (ctx.db.select(
-              ctx.db.blobMetadata,
-            )..where((t) => t.blobKey.equals(key)))
-            .getSingleOrNull();
+    final meta = await (ctx.db.select(
+      ctx.db.blobMetadata,
+    )..where((t) => t.blobKey.equals(key))).getSingleOrNull();
     if (meta != null) {
       await ctx.blobs.delete(BlobRef(meta.relativePath));
       await (ctx.db.delete(
-            ctx.db.blobMetadata,
-          )..where((t) => t.blobKey.equals(key)))
-          .go();
+        ctx.db.blobMetadata,
+      )..where((t) => t.blobKey.equals(key))).go();
     }
     await (ctx.db.delete(
-          ctx.db.photos,
-        )..where((t) => t.id.equals(row.id)))
-        .go();
+      ctx.db.photos,
+    )..where((t) => t.id.equals(row.id))).go();
   }
 }

@@ -83,7 +83,10 @@ Handler buildProtectedApiRouter({
   final contentDeletion = ContentDeletionRepository(db, blobs: blobs);
 
   r.patch('/v1/content/jokes/<id>', (Request req, String id) async {
-    return _patchContentSuppressed(req, (b) => suppression.setJokeSuppressed(id, b));
+    return _patchContentSuppressed(
+      req,
+      (b) => suppression.setJokeSuppressed(id, b),
+    );
   });
   r.delete('/v1/content/jokes/<id>', (Request req, String id) async {
     return _deleteContent(() => contentDeletion.deleteJoke(id));
@@ -107,13 +110,19 @@ Handler buildProtectedApiRouter({
     return _deleteContent(() => contentDeletion.deleteRssArticle(id));
   });
   r.patch('/v1/content/photos/<id>', (Request req, String id) async {
-    return _patchContentSuppressed(req, (b) => suppression.setPhotoSuppressed(id, b));
+    return _patchContentSuppressed(
+      req,
+      (b) => suppression.setPhotoSuppressed(id, b),
+    );
   });
   r.delete('/v1/content/photos/<id>', (Request req, String id) async {
     return _deleteContent(() => contentDeletion.deletePhoto(id));
   });
   r.patch('/v1/content/videos/<id>', (Request req, String id) async {
-    return _patchContentSuppressed(req, (b) => suppression.setVideoSuppressed(id, b));
+    return _patchContentSuppressed(
+      req,
+      (b) => suppression.setVideoSuppressed(id, b),
+    );
   });
   r.delete('/v1/content/videos/<id>', (Request req, String id) async {
     return _deleteContent(() => contentDeletion.deleteVideo(id));
@@ -130,36 +139,47 @@ Handler buildProtectedApiRouter({
   r.delete('/v1/content/calendar-events/<id>', (Request req, String id) async {
     return _deleteContent(() => contentDeletion.deleteCalendarEvent(id));
   });
-  r.delete('/v1/content/stock-quotes/<symbolId>', (Request req, String symbolId) async {
+  r.delete('/v1/content/stock-quotes/<symbolId>', (
+    Request req,
+    String symbolId,
+  ) async {
     return _deleteContent(() => contentDeletion.deleteStockQuote(symbolId));
   });
-  r.delete('/v1/content/weather-current/<locationId>', (Request req, String locationId) async {
-    return _deleteContent(() => contentDeletion.deleteWeatherCurrent(locationId));
+  r.delete('/v1/content/weather-current/<locationId>', (
+    Request req,
+    String locationId,
+  ) async {
+    return _deleteContent(
+      () => contentDeletion.deleteWeatherCurrent(locationId),
+    );
   });
-  r.delete(
-    '/v1/content/weather-alerts/<locationId>/<nwsAlertId>',
-    (Request req, String locationId, String nwsAlertId) async {
-      return _deleteContent(
-        () => contentDeletion.deleteWeatherAlert(locationId, nwsAlertId),
-      );
-    },
-  );
+  r.delete('/v1/content/weather-alerts/<locationId>/<nwsAlertId>', (
+    Request req,
+    String locationId,
+    String nwsAlertId,
+  ) async {
+    // NWS ids are urn:oid:...; controllers percent-encode ":" as %3A. shelf
+    // matches against request.url.path, which keeps that encoding, so decode
+    // before the DB lookup or delete returns 0 and we answer 404.
+    return _deleteContent(
+      () => contentDeletion.deleteWeatherAlert(
+        Uri.decodeComponent(locationId),
+        Uri.decodeComponent(nwsAlertId),
+      ),
+    );
+  });
 
   registerContentCatalogRoutes(r, db: db);
   registerIntegrationsListRestRoutes(r, db: db, secrets: secrets);
-  registerInterestsRestRoutes(
-    r,
-    db: db,
-    onConfigChanged: onConfigChanged,
-  );
+  registerInterestsRestRoutes(r, db: db, onConfigChanged: onConfigChanged);
 
   final rejectRepo = RejectTermRepository(db);
 
   r.get('/v1/reject-terms', (Request req) async {
     final rows = await rejectRepo.listAll();
-    final fmtRow = await (db.select(db.configKeyValues)
-          ..where((t) => t.key.equals(kRejectCensorFormatKvKey)))
-        .getSingleOrNull();
+    final fmtRow = await (db.select(
+      db.configKeyValues,
+    )..where((t) => t.key.equals(kRejectCensorFormatKvKey))).getSingleOrNull();
     return Response.ok(
       jsonEncode({
         'items': [
@@ -189,9 +209,11 @@ Handler buildProtectedApiRouter({
   r.delete('/v1/reject-terms/<id>', (Request req, String id) async {
     final n = await rejectRepo.deleteById(id);
     if (n == 0) {
-      return Response(404,
-          body: '{"error":"not_found"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        404,
+        body: '{"error":"not_found"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     return Response.ok('{}', headers: {'content-type': 'application/json'});
   });
@@ -225,8 +247,9 @@ Handler buildProtectedApiRouter({
         screenTypeSchemas[t.screenType] = t.configJsonSchema;
       }
     }
-    final dataKeyLimitRows =
-        await db.select(db.curatorDataKeyProgramLimits).get();
+    final dataKeyLimitRows = await db
+        .select(db.curatorDataKeyProgramLimits)
+        .get();
     final dataKeyLimits = <String, CuratorDataKeyProgramLimit>{
       for (final row in dataKeyLimitRows) row.dataKey: row,
     };
@@ -251,14 +274,12 @@ Handler buildProtectedApiRouter({
             'max_placements_per_program': e.maxPlacementsPerProgram,
             'data_key': e.dataKey,
             'require_news_photo': e.requireNewsPhoto,
-            'data_key_min_placements_per_program':
-                e.dataKey.isEmpty
-                    ? null
-                    : dataKeyLimits[e.dataKey]?.minPlacementsPerProgram,
-            'data_key_max_placements_per_program':
-                e.dataKey.isEmpty
-                    ? null
-                    : dataKeyLimits[e.dataKey]?.maxPlacementsPerProgram,
+            'data_key_min_placements_per_program': e.dataKey.isEmpty
+                ? null
+                : dataKeyLimits[e.dataKey]?.minPlacementsPerProgram,
+            'data_key_max_placements_per_program': e.dataKey.isEmpty
+                ? null
+                : dataKeyLimits[e.dataKey]?.maxPlacementsPerProgram,
           },
         )
         .toList();
@@ -273,11 +294,7 @@ Handler buildProtectedApiRouter({
     final list = <Map<String, dynamic>>[];
     for (var i = 0; i < rows.length; i++) {
       final e = rows[i];
-      list.add({
-        'ordinal': i,
-        'kind': e.kind,
-        'body': e.body,
-      });
+      list.add({'ordinal': i, 'kind': e.kind, 'body': e.body});
     }
     return Response.ok(
       jsonEncode({'items': list}),
@@ -324,8 +341,9 @@ Handler buildProtectedApiRouter({
     await ensureOverlaysTableExists(db);
     final includeDocs = includeConfigSchemaFromRequest(req);
     final rows = await fetchDisplayOverlays(db);
-    final typeSchemas =
-        includeDocs ? await overlayTypeConfigJsonSchemasByType(db) : null;
+    final typeSchemas = includeDocs
+        ? await overlayTypeConfigJsonSchemasByType(db)
+        : null;
     return Response.ok(
       jsonEncode({
         'items': [
@@ -335,7 +353,7 @@ Handler buildProtectedApiRouter({
               includeConfigDocs: includeDocs,
               configJsonSchema: includeDocs
                   ? typeSchemas![r.overlayType] ??
-                      displayOverlayConfigJsonDocForType(r.overlayType).schema
+                        displayOverlayConfigJsonDocForType(r.overlayType).schema
                   : null,
             ),
         ],
@@ -540,9 +558,9 @@ Handler buildProtectedApiRouter({
         headers: {'content-type': 'application/json'},
       );
     }
-    final row = await (db.select(db.blobMetadata)
-          ..where((t) => t.blobKey.equals(key)))
-        .getSingleOrNull();
+    final row = await (db.select(
+      db.blobMetadata,
+    )..where((t) => t.blobKey.equals(key))).getSingleOrNull();
     if (row == null) {
       return Response(
         404,
@@ -562,16 +580,18 @@ Handler buildProtectedApiRouter({
     return Response.ok(
       read.bytes!,
       headers: {
-        'content-type':
-            (mime != null && mime.isNotEmpty) ? mime : 'application/octet-stream',
+        'content-type': (mime != null && mime.isNotEmpty)
+            ? mime
+            : 'application/octet-stream',
         'cache-control': 'private, max-age=60',
       },
     );
   });
 
   r.get('/v1/media/rss-articles/<id>', (Request req, String id) async {
-    final row = await (db.select(db.news)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final row = await (db.select(
+      db.news,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (row == null || row.suppressed) {
       return Response(
         404,
@@ -594,8 +614,9 @@ Handler buildProtectedApiRouter({
   });
 
   r.get('/v1/media/photos/<id>', (Request req, String id) async {
-    final row = await (db.select(db.photos)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final row = await (db.select(
+      db.photos,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (row == null || row.suppressed) {
       return Response(
         404,
@@ -619,8 +640,9 @@ Handler buildProtectedApiRouter({
   });
 
   r.get('/v1/media/videos/<id>', (Request req, String id) async {
-    final row = await (db.select(db.videos)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final row = await (db.select(
+      db.videos,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (row == null || row.suppressed) {
       return Response(
         404,
@@ -645,8 +667,9 @@ Handler buildProtectedApiRouter({
   });
 
   r.get('/v1/media/jokes/<id>', (Request req, String id) async {
-    final row = await (db.select(db.jokes)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final row = await (db.select(
+      db.jokes,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (row == null || row.suppressed) {
       return Response(
         404,
@@ -666,8 +689,9 @@ Handler buildProtectedApiRouter({
   });
 
   r.get('/v1/media/trivia/<id>', (Request req, String id) async {
-    final row = await (db.select(db.triviaQuestions)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final row = await (db.select(
+      db.triviaQuestions,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (row == null || row.suppressed) {
       return Response(
         404,
@@ -691,8 +715,9 @@ Handler buildProtectedApiRouter({
   });
 
   r.get('/v1/media/weather-at-location/<id>', (Request req, String id) async {
-    final loc = await (db.select(db.interestsLocations)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    final loc = await (db.select(
+      db.interestsLocations,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (loc == null) {
       return Response(
         404,
@@ -700,8 +725,9 @@ Handler buildProtectedApiRouter({
         headers: {'content-type': 'application/json'},
       );
     }
-    final cur = await (db.select(db.weatherCurrent)..where((t) => t.locationId.equals(id)))
-        .getSingleOrNull();
+    final cur = await (db.select(
+      db.weatherCurrent,
+    )..where((t) => t.locationId.equals(id))).getSingleOrNull();
     return Response.ok(
       jsonEncode({
         'location_id': loc.id,
@@ -752,10 +778,7 @@ Handler buildProtectedApiRouter({
         exit(0);
       },
     );
-    registerDisplayOpsRestRoutes(
-      r,
-      env: env ?? const {},
-    );
+    registerDisplayOpsRestRoutes(r, env: env ?? const {});
   }
 
   return r.call;
@@ -865,7 +888,10 @@ String _readOverlayLabelFromMap(Map<String, dynamic> map) {
   return '';
 }
 
-String _patchOverlayLabel(DisplayOverlayRow existing, Map<String, dynamic> map) {
+String _patchOverlayLabel(
+  DisplayOverlayRow existing,
+  Map<String, dynamic> map,
+) {
   if (map.containsKey('label')) {
     return (map['label'] as String?)?.trim() ?? '';
   }
@@ -885,10 +911,7 @@ String _patchOverlayDescription(
   return existing.description;
 }
 
-String _patchOverlayType(
-  DisplayOverlayRow existing,
-  Map<String, dynamic> map,
-) {
+String _patchOverlayType(DisplayOverlayRow existing, Map<String, dynamic> map) {
   if (map.containsKey('overlay_type')) {
     return (map['overlay_type'] as String?)?.trim() ?? '';
   }
@@ -921,9 +944,7 @@ String _messagesJsonArg(Map<String, dynamic> map) {
     return v;
   }
   if (v is List) {
-    return jsonEncode([
-      for (final e in v) e is String ? e : e.toString(),
-    ]);
+    return jsonEncode([for (final e in v) e is String ? e : e.toString()]);
   }
   return '[]';
 }
@@ -952,33 +973,35 @@ Future<Response> _upsertRejectTerm(
   try {
     final decoded = jsonDecode(await req.readAsString());
     if (decoded is! Map<String, dynamic>) {
-      return Response(400,
-          body: '{"error":"expected_json_object"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"expected_json_object"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     body = decoded;
   } catch (_) {
-    return Response(400,
-        body: '{"error":"invalid_json"}',
-        headers: {'content-type': 'application/json'});
+    return Response(
+      400,
+      body: '{"error":"invalid_json"}',
+      headers: {'content-type': 'application/json'},
+    );
   }
   final input = RejectTermInput.parse(
     rawTerm: body['term'] is String ? body['term'] as String : null,
     rawAction: body['action'] is String ? body['action'] as String : null,
   );
   if (input == null) {
-    return Response(400,
-        body: '{"error":"invalid_term_or_action"}',
-        headers: {'content-type': 'application/json'});
+    return Response(
+      400,
+      body: '{"error":"invalid_term_or_action"}',
+      headers: {'content-type': 'application/json'},
+    );
   }
   final savedId = await repo.upsert(input, id: id);
   unawaited(rescanContentForBlockTerms(db));
   return Response.ok(
-    jsonEncode({
-      'id': savedId,
-      'term': input.term,
-      'action': input.action,
-    }),
+    jsonEncode({'id': savedId, 'term': input.term, 'action': input.action}),
     headers: {'content-type': 'application/json'},
   );
 }
@@ -988,21 +1011,27 @@ Future<Response> _setRejectCensorFormat(Request req, AppDatabase db) async {
   try {
     final decoded = jsonDecode(await req.readAsString());
     if (decoded is! Map<String, dynamic>) {
-      return Response(400,
-          body: '{"error":"expected_json_object"}',
-          headers: {'content-type': 'application/json'});
+      return Response(
+        400,
+        body: '{"error":"expected_json_object"}',
+        headers: {'content-type': 'application/json'},
+      );
     }
     body = decoded;
   } catch (_) {
-    return Response(400,
-        body: '{"error":"invalid_json"}',
-        headers: {'content-type': 'application/json'});
+    return Response(
+      400,
+      body: '{"error":"invalid_json"}',
+      headers: {'content-type': 'application/json'},
+    );
   }
   final raw = body['format'];
   if (raw is! String) {
-    return Response(400,
-        body: '{"error":"format_must_be_string"}',
-        headers: {'content-type': 'application/json'});
+    return Response(
+      400,
+      body: '{"error":"format_must_be_string"}',
+      headers: {'content-type': 'application/json'},
+    );
   }
   const allowed = {
     kRejectCensorFormatAsterisksFull,
@@ -1011,11 +1040,15 @@ Future<Response> _setRejectCensorFormat(Request req, AppDatabase db) async {
     kRejectCensorFormatBracketedToken,
   };
   if (!allowed.contains(raw)) {
-    return Response(400,
-        body: '{"error":"unknown_format"}',
-        headers: {'content-type': 'application/json'});
+    return Response(
+      400,
+      body: '{"error":"unknown_format"}',
+      headers: {'content-type': 'application/json'},
+    );
   }
-  await db.into(db.configKeyValues).insertOnConflictUpdate(
+  await db
+      .into(db.configKeyValues)
+      .insertOnConflictUpdate(
         ConfigKeyValuesCompanion.insert(
           key: kRejectCensorFormatKvKey,
           value: raw,
@@ -1111,8 +1144,9 @@ Handler buildRootHandler({
 }) {
   final effectiveCorsPolicy = corsPolicy ?? CorsPolicy();
   final healthStartedAt = DateTime.now().toUtc();
-  final pluginsDirConfigured =
-      (env[kDisplayPluginsDirEnv] ?? '').trim().isNotEmpty;
+  final pluginsDirConfigured = (env[kDisplayPluginsDirEnv] ?? '')
+      .trim()
+      .isNotEmpty;
   final upgradeScript = (env[kDisplayUpgradeScriptEnv] ?? '').trim().isNotEmpty
       ? (env[kDisplayUpgradeScriptEnv] ?? '').trim()
       : '/usr/local/bin/waddle-view-upgrade.sh';
@@ -1230,8 +1264,7 @@ Handler _dynamicCorsWrap(
 
 Map<String, String> _corsHeaders(String origin) => {
   'access-control-allow-origin': origin,
-  'access-control-allow-methods':
-      'GET,POST,PATCH,PUT,DELETE,OPTIONS',
+  'access-control-allow-methods': 'GET,POST,PATCH,PUT,DELETE,OPTIONS',
   'access-control-allow-headers': 'Content-Type, Authorization',
   'access-control-max-age': '86400',
 };
@@ -1287,20 +1320,15 @@ class LocalRestServer {
       if (certPath == null || keyPath == null) {
         throw ArgumentError('TLS enabled but cert/key paths are missing');
       }
-      final ctx = securityContextFromPaths(certPath: certPath, keyPath: keyPath);
-      server = await HttpServer.bindSecure(addr, port, ctx);
-      _listen(
-        server,
-        handler,
-        livePreviewGateway: livePreviewGateway,
+      final ctx = securityContextFromPaths(
+        certPath: certPath,
+        keyPath: keyPath,
       );
+      server = await HttpServer.bindSecure(addr, port, ctx);
+      _listen(server, handler, livePreviewGateway: livePreviewGateway);
     } else {
       server = await HttpServer.bind(addr, port);
-      _listen(
-        server,
-        handler,
-        livePreviewGateway: livePreviewGateway,
-      );
+      _listen(server, handler, livePreviewGateway: livePreviewGateway);
     }
     final out = LocalRestServer._(
       server,
@@ -1320,7 +1348,8 @@ class LocalRestServer {
     server.listen((HttpRequest request) async {
       if (WebSocketTransformer.isUpgradeRequest(request)) {
         final path = request.uri.path;
-        if (livePreviewGateway != null && livePreviewGateway.handlesPath(path)) {
+        if (livePreviewGateway != null &&
+            livePreviewGateway.handlesPath(path)) {
           await livePreviewGateway.handle(request);
           return;
         }
@@ -1329,4 +1358,3 @@ class LocalRestServer {
     });
   }
 }
-

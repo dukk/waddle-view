@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:waddle_shared/curation/reject_filter_context.dart';
+import 'package:waddle_shared/image/blob_crop_metadata.dart';
 
 import 'package:waddle_shared/persistence/database.dart';
 import 'package:waddle_shared/persistence/tables.dart';
@@ -21,8 +22,8 @@ const String kDefaultFlickrBaseUrl = 'https://api.flickr.com/services/rest';
 
 class FlickrPhotosDataProvider implements IDataProvider {
   FlickrPhotosDataProvider({http.Client? httpClient, int Function()? nowMs})
-      : _http = httpClient ?? http.Client(),
-        _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
+    : _http = httpClient ?? http.Client(),
+      _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
 
   final http.Client _http;
   final int Function() _nowMs;
@@ -46,11 +47,15 @@ class FlickrPhotosDataProvider implements IDataProvider {
     final nowMs = _nowMs();
     final kv = IntegrationKvRepository(ctx.db);
     if (setting.pollSeconds > 0) {
-      final lastValue =
-          await kv.getIntegrationValue(integrationId, kIntegrationLastCollectKey);
+      final lastValue = await kv.getIntegrationValue(
+        integrationId,
+        kIntegrationLastCollectKey,
+      );
       final last = int.tryParse(lastValue ?? '') ?? 0;
       if (nowMs - last < setting.pollSeconds * 1000) {
-        ctx.diagnostics.provider('flickr_photo: skip poll gate id=$integrationId');
+        ctx.diagnostics.provider(
+          'flickr_photo: skip poll gate id=$integrationId',
+        );
         return;
       }
     }
@@ -244,9 +249,9 @@ class FlickrPhotosDataProvider implements IDataProvider {
       return false;
     }
     final rowId = 'flickr:$id';
-    final existing =
-        await (ctx.db.select(ctx.db.photos)..where((t) => t.id.equals(rowId)))
-            .getSingleOrNull();
+    final existing = await (ctx.db.select(
+      ctx.db.photos,
+    )..where((t) => t.id.equals(rowId))).getSingleOrNull();
     if (existing != null) {
       return false;
     }
@@ -269,39 +274,48 @@ class FlickrPhotosDataProvider implements IDataProvider {
         ? ''
         : 'https://www.flickr.com/photos/$ownerId/$id';
     final logicalKey = 'flickr/photo/$id/image';
-    final ref = await ctx.blobs.putBytes(mediaRes.bodyBytes, logicalKey: logicalKey);
+    final ref = await ctx.blobs.putBytes(
+      mediaRes.bodyBytes,
+      logicalKey: logicalKey,
+    );
     final mime = _mimeFromUrl(mediaUrl);
-    final pixelW = _dimension(photo, 'width_o') ??
+    final pixelW =
+        _dimension(photo, 'width_o') ??
         _dimension(photo, 'width_l') ??
         _dimension(photo, 'width_c') ??
         _dimension(photo, 'width_z') ??
         _dimension(photo, 'width_m');
-    final pixelH = _dimension(photo, 'height_o') ??
+    final pixelH =
+        _dimension(photo, 'height_o') ??
         _dimension(photo, 'height_l') ??
         _dimension(photo, 'height_c') ??
         _dimension(photo, 'height_z') ??
         _dimension(photo, 'height_m');
 
-    await ctx.db.into(ctx.db.blobMetadata).insertOnConflictUpdate(
-          BlobMetadataCompanion.insert(
-            blobKey: logicalKey,
-            sha256: ref.storageKey.split('/').last,
-            relativePath: ref.storageKey,
-            bytes: mediaRes.bodyBytes.length,
-            mimeType: Value(mime),
-            capturedAt: DateTime.fromMillisecondsSinceEpoch(nowMs),
-            pixelWidth: pixelW != null ? Value(pixelW) : const Value.absent(),
-            pixelHeight: pixelH != null ? Value(pixelH) : const Value.absent(),
-          ),
-        );
-    final photographerUrl =
-        ownerId.isEmpty ? '' : 'https://www.flickr.com/people/$ownerId';
+    await writeBlobMetadataWithCropAnalysis(
+      db: ctx.db,
+      blobKey: logicalKey,
+      ref: ref,
+      bytes: mediaRes.bodyBytes,
+      mimeType: mime,
+      capturedAt: DateTime.fromMillisecondsSinceEpoch(nowMs),
+      hints: BlobCropProviderHints(
+        altText: title,
+        pixelWidth: pixelW,
+        pixelHeight: pixelH,
+      ),
+    );
+    final photographerUrl = ownerId.isEmpty
+        ? ''
+        : 'https://www.flickr.com/people/$ownerId';
     final blocked = rejectCtx.isMediaRejected(
       photographer: owner,
       altText: title,
       urls: [photographerUrl, pageUrl],
     );
-    await ctx.db.into(ctx.db.photos).insert(
+    await ctx.db
+        .into(ctx.db.photos)
+        .insert(
           PhotosCompanion.insert(
             id: rowId,
             category: Value(category),

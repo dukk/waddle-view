@@ -24,7 +24,12 @@ export const NEWS_QR_MODE_OPTIONS: readonly { value: string; label: string }[] =
   { value: 'hidden', label: 'Hidden' },
   { value: 'left', label: 'Left of article text' },
   { value: 'right', label: 'Right of article text' },
-  { value: 'image_overlay_bottom', label: 'Over bottom of article image' },
+  { value: 'image_overlay_top_left', label: 'Over top-left of article image' },
+  { value: 'image_overlay_top', label: 'Over top center of article image' },
+  { value: 'image_overlay_top_right', label: 'Over top-right of article image' },
+  { value: 'image_overlay_bottom_left', label: 'Over bottom-left of article image' },
+  { value: 'image_overlay_bottom', label: 'Over bottom center of article image' },
+  { value: 'image_overlay_bottom_right', label: 'Over bottom-right of article image' },
 ];
 
 export const NEWS_IMAGE_FIT_OPTIONS: readonly { value: string; label: string }[] = [

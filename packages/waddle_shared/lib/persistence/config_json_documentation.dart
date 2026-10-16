@@ -1313,20 +1313,57 @@ final Map<String, Object?> _kJsonSchemaAnalogDialLabels = {
   'x-waddle-enum-labels': kAnalogDialLabelsEnumLabels,
 };
 
-/// News QR placement modes.
+/// Shared image-overlay QR placement labels (corner and center).
+const Map<String, String> kNewsQrImageOverlayEnumLabels = {
+  'image_overlay_top_left': 'Over top-left of article image',
+  'image_overlay_top': 'Over top center of article image',
+  'image_overlay_top_right': 'Over top-right of article image',
+  'image_overlay_bottom_left': 'Over bottom-left of article image',
+  'image_overlay_bottom': 'Over bottom center of article image',
+  'image_overlay_bottom_right': 'Over bottom-right of article image',
+};
+
+/// News QR placement modes (text-adjacent plus image overlays).
 const Map<String, String> kNewsQrModeEnumLabels = {
   'hidden': 'Hidden',
   'left': 'Left of article text',
   'right': 'Right of article text',
-  'image_overlay_bottom': 'Over bottom of article image',
+  ...kNewsQrImageOverlayEnumLabels,
 };
 
-/// QR placement for [news_grid] (over article image edges).
+/// QR placement for [news_grid] (image overlays plus mid-edge).
 const Map<String, String> kNewsGridQrModeEnumLabels = {
   'hidden': 'Hidden',
   'image_overlay_left': 'Over left of article image',
   'image_overlay_right': 'Over right of article image',
+  ...kNewsQrImageOverlayEnumLabels,
 };
+
+/// Enum values for news / columns / stack [qrMode].
+const List<String> kNewsQrModeEnumValues = [
+  'hidden',
+  'left',
+  'right',
+  'image_overlay_top_left',
+  'image_overlay_top',
+  'image_overlay_top_right',
+  'image_overlay_bottom_left',
+  'image_overlay_bottom',
+  'image_overlay_bottom_right',
+];
+
+/// Enum values for news_grid [qrMode].
+const List<String> kNewsGridQrModeEnumValues = [
+  'hidden',
+  'image_overlay_left',
+  'image_overlay_right',
+  'image_overlay_top_left',
+  'image_overlay_top',
+  'image_overlay_top_right',
+  'image_overlay_bottom_left',
+  'image_overlay_bottom',
+  'image_overlay_bottom_right',
+];
 
 /// News article image fit modes (maps to Flutter BoxFit).
 const Map<String, String> kNewsImageFitEnumLabels = {
@@ -1842,14 +1879,10 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
             'minimum': 0,
             ..._kWaddleAdvanced,
           },
-          'minReadMs': {
-            'type': 'integer',
-            'minimum': 0,
-            ..._kWaddleAdvanced,
-          },
+          'minReadMs': {'type': 'integer', 'minimum': 0, ..._kWaddleAdvanced},
           'qrMode': {
             'type': 'string',
-            'enum': ['hidden', 'left', 'right', 'image_overlay_bottom'],
+            'enum': kNewsQrModeEnumValues,
             'x-waddle-enum-labels': kNewsQrModeEnumLabels,
             'description': 'Article link QR placement.',
           },
@@ -1908,14 +1941,10 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
             'maximum': 6,
             ..._kWaddleAdvanced,
           },
-          'minReadMs': {
-            'type': 'integer',
-            'minimum': 0,
-            ..._kWaddleAdvanced,
-          },
+          'minReadMs': {'type': 'integer', 'minimum': 0, ..._kWaddleAdvanced},
           'qrMode': {
             'type': 'string',
-            'enum': ['hidden', 'left', 'right', 'image_overlay_bottom'],
+            'enum': kNewsQrModeEnumValues,
             'x-waddle-enum-labels': kNewsQrModeEnumLabels,
           },
           'qrLogicalSize': {
@@ -1963,14 +1992,10 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
             'Two-row stacked RSS layout; category filters; QR and image options.',
         properties: {
           'categoryNames': _kJsonSchemaContentCategoryNames,
-          'minReadMs': {
-            'type': 'integer',
-            'minimum': 0,
-            ..._kWaddleAdvanced,
-          },
+          'minReadMs': {'type': 'integer', 'minimum': 0, ..._kWaddleAdvanced},
           'qrMode': {
             'type': 'string',
-            'enum': ['hidden', 'left', 'right', 'image_overlay_bottom'],
+            'enum': kNewsQrModeEnumValues,
             'x-waddle-enum-labels': kNewsQrModeEnumLabels,
           },
           'imagePanelFraction': {
@@ -2023,8 +2048,8 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
       _baseSchema(
         title: 'RssArticleGridScreenConfig',
         description:
-            '3×2 RSS grid: image, headline, and source per cell; optional summary; '
-            'QR over left or right of image.',
+            '3x2 RSS grid: image, headline, and source per cell; optional summary; '
+            'QR over article image.',
         properties: {
           'categoryNames': _kJsonSchemaContentCategoryNames,
           'showSummary': {
@@ -2033,14 +2058,10 @@ final Map<String, ScreenConfigJsonDoc> kScreenConfigJsonMeta = {
                 'When false (default), hide article body and show only image, '
                 'headline, and source.',
           },
-          'minReadMs': {
-            'type': 'integer',
-            'minimum': 0,
-            ..._kWaddleAdvanced,
-          },
+          'minReadMs': {'type': 'integer', 'minimum': 0, ..._kWaddleAdvanced},
           'qrMode': {
             'type': 'string',
-            'enum': ['hidden', 'image_overlay_left', 'image_overlay_right'],
+            'enum': kNewsGridQrModeEnumValues,
             'x-waddle-enum-labels': kNewsGridQrModeEnumLabels,
           },
           'qrLogicalSize': {

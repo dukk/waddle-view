@@ -100,7 +100,7 @@ class AppDatabase extends _$AppDatabase {
   WaddleDatabaseBackend get databaseBackend => _backend;
 
   @override
-  int get schemaVersion => _backend == WaddleDatabaseBackend.postgres ? 1 : 52;
+  int get schemaVersion => _backend == WaddleDatabaseBackend.postgres ? 1 : 53;
 
   MigrationStrategy get _sqliteMigrationStrategy => MigrationStrategy(
     onCreate: (Migrator m) async {
@@ -476,6 +476,13 @@ ORDER BY priority DESC, created_at DESC;
           return;
         }
         from = 52;
+      }
+      if (from == 52 && to >= 53) {
+        await _migrateV52ToV53BlobCropMetadata(this);
+        if (to == 53) {
+          return;
+        }
+        from = 53;
       }
       throw UnsupportedError(
         'Unsupported database upgrade from version $from to $to. '
@@ -3327,6 +3334,38 @@ Future<void> _ensureWeekdayWeekendCuratorConfigurationsV52(
         ],
       );
     }
+  }
+}
+
+/// Schema 53: smart-crop focal point and face/text hints on blob_metadata.
+Future<void> _migrateV52ToV53BlobCropMetadata(AppDatabase db) async {
+  if (!await _sqliteTableExists(db, 'blob_metadata')) {
+    return;
+  }
+  if (!await _sqliteColumnExists(db, 'blob_metadata', 'focal_x')) {
+    await db.customStatement(
+      'ALTER TABLE blob_metadata ADD COLUMN focal_x REAL',
+    );
+  }
+  if (!await _sqliteColumnExists(db, 'blob_metadata', 'focal_y')) {
+    await db.customStatement(
+      'ALTER TABLE blob_metadata ADD COLUMN focal_y REAL',
+    );
+  }
+  if (!await _sqliteColumnExists(db, 'blob_metadata', 'has_face')) {
+    await db.customStatement(
+      'ALTER TABLE blob_metadata ADD COLUMN has_face INTEGER',
+    );
+  }
+  if (!await _sqliteColumnExists(db, 'blob_metadata', 'has_text')) {
+    await db.customStatement(
+      'ALTER TABLE blob_metadata ADD COLUMN has_text INTEGER',
+    );
+  }
+  if (!await _sqliteColumnExists(db, 'blob_metadata', 'crop_hints_json')) {
+    await db.customStatement(
+      'ALTER TABLE blob_metadata ADD COLUMN crop_hints_json TEXT',
+    );
   }
 }
 

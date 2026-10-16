@@ -12,19 +12,28 @@ import 'helpers/rest_auth_helper.dart';
 
 Future<void> _seedContentTypes(AppDatabase db) async {
   const cat = 'general';
-  await db.into(db.contentCategories).insertOnConflictUpdate(
+  await db
+      .into(db.contentCategories)
+      .insertOnConflictUpdate(
         ContentCategoriesCompanion.insert(id: cat, label: 'General'),
       );
-  await db.into(db.interestsJokes).insert(
-        InterestsJokesCompanion.insert(id: cat, label: 'General'),
+  await db
+      .into(db.interestsJokes)
+      .insert(InterestsJokesCompanion.insert(id: cat, label: 'General'));
+  await db
+      .into(db.interestsTrivia)
+      .insert(InterestsTriviaCompanion.insert(id: cat, label: 'General'));
+  await db
+      .into(db.interestsRssFeeds)
+      .insert(
+        InterestsRssFeedsCompanion.insert(
+          id: 'f1',
+          url: 'https://example.com/feed.xml',
+        ),
       );
-  await db.into(db.interestsTrivia).insert(
-        InterestsTriviaCompanion.insert(id: cat, label: 'General'),
-      );
-  await db.into(db.interestsRssFeeds).insert(
-        InterestsRssFeedsCompanion.insert(id: 'f1', url: 'https://example.com/feed.xml'),
-      );
-  await db.into(db.jokes).insert(
+  await db
+      .into(db.jokes)
+      .insert(
         JokesCompanion.insert(
           id: 'rest_j1',
           categoryId: cat,
@@ -33,7 +42,9 @@ Future<void> _seedContentTypes(AppDatabase db) async {
           createdAtMs: DateTime.fromMillisecondsSinceEpoch(1),
         ),
       );
-  await db.into(db.news).insert(
+  await db
+      .into(db.news)
+      .insert(
         NewsCompanion.insert(
           id: 'rest_a1',
           sourceType: kNewsSourceTypeRss,
@@ -45,7 +56,9 @@ Future<void> _seedContentTypes(AppDatabase db) async {
           fetchedAt: DateTime.fromMillisecondsSinceEpoch(3),
         ),
       );
-  await db.into(db.photos).insert(
+  await db
+      .into(db.photos)
+      .insert(
         PhotosCompanion.insert(
           id: 'rest_p1',
           mediaBlobKey: 'blob/p1',
@@ -56,7 +69,9 @@ Future<void> _seedContentTypes(AppDatabase db) async {
           fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(4),
         ),
       );
-  await db.into(db.videos).insert(
+  await db
+      .into(db.videos)
+      .insert(
         VideosCompanion.insert(
           id: 'rest_v1',
           mediaBlobKey: 'blob/v1',
@@ -68,7 +83,9 @@ Future<void> _seedContentTypes(AppDatabase db) async {
           fetchedAtMs: DateTime.fromMillisecondsSinceEpoch(5),
         ),
       );
-  await db.into(db.triviaQuestions).insert(
+  await db
+      .into(db.triviaQuestions)
+      .insert(
         TriviaQuestionsCompanion.insert(
           id: 'rest_q1',
           categoryId: cat,
@@ -128,7 +145,9 @@ void main() {
     final h = await RestTestHarness.start();
     addTearDown(h.dispose);
     await ensureDefaultInterestsJokes(h.db);
-    await h.db.into(h.db.jokes).insert(
+    await h.db
+        .into(h.db.jokes)
+        .insert(
           JokesCompanion.insert(
             id: 'rest_j1',
             categoryId: 'dad',
@@ -144,9 +163,9 @@ void main() {
       body: '{"suppressed":true}',
     );
     expect(res.statusCode, 200);
-    final row = await (h.db.select(h.db.jokes)
-          ..where((t) => t.id.equals('rest_j1')))
-        .getSingle();
+    final row = await (h.db.select(
+      h.db.jokes,
+    )..where((t) => t.id.equals('rest_j1'))).getSingle();
     expect(row.suppressed, isTrue);
   });
 
@@ -330,10 +349,14 @@ void main() {
     final db = openMemoryDatabase();
     await warmDatabase(db);
     const cat = 'general';
-    await db.into(db.contentCategories).insertOnConflictUpdate(
+    await db
+        .into(db.contentCategories)
+        .insertOnConflictUpdate(
           ContentCategoriesCompanion.insert(id: cat, label: 'General'),
         );
-    await db.into(db.interestsLocations).insert(
+    await db
+        .into(db.interestsLocations)
+        .insert(
           InterestsLocationsCompanion.insert(
             id: 'loc1',
             name: 'Home',
@@ -341,10 +364,14 @@ void main() {
             longitude: 0,
           ),
         );
-    await db.into(db.interestsStockSymbols).insert(
+    await db
+        .into(db.interestsStockSymbols)
+        .insert(
           InterestsStockSymbolsCompanion.insert(id: 'sym1', symbol: 'AAPL'),
         );
-    await db.into(db.calendarEvents).insert(
+    await db
+        .into(db.calendarEvents)
+        .insert(
           CalendarEventsCompanion.insert(
             id: 'ev1',
             title: 'Meet',
@@ -353,19 +380,25 @@ void main() {
             updatedAtMs: DateTime.fromMillisecondsSinceEpoch(10),
           ),
         );
-    await db.into(db.stockQuotes).insert(
+    await db
+        .into(db.stockQuotes)
+        .insert(
           StockQuotesCompanion.insert(
             symbolId: 'sym1',
             observedAtMs: DateTime.fromMillisecondsSinceEpoch(7),
           ),
         );
-    await db.into(db.weatherCurrent).insert(
+    await db
+        .into(db.weatherCurrent)
+        .insert(
           WeatherCurrentCompanion.insert(
             locationId: 'loc1',
             observedAtMs: DateTime.fromMillisecondsSinceEpoch(8),
           ),
         );
-    await db.into(db.weatherAlerts).insert(
+    await db
+        .into(db.weatherAlerts)
+        .insert(
           WeatherAlertsCompanion.insert(
             locationId: 'loc1',
             nwsAlertId: 'nws-1',
@@ -380,32 +413,28 @@ void main() {
       (await http.delete(
         Uri.parse('${h.baseUrl}/v1/content/calendar-events/ev1'),
         headers: h.authHeaders,
-      ))
-          .statusCode,
+      )).statusCode,
       200,
     );
     expect(
       (await http.delete(
         Uri.parse('${h.baseUrl}/v1/content/stock-quotes/sym1'),
         headers: h.authHeaders,
-      ))
-          .statusCode,
+      )).statusCode,
       200,
     );
     expect(
       (await http.delete(
         Uri.parse('${h.baseUrl}/v1/content/weather-current/loc1'),
         headers: h.authHeaders,
-      ))
-          .statusCode,
+      )).statusCode,
       200,
     );
     expect(
       (await http.delete(
         Uri.parse('${h.baseUrl}/v1/content/weather-alerts/loc1/nws-1'),
         headers: h.authHeaders,
-      ))
-          .statusCode,
+      )).statusCode,
       200,
     );
 
@@ -415,11 +444,49 @@ void main() {
     expect(await db.select(db.weatherAlerts).get(), isEmpty);
   });
 
+  test('DELETE weather alert with percent-encoded NWS urn id', () async {
+    final db = openMemoryDatabase();
+    await warmDatabase(db);
+    await db
+        .into(db.interestsLocations)
+        .insert(
+          InterestsLocationsCompanion.insert(
+            id: 'loc1',
+            name: 'Home',
+            latitude: 0,
+            longitude: 0,
+          ),
+        );
+    const nwsId =
+        'urn:oid:2.49.0.1.840.0.000845e7eeb1b170d4907a5cb970cb7a7e4ee32a.001.1';
+    await db
+        .into(db.weatherAlerts)
+        .insert(
+          WeatherAlertsCompanion.insert(
+            locationId: 'loc1',
+            nwsAlertId: nwsId,
+            event: 'Flood Watch',
+          ),
+        );
+
+    final h = await RestTestHarness.start(database: db);
+    addTearDown(h.dispose);
+
+    // Controller encodeURIComponent leaves %3A on the wire; shelf keeps that in
+    // request.url.path, so the handler must decode before the DB lookup.
+    final res = await http.delete(
+      Uri.parse(
+        '${h.baseUrl}/v1/content/weather-alerts/loc1/${Uri.encodeComponent(nwsId)}',
+      ),
+      headers: h.authHeaders,
+    );
+    expect(res.statusCode, 200, reason: res.body);
+    expect(await db.select(db.weatherAlerts).get(), isEmpty);
+  });
+
   test('CORS adds headers for allowed origin', () async {
     const origin = 'http://localhost:5173';
-    final h = await RestTestHarness.start(
-      seedCorsOrigins: [origin],
-    );
+    final h = await RestTestHarness.start(seedCorsOrigins: [origin]);
     addTearDown(h.dispose);
 
     final preflight = await http.Client().send(

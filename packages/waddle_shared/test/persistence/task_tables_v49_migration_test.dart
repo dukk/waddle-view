@@ -6,7 +6,7 @@ void main() {
   test('fresh database has task_lists and tasks at schema 49', () async {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    expect(db.schemaVersion, 52);
+    expect(db.schemaVersion, 53);
     final tables = await db
         .customSelect(
           "SELECT name FROM sqlite_master WHERE type='table' "
